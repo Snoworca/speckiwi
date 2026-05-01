@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/dictionary.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "status"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/dictionary/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "dictionary" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "active", "deprecated", "archived"] },
+    "synonyms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "normalizations": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

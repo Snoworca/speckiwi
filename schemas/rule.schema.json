@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/rule.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "status", "rules"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/rule/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "rule" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "active", "deprecated", "archived"] },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "level", "statement"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "level": { "enum": ["must", "should", "may", "must_not", "should_not"] },
+          "statement": { "type": "string", "minLength": 1 },
+          "rationale": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

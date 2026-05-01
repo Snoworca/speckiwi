@@ -1,0 +1,568 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260501-speckiwi-v1-remediation",
+  "previous_hash": null,
+  "produced_by": "snoworca-planner@2.2.2",
+  "title": "SpecKiwi v1 remediation implementation and test plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-01T14:05:00+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "spec_refs": ["docs/spec/srs.md"],
+  "code_path": ".",
+  "output_path": "docs/plans/plan-20260501-speckiwi-v1-remediation.md",
+  "scope_freeze": true,
+  "change_log": [],
+  "platforms": ["posix", "win32"],
+  "auto_recommend_policy": {
+    "default_confidence_threshold": "medium",
+    "cap": 0,
+    "forbidden_for_business_decision": true
+  },
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)", "flags": ""},
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+\\*", "flags": ""},
+    {"pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)", "flags": ""},
+    {"pattern": "\\b(mkfs|fdisk|parted)\\b", "flags": ""},
+    {"pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b", "flags": ""},
+    {"pattern": "\\bchown\\s+-R\\s+.*\\s+/", "flags": ""},
+    {"pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)", "flags": ""},
+    {"pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)", "flags": ""},
+    {"pattern": "wget\\s+[^|]*\\|\\s*sh", "flags": ""},
+    {"pattern": "iwr\\s+[^;]+;\\s*iex", "flags": ""},
+    {"pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)", "flags": ""},
+    {"pattern": "git\\s+clean\\s+-[fdx]+", "flags": ""},
+    {"pattern": "적절히|필요 시|알아서|상황에 맞게|기존 방식대로|어떻게든", "flags": ""}
+  ],
+  "phases": [
+    {
+      "id": "PHASE-P0",
+      "title": "Validation, filters, and pagination contract",
+      "goal": "Close model validation gaps and align list/search filter contracts before cache and release work.",
+      "tasks": [
+        {
+          "id": "TASK-P0-001",
+          "title": "Add PRD item ID duplicate validation",
+          "related_req_ids": ["FR-PRD-006"],
+          "req_ids": ["FR-PRD-006"],
+          "owns": ["src/validate/semantic.ts", "test/validate/semantic.test.ts", "test/fixtures/workspaces/invalid-schema/.speckiwi/prd/duplicate-items.yaml"],
+          "reads": ["src/validate/semantic.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "function validatePrdAndTechnicalReferences(workspace: LoadedWorkspace, requirementIds: Set<string>, diagnostics: Diagnostic[]): void",
+            "function validatePrdItemIds(document: LoadedSpecDocument, diagnostics: Diagnostic[]): void"
+          ],
+          "reference_pattern": "Use validateRequirements() duplicate Set and firstPathById pattern.",
+          "source_anchors": ["src/validate/semantic.ts:377-424", "src/validate/semantic.ts:537-560", "docs/spec/srs.md:1596-1596"],
+          "implementation_guide": [
+            "Iterate PRD items inside each PRD document.",
+            "Track item ids per document and emit DUPLICATE_PRD_ITEM_ID on second occurrence.",
+            "Keep existing PRD link target validation behavior unchanged."
+          ],
+          "rationale": "PRD item ids are local trace anchors and must be deterministic inside a PRD document.",
+          "pitfalls": ["Do not make PRD item ids globally unique across different PRD documents."],
+          "test_guidance": "Add duplicate failure, cross-document same-id success, and existing link validation regression cases.",
+          "verification_command": "npm test -- validate",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- validate", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- validate", "expected_exit": 0}
+          ],
+          "dod": ["DUPLICATE_PRD_ITEM_ID is emitted for duplicate item ids in one PRD", "Existing semantic validation tests pass"],
+          "rollback": {"strategy": "manual", "command": "1) Restore validation source and tests from git. 2) Remove only the new duplicate PRD fixture file, then run npm test -- validate."},
+          "feasibility": "Low",
+          "turn_estimate": 4,
+          "review_strictness": "default"
+        },
+        {
+          "id": "TASK-P0-002",
+          "title": "Add project filter to requirement listing",
+          "related_req_ids": ["FR-REQ-016"],
+          "req_ids": ["FR-REQ-016"],
+          "owns": ["src/core/inputs.ts", "src/core/requirements.ts", "src/cli/commands/list.ts", "src/mcp/schemas.ts", "test/cli/read-commands.test.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/core/requirements.ts", "src/cli/commands/list.ts", "src/mcp/schemas.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export type ListRequirementsInput = RootInput & PageInput & { project?: string | string[] }",
+            "function matchesRequirementFilters(requirement: RegisteredRequirement, input: ListRequirementsInput, registry: RequirementRegistry): boolean"
+          ],
+          "reference_pattern": "Existing scope/type/status/tag filters use splitComma and matchesFilter.",
+          "source_anchors": ["src/core/inputs.ts:59-64", "src/core/requirements.ts:438-445", "src/core/requirements.ts:475-482", "src/cli/commands/list.ts:45-83", "src/mcp/schemas.ts:112-120", "docs/spec/srs.md:1597-1597"],
+          "implementation_guide": [
+            "Add project to Core input DTO and MCP schema.",
+            "Add --project to speckiwi list reqs.",
+            "Match project id or project name and combine with other filters using AND semantics."
+          ],
+          "rationale": "The SRS explicitly requires project-based requirement listing filters.",
+          "pitfalls": ["A v1 workspace has one project, so nonmatching project returns an empty page instead of an error."],
+          "test_guidance": "Test project id match, project name match, unknown project empty result, and project plus scope/status combination.",
+          "verification_command": "npm test -- cli mcp",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- cli mcp", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- cli mcp", "expected_exit": 0}
+          ],
+          "dod": ["CLI, Core, and MCP accept project filter", "Project filter composes with status and scope filters"],
+          "rollback": {"strategy": "manual", "command": "1) Restore owned Core, CLI, MCP schema, and test files from git. 2) Run npm test -- cli mcp."},
+          "feasibility": "Low",
+          "turn_estimate": 4,
+          "review_strictness": "default"
+        },
+        {
+          "id": "TASK-P0-003",
+          "title": "Align pagination defaults and limits",
+          "related_req_ids": ["FR-CLI-013"],
+          "req_ids": ["FR-CLI-013"],
+          "owns": ["src/search/index.ts", "src/core/documents.ts", "src/core/requirements.ts", "src/mcp/schemas.ts", "test/search/search.test.ts", "test/cli/read-commands.test.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/search/index.ts", "src/core/documents.ts", "src/core/requirements.ts", "src/mcp/schemas.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "function normalizeSearchLimit(value: number | undefined): number",
+            "function normalizeListLimit(value: number | undefined): number"
+          ],
+          "reference_pattern": "Current normalizeLimit functions clamp search/list to default 50 and max 200.",
+          "source_anchors": ["src/search/index.ts:189-194", "src/core/documents.ts:111-113", "src/core/requirements.ts:501-505", "src/mcp/schemas.ts:26-29", "docs/spec/srs.md:1605-1605"],
+          "implementation_guide": [
+            "Set search default limit to 10 and max to 100.",
+            "Set document and requirement list default limit to 50 and max to 500.",
+            "Split MCP page schemas for search and list."
+          ],
+          "rationale": "Agent pagination must match the readiness contract to avoid missed pages or oversized responses.",
+          "pitfalls": ["Do not apply search max 100 to list APIs."],
+          "test_guidance": "Cover search default/max, list default/max, and MCP schema max validation.",
+          "verification_command": "npm test -- search cli mcp",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- search cli mcp", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- search cli mcp", "expected_exit": 0}
+          ],
+          "dod": ["Search page limit is 10 by default and 100 max", "List page limit is 50 by default and 500 max"],
+          "rollback": {"strategy": "manual", "command": "1) Restore pagination-owned files from git. 2) Run npm test -- search cli mcp."},
+          "feasibility": "Low",
+          "turn_estimate": 4,
+          "review_strictness": "default"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P1",
+      "title": "Cache read path and no-cache semantics",
+      "goal": "Connect generated search cache to the read path and enforce cache bypass across read and write flows.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Use valid search cache in search workspace",
+          "related_req_ids": ["FR-CACHE-009", "NFR-PERF-002", "NFR-PERF-006"],
+          "req_ids": ["FR-CACHE-009", "NFR-PERF-002", "NFR-PERF-006"],
+          "owns": ["src/core/search.ts", "src/search/index.ts", "src/cache/rebuild.ts", "src/cache/manifest.ts", "test/search/search.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/core/search.ts", "src/cache/rebuild.ts", "src/cache/manifest.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export function deserializeSearchIndex(value: unknown): SearchIndex | undefined",
+            "async function readSearchCache(root: WorkspaceRoot): Promise<SearchIndex | undefined>",
+            "export async function searchWorkspace(input: SearchInput): Promise<SearchResultSet>"
+          ],
+          "reference_pattern": "rebuildCache() writes cache/search-index.json and cache/manifest.json.",
+          "source_anchors": ["src/core/search.ts:11-32", "src/cache/rebuild.ts:27-45", "src/cache/manifest.ts:104-119", "docs/spec/srs.md:1603-1603"],
+          "implementation_guide": [
+            "Add deserializeSearchIndex as the inverse of serializeSearchIndex.",
+            "Read search cache when manifest is not stale and cacheMode is not bypass.",
+            "Fallback to YAML rebuild path with warning on corrupt cache or missing cache file."
+          ],
+          "rationale": "SRS performance targets assume cache-based search is part of the runtime path.",
+          "pitfalls": ["Cache read failure must not make YAML source search fail."],
+          "test_guidance": "Test cache hit, corrupt cache fallback warning, and stale rebuild.",
+          "verification_command": "npm test -- search cache",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- search cache", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- search cache", "expected_exit": 0}
+          ],
+          "dod": ["Search cache hit path is covered", "Corrupt cache falls back to YAML search with warning"],
+          "rollback": {"strategy": "manual", "command": "1) Restore search/cache owned files from git. 2) Run npm test -- search cache."},
+          "feasibility": "Medium",
+          "turn_estimate": 8,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Enforce no-cache as full cache read and write bypass",
+          "related_req_ids": ["FR-CACHE-010"],
+          "req_ids": ["FR-CACHE-010"],
+          "owns": ["src/write/apply.ts", "src/core/search.ts", "src/core/documents.ts", "src/core/requirements.ts", "src/graph/builder.ts", "src/core/export-markdown.ts", "src/export/markdown.ts", "test/write/apply.test.ts", "test/cache/cache.test.ts", "test/cli/req-write.test.ts", "test/cli/export.test.ts", "test/graph/graph.test.ts"],
+          "reads": ["src/write/apply.ts", "src/cache/rebuild.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "async function applyResolvedProposal(root: WorkspaceRoot, targetStorePath: StorePath, proposal: ProposalDocument, cacheMode: CacheMode): Promise<ApplyResult>",
+            "async function markCacheStale(root: WorkspaceRoot, modifiedFiles: string[]): Promise<void>"
+          ],
+          "reference_pattern": "rebuildCache() already bypasses writes when cacheMode is bypass.",
+          "source_anchors": ["src/write/apply.ts:27-47", "src/write/apply.ts:97-120", "src/write/apply.ts:252-257", "src/cache/rebuild.ts:19-25", "docs/spec/srs.md:1604-1604"],
+          "implementation_guide": [
+            "Pass input.cacheMode into applyResolvedProposal.",
+            "Skip markCacheStale when cacheMode is bypass.",
+            "Verify search, cache, list, graph, and export paths do not perform cache read/write in bypass mode.",
+            "Test apply auto mode still creates stale marker."
+          ],
+          "rationale": "The no-cache contract covers both reads and writes, including stale marker creation.",
+          "pitfalls": ["Bypass must not skip the YAML apply itself."],
+          "test_guidance": "Test apply auto stale marker, apply bypass no stale marker, search bypass no cache file writes, graph bypass no cache file writes, and export bypass no cache file writes.",
+          "verification_command": "npm test -- write cache cli",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- write cache cli", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- write cache cli", "expected_exit": 0}
+          ],
+          "dod": ["Bypass mode does not create cache files or stale markers during apply/search/graph/export", "Auto mode stale marker behavior remains covered"],
+          "rollback": {"strategy": "manual", "command": "1) Restore write/cache/cli test files from git. 2) Run npm test -- write cache cli."},
+          "feasibility": "Medium",
+          "turn_estimate": 6,
+          "review_strictness": "strict"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "title": "Cross-process apply locking",
+      "goal": "Make same-target apply locking work across CLI processes and recover from stale locks.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Replace in-memory apply lock with file-based target lock",
+          "related_req_ids": ["NFR-REL-008"],
+          "req_ids": ["NFR-REL-008"],
+          "owns": ["src/write/lock.ts", "src/write/apply.ts", "test/write/apply-concurrency.test.ts"],
+          "reads": ["src/write/lock.ts", "src/write/apply.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export async function withTargetWriteLock<T>(root: WorkspaceRoot, target: StorePath, fn: () => Promise<T>): Promise<T>",
+            "async function acquireFileLock(root: WorkspaceRoot, target: StorePath): Promise<WriteLockHandle>"
+          ],
+          "reference_pattern": "Current lock uses module-scope Set and only protects one process.",
+          "source_anchors": ["src/write/lock.ts:1-26", "src/write/apply.ts:43-47", "docs/spec/srs.md:1611-1611"],
+          "implementation_guide": [
+            "Create target lock file with exclusive create under .speckiwi/.locks.",
+            "Treat .speckiwi/.locks as apply safety state, not cache.",
+            "Use a hash of store path for lock filename.",
+            "Return APPLY_REJECTED_LOCK_CONFLICT on active lock conflict."
+          ],
+          "rationale": "Separate CLI node processes do not share memory.",
+          "pitfalls": ["cacheMode bypass must not disable apply locking.", "Do not place lock files under .speckiwi/cache because that conflicts with the no-cache contract."],
+          "test_guidance": "Spawn two node processes against the same target and assert exactly one succeeds.",
+          "verification_command": "npm test -- write",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- write", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- write", "expected_exit": 0}
+          ],
+          "dod": ["Cross-process same-target apply has one success and one deterministic conflict"],
+          "rollback": {"strategy": "manual", "command": "1) Restore src/write/lock.ts, src/write/apply.ts, and write tests from git. 2) Run npm test -- write."},
+          "feasibility": "High",
+          "turn_estimate": 10,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Add stale lock recovery and cleanup tests",
+          "related_req_ids": ["NFR-REL-009"],
+          "req_ids": ["NFR-REL-009"],
+          "owns": ["src/write/lock.ts", "test/write/apply-concurrency.test.ts", "test/hardening/reliability.test.ts"],
+          "reads": ["src/write/apply.ts", "src/write/lock.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "function isStaleLock(payload: WriteLockPayload, now: Date): boolean",
+            "async function releaseFileLock(handle: WriteLockHandle): Promise<void>"
+          ],
+          "reference_pattern": "Apply already checks stale proposal before and after validation.",
+          "source_anchors": ["src/write/apply.ts:62-80", "src/write/apply.ts:176-210", "docs/spec/srs.md:1612-1612"],
+          "implementation_guide": [
+            "Treat malformed lock payload or expired TTL as stale.",
+            "Remove stale lock and retry acquire.",
+            "Assert successful apply removes its target lock."
+          ],
+          "rationale": "Lock recovery prevents a terminated process from blocking apply indefinitely.",
+          "pitfalls": ["Do not use an aggressive TTL that can expire during a valid apply."],
+          "test_guidance": "Test precreated stale lock success, active lock conflict, and success cleanup.",
+          "verification_command": "npm test -- write hardening",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- write hardening", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- write hardening", "expected_exit": 0}
+          ],
+          "dod": ["Stale lock is recoverable", "Normal apply leaves no target lock file"],
+          "rollback": {"strategy": "manual", "command": "1) Restore lock and hardening test files from git. 2) Run npm test -- write hardening."},
+          "feasibility": "High",
+          "turn_estimate": 8,
+          "review_strictness": "strict"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "title": "MCP security and protocol contract",
+      "goal": "Block symlink traversal and expose a clearer MCP protocol contract.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Reject symlink traversal on Core and MCP reads",
+          "related_req_ids": ["NFR-SEC-010"],
+          "req_ids": ["NFR-SEC-010"],
+          "owns": ["src/io/path.ts", "src/io/file-store.ts", "src/io/yaml-loader.ts", "src/core/documents.ts", "src/write/apply.ts", "src/write/proposal.ts", "src/mcp/resources.ts", "test/hardening/security.test.ts", "test/mcp/mcp-resources.test.ts", "test/write/apply.test.ts"],
+          "reads": ["src/io/path.ts", "src/io/file-store.ts", "src/io/yaml-loader.ts", "src/core/documents.ts", "src/write/apply.ts", "src/mcp/resources.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export async function resolveRealStorePath(root: WorkspaceRoot, storePath: StorePath): Promise<WorkspacePath>",
+            "export async function assertRealPathInsideWorkspace(path: WorkspacePath): Promise<void>"
+          ],
+          "reference_pattern": "resolveStorePath currently performs lexical containment with isInsideDirectory.",
+          "source_anchors": ["src/io/path.ts:55-75", "src/core/documents.ts:35-69", "src/mcp/resources.ts:11-33", "docs/spec/srs.md:1618-1618"],
+          "implementation_guide": [
+            "Add realpath-based containment checks.",
+            "Use checked path for Core readDocument, YAML loader, proposal/apply write targets, and MCP resources.",
+            "Reject apply before atomic write when the real target path escapes .speckiwi.",
+            "Assert symlink to external temp file never returns or modifies external content."
+          ],
+          "rationale": "Symlink target traversal can bypass lexical path checks.",
+          "pitfalls": ["Keep normalizeStorePath as a string policy and perform realpath checks separately."],
+          "test_guidance": "Test overview symlink read rejection, registered document symlink read rejection, apply target symlink write rejection, and normal regular file read/write.",
+          "verification_command": "npm test -- mcp hardening",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- mcp hardening", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- mcp hardening", "expected_exit": 0}
+          ],
+          "dod": ["MCP and CLI read paths reject workspace-external symlink targets", "Apply write path rejects workspace-external symlink targets before writing"],
+          "rollback": {"strategy": "manual", "command": "1) Restore path, document, MCP resource, and test files from git. 2) Run npm test -- mcp hardening."},
+          "feasibility": "High",
+          "turn_estimate": 10,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Return invalid params for MCP input shape errors",
+          "related_req_ids": ["FR-MCP-014"],
+          "req_ids": ["FR-MCP-014"],
+          "owns": ["src/mcp/tools.ts", "src/mcp/schemas.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/mcp/tools.ts", "src/mcp/schemas.ts", "test/mcp/tools.test.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "function registerStrictTool<T>(server: McpServer, name: string, config: ToolConfig<T>, handler: (input: T) => Promise<CallToolResult>): void",
+            "function toInvalidParams(error: unknown): McpError"
+          ],
+          "reference_pattern": "Current root override test receives isError result from callTool.",
+          "source_anchors": ["src/mcp/schemas.ts:68-120", "src/mcp/tools.ts:186-228", "test/mcp/tools.test.ts:66-82", "docs/spec/srs.md:1619-1619"],
+          "implementation_guide": [
+            "Separate input schema failures from domain Core failures.",
+            "Assert root override is observed as invalid params.",
+            "Keep apply policy rejection as structuredContent error result."
+          ],
+          "rationale": "Clients need to distinguish malformed tool input from normal domain failure.",
+          "pitfalls": ["Do not throw for every Core ErrorResult."],
+          "test_guidance": "Test root override invalid params, unknown field invalid params, and apply allowApply false domain error.",
+          "verification_command": "npm test -- mcp",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- mcp", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- mcp", "expected_exit": 0}
+          ],
+          "dod": ["MCP invalid params and domain errors have distinct observable behavior"],
+          "rollback": {"strategy": "manual", "command": "1) Restore MCP tool/schema tests and source from git. 2) Run npm test -- mcp."},
+          "feasibility": "Medium",
+          "turn_estimate": 8,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P3-003",
+          "title": "Add MCP output schemas for structured content",
+          "related_req_ids": ["FR-MCP-015"],
+          "req_ids": ["FR-MCP-015"],
+          "owns": ["src/mcp/tools.ts", "src/mcp/schemas.ts", "src/mcp/structured-content.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/mcp/tools.ts", "src/mcp/structured-content.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export const machineResultOutputSchema: z.ZodType",
+            "function toolOutputSchemaFor(name: string): unknown"
+          ],
+          "reference_pattern": "Tool registration currently includes inputSchema and annotations only.",
+          "source_anchors": ["src/mcp/tools.ts:186-228", "src/mcp/tools.ts:297-328", "src/mcp/structured-content.ts:9-24", "docs/spec/srs.md:1620-1620"],
+          "implementation_guide": [
+            "Define a common MachineResult output schema.",
+            "Attach outputSchema to all registered tools.",
+            "Test listTools metadata and envelope compatibility."
+          ],
+          "rationale": "Tool metadata should describe structuredContent for agents.",
+          "pitfalls": ["Do not overfit per-tool schemas before the common envelope is stable."],
+          "test_guidance": "Test outputSchema exists for all 13 tools and matches success/error envelopes.",
+          "verification_command": "npm test -- mcp",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- mcp", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- mcp", "expected_exit": 0}
+          ],
+          "dod": ["All speckiwi_* tools expose outputSchema metadata"],
+          "rollback": {"strategy": "manual", "command": "1) Restore MCP output schema source and tests from git. 2) Run npm test -- mcp."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "default"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P4",
+      "title": "Release and performance gates",
+      "goal": "Make release and performance checks catch the remediation risks they are meant to guard.",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Include release acceptance in release check",
+          "related_req_ids": ["NFR-REL-010"],
+          "req_ids": ["NFR-REL-010"],
+          "owns": ["scripts/release-check.mjs", "test/release/acceptance.test.ts", "package.json"],
+          "reads": ["scripts/release-check.mjs", "test/release/acceptance.test.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "export function releaseCommands(): ReleaseCommand[]",
+            "export async function runReleaseCheck(options?: RunReleaseCheckOptions): Promise<number>"
+          ],
+          "reference_pattern": "releaseCommands currently excludes test/release/**.",
+          "source_anchors": ["scripts/release-check.mjs:9-16", "test/release/acceptance.test.ts:57-60", "docs/spec/srs.md:1626-1626"],
+          "implementation_guide": [
+            "Add release acceptance command to releaseCommands.",
+            "Set explicit timeout for slow acceptance tests.",
+            "Update command sequence expectations."
+          ],
+          "rationale": "Release gate must fail when release acceptance fails.",
+          "pitfalls": ["Avoid making release acceptance timeout rely on machine speed defaults."],
+          "test_guidance": "Test command sequence, timeout stability, and failure propagation.",
+          "verification_command": "npm test -- release",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- release", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- release", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+          ],
+          "dod": ["npm test includes release acceptance without timeout failure", "npm run release:check includes release acceptance"],
+          "rollback": {"strategy": "manual", "command": "1) Restore scripts/release-check.mjs, package.json, and release tests from git. 2) Run npm test -- release."},
+          "feasibility": "Medium",
+          "turn_estimate": 6,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P4-002",
+          "title": "Expand performance tests to SRS scale targets",
+          "related_req_ids": ["NFR-PERF-007"],
+          "req_ids": ["NFR-PERF-007"],
+          "owns": ["test/perf/perf.test.ts", "src/core/search.ts", "src/mcp/tools.ts"],
+          "reads": ["test/perf/perf.test.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "async function buildLargeWorkspaceFixture(input: { requirementCount: number; documentCount?: number }): Promise<PerfFixture>",
+            "async function measureMcpToolCall(root: string, toolName: string, args: Record<string, unknown>): Promise<number>"
+          ],
+          "reference_pattern": "Current perf fixture defaults to 600 requirements.",
+          "source_anchors": ["test/perf/perf.test.ts:27-55", "test/perf/perf.test.ts:143-180", "docs/spec/srs.md:1349-1354", "docs/spec/srs.md:1627-1627"],
+          "implementation_guide": [
+            "Keep default perf smoke fast.",
+            "Add env-driven SRS scale mode for 10000 requirements and 1000 documents.",
+            "Expose the SRS-scale run through npm run perf:srs or an equivalent package script.",
+            "Measure MCP single tool call under normal cache state."
+          ],
+          "rationale": "SRS performance targets need direct measurable coverage.",
+          "pitfalls": ["Do not make normal npm test too slow.", "SRS-scale direct validation must still be runnable by a named command, not only by undocumented environment variables."],
+          "test_guidance": "Cover default perf smoke, named SRS-scale perf command, env-driven scale mode, and MCP call timing.",
+          "verification_command": "npm test -- perf",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- perf", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- perf", "expected_exit": 0}
+          ],
+          "dod": ["Default perf test passes quickly", "npm run perf:srs or an equivalent named command directly measures the SRS-scale targets"],
+          "rollback": {"strategy": "manual", "command": "1) Restore perf tests and any touched core/MCP files from git. 2) Run npm test -- perf."},
+          "feasibility": "Medium",
+          "turn_estimate": 8,
+          "review_strictness": "default"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P5",
+      "title": "Integration regression and documentation alignment",
+      "goal": "Prove all remediation requirements through a final acceptance matrix and update user-facing docs.",
+      "tasks": [
+        {
+          "id": "TASK-P5-001",
+          "title": "Add remediation acceptance matrix and final regression gate",
+          "related_req_ids": ["FR-PRD-006", "FR-REQ-016", "FR-CACHE-009", "FR-CACHE-010", "FR-CLI-013", "NFR-REL-008", "NFR-REL-009", "NFR-SEC-010", "FR-MCP-014", "FR-MCP-015", "NFR-REL-010", "NFR-PERF-007"],
+          "req_ids": ["FR-PRD-006", "FR-REQ-016", "FR-CACHE-009", "FR-CACHE-010", "FR-CLI-013", "NFR-REL-008", "NFR-REL-009", "NFR-SEC-010", "FR-MCP-014", "FR-MCP-015", "NFR-REL-010", "NFR-PERF-007"],
+          "owns": ["README.md", "test/release/acceptance.test.ts", "package.json"],
+          "reads": ["test/release/acceptance.test.ts", "docs/spec/srs.md", "README.md"],
+          "method_signatures": ["export async function assertV1Acceptance(root: string): Promise<void>"],
+          "reference_pattern": "Existing release acceptance runs core CLI commands against a fixture workspace.",
+          "source_anchors": ["test/release/acceptance.test.ts:102-120", "docs/spec/srs.md:1633-1642", "README.md:1-33", "package.json:42-53"],
+          "implementation_guide": [
+            "Add an acceptance assertion for each remediation checklist item.",
+            "Update README examples for user-facing filters and no-cache behavior.",
+            "Trace SRS 34.6 checklist items through test names or assertions without changing docs/spec/srs.md semantics.",
+            "Include the SRS-scale performance command in release documentation or release-check flow if it was added.",
+            "Run full pre-commit gate and route failures back to the owning phase."
+          ],
+          "rationale": "Final release acceptance should trace every remediation requirement.",
+          "pitfalls": ["Do not change SRS semantics while documenting implementation behavior."],
+          "test_guidance": "Add one assertion per SRS 34.6 checklist item in release acceptance or mapped test names.",
+          "verification_command": "npm run release:check",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+          ],
+          "dod": ["Every SRS 34.6 checklist item is mapped to automated coverage", "Full pre-commit gate passes"],
+          "rollback": {"strategy": "manual", "command": "1) Restore README, release acceptance, and package script edits owned by this task from git. 2) Run npm run release:check to confirm rollback state."},
+          "feasibility": "Medium",
+          "turn_estimate": 8,
+          "review_strictness": "strict"
+        }
+      ]
+    }
+  ],
+  "req_mapping": [
+    {"req_id": "FR-PRD-006", "task_ids": ["TASK-P0-001", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-REQ-016", "task_ids": ["TASK-P0-002", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-CACHE-009", "task_ids": ["TASK-P1-001", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-CACHE-010", "task_ids": ["TASK-P1-002", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-CLI-013", "task_ids": ["TASK-P0-003", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "NFR-REL-008", "task_ids": ["TASK-P2-001", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "NFR-REL-009", "task_ids": ["TASK-P2-002", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "NFR-SEC-010", "task_ids": ["TASK-P3-001", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-MCP-014", "task_ids": ["TASK-P3-002", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "FR-MCP-015", "task_ids": ["TASK-P3-003", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "NFR-REL-010", "task_ids": ["TASK-P4-001", "TASK-P5-001"], "coverage": "full", "note": ""},
+    {"req_id": "NFR-PERF-007", "task_ids": ["TASK-P4-002", "TASK-P5-001"], "coverage": "full", "note": ""}
+  ],
+  "requirements_mapping": [
+    {"req_id": "FR-PRD-006", "task_ids": ["TASK-P0-001", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-REQ-016", "task_ids": ["TASK-P0-002", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-009", "task_ids": ["TASK-P1-001", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-010", "task_ids": ["TASK-P1-002", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-CLI-013", "task_ids": ["TASK-P0-003", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-008", "task_ids": ["TASK-P2-001", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-009", "task_ids": ["TASK-P2-002", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-SEC-010", "task_ids": ["TASK-P3-001", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-MCP-014", "task_ids": ["TASK-P3-002", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-MCP-015", "task_ids": ["TASK-P3-003", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-010", "task_ids": ["TASK-P4-001", "TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-PERF-007", "task_ids": ["TASK-P4-002", "TASK-P5-001"], "coverage": "full"}
+  ],
+  "risks": [
+    {"risk": "Windows file lock behavior differs from POSIX", "severity": "high", "mitigation": "Use exclusive file create semantics and keep stale detection conservative."},
+    {"risk": "SRS-scale perf tests can slow normal test runs", "severity": "medium", "mitigation": "Keep default perf smoke small and make SRS-scale opt-in through env vars."},
+    {"risk": "MCP SDK outputSchema and invalid params surface can differ by version", "severity": "medium", "mitigation": "Assert the SDK-observed shape and keep domain errors in structuredContent."},
+    {"risk": "Symlink creation can be unavailable on some Windows environments", "severity": "medium", "mitigation": "Capability-detect symlink tests and backstop with realpath helper unit tests."}
+  ],
+  "evaluation": {
+    "status": "draft",
+    "coverage": "all remediation requirements mapped",
+    "critical_findings": 0,
+    "high_findings": 0,
+    "residual_findings": []
+  },
+  "routing_hint": {
+    "skill": "snoworca-pm",
+    "command": "snoworca-pm PLAN_PATH=docs/plans/plan-20260501-speckiwi-v1-remediation.md --tdd --headless"
+  }
+}

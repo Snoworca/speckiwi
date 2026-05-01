@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/adr.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "status", "decision"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/adr/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "adr" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["proposed", "accepted", "superseded", "deprecated", "rejected"] },
+    "date": { "type": "string" },
+    "decision": { "type": "string", "minLength": 1 },
+    "context": { "type": "string" },
+    "consequences": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supersedes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/prd.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "status", "items"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/prd/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "prd" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "active", "deprecated", "archived"] },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "title", "body"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": {
+            "enum": ["problem", "goal", "persona", "scenario", "feature", "constraint", "metric", "risk", "decision", "open_question"]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "body": { "type": "string" },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "target"],
+              "properties": {
+                "type": { "enum": ["relates_to", "derived_to", "derives_from", "supports", "conflicts_with", "references", "implements"] },
+                "target": { "type": "string", "minLength": 1 },
+                "targetType": { "enum": ["requirement", "document", "external"] },
+                "description": { "type": "string" }
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

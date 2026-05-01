@@ -1,6 +1,10 @@
 # Local/generated archives
 *.zip
 
+# Dependencies and local execution state
+node_modules/
+.snoworca/
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

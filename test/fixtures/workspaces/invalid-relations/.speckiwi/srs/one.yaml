@@ -1,0 +1,19 @@
+schemaVersion: speckiwi/srs/v1
+id: srs.one
+type: srs
+scope: core
+title: One SRS
+status: active
+requirements:
+  - id: FR-CORE-0001
+    type: functional
+    title: One
+    status: active
+    statement: too short
+    relations:
+      - type: depends_on
+        target: FR-CORE-0002
+      - type: relates_to
+        target: FR-MISSING-0001
+      - type: relates_to
+        target: FR-CORE-0001

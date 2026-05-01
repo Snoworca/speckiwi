@@ -1,0 +1,24 @@
+schemaVersion: speckiwi/index/v1
+project:
+  id: speckiwi
+  name: SpecKiwi
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+  - id: srs.one
+    type: srs
+    path: srs/one.yaml
+    scope: core
+  - id: srs.two
+    type: srs
+    path: srs/two.yaml
+    scope: core
+scopes:
+  - id: core
+    name: Core
+    type: module
+links: []

@@ -1,0 +1,112 @@
+{
+  "name": "speckiwi",
+  "version": "0.1.0",
+  "description": "SpecKiwi는 Git 저장소 안의 요구사항과 설계 지식을 검증 가능한 로컬 YAML 그래프로 만들어, 사람과 AI 코딩 에이전트가 같은 맥락 위에서 안전하게 구현하도록 돕는 도구다.",
+  "type": "module",
+  "bin": {
+    "speckiwi": "./bin/speckiwi"
+  },
+  "main": "./dist/cli/index.js",
+  "types": "./dist/cli/index.d.ts",
+  "exports": {
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./cli/command": {
+      "types": "./dist/cli/command.d.ts",
+      "import": "./dist/cli/command.js"
+    },
+    "./cli/json-renderer": {
+      "types": "./dist/cli/json-renderer.d.ts",
+      "import": "./dist/cli/json-renderer.js"
+    },
+    "./core/dto": {
+      "types": "./dist/core/dto.d.ts",
+      "import": "./dist/core/dto.js"
+    },
+    "./core/inputs": {
+      "types": "./dist/core/inputs.d.ts",
+      "import": "./dist/core/inputs.js"
+    },
+    "./core/result": {
+      "types": "./dist/core/result.d.ts",
+      "import": "./dist/core/result.js"
+    },
+    "./mcp/structured-content": {
+      "types": "./dist/mcp/structured-content.d.ts",
+      "import": "./dist/mcp/structured-content.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "schemas"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --types node --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck test/smoke/package.test.ts test/contract/core-dto.test.ts",
+    "lint": "eslint src test --ext .ts --max-warnings=0",
+    "test": "vitest run --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism",
+    "release:acceptance": "vitest run test/release/acceptance.test.ts --hookTimeout 60000 --testTimeout 60000",
+    "release:check": "node scripts/release-check.mjs",
+    "perf:srs": "node -e \"const { spawnSync } = require('node:child_process'); const runner = process.platform === 'win32' ? 'npx.cmd' : 'npx'; const result = spawnSync(runner, ['vitest', 'run', 'test/perf/perf.test.ts', '--hookTimeout', '120000', '--testTimeout', '120000'], { stdio: 'inherit', env: { ...process.env, SPECKIWI_PERF_PROFILE: 'srs', SPECKIWI_STRICT_PERF: '1' } }); process.exit(result.status ?? 1);\"",
+    "prepack": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Snoworca/speckiwi.git"
+  },
+  "keywords": [
+    "sdd",
+    "mcp",
+    "yaml",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Snoworca/speckiwi/issues"
+  },
+  "homepage": "https://github.com/Snoworca/speckiwi#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ajv": "^8.20.0",
+    "commander": "^14.0.3",
+    "minisearch": "^7.2.0",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "eslint": "^8.57.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "es2022": true,
+      "node": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "sourceType": "module",
+      "ecmaVersion": "latest"
+    },
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "rules": {
+      "@typescript-eslint/consistent-type-imports": "error"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+schemaVersion: speckiwi/overview/v1
+id: overview
+type: overview
+title: SpecKiwi
+status: active
+summary: Manifest validation fixture.

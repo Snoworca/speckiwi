@@ -1,0 +1,14 @@
+schemaVersion: speckiwi/prd/v1
+id: prd.duplicate-items
+type: prd
+title: Duplicate PRD Items
+status: active
+items:
+  - id: PRD-DUP-001
+    type: feature
+    title: First item
+    body: The first PRD item owns the local id.
+  - id: PRD-DUP-001
+    type: feature
+    title: Duplicate item
+    body: The duplicate PRD item should produce a semantic diagnostic.

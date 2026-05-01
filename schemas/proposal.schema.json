@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/proposal.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "status", "operation", "target", "base", "changes", "reason"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/proposal/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "proposal" },
+    "status": { "enum": ["proposed", "accepted", "applied", "rejected", "superseded"] },
+    "operation": {
+      "enum": ["create_requirement", "update_requirement", "change_requirement_status", "add_relation", "remove_relation", "update_document"]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["requirement", "document", "manifest"] },
+        "requirementId": { "type": "string", "minLength": 1 },
+        "documentId": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 }
+      }
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentPath", "target", "documentHash", "targetHash", "schemaVersion", "generatedAt"],
+      "properties": {
+        "documentId": { "type": "string", "minLength": 1 },
+        "documentPath": { "type": "string", "minLength": 1 },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entityType", "jsonPointer"],
+          "properties": {
+            "entityType": { "enum": ["requirement", "document", "manifest"] },
+            "id": { "type": "string", "minLength": 1 },
+            "jsonPointer": { "type": "string" }
+          }
+        },
+        "documentHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "targetHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "schemaVersion": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["op", "path", "value"],
+            "properties": {
+              "op": { "const": "add" },
+              "path": { "type": "string" },
+              "value": true
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["op", "path", "value"],
+            "properties": {
+              "op": { "const": "replace" },
+              "path": { "type": "string" },
+              "value": true
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["op", "path"],
+            "properties": {
+              "op": { "const": "remove" },
+              "path": { "type": "string" }
+            }
+          }
+        ]
+      }
+    },
+    "reason": { "type": "string", "minLength": 1 },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

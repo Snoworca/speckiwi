@@ -1,0 +1,1841 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260501-speckiwi-v1-implementation",
+  "title": "SpecKiwi v1 implementation plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-01T08:56:19+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "code_path": ".",
+  "output_path": "docs/plans/plan-20260501-speckiwi-v1-implementation.md",
+  "scope_freeze": true,
+  "change_log": [
+    {
+      "date": "2026-05-01",
+      "reason": "Phase-1 evaluator remediation after scope freeze",
+      "diff_summary": "Expanded search target coverage, apply concurrency and recovery semantics, rollback tracked/untracked handling, environment leak hardening, and synchronized sidecar/execution guard.",
+      "approved_by": "user"
+    },
+    {
+      "date": "2026-05-01",
+      "reason": "PM runner compatibility remediation after scope freeze",
+      "diff_summary": "Added phase_id and task_id aliases alongside canonical id fields so snoworca-pm v3 state initialization and child prompts can consume the sidecar deterministically.",
+      "approved_by": "user"
+    }
+  ],
+  "auto_recommend_policy": {
+    "default_confidence_threshold": "medium",
+    "cap": 0,
+    "forbidden_for_business_decision": true
+  },
+  "platforms": [
+    "posix",
+    "windows"
+  ],
+  "pre_commit_gate": [
+    {
+      "shell": "bash",
+      "cmd": "npm run build",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run build",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run typecheck",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run typecheck",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run lint",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run lint",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm test",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm test",
+      "expected_exit": 0
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)",
+      "flags": ""
+    },
+    {
+      "pattern": "\\brm\\s+-[rRfF]+\\s+\\*",
+      "flags": ""
+    },
+    {
+      "pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)",
+      "flags": ""
+    },
+    {
+      "pattern": "\\b(mkfs|fdisk|parted)\\b",
+      "flags": ""
+    },
+    {
+      "pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b",
+      "flags": ""
+    },
+    {
+      "pattern": "\\bchown\\s+-R\\s+.*\\s+/",
+      "flags": ""
+    },
+    {
+      "pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)",
+      "flags": ""
+    },
+    {
+      "pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)",
+      "flags": ""
+    },
+    {
+      "pattern": "wget\\s+[^|]*\\|\\s*sh",
+      "flags": ""
+    },
+    {
+      "pattern": "iwr\\s+[^;]+;\\s*iex",
+      "flags": ""
+    },
+    {
+      "pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b",
+      "flags": ""
+    },
+    {
+      "pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)",
+      "flags": ""
+    },
+    {
+      "pattern": "git\\s+clean\\s+-[fdx]+",
+      "flags": ""
+    },
+    {
+      "pattern": "적절히|필요 시|알아서|상황에 맞게|기존 방식대로|어떻게든",
+      "flags": ""
+    }
+  ],
+  "phases": [
+    {
+      "id": "PHASE-P0",
+      "phase_id": "PHASE-P0",
+      "title": "Package skeleton and contract freeze",
+      "goal": "Turn the current npm metadata into an executable TypeScript ESM package and freeze Core DTO contracts before feature work.",
+      "tasks": [
+        {
+          "id": "TASK-P0-001",
+          "task_id": "TASK-P0-001",
+          "title": "Complete package skeleton, scripts, and CLI binary",
+          "related_req_ids": [
+            "FR-PKG-001..006",
+            "NFR-COMP-001..007",
+            "NFR-MAINT-001",
+            "NFR-MAINT-008"
+          ],
+          "owns": [
+            "package.json",
+            "package-lock.json",
+            "tsconfig.json",
+            "bin/speckiwi",
+            "src/cli/index.ts",
+            "src/cli/command.ts",
+            "test/smoke/package.test.ts"
+          ],
+          "reads": [
+            "package.json",
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md"
+          ],
+          "method_signatures": [
+            "export async function main(argv: string[], env?: NodeJS.ProcessEnv): Promise<number>",
+            "export function buildProgram(): Command"
+          ],
+          "reference_pattern": "package.json is already initialized for name/type/engine; use it as the edit base, not as final package contract.",
+          "source_anchors": [
+            "package.json:1-28",
+            "docs/spec/srs.md:1402-1444",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md:13-40"
+          ],
+          "implementation_guide": [
+            "Install TypeScript, Vitest, ESLint, commander, yaml, ajv, minisearch, and MCP SDK dependencies.",
+            "Add bin mapping so global install exposes speckiwi.",
+            "Create ESM TypeScript config with declaration output.",
+            "Implement --help smoke path through bin/speckiwi."
+          ],
+          "rationale": "The SRS requires Node >=20, ESM TypeScript, global CLI install, and no native runtime dependency before any Core behavior ships.",
+          "pitfalls": [
+            "Do not introduce a DB package or HTTP server package.",
+            "Keep bin script stdout limited to CLI output paths."
+          ],
+          "test_guidance": "Create test/smoke/package.test.ts with success, missing command, and help-output boundary cases.",
+          "verification_command": "npm test -- package",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm run build",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm run build",
+              "expected_exit": 0
+            },
+            {
+              "shell": "bash",
+              "cmd": "npm test -- package",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- package",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "npm run build exits 0",
+            "npm test -- package exits 0",
+            "node bin/speckiwi --help exits 0",
+            "package name remains speckiwi"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Low",
+          "turn_estimate": 8,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P0-002",
+          "task_id": "TASK-P0-002",
+          "title": "Define Core DTO, input DTO, diagnostics, and JSON renderer contracts",
+          "related_req_ids": [
+            "FR-CLI-005..012",
+            "FR-MCP-001..013",
+            "FR-MCP-TR-006",
+            "NFR-UX-001..008",
+            "NFR-MAINT-001",
+            "NFR-MAINT-008"
+          ],
+          "owns": [
+            "src/core/dto.ts",
+            "src/core/result.ts",
+            "src/core/inputs.ts",
+            "src/cli/json-renderer.ts",
+            "src/mcp/structured-content.ts",
+            "test/contract/core-dto.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md",
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md",
+            "speckiwi-v1-docs/06_CLI_SPEC.md"
+          ],
+          "method_signatures": [
+            "export type CoreResult<T> = { ok: true; data: T; diagnostics: DiagnosticBag } | ErrorResult",
+            "export function renderJson(result: unknown): string",
+            "export function toStructuredContent<T>(result: CoreResult<T>): Record<string, unknown>"
+          ],
+          "reference_pattern": "Implementation readiness lines 45-80 define the DiagnosticBag and DTO sharing rule.",
+          "source_anchors": [
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:45-80",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:163-203"
+          ],
+          "implementation_guide": [
+            "Create DTO types before Core service code.",
+            "Keep diagnostics as bag fields errors/warnings/info.",
+            "Use the same DTO object for CLI JSON and MCP structuredContent.",
+            "Add fixtures that assert deterministic JSON shape."
+          ],
+          "rationale": "Freezing DTOs prevents CLI and MCP from diverging while later modules are added.",
+          "pitfalls": [
+            "Do not return arrays as diagnostics shorthand.",
+            "Do not let CLI human formatting leak into Core DTOs."
+          ],
+          "test_guidance": "Create contract tests for success, error, validation-result, and JSON rendering order.",
+          "verification_command": "npm test -- contract",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- contract",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- contract",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "CoreResult and ValidateResult fixtures pass",
+            "CLI JSON renderer outputs one JSON object",
+            "MCP adapter helper reuses Core DTO"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 10,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P1",
+      "phase_id": "PHASE-P1",
+      "title": "Workspace init, file store, and YAML load",
+      "goal": "Create and load repository-local .speckiwi workspaces without crossing root boundaries.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "task_id": "TASK-P1-001",
+          "title": "Implement workspace root discovery, root override, and safe file store",
+          "related_req_ids": [
+            "FR-DIR-006..010",
+            "FR-STOR-001..007",
+            "NFR-SEC-001..007",
+            "NFR-REL-001..004"
+          ],
+          "owns": [
+            "src/io/workspace.ts",
+            "src/io/file-store.ts",
+            "src/io/path.ts",
+            "test/io/workspace.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/03_DIRECTORY_STRUCTURE.md"
+          ],
+          "method_signatures": [
+            "export function findWorkspaceRoot(start: string, explicitRoot?: string): Promise<WorkspaceRoot>",
+            "export function resolveStorePath(root: WorkspaceRoot, storePath: StorePath): WorkspacePath",
+            "export async function atomicWriteText(path: string, text: string): Promise<void>"
+          ],
+          "reference_pattern": "없음 - 신규 패턴. Path policy comes from SRS storage and security requirements.",
+          "source_anchors": [
+            "docs/spec/srs.md:146-159",
+            "docs/spec/srs.md:1313-1325"
+          ],
+          "implementation_guide": [
+            "Walk upward from cwd until .speckiwi is found.",
+            "Let --root override discovery after resolving to an absolute path.",
+            "Normalize StorePath to POSIX separators.",
+            "Reject path traversal and writes outside .speckiwi except export targets."
+          ],
+          "rationale": "Every later command depends on a trustworthy root and file boundary.",
+          "pitfalls": [
+            "Windows drive paths must not be treated as StorePath.",
+            "Cache and exports are generated outputs, not source truth."
+          ],
+          "test_guidance": "Add tests for discovered root, explicit root, traversal rejection, and atomic write failure cleanup.",
+          "verification_command": "npm test -- io",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- io",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- io",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Traversal tests reject ../ paths",
+            "Explicit root wins over discovery",
+            "Atomic write leaves no partial target on injected failure"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 10,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P1-002",
+          "task_id": "TASK-P1-002",
+          "title": "Implement speckiwi init templates and YAML parser subset",
+          "related_req_ids": [
+            "FR-DIR-001..005",
+            "FR-YAML-001..010",
+            "FR-IDX-001..014",
+            "FR-OVR-001",
+            "FR-DICT-001..002",
+            "NFR-UX-008"
+          ],
+          "owns": [
+            "src/core/init.ts",
+            "src/io/yaml-loader.ts",
+            "src/templates/workspace.ts",
+            "test/fixtures/workspaces/init-empty",
+            "test/core/init.test.ts",
+            "test/io/yaml-loader.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/04_YAML_SCHEMA_SPEC.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export async function initWorkspace(input: InitInput): Promise<InitResult>",
+            "export async function loadYamlDocument(path: WorkspacePath): Promise<LoadedYamlDocument>"
+          ],
+          "reference_pattern": "The init tree and YAML subset policy are specified in SRS and readiness docs.",
+          "source_anchors": [
+            "docs/spec/srs.md:124-159",
+            "docs/spec/srs.md:177-190",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:900-928"
+          ],
+          "implementation_guide": [
+            "Generate index.yaml, overview.yaml, dictionary.yaml and required subdirectories.",
+            "Use yaml parseDocument to collect errors and source locations.",
+            "Detect anchors, aliases, and merge keys as diagnostics.",
+            "Return diagnostics without process crashes."
+          ],
+          "rationale": "Init and YAML load establish the source-of-truth model for all commands.",
+          "pitfalls": [
+            "Do not serialize comments as a v1 requirement.",
+            "Do not register index.yaml as a content document."
+          ],
+          "test_guidance": "Test success init, existing workspace rejection, invalid YAML parse, anchor/alias/merge rejection.",
+          "verification_command": "npm test -- workspace",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- workspace",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- workspace",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "speckiwi init creates the full directory tree",
+            "Invalid YAML returns line/column diagnostics",
+            "Anchor and alias fixtures fail validation"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 12,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "phase_id": "PHASE-P2",
+      "title": "Schema validation and diagnostics",
+      "goal": "Validate all supported YAML document types with deterministic diagnostics.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "task_id": "TASK-P2-001",
+          "title": "Add JSON Schema files and Ajv2020 strict compile layer",
+          "related_req_ids": [
+            "FR-YAML-005..010",
+            "FR-DOC-001..011",
+            "FR-PRD-001..005",
+            "FR-TECH-001..005",
+            "FR-ADR-001..005",
+            "FR-DICT-001..005",
+            "FR-PKG-004",
+            "NFR-MAINT-006"
+          ],
+          "owns": [
+            "schemas/index.schema.json",
+            "schemas/overview.schema.json",
+            "schemas/dictionary.schema.json",
+            "schemas/srs.schema.json",
+            "schemas/prd.schema.json",
+            "schemas/technical.schema.json",
+            "schemas/adr.schema.json",
+            "schemas/rule.schema.json",
+            "schemas/proposal.schema.json",
+            "src/schema/compile.ts",
+            "test/schema/schema-compile.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/04_YAML_SCHEMA_SPEC.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function compileSchemas(): SchemaRegistry",
+            "export function validateAgainstSchema(kind: SchemaKind, value: unknown): DiagnosticBag"
+          ],
+          "reference_pattern": "Schema dialect and Ajv2020 strict mode are contract decisions.",
+          "source_anchors": [
+            "speckiwi-v1-docs/04_YAML_SCHEMA_SPEC.md:1-40",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:946-990"
+          ],
+          "implementation_guide": [
+            "Create one schema per document type.",
+            "Use additionalProperties false except documented metadata extension points.",
+            "Compile all schemas at startup in tests.",
+            "Return schema diagnostics through DiagnosticBag."
+          ],
+          "rationale": "Schema validation must fail deterministically before graph, search, or apply logic reads data.",
+          "pitfalls": [
+            "Do not allow proposal documents in index.documents.",
+            "Keep status enums document-type specific."
+          ],
+          "test_guidance": "Add valid and invalid fixture for each schema plus strict compile test.",
+          "verification_command": "npm test -- schema",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- schema",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- schema",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "All schemas compile under Ajv2020 strict mode",
+            "Invalid fixtures emit stable code/path diagnostics",
+            "Schema files are included in package files"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 14,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P2-002",
+          "task_id": "TASK-P2-002",
+          "title": "Implement semantic validation registry and validate command service",
+          "related_req_ids": [
+            "FR-VAL-001..007",
+            "VAL-ERR-001..022",
+            "VAL-WARN-001..008",
+            "FR-IDX-001..014",
+            "FR-REQ-001..015",
+            "FR-REL-001..007",
+            "FR-LINK-001..003",
+            "NFR-REL-001..007"
+          ],
+          "owns": [
+            "src/validate/diagnostics.ts",
+            "src/validate/semantic.ts",
+            "src/core/validate.ts",
+            "test/validate/semantic.test.ts",
+            "test/fixtures/workspaces/invalid-*"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/08_VALIDATION_SPEC.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export async function validateWorkspace(input: ValidateInput): Promise<ValidateResult>",
+            "export function validateRegistry(workspace: LoadedWorkspace): DiagnosticBag"
+          ],
+          "reference_pattern": "Validation code mapping is governed by validation spec and readiness decisions.",
+          "source_anchors": [
+            "docs/spec/srs.md:910-999",
+            "speckiwi-v1-docs/08_VALIDATION_SPEC.md:1-90",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:1037-1058"
+          ],
+          "implementation_guide": [
+            "Build document, scope, requirement, and relation registries from schema-valid documents.",
+            "Suppress cascading reference errors from schema-invalid documents.",
+            "Detect duplicate IDs, missing files, unregistered content, relation cycles, and warnings.",
+            "Expose ValidateResult for CLI and MCP."
+          ],
+          "rationale": "Semantic validation protects proposal/apply and keeps diagnostics actionable.",
+          "pitfalls": [
+            "Do not validate references from documents that failed parse or schema validation.",
+            "Do not treat warnings as apply blockers unless errors exist."
+          ],
+          "test_guidance": "Add fixtures for each VAL-ERR and VAL-WARN family with stable diagnostic snapshots.",
+          "verification_command": "npm test -- validate",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- validate",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- validate",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "All listed validation error families have at least one fixture",
+            "ValidateResult keeps deterministic ordering",
+            "Warnings do not set process failure in Core"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 18,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "phase_id": "PHASE-P3",
+      "title": "Graph, requirement lookup, trace, impact, and ID generation",
+      "goal": "Build deterministic graph structures and requirement access primitives.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "task_id": "TASK-P3-001",
+          "title": "Build registries, graph builder, trace, and impact services",
+          "related_req_ids": [
+            "FR-GRAPH-001..011",
+            "FR-REQ-001..012",
+            "FR-REL-001..007",
+            "FR-LINK-001..003",
+            "NFR-MAINT-003",
+            "NFR-UX-005"
+          ],
+          "owns": [
+            "src/graph/model.ts",
+            "src/graph/builder.ts",
+            "src/graph/trace.ts",
+            "src/graph/impact.ts",
+            "src/core/requirements.ts",
+            "test/graph/graph.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function buildGraph(workspace: ValidWorkspace): GraphResult",
+            "export function traceRequirement(input: TraceRequirementInput, graph: GraphResult): TraceResult",
+            "export function impactRequirement(input: ImpactInput, graph: GraphResult): ImpactResult"
+          ],
+          "reference_pattern": "Graph nodes and deterministic ordering are fixed by readiness decisions.",
+          "source_anchors": [
+            "docs/spec/srs.md:894-906",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:1367-1402"
+          ],
+          "implementation_guide": [
+            "Create deterministic node IDs for document, scope, and requirement nodes.",
+            "Sort nodes and edges lexicographically by stable keys.",
+            "Implement incoming and outgoing requirement relations.",
+            "Add depth-limited upstream, downstream, and both-direction trace."
+          ],
+          "rationale": "Search, impact, CLI, and MCP all rely on consistent graph output.",
+          "pitfalls": [
+            "Do not include index.yaml as a graph document node.",
+            "Do not mutate workspace during trace or impact."
+          ],
+          "test_guidance": "Test document graph, requirement graph, cycle behavior, stable ordering, trace depth, and impact context toggles.",
+          "verification_command": "npm test -- graph",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- graph",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- graph",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "GraphResult ordering is snapshot-stable",
+            "TraceResult includes root requirement",
+            "ImpactResult lists downstream affected requirements"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 18,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P3-002",
+          "task_id": "TASK-P3-002",
+          "title": "Implement requirement ID preview and generation policy",
+          "related_req_ids": [
+            "FR-ID-001..008",
+            "FR-REQ-013..015",
+            "FR-MCP-007",
+            "FR-CLI-009"
+          ],
+          "owns": [
+            "src/core/id-generator.ts",
+            "src/core/requirement-create.ts",
+            "test/core/id-generator.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function previewRequirementId(input: GenerateRequirementIdInput, registry: RequirementRegistry): RequirementIdPreviewResult",
+            "export function assertExplicitRequirementId(id: string, registry: RequirementRegistry): DiagnosticBag"
+          ],
+          "reference_pattern": "Requirement ID generation is made concrete in readiness decisions.",
+          "source_anchors": [
+            "docs/spec/srs.md:505-576",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:596-612"
+          ],
+          "implementation_guide": [
+            "Map requirement type to prefix.",
+            "Derive scope segment from scope id.",
+            "Find max existing sequence in the same prefix/project/scope tuple.",
+            "Reject duplicate explicit IDs.",
+            "Keep preview read-only."
+          ],
+          "rationale": "ID creation must be deterministic to keep proposal and apply flows reproducible.",
+          "pitfalls": [
+            "Preview must not create proposal, YAML, or cache files.",
+            "Document ID and requirement ID namespaces stay separate."
+          ],
+          "test_guidance": "Test next sequence, collision retry, explicit ID priority, duplicate explicit ID, and read-only preview.",
+          "verification_command": "npm test -- id-generator",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- id-generator",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- id-generator",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Generated IDs match the documented prefix and sequence policy",
+            "Duplicate explicit IDs return ErrorResult",
+            "Preview leaves fixture workspace unchanged"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 10,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P4",
+      "phase_id": "PHASE-P4",
+      "title": "Search and cache",
+      "goal": "Provide exact/BM25/Korean search and regenerated JSON caches.",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "task_id": "TASK-P4-001",
+          "title": "Implement flat document indexing, exact lookup, BM25, Korean n-gram, and dictionary expansion",
+          "related_req_ids": [
+            "FR-SRCH-001..009",
+            "FR-KR-001..009",
+            "FR-DICT-001..005",
+            "NFR-PERF-001",
+            "NFR-PERF-002",
+            "NFR-MAINT-003",
+            "NFR-MAINT-004",
+            "NFR-UX-004"
+          ],
+          "owns": [
+            "src/search/document.ts",
+            "src/search/tokenizer.ts",
+            "src/search/korean.ts",
+            "src/search/bm25.ts",
+            "src/search/index.ts",
+            "src/core/search.ts",
+            "test/search/search.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/07_SEARCH_SPEC.md"
+          ],
+          "method_signatures": [
+            "export function flattenWorkspace(workspace: ValidWorkspace): SearchDocument[]",
+            "export function tokenizeKorean(input: string): string[]",
+            "export function search(input: SearchInput, index: SearchIndex): SearchResultSet"
+          ],
+          "reference_pattern": "Search spec defines exact index, BM25, Korean n-gram, and dictionary expansion.",
+          "source_anchors": [
+            "docs/spec/srs.md:776-842",
+            "speckiwi-v1-docs/07_SEARCH_SPEC.md:1-40"
+          ],
+          "implementation_guide": [
+            "Flatten every SRS search target into typed SearchDocument rows: overview goals, overview nonGoals, overview glossary, PRD items, SRS requirements, technical sections, ADR records, rule documents, document metadata, and scope metadata.",
+            "Index exact IDs for requirement, document, scope, PRD item, technical section, ADR, and rule entities.",
+            "Index title, statement, rationale, description, tags, acceptanceCriteria, glossary terms, section headings, ADR decisions, rule text, and metadata keywords into BM25 fields with explicit field boosts.",
+            "Use Korean 2-gram and 3-gram tokenizer for Korean text.",
+            "Apply dictionary synonym expansion before BM25 ranking.",
+            "Return entity type, source path, score, matchedFields, and stable ordering for ties."
+          ],
+          "rationale": "Local search is the main user and agent discovery path, so exact and semantic-ish modes must share source data.",
+          "pitfalls": [
+            "Do not add vector DB dependency.",
+            "Exact ID lookup must not be hidden by BM25 scoring."
+          ],
+          "test_guidance": "Test exact ID for requirement/document/scope/PRD item/technical section/ADR/rule, overview goals/nonGoals/glossary indexing, requirement fields, filters, pagination, score ordering, matchedFields, Korean phrase search, and synonym expansion.",
+          "verification_command": "npm test -- search",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- search",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- search",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Search result items contain entity type, score, source path, and matchedFields",
+            "Exact ID tests cover requirement, document, scope, PRD item, technical section, ADR, and rule entities",
+            "BM25 tests cover overview goals, overview nonGoals, overview glossary, requirement fields, PRD item text, technical section text, ADR decision text, and rule text",
+            "Korean tokenizer tests pass",
+            "Dictionary absence still permits base search"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 18,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P4-002",
+          "task_id": "TASK-P4-002",
+          "title": "Implement cache manifest, stale detection, rebuild, clean, and degraded fallback",
+          "related_req_ids": [
+            "FR-CACHE-001..008",
+            "FR-DIR-009",
+            "FR-STOR-002",
+            "FR-STOR-006",
+            "NFR-REL-005",
+            "NFR-REL-006",
+            "NFR-PERF-003",
+            "NFR-PERF-006"
+          ],
+          "owns": [
+            "src/cache/hash.ts",
+            "src/cache/manifest.ts",
+            "src/cache/rebuild.ts",
+            "src/cache/clean.ts",
+            "src/core/cache.ts",
+            "test/cache/cache.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export async function rebuildCache(input: CacheRebuildInput): Promise<CacheResult>",
+            "export async function cleanCache(input: CacheCleanInput): Promise<CacheResult>",
+            "export function isCacheStale(manifest: CacheManifest, inputs: CacheInputs): boolean"
+          ],
+          "reference_pattern": "Readiness decisions define deterministic cache manifest path and hash behavior.",
+          "source_anchors": [
+            "docs/spec/srs.md:999-1038",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:1499-1591"
+          ],
+          "implementation_guide": [
+            "Hash input YAML and package/schema versions.",
+            "Write graph/search/diagnostics caches only after successful rebuild.",
+            "Remove partial outputs on rebuild failure.",
+            "Let --no-cache bypass read and write.",
+            "Keep cache clean inside .speckiwi/cache."
+          ],
+          "rationale": "Cache must improve performance without becoming source truth.",
+          "pitfalls": [
+            "Do not store timestamps, host paths, or OS separators in cache manifest.",
+            "Cache corruption must degrade to YAML load."
+          ],
+          "test_guidance": "Test stale detection, corruption fallback, rebuild output, clean output, and no-cache bypass.",
+          "verification_command": "npm test -- cache",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- cache",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- cache",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "cache rebuild creates manifest and section caches",
+            "cache clean preserves non-cache files",
+            "corrupt cache falls back to YAML path"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 12,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P5",
+      "phase_id": "PHASE-P5",
+      "title": "CLI read commands and doctor",
+      "goal": "Expose initialized Core services through human and JSON CLI output.",
+      "tasks": [
+        {
+          "id": "TASK-P5-001",
+          "task_id": "TASK-P5-001",
+          "title": "Implement CLI adapter common options, exit codes, and doctor",
+          "related_req_ids": [
+            "FR-CLI-001..012",
+            "FR-DOC-CHK-001..008",
+            "NFR-UX-001..008",
+            "NFR-SEC-001..005"
+          ],
+          "owns": [
+            "src/cli/program.ts",
+            "src/cli/options.ts",
+            "src/cli/exit-code.ts",
+            "src/cli/human-renderer.ts",
+            "src/core/doctor.ts",
+            "test/cli/common.test.ts",
+            "test/cli/doctor.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/06_CLI_SPEC.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function runCli(argv: string[], env?: NodeJS.ProcessEnv): Promise<number>",
+            "export function mapCoreResultToExitCode(result: CoreResult<unknown>): number",
+            "export async function doctor(input: DoctorInput): Promise<DoctorResult>"
+          ],
+          "reference_pattern": "CLI JSON stdout and exit codes are fixed by CLI spec and readiness decisions.",
+          "source_anchors": [
+            "speckiwi-v1-docs/06_CLI_SPEC.md:22-49",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:638-659"
+          ],
+          "implementation_guide": [
+            "Parse --root, --json, --no-cache, and pagination options consistently.",
+            "Route human output through human renderer.",
+            "Route JSON output through Core DTO renderer only.",
+            "Map validation and apply failures to documented exit codes.",
+            "Doctor checks Node version, workspace files, YAML parse, cache state, MCP binary path, and stdout policy risk."
+          ],
+          "rationale": "CLI behavior is the primary developer surface and must remain parseable for agents.",
+          "pitfalls": [
+            "Do not write diagnostic logs to stdout in --json mode.",
+            "Do not let command handlers throw uncaught errors."
+          ],
+          "test_guidance": "Use child process tests for stdout, stderr, and exit code across success and failure paths.",
+          "verification_command": "npm test -- cli",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- cli",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- cli",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "--json emits exactly one JSON object on stdout",
+            "doctor supports human and JSON output",
+            "Exit code mapping tests cover validation and apply failures"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 14,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P5-002",
+          "task_id": "TASK-P5-002",
+          "title": "Wire read-only CLI commands for overview, list, search, req get, graph, and impact",
+          "related_req_ids": [
+            "FR-OVR-002..005",
+            "FR-REQ-002..012",
+            "FR-SRCH-001..009",
+            "FR-GRAPH-001..011",
+            "FR-CLI-003..010",
+            "NFR-UX-001..006"
+          ],
+          "owns": [
+            "src/cli/commands/overview.ts",
+            "src/cli/commands/list.ts",
+            "src/cli/commands/search.ts",
+            "src/cli/commands/req.ts",
+            "src/cli/commands/graph.ts",
+            "src/cli/commands/impact.ts",
+            "test/cli/read-commands.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/06_CLI_SPEC.md",
+            "src/core"
+          ],
+          "method_signatures": [
+            "export function registerOverviewCommand(program: Command): void",
+            "export function registerListCommands(program: Command): void",
+            "export function registerSearchCommand(program: Command): void",
+            "export function registerRequirementCommands(program: Command): void",
+            "export function registerGraphCommand(program: Command): void",
+            "export function registerImpactCommand(program: Command): void"
+          ],
+          "reference_pattern": "CLI command list and examples are specified in CLI spec.",
+          "source_anchors": [
+            "speckiwi-v1-docs/06_CLI_SPEC.md:163-324"
+          ],
+          "implementation_guide": [
+            "Map each command to the existing Core service input DTO.",
+            "Preserve common --root and --json behavior.",
+            "Support list filters and search filters.",
+            "Normalize graph plural aliases to canonical singular values.",
+            "Render IDs, paths, scores, and diagnostics in human output."
+          ],
+          "rationale": "Read-only CLI commands make the local graph usable before write and MCP features land.",
+          "pitfalls": [
+            "Do not reimplement Core filtering in CLI.",
+            "Impact v1 is requirement-ID only."
+          ],
+          "test_guidance": "Add fixture workspace CLI tests for human and JSON output for each read-only command.",
+          "verification_command": "npm test -- read-commands",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- read-commands",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- read-commands",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "overview/list/search/req get/graph/impact commands work on fixture workspace",
+            "All command JSON outputs parse as Core DTOs",
+            "Search command orders by score"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 16,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P6",
+      "phase_id": "PHASE-P6",
+      "title": "Proposal, apply, and requirement mutations",
+      "goal": "Support safe agent writes through proposal-first behavior and validated apply.",
+      "tasks": [
+        {
+          "id": "TASK-P6-001",
+          "task_id": "TASK-P6-001",
+          "title": "Implement proposal schema, hashes, stale detection, and propose mode",
+          "related_req_ids": [
+            "FR-WRITE-001..003",
+            "FR-WRITE-010..011",
+            "FR-REQ-013..015",
+            "NFR-SEC-006..009",
+            "NFR-UX-006"
+          ],
+          "owns": [
+            "src/write/hash.ts",
+            "src/write/proposal.ts",
+            "src/write/patch.ts",
+            "src/core/propose-change.ts",
+            "test/write/proposal.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/09_AGENT_WRITE_POLICY.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function createProposal(input: ProposeChangeInput, workspace: ValidWorkspace): Promise<ProposalResult>",
+            "export function canonicalJsonHash(value: unknown): string",
+            "export function buildPatchOperations(change: ProposedChange): ProposalOperation[]"
+          ],
+          "reference_pattern": "Proposal target shape, targetHash, and stale behavior are fixed by readiness decisions.",
+          "source_anchors": [
+            "docs/spec/srs.md:1041-1123",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:1619-1686"
+          ],
+          "implementation_guide": [
+            "Store proposals under .speckiwi/proposals.",
+            "Use discriminated target.kind instead of legacy target.path.",
+            "Compute base target hash with RFC 8785 canonical JSON.",
+            "Implement req create and update as proposal-producing operations by default.",
+            "Never change source YAML in propose mode."
+          ],
+          "rationale": "Proposal-first behavior reduces accidental source mutation by agents.",
+          "pitfalls": [
+            "Root JSON Pointer document replacement is forbidden.",
+            "Preview ID is read-only and not part of proposal stale flow."
+          ],
+          "test_guidance": "Test proposal file shape, no source mutation, hash determinism, stale proposal detection, duplicate explicit ID rejection.",
+          "verification_command": "npm test -- proposal",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- proposal",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- proposal",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Propose mode writes only proposal YAML",
+            "Stored proposal schema rejects target.path",
+            "Target hash snapshots are stable"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 18,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P6-002",
+          "task_id": "TASK-P6-002",
+          "title": "Implement apply engine, atomic writes, cache stale marking, and req create/update CLI",
+          "related_req_ids": [
+            "FR-WRITE-004..009",
+            "FR-VAL-005..007",
+            "FR-CLI-011",
+            "NFR-REL-003..004",
+            "NFR-UX-007"
+          ],
+          "owns": [
+            "src/write/apply.ts",
+            "src/write/yaml-update.ts",
+            "src/core/apply-change.ts",
+            "src/cli/commands/req-write.ts",
+            "test/write/apply.test.ts",
+            "test/cli/req-write.test.ts",
+            "src/write/lock.ts",
+            "test/write/apply-concurrency.test.ts"
+          ],
+          "reads": [
+            "src/write/proposal.ts",
+            "src/io/file-store.ts",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export async function applyChange(input: ApplyChangeInput): Promise<ApplyResult>",
+            "export function applyProposalToDocument(document: LoadedYamlDocument, proposal: ProposalDocument): UpdatedYamlDocument",
+            "export async function withTargetWriteLock<T>(target: StorePath, fn: () => Promise<T>): Promise<T>",
+            "export function registerRequirementWriteCommands(program: Command): void"
+          ],
+          "reference_pattern": "Apply input union and confirm=true rule are defined in readiness decisions.",
+          "source_anchors": [
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:551-553",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:1675-1727"
+          ],
+          "implementation_guide": [
+            "Require exactly one of proposalId, proposalPath, or inline change.",
+            "Require confirm true for apply.",
+            "Run validation before writing.",
+            "Acquire a per-target write lock before reading the final target for mutation.",
+            "Recheck the current base hash immediately before rename and return a deterministic conflict error if it changed after validation.",
+            "Use unique temp paths per process and target.",
+            "Reject stale proposal hash mismatches.",
+            "Create a rollback-capable backup or temp copy for the target document before rename and include the backup path in ApplyResult diagnostics when a write fails.",
+            "Write via temporary file then atomic rename.",
+            "Mark related caches stale after successful write only after the target rename succeeds.",
+            "Return failure cause and recovery steps for stale, validation, permission, lock, and atomic write failures."
+          ],
+          "rationale": "Apply is the highest-risk feature and must be narrow, validated, and recoverable.",
+          "pitfalls": [
+            "Do not accept apply when allowApply=false.",
+            "Do not apply if validation errors remain.",
+            "Do not leave partial writes after failure."
+          ],
+          "test_guidance": "Test confirm missing, stale proposal, validation error, permission failure, lock conflict, concurrent apply attempts against the same YAML file, stale-after-validation race, atomic write failure, backup/temp copy reporting, recovery guidance in ErrorResult, successful apply, and cache stale marker consistency.",
+          "verification_command": "npm test -- apply",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- apply",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- apply",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Apply rejects stale proposals",
+            "Concurrent apply attempts to the same target yield one success and deterministic conflict or stale error for the loser",
+            "Base hash is rechecked after validation and before rename",
+            "Atomic write failure leaves original YAML unchanged and reports recovery steps",
+            "Backup or rollback-capable temp copy behavior is covered by tests",
+            "Cache stale marker is written only after successful target rename",
+            "req update without --apply creates proposal"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 20,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P7",
+      "phase_id": "PHASE-P7",
+      "title": "MCP stdio adapter",
+      "goal": "Expose Core services to AI coding agents through stdio MCP tools and resources.",
+      "tasks": [
+        {
+          "id": "TASK-P7-001",
+          "task_id": "TASK-P7-001",
+          "title": "Implement MCP server, stdio transport, tools, and input schemas",
+          "related_req_ids": [
+            "FR-MCP-001..013",
+            "FR-MCP-TR-001..006",
+            "FR-PKG-002",
+            "NFR-SEC-001..005",
+            "NFR-SEC-008"
+          ],
+          "owns": [
+            "src/mcp/server.ts",
+            "src/mcp/tools.ts",
+            "src/mcp/schemas.ts",
+            "src/cli/commands/mcp.ts",
+            "test/mcp/tools.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md",
+            "src/core"
+          ],
+          "method_signatures": [
+            "export async function runMcpServer(input: McpServerInput): Promise<void>",
+            "export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void",
+            "export function toolResultFromCore<T>(result: CoreResult<T>): CallToolResult"
+          ],
+          "reference_pattern": "MCP tools and structuredContent rules are listed in MCP tool spec.",
+          "source_anchors": [
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md:31-117",
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md:124-572"
+          ],
+          "implementation_guide": [
+            "Start stdio server only from speckiwi mcp.",
+            "Bind root from CLI argument and reject tool root override.",
+            "Register all required tools with JSON-compatible input schemas.",
+            "Return Core DTO through structuredContent and JSON text content.",
+            "Write logs to stderr only."
+          ],
+          "rationale": "MCP is the AI-agent interface and must mirror Core contracts without opening network ports.",
+          "pitfalls": [
+            "Do not emit diagnostic logs to stdout.",
+            "Do not create HTTP JSON-RPC endpoints.",
+            "Apply tool must respect allowApply and validation gates."
+          ],
+          "test_guidance": "Use in-process MCP tool tests for tool schemas, read-only calls, apply rejection, and stdout policy.",
+          "verification_command": "npm test -- mcp",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- mcp",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- mcp",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "All 13 MCP tools are registered",
+            "MCP stdout contains protocol output only",
+            "Tool root override is rejected"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "High",
+          "turn_estimate": 18,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P7-002",
+          "task_id": "TASK-P7-002",
+          "title": "Implement MCP resources for overview, index, documents, requirements, and scopes",
+          "related_req_ids": [
+            "FR-OVR-002",
+            "FR-MCP-TR-005..006",
+            "FR-MCP-001..013",
+            "NFR-UX-002"
+          ],
+          "owns": [
+            "src/mcp/resources.ts",
+            "src/mcp/resource-uri.ts",
+            "test/mcp/resources.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md"
+          ],
+          "method_signatures": [
+            "export function parseSpeckiwiResourceUri(uri: string): SpeckiwiResourceUri",
+            "export async function readMcpResource(uri: string, core: SpecKiwiCore): Promise<ReadResourceResult>"
+          ],
+          "reference_pattern": "MCP resources use ReadResourceResult.contents and not Core DTO envelopes.",
+          "source_anchors": [
+            "speckiwi-v1-docs/05_MCP_TOOL_SPEC.md:60-91",
+            "speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md:824-858"
+          ],
+          "implementation_guide": [
+            "Parse speckiwi://overview and speckiwi://index.",
+            "Serve registered document YAML by document ID.",
+            "Serve stable JSON requirement and scope contexts.",
+            "Reject malformed and unknown URIs with documented JSON-RPC errors."
+          ],
+          "rationale": "Resources provide low-friction context loading for agents without extra tool calls.",
+          "pitfalls": [
+            "Do not wrap resources in CoreResult envelope.",
+            "Do not read paths outside the workspace root."
+          ],
+          "test_guidance": "Test each resource URI, malformed URI, unknown ID, MIME type, and root boundary.",
+          "verification_command": "npm test -- mcp-resources",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- mcp-resources",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- mcp-resources",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "overview/index resources return application/yaml",
+            "requirement/scope resources return stable JSON",
+            "Malformed URI errors match spec"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 10,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P8",
+      "phase_id": "PHASE-P8",
+      "title": "Markdown export",
+      "goal": "Export YAML source documents to deterministic Markdown artifacts.",
+      "tasks": [
+        {
+          "id": "TASK-P8-001",
+          "task_id": "TASK-P8-001",
+          "title": "Implement Markdown exporter for overview, SRS, PRD, technical, ADR, and export index",
+          "related_req_ids": [
+            "FR-EXP-001..012",
+            "FR-OVR-005",
+            "FR-REQ-012",
+            "FR-PRD-004",
+            "FR-TECH-004",
+            "FR-ADR-005",
+            "FR-DIR-010",
+            "FR-STOR-003"
+          ],
+          "owns": [
+            "src/export/markdown.ts",
+            "src/export/templates.ts",
+            "src/core/export-markdown.ts",
+            "src/cli/commands/export.ts",
+            "test/export/markdown.test.ts",
+            "test/cli/export.test.ts"
+          ],
+          "reads": [
+            "speckiwi-v1-docs/10_MARKDOWN_EXPORT_SPEC.md",
+            "src/validate"
+          ],
+          "method_signatures": [
+            "export async function exportMarkdown(input: ExportMarkdownInput): Promise<ExportResult>",
+            "export function renderDocumentMarkdown(document: ContentDocument): string",
+            "export function renderExportIndex(documents: DocumentSummary[]): string"
+          ],
+          "reference_pattern": "Markdown export spec defines supported types, index behavior, and JSON result shape.",
+          "source_anchors": [
+            "speckiwi-v1-docs/10_MARKDOWN_EXPORT_SPEC.md:1-80",
+            "speckiwi-v1-docs/10_MARKDOWN_EXPORT_SPEC.md:104-226"
+          ],
+          "implementation_guide": [
+            "Run validation before export when requested.",
+            "Render only exportable document types.",
+            "Create index.md from content document registry, not index.yaml as a source document.",
+            "Write paths relative to outputRoot in ExportResult.",
+            "Keep Markdown output reproducible from YAML."
+          ],
+          "rationale": "Markdown is a human-readable artifact and must never become the source of truth.",
+          "pitfalls": [
+            "Do not support Markdown import in v1.",
+            "Do not export rule and dictionary types unless a future spec adds support."
+          ],
+          "test_guidance": "Test overview, SRS, PRD, technical, ADR, export index, --out, --type, unsupported type, and JSON output.",
+          "verification_command": "npm test -- export",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- export",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- export",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "export markdown creates index.md and supported document files",
+            "ExportResult lists relative writtenFiles",
+            "Unsupported export type returns documented error"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 14,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P9",
+      "phase_id": "PHASE-P9",
+      "title": "Hardening, performance, and release readiness",
+      "goal": "Close security, reliability, cross-platform, performance, and packaging release gates.",
+      "tasks": [
+        {
+          "id": "TASK-P9-001",
+          "task_id": "TASK-P9-001",
+          "title": "Add hardening suites for security, reliability, cross-platform, and performance targets",
+          "related_req_ids": [
+            "OOS-001..010",
+            "NFR-SEC-001..009",
+            "NFR-REL-001..007",
+            "NFR-PERF-001..006",
+            "NFR-COMP-001..007",
+            "NFR-UX-001..008"
+          ],
+          "owns": [
+            "test/hardening/security.test.ts",
+            "test/hardening/reliability.test.ts",
+            "test/hardening/cross-platform.test.ts",
+            "test/perf/perf.test.ts"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md"
+          ],
+          "method_signatures": [
+            "export function buildLargeWorkspaceFixture(options: LargeWorkspaceOptions): Promise<FixtureWorkspace>",
+            "export function assertNoDbOrHttpArtifacts(root: string): Promise<void>"
+          ],
+          "reference_pattern": "Release and hardening checklist are specified in SRS acceptance criteria and implementation plan.",
+          "source_anchors": [
+            "docs/spec/srs.md:1313-1368",
+            "docs/spec/srs.md:1450-1516",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md:295-315"
+          ],
+          "implementation_guide": [
+            "Add traversal, invalid YAML, duplicate ID, cache corruption, MCP stdout, Windows path, and large workspace tests.",
+            "Check no SQLite or DB artifacts are created.",
+            "Check no HTTP listener is opened during commands.",
+            "Inject sentinel environment variable values and assert they are not serialized into .speckiwi/**/*.yaml, proposals, cache files, diagnostics, CLI JSON, MCP structuredContent, or Markdown export unless passed as explicit user content.",
+            "Measure performance targets as threshold tests with local skip metadata for unstable CI."
+          ],
+          "rationale": "v1 release is defined by negative guarantees as much as feature success.",
+          "pitfalls": [
+            "Performance tests must be deterministic enough for local runs.",
+            "Hardening tests should use temp directories, not developer home paths."
+          ],
+          "test_guidance": "Run security, reliability, cross-platform, environment-leak, and perf suites separately and through npm test.",
+          "verification_command": "npm test -- hardening",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- hardening",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- hardening",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "Path traversal is rejected",
+            "No DB or HTTP artifacts are observed",
+            "Sentinel environment variable values are absent from generated YAML, proposals, cache, diagnostics, CLI JSON, MCP structuredContent, and export output unless explicitly supplied as user content",
+            "Cache corruption degrades to YAML load",
+            "Performance target tests report measured timings"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Medium",
+          "turn_estimate": 14,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P9-002",
+          "task_id": "TASK-P9-002",
+          "title": "Add package dry-run, release checklist, and v1 acceptance gate",
+          "related_req_ids": [
+            "FR-PKG-001..006",
+            "FR-CLI-001..012",
+            "FR-MCP-001..013",
+            "FR-EXP-001..012",
+            "NFR-COMP-001..007"
+          ],
+          "owns": [
+            "test/release/acceptance.test.ts",
+            "scripts/release-check.mjs",
+            "package.json",
+            "README.md"
+          ],
+          "reads": [
+            "docs/spec/srs.md",
+            "speckiwi-v1-docs/00_README.md",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md"
+          ],
+          "method_signatures": [
+            "export async function runReleaseCheck(): Promise<number>",
+            "export async function assertV1Acceptance(root: string): Promise<void>"
+          ],
+          "reference_pattern": "v1 acceptance checklist and install examples define the release gate.",
+          "source_anchors": [
+            "docs/spec/srs.md:1450-1516",
+            "speckiwi-v1-docs/00_README.md:24-51",
+            "speckiwi-v1-docs/11_IMPLEMENTATION_PLAN.md:332-340"
+          ],
+          "implementation_guide": [
+            "Add a release-check script that runs build, typecheck, lint, tests, and npm pack dry-run.",
+            "Run CLI acceptance commands against a fixture workspace.",
+            "Run MCP smoke startup with a temp root.",
+            "Update README command examples to match shipped CLI behavior."
+          ],
+          "rationale": "The project should not be considered v1-ready until packaging and documented commands work together.",
+          "pitfalls": [
+            "Do not publish from the release check.",
+            "Do not require Java, Python, a DB runtime, or a background daemon."
+          ],
+          "test_guidance": "Test release-check command success and failure propagation with fixture workspaces.",
+          "verification_command": "npm test -- release",
+          "acceptance_tests": [
+            {
+              "shell": "bash",
+              "cmd": "npm test -- release",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm test -- release",
+              "expected_exit": 0
+            },
+            {
+              "shell": "bash",
+              "cmd": "npm pack --dry-run",
+              "expected_exit": 0
+            },
+            {
+              "shell": "pwsh",
+              "cmd": "npm pack --dry-run",
+              "expected_exit": 0
+            }
+          ],
+          "dod": [
+            "release-check exits 0",
+            "npm pack dry-run includes dist, schemas, bin, and package metadata",
+            "README examples match CLI commands"
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore tracked edits for the task-owned paths with git restore -- <tracked owns>. 2) Delete only untracked task-owned files and directories listed in owns, then run the task verification command to confirm rollback."
+          },
+          "feasibility": "Low",
+          "turn_estimate": 10,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    }
+  ],
+  "requirements_mapping": [
+    {
+      "req_ids": [
+        "OOS-001..010"
+      ],
+      "task_ids": [
+        "TASK-P0-001",
+        "TASK-P9-001",
+        "TASK-P9-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-DIR-001..010",
+        "FR-STOR-001..007",
+        "FR-YAML-001..010"
+      ],
+      "task_ids": [
+        "TASK-P1-001",
+        "TASK-P1-002",
+        "TASK-P2-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-DOC-001..011",
+        "FR-IDX-001..014",
+        "FR-OVR-001..005",
+        "FR-SRS-DOC-001..004",
+        "FR-PRD-001..005",
+        "FR-TECH-001..005",
+        "FR-ADR-001..005",
+        "FR-DICT-001..005"
+      ],
+      "task_ids": [
+        "TASK-P1-002",
+        "TASK-P2-001",
+        "TASK-P2-002",
+        "TASK-P5-002",
+        "TASK-P8-001"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-REQ-001..015",
+        "FR-ID-001..008",
+        "FR-REL-001..007",
+        "FR-LINK-001..003",
+        "FR-GRAPH-001..011"
+      ],
+      "task_ids": [
+        "TASK-P2-002",
+        "TASK-P3-001",
+        "TASK-P3-002",
+        "TASK-P5-002",
+        "TASK-P6-001",
+        "TASK-P6-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-SRCH-001..009",
+        "FR-KR-001..009",
+        "FR-CACHE-001..008"
+      ],
+      "task_ids": [
+        "TASK-P4-001",
+        "TASK-P4-002",
+        "TASK-P5-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "VAL-ERR-001..022",
+        "VAL-WARN-001..008",
+        "FR-VAL-001..007"
+      ],
+      "task_ids": [
+        "TASK-P2-002",
+        "TASK-P5-001",
+        "TASK-P7-001"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-WRITE-001..011"
+      ],
+      "task_ids": [
+        "TASK-P6-001",
+        "TASK-P6-002",
+        "TASK-P7-001"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-CLI-001..012",
+        "FR-DOC-CHK-001..008"
+      ],
+      "task_ids": [
+        "TASK-P0-001",
+        "TASK-P0-002",
+        "TASK-P5-001",
+        "TASK-P5-002",
+        "TASK-P6-002",
+        "TASK-P8-001"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-MCP-001..013",
+        "FR-MCP-TR-001..006"
+      ],
+      "task_ids": [
+        "TASK-P0-002",
+        "TASK-P7-001",
+        "TASK-P7-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-EXP-001..012"
+      ],
+      "task_ids": [
+        "TASK-P8-001"
+      ]
+    },
+    {
+      "req_ids": [
+        "FR-PKG-001..006"
+      ],
+      "task_ids": [
+        "TASK-P0-001",
+        "TASK-P9-002"
+      ]
+    },
+    {
+      "req_ids": [
+        "NFR-SEC-001..009",
+        "NFR-REL-001..007",
+        "NFR-PERF-001..006",
+        "NFR-COMP-001..007",
+        "NFR-MAINT-001..008",
+        "NFR-UX-001..008"
+      ],
+      "task_ids": [
+        "TASK-P0-001",
+        "TASK-P0-002",
+        "TASK-P1-001",
+        "TASK-P2-002",
+        "TASK-P4-001",
+        "TASK-P4-002",
+        "TASK-P5-001",
+        "TASK-P6-002",
+        "TASK-P7-001",
+        "TASK-P9-001",
+        "TASK-P9-002"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "severity": "High",
+      "risk": "Validation and proposal/apply semantics have many cross-document invariants.",
+      "mitigation": "Implement semantic validation before write features and keep apply tests strict."
+    },
+    {
+      "severity": "High",
+      "risk": "MCP stdout logging can break protocol transport.",
+      "mitigation": "Add process-level stdout/stderr tests before considering MCP complete."
+    },
+    {
+      "severity": "Medium",
+      "risk": "Search performance target depends on fixture size and local IO.",
+      "mitigation": "Separate correctness tests from measured performance reports and keep cache fallback deterministic."
+    }
+  ],
+  "evaluation": {
+    "mode": "NORMAL",
+    "validator": "0 errors, 0 warnings",
+    "xhigh_depth": "PASS",
+    "normal_formal": "PASS",
+    "remaining_findings": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0
+    }
+  },
+  "routing_hint": {
+    "next_skill": "snoworca-coder",
+    "recommended_call": "/snoworca-coder PLAN_PATH=docs/plans/plan-20260501-speckiwi-v1-implementation.md --tdd"
+  }
+}

@@ -1581,3 +1581,62 @@ SpecKiwi v1.0 구현 시 `speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS
 ```
 
 기존 문서의 `오류 또는 경고`, `할 수 있다`, `가능` 표현이 위 결정과 충돌할 경우, 구현 계약은 위 보완 결정이 우선한다.
+
+---
+
+# 34. 구현 검토 기반 보완 요구사항
+
+2026-05-01 구현 검토에서 발견된 SRS-구현 간극은 다음 보완 요구사항으로 추적한다.
+이 섹션의 요구사항은 기존 v1.0 요구사항을 대체하지 않고, 누락된 검증 가능 조건을 명확히 한다.
+
+## 34.1 문서 모델 및 검증 보완
+
+| ID | 유형 | 우선순위 | 요구사항 | 수용 기준 |
+|---|---|---|---|---|
+| FR-PRD-006 | functional | high | 시스템은 PRD 문서 내 `items[].id` 중복을 semantic validation error로 탐지해야 한다. | 동일 PRD 파일에 같은 item `id`가 2개 이상 있으면 `DUPLICATE_PRD_ITEM_ID` 오류와 파일 path를 반환한다. |
+| FR-REQ-016 | functional | medium | 시스템은 requirement 목록 조회에서 `project` 필터를 지원해야 한다. | CLI, Core DTO, MCP 입력 스키마에서 `project` 필터를 전달할 수 있고, 다른 필터(scope/type/status/tag)와 조합해 deterministic 결과를 반환한다. |
+
+## 34.2 Cache, Search, Pagination 보완
+
+| ID | 유형 | 우선순위 | 요구사항 | 수용 기준 |
+|---|---|---|---|---|
+| FR-CACHE-009 | functional | medium | 시스템은 유효한 `.speckiwi/cache/search-index.json`이 존재하고 stale 상태가 아니면 검색 시 해당 cache를 우선 사용해야 한다. | search 실행 중 cache hit 경로가 테스트로 검증되고, cache가 없거나 stale이면 YAML 원본 기반 rebuild 또는 degrade 경로가 동작한다. |
+| FR-CACHE-010 | functional | high | `--no-cache` 모드에서는 cache read와 cache write를 모두 수행하지 않아야 한다. | `speckiwi req update --apply --no-cache`, search, graph, export 실행 후 `.speckiwi/cache/`에 신규 파일 또는 stale marker가 생성되지 않는다. |
+| FR-CLI-013 | functional | medium | CLI와 Core pagination 기본값과 상한은 보완 결정 문서와 일치해야 한다. | search 기본 `limit`은 10, 최대 100이고, list 기본 `limit`은 50, 최대 500이며 JSON 출력에 적용된 `limit`과 `offset`이 반영된다. |
+
+## 34.3 Write Policy 및 동시성 보완
+
+| ID | 유형 | 우선순위 | 요구사항 | 수용 기준 |
+|---|---|---|---|---|
+| NFR-REL-008 | reliability | high | apply 작업은 프로세스 간에도 동일 target에 대한 동시 write를 방지해야 한다. | 별도 CLI 프로세스 2개가 같은 requirement에 동시에 `--apply`를 실행하면 하나만 성공하고, 다른 하나는 deterministic lock/conflict/stale 오류를 반환한다. |
+| NFR-REL-009 | reliability | high | apply lock은 비정상 종료 후에도 복구 가능한 방식이어야 한다. | stale lock 감지 또는 안전한 lock cleanup 절차가 있고, 정상 apply 완료 후 lock 파일 또는 lock 상태가 남지 않는다. |
+
+## 34.4 MCP 및 보안 보완
+
+| ID | 유형 | 우선순위 | 요구사항 | 수용 기준 |
+|---|---|---|---|---|
+| NFR-SEC-010 | security | high | MCP resource와 Core file read/write 경로는 symlink를 포함한 실제 경로가 workspace root 밖으로 벗어나는 것을 거부해야 한다. | `.speckiwi/overview.yaml` 또는 등록 문서가 workspace 외부 파일로 향하는 symlink일 때 MCP resource와 CLI read 명령은 파일 내용을 반환하지 않고 security diagnostic을 반환한다. |
+| FR-MCP-014 | interface | medium | MCP tool 입력 스키마 오류와 금지된 root override는 JSON-RPC invalid params 오류로 구분되어야 한다. | handler 실행 전 request shape 또는 arguments 오류는 `-32602` 계열 오류로 관찰되고, 일반 domain failure와 동일한 `isError` 결과로만 처리되지 않는다. |
+| FR-MCP-015 | interface | low | MCP tool 정의는 `structuredContent`의 JSON-compatible Core DTO를 설명하는 `outputSchema`를 제공해야 한다. | 등록된 모든 `speckiwi_*` tool은 `inputSchema`와 함께 output schema 정보를 노출하고, output schema는 실제 `structuredContent`와 불일치하지 않는다. |
+
+## 34.5 Release 및 성능 검증 보완
+
+| ID | 유형 | 우선순위 | 요구사항 | 수용 기준 |
+|---|---|---|---|---|
+| NFR-REL-010 | reliability | high | release gate는 release acceptance test 실패를 숨기지 않아야 한다. | `npm run release:check`는 release acceptance test를 포함하거나 별도 명령으로 실행하며, 기본 timeout 때문에 실패하는 테스트가 있으면 non-zero로 종료한다. |
+| NFR-PERF-007 | performance | medium | 성능 테스트는 SRS의 대표 성능 목표를 직접 검증해야 한다. | 10,000개 requirement 기준 exact lookup/search/cache rebuild와 1,000개 YAML validation 측정이 포함되고, MCP 정상 cache 상태 단일 tool 호출 1초 목표가 테스트된다. |
+
+## 34.6 보완 수용 기준
+
+SpecKiwi v1.0 release 가능 판정에는 다음 항목을 추가한다.
+
+* [ ] PRD item ID 중복 validation이 실패 테스트와 성공 테스트로 검증된다.
+* [ ] requirement list의 `project` 필터가 CLI/Core/MCP에서 일관되게 동작한다.
+* [ ] search는 유효한 search cache를 실제 read path에서 사용한다.
+* [ ] `--no-cache`는 apply 후 stale marker를 포함한 모든 cache write를 우회한다.
+* [ ] apply 동시성은 프로세스 간 동일 target 충돌을 deterministic하게 처리한다.
+* [ ] MCP resource read는 symlink traversal로 workspace 밖 파일을 노출하지 않는다.
+* [ ] MCP invalid params와 domain error는 관찰 가능한 오류 모델이 구분된다.
+* [ ] release check는 release acceptance timeout 실패를 통과시키지 않는다.
+* [ ] 성능 테스트는 10,000 requirement 및 MCP 단일 호출 목표를 포함한다.
+* [ ] MCP tool metadata는 output schema를 포함한다.

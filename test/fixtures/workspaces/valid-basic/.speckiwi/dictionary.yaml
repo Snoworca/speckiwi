@@ -1,0 +1,10 @@
+schemaVersion: speckiwi/dictionary/v1
+id: dictionary
+type: dictionary
+title: Search Dictionary
+status: active
+synonyms:
+  validation:
+    - 검증
+normalizations:
+  yaml schema: schema

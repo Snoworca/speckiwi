@@ -1,0 +1,19 @@
+schemaVersion: speckiwi/index/v1
+project:
+  id: speckiwi
+  name: SpecKiwi
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+  - id: prd.duplicate-items
+    type: prd
+    path: prd/duplicate-items.yaml
+scopes:
+  - id: core
+    name: Core
+    type: module
+links: []

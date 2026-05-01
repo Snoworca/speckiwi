@@ -1,0 +1,21 @@
+schemaVersion: speckiwi/srs/v1
+id: srs.core
+type: srs
+scope: core
+title: Core SRS
+status: active
+requirements:
+  - id: FR-CORE-0001
+    type: functional
+    title: Validate workspace
+    status: active
+    priority: high
+    statement: 시스템은 workspace YAML 문서를 deterministic하게 validate해야 한다.
+    rationale: Apply safety depends on validation.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: Invalid references produce stable diagnostics.
+    relations: []
+    tags:
+      - validation

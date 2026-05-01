@@ -1,0 +1,24 @@
+schemaVersion: speckiwi/index/v1
+project:
+  id: speckiwi
+  name: SpecKiwi
+  language: ko
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+  - id: srs.core
+    type: srs
+    path: srs/core.yaml
+    scope: core
+scopes:
+  - id: core
+    name: Core
+    type: module
+links:
+  - from: overview
+    to: srs.core
+    type: documents

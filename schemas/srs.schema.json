@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/srs.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "scope", "title", "status", "requirements"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/srs/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "srs" },
+    "scope": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "active", "deprecated", "archived"] },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "title", "status", "statement"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": {
+            "enum": [
+              "functional",
+              "non_functional",
+              "interface",
+              "data",
+              "constraint",
+              "security",
+              "performance",
+              "reliability",
+              "usability",
+              "maintainability",
+              "operational",
+              "compliance",
+              "migration",
+              "observability"
+            ]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["draft", "active", "in_progress", "done", "blocked", "deprecated", "replaced", "discarded"] },
+          "priority": { "enum": ["critical", "high", "medium", "low", "optional"] },
+          "statement": { "type": "string", "minLength": 1 },
+          "rationale": { "type": "string" },
+          "description": { "type": "string" },
+          "acceptanceCriteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "method", "description"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "method": { "enum": ["inspection", "analysis", "test", "demonstration", "review"] },
+                "description": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "target"],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "depends_on",
+                    "blocks",
+                    "relates_to",
+                    "duplicates",
+                    "conflicts_with",
+                    "refines",
+                    "generalizes",
+                    "replaces",
+                    "replaced_by",
+                    "derived_from",
+                    "implements",
+                    "documents",
+                    "tests",
+                    "requires_review_with"
+                  ]
+                },
+                "target": { "type": "string", "minLength": 1 },
+                "description": { "type": "string" }
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

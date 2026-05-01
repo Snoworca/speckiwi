@@ -1,0 +1,11 @@
+schemaVersion: speckiwi/overview/v1
+id: overview
+type: overview
+title: SpecKiwi
+status: active
+summary: SpecKiwi validates local YAML requirements and design knowledge.
+goals:
+  - id: G-001
+    statement: Keep implementation context queryable.
+nonGoals: []
+glossary: []

@@ -1,0 +1,31 @@
+schemaVersion: speckiwi/srs/v1
+id: srs.two
+type: srs
+scope: core
+title: Two SRS
+status: active
+requirements:
+  - id: FR-CORE-0002
+    type: functional
+    title: Two
+    status: active
+    statement: 시스템은 circular dependency를 diagnostic으로 보고해야 한다.
+    rationale: Cycle detection keeps trace deterministic.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: A depends_on cycle is reported.
+    relations:
+      - type: depends_on
+        target: FR-CORE-0001
+  - id: FR-CORE-0001
+    type: functional
+    title: Duplicate One
+    status: active
+    statement: 시스템은 duplicate requirement ID를 deterministic하게 보고해야 한다.
+    rationale: Duplicate IDs break lookups.
+    acceptanceCriteria:
+      - id: AC-001
+        method: inspection
+        description: Duplicate requirement IDs are reported.
+    relations: []

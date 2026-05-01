@@ -1,0 +1,30 @@
+schemaVersion: speckiwi/index/v1
+project:
+  id: speckiwi
+  name: SpecKiwi
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+  - id: missing
+    type: srs
+    path: srs/missing.yaml
+  - id: escape
+    type: srs
+    path: ../escape.yaml
+scopes:
+  - id: a
+    parent: b
+    name: A
+    type: module
+  - id: b
+    parent: a
+    name: B
+    type: module
+links:
+  - from: overview
+    to: missing-link-target
+    type: references
