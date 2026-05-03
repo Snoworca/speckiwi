@@ -121,7 +121,7 @@ async function buildCreateChange(input: { root: string; cacheMode: "auto" | "byp
 }
 
 async function buildUpdateChange(input: { root: string; cacheMode: "auto" | "bypass"; id: string; raw: Record<string, unknown> }): Promise<ProposeChangeInput> {
-  const context = await requirementPatchContext(input.root, input.id);
+  const context = await requirementPatchContext(input.root, input.cacheMode, input.id);
   if (context === undefined) {
     throw new CliUsageError("REQUIREMENT_NOT_FOUND", `Requirement not found: ${input.id}.`);
   }
@@ -156,8 +156,8 @@ async function buildUpdateChange(input: { root: string; cacheMode: "auto" | "byp
   };
 }
 
-async function requirementPatchContext(root: string, id: string): Promise<{ pointer: string; requirement: JsonObject } | undefined> {
-  const registry = await loadRequirementRegistry({ root });
+async function requirementPatchContext(root: string, cacheMode: "auto" | "bypass", id: string): Promise<{ pointer: string; requirement: JsonObject } | undefined> {
+  const registry = await loadRequirementRegistry({ root, cacheMode });
   const requirement = registry.requirementsById.get(id);
   if (requirement === undefined) {
     return undefined;

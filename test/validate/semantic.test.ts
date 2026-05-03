@@ -1,6 +1,6 @@
 import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { validateWorkspace } from "../../src/core/validate.js";
 
@@ -25,6 +25,37 @@ describe("semantic workspace validation", () => {
         summary: { errorCount: 0, warningCount: 0, infoCount: 0 }
       }
     });
+  });
+
+  it("detects dictionary synonym cycles as validation errors", async () => {
+    const root = await copyValidFixture("speckiwi-dictionary-cycle-");
+    await writeDictionary(
+      root,
+      `synonyms:
+  api:
+    - endpoint
+  endpoint:
+    - route
+  route:
+    - API
+normalizations: {}
+`
+    );
+
+    const result = await validateWorkspace({ root });
+
+    expect(result.ok).toBe(false);
+    expect(codes(result)).toContain("DICTIONARY_SYNONYM_CYCLE");
+    expect(result.diagnostics.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "DICTIONARY_SYNONYM_CYCLE",
+          severity: "error",
+          path: ".speckiwi/dictionary.yaml",
+          details: { cycle: ["api", "endpoint", "route", "api"] }
+        })
+      ])
+    );
   });
 
   it("detects manifest path, link, and scope errors", async () => {
@@ -57,12 +88,72 @@ describe("semantic workspace validation", () => {
     );
   });
 
+  it("detects SRS index and YAML primary scope mismatches", async () => {
+    const root = await copyValidFixture("speckiwi-srs-scope-mismatch-");
+    await writeIndexWithSrsDocuments(root, [{ id: "srs.core", path: "srs/core.yaml", scope: "api" }], [
+      { id: "core", name: "Core" },
+      { id: "api", name: "API" }
+    ]);
+
+    const result = await validateWorkspace({ root });
+
+    expect(codes(result)).toContain("SRS_SCOPE_MISMATCH");
+    expect(result.diagnostics.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "SRS_SCOPE_MISMATCH",
+          path: ".speckiwi/srs/core.yaml",
+          details: { documentId: "srs.core", path: "srs/core.yaml", indexScope: "api", yamlScope: "core" }
+        })
+      ])
+    );
+  });
+
+  it("detects duplicate SRS primary scopes", async () => {
+    const root = await copyValidFixture("speckiwi-srs-duplicate-scope-");
+    await addSrsDocument(root, "srs/duplicate-core.yaml", "srs.duplicate-core", "core", "FR-DUP-0001");
+    await writeIndexWithSrsDocuments(root, [
+      { id: "srs.core", path: "srs/core.yaml", scope: "core" },
+      { id: "srs.duplicate-core", path: "srs/duplicate-core.yaml", scope: "core" }
+    ]);
+
+    const result = await validateWorkspace({ root });
+
+    expect(codes(result)).toContain("DUPLICATE_SRS_PRIMARY_SCOPE");
+    expect(result.diagnostics.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "DUPLICATE_SRS_PRIMARY_SCOPE",
+          path: ".speckiwi/srs/duplicate-core.yaml",
+          details: {
+            scope: "core",
+            firstDocumentId: "srs.core",
+            firstPath: "srs/core.yaml",
+            duplicateDocumentId: "srs.duplicate-core",
+            duplicatePath: "srs/duplicate-core.yaml"
+          }
+        })
+      ])
+    );
+  });
+
+  it("allows SRS index scope omission when YAML declares the primary scope", async () => {
+    const root = await copyValidFixture("speckiwi-srs-scope-omitted-");
+    await writeIndexWithSrsDocuments(root, [{ id: "srs.core", path: "srs/core.yaml" }]);
+
+    const result = await validateWorkspace({ root });
+
+    expect(codes(result)).not.toContain("SRS_SCOPE_MISMATCH");
+    expect(result.ok).toBe(true);
+  });
+
   it("detects duplicate and dangling requirement relations while keeping warnings non-fatal to execution", async () => {
     const result = await validateWorkspace({ root: new URL("invalid-relations", fixtureRoot).pathname });
 
     expect(codes(result)).toEqual([
       "DEPENDS_ON_CYCLE",
       "DUPLICATE_REQUIREMENT_ID",
+      "DUPLICATE_SRS_PRIMARY_SCOPE",
       "MISSING_ACCEPTANCE_CRITERIA",
       "MISSING_RATIONALE",
       "SELF_RELATION",
@@ -124,6 +215,78 @@ items:
     type: feature
     title: Shared item
     body: PRD item ids are scoped to the containing document.${link}
+`,
+    "utf8"
+  );
+}
+
+async function addSrsDocument(root: string, storePath: string, documentId: string, scope: string, requirementId: string): Promise<void> {
+  const absolutePath = join(root, ".speckiwi", storePath);
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(
+    absolutePath,
+    `schemaVersion: speckiwi/srs/v1
+id: ${documentId}
+type: srs
+scope: ${scope}
+title: ${documentId}
+status: active
+requirements:
+  - id: ${requirementId}
+    type: functional
+    title: Duplicate scope fixture
+    status: active
+    statement: 시스템은 SRS primary scope 중복을 diagnostic으로 보고해야 한다.
+    rationale: Primary scope ownership must be unique.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: The validator reports duplicate SRS primary scopes.
+    relations: []
+`,
+    "utf8"
+  );
+}
+
+async function writeDictionary(root: string, body: string): Promise<void> {
+  await writeFile(
+    join(root, ".speckiwi", "dictionary.yaml"),
+    `schemaVersion: speckiwi/dictionary/v1
+id: dictionary
+type: dictionary
+title: Search Dictionary
+status: active
+${body}`,
+    "utf8"
+  );
+}
+
+async function writeIndexWithSrsDocuments(
+  root: string,
+  srsDocuments: Array<{ id: string; path: string; scope?: string }>,
+  scopes: Array<{ id: string; name: string }> = [{ id: "core", name: "Core" }]
+): Promise<void> {
+  await writeFile(
+    join(root, ".speckiwi", "index.yaml"),
+    `schemaVersion: speckiwi/index/v1
+project:
+  id: speckiwi
+  name: SpecKiwi
+  language: ko
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+${srsDocuments.map((document) => `  - id: ${document.id}\n    type: srs\n    path: ${document.path}${document.scope === undefined ? "" : `\n    scope: ${document.scope}`}`).join("\n")}
+scopes:
+${scopes.map((scope) => `  - id: ${scope.id}\n    name: ${scope.name}\n    type: module`).join("\n")}
+links:
+  - from: overview
+    to: srs.core
+    type: documents
 `,
     "utf8"
   );

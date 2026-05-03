@@ -1,7 +1,4 @@
-import { resolve } from "node:path";
-import { buildGraph } from "../../graph/builder.js";
-import { workspaceRootFromPath } from "../../io/workspace.js";
-import { loadWorkspaceForValidation } from "../../validate/semantic.js";
+import { createSpecKiwiCore } from "../../core/api.js";
 import { addCommonOptions, CliUsageError, executeCliCommand, optionalString } from "../options.js";
 export function registerGraphCommand(program) {
     const command = addCommonOptions(program.command("graph").description("print a workspace graph"))
@@ -19,9 +16,10 @@ export function registerGraphCommand(program) {
     }));
 }
 async function graph(input) {
-    const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
-    const workspace = await loadWorkspaceForValidation(root);
-    return buildGraph(workspace, input.graphType);
+    return createSpecKiwiCore({
+        root: input.root ?? process.cwd(),
+        ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode })
+    }).graph(input);
 }
 function parseGraphType(value) {
     if (value === undefined) {

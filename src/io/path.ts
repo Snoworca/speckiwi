@@ -20,6 +20,12 @@ export type WorkspacePath = {
   absolutePath: string;
 };
 
+export type RealPathGuard = {
+  realWorkspaceRoot: string;
+  realStoreRoot: string;
+  realPathCache: Map<string, string>;
+};
+
 export class WorkspacePathError extends Error {
   constructor(
     public readonly code: "INVALID_STORE_PATH" | "WORKSPACE_ESCAPE",
@@ -75,15 +81,38 @@ export async function resolveRealStorePath(root: WorkspaceRoot, storePath: Store
 }
 
 export async function assertRealPathInsideWorkspace(path: WorkspacePath): Promise<void> {
-  const realWorkspaceRoot = await realpath(path.root.rootPath);
-  const realStoreRoot = await realpath(path.root.speckiwiPath);
+  await assertRealPathInsideWorkspaceWithGuard(path, await createRealPathGuard(path.root));
+}
 
+export async function createRealPathGuard(root: WorkspaceRoot): Promise<RealPathGuard> {
+  const realWorkspaceRoot = await realpath(root.rootPath);
+  const realStoreRoot = await realpath(root.speckiwiPath);
   if (!isInsideDirectory(realStoreRoot, realWorkspaceRoot)) {
+    throw new WorkspacePathError("WORKSPACE_ESCAPE", `${WORKSPACE_DIRECTORY} escapes workspace root: ${root.speckiwiPath}`);
+  }
+  return {
+    realWorkspaceRoot,
+    realStoreRoot,
+    realPathCache: new Map([
+      [resolve(root.rootPath), realWorkspaceRoot],
+      [resolve(root.speckiwiPath), realStoreRoot]
+    ])
+  };
+}
+
+export async function resolveRealStorePathWithGuard(root: WorkspaceRoot, storePath: StorePath, guard: RealPathGuard): Promise<WorkspacePath> {
+  const workspacePath = resolveStorePath(root, storePath);
+  await assertRealPathInsideWorkspaceWithGuard(workspacePath, guard);
+  return workspacePath;
+}
+
+export async function assertRealPathInsideWorkspaceWithGuard(path: WorkspacePath, guard: RealPathGuard): Promise<void> {
+  if (!isInsideDirectory(guard.realStoreRoot, guard.realWorkspaceRoot)) {
     throw new WorkspacePathError("WORKSPACE_ESCAPE", `${WORKSPACE_DIRECTORY} escapes workspace root: ${path.root.speckiwiPath}`);
   }
 
-  const realCandidate = await realExistingPath(path.absolutePath);
-  if (!isInsideDirectory(realCandidate, realStoreRoot)) {
+  const realCandidate = await realExistingPath(path.absolutePath, guard);
+  if (!isInsideDirectory(realCandidate, guard.realStoreRoot)) {
     throw new WorkspacePathError("WORKSPACE_ESCAPE", `Store path escapes ${WORKSPACE_DIRECTORY}: ${path.storePath}`);
   }
 }
@@ -95,13 +124,19 @@ export function isInsideDirectory(candidate: string, directory: string): boolean
   return normalizedCandidate === normalizedDirectory || normalizedCandidate.startsWith(`${normalizedDirectory}${sep}`);
 }
 
-async function realExistingPath(path: string): Promise<string> {
+async function realExistingPath(path: string, guard?: RealPathGuard): Promise<string> {
   let current = resolve(path);
 
   while (current.length > 0) {
+    const cached = guard?.realPathCache.get(current);
+    if (cached !== undefined) {
+      return cached;
+    }
     try {
       await lstat(current);
-      return await realpath(current);
+      const resolved = await realpath(current);
+      guard?.realPathCache.set(current, resolved);
+      return resolved;
     } catch (error) {
       if (!isNodeError(error) || error.code !== "ENOENT") {
         throw error;

@@ -2,8 +2,9 @@ import { access, readdir } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import { createDiagnosticBag } from "../core/result.js";
 import { loadYamlDocument } from "../io/yaml-loader.js";
-import { normalizeStorePath, resolveStorePath } from "../io/path.js";
+import { createRealPathGuard, normalizeStorePath, resolveStorePath } from "../io/path.js";
 import { schemaKindFromVersion, validateAgainstSchemaDiagnostics } from "../schema/compile.js";
+import { normalizeExactKey } from "../search/tokenizer.js";
 import { diagnostic, diagnosticsToBag, workspacePath } from "./diagnostics.js";
 const contentKinds = new Set(["overview", "dictionary", "srs", "prd", "technical", "adr", "rule"]);
 const requirementIdPattern = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+$/;
@@ -36,8 +37,9 @@ export async function loadWorkspaceForValidation(root) {
             path: workspacePath("overview.yaml")
         }));
     }
+    const realPathGuard = await createRealPathGuard(root);
     const storePaths = await listYamlStorePaths(root);
-    const documents = await Promise.all(storePaths.map((storePath) => loadDocument(root, storePath)));
+    const documents = await Promise.all(storePaths.map((storePath) => loadDocument(root, storePath, realPathGuard)));
     for (const document of documents) {
         diagnostics.push(...document.diagnostics);
     }
@@ -94,8 +96,10 @@ export function validateRegistry(workspace) {
     const registeredPaths = new Set();
     const documentIds = new Set();
     validateManifestEntries(workspace, documentsByPath, registeredPaths, documentIds, diagnostics);
+    validateSrsPrimaryScopes(workspace, documentsByPath, diagnostics);
     validateUnregisteredContent(workspace, registeredPaths, diagnostics);
     validateLargeDocuments(workspace, diagnostics);
+    validateDictionaryEntries(workspace, diagnostics);
     const scopeParents = validateScopes(workspace, diagnostics);
     const requirementRegistry = validateRequirements(workspace, scopeParents, diagnostics);
     validateDocumentLinks(workspace, documentIds, diagnostics);
@@ -214,6 +218,53 @@ function validateUnregisteredContent(workspace, registeredPaths, diagnostics) {
         }));
     }
 }
+function validateSrsPrimaryScopes(workspace, documentsByPath, diagnostics) {
+    for (const entry of workspace.manifestEntries) {
+        if (entry.type !== "srs" || entry.scope === undefined) {
+            continue;
+        }
+        const document = documentsByPath.get(entry.path);
+        const yamlScope = stringValue(document?.value?.scope);
+        if (yamlScope !== undefined && yamlScope !== entry.scope) {
+            diagnostics.push(diagnostic({
+                code: "SRS_SCOPE_MISMATCH",
+                message: `Index SRS scope ${entry.scope} does not match YAML scope ${yamlScope}.`,
+                path: workspacePath(entry.path),
+                details: { documentId: entry.id, path: entry.path, indexScope: entry.scope, yamlScope }
+            }));
+        }
+    }
+    const firstDocumentByScope = new Map();
+    const manifestByPath = new Map(workspace.manifestEntries.map((entry) => [entry.path, entry]));
+    for (const document of workspace.documents) {
+        if (document.schemaKind !== "srs" || document.value === undefined) {
+            continue;
+        }
+        const scope = stringValue(document.value.scope);
+        if (scope === undefined) {
+            continue;
+        }
+        const manifestEntry = manifestByPath.get(document.storePath);
+        const documentId = manifestEntry?.id ?? stringValue(document.value.id) ?? document.storePath;
+        const firstDocument = firstDocumentByScope.get(scope);
+        if (firstDocument !== undefined && firstDocument.path !== document.storePath) {
+            diagnostics.push(diagnostic({
+                code: "DUPLICATE_SRS_PRIMARY_SCOPE",
+                message: `SRS primary scope is used by multiple documents: ${scope}.`,
+                path: workspacePath(document.storePath),
+                details: {
+                    scope,
+                    firstDocumentId: firstDocument.documentId,
+                    firstPath: firstDocument.path,
+                    duplicateDocumentId: documentId,
+                    duplicatePath: document.storePath
+                }
+            }));
+            continue;
+        }
+        firstDocumentByScope.set(scope, { documentId, path: document.storePath });
+    }
+}
 function validateLargeDocuments(workspace, diagnostics) {
     for (const document of workspace.documents) {
         if (document.raw.length > 256 * 1024) {
@@ -223,6 +274,46 @@ function validateLargeDocuments(workspace, diagnostics) {
                 severity: "warning",
                 path: workspacePath(document.storePath),
                 details: { bytes: document.raw.length }
+            }));
+        }
+    }
+}
+function validateDictionaryEntries(workspace, diagnostics) {
+    for (const document of workspace.documents) {
+        if (!document.schemaValid || document.schemaKind !== "dictionary" || document.value === undefined) {
+            continue;
+        }
+        const synonyms = jsonObjectValue(document.value.synonyms);
+        if (synonyms === undefined) {
+            continue;
+        }
+        const graph = new Map();
+        for (const [key, values] of Object.entries(synonyms).sort(([left], [right]) => left.localeCompare(right))) {
+            const from = normalizeDictionaryTerm(key);
+            if (from === undefined) {
+                continue;
+            }
+            const targets = graph.get(from) ?? [];
+            graph.set(from, targets);
+            for (const value of stringArray(values)) {
+                const to = normalizeDictionaryTerm(value);
+                if (to === undefined) {
+                    continue;
+                }
+                if (!targets.includes(to)) {
+                    targets.push(to);
+                }
+                if (!graph.has(to)) {
+                    graph.set(to, []);
+                }
+            }
+        }
+        for (const cycle of findCycles(graph)) {
+            diagnostics.push(diagnostic({
+                code: "DICTIONARY_SYNONYM_CYCLE",
+                message: `Dictionary synonym cycle detected: ${cycle.join(" -> ")}.`,
+                path: workspacePath(document.storePath),
+                details: { cycle }
             }));
         }
     }
@@ -451,9 +542,9 @@ function validatePrdItemIds(document, diagnostics) {
         }
     }
 }
-async function loadDocument(root, storePath) {
+async function loadDocument(root, storePath, guard) {
     const workspacePathValue = resolveStorePath(root, normalizeStorePath(storePath));
-    const loaded = await loadYamlDocument(workspacePathValue);
+    const loaded = await loadYamlDocument(workspacePathValue, guard);
     const diagnostics = [...loaded.diagnostics.errors, ...loaded.diagnostics.warnings, ...loaded.diagnostics.infos].map((item) => ({
         ...item,
         path: workspacePath(item.path ?? storePath)
@@ -505,7 +596,12 @@ function readManifestEntries(index) {
         if (id === undefined || path === undefined || !isContentDocumentType(type)) {
             return [];
         }
-        return [{ id, type, path, index }];
+        const manifestEntry = { id, type, path, index };
+        const scope = stringValue(entry.scope);
+        if (scope !== undefined) {
+            manifestEntry.scope = scope;
+        }
+        return [manifestEntry];
     });
 }
 function schemaKindForDocument(document, manifestByPath) {
@@ -607,6 +703,16 @@ function arrayValue(value) {
 }
 function stringValue(value) {
     return typeof value === "string" ? value : undefined;
+}
+function jsonObjectValue(value) {
+    return isJsonObject(value) ? value : undefined;
+}
+function stringArray(value) {
+    return Array.isArray(value) ? value.filter(isString) : [];
+}
+function normalizeDictionaryTerm(value) {
+    const normalized = normalizeExactKey(value).replace(/\s+/g, " ");
+    return normalized.length > 0 ? normalized : undefined;
 }
 function isJsonObject(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);

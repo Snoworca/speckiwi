@@ -1,0 +1,389 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260502-speckiwi-integrity-remed-v1",
+  "previous_hash": null,
+  "produced_by": "snoworca-planner@2.2.2",
+  "title": "SpecKiwi functional integrity remediation plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-02T09:07:12+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "spec_refs": [
+    "docs/spec/srs.md",
+    "docs/research/20260501-speckiwi-performance-indexing-research.md",
+    "docs/plans/plan-20260501-speckiwi-performance-indexing-v1.md"
+  ],
+  "code_path": ".",
+  "output_path": "docs/plans/plan-20260502-speckiwi-integrity-remed-v1.md",
+  "scope_freeze": true,
+  "change_log": [],
+  "platforms": ["posix", "win32"],
+  "auto_recommend_policy": {
+    "default_confidence_threshold": "medium",
+    "cap": 0,
+    "forbidden_for_business_decision": true
+  },
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts test/search/search.test.ts test/cli/read-commands.test.ts test/mcp/tools.test.ts test/graph/graph.test.ts", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts test/search/search.test.ts test/cli/read-commands.test.ts test/mcp/tools.test.ts test/graph/graph.test.ts", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)", "flags": ""},
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+\\*", "flags": ""},
+    {"pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)", "flags": ""},
+    {"pattern": "\\b(mkfs|fdisk|parted)\\b", "flags": ""},
+    {"pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b", "flags": ""},
+    {"pattern": "\\bchown\\s+-R\\s+.*\\s+/", "flags": ""},
+    {"pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)", "flags": ""},
+    {"pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)", "flags": ""},
+    {"pattern": "wget\\s+[^|]*\\|\\s*sh", "flags": ""},
+    {"pattern": "iwr\\s+[^;]+;\\s*iex", "flags": ""},
+    {"pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)", "flags": ""},
+    {"pattern": "git\\s+clean\\s+-[fdx]+", "flags": ""},
+    {"pattern": "적절히|필요 시|알아서|상황에 맞게|기존 방식대로|어떻게든", "flags": ""}
+  ],
+  "out_of_scope": [
+    "NFR-PERF-002 cached search 500ms remediation",
+    "SPECKIWI_ASSERT_SEARCH_PERF=1 npm run perf:srs remediation",
+    "Pure performance optimization and indexing redesign"
+  ],
+  "phases": [
+    {
+      "id": "PHASE-P0",
+      "title": "Secure cache artifact cleanup",
+      "goal": "Prevent cache shard cleanup from deleting files outside the workspace.",
+      "tasks": [
+        {
+          "id": "TASK-P0-001",
+          "title": "Add guarded cache artifact deletion",
+          "related_req_ids": ["NFR-SEC-001", "NFR-SEC-002", "FR-CACHE-001", "FR-CACHE-006"],
+          "req_ids": ["NFR-SEC-001", "NFR-SEC-002", "FR-CACHE-001", "FR-CACHE-006"],
+          "owns": ["src/cache/rebuild.ts", "src/cache/clean.ts", "src/io/path.ts"],
+          "reads": ["src/cache/rebuild.ts", "src/cache/clean.ts", "src/io/path.ts", "src/indexing/serialization.ts"],
+          "method_signatures": [
+            "async function deleteCacheArtifactIfInside(root: WorkspaceRoot, storePath: string, guard: RealPathGuard): Promise<boolean>"
+          ],
+          "source_anchors": [
+            "src/cache/rebuild.ts:73-82",
+            "src/cache/clean.ts:38-47",
+            "src/io/path.ts:83-107",
+            "src/indexing/serialization.ts:59-70"
+          ],
+          "implementation_guide": [
+            "Create createRealPathGuard(root) before stale shard cleanup.",
+            "Resolve each cache/requirements/<64hex>.json path with resolveRealStorePathWithGuard.",
+            "Delete only the guarded absolutePath.",
+            "Do not swallow workspace escape errors.",
+            "Guard generated cache output cleanup in rebuild failure handling."
+          ],
+          "rationale": "A symlinked cache shard directory must not allow external file deletion.",
+          "pitfalls": [
+            "Do not leave resolve(root.speckiwiPath, storePath) deletion paths for cache artifacts.",
+            "Regex path checks do not prove realpath containment."
+          ],
+          "test_guidance": "Add symlink cleanup tests in TASK-P0-002.",
+          "verification_command": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Shard cleanup and generated artifact cleanup both use guarded resolution."],
+          "rollback": {"strategy": "manual", "command": "Restore src/cache/rebuild.ts and src/cache/clean.ts from git, then run npm test -- test/cache/cache.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 4,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P0-002",
+          "title": "Add symlink cleanup security tests",
+          "related_req_ids": ["NFR-SEC-001", "NFR-SEC-002", "FR-CACHE-006"],
+          "req_ids": ["NFR-SEC-001", "NFR-SEC-002", "FR-CACHE-006"],
+          "owns": ["test/hardening/security.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cache/rebuild.ts", "src/cache/clean.ts"],
+          "method_signatures": [
+            "async function createSymlinkedRequirementCacheFixture(): Promise<{ root: string; externalFile: string }>"
+          ],
+          "source_anchors": [
+            "test/hardening/security.test.ts:112-134",
+            "test/cache/cache.test.ts:1-80",
+            "src/cache/rebuild.ts:73-82",
+            "src/cache/clean.ts:38-47"
+          ],
+          "implementation_guide": [
+            "Create an external 64-hex shard JSON file.",
+            "Symlink .speckiwi/cache/requirements to the external directory.",
+            "Run rebuildCache and cleanCache.",
+            "Assert the external shard file still exists."
+          ],
+          "rationale": "The fix must be proven against the actual symlink escape shape.",
+          "pitfalls": ["Handle Windows symlink permissions explicitly in the test helper."],
+          "test_guidance": "POSIX must execute the symlink scenario.",
+          "verification_command": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["External file deletion fails the test suite."],
+          "rollback": {"strategy": "manual", "command": "Remove the new symlink cleanup tests, then run npm test -- test/hardening/security.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 3,
+          "review_strictness": "strict"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P1",
+      "title": "Cache output hash freshness",
+      "goal": "Reject tampered or stale cache outputs by comparing manifest hashes to artifact bytes.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Verify manifest output hashes in section freshness",
+          "related_req_ids": ["FR-CACHE-001", "FR-CACHE-002", "FR-CACHE-005", "FR-CACHE-006", "FR-CACHE-007", "NFR-REL-006"],
+          "req_ids": ["FR-CACHE-001", "FR-CACHE-002", "FR-CACHE-005", "FR-CACHE-006", "FR-CACHE-007", "NFR-REL-006"],
+          "owns": ["src/cache/manifest.ts", "src/cache/index-manifest.ts", "test/cache/cache.test.ts", "test/search/search.test.ts"],
+          "reads": ["src/cache/manifest.ts", "src/cache/hash.ts", "src/core/search.ts", "src/core/read-model.ts"],
+          "method_signatures": [
+            "export async function outputsMatchManifest(root: WorkspaceRoot, outputs: CacheFileHash[]): Promise<boolean>",
+            "async function hashCacheOutput(root: WorkspaceRoot, storePath: string): Promise<string | undefined>"
+          ],
+          "source_anchors": [
+            "src/cache/manifest.ts:102-149",
+            "src/cache/hash.ts:1-34",
+            "src/core/search.ts:21-43",
+            "src/core/read-model.ts:154-178"
+          ],
+          "implementation_guide": [
+            "Replace outputsExist with hash verification.",
+            "Hash actual output file bytes and compare against CacheFileHash.sha256.",
+            "Return false from isIndexSectionFresh on any output mismatch.",
+            "Keep freshness section-scoped."
+          ],
+          "rationale": "Recorded output hashes must participate in read-path freshness.",
+          "pitfalls": [
+            "Do not warn and continue using the cache on mismatch.",
+            "Do not bind search freshness to graph output hashes."
+          ],
+          "test_guidance": "Modify cache/search-index.json to valid JSON with different bytes and assert stale handling.",
+          "verification_command": "npm test -- test/cache/cache.test.ts test/search/search.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Output hash mismatch makes section freshness false."],
+          "rollback": {"strategy": "manual", "command": "Restore src/cache/manifest.ts and tests from git, then run npm test -- test/cache/cache.test.ts test/search/search.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Apply output hash checks to exact requirement cache",
+          "related_req_ids": ["FR-REQ-001", "FR-REQ-002", "FR-CACHE-001", "FR-CACHE-005", "FR-CACHE-007"],
+          "req_ids": ["FR-REQ-001", "FR-REQ-002", "FR-CACHE-001", "FR-CACHE-005", "FR-CACHE-007"],
+          "owns": ["src/core/requirements.ts", "src/cache/manifest.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/core/requirements.ts", "src/cache/manifest.ts"],
+          "method_signatures": [
+            "async function cacheOutputMatchesManifest(root: WorkspaceRoot, manifest: IndexManifestV2, storePath: string): Promise<boolean>"
+          ],
+          "source_anchors": [
+            "src/core/requirements.ts:724-740",
+            "src/core/requirements.ts:758-764",
+            "src/core/requirements.ts:783-790",
+            "src/cache/manifest.ts:138-149"
+          ],
+          "implementation_guide": [
+            "Check cache/entities.json and the target requirement shard against manifest output hashes.",
+            "Check cache/relations.json when includeRelations is true.",
+            "Treat output mismatch as cache miss and fall back to YAML source.",
+            "Avoid returning stale statement, entity, or relation data."
+          ],
+          "rationale": "Exact lookup must not return valid JSON cache data whose hash no longer matches the manifest.",
+          "pitfalls": [
+            "Unchanged source stat does not override output mismatch.",
+            "Entity cache memo must not reuse stale artifact after mismatch."
+          ],
+          "test_guidance": "Mutate requirement shard and relations JSON to valid mismatched artifacts and assert source results.",
+          "verification_command": "npm test -- test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Exact requirement cache freshness verifies entities, shard, and relation outputs."],
+          "rollback": {"strategy": "manual", "command": "Restore src/core/requirements.ts and cache tests from git, then run npm test -- test/cache/cache.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "title": "Read model memo integrity",
+      "goal": "Prevent process-local memo reuse when artifact bytes no longer match the verified cache state.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Include verified artifact hash signal in memo key",
+          "related_req_ids": ["FR-CACHE-005", "FR-CACHE-006", "NFR-REL-006", "NFR-MAINT-001"],
+          "req_ids": ["FR-CACHE-005", "FR-CACHE-006", "NFR-REL-006", "NFR-MAINT-001"],
+          "owns": ["src/core/read-model.ts", "src/cache/manifest.ts", "test/search/search.test.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/core/read-model.ts", "src/cache/manifest.ts"],
+          "method_signatures": [
+            "async function hashArtifactIntegrityInputs(root: WorkspaceRoot, sections: readonly IndexSectionName[]): Promise<string>"
+          ],
+          "source_anchors": [
+            "src/core/read-model.ts:110-138",
+            "src/core/read-model.ts:254-301",
+            "src/core/read-model.ts:304-317",
+            "src/cache/manifest.ts:102-149"
+          ],
+          "implementation_guide": [
+            "Include manifest output hash or verified artifact hash token in the memo key.",
+            "Do not rely on artifact size and mtime alone.",
+            "Allow artifact-based memo hit only after section hash verification.",
+            "Keep memo stats and clear API stable."
+          ],
+          "rationale": "A stat-preserving artifact mutation must not reuse a stale read model.",
+          "pitfalls": ["Do not expand this task into latency optimization."],
+          "test_guidance": "Fill memo, mutate artifact with same size or preserved mtime, then assert stale model is not reused.",
+          "verification_command": "npm test -- test/search/search.test.ts test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/search/search.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/search/search.test.ts test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Stat-preserving artifact mismatch does not produce a memo hit."],
+          "rollback": {"strategy": "manual", "command": "Restore src/core/read-model.ts and memo tests from git, then run npm test -- test/search/search.test.ts test/mcp/tools.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 6,
+          "review_strictness": "strict"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "title": "Functional verification hardening",
+      "goal": "Add direct tests for filters, MCP contracts, and graph no-cache semantics.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Strengthen CLI and Core requirement filter tests",
+          "related_req_ids": ["FR-REQ-016", "FR-CLI-001", "FR-CLI-002", "NFR-REL-006"],
+          "req_ids": ["FR-REQ-016", "FR-CLI-001", "FR-CLI-002", "NFR-REL-006"],
+          "owns": ["test/cli/read-commands.test.ts", "src/cli/commands/list.ts", "src/core/requirements.ts"],
+          "reads": ["src/cli/commands/list.ts", "src/core/requirements.ts", "test/cli/read-commands.test.ts"],
+          "method_signatures": [
+            "async function createMultiRequirementWorkspace(): Promise<string>",
+            "async function runListReqs(args: string[]): Promise<CliResult>"
+          ],
+          "source_anchors": [
+            "src/cli/commands/list.ts:45-87",
+            "src/core/requirements.ts:214-243",
+            "test/cli/read-commands.test.ts:28-53"
+          ],
+          "implementation_guide": [
+            "Create a temp fixture with 2-3 requirements.",
+            "Test project, scope, type, status, and tag positive combinations.",
+            "Test unknown scope, wrong status, wrong tag, wrong type, and mixed comma values.",
+            "Test Core direct string and string array inputs.",
+            "Assert pagination metadata after filtering."
+          ],
+          "rationale": "Status and scope filters need direct evidence beyond single-item fixtures.",
+          "pitfalls": ["Do not rely only on valid-basic because it has insufficient filter diversity."],
+          "test_guidance": "Cover CLI and Core API paths.",
+          "verification_command": "npm test -- test/cli/read-commands.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/read-commands.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/read-commands.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Requirement filter tests cover positive, negative, array input, and pagination cases."],
+          "rollback": {"strategy": "manual", "command": "Remove the new filter tests, then run npm test -- test/cli/read-commands.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Strengthen MCP filter, invalid params, and output schema tests",
+          "related_req_ids": ["FR-MCP-001", "FR-MCP-004", "FR-MCP-005", "FR-REQ-016", "NFR-REL-006"],
+          "req_ids": ["FR-MCP-001", "FR-MCP-004", "FR-MCP-005", "FR-REQ-016", "NFR-REL-006"],
+          "owns": ["test/mcp/tools.test.ts", "src/mcp/schemas.ts", "src/mcp/tools.ts"],
+          "reads": ["src/mcp/schemas.ts", "src/mcp/tools.ts", "test/mcp/tools.test.ts"],
+          "method_signatures": [
+            "async function callMcpTool(name: string, args: unknown): Promise<McpToolResult>",
+            "function expectInvalidParams(promise: Promise<unknown>): Promise<void>"
+          ],
+          "source_anchors": [
+            "src/mcp/schemas.ts:117-145",
+            "src/mcp/tools.ts:31-178",
+            "test/mcp/tools.test.ts:47-120",
+            "test/mcp/tools.test.ts:131-180"
+          ],
+          "implementation_guide": [
+            "Add speckiwi_list_requirements string and array filter tests.",
+            "Add empty page and negative filter tests.",
+            "Add InvalidParams tests for list, graph, trace, and search.",
+            "Assert missing requirement returns a domain error envelope.",
+            "Parse read-only tool output schemas including error result shape."
+          ],
+          "rationale": "MCP schema and domain error separation is part of the public agent interface.",
+          "pitfalls": ["Do not convert domain errors into protocol InvalidParams errors."],
+          "test_guidance": "Keep tests focused on adapter contract, not implementation internals.",
+          "verification_command": "npm test -- test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["MCP filter, InvalidParams, domain error, and outputSchema coverage is explicit."],
+          "rollback": {"strategy": "manual", "command": "Remove the new MCP tests, then run npm test -- test/mcp/tools.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "strict"
+        },
+        {
+          "id": "TASK-P3-003",
+          "title": "Add graph no-cache CLI test",
+          "related_req_ids": ["FR-CACHE-010", "FR-CLI-001", "FR-GRAPH-001"],
+          "req_ids": ["FR-CACHE-010", "FR-CLI-001", "FR-GRAPH-001"],
+          "owns": ["test/cli/read-commands.test.ts", "test/graph/graph.test.ts", "src/cli/commands/graph.ts"],
+          "reads": ["src/cli/commands/graph.ts", "test/graph/graph.test.ts", "docs/spec/srs.md"],
+          "method_signatures": [
+            "async function runGraphNoCache(root: string): Promise<CliResult>"
+          ],
+          "source_anchors": [
+            "src/cli/commands/graph.ts:9-31",
+            "test/graph/graph.test.ts:1-90",
+            "docs/spec/srs.md:1603-1605"
+          ],
+          "implementation_guide": [
+            "Delete .speckiwi/cache in a temp workspace.",
+            "Run node bin/speckiwi graph --root <tmp> --no-cache --json.",
+            "Assert exit 0 and ok true graph payload.",
+            "Assert .speckiwi/cache was not created."
+          ],
+          "rationale": "Graph no-cache behavior needs CLI-level evidence.",
+          "pitfalls": ["Graph command is source-based today, so direct regression coverage is the main deliverable."],
+          "test_guidance": "Use existing CLI test helpers for stable JSON stdout parsing.",
+          "verification_command": "npm test -- test/cli/read-commands.test.ts test/graph/graph.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/read-commands.test.ts test/graph/graph.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/read-commands.test.ts test/graph/graph.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Graph --no-cache does not create cache artifacts in CLI tests."],
+          "rollback": {"strategy": "manual", "command": "Remove the graph no-cache CLI test, then run npm test -- test/cli/read-commands.test.ts test/graph/graph.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 3,
+          "review_strictness": "strict"
+        }
+      ]
+    }
+  ]
+}

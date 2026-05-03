@@ -3,7 +3,7 @@ export function renderHuman(result) {
         return `${String(result)}\n`;
     }
     if (result.ok === false && isObject(result.error)) {
-        return `${String(result.error.code)}: ${String(result.error.message)}\n`;
+        return `${String(result.error.code)}: ${String(result.error.message)}\n${renderDiagnosticsForStderr(diagnosticBag(result.diagnostics))}`;
     }
     if (result.ok === false && Array.isArray(result.writtenFiles) && typeof result.outputRoot === "string") {
         return "Markdown export failed\n";
@@ -119,7 +119,8 @@ function table(headers, rows) {
 }
 function formatDiagnostic(level, diagnostic) {
     const location = diagnostic.path === undefined ? "" : ` ${diagnostic.path}`;
-    return `${level} ${diagnostic.code}${location}\n  ${diagnostic.message}\n`;
+    const recovery = isObject(diagnostic.details) && typeof diagnostic.details.recovery === "string" ? `\n  Recovery: ${diagnostic.details.recovery}` : "";
+    return `${level} ${diagnostic.code}${location}\n  ${diagnostic.message}${recovery}\n`;
 }
 function diagnosticBag(value) {
     return isObject(value) && isObject(value.summary) && typeof value.summary.errorCount === "number" ? value : undefined;

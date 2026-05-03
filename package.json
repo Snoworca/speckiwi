@@ -25,6 +25,10 @@
       "types": "./dist/core/dto.d.ts",
       "import": "./dist/core/dto.js"
     },
+    "./core/api": {
+      "types": "./dist/core/api.d.ts",
+      "import": "./dist/core/api.js"
+    },
     "./core/inputs": {
       "types": "./dist/core/inputs.d.ts",
       "import": "./dist/core/inputs.js"
@@ -53,7 +57,7 @@
     "test": "vitest run --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism",
     "release:acceptance": "vitest run test/release/acceptance.test.ts --hookTimeout 60000 --testTimeout 60000",
     "release:check": "node scripts/release-check.mjs",
-    "perf:srs": "node -e \"const { spawnSync } = require('node:child_process'); const runner = process.platform === 'win32' ? 'npx.cmd' : 'npx'; const result = spawnSync(runner, ['vitest', 'run', 'test/perf/perf.test.ts', '--hookTimeout', '120000', '--testTimeout', '120000'], { stdio: 'inherit', env: { ...process.env, SPECKIWI_PERF_PROFILE: 'srs', SPECKIWI_STRICT_PERF: '1' } }); process.exit(result.status ?? 1);\"",
+    "perf:srs": "node -e \"const { spawnSync } = require('node:child_process'); const runner = process.platform === 'win32' ? 'npx.cmd' : 'npx'; const result = spawnSync(runner, ['vitest', 'run', 'test/perf/perf.test.ts', '--hookTimeout', '120000', '--testTimeout', '120000'], { stdio: 'inherit', env: { ...process.env, SPECKIWI_PERF_PROFILE: 'srs', SPECKIWI_STRICT_PERF: '1', SPECKIWI_ASSERT_SEARCH_PERF: '1' } }); process.exit(result.status ?? 1);\"",
     "prepack": "npm run build"
   },
   "repository": {
@@ -77,7 +81,8 @@
     "ajv": "^8.20.0",
     "commander": "^14.0.3",
     "minisearch": "^7.2.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.3",
+    "zod": "^4.4.1"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

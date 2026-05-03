@@ -6,6 +6,7 @@ import { tokenizeSearchText } from "./tokenizer.js";
 export { buildDictionaryExpansion, flattenWorkspace, type DictionaryExpansion, type SearchDocument, type ValidWorkspace } from "./document.js";
 export { tokenizeKorean } from "./korean.js";
 export type { SearchIndex };
+export type { SearchIndexV2, SearchRuntimeIndexV2 } from "../indexing/full-text.js";
 export type SerializedSearchIndex = SerializedBm25SearchIndex & {
     dictionary?: DictionaryExpansion;
 };

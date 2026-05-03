@@ -1,14 +1,21 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtemp } from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { searchWorkspace } from "../../src/core/search.js";
+import { rebuildCache } from "../../src/core/cache.js";
+import { clearReadModelMemo, getReadModelMemoStats, loadReadModel, resetReadModelMemoStats } from "../../src/core/read-model.js";
 import { tokenizeKorean } from "../../src/search/korean.js";
+import { buildDictionaryExpansion, buildSearchIndex, deserializeSearchIndex, flattenWorkspace, serializeSearchIndex } from "../../src/search/index.js";
+import { loadWorkspaceForValidation } from "../../src/validate/semantic.js";
+import { workspaceRootFromPath } from "../../src/io/workspace.js";
 
 const tempRoots: string[] = [];
 
 afterEach(async () => {
+  clearReadModelMemo();
+  resetReadModelMemoStats();
   await Promise.all(tempRoots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
@@ -91,6 +98,89 @@ describe("search indexing and ranking", () => {
     const fallback = await searchWorkspace({ root: noDictionaryRoot, query: "deterministic search", mode: "bm25" });
     expect(fallback.ok).toBe(true);
     expect(fallback.ok && fallback.results.length).toBeGreaterThan(0);
+
+    const cycleRoot = await createSearchWorkspace({
+      dictionarySynonyms: `  srs:
+    - 요구사항명세
+  요구사항명세:
+    - requirement spec
+  requirement spec:
+    - srs
+  state-transition:
+    - state-transition`
+    });
+    const cycle = await searchWorkspace({ root: cycleRoot, query: "요구사항명세", mode: "auto", filters: { entityType: "document" } });
+    expect(cycle.ok).toBe(true);
+    if (cycle.ok) {
+      expect(cycle.results.some((item) => item.id === "srs.core")).toBe(true);
+      expect(new Set(cycle.results.map((item) => `${item.entityType}:${item.id}`)).size).toBe(cycle.results.length);
+    }
+    const selfAlias = await searchWorkspace({ root: cycleRoot, query: "state-transition", mode: "auto", filters: { entityType: "technical_section" } });
+    expect(selfAlias.ok).toBe(true);
+    if (selfAlias.ok) {
+      expect(selfAlias.results.length).toBeGreaterThan(0);
+      expect(new Set(selfAlias.results.map((item) => `${item.entityType}:${item.id}`)).size).toBe(selfAlias.results.length);
+    }
+  });
+
+  it("round-trips the v2 cache shape and keeps documents-only fallback compatibility", async () => {
+    const root = await createSearchWorkspace();
+    const workspace = await loadWorkspaceForValidation(workspaceRootFromPath(root));
+    const documents = flattenWorkspace(workspace);
+    const dictionary = buildDictionaryExpansion(workspace);
+    const runtime = buildSearchIndex(documents, dictionary);
+
+    const serialized = serializeSearchIndex(runtime);
+    const roundTrip = deserializeSearchIndex(serialized);
+    const legacyFallback = deserializeSearchIndex({ documents, dictionary });
+
+    expect(serialized).toMatchObject({ format: "speckiwi/search-index/v2" });
+    expect(roundTrip?.documents).toEqual(runtime.documents);
+    expect(roundTrip?.filterBuckets.scope.get("core.search")).toBeDefined();
+    expect(roundTrip?.postings.size).toBeGreaterThan(0);
+    expect(legacyFallback?.documents).toEqual(runtime.documents);
+    expect(legacyFallback?.postings.size).toBeGreaterThan(0);
+  });
+
+  it("does not reuse memoized read models after stat-preserving artifact changes", async () => {
+    const root = await createSearchWorkspace();
+    await rebuildCache({ root });
+
+    resetReadModelMemoStats();
+    const first = await loadReadModel({ root, sections: ["search"] });
+    expect(first.stats).toMatchObject({ mode: "cache", cacheHit: true });
+    expect(getReadModelMemoStats()).toMatchObject({ misses: 1, hits: 0 });
+
+    const searchArtifactPath = join(root, ".speckiwi", "cache", "search-index.json");
+    const before = await stat(searchArtifactPath);
+    const raw = await readFile(searchArtifactPath, "utf8");
+    await writeFile(searchArtifactPath, mutateSameLength(raw), "utf8");
+    await utimes(searchArtifactPath, before.atime, before.mtime);
+
+    const second = await loadReadModel({ root, sections: ["search"] });
+
+    expect(second.stats).toMatchObject({ mode: "source", cacheHit: false });
+    expect(getReadModelMemoStats()).toMatchObject({ misses: 2, hits: 0 });
+  });
+
+  it("does not reuse source read models after stat-preserving source changes", async () => {
+    const root = await createSearchWorkspace();
+
+    resetReadModelMemoStats();
+    const first = await loadReadModel({ root, sections: ["search"] });
+    expect(first.stats).toMatchObject({ mode: "source", cacheHit: false });
+    expect(getReadModelMemoStats()).toMatchObject({ misses: 1, hits: 0 });
+
+    const sourcePath = join(root, ".speckiwi", "srs", "core.yaml");
+    const before = await stat(sourcePath);
+    const raw = await readFile(sourcePath, "utf8");
+    await writeFile(sourcePath, replaceSameLength(raw, "deterministic acceptance", "xeterministic acceptance"), "utf8");
+    await utimes(sourcePath, before.atime, before.mtime);
+
+    const second = await loadReadModel({ root, sections: ["search"] });
+
+    expect(second.stats).toMatchObject({ mode: "source", cacheHit: false });
+    expect(getReadModelMemoStats()).toMatchObject({ misses: 2, hits: 0 });
   });
 });
 
@@ -112,8 +202,16 @@ async function expectExact(root: string, query: string, entityType: string, id: 
   );
 }
 
-async function createSearchWorkspace(options: { dictionary?: boolean } = {}): Promise<string> {
+async function createSearchWorkspace(options: { dictionary?: boolean; dictionarySynonyms?: string } = {}): Promise<string> {
   const includeDictionary = options.dictionary ?? true;
+  const dictionarySynonyms =
+    options.dictionarySynonyms ??
+    `  srs:
+    - 요구사항명세
+    - requirement spec
+  state-transition:
+    - 상태 전이
+    - 상태전이`;
   const root = await mkdtemp(join(tmpdir(), "speckiwi-search-"));
   tempRoots.push(root);
   for (const directory of ["prd", "srs", "tech", "adr", "rules"]) {
@@ -191,14 +289,9 @@ type: dictionary
 title: Dictionary
 status: active
 synonyms:
-  srs:
-    - 요구사항명세
-    - requirement spec
-  state-transition:
-    - 상태 전이
-    - 상태전이
+${dictionarySynonyms}
 normalizations: {}
-`
+	`
       : `schemaVersion: speckiwi/dictionary/v1
 id: dictionary
 type: dictionary
@@ -309,4 +402,18 @@ rules:
   );
 
   return root;
+}
+
+function mutateSameLength(value: string): string {
+  const index = value.indexOf("speckiwi");
+  if (index < 0) {
+    return `x${value.slice(1)}`;
+  }
+  return `${value.slice(0, index)}x${value.slice(index + 1)}`;
+}
+
+function replaceSameLength(value: string, search: string, replacement: string): string {
+  expect(replacement).toHaveLength(search.length);
+  expect(value).toContain(search);
+  return value.replace(search, replacement);
 }

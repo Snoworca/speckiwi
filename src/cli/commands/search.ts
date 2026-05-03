@@ -1,7 +1,7 @@
 import type { Command } from "commander";
+import { createSpecKiwiCore } from "../../core/api.js";
 import type { EntityType } from "../../core/dto.js";
 import type { SearchFilters, SearchInput } from "../../core/inputs.js";
-import { searchWorkspace } from "../../core/search.js";
 import { addCommonOptions, addPaginationOptions, CliUsageError, executeCliCommand, optionalString, parseOptionalInteger, splitComma } from "../options.js";
 
 export function registerSearchCommand(program: Command): void {
@@ -16,6 +16,7 @@ export function registerSearchCommand(program: Command): void {
 
   command.action((query: string) =>
     executeCliCommand(command, async (context) => {
+      const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
       const filters: SearchFilters = {};
       const scope = splitComma(command.opts().scope);
       const type = splitComma(command.opts().type);
@@ -59,7 +60,7 @@ export function registerSearchCommand(program: Command): void {
       if (offset !== undefined) {
         input.offset = offset;
       }
-      return searchWorkspace(input);
+      return core.search(input);
     })
   );
 }

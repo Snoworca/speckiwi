@@ -1,4 +1,5 @@
 import { createDiagnosticBag, fail, ok } from "../core/result.js";
+import { mergeDiagnosticBags } from "../validate/diagnostics.js";
 import { compareGraphEdges, relationRank, sortGraphEdges, sortGraphNodes } from "./model.js";
 const impactRules = {
     depends_on: { source: false, target: true, transitive: true },
@@ -24,7 +25,7 @@ export function impactRequirement(input, graph) {
     const rootKey = `requirement:${requirementId}`;
     const nodeByKey = new Map(graph.nodes.map((node) => [node.key, node]));
     if (nodeByKey.get(rootKey)?.entityType !== "requirement") {
-        return requirementNotFound(requirementId);
+        return requirementNotFound(requirementId, graph.diagnostics);
     }
     const maxDepth = normalizeDepth(input.depth);
     const requirementEdges = graph.edges.filter((edge) => edge.sourceType === "requirement" && edge.targetType === "requirement");
@@ -79,7 +80,7 @@ export function impactRequirement(input, graph) {
         impacted,
         nodes: context.nodes,
         edges: context.edges
-    });
+    }, graph.diagnostics);
 }
 function impactTransitions(currentKey, edges) {
     const transitions = [];
@@ -160,7 +161,7 @@ function normalizeDepth(value) {
     }
     return Math.min(Math.max(Math.trunc(value), 0), 5);
 }
-function requirementNotFound(id) {
+function requirementNotFound(id, graphDiagnostics = createDiagnosticBag()) {
     const diagnostics = createDiagnosticBag([
         {
             severity: "error",
@@ -169,7 +170,7 @@ function requirementNotFound(id) {
             details: { id }
         }
     ]);
-    return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+    return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, mergeDiagnosticBags(graphDiagnostics, diagnostics));
 }
 function isDefined(value) {
     return value !== undefined;

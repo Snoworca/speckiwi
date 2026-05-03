@@ -59,6 +59,7 @@ describe("requirement write CLI", () => {
 
   it("applies req update with --no-cache without creating a stale marker", () => {
     const workspace = copyFixture();
+    rmSync(join(workspace, ".speckiwi", "cache"), { recursive: true, force: true });
     const result = runCli([
       "req",
       "update",
@@ -75,6 +76,34 @@ describe("requirement write CLI", () => {
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, mode: "apply", applied: true, cacheStale: false });
     expect(readFileSync(join(workspace, ".speckiwi", "srs", "core.yaml"), "utf8")).toContain("no-cache CLI apply");
+    expect(existsSync(join(workspace, ".speckiwi", "cache", "stale.json"))).toBe(false);
+    expect(existsSync(join(workspace, ".speckiwi", "cache"))).toBe(false);
+  });
+
+  it("applies req update with --no-cache while ignoring an existing cache directory", () => {
+    const workspace = copyFixture();
+    const rebuild = runCli(["cache", "rebuild", "--root", workspace, "--json"]);
+    expect(rebuild.status).toBe(0);
+    const manifestPath = join(workspace, ".speckiwi", "cache", "manifest.json");
+    const manifestBefore = readFileSync(manifestPath, "utf8");
+
+    const result = runCli([
+      "req",
+      "update",
+      "FR-CORE-0001",
+      "--statement",
+      "The system shall validate workspace YAML documents through existing-cache no-cache apply.",
+      "--apply",
+      "--no-cache",
+      "--root",
+      workspace,
+      "--json"
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, mode: "apply", applied: true, cacheStale: false });
+    expect(readFileSync(join(workspace, ".speckiwi", "srs", "core.yaml"), "utf8")).toContain("existing-cache no-cache apply");
+    expect(readFileSync(manifestPath, "utf8")).toBe(manifestBefore);
     expect(existsSync(join(workspace, ".speckiwi", "cache", "stale.json"))).toBe(false);
   });
 

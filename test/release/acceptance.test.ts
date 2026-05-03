@@ -29,6 +29,8 @@ const tempRoots: string[] = [];
 const expectedRemediationReqIds = [
   "FR-PRD-006",
   "FR-REQ-016",
+  "FR-CACHE-006",
+  "FR-CACHE-007",
   "FR-CACHE-009",
   "FR-CACHE-010",
   "FR-CLI-013",
@@ -55,13 +57,37 @@ const remediationAcceptanceMatrix = [
     ]
   },
   {
+    reqId: "FR-CACHE-006",
+    coverage: [
+      {
+        path: "test/cache/cache.test.ts",
+        anchors: ["regenerates stale entity, relation, and diagnostics sections before registry results", "Regenerated entity"]
+      },
+      {
+        path: "test/graph/graph.test.ts",
+        anchors: ["does not reuse memoized cached graph after source YAML changes", "Dependent Updated"]
+      }
+    ]
+  },
+  {
+    reqId: "FR-CACHE-007",
+    coverage: [
+      { path: "test/cache/cache.test.ts", anchors: ["degrades to YAML search when cache files are corrupt or stale", "SEARCH_CACHE_UNREADABLE"] },
+      { path: "test/cache/cache.test.ts", anchors: ["falls back to YAML exact lookup when a requirement shard is corrupt", "REQUIREMENT_SHARD_UNREADABLE"] },
+      { path: "test/cache/cache.test.ts", anchors: ["falls back to YAML relation data when relation output hashes mismatch", "FR-SPEKIW-BOGUS-0001"] }
+    ]
+  },
+  {
     reqId: "FR-CACHE-009",
-    coverage: [{ path: "test/cache/cache.test.ts", anchors: ["uses a valid fresh search cache before rebuilding from YAML source", "FR-SPEKIW-CACHED-0001"] }]
+    coverage: [{ path: "test/cache/cache.test.ts", anchors: ["filters cache-only search results even when the search cache and manifest look fresh", "FR-SPEKIW-CACHED-0001"] }]
   },
   {
     reqId: "FR-CACHE-010",
     coverage: [
       { path: "test/cli/req-write.test.ts", anchors: ["applies req update with --no-cache without creating a stale marker", "cacheStale: false"] },
+      { path: "test/cli/req-write.test.ts", anchors: ["applies req update with --no-cache while ignoring an existing cache directory"] },
+      { path: "test/cli/read-commands.test.ts", anchors: ["runs search with --no-cache without reading poisoned cache artifacts", "runs graph with --no-cache without mutating existing cache artifacts"] },
+      { path: "test/cli/export.test.ts", anchors: ["exports in no-cache mode without mutating existing cache files"] },
       { path: "test/cache/cache.test.ts", anchors: ["rebuilds stale search cache but does not touch cache files in bypass mode"] }
     ]
   },
@@ -86,7 +112,11 @@ const remediationAcceptanceMatrix = [
   },
   {
     reqId: "NFR-SEC-010",
-    coverage: [{ path: "test/hardening/security.test.ts", anchors: ["rejects workspace-external symlink targets for core and MCP reads", "WORKSPACE_ESCAPE"] }]
+    coverage: [
+      { path: "test/hardening/security.test.ts", anchors: ["rejects workspace-external symlink targets for core and MCP reads", "WORKSPACE_ESCAPE"] },
+      { path: "test/hardening/security.test.ts", anchors: ["rejects workspace-external cache manifest symlinks"] },
+      { path: "test/mcp/tools.test.ts", anchors: ["returns structured validate diagnostics when the store directory is an external symlink"] }
+    ]
   },
   {
     reqId: "FR-MCP-014",
@@ -95,7 +125,7 @@ const remediationAcceptanceMatrix = [
   {
     reqId: "FR-MCP-015",
     coverage: [
-      { path: "test/mcp/tools.test.ts", anchors: ["outputSchema?.type", "machineResultOutputSchema.parseAsync"] },
+      { path: "test/mcp/tools.test.ts", anchors: ["outputSchema !== undefined", "toolOutputSchemaFor(\"speckiwi_search\")"] },
       { path: "src/mcp/tools.ts", anchors: ["outputSchema: toolOutputSchemaFor"] }
     ]
   },
@@ -126,15 +156,21 @@ afterEach(async () => {
 describe("release acceptance gate", () => {
   it("defines a release-check command sequence and propagates command failures", async () => {
     const releaseCheck = (await import("../../scripts/release-check.mjs")) as ReleaseCheckModule;
-    expect(releaseCheck.releaseCommands().map((command) => [command.command, ...command.args].join(" "))).toEqual([
+    const releaseCommands = releaseCheck.releaseCommands();
+
+    expect(releaseCommands.map((command) => [command.command, ...command.args].join(" "))).toEqual([
       "npm run build",
       "npm run typecheck",
       "npm run lint",
       "npm test -- --exclude test/release/**",
       "npm run release:acceptance",
+      "npm run perf:srs",
       "npm pack --dry-run"
     ]);
-    expect(releaseCheck.releaseCommands().find((command) => command.name === "release-acceptance")?.timeoutMs).toBeGreaterThanOrEqual(60_000);
+    expect(releaseCommands.find((command) => command.name === "release-acceptance")?.timeoutMs).toBeGreaterThanOrEqual(60_000);
+    const perfSrsCommand = releaseCommands.find((command) => command.name === "perf-srs");
+    expect(perfSrsCommand).toMatchObject({ command: "npm", args: ["run", "perf:srs"] });
+    expect(perfSrsCommand?.timeoutMs).toBeGreaterThanOrEqual(120_000);
 
     await expect(
       releaseCheck.runReleaseCheck({
@@ -194,6 +230,50 @@ describe("release acceptance gate", () => {
     expect(paths).toContain("README.md");
   }, 20_000);
 
+  it("installs the packed tarball into a temporary global prefix", async () => {
+    const packRoot = await tempRoot("speckiwi-release-pack-");
+    const globalPrefix = await tempRoot("speckiwi-release-global-");
+    const initRoot = await tempRoot("speckiwi-release-installed-init-");
+
+    const pack = spawnSync("npm", ["pack", "--json", "--pack-destination", packRoot], {
+      cwd: repoRoot,
+      encoding: "utf8"
+    });
+    expect(pack.status, pack.stderr).toBe(0);
+    const packed = JSON.parse(pack.stdout) as Array<{ filename: string }>;
+    const tarballPath = resolve(packRoot, packed[0]?.filename ?? "");
+    await expect(pathExists(tarballPath)).resolves.toBe(true);
+
+    const install = spawnSync("npm", ["install", "--global", "--prefix", globalPrefix, "--no-audit", "--no-fund", tarballPath], {
+      cwd: repoRoot,
+      encoding: "utf8"
+    });
+    expect(install.status, install.stderr).toBe(0);
+    const installedBinary = await resolveInstalledBinary(globalPrefix);
+
+    const help = runInstalledBinary(installedBinary, ["--help"]);
+    expect(help.status, help.stderr).toBe(0);
+    expect(help.stderr).toBe("");
+    expect(help.stdout).toContain("Usage: speckiwi");
+
+    const init = runInstalledBinary(installedBinary, [
+      "init",
+      "--root",
+      initRoot,
+      "--project-id",
+      "release-smoke",
+      "--project-name",
+      "Release Smoke",
+      "--language",
+      "typescript",
+      "--json"
+    ]);
+    expect(init.status, init.stderr).toBe(0);
+    expect(init.stderr).toBe("");
+    expect(JSON.parse(init.stdout)).toMatchObject({ ok: true });
+    await expect(pathExists(join(initRoot, ".speckiwi", "index.yaml"))).resolves.toBe(true);
+  }, 120_000);
+
   it("keeps README examples aligned with shipped CLI commands", async () => {
     const readme = await readFile(resolve(repoRoot, "README.md"), "utf8");
 
@@ -240,10 +320,33 @@ function runCli(args: string[]) {
 }
 
 async function copyFixture(prefix: string): Promise<string> {
-  const workspace = await mkdtemp(join(tmpdir(), prefix));
-  tempRoots.push(workspace);
+  const workspace = await tempRoot(prefix);
   await cp(validFixtureRoot, workspace, { recursive: true });
   return workspace;
+}
+
+async function tempRoot(prefix: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  tempRoots.push(root);
+  return root;
+}
+
+async function resolveInstalledBinary(prefix: string): Promise<string> {
+  const candidates = process.platform === "win32" ? [join(prefix, "speckiwi.cmd"), join(prefix, "bin", "speckiwi.cmd")] : [join(prefix, "bin", "speckiwi")];
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`Installed speckiwi binary was not found under ${prefix}.`);
+}
+
+function runInstalledBinary(binary: string, args: string[]) {
+  return spawnSync(binary, args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    shell: process.platform === "win32"
+  });
 }
 
 export async function assertV1Acceptance(root: string): Promise<void> {

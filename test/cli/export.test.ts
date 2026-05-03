@@ -1,7 +1,8 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cp, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { rebuildCache } from "../../src/core/cache.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const fixtureRoot = resolve(root, "test/fixtures/workspaces/valid-basic");
@@ -70,6 +71,20 @@ requirements:
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ ok: true });
     await expect(stat(resolve(workspace, ".speckiwi/cache"))).rejects.toThrow();
+  });
+
+  it("exports in no-cache mode without mutating existing cache files", async () => {
+    const workspace = await exportFixture("no-cache-existing");
+    await rebuildCache({ root: workspace });
+    const manifestPath = resolve(workspace, ".speckiwi/cache/manifest.json");
+    const manifestBefore = await readFile(manifestPath, "utf8");
+
+    const result = runCli(["export", "markdown", "--root", workspace, "--no-cache", "--json"]);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ ok: true });
+    await expect(readFile(manifestPath, "utf8")).resolves.toBe(manifestBefore);
+    await expect(stat(resolve(workspace, ".speckiwi/exports/index.md"))).resolves.toMatchObject({ size: expect.any(Number) });
   });
 });
 

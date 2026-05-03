@@ -65,6 +65,12 @@ export type PageInfo = {
     hasMore: boolean;
     nextOffset: number | null;
 };
+export type PerfCounters = {
+    cacheHit: boolean;
+    parsedFileCount: number;
+    artifactHitCount: number;
+    fallbackReason?: string;
+};
 export type DocumentType = "overview" | "prd" | "srs" | "technical" | "adr" | "rule" | "dictionary";
 export type ExportableDocumentType = "overview" | "prd" | "srs" | "technical" | "adr";
 export type EntityType = "document" | "scope" | "requirement" | "prd_item" | "technical_section" | "adr" | "rule";

@@ -6,6 +6,7 @@ export type ManifestDocumentEntry = {
     type: DocumentType;
     path: string;
     index: number;
+    scope?: string;
 };
 export type LoadedSpecDocument = {
     storePath: string;

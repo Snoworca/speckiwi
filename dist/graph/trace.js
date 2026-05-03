@@ -1,4 +1,5 @@
 import { createDiagnosticBag, fail, ok } from "../core/result.js";
+import { mergeDiagnosticBags } from "../validate/diagnostics.js";
 import { compareGraphEdges, relationRank, sortGraphEdges, sortGraphNodes } from "./model.js";
 export function traceRequirement(input, graph) {
     if (!graph.ok) {
@@ -10,7 +11,7 @@ export function traceRequirement(input, graph) {
     const nodeByKey = new Map(requirementNodes.map((node) => [node.key, node]));
     const root = nodeByKey.get(rootKey);
     if (root === undefined) {
-        return requirementNotFound(requirementId);
+        return requirementNotFound(requirementId, graph.diagnostics);
     }
     const requirementEdges = graph.edges.filter((edge) => edge.sourceType === "requirement" && edge.targetType === "requirement");
     const direction = input.direction ?? "both";
@@ -31,7 +32,7 @@ export function traceRequirement(input, graph) {
         depth,
         nodes: sortGraphNodes([...nodeKeys].map((key) => nodeByKey.get(key)).filter(isDefined)),
         edges: sortGraphEdges([...edgeKeys].map((key) => edgesByKey.get(key)).filter(isDefined))
-    });
+    }, graph.diagnostics);
 }
 function traverse(rootKey, direction, maxDepth, edges, nodeByKey, nodeKeys, edgeKeys) {
     const queue = [{ key: rootKey, depth: 0 }];
@@ -70,7 +71,7 @@ function normalizeDepth(value) {
     }
     return Math.min(Math.max(Math.trunc(value), 0), 5);
 }
-function requirementNotFound(id) {
+function requirementNotFound(id, graphDiagnostics = createDiagnosticBag()) {
     const diagnostics = createDiagnosticBag([
         {
             severity: "error",
@@ -79,7 +80,7 @@ function requirementNotFound(id) {
             details: { id }
         }
     ]);
-    return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+    return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, mergeDiagnosticBags(graphDiagnostics, diagnostics));
 }
 function isDefined(value) {
     return value !== undefined;

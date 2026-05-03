@@ -1,4 +1,4 @@
-import { searchWorkspace } from "../../core/search.js";
+import { createSpecKiwiCore } from "../../core/api.js";
 import { addCommonOptions, addPaginationOptions, CliUsageError, executeCliCommand, optionalString, parseOptionalInteger, splitComma } from "../options.js";
 export function registerSearchCommand(program) {
     const command = addPaginationOptions(addCommonOptions(program.command("search").description("search workspace entities").argument("<query>")))
@@ -10,6 +10,7 @@ export function registerSearchCommand(program) {
         .option("--entity-type <entityType>", "entity type")
         .option("--document-id <documentId>", "document id");
     command.action((query) => executeCliCommand(command, async (context) => {
+        const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
         const filters = {};
         const scope = splitComma(command.opts().scope);
         const type = splitComma(command.opts().type);
@@ -53,7 +54,7 @@ export function registerSearchCommand(program) {
         if (offset !== undefined) {
             input.offset = offset;
         }
-        return searchWorkspace(input);
+        return core.search(input);
     }));
 }
 function parseMode(value) {

@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultCwd = resolve(dirname(scriptPath), "..");
 const releaseAcceptanceTimeoutMs = 120_000;
+const perfSrsTimeoutMs = 120_000;
 
+/** @returns {Array<{ name: string, command: string, args: string[], timeoutMs?: number }>} */
 export function releaseCommands() {
   return [
     { name: "build", command: "npm", args: ["run", "build"] },
@@ -14,6 +16,7 @@ export function releaseCommands() {
     { name: "lint", command: "npm", args: ["run", "lint"] },
     { name: "test", command: "npm", args: ["test", "--", "--exclude", "test/release/**"] },
     { name: "release-acceptance", command: "npm", args: ["run", "release:acceptance"], timeoutMs: releaseAcceptanceTimeoutMs },
+    { name: "perf-srs", command: "npm", args: ["run", "perf:srs"], timeoutMs: perfSrsTimeoutMs },
     { name: "pack", command: "npm", args: ["pack", "--dry-run"] }
   ];
 }

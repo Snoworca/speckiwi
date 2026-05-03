@@ -19,6 +19,39 @@ export async function doctor(input = {}) {
         diagnostics: workspaceExists ? [] : [diagnostic("MISSING_WORKSPACE", "Missing .speckiwi directory.")]
     });
     checks.push(await requiredFilesCheck(root.speckiwiPath));
+    if (!workspaceExists) {
+        checks.push({
+            id: "yaml_parse",
+            title: "YAML parse",
+            status: "error",
+            message: "YAML parsing skipped because the .speckiwi workspace is missing.",
+            diagnostics: [diagnostic("MISSING_WORKSPACE", "Cannot parse YAML without a .speckiwi workspace.")]
+        });
+        checks.push({
+            id: "schema_validation",
+            title: "Schema and semantic validation",
+            status: "error",
+            message: "Schema validation skipped because the .speckiwi workspace is missing.",
+            diagnostics: [diagnostic("MISSING_WORKSPACE", "Cannot validate schemas without a .speckiwi workspace.")]
+        });
+        checks.push({
+            id: "cache_state",
+            title: "Cache state",
+            status: "warning",
+            message: "Cache check skipped because the .speckiwi workspace is missing.",
+            diagnostics: [diagnostic("CACHE_CHECK_SKIPPED", "Cache check skipped because the workspace is missing.", "warning")]
+        });
+        checks.push(await mcpBinaryCheck());
+        checks.push({
+            id: "stdout_policy",
+            title: "stdout policy",
+            status: "ok",
+            message: "CLI JSON output is routed through the single-object JSON renderer.",
+            diagnostics: []
+        });
+        checks.push(stdioPolicyCheck());
+        return ok({ checks }, createDiagnosticBag(checks.flatMap((check) => check.diagnostics)));
+    }
     const workspace = await loadWorkspaceForValidation(root);
     const registryDiagnostics = validateRegistry(workspace);
     const diagnostics = mergeDiagnosticBags(workspace.diagnostics, registryDiagnostics);
@@ -47,6 +80,7 @@ export async function doctor(input = {}) {
         message: "CLI JSON output is routed through the single-object JSON renderer.",
         diagnostics: []
     });
+    checks.push(stdioPolicyCheck());
     return ok({ checks }, createDiagnosticBag(checks.flatMap((check) => check.diagnostics)));
 }
 function nodeVersionCheck() {
@@ -120,6 +154,15 @@ async function mcpBinaryCheck() {
         status: exists ? "ok" : "warning",
         message: exists ? "bin/speckiwi is present." : "bin/speckiwi was not found from the package root.",
         diagnostics: exists ? [] : [diagnostic("MCP_BINARY_MISSING", "bin/speckiwi was not found.", "warning")]
+    };
+}
+function stdioPolicyCheck() {
+    return {
+        id: "stdio_policy",
+        title: "stdout/stderr policy",
+        status: "ok",
+        message: "MCP stdio reserves stdout for protocol frames; CLI diagnostics are rendered on stderr.",
+        diagnostics: []
     };
 }
 async function pathExists(path) {

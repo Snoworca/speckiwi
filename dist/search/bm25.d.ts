@@ -1,34 +1,15 @@
-import type { SearchDocument } from "./document.js";
-import { type SearchFieldName } from "./tokenizer.js";
-export type SearchIndex = {
-    documents: SearchDocument[];
-    exact: Map<string, ExactEntry[]>;
-    indexedDocuments: IndexedDocument[];
-    documentFrequency: Map<string, number>;
-    averageFieldLengths: Record<SearchFieldName, number>;
-};
-export type SerializedSearchIndex = {
-    documents: SearchDocument[];
-};
-export type ExactEntry = {
-    index: number;
-    field: SearchFieldName;
-};
+import type { SearchFieldName } from "./tokenizer.js";
+import { buildSearchIndexV2, deserializeSearchIndexV2, exactLookupV2, serializeSearchIndexV2, sortFields, type ExactEntry, type SearchIndexV2 as SerializedSearchIndex, type SearchRuntimeIndexV2 as SearchIndex } from "../indexing/full-text.js";
 export type Bm25Candidate = {
     index: number;
     rawScore: number;
     matchedFields: SearchFieldName[];
 };
-type IndexedDocument = {
-    document: SearchDocument;
-    fieldTokens: Record<SearchFieldName, string[]>;
-    fieldTokenCounts: Record<SearchFieldName, Map<string, number>>;
-};
-export declare function buildSearchIndex(documents: SearchDocument[]): SearchIndex;
-export declare function serializeSearchIndex(index: SearchIndex): SerializedSearchIndex;
-export declare function deserializeSearchIndex(serialized: SerializedSearchIndex): SearchIndex;
-export declare function exactLookup(index: SearchIndex, query: string): ExactEntry[];
-export declare function bm25Search(index: SearchIndex, queryTokens: string[], allowedIndexes: Set<number>): Bm25Candidate[];
-export declare function sortFields(fields: SearchFieldName[]): SearchFieldName[];
-export {};
+export declare const buildSearchIndex: typeof buildSearchIndexV2;
+export declare const serializeSearchIndex: typeof serializeSearchIndexV2;
+export declare const deserializeSearchIndex: typeof deserializeSearchIndexV2;
+export declare const exactLookup: typeof exactLookupV2;
+export declare const bm25Search: (index: SearchIndex, queryTokens: string[], allowedIndexes: Set<number>) => Bm25Candidate[];
+export { sortFields };
+export type { ExactEntry, SearchIndex, SerializedSearchIndex };
 //# sourceMappingURL=bm25.d.ts.map

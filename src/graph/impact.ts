@@ -1,6 +1,7 @@
 import type { ImpactInput } from "../core/inputs.js";
-import type { GraphEdge, GraphNode, GraphResult, ImpactItem, ImpactResult } from "../core/dto.js";
+import type { DiagnosticBag, GraphEdge, GraphNode, GraphResult, ImpactItem, ImpactResult } from "../core/dto.js";
 import { createDiagnosticBag, fail, ok } from "../core/result.js";
+import { mergeDiagnosticBags } from "../validate/diagnostics.js";
 import { compareGraphEdges, relationRank, sortGraphEdges, sortGraphNodes } from "./model.js";
 
 type ImpactTransition = {
@@ -35,7 +36,7 @@ export function impactRequirement(input: ImpactInput, graph: GraphResult): Impac
   const rootKey = `requirement:${requirementId}`;
   const nodeByKey = new Map(graph.nodes.map((node) => [node.key, node]));
   if (nodeByKey.get(rootKey)?.entityType !== "requirement") {
-    return requirementNotFound(requirementId);
+    return requirementNotFound(requirementId, graph.diagnostics);
   }
 
   const maxDepth = normalizeDepth(input.depth);
@@ -93,13 +94,16 @@ export function impactRequirement(input: ImpactInput, graph: GraphResult): Impac
     includeScopes: input.includeScopes !== false
   });
 
-  return ok({
-    root: requirementId,
-    requirementId,
-    impacted,
-    nodes: context.nodes,
-    edges: context.edges
-  });
+  return ok(
+    {
+      root: requirementId,
+      requirementId,
+      impacted,
+      nodes: context.nodes,
+      edges: context.edges
+    },
+    graph.diagnostics
+  );
 }
 
 function impactTransitions(currentKey: string, edges: GraphEdge[]): ImpactTransition[] {
@@ -201,7 +205,7 @@ function normalizeDepth(value: number | undefined): number {
   return Math.min(Math.max(Math.trunc(value), 0), 5);
 }
 
-function requirementNotFound(id: string): ImpactResult {
+function requirementNotFound(id: string, graphDiagnostics: DiagnosticBag = createDiagnosticBag()): ImpactResult {
   const diagnostics = createDiagnosticBag([
     {
       severity: "error",
@@ -210,7 +214,7 @@ function requirementNotFound(id: string): ImpactResult {
       details: { id }
     }
   ]);
-  return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+  return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, mergeDiagnosticBags(graphDiagnostics, diagnostics));
 }
 
 function isDefined<T>(value: T | undefined): value is T {

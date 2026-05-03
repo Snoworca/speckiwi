@@ -1,4 +1,4 @@
-import type { JsonObject, ProposalOperation, ProposalResult, ProposalTarget } from "../core/dto.js";
+import type { DiagnosticBag, JsonObject, ProposalOperation, ProposalResult, ProposalTarget } from "../core/dto.js";
 import type { JsonPatchOperation, ProposeChangeInput } from "../core/inputs.js";
 import { type StorePath, type WorkspaceRoot } from "../io/path.js";
 import { type LoadedYamlDocument } from "../io/yaml-loader.js";
@@ -38,4 +38,9 @@ export declare function readProposalAt(root: WorkspaceRoot, storePath: StorePath
 export declare function loadTargetDocument(root: WorkspaceRoot, storePath: string): Promise<LoadedYamlDocument>;
 export declare function currentTargetHash(root: WorkspaceRoot, proposal: ProposalDocument): Promise<string>;
 export declare function currentDocumentHash(root: WorkspaceRoot, proposal: ProposalDocument): Promise<string>;
+export declare class ProposalError extends Error {
+    readonly code: string;
+    readonly diagnostics?: DiagnosticBag | undefined;
+    constructor(code: string, message: string, diagnostics?: DiagnosticBag | undefined);
+}
 //# sourceMappingURL=proposal.d.ts.map

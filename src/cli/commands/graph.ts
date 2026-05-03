@@ -1,9 +1,7 @@
-import { resolve } from "node:path";
 import type { Command } from "commander";
+import { createSpecKiwiCore } from "../../core/api.js";
 import type { GraphInput } from "../../core/inputs.js";
-import { buildGraph, type GraphType } from "../../graph/builder.js";
-import { workspaceRootFromPath } from "../../io/workspace.js";
-import { loadWorkspaceForValidation } from "../../validate/semantic.js";
+import type { GraphType } from "../../graph/builder.js";
 import { addCommonOptions, CliUsageError, executeCliCommand, optionalString } from "../options.js";
 
 export function registerGraphCommand(program: Command): void {
@@ -26,9 +24,10 @@ export function registerGraphCommand(program: Command): void {
 }
 
 async function graph(input: GraphInput) {
-  const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
-  const workspace = await loadWorkspaceForValidation(root);
-  return buildGraph(workspace, input.graphType);
+  return createSpecKiwiCore({
+    root: input.root ?? process.cwd(),
+    ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode })
+  }).graph(input);
 }
 
 function parseGraphType(value: string | undefined): GraphType | undefined {

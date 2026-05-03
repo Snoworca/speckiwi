@@ -138,6 +138,15 @@ export async function readProposalAt(root: WorkspaceRoot, storePath: StorePath):
   if (proposal === undefined || diagnostics.summary.errorCount > 0) {
     throw new ProposalError("PROPOSAL_SCHEMA_INVALID", "Stored proposal does not satisfy the proposal schema.", diagnostics);
   }
+  try {
+    parseJsonPointer(proposal.base.target.jsonPointer);
+    buildPatchOperations({ changes: proposal.changes });
+  } catch (error) {
+    if (error instanceof PatchError) {
+      throw new ProposalError(error.code, error.message, diagnosticBag(error.code, error.message));
+    }
+    throw error;
+  }
   return proposal;
 }
 
@@ -535,7 +544,7 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-class ProposalError extends Error {
+export class ProposalError extends Error {
   constructor(
     public readonly code: string,
     message: string,

@@ -3,7 +3,7 @@ import { LineCounter, isAlias, isPair, isScalar, parseDocument, visit } from "ya
 import type { ParsedNode, Range } from "yaml";
 import type { Diagnostic, DiagnosticBag, JsonValue } from "../core/dto.js";
 import { createDiagnosticBag } from "../core/result.js";
-import { assertRealPathInsideWorkspace, type WorkspacePath } from "./path.js";
+import { assertRealPathInsideWorkspace, assertRealPathInsideWorkspaceWithGuard, type RealPathGuard, type WorkspacePath } from "./path.js";
 
 export type LoadedYamlDocument = {
   path: string;
@@ -12,8 +12,12 @@ export type LoadedYamlDocument = {
   diagnostics: DiagnosticBag;
 };
 
-export async function loadYamlDocument(path: WorkspacePath): Promise<LoadedYamlDocument> {
-  await assertRealPathInsideWorkspace(path);
+export async function loadYamlDocument(path: WorkspacePath, guard?: RealPathGuard): Promise<LoadedYamlDocument> {
+  if (guard === undefined) {
+    await assertRealPathInsideWorkspace(path);
+  } else {
+    await assertRealPathInsideWorkspaceWithGuard(path, guard);
+  }
   const raw = await readFile(path.absolutePath, "utf8");
   const lineCounter = new LineCounter();
   const document = parseDocument(raw, {
@@ -42,7 +46,7 @@ export async function loadYamlDocument(path: WorkspacePath): Promise<LoadedYamlD
       path: path.storePath,
       ...positionFromYamlError(warning)
     })),
-    ...findSubsetDiagnostics(document.contents, path.storePath, lineCounter)
+    ...(mayContainForbiddenYamlSubset(raw) ? findSubsetDiagnostics(document.contents, path.storePath, lineCounter) : [])
   ];
   const bag = createDiagnosticBag(diagnostics);
 
@@ -52,6 +56,10 @@ export async function loadYamlDocument(path: WorkspacePath): Promise<LoadedYamlD
     value: bag.summary.errorCount === 0 ? toJsonValue(document.toJS({ maxAliasCount: 0 })) : undefined,
     diagnostics: bag
   };
+}
+
+function mayContainForbiddenYamlSubset(raw: string): boolean {
+  return raw.includes("&") || raw.includes("*") || raw.includes("<<");
 }
 
 function findSubsetDiagnostics(contents: ParsedNode | null, path: string, lineCounter: LineCounter): Diagnostic[] {

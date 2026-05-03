@@ -1,6 +1,6 @@
 import { ok } from "../core/result.js";
 import { bm25Search, buildSearchIndex as buildBm25SearchIndex, deserializeSearchIndex as deserializeBm25SearchIndex, exactLookup, serializeSearchIndex as serializeBm25SearchIndex, sortFields } from "./bm25.js";
-import { normalizeExactKey, searchFieldOrder, tokenizeSearchText } from "./tokenizer.js";
+import { normalizeExactKey, tokenizeSearchText } from "./tokenizer.js";
 export { buildDictionaryExpansion, flattenWorkspace } from "./document.js";
 export { tokenizeKorean } from "./korean.js";
 export { tokenizeSearchText };
@@ -23,18 +23,7 @@ export function serializeSearchIndex(index) {
     };
 }
 export function deserializeSearchIndex(value) {
-    const serialized = serializedSearchIndexValue(value);
-    if (serialized === undefined) {
-        return undefined;
-    }
-    const index = deserializeBm25SearchIndex({ documents: serialized.documents });
-    if (serialized.dictionary === undefined) {
-        return index;
-    }
-    return {
-        ...index,
-        dictionary: serialized.dictionary
-    };
+    return deserializeBm25SearchIndex(value);
 }
 export function search(input, index) {
     const mode = input.mode ?? "auto";
@@ -107,40 +96,45 @@ function normalizeForDictionary(value) {
     return normalizeExactKey(value).replace(/\s+/g, " ");
 }
 function allowedDocumentIndexes(index, filters) {
-    const allowed = new Set();
-    for (let documentIndex = 0; documentIndex < index.documents.length; documentIndex += 1) {
-        const document = index.documents[documentIndex];
-        if (document !== undefined && matchesFilters(document, filters)) {
-            allowed.add(documentIndex);
+    const v2 = index;
+    if (filters === undefined || v2.filterBuckets === undefined) {
+        return new Set(index.documents.map((_, documentIndex) => documentIndex));
+    }
+    const buckets = [];
+    addFilterBucket(v2, buckets, "entityType", filters.entityType);
+    addFilterBucket(v2, buckets, "documentId", filters.documentId);
+    addFilterBucket(v2, buckets, "scope", filters.scope);
+    addFilterBucket(v2, buckets, "type", filters.type);
+    addFilterBucket(v2, buckets, "status", filters.status);
+    addFilterBucket(v2, buckets, "path", filters.path);
+    addFilterBucket(v2, buckets, "tag", filters.tag);
+    if (buckets.length === 0) {
+        return new Set(index.documents.map((_, documentIndex) => documentIndex));
+    }
+    buckets.sort((left, right) => left.size - right.size);
+    const [first, ...rest] = buckets;
+    const allowed = new Set(first);
+    for (const bucket of rest) {
+        for (const candidate of [...allowed]) {
+            if (!bucket.has(candidate)) {
+                allowed.delete(candidate);
+            }
         }
     }
     return allowed;
 }
-function matchesFilters(document, filters) {
-    if (filters === undefined) {
-        return true;
-    }
-    return (matchesFilter(document.entityType, filters.entityType) &&
-        matchesFilter(document.documentId, filters.documentId) &&
-        matchesFilter(document.scope, filters.scope) &&
-        matchesFilter(document.filters.type, filters.type) &&
-        matchesFilter(document.filters.status, filters.status) &&
-        matchesFilter(document.path, filters.path) &&
-        matchesTagFilter(document.filters.tags, filters.tag));
-}
-function matchesFilter(value, filter) {
+function addFilterBucket(index, buckets, bucketName, filter) {
     if (filter === undefined) {
-        return true;
+        return;
     }
     const values = Array.isArray(filter) ? filter : [filter];
-    return value !== undefined && values.includes(value);
-}
-function matchesTagFilter(tags, filter) {
-    if (filter === undefined) {
-        return true;
+    const bucket = new Set();
+    for (const value of values) {
+        for (const entry of index.filterBuckets[bucketName].get(value) ?? []) {
+            bucket.add(entry);
+        }
     }
-    const values = Array.isArray(filter) ? filter : [filter];
-    return values.some((value) => tags.includes(value));
+    buckets.push(bucket);
 }
 function toResultItem(document, score, matchedFields) {
     const item = {
@@ -202,140 +196,5 @@ function pageInfo(limit, offset, total, returned) {
         hasMore: offset + returned < total,
         nextOffset: offset + returned < total ? offset + returned : null
     };
-}
-function serializedSearchIndexValue(value) {
-    const object = objectValue(value);
-    if (object === undefined || !Array.isArray(object.documents)) {
-        return undefined;
-    }
-    const documents = object.documents.map(searchDocumentValue);
-    if (documents.some((document) => document === undefined)) {
-        return undefined;
-    }
-    const dictionary = dictionaryExpansionValue(object.dictionary);
-    if (object.dictionary !== undefined && dictionary === undefined) {
-        return undefined;
-    }
-    const serialized = {
-        documents: documents
-    };
-    if (dictionary !== undefined) {
-        serialized.dictionary = dictionary;
-    }
-    return serialized;
-}
-function searchDocumentValue(value) {
-    const object = objectValue(value);
-    if (object === undefined) {
-        return undefined;
-    }
-    const entityType = entityTypeValue(object.entityType);
-    const fields = searchFieldsValue(object.fields);
-    const filters = searchFiltersValue(object.filters, entityType, stringValue(object.path));
-    if (entityType === undefined || typeof object.id !== "string" || typeof object.path !== "string" || fields === undefined || filters === undefined) {
-        return undefined;
-    }
-    const document = {
-        entityType,
-        id: object.id,
-        path: object.path,
-        fields,
-        filters
-    };
-    for (const key of ["documentId", "scope", "title"]) {
-        const value = object[key];
-        if (value !== undefined) {
-            if (typeof value !== "string") {
-                return undefined;
-            }
-            document[key] = value;
-        }
-    }
-    return document;
-}
-function searchFieldsValue(value) {
-    const object = objectValue(value);
-    if (object === undefined) {
-        return undefined;
-    }
-    const fields = {};
-    for (const [key, raw] of Object.entries(object)) {
-        if (!isSearchFieldName(key)) {
-            return undefined;
-        }
-        if (typeof raw === "string") {
-            fields[key] = raw;
-            continue;
-        }
-        const values = stringArray(raw);
-        if (values === undefined) {
-            return undefined;
-        }
-        fields[key] = values;
-    }
-    return fields;
-}
-function searchFiltersValue(value, documentEntityType, documentPath) {
-    const object = objectValue(value);
-    const entityType = entityTypeValue(object?.entityType);
-    const tags = stringArray(object?.tags);
-    if (object === undefined || entityType === undefined || tags === undefined || typeof object.path !== "string") {
-        return undefined;
-    }
-    if (documentEntityType !== undefined && entityType !== documentEntityType) {
-        return undefined;
-    }
-    if (documentPath !== undefined && object.path !== documentPath) {
-        return undefined;
-    }
-    const filters = {
-        entityType,
-        path: object.path,
-        tags
-    };
-    for (const key of ["documentId", "scope", "type", "status"]) {
-        const value = object[key];
-        if (value !== undefined) {
-            if (typeof value !== "string") {
-                return undefined;
-            }
-            filters[key] = value;
-        }
-    }
-    return filters;
-}
-function dictionaryExpansionValue(value) {
-    if (value === undefined) {
-        return undefined;
-    }
-    const object = objectValue(value);
-    if (object === undefined || !Array.isArray(object.groups)) {
-        return undefined;
-    }
-    const groups = object.groups.map(stringArray);
-    return groups.some((group) => group === undefined) ? undefined : { groups: groups };
-}
-function entityTypeValue(value) {
-    return value === "document" ||
-        value === "scope" ||
-        value === "requirement" ||
-        value === "prd_item" ||
-        value === "technical_section" ||
-        value === "adr" ||
-        value === "rule"
-        ? value
-        : undefined;
-}
-function isSearchFieldName(value) {
-    return searchFieldOrder.includes(value);
-}
-function objectValue(value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : undefined;
-}
-function stringArray(value) {
-    return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : undefined;
-}
-function stringValue(value) {
-    return typeof value === "string" ? value : undefined;
 }
 //# sourceMappingURL=index.js.map

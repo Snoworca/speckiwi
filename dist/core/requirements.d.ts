@@ -1,6 +1,7 @@
 import type { DiagnosticBag, DocumentSummary, JsonObject, RequirementIdPreviewResult, RequirementListResult, RequirementRelation, RequirementResult, RequirementSummary } from "./dto.js";
 import type { GenerateRequirementIdInput, GetRequirementInput, ListRequirementsInput, RootInput } from "./inputs.js";
-import { type LoadedWorkspace } from "../validate/semantic.js";
+import { type ReadModel } from "./read-model.js";
+import type { LoadedWorkspace } from "../validate/semantic.js";
 export type RegisteredDocument = DocumentSummary & {
     index: number;
     value?: JsonObject;
@@ -44,8 +45,10 @@ export type RequirementRegistry = {
 export declare function loadRequirementRegistry(input?: RootInput): Promise<RequirementRegistry>;
 export declare function buildRequirementRegistry(workspace: LoadedWorkspace): RequirementRegistry;
 export declare function getRequirement(input: GetRequirementInput): Promise<RequirementResult>;
-export declare function getRequirementFromRegistry(input: GetRequirementInput, registry: RequirementRegistry): RequirementResult;
+export declare function getRequirementFromReadModel(input: GetRequirementInput, model: ReadModel): RequirementResult;
+export declare function getRequirementFromRegistry(input: GetRequirementInput, registry: RequirementRegistry, diagnostics?: DiagnosticBag): RequirementResult;
 export declare function listRequirements(input?: ListRequirementsInput): Promise<RequirementListResult>;
+export declare function listRequirementsFromReadModel(input: ListRequirementsInput, model: ReadModel): RequirementListResult;
 export declare function listRequirementsFromRegistry(input: ListRequirementsInput, registry: RequirementRegistry): RequirementListResult;
 export declare function previewRequirementId(input: GenerateRequirementIdInput, registry: RequirementRegistry): RequirementIdPreviewResult;
 export declare function assertExplicitRequirementId(id: string, registry: RequirementRegistry): DiagnosticBag;

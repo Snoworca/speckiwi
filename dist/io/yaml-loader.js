@@ -1,9 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, isAlias, isPair, isScalar, parseDocument, visit } from "yaml";
 import { createDiagnosticBag } from "../core/result.js";
-import { assertRealPathInsideWorkspace } from "./path.js";
-export async function loadYamlDocument(path) {
-    await assertRealPathInsideWorkspace(path);
+import { assertRealPathInsideWorkspace, assertRealPathInsideWorkspaceWithGuard } from "./path.js";
+export async function loadYamlDocument(path, guard) {
+    if (guard === undefined) {
+        await assertRealPathInsideWorkspace(path);
+    }
+    else {
+        await assertRealPathInsideWorkspaceWithGuard(path, guard);
+    }
     const raw = await readFile(path.absolutePath, "utf8");
     const lineCounter = new LineCounter();
     const document = parseDocument(raw, {
@@ -32,7 +37,7 @@ export async function loadYamlDocument(path) {
             path: path.storePath,
             ...positionFromYamlError(warning)
         })),
-        ...findSubsetDiagnostics(document.contents, path.storePath, lineCounter)
+        ...(mayContainForbiddenYamlSubset(raw) ? findSubsetDiagnostics(document.contents, path.storePath, lineCounter) : [])
     ];
     const bag = createDiagnosticBag(diagnostics);
     return {
@@ -41,6 +46,9 @@ export async function loadYamlDocument(path) {
         value: bag.summary.errorCount === 0 ? toJsonValue(document.toJS({ maxAliasCount: 0 })) : undefined,
         diagnostics: bag
     };
+}
+function mayContainForbiddenYamlSubset(raw) {
+    return raw.includes("&") || raw.includes("*") || raw.includes("<<");
 }
 function findSubsetDiagnostics(contents, path, lineCounter) {
     const diagnostics = [];

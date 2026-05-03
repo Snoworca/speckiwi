@@ -1,7 +1,21 @@
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createDiagnosticBag, fail, ok } from "./result.js";
+import { loadReadModel } from "./read-model.js";
+import { normalizeStorePath, resolveRealStorePath } from "../io/path.js";
 import { workspaceRootFromPath } from "../io/workspace.js";
-import { loadWorkspaceForValidation } from "../validate/semantic.js";
+import { isIndexSectionFresh, readCacheManifest } from "../cache/manifest.js";
+import { sha256File, stableJson } from "../cache/hash.js";
+import { hasManifestFormat } from "../cache/index-manifest.js";
+import { readArtifact } from "../indexing/serialization.js";
+import { deserializeEntityIndex, deserializeRequirementPayloadShard, requirementPayloadShardStorePath } from "../indexing/entities.js";
+import { deserializeRelationIndex } from "../indexing/relations.js";
+import { loadYamlDocument } from "../io/yaml-loader.js";
+const manifestCache = new Map();
+const entityIndexCache = new Map();
+const requirementShardCache = new Map();
+const sourceConfirmationCache = new Map();
+const SOURCE_CONFIRMATION_CACHE_LIMIT = 1024;
 const requirementTypePrefixes = {
     functional: "FR",
     non_functional: "NFR",
@@ -19,9 +33,12 @@ const requirementTypePrefixes = {
     observability: "OBS"
 };
 export async function loadRequirementRegistry(input = {}) {
-    const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
-    const workspace = await loadWorkspaceForValidation(root);
-    return buildRequirementRegistry(workspace);
+    const model = await loadReadModel({
+        root: resolve(input.root ?? process.cwd()),
+        ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+        sections: ["entities", "relations"]
+    });
+    return model.getRequirementRegistry();
 }
 export function buildRequirementRegistry(workspace) {
     const index = workspace.documents.find((document) => document.storePath === "index.yaml" && document.schemaValid)?.value;
@@ -67,9 +84,22 @@ export function buildRequirementRegistry(workspace) {
     };
 }
 export async function getRequirement(input) {
-    return getRequirementFromRegistry(input, await loadRequirementRegistry(input));
+    const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
+    const cached = await getRequirementFromEntityCache(input, root);
+    if (cached.result !== undefined) {
+        return cached.result;
+    }
+    const model = await loadReadModel({
+        root: root.rootPath,
+        ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+        sections: ["entities", "relations"]
+    });
+    return getRequirementFromRegistry(input, model.getRequirementRegistry(), createDiagnosticBag(cached.warnings));
 }
-export function getRequirementFromRegistry(input, registry) {
+export function getRequirementFromReadModel(input, model) {
+    return getRequirementFromRegistry(input, model.getRequirementRegistry());
+}
+export function getRequirementFromRegistry(input, registry, diagnostics = createDiagnosticBag()) {
     const requirement = registry.requirementsById.get(input.id);
     if (requirement === undefined) {
         return notFoundRequirement(input.id);
@@ -89,10 +119,18 @@ export function getRequirementFromRegistry(input, registry) {
             outgoing: registry.outgoingRelationsById.get(input.id) ?? []
         };
     }
-    return ok(payload);
+    return ok(payload, diagnostics);
 }
 export async function listRequirements(input = {}) {
-    return listRequirementsFromRegistry(input, await loadRequirementRegistry(input));
+    const model = await loadReadModel({
+        root: resolve(input.root ?? process.cwd()),
+        ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+        sections: ["entities", "relations"]
+    });
+    return listRequirementsFromReadModel(input, model);
+}
+export function listRequirementsFromReadModel(input, model) {
+    return listRequirementsFromRegistry(input, model.getRequirementRegistry());
 }
 export function listRequirementsFromRegistry(input, registry) {
     const filtered = registry.requirements.filter((requirement) => matchesRequirementFilters(requirement, input, registry));
@@ -420,6 +458,421 @@ function notFoundRequirement(id) {
         }
     ]);
     return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+}
+async function getRequirementFromEntityCache(input, root) {
+    if (input.cacheMode === "bypass") {
+        return { warnings: [] };
+    }
+    const entityArtifact = await readCachedEntityIndex(root);
+    if (entityArtifact.artifact === undefined) {
+        return {
+            warnings: entityArtifact.warning === undefined ? [] : [toCacheWarning(entityArtifact.warning, "ENTITY_CACHE_UNREADABLE")]
+        };
+    }
+    const summary = entityArtifact.artifact.requirementsById.get(input.id);
+    if (summary === undefined) {
+        return { warnings: [] };
+    }
+    const shardRef = entityArtifact.artifact.requirementShardsById.get(input.id);
+    if (shardRef === undefined) {
+        return {
+            warnings: [cacheWarning("ENTITY_CACHE_UNREADABLE", "Entity cache could not resolve a requirement shard.", ".speckiwi/cache/entities.json")]
+        };
+    }
+    if (!/^[a-f0-9]{64}$/.test(shardRef.documentHash)) {
+        return {
+            warnings: [
+                cacheWarning("REQUIREMENT_SHARD_UNREADABLE", "Requirement payload shard reference was invalid; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id })
+            ]
+        };
+    }
+    if (!(await isRequirementCacheFresh(root, summary.path, shardRef.documentHash))) {
+        return { warnings: [] };
+    }
+    if (input.includeRelations === true && !(await isIndexSectionFresh(root, "relations"))) {
+        return { warnings: [] };
+    }
+    const shardArtifact = await readCachedRequirementShard(root, shardRef.documentHash);
+    if (shardArtifact.artifact === undefined) {
+        return {
+            warnings: [
+                cacheWarning("REQUIREMENT_SHARD_UNREADABLE", "Requirement payload shard could not be read; source YAML data was used.", `.speckiwi/${requirementPayloadShardStorePath(shardRef.documentHash)}`, shardArtifact.warning?.details)
+            ]
+        };
+    }
+    const shardRequirement = shardArtifact.artifact.requirements.find((requirement) => requirement.id === input.id);
+    if (shardRequirement === undefined) {
+        return {
+            warnings: [
+                cacheWarning("REQUIREMENT_SHARD_UNREADABLE", "Requirement payload shard did not contain the requested requirement; source YAML data was used.", `.speckiwi/${requirementPayloadShardStorePath(shardRef.documentHash)}`)
+            ]
+        };
+    }
+    let relationIndex;
+    if (input.includeRelations === true) {
+        const relationArtifact = await readArtifact(root, "cache/relations.json", deserializeRelationIndex);
+        if (relationArtifact.artifact === undefined) {
+            return {
+                warnings: [
+                    relationArtifact.warning === undefined
+                        ? cacheWarning("RELATION_CACHE_UNREADABLE", "Relation cache could not be read; source YAML data was used.", ".speckiwi/cache/relations.json")
+                        : toCacheWarning(relationArtifact.warning, "RELATION_CACHE_UNREADABLE")
+                ]
+            };
+        }
+        relationIndex = relationArtifact.artifact;
+    }
+    const sourceConfirmation = await confirmCachedRequirementAgainstSource(root, input, entityArtifact.artifact, shardRequirement.requirement, relationIndex);
+    if (!sourceConfirmation.ok) {
+        return { warnings: [sourceConfirmation.warning] };
+    }
+    return {
+        result: buildConfirmedRequirementResult(input, sourceConfirmation, createDiagnosticBag()),
+        warnings: []
+    };
+}
+async function confirmCachedRequirementAgainstSource(root, input, entities, cachedRequirement, relations) {
+    if (input.includeRelations !== true) {
+        return confirmCachedRequirementAgainstTargetSource(root, input, entities, cachedRequirement);
+    }
+    const sourceModel = await loadReadModel({
+        root: root.rootPath,
+        cacheMode: "bypass",
+        sections: ["entities", "relations"]
+    });
+    const registry = sourceModel.getRequirementRegistry();
+    const source = registry.requirementsById.get(input.id);
+    const summary = entities.requirementsById.get(input.id);
+    const sourceDocument = source === undefined ? undefined : registry.documentsById.get(source.documentId);
+    if (source === undefined || summary === undefined) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+                id: input.id
+            })
+        };
+    }
+    if (!sameRequirementSourceFields(summary, cachedRequirement, source)) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement fields did not match YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id })
+        };
+    }
+    if (input.includeDocument === true && !sameDocumentSourceFields(entities.documentsById.get(source.documentId), sourceDocument)) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache document fields did not match YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id, documentId: source.documentId })
+        };
+    }
+    if (input.includeRelations === true &&
+        relations !== undefined &&
+        (!sameRelations(relations.outgoingById.get(input.id) ?? [], registry.outgoingRelationsById.get(input.id) ?? []) ||
+            !sameRelations(relations.incomingById.get(input.id) ?? [], registry.incomingRelationsById.get(input.id) ?? []))) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache relation data did not match YAML source; source YAML data was used.", ".speckiwi/cache/relations.json", { id: input.id })
+        };
+    }
+    return {
+        ok: true,
+        requirement: source,
+        ...(sourceDocument === undefined ? {} : { document: sourceDocument }),
+        ...(input.includeRelations === true
+            ? {
+                relations: {
+                    incoming: registry.incomingRelationsById.get(input.id) ?? [],
+                    outgoing: registry.outgoingRelationsById.get(input.id) ?? []
+                }
+            }
+            : {})
+    };
+}
+async function confirmCachedRequirementAgainstTargetSource(root, input, entities, cachedRequirement) {
+    const summary = entities.requirementsById.get(input.id);
+    if (summary === undefined) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+                id: input.id
+            })
+        };
+    }
+    try {
+        const cacheKey = input.includeDocument === true ? undefined : await sourceConfirmationCacheKey(root, input, summary, cachedRequirement);
+        const cached = cacheKey === undefined ? undefined : sourceConfirmationCache.get(cacheKey);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const source = await loadRequirementFromTargetDocument(root, input, summary);
+        if (source === undefined) {
+            return {
+                ok: false,
+                warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+                    id: input.id
+                })
+            };
+        }
+        if (!sameRequirementSourceFields(summary, cachedRequirement, source.requirement)) {
+            return {
+                ok: false,
+                warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement fields did not match YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id })
+            };
+        }
+        if (input.includeDocument === true && !sameDocumentSourceFields(entities.documentsById.get(source.requirement.documentId), source.document)) {
+            return {
+                ok: false,
+                warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache document fields did not match YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id, documentId: source.requirement.documentId })
+            };
+        }
+        if (cacheKey !== undefined) {
+            sourceConfirmationCache.set(cacheKey, source);
+            while (sourceConfirmationCache.size > SOURCE_CONFIRMATION_CACHE_LIMIT) {
+                const oldest = sourceConfirmationCache.keys().next().value;
+                if (typeof oldest !== "string") {
+                    break;
+                }
+                sourceConfirmationCache.delete(oldest);
+            }
+        }
+        return source;
+    }
+    catch (error) {
+        return {
+            ok: false,
+            warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache source confirmation failed; source YAML data was used.", ".speckiwi/cache/entities.json", { id: input.id, reason: error instanceof Error ? error.message : String(error) })
+        };
+    }
+}
+async function sourceConfirmationCacheKey(root, input, summary, cachedRequirement) {
+    const target = await resolveRealStorePath(root, normalizeStorePath(summary.path));
+    const sourceStats = await stat(target.absolutePath);
+    return stableJson({
+        root: root.rootPath,
+        id: input.id,
+        path: summary.path,
+        sourceSize: sourceStats.size,
+        sourceMtimeMs: sourceStats.mtimeMs,
+        sourceCtimeMs: sourceStats.ctimeMs,
+        cachedRequirement
+    });
+}
+async function loadRequirementFromTargetDocument(root, input, summary) {
+    const storePath = normalizeStorePath(summary.path);
+    const loaded = await loadYamlDocument(await resolveRealStorePath(root, storePath));
+    const value = jsonObjectValue(loaded.value);
+    if (value === undefined) {
+        return undefined;
+    }
+    const rawRequirement = arrayObjects(value.requirements).find((requirement) => stringValue(requirement.id) === input.id);
+    if (rawRequirement === undefined) {
+        return undefined;
+    }
+    const document = input.includeDocument === true
+        ? await loadRegisteredDocumentForTarget(root, storePath, value)
+        : {
+            id: summary.documentId,
+            type: documentTypeValue(value.type) ?? "srs",
+            path: storePath,
+            index: 0
+        };
+    const sourceScope = stringValue(value.scope);
+    const requirement = {
+        id: input.id,
+        type: stringValue(rawRequirement.type) ?? "",
+        title: stringValue(rawRequirement.title) ?? "",
+        status: stringValue(rawRequirement.status) ?? "",
+        statement: stringValue(rawRequirement.statement) ?? "",
+        documentId: document.id,
+        tags: tagsFrom(rawRequirement.tags),
+        path: storePath,
+        requirement: rawRequirement,
+        relations: relationsFrom(rawRequirement.relations, input.id)
+    };
+    const priority = stringValue(rawRequirement.priority);
+    if (priority !== undefined) {
+        requirement.priority = priority;
+    }
+    if (sourceScope !== undefined) {
+        requirement.scope = sourceScope;
+    }
+    return {
+        ok: true,
+        requirement,
+        ...(input.includeDocument === true ? { document } : {})
+    };
+}
+async function loadRegisteredDocumentForTarget(root, storePath, value) {
+    const manifest = await loadManifestEntryForDocument(root, storePath);
+    const title = stringValue(value.title);
+    const status = stringValue(value.status);
+    const scope = stringValue(value.scope) ?? stringValue(manifest?.entry.scope);
+    const tags = tagsFrom(value.tags).length > 0 ? tagsFrom(value.tags) : tagsFrom(manifest?.entry.tags);
+    const document = {
+        id: stringValue(manifest?.entry.id) ?? stringValue(value.id) ?? storePath,
+        type: documentTypeValue(manifest?.entry.type) ?? documentTypeValue(value.type) ?? "srs",
+        path: storePath,
+        index: manifest?.index ?? 0,
+        value
+    };
+    if (title !== undefined) {
+        document.title = title;
+    }
+    if (status !== undefined) {
+        document.status = status;
+    }
+    if (scope !== undefined) {
+        document.scope = scope;
+    }
+    if (tags.length > 0) {
+        document.tags = tags;
+    }
+    return document;
+}
+function documentTypeValue(value) {
+    return ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary"].includes(String(value))
+        ? value
+        : undefined;
+}
+async function loadManifestEntryForDocument(root, storePath) {
+    const loaded = await loadYamlDocument(await resolveRealStorePath(root, normalizeStorePath("index.yaml")));
+    const index = jsonObjectValue(loaded.value);
+    return arrayObjects(index?.documents)
+        .map((entry, entryIndex) => ({ entry, index: entryIndex }))
+        .find(({ entry }) => stringValue(entry.path) === storePath);
+}
+function sameRequirementSourceFields(summary, cachedRequirement, source) {
+    return (stableJson(cachedRequirement) === stableJson(source.requirement) &&
+        (stringValue(cachedRequirement.statement) ?? summary.statement) === source.statement &&
+        (stringValue(cachedRequirement.status) ?? summary.status) === source.status &&
+        (stringValue(cachedRequirement.type) ?? summary.type) === source.type &&
+        (stringValue(cachedRequirement.title) ?? summary.title) === source.title &&
+        summary.scope === source.scope &&
+        summary.documentId === source.documentId &&
+        summary.path === source.path);
+}
+function sameDocumentSourceFields(cached, source) {
+    if (cached === undefined || source === undefined) {
+        return cached === source;
+    }
+    return stableJson(documentSummary(cached)) === stableJson(documentSummary(source));
+}
+function sameRelations(left, right) {
+    const leftKeys = left.map(relationKey).sort();
+    const rightKeys = right.map(relationKey).sort();
+    return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index]);
+}
+function relationKey(relation) {
+    return `${relation.source ?? ""}\0${relation.type}\0${relation.target}\0${relation.description ?? ""}`;
+}
+function buildConfirmedRequirementResult(input, confirmation, diagnostics) {
+    const payload = {
+        requirement: confirmation.requirement.requirement
+    };
+    if (input.includeDocument === true) {
+        if (confirmation.document !== undefined) {
+            payload.document = documentSummary(confirmation.document);
+        }
+    }
+    if (input.includeRelations === true) {
+        payload.relations = {
+            incoming: confirmation.relations?.incoming ?? [],
+            outgoing: confirmation.relations?.outgoing ?? []
+        };
+    }
+    return ok(payload, diagnostics);
+}
+function toCacheWarning(warning, code) {
+    return cacheWarning(code, warning.message, warning.path, warning.details);
+}
+function cacheWarning(code, message, path, details) {
+    return {
+        severity: "warning",
+        code,
+        message,
+        ...(path === undefined ? {} : { path }),
+        ...(details === undefined ? {} : { details })
+    };
+}
+async function isRequirementCacheFresh(root, documentPath, documentHash) {
+    const manifest = await readCachedManifest(root);
+    if (!hasManifestFormat(manifest)) {
+        return false;
+    }
+    return (documentPath.length > 0 &&
+        manifestOutputs(manifest).some((output) => output.path === "cache/entities.json") &&
+        manifestOutputs(manifest).some((output) => output.path === requirementPayloadShardStorePath(documentHash)));
+}
+function manifestOutputs(manifest) {
+    return [
+        ...manifest.sections.facts.outputs,
+        ...manifest.sections.entities.outputs,
+        ...manifest.sections.relations.outputs,
+        ...manifest.sections.search.outputs,
+        ...manifest.sections.graph.outputs,
+        ...manifest.sections.diagnostics.outputs
+    ];
+}
+async function readCachedManifest(root) {
+    try {
+        const fileHash = await cacheArtifactSha256(root, "cache/manifest.json");
+        const cached = manifestCache.get(root.rootPath);
+        if (cached !== undefined && cached.sha256 === fileHash) {
+            return cached.manifest;
+        }
+        const manifest = await readCacheManifest(root);
+        manifestCache.set(root.rootPath, { sha256: fileHash, manifest });
+        return manifest;
+    }
+    catch {
+        manifestCache.delete(root.rootPath);
+        return undefined;
+    }
+}
+async function readCachedEntityIndex(root) {
+    try {
+        const fileHash = await cacheArtifactSha256(root, "cache/entities.json");
+        const cached = entityIndexCache.get(root.rootPath);
+        if (cached !== undefined && cached.sha256 === fileHash) {
+            return { artifact: cached.artifact };
+        }
+        const artifact = await readArtifact(root, "cache/entities.json", deserializeEntityIndex);
+        if (artifact.artifact !== undefined) {
+            entityIndexCache.set(root.rootPath, { sha256: fileHash, artifact: artifact.artifact });
+        }
+        return artifact;
+    }
+    catch (error) {
+        entityIndexCache.delete(root.rootPath);
+        return {
+            warning: cacheWarning("ENTITY_CACHE_UNREADABLE", "Entity cache could not be read; source YAML data was used.", ".speckiwi/cache/entities.json", { reason: error instanceof Error ? error.message : String(error) })
+        };
+    }
+}
+async function readCachedRequirementShard(root, documentHash) {
+    const storePath = requirementPayloadShardStorePath(documentHash);
+    const cacheKey = `${root.rootPath}\0${documentHash}`;
+    try {
+        const fileHash = await cacheArtifactSha256(root, storePath);
+        const cached = requirementShardCache.get(cacheKey);
+        if (cached !== undefined && cached.sha256 === fileHash) {
+            return { artifact: cached.artifact };
+        }
+        const artifact = await readArtifact(root, storePath, deserializeRequirementPayloadShard);
+        if (artifact.artifact !== undefined) {
+            requirementShardCache.set(cacheKey, { sha256: fileHash, artifact: artifact.artifact });
+        }
+        return artifact;
+    }
+    catch (error) {
+        requirementShardCache.delete(cacheKey);
+        return {
+            warning: cacheWarning("REQUIREMENT_SHARD_UNREADABLE", "Requirement payload shard could not be read; source YAML data was used.", `.speckiwi/${storePath}`, { reason: error instanceof Error ? error.message : String(error) })
+        };
+    }
+}
+async function cacheArtifactSha256(root, storePath) {
+    const target = await resolveRealStorePath(root, normalizeStorePath(storePath));
+    return `sha256:${await sha256File(target.absolutePath)}`;
 }
 function maxExistingSequence(ids, prefix) {
     let max = 0;

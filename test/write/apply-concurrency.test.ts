@@ -1,18 +1,19 @@
-import { execFile, spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { Stats } from "node:fs";
 import { cp, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { promisify } from "node:util";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { applyChange } from "../../src/core/apply-change.js";
 import { createProposal } from "../../src/core/propose-change.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const tempRoots: string[] = [];
-const execFileAsync = promisify(execFile);
+beforeAll(() => {
+  execFileSync("npm", ["run", "build"], { cwd: root, stdio: "pipe" });
+});
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
@@ -40,11 +41,11 @@ describe("concurrent apply", () => {
 
   it("rejects a same-target write lock held by another node process", async () => {
     const workspace = await copyFixture();
-    const holder = runLockProcess(workspace, 750);
+    const holder = spawnLockProcess(workspace, 750);
 
-    await waitForFile(applyLockPath(workspace, "srs/core.yaml"));
+    await holder.ready;
     const contender = await runLockProcess(workspace, 0);
-    const holderResult = await holder;
+    const holderResult = await holder.result;
 
     expect(JSON.parse(holderResult.stdout)).toMatchObject({ ok: true });
     expect(JSON.parse(contender.stdout)).toMatchObject({ ok: false, code: "APPLY_REJECTED_LOCK_CONFLICT" });
@@ -108,7 +109,85 @@ function runLockProcess(workspace: string, holdMs: number) {
       }));
     }
   `;
-  return execFileAsync(process.execPath, ["--input-type=module", "-e", script, workspace, String(holdMs)], { cwd: root });
+  return runInlineNodeProcess(script, workspace, holdMs);
+}
+
+function spawnLockProcess(workspace: string, holdMs: number): {
+  ready: Promise<void>;
+  result: Promise<{ stdout: string; stderr: string }>;
+} {
+  const lockModuleUrl = pathToFileURL(resolve(root, "dist/write/lock.js")).href;
+  const workspaceModuleUrl = pathToFileURL(resolve(root, "dist/io/workspace.js")).href;
+  const script = `
+    import { withTargetWriteLock } from ${JSON.stringify(lockModuleUrl)};
+    import { workspaceRootFromPath } from ${JSON.stringify(workspaceModuleUrl)};
+    const workspace = workspaceRootFromPath(process.argv[1]);
+    const holdMs = Number(process.argv[2]);
+    try {
+      await withTargetWriteLock(workspace, "srs/core.yaml", async () => {
+        console.error("LOCK_READY");
+        await new Promise((resolve) => setTimeout(resolve, holdMs));
+      });
+      console.log(JSON.stringify({ ok: true }));
+    } catch (error) {
+      console.log(JSON.stringify({
+        ok: false,
+        code: typeof error === "object" && error !== null && "code" in error ? error.code : "UNKNOWN",
+        message: error instanceof Error ? error.message : String(error)
+      }));
+    }
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", script, workspace, String(holdMs)], { cwd: root });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => {
+    stdout += chunk;
+  });
+  const ready = new Promise<void>((resolve, reject) => {
+    let done = false;
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+      if (!done && stderr.includes("LOCK_READY")) {
+        done = true;
+        resolve();
+      }
+    });
+    child.on("error", reject);
+    child.on("close", () => {
+      if (!done) {
+        reject(new Error(`Lock process exited before readiness for ${workspace}. stderr=${stderr}`));
+      }
+    });
+  });
+  const result = new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", () => {
+      resolve({ stdout, stderr });
+    });
+  });
+  return { ready, result };
+}
+
+function runInlineNodeProcess(script: string, workspace: string, holdMs: number): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", script, workspace, String(holdMs)], { cwd: root });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", () => {
+      resolve({ stdout, stderr });
+    });
+  });
 }
 
 function runCliApplyProcess(workspace: string, statement: string): Promise<{ status: number | null; stdout: string; stderr: string }> {
@@ -144,17 +223,6 @@ function runNodeProcess(args: string[]): Promise<{ status: number | null; stdout
       resolve({ status, stdout, stderr });
     });
   });
-}
-
-async function waitForFile(path: string): Promise<void> {
-  const deadline = Date.now() + 2_000;
-  while (Date.now() < deadline) {
-    if ((await fileStat(path)) !== undefined) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for ${path}.`);
 }
 
 async function fileStat(path: string): Promise<void | Stats> {

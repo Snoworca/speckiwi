@@ -72,6 +72,13 @@ export type PageInfo = {
   nextOffset: number | null;
 };
 
+export type PerfCounters = {
+  cacheHit: boolean;
+  parsedFileCount: number;
+  artifactHitCount: number;
+  fallbackReason?: string;
+};
+
 export type DocumentType =
   | "overview"
   | "prd"

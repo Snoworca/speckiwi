@@ -247,6 +247,7 @@ export declare const applyChangeInputSchema: z.ZodObject<{
             remove_relation: "remove_relation";
             update_document: "update_document";
         }>;
+        reason: z.ZodString;
         changes: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
             op: z.ZodLiteral<"add">;
             path: z.ZodString;
@@ -259,7 +260,6 @@ export declare const applyChangeInputSchema: z.ZodObject<{
             op: z.ZodLiteral<"remove">;
             path: z.ZodString;
         }, z.core.$strict>], "op">>;
-        reason: z.ZodString;
     }, z.core.$strict>>;
     confirm: z.ZodBoolean;
     cacheMode: z.ZodOptional<z.ZodEnum<{

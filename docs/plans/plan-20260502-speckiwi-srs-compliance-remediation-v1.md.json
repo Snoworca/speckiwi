@@ -1,0 +1,475 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260502-speckiwi-srs-compliance-remediation-v1",
+  "previous_hash": null,
+  "produced_by": "snoworca-planner@2.2.2",
+  "title": "SpecKiwi SRS compliance remediation plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-02T11:40:00+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "spec_refs": [
+    "docs/spec/srs.md",
+    "docs/plans/plan-20260502-speckiwi-integrity-remed-v1.md",
+    "docs/research/20260501-speckiwi-performance-indexing-research.md"
+  ],
+  "x-snoworca-code-path": ".",
+  "x-srs-scope": "residual-findings-remediation",
+  "output_path": "docs/plans/plan-20260502-speckiwi-srs-compliance-remediation-v1.md",
+  "scope_freeze": true,
+  "change_log": [],
+  "platforms": ["posix", "win32"],
+  "auto_recommend_policy": {
+    "default_confidence_threshold": "medium",
+    "cap": 0,
+    "forbidden_for_business_decision": true
+  },
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts test/mcp/tools.test.ts test/graph/graph.test.ts test/write/apply.test.ts test/cli/read-commands.test.ts test/cli/doctor.test.ts", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts test/mcp/tools.test.ts test/graph/graph.test.ts test/write/apply.test.ts test/cli/read-commands.test.ts test/cli/doctor.test.ts", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)", "flags": ""},
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+\\*", "flags": ""},
+    {"pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)", "flags": ""},
+    {"pattern": "\\b(mkfs|fdisk|parted)\\b", "flags": ""},
+    {"pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b", "flags": ""},
+    {"pattern": "\\bchown\\s+-R\\s+.*\\s+/", "flags": ""},
+    {"pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)", "flags": ""},
+    {"pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)", "flags": ""},
+    {"pattern": "wget\\s+[^|]*\\|\\s*sh", "flags": ""},
+    {"pattern": "iwr\\s+[^;]+;\\s*iex", "flags": ""},
+    {"pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)", "flags": ""},
+    {"pattern": "git\\s+clean\\s+-[fdx]+", "flags": ""},
+    {"pattern": "적[절]히|필요\\s*시|알아[서]|상황에\\s*맞게|기존\\s*방식대로|어떻게[든]", "flags": ""}
+  ],
+  "out_of_scope": [
+    "NFR-PERF-002 cached search 500ms performance remediation",
+    "SPECKIWI_ASSERT_SEARCH_PERF=1 npm run perf:srs remediation",
+    "Indexing architecture redesign"
+  ],
+  "x-srs-remediation-scope": {
+    "mode": "remediate latest SRS verification findings only",
+    "already_satisfied_without_new_tasks": [
+      {"req_id": "FR-PRD-006", "evidence": ["src/validate/semantic.ts", "test/validate/semantic.test.ts", "test/release/acceptance.test.ts"]},
+      {"req_id": "FR-REQ-016", "evidence": ["src/core/requirements.ts", "src/cli/commands/list.ts", "test/cli/read-commands.test.ts", "test/mcp/tools.test.ts"]},
+      {"req_id": "NFR-REL-008", "evidence": ["test/write/apply-concurrency.test.ts"]},
+      {"req_id": "NFR-REL-009", "evidence": ["test/hardening/reliability.test.ts"]},
+      {"req_id": "NFR-SEC-010", "evidence": ["test/hardening/security.test.ts", "test/write/apply.test.ts", "test/write/proposal.test.ts"]},
+      {"req_id": "NFR-REL-010", "evidence": ["scripts/release-check.mjs", "test/release/acceptance.test.ts"]}
+    ],
+    "deferred": [
+      {"req_id": "NFR-PERF-002", "reason": "Performance remediation is out of scope for this plan."},
+      {"req_id": "NFR-PERF-005", "reason": "Performance remediation is out of scope for this plan."},
+      {"req_id": "NFR-PERF-007", "reason": "Performance remediation is out of scope for this plan."}
+    ]
+  },
+  "phases": [
+    {
+      "id": "PHASE-P0",
+      "title": "Cache source-of-truth hardening",
+      "goal": "Prevent cache-only facts from being returned as public read results.",
+      "tasks": [
+        {
+          "id": "TASK-P0-001",
+          "title": "Add source-authenticated search result hydration",
+          "related_req_ids": ["FR-STOR-001", "FR-STOR-002", "FR-CACHE-001", "FR-CACHE-002", "FR-CACHE-007", "FR-SRCH-009"],
+          "req_ids": ["FR-STOR-001", "FR-STOR-002", "FR-CACHE-001", "FR-CACHE-002", "FR-CACHE-007", "FR-SRCH-009"],
+          "owns": ["src/core/search.ts", "src/core/read-model.ts", "src/search/index.ts", "src/search/document.ts", "src/indexing/full-text.ts", "test/search/search.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/core/search.ts", "src/search/index.ts", "src/search/document.ts", "src/indexing/full-text.ts"],
+          "method_signatures": [
+            "export function rehydrateSearchResultsFromSource(result: SearchResultSet, sourceDocuments: readonly SearchDocument[]): { result: SearchResultSet; mismatchCount: number }",
+            "async function loadSearchSourceAudit(root: WorkspaceRoot): Promise<readonly SearchDocument[]>",
+            "export function searchWorkspaceFromReadModel(input: SearchInput, model: ReadModel, options?: { extraWarnings?: Diagnostic[]; sourceDocuments?: readonly SearchDocument[] }): SearchResultSet"
+          ],
+          "source_anchors": ["src/core/search.ts:11-31", "src/search/index.ts:52-99", "src/search/document.ts:52-62", "src/indexing/full-text.ts:48-72"],
+          "implementation_guide": [
+            "Build a source-derived audit document set in searchWorkspace when cached search results are used.",
+            "Keep searchWorkspaceFromReadModel synchronous by passing already loaded sourceDocuments through options.",
+            "Remove cache search results whose entity key is absent from source YAML.",
+            "Rehydrate public fields such as title, scope, path, and documentId from source documents when the entity exists.",
+            "Drop results whose matchedFields cannot be observed in source text for the query.",
+            "Emit SEARCH_CACHE_SOURCE_MISMATCH when one or more cache-only or field-mismatched results are removed or rehydrated.",
+            "Keep BM25 scoring and latency optimization out of this task."
+          ],
+          "rationale": "A cache and manifest pair can be tampered together; source-derived rehydration blocks YAML-absent public results and source-inconsistent public DTO fields.",
+          "pitfalls": ["Do not change cacheMode bypass behavior.", "Do not rebuild the search index as part of this task.", "Do not treat key existence alone as source authentication."],
+          "test_guidance": "success: normal cache hit returns source-equivalent id/title/scope/path/matchedFields; failure: fake cache-only ID is filtered with SEARCH_CACHE_SOURCE_MISMATCH; boundary: same ID with tampered title or scope is rehydrated from source and warns.",
+          "verification_command": "npm test -- test/cache/cache.test.ts test/search/search.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts test/search/search.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["YAML-absent cache search results are not returned.", "Source-inconsistent public fields are rehydrated or dropped.", "Mismatch warning is observable."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in search/read-model files. 2) Run npm test -- test/cache/cache.test.ts test/search/search.test.ts."},
+          "feasibility": "High",
+          "turn_estimate": 9,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P0-002",
+          "title": "Make entity cache hits source-verified before returning requirements",
+          "related_req_ids": ["FR-STOR-001", "FR-STOR-002", "FR-REQ-002", "FR-CACHE-002", "FR-CACHE-007"],
+          "req_ids": ["FR-STOR-001", "FR-STOR-002", "FR-REQ-002", "FR-CACHE-002", "FR-CACHE-007"],
+          "owns": ["src/core/requirements.ts", "src/core/read-model.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/core/requirements.ts", "src/core/read-model.ts"],
+          "method_signatures": [
+            "async function confirmCachedRequirementAgainstSource(root: WorkspaceRoot, cached: RegisteredRequirement): Promise<boolean>",
+            "async function getRequirementFromEntityCache(input: GetRequirementInput, root: WorkspaceRoot): Promise<{ result?: RequirementResult; warnings: Diagnostic[] }>"
+          ],
+          "source_anchors": ["src/core/requirements.ts:588-660", "src/core/requirements.ts:540-560", "src/core/read-model.ts:185-210"],
+          "implementation_guide": [
+            "Load the source YAML document for the cached requirement path.",
+            "Compare key requirement fields and relation targets before returning cache DTO.",
+            "Treat mismatch as cache miss and return source-derived data with ENTITY_CACHE_SOURCE_MISMATCH warning."
+          ],
+          "rationale": "Exact lookup must never return cache-only requirement facts.",
+          "pitfalls": ["Do not fold this task into performance optimization.", "Do not remove the existing cache hash freshness checks."],
+          "test_guidance": "Tamper requirement shard and manifest together, then assert YAML source statement and relations are returned.",
+          "verification_command": "npm test -- test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Exact cache hit is returned only after source confirmation."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/core/requirements.ts and src/core/read-model.ts. 2) Run npm test -- test/cache/cache.test.ts."},
+          "feasibility": "High",
+          "turn_estimate": 8,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P1",
+      "title": "MCP schema and output contract hardening",
+      "goal": "Make MCP invalid params and output schema behavior match SRS.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Enforce apply change XOR in MCP input schema",
+          "related_req_ids": ["FR-MCP-014", "FR-MCP-013", "NFR-MAINT-007"],
+          "req_ids": ["FR-MCP-014", "FR-MCP-013", "NFR-MAINT-007"],
+          "owns": ["src/mcp/schemas.ts", "src/mcp/tools.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/core/inputs.ts", "src/mcp/schemas.ts", "src/mcp/tools.ts"],
+          "method_signatures": [
+            "export const applyChangeInputSchema = z.strictObject(...).superRefine((value, ctx) => void)",
+            "async function parseToolInput(tool: RegisteredTool, input: unknown, toolName: string): Promise<unknown>"
+          ],
+          "source_anchors": ["src/core/inputs.ts:117-135", "src/mcp/schemas.ts:167-173", "src/mcp/tools.ts:223-232"],
+          "implementation_guide": ["Add zod superRefine count check for proposalId/proposalPath/change.", "Keep Core hasExactlyOneChangeSource guard."],
+          "rationale": "Shape errors must be JSON-RPC invalid params, not Core domain failures.",
+          "pitfalls": ["Treat property absence and undefined as no source."],
+          "test_guidance": "Invalid zero-source and two-source inputs fail before handler execution.",
+          "verification_command": "npm test -- test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Apply shape errors raise InvalidParams."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/mcp/schemas.ts and tests. 2) Run npm test -- test/mcp/tools.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 4,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Replace generic MCP output schema with tool-specific DTO schemas",
+          "related_req_ids": ["FR-MCP-015", "FR-MCP-TR-006", "NFR-MAINT-007"],
+          "req_ids": ["FR-MCP-015", "FR-MCP-TR-006", "NFR-MAINT-007"],
+          "owns": ["src/mcp/structured-content.ts", "src/mcp/tools.ts", "src/mcp/schemas.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/mcp/structured-content.ts", "src/mcp/tools.ts"],
+          "method_signatures": [
+            "export function toolOutputSchemaFor(name: string): z.ZodTypeAny",
+            "export const searchOutputSchema: z.ZodTypeAny",
+            "export const graphOutputSchema: z.ZodTypeAny",
+            "export const applyOutputSchema: z.ZodTypeAny"
+          ],
+          "source_anchors": ["src/mcp/structured-content.ts:4-27", "src/mcp/tools.ts:191-194", "src/mcp/tools.ts:235-248"],
+          "implementation_guide": ["Define common result base schema.", "Return tool-specific schema by tool name.", "Validate error structuredContent as well as success structuredContent."],
+          "rationale": "MCP metadata must describe the Core DTO shape instead of only requiring ok.",
+          "pitfalls": ["Use passthrough for compatible extension.", "Do not duplicate every internal DTO field."],
+          "test_guidance": "Assert output schema required fields for search, graph, apply, and error results.",
+          "verification_command": "npm test -- test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Output schemas describe core public fields and validate error outputs."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/mcp structured-content/tools/schemas files. 2) Run npm test -- test/mcp/tools.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 7,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P1-003",
+          "title": "Add MCP success path black-box coverage",
+          "related_req_ids": ["FR-MCP-003", "FR-MCP-007", "FR-MCP-008", "FR-MCP-012", "FR-MCP-013"],
+          "req_ids": ["FR-MCP-003", "FR-MCP-007", "FR-MCP-008", "FR-MCP-012", "FR-MCP-013"],
+          "owns": ["test/mcp/tools.test.ts"],
+          "reads": ["src/mcp/tools.ts"],
+          "method_signatures": ["async function callRegisteredTool(server: McpServer, name: string, args: unknown): Promise<CallToolResult>"],
+          "source_anchors": ["src/mcp/tools.ts:49-58", "src/mcp/tools.ts:100-121", "src/mcp/tools.ts:160-181"],
+          "implementation_guide": ["Call registered MCP handlers through schema parse and output validation.", "Cover read_document, preview_requirement_id, trace_requirement, propose_change, and apply_change success paths."],
+          "rationale": "Tool registration tests do not prove success path behavior.",
+          "pitfalls": ["Run propose tests in temp workspaces only."],
+          "test_guidance": "success: read_document, preview_requirement_id, trace_requirement, propose_change, and apply_change return expected DTO fields; failure: apply uses allowApply=false or invalid params negative path; boundary: propose then apply in one temp workspace and verify source hash changes only after apply.",
+          "verification_command": "npm test -- test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Five MCP tools have adapter-level success tests."],
+          "rollback": {"strategy": "manual", "command": "1) Remove new MCP success path tests. 2) Run npm test -- test/mcp/tools.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "title": "Graph diagnostics preservation",
+      "goal": "Preserve validation diagnostics through graph, trace, and impact results.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Preserve workspace diagnostics in GraphResult",
+          "related_req_ids": ["FR-GRAPH-010", "FR-GRAPH-011", "VAL-ERR-010", "NFR-REL-007"],
+          "req_ids": ["FR-GRAPH-010", "FR-GRAPH-011", "VAL-ERR-010", "NFR-REL-007"],
+          "owns": ["src/graph/builder.ts", "src/core/api.ts", "src/core/read-model.ts", "src/cli/commands/graph.ts", "test/graph/graph.test.ts"],
+          "reads": ["src/graph/builder.ts", "src/validate/semantic.ts", "src/core/api.ts", "src/cli/commands/graph.ts"],
+          "method_signatures": [
+            "export function buildGraph(workspace: LoadedWorkspace, graphType?: GraphType): GraphResult",
+            "export function buildGraphFromRegistry(registry: RequirementRegistry, graphType?: GraphType, diagnostics?: DiagnosticBag): GraphResult",
+            "buildGraph(graphType?: GraphType): GraphResult"
+          ],
+          "source_anchors": ["src/graph/builder.ts:9-44", "src/validate/semantic.ts:465-492", "src/core/api.ts:113-120", "src/cli/commands/graph.ts:28-32"],
+          "implementation_guide": ["Pass workspace.diagnostics into GraphResult.", "Dedupe diagnostics deterministically.", "Keep graph node and edge sorting stable."],
+          "rationale": "Invalid relation targets must not disappear in graph output.",
+          "pitfalls": ["Do not change traversal semantics in this task."],
+          "test_guidance": "success: valid graph JSON keeps existing deterministic nodes and edges with errorCount 0; failure: unknown relation target appears in validate and graph JSON diagnostics; boundary: graph type filtering preserves diagnostics summary and sorting.",
+          "verification_command": "npm test -- test/graph/graph.test.ts test/cli/read-commands.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/graph/graph.test.ts test/cli/read-commands.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/graph/graph.test.ts test/cli/read-commands.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Graph JSON preserves invalid relation diagnostics."],
+          "rollback": {"strategy": "manual", "command": "1) Revert graph diagnostics edits. 2) Run npm test -- test/graph/graph.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 6,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Propagate graph diagnostics through trace and impact",
+          "related_req_ids": ["FR-GRAPH-011", "FR-MCP-008", "FR-MCP-010", "VAL-ERR-010"],
+          "req_ids": ["FR-GRAPH-011", "FR-MCP-008", "FR-MCP-010", "VAL-ERR-010"],
+          "owns": ["src/graph/trace.ts", "src/graph/impact.ts", "src/core/api.ts", "test/graph/graph.test.ts", "test/mcp/tools.test.ts"],
+          "reads": ["src/graph/trace.ts", "src/graph/impact.ts", "src/core/api.ts"],
+          "method_signatures": [
+            "export function traceRequirement(input: TraceRequirementInput, graph: GraphResult): TraceResult",
+            "export function impactRequirement(input: ImpactInput, graph: GraphResult): ImpactResult"
+          ],
+          "source_anchors": ["src/graph/trace.ts:6-41", "src/graph/impact.ts:29-102", "src/core/api.ts:157-159"],
+          "implementation_guide": ["Merge graph diagnostics into trace and impact results.", "Add duplicates and conflicts_with behavior tests."],
+          "rationale": "Trace and impact are public graph consumers and must preserve graph diagnostics.",
+          "pitfalls": ["Do not modify the impact relation matrix beyond test coverage."],
+          "test_guidance": "Invalid relation target diagnostics remain visible in trace and impact.",
+          "verification_command": "npm test -- test/graph/graph.test.ts test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/graph/graph.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/graph/graph.test.ts test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Trace and impact preserve graph diagnostics."],
+          "rollback": {"strategy": "manual", "command": "1) Revert trace and impact diagnostics edits. 2) Run npm test -- test/graph/graph.test.ts test/mcp/tools.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "title": "Write proposal validation and user recovery",
+      "goal": "Reject malformed stored proposals deterministically and provide recovery guidance.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Validate stored proposal patch paths before apply",
+          "related_req_ids": ["VAL-ERR-020", "FR-WRITE-005", "FR-WRITE-006", "FR-MCP-012", "FR-MCP-013"],
+          "req_ids": ["VAL-ERR-020", "FR-WRITE-005", "FR-WRITE-006", "FR-MCP-012", "FR-MCP-013"],
+          "owns": ["schemas/proposal.schema.json", "src/write/proposal.ts", "src/write/apply.ts", "test/write/apply.test.ts", "test/mcp/tools.test.ts"],
+          "reads": ["schemas/proposal.schema.json", "src/write/proposal.ts", "src/write/patch.ts", "src/write/yaml-update.ts"],
+          "method_signatures": [
+            "export async function readProposalAt(root: WorkspaceRoot, storePath: StorePath): Promise<ProposalDocument>",
+            "export function buildPatchOperations(change: ProposedChange): JsonPatchOperation[]"
+          ],
+          "source_anchors": ["schemas/proposal.schema.json:49-84", "src/write/proposal.ts:134-142", "src/write/patch.ts:56-99", "src/write/yaml-update.ts:13-23"],
+          "implementation_guide": ["Add JSON Pointer pattern to proposal schema.", "Run buildPatchOperations for stored proposals before apply.", "Return deterministic patch/proposal validation code."],
+          "rationale": "Externally written proposal YAML must be validated before it reaches mutation logic.",
+          "pitfalls": ["Allow RFC 6901 escape tokens.", "Keep semantic array bounds checks in code rather than schema."],
+          "test_guidance": "Slashless and URI-fragment pointers are rejected without source YAML mutation.",
+          "verification_command": "npm test -- test/write/apply.test.ts test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/write/apply.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/write/apply.test.ts test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Malformed stored proposal patches fail before source mutation."],
+          "rollback": {"strategy": "manual", "command": "1) Revert proposal schema and write path edits. 2) Run npm test -- test/write/apply.test.ts test/mcp/tools.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 6,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Add recovery guidance to apply failures",
+          "related_req_ids": ["NFR-UX-007", "FR-WRITE-005", "FR-WRITE-006", "NFR-REL-003", "NFR-REL-004"],
+          "req_ids": ["NFR-UX-007", "FR-WRITE-005", "FR-WRITE-006", "NFR-REL-003", "NFR-REL-004"],
+          "owns": ["src/write/apply.ts", "src/cli/human-renderer.ts", "test/write/apply.test.ts", "test/cli/req-write.test.ts"],
+          "reads": ["src/write/apply.ts"],
+          "method_signatures": [
+            "function applyFailure(code: ApplyFailureCode | string, message: string, diagnostics?: DiagnosticBag): ApplyResult",
+            "function recoveryDetailsForApplyFailure(code: string): JsonObject"
+          ],
+          "source_anchors": ["src/write/apply.ts:35-65", "src/write/apply.ts:70-110", "src/write/apply.ts:300-314"],
+          "implementation_guide": ["Add recovery details by failure code.", "Expose recovery in JSON diagnostics.", "Keep existing error codes stable."],
+          "rationale": "Users need deterministic next steps after apply rejection.",
+          "pitfalls": ["Do not include destructive VCS commands in recovery text."],
+          "test_guidance": "Assert recovery details for stale, validation, policy, and lock failures.",
+          "verification_command": "npm test -- test/write/apply.test.ts test/cli/req-write.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/write/apply.test.ts test/cli/req-write.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/write/apply.test.ts test/cli/req-write.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Major apply failures include recovery guidance."],
+          "rollback": {"strategy": "manual", "command": "1) Revert apply recovery guidance edits. 2) Run npm test -- test/write/apply.test.ts test/cli/req-write.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 4,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P4",
+      "title": "CLI and SRS coverage tests",
+      "goal": "Close black-box coverage gaps for CLI, doctor, quiet option, and out-of-scope guarantees.",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Add CLI black-box tests for init and cache commands",
+          "related_req_ids": ["FR-CLI-001", "FR-CLI-003", "FR-CLI-004", "FR-CACHE-003", "FR-CACHE-004", "FR-CACHE-010"],
+          "req_ids": ["FR-CLI-001", "FR-CLI-003", "FR-CLI-004", "FR-CACHE-003", "FR-CACHE-004", "FR-CACHE-010"],
+          "owns": ["test/cli/read-commands.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cli/program.ts", "src/core/cache.ts"],
+          "method_signatures": ["async function runCli(args: string[], options: { cwd?: string }): Promise<{ status: number; stdout: string; stderr: string }>"],
+          "source_anchors": ["test/cli/read-commands.test.ts:1-120", "src/core/cache.ts:1-21"],
+          "implementation_guide": ["Test init in temp workspace.", "Test cache rebuild JSON output.", "Test cache clean removes artifacts and keeps source YAML."],
+          "rationale": "CLI SRS acceptance requires process-level evidence.",
+          "pitfalls": ["Do not mutate repository fixtures during CLI cache tests."],
+          "test_guidance": "success: temp workspace init, cache rebuild JSON, and cache clean JSON return expected files and fields; failure: invalid root returns non-zero machine-readable error; boundary: no-cache graph/search/export/apply creates no new cache artifact or stale marker.",
+          "verification_command": "npm test -- test/cli/read-commands.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/read-commands.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/read-commands.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["init, cache rebuild, and cache clean have CLI black-box tests."],
+          "rollback": {"strategy": "manual", "command": "1) Remove new CLI black-box tests. 2) Run npm test -- test/cli/read-commands.test.ts test/cache/cache.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P4-002",
+          "title": "Strengthen doctor, quiet option, and OOS negative tests",
+          "related_req_ids": ["FR-DOC-CHK-006", "FR-DOC-CHK-007", "FR-DOC-CHK-008", "NFR-SEC-001", "NFR-SEC-002", "NFR-UX-001", "NFR-UX-002"],
+          "req_ids": ["FR-DOC-CHK-006", "FR-DOC-CHK-007", "FR-DOC-CHK-008", "NFR-SEC-001", "NFR-SEC-002", "NFR-UX-001", "NFR-UX-002"],
+          "owns": ["src/core/doctor.ts", "test/cli/doctor.test.ts", "test/hardening/security.test.ts", "test/cli/read-commands.test.ts"],
+          "reads": ["src/core/doctor.ts", "test/cli/doctor.test.ts", "test/hardening/security.test.ts"],
+          "method_signatures": ["export async function doctor(input: DoctorInput): Promise<DoctorResult>", "function renderHumanResult(result: MachineResult): string"],
+          "source_anchors": ["src/core/doctor.ts:87-170", "test/cli/doctor.test.ts:1-58", "test/hardening/security.test.ts:1-80"],
+          "implementation_guide": ["Add doctor checks for MCP command availability and stdout policy.", "Add quiet option output tests.", "Add OOS negative smoke tests for HTTP, DB files, and daemon behavior."],
+          "rationale": "Doctor and OOS requirements need observable release evidence.",
+          "pitfalls": ["Avoid flaky port scans.", "Keep quiet JSON parseable."],
+          "test_guidance": "success: doctor JSON includes MCP command availability and stdout/stderr policy check codes; failure: temp root without .speckiwi returns required-file diagnostics; boundary: quiet suppresses human success stdout while quiet JSON remains parseable; OOS: default command paths show no HTTP server, DB file creation, or daemon spawn.",
+          "verification_command": "npm test -- test/cli/doctor.test.ts test/hardening/security.test.ts test/cli/read-commands.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/doctor.test.ts test/hardening/security.test.ts test/cli/read-commands.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/doctor.test.ts test/hardening/security.test.ts test/cli/read-commands.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Doctor, quiet, and OOS requirements have observable tests."],
+          "rollback": {"strategy": "manual", "command": "1) Revert doctor and related test edits. 2) Run npm test -- test/cli/doctor.test.ts test/hardening/security.test.ts test/cli/read-commands.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 5,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    }
+  ],
+  "spec_mapping": [
+    {"req_id": "FR-STOR-001", "task_ids": ["TASK-P0-001", "TASK-P0-002"]},
+    {"req_id": "FR-STOR-002", "task_ids": ["TASK-P0-001", "TASK-P0-002"]},
+    {"req_id": "FR-CACHE-001", "task_ids": ["TASK-P0-001"]},
+    {"req_id": "FR-CACHE-002", "task_ids": ["TASK-P0-001", "TASK-P0-002"]},
+    {"req_id": "FR-CACHE-007", "task_ids": ["TASK-P0-001", "TASK-P0-002"]},
+    {"req_id": "FR-SRCH-009", "task_ids": ["TASK-P0-001"]},
+    {"req_id": "FR-REQ-002", "task_ids": ["TASK-P0-002"]},
+    {"req_id": "FR-MCP-014", "task_ids": ["TASK-P1-001"]},
+    {"req_id": "FR-MCP-013", "task_ids": ["TASK-P1-001", "TASK-P1-003", "TASK-P3-001"]},
+    {"req_id": "NFR-MAINT-007", "task_ids": ["TASK-P1-001", "TASK-P1-002"]},
+    {"req_id": "FR-MCP-015", "task_ids": ["TASK-P1-002"]},
+    {"req_id": "FR-MCP-TR-006", "task_ids": ["TASK-P1-002"]},
+    {"req_id": "FR-MCP-003", "task_ids": ["TASK-P1-003"]},
+    {"req_id": "FR-MCP-007", "task_ids": ["TASK-P1-003"]},
+    {"req_id": "FR-MCP-008", "task_ids": ["TASK-P1-003", "TASK-P2-002"]},
+    {"req_id": "FR-MCP-012", "task_ids": ["TASK-P1-003", "TASK-P3-001"]},
+    {"req_id": "FR-GRAPH-010", "task_ids": ["TASK-P2-001"]},
+    {"req_id": "FR-GRAPH-011", "task_ids": ["TASK-P2-001", "TASK-P2-002"]},
+    {"req_id": "VAL-ERR-010", "task_ids": ["TASK-P2-001", "TASK-P2-002"]},
+    {"req_id": "NFR-REL-007", "task_ids": ["TASK-P2-001"]},
+    {"req_id": "FR-MCP-010", "task_ids": ["TASK-P2-002"]},
+    {"req_id": "VAL-ERR-020", "task_ids": ["TASK-P3-001"]},
+    {"req_id": "FR-WRITE-005", "task_ids": ["TASK-P3-001", "TASK-P3-002"]},
+    {"req_id": "FR-WRITE-006", "task_ids": ["TASK-P3-001", "TASK-P3-002"]},
+    {"req_id": "NFR-UX-007", "task_ids": ["TASK-P3-002"]},
+    {"req_id": "NFR-REL-003", "task_ids": ["TASK-P3-002"]},
+    {"req_id": "NFR-REL-004", "task_ids": ["TASK-P3-002"]},
+    {"req_id": "FR-CLI-001", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-CLI-003", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-CLI-004", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-CACHE-003", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-CACHE-004", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-CACHE-010", "task_ids": ["TASK-P4-001"]},
+    {"req_id": "FR-DOC-CHK-006", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "FR-DOC-CHK-007", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "FR-DOC-CHK-008", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "NFR-SEC-001", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "NFR-SEC-002", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "NFR-UX-001", "task_ids": ["TASK-P4-002"]},
+    {"req_id": "NFR-UX-002", "task_ids": ["TASK-P4-002"]}
+  ],
+  "risks": [
+    {"risk": "Source-authenticated cache audit may increase search latency.", "mitigation": "Keep 500ms performance remediation out of scope and track as separate performance plan."},
+    {"risk": "Tool-specific output schemas may become brittle.", "mitigation": "Require only public observable fields and allow passthrough extension."},
+    {"risk": "Graph diagnostics preservation may affect CLI exit behavior.", "mitigation": "Add explicit CLI tests before changing behavior."}
+  ],
+  "route_to_coder": "$snoworca-coder PLAN_PATH=docs/plans/plan-20260502-speckiwi-srs-compliance-remediation-v1.md"
+}

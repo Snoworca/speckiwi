@@ -1,4 +1,4 @@
-import { getRequirement } from "../../core/requirements.js";
+import { createSpecKiwiCore } from "../../core/api.js";
 import { addCommonOptions, executeCliCommand } from "../options.js";
 import { registerRequirementWriteCommands } from "./req-write.js";
 export function registerRequirementCommands(program) {
@@ -7,6 +7,7 @@ export function registerRequirementCommands(program) {
         .option("--relations", "include incoming and outgoing relations")
         .option("--document", "include containing document summary");
     get.action((id) => executeCliCommand(get, async (context) => {
+        const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
         const input = {
             root: context.root,
             cacheMode: context.cacheMode,
@@ -18,7 +19,7 @@ export function registerRequirementCommands(program) {
         if (get.opts().document === true) {
             input.includeDocument = true;
         }
-        return getRequirement(input);
+        return core.getRequirement(input);
     }));
     registerRequirementWriteCommands(req);
 }

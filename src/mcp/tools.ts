@@ -1,55 +1,8 @@
-import { resolve } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolRequestSchema, ErrorCode, McpError, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type {
-  ApplyResult,
-  CacheResult,
-  CoreResult,
-  DoctorResult,
-  GraphResult,
-  ImpactResult,
-  InitResult,
-  JsonObject,
-  MachineResult,
-  OverviewResult,
-  ReadDocumentResult,
-  RequirementIdPreviewResult,
-  RequirementListResult,
-  RequirementResult,
-  SearchResultSet,
-  TraceResult,
-  ValidateResult
-} from "../core/dto.js";
-import type {
-  ApplyChangeInput,
-  CacheMode,
-  GenerateRequirementIdInput,
-  GraphInput,
-  GetRequirementInput,
-  ImpactInput,
-  ListDocumentsInput,
-  ListRequirementsInput,
-  OverviewInput,
-  ProposeChangeInput,
-  ReadDocumentInput,
-  SearchInput,
-  TraceRequirementInput,
-  ValidateInput
-} from "../core/inputs.js";
-import { applyChange } from "../core/apply-change.js";
-import { listDocuments, readDocument } from "../core/documents.js";
-import { overview } from "../core/overview.js";
-import { createProposal } from "../core/propose-change.js";
-import { getRequirement, listRequirements, loadRequirementRegistry, previewRequirementId, type RequirementRegistry } from "../core/requirements.js";
-import { searchWorkspace } from "../core/search.js";
-import { validateWorkspace } from "../core/validate.js";
-import { createDiagnosticBag, fail } from "../core/result.js";
-import { buildGraph } from "../graph/builder.js";
-import { impactRequirement } from "../graph/impact.js";
-import { traceRequirement } from "../graph/trace.js";
-import { workspaceRootFromPath } from "../io/workspace.js";
-import { loadWorkspaceForValidation } from "../validate/semantic.js";
-import { machineResultOutputSchema, toMcpToolResult } from "./structured-content.js";
+import type { SpecKiwiCore } from "../core/api.js";
+import type { MachineResult } from "../core/dto.js";
+import { machineErrorOutputSchema, toolOutputSchemaFor, toMcpToolResult } from "./structured-content.js";
 import {
   applyChangeInputSchema,
   generateRequirementIdInputSchema,
@@ -63,125 +16,10 @@ import {
   readDocumentInputSchema,
   searchInputSchema,
   traceRequirementInputSchema,
-  validateInputSchema,
-  type ApplyChangeToolInput,
-  type GenerateRequirementIdToolInput,
-  type GetRequirementToolInput,
-  type GraphToolInput,
-  type ImpactToolInput,
-  type ListDocumentsToolInput,
-  type ListRequirementsToolInput,
-  type OverviewToolInput,
-  type ProposeChangeToolInput,
-  type ReadDocumentToolInput,
-  type SearchToolInput,
-  type TraceRequirementToolInput,
-  type ValidateToolInput
+  validateInputSchema
 } from "./schemas.js";
 
-type BindableInput = {
-  cacheMode?: CacheMode | undefined;
-};
-
-type RootBound<T extends BindableInput> = Omit<T, "root"> & {
-  root: string;
-  cacheMode: CacheMode;
-};
-
-export type SpecKiwiCore = {
-  root: string;
-  cacheMode: CacheMode;
-  overview(input?: OverviewToolInput): Promise<OverviewResult>;
-  listDocuments(input?: ListDocumentsToolInput): ReturnType<typeof listDocuments>;
-  readDocument(input: ReadDocumentToolInput): Promise<ReadDocumentResult>;
-  search(input: SearchToolInput): Promise<SearchResultSet>;
-  getRequirement(input: GetRequirementToolInput): Promise<RequirementResult>;
-  listRequirements(input?: ListRequirementsToolInput): Promise<RequirementListResult>;
-  previewRequirementId(input: GenerateRequirementIdToolInput): Promise<RequirementIdPreviewResult>;
-  traceRequirement(input: TraceRequirementToolInput): Promise<TraceResult>;
-  graph(input?: GraphToolInput): Promise<GraphResult>;
-  impact(input: ImpactToolInput): Promise<ImpactResult>;
-  validate(input?: ValidateToolInput): Promise<ValidateResult>;
-  proposeChange(input: ProposeChangeToolInput): ReturnType<typeof createProposal>;
-  applyChange(input: ApplyChangeToolInput): Promise<ApplyResult>;
-  loadRequirementRegistry(): Promise<RequirementRegistry>;
-};
-
-export type McpToolResultCore =
-  | OverviewResult
-  | ReturnType<typeof fail>
-  | ReadDocumentResult
-  | SearchResultSet
-  | RequirementResult
-  | RequirementListResult
-  | RequirementIdPreviewResult
-  | GraphResult
-  | TraceResult
-  | ImpactResult
-  | ValidateResult
-  | ApplyResult
-  | CacheResult
-  | DoctorResult
-  | InitResult
-  | CoreResult<JsonObject>;
-
-export function createSpecKiwiCore(input: { root: string; cacheMode?: CacheMode }): SpecKiwiCore {
-  const root = resolve(input.root);
-  const cacheMode = input.cacheMode ?? "auto";
-
-  function bind<T extends BindableInput>(value: T | undefined): RootBound<T> {
-    return {
-      ...stripUndefined(value ?? ({} as T)),
-      root,
-      cacheMode: value?.cacheMode ?? cacheMode
-    } as RootBound<T>;
-  }
-
-  async function graph(inputValue: GraphInput = {}): Promise<GraphResult> {
-    const workspaceRoot = workspaceRootFromPath(resolve(root));
-    const workspace = await loadWorkspaceForValidation(workspaceRoot);
-    return buildGraph(workspace, inputValue.graphType);
-  }
-
-  return {
-    root,
-    cacheMode,
-    overview: (value = {}) => overview(bind(value) as OverviewInput),
-    listDocuments: (value = {}) => listDocuments(bind(value) as ListDocumentsInput),
-    readDocument: (value) => readDocument(bind(value) as ReadDocumentInput),
-    search: (value) => searchWorkspace(bind(value) as SearchInput),
-    getRequirement: (value) => getRequirement(bind(value) as GetRequirementInput),
-    listRequirements: (value = {}) => listRequirements(bind(value) as ListRequirementsInput),
-    previewRequirementId: async (value) => previewRequirementId(bind(value) as GenerateRequirementIdInput, await loadRequirementRegistry({ root, cacheMode: value.cacheMode ?? cacheMode })),
-    traceRequirement: async (value) => traceRequirement(bind(value) as TraceRequirementInput, await graph({ graphType: "traceability" })),
-    graph,
-    impact: async (value) => impactRequirement(bind(value) as ImpactInput, await graph({ graphType: "traceability" })),
-    validate: (value = {}) => validateWorkspace(bind(value) as ValidateInput),
-    proposeChange: (value) => createProposal(bind(value) as ProposeChangeInput),
-    applyChange: (value) => {
-      if (value.confirm !== true) {
-        return Promise.resolve(
-          fail(
-            { code: "APPLY_REJECTED_CONFIRM_REQUIRED", message: "Apply requires confirm=true." },
-            createDiagnosticBag([{ severity: "error", code: "APPLY_REJECTED_CONFIRM_REQUIRED", message: "Apply requires confirm=true." }])
-          ) as ApplyResult
-        );
-      }
-      return applyChange(bind(value) as ApplyChangeInput);
-    },
-    loadRequirementRegistry: () => loadRequirementRegistry({ root, cacheMode })
-  };
-}
-
-function stripUndefined<T extends BindableInput>(value: T): Partial<T> {
-  const output: Partial<T> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (entry !== undefined) {
-      output[key as keyof T] = entry as T[keyof T];
-    }
-  }
-  return output;
-}
+export { createSpecKiwiCore } from "../core/api.js";
 
 export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
   server.registerTool(
@@ -193,7 +31,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_overview"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.overview(input))
+    async (input) => toolResultFromCore(await core.overview(input as Parameters<SpecKiwiCore["overview"]>[0]))
   );
 
   server.registerTool(
@@ -205,7 +43,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_list_documents"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.listDocuments(input))
+    async (input) => toolResultFromCore(await core.listDocuments(input as Parameters<SpecKiwiCore["listDocuments"]>[0]))
   );
 
   server.registerTool(
@@ -217,7 +55,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_read_document"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.readDocument(input))
+    async (input) => toolResultFromCore(await core.readDocument(input as Parameters<SpecKiwiCore["readDocument"]>[0]))
   );
 
   server.registerTool(
@@ -229,7 +67,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_search"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.search(input))
+    async (input) => toolResultFromCore(await core.search(input as Parameters<SpecKiwiCore["search"]>[0]))
   );
 
   server.registerTool(
@@ -241,7 +79,10 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_get_requirement"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.getRequirement({ includeRelations: true, ...input }))
+    async (input) =>
+      toolResultFromCore(
+        await core.getRequirement({ includeRelations: true, ...input } as Parameters<SpecKiwiCore["getRequirement"]>[0])
+      )
   );
 
   server.registerTool(
@@ -253,7 +94,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_list_requirements"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.listRequirements(input))
+    async (input) => toolResultFromCore(await core.listRequirements(input as Parameters<SpecKiwiCore["listRequirements"]>[0]))
   );
 
   server.registerTool(
@@ -265,7 +106,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_preview_requirement_id"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.previewRequirementId(input))
+    async (input) => toolResultFromCore(await core.previewRequirementId(input as Parameters<SpecKiwiCore["previewRequirementId"]>[0]))
   );
 
   server.registerTool(
@@ -277,7 +118,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_trace_requirement"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.traceRequirement(input))
+    async (input) => toolResultFromCore(await core.traceRequirement(input as Parameters<SpecKiwiCore["traceRequirement"]>[0]))
   );
 
   server.registerTool(
@@ -289,7 +130,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_graph"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.graph(input))
+    async (input) => toolResultFromCore(await core.graph(input as Parameters<SpecKiwiCore["graph"]>[0]))
   );
 
   server.registerTool(
@@ -301,7 +142,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_impact"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.impact(input))
+    async (input) => toolResultFromCore(await core.impact(input as Parameters<SpecKiwiCore["impact"]>[0]))
   );
 
   server.registerTool(
@@ -313,7 +154,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_validate"),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.validate(input))
+    async (input) => toolResultFromCore(await core.validate(input as Parameters<SpecKiwiCore["validate"]>[0]))
   );
 
   server.registerTool(
@@ -325,7 +166,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_propose_change"),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.proposeChange(input))
+    async (input) => toolResultFromCore(await core.proposeChange(input as Parameters<SpecKiwiCore["proposeChange"]>[0]))
   );
 
   server.registerTool(
@@ -337,7 +178,7 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
       outputSchema: toolOutputSchemaFor("speckiwi_apply_change"),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
     },
-    async (input) => toolResultFromCore(await core.applyChange(input))
+    async (input) => toolResultFromCore(await core.applyChange(input as Parameters<SpecKiwiCore["applyChange"]>[0]))
   );
 
   installStrictToolCallHandler(server);
@@ -345,11 +186,6 @@ export function registerMcpTools(server: McpServer, core: SpecKiwiCore): void {
 
 export function toolResultFromCore<T extends MachineResult>(result: T): CallToolResult {
   return toMcpToolResult(result);
-}
-
-export function toolOutputSchemaFor(name: string): typeof machineResultOutputSchema {
-  void name;
-  return machineResultOutputSchema;
 }
 
 type ParseSchema = {
@@ -392,7 +228,7 @@ async function parseToolInput(tool: RegisteredTool, input: unknown, toolName: st
 }
 
 async function validateToolOutput(tool: RegisteredTool, result: CallToolResult, toolName: string): Promise<void> {
-  if (tool.outputSchema === undefined || result.isError === true) {
+  if (tool.outputSchema === undefined) {
     return;
   }
 
@@ -400,7 +236,8 @@ async function validateToolOutput(tool: RegisteredTool, result: CallToolResult, 
     throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
   }
 
-  const parsed = await tool.outputSchema.safeParseAsync(result.structuredContent);
+  const outputSchema = result.isError === true ? machineErrorOutputSchema : tool.outputSchema;
+  const parsed = await outputSchema.safeParseAsync(result.structuredContent);
   if (!parsed.success) {
     throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${formatSchemaError(parsed.error)}`);
   }

@@ -1,8 +1,11 @@
-import { mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtemp } from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
+import { isIndexSectionFresh, rebuildCache } from "../../src/core/cache.js";
+import { createSpecKiwiCore } from "../../src/core/api.js";
+import { loadReadModel } from "../../src/core/read-model.js";
 import { buildGraph } from "../../src/graph/builder.js";
 import { impactRequirement } from "../../src/graph/impact.js";
 import { traceRequirement } from "../../src/graph/trace.js";
@@ -120,6 +123,102 @@ describe("graph builder, trace, and impact", () => {
     expect(withoutContext.edges.every((edge) => edge.sourceType === "requirement" && edge.targetType === "requirement")).toBe(true);
   });
 
+  it("preserves invalid relation diagnostics through graph, trace, and impact results", async () => {
+    const workspace = await loadGraphWorkspace({ unknownRelation: true });
+    const graph = buildGraph(workspace, "requirement");
+
+    expect(graph.ok).toBe(true);
+    expect(graph.diagnostics.errors.map((diagnostic) => diagnostic.code)).toContain("UNKNOWN_REQUIREMENT_RELATION_TARGET");
+
+    const trace = traceRequirement({ id: "FR-SPEKIW-CORE-0002", direction: "both", depth: 1 }, graph);
+    const impact = impactRequirement({ id: "FR-SPEKIW-CORE-0002", depth: 1 }, graph);
+
+    expect(trace.ok).toBe(true);
+    expect(impact.ok).toBe(true);
+    expect(trace.diagnostics.errors.map((diagnostic) => diagnostic.code)).toContain("UNKNOWN_REQUIREMENT_RELATION_TARGET");
+    expect(impact.diagnostics.errors.map((diagnostic) => diagnostic.code)).toContain("UNKNOWN_REQUIREMENT_RELATION_TARGET");
+  });
+
+  it("serves fresh graph cache while preserving graph, trace, and impact diagnostics", async () => {
+    const root = await createGraphWorkspace({ unknownRelation: true });
+    await rebuildCache({ root });
+    const sourceCore = createSpecKiwiCore({ root, cacheMode: "bypass" });
+    const cachedCore = createSpecKiwiCore({ root });
+
+    const model = await loadReadModel({ root, sections: ["graph"] });
+    expect(model.stats).toMatchObject({ mode: "cache", cacheHit: true, artifactHitCount: 1 });
+
+    const sourceGraph = await sourceCore.graph({ graphType: "requirement" });
+    const cachedGraph = await cachedCore.graph({ graphType: "requirement" });
+    const sourceTrace = await sourceCore.traceRequirement({ id: "FR-SPEKIW-CORE-0002", direction: "both", depth: 1 });
+    const cachedTrace = await cachedCore.traceRequirement({ id: "FR-SPEKIW-CORE-0002", direction: "both", depth: 1 });
+    const sourceImpact = await sourceCore.impact({ id: "FR-SPEKIW-CORE-0002", depth: 1 });
+    const cachedImpact = await cachedCore.impact({ id: "FR-SPEKIW-CORE-0002", depth: 1 });
+
+    expect(cachedGraph.ok).toBe(true);
+    expect(cachedGraph.ok && cachedGraph.graphType).toBe("requirement");
+    expect(cachedGraph.ok && cachedGraph.nodes.every((node) => node.entityType === "requirement")).toBe(true);
+    expect(diagnosticCodes(cachedGraph)).toEqual(diagnosticCodes(sourceGraph));
+    expect(diagnosticCodes(cachedTrace)).toEqual(diagnosticCodes(sourceTrace));
+    expect(diagnosticCodes(cachedImpact)).toEqual(diagnosticCodes(sourceImpact));
+    expect(diagnosticCodes(cachedGraph)).toContain("UNKNOWN_REQUIREMENT_RELATION_TARGET");
+  });
+
+  it("does not reuse memoized cached graph after source YAML changes", async () => {
+    const root = await createGraphWorkspace();
+    await rebuildCache({ root });
+    const core = createSpecKiwiCore({ root });
+
+    const before = await core.graph({ graphType: "requirement" });
+    expect(before.ok && before.nodes.find((node) => node.id === "FR-SPEKIW-CORE-0002")?.title).toBe("Dependent");
+
+    const sourcePath = join(root, ".speckiwi", "srs", "core.yaml");
+    await writeFile((sourcePath), (await readFile(sourcePath, "utf8")).replace("title: Dependent", "title: Dependent Updated"), "utf8");
+
+    const after = await core.graph({ graphType: "requirement" });
+    const bypass = await core.graph({ graphType: "requirement", cacheMode: "bypass" });
+
+    expect(after.ok && after.nodes.find((node) => node.id === "FR-SPEKIW-CORE-0002")?.title).toBe("Dependent Updated");
+    expect(after).toEqual(bypass);
+    expect(await isIndexSectionFresh(workspaceRootFromPath(root), "graph")).toBe(true);
+    await expect(readFile(join(root, ".speckiwi", "cache", "graph.json"), "utf8")).resolves.toContain("Dependent Updated");
+  });
+
+  it("does not reuse memoized cached graph after same-size preserved-mtime source edits", async () => {
+    const root = await createGraphWorkspace();
+    await rebuildCache({ root });
+    const core = createSpecKiwiCore({ root });
+
+    const beforeGraph = await core.graph({ graphType: "requirement" });
+    expect(beforeGraph.ok && beforeGraph.nodes.find((node) => node.id === "FR-SPEKIW-CORE-0002")?.title).toBe("Dependent");
+
+    const sourcePath = join(root, ".speckiwi", "srs", "core.yaml");
+    const before = await stat(sourcePath);
+    const raw = await readFile(sourcePath, "utf8");
+    await writeFile(sourcePath, replaceSameLength(raw, "title: Dependent", "title: Retitled!"), "utf8");
+    await utimes(sourcePath, before.atime, before.mtime);
+
+    const after = await core.graph({ graphType: "requirement" });
+    const bypass = await core.graph({ graphType: "requirement", cacheMode: "bypass" });
+
+    expect(after.ok && after.nodes.find((node) => node.id === "FR-SPEKIW-CORE-0002")?.title).toBe("Retitled!");
+    expect(after).toEqual(bypass);
+  });
+
+  it("keeps duplicates and conflicts_with impact relations non-transitive", async () => {
+    const workspace = await loadGraphWorkspace({ nonTransitiveRelations: true });
+    const graph = buildGraph(workspace, "traceability");
+    const impact = impactRequirement({ id: "FR-SPEKIW-CORE-0001", depth: 5, includeDocuments: false, includeScopes: false }, graph);
+
+    expect(impact.ok).toBe(true);
+    if (!impact.ok) {
+      return;
+    }
+    expect(impact.impacted.map((item) => item.id)).toContain("FR-SPEKIW-CORE-0004");
+    expect(impact.impacted.map((item) => item.id)).not.toContain("FR-SPEKIW-CORE-0005");
+    expect(graph.ok && graph.edges.map((edge) => edge.relationType)).toEqual(expect.arrayContaining(["duplicates", "conflicts_with"]));
+  });
+
   it("builds graphs without creating cache files", async () => {
     const root = await createGraphWorkspace();
     const workspace = await loadWorkspaceForValidation(workspaceRootFromPath(root));
@@ -129,12 +228,27 @@ describe("graph builder, trace, and impact", () => {
   });
 });
 
-async function loadGraphWorkspace() {
-  const root = await createGraphWorkspace();
+function diagnosticCodes(result: { diagnostics: { errors: Array<{ code: string }> } }): string[] {
+  return result.diagnostics.errors.map((diagnostic) => diagnostic.code).sort();
+}
+
+function replaceSameLength(value: string, search: string, replacement: string): string {
+  expect(replacement).toHaveLength(search.length);
+  expect(value).toContain(search);
+  return value.replace(search, replacement);
+}
+
+async function loadGraphWorkspace(options: GraphWorkspaceOptions = {}) {
+  const root = await createGraphWorkspace(options);
   return loadWorkspaceForValidation(workspaceRootFromPath(root));
 }
 
-async function createGraphWorkspace(): Promise<string> {
+type GraphWorkspaceOptions = {
+  unknownRelation?: boolean;
+  nonTransitiveRelations?: boolean;
+};
+
+async function createGraphWorkspace(options: GraphWorkspaceOptions = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "speckiwi-graph-"));
   tempRoots.push(root);
   await mkdir(join(root, ".speckiwi", "srs"), { recursive: true });
@@ -231,6 +345,7 @@ requirements:
     relations:
       - type: depends_on
         target: FR-SPEKIW-CORE-0001
+${options.unknownRelation === true ? "      - type: depends_on\n        target: FR-SPEKIW-MISSING-9999\n" : ""}
 `,
     "utf8"
   );
@@ -258,6 +373,33 @@ requirements:
         target: FR-SPEKIW-CORE-0002
       - type: relates_to
         target: FR-SPEKIW-CORE-0001
+${options.nonTransitiveRelations === true ? `  - id: FR-SPEKIW-CORE-0004
+    type: functional
+    title: Duplicate candidate
+    status: active
+    statement: The system shall keep duplicate impact hops non transitive.
+    rationale: Impact traversal must not over-expand duplicate relations.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: Impact includes duplicate candidate only.
+    relations:
+      - type: duplicates
+        target: FR-SPEKIW-CORE-0001
+      - type: conflicts_with
+        target: FR-SPEKIW-CORE-0005
+  - id: FR-SPEKIW-CORE-0005
+    type: functional
+    title: Conflict neighbor
+    status: active
+    statement: The system shall remain outside duplicate impact traversal.
+    rationale: Non transitive relation rules prevent false impact spread.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: Impact does not include this neighbor through duplicate candidate.
+    relations: []
+` : ""}
 `,
     "utf8"
   );

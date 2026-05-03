@@ -1,0 +1,367 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260503-speckiwi-final-srs-gap-remed-v1",
+  "previous_hash": null,
+  "produced_by": "snoworca-planner@2.2.2",
+  "title": "SpecKiwi Final SRS Gap Remediation Plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-03T15:45:00+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "x-snoworca-code-path": ".",
+  "output_path": "docs/plans/plan-20260503-speckiwi-final-srs-gap-remediation-v1.md",
+  "scope_freeze": true,
+  "change_log": [
+    {
+      "ts": "2026-05-03T16:20:00+09:00",
+      "reason": "planner evaluator re-review: make TASK-P1-002 independent from generated core test read",
+      "tasks": ["TASK-P1-002"]
+    },
+    {
+      "ts": "2026-05-03T16:20:00+09:00",
+      "reason": "planner evaluator re-review: document concrete releaseCommands return shape",
+      "tasks": ["TASK-P4-002"]
+    }
+  ],
+  "platforms": ["posix", "win32"],
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test -- test/core/api.test.ts test/validate/semantic.test.ts test/search/search.test.ts test/cache/cache.test.ts test/graph/graph.test.ts test/release/acceptance.test.ts test/hardening/security.test.ts", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test -- test/core/api.test.ts test/validate/semantic.test.ts test/search/search.test.ts test/cache/cache.test.ts test/graph/graph.test.ts test/release/acceptance.test.ts test/hardening/security.test.ts", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run perf:srs", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run perf:srs", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)", "flags": ""},
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+\\*", "flags": ""},
+    {"pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)", "flags": ""},
+    {"pattern": "\\b(mkfs|fdisk|parted)\\b", "flags": ""},
+    {"pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b", "flags": ""},
+    {"pattern": "\\bchown\\s+-R\\s+.*\\s+/", "flags": ""},
+    {"pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)", "flags": ""},
+    {"pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)", "flags": ""},
+    {"pattern": "wget\\s+[^|]*\\|\\s*sh", "flags": ""},
+    {"pattern": "iwr\\s+[^;]+;\\s*iex", "flags": ""},
+    {"pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)", "flags": ""},
+    {"pattern": "git\\s+clean\\s+-[fdx]+", "flags": ""},
+    {"pattern": "적[절]히|필요\\s*시|알아[서]|상황에\\s*맞게|기존\\s*방식대로|어떻게[든]", "flags": ""}
+  ],
+  "phases": [
+    {
+      "id": "PHASE-P1",
+      "title": "Public Core Facade Completion",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Extend SpecKiwiCore With Missing Public Methods",
+          "related_req_ids": ["FR-PKG-003", "FR-DIR-001", "FR-DOC-CHK-001", "FR-CACHE-003", "FR-CACHE-004", "FR-EXP-001", "FR-CLI-001"],
+          "owns": ["src/core/api.ts", "src/core/inputs.ts", "test/core/api.test.ts"],
+          "reads": ["src/core/cache.ts", "src/core/export-markdown.ts", "src/core/init.ts", "src/core/doctor.ts"],
+          "feasibility": "Low",
+          "source_anchors": ["src/core/api.ts:64-80", "src/core/api.ts:101-169", "src/core/cache.ts:8-18", "src/core/export-markdown.ts:1", "src/core/init.ts:11-64", "src/core/doctor.ts:11-62"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/core/api.test.ts test/cache/cache.test.ts test/export/markdown.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/core/api.test.ts test/cache/cache.test.ts test/export/markdown.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "SpecKiwiCore type exposes init, doctor, cacheRebuild, cacheClean, and exportMarkdown.",
+            "createSpecKiwiCore returns implementations for all five methods.",
+            "test/core/api.test.ts verifies facade and direct module behavior.",
+            "npm run typecheck passes with public return types."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/core/api.ts and test/core/api.test.ts. 2) Run npm run typecheck and npm test -- test/core/api.test.ts."}
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Add Package Import Smoke For Expanded Core Facade",
+          "related_req_ids": ["FR-PKG-003", "FR-PKG-005", "FR-CLI-002"],
+          "owns": ["test/smoke/package.test.ts"],
+          "reads": ["package.json"],
+          "depends_on": ["TASK-P1-001"],
+          "feasibility": "Low",
+          "source_anchors": ["package.json:28-31", "test/smoke/package.test.ts:1-80"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/smoke/package.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/smoke/package.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "Package smoke imports the expanded public core facade.",
+            "Smoke test verifies expected method names at runtime.",
+            "Public smoke compile path remains covered by typecheck."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in test/smoke/package.test.ts. 2) Run npm test -- test/smoke/package.test.ts."}
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "title": "Semantic Validation Gaps",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Detect Dictionary Synonym Cycles And Preserve Bounded Search Expansion",
+          "related_req_ids": ["FR-DICT-003", "FR-DICT-004", "FR-DICT-005", "FR-SRCH-009"],
+          "owns": ["src/validate/semantic.ts", "test/search/search.test.ts", "test/validate/semantic.test.ts"],
+          "reads": ["src/search/document.ts", "src/search/index.ts"],
+          "feasibility": "Medium",
+          "source_anchors": ["src/search/document.ts:64-82", "src/search/index.ts:101-126", "src/validate/semantic.ts:141-156", "src/validate/semantic.ts:581-604", "test/search/search.test.ts:84-101"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/search/search.test.ts test/validate/semantic.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/search/search.test.ts test/validate/semantic.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "DICTIONARY_SYNONYM_CYCLE is emitted as a validation error.",
+            "Cycle dictionary search remains bounded and does not hang.",
+            "Dictionary-absent search still succeeds.",
+            "Existing synonym expansion behavior is unchanged."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/validate/semantic.ts, test/search/search.test.ts, and test/validate/semantic.test.ts. 2) Run npm test -- test/search/search.test.ts test/validate/semantic.test.ts."}
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Enforce SRS Document Primary Scope Consistency",
+          "related_req_ids": ["FR-SRS-DOC-001", "FR-SRS-DOC-002", "FR-SRS-DOC-004", "FR-DOC-010", "FR-IDX-008", "FR-REQ-011"],
+          "owns": ["src/validate/semantic.ts", "test/validate/semantic.test.ts", "test/fixtures/workspaces/invalid-schema/.speckiwi/srs/unregistered.yaml"],
+          "reads": ["src/schema/compile.ts", "test/search/search.test.ts"],
+          "feasibility": "Low",
+          "source_anchors": ["src/schema/compile.ts:119-133", "src/validate/semantic.ts:159-258", "src/validate/semantic.ts:393-403", "test/validate/semantic.test.ts:15-90"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/validate/semantic.test.ts test/search/search.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/validate/semantic.test.ts test/search/search.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "SRS_SCOPE_MISMATCH is emitted when index scope and YAML scope disagree.",
+            "DUPLICATE_SRS_PRIMARY_SCOPE is emitted when two SRS files share one primary scope.",
+            "Index scope omission with YAML scope remains valid.",
+            "Scope filter search/list tests continue to pass."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/validate/semantic.ts and test/validate/semantic.test.ts. 2) Run npm test -- test/validate/semantic.test.ts."}
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "title": "Cache Regeneration Evidence",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Add Section-Level Stale Cache Regeneration Tests",
+          "related_req_ids": ["FR-CACHE-001", "FR-CACHE-005", "FR-CACHE-006", "FR-CACHE-007", "FR-CACHE-008", "FR-STOR-006", "FR-SRCH-009", "NFR-REL-005"],
+          "owns": ["src/core/read-model.ts", "src/core/search.ts", "test/cache/cache.test.ts", "test/graph/graph.test.ts"],
+          "reads": ["src/cache/manifest.ts", "src/cache/rebuild.ts"],
+          "feasibility": "Medium",
+          "source_anchors": ["src/core/read-model.ts:157-210", "src/core/search.ts:38-75", "test/cache/cache.test.ts:226-237", "test/graph/graph.test.ts:142-165"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cache/cache.test.ts test/graph/graph.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cache/cache.test.ts test/graph/graph.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "Stale cache tests cover search, graph, entity, relation, and diagnostics sections.",
+            "Stale-but-readable graph/entity/relation/diagnostics sections are regenerated before public results are returned.",
+            "Corrupt cache tests cover source degrade warnings separately.",
+            "No stale artifact content appears in public Core results.",
+            "No-cache tests still prove no cache read or write."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/core/read-model.ts, src/core/search.ts, test/cache/cache.test.ts, and test/graph/graph.test.ts. 2) Run npm test -- test/cache/cache.test.ts test/graph/graph.test.ts."}
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Add Release Matrix Coverage For Cache Section Evidence",
+          "related_req_ids": ["FR-CACHE-006", "FR-CACHE-007", "NFR-REL-010"],
+          "owns": ["test/release/acceptance.test.ts"],
+          "reads": ["test/cache/cache.test.ts", "test/graph/graph.test.ts"],
+          "feasibility": "Low",
+          "source_anchors": ["test/release/acceptance.test.ts:43-123", "test/cache/cache.test.ts:226-237", "test/graph/graph.test.ts:142-165"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/release/acceptance.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/release/acceptance.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "Release acceptance matrix includes cache section regeneration and degrade anchors.",
+            "npm run release:acceptance passes.",
+            "Removing any stale cache section test fails release acceptance."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in test/release/acceptance.test.ts. 2) Run npm test -- test/release/acceptance.test.ts."}
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P4",
+      "title": "Packaging And Release Gates",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Add Global Install Smoke From Packed Tarball",
+          "related_req_ids": ["FR-CLI-001", "FR-CLI-002", "FR-PKG-001", "FR-PKG-004", "FR-PKG-005", "FR-PKG-006"],
+          "owns": ["test/release/acceptance.test.ts"],
+          "reads": ["package.json", "bin/speckiwi"],
+          "feasibility": "Medium",
+          "source_anchors": ["test/release/acceptance.test.ts:187-202", "package.json:6-9", "bin/speckiwi:1-5"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/release/acceptance.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/release/acceptance.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "Release acceptance installs the packed tarball into a temporary global prefix.",
+            "Installed speckiwi binary runs --help.",
+            "Installed speckiwi binary can run init against a temp root.",
+            "Generated tarball and temp prefix are cleaned up."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in test/release/acceptance.test.ts. 2) Remove generated speckiwi tarball from repo root. 3) Run npm test -- test/release/acceptance.test.ts."}
+        },
+        {
+          "id": "TASK-P4-002",
+          "title": "Put SRS Performance Gate Into Release Check",
+          "related_req_ids": ["NFR-PERF-001", "NFR-PERF-002", "NFR-PERF-003", "NFR-PERF-004", "NFR-PERF-005", "NFR-PERF-007", "NFR-REL-010"],
+          "owns": ["scripts/release-check.mjs", "test/release/acceptance.test.ts"],
+          "reads": ["test/perf/perf.test.ts", "package.json"],
+          "feasibility": "Low",
+          "source_anchors": ["scripts/release-check.mjs:10-18", "test/release/acceptance.test.ts:133-145", "test/perf/perf.test.ts:46-151", "package.json:53-59"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/release/acceptance.test.ts test/perf/perf.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/release/acceptance.test.ts test/perf/perf.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "releaseCommands() includes perf-srs before pack.",
+            "releaseCommands return entries are documented as Array<{ name: string, command: string, args: string[], timeoutMs?: number }>.",
+            "release acceptance asserts the perf-srs command and timeout.",
+            "npm run release:check executes perf:srs.",
+            "SRS-scale strict budgets remain unchanged."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in scripts/release-check.mjs and test/release/acceptance.test.ts. 2) Run npm test -- test/release/acceptance.test.ts."}
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P5",
+      "title": "Out Of Scope Policy Evidence",
+      "tasks": [
+        {
+          "id": "TASK-P5-001",
+          "title": "Add Git-History-Primary Policy Evidence",
+          "related_req_ids": ["FR-STOR-001", "FR-STOR-002", "FR-STOR-003", "FR-STOR-007", "FR-WRITE-003", "FR-WRITE-009"],
+          "owns": ["README.md", "test/hardening/security.test.ts", "test/write/apply.test.ts"],
+          "reads": ["docs/spec/srs.md"],
+          "feasibility": "Low",
+          "source_anchors": ["docs/spec/srs.md:169-175", "test/hardening/security.test.ts:224-225", "test/write/apply.test.ts:21-80", "README.md:1-41"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/write/apply.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/write/apply.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "README states Git history policy.",
+            "Hardening test proves workflows create no alternate history database.",
+            "Proposal YAML remains allowed as a managed artifact.",
+            "DB file prohibition remains enforced."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in README.md, test/hardening/security.test.ts, and test/write/apply.test.ts. 2) Run npm test -- test/hardening/security.test.ts test/write/apply.test.ts."}
+        },
+        {
+          "id": "TASK-P5-002",
+          "title": "Document And Test HTTP Server Out-Of-Scope Boundary",
+          "related_req_ids": ["OOS-003", "OOS-004", "NFR-SEC-001", "NFR-SEC-002", "FR-MCP-TR-001", "FR-MCP-TR-004"],
+          "owns": ["README.md", "test/hardening/security.test.ts"],
+          "reads": ["src/mcp/server.ts", "package-lock.json"],
+          "feasibility": "Low",
+          "source_anchors": ["src/mcp/server.ts:13-30", "test/hardening/security.test.ts:45-93", "package-lock.json:289-330", "README.md:1-41"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "README explains stdio-only runtime boundary.",
+            "Source scan blocks HTTP server startup code.",
+            "MCP SDK HTTP transitive packages are documented as transitive-only.",
+            "MCP stdio tests remain green."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in README.md and test/hardening/security.test.ts. 2) Run npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts."}
+        },
+        {
+          "id": "TASK-P5-003",
+          "title": "Document And Test Database And Vector Store Out-Of-Scope Boundary",
+          "related_req_ids": ["OOS-001", "OOS-002", "OOS-008", "FR-STOR-004", "FR-STOR-005", "NFR-COMP-007"],
+          "owns": ["README.md", "test/hardening/security.test.ts"],
+          "reads": ["docs/spec/srs.md", "package.json", "package-lock.json"],
+          "feasibility": "Low",
+          "source_anchors": ["docs/spec/srs.md:66-73", "docs/spec/srs.md:169-175", "package.json:80-85", "test/hardening/security.test.ts:80-93", "package-lock.json:289-330"],
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts", "expected_exit": 0}
+          ],
+          "dod": [
+            "OOS-001, OOS-002, OOS-008, FR-STOR-004, FR-STOR-005, and NFR-COMP-007 have automated evidence.",
+            "Direct dependency and source import scans reject DB and vector packages.",
+            "Product workflows create no DB or vector artifacts.",
+            "Transitive-only package policy is documented without blocking MCP SDK."
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in README.md and test/hardening/security.test.ts. 2) Run npm test -- test/hardening/security.test.ts."}
+        }
+      ]
+    }
+  ],
+  "req_mapping": [
+    {"req_id": "FR-PKG-003", "task_ids": ["TASK-P1-001", "TASK-P1-002"], "coverage": "full"},
+    {"req_id": "FR-DIR-001", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-DOC-CHK-001", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-003", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-004", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-EXP-001", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-CLI-001", "task_ids": ["TASK-P1-001", "TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-005", "task_ids": ["TASK-P1-002", "TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-CLI-002", "task_ids": ["TASK-P1-002", "TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-DICT-003", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "FR-DICT-004", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "FR-DICT-005", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "FR-SRCH-009", "task_ids": ["TASK-P2-001", "TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-SRS-DOC-001", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-SRS-DOC-002", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-SRS-DOC-004", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-DOC-010", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-IDX-008", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-REQ-011", "task_ids": ["TASK-P2-002"], "coverage": "full"},
+    {"req_id": "FR-CACHE-001", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-005", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-006", "task_ids": ["TASK-P3-001", "TASK-P3-002"], "coverage": "full"},
+    {"req_id": "FR-CACHE-007", "task_ids": ["TASK-P3-001", "TASK-P3-002"], "coverage": "full"},
+    {"req_id": "FR-CACHE-008", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-STOR-006", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-005", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-010", "task_ids": ["TASK-P3-002", "TASK-P4-002"], "coverage": "full"},
+    {"req_id": "FR-PKG-001", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-004", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-006", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "NFR-PERF-001", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "NFR-PERF-002", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "NFR-PERF-003", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "NFR-PERF-004", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "NFR-PERF-005", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "NFR-PERF-007", "task_ids": ["TASK-P4-002"], "coverage": "full"},
+    {"req_id": "FR-STOR-001", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-STOR-002", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-STOR-003", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-STOR-007", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-WRITE-003", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-WRITE-009", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "OOS-003", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "OOS-004", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "NFR-SEC-001", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "NFR-SEC-002", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "FR-MCP-TR-001", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "FR-MCP-TR-004", "task_ids": ["TASK-P5-002"], "coverage": "full"},
+    {"req_id": "OOS-001", "task_ids": ["TASK-P5-003"], "coverage": "full"},
+    {"req_id": "OOS-002", "task_ids": ["TASK-P5-003"], "coverage": "full"},
+    {"req_id": "OOS-008", "task_ids": ["TASK-P5-003"], "coverage": "full"},
+    {"req_id": "FR-STOR-004", "task_ids": ["TASK-P5-003"], "coverage": "full"},
+    {"req_id": "FR-STOR-005", "task_ids": ["TASK-P5-003"], "coverage": "full"},
+    {"req_id": "NFR-COMP-007", "task_ids": ["TASK-P5-003"], "coverage": "full"}
+  ],
+  "needs_clarification": [],
+  "dew_file": ".snoworca/dew/planner/plan-20260503-speckiwi-final-srs-gap-remed-v1/"
+}

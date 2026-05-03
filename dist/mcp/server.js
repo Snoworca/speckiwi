@@ -1,7 +1,8 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createSpecKiwiCore } from "../core/api.js";
 import { readMcpResource } from "./resources.js";
-import { createSpecKiwiCore, registerMcpTools } from "./tools.js";
+import { registerMcpTools } from "./tools.js";
 export function createMcpServer(input) {
     const core = createSpecKiwiCore(input);
     const server = new McpServer({

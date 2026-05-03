@@ -2,11 +2,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JsonObject } from "../core/dto.js";
+import type { SpecKiwiCore } from "../core/api.js";
 import type { RegisteredRequirement, RegisteredScope } from "../core/requirements.js";
 import { normalizeStorePath, resolveRealStorePath, WorkspacePathError } from "../io/path.js";
 import { workspaceRootFromPath } from "../io/workspace.js";
 import { parseSpeckiwiResourceUri, unknownResourceUri } from "./resource-uri.js";
-import type { SpecKiwiCore } from "./tools.js";
 
 export async function readMcpResource(uri: string, core: SpecKiwiCore): Promise<ReadResourceResult> {
   const parsed = parseSpeckiwiResourceUri(uri);

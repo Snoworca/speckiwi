@@ -45,13 +45,34 @@ export async function resolveRealStorePath(root, storePath) {
     return workspacePath;
 }
 export async function assertRealPathInsideWorkspace(path) {
-    const realWorkspaceRoot = await realpath(path.root.rootPath);
-    const realStoreRoot = await realpath(path.root.speckiwiPath);
+    await assertRealPathInsideWorkspaceWithGuard(path, await createRealPathGuard(path.root));
+}
+export async function createRealPathGuard(root) {
+    const realWorkspaceRoot = await realpath(root.rootPath);
+    const realStoreRoot = await realpath(root.speckiwiPath);
     if (!isInsideDirectory(realStoreRoot, realWorkspaceRoot)) {
+        throw new WorkspacePathError("WORKSPACE_ESCAPE", `${WORKSPACE_DIRECTORY} escapes workspace root: ${root.speckiwiPath}`);
+    }
+    return {
+        realWorkspaceRoot,
+        realStoreRoot,
+        realPathCache: new Map([
+            [resolve(root.rootPath), realWorkspaceRoot],
+            [resolve(root.speckiwiPath), realStoreRoot]
+        ])
+    };
+}
+export async function resolveRealStorePathWithGuard(root, storePath, guard) {
+    const workspacePath = resolveStorePath(root, storePath);
+    await assertRealPathInsideWorkspaceWithGuard(workspacePath, guard);
+    return workspacePath;
+}
+export async function assertRealPathInsideWorkspaceWithGuard(path, guard) {
+    if (!isInsideDirectory(guard.realStoreRoot, guard.realWorkspaceRoot)) {
         throw new WorkspacePathError("WORKSPACE_ESCAPE", `${WORKSPACE_DIRECTORY} escapes workspace root: ${path.root.speckiwiPath}`);
     }
-    const realCandidate = await realExistingPath(path.absolutePath);
-    if (!isInsideDirectory(realCandidate, realStoreRoot)) {
+    const realCandidate = await realExistingPath(path.absolutePath, guard);
+    if (!isInsideDirectory(realCandidate, guard.realStoreRoot)) {
         throw new WorkspacePathError("WORKSPACE_ESCAPE", `Store path escapes ${WORKSPACE_DIRECTORY}: ${path.storePath}`);
     }
 }
@@ -60,12 +81,18 @@ export function isInsideDirectory(candidate, directory) {
     const normalizedCandidate = resolve(candidate);
     return normalizedCandidate === normalizedDirectory || normalizedCandidate.startsWith(`${normalizedDirectory}${sep}`);
 }
-async function realExistingPath(path) {
+async function realExistingPath(path, guard) {
     let current = resolve(path);
     while (current.length > 0) {
+        const cached = guard?.realPathCache.get(current);
+        if (cached !== undefined) {
+            return cached;
+        }
         try {
             await lstat(current);
-            return await realpath(current);
+            const resolved = await realpath(current);
+            guard?.realPathCache.set(current, resolved);
+            return resolved;
         }
         catch (error) {
             if (!isNodeError(error) || error.code !== "ENOENT") {

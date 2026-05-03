@@ -1,68 +1,7 @@
-import { resolve } from "node:path";
 import { CallToolRequestSchema, ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
-import { applyChange } from "../core/apply-change.js";
-import { listDocuments, readDocument } from "../core/documents.js";
-import { overview } from "../core/overview.js";
-import { createProposal } from "../core/propose-change.js";
-import { getRequirement, listRequirements, loadRequirementRegistry, previewRequirementId } from "../core/requirements.js";
-import { searchWorkspace } from "../core/search.js";
-import { validateWorkspace } from "../core/validate.js";
-import { createDiagnosticBag, fail } from "../core/result.js";
-import { buildGraph } from "../graph/builder.js";
-import { impactRequirement } from "../graph/impact.js";
-import { traceRequirement } from "../graph/trace.js";
-import { workspaceRootFromPath } from "../io/workspace.js";
-import { loadWorkspaceForValidation } from "../validate/semantic.js";
-import { machineResultOutputSchema, toMcpToolResult } from "./structured-content.js";
+import { machineErrorOutputSchema, toolOutputSchemaFor, toMcpToolResult } from "./structured-content.js";
 import { applyChangeInputSchema, generateRequirementIdInputSchema, getRequirementInputSchema, graphInputSchema, impactInputSchema, listDocumentsInputSchema, listRequirementsInputSchema, overviewInputSchema, proposeChangeInputSchema, readDocumentInputSchema, searchInputSchema, traceRequirementInputSchema, validateInputSchema } from "./schemas.js";
-export function createSpecKiwiCore(input) {
-    const root = resolve(input.root);
-    const cacheMode = input.cacheMode ?? "auto";
-    function bind(value) {
-        return {
-            ...stripUndefined(value ?? {}),
-            root,
-            cacheMode: value?.cacheMode ?? cacheMode
-        };
-    }
-    async function graph(inputValue = {}) {
-        const workspaceRoot = workspaceRootFromPath(resolve(root));
-        const workspace = await loadWorkspaceForValidation(workspaceRoot);
-        return buildGraph(workspace, inputValue.graphType);
-    }
-    return {
-        root,
-        cacheMode,
-        overview: (value = {}) => overview(bind(value)),
-        listDocuments: (value = {}) => listDocuments(bind(value)),
-        readDocument: (value) => readDocument(bind(value)),
-        search: (value) => searchWorkspace(bind(value)),
-        getRequirement: (value) => getRequirement(bind(value)),
-        listRequirements: (value = {}) => listRequirements(bind(value)),
-        previewRequirementId: async (value) => previewRequirementId(bind(value), await loadRequirementRegistry({ root, cacheMode: value.cacheMode ?? cacheMode })),
-        traceRequirement: async (value) => traceRequirement(bind(value), await graph({ graphType: "traceability" })),
-        graph,
-        impact: async (value) => impactRequirement(bind(value), await graph({ graphType: "traceability" })),
-        validate: (value = {}) => validateWorkspace(bind(value)),
-        proposeChange: (value) => createProposal(bind(value)),
-        applyChange: (value) => {
-            if (value.confirm !== true) {
-                return Promise.resolve(fail({ code: "APPLY_REJECTED_CONFIRM_REQUIRED", message: "Apply requires confirm=true." }, createDiagnosticBag([{ severity: "error", code: "APPLY_REJECTED_CONFIRM_REQUIRED", message: "Apply requires confirm=true." }])));
-            }
-            return applyChange(bind(value));
-        },
-        loadRequirementRegistry: () => loadRequirementRegistry({ root, cacheMode })
-    };
-}
-function stripUndefined(value) {
-    const output = {};
-    for (const [key, entry] of Object.entries(value)) {
-        if (entry !== undefined) {
-            output[key] = entry;
-        }
-    }
-    return output;
-}
+export { createSpecKiwiCore } from "../core/api.js";
 export function registerMcpTools(server, core) {
     server.registerTool("speckiwi_overview", {
         title: "Overview",
@@ -160,10 +99,6 @@ export function registerMcpTools(server, core) {
 export function toolResultFromCore(result) {
     return toMcpToolResult(result);
 }
-export function toolOutputSchemaFor(name) {
-    void name;
-    return machineResultOutputSchema;
-}
 function installStrictToolCallHandler(server) {
     const registeredTools = server._registeredTools;
     server.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
@@ -188,13 +123,14 @@ async function parseToolInput(tool, input, toolName) {
     return parsed.data;
 }
 async function validateToolOutput(tool, result, toolName) {
-    if (tool.outputSchema === undefined || result.isError === true) {
+    if (tool.outputSchema === undefined) {
         return;
     }
     if (result.structuredContent === undefined) {
         throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
     }
-    const parsed = await tool.outputSchema.safeParseAsync(result.structuredContent);
+    const outputSchema = result.isError === true ? machineErrorOutputSchema : tool.outputSchema;
+    const parsed = await outputSchema.safeParseAsync(result.structuredContent);
     if (!parsed.success) {
         throw new McpError(ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${formatSchemaError(parsed.error)}`);
     }

@@ -1,8 +1,8 @@
 import type { Command } from "commander";
+import { createSpecKiwiCore } from "../../core/api.js";
 import type { DocumentType } from "../../core/dto.js";
 import type { ListRequirementsInput } from "../../core/inputs.js";
 import { listDocuments } from "../../core/documents.js";
-import { listRequirements } from "../../core/requirements.js";
 import { addCommonOptions, addPaginationOptions, CliUsageError, executeCliCommand, optionalString, parseOptionalInteger, splitComma } from "../options.js";
 
 export function registerListCommands(program: Command): void {
@@ -50,6 +50,7 @@ export function registerListCommands(program: Command): void {
     .option("--project <project>", "project id or name");
   reqs.action(() =>
     executeCliCommand(reqs, async (context) => {
+      const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
       const input: ListRequirementsInput = {
         root: context.root,
         cacheMode: context.cacheMode
@@ -82,7 +83,7 @@ export function registerListCommands(program: Command): void {
       if (offset !== undefined) {
         input.offset = offset;
       }
-      return listRequirements(input);
+      return core.listRequirements(input);
     })
   );
 }

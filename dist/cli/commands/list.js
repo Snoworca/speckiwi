@@ -1,5 +1,5 @@
+import { createSpecKiwiCore } from "../../core/api.js";
 import { listDocuments } from "../../core/documents.js";
-import { listRequirements } from "../../core/requirements.js";
 import { addCommonOptions, addPaginationOptions, CliUsageError, executeCliCommand, optionalString, parseOptionalInteger, splitComma } from "../options.js";
 export function registerListCommands(program) {
     const list = program.command("list").description("list documents and requirements");
@@ -41,6 +41,7 @@ export function registerListCommands(program) {
         .option("--tag <tag>", "tag")
         .option("--project <project>", "project id or name");
     reqs.action(() => executeCliCommand(reqs, async (context) => {
+        const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
         const input = {
             root: context.root,
             cacheMode: context.cacheMode
@@ -73,7 +74,7 @@ export function registerListCommands(program) {
         if (offset !== undefined) {
             input.offset = offset;
         }
-        return listRequirements(input);
+        return core.listRequirements(input);
     }));
 }
 function parseDocumentType(value) {

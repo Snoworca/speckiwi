@@ -18,7 +18,8 @@ import {
 import { loadYamlDocument } from "../io/yaml-loader.js";
 import { workspaceRootFromPath } from "../io/workspace.js";
 import { WriteLockError, withTargetWriteLock } from "./lock.js";
-import { buildProposalDocument, currentDocumentHash, currentTargetHash, readProposalAt, type ProposalDocument } from "./proposal.js";
+import { buildProposalDocument, currentDocumentHash, currentTargetHash, ProposalError, readProposalAt, type ProposalDocument } from "./proposal.js";
+import { PatchError } from "./patch.js";
 import { applyProposalToDocument } from "./yaml-update.js";
 
 type ApplyFailureCode =
@@ -87,19 +88,25 @@ async function applyResolvedProposal(root: WorkspaceRoot, targetStorePath: Store
     return applyFailure("APPLY_REJECTED_STALE_PROPOSAL", "Apply rejected because the target changed after validation.", race);
   }
 
-  const backupPath = await writeBackup(root, targetStorePath);
+  const backupPath = cacheMode === "bypass" ? undefined : await writeBackup(root, targetStorePath);
   try {
     await assertRealPathInsideWorkspace(targetPath);
     await atomicWriteText(targetPath.absolutePath, updated.raw);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const details: JsonObject =
+      backupPath === undefined
+        ? {
+            recovery: `Original YAML should remain at .speckiwi/${targetStorePath}; retry after checking workspace state.`
+          }
+        : {
+            backupPath,
+            recovery: `Original YAML should remain at .speckiwi/${targetStorePath}; inspect backup ${backupPath} before retrying.`
+          };
     return applyFailure(
       "APPLY_REJECTED_ATOMIC_WRITE_FAILED",
       `Atomic write failed for .speckiwi/${targetStorePath}.`,
-      diagnosticBag("APPLY_REJECTED_ATOMIC_WRITE_FAILED", message, {
-        backupPath,
-        recovery: `Original YAML should remain at .speckiwi/${targetStorePath}; inspect backup ${backupPath} before retrying.`
-      })
+      diagnosticBag("APPLY_REJECTED_ATOMIC_WRITE_FAILED", message, details)
     );
   }
 
@@ -140,13 +147,23 @@ async function applyResolvedProposal(root: WorkspaceRoot, targetStorePath: Store
 
 async function resolveProposal(input: ApplyChangeInput, root: WorkspaceRoot): Promise<ProposalDocument> {
   if ("change" in input && input.change !== undefined) {
-    return buildProposalDocument(input.change, root);
+    try {
+      return await buildProposalDocument(input.change, root);
+    } catch (error) {
+      if (error instanceof ProposalError || error instanceof PatchError) {
+        throw new ApplyError(error.code, error.message);
+      }
+      throw error;
+    }
   }
 
   if ("proposalPath" in input && input.proposalPath !== undefined) {
     try {
       return await readProposalAt(root, proposalStorePathFromInput(input.proposalPath));
     } catch (error) {
+      if (error instanceof ProposalError) {
+        throw new ApplyError(error.code, error.message);
+      }
       throw new ApplyError("APPLY_REJECTED_PROPOSAL_NOT_FOUND", error instanceof Error ? error.message : String(error));
     }
   }
@@ -174,12 +191,25 @@ async function findProposalById(root: WorkspaceRoot, proposalId: string): Promis
       if (proposal.id === proposalId) {
         return storePath;
       }
-    } catch {
+    } catch (error) {
+      if ((error instanceof ProposalError || error instanceof PatchError) && (await proposalFileDeclaresId(root, storePath, proposalId))) {
+        throw new ApplyError(error.code, error.message);
+      }
       continue;
     }
   }
 
   throw new ApplyError("APPLY_REJECTED_PROPOSAL_NOT_FOUND", `Proposal not found: ${proposalId}.`);
+}
+
+async function proposalFileDeclaresId(root: WorkspaceRoot, storePath: StorePath, proposalId: string): Promise<boolean> {
+  try {
+    const loaded = await loadYamlDocument(resolveStorePath(root, storePath));
+    const value = loaded.value;
+    return typeof value === "object" && value !== null && !Array.isArray(value) && (value as { id?: unknown }).id === proposalId;
+  } catch {
+    return false;
+  }
 }
 
 function proposalStorePathFromInput(input: string): StorePath {
@@ -291,8 +321,8 @@ function hasExactlyOneChangeSource(input: ApplyChangeInput): boolean {
   ].filter(Boolean).length === 1;
 }
 
-function applyFailure(code: ApplyFailureCode | string, message: string, diagnostics: DiagnosticBag = diagnosticBag(code, message)): ApplyResult {
-  return fail({ code, message }, diagnostics);
+function applyFailure(code: ApplyFailureCode | string, message: string, diagnostics?: DiagnosticBag): ApplyResult {
+  return fail({ code, message }, diagnostics === undefined ? diagnosticBag(code, message, recoveryDetailsForApplyFailure(code)) : withApplyRecovery(diagnostics, code));
 }
 
 function diagnosticBag(code: string, message: string, details?: JsonObject): DiagnosticBag {
@@ -305,6 +335,60 @@ function diagnosticBag(code: string, message: string, details?: JsonObject): Dia
     diagnostic.details = details;
   }
   return createDiagnosticBag([diagnostic]);
+}
+
+function withApplyRecovery(diagnostics: DiagnosticBag, code: string): DiagnosticBag {
+  const recovery = recoveryDetailsForApplyFailure(code);
+  if (recovery === undefined) {
+    return diagnostics;
+  }
+  return createDiagnosticBag(
+    [...diagnostics.errors, ...diagnostics.warnings, ...diagnostics.infos].map((diagnostic) => {
+      if (diagnostic.severity !== "error") {
+        return diagnostic;
+      }
+      const details = diagnostic.details ?? {};
+      if (typeof details.recovery === "string") {
+        return diagnostic;
+      }
+      return {
+        ...diagnostic,
+        details: {
+          ...details,
+          recovery: recovery.recovery
+        }
+      };
+    })
+  );
+}
+
+function recoveryDetailsForApplyFailure(code: string): (JsonObject & { recovery: string }) | undefined {
+  switch (code) {
+    case "APPLY_REJECTED_CONFIRM_REQUIRED":
+      return { recovery: "Review the proposal or change, then retry with confirm=true only when the write is intended." };
+    case "APPLY_REJECTED_INVALID_INPUT":
+      return { recovery: "Retry with exactly one proposalId, proposalPath, or inline change." };
+    case "APPLY_REJECTED_ALLOW_APPLY_FALSE":
+      return { recovery: "Enable settings.agent.allowApply in .speckiwi/index.yaml or use proposal mode without applying." };
+    case "APPLY_REJECTED_PROPOSAL_NOT_FOUND":
+      return { recovery: "Check the proposal id or .speckiwi/proposals path, then regenerate the proposal if it is missing." };
+    case "APPLY_REJECTED_STALE_PROPOSAL":
+      return { recovery: "Regenerate the proposal from the current YAML source before applying again." };
+    case "APPLY_REJECTED_VALIDATION_ERROR":
+      return { recovery: "Fix the reported validation errors or adjust the proposal, then rerun apply." };
+    case "APPLY_REJECTED_LOCK_CONFLICT":
+      return { recovery: "Wait for the active writer to finish, then retry after confirming the target YAML has not changed." };
+    case "APPLY_REJECTED_ATOMIC_WRITE_FAILED":
+      return { recovery: "Inspect the target YAML and backup path if present, then retry after resolving filesystem errors." };
+    case "APPLY_REJECTED_TARGET_INVALID":
+      return { recovery: "Check that the target document still exists inside .speckiwi and is valid YAML." };
+    case "PROPOSAL_SCHEMA_INVALID":
+    case "INVALID_PATCH":
+    case "INVALID_PATCH_PATH":
+      return { recovery: "Regenerate the proposal or correct its JSON Pointer patch paths before applying." };
+    default:
+      return undefined;
+  }
 }
 
 function timestampSegment(value: string): string {
@@ -321,7 +405,7 @@ function isJsonObject(value: unknown): value is JsonObject {
 
 class ApplyError extends Error {
   constructor(
-    public readonly code: ApplyFailureCode,
+    public readonly code: ApplyFailureCode | string,
     message: string
   ) {
     super(message);

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type { DocumentListResult, DocumentSummary, JsonObject, ReadDocumentResult } from "./dto.js";
 import type { ListDocumentsInput, ReadDocumentInput } from "./inputs.js";
-import { normalizeStorePath, resolveStorePath, WorkspacePathError } from "../io/path.js";
+import { normalizeStorePath, resolveRealStorePath, WorkspacePathError } from "../io/path.js";
 import { loadYamlDocument } from "../io/yaml-loader.js";
 import { workspaceRootFromPath } from "../io/workspace.js";
 import { loadRequirementRegistry } from "./requirements.js";
@@ -77,7 +77,7 @@ export async function readDocument(input: ReadDocumentInput): Promise<ReadDocume
     const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
     let loaded: Awaited<ReturnType<typeof loadYamlDocument>>;
     try {
-      loaded = await loadYamlDocument(resolveStorePath(root, normalizeStorePath(document.path)));
+      loaded = await loadYamlDocument(await resolveRealStorePath(root, normalizeStorePath(document.path)));
     } catch (error) {
       if (error instanceof WorkspacePathError) {
         return fail(

@@ -1,7 +1,10 @@
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import type {
+  Diagnostic,
   DiagnosticBag,
   DocumentSummary,
+  DocumentType,
   JsonObject,
   JsonValue,
   RequirementIdPreviewResult,
@@ -13,8 +16,31 @@ import type {
 } from "./dto.js";
 import type { GenerateRequirementIdInput, GetRequirementInput, ListRequirementsInput, RootInput } from "./inputs.js";
 import { createDiagnosticBag, fail, ok } from "./result.js";
+import { loadReadModel, type ReadModel } from "./read-model.js";
+import { normalizeStorePath, resolveRealStorePath } from "../io/path.js";
 import { workspaceRootFromPath } from "../io/workspace.js";
-import { loadWorkspaceForValidation, type LoadedSpecDocument, type LoadedWorkspace } from "../validate/semantic.js";
+import type { LoadedSpecDocument, LoadedWorkspace } from "../validate/semantic.js";
+import { isIndexSectionFresh, readCacheManifest } from "../cache/manifest.js";
+import { sha256File, stableJson } from "../cache/hash.js";
+import { hasManifestFormat, type IndexManifestV2 } from "../cache/index-manifest.js";
+import { readArtifact } from "../indexing/serialization.js";
+import {
+  deserializeEntityIndex,
+  deserializeRequirementPayloadShard,
+  requirementPayloadShardStorePath,
+  type RuntimeEntityIndex
+} from "../indexing/entities.js";
+import { deserializeRelationIndex, type RuntimeRelationIndex } from "../indexing/relations.js";
+import { loadYamlDocument } from "../io/yaml-loader.js";
+
+const manifestCache = new Map<string, { sha256: string; manifest: Awaited<ReturnType<typeof readCacheManifest>> }>();
+const entityIndexCache = new Map<string, { sha256: string; artifact: RuntimeEntityIndex }>();
+const requirementShardCache = new Map<
+  string,
+  { sha256: string; artifact: Exclude<ReturnType<typeof deserializeRequirementPayloadShard>, undefined> }
+>();
+const sourceConfirmationCache = new Map<string, { ok: true; requirement: RegisteredRequirement; document?: RegisteredDocument }>();
+const SOURCE_CONFIRMATION_CACHE_LIMIT = 1024;
 
 export type RegisteredDocument = DocumentSummary & {
   index: number;
@@ -79,9 +105,12 @@ const requirementTypePrefixes: Record<RequirementType, string> = {
 };
 
 export async function loadRequirementRegistry(input: RootInput = {}): Promise<RequirementRegistry> {
-  const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
-  const workspace = await loadWorkspaceForValidation(root);
-  return buildRequirementRegistry(workspace);
+  const model = await loadReadModel({
+    root: resolve(input.root ?? process.cwd()),
+    ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+    sections: ["entities", "relations"]
+  });
+  return model.getRequirementRegistry();
 }
 
 export function buildRequirementRegistry(workspace: LoadedWorkspace): RequirementRegistry {
@@ -133,10 +162,28 @@ export function buildRequirementRegistry(workspace: LoadedWorkspace): Requiremen
 }
 
 export async function getRequirement(input: GetRequirementInput): Promise<RequirementResult> {
-  return getRequirementFromRegistry(input, await loadRequirementRegistry(input));
+  const root = workspaceRootFromPath(resolve(input.root ?? process.cwd()));
+  const cached = await getRequirementFromEntityCache(input, root);
+  if (cached.result !== undefined) {
+    return cached.result;
+  }
+  const model = await loadReadModel({
+    root: root.rootPath,
+    ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+    sections: ["entities", "relations"]
+  });
+  return getRequirementFromRegistry(input, model.getRequirementRegistry(), createDiagnosticBag(cached.warnings));
 }
 
-export function getRequirementFromRegistry(input: GetRequirementInput, registry: RequirementRegistry): RequirementResult {
+export function getRequirementFromReadModel(input: GetRequirementInput, model: ReadModel): RequirementResult {
+  return getRequirementFromRegistry(input, model.getRequirementRegistry());
+}
+
+export function getRequirementFromRegistry(
+  input: GetRequirementInput,
+  registry: RequirementRegistry,
+  diagnostics: DiagnosticBag = createDiagnosticBag()
+): RequirementResult {
   const requirement = registry.requirementsById.get(input.id);
   if (requirement === undefined) {
     return notFoundRequirement(input.id);
@@ -167,11 +214,20 @@ export function getRequirementFromRegistry(input: GetRequirementInput, registry:
     };
   }
 
-  return ok(payload);
+  return ok(payload, diagnostics);
 }
 
 export async function listRequirements(input: ListRequirementsInput = {}): Promise<RequirementListResult> {
-  return listRequirementsFromRegistry(input, await loadRequirementRegistry(input));
+  const model = await loadReadModel({
+    root: resolve(input.root ?? process.cwd()),
+    ...(input.cacheMode === undefined ? {} : { cacheMode: input.cacheMode }),
+    sections: ["entities", "relations"]
+  });
+  return listRequirementsFromReadModel(input, model);
+}
+
+export function listRequirementsFromReadModel(input: ListRequirementsInput, model: ReadModel): RequirementListResult {
+  return listRequirementsFromRegistry(input, model.getRequirementRegistry());
 }
 
 export function listRequirementsFromRegistry(input: ListRequirementsInput, registry: RequirementRegistry): RequirementListResult {
@@ -531,6 +587,612 @@ function notFoundRequirement(id: string): RequirementResult {
     }
   ]);
   return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+}
+
+async function getRequirementFromEntityCache(
+  input: GetRequirementInput,
+  root: ReturnType<typeof workspaceRootFromPath>
+): Promise<{ result?: RequirementResult; warnings: Diagnostic[] }> {
+  if (input.cacheMode === "bypass") {
+    return { warnings: [] };
+  }
+
+  const entityArtifact = await readCachedEntityIndex(root);
+  if (entityArtifact.artifact === undefined) {
+    return {
+      warnings: entityArtifact.warning === undefined ? [] : [toCacheWarning(entityArtifact.warning, "ENTITY_CACHE_UNREADABLE")]
+    };
+  }
+
+  const summary = entityArtifact.artifact.requirementsById.get(input.id);
+  if (summary === undefined) {
+    return { warnings: [] };
+  }
+  const shardRef = entityArtifact.artifact.requirementShardsById.get(input.id);
+  if (shardRef === undefined) {
+    return {
+      warnings: [cacheWarning("ENTITY_CACHE_UNREADABLE", "Entity cache could not resolve a requirement shard.", ".speckiwi/cache/entities.json")]
+    };
+  }
+  if (!/^[a-f0-9]{64}$/.test(shardRef.documentHash)) {
+    return {
+      warnings: [
+        cacheWarning(
+          "REQUIREMENT_SHARD_UNREADABLE",
+          "Requirement payload shard reference was invalid; source YAML data was used.",
+          ".speckiwi/cache/entities.json",
+          { id: input.id }
+        )
+      ]
+    };
+  }
+  if (!(await isRequirementCacheFresh(root, summary.path, shardRef.documentHash))) {
+    return { warnings: [] };
+  }
+  if (input.includeRelations === true && !(await isIndexSectionFresh(root, "relations"))) {
+    return { warnings: [] };
+  }
+
+  const shardArtifact = await readCachedRequirementShard(root, shardRef.documentHash);
+  if (shardArtifact.artifact === undefined) {
+    return {
+      warnings: [
+        cacheWarning(
+          "REQUIREMENT_SHARD_UNREADABLE",
+          "Requirement payload shard could not be read; source YAML data was used.",
+          `.speckiwi/${requirementPayloadShardStorePath(shardRef.documentHash)}`,
+          shardArtifact.warning?.details
+        )
+      ]
+    };
+  }
+  const shardRequirement = shardArtifact.artifact.requirements.find((requirement) => requirement.id === input.id);
+  if (shardRequirement === undefined) {
+    return {
+      warnings: [
+        cacheWarning(
+          "REQUIREMENT_SHARD_UNREADABLE",
+          "Requirement payload shard did not contain the requested requirement; source YAML data was used.",
+          `.speckiwi/${requirementPayloadShardStorePath(shardRef.documentHash)}`
+        )
+      ]
+    };
+  }
+
+  let relationIndex: RuntimeRelationIndex | undefined;
+  if (input.includeRelations === true) {
+    const relationArtifact = await readArtifact(root, "cache/relations.json", deserializeRelationIndex);
+    if (relationArtifact.artifact === undefined) {
+      return {
+        warnings: [
+          relationArtifact.warning === undefined
+            ? cacheWarning("RELATION_CACHE_UNREADABLE", "Relation cache could not be read; source YAML data was used.", ".speckiwi/cache/relations.json")
+            : toCacheWarning(relationArtifact.warning, "RELATION_CACHE_UNREADABLE")
+        ]
+      };
+    }
+    relationIndex = relationArtifact.artifact;
+  }
+
+  const sourceConfirmation = await confirmCachedRequirementAgainstSource(
+    root,
+    input,
+    entityArtifact.artifact,
+    shardRequirement.requirement,
+    relationIndex
+  );
+  if (!sourceConfirmation.ok) {
+    return { warnings: [sourceConfirmation.warning] };
+  }
+
+  return {
+    result: buildConfirmedRequirementResult(
+      input,
+      sourceConfirmation,
+      createDiagnosticBag()
+    ),
+    warnings: []
+  };
+}
+
+async function confirmCachedRequirementAgainstSource(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  input: GetRequirementInput,
+  entities: RuntimeEntityIndex,
+  cachedRequirement: JsonObject,
+  relations: RuntimeRelationIndex | undefined
+): Promise<
+  | {
+      ok: true;
+      requirement: RegisteredRequirement;
+      document?: RegisteredDocument;
+      relations?: {
+        incoming: RequirementRelation[];
+        outgoing: RequirementRelation[];
+      };
+    }
+  | { ok: false; warning: Diagnostic }
+> {
+  if (input.includeRelations !== true) {
+    return confirmCachedRequirementAgainstTargetSource(root, input, entities, cachedRequirement);
+  }
+
+  const sourceModel = await loadReadModel({
+    root: root.rootPath,
+    cacheMode: "bypass",
+    sections: ["entities", "relations"]
+  });
+  const registry = sourceModel.getRequirementRegistry();
+  const source = registry.requirementsById.get(input.id);
+  const summary = entities.requirementsById.get(input.id);
+  const sourceDocument = source === undefined ? undefined : registry.documentsById.get(source.documentId);
+
+  if (source === undefined || summary === undefined) {
+    return {
+      ok: false,
+      warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+        id: input.id
+      })
+    };
+  }
+
+  if (!sameRequirementSourceFields(summary, cachedRequirement, source)) {
+    return {
+      ok: false,
+      warning: cacheWarning(
+        "ENTITY_CACHE_SOURCE_MISMATCH",
+        "Entity cache requirement fields did not match YAML source; source YAML data was used.",
+        ".speckiwi/cache/entities.json",
+        { id: input.id }
+      )
+    };
+  }
+
+  if (input.includeDocument === true && !sameDocumentSourceFields(entities.documentsById.get(source.documentId), sourceDocument)) {
+    return {
+      ok: false,
+      warning: cacheWarning(
+        "ENTITY_CACHE_SOURCE_MISMATCH",
+        "Entity cache document fields did not match YAML source; source YAML data was used.",
+        ".speckiwi/cache/entities.json",
+        { id: input.id, documentId: source.documentId }
+      )
+    };
+  }
+
+  if (
+    input.includeRelations === true &&
+    relations !== undefined &&
+    (!sameRelations(relations.outgoingById.get(input.id) ?? [], registry.outgoingRelationsById.get(input.id) ?? []) ||
+      !sameRelations(relations.incomingById.get(input.id) ?? [], registry.incomingRelationsById.get(input.id) ?? []))
+  ) {
+    return {
+      ok: false,
+      warning: cacheWarning(
+        "ENTITY_CACHE_SOURCE_MISMATCH",
+        "Entity cache relation data did not match YAML source; source YAML data was used.",
+        ".speckiwi/cache/relations.json",
+        { id: input.id }
+      )
+    };
+  }
+
+  return {
+    ok: true,
+    requirement: source,
+    ...(sourceDocument === undefined ? {} : { document: sourceDocument }),
+    ...(input.includeRelations === true
+      ? {
+          relations: {
+            incoming: registry.incomingRelationsById.get(input.id) ?? [],
+            outgoing: registry.outgoingRelationsById.get(input.id) ?? []
+          }
+        }
+      : {})
+  };
+}
+
+async function confirmCachedRequirementAgainstTargetSource(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  input: GetRequirementInput,
+  entities: RuntimeEntityIndex,
+  cachedRequirement: JsonObject
+): Promise<
+  | {
+      ok: true;
+      requirement: RegisteredRequirement;
+      document?: RegisteredDocument;
+    }
+  | { ok: false; warning: Diagnostic }
+> {
+  const summary = entities.requirementsById.get(input.id);
+  if (summary === undefined) {
+    return {
+      ok: false,
+      warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+        id: input.id
+      })
+    };
+  }
+
+  try {
+    const cacheKey = input.includeDocument === true ? undefined : await sourceConfirmationCacheKey(root, input, summary, cachedRequirement);
+    const cached = cacheKey === undefined ? undefined : sourceConfirmationCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const source = await loadRequirementFromTargetDocument(root, input, summary);
+    if (source === undefined) {
+      return {
+        ok: false,
+        warning: cacheWarning("ENTITY_CACHE_SOURCE_MISMATCH", "Entity cache requirement was absent from YAML source; source YAML data was used.", ".speckiwi/cache/entities.json", {
+          id: input.id
+        })
+      };
+    }
+
+    if (!sameRequirementSourceFields(summary, cachedRequirement, source.requirement)) {
+      return {
+        ok: false,
+        warning: cacheWarning(
+          "ENTITY_CACHE_SOURCE_MISMATCH",
+          "Entity cache requirement fields did not match YAML source; source YAML data was used.",
+          ".speckiwi/cache/entities.json",
+          { id: input.id }
+        )
+      };
+    }
+
+    if (input.includeDocument === true && !sameDocumentSourceFields(entities.documentsById.get(source.requirement.documentId), source.document)) {
+      return {
+        ok: false,
+        warning: cacheWarning(
+          "ENTITY_CACHE_SOURCE_MISMATCH",
+          "Entity cache document fields did not match YAML source; source YAML data was used.",
+          ".speckiwi/cache/entities.json",
+          { id: input.id, documentId: source.requirement.documentId }
+        )
+      };
+    }
+
+    if (cacheKey !== undefined) {
+      sourceConfirmationCache.set(cacheKey, source);
+      while (sourceConfirmationCache.size > SOURCE_CONFIRMATION_CACHE_LIMIT) {
+        const oldest = sourceConfirmationCache.keys().next().value;
+        if (typeof oldest !== "string") {
+          break;
+        }
+        sourceConfirmationCache.delete(oldest);
+      }
+    }
+    return source;
+  } catch (error) {
+    return {
+      ok: false,
+      warning: cacheWarning(
+        "ENTITY_CACHE_SOURCE_MISMATCH",
+        "Entity cache source confirmation failed; source YAML data was used.",
+        ".speckiwi/cache/entities.json",
+        { id: input.id, reason: error instanceof Error ? error.message : String(error) }
+      )
+    };
+  }
+}
+
+async function sourceConfirmationCacheKey(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  input: GetRequirementInput,
+  summary: RuntimeEntityIndex["requirements"][number],
+  cachedRequirement: JsonObject
+): Promise<string> {
+  const target = await resolveRealStorePath(root, normalizeStorePath(summary.path));
+  const sourceStats = await stat(target.absolutePath);
+  return stableJson({
+    root: root.rootPath,
+    id: input.id,
+    path: summary.path,
+    sourceSize: sourceStats.size,
+    sourceMtimeMs: sourceStats.mtimeMs,
+    sourceCtimeMs: sourceStats.ctimeMs,
+    cachedRequirement
+  });
+}
+
+async function loadRequirementFromTargetDocument(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  input: GetRequirementInput,
+  summary: RuntimeEntityIndex["requirements"][number]
+): Promise<{ ok: true; requirement: RegisteredRequirement; document?: RegisteredDocument } | undefined> {
+  const storePath = normalizeStorePath(summary.path);
+  const loaded = await loadYamlDocument(await resolveRealStorePath(root, storePath));
+  const value = jsonObjectValue(loaded.value);
+  if (value === undefined) {
+    return undefined;
+  }
+  const rawRequirement = arrayObjects(value.requirements).find((requirement) => stringValue(requirement.id) === input.id);
+  if (rawRequirement === undefined) {
+    return undefined;
+  }
+
+  const document =
+    input.includeDocument === true
+      ? await loadRegisteredDocumentForTarget(root, storePath, value)
+      : {
+          id: summary.documentId,
+          type: documentTypeValue(value.type) ?? "srs",
+          path: storePath,
+          index: 0
+        };
+  const sourceScope = stringValue(value.scope);
+  const requirement: RegisteredRequirement = {
+    id: input.id,
+    type: stringValue(rawRequirement.type) ?? "",
+    title: stringValue(rawRequirement.title) ?? "",
+    status: stringValue(rawRequirement.status) ?? "",
+    statement: stringValue(rawRequirement.statement) ?? "",
+    documentId: document.id,
+    tags: tagsFrom(rawRequirement.tags),
+    path: storePath,
+    requirement: rawRequirement,
+    relations: relationsFrom(rawRequirement.relations, input.id)
+  };
+  const priority = stringValue(rawRequirement.priority);
+  if (priority !== undefined) {
+    requirement.priority = priority;
+  }
+  if (sourceScope !== undefined) {
+    requirement.scope = sourceScope;
+  }
+  return {
+    ok: true,
+    requirement,
+    ...(input.includeDocument === true ? { document } : {})
+  };
+}
+
+async function loadRegisteredDocumentForTarget(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  storePath: string,
+  value: JsonObject
+): Promise<RegisteredDocument> {
+  const manifest = await loadManifestEntryForDocument(root, storePath);
+  const title = stringValue(value.title);
+  const status = stringValue(value.status);
+  const scope = stringValue(value.scope) ?? stringValue(manifest?.entry.scope);
+  const tags = tagsFrom(value.tags).length > 0 ? tagsFrom(value.tags) : tagsFrom(manifest?.entry.tags);
+  const document: RegisteredDocument = {
+    id: stringValue(manifest?.entry.id) ?? stringValue(value.id) ?? storePath,
+    type: documentTypeValue(manifest?.entry.type) ?? documentTypeValue(value.type) ?? "srs",
+    path: storePath,
+    index: manifest?.index ?? 0,
+    value
+  };
+  if (title !== undefined) {
+    document.title = title;
+  }
+  if (status !== undefined) {
+    document.status = status;
+  }
+  if (scope !== undefined) {
+    document.scope = scope;
+  }
+  if (tags.length > 0) {
+    document.tags = tags;
+  }
+  return document;
+}
+
+function documentTypeValue(value: JsonValue | undefined): DocumentType | undefined {
+  return ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary"].includes(String(value))
+    ? (value as DocumentType)
+    : undefined;
+}
+
+async function loadManifestEntryForDocument(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  storePath: string
+): Promise<{ entry: JsonObject; index: number } | undefined> {
+  const loaded = await loadYamlDocument(await resolveRealStorePath(root, normalizeStorePath("index.yaml")));
+  const index = jsonObjectValue(loaded.value);
+  return arrayObjects(index?.documents)
+    .map((entry, entryIndex) => ({ entry, index: entryIndex }))
+    .find(({ entry }) => stringValue(entry.path) === storePath);
+}
+
+function sameRequirementSourceFields(
+  summary: RuntimeEntityIndex["requirements"][number],
+  cachedRequirement: JsonObject,
+  source: RegisteredRequirement
+): boolean {
+  return (
+    stableJson(cachedRequirement) === stableJson(source.requirement) &&
+    (stringValue(cachedRequirement.statement) ?? summary.statement) === source.statement &&
+    (stringValue(cachedRequirement.status) ?? summary.status) === source.status &&
+    (stringValue(cachedRequirement.type) ?? summary.type) === source.type &&
+    (stringValue(cachedRequirement.title) ?? summary.title) === source.title &&
+    summary.scope === source.scope &&
+    summary.documentId === source.documentId &&
+    summary.path === source.path
+  );
+}
+
+function sameDocumentSourceFields(
+  cached: RuntimeEntityIndex["documents"][number] | undefined,
+  source: RegisteredDocument | undefined
+): boolean {
+  if (cached === undefined || source === undefined) {
+    return cached === source;
+  }
+  return stableJson(documentSummary(cached)) === stableJson(documentSummary(source));
+}
+
+function sameRelations(left: readonly RequirementRelation[], right: readonly RequirementRelation[]): boolean {
+  const leftKeys = left.map(relationKey).sort();
+  const rightKeys = right.map(relationKey).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index]);
+}
+
+function relationKey(relation: RequirementRelation): string {
+  return `${relation.source ?? ""}\0${relation.type}\0${relation.target}\0${relation.description ?? ""}`;
+}
+
+function buildConfirmedRequirementResult(
+  input: GetRequirementInput,
+  confirmation: {
+    requirement: RegisteredRequirement;
+    document?: RegisteredDocument;
+    relations?: {
+      incoming: RequirementRelation[];
+      outgoing: RequirementRelation[];
+    };
+  },
+  diagnostics: DiagnosticBag
+): RequirementResult {
+  const payload: {
+    requirement: JsonObject;
+    document?: DocumentSummary;
+    relations?: {
+      incoming: RequirementRelation[];
+      outgoing: RequirementRelation[];
+    };
+  } = {
+    requirement: confirmation.requirement.requirement
+  };
+
+  if (input.includeDocument === true) {
+    if (confirmation.document !== undefined) {
+      payload.document = documentSummary(confirmation.document);
+    }
+  }
+
+  if (input.includeRelations === true) {
+    payload.relations = {
+      incoming: confirmation.relations?.incoming ?? [],
+      outgoing: confirmation.relations?.outgoing ?? []
+    };
+  }
+
+  return ok(payload, diagnostics);
+}
+
+function toCacheWarning(warning: Diagnostic, code: string): Diagnostic {
+  return cacheWarning(code, warning.message, warning.path, warning.details);
+}
+
+function cacheWarning(code: string, message: string, path?: string, details?: JsonObject): Diagnostic {
+  return {
+    severity: "warning",
+    code,
+    message,
+    ...(path === undefined ? {} : { path }),
+    ...(details === undefined ? {} : { details })
+  };
+}
+
+async function isRequirementCacheFresh(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  documentPath: string,
+  documentHash: string
+): Promise<boolean> {
+  const manifest = await readCachedManifest(root);
+  if (!hasManifestFormat(manifest)) {
+    return false;
+  }
+
+  return (
+    documentPath.length > 0 &&
+    manifestOutputs(manifest).some((output) => output.path === "cache/entities.json") &&
+    manifestOutputs(manifest).some((output) => output.path === requirementPayloadShardStorePath(documentHash))
+  );
+}
+
+function manifestOutputs(manifest: IndexManifestV2): Array<{ path: string }> {
+  return [
+    ...manifest.sections.facts.outputs,
+    ...manifest.sections.entities.outputs,
+    ...manifest.sections.relations.outputs,
+    ...manifest.sections.search.outputs,
+    ...manifest.sections.graph.outputs,
+    ...manifest.sections.diagnostics.outputs
+  ];
+}
+
+async function readCachedManifest(root: ReturnType<typeof workspaceRootFromPath>): Promise<Awaited<ReturnType<typeof readCacheManifest>>> {
+  try {
+    const fileHash = await cacheArtifactSha256(root, "cache/manifest.json");
+    const cached = manifestCache.get(root.rootPath);
+    if (cached !== undefined && cached.sha256 === fileHash) {
+      return cached.manifest;
+    }
+    const manifest = await readCacheManifest(root);
+    manifestCache.set(root.rootPath, { sha256: fileHash, manifest });
+    return manifest;
+  } catch {
+    manifestCache.delete(root.rootPath);
+    return undefined;
+  }
+}
+
+async function readCachedEntityIndex(
+  root: ReturnType<typeof workspaceRootFromPath>
+): Promise<Awaited<ReturnType<typeof readArtifact<RuntimeEntityIndex>>>> {
+  try {
+    const fileHash = await cacheArtifactSha256(root, "cache/entities.json");
+    const cached = entityIndexCache.get(root.rootPath);
+    if (cached !== undefined && cached.sha256 === fileHash) {
+      return { artifact: cached.artifact };
+    }
+    const artifact = await readArtifact(root, "cache/entities.json", deserializeEntityIndex);
+    if (artifact.artifact !== undefined) {
+      entityIndexCache.set(root.rootPath, { sha256: fileHash, artifact: artifact.artifact });
+    }
+    return artifact;
+  } catch (error) {
+    entityIndexCache.delete(root.rootPath);
+    return {
+      warning: cacheWarning(
+        "ENTITY_CACHE_UNREADABLE",
+        "Entity cache could not be read; source YAML data was used.",
+        ".speckiwi/cache/entities.json",
+        { reason: error instanceof Error ? error.message : String(error) }
+      )
+    };
+  }
+}
+
+async function readCachedRequirementShard(
+  root: ReturnType<typeof workspaceRootFromPath>,
+  documentHash: string
+): Promise<Awaited<ReturnType<typeof readArtifact<Exclude<ReturnType<typeof deserializeRequirementPayloadShard>, undefined>>>>> {
+  const storePath = requirementPayloadShardStorePath(documentHash);
+  const cacheKey = `${root.rootPath}\0${documentHash}`;
+  try {
+    const fileHash = await cacheArtifactSha256(root, storePath);
+    const cached = requirementShardCache.get(cacheKey);
+    if (cached !== undefined && cached.sha256 === fileHash) {
+      return { artifact: cached.artifact };
+    }
+    const artifact = await readArtifact(root, storePath, deserializeRequirementPayloadShard);
+    if (artifact.artifact !== undefined) {
+      requirementShardCache.set(cacheKey, { sha256: fileHash, artifact: artifact.artifact });
+    }
+    return artifact;
+  } catch (error) {
+    requirementShardCache.delete(cacheKey);
+    return {
+      warning: cacheWarning(
+        "REQUIREMENT_SHARD_UNREADABLE",
+        "Requirement payload shard could not be read; source YAML data was used.",
+        `.speckiwi/${storePath}`,
+        { reason: error instanceof Error ? error.message : String(error) }
+      )
+    };
+  }
+}
+
+async function cacheArtifactSha256(root: ReturnType<typeof workspaceRootFromPath>, storePath: string): Promise<string> {
+  const target = await resolveRealStorePath(root, normalizeStorePath(storePath));
+  return `sha256:${await sha256File(target.absolutePath)}`;
 }
 
 function maxExistingSequence(ids: Set<string>, prefix: string): number {

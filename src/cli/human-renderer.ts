@@ -16,7 +16,7 @@ export function renderHuman(result: unknown): string {
   }
 
   if (result.ok === false && isObject(result.error)) {
-    return `${String(result.error.code)}: ${String(result.error.message)}\n`;
+    return `${String(result.error.code)}: ${String(result.error.message)}\n${renderDiagnosticsForStderr(diagnosticBag(result.diagnostics))}`;
   }
 
   if (result.ok === false && Array.isArray(result.writtenFiles) && typeof result.outputRoot === "string") {
@@ -169,7 +169,8 @@ function table(headers: string[], rows: string[][]): string {
 
 function formatDiagnostic(level: string, diagnostic: Diagnostic): string {
   const location = diagnostic.path === undefined ? "" : ` ${diagnostic.path}`;
-  return `${level} ${diagnostic.code}${location}\n  ${diagnostic.message}\n`;
+  const recovery = isObject(diagnostic.details) && typeof diagnostic.details.recovery === "string" ? `\n  Recovery: ${diagnostic.details.recovery}` : "";
+  return `${level} ${diagnostic.code}${location}\n  ${diagnostic.message}${recovery}\n`;
 }
 
 function diagnosticBag(value: unknown): DiagnosticBag | undefined {

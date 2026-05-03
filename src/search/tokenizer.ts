@@ -28,17 +28,27 @@ export const fieldBoosts: Record<SearchFieldName, number> = {
   path: 1
 };
 
+const tokenCache = new Map<string, string[]>();
+const TOKEN_CACHE_LIMIT = 50_000;
+
 export function normalizeExactKey(input: string): string {
   return input.normalize("NFKC").trim().toLowerCase();
 }
 
 export function tokenizeSearchText(input: string): string[] {
+  const cached = tokenCache.get(input);
+  if (cached !== undefined) {
+    return cached;
+  }
   const tokens: string[] = [];
   const seen = new Set<string>();
-  const normalized = splitCamelCase(input.normalize("NFKC")).toLowerCase();
+  const asciiOnly = isAsciiOnly(input);
+  const normalized = splitCamelCase(asciiOnly ? input : input.normalize("NFKC")).toLowerCase();
 
-  for (const token of tokenizeKorean(normalized)) {
-    addToken(token, tokens, seen);
+  if (!asciiOnly && /[\uac00-\ud7a3]/.test(normalized)) {
+    for (const token of tokenizeKorean(normalized)) {
+      addToken(token, tokens, seen);
+    }
   }
 
   for (const match of normalized.match(/[a-z0-9][a-z0-9._/-]*/g) ?? []) {
@@ -58,6 +68,7 @@ export function tokenizeSearchText(input: string): string[] {
     }
   }
 
+  rememberTokens(input, tokens);
   return tokens;
 }
 
@@ -82,9 +93,25 @@ function trimSeparators(input: string): string {
   return input.replace(/^[._/-]+|[._/-]+$/g, "");
 }
 
+function isAsciiOnly(input: string): boolean {
+  for (let index = 0; index < input.length; index += 1) {
+    if (input.charCodeAt(index) > 0x7f) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function addToken(token: string, tokens: string[], seen: Set<string>): void {
   if (token.length > 0 && !seen.has(token)) {
     seen.add(token);
     tokens.push(token);
   }
+}
+
+function rememberTokens(input: string, tokens: string[]): void {
+  if (tokenCache.size >= TOKEN_CACHE_LIMIT) {
+    tokenCache.clear();
+  }
+  tokenCache.set(input, tokens);
 }

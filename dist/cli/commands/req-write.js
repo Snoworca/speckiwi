@@ -101,7 +101,7 @@ async function buildCreateChange(input) {
     };
 }
 async function buildUpdateChange(input) {
-    const context = await requirementPatchContext(input.root, input.id);
+    const context = await requirementPatchContext(input.root, input.cacheMode, input.id);
     if (context === undefined) {
         throw new CliUsageError("REQUIREMENT_NOT_FOUND", `Requirement not found: ${input.id}.`);
     }
@@ -131,8 +131,8 @@ async function buildUpdateChange(input) {
         reason: optionalString(input.raw.reason) ?? `Update requirement ${input.id}.`
     };
 }
-async function requirementPatchContext(root, id) {
-    const registry = await loadRequirementRegistry({ root });
+async function requirementPatchContext(root, cacheMode, id) {
+    const registry = await loadRequirementRegistry({ root, cacheMode });
     const requirement = registry.requirementsById.get(id);
     if (requirement === undefined) {
         return undefined;

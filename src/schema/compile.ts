@@ -49,6 +49,9 @@ export function validateAgainstSchema(kind: SchemaKind, value: unknown): Diagnos
 }
 
 export function validateAgainstSchemaDiagnostics(kind: SchemaKind, value: unknown, path?: string): Diagnostic[] {
+  if (kind === "srs" && isFastValidSrsDocument(value)) {
+    return [];
+  }
   const validator = getRegistry()[kind];
   const valid = validator(value);
 
@@ -57,6 +60,155 @@ export function validateAgainstSchemaDiagnostics(kind: SchemaKind, value: unknow
   }
 
   return (validator.errors ?? []).map((error) => ajvErrorToDiagnostic(kind, error, path));
+}
+
+const srsDocumentKeys = new Set(["schemaVersion", "id", "type", "scope", "title", "status", "requirements", "metadata"]);
+const srsRequirementKeys = new Set([
+  "id",
+  "type",
+  "title",
+  "status",
+  "priority",
+  "statement",
+  "rationale",
+  "description",
+  "acceptanceCriteria",
+  "relations",
+  "tags",
+  "metadata"
+]);
+const srsAcceptanceCriterionKeys = new Set(["id", "method", "description"]);
+const srsRelationKeys = new Set(["type", "target", "description"]);
+const documentStatuses = new Set(["draft", "active", "deprecated", "archived"]);
+const requirementTypes = new Set([
+  "functional",
+  "non_functional",
+  "interface",
+  "data",
+  "constraint",
+  "security",
+  "performance",
+  "reliability",
+  "usability",
+  "maintainability",
+  "operational",
+  "compliance",
+  "migration",
+  "observability"
+]);
+const requirementStatuses = new Set(["draft", "active", "in_progress", "done", "blocked", "deprecated", "replaced", "discarded"]);
+const requirementPriorities = new Set(["critical", "high", "medium", "low", "optional"]);
+const acceptanceMethods = new Set(["inspection", "analysis", "test", "demonstration", "review"]);
+const relationTypes = new Set([
+  "depends_on",
+  "blocks",
+  "relates_to",
+  "duplicates",
+  "conflicts_with",
+  "refines",
+  "generalizes",
+  "replaces",
+  "replaced_by",
+  "derived_from",
+  "implements",
+  "documents",
+  "tests",
+  "requires_review_with"
+]);
+
+function isFastValidSrsDocument(value: unknown): boolean {
+  const document = jsonObject(value);
+  return (
+    document !== undefined &&
+    hasOnlyKeys(document, srsDocumentKeys) &&
+    document.schemaVersion === "speckiwi/srs/v1" &&
+    document.type === "srs" &&
+    nonEmptyString(document.id) &&
+    nonEmptyString(document.scope) &&
+    nonEmptyString(document.title) &&
+    stringIn(document.status, documentStatuses) &&
+    Array.isArray(document.requirements) &&
+    optionalMetadata(document.metadata) &&
+    document.requirements.every(isFastValidSrsRequirement)
+  );
+}
+
+function isFastValidSrsRequirement(value: unknown): boolean {
+  const requirement = jsonObject(value);
+  return (
+    requirement !== undefined &&
+    hasOnlyKeys(requirement, srsRequirementKeys) &&
+    nonEmptyString(requirement.id) &&
+    stringIn(requirement.type, requirementTypes) &&
+    nonEmptyString(requirement.title) &&
+    stringIn(requirement.status, requirementStatuses) &&
+    nonEmptyString(requirement.statement) &&
+    optionalString(requirement.rationale) &&
+    optionalString(requirement.description) &&
+    optionalStringIn(requirement.priority, requirementPriorities) &&
+    optionalStringArray(requirement.tags) &&
+    optionalMetadata(requirement.metadata) &&
+    optionalArray(requirement.acceptanceCriteria, isFastValidAcceptanceCriterion) &&
+    optionalArray(requirement.relations, isFastValidRelation)
+  );
+}
+
+function isFastValidAcceptanceCriterion(value: unknown): boolean {
+  const criterion = jsonObject(value);
+  return (
+    criterion !== undefined &&
+    hasOnlyKeys(criterion, srsAcceptanceCriterionKeys) &&
+    nonEmptyString(criterion.id) &&
+    stringIn(criterion.method, acceptanceMethods) &&
+    nonEmptyString(criterion.description)
+  );
+}
+
+function isFastValidRelation(value: unknown): boolean {
+  const relation = jsonObject(value);
+  return (
+    relation !== undefined &&
+    hasOnlyKeys(relation, srsRelationKeys) &&
+    stringIn(relation.type, relationTypes) &&
+    nonEmptyString(relation.target) &&
+    optionalString(relation.description)
+  );
+}
+
+function jsonObject(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: Set<string>): boolean {
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function optionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function stringIn(value: unknown, allowed: Set<string>): boolean {
+  return typeof value === "string" && allowed.has(value);
+}
+
+function optionalStringIn(value: unknown, allowed: Set<string>): boolean {
+  return value === undefined || stringIn(value, allowed);
+}
+
+function optionalStringArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((item) => typeof item === "string"));
+}
+
+function optionalMetadata(value: unknown): boolean {
+  return value === undefined || jsonObject(value) !== undefined;
+}
+
+function optionalArray(value: unknown, guard: (item: unknown) => boolean): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(guard));
 }
 
 export function schemaKindFromVersion(schemaVersion: unknown): SchemaKind | undefined {

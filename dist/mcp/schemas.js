@@ -150,5 +150,14 @@ export const applyChangeInputSchema = z.strictObject({
     proposalPath: z.string().optional(),
     change: proposeChangeInputSchema.omit({ cacheMode: true }).optional(),
     confirm: z.boolean()
+}).superRefine((value, ctx) => {
+    const sourceCount = [value.proposalId, value.proposalPath, value.change].filter((source) => source !== undefined).length;
+    if (sourceCount !== 1) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["proposalId"],
+            message: "Exactly one of proposalId, proposalPath, or change is required."
+        });
+    }
 });
 //# sourceMappingURL=schemas.js.map

@@ -1,6 +1,7 @@
 import type { TraceRequirementInput } from "../core/inputs.js";
-import type { GraphEdge, GraphNode, GraphResult, TraceDirection, TraceResult } from "../core/dto.js";
+import type { DiagnosticBag, GraphEdge, GraphNode, GraphResult, TraceDirection, TraceResult } from "../core/dto.js";
 import { createDiagnosticBag, fail, ok } from "../core/result.js";
+import { mergeDiagnosticBags } from "../validate/diagnostics.js";
 import { compareGraphEdges, relationRank, sortGraphEdges, sortGraphNodes } from "./model.js";
 
 export function traceRequirement(input: TraceRequirementInput, graph: GraphResult): TraceResult {
@@ -14,7 +15,7 @@ export function traceRequirement(input: TraceRequirementInput, graph: GraphResul
   const nodeByKey = new Map(requirementNodes.map((node) => [node.key, node]));
   const root = nodeByKey.get(rootKey);
   if (root === undefined) {
-    return requirementNotFound(requirementId);
+    return requirementNotFound(requirementId, graph.diagnostics);
   }
 
   const requirementEdges = graph.edges.filter((edge) => edge.sourceType === "requirement" && edge.targetType === "requirement");
@@ -31,14 +32,17 @@ export function traceRequirement(input: TraceRequirementInput, graph: GraphResul
     traverse(root.key, "downstream", depth, requirementEdges, nodeByKey, nodeKeys, edgeKeys);
   }
 
-  return ok({
-    root: requirementId,
-    requirementId,
-    direction,
-    depth,
-    nodes: sortGraphNodes([...nodeKeys].map((key) => nodeByKey.get(key)).filter(isDefined)),
-    edges: sortGraphEdges([...edgeKeys].map((key) => edgesByKey.get(key)).filter(isDefined))
-  });
+  return ok(
+    {
+      root: requirementId,
+      requirementId,
+      direction,
+      depth,
+      nodes: sortGraphNodes([...nodeKeys].map((key) => nodeByKey.get(key)).filter(isDefined)),
+      edges: sortGraphEdges([...edgeKeys].map((key) => edgesByKey.get(key)).filter(isDefined))
+    },
+    graph.diagnostics
+  );
 }
 
 function traverse(
@@ -95,7 +99,7 @@ function normalizeDepth(value: number | undefined): number {
   return Math.min(Math.max(Math.trunc(value), 0), 5);
 }
 
-function requirementNotFound(id: string): TraceResult {
+function requirementNotFound(id: string, graphDiagnostics: DiagnosticBag = createDiagnosticBag()): TraceResult {
   const diagnostics = createDiagnosticBag([
     {
       severity: "error",
@@ -104,7 +108,7 @@ function requirementNotFound(id: string): TraceResult {
       details: { id }
     }
   ]);
-  return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, diagnostics);
+  return fail({ code: "REQUIREMENT_NOT_FOUND", message: `Requirement not found: ${id}.`, details: { id } }, mergeDiagnosticBags(graphDiagnostics, diagnostics));
 }
 
 function isDefined<T>(value: T | undefined): value is T {

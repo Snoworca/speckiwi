@@ -1,0 +1,421 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260502-speckiwi-verification-hardening-v1",
+  "previous_hash": null,
+  "produced_by": "snoworca-planner@2.2.2",
+  "title": "SpecKiwi SRS verification hardening plan",
+  "mode": "NORMAL",
+  "produced_at": "2026-05-02T22:20:00+09:00",
+  "spec_path": "docs/spec/srs.md",
+  "spec_refs": [
+    "docs/spec/srs.md",
+    "docs/reports/20260502-speckiwi-srs-verification-findings.md"
+  ],
+  "code_path": ".",
+  "output_path": "docs/plans/plan-20260502-speckiwi-verification-hardening-v1.md",
+  "scope_freeze": true,
+  "change_log": [],
+  "platforms": ["posix", "win32"],
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/cli/req-write.test.ts test/cli/read-commands.test.ts test/cli/export.test.ts test/mcp/tools.test.ts test/perf/perf.test.ts test/cache/cache.test.ts test/graph/graph.test.ts test/smoke/package.test.ts", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/cli/req-write.test.ts test/cli/read-commands.test.ts test/cli/export.test.ts test/mcp/tools.test.ts test/perf/perf.test.ts test/cache/cache.test.ts test/graph/graph.test.ts test/smoke/package.test.ts", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run perf:srs", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run perf:srs", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+(/|~|\\$HOME|C:\\\\)", "flags": ""},
+    {"pattern": "\\brm\\s+-[rRfF]+\\s+\\*", "flags": ""},
+    {"pattern": "\\bdd\\s+if=.*\\s+of=/dev/(sd|nvme|hd)", "flags": ""},
+    {"pattern": "\\b(mkfs|fdisk|parted)\\b", "flags": ""},
+    {"pattern": "\\bchmod\\s+(-R\\s+)?[0-7]*777\\b", "flags": ""},
+    {"pattern": "\\bchown\\s+-R\\s+.*\\s+/", "flags": ""},
+    {"pattern": "\\bsudo\\s+(rm|chmod|chown|dd|mkfs)", "flags": ""},
+    {"pattern": "curl\\s+[^|]*\\|\\s*(sh|bash|zsh|powershell)", "flags": ""},
+    {"pattern": "wget\\s+[^|]*\\|\\s*sh", "flags": ""},
+    {"pattern": "iwr\\s+[^;]+;\\s*iex", "flags": ""},
+    {"pattern": "git\\s+push\\s+.*--force(-with-lease)?\\s+.*\\b(main|master|prod)\\b", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+(?!HEAD\\b)", "flags": ""},
+    {"pattern": "git\\s+clean\\s+-[fdx]+", "flags": ""},
+    {"pattern": "적[절]히|필요\\s*시|알아[서]|상황에\\s*맞게|기존\\s*방식대로|어떻게[든]", "flags": ""}
+  ],
+  "out_of_scope": [
+    "Search/indexing performance optimization",
+    "Budget relaxation for SRS performance targets",
+    "New product features outside SRS verification findings"
+  ],
+  "needs_clarification": [],
+  "phases": [
+    {
+      "id": "PHASE-P1",
+      "title": "Cache path security and source boundary",
+      "goal": "Make cache manifest and read-model metadata paths use the same realpath guard as serialized artifacts.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Guard cache manifest read and write paths",
+          "related_req_ids": ["NFR-SEC-003", "NFR-SEC-004", "NFR-SEC-005", "NFR-SEC-010", "FR-CACHE-002", "FR-CACHE-008"],
+          "req_ids": ["NFR-SEC-003", "NFR-SEC-004", "NFR-SEC-005", "NFR-SEC-010", "FR-CACHE-002", "FR-CACHE-008"],
+          "owns": ["src/cache/manifest.ts", "src/cache/rebuild.ts", "src/core/read-model.ts", "src/core/requirements.ts", "test/hardening/security.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cache/manifest.ts", "src/cache/rebuild.ts", "src/core/read-model.ts", "src/core/requirements.ts", "src/indexing/serialization.ts"],
+          "method_signatures": [
+            "export async function readCacheManifest(root: WorkspaceRoot): Promise<CacheManifest | undefined>",
+            "export async function readCacheManifestFile(root: WorkspaceRoot): Promise<{ manifest?: CacheManifest; warning?: Diagnostic }>",
+            "export async function writeCacheManifest(root: WorkspaceRoot, manifest: CacheManifest): Promise<void>",
+            "async function hashManifestOrMissing(root: WorkspaceRoot): Promise<string>"
+          ],
+          "source_anchors": ["src/cache/manifest.ts:64-75", "src/cache/rebuild.ts:89-93", "src/core/read-model.ts:261-280", "src/core/read-model.ts:347-353", "src/core/requirements.ts:1072-1085", "src/core/requirements.ts:1145-1148", "src/indexing/serialization.ts:31-52"],
+          "implementation_guide": [
+            "Replace direct manifest read with resolveRealStorePath on cache/manifest.json.",
+            "Keep parse and shape failures as cache miss degradation.",
+            "Move manifest write into a guarded helper used by rebuildCache.",
+            "Replace read-model direct manifest hash read with a guarded root-based helper.",
+            "Add regression tests for external symlink manifest and symlink cache directory."
+          ],
+          "rationale": "Manifest freshness decisions must not consume workspace-external files through symlinks.",
+          "pitfalls": ["Do not turn manifest unreadable into validation failure.", "Do not touch cacheMode bypass with manifest IO.", "Keep readCacheManifest return type compatible."],
+          "test_guidance": "Normal manifest remains usable, external symlink manifest degrades, symlink cache directory does not receive writes.",
+          "verification_command": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Manifest read/write is guarded by realpath checks.", "New manifest path guard is consistent with src/core/requirements.ts manifestCache and cacheArtifactSha256 guard patterns.", "Security tests cover cache manifest symlink escape.", "Cache tests still pass normal freshness flows."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/cache/manifest.ts, src/cache/rebuild.ts, and src/core/read-model.ts. 2) Run npm test -- test/hardening/security.test.ts test/cache/cache.test.ts."},
+          "feasibility": "High",
+          "turn_estimate": 6,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Track cache boundary regression coverage in release acceptance",
+          "related_req_ids": ["NFR-SEC-010", "NFR-REL-010", "FR-CACHE-002"],
+          "req_ids": ["NFR-SEC-010", "NFR-REL-010", "FR-CACHE-002"],
+          "owns": ["test/release/acceptance.test.ts", "test/hardening/security.test.ts"],
+          "reads": ["test/release/acceptance.test.ts", "test/hardening/security.test.ts"],
+          "method_signatures": [
+            "it(\"rejects workspace-external cache manifest symlinks\", async () => Promise<void>)",
+            "it(\"maps cache manifest symlink hardening to release acceptance coverage\", async () => Promise<void>)"
+          ],
+          "source_anchors": ["test/hardening/security.test.ts:128-149", "test/release/acceptance.test.ts:43-116"],
+          "implementation_guide": [
+            "Add behavior test for cache manifest symlink escape.",
+            "Extend release acceptance coverage matrix with the new hardening anchor.",
+            "Keep acceptance matrix as secondary evidence after behavior coverage."
+          ],
+          "rationale": "Release gate should preserve the security regression test that closes the manifest exception.",
+          "pitfalls": ["Handle Windows symlink limitations using existing test helper policy.", "Do not add long-running integration flows to release acceptance."],
+          "test_guidance": "Behavior test fails on external manifest symlink before fix, release matrix fails if anchor is removed.",
+          "verification_command": "npm test -- test/hardening/security.test.ts test/release/acceptance.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/release/acceptance.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/release/acceptance.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Security behavior test exists.", "Release acceptance tracks the behavior test anchor."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in test/hardening/security.test.ts and test/release/acceptance.test.ts. 2) Run npm test -- test/hardening/security.test.ts test/release/acceptance.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 2,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P2",
+      "title": "Deterministic validation diagnostics",
+      "goal": "Return ValidateResult diagnostics for workspace path guard failures instead of throwing through Core/MCP validate.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Convert workspace path guard failures into ValidateResult diagnostics",
+          "related_req_ids": ["NFR-REL-001", "NFR-REL-002", "NFR-REL-007", "NFR-SEC-010", "FR-VAL-004"],
+          "req_ids": ["NFR-REL-001", "NFR-REL-002", "NFR-REL-007", "NFR-SEC-010", "FR-VAL-004"],
+          "owns": ["src/core/validate.ts", "test/hardening/security.test.ts", "test/mcp/tools.test.ts", "test/cli/doctor.test.ts"],
+          "reads": ["src/core/validate.ts", "src/core/result.ts", "src/validate/semantic.ts", "src/io/path.ts"],
+          "method_signatures": [
+            "export async function validateWorkspace(input?: ValidateInput): Promise<ValidateResult>",
+            "function workspacePathDiagnostic(error: WorkspacePathError): Diagnostic"
+          ],
+          "source_anchors": ["src/core/validate.ts:9-14", "src/core/result.ts:70-76", "src/validate/semantic.ts:76-78", "test/hardening/security.test.ts:173-189"],
+          "implementation_guide": [
+            "Catch WorkspacePathError in validateWorkspace.",
+            "Map WORKSPACE_ESCAPE and INVALID_STORE_PATH to severity error diagnostics.",
+            "Return validationResult(createDiagnosticBag([...])) for path guard errors.",
+            "Keep non-path unexpected errors thrown.",
+            "Add Core, CLI, and MCP validate assertions for store-root symlink escape."
+          ],
+          "rationale": "Validation must be deterministic even when the workspace contains path boundary failures.",
+          "pitfalls": ["Do not change MCP resource read error policy.", "Do not swallow arbitrary programming errors."],
+          "test_guidance": "Normal validate stays ok, store-root symlink returns ok false, MCP validate returns structuredContent without handler crash.",
+          "verification_command": "npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts test/cli/doctor.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts test/cli/doctor.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts test/cli/doctor.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Core validate returns deterministic diagnostics for workspace escape.", "CLI and MCP validate tests cover the case."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/core/validate.ts and related tests. 2) Run npm test -- test/hardening/security.test.ts test/mcp/tools.test.ts test/cli/doctor.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P3",
+      "title": "Strict no-cache write path",
+      "goal": "Ensure req update apply no-cache bypasses cache read as well as cache write, and lock no-cache behavior for search, graph, and export.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Propagate cacheMode into requirement update patch context",
+          "related_req_ids": ["FR-CACHE-010", "FR-WRITE-005", "FR-WRITE-009"],
+          "req_ids": ["FR-CACHE-010", "FR-WRITE-005", "FR-WRITE-009"],
+          "owns": ["src/cli/commands/req-write.ts", "test/cli/req-write.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cli/commands/req-write.ts", "src/core/requirements.ts", "src/core/read-model.ts"],
+          "method_signatures": [
+            "async function buildUpdateChange(input: { root: string; cacheMode: \"auto\" | \"bypass\"; id: string; raw: Record<string, unknown> }): Promise<ProposeChangeInput>",
+            "async function requirementPatchContext(root: string, cacheMode: \"auto\" | \"bypass\", id: string): Promise<{ pointer: string; requirement: JsonObject } | undefined>"
+          ],
+          "source_anchors": ["src/cli/commands/req-write.ts:123-160", "src/core/requirements.ts:104-110", "test/cli/req-write.test.ts:60-81", "src/core/read-model.ts:75-90"],
+          "implementation_guide": [
+            "Pass input.cacheMode from buildUpdateChange into requirementPatchContext.",
+            "Call loadRequirementRegistry with the same cacheMode.",
+            "Keep apply locks active in no-cache mode.",
+            "Expand tests to cover existing poisoned cache and absent cache cases."
+          ],
+          "rationale": "The no-cache contract forbids read and write; target resolution before apply must not consult cache.",
+          "pitfalls": ["Do not treat lock files as cache files.", "Do not change proposal write semantics.", "Use source YAML for target pointer lookup in bypass mode."],
+          "test_guidance": "No-cache update ignores stale cache artifacts, leaves no cache stale marker, and still respects apply locks.",
+          "verification_command": "npm test -- test/cli/req-write.test.ts test/cache/cache.test.ts test/hardening/reliability.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/req-write.test.ts test/cache/cache.test.ts test/hardening/reliability.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/req-write.test.ts test/cache/cache.test.ts test/hardening/reliability.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["No-cache update uses cacheMode bypass before patch context resolution.", "Tests cover existing poisoned cache and absent cache."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in src/cli/commands/req-write.ts and tests. 2) Run npm test -- test/cli/req-write.test.ts test/cache/cache.test.ts test/hardening/reliability.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 4,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Add no-cache regression matrix for search graph and export",
+          "related_req_ids": ["FR-CACHE-010"],
+          "req_ids": ["FR-CACHE-010"],
+          "owns": ["src/cli/commands/search.ts", "src/cli/commands/graph.ts", "src/cli/commands/export.ts", "src/export/markdown.ts", "test/cli/read-commands.test.ts", "test/cli/export.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cli/commands/search.ts", "src/cli/commands/graph.ts", "src/cli/commands/export.ts", "src/export/markdown.ts", "test/cli/export.test.ts"],
+          "method_signatures": [
+            "registerSearchCommand(program: Command): void",
+            "registerGraphCommand(program: Command): void",
+            "registerExportCommand(program: Command): void",
+            "export async function exportMarkdown(input?: ExportMarkdownInput): Promise<ExportResult>"
+          ],
+          "source_anchors": ["src/cli/commands/search.ts:17-64", "src/cli/commands/graph.ts:13-31", "src/cli/commands/export.ts:16-40", "src/export/markdown.ts:30-44", "test/cli/export.test.ts:64-73"],
+          "implementation_guide": [
+            "After cache rebuild, poison search artifacts and assert speckiwi search --no-cache returns YAML source results.",
+            "For graph --no-cache, assert pre-existing cache artifacts are neither read nor mutated.",
+            "For export --no-cache, assert markdown output is produced while cache artifacts and stale marker are unchanged.",
+            "Only adjust command cacheMode propagation if the new tests expose a gap.",
+            "Do not treat lock, proposal, or markdown output files as cache artifacts."
+          ],
+          "rationale": "The no-cache contract applies to every CLI surface that can otherwise read or write cache.",
+          "pitfalls": ["Do not rely only on cache directory existence.", "Do not block non-cache command outputs.", "Keep bypass graph behavior independent from TASK-P5-001 cache read work."],
+          "test_guidance": "Search, graph, and export no-cache tests cover pre-existing or poisoned cache states without blocking normal command outputs.",
+          "verification_command": "npm test -- test/cli/read-commands.test.ts test/cli/export.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/read-commands.test.ts test/cli/export.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/read-commands.test.ts test/cli/export.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Search, graph, and export no-cache regression tests exist.", "Poisoned or pre-existing cache artifacts do not affect no-cache output.", "No-cache write suppression is verified without blocking non-cache command outputs."],
+          "rollback": {"strategy": "manual", "command": "1) Revert no-cache regression tests and any command cacheMode propagation edits. 2) Run npm test -- test/cli/read-commands.test.ts test/cli/export.test.ts test/cache/cache.test.ts."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P4",
+      "title": "Package dependency hardening",
+      "goal": "Declare direct runtime dependencies for modules imported by shipped MCP code.",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Declare zod as a direct runtime dependency and add package smoke coverage",
+          "related_req_ids": ["FR-CLI-002", "FR-PKG-004", "FR-PKG-005", "FR-PKG-006"],
+          "req_ids": ["FR-CLI-002", "FR-PKG-004", "FR-PKG-005", "FR-PKG-006"],
+          "owns": ["package.json", "package-lock.json", "test/smoke/package.test.ts", "test/release/acceptance.test.ts"],
+          "reads": ["src/mcp/schemas.ts", "src/mcp/structured-content.ts", "package.json"],
+          "method_signatures": [
+            "it(\"declares runtime dependencies for direct imports\", async () => Promise<void>)",
+            "it(\"loads MCP schema modules from the packed dependency graph\", async () => Promise<void>)"
+          ],
+          "source_anchors": ["src/mcp/schemas.ts:1-3", "src/mcp/structured-content.ts:1-4", "package.json:79-85", "test/smoke/package.test.ts:1-65"],
+          "implementation_guide": [
+            "Add zod to package.json dependencies.",
+            "Refresh package-lock with npm install behavior limited to lock update.",
+            "Add package smoke test mapping direct runtime imports to dependencies.",
+            "Add release acceptance anchor for the dependency smoke test."
+          ],
+          "rationale": "Direct runtime imports must not depend on transitive packages from MCP SDK.",
+          "pitfalls": ["Do not add zod to devDependencies.", "Do not upgrade unrelated packages."],
+          "test_guidance": "Smoke test fails if direct runtime import package is absent from dependencies.",
+          "verification_command": "npm test -- test/smoke/package.test.ts test/release/acceptance.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/smoke/package.test.ts test/release/acceptance.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/smoke/package.test.ts test/release/acceptance.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["zod is a runtime dependency.", "Smoke test protects direct runtime import dependency mapping."],
+          "rollback": {"strategy": "manual", "command": "1) Remove zod from dependencies and revert lockfile plus smoke tests. 2) Run npm test -- test/smoke/package.test.ts test/release/acceptance.test.ts."},
+          "feasibility": "Low",
+          "turn_estimate": 2,
+          "review_strictness": "standard",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P5",
+      "title": "Graph cache read path",
+      "goal": "Connect graph cache artifact to read-model graph requests with deterministic filtering and fallback.",
+      "tasks": [
+        {
+          "id": "TASK-P5-001",
+          "title": "Read and filter cached graph artifacts in ReadModel",
+          "related_req_ids": ["FR-GRAPH-008", "FR-GRAPH-009", "FR-GRAPH-010", "FR-GRAPH-011", "NFR-PERF-006"],
+          "req_ids": ["FR-GRAPH-008", "FR-GRAPH-009", "FR-GRAPH-010", "FR-GRAPH-011", "NFR-PERF-006"],
+          "owns": ["src/core/read-model.ts", "src/graph/builder.ts", "src/graph/model.ts", "test/graph/graph.test.ts", "test/cache/cache.test.ts"],
+          "reads": ["src/cache/rebuild.ts", "src/core/api.ts", "src/core/read-model.ts", "src/graph/builder.ts"],
+          "method_signatures": [
+            "export function deserializeGraphResult(value: unknown): GraphResult | undefined",
+            "export function filterGraphResult(graph: GraphResult, graphType: GraphType): GraphResult",
+            "buildGraph(graphType?: GraphType): GraphResult"
+          ],
+          "source_anchors": ["src/cache/rebuild.ts:52-67", "src/core/api.ts:113-120", "src/core/read-model.ts:157-184", "src/graph/builder.ts:193-219"],
+          "prerequisites": [
+            "TASK-P1-001 is complete, so cache manifest path IO is guarded by realpath checks.",
+            "Cached graph branch only runs after isIndexSectionFresh(root, \"graph\") or an equivalent output-hash freshness check passes."
+          ],
+          "implementation_guide": [
+            "Add graph artifact deserializer with minimal GraphResult shape validation.",
+            "Extract graphType filtering from buildGraphFromRegistry into reusable helper.",
+            "Read fresh graph artifact for graph-only read-model sections.",
+            "Filter cached traceability graph for requested graphType.",
+            "Fallback to source graph when artifact is unreadable or stale.",
+            "Preserve source graph diagnostics by choosing one deterministic strategy before coding: merge fresh diagnostics artifact, include diagnostics in graph artifact, or fallback to source when diagnostics are unavailable.",
+            "Ensure traceRequirement and impact expose the same invalid relation diagnostics under cached graph path as source path."
+          ],
+          "rationale": "Generated graph cache should have an observable read path and avoid full source reload on warm graph reads.",
+          "pitfalls": ["Graph cache is not source truth.", "Do not confuse diagnostics cache with graph diagnostics.", "Keep impact and trace deterministic."],
+          "test_guidance": "Warm graph request hits graph cache, malformed graph artifact falls back to source, dependency graph filter returns only dependency edges, and invalid relation fixtures produce the same diagnostic codes for core.graph, traceRequirement, and impact on cached and source paths.",
+          "verification_command": "npm test -- test/graph/graph.test.ts test/cache/cache.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/graph/graph.test.ts test/cache/cache.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/graph/graph.test.ts test/cache/cache.test.ts", "expected_exit": 0}
+          ],
+          "dod": ["Fresh graph cache can serve graph requests without source parse.", "GraphType filtering from cached graph is deterministic.", "Fallback path preserves GraphResult DTO.", "Cached graph path preserves source graph diagnostics and filtering semantics when manifest freshness passes."],
+          "rollback": {"strategy": "manual", "command": "1) Revert graph cache read-model changes and helper extraction. 2) Run npm test -- test/graph/graph.test.ts test/cache/cache.test.ts."},
+          "feasibility": "High",
+          "turn_estimate": 8,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    },
+    {
+      "id": "PHASE-P6",
+      "title": "MCP performance evidence",
+      "goal": "Measure actual MCP tool call path in SRS performance tests without changing performance budgets.",
+      "tasks": [
+        {
+          "id": "TASK-P6-001",
+          "title": "Measure actual MCP tool path in SRS performance test",
+          "related_req_ids": ["NFR-PERF-005", "NFR-PERF-007", "FR-MCP-004", "FR-MCP-TR-006"],
+          "req_ids": ["NFR-PERF-005", "NFR-PERF-007", "FR-MCP-004", "FR-MCP-TR-006"],
+          "owns": ["test/perf/perf.test.ts"],
+          "reads": ["test/perf/perf.test.ts", "test/mcp/tools.test.ts", "src/mcp/tools.ts", "src/mcp/server.ts"],
+          "method_signatures": [
+            "async function measureMcpToolCall(root: string, counters: Record<string, PerfCounters>, toolName: string, args: Record<string, unknown>): Promise<number>",
+            "async function withPerfMcpClient(root: string, callback: (client: Client) => Promise<void>): Promise<void>"
+          ],
+          "source_anchors": ["test/perf/perf.test.ts:102-128", "test/perf/perf.test.ts:264-284", "test/mcp/tools.test.ts:493-513", "src/mcp/tools.ts:202-244"],
+          "implementation_guide": [
+            "Use InMemory MCP transport to call speckiwi_search through client.callTool.",
+            "Exclude client setup from measured single tool call interval.",
+            "Assert structuredContent ok and first result id.",
+            "Populate perf counters from structuredContent diagnostics.",
+            "Keep existing SRS budgets unchanged."
+          ],
+          "rationale": "Core direct call does not measure MCP input validation, handler, output schema, and structuredContent path.",
+          "pitfalls": ["Do not include fixture generation or client setup in timing.", "Do not relax budgets without user approval.", "Do not spawn stdio process for per-call latency unless separately requested."],
+          "test_guidance": "Normal perf profile uses actual MCP client call, unsupported tool still fails deterministically, SRS profile keeps strict MCP budget.",
+          "verification_command": "npm test -- test/perf/perf.test.ts test/mcp/tools.test.ts",
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/perf/perf.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/perf/perf.test.ts test/mcp/tools.test.ts", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run perf:srs", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run perf:srs", "expected_exit": 0}
+          ],
+          "dod": ["mcpToolCallMs measures MCP client tool path.", "SRS perf command still enforces strict budgets.", "No performance budget is relaxed."],
+          "rollback": {"strategy": "manual", "command": "1) Revert edits in test/perf/perf.test.ts. 2) Run npm test -- test/perf/perf.test.ts test/mcp/tools.test.ts and npm run perf:srs."},
+          "feasibility": "Medium",
+          "turn_estimate": 5,
+          "review_strictness": "strict",
+          "spawn_isolation_hint": "inplace"
+        }
+      ]
+    }
+  ],
+  "req_mapping": [
+    {"req_id": "NFR-SEC-003", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "NFR-SEC-004", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "NFR-SEC-005", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "NFR-SEC-010", "task_ids": ["TASK-P1-001", "TASK-P1-002", "TASK-P2-001"], "coverage": "partial", "note": "This plan covers residual cache manifest and validate diagnostic hardening only; existing Core/MCP symlink escape coverage is maintained outside this remediation plan."},
+    {"req_id": "FR-CACHE-002", "task_ids": ["TASK-P1-001", "TASK-P1-002"], "coverage": "full"},
+    {"req_id": "FR-CACHE-008", "task_ids": ["TASK-P1-001"], "coverage": "full"},
+    {"req_id": "FR-CACHE-009", "task_ids": [], "coverage": "full", "note": "Existing search cache read-path tests are maintained; this plan adds no new task for this already implemented requirement."},
+    {"req_id": "FR-CACHE-010", "task_ids": ["TASK-P3-001", "TASK-P3-002"], "coverage": "full"},
+    {"req_id": "NFR-REL-010", "task_ids": ["TASK-P1-002"], "coverage": "full"},
+    {"req_id": "NFR-REL-001", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-002", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "NFR-REL-007", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "FR-VAL-004", "task_ids": ["TASK-P2-001"], "coverage": "full"},
+    {"req_id": "FR-WRITE-005", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-WRITE-009", "task_ids": ["TASK-P3-001"], "coverage": "full"},
+    {"req_id": "FR-CLI-002", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-004", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-005", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-PKG-006", "task_ids": ["TASK-P4-001"], "coverage": "full"},
+    {"req_id": "FR-MCP-014", "task_ids": [], "coverage": "full", "note": "Existing MCP invalid-params contract tests are maintained; zod dependency hardening does not implement this requirement."},
+    {"req_id": "FR-MCP-015", "task_ids": [], "coverage": "full", "note": "Existing MCP output schema tests are maintained; zod dependency hardening does not implement this requirement."},
+    {"req_id": "FR-GRAPH-008", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-GRAPH-009", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-GRAPH-010", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "FR-GRAPH-011", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-PERF-005", "task_ids": ["TASK-P6-001"], "coverage": "partial", "note": "This plan improves measurement evidence only; optimization remains out of scope."},
+    {"req_id": "NFR-PERF-006", "task_ids": ["TASK-P5-001"], "coverage": "full"},
+    {"req_id": "NFR-PERF-007", "task_ids": ["TASK-P6-001"], "coverage": "partial", "note": "This plan makes MCP timing real but does not change budgets."},
+    {"req_id": "FR-MCP-004", "task_ids": ["TASK-P6-001"], "coverage": "full"},
+    {"req_id": "FR-MCP-TR-006", "task_ids": ["TASK-P6-001"], "coverage": "full"}
+  ],
+  "risk_summary": [
+    {"risk": "Guarded manifest IO can reduce cache hits if path state is suspicious.", "mitigation": "Degrade to source and keep perf:srs in pre_commit_gate."},
+    {"risk": "Actual MCP perf measurement can expose latency previously hidden by Core direct call.", "mitigation": "Do not relax budgets in this plan; report failure if observed."},
+    {"risk": "Graph cache filtering can change edge inclusion behavior.", "mitigation": "Add graphType-specific regression tests."}
+  ],
+  "routing_hint": {
+    "next_skill": "snoworca-coder",
+    "suggested_command": "$snoworca-coder PLAN_PATH=docs/plans/plan-20260502-speckiwi-verification-hardening-v1.md"
+  }
+}

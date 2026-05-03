@@ -1,6 +1,6 @@
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it } from "vitest";
-import { createSpecKiwiCore } from "../../src/mcp/tools.js";
+import { createSpecKiwiCore } from "../../src/core/api.js";
 import { parseSpeckiwiResourceUri } from "../../src/mcp/resource-uri.js";
 import { readMcpResource } from "../../src/mcp/resources.js";
 import { resolve } from "node:path";

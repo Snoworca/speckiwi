@@ -1,6 +1,6 @@
 import type { Command } from "commander";
+import { createSpecKiwiCore } from "../../core/api.js";
 import type { GetRequirementInput } from "../../core/inputs.js";
-import { getRequirement } from "../../core/requirements.js";
 import { addCommonOptions, executeCliCommand } from "../options.js";
 import { registerRequirementWriteCommands } from "./req-write.js";
 
@@ -13,6 +13,7 @@ export function registerRequirementCommands(program: Command): void {
 
   get.action((id: string) =>
     executeCliCommand(get, async (context) => {
+      const core = createSpecKiwiCore({ root: context.root, cacheMode: context.cacheMode });
       const input: GetRequirementInput = {
         root: context.root,
         cacheMode: context.cacheMode,
@@ -24,7 +25,7 @@ export function registerRequirementCommands(program: Command): void {
       if (get.opts().document === true) {
         input.includeDocument = true;
       }
-      return getRequirement(input);
+      return core.getRequirement(input);
     })
   );
 

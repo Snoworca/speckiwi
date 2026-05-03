@@ -49,8 +49,7 @@ export type DictionaryExpansion = {
 
 export type ValidWorkspace = LoadedWorkspace;
 
-export function flattenWorkspace(workspace: ValidWorkspace): SearchDocument[] {
-  const registry = buildRequirementRegistry(workspace);
+export function flattenWorkspace(workspace: ValidWorkspace, registry: RequirementRegistry = buildRequirementRegistry(workspace)): SearchDocument[] {
   const documentsByPath = new Map(workspace.documents.map((document) => [document.storePath, document]));
   const searchDocuments: SearchDocument[] = [
     ...flattenDocuments(registry, documentsByPath),

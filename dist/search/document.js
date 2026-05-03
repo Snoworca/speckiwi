@@ -1,6 +1,5 @@
 import { buildRequirementRegistry } from "../core/requirements.js";
-export function flattenWorkspace(workspace) {
-    const registry = buildRequirementRegistry(workspace);
+export function flattenWorkspace(workspace, registry = buildRequirementRegistry(workspace)) {
     const documentsByPath = new Map(workspace.documents.map((document) => [document.storePath, document]));
     const searchDocuments = [
         ...flattenDocuments(registry, documentsByPath),
