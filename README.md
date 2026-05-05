@@ -99,7 +99,7 @@ CLI 엔트리포인트는 `bin/speckiwi`이며, 명령 구현은 `src/cli/`와 `
 | `speckiwi export markdown` | YAML 문서 Markdown export |
 | `speckiwi cache rebuild` | JSON 캐시 재생성 |
 | `speckiwi cache clean` | JSON 캐시 삭제 |
-| `speckiwi mcp --root <path>` | stdio MCP 서버 실행 |
+| `speckiwi mcp` | stdio MCP 서버 실행. `--root` 생략 시 현재 디렉터리부터 상위로 `.speckiwi/`를 자동 탐색 |
 
 ## MCP 개요
 
