@@ -5,6 +5,9 @@
 node_modules/
 .snoworca/
 
+# Build output (regenerated via `npm run build` / `prepack`)
+dist/
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

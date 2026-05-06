@@ -1,1 +1,0 @@
-{"version":3,"file":"impact.d.ts","sourceRoot":"","sources":["../../src/graph/impact.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,mBAAmB,CAAC;AACrD,OAAO,KAAK,EAAuC,WAAW,EAAc,YAAY,EAAE,MAAM,gBAAgB,CAAC;AA4BjH,wBAAgB,iBAAiB,CAAC,KAAK,EAAE,WAAW,EAAE,KAAK,EAAE,WAAW,GAAG,YAAY,CA6EtF"}
