@@ -1,0 +1,69 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.out-of-scope
+type: srs
+scope: out-of-scope
+title: 제외 범위 (Out of Scope)
+status: active
+
+requirements:
+  - id: OOS-001
+    type: constraint
+    title: SQLite 미사용
+    status: active
+    statement: 시스템은 원본 저장소로 SQLite를 사용하지 않아야 한다.
+    tags: [out-of-scope, database]
+  - id: OOS-002
+    type: constraint
+    title: DB migration 미제공
+    status: active
+    statement: 시스템은 데이터베이스 migration 체계를 제공하지 않아야 한다.
+    tags: [out-of-scope, database]
+  - id: OOS-003
+    type: constraint
+    title: HTTP 서버 미제공
+    status: active
+    statement: 시스템은 Express, Fastify 등 HTTP 서버를 실행하지 않아야 한다.
+    tags: [out-of-scope, transport]
+  - id: OOS-004
+    type: constraint
+    title: JSON-RPC over HTTP 미제공
+    status: active
+    statement: 시스템은 HTTP 기반 JSON-RPC API를 제공하지 않아야 한다.
+    tags: [out-of-scope, transport]
+  - id: OOS-005
+    type: constraint
+    title: 웹 콘솔 제외
+    status: active
+    statement: 시스템은 v1 범위에서 웹 UI를 제공하지 않아야 한다.
+    tags: [out-of-scope, ui]
+  - id: OOS-006
+    type: constraint
+    title: 팀 서버 모드 미제공
+    status: active
+    statement: 시스템은 중앙 서버 또는 멀티유저 서버 모드를 제공하지 않아야 한다.
+    tags: [out-of-scope, server]
+  - id: OOS-007
+    type: constraint
+    title: 인증/권한 검사 미제공
+    status: active
+    statement: 시스템은 사용자 인증 또는 권한 검사를 제공하지 않아야 한다.
+    tags: [out-of-scope, auth]
+  - id: OOS-008
+    type: constraint
+    title: Vector DB 기본 미포함
+    status: active
+    statement: 시스템은 LanceDB, Qdrant 등 벡터 DB를 기본 기능으로 포함하지 않아야 한다.
+    tags: [out-of-scope, search]
+  - id: OOS-009
+    type: constraint
+    title: Markdown import 미제공
+    status: active
+    statement: 시스템은 Markdown을 원본 YAML로 역변환하지 않아야 한다.
+    tags: [out-of-scope, import]
+  - id: OOS-010
+    type: constraint
+    title: 상주 daemon 미요구
+    status: active
+    statement: 시스템은 상주 서버 프로세스를 요구하지 않아야 한다.
+    tags: [out-of-scope, runtime]

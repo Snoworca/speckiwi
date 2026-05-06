@@ -1,0 +1,60 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.packaging
+type: srs
+scope: packaging
+title: 패키지 구조 요구사항
+status: active
+
+requirements:
+  - id: FR-PKG-001
+    type: functional
+    title: speckiwi CLI binary
+    status: active
+    priority: critical
+    statement: 패키지는 `speckiwi` CLI binary를 제공해야 한다.
+    tags: [packaging, cli]
+  - id: FR-PKG-002
+    type: functional
+    title: speckiwi mcp subcommand
+    status: active
+    priority: critical
+    statement: 패키지는 `speckiwi mcp` subcommand를 제공해야 한다.
+    tags: [packaging, mcp]
+  - id: FR-PKG-003
+    type: maintainability
+    title: core logic library 분리
+    status: active
+    priority: high
+    statement: 패키지는 core logic을 library module로 분리해야 한다.
+    tags: [packaging, architecture]
+  - id: FR-PKG-004
+    type: functional
+    title: JSON Schema 배포 포함
+    status: active
+    priority: high
+    statement: 패키지는 JSON Schema 파일을 배포물에 포함해야 한다.
+    tags: [packaging, schema]
+  - id: FR-PKG-005
+    type: functional
+    title: TypeScript 타입 정의 제공
+    status: active
+    priority: high
+    statement: 패키지는 TypeScript type definition을 제공해야 한다.
+    tags: [packaging, types]
+  - id: FR-PKG-006
+    type: non_functional
+    title: native dependency 없음
+    status: active
+    priority: high
+    statement: 패키지는 native dependency 없이 설치 가능해야 한다.
+    tags: [packaging, install]
+
+metadata:
+  recommendedLayout:
+    - speckiwi/
+    - speckiwi/package.json
+    - speckiwi/tsconfig.json
+    - speckiwi/bin/speckiwi
+    - speckiwi/src/{cli,mcp,core,io,schema,search,graph,validate,export,write}
+    - speckiwi/schemas/{index,overview,dictionary,srs,prd,technical,adr,rule,proposal}.schema.json

@@ -1,0 +1,73 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.prd
+type: srs
+scope: documents.prd
+title: PRD 문서 요구사항
+status: active
+
+requirements:
+  - id: FR-PRD-001
+    type: functional
+    title: PRD 로드/검증
+    status: active
+    priority: high
+    statement: 시스템은 PRD 문서를 로드하고 검증할 수 있어야 한다.
+    tags: [prd]
+  - id: FR-PRD-002
+    type: functional
+    title: PRD item 검색 포함
+    status: active
+    priority: medium
+    statement: 시스템은 PRD item을 검색 대상으로 포함해야 한다.
+    tags: [prd, search]
+  - id: FR-PRD-003
+    type: functional
+    title: PRD ↔ SRS relation
+    status: active
+    priority: high
+    statement: >
+      시스템은 PRD item과 SRS requirement 간 relation을 표현할 수 있어야 한다.
+    tags: [prd, relation]
+  - id: FR-PRD-004
+    type: functional
+    title: PRD Markdown export
+    status: active
+    priority: medium
+    statement: 시스템은 PRD 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [prd, export]
+  - id: FR-PRD-005
+    type: functional
+    title: PRD item id 유일성
+    status: active
+    priority: high
+    statement: 시스템은 PRD item `id`가 해당 PRD 문서 내에서 유일한지 검증해야 한다.
+    tags: [prd, validation]
+  - id: FR-PRD-006
+    type: functional
+    title: PRD item id 중복 오류 코드
+    status: active
+    priority: high
+    statement: >
+      시스템은 PRD 문서 내 `items[].id` 중복을 semantic validation error로
+      탐지해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          동일 PRD 파일에 같은 item `id`가 2개 이상 있으면
+          `DUPLICATE_PRD_ITEM_ID` 오류와 파일 path를 반환한다.
+    tags: [prd, validation]
+
+metadata:
+  prdItemTypes:
+    - problem
+    - goal
+    - persona
+    - scenario
+    - feature
+    - constraint
+    - metric
+    - risk
+    - decision
+    - open_question

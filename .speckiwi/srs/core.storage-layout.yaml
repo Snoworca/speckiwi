@@ -1,0 +1,84 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.core.storage-layout
+type: srs
+scope: core.storage-layout
+title: 저장소 구조 요구사항
+status: active
+
+requirements:
+  - id: FR-DIR-001
+    type: functional
+    title: .speckiwi 디렉토리 생성
+    status: active
+    priority: critical
+    statement: 시스템은 `speckiwi init` 실행 시 `.speckiwi/` 디렉토리를 생성해야 한다.
+    tags: [storage, init]
+  - id: FR-DIR-002
+    type: functional
+    title: index.yaml 생성
+    status: active
+    priority: critical
+    statement: 시스템은 `.speckiwi/index.yaml`을 생성해야 한다.
+    tags: [storage, init]
+  - id: FR-DIR-003
+    type: functional
+    title: overview.yaml 생성
+    status: active
+    priority: critical
+    statement: 시스템은 `.speckiwi/overview.yaml`을 생성해야 한다.
+    tags: [storage, init]
+  - id: FR-DIR-004
+    type: functional
+    title: dictionary.yaml 생성
+    status: active
+    priority: high
+    statement: 시스템은 `.speckiwi/dictionary.yaml`을 생성해야 한다.
+    tags: [storage, init]
+  - id: FR-DIR-005
+    type: functional
+    title: 표준 하위 디렉토리 생성
+    status: active
+    priority: high
+    statement: >
+      시스템은 prd, srs, tech, adr, rules, prose, proposals, templates, cache, exports
+      하위 디렉토리를 생성해야 한다.
+    tags: [storage, init]
+  - id: FR-DIR-006
+    type: functional
+    title: workspace root 자동 탐색
+    status: active
+    priority: high
+    statement: >
+      시스템은 현재 디렉토리부터 상위 디렉토리로 탐색하여 가장 가까운 `.speckiwi/`를
+      workspace root로 판단해야 한다.
+    tags: [storage, workspace]
+  - id: FR-DIR-007
+    type: functional
+    title: --root 옵션 우선
+    status: active
+    priority: high
+    statement: 사용자가 `--root`를 지정한 경우 시스템은 자동 탐색보다 `--root`를 우선해야 한다.
+    tags: [storage, workspace, cli]
+  - id: FR-DIR-008
+    type: functional
+    title: workspace 외부 보호
+    status: active
+    priority: critical
+    statement: >
+      시스템은 명시적 export target을 제외하고 `.speckiwi/` 외부 파일을 수정하지 않아야 한다.
+    tags: [storage, security]
+  - id: FR-DIR-009
+    type: functional
+    title: cache 재생성 가능 데이터
+    status: active
+    priority: high
+    statement: 시스템은 `.speckiwi/cache/` 내용을 재생성 가능한 데이터로 취급해야 한다.
+    tags: [storage, cache]
+  - id: FR-DIR-010
+    type: functional
+    title: exports 산출물 분류
+    status: active
+    priority: high
+    statement: 시스템은 `.speckiwi/exports/` 내용을 원본이 아닌 산출물로 취급해야 한다.
+    tags: [storage, export]

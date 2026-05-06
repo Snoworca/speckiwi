@@ -1,0 +1,66 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.usability
+type: srs
+scope: nfr.usability
+title: 사용성 요구사항
+status: active
+
+requirements:
+  - id: NFR-UX-001
+    type: usability
+    title: human readable CLI 출력
+    status: active
+    priority: high
+    statement: CLI 기본 출력은 사람이 읽기 쉬워야 한다.
+    tags: [usability, cli]
+  - id: NFR-UX-002
+    type: usability
+    title: --json 안정 파싱
+    status: active
+    priority: high
+    statement: CLI `--json` 출력은 AI 에이전트가 안정적으로 파싱 가능해야 한다.
+    tags: [usability, cli, json]
+  - id: NFR-UX-003
+    type: usability
+    title: validation error 위치 정보
+    status: active
+    priority: high
+    statement: >
+      validation error는 파일 path와 가능한 경우 line/column을 포함해야 한다.
+    tags: [usability, validation]
+  - id: NFR-UX-004
+    type: usability
+    title: search score/matchedFields
+    status: active
+    priority: high
+    statement: search 결과는 score와 matchedFields를 포함해야 한다.
+    tags: [usability, search]
+  - id: NFR-UX-005
+    type: usability
+    title: requirement path 포함
+    status: active
+    priority: high
+    statement: requirement 조회 결과는 원본 파일 path를 포함해야 한다.
+    tags: [usability, requirement]
+  - id: NFR-UX-006
+    type: usability
+    title: proposal path 출력
+    status: active
+    priority: high
+    statement: proposal 생성 결과는 proposal 파일 path를 포함해야 한다.
+    tags: [usability, proposal]
+  - id: NFR-UX-007
+    type: usability
+    title: apply 실패 복구 안내
+    status: active
+    priority: high
+    statement: apply 실패 시 실패 원인과 복구 방법을 출력해야 한다.
+    tags: [usability, apply]
+  - id: NFR-UX-008
+    type: usability
+    title: init 산출물 편집 가능
+    status: active
+    priority: high
+    statement: init 결과물은 사용자가 바로 편집 가능한 YAML이어야 한다.
+    tags: [usability, init]

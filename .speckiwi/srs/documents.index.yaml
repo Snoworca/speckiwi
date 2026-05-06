@@ -1,0 +1,115 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.index
+type: srs
+scope: documents.index
+title: index.yaml 요구사항
+status: active
+
+requirements:
+  - id: FR-IDX-001
+    type: functional
+    title: index.yaml 필수
+    status: active
+    priority: critical
+    statement: 시스템은 `.speckiwi/index.yaml`을 필수 파일로 요구해야 한다.
+    tags: [index, manifest]
+  - id: FR-IDX-002
+    type: functional
+    title: project.id 필수
+    status: active
+    priority: critical
+    statement: 시스템은 `project.id`를 필수로 요구해야 한다.
+    tags: [index, manifest]
+  - id: FR-IDX-003
+    type: functional
+    title: project.name 필수
+    status: active
+    priority: critical
+    statement: 시스템은 `project.name`을 필수로 요구해야 한다.
+    tags: [index, manifest]
+  - id: FR-IDX-004
+    type: functional
+    title: documents 배열 필수
+    status: active
+    priority: critical
+    statement: 시스템은 `documents` 배열을 필수로 요구해야 한다.
+    tags: [index, manifest]
+  - id: FR-IDX-005
+    type: functional
+    title: documents.id 유일성
+    status: active
+    priority: critical
+    statement: 시스템은 `documents[].id`가 중복되지 않는지 검증해야 한다.
+    tags: [index, validation]
+  - id: FR-IDX-006
+    type: functional
+    title: documents.path 내부 경로
+    status: active
+    priority: high
+    statement: 시스템은 `documents[].path`가 `.speckiwi/` 내부 상대 경로인지 검증해야 한다.
+    tags: [index, validation, security]
+  - id: FR-IDX-007
+    type: functional
+    title: scopes.id 유일성
+    status: active
+    priority: high
+    statement: 시스템은 `scopes[].id`가 중복되지 않는지 검증해야 한다.
+    tags: [index, validation, scope]
+  - id: FR-IDX-008
+    type: functional
+    title: scope parent 존재 검증
+    status: active
+    priority: high
+    statement: 시스템은 scope parent 참조가 존재하는지 검증해야 한다.
+    tags: [index, validation, scope]
+  - id: FR-IDX-009
+    type: functional
+    title: scope parent cycle 금지
+    status: active
+    priority: high
+    statement: 시스템은 scope parent 관계에 cycle이 없는지 검증해야 한다.
+    tags: [index, validation, scope]
+  - id: FR-IDX-010
+    type: functional
+    title: link 양 끝 존재 검증
+    status: active
+    priority: high
+    statement: >
+      시스템은 `links[].from`과 `links[].to`가 존재하는 document id인지
+      검증해야 한다.
+    tags: [index, validation, link]
+  - id: FR-IDX-011
+    type: functional
+    title: defaultWriteMode enum 검증
+    status: active
+    priority: high
+    statement: >
+      시스템은 `settings.agent.defaultWriteMode`가 `propose` 또는 `apply` 중
+      하나인지 검증해야 한다.
+    tags: [index, validation, settings]
+  - id: FR-IDX-012
+    type: functional
+    title: 검색 기본 설정
+    status: active
+    priority: medium
+    statement: 시스템은 `settings.search`가 없을 경우 기본 검색 설정을 적용해야 한다.
+    tags: [index, settings, search]
+  - id: FR-IDX-013
+    type: constraint
+    title: index.yaml 비-콘텐츠 필드
+    status: active
+    priority: high
+    statement: >
+      시스템은 `index.yaml`에 `id`, `type`, `title`, `status` 필드를 요구하지
+      않아야 한다.
+    tags: [index, schema]
+  - id: FR-IDX-014
+    type: functional
+    title: 금지 type 등록 거부
+    status: active
+    priority: high
+    statement: >
+      시스템은 `documents[]`에 `index`, `template`, `proposal` type이 등록된
+      경우 오류를 생성해야 한다.
+    tags: [index, validation]

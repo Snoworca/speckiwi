@@ -1,0 +1,101 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.interface.export
+type: srs
+scope: interface.export
+title: Markdown Export 요구사항
+status: active
+
+requirements:
+  - id: FR-EXP-001
+    type: interface
+    title: export markdown 명령
+    status: active
+    priority: critical
+    statement: 시스템은 `speckiwi export markdown` 명령을 제공해야 한다.
+    tags: [export, cli]
+  - id: FR-EXP-002
+    type: functional
+    title: overview export
+    status: active
+    priority: high
+    statement: 시스템은 overview 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [export, overview]
+  - id: FR-EXP-003
+    type: functional
+    title: SRS scope별 export
+    status: active
+    priority: high
+    statement: 시스템은 SRS 문서를 scope별 Markdown으로 export할 수 있어야 한다.
+    tags: [export, srs]
+  - id: FR-EXP-004
+    type: functional
+    title: PRD export
+    status: active
+    priority: high
+    statement: 시스템은 PRD 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [export, prd]
+  - id: FR-EXP-005
+    type: functional
+    title: technical export
+    status: active
+    priority: medium
+    statement: 시스템은 technical 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [export, technical]
+  - id: FR-EXP-006
+    type: functional
+    title: ADR export
+    status: active
+    priority: medium
+    statement: 시스템은 ADR 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [export, adr]
+  - id: FR-EXP-007
+    type: functional
+    title: index Markdown 생성
+    status: active
+    priority: medium
+    statement: 시스템은 export index Markdown을 생성할 수 있어야 한다.
+    tags: [export, index]
+  - id: FR-EXP-008
+    type: functional
+    title: index → 문서 링크
+    status: active
+    priority: medium
+    statement: export index는 문서별 링크를 포함해야 한다.
+    tags: [export, index]
+  - id: FR-EXP-009
+    type: data
+    title: export 비-원본
+    status: active
+    priority: critical
+    statement: export 결과는 원본으로 취급되지 않아야 한다.
+    tags: [export, source-of-truth]
+  - id: FR-EXP-010
+    type: functional
+    title: export 전 validation
+    status: active
+    priority: high
+    statement: 시스템은 export 전 validation을 수행할 수 있어야 한다.
+    tags: [export, validation]
+  - id: FR-EXP-011
+    type: interface
+    title: 결과 파일 목록 출력
+    status: active
+    priority: medium
+    statement: 시스템은 export 결과 파일 목록을 출력해야 한다.
+    tags: [export, output]
+  - id: FR-EXP-012
+    type: interface
+    title: JSON 파일 목록 출력
+    status: active
+    priority: medium
+    statement: 시스템은 export 결과 파일 목록을 JSON으로 출력할 수 있어야 한다.
+    tags: [export, json]
+
+metadata:
+  policy:
+    yamlToMarkdown: 허용
+    markdownToYaml: v1 제외 (OOS-009)
+    markdownEdit: YAML에 반영 안 됨
+  defaultExportPath: .speckiwi/exports/
+  exportTargets: [overview, srs, prd, technical, adr]

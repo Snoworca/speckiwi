@@ -1,0 +1,65 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.maintainability
+type: srs
+scope: nfr.maintainability
+title: 유지보수성 요구사항
+status: active
+
+requirements:
+  - id: NFR-MAINT-001
+    type: maintainability
+    title: Adapter ↔ Core 분리
+    status: active
+    priority: high
+    statement: CLI Adapter와 MCP Adapter는 Core Service와 분리되어야 한다.
+    tags: [maintainability, architecture]
+  - id: NFR-MAINT-002
+    type: maintainability
+    title: YAML Loader ↔ Validator 분리
+    status: active
+    priority: high
+    statement: YAML Loader는 Schema Validator와 분리되어야 한다.
+    tags: [maintainability, architecture]
+  - id: NFR-MAINT-003
+    type: maintainability
+    title: tokenizer interface 분리
+    status: active
+    priority: high
+    statement: Search Engine은 tokenizer interface를 분리해야 한다.
+    tags: [maintainability, search]
+  - id: NFR-MAINT-004
+    type: maintainability
+    title: BM25 교체 가능
+    status: active
+    priority: medium
+    statement: BM25 구현은 교체 가능해야 한다.
+    tags: [maintainability, search]
+  - id: NFR-MAINT-005
+    type: maintainability
+    title: Markdown Exporter ↔ template 분리
+    status: active
+    priority: medium
+    statement: Markdown Exporter는 template layer와 분리되어야 한다.
+    tags: [maintainability, export]
+  - id: NFR-MAINT-006
+    type: maintainability
+    title: schema 파일 분리
+    status: active
+    priority: high
+    statement: schema 파일은 코드와 분리된 JSON Schema 파일로 관리되어야 한다.
+    tags: [maintainability, schema]
+  - id: NFR-MAINT-007
+    type: maintainability
+    title: MCP schema ↔ TypeScript type 동기화
+    status: active
+    priority: high
+    statement: MCP tool schema는 TypeScript type과 동기화 가능해야 한다.
+    tags: [maintainability, mcp, schema]
+  - id: NFR-MAINT-008
+    type: maintainability
+    title: Core Service 단방향 의존
+    status: active
+    priority: high
+    statement: Core Service는 CLI/MCP에 의존하지 않아야 한다.
+    tags: [maintainability, architecture]

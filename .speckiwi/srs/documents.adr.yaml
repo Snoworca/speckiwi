@@ -1,0 +1,52 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.adr
+type: srs
+scope: documents.adr
+title: ADR 문서 요구사항
+status: active
+
+requirements:
+  - id: FR-ADR-001
+    type: functional
+    title: ADR 로드/검증
+    status: active
+    priority: high
+    statement: 시스템은 ADR 문서를 로드하고 검증할 수 있어야 한다.
+    tags: [adr]
+  - id: FR-ADR-002
+    type: functional
+    title: ADR status enum 검증
+    status: active
+    priority: high
+    statement: 시스템은 ADR 상태를 enum으로 검증해야 한다.
+    tags: [adr, validation]
+  - id: FR-ADR-003
+    type: functional
+    title: ADR supersede 지원
+    status: active
+    priority: high
+    statement: 시스템은 ADR이 다른 ADR을 supersede할 수 있게 해야 한다.
+    tags: [adr, relation]
+  - id: FR-ADR-004
+    type: functional
+    title: ADR 검색 포함
+    status: active
+    priority: medium
+    statement: 시스템은 ADR을 검색 대상으로 포함해야 한다.
+    tags: [adr, search]
+  - id: FR-ADR-005
+    type: functional
+    title: ADR Markdown export
+    status: active
+    priority: medium
+    statement: 시스템은 ADR을 Markdown으로 export할 수 있어야 한다.
+    tags: [adr, export]
+
+metadata:
+  adrStatuses:
+    - proposed
+    - accepted
+    - superseded
+    - deprecated
+    - rejected

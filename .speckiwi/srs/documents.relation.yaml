@@ -1,0 +1,116 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.relation
+type: srs
+scope: documents.relation
+title: Relation 및 Link 요구사항
+status: active
+
+requirements:
+  - id: FR-REL-001
+    type: functional
+    title: relation target 존재 검증
+    status: active
+    priority: high
+    statement: 시스템은 requirement relation target이 존재하는지 검증해야 한다.
+    tags: [relation, validation]
+  - id: FR-REL-002
+    type: functional
+    title: 자기 참조 금지
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement가 자기 자신을 relation target으로 참조하는 것을 오류로
+      처리해야 한다.
+    tags: [relation, validation]
+  - id: FR-REL-003
+    type: functional
+    title: depends_on cycle 탐지
+    status: active
+    priority: high
+    statement: 시스템은 `depends_on` relation graph에서 cycle을 탐지해야 한다.
+    tags: [relation, validation]
+  - id: FR-REL-004
+    type: functional
+    title: duplicates 표시 연결
+    status: active
+    priority: medium
+    statement: 시스템은 `duplicates` relation을 중복 후보 표시와 연결해야 한다.
+    tags: [relation, duplicate]
+  - id: FR-REL-005
+    type: functional
+    title: conflicts_with 영향 포함
+    status: active
+    priority: medium
+    statement: >
+      시스템은 `conflicts_with` relation을 impact 및 export 결과에 포함할 수
+      있어야 한다.
+    tags: [relation, impact]
+  - id: FR-REL-006
+    type: functional
+    title: incoming/outgoing 조회
+    status: active
+    priority: high
+    statement: >
+      시스템은 특정 requirement의 incoming/outgoing relation을 조회할 수 있어야 한다.
+    tags: [relation, query]
+  - id: FR-REL-007
+    type: functional
+    title: 영향 requirement 계산
+    status: active
+    priority: high
+    statement: >
+      시스템은 특정 requirement 변경 시 영향을 받을 수 있는 requirement 목록을
+      계산할 수 있어야 한다.
+    tags: [relation, impact]
+
+  - id: FR-LINK-001
+    type: functional
+    title: link source/target 존재 검증
+    status: active
+    priority: high
+    statement: 시스템은 `index.yaml`의 문서 link source와 target이 존재하는지 검증해야 한다.
+    tags: [link, validation]
+  - id: FR-LINK-002
+    type: functional
+    title: link graph 구성
+    status: active
+    priority: high
+    statement: 시스템은 문서 link graph를 구성해야 한다.
+    tags: [link, graph]
+  - id: FR-LINK-003
+    type: interface
+    title: link graph 조회
+    status: active
+    priority: medium
+    statement: 시스템은 문서 link graph를 CLI와 MCP에서 조회할 수 있어야 한다.
+    tags: [link, query, cli, mcp]
+
+metadata:
+  relationTypes:
+    - depends_on
+    - blocks
+    - relates_to
+    - duplicates
+    - conflicts_with
+    - refines
+    - generalizes
+    - replaces
+    - replaced_by
+    - derived_from
+    - implements
+    - documents
+    - tests
+    - requires_review_with
+  relationTargetTypes:
+    requirement: 다른 requirement id (workspace 등록 필수)
+    document: 등록된 문서 id (prose 포함, index.yaml documents 등록 필수)
+    external: 외부 URI (URI scheme prefix 형식 검사만 수행)
+  documentLinkTypes:
+    - relates_to
+    - refines
+    - supersedes
+    - depends_on
+    - documents
+    - implements
+    - references

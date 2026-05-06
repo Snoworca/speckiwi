@@ -1,0 +1,62 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.core.source-of-truth
+type: srs
+scope: core.source-of-truth
+title: 원본 저장 포맷 (Source of Truth) 요구사항
+status: active
+
+requirements:
+  - id: FR-STOR-001
+    type: data
+    title: YAML이 원본 데이터
+    status: active
+    priority: critical
+    statement: 시스템은 `.speckiwi/**/*.yaml` 파일을 원본 데이터로 취급해야 한다.
+    tags: [source-of-truth, yaml]
+  - id: FR-STOR-002
+    type: data
+    title: JSON cache 비-원본
+    status: active
+    priority: critical
+    statement: 시스템은 JSON cache를 원본으로 취급하지 않아야 한다.
+    tags: [source-of-truth, cache]
+  - id: FR-STOR-003
+    type: data
+    title: Markdown export 비-원본
+    status: active
+    priority: critical
+    statement: 시스템은 Markdown export 결과물을 원본으로 취급하지 않아야 한다.
+    tags: [source-of-truth, export]
+  - id: FR-STOR-004
+    type: constraint
+    title: 데이터베이스 미사용
+    status: active
+    priority: critical
+    statement: >
+      시스템은 SQLite, PostgreSQL, MySQL, DuckDB 등 데이터베이스를 원본 저장소로
+      사용하지 않아야 한다.
+    tags: [source-of-truth, database]
+  - id: FR-STOR-005
+    type: constraint
+    title: DB 파일 미생성
+    status: active
+    priority: critical
+    statement: 시스템은 `.db`, `.sqlite`, `.sqlite3` 파일을 생성하지 않아야 한다.
+    tags: [source-of-truth, database]
+  - id: FR-STOR-006
+    type: functional
+    title: cache 없이 재구성 가능
+    status: active
+    priority: high
+    statement: >
+      시스템은 cache 삭제 후 YAML 파일만으로 graph와 search index를 재구성할 수
+      있어야 한다.
+    tags: [source-of-truth, cache, recovery]
+  - id: FR-STOR-007
+    type: data
+    title: Git 변경 이력
+    status: active
+    priority: high
+    statement: 시스템은 Git history를 변경 이력의 1차 수단으로 간주해야 한다.
+    tags: [source-of-truth, git]

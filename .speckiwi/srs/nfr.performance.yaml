@@ -1,0 +1,78 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.performance
+type: srs
+scope: nfr.performance
+title: 성능 요구사항
+status: active
+
+requirements:
+  - id: NFR-PERF-001
+    type: performance
+    title: 10K req exact lookup 50ms
+    status: active
+    priority: high
+    statement: >
+      10,000개 requirement 기준 exact lookup은 50ms 이내를 목표로 해야 한다.
+    tags: [performance, search]
+  - id: NFR-PERF-002
+    type: performance
+    title: 10K req 검색 500ms
+    status: active
+    priority: high
+    statement: >
+      10,000개 requirement 기준 cache 기반 검색은 500ms 이내를 목표로 해야 한다.
+    tags: [performance, search, cache]
+  - id: NFR-PERF-003
+    type: performance
+    title: 10K req cache rebuild 10s
+    status: active
+    priority: medium
+    statement: >
+      10,000개 requirement 기준 cache rebuild는 10초 이내를 목표로 해야 한다.
+    tags: [performance, cache]
+  - id: NFR-PERF-004
+    type: performance
+    title: 1K YAML validation 10s
+    status: active
+    priority: medium
+    statement: >
+      1,000개 YAML 문서 기준 validation은 10초 이내를 목표로 해야 한다.
+    tags: [performance, validation]
+  - id: NFR-PERF-005
+    type: performance
+    title: MCP 단일 호출 1s
+    status: active
+    priority: high
+    statement: >
+      MCP tool 단일 호출은 정상 cache 상태에서 1초 이내 응답을 목표로 해야 한다.
+    tags: [performance, mcp]
+  - id: NFR-PERF-006
+    type: performance
+    title: hash 기반 cache invalidation
+    status: active
+    priority: high
+    statement: >
+      시스템은 대형 workspace에서 필요한 파일만 재로드할 수 있도록 hash 기반
+      cache invalidation을 제공해야 한다.
+    tags: [performance, cache]
+  - id: NFR-PERF-007
+    type: performance
+    title: 성능 테스트 SRS 목표 직접 검증
+    status: active
+    priority: medium
+    statement: 성능 테스트는 SRS의 대표 성능 목표를 직접 검증해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          10,000개 requirement 기준 exact lookup/search/cache rebuild와 1,000개
+          YAML validation 측정이 포함되고, MCP 정상 cache 상태 단일 tool 호출
+          1초 목표가 테스트된다.
+    tags: [performance, testing]
+
+metadata:
+  baseline:
+    runtime: Node.js 20+
+    storage: SSD
+    environment: 일반적인 로컬 개발 환경

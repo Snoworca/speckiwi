@@ -1,0 +1,49 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.overview
+type: srs
+scope: documents.overview
+title: overview.yaml 요구사항
+status: active
+
+requirements:
+  - id: FR-OVR-001
+    type: functional
+    title: overview.yaml 필수
+    status: active
+    priority: critical
+    statement: 시스템은 `.speckiwi/overview.yaml`을 필수 파일로 요구해야 한다.
+    tags: [overview]
+  - id: FR-OVR-002
+    type: interface
+    title: MCP overview resource
+    status: active
+    priority: high
+    statement: >
+      시스템은 overview 문서를 MCP resource `speckiwi://overview`로 제공해야 한다.
+    tags: [overview, mcp]
+  - id: FR-OVR-003
+    type: interface
+    title: CLI overview 조회
+    status: active
+    priority: high
+    statement: >
+      시스템은 overview 문서를 CLI `speckiwi overview` 또는 동등 명령으로
+      조회할 수 있어야 한다.
+    tags: [overview, cli]
+  - id: FR-OVR-004
+    type: functional
+    title: 검색 대상 포함
+    status: active
+    priority: medium
+    statement: >
+      시스템은 overview의 `goals`, `nonGoals`, `glossary`를 검색 대상으로
+      포함해야 한다.
+    tags: [overview, search]
+  - id: FR-OVR-005
+    type: functional
+    title: Markdown export 포함
+    status: active
+    priority: medium
+    statement: 시스템은 overview 문서를 Markdown export에 포함할 수 있어야 한다.
+    tags: [overview, export]

@@ -1,0 +1,67 @@
+schemaVersion: speckiwi/overview/v1
+
+id: overview
+type: overview
+title: "SpecKiwi v1.0 — YAML 기반 Local-first SDD Context Tool"
+status: active
+
+summary: >
+  SpecKiwi는 Git 저장소 안에서 동작하는 YAML 기반 SDD 메모리 MCP 도구다.
+  프로젝트 루트의 .speckiwi/ 디렉토리에 저장된 YAML 기반 PRD/SRS/기술 문서/ADR/규칙 문서를
+  메모리 그래프로 구성하여 CLI와 stdio MCP 인터페이스를 통해 AI 코딩 에이전트와 개발자에게
+  요구사항 조회, 문서 조회, 검색, 검증, 관계 추적, 영향 분석, 변경 제안, 선택적 변경 적용,
+  Markdown export 기능을 제공한다.
+
+goals:
+  - id: G-001
+    statement: AI 코딩 에이전트가 YAML 원본 기반으로 요구사항을 안정적으로 조회할 수 있어야 한다.
+  - id: G-002
+    statement: 데이터베이스 없이 YAML 파일만으로 SDD 컨텍스트를 관리한다.
+  - id: G-003
+    statement: CLI와 stdio MCP 인터페이스를 단일 패키지로 제공한다.
+  - id: G-004
+    statement: exact + BM25 + 한글 n-gram + dictionary 기반 검색을 제공한다.
+  - id: G-005
+    statement: 에이전트 쓰기는 propose를 기본으로 하고 검증된 변경만 apply 한다.
+  - id: G-006
+    statement: JSON cache와 Markdown export는 재생성 가능한 산출물로만 취급한다.
+  - id: G-007
+    statement: Git이 변경 이력의 1차 수단이다.
+
+nonGoals:
+  - id: NG-001
+    statement: v1에서는 데이터베이스(SQLite, PostgreSQL 등)를 사용하지 않는다.
+  - id: NG-002
+    statement: HTTP 서버 또는 JSON-RPC over HTTP API를 제공하지 않는다.
+  - id: NG-003
+    statement: 웹 콘솔, 중앙 서버, 멀티유저 서버 모드를 v1 범위에 포함하지 않는다.
+  - id: NG-004
+    statement: 사용자 인증/권한 검사를 제공하지 않는다.
+  - id: NG-005
+    statement: Vector DB 또는 Markdown→YAML import는 v1 기본 기능이 아니다.
+  - id: NG-006
+    statement: 상주 background daemon을 요구하지 않는다.
+
+glossary:
+  - term: SRS
+    definition: Software Requirements Specification. 검증 가능한 시스템 요구사항 명세.
+  - term: PRD
+    definition: Product Requirements Document. 제품 목표와 요구사항 근거 문서.
+  - term: ADR
+    definition: Architecture Decision Record. 아키텍처 의사결정 기록.
+  - term: SDD
+    definition: Spec-Driven Development. 명세 주도 개발 방법론.
+  - term: MCP
+    definition: Model Context Protocol. AI 에이전트가 외부 도구/리소스에 접근하기 위한 표준 프로토콜.
+  - term: workspace root
+    definition: .speckiwi/ 디렉토리를 포함하는 프로젝트 루트.
+  - term: source of truth
+    definition: 시스템이 원본 데이터로 취급하는 저장소. SpecKiwi에서는 .speckiwi/**/*.yaml.
+  - term: BM25
+    definition: 정보 검색용 확률 기반 랭킹 함수.
+  - term: n-gram
+    definition: 한글 토크나이저가 chunk를 N글자 단위로 분리한 토큰.
+  - term: proposal
+    definition: 원본 YAML 수정 없이 .speckiwi/proposals/ 에 저장되는 변경 제안 산출물.
+  - term: diagnostics
+    definition: errors, warnings, infos, summary 4필드로 구성된 검증 결과 구조.

@@ -1,0 +1,168 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.engine.search
+type: srs
+scope: engine.search
+title: 검색 요구사항
+status: active
+
+requirements:
+  - id: FR-SRCH-001
+    type: functional
+    title: YAML → flat document 변환
+    status: active
+    priority: high
+    statement: 시스템은 YAML 문서를 검색용 flat document로 변환해야 한다.
+    tags: [search, indexing]
+  - id: FR-SRCH-002
+    type: functional
+    title: exact index 등록 대상
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement id, document id, scope id를 exact index에 등록해야 한다.
+    tags: [search, indexing]
+  - id: FR-SRCH-003
+    type: functional
+    title: BM25 인덱싱 필드
+    status: active
+    priority: high
+    statement: >
+      시스템은 title, statement, rationale, description, tags, acceptanceCriteria,
+      prose `body`, requirement relation `excerpt`를 BM25 index에 포함해야 한다.
+    tags: [search, indexing, bm25]
+  - id: FR-SRCH-004
+    type: functional
+    title: field별 boost 적용
+    status: active
+    priority: high
+    statement: 시스템은 field별 boost를 적용해야 한다.
+    tags: [search, ranking]
+  - id: FR-SRCH-005
+    type: functional
+    title: exact 우선
+    status: active
+    priority: high
+    statement: >
+      시스템은 query가 exact id와 일치할 경우 exact result를 우선 반환해야 한다.
+    tags: [search, exact]
+  - id: FR-SRCH-006
+    type: functional
+    title: 결과 필드 포함
+    status: active
+    priority: high
+    statement: >
+      시스템은 검색 결과에 score, matchedFields, entityType, id, title, path를
+      포함해야 한다.
+    tags: [search, dto]
+  - id: FR-SRCH-007
+    type: interface
+    title: JSON 결과 반환
+    status: active
+    priority: high
+    statement: 시스템은 검색 결과를 `--json` 또는 MCP 응답에서 JSON으로 반환해야 한다.
+    tags: [search, json, mcp]
+  - id: FR-SRCH-008
+    type: functional
+    title: 필터 지원
+    status: active
+    priority: high
+    statement: 시스템은 scope, type, status, tag 기준 필터를 지원해야 한다.
+    tags: [search, filter]
+  - id: FR-SRCH-009
+    type: functional
+    title: stale cache 처리
+    status: active
+    priority: high
+    statement: >
+      시스템은 cache가 stale인 경우 검색 전 자동 재생성하거나 stale warning을
+      반환해야 한다.
+    tags: [search, cache]
+
+  - id: FR-KR-001
+    type: functional
+    title: 원문 token 유지
+    status: active
+    priority: high
+    statement: 시스템은 한글 chunk에 대해 원문 token을 유지해야 한다.
+    tags: [search, korean]
+  - id: FR-KR-002
+    type: functional
+    title: 2-gram 생성
+    status: active
+    priority: high
+    statement: 시스템은 한글 chunk에 대해 2-gram token을 생성해야 한다.
+    tags: [search, korean]
+  - id: FR-KR-003
+    type: functional
+    title: 3-gram 생성
+    status: active
+    priority: high
+    statement: 시스템은 한글 chunk에 대해 3-gram token을 생성해야 한다.
+    tags: [search, korean]
+  - id: FR-KR-004
+    type: functional
+    title: 한 글자 token 제외
+    status: active
+    priority: medium
+    statement: 시스템은 한 글자 한글 token을 기본적으로 제외해야 한다.
+    tags: [search, korean]
+  - id: FR-KR-005
+    type: functional
+    title: 영문 lowercase
+    status: active
+    priority: high
+    statement: 시스템은 영문 token을 lowercase 처리해야 한다.
+    tags: [search, tokenizer]
+  - id: FR-KR-006
+    type: functional
+    title: case 분리
+    status: active
+    priority: medium
+    statement: 시스템은 kebab-case, snake_case, camelCase를 분리해야 한다.
+    tags: [search, tokenizer]
+  - id: FR-KR-007
+    type: functional
+    title: dictionary 변형 보정
+    status: active
+    priority: medium
+    statement: >
+      시스템은 `JSON-RPC`, `json rpc`, `jsonrpc` 같은 변형을 dictionary로 보정할
+      수 있어야 한다.
+    tags: [search, dictionary]
+  - id: FR-KR-008
+    type: constraint
+    title: 형태소 분석기 비-필수
+    status: active
+    priority: high
+    statement: 시스템은 형태소 분석기를 기본 의존성으로 요구하지 않아야 한다.
+    tags: [search, dependency]
+  - id: FR-KR-009
+    type: maintainability
+    title: tokenizer interface 분리
+    status: active
+    priority: medium
+    statement: >
+      시스템은 향후 optional tokenizer plugin을 추가할 수 있도록 tokenizer
+      interface를 분리해야 한다.
+    tags: [search, tokenizer, interface]
+
+metadata:
+  searchModes: [auto, exact, bm25]
+  searchEntityTypes:
+    - document
+    - scope
+    - requirement
+    - prd_item
+    - technical_section
+    - adr
+    - rule
+  fieldBoosts:
+    id: 10
+    title: 6
+    tags: 5
+    scope: 4
+    statement: 3
+    acceptanceCriteria: 2
+    rationale: 1
+    description: 1

@@ -1,0 +1,102 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.engine.graph
+type: srs
+scope: engine.graph
+title: Graph 요구사항
+status: active
+
+requirements:
+  - id: FR-GRAPH-001
+    type: functional
+    title: scope tree 구성
+    status: active
+    priority: high
+    statement: 시스템은 `index.yaml`의 scopes로 scope tree를 구성해야 한다.
+    tags: [graph, scope]
+  - id: FR-GRAPH-002
+    type: functional
+    title: document↔scope 매핑
+    status: active
+    priority: high
+    statement: 시스템은 document와 scope 간 매핑을 구성해야 한다.
+    tags: [graph]
+  - id: FR-GRAPH-003
+    type: functional
+    title: requirement↔document 매핑
+    status: active
+    priority: high
+    statement: 시스템은 requirement와 document 간 매핑을 구성해야 한다.
+    tags: [graph]
+  - id: FR-GRAPH-004
+    type: functional
+    title: relation graph 구성
+    status: active
+    priority: high
+    statement: 시스템은 requirement relation graph를 구성해야 한다.
+    tags: [graph, relation]
+  - id: FR-GRAPH-005
+    type: functional
+    title: link graph 구성
+    status: active
+    priority: high
+    statement: 시스템은 document link graph를 구성해야 한다.
+    tags: [graph, link]
+  - id: FR-GRAPH-006
+    type: functional
+    title: upstream dependency 조회
+    status: active
+    priority: high
+    statement: >
+      시스템은 특정 requirement의 upstream dependency를 조회할 수 있어야 한다.
+    tags: [graph, trace]
+  - id: FR-GRAPH-007
+    type: functional
+    title: downstream impact 조회
+    status: active
+    priority: high
+    statement: >
+      시스템은 특정 requirement의 downstream impacted requirement를 조회할 수
+      있어야 한다.
+    tags: [graph, impact]
+  - id: FR-GRAPH-008
+    type: interface
+    title: JSON 출력
+    status: active
+    priority: high
+    statement: 시스템은 graph를 JSON으로 출력할 수 있어야 한다.
+    tags: [graph, json]
+  - id: FR-GRAPH-009
+    type: functional
+    title: graph cache 저장
+    status: active
+    priority: medium
+    statement: >
+      시스템은 graph cache를 `.speckiwi/cache/graph.json`에 저장할 수 있어야 한다.
+    tags: [graph, cache]
+  - id: FR-GRAPH-010
+    type: functional
+    title: GraphResult DTO
+    status: active
+    priority: high
+    statement: >
+      시스템은 graph JSON 출력에 deterministic `nodes[]`, `edges[]`,
+      `diagnostics`를 포함하는 GraphResult DTO를 사용해야 한다.
+    tags: [graph, dto]
+  - id: FR-GRAPH-011
+    type: functional
+    title: TraceResult DTO
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement trace 출력에 `direction`, `depth`, `nodes[]`,
+      `edges[]`, `diagnostics`를 포함하는 TraceResult DTO를 사용해야 한다.
+    tags: [graph, trace, dto]
+
+metadata:
+  graphTypes:
+    - document
+    - scope
+    - requirement
+    - dependency
+    - traceability

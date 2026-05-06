@@ -1,0 +1,66 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.interface.doctor
+type: srs
+scope: interface.doctor
+title: Doctor 요구사항
+status: active
+
+requirements:
+  - id: FR-DOC-CHK-001
+    type: functional
+    title: Node.js 버전 확인
+    status: active
+    priority: high
+    statement: 시스템은 Node.js 버전을 확인해야 한다.
+    tags: [doctor, runtime]
+  - id: FR-DOC-CHK-002
+    type: functional
+    title: .speckiwi 존재 확인
+    status: active
+    priority: high
+    statement: 시스템은 `.speckiwi/` 존재 여부를 확인해야 한다.
+    tags: [doctor, workspace]
+  - id: FR-DOC-CHK-003
+    type: functional
+    title: 필수 파일 확인
+    status: active
+    priority: high
+    statement: 시스템은 필수 파일 존재 여부를 확인해야 한다.
+    tags: [doctor, workspace]
+  - id: FR-DOC-CHK-004
+    type: functional
+    title: YAML parse 확인
+    status: active
+    priority: high
+    statement: 시스템은 YAML parse 가능 여부를 확인해야 한다.
+    tags: [doctor, yaml]
+  - id: FR-DOC-CHK-005
+    type: functional
+    title: cache 상태 확인
+    status: active
+    priority: medium
+    statement: 시스템은 cache 상태를 확인해야 한다.
+    tags: [doctor, cache]
+  - id: FR-DOC-CHK-006
+    type: functional
+    title: MCP 실행 가능 확인
+    status: active
+    priority: medium
+    statement: 시스템은 MCP 실행 가능 여부를 확인해야 한다.
+    tags: [doctor, mcp]
+  - id: FR-DOC-CHK-007
+    type: functional
+    title: stdout/stderr 정책 점검
+    status: active
+    priority: medium
+    statement: 시스템은 stdout/stderr 사용 정책 위반 가능성을 점검해야 한다.
+    tags: [doctor, mcp]
+  - id: FR-DOC-CHK-008
+    type: interface
+    title: human/JSON 출력
+    status: active
+    priority: high
+    statement: >
+      시스템은 결과를 사람이 읽기 쉬운 형식과 JSON 형식으로 출력할 수 있어야 한다.
+    tags: [doctor, ux, json]

@@ -1,0 +1,85 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.core.yaml-policy
+type: srs
+scope: core.yaml-policy
+title: YAML 제한 정책 요구사항
+status: active
+
+requirements:
+  - id: FR-YAML-001
+    type: constraint
+    title: YAML 원본 포맷
+    status: active
+    priority: critical
+    statement: 시스템은 YAML을 원본 문서 포맷으로 사용해야 한다.
+    tags: [yaml, format]
+  - id: FR-YAML-002
+    type: constraint
+    title: anchor 사용 금지
+    status: active
+    priority: high
+    statement: 시스템은 YAML parser에서 anchor 사용을 오류로 탐지해야 한다.
+    tags: [yaml, validation]
+  - id: FR-YAML-003
+    type: constraint
+    title: alias 사용 금지
+    status: active
+    priority: high
+    statement: 시스템은 YAML alias 사용을 오류로 탐지해야 한다.
+    tags: [yaml, validation]
+  - id: FR-YAML-004
+    type: constraint
+    title: merge key 사용 금지
+    status: active
+    priority: high
+    statement: 시스템은 YAML merge key 사용을 오류로 처리해야 한다.
+    tags: [yaml, validation]
+  - id: FR-YAML-005
+    type: functional
+    title: schemaVersion 필수
+    status: active
+    priority: critical
+    statement: 시스템은 문서의 최상위 `schemaVersion` 필드를 요구해야 한다.
+    tags: [yaml, schema]
+  - id: FR-YAML-006
+    type: functional
+    title: id 필드 필수
+    status: active
+    priority: critical
+    statement: >
+      시스템은 `index.yaml`을 제외한 content document의 최상위 `id` 필드를
+      요구해야 한다.
+    tags: [yaml, schema]
+  - id: FR-YAML-007
+    type: functional
+    title: type 필드 필수
+    status: active
+    priority: critical
+    statement: >
+      시스템은 `index.yaml`을 제외한 content document의 최상위 `type` 필드를
+      요구해야 한다.
+    tags: [yaml, schema]
+  - id: FR-YAML-008
+    type: functional
+    title: 확장 필드는 metadata만
+    status: active
+    priority: high
+    statement: 시스템은 사전에 정의되지 않은 확장 필드를 `metadata` 하위에서만 허용해야 한다.
+    tags: [yaml, schema, extension]
+  - id: FR-YAML-009
+    type: functional
+    title: JSON Schema 검증
+    status: active
+    priority: critical
+    statement: 시스템은 YAML 문서를 JSON Schema로 검증해야 한다.
+    tags: [yaml, schema, validation]
+  - id: FR-YAML-010
+    type: functional
+    title: parse 실패 위치 진단
+    status: active
+    priority: high
+    statement: >
+      시스템은 YAML parse 실패 시 해당 파일 경로, line, column을 diagnostics에
+      포함해야 한다.
+    tags: [yaml, diagnostics]

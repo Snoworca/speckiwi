@@ -1,0 +1,306 @@
+schemaVersion: speckiwi/index/v1
+
+project:
+  id: "speckiwi"
+  name: "SpecKiwi"
+  language: "ko"
+
+settings:
+  agent:
+    defaultWriteMode: propose
+    allowApply: true
+  search:
+    defaultMode: auto
+    koreanNgram:
+      min: 2
+      max: 3
+
+documents:
+  - id: overview
+    type: overview
+    path: overview.yaml
+  - id: dictionary
+    type: dictionary
+    path: dictionary.yaml
+
+  - id: srs.out-of-scope
+    type: srs
+    scope: out-of-scope
+    path: srs/out-of-scope.yaml
+  - id: srs.core.storage-layout
+    type: srs
+    scope: core.storage-layout
+    path: srs/core.storage-layout.yaml
+  - id: srs.core.source-of-truth
+    type: srs
+    scope: core.source-of-truth
+    path: srs/core.source-of-truth.yaml
+  - id: srs.core.yaml-policy
+    type: srs
+    scope: core.yaml-policy
+    path: srs/core.yaml-policy.yaml
+  - id: srs.core.doc-model
+    type: srs
+    scope: core.doc-model
+    path: srs/core.doc-model.yaml
+
+  - id: srs.documents.index
+    type: srs
+    scope: documents.index
+    path: srs/documents.index.yaml
+  - id: srs.documents.overview
+    type: srs
+    scope: documents.overview
+    path: srs/documents.overview.yaml
+  - id: srs.documents.srs
+    type: srs
+    scope: documents.srs
+    path: srs/documents.srs.yaml
+  - id: srs.documents.id
+    type: srs
+    scope: documents.id
+    path: srs/documents.id.yaml
+  - id: srs.documents.relation
+    type: srs
+    scope: documents.relation
+    path: srs/documents.relation.yaml
+  - id: srs.documents.prd
+    type: srs
+    scope: documents.prd
+    path: srs/documents.prd.yaml
+  - id: srs.documents.technical
+    type: srs
+    scope: documents.technical
+    path: srs/documents.technical.yaml
+  - id: srs.documents.adr
+    type: srs
+    scope: documents.adr
+    path: srs/documents.adr.yaml
+  - id: srs.documents.dictionary
+    type: srs
+    scope: documents.dictionary
+    path: srs/documents.dictionary.yaml
+
+  - id: srs.engine.search
+    type: srs
+    scope: engine.search
+    path: srs/engine.search.yaml
+  - id: srs.engine.graph
+    type: srs
+    scope: engine.graph
+    path: srs/engine.graph.yaml
+  - id: srs.engine.validation
+    type: srs
+    scope: engine.validation
+    path: srs/engine.validation.yaml
+  - id: srs.engine.cache
+    type: srs
+    scope: engine.cache
+    path: srs/engine.cache.yaml
+  - id: srs.engine.write-policy
+    type: srs
+    scope: engine.write-policy
+    path: srs/engine.write-policy.yaml
+
+  - id: srs.interface.cli
+    type: srs
+    scope: interface.cli
+    path: srs/interface.cli.yaml
+  - id: srs.interface.mcp
+    type: srs
+    scope: interface.mcp
+    path: srs/interface.mcp.yaml
+  - id: srs.interface.export
+    type: srs
+    scope: interface.export
+    path: srs/interface.export.yaml
+  - id: srs.interface.doctor
+    type: srs
+    scope: interface.doctor
+    path: srs/interface.doctor.yaml
+
+  - id: srs.nfr.security
+    type: srs
+    scope: nfr.security
+    path: srs/nfr.security.yaml
+  - id: srs.nfr.reliability
+    type: srs
+    scope: nfr.reliability
+    path: srs/nfr.reliability.yaml
+  - id: srs.nfr.performance
+    type: srs
+    scope: nfr.performance
+    path: srs/nfr.performance.yaml
+  - id: srs.nfr.compatibility
+    type: srs
+    scope: nfr.compatibility
+    path: srs/nfr.compatibility.yaml
+  - id: srs.nfr.maintainability
+    type: srs
+    scope: nfr.maintainability
+    path: srs/nfr.maintainability.yaml
+  - id: srs.nfr.usability
+    type: srs
+    scope: nfr.usability
+    path: srs/nfr.usability.yaml
+
+  - id: srs.packaging
+    type: srs
+    scope: packaging
+    path: srs/packaging.yaml
+  - id: srs.release
+    type: srs
+    scope: release
+    path: srs/release.yaml
+  - id: srs.decisions
+    type: srs
+    scope: decisions
+    path: srs/decisions.yaml
+
+scopes:
+  - id: out-of-scope
+    name: Out of Scope
+    type: module
+  - id: core
+    name: Core
+    type: module
+  - id: core.storage-layout
+    parent: core
+    name: Storage Layout
+    type: feature
+  - id: core.source-of-truth
+    parent: core
+    name: Source of Truth
+    type: feature
+  - id: core.yaml-policy
+    parent: core
+    name: YAML Policy
+    type: feature
+  - id: core.doc-model
+    parent: core
+    name: Document Model
+    type: feature
+
+  - id: documents
+    name: Documents
+    type: module
+  - id: documents.index
+    parent: documents
+    name: Index Document
+    type: feature
+  - id: documents.overview
+    parent: documents
+    name: Overview Document
+    type: feature
+  - id: documents.srs
+    parent: documents
+    name: SRS Document
+    type: feature
+  - id: documents.id
+    parent: documents
+    name: ID System
+    type: feature
+  - id: documents.relation
+    parent: documents
+    name: Relation and Link
+    type: feature
+  - id: documents.prd
+    parent: documents
+    name: PRD Document
+    type: feature
+  - id: documents.technical
+    parent: documents
+    name: Technical Document
+    type: feature
+  - id: documents.adr
+    parent: documents
+    name: ADR Document
+    type: feature
+  - id: documents.dictionary
+    parent: documents
+    name: Dictionary Document
+    type: feature
+
+  - id: engine
+    name: Engine
+    type: module
+  - id: engine.search
+    parent: engine
+    name: Search
+    type: feature
+  - id: engine.graph
+    parent: engine
+    name: Graph
+    type: feature
+  - id: engine.validation
+    parent: engine
+    name: Validation
+    type: feature
+  - id: engine.cache
+    parent: engine
+    name: Cache
+    type: feature
+  - id: engine.write-policy
+    parent: engine
+    name: Agent Write Policy
+    type: feature
+
+  - id: interface
+    name: Interface
+    type: module
+  - id: interface.cli
+    parent: interface
+    name: CLI
+    type: feature
+  - id: interface.mcp
+    parent: interface
+    name: MCP
+    type: feature
+  - id: interface.export
+    parent: interface
+    name: Markdown Export
+    type: feature
+  - id: interface.doctor
+    parent: interface
+    name: Doctor
+    type: feature
+
+  - id: nfr
+    name: Non-Functional Requirements
+    type: module
+  - id: nfr.security
+    parent: nfr
+    name: Security
+    type: feature
+  - id: nfr.reliability
+    parent: nfr
+    name: Reliability
+    type: feature
+  - id: nfr.performance
+    parent: nfr
+    name: Performance
+    type: feature
+  - id: nfr.compatibility
+    parent: nfr
+    name: Compatibility
+    type: feature
+  - id: nfr.maintainability
+    parent: nfr
+    name: Maintainability
+    type: feature
+  - id: nfr.usability
+    parent: nfr
+    name: Usability
+    type: feature
+
+  - id: packaging
+    name: Packaging
+    type: module
+  - id: release
+    name: Release Acceptance
+    type: module
+  - id: decisions
+    name: Supplementary Decisions
+    type: module
+
+links: []

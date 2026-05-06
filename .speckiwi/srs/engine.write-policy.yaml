@@ -1,0 +1,99 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.engine.write-policy
+type: srs
+scope: engine.write-policy
+title: Agent Write Policy 요구사항
+status: active
+
+requirements:
+  - id: FR-WRITE-001
+    type: functional
+    title: 기본 write mode propose
+    status: active
+    priority: critical
+    statement: 시스템은 agent write 기본 모드를 `propose`로 설정해야 한다.
+    tags: [write, propose, security]
+  - id: FR-WRITE-002
+    type: functional
+    title: propose 모드 원본 보호
+    status: active
+    priority: critical
+    statement: 시스템은 propose 모드에서 원본 YAML을 수정하지 않아야 한다.
+    tags: [write, propose]
+  - id: FR-WRITE-003
+    type: functional
+    title: proposal YAML 생성
+    status: active
+    priority: critical
+    statement: 시스템은 propose 모드에서 proposal YAML 파일을 생성해야 한다.
+    tags: [write, propose, proposal]
+  - id: FR-WRITE-004
+    type: functional
+    title: apply 모드 원본 수정
+    status: active
+    priority: critical
+    statement: 시스템은 apply 모드에서 원본 YAML을 수정할 수 있어야 한다.
+    tags: [write, apply]
+  - id: FR-WRITE-005
+    type: functional
+    title: apply 전 validation
+    status: active
+    priority: critical
+    statement: 시스템은 apply 전 validation을 수행해야 한다.
+    tags: [write, validation]
+  - id: FR-WRITE-006
+    type: functional
+    title: error 시 apply 중단
+    status: active
+    priority: critical
+    statement: 시스템은 validation error가 있으면 apply를 중단해야 한다.
+    tags: [write, validation]
+  - id: FR-WRITE-007
+    type: reliability
+    title: atomic rename 저장
+    status: active
+    priority: critical
+    statement: >
+      시스템은 apply 시 임시 파일 작성 후 atomic rename 방식으로 저장해야 한다.
+    tags: [write, atomic, reliability]
+  - id: FR-WRITE-008
+    type: reliability
+    title: 백업/롤백 사본
+    status: active
+    priority: high
+    statement: >
+      시스템은 apply 전 대상 파일의 백업 또는 rollback 가능한 임시 사본을 생성할
+      수 있어야 한다.
+    tags: [write, rollback]
+  - id: FR-WRITE-009
+    type: functional
+    title: apply 후 cache stale
+    status: active
+    priority: high
+    statement: 시스템은 apply 후 cache를 stale 처리해야 한다.
+    tags: [write, cache]
+  - id: FR-WRITE-010
+    type: security
+    title: MCP destructive 기본 금지
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool에서 destructive write를 기본적으로 수행하지 않아야 한다.
+    tags: [write, mcp, security]
+  - id: FR-WRITE-011
+    type: functional
+    title: allowApply false 거부
+    status: active
+    priority: critical
+    statement: >
+      시스템은 `allowApply: false` 설정에서 apply 요청을 거부해야 한다.
+    tags: [write, settings, security]
+
+metadata:
+  writeModes: [propose, apply]
+  defaultPolicy:
+    defaultWriteMode: propose
+    allowApply: true
+  proposalPath: .speckiwi/proposals/
+  proposalNamingExample: "2026-04-28T091500.update.FR-AGK-LOOP-0001.yaml"

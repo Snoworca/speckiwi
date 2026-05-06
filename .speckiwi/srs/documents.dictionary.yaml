@@ -1,0 +1,44 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.dictionary
+type: srs
+scope: documents.dictionary
+title: Dictionary 요구사항
+status: active
+
+requirements:
+  - id: FR-DICT-001
+    type: functional
+    title: dictionary 로드
+    status: active
+    priority: high
+    statement: 시스템은 `.speckiwi/dictionary.yaml`을 로드할 수 있어야 한다.
+    tags: [dictionary]
+  - id: FR-DICT-002
+    type: functional
+    title: dictionary 없이 동작
+    status: active
+    priority: high
+    statement: 시스템은 dictionary가 없어도 기본 검색을 수행할 수 있어야 한다.
+    tags: [dictionary, search]
+  - id: FR-DICT-003
+    type: functional
+    title: synonyms query expansion
+    status: active
+    priority: high
+    statement: 시스템은 `synonyms`를 검색 query expansion에 사용해야 한다.
+    tags: [dictionary, search]
+  - id: FR-DICT-004
+    type: functional
+    title: dictionary 변경 cache stale
+    status: active
+    priority: medium
+    statement: 시스템은 dictionary 변경 시 search cache를 stale 처리해야 한다.
+    tags: [dictionary, cache]
+  - id: FR-DICT-005
+    type: functional
+    title: 순환 참조 방지
+    status: active
+    priority: medium
+    statement: 시스템은 dictionary entry가 순환 참조를 만들지 않도록 처리해야 한다.
+    tags: [dictionary, validation]

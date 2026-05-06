@@ -1,0 +1,113 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.core.doc-model
+type: srs
+scope: core.doc-model
+title: 문서 모델 요구사항
+status: active
+
+requirements:
+  - id: FR-DOC-001
+    type: functional
+    title: schemaVersion 검증
+    status: active
+    priority: critical
+    statement: 시스템은 모든 문서의 `schemaVersion`을 검증해야 한다.
+    tags: [doc-model, schema]
+  - id: FR-DOC-002
+    type: functional
+    title: 문서 id 유일성
+    status: active
+    priority: critical
+    statement: 시스템은 모든 문서의 `id`가 workspace 내에서 유일한지 검증해야 한다.
+    tags: [doc-model, validation]
+  - id: FR-DOC-003
+    type: functional
+    title: type enum 검증
+    status: active
+    priority: critical
+    statement: 시스템은 모든 문서의 `type`이 허용된 문서 타입인지 검증해야 한다.
+    tags: [doc-model, validation]
+  - id: FR-DOC-004
+    type: functional
+    title: status enum 검증
+    status: active
+    priority: high
+    statement: 시스템은 모든 문서의 `status`가 허용된 상태인지 검증해야 한다.
+    tags: [doc-model, validation]
+  - id: FR-DOC-005
+    type: functional
+    title: index 등록 검증
+    status: active
+    priority: critical
+    statement: >
+      시스템은 content document 경로가 `index.yaml`에 등록되어 있는지
+      검증해야 한다.
+    tags: [doc-model, index]
+  - id: FR-DOC-006
+    type: functional
+    title: 등록 path 실재 검증
+    status: active
+    priority: critical
+    statement: >
+      시스템은 `index.yaml`에 등록된 문서 path가 실제 파일로 존재하는지 검증해야 한다.
+    tags: [doc-model, index]
+  - id: FR-DOC-007
+    type: functional
+    title: index는 manifest
+    status: active
+    priority: high
+    statement: >
+      시스템은 `index.yaml`을 workspace manifest로 취급하고 content document
+      registry에 등록하지 않아야 한다.
+    tags: [doc-model, index, manifest]
+  - id: FR-DOC-008
+    type: functional
+    title: metadata 선택적
+    status: active
+    priority: medium
+    statement: 시스템은 `metadata`가 없더라도 content document를 유효하게 처리해야 한다.
+    tags: [doc-model, metadata]
+  - id: FR-DOC-009
+    type: functional
+    title: proposal은 managed artifact
+    status: active
+    priority: high
+    statement: >
+      시스템은 `.speckiwi/proposals/*.yaml`을 schema-validated managed artifact로
+      취급하고 `index.yaml` document registry에는 등록하지 않아야 한다.
+    tags: [doc-model, proposal]
+  - id: FR-DOC-010
+    type: functional
+    title: index ↔ YAML 정합성 검증
+    status: active
+    priority: high
+    statement: >
+      시스템은 `index.documents[].id/type`과 실제 YAML `id/type/schemaVersion`의
+      정합성을 검증해야 한다.
+    tags: [doc-model, validation, index]
+  - id: FR-DOC-011
+    type: functional
+    title: 미등록 content YAML 오류
+    status: active
+    priority: high
+    statement: >
+      시스템은 content YAML이 `index.documents[]`에 등록되지 않은 경우 error를
+      생성해야 한다.
+    tags: [doc-model, validation, index]
+
+metadata:
+  supportedDocumentTypes:
+    - overview
+    - prd
+    - srs
+    - technical
+    - adr
+    - rule
+    - dictionary
+    - prose
+  notes:
+    - prose는 회의록·인터뷰·디자인 노트 등 비정형 자료를 단일 Markdown body 필드에 보관한다.
+    - index.yaml은 manifest schema이며 content document type이 아니다.
+    - proposal은 managed artifact이며 search/graph/export 대상 content document가 아니다.
+    - templates/*.md.tmpl은 Markdown export asset이며 v1 YAML document type이 아니다.

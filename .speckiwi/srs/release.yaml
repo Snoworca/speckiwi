@@ -1,0 +1,239 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.release
+type: srs
+scope: release
+title: 수용 기준 (Release Acceptance)
+status: active
+
+requirements:
+  - id: REL-CORE-001
+    type: functional
+    title: Core 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 Core 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-CORE-01
+        method: test
+        description: .speckiwi/ workspace를 초기화할 수 있다.
+      - id: AC-CORE-02
+        method: test
+        description: index.yaml을 로드하고 검증할 수 있다.
+      - id: AC-CORE-03
+        method: test
+        description: overview.yaml을 로드하고 검증할 수 있다.
+      - id: AC-CORE-04
+        method: test
+        description: SRS YAML 문서를 로드하고 검증할 수 있다.
+      - id: AC-CORE-05
+        method: test
+        description: requirement ID 중복을 탐지할 수 있다.
+      - id: AC-CORE-06
+        method: test
+        description: document link 오류를 탐지할 수 있다.
+      - id: AC-CORE-07
+        method: test
+        description: requirement relation 오류를 탐지할 수 있다.
+      - id: AC-CORE-08
+        method: test
+        description: graph를 구성할 수 있다.
+    tags: [release, acceptance, core]
+  - id: REL-STORAGE-001
+    type: functional
+    title: Storage 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 Storage 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-STORAGE-01
+        method: inspection
+        description: SQLite를 사용하지 않는다.
+      - id: AC-STORAGE-02
+        method: inspection
+        description: DB 파일을 생성하지 않는다.
+      - id: AC-STORAGE-03
+        method: test
+        description: YAML만으로 cache를 재생성할 수 있다.
+      - id: AC-STORAGE-04
+        method: inspection
+        description: Markdown export 결과를 원본으로 취급하지 않는다.
+    tags: [release, acceptance, storage]
+  - id: REL-CLI-001
+    type: functional
+    title: CLI 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 CLI 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-CLI-01
+        method: test
+        description: speckiwi init이 동작한다.
+      - id: AC-CLI-02
+        method: test
+        description: speckiwi validate가 동작한다.
+      - id: AC-CLI-03
+        method: test
+        description: speckiwi search가 동작한다.
+      - id: AC-CLI-04
+        method: test
+        description: speckiwi req get <id>가 동작한다.
+      - id: AC-CLI-05
+        method: test
+        description: speckiwi list docs가 동작한다.
+      - id: AC-CLI-06
+        method: test
+        description: speckiwi list reqs가 동작한다.
+      - id: AC-CLI-07
+        method: test
+        description: speckiwi export markdown이 동작한다.
+      - id: AC-CLI-08
+        method: test
+        description: 모든 주요 명령은 --json 출력을 지원한다.
+    tags: [release, acceptance, cli]
+  - id: REL-MCP-001
+    type: functional
+    title: MCP 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 MCP 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-MCP-01
+        method: test
+        description: speckiwi mcp --root <path>가 stdio MCP 프로세스로 실행된다.
+      - id: AC-MCP-02
+        method: test
+        description: MCP가 stdout에 protocol message 외 로그를 쓰지 않는다.
+      - id: AC-MCP-03
+        method: test
+        description: speckiwi_overview tool이 동작한다.
+      - id: AC-MCP-04
+        method: test
+        description: speckiwi_search tool이 동작한다.
+      - id: AC-MCP-05
+        method: test
+        description: speckiwi_get_requirement tool이 동작한다.
+      - id: AC-MCP-06
+        method: test
+        description: speckiwi_validate tool이 동작한다.
+      - id: AC-MCP-07
+        method: test
+        description: speckiwi_propose_change tool이 원본을 수정하지 않고 proposal을 생성한다.
+      - id: AC-MCP-08
+        method: test
+        description: speckiwi_apply_change tool은 설정과 validation이 허용할 때만 원본을 수정한다.
+    tags: [release, acceptance, mcp]
+  - id: REL-SEARCH-001
+    type: functional
+    title: Search 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 Search 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-SEARCH-01
+        method: test
+        description: requirement ID exact search가 동작한다.
+      - id: AC-SEARCH-02
+        method: test
+        description: document ID exact search가 동작한다.
+      - id: AC-SEARCH-03
+        method: test
+        description: BM25 검색이 동작한다.
+      - id: AC-SEARCH-04
+        method: test
+        description: 한글 2-gram/3-gram tokenizer가 동작한다.
+      - id: AC-SEARCH-05
+        method: test
+        description: dictionary.yaml synonym expansion이 동작한다.
+      - id: AC-SEARCH-06
+        method: test
+        description: search 결과에 score와 matchedFields가 포함된다.
+      - id: AC-SEARCH-07
+        method: test
+        description: search cache를 rebuild할 수 있다.
+    tags: [release, acceptance, search]
+  - id: REL-WRITE-001
+    type: functional
+    title: Write Policy 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 Write Policy 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-WRITE-01
+        method: test
+        description: 기본 write mode는 propose다.
+      - id: AC-WRITE-02
+        method: test
+        description: propose mode는 원본 YAML을 수정하지 않는다.
+      - id: AC-WRITE-03
+        method: test
+        description: proposal 파일이 .speckiwi/proposals/에 생성된다.
+      - id: AC-WRITE-04
+        method: test
+        description: apply mode는 validation error가 없을 때만 원본 YAML을 수정한다.
+      - id: AC-WRITE-05
+        method: test
+        description: apply 후 cache가 stale 처리된다.
+    tags: [release, acceptance, write]
+  - id: REL-EXPORT-001
+    type: functional
+    title: Export 수용 기준
+    status: active
+    priority: critical
+    statement: SpecKiwi v1.0은 Export 수용 기준을 모두 충족해야 한다.
+    acceptanceCriteria:
+      - id: AC-EXPORT-01
+        method: test
+        description: overview Markdown export가 가능하다.
+      - id: AC-EXPORT-02
+        method: test
+        description: SRS scope별 Markdown export가 가능하다.
+      - id: AC-EXPORT-03
+        method: test
+        description: export index Markdown이 생성된다.
+      - id: AC-EXPORT-04
+        method: test
+        description: export 결과 파일 목록이 출력된다.
+      - id: AC-EXPORT-05
+        method: inspection
+        description: export 결과는 원본으로 취급되지 않는다.
+    tags: [release, acceptance, export]
+  - id: REL-SUPP-001
+    type: functional
+    title: 보완 수용 기준 (§34.6)
+    status: active
+    priority: high
+    statement: >
+      구현 검토 기반 보완 수용 기준을 release 가능 판정에 추가한다.
+    acceptanceCriteria:
+      - id: AC-SUPP-01
+        method: test
+        description: PRD item ID 중복 validation이 실패 테스트와 성공 테스트로 검증된다.
+      - id: AC-SUPP-02
+        method: test
+        description: requirement list의 project 필터가 CLI/Core/MCP에서 일관되게 동작한다.
+      - id: AC-SUPP-03
+        method: test
+        description: search는 유효한 search cache를 실제 read path에서 사용한다.
+      - id: AC-SUPP-04
+        method: test
+        description: --no-cache는 apply 후 stale marker를 포함한 모든 cache write를 우회한다.
+      - id: AC-SUPP-05
+        method: test
+        description: apply 동시성은 프로세스 간 동일 target 충돌을 deterministic하게 처리한다.
+      - id: AC-SUPP-06
+        method: test
+        description: MCP resource read는 symlink traversal로 workspace 밖 파일을 노출하지 않는다.
+      - id: AC-SUPP-07
+        method: test
+        description: MCP invalid params와 domain error는 관찰 가능한 오류 모델이 구분된다.
+      - id: AC-SUPP-08
+        method: test
+        description: release check는 release acceptance timeout 실패를 통과시키지 않는다.
+      - id: AC-SUPP-09
+        method: test
+        description: 성능 테스트는 10,000 requirement 및 MCP 단일 호출 목표를 포함한다.
+      - id: AC-SUPP-10
+        method: inspection
+        description: MCP tool metadata는 output schema를 포함한다.
+    tags: [release, acceptance, supplementary]

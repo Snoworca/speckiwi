@@ -1,0 +1,136 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.interface.cli
+type: srs
+scope: interface.cli
+title: CLI 요구사항
+status: active
+
+requirements:
+  - id: FR-CLI-001
+    type: interface
+    title: speckiwi 실행 파일 제공
+    status: active
+    priority: critical
+    statement: 시스템은 `speckiwi` 실행 파일을 제공해야 한다.
+    tags: [cli, packaging]
+  - id: FR-CLI-002
+    type: interface
+    title: 전역 설치 지원
+    status: active
+    priority: high
+    statement: 시스템은 `npm install -g speckiwi` 방식의 전역 설치를 지원해야 한다.
+    tags: [cli, packaging]
+  - id: FR-CLI-003
+    type: functional
+    title: workspace root 자동 탐색
+    status: active
+    priority: critical
+    statement: CLI는 현재 디렉토리 기준 workspace root를 자동 탐색해야 한다.
+    tags: [cli, workspace]
+  - id: FR-CLI-004
+    type: interface
+    title: --root 옵션
+    status: active
+    priority: high
+    statement: CLI는 `--root` 옵션을 지원해야 한다.
+    tags: [cli, workspace]
+  - id: FR-CLI-005
+    type: usability
+    title: human readable 기본 출력
+    status: active
+    priority: high
+    statement: CLI는 사람이 읽기 쉬운 기본 출력을 제공해야 한다.
+    tags: [cli, ux]
+  - id: FR-CLI-006
+    type: interface
+    title: --json 출력
+    status: active
+    priority: critical
+    statement: CLI는 `--json` 옵션에서 machine-readable JSON을 출력해야 한다.
+    tags: [cli, json]
+  - id: FR-CLI-007
+    type: interface
+    title: 실패 시 non-zero exit
+    status: active
+    priority: high
+    statement: CLI는 실패 시 non-zero exit code를 반환해야 한다.
+    tags: [cli, exit-code]
+  - id: FR-CLI-008
+    type: interface
+    title: error code 출력
+    status: active
+    priority: high
+    statement: CLI는 validation error 발생 시 error code를 출력해야 한다.
+    tags: [cli, error]
+  - id: FR-CLI-009
+    type: functional
+    title: ID exact match 조회
+    status: active
+    priority: high
+    statement: >
+      CLI는 requirement 조회를 ID exact match로 수행할 수 있어야 한다.
+    tags: [cli, requirement]
+  - id: FR-CLI-010
+    type: functional
+    title: search 결과 score 정렬
+    status: active
+    priority: high
+    statement: CLI는 search 결과를 score 순으로 정렬해야 한다.
+    tags: [cli, search]
+  - id: FR-CLI-011
+    type: functional
+    title: apply 명시 옵션
+    status: active
+    priority: high
+    statement: >
+      CLI는 apply 작업 전 사용자 확인 또는 명시적 `--apply` 옵션을 요구할 수 있어야 한다.
+    tags: [cli, apply]
+  - id: FR-CLI-012
+    type: interface
+    title: stdout/stderr 분리
+    status: active
+    priority: high
+    statement: >
+      CLI는 stdout에 결과를 출력하고, diagnostic log는 stderr에 출력해야 한다.
+    tags: [cli, output]
+  - id: FR-CLI-013
+    type: functional
+    title: pagination 기본/상한
+    status: active
+    priority: medium
+    statement: >
+      CLI와 Core pagination 기본값과 상한은 보완 결정 문서와 일치해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          search 기본 `limit`은 10, 최대 100이고, list 기본 `limit`은 50,
+          최대 500이며 JSON 출력에 적용된 `limit`과 `offset`이 반영된다.
+    tags: [cli, pagination]
+
+metadata:
+  baseCommands:
+    - speckiwi init
+    - speckiwi validate
+    - speckiwi doctor
+    - speckiwi overview
+    - speckiwi list docs
+    - speckiwi list reqs
+    - speckiwi search "..."
+    - speckiwi req get <id>
+    - speckiwi req create
+    - speckiwi req update <id>
+    - speckiwi graph
+    - speckiwi impact <requirement-id>
+    - speckiwi export markdown
+    - speckiwi cache rebuild
+    - speckiwi cache clean
+    - speckiwi mcp
+  commonOptions:
+    - --root <path>
+    - --json
+    - --no-cache
+    - --offset <n>
+    - --verbose
+    - --quiet

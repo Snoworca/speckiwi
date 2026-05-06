@@ -1,0 +1,90 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.security
+type: srs
+scope: nfr.security
+title: 보안 요구사항
+status: active
+
+requirements:
+  - id: NFR-SEC-001
+    type: security
+    title: 네트워크 포트 미오픈
+    status: active
+    priority: critical
+    statement: 시스템은 기본 동작에서 네트워크 포트를 열지 않아야 한다.
+    tags: [security, network]
+  - id: NFR-SEC-002
+    type: security
+    title: HTTP 서버 미시작
+    status: active
+    priority: critical
+    statement: 시스템은 HTTP 서버를 시작하지 않아야 한다.
+    tags: [security, network]
+  - id: NFR-SEC-003
+    type: security
+    title: 외부 read 차단
+    status: active
+    priority: critical
+    statement: 시스템은 workspace root 밖의 파일을 기본적으로 읽지 않아야 한다.
+    tags: [security, fs]
+  - id: NFR-SEC-004
+    type: security
+    title: 외부 write 차단
+    status: active
+    priority: critical
+    statement: 시스템은 workspace root 밖의 파일을 기본적으로 쓰지 않아야 한다.
+    tags: [security, fs]
+  - id: NFR-SEC-005
+    type: security
+    title: path traversal 거부
+    status: active
+    priority: critical
+    statement: 시스템은 path traversal 입력을 거부해야 한다.
+    tags: [security, path]
+  - id: NFR-SEC-006
+    type: security
+    title: proposal/apply 경로 검증
+    status: active
+    priority: critical
+    statement: >
+      시스템은 proposal/apply 대상 path가 `.speckiwi/` 내부인지 검증해야 한다.
+    tags: [security, write]
+  - id: NFR-SEC-007
+    type: security
+    title: 환경변수 자동 저장 금지
+    status: active
+    priority: high
+    statement: 시스템은 환경변수 값을 YAML 원본에 자동 저장하지 않아야 한다.
+    tags: [security, secrets]
+  - id: NFR-SEC-008
+    type: security
+    title: MCP apply 제한
+    status: active
+    priority: critical
+    statement: 시스템은 MCP apply tool을 기본적으로 제한적으로 동작시켜야 한다.
+    tags: [security, mcp, apply]
+  - id: NFR-SEC-009
+    type: security
+    title: destructive 명시 모드
+    status: active
+    priority: high
+    statement: >
+      시스템은 destructive 작업에 대해 명시적 모드 또는 설정을 요구해야 한다.
+    tags: [security, destructive]
+  - id: NFR-SEC-010
+    type: security
+    title: symlink traversal 차단
+    status: active
+    priority: high
+    statement: >
+      MCP resource와 Core file read/write 경로는 symlink를 포함한 실제 경로가
+      workspace root 밖으로 벗어나는 것을 거부해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          `.speckiwi/overview.yaml` 또는 등록 문서가 workspace 외부 파일로 향하는
+          symlink일 때 MCP resource와 CLI read 명령은 파일 내용을 반환하지 않고
+          security diagnostic을 반환한다.
+    tags: [security, symlink, mcp]

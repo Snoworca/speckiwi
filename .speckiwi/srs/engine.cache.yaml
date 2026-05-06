@@ -1,0 +1,111 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.engine.cache
+type: srs
+scope: engine.cache
+title: Cache 요구사항
+status: active
+
+requirements:
+  - id: FR-CACHE-001
+    type: functional
+    title: cache 없이 동작 가능
+    status: active
+    priority: critical
+    statement: 시스템은 cache 없이도 모든 기능을 수행할 수 있어야 한다.
+    tags: [cache]
+  - id: FR-CACHE-002
+    type: data
+    title: cache 비-원본
+    status: active
+    priority: critical
+    statement: 시스템은 cache를 원본 데이터로 취급하지 않아야 한다.
+    tags: [cache, source-of-truth]
+  - id: FR-CACHE-003
+    type: interface
+    title: cache rebuild 명령
+    status: active
+    priority: high
+    statement: 시스템은 `speckiwi cache rebuild` 명령을 제공해야 한다.
+    tags: [cache, cli]
+  - id: FR-CACHE-004
+    type: interface
+    title: cache clean 명령
+    status: active
+    priority: high
+    statement: 시스템은 `speckiwi cache clean` 명령을 제공해야 한다.
+    tags: [cache, cli]
+  - id: FR-CACHE-005
+    type: functional
+    title: cache stale 감지
+    status: active
+    priority: high
+    statement: 시스템은 cache stale 여부를 감지해야 한다.
+    tags: [cache, stale]
+  - id: FR-CACHE-006
+    type: functional
+    title: stale 자동 재생성
+    status: active
+    priority: high
+    statement: 시스템은 stale cache를 자동 재생성할 수 있어야 한다.
+    tags: [cache, stale]
+  - id: FR-CACHE-007
+    type: reliability
+    title: 재생성 실패 시 degrade
+    status: active
+    priority: high
+    statement: >
+      시스템은 cache 재생성 실패 시 원본 YAML 기반으로 degrade해야 한다.
+    tags: [cache, reliability]
+  - id: FR-CACHE-008
+    type: functional
+    title: manifest hash 저장
+    status: active
+    priority: high
+    statement: 시스템은 cache manifest에 입력 파일 hash를 저장해야 한다.
+    tags: [cache, manifest]
+  - id: FR-CACHE-009
+    type: functional
+    title: 유효 cache 우선 사용
+    status: active
+    priority: medium
+    statement: >
+      시스템은 유효한 `.speckiwi/cache/search-index.json`이 존재하고 stale 상태가
+      아니면 검색 시 해당 cache를 우선 사용해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          search 실행 중 cache hit 경로가 테스트로 검증되고, cache가 없거나
+          stale이면 YAML 원본 기반 rebuild 또는 degrade 경로가 동작한다.
+    tags: [cache, search]
+  - id: FR-CACHE-010
+    type: functional
+    title: --no-cache 모드
+    status: active
+    priority: high
+    statement: >
+      `--no-cache` 모드에서는 cache read와 cache write를 모두 수행하지
+      않아야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          `speckiwi req update --apply --no-cache`, search, graph, export 실행 후
+          `.speckiwi/cache/`에 신규 파일 또는 stale marker가 생성되지 않는다.
+    tags: [cache, cli]
+
+metadata:
+  cacheFiles:
+    - .speckiwi/cache/graph.json
+    - .speckiwi/cache/search-index.json
+    - .speckiwi/cache/diagnostics.json
+    - .speckiwi/cache/manifest.json
+  invalidationTriggers:
+    - index.yaml hash 변경
+    - overview.yaml hash 변경
+    - dictionary.yaml hash 변경
+    - 문서 YAML hash 변경
+    - schemaVersion 변경
+    - speckiwi package version 변경
+    - search settings 변경

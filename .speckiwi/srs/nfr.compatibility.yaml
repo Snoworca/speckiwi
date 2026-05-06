@@ -1,0 +1,59 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.compatibility
+type: srs
+scope: nfr.compatibility
+title: 호환성 요구사항
+status: active
+
+requirements:
+  - id: NFR-COMP-001
+    type: non_functional
+    title: Node.js 20+
+    status: active
+    priority: critical
+    statement: 시스템은 Node.js 20 이상에서 실행되어야 한다.
+    tags: [compatibility, runtime]
+  - id: NFR-COMP-002
+    type: non_functional
+    title: macOS 지원
+    status: active
+    priority: high
+    statement: 시스템은 macOS에서 실행되어야 한다.
+    tags: [compatibility, platform]
+  - id: NFR-COMP-003
+    type: non_functional
+    title: Linux 지원
+    status: active
+    priority: high
+    statement: 시스템은 Linux에서 실행되어야 한다.
+    tags: [compatibility, platform]
+  - id: NFR-COMP-004
+    type: non_functional
+    title: Windows 지원
+    status: active
+    priority: high
+    statement: 시스템은 Windows에서 실행 가능해야 한다.
+    tags: [compatibility, platform]
+  - id: NFR-COMP-005
+    type: non_functional
+    title: ESM TypeScript
+    status: active
+    priority: high
+    statement: 시스템은 ESM 기반 TypeScript 프로젝트로 구현되어야 한다.
+    tags: [compatibility, build]
+  - id: NFR-COMP-006
+    type: non_functional
+    title: native dependency 없이 설치
+    status: active
+    priority: high
+    statement: 시스템은 native dependency 없이 기본 기능을 설치할 수 있어야 한다.
+    tags: [compatibility, install]
+  - id: NFR-COMP-007
+    type: non_functional
+    title: Java/Python/DB runtime 미요구
+    status: active
+    priority: high
+    statement: >
+      시스템은 Java, Python, database runtime을 기본 의존성으로 요구하지 않아야 한다.
+    tags: [compatibility, dependency]

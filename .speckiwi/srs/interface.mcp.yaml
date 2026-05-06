@@ -1,0 +1,204 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.interface.mcp
+type: srs
+scope: interface.mcp
+title: MCP 요구사항
+status: active
+
+requirements:
+  - id: FR-MCP-001
+    type: interface
+    title: speckiwi_overview tool
+    status: active
+    priority: critical
+    statement: 시스템은 MCP tool `speckiwi_overview`로 프로젝트 overview를 반환해야 한다.
+    tags: [mcp, tool]
+  - id: FR-MCP-002
+    type: interface
+    title: speckiwi_list_documents tool
+    status: active
+    priority: critical
+    statement: 시스템은 MCP tool `speckiwi_list_documents`로 문서 목록을 반환해야 한다.
+    tags: [mcp, tool]
+  - id: FR-MCP-003
+    type: interface
+    title: speckiwi_read_document tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_read_document`로 document id 기준 문서를
+      반환해야 한다.
+    tags: [mcp, tool]
+  - id: FR-MCP-004
+    type: interface
+    title: speckiwi_search tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_search`가 query, mode, filters, limit을 받아
+      검색 결과를 반환해야 한다.
+    tags: [mcp, tool, search]
+  - id: FR-MCP-005
+    type: interface
+    title: speckiwi_get_requirement tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_get_requirement`로 requirement id 기준 단일
+      requirement를 반환해야 한다.
+    tags: [mcp, tool, requirement]
+  - id: FR-MCP-006
+    type: interface
+    title: speckiwi_list_requirements tool
+    status: active
+    priority: high
+    statement: >
+      시스템은 MCP tool `speckiwi_list_requirements`로 필터 조건에 맞는 requirement
+      목록을 반환해야 한다.
+    tags: [mcp, tool, requirement]
+  - id: FR-MCP-007
+    type: interface
+    title: speckiwi_preview_requirement_id tool
+    status: active
+    priority: high
+    statement: >
+      시스템은 MCP tool `speckiwi_preview_requirement_id`로 requirement ID
+      preview를 원본 수정 없이 반환해야 한다.
+    tags: [mcp, tool, id]
+  - id: FR-MCP-008
+    type: interface
+    title: speckiwi_trace_requirement tool
+    status: active
+    priority: high
+    statement: >
+      시스템은 MCP tool `speckiwi_trace_requirement`로 requirement relation graph를
+      반환해야 한다.
+    tags: [mcp, tool, trace]
+  - id: FR-MCP-009
+    type: interface
+    title: speckiwi_graph tool
+    status: active
+    priority: high
+    statement: >
+      시스템은 MCP tool `speckiwi_graph`로 graphType 기준 GraphResult를
+      반환해야 한다.
+    tags: [mcp, tool, graph]
+  - id: FR-MCP-010
+    type: interface
+    title: speckiwi_impact tool
+    status: active
+    priority: high
+    statement: 시스템은 MCP tool `speckiwi_impact`로 변경 영향 범위를 반환해야 한다.
+    tags: [mcp, tool, impact]
+  - id: FR-MCP-011
+    type: interface
+    title: speckiwi_validate tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_validate`로 validation diagnostics를 반환해야 한다.
+    tags: [mcp, tool, validation]
+  - id: FR-MCP-012
+    type: interface
+    title: speckiwi_propose_change tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_propose_change`로 원본 수정 없이 proposal을
+      생성해야 한다.
+    tags: [mcp, tool, write, propose]
+  - id: FR-MCP-013
+    type: interface
+    title: speckiwi_apply_change tool
+    status: active
+    priority: critical
+    statement: >
+      시스템은 MCP tool `speckiwi_apply_change`가 설정과 validation이 허용할 때만
+      원본 YAML을 수정해야 한다.
+    tags: [mcp, tool, write, apply]
+  - id: FR-MCP-014
+    type: interface
+    title: invalid params 구분
+    status: active
+    priority: medium
+    statement: >
+      MCP tool 입력 스키마 오류와 금지된 root override는 JSON-RPC invalid params
+      오류로 구분되어야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          handler 실행 전 request shape 또는 arguments 오류는 `-32602` 계열 오류로
+          관찰되고, 일반 domain failure와 동일한 `isError` 결과로만 처리되지 않는다.
+    tags: [mcp, error]
+  - id: FR-MCP-015
+    type: interface
+    title: outputSchema 제공
+    status: active
+    priority: low
+    statement: >
+      MCP tool 정의는 `structuredContent`의 JSON-compatible Core DTO를 설명하는
+      `outputSchema`를 제공해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          등록된 모든 `speckiwi_*` tool은 `inputSchema`와 함께 output schema 정보를
+          노출하고, output schema는 실제 `structuredContent`와 불일치하지 않는다.
+    tags: [mcp, schema]
+
+  - id: FR-MCP-TR-001
+    type: interface
+    title: stdio transport
+    status: active
+    priority: critical
+    statement: MCP 프로세스는 stdio transport를 사용해야 한다.
+    tags: [mcp, transport]
+  - id: FR-MCP-TR-002
+    type: constraint
+    title: stdout protocol-only
+    status: active
+    priority: critical
+    statement: >
+      MCP 프로세스는 protocol message 외의 로그를 stdout에 쓰지 않아야 한다.
+    tags: [mcp, transport, stdout]
+  - id: FR-MCP-TR-003
+    type: interface
+    title: log → stderr/파일
+    status: active
+    priority: high
+    statement: MCP 프로세스의 log는 stderr 또는 파일로 출력해야 한다.
+    tags: [mcp, transport, log]
+  - id: FR-MCP-TR-004
+    type: security
+    title: HTTP port 미오픈
+    status: active
+    priority: critical
+    statement: MCP 프로세스는 HTTP port를 열지 않아야 한다.
+    tags: [mcp, transport, security]
+  - id: FR-MCP-TR-005
+    type: security
+    title: workspace root 외부 차단
+    status: active
+    priority: critical
+    statement: MCP 프로세스는 workspace root 밖의 파일을 읽거나 쓰지 않아야 한다.
+    tags: [mcp, security]
+  - id: FR-MCP-TR-006
+    type: interface
+    title: structuredContent JSON-compatible
+    status: active
+    priority: high
+    statement: >
+      MCP tool `structuredContent`에 들어가는 Core DTO는 JSON-compatible
+      object여야 한다.
+    tags: [mcp, dto]
+
+metadata:
+  mcpResources:
+    - speckiwi://overview
+    - speckiwi://index
+    - speckiwi://documents/{id}
+    - speckiwi://requirements/{id}
+    - speckiwi://scopes/{id}
+  runCommand: speckiwi mcp --root /absolute/path/to/project

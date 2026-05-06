@@ -1,0 +1,104 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.nfr.reliability
+type: srs
+scope: nfr.reliability
+title: 신뢰성 요구사항
+status: active
+
+requirements:
+  - id: NFR-REL-001
+    type: reliability
+    title: parse 실패 diagnostics
+    status: active
+    priority: high
+    statement: >
+      시스템은 YAML parse 실패 파일이 있어도 diagnostics를 반환해야 한다.
+    tags: [reliability, diagnostics]
+  - id: NFR-REL-002
+    type: reliability
+    title: 단일 오류로 전체 비정상 종료 금지
+    status: active
+    priority: high
+    statement: >
+      시스템은 하나의 문서 오류 때문에 전체 프로세스가 비정상 종료되지 않아야 한다.
+    tags: [reliability, fault-tolerance]
+  - id: NFR-REL-003
+    type: reliability
+    title: partial write 금지
+    status: active
+    priority: critical
+    statement: 시스템은 apply 작업 시 partial write를 남기지 않아야 한다.
+    tags: [reliability, atomic]
+  - id: NFR-REL-004
+    type: reliability
+    title: atomic write 사용
+    status: active
+    priority: critical
+    statement: 시스템은 atomic write 전략을 사용해야 한다.
+    tags: [reliability, atomic]
+  - id: NFR-REL-005
+    type: reliability
+    title: cache 손상 복구
+    status: active
+    priority: high
+    statement: >
+      시스템은 cache 파일 손상 시 cache를 삭제하고 재생성할 수 있어야 한다.
+    tags: [reliability, cache]
+  - id: NFR-REL-006
+    type: reliability
+    title: search cache 실패 degrade
+    status: active
+    priority: high
+    statement: >
+      시스템은 search cache 생성 실패 시 YAML 직접 로드 방식으로 degrade해야 한다.
+    tags: [reliability, search, cache]
+  - id: NFR-REL-007
+    type: reliability
+    title: deterministic validation error
+    status: active
+    priority: high
+    statement: 시스템은 validation error를 deterministic하게 반환해야 한다.
+    tags: [reliability, validation]
+  - id: NFR-REL-008
+    type: reliability
+    title: 프로세스 간 동시 write 방지
+    status: active
+    priority: high
+    statement: >
+      apply 작업은 프로세스 간에도 동일 target에 대한 동시 write를 방지해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          별도 CLI 프로세스 2개가 같은 requirement에 동시에 `--apply`를 실행하면
+          하나만 성공하고, 다른 하나는 deterministic lock/conflict/stale 오류를
+          반환한다.
+    tags: [reliability, concurrency, apply]
+  - id: NFR-REL-009
+    type: reliability
+    title: lock 복구 가능
+    status: active
+    priority: high
+    statement: apply lock은 비정상 종료 후에도 복구 가능한 방식이어야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          stale lock 감지 또는 안전한 lock cleanup 절차가 있고, 정상 apply 완료 후
+          lock 파일 또는 lock 상태가 남지 않는다.
+    tags: [reliability, lock]
+  - id: NFR-REL-010
+    type: reliability
+    title: release gate 실패 노출
+    status: active
+    priority: high
+    statement: release gate는 release acceptance test 실패를 숨기지 않아야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          `npm run release:check`는 release acceptance test를 포함하거나 별도
+          명령으로 실행하며, 기본 timeout 때문에 실패하는 테스트가 있으면 non-zero로
+          종료한다.
+    tags: [reliability, release, ci]

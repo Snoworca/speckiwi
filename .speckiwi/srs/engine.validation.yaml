@@ -1,0 +1,96 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.engine.validation
+type: srs
+scope: engine.validation
+title: Validation 요구사항
+status: active
+
+requirements:
+  - id: FR-VAL-001
+    type: interface
+    title: validate 명령 제공
+    status: active
+    priority: critical
+    statement: 시스템은 `speckiwi validate` 명령을 제공해야 한다.
+    tags: [validation, cli]
+  - id: FR-VAL-002
+    type: usability
+    title: human readable 출력
+    status: active
+    priority: high
+    statement: 시스템은 validation 결과를 사람이 읽기 쉬운 형식으로 출력해야 한다.
+    tags: [validation, ux]
+  - id: FR-VAL-003
+    type: interface
+    title: --json 옵션
+    status: active
+    priority: high
+    statement: 시스템은 `--json` 옵션에서 validation 결과를 JSON으로 출력해야 한다.
+    tags: [validation, json]
+  - id: FR-VAL-004
+    type: interface
+    title: MCP validate tool
+    status: active
+    priority: high
+    statement: >
+      시스템은 MCP tool `speckiwi_validate`로 validation 결과를 반환해야 한다.
+    tags: [validation, mcp]
+  - id: FR-VAL-005
+    type: functional
+    title: apply 전 validation
+    status: active
+    priority: critical
+    statement: 시스템은 apply 작업 전 validation을 수행해야 한다.
+    tags: [validation, write]
+  - id: FR-VAL-006
+    type: functional
+    title: error 시 apply 중단
+    status: active
+    priority: critical
+    statement: 시스템은 validation error가 존재할 경우 apply 작업을 중단해야 한다.
+    tags: [validation, write]
+  - id: FR-VAL-007
+    type: functional
+    title: warning만 있으면 apply 허용
+    status: active
+    priority: high
+    statement: 시스템은 warning만 존재하는 경우 apply를 허용할 수 있어야 한다.
+    tags: [validation, write]
+
+metadata:
+  errorCodes:
+    VAL-ERR-001: .speckiwi/index.yaml 없음
+    VAL-ERR-002: .speckiwi/overview.yaml 없음
+    VAL-ERR-003: YAML parse 실패
+    VAL-ERR-004: schemaVersion 누락
+    VAL-ERR-005: schemaVersion 불일치
+    VAL-ERR-006: document id 중복
+    VAL-ERR-007: requirement id 중복
+    VAL-ERR-008: index에 등록된 path가 존재하지 않음
+    VAL-ERR-009: 존재하지 않는 document link 참조
+    VAL-ERR-010: 존재하지 않는 requirement relation target 또는 잘못된 external relation 형식
+    VAL-ERR-011: 잘못된 requirement type
+    VAL-ERR-012: 잘못된 requirement status
+    VAL-ERR-013: scope parent cycle
+    VAL-ERR-014: YAML merge key 사용
+    VAL-ERR-015: .speckiwi/ 외부 path 참조
+    VAL-ERR-016: YAML anchor 사용
+    VAL-ERR-017: YAML alias 사용
+    VAL-ERR-018: 닫힌 schema object의 미정의 필드
+    VAL-ERR-019: metadata가 object가 아님
+    VAL-ERR-020: 잘못된 JSON Pointer 또는 patch operation
+    VAL-ERR-021: content YAML이 index에 등록되지 않음
+    VAL-ERR-022: index document entry와 실제 YAML id/type/schemaVersion 불일치
+  warningCodes:
+    VAL-WARN-001: requirement에 acceptanceCriteria 없음
+    VAL-WARN-002: requirement에 rationale 없음
+    VAL-WARN-003: optional document link target 누락
+    VAL-WARN-004: cache stale
+    VAL-WARN-005: 단일 YAML 문서가 설정된 크기 임계값 초과
+    VAL-WARN-006: depends_on cycle 의심
+    VAL-WARN-007: dictionary에 사용되지 않는 synonym entry 존재
+    VAL-WARN-008: 검색 대상 text가 비어 있음
+  diagnosticBag:
+    fields: [errors, warnings, infos, summary]
+    note: v1 validator는 info diagnostic을 생성하지 않는다.

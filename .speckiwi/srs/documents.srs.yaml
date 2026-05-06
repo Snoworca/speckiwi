@@ -1,0 +1,196 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.srs
+type: srs
+scope: documents.srs
+title: SRS 문서 요구사항
+status: active
+
+requirements:
+  - id: FR-SRS-DOC-001
+    type: functional
+    title: scope 단위 파일 분할
+    status: active
+    priority: critical
+    statement: 시스템은 SRS 문서를 scope 단위 파일로 관리해야 한다.
+    tags: [srs, file-layout]
+  - id: FR-SRS-DOC-002
+    type: functional
+    title: 1파일 1 primary scope
+    status: active
+    priority: high
+    statement: 시스템은 하나의 SRS 파일이 하나의 primary scope를 표현하도록 해야 한다.
+    tags: [srs, file-layout]
+  - id: FR-SRS-DOC-003
+    type: constraint
+    title: requirement 1개/파일 강제 금지
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement 하나당 파일 하나를 기본 구조로 사용하지 않아야 한다.
+    tags: [srs, file-layout]
+  - id: FR-SRS-DOC-004
+    type: constraint
+    title: 단일 파일 강제 금지
+    status: active
+    priority: high
+    statement: 시스템은 전체 프로젝트 SRS를 단일 파일로 강제하지 않아야 한다.
+    tags: [srs, file-layout]
+
+  - id: FR-REQ-001
+    type: functional
+    title: requirement id 유일성
+    status: active
+    priority: critical
+    statement: 시스템은 workspace 전체에서 requirement `id`가 유일한지 검증해야 한다.
+    tags: [requirement, validation]
+  - id: FR-REQ-002
+    type: functional
+    title: requirement 단일 조회
+    status: active
+    priority: critical
+    statement: 시스템은 requirement `id`로 단일 requirement를 조회할 수 있어야 한다.
+    tags: [requirement, query]
+  - id: FR-REQ-003
+    type: functional
+    title: exact index 등록
+    status: active
+    priority: high
+    statement: 시스템은 requirement `id`를 exact index에 등록해야 한다.
+    tags: [requirement, search]
+  - id: FR-REQ-004
+    type: functional
+    title: statement 필수
+    status: active
+    priority: critical
+    statement: 시스템은 requirement `statement`를 필수로 요구해야 한다.
+    tags: [requirement, validation]
+  - id: FR-REQ-005
+    type: functional
+    title: type enum 검증
+    status: active
+    priority: high
+    statement: 시스템은 requirement `type`을 허용된 enum으로 검증해야 한다.
+    tags: [requirement, validation]
+  - id: FR-REQ-006
+    type: functional
+    title: status enum 검증
+    status: active
+    priority: high
+    statement: 시스템은 requirement `status`를 허용된 enum으로 검증해야 한다.
+    tags: [requirement, validation]
+  - id: FR-REQ-007
+    type: functional
+    title: AC 누락 warning
+    status: active
+    priority: medium
+    statement: >
+      시스템은 `acceptanceCriteria`가 없는 requirement에 대해 warning을 생성해야 한다.
+    tags: [requirement, validation, warning]
+  - id: FR-REQ-008
+    type: functional
+    title: rationale 누락 warning
+    status: active
+    priority: low
+    statement: >
+      시스템은 `rationale`이 없는 requirement에 대해 warning을 생성해야 한다.
+    tags: [requirement, validation, warning]
+  - id: FR-REQ-009
+    type: functional
+    title: relation targetType 검증
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement relation target을 `targetType` 별로 검증해야 한다.
+      `requirement`는 등록된 requirement id, `document`는 등록된 document id,
+      `external`은 URI scheme prefix 형식만 검사한다.
+    tags: [requirement, relation, validation]
+  - id: FR-REQ-010
+    type: functional
+    title: depends_on cycle 탐지
+    status: active
+    priority: high
+    statement: 시스템은 `depends_on` relation cycle을 탐지해야 한다.
+    tags: [requirement, relation, validation]
+  - id: FR-REQ-011
+    type: functional
+    title: 필터 조회
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement 목록을 project, scope, type, status, tag 기준으로
+      필터링할 수 있어야 한다.
+    tags: [requirement, query, filter]
+  - id: FR-REQ-012
+    type: functional
+    title: Markdown export 포함
+    status: active
+    priority: medium
+    statement: 시스템은 requirement를 Markdown export에 포함할 수 있어야 한다.
+    tags: [requirement, export]
+  - id: FR-REQ-013
+    type: functional
+    title: ID 자동 생성 지원
+    status: active
+    priority: high
+    statement: 시스템은 requirement 생성 시 ID 자동 생성을 지원해야 한다.
+    tags: [requirement, id]
+  - id: FR-REQ-014
+    type: functional
+    title: 명시 ID 사용 가능
+    status: active
+    priority: high
+    statement: 시스템은 사용자가 명시한 requirement ID를 사용할 수 있어야 한다.
+    tags: [requirement, id]
+  - id: FR-REQ-015
+    type: functional
+    title: 명시 ID 중복 거부
+    status: active
+    priority: high
+    statement: 시스템은 명시 ID가 중복될 경우 생성을 거부해야 한다.
+    tags: [requirement, id, validation]
+  - id: FR-REQ-016
+    type: functional
+    title: project 필터 지원
+    status: active
+    priority: medium
+    statement: 시스템은 requirement 목록 조회에서 `project` 필터를 지원해야 한다.
+    acceptanceCriteria:
+      - id: AC-001
+        method: test
+        description: >
+          CLI, Core DTO, MCP 입력 스키마에서 `project` 필터를 전달할 수 있고,
+          다른 필터(scope/type/status/tag)와 조합해 deterministic 결과를 반환한다.
+    tags: [requirement, filter, query]
+
+metadata:
+  requirementTypes:
+    - functional
+    - non_functional
+    - interface
+    - data
+    - constraint
+    - security
+    - performance
+    - reliability
+    - usability
+    - maintainability
+    - operational
+    - compliance
+    - migration
+    - observability
+  requirementStatuses:
+    - draft
+    - active
+    - in_progress
+    - done
+    - blocked
+    - deprecated
+    - replaced
+    - discarded
+  requirementPriorities:
+    - critical
+    - high
+    - medium
+    - low
+    - optional

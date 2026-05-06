@@ -1,0 +1,46 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.technical
+type: srs
+scope: documents.technical
+title: Technical 문서 요구사항
+status: active
+
+requirements:
+  - id: FR-TECH-001
+    type: functional
+    title: technical 로드/검증
+    status: active
+    priority: high
+    statement: 시스템은 technical 문서를 로드하고 검증할 수 있어야 한다.
+    tags: [technical]
+  - id: FR-TECH-002
+    type: functional
+    title: technical 검색 포함
+    status: active
+    priority: medium
+    statement: 시스템은 technical 문서를 검색 대상으로 포함해야 한다.
+    tags: [technical, search]
+  - id: FR-TECH-003
+    type: functional
+    title: SRS requirement 참조
+    status: active
+    priority: high
+    statement: >
+      시스템은 technical 문서가 관련 SRS requirement를 참조할 수 있게 해야 한다.
+    tags: [technical, relation]
+  - id: FR-TECH-004
+    type: functional
+    title: technical Markdown export
+    status: active
+    priority: medium
+    statement: 시스템은 technical 문서를 Markdown으로 export할 수 있어야 한다.
+    tags: [technical, export]
+  - id: FR-TECH-005
+    type: functional
+    title: section id 검색 포함
+    status: active
+    priority: medium
+    statement: >
+      시스템은 technical 문서 내 section id를 검색 결과에 포함할 수 있어야 한다.
+    tags: [technical, search]

@@ -1,0 +1,266 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.decisions
+type: srs
+scope: decisions
+title: 구현 준비성 보완 결정 (Supplementary Decisions)
+status: active
+
+requirements:
+  - id: DEC-001
+    type: constraint
+    title: CLI/MCP DTO 통일
+    status: active
+    priority: critical
+    statement: CLI JSON 출력과 MCP structuredContent는 동일 Core DTO를 사용해야 한다.
+    tags: [decisions, dto]
+  - id: DEC-002
+    type: constraint
+    title: DiagnosticBag 구조
+    status: active
+    priority: critical
+    statement: >
+      모든 diagnostics는 DiagnosticBag(errors, warnings, infos, summary) 구조를
+      사용해야 한다.
+    tags: [decisions, diagnostics]
+  - id: DEC-003
+    type: constraint
+    title: v1 info diagnostic 미생성
+    status: active
+    priority: high
+    statement: v1 validator는 info diagnostic을 생성하지 않아야 한다.
+    tags: [decisions, validation]
+  - id: DEC-004
+    type: constraint
+    title: YAML anchor/alias/merge 오류
+    status: active
+    priority: critical
+    statement: YAML anchor, alias, merge key는 모두 validation error다.
+    tags: [decisions, yaml]
+  - id: DEC-005
+    type: constraint
+    title: additionalProperties=false
+    status: active
+    priority: high
+    statement: >
+      JSON Schema 객체는 기본 additionalProperties=false이며 metadata 하위만
+      확장 가능해야 한다.
+    tags: [decisions, schema]
+  - id: DEC-006
+    type: constraint
+    title: index.yaml은 manifest
+    status: active
+    priority: high
+    statement: index.yaml은 content document가 아니라 workspace manifest다.
+    tags: [decisions, index]
+  - id: DEC-007
+    type: constraint
+    title: proposal 분류
+    status: active
+    priority: high
+    statement: >
+      proposal은 schema-validated managed artifact이며 index document
+      registry/search/graph/export 대상이 아니다.
+    tags: [decisions, proposal]
+  - id: DEC-008
+    type: constraint
+    title: template은 export asset
+    status: active
+    priority: medium
+    statement: template은 v1 YAML document type이 아니라 Markdown export asset이다.
+    tags: [decisions, template]
+  - id: DEC-009
+    type: constraint
+    title: metadata는 optional object
+    status: active
+    priority: medium
+    statement: metadata는 optional이며 있으면 object여야 한다.
+    tags: [decisions, schema]
+  - id: DEC-010
+    type: constraint
+    title: JSON Schema draft 2020-12 + Ajv strict
+    status: active
+    priority: high
+    statement: JSON Schema는 draft 2020-12와 Ajv2020 strict mode를 사용해야 한다.
+    tags: [decisions, schema]
+  - id: DEC-011
+    type: constraint
+    title: schema 파일명 규칙
+    status: active
+    priority: medium
+    statement: >
+      schema 파일명은 document type 기준이며 technical.schema.json,
+      dictionary.schema.json, rule.schema.json을 포함해야 한다.
+    tags: [decisions, schema]
+  - id: DEC-012
+    type: constraint
+    title: document status는 type별 enum
+    status: active
+    priority: medium
+    statement: document status는 문서 타입별 enum으로 검증해야 한다.
+    tags: [decisions, status]
+  - id: DEC-013
+    type: constraint
+    title: search score 범위
+    status: active
+    priority: high
+    statement: >
+      exact search score는 1.0이고 BM25 normalized score는 0.999 이하로
+      제한해야 한다.
+    tags: [decisions, search]
+  - id: DEC-014
+    type: constraint
+    title: search 결과 정렬 규칙
+    status: active
+    priority: high
+    statement: >
+      search 결과는 score, entityType priority, id, documentId, path 순으로
+      deterministic 정렬해야 한다.
+    tags: [decisions, search]
+  - id: DEC-015
+    type: constraint
+    title: deterministic Result DTO
+    status: active
+    priority: high
+    statement: >
+      GraphResult, TraceResult, ImpactResult는 deterministic nodes/edges DTO를
+      사용해야 한다.
+    tags: [decisions, dto]
+  - id: DEC-016
+    type: constraint
+    title: impact traversal matrix
+    status: active
+    priority: high
+    statement: impact 분석은 relation type별 traversal matrix를 따라야 한다.
+    tags: [decisions, impact]
+  - id: DEC-017
+    type: constraint
+    title: speckiwi_graph tool
+    status: active
+    priority: high
+    statement: MCP는 speckiwi_graph tool로 GraphResult를 제공해야 한다.
+    tags: [decisions, mcp, graph]
+  - id: DEC-018
+    type: constraint
+    title: index ↔ YAML 정합 의무
+    status: active
+    priority: high
+    statement: >
+      content YAML은 index.documents[] 등록 정보와 실제
+      id/type/schemaVersion이 일치해야 한다.
+    tags: [decisions, index, validation]
+  - id: DEC-019
+    type: constraint
+    title: 미등록 content YAML 오류
+    status: active
+    priority: high
+    statement: unregistered content YAML은 validation error다.
+    tags: [decisions, index, validation]
+  - id: DEC-020
+    type: constraint
+    title: requirement ID 자동 생성 규칙 준수
+    status: active
+    priority: high
+    statement: >
+      requirement ID 자동 생성은 보완 결정 문서의 prefix/project/scope/sequence
+      규칙을 따라야 한다.
+    tags: [decisions, id]
+  - id: DEC-021
+    type: constraint
+    title: proposal kind/operation 규칙
+    status: active
+    priority: high
+    statement: proposal은 kind 기반 target과 operation별 base.target 규칙을 사용해야 한다.
+    tags: [decisions, proposal]
+  - id: DEC-022
+    type: constraint
+    title: proposal hash 필드
+    status: active
+    priority: critical
+    statement: >
+      proposal은 base documentHash와 RFC 8785 JCS 기반 targetHash를 필수로
+      포함해야 한다.
+    tags: [decisions, proposal, hash]
+  - id: DEC-023
+    type: constraint
+    title: stale proposal apply 거부
+    status: active
+    priority: critical
+    statement: >
+      stale proposal apply는 APPLY_REJECTED_STALE_PROPOSAL error로 거부해야 한다.
+    tags: [decisions, proposal, apply]
+  - id: DEC-024
+    type: constraint
+    title: JSON Patch subset/포인터 규칙
+    status: active
+    priority: high
+    statement: >
+      JSON Patch는 RFC 6902 add/replace/remove subset이며 path는
+      document-root RFC 6901 JSON Pointer다.
+    tags: [decisions, patch]
+  - id: DEC-025
+    type: constraint
+    title: impact public API 범위
+    status: active
+    priority: medium
+    statement: impact public API는 v1에서 requirement ID 전용이다.
+    tags: [decisions, impact]
+  - id: DEC-026
+    type: constraint
+    title: cache 기본 모드/--no-cache
+    status: active
+    priority: high
+    statement: >
+      cache 기본 모드는 stale 자동 rebuild이며 --no-cache는 cache read/write를
+      모두 우회한다.
+    tags: [decisions, cache]
+  - id: DEC-027
+    type: constraint
+    title: cache manifest 구조
+    status: active
+    priority: medium
+    statement: >
+      cache manifest는 graph/search/diagnostics/export section을 포함하고
+      wall-clock timestamp를 포함하지 않아야 한다.
+    tags: [decisions, cache, manifest]
+  - id: DEC-028
+    type: constraint
+    title: export 기본/--strict 모드
+    status: active
+    priority: high
+    statement: >
+      Markdown export 기본 모드는 non-strict best-effort이고 --strict는
+      validation error에서 쓰기 전 중단해야 한다.
+    tags: [decisions, export]
+  - id: DEC-029
+    type: constraint
+    title: export DTO/timestamp 규칙
+    status: active
+    priority: medium
+    statement: >
+      Markdown export 결과는 writtenFiles/skippedFiles typed item DTO를 사용하며
+      generated timestamp를 기본 포함하지 않아야 한다.
+    tags: [decisions, export, dto]
+  - id: DEC-030
+    type: constraint
+    title: export 대상 type
+    status: active
+    priority: high
+    statement: >
+      Markdown export 대상 type은 overview, srs, prd, technical, adr로 제한해야 한다.
+    tags: [decisions, export]
+  - id: DEC-031
+    type: constraint
+    title: --root absolute 한정/MCP override 거부
+    status: active
+    priority: high
+    statement: >
+      CLI --root와 MCP process --root는 workspace root resolution 전용으로
+      absolute path를 허용하고, MCP tool input root override는 v1에서 거부해야 한다.
+    tags: [decisions, root, mcp]
+
+metadata:
+  source: speckiwi-v1-docs/12_IMPLEMENTATION_READINESS_DECISIONS.md
+  precedence: >
+    기존 문서의 '오류 또는 경고', '할 수 있다', '가능' 표현이 위 결정과 충돌할 경우,
+    구현 계약은 위 보완 결정이 우선한다.

@@ -1,0 +1,95 @@
+schemaVersion: speckiwi/srs/v1
+
+id: srs.documents.id
+type: srs
+scope: documents.id
+title: ID 체계 요구사항
+status: active
+
+requirements:
+  - id: FR-ID-001
+    type: functional
+    title: type → prefix 매핑
+    status: active
+    priority: high
+    statement: 시스템은 requirement type에 따라 기본 prefix를 결정해야 한다.
+    tags: [id, prefix]
+  - id: FR-ID-002
+    type: functional
+    title: scope id → ID segment
+    status: active
+    priority: high
+    statement: 시스템은 scope id로부터 ID segment를 생성할 수 있어야 한다.
+    tags: [id, scope]
+  - id: FR-ID-003
+    type: functional
+    title: 다음 sequence 결정
+    status: active
+    priority: high
+    statement: >
+      시스템은 같은 prefix/project/scope 조합에서 가장 큰 sequence를 찾아 다음
+      ID를 생성해야 한다.
+    tags: [id, sequence]
+  - id: FR-ID-004
+    type: functional
+    title: ID preview
+    status: active
+    priority: medium
+    statement: 시스템은 자동 생성된 ID를 생성 전 preview할 수 있어야 한다.
+    tags: [id, preview]
+  - id: FR-ID-005
+    type: functional
+    title: ID 충돌 자동 회피
+    status: active
+    priority: high
+    statement: 시스템은 ID 충돌 시 자동으로 다음 sequence를 시도해야 한다.
+    tags: [id, sequence]
+  - id: FR-ID-006
+    type: functional
+    title: --id 우선
+    status: active
+    priority: high
+    statement: >
+      시스템은 사용자가 `--id`를 명시한 경우 자동 생성보다 명시 ID를 우선해야 한다.
+    tags: [id, cli]
+  - id: FR-ID-007
+    type: functional
+    title: 문서 ID/requirement ID namespace 분리
+    status: active
+    priority: high
+    statement: 시스템은 문서 ID와 requirement ID를 서로 다른 namespace로 관리해야 한다.
+    tags: [id, namespace]
+  - id: FR-ID-008
+    type: functional
+    title: 보완 결정 규칙 준수
+    status: active
+    priority: high
+    statement: >
+      시스템은 requirement ID 자동 생성 시 보완 결정 문서의 prefix, project segment,
+      scope segment, sequence 규칙을 따라야 한다.
+    tags: [id, decisions]
+
+metadata:
+  documentIdFormat:
+    - overview
+    - srs.<scope-id>
+    - prd.<topic-id>
+    - tech.<topic-id>
+    - adr.<number>-<slug>
+    - rule.<topic-id>
+  requirementIdFormat: <PREFIX>-<PROJECT>-<SCOPE>-<NNNN>
+  prefixMap:
+    FR: functional
+    NFR: non_functional
+    IR: interface
+    DR: data
+    CON: constraint
+    SEC: security
+    PERF: performance
+    REL: reliability
+    UX: usability
+    MAINT: maintainability
+    OPS: operational
+    COMP: compliance
+    OBS: observability
+    MIG: migration
