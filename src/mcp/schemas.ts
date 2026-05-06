@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const cacheModeSchema = z.enum(["auto", "bypass"]);
-const documentTypeSchema = z.enum(["overview", "prd", "srs", "technical", "adr", "rule", "dictionary"]);
+const documentTypeSchema = z.enum(["overview", "prd", "srs", "technical", "adr", "rule", "dictionary", "prose"]);
 const entityTypeSchema = z.enum(["document", "scope", "requirement", "prd_item", "technical_section", "adr", "rule"]);
 const requirementTypeSchema = z.enum([
   "functional",

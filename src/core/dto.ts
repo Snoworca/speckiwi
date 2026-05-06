@@ -86,7 +86,8 @@ export type DocumentType =
   | "technical"
   | "adr"
   | "rule"
-  | "dictionary";
+  | "dictionary"
+  | "prose";
 
 export type ExportableDocumentType = "overview" | "prd" | "srs" | "technical" | "adr";
 
@@ -99,10 +100,15 @@ export type EntityType =
   | "adr"
   | "rule";
 
+export type RelationTargetType = "requirement" | "document" | "external";
+
 export type RequirementRelation = {
   type: string;
   target: string;
   source?: string;
+  targetType?: RelationTargetType;
+  anchor?: string;
+  excerpt?: string;
   description?: string;
 };
 

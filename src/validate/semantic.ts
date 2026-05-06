@@ -32,8 +32,9 @@ export type LoadedWorkspace = {
   diagnostics: DiagnosticBag;
 };
 
-const contentKinds = new Set<SchemaKind>(["overview", "dictionary", "srs", "prd", "technical", "adr", "rule"]);
+const contentKinds = new Set<SchemaKind>(["overview", "dictionary", "srs", "prd", "technical", "adr", "rule", "prose"]);
 const requirementIdPattern = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+$/;
+const externalUriPattern = /^[a-z][a-z0-9+\-.]*:\S/i;
 
 export async function loadWorkspaceForValidation(root: WorkspaceRoot): Promise<LoadedWorkspace> {
   const diagnostics: Diagnostic[] = [];
@@ -153,7 +154,7 @@ export function validateRegistry(workspace: LoadedWorkspace): DiagnosticBag {
   validateDictionaryEntries(workspace, diagnostics);
 
   const scopeParents = validateScopes(workspace, diagnostics);
-  const requirementRegistry = validateRequirements(workspace, scopeParents, diagnostics);
+  const requirementRegistry = validateRequirements(workspace, scopeParents, documentIds, diagnostics);
   validateDocumentLinks(workspace, documentIds, diagnostics);
   validatePrdAndTechnicalReferences(workspace, requirementRegistry.ids, diagnostics);
 
@@ -491,6 +492,7 @@ function validateScopes(workspace: LoadedWorkspace, diagnostics: Diagnostic[]): 
 function validateRequirements(
   workspace: LoadedWorkspace,
   scopeParents: Map<string, string | undefined>,
+  documentIds: Set<string>,
   diagnostics: Diagnostic[]
 ): { ids: Set<string>; dependsOn: Map<string, string[]> } {
   const ids = new Set<string>();
@@ -580,32 +582,57 @@ function validateRequirements(
     for (const relation of arrayValue(entry.requirement.relations)) {
       const target = stringValue(relation.target);
       const type = stringValue(relation.type);
+      const targetType = stringValue(relation.targetType) ?? "requirement";
       if (target === undefined) {
         continue;
       }
 
-      if (target === entry.id) {
-        diagnostics.push(
-          diagnostic({
-            code: "SELF_RELATION",
-            message: `Requirement must not reference itself: ${entry.id}.`,
-            path: workspacePath(entry.path),
-            details: { id: entry.id, relationType: type ?? "", target }
-          })
-        );
-      } else if (!ids.has(target)) {
-        diagnostics.push(
-          diagnostic({
-            code: "UNKNOWN_REQUIREMENT_RELATION_TARGET",
-            message: `Requirement relation target not found: ${target}.`,
-            path: workspacePath(entry.path),
-            details: { id: entry.id, relationType: type ?? "", target }
-          })
-        );
-      }
+      if (targetType === "external") {
+        if (!externalUriPattern.test(target)) {
+          diagnostics.push(
+            diagnostic({
+              code: "INVALID_EXTERNAL_RELATION_TARGET",
+              message: `External relation target must be a URI with a scheme prefix: ${target}.`,
+              path: workspacePath(entry.path),
+              details: { id: entry.id, relationType: type ?? "", target }
+            })
+          );
+        }
+      } else if (targetType === "document") {
+        if (!documentIds.has(target)) {
+          diagnostics.push(
+            diagnostic({
+              code: "UNKNOWN_DOCUMENT_RELATION_TARGET",
+              message: `Requirement relation document target not found: ${target}.`,
+              path: workspacePath(entry.path),
+              details: { id: entry.id, relationType: type ?? "", target }
+            })
+          );
+        }
+      } else {
+        if (target === entry.id) {
+          diagnostics.push(
+            diagnostic({
+              code: "SELF_RELATION",
+              message: `Requirement must not reference itself: ${entry.id}.`,
+              path: workspacePath(entry.path),
+              details: { id: entry.id, relationType: type ?? "", target }
+            })
+          );
+        } else if (!ids.has(target)) {
+          diagnostics.push(
+            diagnostic({
+              code: "UNKNOWN_REQUIREMENT_RELATION_TARGET",
+              message: `Requirement relation target not found: ${target}.`,
+              path: workspacePath(entry.path),
+              details: { id: entry.id, relationType: type ?? "", target }
+            })
+          );
+        }
 
-      if (type === "depends_on") {
-        targets.push(target);
+        if (type === "depends_on") {
+          targets.push(target);
+        }
       }
     }
     dependsOn.set(entry.id, [...(dependsOn.get(entry.id) ?? []), ...targets]);
@@ -840,7 +867,8 @@ function isPotentialContentDocument(document: LoadedSpecDocument): boolean {
     document.storePath.startsWith("srs/") ||
     document.storePath.startsWith("tech/") ||
     document.storePath.startsWith("adr/") ||
-    document.storePath.startsWith("rules/")
+    document.storePath.startsWith("rules/") ||
+    document.storePath.startsWith("prose/")
   );
 }
 
@@ -860,7 +888,8 @@ function isContentDocumentType(value: unknown): value is DocumentType {
     value === "prd" ||
     value === "technical" ||
     value === "adr" ||
-    value === "rule"
+    value === "rule" ||
+    value === "prose"
   );
 }
 

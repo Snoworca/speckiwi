@@ -53,7 +53,7 @@
         "required": ["id", "type", "path"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
-          "type": { "enum": ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary"] },
+          "type": { "enum": ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary", "prose"] },
           "path": { "type": "string", "minLength": 1 },
           "scope": { "type": "string", "minLength": 1 },
           "title": { "type": "string" },

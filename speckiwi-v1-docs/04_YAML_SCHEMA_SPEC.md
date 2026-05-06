@@ -66,6 +66,7 @@ speckiwi/prd/v1
 speckiwi/technical/v1
 speckiwi/adr/v1
 speckiwi/rule/v1
+speckiwi/prose/v1
 speckiwi/proposal/v1
 ```
 
@@ -95,7 +96,7 @@ settings:
 
 documents:
   - id: string
-    type: overview | prd | srs | technical | adr | rule | dictionary
+    type: overview | prd | srs | technical | adr | rule | dictionary | prose
     path: string
     scope: string?
     title: string?
@@ -236,6 +237,9 @@ requirements:
     relations:
       - type: depends_on
         target: IR-LLM-STREAM-0001
+        targetType: requirement       # requirement | document | external (default: requirement)
+        anchor: string?               # 대상 안의 위치 (예: "#section-3", "L42")
+        excerpt: string?              # 대상 본문 인용 슬라이스 (검색 인덱스 body에 합류)
         description: string?
     tags:
       - agent-loop
@@ -321,9 +325,12 @@ requires_review_with
 - requirement.id는 workspace 전체에서 유일해야 함
 - requirement.statement 필수
 - requirement.type/status enum 검증
-- relation target 존재 여부 검증
-- self relation 금지
-- depends_on cycle 탐지
+- relation target은 targetType별로 검증:
+    - requirement (기본): 등록된 requirement id 존재 검사
+    - document: index.yaml documents에 등록된 document id 존재 검사
+    - external: URI scheme prefix 형식만 검사. 외부 본문 존재 검사는 하지 않음
+- self relation 금지 (targetType=requirement에서만 적용)
+- depends_on cycle 탐지 (targetType=requirement만 cycle 분석에 포함)
 - rationale 없음: warning
 - acceptanceCriteria 없음: warning
 ```
@@ -466,6 +473,47 @@ must_not
 should_not
 ```
 
+## 10.5. `prose/*.yaml`
+
+prose는 회의록·인터뷰·디자인 노트·외부 문서 인용 등 비정형 자료를 단일 Markdown body로 보관하는 문서 타입이다. body는 BM25 인덱싱 대상이며, SRS requirement에서 `relations[].targetType: document`로 참조할 수 있다.
+
+```yaml
+schemaVersion: speckiwi/prose/v1
+
+id: prose.payment-flow-interview
+type: prose
+title: 결제 흐름 사용자 인터뷰
+status: active
+scope: payments.checkout       # optional
+
+body: |
+  ## 인터뷰 요약
+  결제 실패 시 사용자는 ...
+
+sources:                        # optional
+  - kind: interview              # meeting | interview | external_url | imported | other
+    uri: https://example.com/notes/2026-04-15
+    title: 인터뷰 노트
+    capturedAt: 2026-04-15
+    description: 외부에서 가져온 원본 인터뷰 본문 링크
+
+tags:
+  - payments
+metadata: {}
+```
+
+검증 규칙:
+
+```text
+- schemaVersion은 speckiwi/prose/v1
+- type은 prose
+- body 필수, 비어있는 문자열 거부
+- title 필수
+- status enum: draft | active | deprecated | archived
+- scope는 optional이며 지정 시 index.scopes[].id에 존재해야 함
+- additionalProperties: false (sources/metadata 제외)
+```
+
 ## 11. `proposals/*.yaml`
 
 Proposal YAML은 schema-validated managed artifact다. `index.yaml`의 `documents[]`에 등록하지 않으며 search/graph/export 대상도 아니다.
@@ -559,7 +607,9 @@ remove
 | `dictionary.normalizations` entry | key와 string value | 없음 |
 | `requirements[]` | `id`, `type`, `title`, `status`, `statement` | `priority`, `rationale`, `description`, `acceptanceCriteria`, `relations`, `tags`, `metadata` |
 | `requirements[].acceptanceCriteria[]` | `id`, `method`, `description` | 없음 |
-| `requirements[].relations[]` | `type`, `target` | `description` |
+| `requirements[].relations[]` | `type`, `target` | `targetType`, `anchor`, `excerpt`, `description` |
+| `prose` document | `schemaVersion`, `id`, `type`, `title`, `status`, `body` | `scope`, `tags`, `sources`, `metadata` |
+| `prose.sources[]` | `kind` | `uri`, `title`, `capturedAt`, `description` |
 | `prd.items[]` | `id`, `type`, `title`, `body` | `links`, `tags`, `metadata` |
 | `prd.items[].links[]` | `type`, `target` | `targetType`, `description` |
 | `technical.sections[]` | `id`, `title`, `body` | `metadata` |

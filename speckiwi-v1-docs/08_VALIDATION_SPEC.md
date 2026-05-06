@@ -63,7 +63,9 @@ Diagnostics DTO, severity, warning threshold, cycle severity, deterministic orde
 | `PATH_OUTSIDE_WORKSPACE` | `.speckiwi/` 밖 path 참조 |
 | `PATH_TRAVERSAL` | `..` 등 path traversal |
 | `UNKNOWN_DOCUMENT_LINK_TARGET` | 존재하지 않는 document link 참조 |
-| `UNKNOWN_REQUIREMENT_RELATION_TARGET` | 존재하지 않는 requirement relation target |
+| `UNKNOWN_REQUIREMENT_RELATION_TARGET` | 존재하지 않는 requirement relation target (`targetType=requirement`) |
+| `UNKNOWN_DOCUMENT_RELATION_TARGET` | 존재하지 않는 document를 가리키는 requirement relation target (`targetType=document`) |
+| `INVALID_EXTERNAL_RELATION_TARGET` | URI scheme prefix 형식이 아닌 external relation target (`targetType=external`) |
 | `INVALID_REQUIREMENT_TYPE` | 잘못된 requirement type |
 | `INVALID_REQUIREMENT_STATUS` | 잘못된 requirement status |
 | `INVALID_RELATION_TYPE` | 잘못된 relation type |

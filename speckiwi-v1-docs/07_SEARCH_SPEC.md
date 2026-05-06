@@ -40,6 +40,10 @@ adr
 rule
 ```
 
+## 4.1 prose 문서와 relation excerpt
+
+prose 문서(`type: prose`)는 단일 `body` 필드를 가지며 본문은 BM25 인덱싱 대상이다. prose 문서는 별도 nested entity 없이 document 단위로 flatten된다. 사용자는 SRS requirement에서 `relations[].targetType: document`로 prose 문서를 참조할 수 있고, `excerpt` 필드의 인용 슬라이스는 해당 requirement의 검색 문서 `body` 필드에 합류된다.
+
 ## 5. Flatten Document Model
 
 YAML 문서는 검색용 flat document로 변환된다.

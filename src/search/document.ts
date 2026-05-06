@@ -143,6 +143,17 @@ function flattenScopes(registry: RequirementRegistry): SearchDocument[] {
 function flattenRequirements(registry: RequirementRegistry): SearchDocument[] {
   return registry.requirements.map((requirement) => {
     const raw = requirement.requirement;
+    const bodyParts: string[] = [];
+    const metadata = metadataText(raw.metadata);
+    if (metadata !== undefined) {
+      bodyParts.push(metadata);
+    }
+    for (const relation of arrayObjects(raw.relations)) {
+      const excerpt = stringValue(relation.excerpt);
+      if (excerpt !== undefined && excerpt.trim().length > 0) {
+        bodyParts.push(excerpt);
+      }
+    }
     return searchDocument({
       entityType: "requirement",
       id: requirement.id,
@@ -159,7 +170,7 @@ function flattenRequirements(registry: RequirementRegistry): SearchDocument[] {
         acceptanceCriteria: acceptanceCriteriaText(raw.acceptanceCriteria),
         rationale: stringValue(raw.rationale),
         description: stringValue(raw.description),
-        body: metadataText(raw.metadata)
+        body: bodyParts.length > 0 ? bodyParts : undefined
       }),
       filters: {
         entityType: "requirement",
@@ -338,9 +349,11 @@ function documentBodyText(value: JsonObject | undefined): string[] {
   }
 
   return [
+    stringValue(value.body),
     ...arrayObjects(value.goals).map((goal) => [stringValue(goal.id), stringValue(goal.statement)].filter(isString).join(" ")),
     ...arrayObjects(value.nonGoals).map((goal) => [stringValue(goal.id), stringValue(goal.statement)].filter(isString).join(" ")),
     ...arrayObjects(value.glossary).map((item) => [stringValue(item.term), stringValue(item.definition)].filter(isString).join(" ")),
+    ...arrayObjects(value.sources).map((source) => [stringValue(source.title), stringValue(source.uri), stringValue(source.description)].filter(isString).join(" ")),
     metadataText(value.metadata)
   ].filter(isString);
 }

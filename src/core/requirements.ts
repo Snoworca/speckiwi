@@ -477,6 +477,18 @@ function relationsFrom(value: JsonValue | undefined, source: string): Requiremen
         return undefined;
       }
       const item: RequirementRelation = { type, target, source };
+      const targetType = stringValue(relation.targetType);
+      if (targetType === "requirement" || targetType === "document" || targetType === "external") {
+        item.targetType = targetType;
+      }
+      const anchor = stringValue(relation.anchor);
+      if (anchor !== undefined) {
+        item.anchor = anchor;
+      }
+      const excerpt = stringValue(relation.excerpt);
+      if (excerpt !== undefined) {
+        item.excerpt = excerpt;
+      }
       const description = stringValue(relation.description);
       if (description !== undefined) {
         item.description = description;
@@ -983,7 +995,7 @@ async function loadRegisteredDocumentForTarget(
 }
 
 function documentTypeValue(value: JsonValue | undefined): DocumentType | undefined {
-  return ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary"].includes(String(value))
+  return ["overview", "prd", "srs", "technical", "adr", "rule", "dictionary", "prose"].includes(String(value))
     ? (value as DocumentType)
     : undefined;
 }

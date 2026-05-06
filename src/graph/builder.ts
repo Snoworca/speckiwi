@@ -262,8 +262,15 @@ function documentRequirementEdges(registry: RequirementRegistry, nodeByKey: Map<
 function requirementRelationEdges(registry: RequirementRegistry, nodeByKey: Map<string, GraphNode>): GraphEdge[] {
   return registry.requirements.flatMap((requirement) =>
     requirement.relations.flatMap((relation) => {
+      const targetType = relation.targetType ?? "requirement";
+      if (targetType === "external") {
+        return [];
+      }
       const source = graphNodeKey("requirement", requirement.id);
-      const target = graphNodeKey("requirement", relation.target);
+      const target =
+        targetType === "document"
+          ? graphNodeKey("document", relation.target)
+          : graphNodeKey("requirement", relation.target);
       return buildEdge(nodeByKey, source, target, relation.type);
     })
   );

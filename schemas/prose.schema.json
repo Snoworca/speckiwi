@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speckiwi.dev/schemas/prose.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "status", "body"],
+  "properties": {
+    "schemaVersion": { "const": "speckiwi/prose/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "type": { "const": "prose" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "active", "deprecated", "archived"] },
+    "scope": { "type": "string", "minLength": 1 },
+    "body": { "type": "string", "minLength": 1 },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": { "enum": ["meeting", "interview", "external_url", "imported", "other"] },
+          "uri": { "type": "string" },
+          "title": { "type": "string" },
+          "capturedAt": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

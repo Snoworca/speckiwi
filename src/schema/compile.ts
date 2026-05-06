@@ -17,6 +17,7 @@ const schemaFiles: Record<SchemaKind, string> = {
   technical: "technical.schema.json",
   adr: "adr.schema.json",
   rule: "rule.schema.json",
+  prose: "prose.schema.json",
   proposal: "proposal.schema.json"
 };
 
@@ -78,7 +79,8 @@ const srsRequirementKeys = new Set([
   "metadata"
 ]);
 const srsAcceptanceCriterionKeys = new Set(["id", "method", "description"]);
-const srsRelationKeys = new Set(["type", "target", "description"]);
+const srsRelationKeys = new Set(["type", "target", "targetType", "anchor", "excerpt", "description"]);
+const relationTargetTypes = new Set(["requirement", "document", "external"]);
 const documentStatuses = new Set(["draft", "active", "deprecated", "archived"]);
 const requirementTypes = new Set([
   "functional",
@@ -171,8 +173,15 @@ function isFastValidRelation(value: unknown): boolean {
     hasOnlyKeys(relation, srsRelationKeys) &&
     stringIn(relation.type, relationTypes) &&
     nonEmptyString(relation.target) &&
+    optionalStringIn(relation.targetType, relationTargetTypes) &&
+    optionalNonEmptyString(relation.anchor) &&
+    optionalNonEmptyString(relation.excerpt) &&
     optionalString(relation.description)
   );
+}
+
+function optionalNonEmptyString(value: unknown): boolean {
+  return value === undefined || nonEmptyString(value);
 }
 
 function jsonObject(value: unknown): Record<string, unknown> | undefined {

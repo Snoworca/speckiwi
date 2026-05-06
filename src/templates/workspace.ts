@@ -1,6 +1,6 @@
 import type { InitInput } from "../core/inputs.js";
 
-export const WORKSPACE_DIRECTORIES = ["prd", "srs", "tech", "adr", "rules", "proposals", "templates", "cache", "exports"] as const;
+export const WORKSPACE_DIRECTORIES = ["prd", "srs", "tech", "adr", "rules", "prose", "proposals", "templates", "cache", "exports"] as const;
 
 export type WorkspaceTemplateFile = {
   path: string;

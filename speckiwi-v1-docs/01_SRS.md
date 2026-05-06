@@ -101,7 +101,7 @@ AI Coding Agent
 | FR-DIR-002 | 시스템은 `.speckiwi/index.yaml`을 생성해야 한다. |
 | FR-DIR-003 | 시스템은 `.speckiwi/overview.yaml`을 생성해야 한다. |
 | FR-DIR-004 | 시스템은 `.speckiwi/dictionary.yaml`을 생성해야 한다. |
-| FR-DIR-005 | 시스템은 `prd`, `srs`, `tech`, `adr`, `rules`, `proposals`, `templates`, `cache`, `exports` 하위 디렉토리를 생성해야 한다. |
+| FR-DIR-005 | 시스템은 `prd`, `srs`, `tech`, `adr`, `rules`, `prose`, `proposals`, `templates`, `cache`, `exports` 하위 디렉토리를 생성해야 한다. |
 | FR-DIR-006 | 시스템은 현재 디렉토리부터 상위 디렉토리로 탐색하여 가장 가까운 `.speckiwi/`를 workspace root로 판단해야 한다. |
 | FR-DIR-007 | 사용자가 `--root`를 지정한 경우 시스템은 자동 탐색보다 `--root`를 우선해야 한다. |
 | FR-DIR-008 | 시스템은 명시적 export target을 제외하고 `.speckiwi/` 외부 파일을 수정하지 않아야 한다. |
@@ -161,7 +161,12 @@ technical
 adr
 rule
 dictionary
+prose
 ```
+
+`prose`는 회의록·인터뷰·디자인 노트 등 비정형 자료를 단일 Markdown `body` 필드로 보관하는 문서 타입이다.
+prose 문서는 `.speckiwi/prose/*.yaml` 경로에 두며, `body` 본문은 BM25 인덱싱 대상이다.
+prose 문서는 SRS requirement의 `relations[].target`에서 `targetType: document`로 참조할 수 있다.
 
 `index.yaml`은 workspace manifest이며 content document type이 아니다.
 `proposal`은 schema-validated managed artifact이며 index document registry/search/graph/export 대상이 아니다.
@@ -257,7 +262,7 @@ discarded
 | FR-REQ-006 | 시스템은 requirement `status`를 허용된 enum으로 검증해야 한다. |
 | FR-REQ-007 | 시스템은 `acceptanceCriteria`가 없는 requirement에 대해 warning을 생성해야 한다. |
 | FR-REQ-008 | 시스템은 `rationale`이 없는 requirement에 대해 warning을 생성해야 한다. |
-| FR-REQ-009 | 시스템은 requirement relation target이 존재하는지 검증해야 한다. |
+| FR-REQ-009 | 시스템은 requirement relation target을 `targetType` 별로 검증해야 한다. `requirement`는 등록된 requirement id, `document`는 등록된 document id, `external`은 URI scheme prefix 형식만 검사한다. |
 | FR-REQ-010 | 시스템은 `depends_on` relation cycle을 탐지해야 한다. |
 | FR-REQ-011 | 시스템은 requirement 목록을 project, scope, type, status, tag 기준으로 필터링할 수 있어야 한다. |
 | FR-REQ-012 | 시스템은 requirement를 Markdown export에 포함할 수 있어야 한다. |
@@ -320,6 +325,22 @@ tests
 requires_review_with
 ```
 
+Requirement relation의 `target`은 다음 세 가지 종류 중 하나를 가리킬 수 있다.
+종류는 optional `targetType` 필드로 선언하며, 미지정 시 `requirement`로 간주한다.
+
+| targetType | 의미 | 검증 |
+|---|---|---|
+| `requirement` (기본) | 다른 requirement id | id가 workspace에 등록되어 있어야 한다 |
+| `document` | 등록된 문서 id (prose 포함 모든 content document) | id가 `index.yaml` documents에 등록되어 있어야 한다 |
+| `external` | 외부 URI(예: `https://...`, `mailto:...`) | URI scheme prefix 형식 검사. 존재 검사는 하지 않는다 |
+
+다음 두 보조 필드는 모든 targetType에서 optional이다.
+
+| 필드 | 의미 |
+|---|---|
+| `anchor` | 대상 문서 안의 위치(예: `#section-3`, `L42`) |
+| `excerpt` | 대상 본문의 인용 슬라이스. requirement의 검색 인덱스 `body` 필드에 합류된다 |
+
 문서 link type:
 
 ```text
@@ -338,7 +359,7 @@ references
 |---|---|
 | FR-SRCH-001 | 시스템은 YAML 문서를 검색용 flat document로 변환해야 한다. |
 | FR-SRCH-002 | 시스템은 requirement id, document id, scope id를 exact index에 등록해야 한다. |
-| FR-SRCH-003 | 시스템은 title, statement, rationale, description, tags, acceptanceCriteria를 BM25 index에 포함해야 한다. |
+| FR-SRCH-003 | 시스템은 title, statement, rationale, description, tags, acceptanceCriteria, prose `body`, requirement relation `excerpt`를 BM25 index에 포함해야 한다. |
 | FR-SRCH-004 | 시스템은 field별 boost를 적용해야 한다. |
 | FR-SRCH-005 | 시스템은 query가 exact id와 일치할 경우 exact result를 우선 반환해야 한다. |
 | FR-SRCH-006 | 시스템은 검색 결과에 score, matchedFields, entityType, id, title, path를 포함해야 한다. |
@@ -359,7 +380,8 @@ document id 중복
 requirement id 중복
 index path missing
 존재하지 않는 document link 참조
-존재하지 않는 requirement relation target
+존재하지 않는 requirement relation target (`targetType=requirement` 또는 `document`)
+잘못된 형식의 external relation target (`targetType=external`에서 URI scheme prefix 누락)
 잘못된 requirement type/status
 scope parent cycle
 YAML merge key 사용

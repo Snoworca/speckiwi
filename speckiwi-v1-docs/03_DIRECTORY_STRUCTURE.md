@@ -16,6 +16,7 @@
 ├─ tech/
 ├─ adr/
 ├─ rules/
+├─ prose/
 ├─ proposals/
 ├─ templates/
 ├─ cache/
@@ -34,6 +35,7 @@
 | `tech/` | 아니오 | 예 | 기술 설계 문서 |
 | `adr/` | 아니오 | 예 | Architecture Decision Record |
 | `rules/` | 아니오 | 예 | 에이전트/개발/코딩 규칙 |
+| `prose/` | 아니오 | 예 | 비정형 Markdown 본문(회의록·인터뷰·디자인 노트 등). YAML wrapper의 `body` 필드에 Markdown 저장 |
 | `proposals/` | 아니오 | 예 | 변경 제안 문서. 적용 전까지 원본 수정 없음 |
 | `templates/` | 아니오 | 예 | Markdown export template |
 | `cache/` | 아니오 | 아니오 | graph/search/diagnostics cache. 삭제 가능 |
@@ -166,6 +168,30 @@ rules는 에이전트와 개발자에게 적용되는 정책 문서다.
 .speckiwi/rules/coding-agent-safe-write.yaml
 .speckiwi/rules/requirement-id-policy.yaml
 .speckiwi/rules/korean-search-policy.yaml
+```
+
+## 9.5. `prose/`
+
+prose는 SRS·PRD·ADR로 강제 구조화하기 어려운 비정형 텍스트를 저장한다. body는 Markdown 문자열이며, 본문은 BM25 인덱싱 대상이다. prose 문서는 SRS requirement에서 `relations[].targetType: document`로 참조할 수 있고, 인용 슬라이스를 `excerpt`로 함께 보존하면 검색 인덱스에 합류된다.
+
+```text
+.speckiwi/prose/2026-04-15-design-review.yaml
+.speckiwi/prose/payment-flow-interview.yaml
+```
+
+```yaml
+schemaVersion: speckiwi/prose/v1
+id: prose.payment-flow-interview
+type: prose
+title: 결제 흐름 사용자 인터뷰
+status: active
+scope: payments.checkout
+body: |
+  ## 인터뷰 요약
+  ...
+sources:
+  - kind: interview
+    capturedAt: 2026-04-15
 ```
 
 ## 10. `proposals/`
