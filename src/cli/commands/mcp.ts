@@ -1,14 +1,28 @@
 import type { Command } from "commander";
-import { findWorkspaceRoot } from "../../io/workspace.js";
-import { runMcpServer } from "../../mcp/server.js";
-import { optionalString } from "../options.js";
+import type { CliContext } from "../command.js";
+import { startMcpServer, type McpServerOptions } from "../../mcp/server.js";
 
-export function registerMcpCommand(program: Command): void {
-  const command = program.command("mcp").description("run the SpecKiwi stdio MCP server").option("--root <path>", "workspace root");
+export type McpServerStarter = (options: McpServerOptions) => Promise<void>;
 
-  command.action(async () => {
-    const rootOption = optionalString(command.optsWithGlobals().root);
-    const root = await findWorkspaceRoot(process.cwd(), rootOption);
-    await runMcpServer({ root: root.rootPath });
-  });
+export interface McpCliOptions {
+  transport?: string;
+  root?: string;
+}
+
+export async function runMcp(options: McpCliOptions, starter: McpServerStarter = startMcpServer): Promise<number> {
+  if (options.transport && options.transport !== "stdio") return 2;
+  await starter({ root: options.root ?? process.cwd(), transport: "stdio" });
+  return 0;
+}
+
+export function registerMcpCommand(command: Command, _context: CliContext, starter: McpServerStarter = startMcpServer): void {
+  command
+    .command("mcp")
+    .option("--transport <transport>", "transport", "stdio")
+    .action(async (options) => {
+      const code = await runMcp({ transport: options.transport, root: command.opts().root }, starter);
+      if (code !== 0) {
+        command.error("Invalid MCP transport", { exitCode: code });
+      }
+    });
 }

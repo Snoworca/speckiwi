@@ -1,0 +1,109 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260508-todo-srs-integration",
+  "target": "v1.0.0",
+  "scope_freeze": true,
+  "coverage_mode": "partial-integration",
+  "change_log": [],
+  "platforms": ["win32", "posix"],
+  "source_spec": [
+    "docs/spec/00.index.md",
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/30.cli-interface.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/spec/50.nodejs-implementation.srs.md",
+    "docs/rule/SRS-MD-Rules-v1.0.0.md",
+    "docs/research/04.todo-installable-srs-integration-test-research.md"
+  ],
+  "pre_commit_gate": [
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard", "flags": "i"},
+    {"pattern": "Remove-Item\\s+-Recurse\\s+-Force\\s+\\$?\\w*$", "flags": "i"},
+    {"pattern": "rm\\s+-rf\\s+(/|\\.|\\*)", "flags": "i"}
+  ],
+  "tasks": [
+    {
+      "id": "TASK-P1-001",
+      "phase": "P1",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["FR-NODE-003", "FR-NODE-004"],
+      "coverage_type": "partial-reference",
+      "feasibility": "Low",
+      "source_anchors": ["test/integration/full-workflow.test.ts:11", "test/fixtures/fixture-utils.ts:23"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Inspect git diff for test/integration/todo-installable-workflow.test.ts. 2) Remove only the new test file changes with the editor, then run npm run test:integration."}
+    },
+    {
+      "id": "TASK-P1-002",
+      "phase": "P1",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["FR-PARSE-001", "FR-PARSE-002", "FR-PARSE-003", "FR-PARSE-004", "FR-PARSE-005", "FR-PARSE-006", "FR-PARSE-007", "FR-PARSE-008", "FR-PARSE-009", "FR-PARSE-010"],
+      "coverage_type": "partial-reference",
+      "feasibility": "Low",
+      "source_anchors": ["src/core/parser/discover.ts:26", "src/core/parser/index-parser.ts:14", "src/core/parser/block-scanner.ts:15", "src/core/validator/rules.ts:26", "src/core/query/lookup.ts:8"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Inspect git diff for test/integration/todo-installable-workflow.test.ts. 2) Remove only the new test file changes with the editor, then run npm run test:integration."}
+    },
+    {
+      "id": "TASK-P1-003",
+      "phase": "P1",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["IR-CLI-004", "IR-CLI-006", "IR-CLI-007", "IR-CLI-015", "IR-CLI-018"],
+      "coverage_type": "partial-reference",
+      "feasibility": "Low",
+      "source_anchors": ["src/cli/index.ts:11", "src/cli/formatters.ts:5", "test/cli/read-commands.test.ts:6"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Inspect git diff for test/integration/todo-installable-workflow.test.ts. 2) Remove only the new test file changes with the editor, then run npm run test:integration."}
+    },
+    {
+      "id": "TASK-P1-004",
+      "phase": "P1",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["FR-MCP-001", "FR-MCP-002", "FR-MCP-003", "FR-MCP-008", "FR-MCP-010", "FR-NODE-008"],
+      "coverage_type": "partial-reference",
+      "feasibility": "Medium",
+      "source_anchors": ["src/mcp/adapter.ts:15", "src/mcp/tools/read-tools.ts:13", "src/mcp/tools/mutation-tools.ts:37", "src/core/mutation/add-requirement.ts:26", "src/core/mutation/add-requirement.ts:115"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Inspect git diff for test/integration/todo-installable-workflow.test.ts. 2) Remove only the new test file changes with the editor, then run npm run test:integration."}
+    },
+    {
+      "id": "TASK-P1-005",
+      "phase": "P1",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["FR-MCP-003", "FR-MCP-008", "FR-MCP-010", "FR-NODE-008"],
+      "coverage_type": "partial-reference",
+      "feasibility": "Low",
+      "source_anchors": ["src/mcp/errors.ts:12", "src/core/mutation/render-requirement.ts:95", "test/integration/cli-mcp-parity.test.ts:6"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Inspect git diff for test/integration/todo-installable-workflow.test.ts. 2) Remove only the new test file changes with the editor, then run npm run test:integration."}
+    }
+  ],
+  "deferred_requirements_note": "This partial integration plan intentionally excludes release readiness, performance, init workflow, evidence notes parity, MCP resources, MCP canonical error taxonomy, MCP add_requirement patch summary AC, full stdio protocol smoke, and full CLI/MCP response parity."
+}

@@ -1,0 +1,296 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260508-cli-mcp-srs-remediation",
+  "produced_at": "2026-05-08T16:05:40+09:00",
+  "default_turn_estimate": 8,
+  "target": "v1.0.0",
+  "scope_freeze": true,
+  "coverage_mode": "srs-remediation",
+  "change_log": [],
+  "platforms": ["win32", "posix"],
+  "source_spec": [
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/30.cli-interface.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/spec/50.nodejs-implementation.srs.md",
+    "docs/rule/SRS-MD-Rules-v1.0.0.md"
+  ],
+  "phase_dependencies": {
+    "P1": [],
+    "P2": ["P1"],
+    "P3": ["P1", "P2"],
+    "P4": ["P1", "P2", "P3"]
+  },
+  "dod_policy": "Phase Markdown DoD is normative; task_dod_summary is the machine-readable duplicate for PM/coder execution.",
+  "task_dod_summary": {
+    "TASK-P1-001": ["readUtf8File rejects root-outside realpaths", "parser rejects symlink escape SRS files with ROOT_BOUNDARY", "valid parser tests remain green"],
+    "TASK-P1-002": ["init_project rejects symlink outside writes", "core init covers FR-NODE-009 creation/idempotency/no-overwrite/result AC", "safe writable path helper shares root-realpath logic"],
+    "TASK-P1-003": ["TargetSummary includes countsByType and blocked", "existing summary consumers remain compatible", "CLI/MCP adapters reuse the core summary"],
+    "TASK-P2-001": ["extract compact/json/include-markdown behavior is tested", "extract target/status/scope/type/tag filters are each tested", "list target/status/scope/type/tag filters and AND filter combinations are tested", "list plain/table/json and invalid format are tested"],
+    "TASK-P2-002": ["targets human/json outputs include requirementCount", "scopes human/json outputs include requirementCount", "summary json/markdown includes type and blocked fields"],
+    "TASK-P2-003": ["add-evidence/add-trace support --ref and --reference", "IR-CLI-012 selected AC only, missing AC no-write, verified warning, and --all behavior are tested", "IR-CLI-013 required type/ref/covers, optional notes, VE-N generation, and Verification Evidence table append are tested", "IR-CLI-014 required type/ref/relation, Requirement reference existence, and Trace Links table append are tested", "CLI add-requirement covers IR-CLI-019 AC-1 through AC-6 including optional inputs, ID generation with discarded-ID avoidance, append location, verified guard, exact exit code, and no-write failures"],
+    "TASK-P2-004": ["CLI exact exit codes 0 through 6 are tested", "IR-CLI-007 show existing human/json/markdown and missing-id exit 2 are tested", "command paths use the shared exit mapper", "add-requirement failures assert no file write"],
+    "TASK-P3-001": ["MCP outward error codes use lower-case SRS taxonomy", "REL-MCP-001 not_found, status_transition_denied, parse_error diagnostics, and stderr purity are tested", "diagnostics and patch summaries are preserved", "domain failures remain structured tool results"],
+    "TASK-P3-002": ["validate_spec accepts scope target strict failOnWarning", "FR-MCP-003 diagnostics summary and read-only no-write behavior are tested", "summarize_target returns enhanced TargetSummary fields"],
+    "TASK-P3-003": ["FR-MCP-004 update_status required id/status, verified guard, changed record plus patch, and no-write failures are tested", "FR-MCP-006 AC-1 through AC-4 are tested", "FR-MCP-007 AC-1 through AC-3 are tested", "FR-MCP-010 AC-1 through AC-7 are tested", "local file evidence root boundary and no-shell handling are tested"],
+    "TASK-P3-004": ["IR-MCP-002 metadata and capabilities AC are tested", "FR-MCP-009 resources AC are tested", "FR-MCP-011 init_project AC are tested at MCP adapter level", "stdout purity remains green"],
+    "TASK-P4-001": ["Todo smoke covers enhanced CLI/MCP contracts", "missing CLI/MCP error semantics are asserted", "no full parity snapshot is introduced"],
+    "TASK-P4-002": ["PowerShell full gate passes", "POSIX gate uses POSIX-local npm ci dependencies", "CI note records native dependency boundary"],
+    "TASK-P4-003": ["each remediation target has evidence tied to passing commands", "speckiwi validate --json returns zero errors", "MCP validate_spec coverage remains passing through test/mcp/read-tools-resources.test.ts", "release acceptance passes"]
+  },
+  "pre_commit_gate": [
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard", "flags": "i"},
+    {"pattern": "Remove-Item\\s+-Recurse\\s+-Force\\s+\\$?\\w*$", "flags": "i"},
+    {"pattern": "rm\\s+-rf\\s+(/|\\.|\\*)", "flags": "i"}
+  ],
+  "tasks": [
+    {
+      "id": "TASK-P1-001",
+      "phase": "P1",
+      "owns": ["src/core/fs/read-text.ts", "src/core/parser/discover.ts", "test/core/fs/root-path.test.ts", "test/core/parser/workspace-records.test.ts"],
+      "related_requirements": ["SEC-MCP-001"],
+      "supporting_requirements": ["FR-PARSE-001"],
+      "coverage_type": "full-remediation",
+      "feasibility": "High",
+      "turn_estimate": 4,
+      "source_anchors": ["src/core/fs/read-text.ts:6-14", "src/core/fs/safe-path.ts:4-19", "src/core/parser/discover.ts:26-39", "test/core/fs/root-path.test.ts:29-51"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/core/fs/root-path.test.ts test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/core/fs/root-path.test.ts test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Revert only src/core/fs/read-text.ts, src/core/parser/discover.ts, and the new root-boundary tests. 2) Re-run npm run test:integration and inspect parser failures before continuing."}
+    },
+    {
+      "id": "TASK-P1-002",
+      "phase": "P1",
+      "owns": ["src/core/fs/safe-path.ts", "src/core/bootstrap/init-project.ts", "test/core/bootstrap/init-project.test.ts"],
+      "related_requirements": ["SEC-MCP-001", "FR-MCP-011"],
+      "supporting_requirements": ["IR-CLI-003", "FR-NODE-009"],
+      "coverage_type": "full-remediation",
+      "feasibility": "High",
+      "turn_estimate": 5,
+      "source_anchors": ["src/core/fs/safe-path.ts:4-19", "src/core/bootstrap/init-project.ts:30-70", "test/core/bootstrap/init-project.test.ts:15-45"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/core/fs/root-path.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/core/fs/root-path.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Remove resolveWritableInsideRoot and restore initProject path resolution to the previous direct path.join form. 2) Remove only the new symlink write tests and rerun init-project tests."}
+    },
+    {
+      "id": "TASK-P1-003",
+      "phase": "P1",
+      "owns": ["src/core/types.ts", "src/core/query/summary.ts", "test/core/query/query-summary-links.test.ts"],
+      "related_requirements": ["IR-CLI-015", "FR-MCP-008"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Low",
+      "turn_estimate": 4,
+      "source_anchors": ["src/core/types.ts:167-173", "src/core/query/summary.ts:7-20", "test/core/query/query-summary-links.test.ts:10-19"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Remove the new TargetSummary fields and summary tests. 2) Restore summarizeTarget return shape and rerun query plus integration tests."}
+    },
+    {
+      "id": "TASK-P2-001",
+      "phase": "P2",
+      "owns": ["src/cli/commands/read.ts", "src/core/format/text.ts", "test/cli/read-commands.test.ts"],
+      "related_requirements": ["IR-CLI-005", "IR-CLI-006"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/cli/commands/read.ts:34-55", "src/core/format/text.ts:7-14", "test/cli/read-commands.test.ts:10-25"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/cli/read-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/cli/read-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore read.ts extract/list command bodies to the previous implementation. 2) Remove only the new read-command tests and rerun test/cli/read-commands.test.ts."}
+    },
+    {
+      "id": "TASK-P2-002",
+      "phase": "P2",
+      "owns": ["src/cli/commands/read.ts", "src/core/format/text.ts", "test/cli/read-commands.test.ts", "test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["IR-CLI-008", "IR-CLI-009", "IR-CLI-015"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/cli/commands/read.ts:67-78", "src/core/query/summary.ts:7-20", "test/cli/read-commands.test.ts:10-25", "test/integration/todo-installable-workflow.test.ts:520-523"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/cli/read-commands.test.ts test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/cli/read-commands.test.ts test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Remove the new target/scope count helpers and summary markdown branch. 2) Restore read-command tests to pre-remediation assertions and rerun CLI tests."}
+    },
+    {
+      "id": "TASK-P2-003",
+      "phase": "P2",
+      "owns": ["src/cli/commands/mutations.ts", "src/core/mutation/check-ac.ts", "src/core/mutation/add-evidence.ts", "test/cli/mutation-commands.test.ts", "test/core/mutation/status-ac.test.ts"],
+      "related_requirements": ["IR-CLI-012", "IR-CLI-013", "IR-CLI-014", "IR-CLI-019"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 7,
+      "source_anchors": ["src/cli/commands/mutations.ts:96-105", "src/cli/commands/mutations.ts:108-165", "src/core/mutation/check-ac.ts:14-30", "src/core/mutation/add-evidence.ts:16-25", "test/cli/mutation-commands.test.ts:12-42"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/cli/mutation-commands.test.ts test/core/mutation/status-ac.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/cli/mutation-commands.test.ts test/core/mutation/status-ac.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore mutation CLI option declarations and core add-evidence/check-ac behavior. 2) Remove only the new alias, covers, and warning tests before rerunning mutation tests."}
+    },
+    {
+      "id": "TASK-P2-004",
+      "phase": "P2",
+      "owns": ["src/cli/exit.ts", "src/cli/commands/mutations.ts", "src/cli/commands/read.ts", "src/cli/commands/mcp.ts", "src/cli/index.ts", "test/cli/common-options-exit.test.ts", "test/cli/mutation-commands.test.ts", "test/cli/read-commands.test.ts", "test/cli/mcp-command.test.ts"],
+      "related_requirements": ["IR-CLI-007", "IR-CLI-018", "IR-CLI-019"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/cli/exit.ts:3-12", "src/cli/index.ts:18-30", "src/cli/commands/mutations.ts:60-76", "src/cli/commands/mutations.ts:139-164", "src/cli/commands/mcp.ts:12-27", "test/cli/common-options-exit.test.ts:23-29", "test/cli/mcp-command.test.ts:10-27"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/cli/common-options-exit.test.ts test/cli/mutation-commands.test.ts test/cli/read-commands.test.ts test/cli/mcp-command.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/cli/common-options-exit.test.ts test/cli/mutation-commands.test.ts test/cli/read-commands.test.ts test/cli/mcp-command.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore command exit code assignments to their previous literal values. 2) Remove exact exit-code assertions added in this TASK and rerun CLI tests."}
+    },
+    {
+      "id": "TASK-P3-001",
+      "phase": "P3",
+      "owns": ["src/mcp/errors.ts", "src/mcp/tools/read-tools.ts", "src/mcp/tools/mutation-tools.ts", "test/mcp/mutation-tools-errors.test.ts", "test/mcp/read-tools-resources.test.ts"],
+      "related_requirements": ["REL-MCP-001", "FR-MCP-004", "FR-MCP-010"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/mcp/errors.ts:8-15", "src/mcp/tools/read-tools.ts:15-23", "src/mcp/tools/mutation-tools.ts:37-95", "test/mcp/mutation-tools-errors.test.ts:13-38"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore src/mcp/errors.ts and MCP tests to uppercase-code expectations. 2) Re-run MCP tests to confirm the prior behavior before retrying the taxonomy change."}
+    },
+    {
+      "id": "TASK-P3-002",
+      "phase": "P3",
+      "owns": ["src/mcp/server.ts", "src/mcp/tools/read-tools.ts", "src/core/validator/validate-workspace.ts", "test/mcp/read-tools-resources.test.ts", "test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["FR-MCP-003", "FR-MCP-008"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/mcp/server.ts:23-33", "src/mcp/tools/read-tools.ts:22-23", "src/core/validator/validate-workspace.ts:1-10", "src/core/query/summary.ts:7-20", "test/integration/todo-installable-workflow.test.ts:542-546"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore read-tools validate_spec and summarize_target handlers to their previous body. 2) Remove new read-tool payload assertions and rerun MCP read tests."}
+    },
+    {
+      "id": "TASK-P3-003",
+      "phase": "P3",
+      "owns": ["src/mcp/server.ts", "src/mcp/tools/mutation-tools.ts", "src/mcp/errors.ts", "src/core/mutation/update-status.ts", "src/core/mutation/add-evidence.ts", "src/core/mutation/add-trace.ts", "src/core/mutation/add-requirement.ts", "test/mcp/mutation-tools-errors.test.ts"],
+      "related_requirements": ["FR-MCP-004", "FR-MCP-006", "FR-MCP-007", "FR-MCP-010", "SEC-MCP-001"],
+      "supporting_requirements": ["FR-NODE-008"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 8,
+      "source_anchors": ["src/mcp/tools/mutation-tools.ts:42-55", "src/mcp/tools/mutation-tools.ts:55-85", "src/core/mutation/add-evidence.ts:16-25", "src/core/mutation/add-trace.ts:17-28", "src/core/mutation/add-requirement.ts:115-156", "test/mcp/mutation-tools-errors.test.ts:13-38"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/core/mutation/add-requirement.test.ts test/core/mutation/status-ac.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/core/mutation/add-requirement.test.ts test/core/mutation/status-ac.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore mutation-tools handlers and mutation output types to the previous result shape. 2) Remove new MCP mutation response assertions and rerun MCP mutation tests."}
+    },
+    {
+      "id": "TASK-P3-004",
+      "phase": "P3",
+      "owns": ["src/mcp/server.ts", "src/mcp/resources.ts", "src/mcp/metadata.ts", "src/mcp/tools/mutation-tools.ts", "test/mcp/read-tools-resources.test.ts", "test/mcp/stdio-purity.test.ts", "test/mcp/mutation-tools-errors.test.ts"],
+      "related_requirements": ["IR-MCP-002", "FR-MCP-009", "FR-MCP-011", "SEC-MCP-001"],
+      "supporting_requirements": ["IR-MCP-001", "FR-NODE-009"],
+      "coverage_type": "full-remediation",
+      "feasibility": "Medium",
+      "turn_estimate": 5,
+      "source_anchors": ["src/mcp/server.ts:76-119", "src/mcp/resources.ts:7-24", "src/mcp/metadata.ts:12-14", "src/mcp/tools/mutation-tools.ts:88-94", "test/mcp/read-tools-resources.test.ts:8-30", "test/mcp/stdio-purity.test.ts:11-47"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/stdio-purity.test.ts test/mcp/mutation-tools-errors.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/stdio-purity.test.ts test/mcp/mutation-tools-errors.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Restore MCP resource and server metadata files to their previous behavior. 2) Remove new resource error and metadata assertions and rerun MCP tests."}
+    },
+    {
+      "id": "TASK-P4-001",
+      "phase": "P4",
+      "owns": ["test/integration/todo-installable-workflow.test.ts"],
+      "related_requirements": ["IR-CLI-006", "IR-CLI-007", "IR-CLI-015", "IR-CLI-018", "FR-MCP-003", "FR-MCP-008", "FR-MCP-010", "REL-MCP-001"],
+      "supporting_requirements": ["IR-CLI-004"],
+      "coverage_type": "integration-smoke",
+      "feasibility": "Low",
+      "turn_estimate": 5,
+      "source_anchors": ["test/integration/todo-installable-workflow.test.ts:505-529", "test/integration/todo-installable-workflow.test.ts:531-570"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/integration/todo-installable-workflow.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Remove only the new assertions from todo-installable-workflow.test.ts. 2) Re-run the target integration test and keep the core remediation tests for debugging."}
+    },
+    {
+      "id": "TASK-P4-002",
+      "phase": "P4",
+      "owns": ["docs/ci/cross-platform-test-notes.md"],
+      "related_requirements": ["IR-CLI-018", "SEC-MCP-001"],
+      "supporting_requirements": ["FR-NODE-004", "IR-MCP-001"],
+      "coverage_type": "verification-note",
+      "feasibility": "Low",
+      "turn_estimate": 3,
+      "source_anchors": ["package.json:45-52", "docs/pm/pm-state.2026-05-08.14_55_33.json:36-40"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm ci", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Remove docs/ci/cross-platform-test-notes.md or revert only its added section. 2) Re-run PowerShell gate to confirm code tests remain unaffected."}
+    },
+    {
+      "id": "TASK-P4-003",
+      "phase": "P4",
+      "owns": ["docs/spec/30.cli-interface.srs.md", "docs/spec/40.mcp-stdio-interface.srs.md"],
+      "related_requirements": ["IR-CLI-005", "IR-CLI-006", "IR-CLI-007", "IR-CLI-008", "IR-CLI-009", "IR-CLI-012", "IR-CLI-013", "IR-CLI-014", "IR-CLI-015", "IR-CLI-018", "IR-CLI-019", "IR-MCP-002", "FR-MCP-003", "FR-MCP-004", "FR-MCP-006", "FR-MCP-007", "FR-MCP-008", "FR-MCP-009", "FR-MCP-010", "FR-MCP-011", "SEC-MCP-001", "REL-MCP-001"],
+      "coverage_type": "evidence-update",
+      "feasibility": "Low",
+      "turn_estimate": 4,
+      "source_anchors": ["docs/spec/30.cli-interface.srs.md:281-337", "docs/spec/30.cli-interface.srs.md:338-394", "docs/spec/30.cli-interface.srs.md:395-451", "docs/spec/30.cli-interface.srs.md:452-507", "docs/spec/30.cli-interface.srs.md:508-677", "docs/spec/30.cli-interface.srs.md:678-733", "docs/spec/30.cli-interface.srs.md:734-790", "docs/spec/30.cli-interface.srs.md:791-846", "docs/spec/30.cli-interface.srs.md:847-1018", "docs/spec/30.cli-interface.srs.md:1019-1134", "docs/spec/30.cli-interface.srs.md:1135-1200", "docs/spec/40.mcp-stdio-interface.srs.md:105-275", "docs/spec/40.mcp-stdio-interface.srs.md:276-331", "docs/spec/40.mcp-stdio-interface.srs.md:332-446", "docs/spec/40.mcp-stdio-interface.srs.md:447-503", "docs/spec/40.mcp-stdio-interface.srs.md:504-559", "docs/spec/40.mcp-stdio-interface.srs.md:560-615", "docs/spec/40.mcp-stdio-interface.srs.md:616-672", "docs/spec/40.mcp-stdio-interface.srs.md:673-729", "docs/spec/40.mcp-stdio-interface.srs.md:730-786", "docs/spec/40.mcp-stdio-interface.srs.md:787-849", "docs/spec/40.mcp-stdio-interface.srs.md:850-910"],
+      "acceptance_tests": [
+        {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+        {"shell": "bash", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+        {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0}
+      ],
+      "rollback": {"strategy": "manual", "command": "1) Revert only the evidence and Change Notes rows added to the affected Requirement Blocks. 2) Run npm run release:acceptance to confirm SRS structure is valid."}
+    }
+  ]
+}

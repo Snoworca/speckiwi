@@ -1,7 +1,0 @@
-schemaVersion: speckiwi/dictionary/v1
-id: dictionary
-type: dictionary
-title: Search Dictionary
-status: active
-synonyms: {}
-normalizations: {}

@@ -1,8 +1,0 @@
-schemaVersion: speckiwi/overview/v1
-id: overview
-type: overview
-title: SpecKiwi
-status: active
-summary: Schema validation fixture.
-metadata: null
-unexpected: true

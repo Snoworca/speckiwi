@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "state_path": "docs/pm/pm-state.2026-05-08.14_55_33.json",
+  "intent": "$snoworca-pm --headless --auto --headless-max-turn=200 docs/plan/step2.todo-installable-srs-integration-test",
+  "started_at": "2026-05-08T14:55:33+09:00",
+  "updated_at": "2026-05-08T14:56:30+09:00",
+  "mode": "auto",
+  "mode_flags": {
+    "auto": true,
+    "headless": true,
+    "headless_max_turns": 200,
+    "qna": false,
+    "skip_feasibility": true
+  },
+  "language": "TypeScript on Node.js >=22",
+  "framework": "Commander CLI, MCP TypeScript SDK, Vitest",
+  "start_stage": "CODE",
+  "current_stage": "COMPLETE",
+  "completed_stages": [
+    "CODE",
+    "REVIEW"
+  ],
+  "input_docs": [
+    "docs/research/04.todo-installable-srs-integration-test-research.md",
+    "docs/plan/step2.todo-installable-srs-integration-test/00.index.md",
+    "docs/plan/step2.todo-installable-srs-integration-test/01.phase-todo-installable-integration-workflow.md",
+    "docs/plan/step2.todo-installable-srs-integration-test/plan.sidecar.json",
+    ".snoworca/dew/planner/step2.todo-installable-srs-integration-test/execution-guard.yaml"
+  ],
+  "stages": {
+    "CODE": {
+      "status": "completed",
+      "skill_used": "snoworca-pm CODE stage / plan-driven-coder",
+      "output": "test/integration/todo-installable-workflow.test.ts"
+    },
+    "REVIEW": {
+      "status": "completed",
+      "skill_used": "local code review gate",
+      "output": "PASS on PowerShell gates; bash Vitest gates blocked by missing Linux rolldown optional native binding in current node_modules"
+    }
+  }
+}

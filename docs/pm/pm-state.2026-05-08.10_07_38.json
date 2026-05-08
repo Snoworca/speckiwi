@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "state_path": "docs/pm/pm-state.2026-05-08.10_07_38.json",
+  "intent": "$snoworca-pm --headless --auto --headless-max-turns=200 docs/plan/step1.v1-markdown-srs-implementation",
+  "started_at": "2026-05-08T10:07:38+09:00",
+  "updated_at": "2026-05-08T11:07:00+09:00",
+  "mode": "auto",
+  "mode_flags": {
+    "auto": true,
+    "headless": true,
+    "headless_max_turns": 200,
+    "qna": false,
+    "skip_feasibility": true
+  },
+  "language": "TypeScript on Node.js >=22",
+  "framework": "Commander CLI, MCP TypeScript SDK, Vitest",
+  "start_stage": "CODE",
+  "current_stage": "COMPLETE",
+  "completed_stages": [
+    "CODE",
+    "REVIEW"
+  ],
+  "input_docs": [
+    "docs/plan/step1.v1-markdown-srs-implementation"
+  ],
+  "stages": {
+    "CODE": {
+      "status": "completed",
+      "skill_used": "snoworca-coder / plan-driven-coder",
+      "output": "."
+    },
+    "REVIEW": {
+      "status": "completed",
+      "skill_used": "subagent prickly code reviewer",
+      "output": "PASS"
+    }
+  }
+}
