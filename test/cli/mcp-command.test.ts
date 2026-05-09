@@ -16,12 +16,12 @@ describe("speckiwi mcp CLI command", () => {
 
     const valid = io();
     const command2 = buildCommand({ io: valid });
-    let called = false;
-    registerMcpCommand(command2, { io: valid }, async () => {
-      called = true;
+    let receivedRoot: string | undefined;
+    registerMcpCommand(command2, { io: valid }, async (options) => {
+      receivedRoot = options.root;
     });
     await command2.parseAsync(["mcp", "--transport", "stdio"], { from: "user" });
-    expect(called).toBe(true);
+    expect(receivedRoot).toBeUndefined();
     expect(valid.stdout.read()).toBeNull();
   });
 });

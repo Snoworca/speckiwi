@@ -1,5 +1,5 @@
 export interface McpDependencies {
-  root: string;
+  root?: string;
 }
 
 export type McpToolHandler = (input: Record<string, unknown>) => Promise<unknown> | unknown;

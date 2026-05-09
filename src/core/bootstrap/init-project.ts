@@ -13,11 +13,12 @@ import {
 
 export type AgentFileMode = "AGENTS.md" | "CLAUDE.md";
 
+const REQUIRED_AGENT_FILES: readonly AgentFileMode[] = ["AGENTS.md", "CLAUDE.md"];
+
 export interface InitProjectInput {
   product?: string;
   target?: string;
   scope?: string;
-  agentFiles?: AgentFileMode[];
   force?: boolean;
 }
 
@@ -64,7 +65,7 @@ export async function initProject(root: ProjectRoot, input: InitProjectInput): P
   await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force);
   await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force);
   await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force);
-  for (const agentFile of input.agentFiles ?? []) {
+  for (const agentFile of REQUIRED_AGENT_FILES) {
     await upsertAgentInstruction(root.root, agentFile, output);
   }
   return mutationOk(output);

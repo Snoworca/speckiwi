@@ -42,28 +42,12 @@ function parseTraceOptions(rows: string[]) {
   });
 }
 
-function parseAgentFileOptions(values: string[]): Array<"AGENTS.md" | "CLAUDE.md"> {
-  const files = new Set<"AGENTS.md" | "CLAUDE.md">();
-  for (const value of values) {
-    if (value === "both") {
-      files.add("AGENTS.md");
-      files.add("CLAUDE.md");
-    } else if (value.toLowerCase() === "agents" || value === "AGENTS.md") {
-      files.add("AGENTS.md");
-    } else if (value.toLowerCase() === "claude" || value === "CLAUDE.md") {
-      files.add("CLAUDE.md");
-    }
-  }
-  return [...files];
-}
-
 export function registerMutationCommands(command: Command, context: CliContext): void {
-  command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--agent-file <file...>").option("--json").action(async (options) => {
+  command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--json").action(async (options) => {
     const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
     const result = await initProject(root, {
       ...(typeof options.target === "string" ? { target: options.target } : {}),
       ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
-      agentFiles: parseAgentFileOptions(collect(options.agentFile)),
       force: Boolean(options.force)
     });
     output(context, { json: options.json || command.opts().json }, result);

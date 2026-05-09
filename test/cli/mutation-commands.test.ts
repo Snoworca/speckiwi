@@ -43,9 +43,9 @@ describe("mutation CLI commands", () => {
 
   it("supports init options and add-requirement dry-run", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
-    expect(
-      await main(["--root", root, "init", "--target", "v1.0.0", "--scope", "ARCH", "--force", "--agent-file", "both"], io())
-    ).toBe(0);
+    expect(await main(["--root", root, "init", "--target", "v1.0.0", "--scope", "ARCH", "--force"], io())).toBe(0);
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
     expect(
       await main(
         [
@@ -76,5 +76,16 @@ describe("mutation CLI commands", () => {
     const temp = await import("node:fs/promises").then((fs) => fs.mkdtemp(path.join(process.env.TEMP ?? process.cwd(), "speckiwi-cli-init-")));
     expect(await main(["--root", temp, "init", "--target", "v2.0.0", "--scope", "Payments:PAY"], io())).toBe(0);
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("10.payments.srs.md");
+    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+  });
+
+  it("rejects removed init agent-file option", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const streams = io();
+    const errors: string[] = [];
+    streams.stderr.on("data", (chunk) => errors.push(String(chunk)));
+    expect(await main(["--root", root, "init", "--agent-file", "both"], streams)).not.toBe(0);
+    expect(errors.join("")).toContain("unknown option '--agent-file'");
   });
 });

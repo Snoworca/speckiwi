@@ -1,14 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { access, realpath, stat } from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
+import { initProject } from "../core/bootstrap/init-project.js";
+import { resolveProjectRoot } from "../core/project-root.js";
+import type { ProjectRoot } from "../core/types.js";
 import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
 import { registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
 
 export interface McpServerOptions {
-  root: string;
+  root?: string;
   transport?: "stdio";
 }
 
@@ -63,9 +68,7 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   init_project: {
     target: z.string().optional(),
     scope: z.string().optional(),
-    force: z.boolean().optional(),
-    agentFile: z.union([z.string(), z.array(z.string())]).optional(),
-    agentFiles: z.union([z.string(), z.array(z.string())]).optional()
+    force: z.boolean().optional()
   }
 };
 
@@ -73,9 +76,57 @@ function isReadOnlyTool(name: string): boolean {
   return ["list_requirements", "get_requirement", "validate_spec", "summarize_target"].includes(name);
 }
 
-export async function startMcpServer(options: McpServerOptions): Promise<void> {
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function currentWorkingDirectoryRoot(): Promise<ProjectRoot> {
+  const cwd = process.cwd();
+  return { root: await realpath(cwd).catch(() => path.resolve(cwd)) };
+}
+
+async function explicitStartupRoot(explicitRoot: string): Promise<ProjectRoot> {
+  const resolved = await realpath(explicitRoot).catch(() => undefined);
+  if (!resolved) {
+    throw new Error(`Could not resolve explicit MCP project root: ${explicitRoot}`);
+  }
+  const info = await stat(resolved);
+  if (!info.isDirectory()) {
+    throw new Error(`Explicit MCP project root is not a directory: ${explicitRoot}`);
+  }
+  return { root: resolved };
+}
+
+async function resolveMcpStartupRoot(explicitRoot?: string): Promise<ProjectRoot> {
+  if (explicitRoot) return explicitStartupRoot(explicitRoot);
+  try {
+    return await resolveProjectRoot(process.cwd());
+  } catch {
+    return currentWorkingDirectoryRoot();
+  }
+}
+
+async function ensureMcpStartupWorkspace(explicitRoot?: string): Promise<ProjectRoot> {
+  const root = await resolveMcpStartupRoot(explicitRoot);
+  const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
+  if (!(await exists(indexPath))) {
+    const result = await initProject(root, {});
+    if (!result.ok) {
+      throw new Error(result.error?.message ?? "MCP workspace initialization failed");
+    }
+  }
+  return root;
+}
+
+export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
   const sdk = new McpServer({ name: "speckiwi", version: "1.0.0" });
-  const local = createMcpServer({ root: options.root });
+  const root = await ensureMcpStartupWorkspace(options.root);
+  const local = createMcpServer({ root: root.root });
   for (const [name, handler] of Object.entries(local.tools).filter(([name]) => !name.startsWith("resource:"))) {
     sdk.registerTool(name, {
       title: name,

@@ -11,7 +11,7 @@ export interface McpCliOptions {
 
 export async function runMcp(options: McpCliOptions, starter: McpServerStarter = startMcpServer): Promise<number> {
   if (options.transport && options.transport !== "stdio") return 2;
-  await starter({ root: options.root ?? process.cwd(), transport: "stdio" });
+  await starter({ ...(options.root ? { root: options.root } : {}), transport: "stdio" });
   return 0;
 }
 

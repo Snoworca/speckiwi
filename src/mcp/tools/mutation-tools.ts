@@ -17,23 +17,6 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
-function agentFiles(input: Record<string, unknown>): Array<"AGENTS.md" | "CLAUDE.md"> {
-  const raw = input.agentFile ?? input.agentFiles;
-  const values = Array.isArray(raw) ? raw.map(String) : typeof raw === "string" ? [raw] : [];
-  const files = new Set<"AGENTS.md" | "CLAUDE.md">();
-  for (const value of values) {
-    if (value === "both") {
-      files.add("AGENTS.md");
-      files.add("CLAUDE.md");
-    } else if (value.toLowerCase() === "agents" || value === "AGENTS.md") {
-      files.add("AGENTS.md");
-    } else if (value.toLowerCase() === "claude" || value === "CLAUDE.md") {
-      files.add("CLAUDE.md");
-    }
-  }
-  return [...files];
-}
-
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
   server.registerTool("update_status", async (input) => resultToMcp(await updateStatus(await root(deps, input), { id: String(input.id), status: input.status as never })));
   server.registerTool("check_acceptance_criteria", async (input) =>
@@ -87,7 +70,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
   );
   server.registerTool("init_project", async (input) =>
     {
-      const initInput = { agentFiles: agentFiles(input), force: Boolean(input.force) };
+      const initInput = { force: Boolean(input.force) };
       if (typeof input.target === "string") Object.assign(initInput, { target: input.target });
       if (typeof input.scope === "string") Object.assign(initInput, { scope: input.scope });
       return resultToMcp(await initProject(await root(deps, input), initInput));

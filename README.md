@@ -28,18 +28,20 @@ After the package is installed as a command, use `speckiwi` instead of `node bin
 Run `init` at the root of a Git project:
 
 ```sh
-speckiwi init --target v1.0.0 --scope "Payments:PAY" --agent-file both
+speckiwi init --target v1.0.0 --scope "Payments:PAY"
 ```
 
 From a source checkout:
 
 ```sh
-node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY" --agent-file both
+node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY"
 ```
 
 This creates the standard structure if it is missing:
 
 ```text
+AGENTS.md
+CLAUDE.md
 docs/
 ├─ rule/
 │  └─ SRS-MD-Rules-v1.0.0.md
@@ -49,7 +51,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `--agent-file both` updates `AGENTS.md` and `CLAUDE.md` with a short pointer to the SRS rules. Existing files are skipped unless `--force` is provided.
+`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` always creates or updates `AGENTS.md` and `CLAUDE.md` with a short pointer to the SRS rules; if the rules link is already present, the agent file is left unchanged. Existing generated SRS/rule files are skipped unless `--force` is provided.
 
 ## How the SRS Is Organized
 
@@ -247,7 +249,7 @@ Mutation commands:
 
 | Command | Purpose |
 |---|---|
-| `speckiwi init [--target T] [--scope Name:PREFIX] [--agent-file agents\|claude\|both] [--force] [--json]` | Create or refresh the SRS skeleton. |
+| `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | Create or refresh the SRS skeleton and both agent instruction files. |
 | `speckiwi add-requirement ...` | Add a new requirement block. |
 | `speckiwi update-status <id> <status> [--json]` | Update the `Status` metadata row. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | Mark acceptance criteria as checked. |
@@ -287,10 +289,17 @@ constraint
 Start the stdio MCP server:
 
 ```sh
+cd /path/to/project
+speckiwi mcp
+```
+
+You can also pass an explicit root:
+
+```sh
 speckiwi --root /path/to/project mcp
 ```
 
-Only stdio transport is supported. stdout is reserved for MCP JSON-RPC messages; logs belong on stderr. The project root is fixed when the server starts, so tool inputs should not be used to switch roots.
+Only stdio transport is supported. stdout is reserved for MCP JSON-RPC messages; logs belong on stderr. If `--root` is omitted, SpecKiwi resolves the project root from the server process current working directory by searching upward for `.git` or `docs/spec/00.index.md`. If no project root exists yet, or if `docs/spec/00.index.md` is missing, MCP startup automatically creates the default SRS structure, including `AGENTS.md` and `CLAUDE.md`, before serving tool calls. An explicit `--root` must point to an existing directory. The project root is fixed when the server starts, so tool inputs should not be used to switch roots.
 
 Read tools:
 
@@ -305,7 +314,7 @@ Mutation tools:
 
 | Tool | Input |
 |---|---|
-| `init_project` | `target?`, `scope?`, `force?`, `agentFile?` or `agentFiles?` |
+| `init_project` | `target?`, `scope?`, `force?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |
@@ -423,18 +432,20 @@ node bin/speckiwi --help
 Git 프로젝트 루트에서 `init`을 실행합니다.
 
 ```sh
-speckiwi init --target v1.0.0 --scope "Payments:PAY" --agent-file both
+speckiwi init --target v1.0.0 --scope "Payments:PAY"
 ```
 
 소스 체크아웃에서는 다음처럼 실행합니다.
 
 ```sh
-node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY" --agent-file both
+node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY"
 ```
 
 필요한 구조가 없으면 다음 표준 구조를 생성합니다.
 
 ```text
+AGENTS.md
+CLAUDE.md
 docs/
 ├─ rule/
 │  └─ SRS-MD-Rules-v1.0.0.md
@@ -444,7 +455,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `--agent-file both`는 `AGENTS.md`와 `CLAUDE.md`에 SRS 규칙 링크를 짧게 추가합니다. 기존 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
+`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 항상 `AGENTS.md`와 `CLAUDE.md`에 SRS 규칙 링크를 짧게 추가합니다. rules 링크가 이미 있으면 agent 파일은 변경하지 않습니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
 
 ## SRS 구성 방식
 
@@ -642,7 +653,7 @@ speckiwi add-trace FR-PAY-001 \
 
 | Command | Purpose |
 |---|---|
-| `speckiwi init [--target T] [--scope Name:PREFIX] [--agent-file agents\|claude\|both] [--force] [--json]` | SRS skeleton을 생성하거나 갱신합니다. |
+| `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | SRS skeleton과 두 agent instruction 파일을 생성하거나 갱신합니다. |
 | `speckiwi add-requirement ...` | 새 requirement block을 추가합니다. |
 | `speckiwi update-status <id> <status> [--json]` | `Status` metadata row를 갱신합니다. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | acceptance criteria를 checked 상태로 표시합니다. |
@@ -682,10 +693,17 @@ constraint
 stdio MCP 서버를 시작합니다.
 
 ```sh
+cd /path/to/project
+speckiwi mcp
+```
+
+명시적 root를 넘길 수도 있습니다.
+
+```sh
 speckiwi --root /path/to/project mcp
 ```
 
-지원되는 transport는 stdio뿐입니다. stdout은 MCP JSON-RPC message 전용이고, log는 stderr에 기록해야 합니다. 서버 시작 시 project root가 고정되므로 tool input으로 root를 바꾸는 방식은 사용하지 않습니다.
+지원되는 transport는 stdio뿐입니다. stdout은 MCP JSON-RPC message 전용이고, log는 stderr에 기록해야 합니다. `--root`를 생략하면 SpecKiwi는 서버 process의 current working directory에서 시작해 `.git` 또는 `docs/spec/00.index.md`를 상위 탐색하여 project root를 결정합니다. 아직 project root가 없거나 `docs/spec/00.index.md`가 없으면 MCP startup이 tool call을 처리하기 전에 `AGENTS.md`와 `CLAUDE.md`를 포함한 기본 SRS 구조를 자동 생성합니다. 명시적 `--root`는 존재하는 디렉터리여야 합니다. 서버 시작 시 project root가 고정되므로 tool input으로 root를 바꾸는 방식은 사용하지 않습니다.
 
 읽기 도구:
 
@@ -700,7 +718,7 @@ speckiwi --root /path/to/project mcp
 
 | Tool | Input |
 |---|---|
-| `init_project` | `target?`, `scope?`, `force?`, `agentFile?` 또는 `agentFiles?` |
+| `init_project` | `target?`, `scope?`, `force?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |
