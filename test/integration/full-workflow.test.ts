@@ -10,7 +10,7 @@ describe("full workflow", () => {
   it("initializes a repo and adds a requirement", async () => {
     const rootPath = await mkdtemp(path.join(tmpdir(), "speckiwi-full-"));
     const root = await resolveProjectRoot(rootPath, rootPath);
-    expect((await initProject(root, {})).ok).toBe(true);
+    expect((await initProject(root, { target: "v1.0.0" })).ok).toBe(true);
     const added = await addRequirement(root, {
       type: "functional",
       scope: "ARCH",

@@ -34,4 +34,28 @@ describe("line patch engine", () => {
     await expect(applyPatchPlan(plan, { dryRun: false })).rejects.toThrow(/stale/i);
     expect(await readFile(filePath, "utf8")).toBe("# changed\n");
   });
+
+  it("rejects writes when the file snapshot changed after planning", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const filePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const file = await readUtf8File(filePath);
+    const before = await readFile(filePath, "utf8");
+    const plan = createPatchPlan(file, [{ type: "replaceLine", line: 1, original: file.lines[0], replacement: "# planned" }]);
+
+    await writeFile(filePath, before.replace("# Product Architecture", "# concurrent"), "utf8");
+
+    await expect(applyPatchPlan(plan, { dryRun: false })).rejects.toMatchObject({ code: "STALE_PATCH" });
+    expect(await readFile(filePath, "utf8")).toContain("# concurrent");
+  });
+
+  it("validates insert neighbors before rendering a patch", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const filePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const file = await readUtf8File(filePath);
+    const before = await readFile(filePath, "utf8");
+    const plan = createPatchPlan(file, [{ type: "insertLines", line: 2, lines: ["inserted"], expectedBefore: "# wrong" }]);
+
+    await expect(applyPatchPlan(plan, { dryRun: true })).rejects.toThrow(/stale/i);
+    expect(await readFile(filePath, "utf8")).toBe(before);
+  });
 });

@@ -15,6 +15,49 @@ function includes(values: readonly string[], value: string): boolean {
   return values.includes(value);
 }
 
+function splitCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function duplicateValues(values: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const value of values.map((item) => item.trim()).filter(Boolean)) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return [...duplicates];
+}
+
+function normalizeScopeDocument(document: string): string {
+  const withoutAnchor = document.trim().replace(/#.*$/, "").replace(/\\/g, "/");
+  if (!withoutAnchor) return "";
+  const withoutDot = withoutAnchor.replace(/^\.\//, "");
+  return withoutDot.startsWith("docs/spec/") ? withoutDot : `docs/spec/${withoutDot}`;
+}
+
+function countBy(values: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function compareSummaryCounts(expected: Map<string, number>, actual: Map<string, number>): string[] {
+  const drifted = new Set<string>();
+  for (const [key, count] of expected) {
+    if ((actual.get(key) ?? 0) !== count) drifted.add(key);
+  }
+  for (const [key, count] of actual) {
+    if ((expected.get(key) ?? 0) !== count) drifted.add(key);
+  }
+  return [...drifted];
+}
+
 export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
   return (
     record.acceptanceCriteria.length > 0 &&
@@ -28,8 +71,59 @@ export function registerDefaultRules(): void {
     const diagnostics: Diagnostic[] = [...workspace.diagnostics];
     const seen = new Map<string, RequirementRecord>();
     const targets = new Set(workspace.index.targets.map((target) => target.target));
-    const scopes = new Set(workspace.index.scopes.map((scope) => scope.prefix));
+    const scopes = new Set(workspace.index.scopes.flatMap((scope) => [scope.prefix, scope.scope]).filter(Boolean));
     const ids = new Set(workspace.records.map((record) => record.id));
+    const recordsById = new Map(workspace.records.map((record) => [record.id, record]));
+    const explicitActiveTarget = (workspace.index.metadata["Active Target"] ?? "").trim();
+    const indexLocation = { filePath: "docs/spec/00.index.md" };
+
+    for (const target of duplicateValues(workspace.index.targets.map((entry) => entry.target))) {
+      diagnostics.push(diagnostic("SRS-E022", "error", `Duplicate Target Map target: ${target}`, indexLocation));
+    }
+    for (const prefix of duplicateValues(workspace.index.scopes.map((entry) => entry.prefix))) {
+      diagnostics.push(diagnostic("SRS-E023", "error", `Duplicate Scope Map prefix: ${prefix}`, indexLocation));
+    }
+    if (workspace.index.targets.filter((target) => target.status === "active").length > 1) {
+      diagnostics.push(diagnostic("SRS-E024", "error", "Multiple Target Map rows are marked active", indexLocation));
+    }
+
+    const discoveredScopeDocuments = new Set(workspace.files.map((file) => file.relativePath).filter((filePath) => filePath.endsWith(".srs.md")));
+    const registeredScopeDocuments = new Set(workspace.index.scopes.map((scope) => normalizeScopeDocument(scope.document)).filter(Boolean));
+    for (const scope of workspace.index.scopes) {
+      const document = normalizeScopeDocument(scope.document);
+      if (document && !discoveredScopeDocuments.has(document)) {
+        diagnostics.push(diagnostic("SRS-E025", "error", `Scope document file is missing: ${scope.document}`, indexLocation));
+      }
+    }
+    for (const filePath of discoveredScopeDocuments) {
+      if (!registeredScopeDocuments.has(filePath)) {
+        diagnostics.push(diagnostic("SRS-W018", "warning", `Scope SRS document is not registered in Scope Map: ${filePath}`, indexLocation));
+      }
+    }
+
+    if (workspace.index.statusSummary) {
+      const expected = new Map(workspace.index.statusSummary.filter((entry) => entry.status.trim()).map((entry) => [entry.status.trim(), entry.count]));
+      const actual = countBy(workspace.records.map((record) => record.status));
+      for (const status of compareSummaryCounts(expected, actual)) {
+        diagnostics.push(diagnostic("SRS-W019", "warning", `Status Summary count drift for ${status}`, indexLocation));
+      }
+    }
+    if (workspace.index.requirementTypeSummary) {
+      const expected = new Map(workspace.index.requirementTypeSummary.filter((entry) => entry.type.trim()).map((entry) => [entry.type.trim(), entry.count]));
+      const actual = countBy(workspace.records.map((record) => record.type));
+      for (const type of compareSummaryCounts(expected, actual)) {
+        diagnostics.push(diagnostic("SRS-W020", "warning", `Requirement Type Summary count drift for ${type}`, indexLocation));
+      }
+    }
+
+    if (explicitActiveTarget) {
+      const activeTarget = workspace.index.targets.find((target) => target.target === explicitActiveTarget);
+      if (!activeTarget) {
+        diagnostics.push(diagnostic("SRS-E017", "error", `Active Target is not registered: ${explicitActiveTarget}`, { filePath: "docs/spec/00.index.md" }));
+      } else if (activeTarget.status !== "active") {
+        diagnostics.push(diagnostic("SRS-W010", "warning", `Active Target row is not marked active: ${explicitActiveTarget}`, { filePath: "docs/spec/00.index.md" }));
+      }
+    }
 
     for (const record of workspace.records) {
       const existing = seen.get(record.id);
@@ -87,6 +181,28 @@ export function registerDefaultRules(): void {
     for (const scope of workspace.index.scopes) {
       if (!scope.document) {
         diagnostics.push(diagnostic("SRS-E016", "error", `Scope document is missing for ${scope.prefix || scope.scope}`, { filePath: "docs/spec/00.index.md" }));
+      }
+    }
+    for (const entry of workspace.index.completedWork) {
+      const location = { filePath: "docs/spec/00.index.md", ...(typeof entry.line === "number" ? { line: entry.line } : {}) };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+        diagnostics.push(diagnostic("SRS-W011", "warning", `Completed Work Log date is not YYYY-MM-DD: ${entry.date}`, location));
+      }
+      if (entry.target.trim() && !targets.has(entry.target.trim())) {
+        diagnostics.push(diagnostic("SRS-W012", "warning", `Completed Work Log target is not registered: ${entry.target}`, location));
+      }
+      for (const scope of splitCsv(entry.scope)) {
+        if (!scopes.has(scope)) {
+          diagnostics.push(diagnostic("SRS-W013", "warning", `Completed Work Log scope is not registered: ${scope}`, location));
+        }
+      }
+      for (const id of entry.requirementIds) {
+        const record = recordsById.get(id);
+        if (!record) {
+          diagnostics.push(diagnostic("SRS-W014", "warning", `Completed Work Log requirement does not exist: ${id}`, location));
+        } else if (record.status !== "implemented" && record.status !== "verified") {
+          diagnostics.push(diagnostic("SRS-W015", "warning", `Completed Work Log requirement is not completed: ${id}`, location));
+        }
       }
     }
     return diagnostics;

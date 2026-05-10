@@ -14,7 +14,9 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
     const scanned = scanRequirementBlocks(file.lines, file.relativePath);
     diagnostics.push(...scanned.diagnostics);
     for (const block of scanned.blocks) {
-      records.push(toRequirementRecord(file, block));
+      const parsed = toRequirementRecord(file, block);
+      records.push(parsed.record);
+      diagnostics.push(...parsed.diagnostics);
     }
   }
   return {

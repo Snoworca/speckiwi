@@ -16,7 +16,7 @@
 | Primary Use | SRS 작성, 검토, 검색, 상태 갱신, 구현 검증 |
 | Source Format | GitHub Flavored Markdown |
 | Canonical Location | `docs/rule/SRS-MD-Rules-v1.0.0.md` |
-| Last Updated | 2026-05-08 |
+| Last Updated | 2026-05-10 |
 
 ---
 
@@ -245,6 +245,7 @@ SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한�
 |---|---|
 | Document Type | srs_index |
 | Version | 1.0.0 |
+| Active Target |  |
 | Last Updated | YYYY-MM-DD |
 
 ## 1. Purpose
@@ -259,11 +260,16 @@ SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한�
 
 ## 6. Requirement Type Summary
 
-## 7. Cross-scope Dependencies
+## 7. Completed Work Log
 
-## 8. Open Questions
+| Date | Target | Scope | Requirement IDs | Summary |
+|---|---|---|---|---|
 
-## 9. Reference Documents
+## 8. Cross-scope Dependencies
+
+## 9. Open Questions
+
+## 10. Reference Documents
 ```
 
 ### 7.2 SRS Documents 섹션
@@ -294,7 +300,7 @@ SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한�
 |---|---|---|---|
 | v0.1 | version | active | 기본 인증 및 사용자 기능 |
 | v0.2 | version | planned | 결제 webhook 및 관측성 개선 |
-| MVP | milestone | active | 초기 릴리스에 필요한 최소 기능 |
+| MVP | milestone | planned | 초기 릴리스에 필요한 최소 기능 |
 ```
 
 Target status 값:
@@ -305,7 +311,37 @@ Target status 값:
 | `active` | 현재 진행 중 |
 | `frozen` | 범위가 동결됨. 변경하려면 명시적 리뷰 필요 |
 | `completed` | 해당 target의 요구사항이 완료됨 |
+| `released` | release-readiness를 통과한 immutable baseline target |
 | `archived` | 과거 target. 일반적으로 수정하지 않음 |
+
+규칙:
+
+1. index metadata table의 `Active Target` row는 항상 존재해야 한다.
+2. `Active Target` 값이 비어 있으면 active target이 선택되지 않은 상태다.
+3. `Active Target` row가 존재하지만 값이 비어 있으면 Target Map fallback을 수행하지 않는다.
+4. `Active Target` 값이 비어 있지 않으면 Target Map의 `Target` 값 중 하나여야 한다.
+5. `Active Target`과 같은 Target Map row의 `Status`는 `active`여야 한다.
+6. 완료되어 release baseline으로 고정된 target은 `released`를 사용할 수 있으며, `completed`는 완료되었지만 release baseline으로 공식화되지 않은 target에 사용한다.
+7. v1.2.0 hardening policy에서는 전체 Target Map에서 `active` status row를 최대 하나만 허용하며, multiple active row는 index consistency diagnostic 대상이다.
+
+### 7.4 Completed Work Log 섹션
+
+```md
+## 7. Completed Work Log
+
+| Date | Target | Scope | Requirement IDs | Summary |
+|---|---|---|---|---|
+| 2026-05-10 | v1.0.0 | CLI, MCP | IR-CLI-008, FR-MCP-008 | Active Target 조회/갱신 UX를 CLI와 MCP에 연결했다. |
+```
+
+규칙:
+
+1. Completed Work Log는 완료 판정의 source of truth가 아니라 index-level summary다.
+2. 완료 판정은 Requirement Block의 `Status`, Acceptance Criteria, Verification Evidence, Change Notes를 우선한다.
+3. `Date`는 `YYYY-MM-DD` 형식을 사용한다.
+4. `Target`은 비어 있을 수 있으며, 비어 있는 row는 cross-target completed work로 해석한다.
+5. `Scope`와 `Requirement IDs`는 comma-separated 값을 허용한다.
+6. table cell에는 pipe 문자 `|`를 넣지 않는다.
 
 Target type 값:
 
@@ -1368,7 +1404,7 @@ docs/spec/00.index.md
 
 ### 31.3 파싱 단계
 
-1. `docs/spec/00.index.md`에서 Target Map과 Scope Map을 읽는다.
+1. `docs/spec/00.index.md`에서 index metadata, Target Map, Scope Map을 읽는다.
 2. `docs/spec/**/*.srs.md` 파일 목록을 찾는다.
 3. 각 파일에서 Requirement heading을 찾는다.
 4. heading부터 다음 Requirement heading 전까지를 block으로 추출한다.
@@ -1377,6 +1413,8 @@ docs/spec/00.index.md
 7. Acceptance Criteria task list를 읽는다.
 8. Verification Evidence와 Trace Links table을 읽는다.
 9. validation rule을 적용한다.
+
+v1.2.0 hardening target에서는 parser가 fenced code block 내부 heading-like text를 무시하고, Requirement Block boundary를 다음 valid requirement heading, 다음 관련 top-level `##` section, 또는 파일 끝으로 제한한다. 같은 Requirement Block 안의 중복 section heading, nested Acceptance Criteria, forbidden heading content, malformed table row도 diagnostic으로 보고되어야 한다.
 
 ### 31.4 파서가 하지 말아야 할 일
 
@@ -1401,29 +1439,65 @@ node scripts/spec/validate-spec.js
 
 검증 항목:
 
-| Code | Level | Rule |
+| Code | Severity | Title |
 |---|---|---|
-| `SRS-E001` | error | Requirement ID 중복 |
-| `SRS-E002` | error | Requirement heading 형식 위반 |
-| `SRS-E003` | error | metadata table 누락 |
-| `SRS-E004` | error | 필수 Field 누락 |
-| `SRS-E005` | error | Status enum 위반 |
-| `SRS-E006` | error | Type enum 위반 |
-| `SRS-E007` | error | ID prefix와 Type 불일치 |
-| `SRS-E008` | error | Acceptance Criteria 섹션 누락 |
-| `SRS-E009` | error | `verified` 상태인데 unchecked AC 존재 |
-| `SRS-E010` | error | `verified` 상태인데 Verification Evidence 없음 |
-| `SRS-E011` | error | `Superseded By` 대상 요구사항 없음 |
-| `SRS-E012` | error | Trace Links의 Requirement reference가 존재하지 않음 |
-| `SRS-W001` | warning | Rationale 섹션 없음 |
-| `SRS-W002` | warning | Target이 index에 등록되지 않음 |
-| `SRS-W003` | warning | Related Docs의 local link 파일 없음 |
-| `SRS-W004` | warning | GitHub Issue URL 형식 이상 |
-| `SRS-W005` | warning | heading dash가 em dash가 아님 |
-| `SRS-W006` | warning | 비권장 표현 사용 |
-| `SRS-W007` | warning | Tags 개수 권장치 초과 |
-| `SRS-W008` | warning | `Risk = high`인데 Research / Analysis 없음 |
-| `SRS-W009` | warning | `frozen` target 요구사항에 Change Notes 없이 의미 변경 |
+| `SRS-E001` | error | Malformed requirement heading |
+| `SRS-E002` | error | Duplicate requirement ID |
+| `SRS-E003` | error | Required metadata field missing |
+| `SRS-E004` | error | Type does not match requirement ID prefix |
+| `SRS-E005` | error | Invalid requirement status |
+| `SRS-E006` | error | Invalid requirement priority |
+| `SRS-E007` | error | Invalid requirement risk |
+| `SRS-E008` | error | Acceptance Criteria section missing |
+| `SRS-E009` | error | Verified requirement has unchecked acceptance criteria |
+| `SRS-E010` | error | Verified requirement lacks checked AC or evidence |
+| `SRS-E011` | error | Invalid requirement stability |
+| `SRS-E012` | error | Trace requirement reference missing |
+| `SRS-E013` | error | Target Map table missing |
+| `SRS-E014` | error | Scope Map table missing |
+| `SRS-E015` | error | Scope prefix is not registered |
+| `SRS-E016` | error | Scope document is missing |
+| `SRS-E017` | error | Active Target is not registered |
+| `SRS-E018` | error | Duplicate requirement section |
+| `SRS-E019` | error | Nested acceptance criterion |
+| `SRS-E020` | error | Forbidden requirement heading content |
+| `SRS-E021` | error | Malformed metadata table row |
+| `SRS-E022` | error | Duplicate Target Map target |
+| `SRS-E023` | error | Duplicate Scope Map prefix |
+| `SRS-E024` | error | Multiple active targets |
+| `SRS-E025` | error | Scope document file missing |
+| `SRS-E026` | error | Release target is empty |
+| `SRS-E027` | error | Acceptance Criteria coverage gap |
+| `SRS-E028` | error | Evidence reference missing |
+| `SRS-E029` | error | Evidence URL invalid |
+| `SRS-E030` | error | Command evidence violates policy |
+| `SRS-E031` | error | Trace link target is broken |
+| `SRS-E032` | error | Stale mutation snapshot |
+| `SRS-W001` | warning | Rationale section missing |
+| `SRS-W002` | warning | Target is not registered |
+| `SRS-W003` | warning | Related Docs local link missing |
+| `SRS-W004` | warning | GitHub Issue URL format invalid |
+| `SRS-W005` | warning | Heading dash is not an em dash |
+| `SRS-W006` | warning | Discouraged wording used |
+| `SRS-W007` | warning | Too many tags |
+| `SRS-W008` | warning | High risk requirement lacks Research / Analysis |
+| `SRS-W009` | warning | Frozen target changed without Change Notes |
+| `SRS-W010` | warning | Active Target row is not active |
+| `SRS-W011` | warning | Completed Work Log date is invalid |
+| `SRS-W012` | warning | Completed Work Log target is not registered |
+| `SRS-W013` | warning | Completed Work Log scope is not registered |
+| `SRS-W014` | warning | Completed Work Log requirement is missing |
+| `SRS-W015` | warning | Completed Work Log requirement is not completed |
+| `SRS-W016` | warning | Malformed Verification Evidence table row |
+| `SRS-W017` | warning | Malformed Trace Links table row |
+| `SRS-W018` | warning | Unregistered scope SRS document |
+| `SRS-W019` | warning | Status Summary drift |
+| `SRS-W020` | warning | Requirement Type Summary drift |
+| `SRS-W021` | warning | Release readiness warning |
+
+v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
+
+v1.2.0 hardening target에서는 index consistency diagnostic도 확장한다. Duplicate Target Map target, duplicate Scope Map prefix, multiple active target rows, missing scope document file, unregistered `.srs.md` file, Status Summary drift, Requirement Type Summary drift는 diagnostic으로 보고되어야 한다.
 
 ### 32.2 list-by-target
 
@@ -1765,22 +1839,37 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 
 ## 40. AGENTS.md / CLAUDE.md 추가 문장
 
-아래 블록을 저장소 루트의 `AGENTS.md`, `CLAUDE.md`, 또는 둘 다에 추가한다. 링크 경로는 이 규칙 문서를 저장한 위치에 맞게 조정한다.
+아래 managed block을 저장소 루트의 `AGENTS.md`, `CLAUDE.md`, 또는 둘 다에 추가한다. 기존 block의 version이 다르거나 legacy unversioned heading이면 heading부터 suffix marker까지 현재 block으로 교체한다.
 
 ```md
-# SRS authoring and implementation rules
+# SpecKiwi SRS 워크플로 v1.1
 
-Requirements are maintained as Git-tracked Markdown SRS documents under `docs/spec/`. The SRS document set starts at `docs/spec/00.index.md`; scope requirements live in `docs/spec/**/*.srs.md`; authoring and parsing rules live in `docs/rule/`. Before creating, modifying, implementing, or verifying requirements, read and follow the repository SRS rules: [SRS-MD Authoring Rules v1.0.0](docs/rule/SRS-MD-Rules-v1.0.0.md).
+This repository uses `docs/spec/` as the required source of truth for requirements.
 
-When working on a feature, first open `docs/spec/00.index.md`, find the relevant scope document, then read the matching Requirement Block. A Requirement Block starts with `### {RequirementID} — {Title}` and must preserve its heading, metadata table, and fixed section names.
+Before making any code, test, CLI, MCP, or documentation change, agents MUST:
+1. Read `docs/spec/00.index.md`.
+2. Find the relevant Requirement ID in the scope SRS files.
+3. Mention the Requirement ID in the work summary.
+4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.
 
-Do not rewrite entire SRS documents. Modify only the relevant Requirement Block unless the user explicitly asks for broader restructuring. Do not change Requirement IDs, reuse discarded IDs, invent evidence, create nonexistent links, or replace the required Markdown structure with another format.
+Agents MUST NOT:
+- Implement behavior that is not covered by an SRS requirement.
+- Create an alternate requirements source outside `docs/spec/`.
+- Change requirement IDs manually.
+- Mark requirements as verified without evidence.
 
-Allowed requirement statuses are `planned`, `in_progress`, `blocked`, `implemented`, `verified`, and `discarded`. Use `implemented` when code appears to be complete but verification evidence is incomplete. Use `verified` only when all Acceptance Criteria are checked and Verification Evidence is present.
+When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.
 
-Acceptance Criteria must be written under `#### Acceptance Criteria` as task list items using `- [ ]` or `- [x]`, preferably with `AC-1:`, `AC-2:` identifiers. Verification Evidence must be written under `#### Verification Evidence` as a table linking tests, PRs, code, reviews, analysis, demos, or monitoring evidence.
+Current work status workflow:
+1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.
+2. If `activeTarget` is empty, report that no active target is set and ask which target to use before making target-scoped changes.
+3. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.
+4. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.
+5. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.
 
-If implementation reveals that a requirement is ambiguous, incomplete, conflicting, or assigned to the wrong target, update the SRS minimally and record the reason in `#### Change Notes`. If local scripts exist under `scripts/spec/`, use them for validation, target listing, status updates, and summaries.
+Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
+
+<!-- /SpecKiwi SRS 워크플로 -->
 ```
 
 ---

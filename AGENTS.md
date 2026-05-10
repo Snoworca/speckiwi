@@ -1,0 +1,36 @@
+# SpecKiwi Agent Notes
+
+This repository stores requirements as Markdown SRS documents under `docs/spec/`.
+
+Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback when MCP is unavailable. Never bypass SRS-MD rules, create an alternate requirements source of truth, or edit generated JSON as canonical requirements.
+
+For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md).
+
+# SpecKiwi SRS 워크플로 v1.1
+
+This repository uses `docs/spec/` as the required source of truth for requirements.
+
+Before making any code, test, CLI, MCP, or documentation change, agents MUST:
+1. Read `docs/spec/00.index.md`.
+2. Find the relevant Requirement ID in the scope SRS files.
+3. Mention the Requirement ID in the work summary.
+4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.
+
+Agents MUST NOT:
+- Implement behavior that is not covered by an SRS requirement.
+- Create an alternate requirements source outside `docs/spec/`.
+- Change requirement IDs manually.
+- Mark requirements as verified without evidence.
+
+When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.
+
+Current work status workflow:
+1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.
+2. If `activeTarget` is empty, report that no active target is set and ask which target to use before making target-scoped changes.
+3. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.
+4. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.
+5. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.
+
+Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
+
+<!-- /SpecKiwi SRS 워크플로 -->

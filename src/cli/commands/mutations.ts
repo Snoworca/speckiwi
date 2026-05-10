@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
@@ -6,6 +6,8 @@ import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
+import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
@@ -42,6 +44,15 @@ function parseTraceOptions(rows: string[]) {
   });
 }
 
+function parseDate(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new InvalidArgumentError("date must use YYYY-MM-DD");
+  return value;
+}
+
+function parseRequirementIds(value?: string): string[] {
+  return typeof value === "string" ? value.split(",").map((id) => id.trim()).filter(Boolean) : [];
+}
+
 export function registerMutationCommands(command: Command, context: CliContext): void {
   command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--json").action(async (options) => {
     const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
@@ -59,6 +70,36 @@ export function registerMutationCommands(command: Command, context: CliContext):
     output(context, { json: options.json || command.opts().json }, result);
     if (!result.ok) command.setOptionValue("exitCode", 5);
   });
+
+  command.command("set-active-target").argument("<target>").option("--dry-run").option("--json").action(async (target, options) => {
+    const result = await setActiveTarget(await rootFrom(command.opts()), { target, dryRun: Boolean(options.dryRun) });
+    output(context, { json: options.json || command.opts().json }, result);
+    if (!result.ok) command.setOptionValue("exitCode", 5);
+  });
+
+  command
+    .command("add-completed-work")
+    .requiredOption("--date <date>", "completion date as YYYY-MM-DD", parseDate)
+    .requiredOption("--summary <summary>")
+    .option("--target <target>")
+    .option("--scope <scope>")
+    .option("--requirements <ids>")
+    .option("--allow-incomplete", "allow historical or incomplete Completed Work Log references")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (options) => {
+      const result = await addCompletedWork(await rootFrom(command.opts()), {
+        date: options.date,
+        summary: options.summary,
+        ...(typeof options.target === "string" ? { target: options.target } : {}),
+        ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
+        requirementIds: parseRequirementIds(options.requirements),
+        allowIncomplete: Boolean(options.allowIncomplete),
+        dryRun: Boolean(options.dryRun)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   for (const [name, checked] of [
     ["check-ac", true],

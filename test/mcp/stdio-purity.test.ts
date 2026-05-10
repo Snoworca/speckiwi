@@ -26,19 +26,28 @@ describe("real stdio MCP server", () => {
     try {
       const tools = await client.listTools();
       const addRequirement = tools.tools.find((tool) => tool.name === "add_requirement");
+      const addCompletedWork = tools.tools.find((tool) => tool.name === "add_completed_work");
       const initProject = tools.tools.find((tool) => tool.name === "init_project");
       const listRequirements = tools.tools.find((tool) => tool.name === "list_requirements");
+      const listCompletedWork = tools.tools.find((tool) => tool.name === "list_completed_work");
+      const getActiveTarget = tools.tools.find((tool) => tool.name === "get_active_target");
       expect(addRequirement?.inputSchema.properties).toHaveProperty("requirement");
       expect(addRequirement?.inputSchema.required).toContain("requirement");
+      expect(addCompletedWork?.inputSchema.properties).toHaveProperty("date");
       expect(initProject?.inputSchema.properties).not.toHaveProperty("agentFile");
       expect(initProject?.inputSchema.properties).not.toHaveProperty("agentFiles");
       expect(listRequirements?.annotations?.readOnlyHint).toBe(true);
+      expect(listCompletedWork?.annotations?.readOnlyHint).toBe(true);
+      expect(getActiveTarget?.annotations?.readOnlyHint).toBe(true);
 
       const resources = await client.listResources();
       expect(resources.resources.map((resource) => resource.uri)).toContain("speckiwi://index");
+      expect(resources.resources.map((resource) => resource.uri)).toContain("speckiwi://active-target");
+      expect(resources.resources.map((resource) => resource.uri)).toContain("speckiwi://completed-work");
 
       const templates = await client.listResourceTemplates();
       expect(templates.resourceTemplates.map((template) => template.uriTemplate).sort()).toEqual([
+        "speckiwi://completed-work/{target}",
         "speckiwi://requirements/{id}",
         "speckiwi://scopes/{scope}",
         "speckiwi://targets/{target}"
@@ -47,6 +56,16 @@ describe("real stdio MCP server", () => {
       const result = await client.callTool({ name: "list_requirements", arguments: {} });
       const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
       expect(JSON.parse(text)).toMatchObject({ ok: true });
+
+      const completedResource = await client.readResource({ uri: "speckiwi://completed-work" });
+      const completedText = completedResource.contents[0]?.text;
+      expect(typeof completedText).toBe("string");
+      expect(JSON.parse(String(completedText))).toMatchObject({
+        ok: true,
+        value: { completedWork: expect.any(Array) },
+        diagnostics: expect.any(Array),
+        diagnosticsSummary: expect.any(Object)
+      });
     } finally {
       await client.close();
     }
@@ -94,8 +113,9 @@ describe("real stdio MCP server", () => {
       const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
       expect(JSON.parse(text)).toMatchObject({ ok: true, value: { records: [] } });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });
@@ -120,8 +140,9 @@ describe("real stdio MCP server", () => {
       const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
       expect(JSON.parse(text)).toMatchObject({ ok: true });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });

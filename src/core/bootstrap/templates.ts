@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface InitTemplateInput {
   product?: string;
@@ -8,14 +8,19 @@ export interface InitTemplateInput {
 }
 
 export interface AgentInstructionOptions {
-  rulesPath?: string;
+  version?: string;
 }
+
+export const AGENT_INSTRUCTION_VERSION = "1.1";
+export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
+export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 
 export function renderIndexTemplate(input: InitTemplateInput = {}): string {
   const product = input.product ?? "SpecKiwi Project";
-  const target = input.target ?? "v1.0.0";
+  const target = input.target?.trim();
   const scope = parseScopeOption(input.scope);
-  return [
+  const targetRows = target ? [`| ${target} | release | planned | Initial target |`] : [];
+  const lines = [
     `# ${product} SRS Index`,
     "",
     "| Field | Value |",
@@ -23,6 +28,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "| Document Type | srs_index |",
     `| Product | ${product} |`,
     "| Product Version | 1.0.0 |",
+    "| Active Target |  |",
     "| Status | draft |",
     "| Rules | [SRS-MD Authoring Rules v1.0.0](../rule/SRS-MD-Rules-v1.0.0.md) |",
     "",
@@ -40,14 +46,56 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "| Target | Type | Status | Description |",
     "|---|---|---|---|",
-    `| ${target} | release | active | Initial target |`,
+    ...targetRows,
     "",
     "## 4. Scope Map",
     "",
     "| Scope | Document | Prefix | Description |",
     "|---|---|---|---|",
-    `| ${scope.name} | [${scope.document}](./${scope.document}) | ${scope.prefix} | ${scope.name} |`
-  ].join("\n");
+    `| ${scope.name} | [${scope.document}](./${scope.document}) | ${scope.prefix} | ${scope.name} |`,
+    "",
+    "## 5. Status Summary",
+    "",
+    "| Status | Count |",
+    "|---|---:|",
+    "| planned | 0 |",
+    "| in_progress | 0 |",
+    "| blocked | 0 |",
+    "| implemented | 0 |",
+    "| verified | 0 |",
+    "| discarded | 0 |",
+    "",
+    "## 6. Requirement Type Summary",
+    "",
+    "| Type | Prefix | Count |",
+    "|---|---|---:|",
+    "",
+    "## 7. Completed Work Log",
+    "",
+    "| Date | Target | Scope | Requirement IDs | Summary |",
+    "|---|---|---|---|---|",
+    "",
+    "## 8. Cross-scope Dependencies",
+    "",
+    "| From | To | Relation | Notes |",
+    "|---|---|---|---|",
+    "",
+    "## 9. Open Questions",
+    "",
+    "| ID | Question | Impact | Status |",
+    "|---|---|---|---|",
+    "",
+    "## 10. Reference Documents",
+    "",
+    "- [SRS-MD Authoring Rules v1.0.0](../rule/SRS-MD-Rules-v1.0.0.md)",
+    "",
+    "## 11. Change Notes",
+    "",
+    "| Date | Change | Reason |",
+    "|---|---|---|",
+    "| 2026-05-10 | Initial SRS index created | SpecKiwi init |"
+  ];
+  return lines.join("\n");
 }
 
 export function renderAppendixTemplate(): string {
@@ -110,27 +158,51 @@ export function renderEmptyScopeTemplate(scope: ScopeTemplateInfo = parseScopeOp
 }
 
 export async function loadBundledRulesDocument(): Promise<string> {
-  const candidate = path.resolve("docs", "rule", "SRS-MD-Rules-v1.0.0.md");
+  const candidate = fileURLToPath(new URL("../../../docs/rule/SRS-MD-Rules-v1.0.0.md", import.meta.url));
   try {
     return await readFile(candidate, "utf8");
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return [
       "# SRS-MD Authoring Rules v1.0.0",
       "",
       "## Agent Instruction Snippet",
       "",
-      "Read docs/spec/00.index.md first and follow docs/rule/SRS-MD-Rules-v1.0.0.md."
+      renderAgentInstructionSnippet()
     ].join("\n");
   }
 }
 
 export function renderAgentInstructionSnippet(options: AgentInstructionOptions = {}): string {
-  const rulesPath = options.rulesPath ?? "docs/rule/SRS-MD-Rules-v1.0.0.md";
+  const version = options.version ?? AGENT_INSTRUCTION_VERSION;
   return [
-    "# SpecKiwi SRS workflow",
+    `${AGENT_INSTRUCTION_HEADING_PREFIX}${version}`,
     "",
-    `This repository stores requirements as Markdown SRS documents under \`docs/spec/\`. For detailed authoring and validation rules, read [the rules document](${rulesPath}).`,
+    "This repository uses `docs/spec/` as the required source of truth for requirements.",
     "",
-    "Prefer SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback when MCP is unavailable. Never bypass SRS-MD rules or create an alternate requirements source of truth."
+    "Before making any code, test, CLI, MCP, or documentation change, agents MUST:",
+    "1. Read `docs/spec/00.index.md`.",
+    "2. Find the relevant Requirement ID in the scope SRS files.",
+    "3. Mention the Requirement ID in the work summary.",
+    "4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.",
+    "",
+    "Agents MUST NOT:",
+    "- Implement behavior that is not covered by an SRS requirement.",
+    "- Create an alternate requirements source outside `docs/spec/`.",
+    "- Change requirement IDs manually.",
+    "- Mark requirements as verified without evidence.",
+    "",
+    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.",
+    "",
+    "Current work status workflow:",
+    "1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
+    "2. If `activeTarget` is empty, report that no active target is set and ask which target to use before making target-scoped changes.",
+    "3. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.",
+    "4. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.",
+    "5. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.",
+    "",
+    "Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
+    "",
+    AGENT_INSTRUCTION_END_MARKER
   ].join("\n");
 }

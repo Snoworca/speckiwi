@@ -4,6 +4,8 @@ import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
+import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import type { McpDependencies, McpServerHandle } from "../adapter.js";
 import { resultToMcp } from "../errors.js";
@@ -34,6 +36,19 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
   );
   server.registerTool("add_trace_link", async (input) =>
     resultToMcp(await addTraceLink(await root(deps, input), { id: String(input.id), type: String(input.type), reference: String(input.reference), relation: String(input.relation) }))
+  );
+  server.registerTool("set_active_target", async (input) => resultToMcp(await setActiveTarget(await root(deps, input), { target: String(input.target), dryRun: Boolean(input.dryRun) })));
+  server.registerTool("add_completed_work", async (input) =>
+    resultToMcp(
+      await addCompletedWork(await root(deps, input), {
+        date: String(input.date),
+        summary: String(input.summary),
+        ...(typeof input.target === "string" ? { target: input.target } : {}),
+        ...(typeof input.scope === "string" ? { scope: input.scope } : {}),
+        requirementIds: stringArray(input.requirementIds),
+        dryRun: Boolean(input.dryRun)
+      })
+    )
   );
   server.registerTool("add_requirement", async (input) =>
     {

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Release acceptance tests
+        run: npm run release:acceptance
+
+      - name: Release readiness check
+        run: npm run release:check
+
+      - name: Parser performance gate
+        run: npm run perf:srs
+
+      - name: SRS validation
+        run: node bin/speckiwi validate --json
+
+      - name: Coverage gate
+        run: npm run test:coverage
+
+      - name: Package smoke test
+        run: npx vitest run test/smoke/package.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism

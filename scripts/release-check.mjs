@@ -4,7 +4,8 @@ import { summarizeReleaseReadiness } from "../dist/core/workflow/release-readine
 
 const root = await resolveProjectRoot(process.cwd());
 const workspace = await parseWorkspace(root);
-const summary = summarizeReleaseReadiness(workspace, process.env.SPECKIWI_TARGET ?? "v1.0.0");
+const target = Object.prototype.hasOwnProperty.call(process.env, "SPECKIWI_TARGET") ? process.env.SPECKIWI_TARGET : undefined;
+const summary = summarizeReleaseReadiness(workspace, target === undefined ? undefined : { target });
 const strict = process.argv.includes("--strict") || process.env.SPECKIWI_STRICT_READY === "1";
 process.stdout.write(`${JSON.stringify(summary)}\n`);
-process.exitCode = summary.validationErrors > 0 || (strict && !summary.ready) ? 1 : 0;
+process.exitCode = summary.diagnosticsSummary.errors > 0 || (strict && !summary.ready) ? 1 : 0;

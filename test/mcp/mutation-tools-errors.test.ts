@@ -21,7 +21,18 @@ describe("MCP mutation tools and structured errors", () => {
 
     expect(await server.callTool("check_acceptance_criteria", { id: "FR-ARCH-001", acIds: ["all"], checked: true })).toMatchObject({ ok: true });
     expect(await server.callTool("add_verification_evidence", { id: "FR-ARCH-001", type: "test", reference: "test/mcp/mutation-tools-errors.test.ts", covers: "all" })).toMatchObject({ ok: true });
+    expect(await server.callTool("set_active_target", { target: "v1.1.0" })).toMatchObject({ ok: true, value: { activeTarget: "v1.1.0" } });
     expect(await server.callTool("update_status", { id: "FR-ARCH-001", status: "verified" })).toMatchObject({ ok: true });
+    expect(await server.callTool("add_completed_work", { date: "2026-05-10", target: "v1.1.0", scope: "ARCH", requirementIds: ["FR-ARCH-001"], summary: "MCP completed work row." })).toMatchObject({
+      ok: true,
+      value: { written: true }
+    });
+    expect(await server.callTool("add_completed_work", { date: "2026-05-10", summary: "MCP dry-run completed work row.", dryRun: true })).toMatchObject({
+      ok: true,
+      value: { written: false },
+      patch: { dryRun: true }
+    });
+    expect(await server.callTool("add_completed_work", { date: "2026-05-10", summary: "Bad | row" })).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
     expect(await server.callTool("update_status", { id: "MISSING", status: "verified" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
     expect(
       await server.callTool("add_requirement", {
@@ -36,6 +47,8 @@ describe("MCP mutation tools and structured errors", () => {
         dryRun: true
       })
     ).toMatchObject({ ok: true, value: { requirementId: "FR-ARCH-002", written: false } });
+    expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target | v1.1.0 |");
+    expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | MCP completed work row. |");
     expect(
       await server.callTool("add_requirement", {
         type: "functional",
@@ -53,7 +66,9 @@ describe("MCP mutation tools and structured errors", () => {
     registerMutationTools(server, { root });
 
     expect(await server.callTool("init_project", { target: "v1.0.0", scope: "Payments:PAY" })).toMatchObject({ ok: true });
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+    expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
+    expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| v1.0.0 | release | planned | Initial target |");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
   });
 });

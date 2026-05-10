@@ -1,0 +1,1051 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260510-active-target-completed-work-log",
+  "produced_at": "2026-05-10T00:00:00+09:00",
+  "default_turn_estimate": 8,
+  "target": "v1.1.0",
+  "scope_freeze": true,
+  "coverage_mode": "feature-implementation",
+  "change_log": [],
+  "platforms": [
+    "win32",
+    "posix"
+  ],
+  "source_spec": [
+    "docs/research/05.active-target-completed-work-log-research.md",
+    "SRD.md",
+    "docs/spec/00.index.md",
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/30.cli-interface.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/spec/50.nodejs-implementation.srs.md",
+    "docs/spec/60.workflow-release.srs.md",
+    "docs/rule/SRS-MD-Rules-v1.0.0.md"
+  ],
+  "phase_dependencies": {
+    "P1": [],
+    "P2": [
+      "P1"
+    ],
+    "P3": [
+      "P2"
+    ],
+    "P4": [
+      "P1",
+      "P2",
+      "P3"
+    ]
+  },
+  "dod_policy": "Phase Markdown DoD is normative; task_dod_summary is the machine-readable duplicate for PM/coder execution.",
+  "task_dod_summary": {
+    "TASK-P1-001": [
+      "SRS and rules document empty Active Target semantics",
+      "Completed Work Log table contract exists in docs and rules",
+      "IR-CLI-020, FR-MCP-012, FR-NODE-010, and FR-FLOW-006 Requirement Blocks exist",
+      "CLI, MCP, appendix, and README names match"
+    ],
+    "TASK-P1-002": [
+      "agent instruction version is v1.1",
+      "init template creates empty Active Target",
+      "init template creates empty Completed Work Log table",
+      "init with target creates planned Target Map row"
+    ],
+    "TASK-P2-001": [
+      "IndexDocument.completedWork is always an array",
+      "explicit empty Active Target row returns empty string",
+      "missing Active Target row keeps legacy fallback",
+      "Completed Work Log rows parse requirementIds and line numbers"
+    ],
+    "TASK-P2-002": [
+      "completed work filter service supports target, scope, since, and limit",
+      "TargetSummary includes completedWork",
+      "target filters include targetless cross-target rows",
+      "empty Active Target does not fallback in query",
+      "Completed Work Log inconsistencies emit warnings"
+    ],
+    "TASK-P3-001": [
+      "addCompletedWork appends rows",
+      "missing section and missing table cases are repaired",
+      "invalid date input is rejected",
+      "pipe-containing input is rejected",
+      "dry-run returns patch preview without write"
+    ],
+    "TASK-P3-002": [
+      "CLI completed-work reads rows with filters",
+      "CLI target filters include targetless rows",
+      "CLI add-completed-work appends through core mutation",
+      "CLI dry-run matches core mutation",
+      "active-target reports empty active target honestly"
+    ],
+    "TASK-P3-003": [
+      "MCP exposes list_completed_work and add_completed_work",
+      "MCP completed work resources are registered",
+      "MCP summarize_target and get_active_target include completedWork",
+      "MCP schemas and readOnlyHint annotations are correct",
+      "MCP mutation behavior matches core mutation"
+    ],
+    "TASK-P4-001": [
+      "typecheck, lint, full test, release check, and release acceptance pass",
+      "verification failures are routed back to the owning Phase"
+    ],
+    "TASK-P4-002": [
+      "SRS evidence references passed commands only",
+      "index summaries and Change Notes are updated",
+      "Completed Work Log contains one concise row for the feature",
+      "release acceptance passes after evidence updates"
+    ]
+  },
+  "pre_commit_gate": [
+    {
+      "shell": "pwsh",
+      "cmd": "npm run typecheck",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run lint",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm test",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run release:check",
+      "expected_exit": 0
+    },
+    {
+      "shell": "pwsh",
+      "cmd": "npm run release:acceptance",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run typecheck",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run lint",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm test",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run release:check",
+      "expected_exit": 0
+    },
+    {
+      "shell": "bash",
+      "cmd": "npm run release:acceptance",
+      "expected_exit": 0
+    }
+  ],
+  "forbidden_patterns": [
+    {
+      "pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든",
+      "flags": ""
+    },
+    {
+      "pattern": "git\\s+reset\\s+--hard",
+      "flags": "i"
+    },
+    {
+      "pattern": "rm\\s+-rf\\s+(/|\\.|\\*)",
+      "flags": "i"
+    },
+    {
+      "pattern": "Remove-Item\\s+-Recurse\\s+-Force",
+      "flags": "i"
+    },
+    {
+      "pattern": "dd\\s+if=",
+      "flags": "i"
+    },
+    {
+      "pattern": "mkfs(\\.|\\s)",
+      "flags": "i"
+    },
+    {
+      "pattern": "kill\\s+-9\\s+-1",
+      "flags": "i"
+    },
+    {
+      "pattern": "shutdown\\b",
+      "flags": "i"
+    },
+    {
+      "pattern": "chmod\\s+777\\s+/",
+      "flags": "i"
+    },
+    {
+      "pattern": "curl\\b[^\\n]*\\|\\s*sh",
+      "flags": "i"
+    },
+    {
+      "pattern": "wget\\b[^\\n]*\\|\\s*sh",
+      "flags": "i"
+    },
+    {
+      "pattern": "while\\s+true",
+      "flags": "i"
+    },
+    {
+      "pattern": "eval\\s+\\$\\(",
+      "flags": "i"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-P1-001",
+      "phase": "P1",
+      "owns": [
+        "SRD.md",
+        "docs/spec/00.index.md",
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md",
+        "docs/spec/90.appendix.md",
+        "docs/rule/SRS-MD-Rules-v1.0.0.md",
+        "README.md"
+      ],
+      "related_requirements": [
+        "FR-PARSE-010",
+        "IR-CLI-020",
+        "FR-MCP-012",
+        "FR-FLOW-006"
+      ],
+      "supporting_requirements": [
+        "IR-CLI-003",
+        "IR-CLI-008",
+        "FR-MCP-008",
+        "FR-MCP-009",
+        "FR-NODE-009"
+      ],
+      "coverage_type": "contract-update",
+      "feasibility": "Low",
+      "turn_estimate": 5,
+      "title": "Update SRS, rules, appendix, and README contract for empty Active Target and Completed Work Log",
+      "reads": [
+        "docs/research/05.active-target-completed-work-log-research.md",
+        "SRD.md",
+        "docs/spec/00.index.md",
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md"
+      ],
+      "prerequisites": [
+        "No code changes from P2 or P3 are required before this task."
+      ],
+      "signatures": [
+        "N/A — documentation task"
+      ],
+      "implementation_guide": [
+        "Add Completed Work Log section after Requirement Type Summary in docs/spec/00.index.md and renumber later sections.",
+        "Update Active Target policy so explicit empty value means no active target and missing row alone uses legacy fallback.",
+        "Create exact new Requirement Blocks IR-CLI-020, FR-MCP-012, FR-NODE-010, and FR-FLOW-006 with measurable AC.",
+        "Update appendix, rules, README, and SRD command/tool/resource references to the same names."
+      ],
+      "rationale": "The SRS contract must be fixed before implementation because current interim code initializes Active Target to a real target.",
+      "pitfalls": [
+        "Do not describe Completed Work Log as completion source of truth.",
+        "Do not leave text that says init sets Active Target to the initialized target."
+      ],
+      "test_guide": [
+        "Confirm the Completed Work Log phrase appears in all documentation surfaces.",
+        "Confirm old automatic active-target policy strings are absent.",
+        "Confirm the four new Requirement IDs exist in docs/spec."
+      ],
+      "dod": [
+        "SRS and rules document empty Active Target semantics.",
+        "Completed Work Log table contract exists in docs and rules.",
+        "CLI, MCP, appendix, and README names match."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "docs/research/05.active-target-completed-work-log-research.md:47-119",
+        "docs/research/05.active-target-completed-work-log-research.md:248-326",
+        "docs/spec/00.index.md:72-120",
+        "docs/spec/20.parser-validation.srs.md:555-604",
+        "docs/spec/30.cli-interface.srs.md:455-504",
+        "docs/spec/40.mcp-stdio-interface.srs.md:570-659",
+        "docs/spec/50.nodejs-implementation.srs.md:794-856",
+        "docs/spec/60.workflow-release.srs.md:274-303"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "rg \"Completed Work Log\" SRD.md docs/spec docs/rule README.md",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "rg \"초기 target 값|initialized target|초기 target\" SRD.md docs/spec docs/rule README.md",
+          "expected_exit": 1
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "rg \"IR-CLI-020|FR-MCP-012|FR-NODE-010|FR-FLOW-006\" docs/spec",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "rg \"\\| Date \\| Target \\| Scope \\| Requirement IDs \\| Summary \\|\" docs/spec/00.index.md docs/rule/SRS-MD-Rules-v1.0.0.md README.md",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "rg \"Completed Work Log\" SRD.md docs/spec docs/rule README.md",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "rg \"초기 target 값|initialized target|초기 target\" SRD.md docs/spec docs/rule README.md",
+          "expected_exit": 1
+        },
+        {
+          "shell": "bash",
+          "cmd": "rg \"IR-CLI-020|FR-MCP-012|FR-NODE-010|FR-FLOW-006\" docs/spec",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "rg \"\\| Date \\| Target \\| Scope \\| Requirement IDs \\| Summary \\|\" docs/spec/00.index.md docs/rule/SRS-MD-Rules-v1.0.0.md README.md",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Revert only the documentation files listed in TASK-P1-001 from the current patch. 2) Keep code files untouched and re-run rg \"Completed Work Log\" to confirm the contract rollback."
+      }
+    },
+    {
+      "id": "TASK-P1-002",
+      "phase": "P1",
+      "owns": [
+        "src/core/bootstrap/templates.ts",
+        "src/core/bootstrap/init-project.ts",
+        "test/core/bootstrap/init-project.test.ts",
+        "test/cli/mutation-commands.test.ts",
+        "test/mcp/mutation-tools-errors.test.ts",
+        "test/mcp/stdio-purity.test.ts"
+      ],
+      "related_requirements": [
+        "FR-NODE-009",
+        "FR-FLOW-005",
+        "FR-FLOW-006"
+      ],
+      "supporting_requirements": [
+        "IR-CLI-003",
+        "FR-MCP-011"
+      ],
+      "coverage_type": "contract-update",
+      "feasibility": "Medium",
+      "turn_estimate": 6,
+      "title": "Update init template and managed agent instruction block to v1.1",
+      "reads": [
+        "src/core/bootstrap/templates.ts",
+        "src/core/bootstrap/init-project.ts",
+        "test/core/bootstrap/init-project.test.ts",
+        "test/mcp/stdio-purity.test.ts"
+      ],
+      "prerequisites": [
+        "TASK-P1-001 contract text is available for expected wording."
+      ],
+      "signatures": [
+        "function renderIndexTemplate(input?: InitTemplateInput): string",
+        "function renderAgentInstructionSnippet(options?: AgentInstructionOptions): string",
+        "async function initProject(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>>"
+      ],
+      "implementation_guide": [
+        "Set AGENT_INSTRUCTION_VERSION to 1.1.",
+        "Add MCP and CLI current-work lookup steps to renderAgentInstructionSnippet.",
+        "Render Active Target metadata as an empty value.",
+        "Render no Target Map row when input.target is absent and a planned row when input.target is present.",
+        "Render an empty Completed Work Log table in the index template."
+      ],
+      "rationale": "Managed instruction contents change, so stale v1.0 blocks must be replaced and new workspaces must not invent an active target.",
+      "pitfalls": [
+        "Do not change the suffix marker safety behavior.",
+        "Do not fill Active Target from input.target during init."
+      ],
+      "test_guide": [
+        "Assert default init contains an empty Active Target row.",
+        "Assert init with target keeps Active Target empty and creates a planned target row.",
+        "Assert stale v1.0 managed blocks are replaced by v1.1."
+      ],
+      "dod": [
+        "Generated agent files contain v1.1.",
+        "Init templates include empty Active Target and Completed Work Log table.",
+        "Managed block replacement remains idempotent."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "src/core/bootstrap/templates.ts:14-16",
+        "src/core/bootstrap/templates.ts:18-55",
+        "src/core/bootstrap/templates.ts:132-154",
+        "src/core/bootstrap/init-project.ts:40-123",
+        "test/core/bootstrap/init-project.test.ts:15-165",
+        "test/mcp/stdio-purity.test.ts:83-132"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/cli/mutation-commands.test.ts test/mcp/mutation-tools-errors.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/cli/mutation-commands.test.ts test/mcp/mutation-tools-errors.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Restore template version and init template edits from this TASK only. 2) Restore the matching init, CLI, MCP startup test expectations and rerun the listed vitest command."
+      }
+    },
+    {
+      "id": "TASK-P2-001",
+      "phase": "P2",
+      "owns": [
+        "src/core/types.ts",
+        "src/core/parser/index-parser.ts",
+        "test/core/parser/workspace-records.test.ts",
+        "test/fixtures/workspaces/valid-basic/docs/spec/00.index.md",
+        "test/fixtures/workspaces/mutation-target/docs/spec/00.index.md"
+      ],
+      "related_requirements": [
+        "FR-PARSE-010",
+        "FR-NODE-010"
+      ],
+      "supporting_requirements": [
+        "FR-NODE-007",
+        "FR-NODE-009"
+      ],
+      "coverage_type": "feature-core",
+      "feasibility": "Medium",
+      "turn_estimate": 6,
+      "title": "Parse Completed Work Log and preserve explicit empty Active Target",
+      "reads": [
+        "src/core/types.ts",
+        "src/core/parser/index-parser.ts",
+        "src/core/parser/table.ts",
+        "test/core/parser/workspace-records.test.ts",
+        "test/fixtures/workspaces/valid-basic/docs/spec/00.index.md"
+      ],
+      "prerequisites": [
+        "TASK-P1-002 has updated fixture/template expectations."
+      ],
+      "signatures": [
+        "export interface CompletedWorkEntry",
+        "export interface IndexDocument",
+        "function parseIndexDocument(file: TextFile): { index: IndexDocument; diagnostics: Diagnostic[] }"
+      ],
+      "implementation_guide": [
+        "Add CompletedWorkEntry and IndexDocument.completedWork.",
+        "Find Completed Work Log by heading regex rather than section number.",
+        "Map Date, Target, Scope, Requirement IDs, Summary, and line number from the table.",
+        "Use explicit Active Target metadata value when the row exists, including the empty string.",
+        "Use Target Map fallback only when the metadata row is missing."
+      ],
+      "rationale": "Parser must preserve the difference between no active target and legacy indexes without the metadata row.",
+      "pitfalls": [
+        "Do not use logical OR fallback after trimming Active Target.",
+        "Do not error when Completed Work Log is missing."
+      ],
+      "test_guide": [
+        "Cover missing section, empty table, populated table, requirement ID split, and line number.",
+        "Cover explicit empty Active Target and missing-row legacy fallback."
+      ],
+      "dod": [
+        "IndexDocument.completedWork is always an array.",
+        "Explicit empty Active Target row returns empty string.",
+        "Missing Active Target row keeps legacy fallback."
+      ],
+      "idempotent": true,
+      "source_anchors": [
+        "src/core/types.ts:85-104",
+        "src/core/parser/index-parser.ts:14-43",
+        "src/core/parser/table.ts:21-52",
+        "src/core/parser/workspace-parser.ts:7-27",
+        "test/core/parser/workspace-records.test.ts:7-17",
+        "test/fixtures/workspaces/valid-basic/docs/spec/00.index.md:1-44"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Remove CompletedWorkEntry and parser mapping edits from src/core/types.ts and src/core/parser/index-parser.ts. 2) Restore parser tests and fixtures touched by this TASK, then rerun parser tests."
+      }
+    },
+    {
+      "id": "TASK-P2-002",
+      "phase": "P2",
+      "owns": [
+        "src/core/validator/rules.ts",
+        "src/core/query/summary.ts",
+        "src/core/query/completed-work.ts",
+        "test/core/validator/validation-rules.test.ts",
+        "test/core/query/completed-work.test.ts"
+      ],
+      "related_requirements": [
+        "FR-PARSE-010",
+        "FR-MCP-008",
+        "FR-NODE-010"
+      ],
+      "supporting_requirements": [
+        "IR-CLI-008",
+        "IR-CLI-020",
+        "FR-MCP-012"
+      ],
+      "coverage_type": "feature-core",
+      "feasibility": "Medium",
+      "turn_estimate": 6,
+      "title": "Validate Completed Work Log and expose completed work query filters",
+      "reads": [
+        "src/core/validator/rules.ts",
+        "src/core/query/summary.ts",
+        "src/core/query/lookup.ts",
+        "test/core/validator/validation-rules.test.ts"
+      ],
+      "prerequisites": [
+        "TASK-P2-001 has added IndexDocument.completedWork."
+      ],
+      "signatures": [
+        "function listCompletedWork(workspace: ParsedWorkspace, filter?: CompletedWorkFilter): CompletedWorkEntry[]",
+        "function summarizeTarget(workspace: ParsedWorkspace, target?: string): TargetSummary",
+        "function resolveActiveTarget(workspace: ParsedWorkspace): string"
+      ],
+      "implementation_guide": [
+        "Create src/core/query/completed-work.ts with target, scope, since, and limit filters.",
+        "Treat targetless rows as cross-target rows included in target-filtered results.",
+        "Add TargetSummary.completedWork.",
+        "Remove query-layer Active Target fallback.",
+        "Emit warnings for invalid Completed Work Log date, target, scope, requirement ID, and non-completed status."
+      ],
+      "rationale": "CLI and MCP need one shared filtering contract, and targetless completed work should not disappear from target summaries.",
+      "pitfalls": [
+        "Do not turn historical completed work inconsistencies into validation errors.",
+        "Do not hide targetless completed work when a target filter is applied."
+      ],
+      "test_guide": [
+        "Cover each filter field and targetless inclusion.",
+        "Cover validator warnings and empty Active Target validity.",
+        "Cover TargetSummary.completedWork."
+      ],
+      "dod": [
+        "Completed work filter service is exported and covered.",
+        "TargetSummary includes completedWork.",
+        "Completed Work Log inconsistencies emit warnings only."
+      ],
+      "idempotent": true,
+      "source_anchors": [
+        "src/core/query/lookup.ts:8-10",
+        "src/core/query/summary.ts:3-20",
+        "src/core/validator/rules.ts:26-103",
+        "test/core/validator/validation-rules.test.ts:30-42"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/core/validator/validation-rules.test.ts test/core/query/completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/core/validator/validation-rules.test.ts test/core/query/completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Remove src/core/query/completed-work.ts and related imports. 2) Restore TargetSummary and validator edits from this TASK, then rerun validator and query tests."
+      }
+    },
+    {
+      "id": "TASK-P3-001",
+      "phase": "P3",
+      "owns": [
+        "src/core/mutation/add-completed-work.ts",
+        "test/core/mutation/add-completed-work.test.ts",
+        "src/core/types.ts"
+      ],
+      "related_requirements": [
+        "FR-NODE-010"
+      ],
+      "supporting_requirements": [
+        "FR-NODE-002",
+        "FR-PARSE-010"
+      ],
+      "coverage_type": "feature-core",
+      "feasibility": "Medium",
+      "turn_estimate": 7,
+      "title": "Implement addCompletedWork core mutation",
+      "reads": [
+        "src/core/mutation/set-active-target.ts",
+        "src/core/mutation/add-evidence.ts",
+        "src/core/parser/table.ts",
+        "src/core/patch/patch-plan.ts"
+      ],
+      "prerequisites": [
+        "TASK-P2-001 parser table contract exists."
+      ],
+      "signatures": [
+        "export interface AddCompletedWorkInput",
+        "async function addCompletedWork(root: ProjectRoot, input: AddCompletedWorkInput): Promise<MutationResult>"
+      ],
+      "implementation_guide": [
+        "Validate date and summary presence.",
+        "Reject date values that are not YYYY-MM-DD.",
+        "Reject pipe characters in all table cell inputs.",
+        "Insert row into existing table, create missing table, or create missing section before Change Notes.",
+        "Use createPatchPlan, applyPatchPlan, and summarizePatch for write and dry-run behavior."
+      ],
+      "rationale": "The append operation is an index-level table mutation and must be shared by CLI and MCP.",
+      "pitfalls": [
+        "Do not attempt escaped pipe round-trip support in this task.",
+        "Do not append the section after Change Notes when a deterministic insertion before Change Notes is available."
+      ],
+      "test_guide": [
+        "Cover append, missing table, missing section, invalid date, pipe rejection, dry-run, and CRLF preservation."
+      ],
+      "dod": [
+        "Rows append through the patch engine.",
+        "Invalid date and pipe-containing input are rejected before write.",
+        "Dry-run returns patch preview without writing."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "src/core/mutation/set-active-target.ts:31-81",
+        "src/core/mutation/add-evidence.ts:16-25",
+        "src/core/patch/patch-plan.ts:18-44",
+        "src/core/parser/table.ts:21-40",
+        "test/core/mutation/set-active-target.test.ts:8-40"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/core/mutation/add-completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/core/mutation/add-completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Delete src/core/mutation/add-completed-work.ts and its test file. 2) Remove exports or imports introduced by this TASK, then rerun core mutation tests."
+      }
+    },
+    {
+      "id": "TASK-P3-002",
+      "phase": "P3",
+      "owns": [
+        "src/cli/commands/read.ts",
+        "src/cli/commands/mutations.ts",
+        "test/cli/read-commands.test.ts",
+        "test/cli/mutation-commands.test.ts"
+      ],
+      "related_requirements": [
+        "IR-CLI-008",
+        "IR-CLI-020"
+      ],
+      "supporting_requirements": [
+        "IR-CLI-002",
+        "IR-CLI-015"
+      ],
+      "coverage_type": "feature-adapter",
+      "feasibility": "Medium",
+      "turn_estimate": 6,
+      "title": "Connect completed-work and add-completed-work CLI commands",
+      "reads": [
+        "src/cli/commands/read.ts",
+        "src/cli/commands/mutations.ts",
+        "src/core/query/completed-work.ts",
+        "src/core/mutation/add-completed-work.ts"
+      ],
+      "prerequisites": [
+        "TASK-P2-002 and TASK-P3-001 are implemented."
+      ],
+      "signatures": [
+        "function registerReadCommands(command: Command, context: CliContext): void",
+        "function registerMutationCommands(command: Command, context: CliContext): void"
+      ],
+      "implementation_guide": [
+        "Add completed-work read command with target, scope, since, limit, and json options.",
+        "Validate since as YYYY-MM-DD and limit as a positive integer.",
+        "Return { completedWork } from listCompletedWork.",
+        "Assert active-target --json reports empty activeTarget and summary.completedWork.",
+        "Add add-completed-work mutation command with date, summary, target, scope, requirements, dry-run, and json options."
+      ],
+      "rationale": "CLI users need the same completed work read and append behavior that MCP agents use.",
+      "pitfalls": [
+        "Do not parse a target from Active Target when it is empty.",
+        "Do not let invalid since or limit values silently return misleading results."
+      ],
+      "test_guide": [
+        "Cover completed-work filters including targetless row inclusion.",
+        "Cover active-target empty output and summary.completedWork.",
+        "Cover add-completed-work write, dry-run, pipe failure, and invalid option failures."
+      ],
+      "dod": [
+        "CLI read command returns completed work rows with filters.",
+        "CLI mutation command appends rows through core mutation.",
+        "Active-target output returns empty active target honestly when unset."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "src/cli/commands/read.ts:67-84",
+        "src/cli/commands/mutations.ts:64-68",
+        "src/cli/commands/mutations.ts:22-30",
+        "test/cli/read-commands.test.ts:10-26",
+        "test/cli/mutation-commands.test.ts:15-86"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/cli/read-commands.test.ts test/cli/mutation-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/cli/read-commands.test.ts test/cli/mutation-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Remove completed-work and add-completed-work command registrations. 2) Remove only the CLI tests introduced for those commands and rerun read/mutation CLI tests."
+      }
+    },
+    {
+      "id": "TASK-P3-003",
+      "phase": "P3",
+      "owns": [
+        "src/mcp/tools/read-tools.ts",
+        "src/mcp/tools/mutation-tools.ts",
+        "src/mcp/resources.ts",
+        "src/mcp/schemas.ts",
+        "src/mcp/server.ts",
+        "test/mcp/read-tools-resources.test.ts",
+        "test/mcp/mutation-tools-errors.test.ts",
+        "test/mcp/stdio-purity.test.ts"
+      ],
+      "related_requirements": [
+        "FR-MCP-008",
+        "FR-MCP-009",
+        "FR-MCP-012"
+      ],
+      "supporting_requirements": [
+        "IR-MCP-001",
+        "IR-MCP-002",
+        "REL-MCP-001"
+      ],
+      "coverage_type": "feature-adapter",
+      "feasibility": "Medium",
+      "turn_estimate": 7,
+      "title": "Connect completed work MCP tools, resources, and schemas",
+      "reads": [
+        "src/mcp/tools/read-tools.ts",
+        "src/mcp/tools/mutation-tools.ts",
+        "src/mcp/resources.ts",
+        "src/mcp/schemas.ts",
+        "src/mcp/server.ts",
+        "src/core/query/completed-work.ts",
+        "src/core/mutation/add-completed-work.ts"
+      ],
+      "prerequisites": [
+        "TASK-P2-002 and TASK-P3-001 are implemented."
+      ],
+      "signatures": [
+        "function registerReadTools(server: McpServerHandle, deps: McpDependencies): void",
+        "function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void",
+        "function registerResources(server: McpServerHandle, deps: McpDependencies): void",
+        "function createMcpServer(deps: McpDependencies): McpServerHandle"
+      ],
+      "implementation_guide": [
+        "Register list_completed_work as a read-only tool.",
+        "Register add_completed_work as a mutation tool.",
+        "Add zod schemas with YYYY-MM-DD date regex and positive integer limit.",
+        "Register speckiwi://completed-work and speckiwi://completed-work/{target}.",
+        "Assert get_active_target and summarize_target include summary.completedWork."
+      ],
+      "rationale": "Agents primarily use MCP, so completed work status must be available through tools and resources.",
+      "pitfalls": [
+        "Do not mark add_completed_work as read-only.",
+        "Do not omit the ResourceTemplate registration for target-specific completed work."
+      ],
+      "test_guide": [
+        "Cover test adapter tools and resources.",
+        "Cover real stdio schemas, readOnlyHint, static resource URI, and target template.",
+        "Cover invalid date, since, limit, and pipe failures."
+      ],
+      "dod": [
+        "MCP exposes read and mutation tools for completed work.",
+        "MCP completed work resources are registered.",
+        "MCP schemas and annotations are correct."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "src/mcp/tools/read-tools.ts:13-27",
+        "src/mcp/tools/mutation-tools.ts:21-80",
+        "src/mcp/resources.ts:7-27",
+        "src/mcp/schemas.ts:1-14",
+        "src/mcp/server.ts:28-79",
+        "src/mcp/server.ts:128-176",
+        "test/mcp/read-tools-resources.test.ts:7-32",
+        "test/mcp/mutation-tools-errors.test.ts:15-60",
+        "test/mcp/stdio-purity.test.ts:14-56"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/mutation-tools-errors.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/mutation-tools-errors.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Remove completed work MCP tool/resource/schema registrations from the files listed in this TASK. 2) Remove related MCP tests and rerun MCP read, mutation, and stdio suites."
+      }
+    },
+    {
+      "id": "TASK-P4-001",
+      "phase": "P4",
+      "owns": [],
+      "related_requirements": [
+        "FR-NODE-004",
+        "OPS-NODE-001",
+        "FR-FLOW-003",
+        "FR-FLOW-004"
+      ],
+      "supporting_requirements": [
+        "FR-PARSE-010",
+        "IR-CLI-020",
+        "FR-MCP-012",
+        "FR-NODE-010",
+        "FR-FLOW-006"
+      ],
+      "coverage_type": "verification",
+      "feasibility": "Low",
+      "turn_estimate": 4,
+      "title": "Run full regression and release gates",
+      "reads": [
+        "package.json",
+        "docs/plan/step4.active-target-completed-work-log/00.index.md"
+      ],
+      "prerequisites": [
+        "All P1, P2, and P3 task acceptance tests pass."
+      ],
+      "signatures": [
+        "N/A — verification task"
+      ],
+      "implementation_guide": [
+        "Run npm run typecheck.",
+        "Run npm run lint.",
+        "Run npm test.",
+        "Run npm run release:check.",
+        "Run npm run release:acceptance.",
+        "Route any failure back to the owning phase before updating evidence."
+      ],
+      "rationale": "This feature touches docs, parser, bootstrap, CLI, MCP, and tests, so full regression is required before evidence updates.",
+      "pitfalls": [
+        "Do not update SRS evidence before the commands pass.",
+        "Do not hide a failing command by removing the assertion that exposed it."
+      ],
+      "test_guide": [
+        "Record each command and exit code.",
+        "Use only passing commands as evidence references."
+      ],
+      "dod": [
+        "Typecheck, lint, full test, release check, and release acceptance pass.",
+        "Failures are routed back to the owning phase."
+      ],
+      "idempotent": true,
+      "source_anchors": [
+        "package.json:45-54",
+        "docs/research/05.active-target-completed-work-log-research.md:328-376",
+        "docs/plan/step4.active-target-completed-work-log/00.index.md:116-138"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npm run typecheck",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "npm run lint",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "npm test",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "npm run release:check",
+          "expected_exit": 0
+        },
+        {
+          "shell": "pwsh",
+          "cmd": "npm run release:acceptance",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm run typecheck",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm run lint",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm test",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm run release:check",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm run release:acceptance",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "none",
+        "command": "Verification task only. No file rollback is associated with this TASK."
+      }
+    },
+    {
+      "id": "TASK-P4-002",
+      "phase": "P4",
+      "owns": [
+        "docs/spec/00.index.md",
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md",
+        "docs/spec/90.appendix.md"
+      ],
+      "related_requirements": [
+        "FR-PARSE-010",
+        "IR-CLI-003",
+        "IR-CLI-008",
+        "IR-CLI-020",
+        "FR-MCP-008",
+        "FR-MCP-009",
+        "FR-MCP-012",
+        "FR-NODE-009",
+        "FR-NODE-010",
+        "FR-FLOW-005",
+        "FR-FLOW-006"
+      ],
+      "supporting_requirements": [
+        "FR-FLOW-002",
+        "FR-FLOW-003"
+      ],
+      "coverage_type": "srs-evidence",
+      "feasibility": "Low",
+      "turn_estimate": 5,
+      "title": "Update SRS evidence, Change Notes, and Completed Work Log",
+      "reads": [
+        "docs/spec/00.index.md",
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md",
+        "docs/spec/90.appendix.md"
+      ],
+      "prerequisites": [
+        "TASK-P4-001 full regression and release gates pass."
+      ],
+      "signatures": [
+        "N/A — documentation evidence task"
+      ],
+      "implementation_guide": [
+        "Insert verification evidence rows that reference only commands that passed in TASK-P4-001.",
+        "Mark new Requirement Blocks verified only after implementation and tests pass.",
+        "Update docs/spec/00.index.md summary counts.",
+        "Add one concise Completed Work Log row for this feature.",
+        "Run release acceptance again after evidence updates."
+      ],
+      "rationale": "SRS evidence should describe verified behavior, not planned behavior.",
+      "pitfalls": [
+        "Do not put raw command output in Completed Work Log.",
+        "Do not include pipe characters in evidence or completed work table cells."
+      ],
+      "test_guide": [
+        "Run release acceptance after evidence updates.",
+        "Confirm the new completed work row has YYYY-MM-DD date and one-line summary."
+      ],
+      "dod": [
+        "Changed and new SRS requirements have evidence tied to passing commands.",
+        "Index summaries and Change Notes are updated.",
+        "Completed Work Log contains one row for this feature."
+      ],
+      "idempotent": false,
+      "source_anchors": [
+        "docs/spec/20.parser-validation.srs.md:555-604",
+        "docs/spec/30.cli-interface.srs.md:455-504",
+        "docs/spec/40.mcp-stdio-interface.srs.md:570-659",
+        "docs/spec/50.nodejs-implementation.srs.md:794-856",
+        "docs/spec/60.workflow-release.srs.md:274-303",
+        "docs/spec/00.index.md:110-120"
+      ],
+      "acceptance_tests": [
+        {
+          "shell": "pwsh",
+          "cmd": "npm run release:acceptance",
+          "expected_exit": 0
+        },
+        {
+          "shell": "bash",
+          "cmd": "npm run release:acceptance",
+          "expected_exit": 0
+        }
+      ],
+      "rollback": {
+        "strategy": "manual",
+        "command": "1) Remove only evidence and Change Notes rows added by this TASK. 2) Restore index summary counts to their previous values and rerun release acceptance."
+      }
+    }
+  ]
+}

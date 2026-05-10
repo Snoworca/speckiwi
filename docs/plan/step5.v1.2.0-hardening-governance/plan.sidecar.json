@@ -1,0 +1,481 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260510-v1-2-hardening-governance",
+  "produced_at": "2026-05-10T00:00:00+09:00",
+  "target": "v1.2.0",
+  "scope_freeze": true,
+  "coverage_mode": "hardening-governance-implementation",
+  "change_log": [],
+  "platforms": ["win32", "posix"],
+  "source_spec": [
+    "docs/research/06.hardening-governance-research.md",
+    "docs/spec/00.index.md",
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/30.cli-interface.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/spec/50.nodejs-implementation.srs.md",
+    "docs/spec/60.workflow-release.srs.md",
+    "docs/spec/90.appendix.md",
+    "docs/rule/SRS-MD-Rules-v1.0.0.md"
+  ],
+  "research_sequence_alignment": [
+    {"research_step": 2, "phase": "P1", "summary": "Build diagnostic registry and parser fixtures first."},
+    {"research_step": 3, "phase": "P2", "summary": "Harden parser/validator and table mutation safety."},
+    {"research_step": 4, "phase": "P3", "summary": "Redefine release-readiness core and full traceability acceptance."},
+    {"research_step": 5, "phase": "P4", "summary": "Fix package-relative rules loading and canonical root agent files."},
+    {"research_step": 6, "phase": "P5", "summary": "Normalize CLI/MCP summary/read/resource contracts."},
+    {"research_step": 7, "phase": "P6", "summary": "Add index consistency validation and completed-work prevalidation/latest ordering."},
+    {"research_step": 8, "phase": "P7", "summary": "Add optimistic concurrency/stale insert guard."},
+    {"research_step": 9, "phase": "P8", "summary": "Add CI/coverage gates."},
+    {"research_step": 10, "phase": "P9", "summary": "Re-run release readiness for v1.2.0 and add Completed Work Log row after completion."}
+  ],
+  "phase_dependencies": {
+    "P1": [],
+    "P2": ["P1"],
+    "P3": ["P1", "P2"],
+    "P4": ["P1"],
+    "P5": ["P1", "P3"],
+    "P6": ["P1", "P5"],
+    "P7": ["P3", "P6"],
+    "P8": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
+    "P9": ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]
+  },
+  "pre_commit_gate": [
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run perf:srs", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run perf:srs", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard", "flags": "i"},
+    {"pattern": "rm\\s+-rf\\s+(/|\\.|\\*)", "flags": "i"},
+    {"pattern": "Remove-Item\\s+-Recurse\\s+-Force", "flags": "i"},
+    {"pattern": "dd\\s+if=", "flags": "i"},
+    {"pattern": "mkfs(\\.|\\s)", "flags": "i"},
+    {"pattern": "kill\\s+-9\\s+-1", "flags": "i"},
+    {"pattern": "shutdown\\b", "flags": "i"},
+    {"pattern": "chmod\\s+777\\s+/", "flags": "i"},
+    {"pattern": "curl\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "wget\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "while\\s+true", "flags": "i"},
+    {"pattern": "eval\\s+\\$\\(", "flags": "i"}
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "Diagnostic registry",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/01.phase-diagnostic-registry.md",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Diagnostic registry type, helper, and contract tests",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-013"],
+          "owns": ["src/core/diagnostic.ts", "src/core/types.ts", "src/core/validator/rules.ts", "src/core/diagnostic-registry.ts", "test/core/diagnostic-registry.test.ts", "docs/rule/SRS-MD-Rules-v1.0.0.md", "docs/spec/90.appendix.md"],
+          "signatures": ["interface DiagnosticDefinition", "function getDiagnosticDefinition(code: string): DiagnosticDefinition", "function summarizeDiagnostics(diagnostics: Diagnostic[]): DiagnosticsSummary"],
+          "reference_pattern": "Use existing diagnostic factory and validation call sites, then make registry lookup mandatory.",
+          "source_anchors": ["src/core/diagnostic.ts:3-23", "src/core/types.ts:77-83", "src/core/validator/rules.ts:33-132", "src/core/validator/rule-registry.ts:3-17", "docs/rule/SRS-MD-Rules-v1.0.0.md:1439-1466", "docs/spec/90.appendix.md:443-452", "test/core/validator/validation-rules.test.ts:9-63"],
+          "implementation_guide": ["Create diagnostic-registry.ts.", "Register current and v1.2.0 codes.", "Make unknown code emission fail.", "Add rules-doc contract test."],
+          "rationale": "Registry must exist before new parser, index, and release diagnostics are added.",
+          "pitfalls": ["Do not let registry severity drift from emit severity.", "Do not exact-match context-specific full messages."],
+          "test_guide": ["Assert all current diagnostics are registered.", "Assert unknown codes fail.", "Assert rules doc table matches registry."],
+          "dod": ["All emitted diagnostic codes are registered.", "Registry entries include required metadata.", "Rules-doc contract test passes."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/diagnostic-registry.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/diagnostic-registry.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove diagnostic registry additions. 2) Restore diagnostic factory and rules doc changes from this task, then rerun validator tests."}
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Parser and validator fixture baseline for hardening",
+          "feasibility": "Low",
+          "related_requirements": ["FR-PARSE-011", "FR-PARSE-012", "FR-PARSE-014", "FR-PARSE-013"],
+          "owns": ["test/core/parser/workspace-records.test.ts", "test/core/validator/validation-rules.test.ts", "test/fixtures/workspaces/parser-hardening-*", "test/fixtures/workspaces/index-drift-*"],
+          "signatures": ["N/A — test fixture task"],
+          "reference_pattern": "Extend existing fixture copy helper and invalid-structure parser tests.",
+          "source_anchors": ["test/fixtures/fixture-utils.ts:1-24", "test/core/parser/workspace-records.test.ts:64-70", "test/core/validator/validation-rules.test.ts:16-63", "test/fixtures/workspaces/invalid-structure/docs/spec/00.index.md:1-13"],
+          "implementation_guide": ["Create code-fence and block-boundary fixtures.", "Create duplicate/nested/malformed structural fixtures.", "Create index drift fixtures.", "Write Red assertions using registered codes."],
+          "rationale": "Fixtures lock the desired hardening behavior before parser and index code changes.",
+          "pitfalls": ["Keep each fixture focused.", "Code fence headings must create neither records nor diagnostics."],
+          "test_guide": ["Valid fixture remains error-free.", "Hardening fixtures expose one primary behavior each."],
+          "dod": ["Parser/index diagnostic fixtures exist.", "Expected codes are registered.", "Valid and hardening fixtures run through shared helpers."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove fixtures and tests added by this task. 2) Keep registry files and rerun parser and validator tests."}
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Parser, validator, and table safety",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/02.phase-parser-validator-table-safety.md",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Fenced-code-aware block scanner and documented block boundary",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-011"],
+          "owns": ["src/core/parser/block-scanner.ts", "src/core/parser/workspace-parser.ts", "test/core/parser/workspace-records.test.ts"],
+          "signatures": ["function scanRequirementBlocks(lines: string[], filePath?: string): { blocks: RequirementBlockRange[]; diagnostics: Diagnostic[] }", "function parseRequirementHeading(line: string): RequirementHeading | undefined"],
+          "reference_pattern": "Replace linear scan in block-scanner.ts with fenced-code state machine.",
+          "source_anchors": ["src/core/parser/block-scanner.ts:15-42", "src/core/parser/workspace-parser.ts:7-27", "test/core/parser/workspace-records.test.ts:8-70", "docs/spec/20.parser-validation.srs.md:622-678"],
+          "implementation_guide": ["Track backtick and tilde fences.", "Ignore requirement-like headings inside fences.", "Start extraction under Requirements section.", "End blocks at next valid heading, top-level boundary, or EOF."],
+          "rationale": "Parser boundary must be deterministic before release readiness trusts docs/spec.",
+          "pitfalls": ["Do not keep trailing top-level sections in record markdown.", "Do not emit malformed heading diagnostics inside fences."],
+          "test_guide": ["Assert fenced heading creates no record.", "Assert fenced malformed heading creates no diagnostic.", "Assert final block boundary stops before next top-level section."],
+          "dod": ["Fence headings ignored.", "Block boundary matches SRS.", "Parser fixtures pass."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore block scanner and parser tests from before this task. 2) Rerun parser tests."}
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Duplicate section, nested AC, heading content, and malformed table diagnostics",
+          "feasibility": "High",
+          "related_requirements": ["FR-PARSE-012"],
+          "owns": ["src/core/parser/section-parser.ts", "src/core/parser/ac-parser.ts", "src/core/parser/table.ts", "src/core/query/records.ts", "test/core/parser/workspace-records.test.ts"],
+          "signatures": ["function parseRequirementSections(...): { sections: Record<string, SectionRange>; diagnostics: Diagnostic[] }", "function parseAcceptanceCriteria(...): { criteria: AcceptanceCriterion[]; diagnostics: Diagnostic[] }", "function parseMarkdownTable(...): ParsedTableResult"],
+          "reference_pattern": "Make section, AC, and table parsers diagnostics-aware and propagate diagnostics through toRequirementRecord.",
+          "source_anchors": ["src/core/parser/section-parser.ts:11-30", "src/core/parser/ac-parser.ts:4-19", "src/core/parser/table.ts:21-52", "src/core/query/records.ts:1-58", "docs/spec/20.parser-validation.srs.md:680-739"],
+          "implementation_guide": ["Report duplicate canonical sections.", "Exclude nested AC from top-level criteria.", "Validate forbidden heading content.", "Report malformed table row cell counts.", "Propagate parser diagnostics to workspace."],
+          "rationale": "SRS-MD structural violations must not be silently accepted.",
+          "pitfalls": ["Parser return type change touches multiple call sites.", "Line numbers must remain actionable."],
+          "test_guide": ["Assert duplicate section diagnostic.", "Assert nested AC exclusion.", "Assert heading content diagnostics.", "Assert malformed table diagnostics."],
+          "dod": ["FR-PARSE-012 cases covered.", "Valid fixtures still parse.", "Diagnostics include location context."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore parser result shape and parser call sites from before this task. 2) Rerun parser and validator tests."}
+        },
+        {
+          "id": "TASK-P2-003",
+          "title": "Shared Markdown table cell safety for every table-writing mutation",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-NODE-011"],
+          "owns": ["src/core/mutation/render-requirement.ts", "src/core/mutation/add-evidence.ts", "src/core/mutation/add-trace.ts", "src/core/mutation/add-completed-work.ts", "src/core/mutation/table-cell.ts", "test/core/mutation/table-cell-safety.test.ts"],
+          "signatures": ["function assertSafeMarkdownTableCell(label: string, value: string): MutationResult<void> | undefined", "function assertSafeMarkdownTableCells(cells: Record<string, string>): MutationResult<void> | undefined"],
+          "reference_pattern": "Generalize existing completed-work pipe rejection into shared helper.",
+          "source_anchors": ["src/core/mutation/render-requirement.ts:32-100", "src/core/mutation/add-evidence.ts:16-24", "src/core/mutation/add-trace.ts:17-27", "src/core/mutation/add-completed-work.ts:111-128", "test/core/mutation/add-requirement.test.ts:8-108", "test/core/mutation/add-completed-work.test.ts:85-107"],
+          "implementation_guide": ["Create table-cell helper.", "Use it in addCompletedWork.", "Use it in add-evidence and add-trace.", "Validate add-requirement table fields.", "Return structured mutation failure before write."],
+          "rationale": "Unsafe table cells corrupt the Markdown SRS source.",
+          "pitfalls": ["Do not validate non-table prose fields.", "Coordinate changed error messages with adapter tests."],
+          "test_guide": ["Reject pipe, LF, CR in every table-writing mutation.", "Assert file content unchanged after rejection."],
+          "dod": ["Shared helper used by all table writers.", "Unsafe cells rejected before write.", "Mutation tests prove no file change."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/mutation/add-requirement.test.ts test/core/mutation/add-completed-work.test.ts test/core/mutation/table-cell-safety.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/mutation/add-requirement.test.ts test/core/mutation/add-completed-work.test.ts test/core/mutation/table-cell-safety.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore table-writing mutation files from before this task. 2) Remove table-cell helper and tests, then rerun mutation tests."}
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Release readiness core contract",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/03.phase-release-readiness.md",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Release readiness target resolution and summary contract",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-FLOW-007"],
+          "owns": ["src/core/workflow/release-readiness.ts", "scripts/release-check.mjs", "src/core/query/summary.ts", "src/core/types.ts", "test/release/release-readiness.test.ts"],
+          "signatures": ["function summarizeReleaseReadiness(workspace: ParsedWorkspace, options?: { target?: string }): ReleaseReadinessSummary", "interface ReleaseReadinessSummary"],
+          "reference_pattern": "Expand existing release-readiness summary and remove script hard-coded target fallback.",
+          "source_anchors": ["src/core/workflow/release-readiness.ts:4-67", "scripts/release-check.mjs:5-10", "src/core/query/summary.ts:4-28", "src/core/types.ts:173-186", "test/release/release-readiness.test.ts:8-22", "docs/spec/60.workflow-release.srs.md:406-466"],
+          "implementation_guide": ["Accept explicit target option.", "Use active target only when explicit target is absent.", "Return ready false for empty target.", "Expose all FR-FLOW-007 fields.", "Update release-check script."],
+          "rationale": "Release readiness must explain blockers and evaluate the intended target.",
+          "pitfalls": ["Do not fallback from empty Active Target.", "Keep strict exit behavior."],
+          "test_guide": ["Explicit target wins.", "Active target is used when explicit is absent.", "Empty active target blocks readiness.", "Script output includes targetSource."],
+          "dod": ["FR-FLOW-007 fields exposed.", "No hard-coded v1.0.0 target fallback.", "Empty target blocks readiness."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/release/release-readiness.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/release/release-readiness.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore release-readiness.ts and release-check.mjs from before this task. 2) Restore tests and rerun release readiness tests."}
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Evidence, AC coverage, trace, and command policy release gate",
+          "feasibility": "High",
+          "related_requirements": ["FR-FLOW-008"],
+          "owns": ["src/core/workflow/release-readiness.ts", "src/core/parser/evidence-parser.ts", "src/core/parser/trace-parser.ts", "src/core/validator/rules.ts", "test/release/release-readiness.test.ts", "test/release/srs-traceability.test.ts"],
+          "signatures": ["function collectAcCoverageGaps(records: RequirementRecord[]): AcCoverageGap[]", "function collectMissingEvidenceReferences(workspace: ParsedWorkspace): EvidenceReferenceIssue[]", "function collectCommandEvidencePolicyViolations(records: RequirementRecord[]): CommandEvidencePolicyViolation[]"],
+          "reference_pattern": "Use evidence parser covers field and existing verified guard as the base for release-grade checks.",
+          "source_anchors": ["src/core/validator/rules.ts:25-30", "src/core/parser/evidence-parser.ts:7-15", "src/core/parser/trace-parser.ts:1-17", "src/core/workflow/release-readiness.ts:36-67", "test/release/srs-traceability.test.ts:4-8", "docs/spec/60.workflow-release.srs.md:468-530"],
+          "implementation_guide": ["Require checked AC for verified records.", "Require evidence covers all or matching AC IDs.", "Classify local path, URL, command, and opaque evidence.", "Report missing local paths and invalid URLs.", "Report command policy violations.", "Report broken trace links."],
+          "rationale": "Verified must mean AC-level coverage and evidence validity are provable.",
+          "pitfalls": ["Do not perform network calls.", "Do not execute command evidence.", "Keep local paths inside project root."],
+          "test_guide": ["AC all coverage passes.", "Explicit AC coverage is matched.", "Missing path, invalid URL, command violation, and broken trace appear separately."],
+          "dod": ["Release readiness checks AC, evidence, trace, and command policy.", "No external execution.", "Summary separates gate outputs."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove release evidence gate collectors. 2) Restore release tests and rerun release acceptance."}
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Package and agent init",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/04.phase-package-agent-init.md",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Package-relative rules loading and canonical root agent files",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-NODE-012", "FR-FLOW-009"],
+          "owns": ["src/core/bootstrap/templates.ts", "src/core/bootstrap/init-project.ts", "AGENTS.md", "CLAUDE.md", "agents.md", "README.md", "docs/spec/90.appendix.md", "test/core/bootstrap/init-project.test.ts", "test/smoke/package.test.ts"],
+          "signatures": ["async function loadBundledRulesDocument(): Promise<string>", "async function upsertAgentInstruction(root: string, agentFile: AgentFileMode, output: InitProjectOutput): Promise<void>"],
+          "reference_pattern": "Package rules currently resolve cwd-relative; init already upserts uppercase agent files.",
+          "source_anchors": ["src/core/bootstrap/templates.ts:160-172", "src/core/bootstrap/init-project.ts:58-137", "agents.md:1-36", "test/core/bootstrap/init-project.test.ts:14-172", "test/smoke/package.test.ts:16-42", "docs/spec/60.workflow-release.srs.md:532-589"],
+          "implementation_guide": ["Resolve rules relative to package module path.", "Keep fallback stub only for missing artifact.", "Add external package smoke test.", "Ensure root AGENTS.md and CLAUDE.md are present.", "Document lowercase agents.md policy.", "Test versioned block replacement."],
+          "rationale": "Installed init must deploy full rules and canonical agent instructions outside the source checkout.",
+          "pitfalls": ["import.meta.url path must work after build.", "Preserve unrelated user content."],
+          "test_guide": ["External init writes full rules doc.", "Uppercase agent files contain managed block.", "Older managed block is replaced."],
+          "dod": ["Package-relative rules loading works.", "Canonical root agent files exist.", "Lowercase agents policy documented."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/smoke/package.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/smoke/package.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore bootstrap and agent documentation edits from before this task. 2) Rerun bootstrap and smoke tests."}
+        }
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "CLI and MCP read contract",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/05.phase-cli-mcp-read-contract.md",
+      "tasks": [
+        {
+          "id": "TASK-P5-001",
+          "title": "Shared target summary and CLI read diagnostics payloads",
+          "feasibility": "Medium",
+          "related_requirements": ["IR-CLI-021"],
+          "owns": ["src/core/query/summary.ts", "src/core/types.ts", "src/cli/commands/read.ts", "test/cli/read-commands.test.ts", "test/integration/cli-mcp-parity.test.ts"],
+          "signatures": ["function summarizeTarget(workspace: ParsedWorkspace, target?: string): TargetSummary", "function buildReadEnvelope<T>(workspace: ParsedWorkspace, value: T): ReadEnvelope<T>"],
+          "reference_pattern": "Extend existing target summary and route CLI read JSON through shared envelope.",
+          "source_anchors": ["src/core/query/summary.ts:8-28", "src/core/types.ts:179-186", "src/cli/commands/read.ts:38-116", "test/cli/read-commands.test.ts:12-53", "test/integration/cli-mcp-parity.test.ts:6-16", "docs/spec/30.cli-interface.srs.md:1284-1342"],
+          "implementation_guide": ["Extend TargetSummary.", "Add shared read envelope.", "Update validate JSON.", "Update targets JSON.", "Update summary and active-target JSON."],
+          "rationale": "Read outputs should carry governance diagnostics without extra commands.",
+          "pitfalls": ["Keep human output concise.", "Do not fallback from empty Active Target.", "Do not force MCP resource envelope names into CLI."],
+          "test_guide": ["Every read command JSON includes diagnostics summary.", "Targets include counts.", "Summary includes required fields.", "Empty active target remains empty."],
+          "dod": ["CLI read JSON exposes diagnostics summary.", "Target summary expanded.", "Parity tests cover overlapping shape."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/cli/read-commands.test.ts test/integration/cli-mcp-parity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/cli/read-commands.test.ts test/integration/cli-mcp-parity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore query summary and CLI read command edits. 2) Restore read/parity tests and rerun CLI read tests."}
+        },
+        {
+          "id": "TASK-P5-002",
+          "title": "MCP read parity and envelope-all resources",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-MCP-013", "FR-MCP-014"],
+          "owns": ["src/mcp/tools/read-tools.ts", "src/mcp/resources.ts", "src/mcp/server.ts", "src/mcp/schemas.ts", "test/mcp/read-tools-resources.test.ts", "test/mcp/stdio-purity.test.ts", "test/integration/cli-mcp-parity.test.ts", "docs/spec/90.appendix.md"],
+          "signatures": ["function registerReadTools(server: McpServerHandle, deps: McpDependencies): void", "function registerResources(server: McpServerHandle, deps: McpDependencies): void", "function resourceEnvelope<T>(workspace: ParsedWorkspace, value: T): ResourceEnvelope<T>"],
+          "reference_pattern": "Use existing MCP read tools/resources and standardize mixed shapes.",
+          "source_anchors": ["src/mcp/tools/read-tools.ts:14-29", "src/mcp/resources.ts:8-35", "src/mcp/server.ts:95-180", "src/mcp/schemas.ts:1-16", "test/mcp/read-tools-resources.test.ts:7-36", "test/mcp/stdio-purity.test.ts:13-63", "test/integration/cli-mcp-parity.test.ts:6-16", "docs/spec/40.mcp-stdio-interface.srs.md:1016-1132", "docs/spec/90.appendix.md:510-542"],
+          "implementation_guide": ["Make MCP read tools call shared builders.", "Standardize validate_spec payload.", "Align summarize_target/get_active_target/list_completed_work.", "Add resourceEnvelope.", "Apply envelope-all.", "Update stdio resource bridge.", "Document compatibility window."],
+          "rationale": "Agents should receive the same governance signals over MCP as CLI JSON.",
+          "pitfalls": ["Update completed-work raw resource expectation intentionally.", "Keep readOnlyHint only on read tools."],
+          "test_guide": ["MCP tool payloads match CLI meaning.", "Every resource has ok/value/diagnostics/diagnosticsSummary.", "Empty active target has no fallback."],
+          "dod": ["MCP read tools match CLI/core semantics.", "Resources use envelope-all.", "Stdio tests cover resource shapes."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/stdio-purity.test.ts test/integration/cli-mcp-parity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/mcp/read-tools-resources.test.ts test/mcp/stdio-purity.test.ts test/integration/cli-mcp-parity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore MCP read/resource/server files from before this task. 2) Restore MCP tests and Appendix resource policy text, then rerun MCP suites."}
+        }
+      ]
+    },
+    {
+      "id": "P6",
+      "title": "Index consistency and completed work policy",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/06.phase-index-completed-work.md",
+      "tasks": [
+        {
+          "id": "TASK-P6-001",
+          "title": "Index consistency and rollup drift validation",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-014"],
+          "owns": ["src/core/parser/index-parser.ts", "src/core/validator/rules.ts", "src/core/parser/discover.ts", "test/core/validator/validation-rules.test.ts"],
+          "signatures": ["function parseIndexDocument(file: TextFile): { index: IndexDocument; diagnostics: Diagnostic[] }", "function registerDefaultRules(): void"],
+          "reference_pattern": "Extend existing index-related validation block with duplicate and rollup checks.",
+          "source_anchors": ["src/core/parser/index-parser.ts:22-69", "src/core/validator/rules.ts:33-132", "src/core/parser/discover.ts:1-40", "docs/spec/00.index.md:43-82", "docs/spec/20.parser-validation.srs.md:800-857"],
+          "implementation_guide": ["Report duplicate targets and multiple active rows.", "Report duplicate scopes and missing docs.", "Report unregistered SRS docs.", "Compute status/type counts.", "Report rollup drift."],
+          "rationale": "Index drift corrupts target, scope, and release control-plane decisions.",
+          "pitfalls": ["Separate index and scope files.", "Keep released status enum aligned.", "Avoid duplicate diagnostics for missing tables."],
+          "test_guide": ["Cover duplicate target/scope/multiple active.", "Cover missing and unregistered docs.", "Cover stale summaries.", "Valid fixture remains clean."],
+          "dod": ["FR-PARSE-014 cases produce registered diagnostics.", "Valid summary counts match computed counts.", "Release readiness can consume validation diagnostics."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove index consistency validation additions. 2) Restore related fixtures and rerun validator tests."}
+        },
+        {
+          "id": "TASK-P6-002",
+          "title": "Completed Work Log latest ordering, prevalidation, and override",
+          "feasibility": "Medium",
+          "related_requirements": ["IR-CLI-022"],
+          "owns": ["src/core/query/completed-work.ts", "src/core/mutation/add-completed-work.ts", "src/cli/commands/read.ts", "src/cli/commands/mutations.ts", "test/core/query/completed-work.test.ts", "test/core/mutation/add-completed-work.test.ts", "test/cli/read-commands.test.ts", "test/cli/mutation-commands.test.ts"],
+          "signatures": ["interface CompletedWorkFilter { order?: \"latest\" | \"file\" }", "interface AddCompletedWorkInput { allowIncomplete?: boolean }", "function validateCompletedWorkInput(workspace: ParsedWorkspace, input: AddCompletedWorkInput): Diagnostic[]"],
+          "reference_pattern": "Current completed-work query returns file order and addCompletedWork writes without reference prevalidation.",
+          "source_anchors": ["src/core/query/completed-work.ts:3-34", "src/core/mutation/add-completed-work.ts:111-133", "src/cli/commands/read.ts:22-35", "src/cli/commands/mutations.ts:13-99", "test/core/query/completed-work.test.ts:1-29", "test/core/mutation/add-completed-work.test.ts:8-107", "docs/spec/30.cli-interface.srs.md:1344-1400"],
+          "implementation_guide": ["Default to latest date/line ordering.", "Add file order option.", "Prevalidate target/scope/requirement IDs.", "Require implemented or verified IDs unless override.", "Add CLI override flag."],
+          "rationale": "Recent work reads need deterministic order and new rows must not reference incomplete work by default.",
+          "pitfalls": ["Target may be intentionally empty.", "Reject before patch write.", "Do not rewrite historical rows."],
+          "test_guide": ["Latest ordering.", "File ordering.", "Unknown references rejected.", "Incomplete requirement rejected without override.", "Override allowed."],
+          "dod": ["Default latest ordering.", "New rows prevalidated.", "Override explicit and tested."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/query/completed-work.test.ts test/core/mutation/add-completed-work.test.ts test/cli/read-commands.test.ts test/cli/mutation-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/query/completed-work.test.ts test/core/mutation/add-completed-work.test.ts test/cli/read-commands.test.ts test/cli/mutation-commands.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore completed-work query and mutation policy from before this task. 2) Restore related CLI options/tests and rerun completed-work suites."}
+        }
+      ]
+    },
+    {
+      "id": "P7",
+      "title": "Optimistic concurrency",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/07.phase-optimistic-concurrency.md",
+      "tasks": [
+        {
+          "id": "TASK-P7-001",
+          "title": "Optimistic concurrency and stale insert guard",
+          "feasibility": "High",
+          "related_requirements": ["FR-NODE-013"],
+          "owns": ["src/core/types.ts", "src/core/fs/read-text.ts", "src/core/patch/patch-plan.ts", "src/core/patch/apply-patch.ts", "src/core/mutation/add-requirement.ts", "src/core/mutation/add-evidence.ts", "src/core/mutation/add-trace.ts", "src/core/mutation/add-completed-work.ts"],
+          "signatures": ["interface TextFile { snapshot?: TextFileSnapshot }", "async function applyPatchPlan(plan: PatchPlan, options: { dryRun: boolean; staleCheck?: boolean }): Promise<PatchResult>", "function createPatchPlan(file: TextFile, operations: PatchOperation[]): PatchPlan"],
+          "reference_pattern": "Patch layer currently checks replace-line originals but does not re-read freshness before write.",
+          "source_anchors": ["src/core/types.ts:69-75", "src/core/fs/read-text.ts:6-14", "src/core/patch/patch-plan.ts:18-44", "src/core/patch/apply-patch.ts:13-23", "src/core/mutation/add-requirement.ts:26-145", "src/core/mutation/add-evidence.ts:16-24", "src/core/mutation/add-trace.ts:17-27", "src/core/mutation/add-completed-work.ts:111-128"],
+          "implementation_guide": ["Add TextFileSnapshot.", "Re-read snapshot before write.", "Return structured stale failure.", "Validate insert neighbors.", "Reparse generated IDs once.", "Apply same guard to evidence and completed-work insertions."],
+          "rationale": "Concurrent mutations must not silently collide or write at stale positions.",
+          "pitfalls": ["Dry-run should not fail on later file changes.", "Keep atomic rename.", "Do not add lock files."],
+          "test_guide": ["Changed file before write returns stale error.", "Generated ID collision retried or returns guidance.", "Stale table insertion does not corrupt file."],
+          "dod": ["Stale snapshots detected.", "Generated ID mutations do not collide silently.", "Insert preconditions prevent misplaced rows."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/patch/line-patch.test.ts test/core/mutation/add-requirement.test.ts test/core/mutation/add-completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/patch/line-patch.test.ts test/core/mutation/add-requirement.test.ts test/core/mutation/add-completed-work.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore TextFile, read-text, patch, and mutation edits from this task. 2) Rerun patch and mutation suites."}
+        }
+      ]
+    },
+    {
+      "id": "P8",
+      "title": "CI and coverage",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/08.phase-ci-coverage.md",
+      "tasks": [
+        {
+          "id": "TASK-P8-001",
+          "title": "CI workflow, coverage thresholds, and package smoke gate",
+          "feasibility": "Medium",
+          "related_requirements": ["OPS-NODE-002"],
+          "owns": ["package.json", ".github/workflows/ci.yml", "test/smoke/package.test.ts"],
+          "signatures": ["N/A — repository automation task"],
+          "reference_pattern": "Use existing package scripts and package smoke tests as the base.",
+          "source_anchors": ["package.json:45-53", "test/smoke/package.test.ts:16-42", "docs/spec/50.nodejs-implementation.srs.md:1123-1180", "docs/research/06.hardening-governance-research.md:188-226", "N/A — 신규"],
+          "implementation_guide": ["Add test:coverage script.", "Set global threshold to 80 percent.", "Set parser/validator/mutation/workflow thresholds to 90 percent.", "Add GitHub Actions CI on Node 22.", "Include validate --json.", "Keep CI steps separate."],
+          "rationale": "Release governance needs repeatable automation, not only local discipline.",
+          "pitfalls": ["Add only required coverage dependency.", "Do not require secrets.", "Keep perf timeout."],
+          "test_guide": ["test:coverage exits 0.", "Package smoke tests artifact behavior.", "Workflow includes required commands."],
+          "dod": ["CI workflow exists.", "Coverage thresholds enforced.", "Package smoke proves full rules loading."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npm run test:coverage", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npx vitest run test/smoke/package.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run test:coverage", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/smoke/package.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove CI workflow and coverage script/config added by this task. 2) Restore package smoke test edits and rerun smoke tests."}
+        }
+      ]
+    },
+    {
+      "id": "P9",
+      "title": "Final verification and SRS evidence",
+      "document": "docs/plan/step5.v1.2.0-hardening-governance/09.phase-final-verification-srs-evidence.md",
+      "tasks": [
+        {
+          "id": "TASK-P9-001",
+          "title": "Full regression and release verification",
+          "feasibility": "Low",
+          "related_requirements": ["FR-PARSE-011", "FR-PARSE-012", "FR-PARSE-013", "FR-PARSE-014", "FR-NODE-011", "FR-NODE-012", "FR-NODE-013", "FR-FLOW-007", "FR-FLOW-008", "FR-FLOW-009", "IR-CLI-021", "IR-CLI-022", "FR-MCP-013", "FR-MCP-014", "OPS-NODE-002"],
+          "owns": [],
+          "signatures": ["N/A — verification task"],
+          "reference_pattern": "Use package command list and release check entry point.",
+          "source_anchors": ["package.json:45-53", "scripts/release-check.mjs:5-10", "docs/plan/step5.v1.2.0-hardening-governance/00.index.md:157-205"],
+          "implementation_guide": ["Run every acceptance command.", "Route failures to owning Phase.", "Record command names and exit codes for evidence."],
+          "rationale": "Evidence must come from full regression across all touched surfaces.",
+          "pitfalls": ["Do not record failed commands.", "Do not weaken tests.", "Do not add v1.2.0 completed row before verification."],
+          "test_guide": ["All commands exit 0.", "First failure maps to owning Phase.", "validate JSON contains zero errors."],
+          "dod": ["All commands exit 0.", "Failures are routed before evidence work."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run perf:srs", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*\\[\\]"},
+            {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run perf:srs", "expected_exit": 0},
+            {"shell": "bash", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*\\[\\]"}
+          ],
+          "rollback": {"strategy": "none", "command": "Verification task only. No file rollback is associated with this task."}
+        },
+        {
+          "id": "TASK-P9-002",
+          "title": "Update SRS evidence, statuses, summaries, and Completed Work Log",
+          "feasibility": "Low",
+          "related_requirements": ["FR-PARSE-011", "FR-PARSE-012", "FR-PARSE-013", "FR-PARSE-014", "FR-NODE-011", "FR-NODE-012", "FR-NODE-013", "FR-FLOW-007", "FR-FLOW-008", "FR-FLOW-009", "IR-CLI-021", "IR-CLI-022", "FR-MCP-013", "FR-MCP-014", "OPS-NODE-002"],
+          "owns": ["docs/spec/00.index.md", "docs/spec/20.parser-validation.srs.md", "docs/spec/30.cli-interface.srs.md", "docs/spec/40.mcp-stdio-interface.srs.md", "docs/spec/50.nodejs-implementation.srs.md", "docs/spec/60.workflow-release.srs.md", "docs/spec/90.appendix.md", "docs/rule/SRS-MD-Rules-v1.0.0.md"],
+          "signatures": ["N/A — SRS evidence task"],
+          "reference_pattern": "Use current index summary rollups and Completed Work Log structure.",
+          "source_anchors": ["docs/spec/00.index.md:57-89", "docs/spec/20.parser-validation.srs.md:622-857", "docs/spec/30.cli-interface.srs.md:1284-1400", "docs/spec/40.mcp-stdio-interface.srs.md:1016-1132", "docs/spec/50.nodejs-implementation.srs.md:944-1180", "docs/spec/60.workflow-release.srs.md:406-589", "docs/spec/90.appendix.md:443-452"],
+          "implementation_guide": ["Add evidence rows using passed commands only.", "Check AC coverage.", "Move completed requirements to verified.", "Update index rollups.", "Release v1.2.0 only after readiness passes.", "Add one Completed Work Log row.", "Run validation and release acceptance."],
+          "rationale": "Implementation is complete only when SRS status and evidence reflect verified behavior.",
+          "pitfalls": ["Completed Work Log is summary only.", "Evidence rows must not contain pipes.", "Do not mark v1.2.0 released before readiness passes."],
+          "test_guide": ["validate --json returns zero errors.", "release:acceptance passes.", "Completed Work Log row has ISO date, target v1.2.0, and one-line summary without pipes."],
+          "dod": ["All v1.2.0 requirements have passing evidence.", "Index summaries match parsed records.", "Completed Work Log contains one v1.2.0 row.", "Validation and release acceptance pass."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*\\[\\]"},
+            {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "bash", "cmd": "node bin/speckiwi validate --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*\\[\\]"},
+            {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove only evidence, status, summary, and Completed Work Log edits made by this task. 2) Re-run validate and release acceptance to confirm the rollback state."}
+        }
+      ]
+    }
+  ]
+}

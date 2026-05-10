@@ -47,6 +47,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src test --ext .ts --max-warnings=0",
     "test": "vitest run --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism",
+    "test:coverage": "vitest run --coverage --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
     "test:integration": "vitest run test/integration test/cli test/mcp --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
     "release:acceptance": "vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000",
     "release:check": "node scripts/release-check.mjs --strict",
@@ -77,6 +78,7 @@
     "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^8.59.1",
     "@typescript-eslint/parser": "^8.59.1",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^8.57.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"

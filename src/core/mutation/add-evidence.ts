@@ -1,8 +1,11 @@
-import { applyPatchPlan } from "../patch/apply-patch.js";
-import { createPatchPlan } from "../patch/patch-plan.js";
-import type { MutationResult, ProjectRoot } from "../types.js";
+import { diagnostic } from "../diagnostic.js";
+import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
+import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { parseWorkspace } from "../parser/workspace-parser.js";
+import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findSectionTableInsertionLine, loadRecord } from "./internal.js";
+import { findSectionTableInsertionLine } from "./internal.js";
+import { assertSafeMarkdownTableCells } from "./table-cell.js";
 
 export interface AddEvidenceInput {
   id: string;
@@ -13,14 +16,62 @@ export interface AddEvidenceInput {
   dryRun?: boolean;
 }
 
+function insertLinesOperation(file: TextFile, line: number, lines: string[]): PatchOperation {
+  const operation: PatchOperation = { type: "insertLines", line, lines };
+  const expectedBefore = file.lines[line - 2];
+  if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
+  const expectedAfter = file.lines[line - 1];
+  if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
+  return operation;
+}
+
+function generateNextEvidenceId(record: RequirementRecord): string {
+  const used = record.verificationEvidence
+    .map((row) => /^VE-(\d+)$/.exec(row.id)?.[1])
+    .filter((value): value is string => Boolean(value))
+    .map((value) => Number.parseInt(value, 10));
+  return `VE-${Math.max(0, ...used) + 1}`;
+}
+
+async function loadFreshRecord(root: ProjectRoot, id: string): Promise<{ record: RequirementRecord; file: TextFile } | undefined> {
+  const workspace = await parseWorkspace(root);
+  const record = workspace.records.find((candidate) => candidate.id === id);
+  if (!record) return undefined;
+  const file = workspace.files.find((candidate) => candidate.relativePath === record.filePath);
+  if (!file) return undefined;
+  return { record, file };
+}
+
+function stalePatchMutationFailure(error: unknown, filePath: string): MutationResult | undefined {
+  if (!isStalePatchError(error)) return undefined;
+  const message = `Mutation snapshot is stale for ${filePath}; rerun the command to retry against the latest file.`;
+  const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
+  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+}
+
 export async function addVerificationEvidence(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
   if (!input.reference.trim()) return mutationFail("USAGE", "Evidence reference is required");
-  const loaded = await loadRecord(root, input.id);
+  const covers = input.covers ?? "all";
+  const notes = input.notes ?? "-";
+  const unsafeCell = assertSafeMarkdownTableCells({
+    "Verification Evidence type": input.type,
+    "Verification Evidence reference": input.reference,
+    "Verification Evidence covers": covers,
+    "Verification Evidence notes": notes
+  });
+  if (unsafeCell) return unsafeCell;
+  const loaded = await loadFreshRecord(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
-  const next = `VE-${loaded.record.verificationEvidence.length + 1}`;
+  const next = generateNextEvidenceId(loaded.record);
   const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Verification Evidence");
   if (!insertLine) return mutationFail("MUTATION_DENIED", "Verification Evidence table not found");
-  const row = `| ${next} | ${input.type} | ${input.reference} | ${input.covers ?? "all"} | ${input.notes ?? "-"} |`;
-  const applied = await applyPatchPlan(createPatchPlan(loaded.file, [{ type: "insertLines", line: insertLine, lines: [row] }]), { dryRun: input.dryRun ?? false });
-  return mutationOk({ id: input.id, evidenceId: next, written: applied.written });
+  const row = `| ${next} | ${input.type} | ${input.reference} | ${covers} | ${notes} |`;
+  try {
+    const applied = await applyPatchPlan(createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]), { dryRun: input.dryRun ?? false });
+    return mutationOk({ id: input.id, evidenceId: next, written: applied.written });
+  } catch (error) {
+    const staleFailure = stalePatchMutationFailure(error, loaded.file.relativePath);
+    if (staleFailure) return staleFailure;
+    throw error;
+  }
 }

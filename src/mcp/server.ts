@@ -36,10 +36,26 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   get_requirement: { id: z.string(), includeMarkdown: z.boolean().optional() },
   validate_spec: { strict: z.boolean().optional(), failOnWarning: z.boolean().optional() },
   summarize_target: { target: z.string().optional() },
+  get_active_target: {},
+  list_completed_work: {
+    target: z.string().optional(),
+    scope: z.string().optional(),
+    since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    limit: z.number().int().positive().optional()
+  },
   update_status: { id: z.string(), status: z.string() },
   check_acceptance_criteria: { id: z.string(), acIds: z.array(z.string()), checked: z.boolean() },
   add_verification_evidence: { id: z.string(), type: z.string(), reference: z.string(), covers: z.string().optional(), notes: z.string().optional() },
   add_trace_link: { id: z.string(), type: z.string(), reference: z.string(), relation: z.string(), notes: z.string().optional() },
+  set_active_target: { target: z.string(), dryRun: z.boolean().optional() },
+  add_completed_work: {
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    summary: z.string(),
+    target: z.string().optional(),
+    scope: z.string().optional(),
+    requirementIds: z.array(z.string()).optional(),
+    dryRun: z.boolean().optional()
+  },
   add_requirement: {
     type: z.string(),
     scope: z.string(),
@@ -73,7 +89,7 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
 };
 
 function isReadOnlyTool(name: string): boolean {
-  return ["list_requirements", "get_requirement", "validate_spec", "summarize_target"].includes(name);
+  return ["list_requirements", "get_requirement", "validate_spec", "summarize_target", "get_active_target", "list_completed_work"].includes(name);
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -140,6 +156,23 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<vo
     const value = await local.tools["resource:speckiwi://index"]?.({});
     return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
   });
+  sdk.registerResource("speckiwi-active-target", "speckiwi://active-target", { title: "SpecKiwi Active Target", mimeType: "application/json" }, async (uri) => {
+    const value = await local.tools["resource:speckiwi://active-target"]?.({});
+    return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
+  });
+  sdk.registerResource("speckiwi-completed-work", "speckiwi://completed-work", { title: "SpecKiwi Completed Work", mimeType: "application/json" }, async (uri) => {
+    const value = await local.tools["resource:speckiwi://completed-work"]?.({});
+    return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
+  });
+  sdk.registerResource(
+    "speckiwi-completed-work-target",
+    new ResourceTemplate("speckiwi://completed-work/{target}", { list: undefined }),
+    { title: "SpecKiwi Completed Work by Target", mimeType: "application/json" },
+    async (uri, variables) => {
+      const value = await local.tools["resource:speckiwi://completed-work/{target}"]?.({ target: variables.target });
+      return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
+    }
+  );
   sdk.registerResource(
     "speckiwi-requirements",
     new ResourceTemplate("speckiwi://requirements/{id}", { list: undefined }),

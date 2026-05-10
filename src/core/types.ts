@@ -62,8 +62,29 @@ export type Risk = (typeof RISK_LEVELS)[number];
 export type Stability = (typeof STABILITY_LEVELS)[number];
 export type DiagnosticSeverity = "error" | "warning" | "info";
 
+export interface DiagnosticDefinition {
+  code: string;
+  severity: DiagnosticSeverity;
+  title: string;
+  messageTemplate: string;
+  sourceRule: string;
+  since: string;
+}
+
+export interface DiagnosticLocation {
+  filePath?: string;
+  line?: number;
+  requirementId?: string;
+}
+
 export interface ProjectRoot {
   root: string;
+}
+
+export interface TextFileSnapshot {
+  sha256: string;
+  size: number;
+  mtimeMs?: number;
 }
 
 export interface TextFile {
@@ -72,6 +93,7 @@ export interface TextFile {
   text: string;
   lines: string[];
   newline: "\n" | "\r\n";
+  snapshot?: TextFileSnapshot;
 }
 
 export interface Diagnostic {
@@ -80,6 +102,24 @@ export interface Diagnostic {
   message: string;
   filePath?: string;
   line?: number;
+  requirementId?: string;
+}
+
+export interface DiagnosticsSummary {
+  errors: number;
+  warnings: number;
+  byCode: Record<string, number>;
+}
+
+export type TargetSource = "explicit" | "active-target";
+
+export interface TargetSelectionOptions {
+  target?: string;
+}
+
+export interface TargetSelection {
+  target: string;
+  targetSource: TargetSource;
 }
 
 export interface TargetEntry {
@@ -96,9 +136,36 @@ export interface ScopeEntry {
   description: string;
 }
 
+export interface CompletedWorkEntry {
+  date: string;
+  target: string;
+  scope: string;
+  requirementIds: string[];
+  summary: string;
+  line?: number;
+}
+
+export interface StatusSummaryEntry {
+  status: string;
+  count: number;
+  line?: number;
+}
+
+export interface RequirementTypeSummaryEntry {
+  type: string;
+  prefix: string;
+  count: number;
+  line?: number;
+}
+
 export interface IndexDocument {
+  metadata: Record<string, string>;
+  activeTarget: string;
   targets: TargetEntry[];
   scopes: ScopeEntry[];
+  statusSummary?: StatusSummaryEntry[];
+  requirementTypeSummary?: RequirementTypeSummaryEntry[];
+  completedWork: CompletedWorkEntry[];
 }
 
 export interface AcceptanceCriterion {
@@ -166,10 +233,62 @@ export interface ValidationResult {
 
 export interface TargetSummary {
   target: string;
+  targetSource: TargetSource;
   countsByStatus: Record<string, number>;
+  countsByType: Record<string, number>;
   total: number;
+  blocked: string[];
   implementedNotVerified: string[];
   missingEvidence: string[];
+  diagnosticsSummary: DiagnosticsSummary;
+  completedWork: CompletedWorkEntry[];
+}
+
+export interface ReadDiagnosticsPayload {
+  diagnostics: Diagnostic[];
+  errors: Diagnostic[];
+  warnings: Diagnostic[];
+  diagnosticsSummary: DiagnosticsSummary;
+}
+
+export type ReadEnvelope<T extends object> = T & ReadDiagnosticsPayload;
+
+export interface AcCoverageGap {
+  requirementId: string;
+  missingAcIds: string[];
+}
+
+export interface EvidenceReferenceIssue {
+  requirementId: string;
+  evidenceId?: string;
+  reference: string;
+  issue?: string;
+}
+
+export interface CommandEvidencePolicyViolation {
+  requirementId: string;
+  evidenceId?: string;
+  reference: string;
+  policy: string;
+}
+
+export interface ReleaseReadinessSummary {
+  target: string;
+  targetSource: TargetSource;
+  ready: boolean;
+  diagnosticsSummary: DiagnosticsSummary;
+  validationErrors: number;
+  blocked: string[];
+  plannedOrInProgress: string[];
+  implementedNotVerified: string[];
+  criticalHighUnverified: string[];
+  missingEvidence: string[];
+  acCoverageGaps: AcCoverageGap[];
+  missingEvidenceReferences: EvidenceReferenceIssue[];
+  brokenTraceLinks: string[];
+  commandEvidencePolicyViolations: CommandEvidencePolicyViolation[];
+  warnings: string[];
+  baselineCommand: string;
 }
 
 export interface MutationResult<T = unknown> {

@@ -5,7 +5,7 @@ SpecKiwi is a local-first requirements tool for Git-tracked Markdown SRS documen
 - a Node.js CLI for people and scripts
 - a stdio MCP server for coding agents
 
-SpecKiwi does not use YAML requirement files, front matter, generated JSON as canonical data, a database, or a remote requirements service. The canonical requirements are Markdown files in the repository.
+SpecKiwi also tracks the active target, completed work summaries, validation diagnostics, and release readiness from the same Markdown files. It does not use YAML requirement files, front matter, generated JSON as canonical data, a database, or a remote requirements service.
 
 ## Requirements
 
@@ -51,7 +51,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` always creates or updates `AGENTS.md` and `CLAUDE.md` with a short pointer to the SRS rules; if the rules link is already present, the agent file is left unchanged. Existing generated SRS/rule files are skipped unless `--force` is provided.
+`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.1` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
 
 ## How the SRS Is Organized
 
@@ -93,6 +93,8 @@ The system shall record each successful payment approval.
 
 The heading, metadata table, Acceptance Criteria task list, Verification Evidence table, and Trace Links table are parsed by SpecKiwi. Preserve those names and structures.
 
+`validate` also checks index consistency and release governance rules, including duplicate targets or scope prefixes, multiple active targets, missing or unregistered scope documents, summary table drift, malformed requirement sections, malformed Markdown tables, missing evidence, stale evidence references, and broken trace links.
+
 ## Daily CLI Workflow
 
 Validate first:
@@ -107,6 +109,10 @@ Find requirements:
 
 ```sh
 speckiwi targets
+speckiwi active-target
+speckiwi set-active-target v1.2.0
+speckiwi completed-work --target v1.2.0 --order latest --json
+speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands."
 speckiwi scopes
 speckiwi list --target v1.0.0
 speckiwi list --scope PAY --status planned --json
@@ -115,7 +121,18 @@ speckiwi summary --target v1.0.0 --json
 speckiwi links check --json
 ```
 
+`active-target` is the current target version recorded in `docs/spec/00.index.md` as `Active Target`. An empty value means no active target has been selected. `completed-work` reads the index-level Completed Work Log, and `add-completed-work` appends a summary row after work is actually complete.
+
+Completed Work Log uses this index table:
+
+```md
+| Date | Target | Scope | Requirement IDs | Summary |
+|---|---|---|---|---|
+```
+
 Machine-readable automation should use `--json`. Human output is intentionally simple and stable enough for quick inspection, but JSON is the safer interface for scripts.
+
+Read-command JSON uses a diagnostics envelope. The command-specific payload is returned with `errors`, `warnings`, and `diagnosticsSummary`, so scripts and agents can inspect the data and its validation state in one response.
 
 ## Add a Requirement
 
@@ -241,6 +258,8 @@ Read commands:
 | `speckiwi list [--target T] [--status S] [--type T] [--scope S] [--tag T] [--format F] [--json]` | List requirements by filter. |
 | `speckiwi show <id> [--markdown] [--json]` | Show one requirement. |
 | `speckiwi targets [--json]` | Show target map entries. |
+| `speckiwi active-target [--json]` | Show the current active target and summary. |
+| `speckiwi completed-work [--target T] [--scope S] [--since YYYY-MM-DD] [--limit N] [--order latest\|file] [--json]` | Show Completed Work Log rows. |
 | `speckiwi scopes [--json]` | Show scope map entries. |
 | `speckiwi summary [--target T] [--markdown] [--json]` | Summarize a target. |
 | `speckiwi links check [--json]` | Check local links and requirement references. |
@@ -250,6 +269,8 @@ Mutation commands:
 | Command | Purpose |
 |---|---|
 | `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | Create or refresh the SRS skeleton and both agent instruction files. |
+| `speckiwi set-active-target <target> [--dry-run] [--json]` | Update the index `Active Target` and Target Map active row. |
+| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--allow-incomplete] [--dry-run] [--json]` | Append a Completed Work Log row after prevalidating references. |
 | `speckiwi add-requirement ...` | Add a new requirement block. |
 | `speckiwi update-status <id> <status> [--json]` | Update the `Status` metadata row. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | Mark acceptance criteria as checked. |
@@ -266,6 +287,16 @@ blocked
 implemented
 verified
 discarded
+```
+
+Allowed target statuses:
+
+```text
+planned
+active
+completed
+released
+archived
 ```
 
 Allowed requirement types:
@@ -309,12 +340,16 @@ Read tools:
 | `get_requirement` | `id`, `includeMarkdown?` |
 | `validate_spec` | `strict?`, `failOnWarning?`; validates the current workspace |
 | `summarize_target` | `target?` |
+| `get_active_target` | none |
+| `list_completed_work` | `target?`, `scope?`, `since?`, `limit?`, `order?` |
 
 Mutation tools:
 
 | Tool | Input |
 |---|---|
 | `init_project` | `target?`, `scope?`, `force?` |
+| `set_active_target` | `target`, `dryRun?` |
+| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `allowIncomplete?`, `dryRun?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |
@@ -325,15 +360,21 @@ Resources:
 
 ```text
 speckiwi://index
+speckiwi://active-target
+speckiwi://completed-work
+speckiwi://completed-work/{target}
 speckiwi://requirements/{id}
 speckiwi://targets/{target}
 speckiwi://scopes/{scope}
 ```
 
+MCP resources use an envelope payload: `{ ok, value, diagnostics, diagnosticsSummary }`. The resource-specific data is under `value`, including `value.completedWork` for completed-work resources.
+
 Recommended agent flow:
 
 ```text
 speckiwi://index
+-> speckiwi://active-target
 -> list_requirements
 -> get_requirement(includeMarkdown: true)
 -> implement and test
@@ -341,6 +382,7 @@ speckiwi://index
 -> check_acceptance_criteria
 -> update_status
 -> validate_spec
+-> list_completed_work
 ```
 
 ## Release and Baseline Workflow
@@ -352,15 +394,16 @@ npm run build
 npm run typecheck
 npm run lint
 npm test
+npm run test:coverage
 npm run test:integration
 npm run release:acceptance
 npm run release:check
 ```
 
-When a target is accepted, record the baseline in Git:
+When a target is accepted, mark it `released` in the Target Map and record the baseline in Git:
 
 ```sh
-git tag srs-v1.0.0-baseline
+git tag srs-v1.2.0-baseline
 ```
 
 ## Development Commands
@@ -370,6 +413,7 @@ npm run build
 npm run typecheck
 npm run lint
 npm test
+npm run test:coverage
 npm run test:integration
 npm run release:acceptance
 npm run release:check
@@ -396,7 +440,7 @@ The CLI and MCP server are the stable user-facing interfaces. Treat JSON command
 - It does not manage YAML requirement files.
 - It does not use YAML front matter.
 - It does not run a database or background requirements server.
-- It does not expose an HTTP MCP transport in v1.0.0.
+- It does not expose an HTTP MCP transport in the current release line.
 - It does not make generated JSON canonical.
 - It does not create evidence for you. Evidence should point to real tests, code, PRs, reviews, analysis, demos, or operational records.
 
@@ -409,7 +453,7 @@ SpecKiwi는 Git으로 추적되는 Markdown SRS 문서를 위한 local-first 요
 - 사람과 스크립트를 위한 Node.js CLI
 - 코딩 에이전트를 위한 stdio MCP 서버
 
-SpecKiwi는 YAML 요구사항 파일, YAML front matter, canonical data로서의 생성 JSON, 데이터베이스, 원격 요구사항 서버를 사용하지 않습니다. canonical 요구사항은 저장소 안의 Markdown 파일입니다.
+SpecKiwi는 같은 Markdown 파일에서 active target, 완료 작업 요약, validation diagnostic, release readiness도 추적합니다. YAML 요구사항 파일, YAML front matter, canonical data로서의 생성 JSON, 데이터베이스, 원격 요구사항 서버는 사용하지 않습니다.
 
 ## 요구 사항
 
@@ -455,7 +499,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 항상 `AGENTS.md`와 `CLAUDE.md`에 SRS 규칙 링크를 짧게 추가합니다. rules 링크가 이미 있으면 agent 파일은 변경하지 않습니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
+`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.1` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
 
 ## SRS 구성 방식
 
@@ -497,6 +541,8 @@ The system shall record each successful payment approval.
 
 SpecKiwi는 heading, metadata table, Acceptance Criteria task list, Verification Evidence table, Trace Links table을 파싱합니다. 이 이름과 구조는 유지해야 합니다.
 
+`validate`는 index consistency와 release governance 규칙도 검사합니다. duplicate target 또는 scope prefix, multiple active target, 누락되거나 등록되지 않은 scope document, summary table drift, 잘못된 requirement section, 잘못된 Markdown table, 누락된 evidence, stale evidence reference, 깨진 trace link가 diagnostic으로 보고됩니다.
+
 ## 일상 CLI Workflow
 
 먼저 검증합니다.
@@ -511,6 +557,10 @@ speckiwi validate --fail-on-warning
 
 ```sh
 speckiwi targets
+speckiwi active-target
+speckiwi set-active-target v1.2.0
+speckiwi completed-work --target v1.2.0 --order latest --json
+speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands."
 speckiwi scopes
 speckiwi list --target v1.0.0
 speckiwi list --scope PAY --status planned --json
@@ -519,7 +569,18 @@ speckiwi summary --target v1.0.0 --json
 speckiwi links check --json
 ```
 
+`active-target`은 `docs/spec/00.index.md`의 `Active Target`에 기록된 현재 작업 목표 버전입니다. 값이 비어 있으면 아직 active target이 선택되지 않은 상태입니다. `completed-work`는 index-level Completed Work Log를 읽고, `add-completed-work`는 완료된 작업 요약 row를 추가합니다.
+
+Completed Work Log는 index에서 다음 table을 사용합니다.
+
+```md
+| Date | Target | Scope | Requirement IDs | Summary |
+|---|---|---|---|---|
+```
+
 자동화에서는 `--json`을 사용합니다. 사람용 출력은 빠른 확인에 충분하도록 단순하게 유지되지만, 스크립트에는 JSON이 더 안전한 인터페이스입니다.
+
+읽기 명령의 JSON은 diagnostic envelope를 사용합니다. 명령별 payload와 함께 `errors`, `warnings`, `diagnosticsSummary`가 반환되므로, 스크립트와 에이전트는 데이터와 validation 상태를 한 응답에서 확인할 수 있습니다.
 
 ## 요구사항 추가
 
@@ -645,6 +706,8 @@ speckiwi add-trace FR-PAY-001 \
 | `speckiwi list [--target T] [--status S] [--type T] [--scope S] [--tag T] [--format F] [--json]` | 필터로 요구사항을 나열합니다. |
 | `speckiwi show <id> [--markdown] [--json]` | 단일 요구사항을 표시합니다. |
 | `speckiwi targets [--json]` | target map 항목을 표시합니다. |
+| `speckiwi active-target [--json]` | 현재 active target과 요약을 표시합니다. |
+| `speckiwi completed-work [--target T] [--scope S] [--since YYYY-MM-DD] [--limit N] [--order latest\|file] [--json]` | Completed Work Log row를 표시합니다. |
 | `speckiwi scopes [--json]` | scope map 항목을 표시합니다. |
 | `speckiwi summary [--target T] [--markdown] [--json]` | target을 요약합니다. |
 | `speckiwi links check [--json]` | local link와 requirement reference를 확인합니다. |
@@ -654,6 +717,8 @@ speckiwi add-trace FR-PAY-001 \
 | Command | Purpose |
 |---|---|
 | `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | SRS skeleton과 두 agent instruction 파일을 생성하거나 갱신합니다. |
+| `speckiwi set-active-target <target> [--dry-run] [--json]` | index의 `Active Target`과 Target Map active row를 갱신합니다. |
+| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--allow-incomplete] [--dry-run] [--json]` | reference prevalidation 후 Completed Work Log row를 추가합니다. |
 | `speckiwi add-requirement ...` | 새 requirement block을 추가합니다. |
 | `speckiwi update-status <id> <status> [--json]` | `Status` metadata row를 갱신합니다. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | acceptance criteria를 checked 상태로 표시합니다. |
@@ -670,6 +735,16 @@ blocked
 implemented
 verified
 discarded
+```
+
+허용되는 target status:
+
+```text
+planned
+active
+completed
+released
+archived
 ```
 
 허용되는 requirement type:
@@ -713,12 +788,16 @@ speckiwi --root /path/to/project mcp
 | `get_requirement` | `id`, `includeMarkdown?` |
 | `validate_spec` | `strict?`, `failOnWarning?`; 현재 workspace를 검증합니다. |
 | `summarize_target` | `target?` |
+| `get_active_target` | 없음 |
+| `list_completed_work` | `target?`, `scope?`, `since?`, `limit?`, `order?` |
 
 변경 도구:
 
 | Tool | Input |
 |---|---|
 | `init_project` | `target?`, `scope?`, `force?` |
+| `set_active_target` | `target`, `dryRun?` |
+| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `allowIncomplete?`, `dryRun?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |
@@ -729,15 +808,21 @@ speckiwi --root /path/to/project mcp
 
 ```text
 speckiwi://index
+speckiwi://active-target
+speckiwi://completed-work
+speckiwi://completed-work/{target}
 speckiwi://requirements/{id}
 speckiwi://targets/{target}
 speckiwi://scopes/{scope}
 ```
 
+MCP resource는 envelope payload를 사용합니다. 형식은 `{ ok, value, diagnostics, diagnosticsSummary }`이고, resource별 데이터는 `value` 아래에 들어갑니다. completed-work resource는 `value.completedWork`를 사용합니다.
+
 권장 에이전트 흐름:
 
 ```text
 speckiwi://index
+-> speckiwi://active-target
 -> list_requirements
 -> get_requirement(includeMarkdown: true)
 -> implement and test
@@ -745,6 +830,7 @@ speckiwi://index
 -> check_acceptance_criteria
 -> update_status
 -> validate_spec
+-> list_completed_work
 ```
 
 ## Release와 Baseline Workflow
@@ -756,15 +842,16 @@ npm run build
 npm run typecheck
 npm run lint
 npm test
+npm run test:coverage
 npm run test:integration
 npm run release:acceptance
 npm run release:check
 ```
 
-target이 승인되면 Git tag로 baseline을 기록합니다.
+target이 승인되면 Target Map에서 `released`로 표시하고 Git tag로 baseline을 기록합니다.
 
 ```sh
-git tag srs-v1.0.0-baseline
+git tag srs-v1.2.0-baseline
 ```
 
 ## Development Commands
@@ -774,6 +861,7 @@ npm run build
 npm run typecheck
 npm run lint
 npm test
+npm run test:coverage
 npm run test:integration
 npm run release:acceptance
 npm run release:check
@@ -800,6 +888,6 @@ CLI와 MCP 서버는 안정적인 사용자-facing interface입니다. JSON 명�
 - YAML requirement file을 관리하지 않습니다.
 - YAML front matter를 사용하지 않습니다.
 - 데이터베이스나 background requirements server를 실행하지 않습니다.
-- v1.0.0에서 HTTP MCP transport를 제공하지 않습니다.
+- 현재 release line에서 HTTP MCP transport를 제공하지 않습니다.
 - 생성된 JSON을 canonical data로 만들지 않습니다.
 - evidence를 대신 만들어주지 않습니다. Evidence는 실제 test, code, PR, review, analysis, demo, 운영 기록을 가리켜야 합니다.
