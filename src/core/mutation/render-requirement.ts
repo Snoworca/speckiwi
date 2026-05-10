@@ -1,5 +1,7 @@
 import { TYPE_PREFIX, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
 
+export const DEFAULT_REQUIREMENT_STABILITY = "draft";
+
 export interface RenderRequirementInput {
   id: string;
   type: RequirementType;
@@ -38,7 +40,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
     ["Priority", input.priority ?? "medium"],
     ["Tags", (input.tags ?? []).join(", ") || "-"],
     ["Risk", input.risk ?? "medium"],
-    ["Stability", input.stability ?? "evolving"],
+    ["Stability", input.stability ?? DEFAULT_REQUIREMENT_STABILITY],
     ["Verification Method", input.verificationMethod ?? "test"],
     ["GitHub Issue", input.githubIssue ?? "-"],
     ["Related Docs", (input.relatedDocs ?? []).join(", ") || "-"]

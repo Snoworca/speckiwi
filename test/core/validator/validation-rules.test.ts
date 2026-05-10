@@ -6,6 +6,11 @@ import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { validateWorkspace } from "../../../src/core/validator/validate-workspace.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
+async function diagnosticCodesForFixture(name: string): Promise<string[]> {
+  const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace(name)));
+  return validateWorkspace(workspace).diagnostics.map((diagnostic) => diagnostic.code);
+}
+
 describe("validation registry", () => {
   it("passes the valid fixture", async () => {
     const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
@@ -91,6 +96,23 @@ describe("validation registry", () => {
     for (const fixture of fixtures) {
       const result = validateWorkspace(await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace(fixture.name))));
       expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining(fixture.codes));
+    }
+  });
+
+  it("reports exact stability lifecycle diagnostics from focused fixtures", async () => {
+    const fixtures = [
+      { name: "stability-legacy-volatile", codes: ["SRS-W022"] },
+      { name: "stability-invalid-unknown", codes: ["SRS-E011"] },
+      { name: "stability-active-draft", codes: ["SRS-W023"] },
+      { name: "stability-released-draft", codes: ["SRS-W023"] },
+      { name: "stability-verified-draft", codes: ["SRS-E033"] },
+      { name: "stability-frozen-missing", codes: ["SRS-W009"] },
+      { name: "stability-frozen-explicit", codes: [] },
+      { name: "stability-frozen-discarded", codes: [] }
+    ];
+
+    for (const fixture of fixtures) {
+      await expect(diagnosticCodesForFixture(fixture.name)).resolves.toEqual(fixture.codes);
     }
   });
 });

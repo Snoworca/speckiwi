@@ -1,12 +1,14 @@
 import { diagnostic } from "../diagnostic.js";
 import {
   PREFIX_TYPE,
+  LEGACY_STABILITY_LEVELS,
   PRIORITY_LEVELS,
   REQUIREMENT_STATUSES,
   REQUIREMENT_TYPES,
   RISK_LEVELS,
   STABILITY_LEVELS,
   type Diagnostic,
+  type ParsedWorkspace,
   type RequirementRecord
 } from "../types.js";
 import { registerValidationRule } from "./rule-registry.js";
@@ -56,6 +58,39 @@ function compareSummaryCounts(expected: Map<string, number>, actual: Map<string,
     if ((expected.get(key) ?? 0) !== count) drifted.add(key);
   }
   return [...drifted];
+}
+
+function isKnownStabilityValue(value: string): boolean {
+  return includes(STABILITY_LEVELS, value) || includes(LEGACY_STABILITY_LEVELS, value);
+}
+
+function isLegacyStabilityValue(value: string): boolean {
+  return includes(LEGACY_STABILITY_LEVELS, value);
+}
+
+function targetIsActiveOrReleased(status: string): boolean {
+  return status === "active" || status === "released";
+}
+
+export function isRequirementInActiveOrReleasedTarget(workspace: ParsedWorkspace, record: RequirementRecord): boolean {
+  if (!record.target) return false;
+  if (workspace.index.activeTarget === record.target) return true;
+  return workspace.index.targets.some((target) => target.target === record.target && targetIsActiveOrReleased(target.status));
+}
+
+export function isDraftImplementationContractBlocked(record: RequirementRecord): boolean {
+  return record.stability === "draft" && record.status !== "discarded";
+}
+
+function isExplicitChangeNoteCell(value: string): boolean {
+  const normalized = value.trim();
+  return normalized !== "" && normalized !== "-";
+}
+
+function hasExplicitChangeNote(record: RequirementRecord): boolean {
+  return (record.changeNotes ?? []).some(
+    (row) => isExplicitChangeNoteCell(row.date) && isExplicitChangeNoteCell(row.change) && isExplicitChangeNoteCell(row.reason)
+  );
 }
 
 export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
@@ -151,8 +186,24 @@ export function registerDefaultRules(): void {
       if (record.risk && !includes(RISK_LEVELS, record.risk)) {
         diagnostics.push(diagnostic("SRS-E007", "error", `Invalid risk for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
       }
-      if (record.stability && !includes(STABILITY_LEVELS, record.stability)) {
+      if (record.stability && !isKnownStabilityValue(record.stability)) {
         diagnostics.push(diagnostic("SRS-E011", "error", `Invalid stability for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+      }
+      if (record.stability && isLegacyStabilityValue(record.stability)) {
+        diagnostics.push(diagnostic("SRS-W022", "warning", `Legacy volatile stability should be migrated: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+      }
+      if (record.status === "verified" && record.stability === "draft") {
+        diagnostics.push(diagnostic("SRS-E033", "error", `Verified requirement uses draft stability: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+      } else if (isDraftImplementationContractBlocked(record) && isRequirementInActiveOrReleasedTarget(workspace, record)) {
+        diagnostics.push(
+          diagnostic("SRS-W023", "warning", `Draft requirement is not ready as an implementation contract: ${record.id}`, {
+            filePath: record.filePath,
+            line: record.headingLine
+          })
+        );
+      }
+      if (record.stability === "frozen" && record.status !== "discarded" && !hasExplicitChangeNote(record)) {
+        diagnostics.push(diagnostic("SRS-W009", "warning", `Frozen target requirement changed without Change Notes: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
       }
       if (record.acceptanceCriteria.length === 0) {
         diagnostics.push(diagnostic("SRS-E008", "error", `Acceptance Criteria missing for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));

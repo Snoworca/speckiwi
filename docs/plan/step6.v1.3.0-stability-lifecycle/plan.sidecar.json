@@ -1,0 +1,522 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260511-v1-3-stability-lifecycle",
+  "produced_at": "2026-05-11T00:00:00+09:00",
+  "target": "v1.3.0",
+  "scope_freeze": true,
+  "coverage_mode": "stability-lifecycle-implementation",
+  "change_log": [],
+  "platforms": ["win32", "posix"],
+  "source_spec": [
+    "docs/research/07.requirement-stability-lifecycle-research.md",
+    "docs/spec/00.index.md",
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/60.workflow-release.srs.md",
+    "docs/rule/SRS-MD-Rules-v1.0.0.md"
+  ],
+  "preflight_scope": "P0 is limited to existing REL-FLOW-001 README baseline tag acceptance repair because current release acceptance fails before v1.3.0 stability lifecycle work.",
+  "phase_dependencies": {
+    "P0": [],
+    "P1": ["P0"],
+    "P2": ["P1"],
+    "P3": ["P2"],
+    "P4": ["P1", "P2", "P3"]
+  },
+  "pre_commit_gate": [
+    {"shell": "pwsh", "cmd": "speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "bash", "cmd": "speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard", "flags": "i"},
+    {"pattern": "rm\\s+-rf\\s+(/|\\.|\\*)", "flags": "i"},
+    {"pattern": "Remove-Item\\s+-Recurse\\s+-Force", "flags": "i"},
+    {"pattern": "dd\\s+if=", "flags": "i"},
+    {"pattern": "mkfs(\\.|\\s)", "flags": "i"},
+    {"pattern": "kill\\s+-9\\s+-1", "flags": "i"},
+    {"pattern": "shutdown\\b", "flags": "i"},
+    {"pattern": "chmod\\s+777\\s+/", "flags": "i"},
+    {"pattern": "curl\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "wget\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "while\\s+true", "flags": "i"},
+    {"pattern": "eval\\s+\\$\\(", "flags": "i"}
+  ],
+  "phases": [
+    {
+      "id": "P0",
+      "title": "Preflight Baseline",
+      "document": "docs/plan/step6.v1.3.0-stability-lifecycle/01.phase-preflight-baseline.md",
+      "tasks": [
+        {
+          "id": "TASK-P0-001",
+          "title": "README baseline tag acceptance repair",
+          "feasibility": "Low",
+          "related_requirements": ["REL-FLOW-001"],
+          "owns": ["README.md", "test/release/release-readiness.test.ts"],
+          "signatures": ["N/A — documentation and test assertion task"],
+          "reference_pattern": "Keep release readiness documentation test as the README baseline workflow contract.",
+          "source_anchors": ["README.md:403-407", "README.md:851-855", "test/release/release-readiness.test.ts:66-72"],
+          "implementation_guide": [
+            "Align README baseline tag example with the release readiness documentation assertion.",
+            "Keep English and Korean README sections equivalent.",
+            "Do not create a git tag."
+          ],
+          "rationale": "Current release acceptance fails before v1.3.0 work and must be restored before using it as a gate.",
+          "pitfalls": ["Do not treat this task as v1.3.0 stability behavior."],
+          "test_guide": ["Run release-readiness documentation test."],
+          "dod": ["Release readiness documentation assertion passes."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/release/release-readiness.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/release/release-readiness.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore README.md and release-readiness test changes from this task. 2) Rerun the release readiness test."}
+        }
+      ]
+    },
+    {
+      "id": "P1",
+      "title": "Taxonomy Defaults",
+      "document": "docs/plan/step6.v1.3.0-stability-lifecycle/02.phase-taxonomy-defaults.md",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Stability enum and schema helpers",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-015"],
+          "owns": ["src/core/types.ts", "src/core/schema.ts", "test/core/types/contracts.test.ts"],
+          "signatures": [
+            "export const STABILITY_LEVELS",
+            "export const LEGACY_STABILITY_LEVELS",
+            "export function isCanonicalStability(value: unknown)",
+            "export function isLegacyStability(value: unknown)",
+            "export function isKnownStability(value: unknown)"
+          ],
+          "reference_pattern": "Follow existing enum and isOneOf guard patterns.",
+          "source_anchors": ["src/core/types.ts:24-63", "src/core/schema.ts:1-31", "test/core/types/contracts.test.ts:13-27"],
+          "implementation_guide": [
+            "Set canonical stability values to draft, evolving, stable, frozen, deprecated.",
+            "Represent volatile as legacy compatibility.",
+            "Add schema guards and contract tests."
+          ],
+          "rationale": "Volatile should not remain canonical, but older documents need a migration path.",
+          "pitfalls": ["Do not model stability with Status values."],
+          "test_guide": ["Assert canonical and legacy stability sets separately."],
+          "dod": ["Canonical and legacy stability helpers exist and tests pass."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/types/contracts.test.ts --hookTimeout 30000 --testTimeout 30000", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/types/contracts.test.ts --hookTimeout 30000 --testTimeout 30000", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore enum and schema helper changes. 2) Restore contract tests and rerun them."}
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "add-requirement default draft stability",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-015"],
+          "owns": [
+            "src/core/mutation/render-requirement.ts",
+            "src/core/mutation/add-requirement.ts",
+            "src/cli/commands/mutations.ts",
+            "src/mcp/tools/mutation-tools.ts",
+            "test/core/mutation/add-requirement.test.ts",
+            "test/cli/mutation-commands.test.ts",
+            "test/mcp/mutation-tools-errors.test.ts"
+          ],
+          "signatures": ["export const DEFAULT_REQUIREMENT_STABILITY = \"draft\"", "function assertKnownStabilityInput(input: AddRequirementInput)"],
+          "reference_pattern": "Update existing metadata default paths in renderer and buildOutputRecord.",
+          "source_anchors": [
+            "src/core/mutation/render-requirement.ts:32-45",
+            "src/core/mutation/add-requirement.ts:95-105",
+            "src/core/mutation/add-requirement.ts:146-195",
+            "src/cli/commands/mutations.ts:140-178",
+            "src/mcp/tools/mutation-tools.ts:66-80"
+          ],
+          "implementation_guide": [
+            "Change default stability from evolving to draft.",
+            "Reject unknown stability input before file write.",
+            "Reject explicit volatile input for new add-requirement writes across core, CLI, and MCP before mutation.",
+            "Update CLI and MCP mutation tests."
+          ],
+          "rationale": "New requirements should begin as draft contracts until reviewed.",
+          "pitfalls": ["Do not silently rewrite volatile into another value."],
+          "test_guide": ["Test omitted stability, invalid stability, and explicit canonical values."],
+          "dod": ["New Requirement Blocks default to draft and invalid values do not mutate files."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/mutation/add-requirement.test.ts test/cli/mutation-commands.test.ts test/mcp/mutation-tools-errors.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/mutation/add-requirement.test.ts test/cli/mutation-commands.test.ts test/mcp/mutation-tools-errors.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore mutation default and input guard changes. 2) Restore mutation tests and rerun them."}
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Validator Fixtures",
+      "document": "docs/plan/step6.v1.3.0-stability-lifecycle/03.phase-validator-fixtures.md",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Stability diagnostic registry and validator rules",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-015"],
+          "owns": ["src/core/diagnostic-registry.ts", "src/core/validator/rules.ts", "docs/rule/SRS-MD-Rules-v1.0.0.md", "docs/spec/90.appendix.md"],
+          "signatures": ["function isRequirementInActiveOrReleasedTarget(workspace: ParsedWorkspace, record: RequirementRecord): boolean", "function isDraftImplementationContractBlocked(record: RequirementRecord): boolean"],
+          "reference_pattern": "Add registry entries, then emit codes from validator rules.",
+          "source_anchors": [
+            "src/core/diagnostic-registry.ts:80-110",
+            "src/core/diagnostic-registry.ts:320-390",
+            "src/core/validator/rules.ts:119-179",
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:751-760",
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:1450-1460",
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:1476-1496"
+          ],
+          "implementation_guide": [
+            "Keep SRS-E011 for unknown values.",
+            "Emit SRS-W022 for volatile.",
+            "Emit SRS-E033 for verified draft.",
+            "Emit SRS-W023 for non-discarded draft in active or released targets.",
+            "Update rules and appendix diagnostic tables."
+          ],
+          "rationale": "Validator diagnostics surface stability issues before workflow decisions.",
+          "pitfalls": ["Do not make every draft requirement an error."],
+          "test_guide": ["Test unknown, legacy, verified draft, active draft, and released draft cases."],
+          "dod": ["New diagnostic codes are registered, emitted, and documented."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/diagnostic-registry.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/diagnostic-registry.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove new diagnostic emissions and registry entries. 2) Restore docs and rerun validator tests."}
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Stability fixture workspace coverage",
+          "feasibility": "Low",
+          "related_requirements": ["FR-PARSE-015"],
+          "owns": ["test/fixtures/workspaces/stability-*", "test/core/validator/validation-rules.test.ts", "test/fixtures/fixture-utils.ts"],
+          "signatures": ["N/A — fixture and tests task"],
+          "reference_pattern": "Copy focused fixture workspace style from valid-basic and index-drift fixtures.",
+          "source_anchors": [
+            "test/fixtures/fixture-utils.ts:1-24",
+            "test/fixtures/workspaces/valid-basic/docs/spec/00.index.md:1-51",
+            "test/fixtures/workspaces/valid-basic/docs/spec/10.product-architecture.srs.md:20-60",
+            "test/core/validator/validation-rules.test.ts:9-96"
+          ],
+          "implementation_guide": [
+            "Create legacy volatile fixture.",
+            "Create invalid unknown stability fixture.",
+            "Create active draft fixture.",
+            "Create released draft fixture.",
+            "Create verified draft fixture.",
+            "Assert exact diagnostic codes."
+          ],
+          "rationale": "Focused fixtures prevent accidental broad validator behavior changes.",
+          "pitfalls": ["Do not turn valid-basic into an invalid fixture."],
+          "test_guide": ["Run validator tests against all stability fixtures."],
+          "dod": ["All new validator branches have fixture coverage."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove stability fixture directories and related tests. 2) Rerun validator tests."}
+        },
+        {
+          "id": "TASK-P2-003",
+          "title": "Frozen Change Notes parsing and validation",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-015"],
+          "owns": [
+            "src/core/types.ts",
+            "src/core/query/records.ts",
+            "src/core/parser/table.ts",
+            "src/core/validator/rules.ts",
+            "test/core/parser/workspace-records.test.ts",
+            "test/core/validator/validation-rules.test.ts",
+            "test/fixtures/workspaces/stability-frozen-*"
+          ],
+          "signatures": [
+            "export interface ChangeNoteRow",
+            "RequirementRecord.changeNotes: ChangeNoteRow[]"
+          ],
+          "reference_pattern": "Follow existing evidence and trace table parsing in records.ts and reuse parseSectionTable for Change Notes.",
+          "source_anchors": [
+            "src/core/types.ts:178-218",
+            "src/core/query/records.ts:1-136",
+            "src/core/parser/table.ts:1-90",
+            "src/core/validator/rules.ts:119-179",
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:1484-1484",
+            "test/core/parser/workspace-records.test.ts:1-120"
+          ],
+          "implementation_guide": [
+            "Add ChangeNoteRow and changeNotes to RequirementRecord.",
+            "Parse the Change Notes table into record.changeNotes.",
+            "Create frozen fixtures for missing, explicit, and discarded Change Notes cases.",
+            "Emit existing SRS-W009 for non-discarded frozen requirements without an explicit Change Notes row.",
+            "Treat generated empty placeholder rows as no explicit change history."
+          ],
+          "rationale": "FR-PARSE-015 AC-8 requires frozen requirements to be change-controlled through parser-visible Change Notes.",
+          "pitfalls": [
+            "Do not fail parsing when Change Notes is missing.",
+            "Do not count table header separators or empty placeholder rows as change notes."
+          ],
+          "test_guide": [
+            "Assert parser extracts explicit Change Notes.",
+            "Assert frozen without explicit Change Notes emits SRS-W009.",
+            "Assert discarded frozen requirements do not emit SRS-W009."
+          ],
+          "dod": [
+            "RequirementRecord exposes parsed Change Notes.",
+            "Frozen requirements without explicit Change Notes emit SRS-W009.",
+            "Frozen validation fixtures cover success, failure, and discarded boundary cases."
+          ],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/parser/workspace-records.test.ts test/core/validator/validation-rules.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove Change Notes parsing and frozen validation additions. 2) Remove frozen fixtures and rerun parser and validator tests."}
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Summary Release Contract",
+      "document": "docs/plan/step6.v1.3.0-stability-lifecycle/04.phase-summary-release-contract.md",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Target summary stability fields",
+          "feasibility": "Low",
+          "related_requirements": ["FR-FLOW-010"],
+          "owns": [
+            "src/core/types.ts",
+            "src/core/query/summary.ts",
+            "src/cli/commands/read.ts",
+            "src/mcp/tools/read-tools.ts",
+            "src/mcp/resources.ts",
+            "test/core/query/query-summary-links.test.ts",
+            "test/cli/read-commands.test.ts",
+            "test/mcp/read-tools-resources.test.ts"
+          ],
+          "signatures": ["interface TargetSummary additions: countsByStability, draftRequirements, deprecatedRequirements, newWorkCandidates, stabilityBlockers, stabilityWarnings"],
+          "reference_pattern": "Extend summarizeTarget; CLI and MCP already consume that core result.",
+          "source_anchors": [
+            "src/core/types.ts:234-245",
+            "src/core/query/summary.ts:34-65",
+            "src/cli/commands/read.ts:100-140",
+            "src/mcp/tools/read-tools.ts:41-52",
+            "src/mcp/resources.ts:40-60",
+            "test/cli/read-commands.test.ts:30-63",
+            "test/mcp/read-tools-resources.test.ts:23-28"
+          ],
+          "implementation_guide": [
+            "Add additive TargetSummary fields.",
+            "Count stability values.",
+            "Expose draft and deprecated arrays.",
+            "Keep discarded records out of blockers.",
+            "Add every non-discarded volatile record to stabilityWarnings.",
+            "Do not warn for evolving by default.",
+            "Add newWorkCandidates containing requirements whose status is planned, in_progress, or blocked and whose stability is neither draft nor deprecated.",
+            "Update CLI and MCP tests."
+          ],
+          "rationale": "Agents need stability data in JSON output for current-work status answers.",
+          "pitfalls": ["Do not remove existing summary fields."],
+          "test_guide": ["Assert summary, active-target, targets, summarize_target, and resource payloads include stability fields.", "Assert deprecated and draft requirements remain searchable but do not appear in newWorkCandidates.", "Assert implemented requirements stay out of newWorkCandidates and remain represented through implementedNotVerified."],
+          "dod": ["CLI and MCP expose the same stability-aware summary.", "Target summary exposes deterministic current-work candidates."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts test/cli/read-commands.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts test/cli/read-commands.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove TargetSummary stability fields and summary logic. 2) Restore CLI/MCP tests and rerun read tests."}
+        },
+        {
+          "id": "TASK-P3-003",
+          "title": "Deprecated explicit searchability and default new-work exclusion",
+          "feasibility": "Low",
+          "related_requirements": ["FR-PARSE-015", "FR-FLOW-010"],
+          "owns": [
+            "src/core/query/lookup.ts",
+            "src/core/query/summary.ts",
+            "src/core/types.ts",
+            "src/cli/commands/read.ts",
+            "src/mcp/tools/read-tools.ts",
+            "test/core/query/query-summary-links.test.ts",
+            "test/cli/read-commands.test.ts",
+            "test/mcp/read-tools-resources.test.ts"
+          ],
+          "signatures": ["export function isNewWorkCandidate(record: RequirementRecord): boolean"],
+          "reference_pattern": "Keep listRequirements and getRequirement explicitly searchable; add recommendation behavior only to summary/new-work candidate fields.",
+          "source_anchors": [
+            "src/core/query/lookup.ts:1-21",
+            "src/core/query/summary.ts:34-65",
+            "src/core/types.ts:234-245",
+            "src/cli/commands/read.ts:75-116",
+            "src/mcp/tools/read-tools.ts:20-52",
+            "test/core/query/query-summary-links.test.ts:1-27"
+          ],
+          "implementation_guide": [
+            "Implement isNewWorkCandidate as status in planned, in_progress, or blocked, and stability not in draft or deprecated.",
+            "Use it in summarizeTarget to populate newWorkCandidates.",
+            "Test that listRequirements still returns deprecated records when filters match.",
+            "Test that getRequirement still returns a deprecated requirement by ID.",
+            "Test that deprecated and draft IDs are excluded from summary.newWorkCandidates.",
+            "Test that implemented IDs are excluded from summary.newWorkCandidates and still represented through implementedNotVerified."
+          ],
+          "rationale": "Deprecated requirements remain traceable and searchable, but should not guide default new implementation work.",
+          "pitfalls": [
+            "Do not hide deprecated records from explicit list/show APIs.",
+            "Do not treat deprecated as discarded."
+          ],
+          "test_guide": [
+            "Assert explicit lookup returns deprecated requirement.",
+            "Assert deprecated requirement is absent from newWorkCandidates.",
+            "Assert draft requirement is absent from newWorkCandidates.",
+            "Assert discarded, verified, and implemented requirements are absent from newWorkCandidates."
+          ],
+          "dod": [
+            "Deprecated requirements are explicitly searchable.",
+            "Default target summary new-work candidates exclude deprecated and discarded requirements."
+          ],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts test/cli/read-commands.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/query/query-summary-links.test.ts test/cli/read-commands.test.ts test/mcp/read-tools-resources.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove new-work candidate helper and summary field. 2) Restore read/query tests and rerun them."}
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Release readiness stability blockers",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-FLOW-010"],
+          "owns": ["src/core/types.ts", "src/core/workflow/release-readiness.ts", "scripts/release-check.mjs", "test/release/release-readiness.test.ts", "test/release/srs-traceability.test.ts"],
+          "signatures": ["interface ReleaseReadinessSummary additions: draftRequirements, deprecatedRequirements, stabilityBlockers, stabilityWarnings", "function collectStabilityBlockers(records: RequirementRecord[]): string[]"],
+          "reference_pattern": "Follow existing release-readiness collector pattern.",
+          "source_anchors": [
+            "src/core/types.ts:275-292",
+            "src/core/workflow/release-readiness.ts:225-273",
+            "scripts/release-check.mjs:1-11",
+            "test/release/release-readiness.test.ts:14-50",
+            "test/release/srs-traceability.test.ts:13-135"
+          ],
+          "implementation_guide": [
+            "Collect non-discarded draft requirements.",
+            "Collect non-discarded deprecated requirements.",
+            "Make draft requirements block ready.",
+            "Expose stability blockers separately from status blockers."
+          ],
+          "rationale": "A release target with draft requirements is not ready.",
+          "pitfalls": ["Do not block release on every evolving requirement."],
+          "test_guide": ["Assert draft blocks readiness and deprecated is reported separately."],
+          "dod": ["Release readiness exposes stability blockers and uses them in ready calculation."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Remove release readiness stability fields and collectors. 2) Restore release tests and rerun release acceptance tests."}
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Agent Docs Finalization",
+      "document": "docs/plan/step6.v1.3.0-stability-lifecycle/05.phase-agent-docs-finalization.md",
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "Managed agent instruction stability workflow",
+          "feasibility": "Low",
+          "related_requirements": ["FR-FLOW-010"],
+          "owns": ["src/core/bootstrap/templates.ts", "src/core/bootstrap/init-project.ts", "test/core/bootstrap/init-project.test.ts", "test/mcp/stdio-purity.test.ts", "AGENTS.md", "CLAUDE.md"],
+          "signatures": ["export const AGENT_INSTRUCTION_VERSION = \"1.2\"", "export function renderAgentInstructionSnippet(options?: AgentInstructionOptions): string"],
+          "reference_pattern": "Use existing managed block replacement logic with versioned heading and suffix marker.",
+          "source_anchors": [
+            "src/core/bootstrap/templates.ts:14-16",
+            "src/core/bootstrap/templates.ts:176-207",
+            "src/core/bootstrap/init-project.ts:25-96",
+            "test/core/bootstrap/init-project.test.ts:1-180",
+            "test/mcp/stdio-purity.test.ts:1-120",
+            "AGENTS.md:9-36",
+            "CLAUDE.md:9-36"
+          ],
+          "implementation_guide": [
+            "Bump managed block version to 1.2.",
+            "Explain Status versus Stability.",
+            "Tell agents to stop before draft or deprecated implementation.",
+            "Update root agent files through the managed block."
+          ],
+          "rationale": "Agent workflow enforcement requires explicit stability guidance.",
+          "pitfalls": ["Do not append duplicate managed blocks."],
+          "test_guide": ["Assert v1.1 blocks are replaced and current blocks are skipped."],
+          "dod": ["AGENTS.md and CLAUDE.md contain one v1.2 managed block each."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npx vitest run test/core/bootstrap/init-project.test.ts test/mcp/stdio-purity.test.ts --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore templates and root agent files from before this task. 2) Restore bootstrap tests and rerun init/MCP startup tests."}
+        },
+        {
+          "id": "TASK-P4-002",
+          "title": "Rules, README, SRS evidence, and final gates",
+          "feasibility": "Medium",
+          "related_requirements": ["FR-PARSE-015", "FR-FLOW-010"],
+          "owns": ["docs/rule/SRS-MD-Rules-v1.0.0.md", "docs/spec/90.appendix.md", "README.md", "docs/spec/20.parser-validation.srs.md", "docs/spec/60.workflow-release.srs.md", "docs/spec/00.index.md"],
+          "signatures": ["N/A — documentation and SRS evidence task"],
+          "reference_pattern": "Follow existing SRS evidence and Completed Work Log row structure.",
+          "source_anchors": [
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:751-760",
+            "docs/rule/SRS-MD-Rules-v1.0.0.md:1750-1770",
+            "docs/spec/90.appendix.md:250-420",
+            "README.md:167-196",
+            "README.md:615-645",
+            "README.md:403-407",
+            "README.md:851-855",
+            "docs/spec/20.parser-validation.srs.md:869-933",
+            "docs/spec/60.workflow-release.srs.md:599-661",
+            "docs/spec/00.index.md:63-91"
+          ],
+          "implementation_guide": [
+            "Update rules, appendix, and README stability descriptions.",
+            "Run full gate commands.",
+            "Only after passing gates, add SRS evidence and mark v1.3.0 requirements verified.",
+            "Update Status Summary and Completed Work Log."
+          ],
+          "rationale": "SRS evidence and summaries must reflect implementation reality.",
+          "pitfalls": ["Do not mark verified before commands pass."],
+          "test_guide": ["Run full pre_commit_gate and speckiwi validate."],
+          "dod": ["FR-PARSE-015 and FR-FLOW-010 are verified with evidence and index summaries are current."],
+          "acceptance_tests": [
+            {"shell": "pwsh", "cmd": "speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "bash", "cmd": "speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0}
+          ],
+          "rollback": {"strategy": "manual", "command": "1) Restore documentation and SRS evidence/status changes from before this task. 2) Rerun speckiwi validate and final gate commands."}
+        }
+      ]
+    }
+  ]
+}

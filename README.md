@@ -51,7 +51,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.1` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
+`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.2` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
 
 ## How the SRS Is Organized
 
@@ -71,6 +71,7 @@ A scope SRS file contains requirement blocks under `## 4. Requirements`.
 | Type | functional |
 | Target | v1.0.0 |
 | Status | planned |
+| Stability | draft |
 
 #### Requirement
 
@@ -187,13 +188,15 @@ Useful options:
 
 ## Implement and Verify a Requirement
 
-The normal lifecycle is:
+`Status` tracks implementation and verification progress. `Stability` tracks requirement maturity and change-control maturity. New Requirement Blocks default to `Stability=draft`; agents should not implement non-discarded `draft` or `deprecated` requirements unless the user explicitly overrides that workflow.
+
+The normal `Status` lifecycle is:
 
 ```text
 planned -> in_progress -> implemented -> verified
 ```
 
-Use `implemented` when code is complete but verification evidence is incomplete. Use `verified` only after every Acceptance Criteria item is checked and at least one evidence row exists.
+Use `implemented` when code is complete but verification evidence is incomplete. Use `verified` only after every Acceptance Criteria item is checked and at least one evidence row exists. Use `Stability` values `draft`, `evolving`, `stable`, `frozen`, and `deprecated` to describe the maturity of the requirement text itself; legacy `volatile` values are accepted only for migration warnings and are not generated for new requirements.
 
 Example:
 
@@ -403,7 +406,7 @@ npm run release:check
 When a target is accepted, mark it `released` in the Target Map and record the baseline in Git:
 
 ```sh
-git tag srs-v1.2.0-baseline
+git tag srs-v1.0.0-baseline
 ```
 
 ## Development Commands
@@ -499,7 +502,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.1` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
+`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.2` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
 
 ## SRS 구성 방식
 
@@ -519,6 +522,7 @@ Scope SRS 파일은 `## 4. Requirements` 아래에 requirement block을 둡니�
 | Type | functional |
 | Target | v1.0.0 |
 | Status | planned |
+| Stability | draft |
 
 #### Requirement
 
@@ -635,13 +639,15 @@ speckiwi add-requirement \
 
 ## 요구사항 구현과 검증
 
-일반적인 lifecycle은 다음과 같습니다.
+`Status`는 구현 및 검증 진행 상태를 나타내고, `Stability`는 요구사항의 성숙도와 변경 통제 성숙도를 나타냅니다. 새 Requirement Block은 기본적으로 `Stability=draft`이며, agent는 사용자가 명시적으로 override하지 않는 한 non-discarded `draft` 또는 `deprecated` 요구사항 구현을 시작하지 않아야 합니다.
+
+일반적인 `Status` lifecycle은 다음과 같습니다.
 
 ```text
 planned -> in_progress -> implemented -> verified
 ```
 
-코드는 완료됐지만 verification evidence가 부족하면 `implemented`를 사용합니다. 모든 Acceptance Criteria가 체크되고 evidence row가 하나 이상 있을 때만 `verified`를 사용합니다.
+코드는 완료됐지만 verification evidence가 부족하면 `implemented`를 사용합니다. 모든 Acceptance Criteria가 체크되고 evidence row가 하나 이상 있을 때만 `verified`를 사용합니다. 요구사항 문장 자체의 성숙도는 `draft`, `evolving`, `stable`, `frozen`, `deprecated` `Stability` 값으로 표현합니다. Legacy `volatile` 값은 migration warning 호환용으로만 허용되며 새 요구사항에는 생성되지 않습니다.
 
 예시:
 
@@ -851,7 +857,7 @@ npm run release:check
 target이 승인되면 Target Map에서 `released`로 표시하고 Git tag로 baseline을 기록합니다.
 
 ```sh
-git tag srs-v1.2.0-baseline
+git tag srs-v1.0.0-baseline
 ```
 
 ## Development Commands

@@ -46,14 +46,42 @@ describe("mutation CLI commands", () => {
     expect(index).toContain("| v1.0.0 | release | planned | Fixture release |");
     expect(index).toContain("| v1.1.0 | version | active | Next fixture target |");
     expect(index).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | CLI completed work row. |");
-    expect(await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8")).toContain("### FR-ARCH-002 — CLI 추가");
+    const scopeText = await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    expect(scopeText).toContain("### FR-ARCH-002 — CLI 추가");
+    expect(scopeText).toContain("| Stability | draft |");
+
+    expect(
+      await main(
+        [
+          "--root",
+          root,
+          "add-requirement",
+          "--type",
+          "functional",
+          "--scope",
+          "ARCH",
+          "--target",
+          "v1.0.0",
+          "--title",
+          "CLI volatile",
+          "--requirement",
+          "CLI must reject legacy stability for new requirements.",
+          "--ac",
+          "rejected",
+          "--stability",
+          "volatile"
+        ],
+        io()
+      )
+    ).toBe(5);
+    expect(await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8")).not.toContain("CLI volatile");
   });
 
   it("supports init options and add-requirement dry-run", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     expect(await main(["--root", root, "init", "--target", "v1.0.0", "--scope", "ARCH", "--force"], io())).toBe(0);
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
     expect(
       await main(
         [
@@ -104,8 +132,8 @@ describe("mutation CLI commands", () => {
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("10.payments.srs.md");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| v2.0.0 | release | planned | Initial target |");
-    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
-    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
   });
 
   it("rejects removed init agent-file option", async () => {

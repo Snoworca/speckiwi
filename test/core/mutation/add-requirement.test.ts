@@ -37,11 +37,70 @@ describe("add requirement mutation", () => {
     expect(result.value.record.id).toBe("FR-ARCH-002");
     expect(result.value.record.metadata.Priority).toBe("high");
     expect(result.value.record.priority).toBe("high");
+    expect(result.value.record.stability).toBe("stable");
     expect(result.patch?.operations).toBeGreaterThan(0);
     const text = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(text).toContain("### FR-ARCH-002 — 새 요구사항");
     expect(text).toContain("#### Verification Evidence");
     expect(text).toContain("| Tags | new, cli |");
+  });
+
+  it("defaults new requirements to draft and rejects non-canonical stability inputs", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const specPath = path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md");
+
+    const omitted = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      target: "v1.0.0",
+      title: "Draft default",
+      statement: "Omitted stability must render as draft.",
+      acceptanceCriteria: ["draft is rendered"]
+    });
+    expect(omitted.ok).toBe(true);
+    if (!omitted.ok) return;
+    expect(omitted.value.record.stability).toBe("draft");
+    expect(omitted.value.record.metadata.Stability).toBe("draft");
+    expect(await readFile(specPath, "utf8")).toContain("| Stability | draft |");
+
+    for (const stability of ["stable", "frozen", "deprecated"] as const) {
+      const canonical = await addRequirement(root, {
+        type: "functional",
+        scope: "ARCH",
+        target: "v1.0.0",
+        title: `${stability} canonical`,
+        statement: `${stability} should be accepted.`,
+        acceptanceCriteria: ["accepted"],
+        stability,
+        dryRun: true
+      });
+      expect(canonical.ok).toBe(true);
+    }
+
+    const beforeInvalid = await readFile(specPath, "utf8");
+    const unknown = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      target: "v1.0.0",
+      title: "Unknown stability",
+      statement: "Unknown stability must fail before mutation.",
+      acceptanceCriteria: ["rejected"],
+      stability: "unknown"
+    });
+    expect(unknown.ok).toBe(false);
+
+    const legacy = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      target: "v1.0.0",
+      title: "Legacy stability",
+      statement: "Legacy stability must fail before mutation.",
+      acceptanceCriteria: ["rejected"],
+      stability: "volatile"
+    });
+    expect(legacy.ok).toBe(false);
+    expect(await readFile(specPath, "utf8")).toBe(beforeInvalid);
   });
 
   it("supports the repository SRS index Primary Document column in dry-run mode", async () => {

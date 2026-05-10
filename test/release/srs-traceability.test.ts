@@ -8,6 +8,8 @@ import type { ParsedWorkspace, RequirementRecord } from "../../src/core/types.js
 import {
   collectAcCoverageGaps,
   collectCommandEvidencePolicyViolations,
+  collectStabilityBlockers,
+  collectStabilityWarnings,
   collectMissingEvidenceReferences,
   collectTraceabilityCoverage,
   summarizeReleaseReadiness
@@ -126,6 +128,18 @@ describe("SRS traceability coverage", () => {
         policy: "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"
       }
     ]);
+  });
+
+  it("collects release stability blockers without treating deprecated requirements as draft blockers", () => {
+    const records = [
+      requirement({ id: "FR-ARCH-001", status: "planned", stability: "draft" }),
+      requirement({ id: "FR-ARCH-002", status: "verified", stability: "deprecated" }),
+      requirement({ id: "FR-ARCH-003", status: "discarded", stability: "draft" }),
+      requirement({ id: "FR-ARCH-004", status: "planned", stability: "evolving" })
+    ];
+
+    expect(collectStabilityBlockers(records)).toEqual(["FR-ARCH-001"]);
+    expect(collectStabilityWarnings(records)).toEqual(["FR-ARCH-002"]);
   });
 
   it("rejects command evidence with shell pipes", () => {

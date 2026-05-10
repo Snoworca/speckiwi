@@ -750,12 +750,24 @@ verified -> discarded
 
 ### 15.3 Stability
 
+Canonical `Stability` values are:
+
 | Stability | Meaning |
 |---|---|
-| `volatile` | 요구사항이 자주 바뀔 가능성이 큼 |
-| `evolving` | 아직 구체화 중 |
+| `draft` | 아직 구현 계약으로 신뢰하면 안 되는 초안 |
+| `evolving` | 구체화 중이지만 구현 후보로 검토 가능 |
 | `stable` | 구현 가능할 정도로 안정됨 |
 | `frozen` | target 범위에서 동결됨. 변경 시 리뷰 필요 |
+| `deprecated` | 명시 조회는 가능하지만 새 작업 후보에서 제외됨 |
+
+Legacy compatibility:
+
+- `volatile`은 과거 문서 호환을 위한 legacy value다.
+- 새 Requirement Block은 `volatile`을 생성하지 않아야 한다.
+- validator는 unknown `Stability`를 error로 보고하고, legacy `volatile`은 migration warning으로 보고한다.
+- `verified` 요구사항은 `Stability=draft`일 수 없다.
+- non-discarded `draft` 요구사항이 active 또는 released target에 있으면 stability warning으로 보고한다.
+- agent는 사용자가 명시적으로 override하지 않는 한 non-discarded `draft` 또는 `deprecated` 요구사항 구현을 시작하지 않아야 한다.
 
 ---
 
@@ -1096,7 +1108,7 @@ Research / Analysis는 요구사항을 뒷받침하는 조사, 실험, 비교, �
 ### 24.3 규칙
 
 1. Research / Analysis는 필수는 아니다.
-2. `Risk = high` 또는 `Stability = volatile`이면 작성하는 것을 권장한다.
+2. `Risk = high`, `Risk = critical`, 또는 `Stability = draft`이면 작성하는 것을 권장한다.
 3. 외부 시스템, vendor API, 보안 정책, 성능 수치에 의존하면 근거 문서를 연결한다.
 4. 분석 문서의 결론이 바뀌면 연결된 요구사항을 재검토한다.
 5. 연구 내용 자체를 Requirement Statement에 길게 넣지 않는다.
@@ -1473,6 +1485,7 @@ node scripts/spec/validate-spec.js
 | `SRS-E030` | error | Command evidence violates policy |
 | `SRS-E031` | error | Trace link target is broken |
 | `SRS-E032` | error | Stale mutation snapshot |
+| `SRS-E033` | error | Verified draft requirement |
 | `SRS-W001` | warning | Rationale section missing |
 | `SRS-W002` | warning | Target is not registered |
 | `SRS-W003` | warning | Related Docs local link missing |
@@ -1494,6 +1507,8 @@ node scripts/spec/validate-spec.js
 | `SRS-W019` | warning | Status Summary drift |
 | `SRS-W020` | warning | Requirement Type Summary drift |
 | `SRS-W021` | warning | Release readiness warning |
+| `SRS-W022` | warning | Legacy volatile stability |
+| `SRS-W023` | warning | Draft requirement in active or released target |
 
 v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
 
@@ -1842,7 +1857,7 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 아래 managed block을 저장소 루트의 `AGENTS.md`, `CLAUDE.md`, 또는 둘 다에 추가한다. 기존 block의 version이 다르거나 legacy unversioned heading이면 heading부터 suffix marker까지 현재 block으로 교체한다.
 
 ```md
-# SpecKiwi SRS 워크플로 v1.1
+# SpecKiwi SRS 워크플로 v1.2
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -1851,6 +1866,12 @@ Before making any code, test, CLI, MCP, or documentation change, agents MUST:
 2. Find the relevant Requirement ID in the scope SRS files.
 3. Mention the Requirement ID in the work summary.
 4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.
+
+Requirement metadata has two separate lifecycle fields:
+- `Status` tracks implementation and verification progress.
+- `Stability` tracks requirement maturity and change-control maturity.
+
+Agents MUST stop before implementing a non-discarded requirement with `Stability=draft` or `Stability=deprecated` unless the user explicitly overrides that workflow.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.
@@ -1863,9 +1884,10 @@ When SpecKiwi MCP tools are available, agents MUST use them for requirement look
 Current work status workflow:
 1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.
 2. If `activeTarget` is empty, report that no active target is set and ask which target to use before making target-scoped changes.
-3. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.
-4. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.
-5. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.
+3. Read `summary.countsByStatus`, `summary.countsByStability`, `summary.stabilityBlockers`, `summary.stabilityWarnings`, and `summary.newWorkCandidates` before selecting work.
+4. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.
+5. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.
+6. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.
 
 Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
 

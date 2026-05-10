@@ -11,7 +11,7 @@ export interface AgentInstructionOptions {
   version?: string;
 }
 
-export const AGENT_INSTRUCTION_VERSION = "1.1";
+export const AGENT_INSTRUCTION_VERSION = "1.2";
 export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
 export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 
@@ -186,6 +186,12 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "3. Mention the Requirement ID in the work summary.",
     "4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.",
     "",
+    "Requirement metadata has two separate lifecycle fields:",
+    "- `Status` tracks implementation and verification progress.",
+    "- `Stability` tracks requirement maturity and change-control maturity.",
+    "",
+    "Agents MUST stop before implementing a non-discarded requirement with `Stability=draft` or `Stability=deprecated` unless the user explicitly overrides that workflow.",
+    "",
     "Agents MUST NOT:",
     "- Implement behavior that is not covered by an SRS requirement.",
     "- Create an alternate requirements source outside `docs/spec/`.",
@@ -197,9 +203,10 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "Current work status workflow:",
     "1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
     "2. If `activeTarget` is empty, report that no active target is set and ask which target to use before making target-scoped changes.",
-    "3. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.",
-    "4. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.",
-    "5. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.",
+    "3. Read `summary.countsByStatus`, `summary.countsByStability`, `summary.stabilityBlockers`, `summary.stabilityWarnings`, and `summary.newWorkCandidates` before selecting work.",
+    "4. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.",
+    "5. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.",
+    "6. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.",
     "",
     "Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
     "",

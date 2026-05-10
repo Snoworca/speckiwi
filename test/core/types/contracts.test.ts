@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  LEGACY_STABILITY_LEVELS,
   REQUIREMENT_STATUSES,
   REQUIREMENT_TYPES,
   RISK_LEVELS,
@@ -7,6 +8,7 @@ import {
   PRIORITY_LEVELS,
   type RequirementRecord
 } from "../../../src/core/types.js";
+import { isCanonicalStability, isKnownStability, isLegacyStability } from "../../../src/core/schema.js";
 import { fail, ok } from "../../../src/core/result.js";
 
 describe("shared core contracts", () => {
@@ -23,7 +25,14 @@ describe("shared core contracts", () => {
     expect(REQUIREMENT_TYPES).toContain("constraint");
     expect(PRIORITY_LEVELS).toEqual(["critical", "high", "medium", "low", "optional"]);
     expect(RISK_LEVELS).toEqual(["low", "medium", "high", "critical"]);
-    expect(STABILITY_LEVELS).toEqual(["stable", "evolving", "volatile"]);
+    expect(STABILITY_LEVELS).toEqual(["draft", "evolving", "stable", "frozen", "deprecated"]);
+    expect(LEGACY_STABILITY_LEVELS).toEqual(["volatile"]);
+    expect(STABILITY_LEVELS).not.toContain("volatile");
+    expect(isCanonicalStability("draft")).toBe(true);
+    expect(isCanonicalStability("volatile")).toBe(false);
+    expect(isLegacyStability("volatile")).toBe(true);
+    expect(isKnownStability("volatile")).toBe(true);
+    expect(isKnownStability("unknown")).toBe(false);
   });
 
   it("serializes requirement records and results as JSON", () => {

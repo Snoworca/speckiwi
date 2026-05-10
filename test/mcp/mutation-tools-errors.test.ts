@@ -34,19 +34,30 @@ describe("MCP mutation tools and structured errors", () => {
     });
     expect(await server.callTool("add_completed_work", { date: "2026-05-10", summary: "Bad | row" })).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
     expect(await server.callTool("update_status", { id: "MISSING", status: "verified" })).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+    const mcpAdd = await server.callTool("add_requirement", {
+      root: otherRoot,
+      type: "functional",
+      scope: "ARCH",
+      target: "v1.0.0",
+      title: "MCP 추가",
+      requirement: "MCP가 요구사항을 추가한다.",
+      acceptanceCriteria: ["created"],
+      priority: "high",
+      dryRun: true
+    });
+    expect(mcpAdd).toMatchObject({ ok: true, value: { requirementId: "FR-ARCH-002", written: false, record: { metadata: { Stability: "draft" }, stability: "draft" } } });
     expect(
       await server.callTool("add_requirement", {
         root: otherRoot,
         type: "functional",
         scope: "ARCH",
         target: "v1.0.0",
-        title: "MCP 추가",
-        requirement: "MCP가 요구사항을 추가한다.",
-        acceptanceCriteria: ["created"],
-        priority: "high",
-        dryRun: true
+        title: "MCP volatile",
+        requirement: "MCP must reject legacy stability for new requirements.",
+        acceptanceCriteria: ["rejected"],
+        stability: "volatile"
       })
-    ).toMatchObject({ ok: true, value: { requirementId: "FR-ARCH-002", written: false } });
+    ).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target | v1.1.0 |");
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | MCP completed work row. |");
     expect(
@@ -68,7 +79,7 @@ describe("MCP mutation tools and structured errors", () => {
     expect(await server.callTool("init_project", { target: "v1.0.0", scope: "Payments:PAY" })).toMatchObject({ ok: true });
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| v1.0.0 | release | planned | Initial target |");
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
   });
 });

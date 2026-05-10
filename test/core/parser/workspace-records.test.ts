@@ -28,6 +28,30 @@ describe("workspace parser", () => {
     expect(JSON.parse(JSON.stringify(workspace.records[0]))).toHaveProperty("id");
   });
 
+  it("parses Change Notes and ignores empty placeholder rows", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const workspace = await parseWorkspace(await resolveProjectRoot(root));
+    const record = workspace.records.find((item) => item.id === "FR-ARCH-001");
+    expect(record?.changeNotes).toEqual([
+      expect.objectContaining({
+        date: "2026-05-08",
+        change: "Created",
+        reason: "Fixture"
+      })
+    ]);
+    expect(record?.changeNotes[0]?.line).toBeGreaterThan(0);
+
+    const emptyRoot = await copyFixtureWorkspace("valid-basic");
+    const srsPath = path.join(emptyRoot, "docs", "spec", "10.product-architecture.srs.md");
+    await writeFile(
+      srsPath,
+      (await readFile(srsPath, "utf8")).replace("| 2026-05-08 | Created | Fixture |", "|  |  |  |"),
+      "utf8"
+    );
+    const empty = await parseWorkspace(await resolveProjectRoot(emptyRoot));
+    expect(empty.records.find((item) => item.id === "FR-ARCH-001")?.changeNotes).toEqual([]);
+  });
+
   it("preserves explicit empty Active Target and only falls back for missing legacy rows", async () => {
     const emptyRoot = await copyFixtureWorkspace("valid-basic");
     const emptyIndexPath = path.join(emptyRoot, "docs", "spec", "00.index.md");

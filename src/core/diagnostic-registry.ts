@@ -258,6 +258,14 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v1.2.0"
   },
   {
+    code: "SRS-E033",
+    severity: "error",
+    title: "Verified draft requirement",
+    messageTemplate: "Verified requirement uses draft stability: {requirementId}",
+    sourceRule: "FR-PARSE-015",
+    since: "v1.3.0"
+  },
+  {
     code: "SRS-W001",
     severity: "warning",
     title: "Rationale section missing",
@@ -424,6 +432,22 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Release readiness warning: {message}",
     sourceRule: "FR-FLOW-007",
     since: "v1.2.0"
+  },
+  {
+    code: "SRS-W022",
+    severity: "warning",
+    title: "Legacy volatile stability",
+    messageTemplate: "Legacy volatile stability should be migrated: {requirementId}",
+    sourceRule: "FR-PARSE-015",
+    since: "v1.3.0"
+  },
+  {
+    code: "SRS-W023",
+    severity: "warning",
+    title: "Draft requirement in active or released target",
+    messageTemplate: "Draft requirement is not ready as an implementation contract: {requirementId}",
+    sourceRule: "FR-PARSE-015",
+    since: "v1.3.0"
   }
 ];
 

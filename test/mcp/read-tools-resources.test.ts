@@ -6,6 +6,25 @@ import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { registerResources } from "../../src/mcp/resources.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
+async function appendDeprecatedRequirement(root: string): Promise<void> {
+  const specPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+  const text = await readFile(specPath, "utf8");
+  const blockStart = text.indexOf("### FR-ARCH-001");
+  if (blockStart < 0) throw new Error("fixture requirement block not found");
+  const deprecatedBlock = text
+    .slice(blockStart)
+    .replaceAll("FR-ARCH-001", "FR-ARCH-002")
+    .replace("Fixture requirement", "Deprecated fixture requirement")
+    .replace("| Status | planned |", "| Status | blocked |")
+    .replace("| Stability | stable |", "| Stability | deprecated |");
+  await writeFile(specPath, `${text.trimEnd()}\n\n${deprecatedBlock}\n`, "utf8");
+}
+
+function expectOk<T>(result: unknown): T {
+  expect(result).toMatchObject({ ok: true });
+  return (result as { ok: true; value: T }).value;
+}
+
 describe("MCP read tools and resources", () => {
   it("registers read tools and exact resource URI families", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
@@ -22,10 +41,43 @@ describe("MCP read tools and resources", () => {
     }
     expect(await server.callTool("get_requirement", { id: "FR-ARCH-001", includeMarkdown: true })).toMatchObject({ ok: true });
     expect(await server.callTool("validate_spec", {})).toMatchObject({ ok: true, value: { diagnostics: expect.any(Array), errors: [], warnings: expect.any(Array), summary: expect.any(Object) } });
-    expect(await server.callTool("summarize_target", {})).toMatchObject({ ok: true, value: { diagnosticsSummary: expect.any(Object) } });
-    expect(await server.callTool("get_active_target", {})).toMatchObject({ ok: true, value: { activeTarget: "v1.0.0", diagnosticsSummary: expect.any(Object) } });
+    expect(await server.callTool("summarize_target", {})).toMatchObject({
+      ok: true,
+      value: {
+        countsByStability: { stable: 1 },
+        newWorkCandidates: ["FR-ARCH-001"],
+        stabilityBlockers: [],
+        stabilityWarnings: [],
+        diagnosticsSummary: expect.any(Object)
+      }
+    });
+    expect(await server.callTool("get_active_target", {})).toMatchObject({
+      ok: true,
+      value: {
+        activeTarget: "v1.0.0",
+        summary: {
+          countsByStability: { stable: 1 },
+          newWorkCandidates: ["FR-ARCH-001"],
+          stabilityBlockers: [],
+          stabilityWarnings: []
+        },
+        diagnosticsSummary: expect.any(Object)
+      }
+    });
     expect(await server.callTool("list_completed_work", { target: "v1.0.0" })).toMatchObject({ ok: true, value: { completedWork: expect.any(Array), diagnosticsSummary: expect.any(Object) } });
-    expect(await server.callTool("summarize_target", { target: "v1.0.0" })).toMatchObject({ ok: true, value: { completedWork: expect.any(Array), diagnosticsSummary: expect.any(Object) } });
+    expect(await server.callTool("summarize_target", { target: "v1.0.0" })).toMatchObject({
+      ok: true,
+      value: {
+        completedWork: expect.any(Array),
+        countsByStability: { stable: 1 },
+        draftRequirements: [],
+        deprecatedRequirements: [],
+        newWorkCandidates: ["FR-ARCH-001"],
+        stabilityBlockers: [],
+        stabilityWarnings: [],
+        diagnosticsSummary: expect.any(Object)
+      }
+    });
     expect(server.resourceTemplates).toEqual([
       "speckiwi://index",
       "speckiwi://active-target",
@@ -35,6 +87,23 @@ describe("MCP read tools and resources", () => {
       "speckiwi://targets/{target}",
       "speckiwi://scopes/{scope}"
     ]);
+  });
+
+  it("keeps deprecated requirements explicitly searchable while excluding them from default new-work candidates", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    await appendDeprecatedRequirement(root);
+    const server = createTestMcpServer({ root });
+    registerReadTools(server, { root });
+
+    const listed = expectOk<{ records: Array<{ id: string }> }>(await server.callTool("list_requirements", { status: "blocked" }));
+    expect(listed.records.map((record) => record.id)).toEqual(["FR-ARCH-002"]);
+
+    const shown = expectOk<{ id: string; stability: string }>(await server.callTool("get_requirement", { id: "FR-ARCH-002" }));
+    expect(shown).toMatchObject({ id: "FR-ARCH-002", stability: "deprecated" });
+
+    const summary = expectOk<{ deprecatedRequirements: string[]; newWorkCandidates: string[] }>(await server.callTool("summarize_target", {}));
+    expect(summary.deprecatedRequirements).toContain("FR-ARCH-002");
+    expect(summary.newWorkCandidates).not.toContain("FR-ARCH-002");
   });
 
   it("wraps every resource with the v1.2.0 diagnostics envelope", async () => {
@@ -58,6 +127,27 @@ describe("MCP read tools and resources", () => {
         diagnosticsSummary: { errors: 0, warnings: expect.any(Number), byCode: expect.any(Object) }
       });
     }
+
+    await expect(server.callTool("resource:speckiwi://active-target", {})).resolves.toMatchObject({
+      ok: true,
+      value: {
+        summary: {
+          countsByStability: { stable: 1 },
+          newWorkCandidates: ["FR-ARCH-001"],
+          stabilityBlockers: [],
+          stabilityWarnings: []
+        }
+      }
+    });
+    await expect(server.callTool("resource:speckiwi://targets/{target}", { target: "v1.0.0" })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        countsByStability: { stable: 1 },
+        newWorkCandidates: ["FR-ARCH-001"],
+        stabilityBlockers: [],
+        stabilityWarnings: []
+      }
+    });
   });
 
   it("reports an empty active target without fallback through MCP", async () => {

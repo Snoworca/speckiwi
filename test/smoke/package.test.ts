@@ -72,8 +72,8 @@ describe("package runtime contract", () => {
 
       const rules = await readFile(path.join(projectRoot, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), "utf8");
       expect(rules).toContain("| Document ID | SRS-MD-RULES |");
-      expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
-      expect(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.1");
+      expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+      expect(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
     } finally {
       await rm(externalCwd, { recursive: true, force: true });
     }

@@ -222,6 +222,26 @@ export function collectBrokenTraceLinks(records: RequirementRecord[], allRecords
   return broken;
 }
 
+function isNonDiscarded(record: RequirementRecord): boolean {
+  return record.status !== "discarded";
+}
+
+export function collectDraftRequirements(records: RequirementRecord[]): string[] {
+  return records.filter((record) => isNonDiscarded(record) && record.stability === "draft").map((record) => record.id);
+}
+
+export function collectDeprecatedRequirements(records: RequirementRecord[]): string[] {
+  return records.filter((record) => isNonDiscarded(record) && record.stability === "deprecated").map((record) => record.id);
+}
+
+export function collectStabilityBlockers(records: RequirementRecord[]): string[] {
+  return collectDraftRequirements(records);
+}
+
+export function collectStabilityWarnings(records: RequirementRecord[]): string[] {
+  return records.filter((record) => isNonDiscarded(record) && (record.stability === "deprecated" || record.stability === "volatile")).map((record) => record.id);
+}
+
 export function summarizeReleaseReadiness(workspace: ParsedWorkspace, options: { target?: string } | string = {}): ReleaseReadinessSummary {
   const validation = validateWorkspace(workspace);
   const diagnosticsSummary = formatDiagnosticsSummary(validation);
@@ -231,6 +251,10 @@ export function summarizeReleaseReadiness(workspace: ParsedWorkspace, options: {
   const blocked = records.filter((record) => record.status === "blocked").map((record) => record.id);
   const plannedOrInProgress = records.filter((record) => record.status === "planned" || record.status === "in_progress").map((record) => record.id);
   const implementedNotVerified = records.filter((record) => record.status === "implemented").map((record) => record.id);
+  const draftRequirements = collectDraftRequirements(records);
+  const deprecatedRequirements = collectDeprecatedRequirements(records);
+  const stabilityBlockers = collectStabilityBlockers(records);
+  const stabilityWarnings = collectStabilityWarnings(records);
   const criticalHighUnverified = records
     .filter((record) => (record.priority === "critical" || record.priority === "high") && record.status !== "verified" && record.status !== "discarded")
     .map((record) => record.id);
@@ -252,6 +276,7 @@ export function summarizeReleaseReadiness(workspace: ParsedWorkspace, options: {
       blocked.length === 0 &&
       plannedOrInProgress.length === 0 &&
       implementedNotVerified.length === 0 &&
+      stabilityBlockers.length === 0 &&
       missingEvidence.length === 0 &&
       acCoverageGaps.length === 0 &&
       missingEvidenceReferences.length === 0 &&
@@ -262,6 +287,10 @@ export function summarizeReleaseReadiness(workspace: ParsedWorkspace, options: {
     blocked,
     plannedOrInProgress,
     implementedNotVerified,
+    draftRequirements,
+    deprecatedRequirements,
+    stabilityBlockers,
+    stabilityWarnings,
     criticalHighUnverified,
     missingEvidence,
     acCoverageGaps,

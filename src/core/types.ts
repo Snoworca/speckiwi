@@ -23,7 +23,8 @@ export const REQUIREMENT_TYPES = [
 
 export const PRIORITY_LEVELS = ["critical", "high", "medium", "low", "optional"] as const;
 export const RISK_LEVELS = ["low", "medium", "high", "critical"] as const;
-export const STABILITY_LEVELS = ["stable", "evolving", "volatile"] as const;
+export const STABILITY_LEVELS = ["draft", "evolving", "stable", "frozen", "deprecated"] as const;
+export const LEGACY_STABILITY_LEVELS = ["volatile"] as const;
 
 export const TYPE_PREFIX: Record<RequirementType, RequirementPrefix> = {
   functional: "FR",
@@ -59,7 +60,7 @@ export type RequirementPrefix =
   | "CON";
 export type Priority = (typeof PRIORITY_LEVELS)[number];
 export type Risk = (typeof RISK_LEVELS)[number];
-export type Stability = (typeof STABILITY_LEVELS)[number];
+export type Stability = (typeof STABILITY_LEVELS)[number] | (typeof LEGACY_STABILITY_LEVELS)[number];
 export type DiagnosticSeverity = "error" | "warning" | "info";
 
 export interface DiagnosticDefinition {
@@ -192,6 +193,13 @@ export interface TraceLink {
   line?: number;
 }
 
+export interface ChangeNoteRow {
+  date: string;
+  change: string;
+  reason: string;
+  line?: number;
+}
+
 export interface RequirementRecord {
   id: string;
   title: string;
@@ -205,6 +213,7 @@ export interface RequirementRecord {
   acceptanceCriteria: AcceptanceCriterion[];
   verificationEvidence: EvidenceRow[];
   traceLinks: TraceLink[];
+  changeNotes: ChangeNoteRow[];
   tags: string[];
   requirement?: string;
   rationale?: string;
@@ -236,10 +245,16 @@ export interface TargetSummary {
   targetSource: TargetSource;
   countsByStatus: Record<string, number>;
   countsByType: Record<string, number>;
+  countsByStability: Record<string, number>;
   total: number;
   blocked: string[];
   implementedNotVerified: string[];
   missingEvidence: string[];
+  draftRequirements: string[];
+  deprecatedRequirements: string[];
+  newWorkCandidates: string[];
+  stabilityBlockers: string[];
+  stabilityWarnings: string[];
   diagnosticsSummary: DiagnosticsSummary;
   completedWork: CompletedWorkEntry[];
 }
@@ -281,6 +296,10 @@ export interface ReleaseReadinessSummary {
   blocked: string[];
   plannedOrInProgress: string[];
   implementedNotVerified: string[];
+  draftRequirements: string[];
+  deprecatedRequirements: string[];
+  stabilityBlockers: string[];
+  stabilityWarnings: string[];
   criticalHighUnverified: string[];
   missingEvidence: string[];
   acCoverageGaps: AcCoverageGap[];

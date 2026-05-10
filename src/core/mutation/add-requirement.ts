@@ -6,10 +6,10 @@ import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
-import { isRequirementType } from "../schema.js";
+import { isCanonicalStability, isKnownStability, isRequirementType } from "../schema.js";
 import type { MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
 import { mutationFail } from "./guards.js";
-import { prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
+import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type"> {
@@ -92,6 +92,13 @@ function assertSafeChangeNotes(input: AddRequirementInput): MutationResult<AddRe
   });
 }
 
+function assertKnownStabilityInput(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
+  if (input.stability === undefined) return undefined;
+  if (!isKnownStability(input.stability)) return mutationFail("USAGE", "Invalid stability");
+  if (!isCanonicalStability(input.stability)) return mutationFail("MUTATION_DENIED", `Legacy stability is not valid for new requirements: ${input.stability}`);
+  return undefined;
+}
+
 function assertSafeAddRequirementTableCells(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
   const metadataFailure = assertSafeMarkdownTableCells<AddRequirementOutput>({
     "Requirement metadata Type": input.type,
@@ -100,7 +107,7 @@ function assertSafeAddRequirementTableCells(input: AddRequirementInput): Mutatio
     "Requirement metadata Priority": input.priority ?? "medium",
     "Requirement metadata Tags": (input.tags ?? []).join(", ") || "-",
     "Requirement metadata Risk": input.risk ?? "medium",
-    "Requirement metadata Stability": input.stability ?? "evolving",
+    "Requirement metadata Stability": input.stability ?? DEFAULT_REQUIREMENT_STABILITY,
     "Requirement metadata Verification Method": input.verificationMethod ?? "test",
     "Requirement metadata GitHub Issue": input.githubIssue ?? "-",
     "Requirement metadata Related Docs": (input.relatedDocs ?? []).join(", ") || "-"
@@ -145,6 +152,7 @@ async function resolveScopeDocumentPath(root: ProjectRoot, document: string): Pr
 
 function buildOutputRecord(input: AddRequirementInput, id: string, filePath: string): RequirementRecord {
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
+  const changeNoteCells = input.changeNotes?.split("|").map((cell) => cell.trim());
   const record: RequirementRecord = {
     id,
     title: input.title,
@@ -161,7 +169,7 @@ function buildOutputRecord(input: AddRequirementInput, id: string, filePath: str
       Priority: input.priority ?? "medium",
       Tags: (input.tags ?? []).join(", ") || "-",
       Risk: input.risk ?? "medium",
-      Stability: input.stability ?? "evolving",
+      Stability: input.stability ?? DEFAULT_REQUIREMENT_STABILITY,
       "Verification Method": input.verificationMethod ?? "test",
       "GitHub Issue": input.githubIssue ?? "-",
       "Related Docs": (input.relatedDocs ?? []).join(", ") || "-"
@@ -185,12 +193,15 @@ function buildOutputRecord(input: AddRequirementInput, id: string, filePath: str
       relation: row.relation ?? "related_to",
       notes: row.notes ?? "-"
     })),
+    changeNotes: changeNoteCells
+      ? [{ date: changeNoteCells[0] ?? "", change: changeNoteCells[1] ?? "", reason: changeNoteCells[2] ?? "" }]
+      : [{ date: new Date().toISOString().slice(0, 10), change: "Created", reason: "add-requirement" }],
     tags: input.tags ?? [],
     requirement: input.statement
   };
   if (input.priority) record.priority = input.priority as Priority;
   if (input.risk) record.risk = input.risk as Risk;
-  if (input.stability) record.stability = input.stability as Stability;
+  record.stability = (input.stability ?? DEFAULT_REQUIREMENT_STABILITY) as Stability;
   if (input.rationale) record.rationale = input.rationale;
   return record;
 }
@@ -200,6 +211,8 @@ export async function addRequirement(root: ProjectRoot, input: AddRequirementInp
   if (!input.scope || !input.target || !input.title || !input.statement || input.acceptanceCriteria.length === 0) {
     return mutationFail("USAGE", "type, scope, target, title, statement, and acceptanceCriteria are required");
   }
+  const stabilityFailure = assertKnownStabilityInput(input);
+  if (stabilityFailure) return stabilityFailure;
   if (!canBeVerified(input)) return mutationFail("MUTATION_DENIED", "verified requires all checked AC and evidence");
   const unsafeCell = assertSafeAddRequirementTableCells(input);
   if (unsafeCell) return unsafeCell;

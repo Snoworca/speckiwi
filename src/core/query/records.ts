@@ -1,5 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
-import { PREFIX_TYPE, type Diagnostic, type EvidenceRow, type Priority, type RequirementRecord, type Risk, type Stability, type TextFile, type TraceLink } from "../types.js";
+import { PREFIX_TYPE, type ChangeNoteRow, type Diagnostic, type EvidenceRow, type Priority, type RequirementRecord, type Risk, type Stability, type TextFile, type TraceLink } from "../types.js";
 import type { RequirementBlockRange } from "../parser/block-scanner.js";
 import { parseRequirementSections } from "../parser/section-parser.js";
 import { parseAcceptanceCriteria } from "../parser/ac-parser.js";
@@ -27,15 +27,16 @@ function headingContainsForbiddenMarkdown(title: string): boolean {
   );
 }
 
-function parseSectionTable(section: SectionRange | undefined, file: TextFile, requirementId: string, diagnosticCode: "SRS-W016" | "SRS-W017", tableLabel: string): { table?: ParsedTable; diagnostics: Diagnostic[] } {
+function parseSectionTable(section: SectionRange | undefined, file: TextFile, requirementId: string, diagnosticCode?: "SRS-W016" | "SRS-W017", tableLabel = "Markdown"): { table?: ParsedTable; diagnostics: Diagnostic[] } {
   if (!section) return { diagnostics: [] };
-  return parseMarkdownTableResult(section.lines, 0, {
+  const options = {
     filePath: file.relativePath,
     lineOffset: section.contentStartLine - 1,
-    diagnosticCode,
     requirementId,
-    tableLabel
-  });
+    tableLabel,
+    ...(diagnosticCode ? { diagnosticCode } : {})
+  };
+  return parseMarkdownTableResult(section.lines, 0, options);
 }
 
 function evidenceRowsFromTable(table: ParsedTable | undefined): EvidenceRow[] {
@@ -69,6 +70,25 @@ function traceLinksFromTable(table: ParsedTable | undefined): TraceLink[] {
     .filter((row) => row.type !== "" || row.reference !== "" || row.relation !== "" || row.notes !== "");
 }
 
+function isPlaceholderCell(value: string): boolean {
+  const normalized = value.trim();
+  return normalized === "" || normalized === "-";
+}
+
+function changeNotesFromTable(table: ParsedTable | undefined): ChangeNoteRow[] {
+  return (table?.rows ?? [])
+    .map((row, index) => {
+      const line = table?.rowLines[index];
+      return {
+        date: row.Date ?? "",
+        change: row.Change ?? "",
+        reason: row.Reason ?? "",
+        ...(typeof line === "number" ? { line } : {})
+      };
+    })
+    .filter((row) => ![row.date, row.change, row.reason].every(isPlaceholderCell));
+}
+
 export function toRequirementRecord(file: TextFile, block: RequirementBlockRange): RequirementRecordResult {
   const diagnostics: Diagnostic[] = [];
   const { metadata, diagnostics: metadataDiagnostics } = parseMetadataRows(file.lines, block.startLine, {
@@ -84,6 +104,8 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
   diagnostics.push(...verificationEvidence.diagnostics);
   const traceLinks = parseSectionTable(sections["Trace Links"], file, block.heading.id, "SRS-W017", "Trace Links");
   diagnostics.push(...traceLinks.diagnostics);
+  const changeNotes = parseSectionTable(sections["Change Notes"], file, block.heading.id, undefined, "Change Notes");
+  diagnostics.push(...changeNotes.diagnostics);
   if (headingContainsForbiddenMarkdown(block.heading.title)) {
     diagnostics.push(
       diagnostic("SRS-E020", "error", `Requirement heading contains forbidden Markdown content: ${block.heading.id}`, {
@@ -115,6 +137,7 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
     acceptanceCriteria: acceptanceCriteria.criteria,
     verificationEvidence: evidenceRowsFromTable(verificationEvidence.table),
     traceLinks: traceLinksFromTable(traceLinks.table),
+    changeNotes: changeNotesFromTable(changeNotes.table),
     tags,
     markdown: file.lines.slice(block.startLine - 1, block.endLine).join(file.newline),
     blockStartLine: block.startLine,

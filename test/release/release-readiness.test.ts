@@ -17,6 +17,8 @@ describe("release readiness and documentation", () => {
     expect(summary.target).toBe("v1.0.0");
     expect(summary.targetSource).toBe("explicit");
     expect(summary.diagnosticsSummary.errors).toBe(0);
+    expect(summary.stabilityBlockers).toEqual([]);
+    expect(summary.stabilityWarnings).toEqual([]);
     expect(summary.baselineCommand).toContain("git tag srs-v1.0.0-baseline");
     expect(summary.ready).toBe(false);
   });
@@ -49,6 +51,48 @@ describe("release readiness and documentation", () => {
     expect(summary.warnings).toContain("Release target is empty; provide an explicit target or set Active Target.");
   });
 
+  it("reports stability blockers and warnings separately from status blockers", async () => {
+    const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
+    const [base] = workspace.records;
+    workspace.records = [
+      {
+        ...base,
+        id: "FR-ARCH-001",
+        status: "planned",
+        stability: "draft",
+        metadata: { ...base.metadata, Status: "planned", Stability: "draft" },
+        traceLinks: []
+      },
+      {
+        ...base,
+        id: "FR-ARCH-002",
+        status: "verified",
+        stability: "deprecated",
+        metadata: { ...base.metadata, Status: "verified", Stability: "deprecated" },
+        acceptanceCriteria: base.acceptanceCriteria.map((criterion) => ({ ...criterion, checked: true })),
+        verificationEvidence: [{ id: "VE-1", type: "test", reference: "docs/spec/10.product-architecture.srs.md", covers: "all", notes: "-", line: 47 }],
+        traceLinks: []
+      },
+      {
+        ...base,
+        id: "FR-ARCH-003",
+        status: "discarded",
+        stability: "draft",
+        metadata: { ...base.metadata, Status: "discarded", Stability: "draft" },
+        traceLinks: []
+      }
+    ];
+
+    const summary = summarizeReleaseReadiness(workspace, { target: "v1.0.0" });
+
+    expect(summary.ready).toBe(false);
+    expect(summary.plannedOrInProgress).toEqual(["FR-ARCH-001"]);
+    expect(summary.draftRequirements).toEqual(["FR-ARCH-001"]);
+    expect(summary.deprecatedRequirements).toEqual(["FR-ARCH-002"]);
+    expect(summary.stabilityBlockers).toEqual(["FR-ARCH-001"]);
+    expect(summary.stabilityWarnings).toEqual(["FR-ARCH-002"]);
+  });
+
   it("prints targetSource from the release-check script without a hard-coded target fallback", async () => {
     await execFileAsync("npm", ["run", "build", "--silent"], { cwd: process.cwd() });
     const env = { ...process.env };
@@ -61,13 +105,21 @@ describe("release readiness and documentation", () => {
     const summary = JSON.parse(stdout);
     expect(summary.target).toBe("v1.0.0");
     expect(summary.targetSource).toBe("active-target");
+    expect(summary).toMatchObject({
+      draftRequirements: [],
+      deprecatedRequirements: [],
+      stabilityBlockers: [],
+      stabilityWarnings: []
+    });
   });
 
   it("documents CLI, MCP, evidence, CI, and baseline workflow", async () => {
     const readme = await readFile("README.md", "utf8");
+    const baselineExampleCount = readme.split("git tag srs-v1.0.0-baseline").length - 1;
     expect(readme).toContain("speckiwi list");
     expect(readme).toContain("speckiwi add-evidence");
     expect(readme).toContain("list_requirements");
-    expect(readme).toContain("git tag srs-v1.0.0-baseline");
+    expect(baselineExampleCount).toBe(2);
+    expect(readme).not.toContain("git tag srs-v1.2.0-baseline");
   });
 });

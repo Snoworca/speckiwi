@@ -9,6 +9,20 @@ function io() {
   return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
 }
 
+async function appendDeprecatedRequirement(root: string): Promise<void> {
+  const specPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+  const text = await readFile(specPath, "utf8");
+  const blockStart = text.indexOf("### FR-ARCH-001");
+  if (blockStart < 0) throw new Error("fixture requirement block not found");
+  const deprecatedBlock = text
+    .slice(blockStart)
+    .replaceAll("FR-ARCH-001", "FR-ARCH-002")
+    .replace("Fixture requirement", "Deprecated fixture requirement")
+    .replace("| Status | planned |", "| Status | blocked |")
+    .replace("| Stability | stable |", "| Stability | deprecated |");
+  await writeFile(specPath, `${text.trimEnd()}\n\n${deprecatedBlock}\n`, "utf8");
+}
+
 describe("read-only CLI commands", () => {
   it("validates, lists, shows, summarizes, and checks links", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
@@ -25,6 +39,27 @@ describe("read-only CLI commands", () => {
       expect(code).toBe(0);
       expect(() => JSON.parse(streams.stdout.read()?.toString() ?? "")).not.toThrow();
     }
+  });
+
+  it("keeps deprecated requirements explicitly searchable while excluding them from default new-work candidates", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    await appendDeprecatedRequirement(root);
+
+    const list = io();
+    expect(await main(["--root", root, "list", "--status", "blocked", "--json"], list)).toBe(0);
+    const listOutput = JSON.parse(list.stdout.read()?.toString() ?? "") as { records: Array<{ id: string }> };
+    expect(listOutput.records.map((record) => record.id)).toEqual(["FR-ARCH-002"]);
+
+    const show = io();
+    expect(await main(["--root", root, "show", "FR-ARCH-002", "--json"], show)).toBe(0);
+    const showOutput = JSON.parse(show.stdout.read()?.toString() ?? "") as { id: string; stability: string };
+    expect(showOutput).toMatchObject({ id: "FR-ARCH-002", stability: "deprecated" });
+
+    const summary = io();
+    expect(await main(["--root", root, "summary", "--json"], summary)).toBe(0);
+    const summaryOutput = JSON.parse(summary.stdout.read()?.toString() ?? "") as { deprecatedRequirements: string[]; newWorkCandidates: string[] };
+    expect(summaryOutput.deprecatedRequirements).toContain("FR-ARCH-002");
+    expect(summaryOutput.newWorkCandidates).not.toContain("FR-ARCH-002");
   });
 
   it("adds diagnostics summaries to read JSON payloads and expands target summaries", async () => {
@@ -44,10 +79,26 @@ describe("read-only CLI commands", () => {
       summary: {
         countsByStatus: { planned: 1 },
         countsByType: { functional: 1 },
+        countsByStability: { stable: 1 },
         blocked: [],
         implementedNotVerified: [],
-        missingEvidence: []
+        missingEvidence: [],
+        draftRequirements: [],
+        deprecatedRequirements: [],
+        newWorkCandidates: ["FR-ARCH-001"],
+        stabilityBlockers: [],
+        stabilityWarnings: []
       }
+    });
+
+    const activeTarget = io();
+    expect(await main(["--root", root, "active-target", "--json"], activeTarget)).toBe(0);
+    const activeTargetOutput = JSON.parse(activeTarget.stdout.read()?.toString() ?? "");
+    expect(activeTargetOutput.summary).toMatchObject({
+      countsByStability: { stable: 1 },
+      newWorkCandidates: ["FR-ARCH-001"],
+      stabilityBlockers: [],
+      stabilityWarnings: []
     });
 
     const summary = io();
@@ -57,7 +108,13 @@ describe("read-only CLI commands", () => {
       target: "v1.0.0",
       countsByStatus: { planned: 1 },
       countsByType: { functional: 1 },
+      countsByStability: { stable: 1 },
       blocked: [],
+      draftRequirements: [],
+      deprecatedRequirements: [],
+      newWorkCandidates: ["FR-ARCH-001"],
+      stabilityBlockers: [],
+      stabilityWarnings: [],
       diagnosticsSummary: { errors: 0, warnings: 1, byCode: { "SRS-W015": 1 } }
     });
   });
