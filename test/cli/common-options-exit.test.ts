@@ -1,6 +1,7 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { buildCommand } from "../../src/cli/command.js";
+import { main } from "../../src/cli/index.js";
 import { formatJsonOutput } from "../../src/core/format/json.js";
 import { mapResultToExitCode } from "../../src/cli/exit.js";
 import { fail, ok } from "../../src/core/result.js";
@@ -18,6 +19,15 @@ describe("CLI common framework", () => {
     ]);
     await command.parseAsync(["ping"], { from: "user" });
     expect(stdout.read()?.toString()).toContain('"pong":true');
+  });
+
+  it("prints version once and exits cleanly", async () => {
+    const stdout = stream();
+    const stderr = stream();
+
+    expect(await main(["--version"], { stdout, stderr })).toBe(0);
+    expect(stdout.read()?.toString()).toBe("1.0.0\n");
+    expect(stderr.read()).toBeNull();
   });
 
   it("maps result families to SRS exit codes", () => {

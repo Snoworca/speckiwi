@@ -20,7 +20,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       : 0;
   } catch (error) {
     const maybeCode = error as { exitCode?: number; code?: string; message?: string };
-    if (maybeCode.code === "commander.helpDisplayed") {
+    if (maybeCode.code === "commander.helpDisplayed" || maybeCode.code === "commander.version") {
       return 0;
     }
     if (maybeCode.message) {
