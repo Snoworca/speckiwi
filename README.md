@@ -23,6 +23,21 @@ node bin/speckiwi --help
 
 After the package is installed as a command, use `speckiwi` instead of `node bin/speckiwi`.
 
+## Install and Update
+
+Install the latest published CLI globally:
+
+```sh
+npm install -g speckiwi@latest
+```
+
+Use the same command to update an existing global installation to the latest version. After installing or updating, check the command:
+
+```sh
+speckiwi --version
+speckiwi --help
+```
+
 ## Start a New SRS Workspace
 
 Run `init` at the root of a Git project:
@@ -473,6 +488,21 @@ node bin/speckiwi --help
 ```
 
 패키지를 명령으로 설치한 뒤에는 `node bin/speckiwi` 대신 `speckiwi`를 사용합니다.
+
+## 설치 및 업데이트
+
+최신으로 배포된 CLI를 전역으로 설치합니다.
+
+```sh
+npm install -g speckiwi@latest
+```
+
+기존 전역 설치를 최신 버전으로 업데이트할 때도 같은 명령을 사용합니다. 설치 또는 업데이트 후 명령을 확인합니다.
+
+```sh
+speckiwi --version
+speckiwi --help
+```
 
 ## 새 SRS Workspace 시작
 
