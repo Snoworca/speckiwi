@@ -8,6 +8,7 @@ import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
+import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
@@ -27,6 +28,14 @@ function collect(value: unknown): string[] {
 
 function pushOption(value: string, previous: string[]): string[] {
   previous.push(value);
+  return previous;
+}
+
+function pushReportPathOption(value: string, previous: string[]): string[] {
+  const trimmed = value.trim();
+  const issue = validateReportPathToken(trimmed);
+  if (issue) throw new InvalidArgumentError(`invalid report path: ${issue.reason}`);
+  previous.push(trimmed);
   return previous;
 }
 
@@ -84,6 +93,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--target <target>")
     .option("--scope <scope>")
     .option("--requirements <ids>")
+    .option("--report <path>", "completion report path; repeatable, stored comma-separated; forbids absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, and #", pushReportPathOption, [])
     .option("--allow-incomplete", "allow historical or incomplete Completed Work Log references")
     .option("--dry-run")
     .option("--json")
@@ -94,6 +104,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
         ...(typeof options.target === "string" ? { target: options.target } : {}),
         ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
         requirementIds: parseRequirementIds(options.requirements),
+        reportPaths: collect(options.report),
         allowIncomplete: Boolean(options.allowIncomplete),
         dryRun: Boolean(options.dryRun)
       });

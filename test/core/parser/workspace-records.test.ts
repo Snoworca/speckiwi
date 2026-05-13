@@ -86,6 +86,71 @@ describe("workspace parser", () => {
     expect(empty.index.completedWork).toEqual([]);
   });
 
+  it("parses legacy and report-path Completed Work Log rows", async () => {
+    const legacy = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
+    expect(legacy.index.completedWork).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          summary: "Fixture parser coverage completed.",
+          reportPaths: []
+        })
+      ])
+    );
+
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const original = await readFile(indexPath, "utf8");
+    await writeFile(
+      indexPath,
+      original
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+        .replace(
+          "| 2026-05-09 |  | ARCH |  | Cross-target fixture setup completed. |",
+          "| 2026-05-09 |  | ARCH |  | Cross-target fixture setup completed. |  |"
+        )
+        .replace(
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. | docs/reports/a.md, docs/reports/a.md, docs/reports/b.md |"
+        ),
+      "utf8"
+    );
+
+    const workspace = await parseWorkspace(await resolveProjectRoot(root));
+    expect(workspace.index.completedWork).toEqual([
+      expect.objectContaining({
+        summary: "Cross-target fixture setup completed.",
+        reportPaths: []
+      }),
+      expect.objectContaining({
+        summary: "Fixture parser coverage completed.",
+        reportPaths: ["docs/reports/a.md", "docs/reports/a.md", "docs/reports/b.md"]
+      })
+    ]);
+  });
+
+  it("only treats a trailing Report Paths column as completed-work report metadata", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const original = await readFile(indexPath, "utf8");
+    await writeFile(
+      indexPath,
+      original
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Report Paths | Requirement IDs | Summary |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+        .replace(
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+          "| 2026-05-10 | v1.0.0 | ARCH | docs/reports/misplaced.md | FR-ARCH-001 | Fixture parser coverage completed. |"
+        ),
+      "utf8"
+    );
+
+    const workspace = await parseWorkspace(await resolveProjectRoot(root));
+    expect(workspace.index.completedWork.find((entry) => entry.date === "2026-05-10")).toMatchObject({
+      reportPaths: []
+    });
+  });
+
   it("keeps valid neighboring records when diagnostics are present", async () => {
     const root = await copyFixtureWorkspace("invalid-structure");
     const workspace = await parseWorkspace(await resolveProjectRoot(root));

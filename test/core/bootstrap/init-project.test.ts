@@ -37,15 +37,22 @@ describe("project init bootstrap", () => {
     expect(index).toContain("## 6. Requirement Type Summary");
     expect(index).toContain("## 7. Completed Work Log");
     expect(index).toContain("## 8. Cross-scope Dependencies");
-    expect(index).toContain("| Date | Target | Scope | Requirement IDs | Summary |");
+    expect(index).toContain("| Date | Target | Scope | Requirement IDs | Summary | Report Paths |");
     expect(index).not.toContain("| v1.0.0 | release | active | Initial target |");
+    const appendix = await readFile(path.join(rootPath, "docs", "spec", "90.appendix.md"), "utf8");
+    expect(appendix).toContain("Report Paths");
+    expect(appendix).toContain("--report <path>");
+    expect(appendix).toContain("reportPaths");
+    expect(appendix).toContain("SRS-W024");
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.3");
     expect(agents).toContain("`Status` tracks implementation and verification progress.");
     expect(agents).toContain("`Stability` tracks requirement maturity and change-control maturity.");
     expect(agents).toContain("`Stability=draft` or `Stability=deprecated`");
+    expect(agents).toContain("Agents MUST follow TDD for behavior changes");
     expect(await readFile(path.join(rootPath, "AGENTS.md"), "utf8")).toContain("<!-- /SpecKiwi SRS 워크플로 -->");
-    expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+    expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("This repository uses `docs/spec/` as the required source of truth for requirements.");
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("Current work status workflow:");
   });
@@ -58,9 +65,9 @@ describe("project init bootstrap", () => {
     expect(second.ok).toBe(true);
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
-    expect(agents.match(/# SpecKiwi SRS 워크플로 v1\.2/g)).toHaveLength(1);
+    expect(agents.match(/# SpecKiwi SRS 워크플로 v1\.3/g)).toHaveLength(1);
     expect(agents.match(/<!-- \/SpecKiwi SRS 워크플로 -->/g)).toHaveLength(1);
-    expect(claude.match(/# SpecKiwi SRS 워크플로 v1\.2/g)).toHaveLength(1);
+    expect(claude.match(/# SpecKiwi SRS 워크플로 v1\.3/g)).toHaveLength(1);
     expect(claude.match(/<!-- \/SpecKiwi SRS 워크플로 -->/g)).toHaveLength(1);
   });
 
@@ -100,11 +107,11 @@ describe("project init bootstrap", () => {
     expect(result.ok).toBe(true);
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.3");
     expect(agents).not.toContain("# SpecKiwi SRS 워크플로 v1.1");
     expect(agents).not.toContain("Old managed instructions.");
     expect(agents).toContain("# Local Section");
-    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.3");
     expect(claude).not.toContain("# SpecKiwi SRS workflow");
     expect(claude).not.toContain("Legacy unversioned instructions.");
   });
@@ -128,10 +135,10 @@ describe("project init bootstrap", () => {
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
     expect(agents).toContain("Keep this prose mention: `# SpecKiwi SRS 워크플로 v0.9`.");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.3");
     expect(claude).toContain("# SpecKiwi SRS 워크플로 v0.9");
     expect(claude).toContain("No suffix marker, so this is not a safe managed block.");
-    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.3");
   });
 
   it("does not pair a malformed heading with a later block marker", async () => {
@@ -170,7 +177,7 @@ describe("project init bootstrap", () => {
     expect(agents).toContain("This local section must survive.");
     expect(agents).not.toContain("# SpecKiwi SRS 워크플로 v1.1");
     expect(agents).not.toContain("Old managed block.");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.3");
     expect(agents).toContain("# Tail Section");
     expect(agents).toContain("Keep this too.");
   });

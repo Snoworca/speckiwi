@@ -5,6 +5,7 @@ import { access, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { initProject } from "../core/bootstrap/init-project.js";
+import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import { resolveProjectRoot } from "../core/project-root.js";
 import type { ProjectRoot } from "../core/types.js";
 import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
@@ -24,6 +25,13 @@ export function createMcpServer(deps: McpDependencies): McpServerHandle {
   registerResources(server, deps);
   return server;
 }
+
+const reportPathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(REPORT_PATH_TOKEN_REGEX, { message: "invalid report path" })
+  .describe("repository-relative POSIX report path; no absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, or #");
 
 const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   list_requirements: {
@@ -54,6 +62,8 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     target: z.string().optional(),
     scope: z.string().optional(),
     requirementIds: z.array(z.string()).optional(),
+    reportPaths: z.array(reportPathSchema).optional(),
+    allowIncomplete: z.boolean().optional(),
     dryRun: z.boolean().optional()
   },
   add_requirement: {

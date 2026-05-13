@@ -11,7 +11,7 @@ export interface AgentInstructionOptions {
   version?: string;
 }
 
-export const AGENT_INSTRUCTION_VERSION = "1.2";
+export const AGENT_INSTRUCTION_VERSION = "1.3";
 export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
 export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 
@@ -72,8 +72,8 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "## 7. Completed Work Log",
     "",
-    "| Date | Target | Scope | Requirement IDs | Summary |",
-    "|---|---|---|---|---|",
+    "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |",
+    "|---|---|---|---|---|---|",
     "",
     "## 8. Cross-scope Dependencies",
     "",
@@ -99,7 +99,30 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
 }
 
 export function renderAppendixTemplate(): string {
-  return "# SRS Appendix\n\n## Command Reference\n\nUse `speckiwi validate`, `speckiwi list`, `speckiwi show`, and `speckiwi summary`.\n";
+  return [
+    "# SRS Appendix",
+    "",
+    "## Command Reference",
+    "",
+    "Use `speckiwi validate`, `speckiwi list`, `speckiwi show`, and `speckiwi summary`.",
+    "",
+    "`speckiwi add-completed-work` accepts repeatable `--report <path>` options.",
+    "",
+    "## Completed Work Log",
+    "",
+    "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |",
+    "|---|---|---|---|---|---|",
+    "",
+    "The trailing `Report Paths` column is optional for legacy indexes. Parsed completed-work records expose `reportPaths` as a string array; blank or missing cells return `[]`.",
+    "",
+    "Report paths are repository-relative POSIX paths stored as comma-separated values. They cannot be blank, absolute, start with `./` or `../`, contain a `..` segment, URL scheme, backslash, pipe, comma, CR/LF, or `#`.",
+    "",
+    "Malformed report path tokens are reported as `SRS-W024` warnings. Report paths are Completed Work Log summary metadata, not Verification Evidence.",
+    "",
+    "## MCP",
+    "",
+    "`add_completed_work` accepts optional `reportPaths?: string[]` and `allowIncomplete?: boolean` fields."
+  ].join("\n");
 }
 
 export interface ScopeTemplateInfo {
@@ -191,6 +214,10 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "- `Stability` tracks requirement maturity and change-control maturity.",
     "",
     "Agents MUST stop before implementing a non-discarded requirement with `Stability=draft` or `Stability=deprecated` unless the user explicitly overrides that workflow.",
+    "",
+    "TDD principle:",
+    "- Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.",
+    "- If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.",
     "",
     "Agents MUST NOT:",
     "- Implement behavior that is not covered by an SRS requirement.",

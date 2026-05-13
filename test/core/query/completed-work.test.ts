@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { listCompletedWork } from "../../../src/core/query/completed-work.js";
@@ -33,5 +35,35 @@ describe("completed work query", () => {
 
     expect(summarizeTarget(workspace, "v1.0.0").completedWork).toHaveLength(2);
     expect(summarizeTarget(workspace, "").completedWork).toHaveLength(2);
+  });
+
+  it("includes report paths in completed work query results", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const original = await readFile(indexPath, "utf8");
+    await writeFile(
+      indexPath,
+      original
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+        .replace(
+          "| 2026-05-09 |  | ARCH |  | Cross-target fixture setup completed. |",
+          "| 2026-05-09 |  | ARCH |  | Cross-target fixture setup completed. |  |"
+        )
+        .replace(
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. | docs/reports/report.md |"
+        ),
+      "utf8"
+    );
+    const workspace = await parseWorkspace(await resolveProjectRoot(root));
+
+    expect(listCompletedWork(workspace, { target: "v1.0.0", limit: 1 })).toEqual([
+      expect.objectContaining({
+        summary: "Fixture parser coverage completed.",
+        reportPaths: ["docs/reports/report.md"]
+      })
+    ]);
+    expect(summarizeTarget(workspace, "v1.0.0").completedWork[0]).toMatchObject({ reportPaths: ["docs/reports/report.md"] });
   });
 });

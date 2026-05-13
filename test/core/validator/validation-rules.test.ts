@@ -68,6 +68,46 @@ describe("validation registry", () => {
     expect(result.errors).toHaveLength(0);
   });
 
+  it("reports malformed Completed Work Log report paths as warnings", async () => {
+    for (const reportPath of [
+      "/absolute.md",
+      "./local.md",
+      "../escape.md",
+      "docs/../escape.md",
+      "https://example.com/report.md",
+      String.raw`docs\report.md`,
+      "docs/reports/bad|path.md",
+      "docs/reports/ok.md, , docs/reports/next.md",
+      "docs/reports/fragment.md#section"
+    ]) {
+      const root = await copyFixtureWorkspace("valid-basic");
+      const indexPath = path.join(root, "docs", "spec", "00.index.md");
+      const original = await readFile(indexPath, "utf8");
+      await writeFile(
+        indexPath,
+        original
+          .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+          .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+          .replace(
+            "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+            `| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. | ${reportPath} |`
+          ),
+        "utf8"
+      );
+
+      const result = validateWorkspace(await parseWorkspace(await resolveProjectRoot(root)));
+      expect(result.diagnostics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "SRS-W024",
+            filePath: "docs/spec/00.index.md"
+          })
+        ])
+      );
+      expect(result.errors).toHaveLength(0);
+    }
+  });
+
   it("preserves parser hardening diagnostics in validation output", async () => {
     const fixtures = [
       { name: "parser-hardening-duplicate-section", codes: ["SRS-E018"] },

@@ -1,0 +1,368 @@
+{
+  "plan_contract": "1.1.0",
+  "plan_id": "plan-20260511-v2-1-target-defaulting",
+  "title": "SpecKiwi v2.1.0 Target Registration and Active Target Defaulting Plan",
+  "target": "v2.1.0",
+  "scope_freeze": true,
+  "platforms": ["win32", "posix"],
+  "change_log": [],
+  "auto_recommend_policy": {
+    "default_confidence_threshold": "medium",
+    "cap": 10,
+    "forbidden_for_business_decision": false
+  },
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard", "flags": "i"},
+    {"pattern": "rm\\s+-rf\\s+(/|\\.|\\*)", "flags": "i"},
+    {"pattern": "Remove-Item\\s+-Recurse\\s+-Force", "flags": "i"},
+    {"pattern": "dd\\s+if=", "flags": "i"},
+    {"pattern": "mkfs(\\.|\\s)", "flags": "i"},
+    {"pattern": "kill\\s+-9\\s+-1", "flags": "i"},
+    {"pattern": "shutdown\\b", "flags": "i"},
+    {"pattern": "chmod\\s+777\\s+/", "flags": "i"},
+    {"pattern": "curl\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "wget\\b[^\\n]*\\|\\s*sh", "flags": "i"},
+    {"pattern": "while\\s+true", "flags": "i"},
+    {"pattern": "eval\\s+\\$\\(", "flags": "i"}
+  ],
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "node bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "node bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "Core Target Lifecycle and Default Resolution",
+      "goal": "Implement shared core behavior for target creation and Active Target defaulting.",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "Extend setActiveTarget create-mode core contract",
+          "requirements": ["FR-NODE-014"],
+          "covers": ["FR-NODE-014 AC-1", "FR-NODE-014 AC-2", "FR-NODE-014 AC-3", "FR-NODE-014 AC-4", "FR-NODE-014 AC-8"],
+          "owns": ["src/core/mutation/set-active-target.ts", "src/core/types.ts", "test/core/mutation/set-active-target.test.ts"],
+          "reads": ["src/core/mutation/table-cell.ts", "src/core/patch/patch-plan.ts", "src/core/parser/table.ts"],
+          "source_anchors": [
+            "src/core/mutation/set-active-target.ts:9-80",
+            "src/core/types.ts:126-131",
+            "test/core/mutation/set-active-target.test.ts:8-50"
+          ],
+          "signatures": [
+            "interface SetActiveTargetInput { target: string; create?: boolean; targetType?: string; description?: string; dryRun?: boolean }",
+            "function buildTargetEntry(input: SetActiveTargetInput): TargetEntry",
+            "function renderTargetRow(row: TargetEntry, status?: string): string"
+          ],
+          "implementation_steps": [
+            "Extend SetActiveTargetInput with create, targetType, and description.",
+            "Validate target row cells before rendering.",
+            "Retain NOT_FOUND behavior when create is false.",
+            "Insert a missing target row only when create is true.",
+            "Patch Active Target metadata and active row statuses in one patch plan.",
+            "Add a CRLF fixture mutation test that proves the updated index preserves existing line endings."
+          ],
+          "rationale": "Single core mutation keeps Target Map row creation and Active Target assignment atomic across CLI and MCP.",
+          "pitfalls": [
+            "Do not create a row from a typo unless create is true.",
+            "Do not downgrade non-active statuses.",
+            "Do not allow pipe or newline in target type or description.",
+            "Do not treat pwsh test execution as a replacement for actual CRLF file-content assertions."
+          ],
+          "feasibility": "Medium",
+          "turn_estimate": 10,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/core/mutation/set-active-target.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/core/mutation/set-active-target.test.ts", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Revert only the hunks in src/core/mutation/set-active-target.ts and src/core/types.ts that add create-mode fields and row insertion. 2) Remove the new create-mode assertions from test/core/mutation/set-active-target.test.ts, then run npm test -- test/core/mutation/set-active-target.test.ts."
+          }
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "Resolve omitted addRequirement target from Active Target",
+          "requirements": ["FR-NODE-014"],
+          "covers": ["FR-NODE-014 AC-5", "FR-NODE-014 AC-6", "FR-NODE-014 AC-7", "FR-NODE-014 AC-8"],
+          "owns": ["src/core/mutation/add-requirement.ts", "src/core/types.ts", "test/core/mutation/add-requirement.test.ts"],
+          "reads": ["src/core/query/summary.ts", "src/core/mutation/render-requirement.ts", "src/core/mutation/table-cell.ts"],
+          "source_anchors": [
+            "src/core/mutation/add-requirement.ts:15-18",
+            "src/core/mutation/add-requirement.ts:209-265",
+            "src/core/query/summary.ts:17-23",
+            "test/core/mutation/add-requirement.test.ts:8-168"
+          ],
+          "signatures": [
+            "interface AddRequirementInput extends Omit<RenderRequirementInput, \"id\" | \"type\" | \"target\"> { type: RequirementType; scope: string; target?: string; dryRun?: boolean }",
+            "function resolveRequirementTarget(workspace: ParsedWorkspace, input: AddRequirementInput): Result<{ target: string; targetSource: \"explicit\" | \"active-target\" }>"
+          ],
+          "implementation_steps": [
+            "Make target optional on AddRequirementInput.",
+            "Resolve target after parseWorkspace and before table-cell validation.",
+            "Build a resolved input object with target filled.",
+            "Preserve explicit target precedence.",
+            "Add targetSource to AddRequirementOutput.",
+            "Add a CRLF scope-file insertion test for omitted-target requirement creation."
+          ],
+          "rationale": "Core-level defaulting prevents CLI and MCP divergence.",
+          "pitfalls": [
+            "Do not pass undefined target into renderRequirementBlock.",
+            "Do not allow Active Target fallback to bypass Target Map registration.",
+            "Do not call table-cell validation before target is resolved.",
+            "Do not assume index newline preservation covers scope SRS newline preservation."
+          ],
+          "feasibility": "Medium",
+          "turn_estimate": 12,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/core/mutation/add-requirement.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/core/mutation/add-requirement.test.ts", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore AddRequirementInput target to required and remove targetSource from output typing. 2) Delete omitted-target tests and rerun npm test -- test/core/mutation/add-requirement.test.ts."
+          }
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "CLI and MCP Surface",
+      "goal": "Expose core semantics through CLI and MCP without drift.",
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "Add CLI create/defaulting options and tests",
+          "requirements": ["IR-CLI-023"],
+          "covers": ["IR-CLI-023 AC-1", "IR-CLI-023 AC-2", "IR-CLI-023 AC-3", "IR-CLI-023 AC-4", "IR-CLI-023 AC-5", "IR-CLI-023 AC-6", "IR-CLI-023 AC-7"],
+          "owns": ["src/cli/commands/mutations.ts", "test/cli/mutation-commands.test.ts"],
+          "reads": ["src/core/mutation/set-active-target.ts", "src/core/mutation/add-requirement.ts"],
+          "source_anchors": [
+            "src/cli/commands/mutations.ts:74-78",
+            "src/cli/commands/mutations.ts:133-188",
+            "test/cli/mutation-commands.test.ts:13-78"
+          ],
+          "signatures": [
+            "speckiwi set-active-target <target> [--create] [--type <type>] [--description <description>]",
+            "speckiwi add-requirement --type <type> --scope <scope> [--target <target>] --title <title> --requirement <text> --ac <criterion>"
+          ],
+          "implementation_steps": [
+            "Add create, type, and description options to set-active-target.",
+            "Make add-requirement target optional.",
+            "Pass optional target only when provided.",
+            "Assert JSON output exposes targetSource.",
+            "Assert CLI custom target type and description are written to Target Map.",
+            "Record any README command-shape delta for TASK-P3-002 rather than editing README in this task."
+          ],
+          "rationale": "CLI is the fallback interface for agents when MCP is unavailable.",
+          "pitfalls": [
+            "Avoid naming target type option version because the root CLI already has version behavior.",
+            "Keep explicit target examples valid.",
+            "Keep exit code 5 for mutation denial.",
+            "Do not rely on core tests alone for Commander option mapping."
+          ],
+          "feasibility": "Low",
+          "turn_estimate": 9,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/cli/mutation-commands.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/mutation-commands.test.ts", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore previous Commander option declarations in src/cli/commands/mutations.ts. 2) Remove new CLI assertions from test/cli/mutation-commands.test.ts, then run npm test -- test/cli/mutation-commands.test.ts."
+          }
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "Add MCP create/defaulting tools and schemas",
+          "requirements": ["FR-MCP-015"],
+          "covers": ["FR-MCP-015 AC-1", "FR-MCP-015 AC-2", "FR-MCP-015 AC-3", "FR-MCP-015 AC-4", "FR-MCP-015 AC-5", "FR-MCP-015 AC-6", "FR-MCP-015 AC-7"],
+          "owns": ["src/mcp/tools/mutation-tools.ts", "src/mcp/server.ts", "test/mcp/mutation-tools-errors.test.ts", "test/mcp/stdio-purity.test.ts"],
+          "reads": ["src/mcp/adapter.ts", "src/core/mutation/set-active-target.ts", "src/core/mutation/add-requirement.ts"],
+          "source_anchors": [
+            "src/mcp/tools/mutation-tools.ts:40-83",
+            "src/mcp/server.ts:50-83",
+            "test/mcp/mutation-tools-errors.test.ts:15-72",
+            "test/mcp/stdio-purity.test.ts:27-41"
+          ],
+          "signatures": [
+            "set_active_target({ target, create?, targetType?, description?, dryRun? })",
+            "add_requirement({ type, scope, target?, title, requirement, acceptanceCriteria, ... })"
+          ],
+          "implementation_steps": [
+            "Pass create, targetType, and description to setActiveTarget.",
+            "Omit target from addInput when MCP input target is absent.",
+            "Update toolSchemas for create fields and optional add_requirement.target.",
+            "Add adapter tests for create, custom targetType and description pass-through, rejection, defaulting, and empty Active Target failure.",
+            "Add stdio schema assertions for create, targetType, description, and optional add_requirement.target."
+          ],
+          "rationale": "MCP client discovery must show the same contract as CLI docs.",
+          "pitfalls": [
+            "Do not use String(input.target) for optional target.",
+            "Keep requirement required in stdio schema.",
+            "Do not introduce root switching through tool input.",
+            "Do not let targetType exist only in core without appearing in MCP schema tests."
+          ],
+          "feasibility": "Medium",
+          "turn_estimate": 11,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/mcp/mutation-tools-errors.test.ts", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test -- test/mcp/stdio-purity.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/mutation-tools-errors.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/stdio-purity.test.ts", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore previous MCP adapter and schema input handling in src/mcp/tools/mutation-tools.ts and src/mcp/server.ts. 2) Remove new MCP assertions, then run npm test -- test/mcp/mutation-tools-errors.test.ts and npm test -- test/mcp/stdio-purity.test.ts."
+          }
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Agent Workflow, Docs, and SRS Finalization",
+      "goal": "Document next-target workflow and close SRS evidence after implementation.",
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "Update managed agent instructions for next-target workflow",
+          "requirements": ["FR-FLOW-011"],
+          "covers": ["FR-FLOW-011 AC-1", "FR-FLOW-011 AC-2", "FR-FLOW-011 AC-3", "FR-FLOW-011 AC-4", "FR-FLOW-011 AC-5", "FR-FLOW-011 AC-6"],
+          "owns": ["src/core/bootstrap/templates.ts", "AGENTS.md", "CLAUDE.md", "test/core/bootstrap/init-project.test.ts", "test/cli/mutation-commands.test.ts", "test/mcp/stdio-purity.test.ts"],
+          "reads": ["docs/spec/90.appendix.md"],
+          "source_anchors": [
+            "src/core/bootstrap/templates.ts:14-16",
+            "src/core/bootstrap/templates.ts:176-214",
+            "test/core/bootstrap/init-project.test.ts:42-50",
+            "AGENTS.md:1-42",
+            "CLAUDE.md:1-42"
+          ],
+          "signatures": [
+            "export const AGENT_INSTRUCTION_VERSION = \"1.3\"",
+            "renderAgentInstructionSnippet(options?: AgentInstructionOptions): string"
+          ],
+          "implementation_steps": [
+            "Bump managed instruction version from 1.2 to 1.3.",
+            "Add next-target authoring workflow text.",
+            "Update root AGENTS.md and CLAUDE.md managed blocks.",
+            "Update tests that assert the managed block version and text."
+          ],
+          "rationale": "Agents need prompt-level guidance to use target creation and defaulting consistently.",
+          "pitfalls": [
+            "Do not remove current work status workflow.",
+            "Do not remove Stability guidance.",
+            "Keep the suffix marker."
+          ],
+          "feasibility": "Low",
+          "turn_estimate": 8,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "npm test -- test/core/bootstrap/init-project.test.ts", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test -- test/cli/mutation-commands.test.ts", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test -- test/mcp/stdio-purity.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/core/bootstrap/init-project.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/cli/mutation-commands.test.ts", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test -- test/mcp/stdio-purity.test.ts", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore AGENT_INSTRUCTION_VERSION and managed block text in src/core/bootstrap/templates.ts plus root AGENTS.md and CLAUDE.md. 2) Restore test expectations to the previous managed block version, then run npm test -- test/core/bootstrap/init-project.test.ts."
+          }
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "Update docs, SRS evidence, and final gates",
+          "requirements": ["IR-CLI-023", "FR-MCP-015", "FR-NODE-014", "FR-FLOW-011"],
+          "covers": ["IR-CLI-023 all", "FR-MCP-015 all", "FR-NODE-014 all", "FR-FLOW-011 all"],
+          "owns": ["README.md", "docs/spec/00.index.md", "docs/spec/30.cli-interface.srs.md", "docs/spec/40.mcp-stdio-interface.srs.md", "docs/spec/50.nodejs-implementation.srs.md", "docs/spec/60.workflow-release.srs.md", "docs/spec/90.appendix.md"],
+          "reads": ["docs/rule/SRS-MD-Rules-v1.0.0.md"],
+          "source_anchors": [
+            "docs/spec/00.index.md:43-80",
+            "docs/spec/30.cli-interface.srs.md:1407-1469",
+            "docs/spec/40.mcp-stdio-interface.srs.md:1140-1202",
+            "docs/spec/50.nodejs-implementation.srs.md:1191-1254",
+            "docs/spec/60.workflow-release.srs.md:663-727",
+            "docs/spec/90.appendix.md:105-129"
+          ],
+          "signatures": ["N/A — documentation and SRS status update"],
+          "implementation_steps": [
+            "Update README CLI and MCP references.",
+            "Compare appendix command/tool fields against implementation and edit only mismatches.",
+            "Update SRS requirement evidence after tests pass, preferring SpecKiwi check-ac, add-evidence, and update-status commands or matching MCP tools.",
+            "Set requirement statuses to verified only after evidence exists.",
+            "Update 00.index.md summaries and Completed Work Log.",
+            "Run final gates."
+          ],
+          "rationale": "The source-of-truth SRS must close the loop after implementation.",
+          "pitfalls": [
+            "Do not add evidence rows for commands that were not run.",
+            "Do not mark requirements verified before evidence exists.",
+            "Do not use Product Version as the next-target value."
+          ],
+          "feasibility": "Low",
+          "turn_estimate": 10,
+          "review_strictness": "default",
+          "spawn_isolation_hint": "inplace",
+          "unit_gate_override": {"enabled": true, "critical": 0, "high": 1},
+          "acceptance_tests": [
+            {"shell": "bash", "cmd": "node bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "bash", "cmd": "npm run release:check", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "node bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run build", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run test:integration", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:acceptance", "expected_exit": 0},
+            {"shell": "pwsh", "cmd": "npm run release:check", "expected_exit": 0}
+          ],
+          "rollback": {
+            "strategy": "manual",
+            "command": "1) Restore README and docs/spec changes for v2.1.0 evidence/status to their previous planned state. 2) Re-run node bin/speckiwi validate --fail-on-warning --json to confirm the restored SRS is internally consistent."
+          }
+        }
+      ]
+    }
+  ],
+  "spec_mapping": [
+    {"requirement": "FR-NODE-014", "acceptance": "AC-1, AC-2, AC-3, AC-4", "tasks": ["TASK-P1-001"]},
+    {"requirement": "FR-NODE-014", "acceptance": "AC-5, AC-6, AC-7", "tasks": ["TASK-P1-002"]},
+    {"requirement": "FR-NODE-014", "acceptance": "AC-8", "tasks": ["TASK-P1-001", "TASK-P1-002", "TASK-P2-001", "TASK-P2-002"]},
+    {"requirement": "IR-CLI-023", "acceptance": "AC-1 through AC-7", "tasks": ["TASK-P2-001"]},
+    {"requirement": "FR-MCP-015", "acceptance": "AC-1 through AC-7", "tasks": ["TASK-P2-002"]},
+    {"requirement": "FR-FLOW-011", "acceptance": "AC-1 through AC-6", "tasks": ["TASK-P3-001", "TASK-P3-002"]}
+  ]
+}

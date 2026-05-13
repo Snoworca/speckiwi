@@ -34,6 +34,12 @@ describe("real stdio MCP server", () => {
       expect(addRequirement?.inputSchema.properties).toHaveProperty("requirement");
       expect(addRequirement?.inputSchema.required).toContain("requirement");
       expect(addCompletedWork?.inputSchema.properties).toHaveProperty("date");
+      expect(addCompletedWork?.inputSchema.properties).toHaveProperty("reportPaths");
+      expect(addCompletedWork?.inputSchema.properties).toHaveProperty("allowIncomplete");
+      const reportPathsSchema = addCompletedWork?.inputSchema.properties?.reportPaths as { items?: { minLength?: number; pattern?: string; description?: string } } | undefined;
+      expect(reportPathsSchema?.items).toMatchObject({ minLength: 1 });
+      expect(reportPathsSchema?.items?.pattern).toContain("A-Za-z");
+      expect(reportPathsSchema?.items?.description).toContain("repository-relative POSIX");
       expect(initProject?.inputSchema.properties).not.toHaveProperty("agentFile");
       expect(initProject?.inputSchema.properties).not.toHaveProperty("agentFiles");
       expect(listRequirements?.annotations?.readOnlyHint).toBe(true);
@@ -57,12 +63,17 @@ describe("real stdio MCP server", () => {
       const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
       expect(JSON.parse(text)).toMatchObject({ ok: true });
 
+      await expect(client.callTool({ name: "add_completed_work", arguments: { date: "2026-05-10", summary: "Blank report path.", reportPaths: [""] } })).resolves.toMatchObject({ isError: true });
+      await expect(client.callTool({ name: "add_completed_work", arguments: { date: "2026-05-10", summary: "Invalid report path.", reportPaths: ["../escape.md"] } })).resolves.toMatchObject({
+        isError: true
+      });
+
       const completedResource = await client.readResource({ uri: "speckiwi://completed-work" });
       const completedText = completedResource.contents[0]?.text;
       expect(typeof completedText).toBe("string");
       expect(JSON.parse(String(completedText))).toMatchObject({
         ok: true,
-        value: { completedWork: expect.any(Array) },
+        value: { completedWork: [expect.objectContaining({ reportPaths: [] }), expect.objectContaining({ reportPaths: [] })] },
         diagnostics: expect.any(Array),
         diagnosticsSummary: expect.any(Object)
       });
@@ -114,8 +125,10 @@ describe("real stdio MCP server", () => {
       expect(JSON.parse(text)).toMatchObject({ ok: true, value: { records: [] } });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });
@@ -141,8 +154,8 @@ describe("real stdio MCP server", () => {
       expect(JSON.parse(text)).toMatchObject({ ok: true });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });

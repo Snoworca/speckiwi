@@ -80,8 +80,10 @@ describe("mutation CLI commands", () => {
   it("supports init options and add-requirement dry-run", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     expect(await main(["--root", root, "init", "--target", "v1.0.0", "--scope", "ARCH", "--force"], io())).toBe(0);
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     expect(
       await main(
         [
@@ -108,7 +110,7 @@ describe("mutation CLI commands", () => {
     expect(await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8")).not.toContain("Dry Run");
     const dryRun = io();
     expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-10", "--summary", "Dry run completed work.", "--dry-run", "--json"], dryRun)).toBe(0);
-    expect(JSON.parse(dryRun.stdout.read()?.toString() ?? "")).toMatchObject({ ok: true, value: { written: false }, patch: { dryRun: true } });
+    expect(JSON.parse(dryRun.stdout.read()?.toString() ?? "")).toMatchObject({ ok: true, value: { written: false, reportPaths: [] }, patch: { dryRun: true } });
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).not.toContain("Dry run completed work.");
 
     const denied = io();
@@ -126,14 +128,100 @@ describe("mutation CLI commands", () => {
     expect(JSON.parse(incompleteAllowed.stdout.read()?.toString() ?? "")).toMatchObject({ ok: true, value: { written: false }, patch: { dryRun: true } });
   });
 
+  it("supports repeatable completed-work report options and human output compatibility", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const json = io();
+    expect(
+      await main(
+        [
+          "--root",
+          root,
+          "add-completed-work",
+          "--date",
+          "2026-05-10",
+          "--summary",
+          "CLI report path row.",
+          "--report",
+          "docs/reports/report-a.md",
+          "--report",
+          "docs/reports/report-a.md",
+          "--json"
+        ],
+        json
+      )
+    ).toBe(0);
+    expect(JSON.parse(json.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: {
+        reportPaths: ["docs/reports/report-a.md", "docs/reports/report-a.md"]
+      }
+    });
+    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain(
+      "| 2026-05-10 |  |  |  | CLI report path row. | docs/reports/report-a.md, docs/reports/report-a.md |"
+    );
+
+    const humanEmpty = io();
+    expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-11", "--summary", "No report paths."], humanEmpty)).toBe(0);
+    expect(humanEmpty.stdout.read()?.toString() ?? "").not.toContain("reportPaths");
+
+    const humanNonEmpty = io();
+    expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-12", "--summary", "Human report paths.", "--report", "docs/reports/human.md"], humanNonEmpty)).toBe(0);
+    expect(humanNonEmpty.stdout.read()?.toString() ?? "").toContain("docs/reports/human.md");
+
+    const dryRun = io();
+    expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-13", "--summary", "Dry-run report path.", "--report", "docs/reports/dry-run.md", "--dry-run", "--json"], dryRun)).toBe(0);
+    expect(JSON.parse(dryRun.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { written: false, reportPaths: ["docs/reports/dry-run.md"] },
+      patch: { dryRun: true }
+    });
+    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.not.toContain("Dry-run report path.");
+  });
+
+  it("rejects invalid completed-work report options before writing", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const before = await readFile(indexPath, "utf8");
+
+    for (const reportPath of [
+      "",
+      "   ",
+      "/absolute.md",
+      "./local.md",
+      "../escape.md",
+      "docs/../escape.md",
+      "https://example.com/report.md",
+      String.raw`docs\report.md`,
+      "docs/report|bad.md",
+      "docs/report,extra.md",
+      "docs/report\nbad.md",
+      "docs/report#fragment.md"
+    ]) {
+      const streams = io();
+      expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-10", "--summary", "Bad report path.", "--report", reportPath], streams)).not.toBe(0);
+      expect(streams.stderr.read()?.toString() ?? "").toContain("invalid report path");
+      await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
+    }
+  });
+
+  it("documents completed-work report options in CLI help", async () => {
+    const streams = io();
+    expect(await main(["add-completed-work", "--help"], streams)).toBe(0);
+    const help = (streams.stdout.read()?.toString() ?? "").replace(/\s+/g, " ");
+    expect(help).toContain("--report <path>");
+    expect(help).toContain("repeatable");
+    expect(help).toContain("stored comma-separated");
+    expect(help).toContain("forbids absolute paths");
+  });
+
   it("passes init scope to generated files on empty repositories", async () => {
     const temp = await mkdtemp(path.join(tmpdir(), "speckiwi-cli-init-"));
     expect(await main(["--root", temp, "init", "--target", "v2.0.0", "--scope", "Payments:PAY"], io())).toBe(0);
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("10.payments.srs.md");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| v2.0.0 | release | planned | Initial target |");
-    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
-    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.2");
+    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
+    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.3");
   });
 
   it("rejects removed init agent-file option", async () => {

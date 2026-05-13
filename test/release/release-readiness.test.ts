@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -38,6 +38,28 @@ describe("release readiness and documentation", () => {
     expect(summary.target).toBe("v1.0.0");
     expect(summary.targetSource).toBe("explicit");
     expect(summary.plannedOrInProgress).toEqual(["FR-ARCH-001"]);
+  });
+
+  it("does not require Completed Work Log report paths to exist for release readiness", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = join(root, "docs", "spec", "00.index.md");
+    await writeFile(
+      indexPath,
+      (await readFile(indexPath, "utf8"))
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+        .replace(
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. | docs/reports/does-not-exist.md |"
+        ),
+      "utf8"
+    );
+
+    const workspace = await parseWorkspace(await resolveProjectRoot(root));
+    const summary = summarizeReleaseReadiness(workspace, { target: "v1.0.0" });
+    expect(workspace.index.completedWork).toEqual(expect.arrayContaining([expect.objectContaining({ reportPaths: ["docs/reports/does-not-exist.md"] })]));
+    expect(summary.missingEvidenceReferences).not.toEqual(expect.arrayContaining([expect.objectContaining({ reference: "docs/reports/does-not-exist.md" })]));
+    expect(summary.diagnosticsSummary.byCode).not.toHaveProperty("SRS-W024");
   });
 
   it("blocks readiness when no explicit target exists and active target is empty", async () => {

@@ -262,8 +262,8 @@ SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한�
 
 ## 7. Completed Work Log
 
-| Date | Target | Scope | Requirement IDs | Summary |
-|---|---|---|---|---|
+| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
+|---|---|---|---|---|---|
 
 ## 8. Cross-scope Dependencies
 
@@ -329,9 +329,9 @@ Target status 값:
 ```md
 ## 7. Completed Work Log
 
-| Date | Target | Scope | Requirement IDs | Summary |
-|---|---|---|---|---|
-| 2026-05-10 | v1.0.0 | CLI, MCP | IR-CLI-008, FR-MCP-008 | Active Target 조회/갱신 UX를 CLI와 MCP에 연결했다. |
+| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
+|---|---|---|---|---|---|
+| 2026-05-10 | v1.0.0 | CLI, MCP | IR-CLI-008, FR-MCP-008 | Active Target 조회/갱신 UX를 CLI와 MCP에 연결했다. | docs/reports/v1.0.0.md |
 ```
 
 규칙:
@@ -341,7 +341,11 @@ Target status 값:
 3. `Date`는 `YYYY-MM-DD` 형식을 사용한다.
 4. `Target`은 비어 있을 수 있으며, 비어 있는 row는 cross-target completed work로 해석한다.
 5. `Scope`와 `Requirement IDs`는 comma-separated 값을 허용한다.
-6. table cell에는 pipe 문자 `|`를 넣지 않는다.
+6. `Report Paths`는 선택 column이다. Parser는 legacy five-column Completed Work Log와 trailing `Report Paths`가 있는 six-column Completed Work Log를 모두 읽어야 한다.
+7. `Report Paths` cell은 comma-separated repository-relative POSIX path list다. Blank cell은 빈 배열로 해석한다.
+8. Report path token은 absolute path, `./` 또는 `../` prefix, `..` segment, URL scheme, backslash, pipe, comma, CR/LF, `#`, trim 후 빈 값을 사용할 수 없다.
+9. Malformed report path는 `SRS-W024` warning으로 보고한다. Report path는 Completed Work Log summary metadata이며 Verification Evidence가 아니다.
+10. table cell에는 pipe 문자 `|`를 넣지 않는다.
 
 Target type 값:
 
@@ -1509,6 +1513,7 @@ node scripts/spec/validate-spec.js
 | `SRS-W021` | warning | Release readiness warning |
 | `SRS-W022` | warning | Legacy volatile stability |
 | `SRS-W023` | warning | Draft requirement in active or released target |
+| `SRS-W024` | warning | Malformed Completed Work Log report path |
 
 v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
 
@@ -1857,7 +1862,7 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 아래 managed block을 저장소 루트의 `AGENTS.md`, `CLAUDE.md`, 또는 둘 다에 추가한다. 기존 block의 version이 다르거나 legacy unversioned heading이면 heading부터 suffix marker까지 현재 block으로 교체한다.
 
 ```md
-# SpecKiwi SRS 워크플로 v1.2
+# SpecKiwi SRS 워크플로 v1.3
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -1872,6 +1877,10 @@ Requirement metadata has two separate lifecycle fields:
 - `Stability` tracks requirement maturity and change-control maturity.
 
 Agents MUST stop before implementing a non-discarded requirement with `Stability=draft` or `Stability=deprecated` unless the user explicitly overrides that workflow.
+
+TDD principle:
+- Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.
+- If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.

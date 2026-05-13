@@ -1,10 +1,11 @@
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
+import { normalizeReportPathsInput, REPORT_PATHS_COLUMN } from "../completed-work/report-paths.js";
 import { readUtf8File } from "../fs/read-text.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
-import { parseMarkdownTable } from "../parser/table.js";
+import { parseMarkdownTable, splitTableRow, type ParsedTable } from "../parser/table.js";
 import type { Diagnostic, MutationResult, ParsedWorkspace, PatchSummary, ProjectRoot, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
@@ -15,6 +16,7 @@ export interface AddCompletedWorkInput {
   target?: string;
   scope?: string;
   requirementIds?: string[];
+  reportPaths?: string[] | null;
   allowIncomplete?: boolean;
   dryRun?: boolean;
 }
@@ -23,32 +25,40 @@ function findHeadingMatching(lines: string[], pattern: RegExp): number {
   return lines.findIndex((line) => pattern.test(line.trim()));
 }
 
-function renderRow(input: Required<Pick<AddCompletedWorkInput, "date" | "summary">> & Pick<AddCompletedWorkInput, "target" | "scope" | "requirementIds">): string {
-  return `| ${input.date} | ${input.target ?? ""} | ${input.scope ?? ""} | ${(input.requirementIds ?? []).join(", ")} | ${input.summary} |`;
+function renderRow(
+  input: Required<Pick<AddCompletedWorkInput, "date" | "summary">> & Pick<AddCompletedWorkInput, "target" | "scope" | "requirementIds" | "reportPaths">,
+  includeReportPaths: boolean
+): string {
+  const cells = [input.date, input.target ?? "", input.scope ?? "", (input.requirementIds ?? []).join(", "), input.summary];
+  if (includeReportPaths) cells.push((input.reportPaths ?? []).join(", "));
+  return `| ${cells.join(" | ")} |`;
 }
 
-function tableBlock(row: string): string[] {
-  return [
-    "",
-    "| Date | Target | Scope | Requirement IDs | Summary |",
-    "|---|---|---|---|---|",
-    row
-  ];
+function tableHeader(includeReportPaths: boolean): string {
+  return includeReportPaths ? "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |" : "| Date | Target | Scope | Requirement IDs | Summary |";
 }
 
-function sectionBlock(row: string): string[] {
+function tableSeparator(includeReportPaths: boolean): string {
+  return includeReportPaths ? "|---|---|---|---|---|---|" : "|---|---|---|---|---|";
+}
+
+function tableBlock(row: string, includeReportPaths: boolean): string[] {
+  return ["", tableHeader(includeReportPaths), tableSeparator(includeReportPaths), row];
+}
+
+function sectionBlock(row: string, includeReportPaths: boolean): string[] {
   return [
     "## 7. Completed Work Log",
     "",
-    "| Date | Target | Scope | Requirement IDs | Summary |",
-    "|---|---|---|---|---|",
+    tableHeader(includeReportPaths),
+    tableSeparator(includeReportPaths),
     row,
     ""
   ];
 }
 
-function sectionBlockWithNumber(row: string, sectionNumber: number): string[] {
-  const lines = sectionBlock(row);
+function sectionBlockWithNumber(row: string, sectionNumber: number, includeReportPaths: boolean): string[] {
+  const lines = sectionBlock(row, includeReportPaths);
   lines[0] = `## ${sectionNumber}. Completed Work Log`;
   return lines;
 }
@@ -94,22 +104,84 @@ function appendLinesOperation(file: TextFile, lines: string[]): PatchOperation {
   return operation;
 }
 
-function planCompletedWorkPatch(file: TextFile, row: string): PatchOperation[] {
+function replaceLineOperation(line: number, original: string | undefined, replacement: string): PatchOperation {
+  const operation: PatchOperation = { type: "replaceLine", line, replacement };
+  if (original !== undefined) operation.original = original;
+  return operation;
+}
+
+function tableHasReportPaths(table: ParsedTable): boolean {
+  return table.headers.at(-1) === REPORT_PATHS_COLUMN;
+}
+
+function tableHasMisplacedReportPaths(table: ParsedTable): boolean {
+  const index = table.headers.indexOf(REPORT_PATHS_COLUMN);
+  return index >= 0 && index !== table.headers.length - 1;
+}
+
+function renderExistingRowWithReportPaths(row: Record<string, string>): string {
+  return renderRow(
+    {
+      date: row.Date ?? "",
+      target: row.Target ?? "",
+      scope: row.Scope ?? "",
+      requirementIds: (row["Requirement IDs"] ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+      summary: row.Summary ?? "",
+      reportPaths: []
+    },
+    true
+  );
+}
+
+function upgradeCompletedWorkTableOperations(file: TextFile, table: ParsedTable): PatchOperation[] {
+  return [
+    replaceLineOperation(table.startLine, file.lines[table.startLine - 1], tableHeader(true)),
+    replaceLineOperation(table.startLine + 1, file.lines[table.startLine], tableSeparator(true)),
+    ...table.rows.map((row, index): PatchOperation => {
+      const line = table.rowLines[index] ?? table.startLine + 2 + index;
+      return replaceLineOperation(line, file.lines[line - 1], renderExistingRowWithReportPaths(row));
+    })
+  ];
+}
+
+function validateCompletedWorkTableForMutation(file: TextFile, table: ParsedTable, includeReportPaths: boolean): MutationResult | undefined {
+  if (tableHasMisplacedReportPaths(table)) {
+    return mutationFail("MUTATION_DENIED", "Completed Work Log Report Paths column must be trailing");
+  }
+
+  if (!includeReportPaths || tableHasReportPaths(table)) return undefined;
+
+  for (const line of table.rowLines) {
+    const sourceCells = splitTableRow(file.lines[line - 1] ?? "");
+    if (sourceCells.length !== table.headers.length) {
+      return mutationFail("MUTATION_DENIED", "Completed Work Log legacy row has unexpected cells; fix the row before Report Paths migration");
+    }
+  }
+  return undefined;
+}
+
+function planCompletedWorkPatch(file: TextFile, row: string, includeReportPaths: boolean): PatchOperation[] {
   const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
   if (completedHeading >= 0) {
     const table = parseMarkdownTable(file.lines, completedHeading + 1);
-    if (table) return [insertLinesOperation(file, table.endLine + 1, [row])];
-    return [insertLinesOperation(file, completedHeading + 2, tableBlock(row))];
+    if (table) {
+      const needsMigration = includeReportPaths && !tableHasReportPaths(table);
+      return [...(needsMigration ? upgradeCompletedWorkTableOperations(file, table) : []), insertLinesOperation(file, table.endLine + 1, [row])];
+    }
+    return [insertLinesOperation(file, completedHeading + 2, tableBlock(row, includeReportPaths))];
   }
 
   const insertionHeading = findInsertionHeading(file.lines);
   if (insertionHeading) {
     return [
       ...renumberTopLevelSections(file.lines, insertionHeading.index),
-      insertLinesOperation(file, insertionHeading.index + 1, sectionBlockWithNumber(row, insertionHeading.sectionNumber))
+      insertLinesOperation(file, insertionHeading.index + 1, sectionBlockWithNumber(row, insertionHeading.sectionNumber, includeReportPaths))
     ];
   }
-  return [appendLinesOperation(file, ["", ...sectionBlock(row)])];
+  return [appendLinesOperation(file, ["", ...sectionBlock(row, includeReportPaths)])];
 }
 
 function operationPreview(operations: PatchOperation[]): string[] {
@@ -173,16 +245,23 @@ export async function addCompletedWork(root: ProjectRoot, input: AddCompletedWor
   const target = input.target?.trim() ?? "";
   const scope = input.scope?.trim() ?? "";
   const requirementIds = (input.requirementIds ?? []).map((id) => id.trim()).filter(Boolean);
+  const reportPathParse = normalizeReportPathsInput(input.reportPaths);
+  const reportPaths = reportPathParse.paths;
 
   if (!date) return mutationFail("USAGE", "date is required");
   if (!summary) return mutationFail("USAGE", "summary is required");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return mutationFail("USAGE", "date must use YYYY-MM-DD");
+  if (reportPathParse.issues.length > 0) {
+    const issue = reportPathParse.issues[0]!;
+    return mutationFail("MUTATION_DENIED", `Completed Work Log report path is malformed: ${issue.token || issue.reason}`);
+  }
   const unsafeCell = assertSafeMarkdownTableCells({
     "Completed Work Log date": date,
     "Completed Work Log target": target,
     "Completed Work Log scope": scope,
     "Completed Work Log summary": summary,
-    ...Object.fromEntries(requirementIds.map((id, index) => [`Completed Work Log requirementIds[${index}]`, id]))
+    ...Object.fromEntries(requirementIds.map((id, index) => [`Completed Work Log requirementIds[${index}]`, id])),
+    ...Object.fromEntries(reportPaths.map((reportPath, index) => [`Completed Work Log reportPaths[${index}]`, reportPath]))
   });
   if (unsafeCell) return unsafeCell;
 
@@ -197,13 +276,18 @@ export async function addCompletedWork(root: ProjectRoot, input: AddCompletedWor
   }
 
   const file = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
-  const row = renderRow({ date, summary, target, scope, requirementIds });
-  const operations = planCompletedWorkPatch(file, row);
+  const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
+  const table = completedHeading >= 0 ? parseMarkdownTable(file.lines, completedHeading + 1) : undefined;
+  const includeReportPaths = reportPaths.length > 0 || Boolean(table && tableHasReportPaths(table));
+  const tableFailure = table ? validateCompletedWorkTableForMutation(file, table, includeReportPaths) : undefined;
+  if (tableFailure) return tableFailure;
+  const row = renderRow({ date, summary, target, scope, requirementIds, reportPaths }, includeReportPaths);
+  const operations = planCompletedWorkPatch(file, row, includeReportPaths);
   const dryRun = input.dryRun ?? false;
   try {
     const applied = await applyPatchPlan(createPatchPlan(file, operations), { dryRun });
     return {
-      ...mutationOk({ date, target, scope, requirementIds, summary, written: applied.written }),
+      ...mutationOk({ date, target, scope, requirementIds, summary, reportPaths, written: applied.written }),
       patch: patchSummary(applied.filePath, operations, dryRun)
     };
   } catch (error) {

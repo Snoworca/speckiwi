@@ -46,6 +46,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         ...(typeof input.target === "string" ? { target: input.target } : {}),
         ...(typeof input.scope === "string" ? { scope: input.scope } : {}),
         requirementIds: stringArray(input.requirementIds),
+        reportPaths: stringArray(input.reportPaths),
+        allowIncomplete: Boolean(input.allowIncomplete),
         dryRun: Boolean(input.dryRun)
       })
     )

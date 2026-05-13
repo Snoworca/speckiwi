@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createTestMcpServer } from "../../src/mcp/adapter.js";
 import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
+import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { registerResources } from "../../src/mcp/resources.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
@@ -64,7 +65,10 @@ describe("MCP read tools and resources", () => {
         diagnosticsSummary: expect.any(Object)
       }
     });
-    expect(await server.callTool("list_completed_work", { target: "v1.0.0" })).toMatchObject({ ok: true, value: { completedWork: expect.any(Array), diagnosticsSummary: expect.any(Object) } });
+    expect(await server.callTool("list_completed_work", { target: "v1.0.0" })).toMatchObject({
+      ok: true,
+      value: { completedWork: [expect.objectContaining({ reportPaths: [] }), expect.objectContaining({ reportPaths: [] })], diagnosticsSummary: expect.any(Object) }
+    });
     expect(await server.callTool("summarize_target", { target: "v1.0.0" })).toMatchObject({
       ok: true,
       value: {
@@ -147,6 +151,45 @@ describe("MCP read tools and resources", () => {
         stabilityBlockers: [],
         stabilityWarnings: []
       }
+    });
+    await expect(server.callTool("resource:speckiwi://completed-work", {})).resolves.toMatchObject({
+      ok: true,
+      value: { completedWork: [expect.objectContaining({ reportPaths: [] }), expect.objectContaining({ reportPaths: [] })] }
+    });
+  });
+
+  it("returns non-empty report paths through MCP read tools and resources", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const server = createTestMcpServer({ root });
+    registerMutationTools(server, { root });
+    registerReadTools(server, { root });
+    registerResources(server, { root });
+
+    await expect(
+      server.callTool("add_completed_work", {
+        date: "2026-05-11",
+        target: "v1.0.0",
+        scope: "ARCH",
+        summary: "MCP read report paths.",
+        reportPaths: ["docs/reports/mcp-read.md"]
+      })
+    ).resolves.toMatchObject({ ok: true });
+
+    await expect(server.callTool("list_completed_work", { target: "v1.0.0", limit: 1 })).resolves.toMatchObject({
+      ok: true,
+      value: { completedWork: [expect.objectContaining({ reportPaths: ["docs/reports/mcp-read.md"] })] }
+    });
+    await expect(server.callTool("summarize_target", { target: "v1.0.0" })).resolves.toMatchObject({
+      ok: true,
+      value: { completedWork: expect.arrayContaining([expect.objectContaining({ reportPaths: ["docs/reports/mcp-read.md"] })]) }
+    });
+    await expect(server.callTool("resource:speckiwi://completed-work", {})).resolves.toMatchObject({
+      ok: true,
+      value: { completedWork: expect.arrayContaining([expect.objectContaining({ reportPaths: ["docs/reports/mcp-read.md"] })]) }
+    });
+    await expect(server.callTool("resource:speckiwi://targets/{target}", { target: "v1.0.0" })).resolves.toMatchObject({
+      ok: true,
+      value: { completedWork: expect.arrayContaining([expect.objectContaining({ reportPaths: ["docs/reports/mcp-read.md"] })]) }
     });
   });
 

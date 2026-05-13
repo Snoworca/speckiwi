@@ -66,7 +66,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.2` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
+`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.3` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
 
 ## How the SRS Is Organized
 
@@ -128,7 +128,7 @@ speckiwi targets
 speckiwi active-target
 speckiwi set-active-target v1.2.0
 speckiwi completed-work --target v1.2.0 --order latest --json
-speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands."
+speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands." --report docs/reports/v1.2.0.md
 speckiwi scopes
 speckiwi list --target v1.0.0
 speckiwi list --scope PAY --status planned --json
@@ -142,9 +142,11 @@ speckiwi links check --json
 Completed Work Log uses this index table:
 
 ```md
-| Date | Target | Scope | Requirement IDs | Summary |
-|---|---|---|---|---|
+| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
+|---|---|---|---|---|---|
 ```
+
+New projects use a trailing `Report Paths` column. Existing five-column logs remain readable; when report paths are added, SpecKiwi writes repository-relative POSIX paths as comma-separated values in that trailing cell. Report paths cannot be blank, absolute, start with `./` or `../`, contain a `..` segment, URL scheme, backslash, pipe, comma, CR/LF, or `#`.
 
 Machine-readable automation should use `--json`. Human output is intentionally simple and stable enough for quick inspection, but JSON is the safer interface for scripts.
 
@@ -288,7 +290,7 @@ Mutation commands:
 |---|---|
 | `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | Create or refresh the SRS skeleton and both agent instruction files. |
 | `speckiwi set-active-target <target> [--dry-run] [--json]` | Update the index `Active Target` and Target Map active row. |
-| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--allow-incomplete] [--dry-run] [--json]` | Append a Completed Work Log row after prevalidating references. |
+| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--report PATH]... [--allow-incomplete] [--dry-run] [--json]` | Append a Completed Work Log row after prevalidating references. |
 | `speckiwi add-requirement ...` | Add a new requirement block. |
 | `speckiwi update-status <id> <status> [--json]` | Update the `Status` metadata row. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | Mark acceptance criteria as checked. |
@@ -367,7 +369,7 @@ Mutation tools:
 |---|---|
 | `init_project` | `target?`, `scope?`, `force?` |
 | `set_active_target` | `target`, `dryRun?` |
-| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `allowIncomplete?`, `dryRun?` |
+| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `reportPaths?`, `allowIncomplete?`, `dryRun?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |
@@ -532,7 +534,7 @@ docs/
    └─ 90.appendix.md
 ```
 
-`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.2` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
+`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.3` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
 
 ## SRS 구성 방식
 
@@ -594,7 +596,7 @@ speckiwi targets
 speckiwi active-target
 speckiwi set-active-target v1.2.0
 speckiwi completed-work --target v1.2.0 --order latest --json
-speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands."
+speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands." --report docs/reports/v1.2.0.md
 speckiwi scopes
 speckiwi list --target v1.0.0
 speckiwi list --scope PAY --status planned --json
@@ -608,9 +610,11 @@ speckiwi links check --json
 Completed Work Log는 index에서 다음 table을 사용합니다.
 
 ```md
-| Date | Target | Scope | Requirement IDs | Summary |
-|---|---|---|---|---|
+| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
+|---|---|---|---|---|---|
 ```
+
+새 프로젝트는 trailing `Report Paths` column을 사용합니다. 기존 five-column log도 계속 읽을 수 있으며, report path가 추가되면 SpecKiwi는 repository-relative POSIX path를 trailing cell에 comma-separated 값으로 저장합니다. Report path는 비어 있을 수 없고 absolute path, `./` 또는 `../` prefix, `..` segment, URL scheme, backslash, pipe, comma, CR/LF, `#`를 포함할 수 없습니다.
 
 자동화에서는 `--json`을 사용합니다. 사람용 출력은 빠른 확인에 충분하도록 단순하게 유지되지만, 스크립트에는 JSON이 더 안전한 인터페이스입니다.
 
@@ -754,7 +758,7 @@ speckiwi add-trace FR-PAY-001 \
 |---|---|
 | `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | SRS skeleton과 두 agent instruction 파일을 생성하거나 갱신합니다. |
 | `speckiwi set-active-target <target> [--dry-run] [--json]` | index의 `Active Target`과 Target Map active row를 갱신합니다. |
-| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--allow-incomplete] [--dry-run] [--json]` | reference prevalidation 후 Completed Work Log row를 추가합니다. |
+| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--report PATH]... [--allow-incomplete] [--dry-run] [--json]` | reference prevalidation 후 Completed Work Log row를 추가합니다. |
 | `speckiwi add-requirement ...` | 새 requirement block을 추가합니다. |
 | `speckiwi update-status <id> <status> [--json]` | `Status` metadata row를 갱신합니다. |
 | `speckiwi check-ac <id> [AC...] [--all] [--json]` | acceptance criteria를 checked 상태로 표시합니다. |
@@ -833,7 +837,7 @@ speckiwi --root /path/to/project mcp
 |---|---|
 | `init_project` | `target?`, `scope?`, `force?` |
 | `set_active_target` | `target`, `dryRun?` |
-| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `allowIncomplete?`, `dryRun?` |
+| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `reportPaths?`, `allowIncomplete?`, `dryRun?` |
 | `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
 | `update_status` | `id`, `status` |
 | `check_acceptance_criteria` | `id`, `acIds`, `checked` |

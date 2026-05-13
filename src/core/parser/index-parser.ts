@@ -1,4 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
+import { parseReportPathCell, REPORT_PATHS_COLUMN } from "../completed-work/report-paths.js";
 import type {
   CompletedWorkEntry,
   Diagnostic,
@@ -9,7 +10,7 @@ import type {
   TargetEntry,
   TextFile
 } from "../types.js";
-import { parseMarkdownTable, parseMetadataRows } from "./table.js";
+import { parseMarkdownTable, parseMetadataRows, splitTableRow } from "./table.js";
 
 function extractLinkTarget(value: string): string {
   const match = /\[[^\]]+]\(([^)]+)\)/.exec(value);
@@ -32,17 +33,31 @@ function parseCompletedWork(lines: string[]): CompletedWorkEntry[] {
   const heading = findHeadingMatching(lines, /^##\s+\d+\.\s+Completed Work Log$/);
   const table = heading >= 0 ? parseMarkdownTable(lines, heading + 1) : undefined;
   if (!table) return [];
-  return table.rows.map((row, index) => ({
-    date: row.Date ?? "",
-    target: row.Target ?? "",
-    scope: row.Scope ?? "",
-    requirementIds: (row["Requirement IDs"] ?? "")
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean),
-    summary: row.Summary ?? "",
-    line: table.startLine + 2 + index
-  }));
+  return table.rows.map((row, index) => {
+    const reportPathsIndex = table.headers.at(-1) === REPORT_PATHS_COLUMN ? table.headers.length - 1 : -1;
+    const rowLine = table.rowLines[index] ?? table.startLine + 2 + index;
+    const sourceCells = splitTableRow(lines[rowLine - 1] ?? "");
+    const reportPathsCell =
+      reportPathsIndex < 0
+        ? ""
+        : sourceCells.length > table.headers.length
+          ? sourceCells.slice(reportPathsIndex).join("|").trim()
+          : row[REPORT_PATHS_COLUMN] ?? "";
+    const entry: CompletedWorkEntry = {
+      date: row.Date ?? "",
+      target: row.Target ?? "",
+      scope: row.Scope ?? "",
+      requirementIds: (row["Requirement IDs"] ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+      summary: row.Summary ?? "",
+      reportPaths: parseReportPathCell(reportPathsCell).paths,
+      line: rowLine
+    };
+    Object.defineProperty(entry, "reportPathsCell", { value: reportPathsCell, enumerable: false });
+    return entry;
+  });
 }
 
 function parseCount(value: string): number {

@@ -19,7 +19,16 @@ describe("add completed work mutation", () => {
       summary: "Completed work mutation added."
     });
 
-    expect(result).toMatchObject({ ok: true, value: { written: true } });
+    expect(result).toMatchObject({ ok: true, value: { written: true, reportPaths: [] } });
+    expect(result.value).toMatchObject({
+      date: "2026-05-10",
+      target: "v1.0.0",
+      scope: "ARCH",
+      requirementIds: ["FR-ARCH-001"],
+      summary: "Completed work mutation added.",
+      written: true,
+      reportPaths: []
+    });
     expect(result.patch).toMatchObject({ operations: 1, dryRun: false });
     await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain(
       "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Completed work mutation added. |"
@@ -150,5 +159,191 @@ describe("add completed work mutation", () => {
 
     const index = await readFile(indexPath, "utf8");
     expect(index).toContain("\r\n| 2026-05-10 |  |  |  | CRLF completed work row. |");
+  });
+
+  it("migrates a legacy Completed Work Log table when report paths are provided", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const srsPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    await writeFile(srsPath, (await readFile(srsPath, "utf8")).replace("| Status | planned |", "| Status | implemented |"), "utf8");
+
+    const result = await addCompletedWork(await resolveProjectRoot(root), {
+      date: "2026-05-10",
+      target: "v1.0.0",
+      scope: "ARCH",
+      requirementIds: ["FR-ARCH-001"],
+      summary: "Completed work mutation added report paths.",
+      reportPaths: ["docs/reports/report-a.md", "docs/reports/report-a.md"]
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        written: true,
+        reportPaths: ["docs/reports/report-a.md", "docs/reports/report-a.md"]
+      },
+      patch: { operations: 3, dryRun: false }
+    });
+    const index = await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8");
+    expect(index).toContain("| Date | Target | Scope | Requirement IDs | Summary | Report Paths |");
+    expect(index).toContain("|---|---|---|---|---|---|");
+    expect(index).toContain("| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Completed work mutation added report paths. | docs/reports/report-a.md, docs/reports/report-a.md |");
+  });
+
+  it("treats null and empty report path arrays as no report paths for legacy tables", async () => {
+    const nullRoot = await copyFixtureWorkspace("mutation-target");
+    const emptyRoot = await copyFixtureWorkspace("mutation-target");
+
+    await expect(
+      addCompletedWork(await resolveProjectRoot(nullRoot), {
+        date: "2026-05-10",
+        summary: "Null report paths remain legacy.",
+        reportPaths: null
+      })
+    ).resolves.toMatchObject({ ok: true, value: { reportPaths: [] } });
+    await expect(readFile(path.join(nullRoot, "docs", "spec", "00.index.md"), "utf8")).resolves.not.toContain("Report Paths");
+
+    await expect(
+      addCompletedWork(await resolveProjectRoot(emptyRoot), {
+        date: "2026-05-10",
+        summary: "Empty report paths remain legacy.",
+        reportPaths: []
+      })
+    ).resolves.toMatchObject({ ok: true, value: { reportPaths: [] } });
+    await expect(readFile(path.join(emptyRoot, "docs", "spec", "00.index.md"), "utf8")).resolves.not.toContain("Report Paths");
+  });
+
+  it("preserves existing legacy rows while migrating to Report Paths", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    await writeFile(
+      indexPath,
+      (await readFile(indexPath, "utf8")).replace(
+        "|---|---|---|---|---|",
+        "|---|---|---|---|---|\n| 2026-05-09 | v1.0.0 | ARCH | FR-ARCH-001 | Existing completed work row. |"
+      ),
+      "utf8"
+    );
+
+    const result = await addCompletedWork(await resolveProjectRoot(root), {
+      date: "2026-05-10",
+      summary: "Migrated with existing rows.",
+      reportPaths: ["docs/reports/new.md"]
+    });
+
+    expect(result).toMatchObject({ ok: true, patch: { operations: 4 } });
+    const index = await readFile(indexPath, "utf8");
+    expect(index).toContain("| 2026-05-09 | v1.0.0 | ARCH | FR-ARCH-001 | Existing completed work row. |  |");
+    expect(index).toContain("| 2026-05-10 |  |  |  | Migrated with existing rows. | docs/reports/new.md |");
+  });
+
+  it("writes a blank Report Paths cell when a six-column table already exists", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    await writeFile(
+      indexPath,
+      (await readFile(indexPath, "utf8"))
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|"),
+      "utf8"
+    );
+
+    const result = await addCompletedWork(await resolveProjectRoot(root), {
+      date: "2026-05-10",
+      summary: "Six-column blank report paths cell."
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { reportPaths: [] } });
+    await expect(readFile(indexPath, "utf8")).resolves.toContain("| 2026-05-10 |  |  |  | Six-column blank report paths cell. |  |");
+  });
+
+  it("rejects invalid report paths without changing the index", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const before = await readFile(indexPath, "utf8");
+
+    for (const reportPath of [
+      "",
+      "   ",
+      "/absolute.md",
+      "./local.md",
+      "../escape.md",
+      "docs/../escape.md",
+      "https://example.com/report.md",
+      String.raw`docs\report.md`,
+      "docs/report|bad.md",
+      "docs/report,extra.md",
+      "docs/report\nbad.md",
+      "docs/report#fragment.md"
+    ]) {
+      await expect(
+        addCompletedWork(await resolveProjectRoot(root), {
+          date: "2026-05-10",
+          summary: "Invalid report path.",
+          reportPaths: [reportPath]
+        })
+      ).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
+      await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
+    }
+  });
+
+  it("refuses to migrate malformed legacy rows that would lose cells", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    await writeFile(
+      indexPath,
+      (await readFile(indexPath, "utf8")).replace(
+        "|---|---|---|---|---|",
+        "|---|---|---|---|---|\n| 2026-05-09 | v1.0.0 | ARCH | FR-ARCH-001 | Existing summary | stray cell |"
+      ),
+      "utf8"
+    );
+    const before = await readFile(indexPath, "utf8");
+
+    await expect(
+      addCompletedWork(await resolveProjectRoot(root), {
+        date: "2026-05-10",
+        summary: "Would migrate legacy table.",
+        reportPaths: ["docs/reports/new.md"]
+      })
+    ).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
+  });
+
+  it("refuses non-trailing Report Paths columns before appending rows", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    await writeFile(
+      indexPath,
+      (await readFile(indexPath, "utf8"))
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Report Paths | Requirement IDs | Summary |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|"),
+      "utf8"
+    );
+    const before = await readFile(indexPath, "utf8");
+
+    await expect(
+      addCompletedWork(await resolveProjectRoot(root), {
+        date: "2026-05-10",
+        summary: "Non-trailing Report Paths header."
+      })
+    ).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
+  });
+
+  it("uses the same report path patch preview for dry-run and write modes", async () => {
+    const dryRunRoot = await copyFixtureWorkspace("mutation-target");
+    const writeRoot = await copyFixtureWorkspace("mutation-target");
+    const input = {
+      date: "2026-05-10",
+      summary: "Previewed report path migration.",
+      reportPaths: ["docs/reports/report.md"]
+    };
+
+    const dryRun = await addCompletedWork(await resolveProjectRoot(dryRunRoot), { ...input, dryRun: true });
+    const write = await addCompletedWork(await resolveProjectRoot(writeRoot), input);
+
+    expect(dryRun).toMatchObject({ ok: true, value: { written: false, reportPaths: ["docs/reports/report.md"] }, patch: { dryRun: true } });
+    expect(write).toMatchObject({ ok: true, value: { written: true, reportPaths: ["docs/reports/report.md"] }, patch: { dryRun: false } });
+    expect(write.patch?.preview).toEqual(dryRun.patch?.preview);
   });
 });

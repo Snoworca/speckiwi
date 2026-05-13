@@ -448,6 +448,14 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Draft requirement is not ready as an implementation contract: {requirementId}",
     sourceRule: "FR-PARSE-015",
     since: "v1.3.0"
+  },
+  {
+    code: "SRS-W024",
+    severity: "warning",
+    title: "Malformed Completed Work Log report path",
+    messageTemplate: "Completed Work Log report path is malformed: {path}",
+    sourceRule: "FR-PARSE-016",
+    since: "v2.1.1"
   }
 ];
 

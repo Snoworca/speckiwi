@@ -143,7 +143,9 @@ export interface CompletedWorkEntry {
   scope: string;
   requirementIds: string[];
   summary: string;
+  reportPaths: string[];
   line?: number;
+  reportPathsCell?: string;
 }
 
 export interface StatusSummaryEntry {

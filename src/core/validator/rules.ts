@@ -1,4 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
+import { parseReportPathCell } from "../completed-work/report-paths.js";
 import {
   PREFIX_TYPE,
   LEGACY_STABILITY_LEVELS,
@@ -254,6 +255,9 @@ export function registerDefaultRules(): void {
         } else if (record.status !== "implemented" && record.status !== "verified") {
           diagnostics.push(diagnostic("SRS-W015", "warning", `Completed Work Log requirement is not completed: ${id}`, location));
         }
+      }
+      for (const issue of parseReportPathCell(entry.reportPathsCell ?? entry.reportPaths.join(", ")).issues) {
+        diagnostics.push(diagnostic("SRS-W024", "warning", `Completed Work Log report path is malformed: ${issue.token || issue.reason}`, location));
       }
     }
     return diagnostics;

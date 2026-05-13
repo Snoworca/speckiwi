@@ -129,6 +129,24 @@ describe("read-only CLI commands", () => {
       "Fixture parser coverage completed.",
       "Cross-target fixture setup completed."
     ]);
+    expect(completedOutput.completedWork).toEqual(expect.arrayContaining([expect.objectContaining({ reportPaths: [] })]));
+
+    await writeFile(
+      path.join(root, "docs", "spec", "00.index.md"),
+      (await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8"))
+        .replace("| Date | Target | Scope | Requirement IDs | Summary |", "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |")
+        .replace("|---|---|---|---|---|", "|---|---|---|---|---|---|")
+        .replace(
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |",
+          "| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. | docs/reports/read.md |"
+        ),
+      "utf8"
+    );
+    const completedWithReport = io();
+    expect(await main(["--root", root, "completed-work", "--target", "v1.0.0", "--json"], completedWithReport)).toBe(0);
+    expect(JSON.parse(completedWithReport.stdout.read()?.toString() ?? "").completedWork).toEqual(
+      expect.arrayContaining([expect.objectContaining({ summary: "Fixture parser coverage completed.", reportPaths: ["docs/reports/read.md"] })])
+    );
 
     const completedFileOrder = io();
     expect(await main(["--root", root, "completed-work", "--target", "v1.0.0", "--scope", "ARCH", "--since", "2026-05-09", "--limit", "2", "--order", "file", "--json"], completedFileOrder)).toBe(0);

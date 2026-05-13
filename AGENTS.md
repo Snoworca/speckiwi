@@ -6,7 +6,7 @@ Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback w
 
 For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md).
 
-# SpecKiwi SRS 워크플로 v1.2
+# SpecKiwi SRS 워크플로 v1.3
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -21,6 +21,10 @@ Requirement metadata has two separate lifecycle fields:
 - `Stability` tracks requirement maturity and change-control maturity.
 
 Agents MUST stop before implementing a non-discarded requirement with `Stability=draft` or `Stability=deprecated` unless the user explicitly overrides that workflow.
+
+TDD principle:
+- Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.
+- If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.
