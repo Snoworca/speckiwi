@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { access, realpath, stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { initProject } from "../core/bootstrap/init-project.js";
@@ -128,13 +129,28 @@ async function explicitStartupRoot(explicitRoot: string): Promise<ProjectRoot> {
   return { root: resolved };
 }
 
+async function findSrsRootFrom(start: string): Promise<string | null> {
+  const home = await realpath(os.homedir()).catch(() => path.resolve(os.homedir()));
+  let current = path.resolve(start);
+  for (;;) {
+    const resolvedCurrent = await realpath(current).catch(() => current);
+    if (resolvedCurrent === home) return null;
+    const indexPath = path.join(current, "docs", "spec", "00.index.md");
+    const hasIndex = await access(indexPath).then(() => true).catch(() => false);
+    if (hasIndex) {
+      return resolvedCurrent;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
 async function resolveMcpStartupRoot(explicitRoot?: string): Promise<ProjectRoot> {
   if (explicitRoot) return explicitStartupRoot(explicitRoot);
-  try {
-    return await resolveProjectRoot(process.cwd());
-  } catch {
-    return currentWorkingDirectoryRoot();
-  }
+  const cwd = await realpath(process.cwd()).catch(() => path.resolve(process.cwd()));
+  const srsRoot = await findSrsRootFrom(process.cwd());
+  return { root: srsRoot ?? cwd };
 }
 
 async function ensureMcpStartupWorkspace(explicitRoot?: string): Promise<ProjectRoot> {
