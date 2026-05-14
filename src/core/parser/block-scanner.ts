@@ -4,6 +4,12 @@ import type { Diagnostic } from "../types.js";
 export interface RequirementHeading {
   id: string;
   title: string;
+  strikethrough: boolean;
+  marker?: "DISCARDED" | "DRAFT";
+  /** marker inner content sub-parser 가 채움 (C2 후속 단계). 본 정규식은 raw 만 잡음. */
+  successorId?: string;
+  /** N = (총 매치 row 수) - 1. marker inner sub-parser 책임. */
+  successorCount?: number;
 }
 
 export interface RequirementBlockRange {
@@ -12,7 +18,23 @@ export interface RequirementBlockRange {
   endLine: number;
 }
 
-export const REQUIREMENT_HEADING_RE = /^###\s+((?:FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+)$/;
+/**
+ * SRS-MD-Rules v1.1.0 §30.1/§30.2 marker 자동 적용 인식.
+ *
+ * 5 캡처 그룹:
+ *   1. openStrike  (~~) — strikethrough open, optional
+ *   2. id          — speckiwi enum 기반 REQ-ID
+ *   3. title       — lazy match, marker/closeStrike/line-end 직전까지 흡수.
+ *                    title 내 합법 markdown (예: `[link](url)`) 보존 — records.ts 의
+ *                    headingContainsForbiddenMarkdown 가 추가 검증 (SRS-E020).
+ *                    title 내 비표준 brackets (예: `[TBD]`) 의 검출은 별도 sub-parser 책임 (v5.1 §3 (B)).
+ *   4. closeStrike (~~) — strikethrough close, optional. open 과 짝일 때만 strikethrough=true
+ *   5. marker      — DISCARDED | DRAFT, optional. inner content 는 marker inner sub-parser 책임.
+ *
+ * 정합성 강제 (strikethrough+DISCARDED only / no-strikethrough+DRAFT only) 는 후속 validator/rules-version 책임.
+ */
+export const REQUIREMENT_HEADING_RE =
+  /^###\s+(~~)?((?:FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+?)(~~)?\s*(?:\[(DISCARDED|DRAFT)(?:[^\]]*)\])?\s*$/;
 const NON_REQUIREMENT_THIRD_LEVEL_HEADING_RE = /^###\s+(In Scope|Out of Scope)\s*$/;
 const TOP_LEVEL_SECTION_RE = /^##(?!#)\s+(.+)$/;
 const FENCE_RE = /^(?: {0,3})(`{3,}|~{3,})/;
@@ -25,7 +47,14 @@ interface FenceState {
 export function parseRequirementHeading(line: string): RequirementHeading | undefined {
   const match = REQUIREMENT_HEADING_RE.exec(line.trim());
   if (!match) return undefined;
-  return { id: match[1]!, title: match[2]!.trim() };
+  const [, openStrike, id, title, closeStrike, marker] = match;
+  const heading: RequirementHeading = {
+    id: id!,
+    title: title!.trim(),
+    strikethrough: Boolean(openStrike && closeStrike)
+  };
+  if (marker === "DISCARDED" || marker === "DRAFT") heading.marker = marker;
+  return heading;
 }
 
 function parseFence(line: string): FenceState | undefined {
