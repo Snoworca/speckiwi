@@ -1,4 +1,4 @@
-import { buildCommand } from "./command.js";
+import { attachInheritedOptionsHelp, buildCommand } from "./command.js";
 import { registerReadCommands } from "./commands/read.js";
 import { registerMutationCommands } from "./commands/mutations.js";
 import { registerMcpCommand } from "./commands/mcp.js";
@@ -13,6 +13,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   registerReadCommands(command, { io });
   registerMutationCommands(command, { io });
   registerMcpCommand(command, { io });
+  attachInheritedOptionsHelp(command);
   try {
     await command.parseAsync(argv, { from: "user" });
     return typeof command.getOptionValue("exitCode") === "number"

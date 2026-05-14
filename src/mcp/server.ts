@@ -146,7 +146,7 @@ async function findSrsRootFrom(start: string): Promise<string | null> {
   }
 }
 
-async function resolveMcpStartupRoot(explicitRoot?: string): Promise<ProjectRoot> {
+export async function resolveMcpStartupRoot(explicitRoot?: string): Promise<ProjectRoot> {
   if (explicitRoot) return explicitStartupRoot(explicitRoot);
   const cwd = await realpath(process.cwd()).catch(() => path.resolve(process.cwd()));
   const srsRoot = await findSrsRootFrom(process.cwd());

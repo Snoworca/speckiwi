@@ -11,6 +11,15 @@ export type CliCommandRegistrar = (command: Command, context: CliContext) => voi
 const requirePackage = createRequire(import.meta.url);
 const { version: PACKAGE_VERSION } = requirePackage("../../package.json") as { version: string };
 
+const INHERITED_OPTIONS_HELP = [
+  "",
+  "Global options:",
+  "  --root <path>     project root",
+  "  --json            write JSON to stdout",
+  "  --no-color        disable color",
+  "  --quiet           suppress non-essential human output"
+].join("\n");
+
 export function buildCommand(context: CliContext, registrars: CliCommandRegistrar[] = []): Command {
   const command = new Command();
   command
@@ -28,4 +37,14 @@ export function buildCommand(context: CliContext, registrars: CliCommandRegistra
     .option("--quiet", "suppress non-essential human output");
   for (const registrar of registrars) registrar(command, context);
   return command;
+}
+
+export function attachInheritedOptionsHelp(program: Command): void {
+  function decorate(parent: Command): void {
+    for (const sub of parent.commands) {
+      sub.addHelpText("after", INHERITED_OPTIONS_HELP);
+      decorate(sub);
+    }
+  }
+  decorate(program);
 }
