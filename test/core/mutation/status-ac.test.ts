@@ -72,4 +72,52 @@ describe("status and AC mutations", () => {
     const after = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(after).toBe(before);
   });
+
+  it("applies SRS-MD-Rules v1.1.0 §30.1 [DISCARDED] marker when transitioning to discarded", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", reason: "merged into FR-ARCH-002" });
+    expect(result.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    expect(file).toContain("### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED]");
+    expect(file).toContain("| Status | discarded |");
+  });
+
+  it("removes [DISCARDED] marker on revival (discarded -> implemented)", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await setAcceptanceCriteriaChecked(root, { id: "FR-ARCH-001", acIds: ["all"], checked: true });
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "implemented" });
+    expect(result.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    expect(file).toContain("### FR-ARCH-001 — Mutable requirement");
+    expect(file).not.toContain("~~FR-ARCH-001");
+    expect(file).not.toContain("[DISCARDED");
+  });
+
+  it("idempotent: re-applying discarded to an already-discarded heading does not duplicate marker", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    const after1 = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    const after2 = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    const count = (after2.match(/\[DISCARDED]/g) ?? []).length;
+    expect(count).toBe(1);
+    // Status row only differs in append (no reason), heading is stable.
+    expect(after2.split("\n").filter((l) => l.startsWith("### ~~FR-ARCH-001")).length).toBe(1);
+  });
+
+  it("revives heading and parser still recognises the plain form", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await setAcceptanceCriteriaChecked(root, { id: "FR-ARCH-001", acIds: ["all"], checked: true });
+    const revive = await updateStatus(root, { id: "FR-ARCH-001", status: "implemented" });
+    expect(revive.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    // round-trip safety: heading line back to plain form, no marker artifacts left over
+    expect(file).toMatch(/^### FR-ARCH-001 — Mutable requirement\s*$/m);
+  });
 });
