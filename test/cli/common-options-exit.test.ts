@@ -1,10 +1,14 @@
 import { PassThrough } from "node:stream";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { buildCommand } from "../../src/cli/command.js";
 import { main } from "../../src/cli/index.js";
 import { formatJsonOutput } from "../../src/core/format/json.js";
 import { mapResultToExitCode } from "../../src/cli/exit.js";
 import { fail, ok } from "../../src/core/result.js";
+
+const requirePackage = createRequire(import.meta.url);
+const { version: PACKAGE_VERSION } = requirePackage("../../package.json") as { version: string };
 
 function stream() {
   return new PassThrough() as NodeJS.WriteStream;
@@ -26,7 +30,7 @@ describe("CLI common framework", () => {
     const stderr = stream();
 
     expect(await main(["--version"], { stdout, stderr })).toBe(0);
-    expect(stdout.read()?.toString()).toBe("1.0.0\n");
+    expect(stdout.read()?.toString()).toBe(`${PACKAGE_VERSION}\n`);
     expect(stderr.read()).toBeNull();
   });
 

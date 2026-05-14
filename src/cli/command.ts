@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import type { CliIo } from "./index.js";
 
@@ -7,12 +8,15 @@ export interface CliContext {
 
 export type CliCommandRegistrar = (command: Command, context: CliContext) => void;
 
+const requirePackage = createRequire(import.meta.url);
+const { version: PACKAGE_VERSION } = requirePackage("../../package.json") as { version: string };
+
 export function buildCommand(context: CliContext, registrars: CliCommandRegistrar[] = []): Command {
   const command = new Command();
   command
     .name("speckiwi")
     .description("Markdown SRS CLI and MCP server")
-    .version("1.0.0")
+    .version(PACKAGE_VERSION)
     .exitOverride()
     .configureOutput({
       writeOut: (text) => context.io.stdout.write(text),
