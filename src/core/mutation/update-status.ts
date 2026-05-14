@@ -3,6 +3,7 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import type { MutationResult, ProjectRoot, RequirementStatus } from "../types.js";
 import { isRequirementStatus } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
+import { renderHeadingLine } from "../parser/heading-render.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
 
@@ -53,7 +54,9 @@ function buildHeadingMarkerOp(
   if (!parsed) return undefined;
   const { id, title } = parsed;
   const replacement =
-    nextStatus === "discarded" ? `### ~~${id} — ${title}~~ [DISCARDED]` : `### ${id} — ${title}`;
+    nextStatus === "discarded"
+      ? renderHeadingLine({ id, title, strikethrough: true, marker: "DISCARDED" })
+      : renderHeadingLine({ id, title });
   if (replacement === original) return undefined;
   return { type: "replaceLine", line: headingLine, original, replacement };
 }

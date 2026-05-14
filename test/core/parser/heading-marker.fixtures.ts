@@ -55,13 +55,13 @@ export const POSITIVE_HEADING_FIXTURES: HeadingFixture[] = [
   },
   {
     name: "draft-no-conflict",
-    input: "### FR-AUTH-001 — Add login [DRAFT — pending user decision]",
+    input: "### FR-AUTH-001 — Add login [DRAFT — pending decision]",
     expected: { match: true, strikethrough: false, id: "FR-AUTH-001", title: "Add login", marker: "DRAFT" },
     notes: "em-dash inside marker body must not bleed into title capture"
   },
   {
     name: "draft-single-conflict",
-    input: "### FR-AUTH-001 — Add login [DRAFT — pending user decision, see FR-AUTH-002]",
+    input: "### FR-AUTH-001 — Add login [DRAFT — pending decision, see FR-AUTH-002]",
     expected: {
       match: true,
       strikethrough: false,
@@ -74,7 +74,7 @@ export const POSITIVE_HEADING_FIXTURES: HeadingFixture[] = [
   },
   {
     name: "draft-plus-n-conflicts",
-    input: "### FR-AUTH-001 — Add login [DRAFT — pending user decision, see FR-AUTH-002 +1]",
+    input: "### FR-AUTH-001 — Add login [DRAFT — pending decision, see FR-AUTH-002 +1]",
     expected: {
       match: true,
       strikethrough: false,
