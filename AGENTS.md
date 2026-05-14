@@ -6,6 +6,8 @@ Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback w
 
 For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md).
 
+`AGENTS.md` and `CLAUDE.md` are the canonical root instruction files. Lowercase `agents.md` is kept as a compatibility mirror for tools that still discover it.
+
 # SpecKiwi SRS 워크플로 v1.3
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
