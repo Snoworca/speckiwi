@@ -74,11 +74,23 @@ export function registerMutationCommands(command: Command, context: CliContext):
     if (!result.ok) command.setOptionValue("exitCode", 5);
   });
 
-  command.command("update-status").argument("<id>").argument("<status>").option("--json").action(async (id, status, options) => {
-    const result = await updateStatus(await rootFrom(command.opts()), { id, status });
-    output(context, { json: options.json || command.opts().json }, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
-  });
+  command
+    .command("update-status")
+    .argument("<id>")
+    .argument("<status>")
+    .option("--reason <text>", "Append a Change Notes row with the given reason (SRS-MD-Rules v1.1.0 §30.3)")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, status, options) => {
+      const result = await updateStatus(await rootFrom(command.opts()), {
+        id,
+        status,
+        ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   command.command("set-active-target").argument("<target>").option("--dry-run").option("--json").action(async (target, options) => {
     const result = await setActiveTarget(await rootFrom(command.opts()), { target, dryRun: Boolean(options.dryRun) });

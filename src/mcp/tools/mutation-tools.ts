@@ -20,7 +20,16 @@ function stringArray(value: unknown): string[] {
 }
 
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
-  server.registerTool("update_status", async (input) => resultToMcp(await updateStatus(await root(deps, input), { id: String(input.id), status: input.status as never })));
+  server.registerTool("update_status", async (input) =>
+    resultToMcp(
+      await updateStatus(await root(deps, input), {
+        id: String(input.id),
+        status: input.status as never,
+        ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
   server.registerTool("check_acceptance_criteria", async (input) =>
     resultToMcp(await setAcceptanceCriteriaChecked(await root(deps, input), { id: String(input.id), acIds: Array.isArray(input.acIds) ? input.acIds.map(String) : [String(input.acIds)], checked: Boolean(input.checked) }))
   );
