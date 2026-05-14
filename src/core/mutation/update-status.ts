@@ -5,7 +5,9 @@ import { isRequirementStatus } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
+import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
+import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
+import type { RequirementRecord } from "../types.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.3 — `reason` 제공 시 Change Notes row 가 동일 atomic transaction 으로 append.
@@ -46,17 +48,30 @@ function statusChangeLabel(status: RequirementStatus): string {
 function buildHeadingMarkerOp(
   file: { lines: readonly string[] },
   headingLine: number,
-  nextStatus: RequirementStatus
+  nextStatus: RequirementStatus,
+  records: readonly RequirementRecord[],
+  targetId: string
 ): PatchOperation | undefined {
   const original = file.lines[headingLine - 1];
   if (original === undefined) return undefined;
   const parsed = parseRequirementHeading(original);
   if (!parsed) return undefined;
   const { id, title } = parsed;
-  const replacement =
-    nextStatus === "discarded"
-      ? renderHeadingLine({ id, title, strikethrough: true, marker: "DISCARDED" })
-      : renderHeadingLine({ id, title });
+  let replacement: string;
+  if (nextStatus === "discarded") {
+    const successorSlot = deriveSuccessorSlot(
+      findIncomingTraceRows(records, { type: "Requirement", relation: "supersedes", reference: targetId })
+    );
+    replacement = renderHeadingLine({
+      id,
+      title,
+      strikethrough: true,
+      marker: "DISCARDED",
+      ...(successorSlot ?? {})
+    });
+  } else {
+    replacement = renderHeadingLine({ id, title });
+  }
   if (replacement === original) return undefined;
   return { type: "replaceLine", line: headingLine, original, replacement };
 }
@@ -71,7 +86,7 @@ export async function updateStatus(root: ProjectRoot, input: UpdateStatusInput):
       return mutationFail("USAGE", "reason contains forbidden control characters (only TAB/LF/CR allowed)");
     }
   }
-  const loaded = await loadRecord(root, input.id);
+  const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const nextRecord = { ...loaded.record, status: input.status };
   if (
@@ -89,7 +104,13 @@ export async function updateStatus(root: ProjectRoot, input: UpdateStatusInput):
   const original = loaded.file.lines[statusLine - 1];
   if (original === undefined) return mutationFail("MUTATION_DENIED", "Status metadata row is outside file");
   const operations: PatchOperation[] = [];
-  const headingOp = buildHeadingMarkerOp(loaded.file, loaded.record.headingLine, input.status);
+  const headingOp = buildHeadingMarkerOp(
+    loaded.file,
+    loaded.record.headingLine,
+    input.status,
+    loaded.records,
+    input.id
+  );
   if (headingOp) operations.push(headingOp);
   operations.push({ type: "replaceLine", line: statusLine, original, replacement: `| Status | ${input.status} |` });
   if (input.reason !== undefined && input.reason.length > 0) {

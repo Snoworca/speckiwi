@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
+import { addRequirement } from "../../../src/core/mutation/add-requirement.js";
 import { setAcceptanceCriteriaChecked } from "../../../src/core/mutation/check-ac.js";
 import { updateStatus } from "../../../src/core/mutation/update-status.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
@@ -107,6 +108,49 @@ describe("status and AC mutations", () => {
     expect(count).toBe(1);
     // Status row only differs in append (no reason), heading is stable.
     expect(after2.split("\n").filter((l) => l.startsWith("### ~~FR-ARCH-001")).length).toBe(1);
+  });
+
+  it("decorates [DISCARDED] with → see Y when a single supersedes link exists (v1.1.0 §30.1)", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const newReq = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      target: "v1.0.0",
+      title: "Successor of FR-ARCH-001",
+      statement: "Replaces the original architecture requirement.",
+      acceptanceCriteria: ["New AC text"],
+      trace: [{ type: "Requirement", reference: "FR-ARCH-001", relation: "supersedes" }]
+    });
+    expect(newReq.ok).toBe(true);
+    const successorId = (newReq.value as { requirementId: string }).requirementId;
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    expect(result.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    expect(file).toContain(`### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED → see ${successorId}]`);
+  });
+
+  it("decorates with +N when multiple supersedes links exist (v1.1.0 §30.1 FIRST + N)", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const successors: string[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const created = await addRequirement(root, {
+        type: "functional",
+        scope: "ARCH",
+        target: "v1.0.0",
+        title: `Successor ${index + 1}`,
+        statement: `Replaces FR-ARCH-001 — variant ${index + 1}`,
+        acceptanceCriteria: ["AC text"],
+        trace: [{ type: "Requirement", reference: "FR-ARCH-001", relation: "supersedes" }]
+      });
+      expect(created.ok).toBe(true);
+      successors.push((created.value as { requirementId: string }).requirementId);
+    }
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    expect(result.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    expect(file).toContain(`### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED → see ${successors[0]} +2]`);
   });
 
   it("revives heading and parser still recognises the plain form", async () => {
