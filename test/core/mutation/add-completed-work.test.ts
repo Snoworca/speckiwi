@@ -53,7 +53,7 @@ describe("add completed work mutation", () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const indexPath = path.join(root, "docs", "spec", "00.index.md");
     const original = await readFile(indexPath, "utf8");
-    await writeFile(indexPath, original.replace(/\n## 5\. Completed Work Log\n\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\n\|---\|---\|---\|---\|---\|\n?/, "\n"), "utf8");
+    await writeFile(indexPath, original.replace(/\r?\n## 5\. Completed Work Log\r?\n\r?\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\r?\n\|---\|---\|---\|---\|---\|\r?\n?/, "\n"), "utf8");
 
     const result = await addCompletedWork(await resolveProjectRoot(root), { date: "2026-05-10", summary: "Created missing completed work section.", dryRun: true });
 
@@ -71,7 +71,7 @@ describe("add completed work mutation", () => {
     const original = await readFile(indexPath, "utf8");
     await writeFile(
       indexPath,
-      original.replace(/\n## 5\. Completed Work Log\n\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\n\|---\|---\|---\|---\|---\|\n?/, "\n") +
+      original.replace(/\r?\n## 5\. Completed Work Log\r?\n\r?\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\r?\n\|---\|---\|---\|---\|---\|\r?\n?/, "\n") +
         [
           "",
           "## 7. Cross-scope Dependencies",

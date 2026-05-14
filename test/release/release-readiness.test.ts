@@ -116,7 +116,7 @@ describe("release readiness and documentation", () => {
   });
 
   it("prints targetSource from the release-check script without a hard-coded target fallback", async () => {
-    await execFileAsync("npm", ["run", "build", "--silent"], { cwd: process.cwd() });
+    await execFileAsync("npm", ["run", "build", "--silent"], { cwd: process.cwd(), shell: true });
     const env = { ...process.env };
     delete env.SPECKIWI_TARGET;
     delete env.SPECKIWI_STRICT_READY;

@@ -70,7 +70,7 @@ describe("workspace parser", () => {
     const missingRoot = await copyFixtureWorkspace("valid-basic");
     const missingIndexPath = path.join(missingRoot, "docs", "spec", "00.index.md");
     const missingOriginal = await readFile(missingIndexPath, "utf8");
-    await writeFile(missingIndexPath, missingOriginal.replace(/\n## 7\. Completed Work Log\n\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\n\|---\|---\|---\|---\|---\|\n(?:\|.*\|\n?)+/, "\n"), "utf8");
+    await writeFile(missingIndexPath, missingOriginal.replace(/\r?\n## 7\. Completed Work Log\r?\n\r?\n\| Date \| Target \| Scope \| Requirement IDs \| Summary \|\r?\n\|---\|---\|---\|---\|---\|\r?\n(?:\|.*\|\r?\n?)+/, "\n"), "utf8");
     const missing = await parseWorkspace(await resolveProjectRoot(missingRoot));
     expect(missing.index.completedWork).toEqual([]);
 
@@ -79,7 +79,7 @@ describe("workspace parser", () => {
     const emptyOriginal = await readFile(emptyIndexPath, "utf8");
     await writeFile(
       emptyIndexPath,
-      emptyOriginal.replace(/\| 2026-05-09 \|.*\n\| 2026-05-10 \|.*\n/, ""),
+      emptyOriginal.replace(/\| 2026-05-09 \|.*\r?\n\| 2026-05-10 \|.*\r?\n/, ""),
       "utf8"
     );
     const empty = await parseWorkspace(await resolveProjectRoot(emptyRoot));

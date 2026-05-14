@@ -50,7 +50,7 @@ describe("package runtime contract", () => {
   });
 
   it("packs the bundled rules document", async () => {
-    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { cwd: process.cwd(), timeout: 120000 });
+    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { cwd: process.cwd(), timeout: 120000, shell: true });
     const [packed] = JSON.parse(stdout) as Array<{ files?: Array<{ path: string }> }>;
     expect(packed?.files?.map((file) => file.path)).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
   }, 120000);
@@ -60,12 +60,13 @@ describe("package runtime contract", () => {
     const projectRoot = path.join(externalCwd, "project");
     await mkdir(path.join(projectRoot, ".git"), { recursive: true });
     try {
-      const { stdout } = await execFileAsync("npm", ["pack", "--json", "--pack-destination", externalCwd], { cwd: process.cwd(), timeout: 120000 });
+      const { stdout } = await execFileAsync("npm", ["pack", "--json", "--pack-destination", externalCwd], { cwd: process.cwd(), timeout: 120000, shell: true });
       const [packed] = JSON.parse(stdout) as Array<{ filename: string }>;
       const tarball = path.join(externalCwd, packed.filename);
       await execFileAsync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline", tarball], {
         cwd: externalCwd,
-        timeout: 120000
+        timeout: 120000,
+        shell: true
       });
       const installedCli = path.join(externalCwd, "node_modules", "speckiwi", "bin", "speckiwi");
       await execFileAsync(process.execPath, [installedCli, "--root", projectRoot, "init"], { cwd: externalCwd, timeout: 60000 });
