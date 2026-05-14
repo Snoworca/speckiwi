@@ -4,6 +4,8 @@ export interface HeadingFixtureExpectation {
   id?: string;
   title?: string;
   marker?: "DISCARDED" | "DRAFT";
+  successorId?: string;
+  successorCount?: number;
 }
 
 export interface HeadingFixture {
@@ -27,12 +29,29 @@ export const POSITIVE_HEADING_FIXTURES: HeadingFixture[] = [
   {
     name: "discarded-single-successor",
     input: "### ~~FR-AUTH-001 — Add login~~ [DISCARDED → see FR-AUTH-002]",
-    expected: { match: true, strikethrough: true, id: "FR-AUTH-001", title: "Add login", marker: "DISCARDED" }
+    expected: {
+      match: true,
+      strikethrough: true,
+      id: "FR-AUTH-001",
+      title: "Add login",
+      marker: "DISCARDED",
+      successorId: "FR-AUTH-002"
+    },
+    notes: "successor extraction lives in marker-content parser, not REQUIREMENT_HEADING_RE itself; populate when the higher-level parser lands"
   },
   {
     name: "discarded-plus-n-successors",
     input: "### ~~FR-AUTH-001 — Add login~~ [DISCARDED → see FR-AUTH-002 +2]",
-    expected: { match: true, strikethrough: true, id: "FR-AUTH-001", title: "Add login", marker: "DISCARDED" }
+    expected: {
+      match: true,
+      strikethrough: true,
+      id: "FR-AUTH-001",
+      title: "Add login",
+      marker: "DISCARDED",
+      successorId: "FR-AUTH-002",
+      successorCount: 2
+    },
+    notes: "successorCount mirrors SRS-MD-Rules v1.1.0 §30.x.1 (N = total supersedes - 1)"
   },
   {
     name: "draft-no-conflict",
@@ -43,7 +62,15 @@ export const POSITIVE_HEADING_FIXTURES: HeadingFixture[] = [
   {
     name: "draft-single-conflict",
     input: "### FR-AUTH-001 — Add login [DRAFT — pending user decision, see FR-AUTH-002]",
-    expected: { match: true, strikethrough: false, id: "FR-AUTH-001", title: "Add login", marker: "DRAFT" }
+    expected: {
+      match: true,
+      strikethrough: false,
+      id: "FR-AUTH-001",
+      title: "Add login",
+      marker: "DRAFT",
+      successorId: "FR-AUTH-002"
+    },
+    notes: "draft `see` target is conflicts_with first row per SRS-MD-Rules v1.1.0 §30.x.2"
   }
 ];
 
