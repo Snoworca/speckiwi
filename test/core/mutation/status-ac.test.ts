@@ -153,6 +153,26 @@ describe("status and AC mutations", () => {
     expect(file).toContain(`### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED → see ${successors[0]} +2]`);
   });
 
+  it("preserves legacy non-standard brackets in title across status transitions (T8)", async () => {
+    // SUB_PARSER_WARNING_FIXTURES captures [TBD] as part of title. update-status must not strip such
+    // legacy brackets — that is the responsibility of a follow-up title-residual sub-parser. We just
+    // assert non-interference so authors are not surprised when their existing heading round-trips.
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const filePath = path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md");
+    const original = await readFile(filePath, "utf8");
+    // hand-write a legacy bracket into the heading line via a fresh fixture write
+    const mutated = original.replace(
+      "### FR-ARCH-001 — Mutable requirement",
+      "### FR-ARCH-001 — Mutable requirement [LEGACY]"
+    );
+    await import("node:fs/promises").then((fs) => fs.writeFile(filePath, mutated, "utf8"));
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "blocked" });
+    expect(result.ok).toBe(true);
+    const after = await readFile(filePath, "utf8");
+    expect(after).toContain("### FR-ARCH-001 — Mutable requirement [LEGACY]");
+  });
+
   it("revives heading and parser still recognises the plain form", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);

@@ -21,6 +21,11 @@ export interface UpdateStatusInput {
   dryRun?: boolean;
 }
 
+/**
+ * v5.1 §10 ③F5: DEL (\x7F) is intentionally not rejected. v5/v5.1 leaves it unresolved;
+ * matching the JS `.length` (UTF-16 code unit) length budget keeps emojis predictable
+ * (a surrogate pair counts as 2 units against MAX_REASON_LENGTH).
+ */
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
 const MAX_REASON_LENGTH = 500;
 

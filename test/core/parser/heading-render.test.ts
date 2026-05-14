@@ -75,6 +75,19 @@ describe("renderHeadingLine — SRS-MD-Rules v1.1.0 round-trip identity", () => 
     ).toBe("### FR-AUTH-001 — Add login [DRAFT — pending decision, see FR-AUTH-002]");
   });
 
+  it("explicit successorCount=0 does not emit +0", () => {
+    expect(
+      renderHeadingLine({
+        id: "FR-AUTH-001",
+        title: "Add login",
+        strikethrough: true,
+        marker: "DISCARDED",
+        successorId: "FR-AUTH-002",
+        successorCount: 0
+      })
+    ).toBe("### ~~FR-AUTH-001 — Add login~~ [DISCARDED → see FR-AUTH-002]");
+  });
+
   it("draft multiple conflicts (+N)", () => {
     expect(
       renderHeadingLine({
