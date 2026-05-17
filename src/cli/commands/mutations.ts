@@ -2,11 +2,14 @@ import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
+import { updateStability } from "../../core/mutation/update-stability.js";
+import { appendSectionNote } from "../../core/mutation/append-section-note.js";
 import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
 import type { CliContext } from "../command.js";
@@ -92,11 +95,65 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
+  command
+    .command("update-stability")
+    .argument("<id>")
+    .argument("<stability>")
+    .option("--reason <text>", "Append a Change Notes row with the given reason")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, stability, options) => {
+      const result = await updateStability(await rootFrom(command.opts()), {
+        id,
+        stability,
+        ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("append-note")
+    .argument("<id>")
+    .requiredOption("--section <section>", "rationale | research | implementation_notes")
+    .requiredOption("--text <text>", "note text (max 500 UTF-16 code units)")
+    .option("--mode <mode>", "append (default) or replace")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await appendSectionNote(await rootFrom(command.opts()), {
+        id,
+        section: options.section,
+        text: options.text,
+        ...(typeof options.mode === "string" ? { mode: options.mode as "append" | "replace" } : {}),
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
   command.command("set-active-target").argument("<target>").option("--dry-run").option("--json").action(async (target, options) => {
     const result = await setActiveTarget(await rootFrom(command.opts()), { target, dryRun: Boolean(options.dryRun) });
     output(context, { json: options.json || command.opts().json }, result);
     if (!result.ok) command.setOptionValue("exitCode", 5);
   });
+
+  command
+    .command("set-target-goal")
+    .argument("<target>")
+    .requiredOption("--goal <text>", "goal text (max 500 UTF-16 code units)")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (target, options) => {
+      const result = await setTargetGoal(await rootFrom(command.opts()), {
+        target,
+        goal: options.goal,
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   command
     .command("add-completed-work")

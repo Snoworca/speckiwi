@@ -1,0 +1,99 @@
+{
+  "plan_id": "v2.2.2-mutation-governance",
+  "plan_contract": "1.1.0",
+  "target": "v2.2.2",
+  "scope_freeze": true,
+  "change_log": [
+    {
+      "date": "2026-05-16",
+      "reason": "9-round evaluator loop (Opus + Sonnet) — rounds 8 and 9 consecutive PASS with zero findings.",
+      "diff_summary": "Initial 4-phase 17-task structure → final 4-phase 19-task. AC mapping 28/28 = 100%. Key resolutions: AC-7(c) repeated append case (m), replace mode optimistic concurrency unified, normalize canonical preserved, canonical section order anchored to render-requirement.ts:65-97, fixture token aligned to v1.0.0, toolSchemas export noted, coverage_summary 28.",
+      "approved_by": "evaluator-consensus"
+    }
+  ],
+  "req_ids": ["FR-ARCH-005", "FR-PARSE-018", "FR-MCP-018", "FR-MCP-019"],
+  "spec_paths": [
+    "docs/spec/00.index.md",
+    "docs/spec/10.product-architecture.srs.md",
+    "docs/spec/20.parser-validation.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/rule/SRS-MD-Rules-v1.1.0.md"
+  ],
+  "forbidden_patterns": [
+    {"pattern": "적절히|필요\\s*시|알아서|상황에\\s*맞게|기존\\s*방식대로|어떻게든", "flags": ""},
+    {"pattern": "probably|should work|maybe|I think", "flags": "i"},
+    {"pattern": "TODO(?!:)", "flags": ""},
+    {"pattern": "rm\\s+-rf\\s+/", "flags": ""},
+    {"pattern": "git\\s+push\\s+--force", "flags": ""},
+    {"pattern": "git\\s+reset\\s+--hard\\s+origin", "flags": ""},
+    {"pattern": "curl[^\\n]*\\|\\s*(?:bash|sh|zsh|pwsh)", "flags": ""},
+    {"pattern": "Invoke-Expression", "flags": ""},
+    {"pattern": "eval\\s*\\(", "flags": ""}
+  ],
+  "pre_commit_gate": [
+    {"shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0},
+    {"shell": "bash", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "pwsh", "cmd": "npm test", "expected_exit": 0},
+    {"shell": "bash", "cmd": "node ./bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*0"},
+    {"shell": "pwsh", "cmd": "node ./bin/speckiwi validate --fail-on-warning --json", "expected_exit": 0, "stdout_regex": "\"errors\"\\s*:\\s*0"}
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "FR-ARCH-005 — Mutation tool kind classification metadata",
+      "depends_on": [],
+      "tasks": [
+        {"id": "TASK-P1-001", "owns": ["src/mcp/adapter.ts", "test/mcp/mutation-kind-contract.test.ts"], "req_ids": ["FR-ARCH-005"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P1-002", "owns": ["src/mcp/tools/mutation-tools.ts", "test/mcp/mutation-kind-contract.test.ts"], "req_ids": ["FR-ARCH-005"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P1-003", "owns": ["src/mcp/server.ts", "test/mcp/mutation-kind-contract.test.ts"], "req_ids": ["FR-ARCH-005"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P1-004", "owns": ["docs/rule/SRS-MD-Rules-v1.1.0.md"], "req_ids": ["FR-ARCH-005"], "feasibility": "Low", "idempotent": true}
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "FR-PARSE-018 — Target Goal meta block parsing",
+      "depends_on": [],
+      "tasks": [
+        {"id": "TASK-P2-001", "owns": ["src/core/types.ts"], "req_ids": ["FR-PARSE-018"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P2-002", "owns": ["src/core/parser/index-parser.ts", "test/core/parser/target-goal-block.test.ts"], "req_ids": ["FR-PARSE-018"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P2-002b", "owns": ["src/core/parser/workspace-parser.ts", "src/core/parser/discover.ts", "test/core/parser/target-goal-block.test.ts"], "req_ids": ["FR-PARSE-018"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P2-003", "owns": ["test/fixtures/workspaces/valid-basic/docs/spec/00.index.md", "test/fixtures/workspaces/valid-basic/docs/spec/90.appendix.md", "test/integration/target-goal-workspace.test.ts"], "req_ids": ["FR-PARSE-018"], "feasibility": "Low", "idempotent": false}
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "FR-MCP-018 — append_section_note mutation tool",
+      "depends_on": ["P1"],
+      "tasks": [
+        {"id": "TASK-P3-001", "owns": ["src/core/rules/section-allowlist.ts", "test/core/rules/section-allowlist.test.ts"], "req_ids": ["FR-MCP-018"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P3-002", "owns": ["src/core/mutation/append-section-note.ts"], "req_ids": ["FR-MCP-018"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P3-003", "owns": ["src/core/mutation/internal.ts", "test/core/mutation/append-section-note.test.ts"], "req_ids": ["FR-MCP-018"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P3-004", "owns": ["src/mcp/tools/mutation-tools.ts", "src/mcp/server.ts", "test/mcp/append-section-note-mcp.test.ts"], "req_ids": ["FR-MCP-018"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P3-005", "owns": ["src/cli/commands/mutations.ts", "test/cli/global-options-help.test.ts", "test/cli/append-note-cli.test.ts"], "req_ids": ["FR-MCP-018"], "feasibility": "Low", "idempotent": true}
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "FR-MCP-019 — set_target_goal mutation + read parity",
+      "depends_on": ["P1", "P2"],
+      "tasks": [
+        {"id": "TASK-P4-001", "owns": ["src/core/mutation/set-target-goal.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P4-002", "owns": ["test/fixtures/workspaces/mutation-target/docs/spec/00.index.md", "test/core/mutation/set-target-goal.test.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Low", "idempotent": false},
+        {"id": "TASK-P4-003", "owns": ["src/mcp/tools/mutation-tools.ts", "src/mcp/server.ts", "test/mcp/set-target-goal-mcp.test.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P4-004", "owns": ["src/cli/commands/mutations.ts", "test/cli/global-options-help.test.ts", "test/cli/set-target-goal-cli.test.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Low", "idempotent": true},
+        {"id": "TASK-P4-005", "owns": ["src/core/query/summary.ts", "src/core/types.ts", "src/mcp/tools/read-tools.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Medium", "idempotent": true},
+        {"id": "TASK-P4-006", "owns": ["test/integration/set-target-goal-e2e.test.ts"], "req_ids": ["FR-MCP-019"], "feasibility": "Low", "idempotent": true}
+      ]
+    }
+  ],
+  "spec_mapping": {
+    "FR-ARCH-005": {"AC-1": ["TASK-P1-001", "TASK-P1-002"], "AC-2": ["TASK-P1-003"], "AC-3": ["TASK-P1-002"], "AC-4": ["TASK-P1-002"], "AC-5": ["TASK-P1-003"], "AC-6": ["TASK-P1-003", "TASK-P1-004"]},
+    "FR-PARSE-018": {"AC-1": ["TASK-P2-002", "TASK-P2-002b"], "AC-2": ["TASK-P2-002"], "AC-3": ["TASK-P2-001", "TASK-P2-002", "TASK-P2-002b"], "AC-4": ["TASK-P2-002", "TASK-P2-002b"], "AC-5": ["TASK-P2-003"], "AC-6": ["TASK-P4-001"]},
+    "FR-MCP-018": {"AC-1": ["TASK-P3-002", "TASK-P3-004", "TASK-P3-005"], "AC-2": ["TASK-P3-001", "TASK-P3-003"], "AC-3": ["TASK-P3-001", "TASK-P3-003"], "AC-4": ["TASK-P3-002", "TASK-P3-003"], "AC-5": ["TASK-P3-002", "TASK-P3-003"], "AC-6": ["TASK-P3-002", "TASK-P3-003"], "AC-7": ["TASK-P3-003"], "AC-8": ["TASK-P3-004"]},
+    "FR-MCP-019": {"AC-1": ["TASK-P4-001", "TASK-P4-003", "TASK-P4-004"], "AC-2": ["TASK-P4-001", "TASK-P4-002"], "AC-3": ["TASK-P4-001", "TASK-P4-002"], "AC-4": ["TASK-P4-003"], "AC-5": ["TASK-P4-005", "TASK-P4-006"], "AC-6": ["TASK-P4-005", "TASK-P4-006"], "AC-7": ["TASK-P4-002", "TASK-P4-006"], "AC-8": ["TASK-P4-003"]}
+  },
+  "coverage_summary": {"total_acs": 28, "mapped_acs": 28, "coverage_pct": 100}
+}

@@ -1,0 +1,273 @@
+{
+  "plan_id": "v2.2.1-update-stability",
+  "plan_contract": "1.1.0",
+  "target": "v2.2.1",
+  "spec_path": "docs/spec/00.index.md",
+  "req_ids": ["FR-PARSE-017", "FR-MCP-017", "IR-CLI-026"],
+  "code_path": "src",
+  "generated_at": "2026-05-15",
+  "mode": "normal",
+  "scope_freeze": true,
+  "change_log": [],
+  "pre_commit_gate": [
+    { "shell": "bash", "cmd": "npm run typecheck", "expected_exit": 0 },
+    { "shell": "pwsh", "cmd": "npm run typecheck", "expected_exit": 0 },
+    { "shell": "bash", "cmd": "npm run build", "expected_exit": 0 },
+    { "shell": "pwsh", "cmd": "npm run build", "expected_exit": 0 },
+    { "shell": "bash", "cmd": "npx vitest run --no-file-parallelism", "expected_exit": 0 },
+    { "shell": "pwsh", "cmd": "npx vitest run --no-file-parallelism", "expected_exit": 0 },
+    { "shell": "bash", "cmd": "npm run lint", "expected_exit": 0 },
+    { "shell": "pwsh", "cmd": "npm run lint", "expected_exit": 0 }
+  ],
+  "forbidden_patterns": [
+    { "pattern": "적절히|필요 시|알아서|상황에 맞게|기존 방식대로|어떻게든", "flags": "" },
+    { "pattern": "probably|should work|I think|maybe", "flags": "i" },
+    { "pattern": "TODO(?!:)", "flags": "" },
+    { "pattern": "Co-Authored-By|\\[bot\\]|\\[ai\\]", "flags": "" }
+  ],
+  "phases": [
+    {
+      "phase_n": 1,
+      "title": "Core mutation",
+      "tasks": [
+        {
+          "id": "TASK-P1-001",
+          "title": "stability transition validator helper 신설",
+          "req_id": "FR-PARSE-017",
+          "ac": ["AC-2"],
+          "files": ["src/core/mutation/stability-transition.ts"],
+          "source_anchors": ["src/core/schema.ts:1-40"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["src/core/mutation/stability-transition.ts", "test/core/mutation/stability-transition.test.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/core/mutation/stability-transition.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/core/mutation/stability-transition.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git reset --hard HEAD~1" }
+        },
+        {
+          "id": "TASK-P1-002",
+          "title": "update-stability.ts mutation core 신설",
+          "req_id": "FR-PARSE-017",
+          "ac": ["AC-1", "AC-3", "AC-4", "AC-7", "AC-8"],
+          "files": ["src/core/mutation/update-stability.ts"],
+          "source_anchors": ["src/core/mutation/update-status.ts:84-132", "src/core/mutation/update-status.ts:28-30"],
+          "feasibility": "Medium",
+          "idempotent": false,
+          "owns": ["src/core/mutation/update-stability.ts", "test/core/mutation/update-stability.test.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/core/mutation/update-stability.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/core/mutation/update-stability.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git reset --hard HEAD~1" }
+        },
+        {
+          "id": "TASK-P1-003",
+          "title": "DRAFT heading marker auto-apply 통합",
+          "req_id": "FR-PARSE-017",
+          "ac": ["AC-5", "AC-6"],
+          "files": ["src/core/mutation/update-stability.ts"],
+          "source_anchors": ["src/core/mutation/update-status.ts:53-82", "src/core/parser/heading-render.ts:13-41", "src/core/mutation/trace-search.ts"],
+          "feasibility": "Medium",
+          "idempotent": false,
+          "owns": ["src/core/mutation/update-stability.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/core/mutation/update-stability.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/core/mutation/update-stability.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git reset --hard HEAD~1" }
+        },
+        {
+          "id": "TASK-P1-004",
+          "title": "SRS-MD-Rules v1.1.0 §30.2 본문 정정",
+          "req_id": "FR-PARSE-017",
+          "ac": [],
+          "files": ["docs/rule/SRS-MD-Rules-v1.1.0.md"],
+          "source_anchors": ["docs/rule/SRS-MD-Rules-v1.1.0.md:1416"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["docs/rule/SRS-MD-Rules-v1.1.0.md"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "grep -n 'Status=draft' docs/rule/SRS-MD-Rules-v1.1.0.md", "expected_exit": 1 },
+            { "shell": "pwsh", "cmd": "Select-String -Path docs/rule/SRS-MD-Rules-v1.1.0.md -Pattern 'Status=draft' -Quiet; if ($?) { exit 1 } else { exit 0 }", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- docs/rule/SRS-MD-Rules-v1.1.0.md" }
+        }
+      ]
+    },
+    {
+      "phase_n": 2,
+      "title": "MCP tool 노출",
+      "depends_on_phase": [1],
+      "tasks": [
+        {
+          "id": "TASK-P2-001",
+          "title": "MCP tool schema 등록",
+          "req_id": "FR-MCP-017",
+          "ac": ["AC-1", "AC-2"],
+          "files": ["src/mcp/server.ts"],
+          "source_anchors": ["src/mcp/server.ts:37-100"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["src/mcp/server.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- src/mcp/server.ts" }
+        },
+        {
+          "id": "TASK-P2-002",
+          "title": "MCP tool handler 등록",
+          "req_id": "FR-MCP-017",
+          "ac": ["AC-3", "AC-4", "AC-5"],
+          "files": ["src/mcp/tools/mutation-tools.ts"],
+          "source_anchors": ["src/mcp/tools/mutation-tools.ts"],
+          "feasibility": "Medium",
+          "idempotent": true,
+          "owns": ["src/mcp/tools/mutation-tools.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/mcp/ --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/mcp/ --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- src/mcp/tools/mutation-tools.ts" }
+        }
+      ]
+    },
+    {
+      "phase_n": 3,
+      "title": "CLI 명령 노출",
+      "depends_on_phase": [1],
+      "tasks": [
+        {
+          "id": "TASK-P3-001",
+          "title": "CLI 명령 등록",
+          "req_id": "IR-CLI-026",
+          "ac": ["AC-1", "AC-2", "AC-3", "AC-4"],
+          "files": ["src/cli/commands/mutations.ts"],
+          "source_anchors": ["src/cli/commands/mutations.ts:16"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["src/cli/commands/mutations.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/cli/mutation-commands.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/cli/mutation-commands.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- src/cli/commands/mutations.ts" }
+        },
+        {
+          "id": "TASK-P3-002",
+          "title": "CLI --help Global options 가시성 검증",
+          "req_id": "IR-CLI-026",
+          "ac": ["AC-5"],
+          "files": ["test/cli/global-options-help.test.ts"],
+          "source_anchors": ["test/cli/global-options-help.test.ts:8-22"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["test/cli/global-options-help.test.ts"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run test/cli/global-options-help.test.ts --no-file-parallelism", "expected_exit": 0 },
+            { "shell": "pwsh", "cmd": "npx vitest run test/cli/global-options-help.test.ts --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- test/cli/global-options-help.test.ts" }
+        }
+      ]
+    },
+    {
+      "phase_n": 4,
+      "title": "Release governance",
+      "depends_on_phase": [1, 2, 3],
+      "tasks": [
+        {
+          "id": "TASK-P4-001",
+          "title": "전체 vitest 회귀 검증",
+          "req_id": null,
+          "ac": [],
+          "files": [],
+          "source_anchors": ["N/A — 검증 단계"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": [],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "npx vitest run --no-file-parallelism", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "none", "command": "검증 단계 — 멱등" }
+        },
+        {
+          "id": "TASK-P4-002",
+          "title": "3 REQ status verified 전환 + evidence + stability stable 승격 (dogfooding)",
+          "req_id": "FR-PARSE-017,FR-MCP-017,IR-CLI-026",
+          "ac": [],
+          "files": [],
+          "source_anchors": ["N/A — 메타 작업"],
+          "feasibility": "Low",
+          "idempotent": false,
+          "owns": [],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "node ./bin/speckiwi summary --target v2.2.1 --json", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "manual", "command": "1) MCP update_status 로 각 REQ planned 복귀 2) update_stability 로 draft 복귀" }
+        },
+        {
+          "id": "TASK-P4-003",
+          "title": "package.json version bump + dist 재빌드",
+          "req_id": null,
+          "ac": [],
+          "files": ["package.json", "dist/"],
+          "source_anchors": ["package.json:3"],
+          "feasibility": "Low",
+          "idempotent": true,
+          "owns": ["package.json"],
+          "needs_clarification": [
+            {
+              "slug": "v220-release-prereq",
+              "question": "v2.2.0 marker policy 가 npm 미release 상태이면 v2.2.0 release 선행 또는 v2.2.0 + v2.2.1 동시 release 결정 필요",
+              "blocks_task": true,
+              "auto_severity": "business-decision"
+            }
+          ],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "node ./bin/speckiwi --version", "expected_exit": 0, "stdout_regex": "2\\.2\\.1" }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- package.json && npm run build" }
+        },
+        {
+          "id": "TASK-P4-004",
+          "title": "Target Map released + Active Target 전환 + CWL + Change Notes",
+          "req_id": null,
+          "ac": [],
+          "files": ["docs/spec/00.index.md"],
+          "source_anchors": ["docs/spec/00.index.md"],
+          "feasibility": "Low",
+          "idempotent": false,
+          "owns": ["docs/spec/00.index.md"],
+          "acceptance_tests": [
+            { "shell": "bash", "cmd": "node ./bin/speckiwi validate", "expected_exit": 0 }
+          ],
+          "rollback": { "strategy": "git-reset", "command": "git checkout HEAD -- docs/spec/00.index.md" }
+        }
+      ]
+    }
+  ],
+  "spec_mapping": [
+    { "req_id": "FR-PARSE-017", "ac": "AC-1", "task_id": "TASK-P1-002" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-2", "task_id": "TASK-P1-001" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-3", "task_id": "TASK-P1-002" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-4", "task_id": "TASK-P1-002" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-5", "task_id": "TASK-P1-003" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-6", "task_id": "TASK-P1-003" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-7", "task_id": "TASK-P1-002" },
+    { "req_id": "FR-PARSE-017", "ac": "AC-8", "task_id": "TASK-P1-002" },
+    { "req_id": "FR-MCP-017", "ac": "AC-1", "task_id": "TASK-P2-001" },
+    { "req_id": "FR-MCP-017", "ac": "AC-2", "task_id": "TASK-P2-001" },
+    { "req_id": "FR-MCP-017", "ac": "AC-3", "task_id": "TASK-P2-002" },
+    { "req_id": "FR-MCP-017", "ac": "AC-4", "task_id": "TASK-P2-002" },
+    { "req_id": "FR-MCP-017", "ac": "AC-5", "task_id": "TASK-P2-002" },
+    { "req_id": "IR-CLI-026", "ac": "AC-1", "task_id": "TASK-P3-001" },
+    { "req_id": "IR-CLI-026", "ac": "AC-2", "task_id": "TASK-P3-001" },
+    { "req_id": "IR-CLI-026", "ac": "AC-3", "task_id": "TASK-P3-001" },
+    { "req_id": "IR-CLI-026", "ac": "AC-4", "task_id": "TASK-P3-001" },
+    { "req_id": "IR-CLI-026", "ac": "AC-5", "task_id": "TASK-P3-002" }
+  ]
+}

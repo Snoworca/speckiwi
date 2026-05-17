@@ -1413,7 +1413,7 @@ Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 
 
 ### 30.2 Draft 마커 (v1.1.0 신설)
 
-`update_status` mutation 이 `Status=draft` 로 전이될 때 다음 마커가 자동 적용된다. discarded 와 달리 **strikethrough 는 적용하지 않는다**.
+`update_stability` mutation 이 `Stability=draft` 로 전이될 때 다음 마커가 자동 적용된다. discarded 와 달리 **strikethrough 는 적용하지 않는다**.
 
 기본 변환:
 
@@ -1454,6 +1454,16 @@ mutation, parser, validator, renderer 가 §30.1 / §30.2 표기를 동시에 �
 3. `Change Notes` 표에 row append (호출 인자 `changeNote` 가 제공된 경우에 한함).
 
 세 변경은 동일 SHA256 snapshot 위에서 tmp+rename atomic write 로 적용되며, 부분 적용 결과는 금지된다.
+
+**Bulk mutation 금지.** mutation tool 은 호출당 단일 Requirement ID 만 대상으로 한다. 복수 REQ 의 `Status` / `Stability` 를 일괄 전이하거나, Active Target 을 일괄 비우는 *bulk-archive* / *bulk-finalize* 도구를 도입·노출해서는 안 된다 — per-requirement evidence·stability gate 우회 경로가 되어 §30.1 / §30.2 그리고 FR-PARSE-015 AC-7/AC-8 강제를 무력화한다. release cleanup 등 운영 시나리오는 *per-requirement* 호출의 반복(또는 dry-run 우선 보고) 으로 표현한다.
+
+**Mutation tool kind classification.** 정책을 *예외 목록 협상* 대신 *도구 분류* 로 표현한다. 모든 mutation tool 은 다음 세 `kind` 중 하나로 분류되어 schema 메타에 박힌다:
+
+- `req-scoped` — 단일 REQ 블록을 원자적으로 변경. `id: string` 필수, 배열 금지. (예: `update_status`, `update_stability`, `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link`, `append_section_note`)
+- `log-append` — 집계 테이블에 row 추가. `requirementIds?: string[]` 같은 합법 배열 입력 허용 (단 status/stability flip 을 수반하지 않음). (예: `add_completed_work`)
+- `workspace` — workspace/target 범위 메타 갱신. `id` 없음. (예: `set_active_target`, `set_target_goal`, `init_project`, `add_requirement` — 신규 REQ 생성으로 단일 id mutation 이 아니므로 workspace 분류)
+
+`req-scoped` 분류 도구는 schema 검증 단계에서 `id` 입력이 배열일 경우 자동 거부된다. CI 는 분류 메타와 schema 의 정합성을 검증한다. 신규 mutation tool 도입 시 반드시 위 세 kind 중 하나를 선언해야 하며, 미선언은 PR 단계에서 거부된다. 본 분류는 §30.3 의 *Bulk mutation 금지* 원칙을 코드 수준 강제로 격상한다.
 
 ### 30.4 비표준 마커 (v1.1.0 신설)
 

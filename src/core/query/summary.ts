@@ -82,6 +82,7 @@ export function summarizeTarget(workspace: ParsedWorkspace, options: TargetSumma
     stabilityBlockers,
     stabilityWarnings,
     diagnosticsSummary: summarizeDiagnostics(normalized.diagnostics ?? workspace.diagnostics),
-    completedWork: target ? listCompletedWork(workspace, { target }) : listCompletedWork(workspace)
+    completedWork: target ? listCompletedWork(workspace, { target }) : listCompletedWork(workspace),
+    goal: target && workspace.index.targetGoals[target] ? workspace.index.targetGoals[target] : null
   };
 }

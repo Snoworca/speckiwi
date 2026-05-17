@@ -119,9 +119,62 @@ export function parseIndexDocument(file: TextFile): { index: IndexDocument; diag
   const completedWork = parseCompletedWork(file.lines);
   const statusSummary = parseStatusSummary(file.lines);
   const requirementTypeSummary = parseRequirementTypeSummary(file.lines);
-  const index: IndexDocument = { metadata, activeTarget, targets, scopes, completedWork };
+  const targetGoals = extractTargetGoals(file.lines);
+  const index: IndexDocument = { metadata, activeTarget, targets, scopes, completedWork, targetGoals };
   if (statusSummary) index.statusSummary = statusSummary;
   if (requirementTypeSummary) index.requirementTypeSummary = requirementTypeSummary;
 
   return { index, diagnostics };
+}
+
+const TARGET_HEADING_RE = /^### Target:\s+(\S+)\s*$/;
+const GOAL_LABEL_RE = /^\*\*Goal:\*\*\s*(.+)$/;
+const LABEL_LINE_RE = /^\*\*[^*]+:\*\*/;
+const FORBIDDEN_TOKEN_CHARS = /[/\\]/;
+
+export function extractTargetGoals(lines: readonly string[]): Record<string, string> {
+  const goals: Record<string, string> = {};
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const match = TARGET_HEADING_RE.exec(line);
+    if (!match) continue;
+    const token = match[1];
+    if (!token || FORBIDDEN_TOKEN_CHARS.test(token)) continue;
+    const bodyEnd = findBlockEnd(lines, i + 1);
+    const goalText = readGoalText(lines, i + 1, bodyEnd);
+    if (goalText !== undefined) {
+      goals[token] = goalText;
+    }
+  }
+  return goals;
+}
+
+function findBlockEnd(lines: readonly string[], start: number): number {
+  for (let i = start; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    if (/^#{1,3}\s/.test(line) && !TARGET_HEADING_RE.test(line)) return i;
+    if (TARGET_HEADING_RE.test(line)) return i;
+  }
+  return lines.length;
+}
+
+function readGoalText(lines: readonly string[], start: number, end: number): string | undefined {
+  let goalStart = -1;
+  for (let i = start; i < end; i += 1) {
+    if (GOAL_LABEL_RE.test(lines[i] ?? "")) {
+      goalStart = i;
+      break;
+    }
+  }
+  if (goalStart === -1) return undefined;
+  const firstMatch = GOAL_LABEL_RE.exec(lines[goalStart] ?? "");
+  if (!firstMatch) return undefined;
+  const collected: string[] = [firstMatch[1]?.trim() ?? ""];
+  for (let i = goalStart + 1; i < end; i += 1) {
+    const next = lines[i] ?? "";
+    if (next.trim() === "") continue;
+    if (LABEL_LINE_RE.test(next)) break;
+    collected.push(next.trim());
+  }
+  return collected.join("\n");
 }

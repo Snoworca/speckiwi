@@ -1514,6 +1514,7 @@ node scripts/spec/validate-spec.js
 | `SRS-W022` | warning | Legacy volatile stability |
 | `SRS-W023` | warning | Draft requirement in active or released target |
 | `SRS-W024` | warning | Malformed Completed Work Log report path |
+| `SRS-W040` | warning | Target Goal block conflict between index and appendix |
 
 v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
 

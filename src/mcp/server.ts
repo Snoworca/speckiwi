@@ -7,7 +7,6 @@ import path from "node:path";
 import { z } from "zod";
 import { initProject } from "../core/bootstrap/init-project.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
-import { resolveProjectRoot } from "../core/project-root.js";
 import type { ProjectRoot } from "../core/types.js";
 import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
 import { registerReadTools } from "./tools/read-tools.js";
@@ -34,7 +33,7 @@ const reportPathSchema = z
   .regex(REPORT_PATH_TOKEN_REGEX, { message: "invalid report path" })
   .describe("repository-relative POSIX report path; no absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, or #");
 
-const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
+export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   list_requirements: {
     target: z.string().optional(),
     status: z.string().optional(),
@@ -53,10 +52,24 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     limit: z.number().int().positive().optional()
   },
   update_status: { id: z.string(), status: z.string() },
+  update_stability: {
+    id: z.string(),
+    stability: z.enum(["draft", "evolving", "stable", "frozen", "deprecated"]),
+    reason: z.string().max(500).optional(),
+    dryRun: z.boolean().optional()
+  },
+  append_section_note: {
+    id: z.string(),
+    section: z.string(),
+    text: z.string().max(500),
+    mode: z.enum(["append", "replace"]).optional(),
+    dryRun: z.boolean().optional()
+  },
   check_acceptance_criteria: { id: z.string(), acIds: z.array(z.string()), checked: z.boolean() },
   add_verification_evidence: { id: z.string(), type: z.string(), reference: z.string(), covers: z.string().optional(), notes: z.string().optional() },
   add_trace_link: { id: z.string(), type: z.string(), reference: z.string(), relation: z.string(), notes: z.string().optional() },
   set_active_target: { target: z.string(), dryRun: z.boolean().optional() },
+  set_target_goal: { target: z.string(), goal: z.string().min(1).max(500), dryRun: z.boolean().optional() },
   add_completed_work: {
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     summary: z.string(),
@@ -99,7 +112,7 @@ const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   }
 };
 
-function isReadOnlyTool(name: string): boolean {
+export function isReadOnlyTool(name: string): boolean {
   return ["list_requirements", "get_requirement", "validate_spec", "summarize_target", "get_active_target", "list_completed_work"].includes(name);
 }
 
@@ -110,11 +123,6 @@ async function exists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-async function currentWorkingDirectoryRoot(): Promise<ProjectRoot> {
-  const cwd = process.cwd();
-  return { root: await realpath(cwd).catch(() => path.resolve(cwd)) };
 }
 
 async function explicitStartupRoot(explicitRoot: string): Promise<ProjectRoot> {

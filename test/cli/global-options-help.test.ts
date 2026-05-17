@@ -18,7 +18,10 @@ const SUBCOMMANDS_REQUIRING_HELP_VISIBILITY = [
   "mcp",
   "init",
   "update-status",
+  "update-stability",
+  "append-note",
   "set-active-target",
+  "set-target-goal",
   "add-completed-work"
 ];
 

@@ -48,7 +48,10 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("get_active_target", async () => {
     const parsed = await workspace(deps);
     const diagnostics = readDiagnostics(parsed);
-    return { ok: true, value: buildReadEnvelope(parsed, { activeTarget: parsed.index.activeTarget, summary: summarizeTarget(parsed, { diagnostics }) }, diagnostics) };
+    const activeTarget = parsed.index.activeTarget;
+    const summary = summarizeTarget(parsed, { diagnostics });
+    const goal = activeTarget && parsed.index.targetGoals[activeTarget] ? parsed.index.targetGoals[activeTarget] : null;
+    return { ok: true, value: buildReadEnvelope(parsed, { activeTarget, summary, goal }, diagnostics) };
   }, { readOnlyHint: true });
   server.registerTool("list_completed_work", async (input) => {
     const parsed = await workspace(deps);

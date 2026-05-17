@@ -169,6 +169,7 @@ export interface IndexDocument {
   statusSummary?: StatusSummaryEntry[];
   requirementTypeSummary?: RequirementTypeSummaryEntry[];
   completedWork: CompletedWorkEntry[];
+  targetGoals: Record<string, string>;
 }
 
 export interface AcceptanceCriterion {
@@ -259,6 +260,7 @@ export interface TargetSummary {
   stabilityWarnings: string[];
   diagnosticsSummary: DiagnosticsSummary;
   completedWork: CompletedWorkEntry[];
+  goal: string | null;
 }
 
 export interface ReadDiagnosticsPayload {

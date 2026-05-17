@@ -1,10 +1,13 @@
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
+import { updateStability } from "../../core/mutation/update-stability.js";
+import { appendSectionNote } from "../../core/mutation/append-section-note.js";
 import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import type { McpDependencies, McpServerHandle } from "../adapter.js";
@@ -28,10 +31,35 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
         ...(input.dryRun === true ? { dryRun: true } : {})
       })
-    )
+    ),
+    { kind: "req-scoped" }
+  );
+  server.registerTool("update_stability", async (input) =>
+    resultToMcp(
+      await updateStability(await root(deps, input), {
+        id: String(input.id),
+        stability: input.stability as never,
+        ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  server.registerTool("append_section_note", async (input) =>
+    resultToMcp(
+      await appendSectionNote(await root(deps, input), {
+        id: String(input.id),
+        section: String(input.section),
+        text: String(input.text),
+        ...(typeof input.mode === "string" ? { mode: input.mode as "append" | "replace" } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    ),
+    { kind: "req-scoped" }
   );
   server.registerTool("check_acceptance_criteria", async (input) =>
-    resultToMcp(await setAcceptanceCriteriaChecked(await root(deps, input), { id: String(input.id), acIds: Array.isArray(input.acIds) ? input.acIds.map(String) : [String(input.acIds)], checked: Boolean(input.checked) }))
+    resultToMcp(await setAcceptanceCriteriaChecked(await root(deps, input), { id: String(input.id), acIds: Array.isArray(input.acIds) ? input.acIds.map(String) : [String(input.acIds)], checked: Boolean(input.checked) })),
+    { kind: "req-scoped" }
   );
   server.registerTool("add_verification_evidence", async (input) =>
     resultToMcp(
@@ -41,12 +69,26 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         reference: String(input.reference),
         ...(typeof input.covers === "string" ? { covers: input.covers } : {})
       })
-    )
+    ),
+    { kind: "req-scoped" }
   );
   server.registerTool("add_trace_link", async (input) =>
-    resultToMcp(await addTraceLink(await root(deps, input), { id: String(input.id), type: String(input.type), reference: String(input.reference), relation: String(input.relation) }))
+    resultToMcp(await addTraceLink(await root(deps, input), { id: String(input.id), type: String(input.type), reference: String(input.reference), relation: String(input.relation) })),
+    { kind: "req-scoped" }
   );
-  server.registerTool("set_active_target", async (input) => resultToMcp(await setActiveTarget(await root(deps, input), { target: String(input.target), dryRun: Boolean(input.dryRun) })));
+  server.registerTool("set_active_target", async (input) => resultToMcp(await setActiveTarget(await root(deps, input), { target: String(input.target), dryRun: Boolean(input.dryRun) })), { kind: "workspace" });
+  server.registerTool(
+    "set_target_goal",
+    async (input) =>
+      resultToMcp(
+        await setTargetGoal(await root(deps, input), {
+          target: String(input.target),
+          goal: String(input.goal),
+          ...(input.dryRun === true ? { dryRun: true } : {})
+        })
+      ),
+    { kind: "workspace" }
+  );
   server.registerTool("add_completed_work", async (input) =>
     resultToMcp(
       await addCompletedWork(await root(deps, input), {
@@ -59,7 +101,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         allowIncomplete: Boolean(input.allowIncomplete),
         dryRun: Boolean(input.dryRun)
       })
-    )
+    ),
+    { kind: "log-append" }
   );
   server.registerTool("add_requirement", async (input) =>
     {
@@ -92,7 +135,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       if (typeof optional.research === "string") Object.assign(addInput, { research: optional.research });
       if (typeof optional.changeNotes === "string") Object.assign(addInput, { changeNotes: optional.changeNotes });
       return resultToMcp(await addRequirement(await root(deps, input), addInput));
-    }
+    },
+    { kind: "workspace" }
   );
   server.registerTool("init_project", async (input) =>
     {
@@ -100,6 +144,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       if (typeof input.target === "string") Object.assign(initInput, { target: input.target });
       if (typeof input.scope === "string") Object.assign(initInput, { scope: input.scope });
       return resultToMcp(await initProject(await root(deps, input), initInput));
-    }
+    },
+    { kind: "workspace" }
   );
 }

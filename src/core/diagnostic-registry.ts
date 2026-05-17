@@ -456,6 +456,14 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Completed Work Log report path is malformed: {path}",
     sourceRule: "FR-PARSE-016",
     since: "v2.1.1"
+  },
+  {
+    code: "SRS-W040",
+    severity: "warning",
+    title: "Target Goal block conflict between index and appendix",
+    messageTemplate: "Target Goal block for '{target}' defined in both 00.index.md and 90.appendix.md; appendix value wins",
+    sourceRule: "FR-PARSE-018",
+    since: "v2.2.2"
   }
 ];
 

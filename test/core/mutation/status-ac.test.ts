@@ -101,7 +101,7 @@ describe("status and AC mutations", () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
-    const after1 = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     const after2 = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     const count = (after2.match(/\[DISCARDED]/g) ?? []).length;

@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import { readUtf8File } from "../fs/read-text.js";
 import { toPosixPath } from "../fs/safe-path.js";
@@ -7,6 +7,7 @@ import type { ProjectRoot, TextFile } from "../types.js";
 export interface SrsFileSet {
   index: TextFile;
   scopeFiles: TextFile[];
+  appendix?: TextFile;
 }
 
 async function walk(dir: string): Promise<string[]> {
@@ -36,5 +37,10 @@ export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
         .map((file) => readUtf8File(file, root.root))
     )
   ).sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  return { index, scopeFiles };
+
+  const appendixPath = path.join(specDir, "90.appendix.md");
+  const appendix = (await access(appendixPath).then(() => true).catch(() => false))
+    ? await readUtf8File(appendixPath, root.root)
+    : undefined;
+  return appendix ? { index, scopeFiles, appendix } : { index, scopeFiles };
 }

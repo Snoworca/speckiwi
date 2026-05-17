@@ -31,6 +31,7 @@ Agents MUST NOT:
 - Create an alternate requirements source outside `docs/spec/`.
 - Change requirement IDs manually.
 - Mark requirements as verified without evidence.
+- Introduce or invoke bulk-archive / bulk-finalize tooling that flips multiple requirements to `verified` or empties Active Target without per-requirement evidence and stability gate checks.
 
 When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.
 

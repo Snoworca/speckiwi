@@ -26,6 +26,7 @@ export interface UpdateStatusInput {
  * matching the JS `.length` (UTF-16 code unit) length budget keeps emojis predictable
  * (a surrogate pair counts as 2 units against MAX_REASON_LENGTH).
  */
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
 const MAX_REASON_LENGTH = 500;
 
