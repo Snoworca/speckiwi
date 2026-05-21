@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Pipeline"
+  short_description: "Route Kiwi workflow steps from events"
+  default_prompt: "Use $kiwi-pipeline to inspect pipeline events and choose the next Kiwi workflow step."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Commit Auto Push"
+  short_description: "Commit and push SpecKiwi-traced changes"
+  default_prompt: "Use $kiwi-commit-auto-push to commit, push, and attach SpecKiwi trace evidence."

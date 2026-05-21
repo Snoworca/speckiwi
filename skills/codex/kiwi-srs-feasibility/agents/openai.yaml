@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SRS Feasibility"
+  short_description: "Evaluate SRS feasibility and stability"
+  default_prompt: "Use $kiwi-srs-feasibility to evaluate requirement feasibility and stability gates."

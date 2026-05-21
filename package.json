@@ -1,6 +1,6 @@
 {
   "name": "speckiwi",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "SpecKiwi manages Git-tracked Markdown SRS requirements through a local CLI and stdio MCP server.",
   "type": "module",
   "bin": {
@@ -37,7 +37,10 @@
   "files": [
     "bin",
     "dist",
-    "docs/rule/SRS-MD-Rules-v1.0.0.md"
+    "docs/rule/SRS-MD-Rules-v1.0.0.md",
+    "skills/codex",
+    "skills/claude",
+    "skills/etc"
   ],
   "engines": {
     "node": ">=22"
@@ -50,7 +53,8 @@
     "test:coverage": "vitest run --coverage --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
     "test:integration": "vitest run test/integration test/cli test/mcp --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",
     "release:acceptance": "vitest run test/release/release-readiness.test.ts test/release/srs-traceability.test.ts --hookTimeout 60000 --testTimeout 60000",
-    "release:check": "node scripts/release-check.mjs --strict",
+    "version:check": "npm run build && node scripts/version-check.mjs",
+    "release:check": "npm run version:check && node scripts/release-check.mjs --strict",
     "perf:srs": "vitest run test/perf/parser-performance.test.ts --hookTimeout 120000 --testTimeout 120000",
     "prepack": "npm run build"
   },

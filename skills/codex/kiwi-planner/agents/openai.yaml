@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Planner"
+  short_description: "Create plan-contract implementation plans"
+  default_prompt: "Use $kiwi-planner to create a plan-contract implementation plan from the active requirements."

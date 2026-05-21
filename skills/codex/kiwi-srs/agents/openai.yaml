@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SRS"
+  short_description: "Draft and update SpecKiwi SRS requirements"
+  default_prompt: "Use $kiwi-srs to draft or update SpecKiwi SRS requirements for this change."

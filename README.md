@@ -1,526 +1,53 @@
+<p align="right"><a href="#english-version">View English version</a></p>
+
+<a id="korean-version"></a>
+
 # SpecKiwi
 
-SpecKiwi is a local-first requirements tool for Git-tracked Markdown SRS documents. It gives a project two interfaces over the same `docs/spec` source of truth:
+SpecKiwi는 Git 저장소 안의 Markdown SRS 문서를 요구사항의 원본으로 사용하고, CLI와 stdio MCP 서버로 사람과 코딩 에이전트가 같은 요구사항 데이터를 다루게 해 주는 local-first workflow 도구입니다.
 
-- a Node.js CLI for people and scripts
-- a stdio MCP server for coding agents
-
-SpecKiwi also tracks the active target, completed work summaries, validation diagnostics, and release readiness from the same Markdown files. It does not use YAML requirement files, front matter, generated JSON as canonical data, a database, or a remote requirements service.
-
-## Requirements
-
-- Node.js 22 or newer
-- npm
-- Git
-
-From a source checkout:
-
-```sh
-npm ci
-npm run build
-node bin/speckiwi --help
-```
-
-After the package is installed as a command, use `speckiwi` instead of `node bin/speckiwi`.
-
-## Install and Update
-
-Install the latest published CLI globally:
-
-```sh
-npm install -g speckiwi@latest
-```
-
-Use the same command to update an existing global installation to the latest version. After installing or updating, check the command:
-
-```sh
-speckiwi --version
-speckiwi --help
-```
-
-## Start a New SRS Workspace
-
-Run `init` at the root of a Git project:
-
-```sh
-speckiwi init --target v1.0.0 --scope "Payments:PAY"
-```
-
-From a source checkout:
-
-```sh
-node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY"
-```
-
-This creates the standard structure if it is missing:
-
-```text
-AGENTS.md
-CLAUDE.md
-docs/
-├─ rule/
-│  └─ SRS-MD-Rules-v1.0.0.md
-└─ spec/
-   ├─ 00.index.md
-   ├─ 10.payments.srs.md
-   └─ 90.appendix.md
-```
-
-`--scope` accepts `Name:PREFIX`. The example above creates a Payments scope with the `PAY` requirement ID segment. `init` leaves `Active Target` empty until you select one with `set-active-target`, and it creates the Completed Work Log table in the index. It always creates or updates `AGENTS.md` and `CLAUDE.md` with the managed `# SpecKiwi SRS 워크플로 v1.3` instruction block. If the current versioned block is already present, the agent file is left unchanged; older versioned or legacy SpecKiwi blocks are replaced. Lowercase `agents.md` is kept only as a compatibility mirror; uppercase `AGENTS.md` and `CLAUDE.md` are canonical. Existing generated SRS/rule files are skipped unless `--force` is provided.
-
-## How the SRS Is Organized
-
-Start at:
-
-- [docs/spec/00.index.md](docs/spec/00.index.md): target map, scope map, SRS document list
-- [docs/rule/SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md): authoring and parsing rules
-- [docs/spec/90.appendix.md](docs/spec/90.appendix.md): local reference material
-
-A scope SRS file contains requirement blocks under `## 4. Requirements`.
-
-```md
-### FR-PAY-001 — Payment approval is recorded
-
-| Field | Value |
-|---|---|
-| Type | functional |
-| Target | v1.0.0 |
-| Status | planned |
-| Stability | draft |
-
-#### Requirement
-
-The system shall record each successful payment approval.
-
-#### Acceptance Criteria
-
-- [ ] AC-1: A successful approval stores an approval reference.
-
-#### Verification Evidence
-
-| Evidence ID | Type | Reference | Covers | Notes |
-|---|---|---|---|---|
-
-#### Trace Links
-
-| Type | Reference | Relation | Notes |
-|---|---|---|---|
-```
-
-The heading, metadata table, Acceptance Criteria task list, Verification Evidence table, and Trace Links table are parsed by SpecKiwi. Preserve those names and structures.
-
-`validate` also checks index consistency and release governance rules, including duplicate targets or scope prefixes, multiple active targets, missing or unregistered scope documents, summary table drift, malformed requirement sections, malformed Markdown tables, missing evidence, stale evidence references, and broken trace links.
-
-## Daily CLI Workflow
-
-Validate first:
-
-```sh
-speckiwi validate
-speckiwi validate --json
-speckiwi validate --fail-on-warning
-```
-
-Find requirements:
-
-```sh
-speckiwi targets
-speckiwi active-target
-speckiwi set-active-target v1.2.0
-speckiwi completed-work --target v1.2.0 --order latest --json
-speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands." --report docs/reports/v1.2.0.md
-speckiwi scopes
-speckiwi list --target v1.0.0
-speckiwi list --scope PAY --status planned --json
-speckiwi show FR-PAY-001 --markdown
-speckiwi summary --target v1.0.0 --json
-speckiwi links check --json
-```
-
-`active-target` is the current target version recorded in `docs/spec/00.index.md` as `Active Target`. An empty value means no active target has been selected. `completed-work` reads the index-level Completed Work Log, and `add-completed-work` appends a summary row after work is actually complete.
-
-Completed Work Log uses this index table:
-
-```md
-| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
-|---|---|---|---|---|---|
-```
-
-New projects use a trailing `Report Paths` column. Existing five-column logs remain readable; when report paths are added, SpecKiwi writes repository-relative POSIX paths as comma-separated values in that trailing cell. Report paths cannot be blank, absolute, start with `./` or `../`, contain a `..` segment, URL scheme, backslash, pipe, comma, CR/LF, or `#`.
-
-Machine-readable automation should use `--json`. Human output is intentionally simple and stable enough for quick inspection, but JSON is the safer interface for scripts.
-
-Read-command JSON uses a diagnostics envelope. The command-specific payload is returned with `errors`, `warnings`, and `diagnosticsSummary`, so scripts and agents can inspect the data and its validation state in one response.
-
-## Add a Requirement
-
-Use `add-requirement` instead of manually choosing an ID. SpecKiwi generates the next ID from the requirement type and scope prefix, then appends the block to the target scope document.
-
-Preview without writing:
-
-```sh
-speckiwi add-requirement \
-  --type functional \
-  --scope PAY \
-  --target v1.0.0 \
-  --title "Payment approval is recorded" \
-  --requirement "The system shall record each successful payment approval." \
-  --ac "A successful approval stores an approval reference." \
-  --dry-run \
-  --json
-```
-
-Write the requirement:
-
-```sh
-speckiwi add-requirement \
-  --type functional \
-  --scope PAY \
-  --target v1.0.0 \
-  --title "Payment approval is recorded" \
-  --requirement "The system shall record each successful payment approval." \
-  --ac "A successful approval stores an approval reference."
-```
-
-Useful options:
-
-```text
---status <status>
---priority <priority>
---tags <comma,separated,tags>
---risk <risk>
---stability <stability>
---verification-method <method>
---github-issue <issue>
---related-docs <doc>
---rationale <text>
---implementation-notes <text>
---research <text>
---change-notes <text>
---evidence "type|reference|covers|notes"
---trace "type|reference|relation|notes"
-```
-
-`--ac`, `--checked-ac`, `--related-docs`, `--evidence`, and `--trace` can be repeated.
-
-## Implement and Verify a Requirement
-
-`Status` tracks implementation and verification progress. `Stability` tracks requirement maturity and change-control maturity. New Requirement Blocks default to `Stability=draft`; agents should not implement non-discarded `draft` or `deprecated` requirements unless the user explicitly overrides that workflow.
-
-The normal `Status` lifecycle is:
-
-```text
-planned -> in_progress -> implemented -> verified
-```
-
-Use `implemented` when code is complete but verification evidence is incomplete. Use `verified` only after every Acceptance Criteria item is checked and at least one evidence row exists. Use `Stability` values `draft`, `evolving`, `stable`, `frozen`, and `deprecated` to describe the maturity of the requirement text itself; legacy `volatile` values are accepted only for migration warnings and are not generated for new requirements.
-
-Example:
-
-```sh
-speckiwi update-status FR-PAY-001 in_progress
-
-# run implementation and tests outside SpecKiwi
-npm test
-
-speckiwi add-evidence FR-PAY-001 \
-  --type test \
-  --reference test/payments/approval.test.ts \
-  --covers AC-1 \
-  --notes "Payment approval persistence test"
-
-speckiwi check-ac FR-PAY-001 AC-1
-speckiwi update-status FR-PAY-001 verified
-speckiwi validate --fail-on-warning
-```
-
-If all acceptance criteria are satisfied:
-
-```sh
-speckiwi check-ac FR-PAY-001 --all
-```
-
-To reverse a checked item:
-
-```sh
-speckiwi uncheck-ac FR-PAY-001 AC-1
-```
-
-Add traceability:
-
-```sh
-speckiwi add-trace FR-PAY-001 \
-  --type Requirement \
-  --reference IR-PAY-001 \
-  --relation depends_on \
-  --notes "Payment approval depends on the payment API contract"
-```
-
-## CLI Reference
-
-Global options:
-
-```text
---root <path>   Project root. If omitted, SpecKiwi searches upward.
---json          Print JSON to stdout.
---no-color      Disable color.
---quiet         Suppress non-essential human output.
---help          Print help.
---version       Print version.
-```
-
-Read commands:
-
-| Command | Purpose |
-|---|---|
-| `speckiwi validate [--fail-on-warning] [--json]` | Validate the SRS workspace. |
-| `speckiwi extract [--include-markdown] [--json]` | Extract normalized requirement records. |
-| `speckiwi list [--target T] [--status S] [--type T] [--scope S] [--tag T] [--format F] [--json]` | List requirements by filter. |
-| `speckiwi show <id> [--markdown] [--json]` | Show one requirement. |
-| `speckiwi targets [--json]` | Show target map entries. |
-| `speckiwi active-target [--json]` | Show the current active target and summary. |
-| `speckiwi completed-work [--target T] [--scope S] [--since YYYY-MM-DD] [--limit N] [--order latest\|file] [--json]` | Show Completed Work Log rows. |
-| `speckiwi scopes [--json]` | Show scope map entries. |
-| `speckiwi summary [--target T] [--markdown] [--json]` | Summarize a target. |
-| `speckiwi links check [--json]` | Check local links and requirement references. |
-
-Mutation commands:
-
-| Command | Purpose |
-|---|---|
-| `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | Create or refresh the SRS skeleton and both agent instruction files. |
-| `speckiwi set-active-target <target> [--dry-run] [--json]` | Update the index `Active Target` and Target Map active row. |
-| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--report PATH]... [--allow-incomplete] [--dry-run] [--json]` | Append a Completed Work Log row after prevalidating references. |
-| `speckiwi add-requirement ...` | Add a new requirement block. |
-| `speckiwi update-status <id> <status> [--json]` | Update the `Status` metadata row. |
-| `speckiwi check-ac <id> [AC...] [--all] [--json]` | Mark acceptance criteria as checked. |
-| `speckiwi uncheck-ac <id> [AC...] [--all] [--json]` | Mark acceptance criteria as unchecked. |
-| `speckiwi add-evidence <id> --type T --reference R [--covers C] [--notes N] [--json]` | Add a Verification Evidence row. |
-| `speckiwi add-trace <id> --type T --reference R --relation R [--notes N] [--json]` | Add a Trace Links row. |
-
-Allowed requirement statuses:
-
-```text
-planned
-in_progress
-blocked
-implemented
-verified
-discarded
-```
-
-Allowed target statuses:
-
-```text
-planned
-active
-completed
-released
-archived
-```
-
-Allowed requirement types:
-
-```text
-functional
-non_functional
-interface
-data
-security
-performance
-reliability
-observability
-operational
-migration
-constraint
-```
-
-## MCP Server
-
-Start the stdio MCP server:
-
-```sh
-cd /path/to/project
-speckiwi mcp
-```
-
-You can also pass an explicit root:
-
-```sh
-speckiwi --root /path/to/project mcp
-```
-
-Only stdio transport is supported. stdout is reserved for MCP JSON-RPC messages; logs belong on stderr. If `--root` is omitted, SpecKiwi resolves the project root from the server process current working directory by searching upward for `.git` or `docs/spec/00.index.md`. If no project root exists yet, or if `docs/spec/00.index.md` is missing, MCP startup automatically creates the default SRS structure, including `AGENTS.md` and `CLAUDE.md`, before serving tool calls. An explicit `--root` must point to an existing directory. The project root is fixed when the server starts, so tool inputs should not be used to switch roots.
-
-Read tools:
-
-| Tool | Input |
-|---|---|
-| `list_requirements` | `target?`, `status?`, `type?`, `scope?`, `tag?` |
-| `get_requirement` | `id`, `includeMarkdown?` |
-| `validate_spec` | `strict?`, `failOnWarning?`; validates the current workspace |
-| `summarize_target` | `target?` |
-| `get_active_target` | none |
-| `list_completed_work` | `target?`, `scope?`, `since?`, `limit?`, `order?` |
-
-Mutation tools:
-
-| Tool | Input |
-|---|---|
-| `init_project` | `target?`, `scope?`, `force?` |
-| `set_active_target` | `target`, `dryRun?` |
-| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `reportPaths?`, `allowIncomplete?`, `dryRun?` |
-| `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
-| `update_status` | `id`, `status` |
-| `check_acceptance_criteria` | `id`, `acIds`, `checked` |
-| `add_verification_evidence` | `id`, `type`, `reference`, `covers?` |
-| `add_trace_link` | `id`, `type`, `reference`, `relation` |
-
-Resources:
-
-```text
-speckiwi://index
-speckiwi://active-target
-speckiwi://completed-work
-speckiwi://completed-work/{target}
-speckiwi://requirements/{id}
-speckiwi://targets/{target}
-speckiwi://scopes/{scope}
-```
-
-MCP resources use an envelope payload: `{ ok, value, diagnostics, diagnosticsSummary }`. The resource-specific data is under `value`, including `value.completedWork` for completed-work resources.
-
-Recommended agent flow:
-
-```text
-speckiwi://index
--> speckiwi://active-target
--> list_requirements
--> get_requirement(includeMarkdown: true)
--> implement and test
--> add_verification_evidence
--> check_acceptance_criteria
--> update_status
--> validate_spec
--> list_completed_work
-```
-
-## Release and Baseline Workflow
-
-Before treating an SRS target as ready:
-
-```sh
-npm run build
-npm run typecheck
-npm run lint
-npm test
-npm run test:coverage
-npm run test:integration
-npm run release:acceptance
-npm run release:check
-```
-
-When a target is accepted, mark it `released` in the Target Map and record the baseline in Git:
-
-```sh
-git tag srs-v1.0.0-baseline
-```
-
-## Development Commands
-
-```sh
-npm run build
-npm run typecheck
-npm run lint
-npm test
-npm run test:coverage
-npm run test:integration
-npm run release:acceptance
-npm run release:check
-npm run perf:srs
-```
-
-## Package API
-
-The package exposes these ESM entry points:
-
-```text
-speckiwi
-speckiwi/cli
-speckiwi/cli/command
-speckiwi/core/result
-speckiwi/core/types
-speckiwi/mcp/server
-```
-
-The CLI and MCP server are the stable user-facing interfaces. Treat JSON command output as a derived view of the Markdown SRS, not as a separate source of truth.
-
-## What SpecKiwi Does Not Do
-
-- It does not manage YAML requirement files.
-- It does not use YAML front matter.
-- It does not run a database or background requirements server.
-- It does not expose an HTTP MCP transport in the current release line.
-- It does not make generated JSON canonical.
-- It does not create evidence for you. Evidence should point to real tests, code, PRs, reviews, analysis, demos, or operational records.
-
-----
-
-# SpecKiwi (한국어)
-
-SpecKiwi는 Git으로 추적되는 Markdown SRS 문서를 위한 local-first 요구사항 도구입니다. 하나의 `docs/spec` 원본을 두 가지 인터페이스로 다룹니다.
-
-- 사람과 스크립트를 위한 Node.js CLI
-- 코딩 에이전트를 위한 stdio MCP 서버
-
-SpecKiwi는 같은 Markdown 파일에서 active target, 완료 작업 요약, validation diagnostic, release readiness도 추적합니다. YAML 요구사항 파일, YAML front matter, canonical data로서의 생성 JSON, 데이터베이스, 원격 요구사항 서버는 사용하지 않습니다.
+Kiwi skills는 SpecKiwi 위에서 동작하는 코딩 에이전트용 작업 스킬 모음입니다. 요구사항 작성, 구현 가능성 검토, 구현 계획 수립, TDD 기반 코딩, SRS 동기화, 커밋과 push까지 하나의 파이프라인으로 연결합니다.
 
 ## 요구 사항
 
 - Node.js 22 이상
 - npm
 - Git
+- 코딩 에이전트: `codex`, `claude`, `opencode`, `hermes` 중 하나
 
-소스 체크아웃에서 실행할 때:
+## 1. SpecKiwi 설치
+
+프로젝트 루트에서 먼저 SpecKiwi를 설치합니다.
 
 ```sh
-npm ci
-npm run build
-node bin/speckiwi --help
+npm install speckiwi@latest
 ```
 
-패키지를 명령으로 설치한 뒤에는 `node bin/speckiwi` 대신 `speckiwi`를 사용합니다.
+로컬 설치 후에는 `npx speckiwi`로 실행할 수 있습니다.
 
-## 설치 및 업데이트
+```sh
+npx speckiwi --version
+npx speckiwi --help
+```
 
-최신으로 배포된 CLI를 전역으로 설치합니다.
+`speckiwi` 명령을 전역 PATH에서 바로 쓰려면 전역 설치를 사용할 수 있습니다.
 
 ```sh
 npm install -g speckiwi@latest
-```
-
-기존 전역 설치를 최신 버전으로 업데이트할 때도 같은 명령을 사용합니다. 설치 또는 업데이트 후 명령을 확인합니다.
-
-```sh
 speckiwi --version
-speckiwi --help
 ```
 
-## 새 SRS Workspace 시작
+이 README의 명령 예시는 짧게 `speckiwi`로 표기합니다. 로컬 설치만 사용한다면 각 명령 앞에 `npx`를 붙이면 됩니다.
 
-Git 프로젝트 루트에서 `init`을 실행합니다.
+## 2. 프로젝트 초기화
+
+SpecKiwi SRS workspace가 아직 없다면 Git 프로젝트 루트에서 초기화합니다.
 
 ```sh
-speckiwi init --target v1.0.0 --scope "Payments:PAY"
+speckiwi init --target v0.1.0 --scope "App:APP"
 ```
 
-소스 체크아웃에서는 다음처럼 실행합니다.
-
-```sh
-node bin/speckiwi --root . init --target v1.0.0 --scope "Payments:PAY"
-```
-
-필요한 구조가 없으면 다음 표준 구조를 생성합니다.
+생성되는 주요 구조는 다음과 같습니다.
 
 ```text
 AGENTS.md
@@ -530,404 +57,539 @@ docs/
 │  └─ SRS-MD-Rules-v1.0.0.md
 └─ spec/
    ├─ 00.index.md
-   ├─ 10.payments.srs.md
+   ├─ 10.app.srs.md
    └─ 90.appendix.md
 ```
 
-`--scope`는 `Name:PREFIX` 형식을 받습니다. 위 예시는 `PAY` requirement ID segment를 사용하는 Payments scope를 만듭니다. `init`은 `set-active-target`으로 선택하기 전까지 `Active Target`을 비워 두고, index에 Completed Work Log table을 생성합니다. 또한 항상 `AGENTS.md`와 `CLAUDE.md`에 managed `# SpecKiwi SRS 워크플로 v1.3` instruction block을 생성하거나 갱신합니다. 현재 versioned block이 이미 있으면 agent 파일은 변경하지 않고, 오래된 versioned block 또는 legacy SpecKiwi block은 교체합니다. 소문자 `agents.md`는 호환성 mirror로만 유지되며, 대문자 `AGENTS.md`와 `CLAUDE.md`가 canonical 파일입니다. 기존 SRS/rule 생성 파일은 `--force`가 없으면 덮어쓰지 않고 건너뜁니다.
+`docs/spec/00.index.md`가 target, scope, completed work log의 중심입니다. 요구사항 본문은 `docs/spec/**/*.srs.md` Markdown 파일이 canonical source of truth입니다.
 
-## SRS 구성 방식
+## 3. Kiwi Skills 설치
 
-먼저 다음 문서를 봅니다.
-
-- [docs/spec/00.index.md](docs/spec/00.index.md): target map, scope map, SRS 문서 목록
-- [docs/rule/SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md): 작성 및 파싱 규칙
-- [docs/spec/90.appendix.md](docs/spec/90.appendix.md): 저장소 내부 참고 자료
-
-Scope SRS 파일은 `## 4. Requirements` 아래에 requirement block을 둡니다.
-
-```md
-### FR-PAY-001 — Payment approval is recorded
-
-| Field | Value |
-|---|---|
-| Type | functional |
-| Target | v1.0.0 |
-| Status | planned |
-| Stability | draft |
-
-#### Requirement
-
-The system shall record each successful payment approval.
-
-#### Acceptance Criteria
-
-- [ ] AC-1: A successful approval stores an approval reference.
-
-#### Verification Evidence
-
-| Evidence ID | Type | Reference | Covers | Notes |
-|---|---|---|---|---|
-
-#### Trace Links
-
-| Type | Reference | Relation | Notes |
-|---|---|---|---|
-```
-
-SpecKiwi는 heading, metadata table, Acceptance Criteria task list, Verification Evidence table, Trace Links table을 파싱합니다. 이 이름과 구조는 유지해야 합니다.
-
-`validate`는 index consistency와 release governance 규칙도 검사합니다. duplicate target 또는 scope prefix, multiple active target, 누락되거나 등록되지 않은 scope document, summary table drift, 잘못된 requirement section, 잘못된 Markdown table, 누락된 evidence, stale evidence reference, 깨진 trace link가 diagnostic으로 보고됩니다.
-
-## 일상 CLI Workflow
-
-먼저 검증합니다.
+프로젝트에 필요한 코딩 에이전트 종류를 골라 전체 Kiwi skill set을 설치합니다.
 
 ```sh
-speckiwi validate
-speckiwi validate --json
-speckiwi validate --fail-on-warning
+speckiwi skills install {코딩_에이전트_종류} all
 ```
 
-요구사항을 찾습니다.
-
-```sh
-speckiwi targets
-speckiwi active-target
-speckiwi set-active-target v1.2.0
-speckiwi completed-work --target v1.2.0 --order latest --json
-speckiwi add-completed-work --date 2026-05-10 --target v1.2.0 --scope CLI --summary "Connected completed work log commands." --report docs/reports/v1.2.0.md
-speckiwi scopes
-speckiwi list --target v1.0.0
-speckiwi list --scope PAY --status planned --json
-speckiwi show FR-PAY-001 --markdown
-speckiwi summary --target v1.0.0 --json
-speckiwi links check --json
-```
-
-`active-target`은 `docs/spec/00.index.md`의 `Active Target`에 기록된 현재 작업 목표 버전입니다. 값이 비어 있으면 아직 active target이 선택되지 않은 상태입니다. `completed-work`는 index-level Completed Work Log를 읽고, `add-completed-work`는 완료된 작업 요약 row를 추가합니다.
-
-Completed Work Log는 index에서 다음 table을 사용합니다.
-
-```md
-| Date | Target | Scope | Requirement IDs | Summary | Report Paths |
-|---|---|---|---|---|---|
-```
-
-새 프로젝트는 trailing `Report Paths` column을 사용합니다. 기존 five-column log도 계속 읽을 수 있으며, report path가 추가되면 SpecKiwi는 repository-relative POSIX path를 trailing cell에 comma-separated 값으로 저장합니다. Report path는 비어 있을 수 없고 absolute path, `./` 또는 `../` prefix, `..` segment, URL scheme, backslash, pipe, comma, CR/LF, `#`를 포함할 수 없습니다.
-
-자동화에서는 `--json`을 사용합니다. 사람용 출력은 빠른 확인에 충분하도록 단순하게 유지되지만, 스크립트에는 JSON이 더 안전한 인터페이스입니다.
-
-읽기 명령의 JSON은 diagnostic envelope를 사용합니다. 명령별 payload와 함께 `errors`, `warnings`, `diagnosticsSummary`가 반환되므로, 스크립트와 에이전트는 데이터와 validation 상태를 한 응답에서 확인할 수 있습니다.
-
-## 요구사항 추가
-
-ID를 직접 고르는 대신 `add-requirement`를 사용합니다. SpecKiwi는 requirement type과 scope prefix로 다음 ID를 생성한 뒤, 대상 scope 문서에 block을 추가합니다.
-
-쓰기 없이 미리 확인합니다.
-
-```sh
-speckiwi add-requirement \
-  --type functional \
-  --scope PAY \
-  --target v1.0.0 \
-  --title "Payment approval is recorded" \
-  --requirement "The system shall record each successful payment approval." \
-  --ac "A successful approval stores an approval reference." \
-  --dry-run \
-  --json
-```
-
-요구사항을 실제로 작성합니다.
-
-```sh
-speckiwi add-requirement \
-  --type functional \
-  --scope PAY \
-  --target v1.0.0 \
-  --title "Payment approval is recorded" \
-  --requirement "The system shall record each successful payment approval." \
-  --ac "A successful approval stores an approval reference."
-```
-
-유용한 옵션:
+지원되는 `{코딩_에이전트_종류}` 값은 다음 네 가지입니다.
 
 ```text
---status <status>
---priority <priority>
---tags <comma,separated,tags>
---risk <risk>
---stability <stability>
---verification-method <method>
---github-issue <issue>
---related-docs <doc>
---rationale <text>
---implementation-notes <text>
---research <text>
---change-notes <text>
---evidence "type|reference|covers|notes"
---trace "type|reference|relation|notes"
+codex
+claude
+opencode
+hermes
 ```
-
-`--ac`, `--checked-ac`, `--related-docs`, `--evidence`, `--trace`는 반복해서 사용할 수 있습니다.
-
-## 요구사항 구현과 검증
-
-`Status`는 구현 및 검증 진행 상태를 나타내고, `Stability`는 요구사항의 성숙도와 변경 통제 성숙도를 나타냅니다. 새 Requirement Block은 기본적으로 `Stability=draft`이며, agent는 사용자가 명시적으로 override하지 않는 한 non-discarded `draft` 또는 `deprecated` 요구사항 구현을 시작하지 않아야 합니다.
-
-일반적인 `Status` lifecycle은 다음과 같습니다.
-
-```text
-planned -> in_progress -> implemented -> verified
-```
-
-코드는 완료됐지만 verification evidence가 부족하면 `implemented`를 사용합니다. 모든 Acceptance Criteria가 체크되고 evidence row가 하나 이상 있을 때만 `verified`를 사용합니다. 요구사항 문장 자체의 성숙도는 `draft`, `evolving`, `stable`, `frozen`, `deprecated` `Stability` 값으로 표현합니다. Legacy `volatile` 값은 migration warning 호환용으로만 허용되며 새 요구사항에는 생성되지 않습니다.
 
 예시:
 
 ```sh
-speckiwi update-status FR-PAY-001 in_progress
-
-# run implementation and tests outside SpecKiwi
-npm test
-
-speckiwi add-evidence FR-PAY-001 \
-  --type test \
-  --reference test/payments/approval.test.ts \
-  --covers AC-1 \
-  --notes "Payment approval persistence test"
-
-speckiwi check-ac FR-PAY-001 AC-1
-speckiwi update-status FR-PAY-001 verified
-speckiwi validate --fail-on-warning
+speckiwi skills install codex all
+speckiwi skills install claude all
+speckiwi skills install opencode all
+speckiwi skills install hermes all --global
 ```
 
-모든 acceptance criteria가 충족되었다면 다음을 사용할 수 있습니다.
+설치 전에 변경 계획을 확인하려면 `--dry-run --json`을 사용합니다.
 
 ```sh
-speckiwi check-ac FR-PAY-001 --all
+speckiwi skills install codex all --dry-run --json
 ```
 
-체크된 항목을 되돌리려면:
+이미 설치된 같은 identity의 skill은 `update`로 처리됩니다. 완전히 동일하면 `skip`이 됩니다. 기존 대상이 유효한 skill이 아니거나 안전하지 않은 경로라면 `conflict`로 중단되고 부분 설치를 하지 않습니다.
+
+## 4. 설치 대상 에이전트
+
+| Agent | 설치 명령 | 패키지 내 source root | 기본 프로젝트 설치 위치 | 전역 설치 위치 |
+| --- | --- | --- | --- | --- |
+| Codex | `speckiwi skills install codex all` | `skills/codex` | `.agents/skills/<skill>` | `${CODEX_HOME:-$HOME/.codex}/skills/<skill>` |
+| Claude | `speckiwi skills install claude all` | `skills/claude` | `.claude/skills/<skill>` | `$HOME/.claude/skills/<skill>` |
+| OpenCode | `speckiwi skills install opencode all` | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
+| Hermes | `speckiwi skills install hermes all --global` | `skills/etc` | `--dest <dir>` 필요 | `$HOME/.hermes/skills/<category>/<skill>` |
+
+추가 옵션:
+
+| Option | 설명 |
+| --- | --- |
+| `--global`, `-g` | 사용자 전역 skill directory에 설치합니다. |
+| `--dest <dir>` | 사용자 지정 destination root에 설치합니다. 각 skill은 `<dir>/<skill>` 아래에 들어갑니다. |
+| `--category <name>` | Hermes 전역 설치 category입니다. 기본값은 `kiwi`입니다. Hermes global install에서만 유효합니다. |
+| `--dry-run` | 파일을 복사하지 않고 설치 계획만 출력합니다. |
+| `--json` | 자동화용 JSON 결과를 출력합니다. |
+
+`--global`과 `--dest`는 함께 사용할 수 없습니다.
+
+## 5. MCP 연결
+
+Kiwi skills의 정상 작업 흐름은 `speckiwi mcp`가 연결되어 있어야 합니다.
 
 ```sh
-speckiwi uncheck-ac FR-PAY-001 AC-1
-```
-
-추적 관계를 추가합니다.
-
-```sh
-speckiwi add-trace FR-PAY-001 \
-  --type Requirement \
-  --reference IR-PAY-001 \
-  --relation depends_on \
-  --notes "Payment approval depends on the payment API contract"
-```
-
-## CLI Reference
-
-전역 옵션:
-
-```text
---root <path>   Project root. 생략하면 SpecKiwi가 상위 디렉터리를 검색합니다.
---json          stdout에 JSON을 출력합니다.
---no-color      색상 출력을 비활성화합니다.
---quiet         중요하지 않은 사람용 출력을 줄입니다.
---help          도움말을 출력합니다.
---version       버전을 출력합니다.
-```
-
-읽기 명령:
-
-| Command | Purpose |
-|---|---|
-| `speckiwi validate [--fail-on-warning] [--json]` | SRS workspace를 검증합니다. |
-| `speckiwi extract [--include-markdown] [--json]` | 정규화된 requirement record를 추출합니다. |
-| `speckiwi list [--target T] [--status S] [--type T] [--scope S] [--tag T] [--format F] [--json]` | 필터로 요구사항을 나열합니다. |
-| `speckiwi show <id> [--markdown] [--json]` | 단일 요구사항을 표시합니다. |
-| `speckiwi targets [--json]` | target map 항목을 표시합니다. |
-| `speckiwi active-target [--json]` | 현재 active target과 요약을 표시합니다. |
-| `speckiwi completed-work [--target T] [--scope S] [--since YYYY-MM-DD] [--limit N] [--order latest\|file] [--json]` | Completed Work Log row를 표시합니다. |
-| `speckiwi scopes [--json]` | scope map 항목을 표시합니다. |
-| `speckiwi summary [--target T] [--markdown] [--json]` | target을 요약합니다. |
-| `speckiwi links check [--json]` | local link와 requirement reference를 확인합니다. |
-
-변경 명령:
-
-| Command | Purpose |
-|---|---|
-| `speckiwi init [--target T] [--scope Name:PREFIX] [--force] [--json]` | SRS skeleton과 두 agent instruction 파일을 생성하거나 갱신합니다. |
-| `speckiwi set-active-target <target> [--dry-run] [--json]` | index의 `Active Target`과 Target Map active row를 갱신합니다. |
-| `speckiwi add-completed-work --date YYYY-MM-DD --summary S [--target T] [--scope S] [--requirements IDS] [--report PATH]... [--allow-incomplete] [--dry-run] [--json]` | reference prevalidation 후 Completed Work Log row를 추가합니다. |
-| `speckiwi add-requirement ...` | 새 requirement block을 추가합니다. |
-| `speckiwi update-status <id> <status> [--json]` | `Status` metadata row를 갱신합니다. |
-| `speckiwi check-ac <id> [AC...] [--all] [--json]` | acceptance criteria를 checked 상태로 표시합니다. |
-| `speckiwi uncheck-ac <id> [AC...] [--all] [--json]` | acceptance criteria를 unchecked 상태로 표시합니다. |
-| `speckiwi add-evidence <id> --type T --reference R [--covers C] [--notes N] [--json]` | Verification Evidence row를 추가합니다. |
-| `speckiwi add-trace <id> --type T --reference R --relation R [--notes N] [--json]` | Trace Links row를 추가합니다. |
-
-허용되는 requirement status:
-
-```text
-planned
-in_progress
-blocked
-implemented
-verified
-discarded
-```
-
-허용되는 target status:
-
-```text
-planned
-active
-completed
-released
-archived
-```
-
-허용되는 requirement type:
-
-```text
-functional
-non_functional
-interface
-data
-security
-performance
-reliability
-observability
-operational
-migration
-constraint
-```
-
-## MCP Server
-
-stdio MCP 서버를 시작합니다.
-
-```sh
-cd /path/to/project
 speckiwi mcp
 ```
 
-명시적 root를 넘길 수도 있습니다.
+또는 명시적으로 root를 지정합니다.
 
 ```sh
 speckiwi --root /path/to/project mcp
 ```
 
-지원되는 transport는 stdio뿐입니다. stdout은 MCP JSON-RPC message 전용이고, log는 stderr에 기록해야 합니다. `--root`를 생략하면 SpecKiwi는 서버 process의 current working directory에서 시작해 `.git` 또는 `docs/spec/00.index.md`를 상위 탐색하여 project root를 결정합니다. 아직 project root가 없거나 `docs/spec/00.index.md`가 없으면 MCP startup이 tool call을 처리하기 전에 `AGENTS.md`와 `CLAUDE.md`를 포함한 기본 SRS 구조를 자동 생성합니다. 명시적 `--root`는 존재하는 디렉터리여야 합니다. 서버 시작 시 project root가 고정되므로 tool input으로 root를 바꾸는 방식은 사용하지 않습니다.
+Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, completed work 기록을 MCP 도구로 수행합니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
 
-읽기 도구:
+## 6. Kiwi Skill 종류
 
-| Tool | Input |
-|---|---|
-| `list_requirements` | `target?`, `status?`, `type?`, `scope?`, `tag?` |
-| `get_requirement` | `id`, `includeMarkdown?` |
-| `validate_spec` | `strict?`, `failOnWarning?`; 현재 workspace를 검증합니다. |
-| `summarize_target` | `target?` |
-| `get_active_target` | 없음 |
-| `list_completed_work` | `target?`, `scope?`, `since?`, `limit?`, `order?` |
+| Skill | 주 용도 |
+| --- | --- |
+| `kiwi-srs` | 신규 요구사항이나 변경 요청을 분석해 SpecKiwi SRS requirement로 등록하거나 기존 requirement와 정합성을 맞춥니다. |
+| `kiwi-srs-from-code` | 기존 코드베이스를 역분석해 scope별 SRS 초안을 생성합니다. |
+| `kiwi-srs-feasibility` | 활성 target의 SRS를 구현 가능성, risk, stability 관점에서 평가합니다. |
+| `kiwi-srs-research` | 모호한 requirement, blocker, 외부 제약, risk를 별도 research 단계로 분석합니다. |
+| `kiwi-planner` | 활성 target requirements를 Phase와 Task로 분해하고 `plan.md`와 sidecar JSON을 생성합니다. |
+| `kiwi-coder` | `kiwi-planner` 산출물을 기준으로 Task 단위 TDD, 구현, 검증, MCP evidence 기록을 수행합니다. |
+| `kiwi-pm` | `kiwi-planner` 계획을 읽고 각 Task를 `kiwi-coder`로 순차 실행하는 coder-loop runner입니다. |
+| `kiwi-srs-sync` | 코드를 먼저 수정한 뒤 `git diff`를 분석해 SRS를 사후 동기화합니다. |
+| `kiwi-commit-auto-push` | Git 변경사항을 requirement evidence와 연결해 commit하고 push까지 진행합니다. |
+| `kiwi-pipeline` | `.kiwi/pipeline.jsonl` 이벤트를 읽어 다음 Kiwi skill 단계를 추천하거나 자동 진행합니다. |
 
-변경 도구:
+같은 skill set은 에이전트별 source tree로 배포됩니다.
 
-| Tool | Input |
-|---|---|
-| `init_project` | `target?`, `scope?`, `force?` |
-| `set_active_target` | `target`, `dryRun?` |
-| `add_completed_work` | `date`, `summary`, `target?`, `scope?`, `requirementIds?`, `reportPaths?`, `allowIncomplete?`, `dryRun?` |
-| `add_requirement` | `type`, `scope`, `target`, `title`, `requirement`, `acceptanceCriteria`, optional metadata |
-| `update_status` | `id`, `status` |
-| `check_acceptance_criteria` | `id`, `acIds`, `checked` |
-| `add_verification_evidence` | `id`, `type`, `reference`, `covers?` |
-| `add_trace_link` | `id`, `type`, `reference`, `relation` |
+| Agent | Source tree | 특징 |
+| --- | --- | --- |
+| Codex | `skills/codex` | Codex skill invocation과 Codex clarification gate 용어에 맞춘 variant입니다. |
+| Claude | `skills/claude` | Claude skill 환경에 맞춘 variant입니다. |
+| OpenCode / Hermes | `skills/etc` | Agent Skills 형식과 local-LLM 사용을 고려한 variant입니다. 기본적으로 단일 evaluator/sub-agent profile을 사용합니다. |
 
-리소스:
+## 7. Skill 사용 파이프라인
 
-```text
-speckiwi://index
-speckiwi://active-target
-speckiwi://completed-work
-speckiwi://completed-work/{target}
-speckiwi://requirements/{id}
-speckiwi://targets/{target}
-speckiwi://scopes/{scope}
+신규 기능이나 변경 요청은 보통 다음 순서로 진행합니다.
+
+```mermaid
+flowchart TD
+    A[사용자 요구사항 또는 작업 아이디어] --> B{출발점 선택}
+    B -->|새 요구사항| C[kiwi-srs<br/>SRS requirement 작성/갱신]
+    B -->|기존 코드에서 역추출| D[kiwi-srs-from-code<br/>코드 기반 SRS 생성]
+    B -->|코드 먼저 수정됨| E[kiwi-srs-sync<br/>git diff 기반 SRS 동기화]
+
+    C --> F[kiwi-srs-feasibility<br/>구현 가능성/stability 평가]
+    D --> F
+    E --> F
+
+    F --> G{블로커 또는 모호성?}
+    G -->|있음| H[kiwi-srs-research<br/>risk/blocker 연구]
+    H --> F
+    G -->|없음| I[kiwi-planner<br/>plan.md + sidecar JSON 생성]
+
+    I --> J[kiwi-pm<br/>Task 실행 오케스트레이션]
+    J --> K[kiwi-coder<br/>Task 단위 TDD/구현/검증]
+    K --> L{남은 Task?}
+    L -->|있음| J
+    L -->|없음| M[SpecKiwi MCP<br/>evidence/status/completed-work 기록]
+    M --> N[kiwi-commit-auto-push<br/>commit + push]
+    N --> O[완료]
+
+    P[kiwi-pipeline] -.이벤트 로그 기반 다음 단계 추천.-> B
+    P -.진행 상태 추적.-> F
+    P -.진행 상태 추적.-> I
+    P -.진행 상태 추적.-> J
+    P -.진행 상태 추적.-> N
 ```
 
-MCP resource는 envelope payload를 사용합니다. 형식은 `{ ok, value, diagnostics, diagnosticsSummary }`이고, resource별 데이터는 `value` 아래에 들어갑니다. completed-work resource는 `value.completedWork`를 사용합니다.
+Task 실행 내부는 TDD를 전제로 합니다.
 
-권장 에이전트 흐름:
-
-```text
-speckiwi://index
--> speckiwi://active-target
--> list_requirements
--> get_requirement(includeMarkdown: true)
--> implement and test
--> add_verification_evidence
--> check_acceptance_criteria
--> update_status
--> validate_spec
--> list_completed_work
+```mermaid
+flowchart TD
+    A[kiwi-planner 산출물<br/>plan.md + sidecar JSON] --> B[kiwi-coder Task 선택]
+    B --> C[관련 REQ/AC 조회<br/>speckiwi MCP]
+    C --> D[Failing test 작성]
+    D --> E[Red 확인]
+    E --> F[최소 구현]
+    F --> G[Green 확인]
+    G --> H[리뷰/정형 검증/회귀 테스트]
+    H --> I{문제 있음?}
+    I -->|있음| F
+    I -->|없음| J[MCP evidence 추가]
+    J --> K[AC check / status update]
+    K --> L[.kiwi 상태와 worklog 갱신]
 ```
 
-## Release와 Baseline Workflow
+## 8. 자주 쓰는 명령
 
-SRS target을 준비 완료로 보기 전에 다음을 실행합니다.
+SRS workspace 검증:
 
 ```sh
+speckiwi validate
+speckiwi validate --fail-on-warning
+speckiwi validate --json
+```
+
+활성 target 확인:
+
+```sh
+speckiwi active-target
+speckiwi summary --target v0.1.0
+```
+
+요구사항 조회:
+
+```sh
+speckiwi list --target v0.1.0
+speckiwi show FR-APP-001 --markdown
+```
+
+완료 작업 조회:
+
+```sh
+speckiwi completed-work --target v0.1.0 --order latest
+```
+
+skill 설치 계획 확인:
+
+```sh
+speckiwi skills install codex all --dry-run --json
+```
+
+## 9. SRS 작업 원칙
+
+- `docs/spec/**/*.srs.md`가 요구사항의 유일한 원본입니다.
+- 요구사항 ID는 사람이 직접 임의로 만들지 말고 SpecKiwi mutation 도구로 생성합니다.
+- Requirement `Status`는 구현/검증 진행 상태를 나타냅니다.
+- Requirement `Stability`는 요구사항 문구의 성숙도와 변경 통제 수준을 나타냅니다.
+- `verified`는 acceptance criteria가 체크되고 verification evidence가 연결된 뒤에만 사용합니다.
+- Kiwi skills는 정상 작업에서 raw Markdown 수정을 SRS mutation 경로로 사용하지 않습니다. MCP 도구가 우선입니다.
+
+## 10. 패키지 개발자용
+
+소스 체크아웃에서 개발할 때:
+
+```sh
+npm ci
 npm run build
+node bin/speckiwi --help
+```
+
+검증 명령:
+
+```sh
 npm run typecheck
 npm run lint
 npm test
 npm run test:coverage
 npm run test:integration
-npm run release:acceptance
 npm run release:check
 ```
 
-target이 승인되면 Target Map에서 `released`로 표시하고 Git tag로 baseline을 기록합니다.
+패키지는 다음 주요 항목을 배포합니다.
 
-```sh
-git tag srs-v1.0.0-baseline
+```text
+bin/
+dist/
+docs/rule/SRS-MD-Rules-v1.0.0.md
+skills/codex/
+skills/claude/
+skills/etc/
 ```
 
-## Development Commands
+## 관련 요구사항
+
+이 README의 skill 설치 및 workflow 설명은 다음 SpecKiwi 요구사항 범위를 문서화합니다.
+
+- `IR-CLI-027`: `speckiwi skills install <agent> <skill|all>` CLI
+- `FR-NODE-016`: Kiwi skill installation core service
+- `FR-FLOW-012`: Kiwi skills require SpecKiwi MCP for normal operation
+- `MIG-FLOW-002`: OpenCode/Hermes용 `skills/etc` migration
+
+---
+
+<a id="english-version"></a>
+
+# SpecKiwi (English)
+
+SpecKiwi is a local-first workflow tool that uses Markdown SRS documents in a Git repository as the canonical requirements source. It gives people and coding agents a shared view of the same requirements through a CLI and a stdio MCP server.
+
+Kiwi skills are coding-agent skills built on top of SpecKiwi. They connect requirements authoring, feasibility review, implementation planning, TDD-based coding, SRS synchronization, commit, and push into one workflow.
+
+## Requirements
+
+- Node.js 22 or newer
+- npm
+- Git
+- One supported coding agent: `codex`, `claude`, `opencode`, or `hermes`
+
+## 1. Install SpecKiwi
+
+First install SpecKiwi in your project.
 
 ```sh
+npm install speckiwi@latest
+```
+
+After local installation, run it with `npx speckiwi`.
+
+```sh
+npx speckiwi --version
+npx speckiwi --help
+```
+
+If you want `speckiwi` available directly on your PATH, install it globally.
+
+```sh
+npm install -g speckiwi@latest
+speckiwi --version
+```
+
+The examples below use the shorter `speckiwi` form. If you only installed it locally, prefix commands with `npx`.
+
+## 2. Initialize a Project
+
+If your Git project does not have a SpecKiwi SRS workspace yet, initialize it at the project root.
+
+```sh
+speckiwi init --target v0.1.0 --scope "App:APP"
+```
+
+This creates the main workspace structure.
+
+```text
+AGENTS.md
+CLAUDE.md
+docs/
+├─ rule/
+│  └─ SRS-MD-Rules-v1.0.0.md
+└─ spec/
+   ├─ 00.index.md
+   ├─ 10.app.srs.md
+   └─ 90.appendix.md
+```
+
+`docs/spec/00.index.md` is the center for targets, scopes, and the completed work log. Requirement bodies are stored in `docs/spec/**/*.srs.md`, which remains the canonical source of truth.
+
+## 3. Install Kiwi Skills
+
+Choose the coding agent you use in the project and install the full Kiwi skill set.
+
+```sh
+speckiwi skills install {coding_agent_type} all
+```
+
+Supported `{coding_agent_type}` values are:
+
+```text
+codex
+claude
+opencode
+hermes
+```
+
+Examples:
+
+```sh
+speckiwi skills install codex all
+speckiwi skills install claude all
+speckiwi skills install opencode all
+speckiwi skills install hermes all --global
+```
+
+Preview the planned install before copying files with `--dry-run --json`.
+
+```sh
+speckiwi skills install codex all --dry-run --json
+```
+
+If the same-identity skill already exists, SpecKiwi treats the operation as `update`. If it is byte-identical, the operation is `skip`. If the destination is not a valid skill or the path is unsafe, the operation becomes `conflict` and no partial install is performed.
+
+## 4. Supported Agents and Destinations
+
+| Agent | Install command | Package source root | Default project destination | Global destination |
+| --- | --- | --- | --- | --- |
+| Codex | `speckiwi skills install codex all` | `skills/codex` | `.agents/skills/<skill>` | `${CODEX_HOME:-$HOME/.codex}/skills/<skill>` |
+| Claude | `speckiwi skills install claude all` | `skills/claude` | `.claude/skills/<skill>` | `$HOME/.claude/skills/<skill>` |
+| OpenCode | `speckiwi skills install opencode all` | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
+| Hermes | `speckiwi skills install hermes all --global` | `skills/etc` | requires `--dest <dir>` | `$HOME/.hermes/skills/<category>/<skill>` |
+
+Options:
+
+| Option | Description |
+| --- | --- |
+| `--global`, `-g` | Install into the user-level skill directory. |
+| `--dest <dir>` | Install into a custom destination root. Each skill is installed under `<dir>/<skill>`. |
+| `--category <name>` | Hermes global install category. The default is `kiwi`. This is valid only for Hermes global installs. |
+| `--dry-run` | Print the install plan without copying files. |
+| `--json` | Print machine-readable JSON output. |
+
+`--global` and `--dest` are mutually exclusive.
+
+## 5. MCP Connection
+
+Normal Kiwi skill workflows require a connected `speckiwi mcp` server.
+
+```sh
+speckiwi mcp
+```
+
+You can also pass an explicit root.
+
+```sh
+speckiwi --root /path/to/project mcp
+```
+
+Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, and completed work logging. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
+
+## 6. Kiwi Skill Types
+
+| Skill | Main purpose |
+| --- | --- |
+| `kiwi-srs` | Analyze a new request or change request and register or align SpecKiwi SRS requirements. |
+| `kiwi-srs-from-code` | Reverse-analyze an existing codebase and generate scope-level SRS drafts. |
+| `kiwi-srs-feasibility` | Evaluate active target requirements for feasibility, risk, and stability. |
+| `kiwi-srs-research` | Research ambiguous requirements, blockers, external constraints, and risks. |
+| `kiwi-planner` | Decompose active target requirements into phases and tasks, producing `plan.md` and sidecar JSON. |
+| `kiwi-coder` | Execute task-level TDD, implementation, verification, and MCP evidence recording from `kiwi-planner` outputs. |
+| `kiwi-pm` | Run a `kiwi-planner` plan by dispatching each task to `kiwi-coder` sequentially. |
+| `kiwi-srs-sync` | Analyze `git diff` after code-first work and synchronize the SRS afterward. |
+| `kiwi-commit-auto-push` | Connect Git changes to requirement evidence, then commit and push. |
+| `kiwi-pipeline` | Read `.kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
+
+The same skill set is distributed through agent-specific source trees.
+
+| Agent | Source tree | Notes |
+| --- | --- | --- |
+| Codex | `skills/codex` | Variant aligned with Codex skill invocation and Codex clarification gate wording. |
+| Claude | `skills/claude` | Variant aligned with the Claude skill environment. |
+| OpenCode / Hermes | `skills/etc` | Agent Skills format variant for local-LLM usage. It defaults to a single evaluator/sub-agent profile. |
+
+## 7. Skill Pipeline
+
+New features and change requests usually follow this flow.
+
+```mermaid
+flowchart TD
+    A[User requirement or work idea] --> B{Choose starting point}
+    B -->|New requirement| C[kiwi-srs<br/>Write/update SRS requirement]
+    B -->|Reverse from existing code| D[kiwi-srs-from-code<br/>Generate SRS from code]
+    B -->|Code changed first| E[kiwi-srs-sync<br/>Sync SRS from git diff]
+
+    C --> F[kiwi-srs-feasibility<br/>Evaluate feasibility/stability]
+    D --> F
+    E --> F
+
+    F --> G{Blocker or ambiguity?}
+    G -->|Yes| H[kiwi-srs-research<br/>Research risk/blocker]
+    H --> F
+    G -->|No| I[kiwi-planner<br/>Create plan.md + sidecar JSON]
+
+    I --> J[kiwi-pm<br/>Orchestrate task execution]
+    J --> K[kiwi-coder<br/>Task-level TDD/implementation/verification]
+    K --> L{More tasks?}
+    L -->|Yes| J
+    L -->|No| M[SpecKiwi MCP<br/>Record evidence/status/completed-work]
+    M --> N[kiwi-commit-auto-push<br/>Commit + push]
+    N --> O[Done]
+
+    P[kiwi-pipeline] -.Recommend next step from event log.-> B
+    P -.Track progress.-> F
+    P -.Track progress.-> I
+    P -.Track progress.-> J
+    P -.Track progress.-> N
+```
+
+Task execution is TDD-first.
+
+```mermaid
+flowchart TD
+    A[kiwi-planner output<br/>plan.md + sidecar JSON] --> B[kiwi-coder selects a task]
+    B --> C[Read related REQ/AC<br/>speckiwi MCP]
+    C --> D[Write failing test]
+    D --> E[Confirm red]
+    E --> F[Implement the smallest change]
+    F --> G[Confirm green]
+    G --> H[Review/formal validation/regression tests]
+    H --> I{Issues?}
+    I -->|Yes| F
+    I -->|No| J[Add MCP evidence]
+    J --> K[Check AC / update status]
+    K --> L[Update .kiwi state and worklog]
+```
+
+## 8. Common Commands
+
+Validate the SRS workspace:
+
+```sh
+speckiwi validate
+speckiwi validate --fail-on-warning
+speckiwi validate --json
+```
+
+Check the active target:
+
+```sh
+speckiwi active-target
+speckiwi summary --target v0.1.0
+```
+
+Read requirements:
+
+```sh
+speckiwi list --target v0.1.0
+speckiwi show FR-APP-001 --markdown
+```
+
+Read completed work:
+
+```sh
+speckiwi completed-work --target v0.1.0 --order latest
+```
+
+Preview skill installation:
+
+```sh
+speckiwi skills install codex all --dry-run --json
+```
+
+## 9. SRS Working Principles
+
+- `docs/spec/**/*.srs.md` is the only canonical requirements source.
+- Do not manually invent requirement IDs; use SpecKiwi mutation tools.
+- Requirement `Status` tracks implementation and verification progress.
+- Requirement `Stability` tracks the maturity and change-control level of the requirement text.
+- Use `verified` only after acceptance criteria are checked and verification evidence is linked.
+- Kiwi skills do not use raw Markdown edits as the normal SRS mutation path. MCP tools come first.
+
+## 10. Package Development
+
+From a source checkout:
+
+```sh
+npm ci
 npm run build
+node bin/speckiwi --help
+```
+
+Validation commands:
+
+```sh
 npm run typecheck
 npm run lint
 npm test
 npm run test:coverage
 npm run test:integration
-npm run release:acceptance
 npm run release:check
-npm run perf:srs
 ```
 
-## Package API
-
-패키지는 다음 ESM entry point를 제공합니다.
+The package distributes these main artifacts.
 
 ```text
-speckiwi
-speckiwi/cli
-speckiwi/cli/command
-speckiwi/core/result
-speckiwi/core/types
-speckiwi/mcp/server
+bin/
+dist/
+docs/rule/SRS-MD-Rules-v1.0.0.md
+skills/codex/
+skills/claude/
+skills/etc/
 ```
 
-CLI와 MCP 서버는 안정적인 사용자-facing interface입니다. JSON 명령 출력은 Markdown SRS에서 파생된 view로 취급하고, 별도 source of truth로 사용하지 않습니다.
+## Related Requirements
 
-## SpecKiwi가 하지 않는 일
+The skill installation and workflow documentation in this README maps to these SpecKiwi requirements.
 
-- YAML requirement file을 관리하지 않습니다.
-- YAML front matter를 사용하지 않습니다.
-- 데이터베이스나 background requirements server를 실행하지 않습니다.
-- 현재 release line에서 HTTP MCP transport를 제공하지 않습니다.
-- 생성된 JSON을 canonical data로 만들지 않습니다.
-- evidence를 대신 만들어주지 않습니다. Evidence는 실제 test, code, PR, review, analysis, demo, 운영 기록을 가리켜야 합니다.
+- `IR-CLI-027`: `speckiwi skills install <agent> <skill|all>` CLI
+- `FR-NODE-016`: Kiwi skill installation core service
+- `FR-FLOW-012`: Kiwi skills require SpecKiwi MCP for normal operation
+- `MIG-FLOW-002`: `skills/etc` migration for OpenCode and Hermes
