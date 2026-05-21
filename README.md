@@ -163,51 +163,51 @@ Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance 
 
 ```mermaid
 flowchart TD
-    A[사용자 요구사항 또는 작업 아이디어] --> B{출발점 선택}
-    B -->|새 요구사항| C[kiwi-srs<br/>SRS requirement 작성/갱신]
-    B -->|기존 코드에서 역추출| D[kiwi-srs-from-code<br/>코드 기반 SRS 생성]
-    B -->|코드 먼저 수정됨| E[kiwi-srs-sync<br/>git diff 기반 SRS 동기화]
+    A["사용자 요구사항 또는 작업 아이디어"] --> B{"출발점 선택"}
+    B -->|새 요구사항| C["kiwi-srs: SRS requirement 작성/갱신"]
+    B -->|기존 코드에서 역추출| D["kiwi-srs-from-code: 코드 기반 SRS 생성"]
+    B -->|코드 먼저 수정됨| E["kiwi-srs-sync: git diff 기반 SRS 동기화"]
 
-    C --> F[kiwi-srs-feasibility<br/>구현 가능성/stability 평가]
+    C --> F["kiwi-srs-feasibility: 구현 가능성/stability 평가"]
     D --> F
     E --> F
 
-    F --> G{블로커 또는 모호성?}
-    G -->|있음| H[kiwi-srs-research<br/>risk/blocker 연구]
+    F --> G{"블로커 또는 모호성?"}
+    G -->|있음| H["kiwi-srs-research: risk/blocker 연구"]
     H --> F
-    G -->|없음| I[kiwi-planner<br/>plan.md + sidecar JSON 생성]
+    G -->|없음| I["kiwi-planner: plan.md + sidecar JSON 생성"]
 
-    I --> J[kiwi-pm<br/>Task 실행 오케스트레이션]
-    J --> K[kiwi-coder<br/>Task 단위 TDD/구현/검증]
-    K --> L{남은 Task?}
+    I --> J["kiwi-pm: Task 실행 오케스트레이션"]
+    J --> K["kiwi-coder: Task 단위 TDD/구현/검증"]
+    K --> L{"남은 Task?"}
     L -->|있음| J
-    L -->|없음| M[SpecKiwi MCP<br/>evidence/status/completed-work 기록]
-    M --> N[kiwi-commit-auto-push<br/>commit + push]
-    N --> O[완료]
+    L -->|없음| M["SpecKiwi MCP: evidence/status/completed-work 기록"]
+    M --> N["kiwi-commit-auto-push: commit + push"]
+    N --> O["완료"]
 
-    P[kiwi-pipeline] -.이벤트 로그 기반 다음 단계 추천.-> B
-    P -.진행 상태 추적.-> F
-    P -.진행 상태 추적.-> I
-    P -.진행 상태 추적.-> J
-    P -.진행 상태 추적.-> N
+    P["kiwi-pipeline: 이벤트 기반 다음 단계 추천/추적"] -.-> B
+    P -.-> F
+    P -.-> I
+    P -.-> J
+    P -.-> N
 ```
 
 Task 실행 내부는 TDD를 전제로 합니다.
 
 ```mermaid
 flowchart TD
-    A[kiwi-planner 산출물<br/>plan.md + sidecar JSON] --> B[kiwi-coder Task 선택]
-    B --> C[관련 REQ/AC 조회<br/>speckiwi MCP]
-    C --> D[Failing test 작성]
-    D --> E[Red 확인]
-    E --> F[최소 구현]
-    F --> G[Green 확인]
-    G --> H[리뷰/정형 검증/회귀 테스트]
-    H --> I{문제 있음?}
+    A["kiwi-planner 산출물: plan.md + sidecar JSON"] --> B["kiwi-coder Task 선택"]
+    B --> C["관련 REQ/AC 조회: speckiwi MCP"]
+    C --> D["Failing test 작성"]
+    D --> E["Red 확인"]
+    E --> F["최소 구현"]
+    F --> G["Green 확인"]
+    G --> H["리뷰/정형 검증/회귀 테스트"]
+    H --> I{"문제 있음?"}
     I -->|있음| F
-    I -->|없음| J[MCP evidence 추가]
-    J --> K[AC check / status update]
-    K --> L[.kiwi 상태와 worklog 갱신]
+    I -->|없음| J["MCP evidence 추가"]
+    J --> K["AC check / status update"]
+    K --> L[".kiwi 상태와 worklog 갱신"]
 ```
 
 ## 8. 자주 쓰는 명령
@@ -461,51 +461,51 @@ New features and change requests usually follow this flow.
 
 ```mermaid
 flowchart TD
-    A[User requirement or work idea] --> B{Choose starting point}
-    B -->|New requirement| C[kiwi-srs<br/>Write/update SRS requirement]
-    B -->|Reverse from existing code| D[kiwi-srs-from-code<br/>Generate SRS from code]
-    B -->|Code changed first| E[kiwi-srs-sync<br/>Sync SRS from git diff]
+    A["User requirement or work idea"] --> B{"Choose starting point"}
+    B -->|New requirement| C["kiwi-srs: Write/update SRS requirement"]
+    B -->|Reverse from existing code| D["kiwi-srs-from-code: Generate SRS from code"]
+    B -->|Code changed first| E["kiwi-srs-sync: Sync SRS from git diff"]
 
-    C --> F[kiwi-srs-feasibility<br/>Evaluate feasibility/stability]
+    C --> F["kiwi-srs-feasibility: Evaluate feasibility/stability"]
     D --> F
     E --> F
 
-    F --> G{Blocker or ambiguity?}
-    G -->|Yes| H[kiwi-srs-research<br/>Research risk/blocker]
+    F --> G{"Blocker or ambiguity?"}
+    G -->|Yes| H["kiwi-srs-research: Research risk/blocker"]
     H --> F
-    G -->|No| I[kiwi-planner<br/>Create plan.md + sidecar JSON]
+    G -->|No| I["kiwi-planner: Create plan.md + sidecar JSON"]
 
-    I --> J[kiwi-pm<br/>Orchestrate task execution]
-    J --> K[kiwi-coder<br/>Task-level TDD/implementation/verification]
-    K --> L{More tasks?}
+    I --> J["kiwi-pm: Orchestrate task execution"]
+    J --> K["kiwi-coder: Task-level TDD/implementation/verification"]
+    K --> L{"More tasks?"}
     L -->|Yes| J
-    L -->|No| M[SpecKiwi MCP<br/>Record evidence/status/completed-work]
-    M --> N[kiwi-commit-auto-push<br/>Commit + push]
-    N --> O[Done]
+    L -->|No| M["SpecKiwi MCP: Record evidence/status/completed-work"]
+    M --> N["kiwi-commit-auto-push: Commit + push"]
+    N --> O["Done"]
 
-    P[kiwi-pipeline] -.Recommend next step from event log.-> B
-    P -.Track progress.-> F
-    P -.Track progress.-> I
-    P -.Track progress.-> J
-    P -.Track progress.-> N
+    P["kiwi-pipeline: Recommend next step and track progress"] -.-> B
+    P -.-> F
+    P -.-> I
+    P -.-> J
+    P -.-> N
 ```
 
 Task execution is TDD-first.
 
 ```mermaid
 flowchart TD
-    A[kiwi-planner output<br/>plan.md + sidecar JSON] --> B[kiwi-coder selects a task]
-    B --> C[Read related REQ/AC<br/>speckiwi MCP]
-    C --> D[Write failing test]
-    D --> E[Confirm red]
-    E --> F[Implement the smallest change]
-    F --> G[Confirm green]
-    G --> H[Review/formal validation/regression tests]
-    H --> I{Issues?}
+    A["kiwi-planner output: plan.md + sidecar JSON"] --> B["kiwi-coder selects a task"]
+    B --> C["Read related REQ/AC: speckiwi MCP"]
+    C --> D["Write failing test"]
+    D --> E["Confirm red"]
+    E --> F["Implement the smallest change"]
+    F --> G["Confirm green"]
+    G --> H["Review/formal validation/regression tests"]
+    H --> I{"Issues?"}
     I -->|Yes| F
-    I -->|No| J[Add MCP evidence]
-    J --> K[Check AC / update status]
-    K --> L[Update .kiwi state and worklog]
+    I -->|No| J["Add MCP evidence"]
+    J --> K["Check AC / update status"]
+    K --> L["Update .kiwi state and worklog"]
 ```
 
 ## 8. Common Commands
