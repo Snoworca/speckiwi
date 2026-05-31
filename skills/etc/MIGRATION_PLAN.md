@@ -37,12 +37,16 @@ Do not edit `skills/codex` or `skills/claude` during this migration.
 | `skills/codex/kiwi-planner` | `skills/etc/kiwi-planner` | Copy, keep `scripts/validator.mjs`, rewrite evaluator topology |
 | `skills/codex/kiwi-coder` | `skills/etc/kiwi-coder` | Copy and rewrite TDD/review topology for single evaluator |
 | `skills/codex/kiwi-commit-auto-push` | `skills/etc/kiwi-commit-auto-push` | Copy and rewrite commit evaluator topology |
+| `skills/codex/kiwi-commit-auto-pr` | `skills/etc/kiwi-commit-auto-pr` | Copy and rewrite PR workflow for single-evaluator local-LLM topology |
+| `skills/codex/kiwi-hot-fix` | `skills/etc/kiwi-hot-fix` | Copy and rewrite urgent hot-fix workflow for MCP-required sync and single evaluator |
+| `skills/codex/kiwi-review-fix-loop` | `skills/etc/kiwi-review-fix-loop` | Copy and rewrite review/fix/close-REQ workflow with per-REQ MCP evidence gates |
 | `skills/codex/kiwi-pipeline` | `skills/etc/kiwi-pipeline` | Copy and rewrite invocation/clarification wording |
 | `skills/codex/kiwi-srs-from-code` | `skills/etc/kiwi-srs-from-code` | Copy and rewrite scope/evaluator fanout policy |
 | `skills/codex/kiwi-srs-feasibility` | `skills/etc/kiwi-srs-feasibility` | Copy and rewrite feasibility/research fanout policy |
 | `skills/codex/_shared/kiwi/pipeline-event.md` | `skills/etc/_shared/kiwi/pipeline-event.md` | Copy and rewrite as etc-local shared reference |
 | `skills/codex/_shared/kiwi/pipeline-v1.md` | `skills/etc/_shared/kiwi/pipeline-v1.md` | Copy and rewrite as etc-local shared reference |
 | `skills/codex/_shared/kiwi/feasibility-policy-schema-v1.md` | `skills/etc/_shared/kiwi/feasibility-policy-schema-v1.md` | Copy and rewrite as etc-local shared reference |
+| `skills/codex/_shared/kiwi/auto-option.md` | `skills/etc/_shared/kiwi/auto-option.md` | Add etc-local `--auto` SSOT with no parallel decision fanout |
 | new | `skills/etc/_shared/kiwi/local-llm-profile.md` | Add shared SSOT for MCP-required, default-max, single-worker execution |
 
 Excluded from etc:
@@ -50,6 +54,7 @@ Excluded from etc:
 - `skills/codex/MIGRATION_PLAN.md` because this file is the etc migration plan.
 - `skills/codex/**/agents/openai.yaml` because OpenAI UI metadata is Codex-specific and not required for OpenCode/Hermes.
 - `skills/codex/_shared/kiwi/mini-option.md` because local-LLM etc skills default to max mode rather than a mini/standard override.
+- `skills/codex/**/agents/openai.yaml` for the 2026-05-26 delta skills because OpenAI UI metadata is Codex-specific.
 
 ## Rewrite Rules
 
@@ -62,6 +67,8 @@ Excluded from etc:
 | `agents/openai.yaml` | Do not copy |
 | `--mini`, `--squirrel` | Remove as active etc-mode controls; local-LLM profile defaults to `--max` |
 | `standard×N`, `high-reasoning×N`, parallel evaluator/researcher fanout | Collapse to single delegated worker/evaluator used sequentially |
+| Codex `--auto --max` multi-worker decision merge | Replace with one isolated decision worker; `--max` is already default |
+| missing `critical_gates[]` | Add per-skill gate table; critical matches always halt |
 | raw Markdown SRS mutation guidance | Replace with MCP-required guidance; CLI diagnostics/remediation is only diagnostic/remediation |
 | `skills/codex` shared paths | Rewrite to `skills/etc` or etc-relative paths |
 
@@ -88,6 +95,11 @@ rg -n -g "*.md" -g "SKILL.md" -g "!MIGRATION_PLAN.md" "Codex|Claude|OpenAI|opena
 rg -n -g "*.md" -g "SKILL.md" "speckiwi mcp|MCP|local-LLM|single evaluator|three consecutive|3회 연속|--max" skills/etc
 ```
 
+```powershell
+node bin/speckiwi --root . skills install opencode all --dest <temp-dest> --dry-run --json
+node bin/speckiwi --root . skills install hermes all --global --category kiwi --dry-run --json
+```
+
 ## Done Criteria
 
 - `skills/etc` contains the selected Kiwi skills and shared resources.
@@ -96,4 +108,19 @@ rg -n -g "*.md" -g "SKILL.md" "speckiwi mcp|MCP|local-LLM|single evaluator|three
 - Every etc skill exposes uppercase `SKILL.md` with matching `name`.
 - Every etc skill states `speckiwi mcp` is required for normal operation.
 - Every etc skill states local-LLM mode defaults to `--max`, disables multi-subagent fanout, and uses one delegated worker/evaluator at a time.
+- Every etc skill that supports `--auto` declares `critical_gates[]` and references `_shared/kiwi/auto-option.md`.
+- `skills/etc` includes `kiwi-commit-auto-pr`, `kiwi-hot-fix`, and `kiwi-review-fix-loop`, and shared pipeline references route them.
 - Validation includes deterministic commands and one evaluator subagent loop that reaches three consecutive no-improvement evaluations.
+
+## 2026-05-27 Delta Application
+
+The Codex 2026-05-26 delta is now canonical for OpenCode/Hermes local-LLM
+variants:
+
+- Added `skills/etc/_shared/kiwi/auto-option.md`.
+- Added etc-local `kiwi-commit-auto-pr`, `kiwi-hot-fix`, and
+  `kiwi-review-fix-loop` skill folders.
+- Updated every existing etc Kiwi `SKILL.md` to reference the etc `--auto`
+  SSOT and declare per-skill `critical_gates[]`.
+- Updated `pipeline-event.md`, `pipeline-v1.md`, and `kiwi-pipeline/SKILL.md`
+  for the new skill enum and routing.

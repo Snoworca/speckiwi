@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. `--auto-apply` / `--yes-all` still require explicit user-supplied direct-apply flags.
 
 코드 변경(git diff) → 기존 SRS 증분 동기화 스킬. spec-first 가 SSOT 원칙이지만, **현실에서 자주 발생하는 사후 동기화 케이스**를 위한 보조 스킬:
 
@@ -75,6 +76,22 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 | 시니어 재호출 3회 누적 | User clarification gate 4옵션 (draft-keep / partial-apply / force-apply / abandon) |
 | 평가자 재호출 2회 누적 + 동일 finding 잔존 | 동일 |
 | conflict 분류가 2라운드 연속 미해결 | 즉시 사용자 에스컬레이션 |
+
+#### §0.G5 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `apply-all-force-apply` | 대량 SRS mutation 즉시 적용은 비가역 | §0.G1 |
+| `conflict-code-rollback` | 코드 rollback 선택은 destructive 가능 | §0.G3 |
+| `new-scope-creation` | 신규 scope 생성은 `kiwi-srs` 책임 | §0.G3 |
+| `stability-backward-transition` | stability backward transition 금지 | mutation planning |
+| `external-module-impact` | cwd 외부 path 영향 | §0.G2 |
+| `validate-spec-error` | validate_spec ERROR 잔존 시 mutation 금지 | final validation |
+| `draft-req-mutation` | draft REQ 변경은 명시적 사용자 결정 필요 | §0.13 |
+| `deprecated-req-mutation` | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.13 |
+| `frozen-req-mutation` | frozen REQ section/status/stability 변경은 release 정책 위험 | Phase 5 |
+| `conflict-ac-change` | conflict 로 인한 AC 변경은 제품 의미 변경 | §0.G3 |
+| `mcp-unavailable` | normal SRS mutation requires `speckiwi mcp`; CLI diagnostics cannot replace it | Phase 0 |
 
 ---
 

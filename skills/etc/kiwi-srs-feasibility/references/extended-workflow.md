@@ -61,7 +61,7 @@ per-REQ judgement 결과 중 다음을 만족하는 REQ 가 연구 후보:
 
 ### 5.5.2 Subagent 호출 패턴
 
-각 후보 REQ 당 1회 호출 (중복 방지). kiwi-srs-research 내부 토폴로지는 `../_shared/kiwi/local-llm-profile.md` 를 따른다: 한 번에 하나의 위임 worker/evaluator 만 사용하고, 코드/외부/위험 관점은 순차 처리한다. 본 스킬은 호출자 turn 에서 직접 결과를 수신한다.
+각 후보 REQ 당 1회 호출 (중복 방지). kiwi-srs-research 내부 토폴로지는 `../../_shared/kiwi/local-llm-profile.md` 를 따른다: 한 번에 하나의 위임 worker/evaluator 만 사용하고, 코드/외부/위험 관점은 순차 처리한다. 본 스킬은 호출자 turn 에서 직접 결과를 수신한다.
 
 **Mode flag 전달은 채널 1 (위임 worker message token) + 채널 2 (prompt 본문 정확 문자열) 이중 명시** — kiwi-srs-research §0.G6 의 채널 우선순위에 따라 채널 1 이 1차 truth. 채널 2 는 backward-compat 안전망.
 

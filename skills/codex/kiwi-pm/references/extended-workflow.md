@@ -9,8 +9,8 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 4.3 `--auto` 동작
 - 4.4 MCP 미가용 fallback
 - 4.5 의사코드
-- 5. `--auto` 가드레일 + 재개 + 부분 재실행
-- 5.1 severity 가드레일
+- 5. `--auto` decision worker + 재개 + 부분 재실행
+- 5.1 severity policy
 - 5.2 NEEDS_USER 재spawn 상한 (§0.G3 재기재)
 - 5.3 FAILED 3지선다 (§0.G4 재기재)
 - 5.4 `--resume` 동작
@@ -61,14 +61,11 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - target 비어있음 → HALT
 - `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단
 
-### 4.4 MCP 미가용 fallback
+### 4.4 MCP 미가용 처리
 
 1. `list_requirements(target, includeContent: false)` 호출 시도
-2. 실패 시 `speckiwi list --target {target} --json` CLI fallback
-3. CLI 도 실패 시:
-   - interactive → `Codex clarification gate("lifecycle gate 평가 불가 — 진행 여부 결정")` + worklog `lifecycle_gate_mcp_unavailable` 기록
-   - `--auto` → HALT (안전 우선)
-4. 평가 결과는 `state.lifecycle_gate_state.stability_snapshot` 에 저장 (REQ-ID → stability)
+2. 실패 시 정상 SRS read 가 불가능하므로 HALT. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 lifecycle gate 대체 판정에 사용하지 않는다.
+3. 평가 결과는 `state.lifecycle_gate_state.stability_snapshot` 에 저장 (REQ-ID → stability)
 
 ### 4.5 의사코드
 
@@ -79,7 +76,9 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
         RETURN
 
     # 1. 활성 target 확인
-    target = MCP_CALL_OR_CLI("get_active_target", fallback_cli="speckiwi active-target --json")
+    target = MCP_CALL("get_active_target")
+    IF MCP unavailable:
+        HALT("speckiwi mcp unavailable; CLI is diagnostics/remediation only")
     IF NOT target:
         HALT("활성 target 없음. speckiwi set_active_target 으로 지정 후 재실행")
     IF target != state.target_slug AND state.target_slug:
@@ -95,10 +94,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
     TRY:
         reqs = MCP_CALL(list_requirements, target=target, includeContent=False)
     CATCH mcp_unavailable:
-        TRY: reqs = CLI_FALLBACK(f"speckiwi list --target {target} --json")
-        CATCH cli_failed:
-            IF args.auto: HALT("MCP/CLI 모두 미가용, --auto 안전 우선 HALT")
-            ELSE: Codex clarification gate("lifecycle gate 평가 불가, 진행 여부?")
+        HALT("speckiwi mcp unavailable; CLI is diagnostics/remediation only")
 
     # 4. 분류
     stability_snapshot = {}
@@ -150,15 +146,15 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 
 ---
 
-## 5. `--auto` 가드레일 + 재개 + 부분 재실행
+## 5. `--auto` decision worker + 재개 + 부분 재실행
 
-### 5.1 severity 가드레일
+### 5.1 severity policy
 
 | severity | `--auto` 동작 | interactive 동작 |
 |---|---|---|
-| `clarification` | `default_if_auto` 자동 채택 (부재 시 보수적 default) | 사용자에게 옵션 제시 |
-| `business-decision` | **강제 중단** (--auto 무시) — 외부 관찰 가능 변경은 사용자 결정 필요 | 사용자에게 옵션 제시 |
-| `rollback-confirmation` | "YES" 자동 승인 | 사용자에게 옵션 제시 |
+| `clarification` | `../../_shared/kiwi/auto-option.md` decision worker 또는 `default_if_auto` fast path | 사용자에게 옵션 제시 |
+| `business-decision` | critical_gates[] 가 아니면 decision worker 판단. confidence 미달 또는 고위험이면 HALT | 사용자에게 옵션 제시 |
+| `rollback-confirmation` | 좁은 rollback 은 decision worker 또는 기본 승인 가능. 광범위 destructive reset 은 HALT | 사용자에게 옵션 제시 |
 
 **예외 (always HALT, 모드 무관)**:
 - §4 lifecycle gate `draft`/`deprecated`/`frozen` 차단
@@ -219,10 +215,7 @@ FUNCTION HANDLE_QUESTIONS(questions, args):
                     answers[q.id] = q.default_if_auto OR CONSERVATIVE_DEFAULT(q)
                     LOG(f"[auto] {q.id} = {answers[q.id]}")
                 CASE "business-decision":
-                    PRINT(f"⚠️ business-decision — --auto 에서도 중단")
-                    PRINT(f"질문: {q.question}")
-                    PRINT(f"근거: {q.context}")
-                    answers[q.id] = Codex clarification gate(q)   # HALT 후 사용자 개입
+                    answers[q.id] = AUTO_DECISION_WORKER_OR_HALT(q, critical_gates)
                 CASE "rollback-confirmation":
                     answers[q.id] = "YES"
                     LOG(f"[auto] {q.id} = YES (rollback 자동 승인)")
@@ -554,11 +547,11 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 | 자식 JSON 파싱 실패 | 1회 재spawn 시 "단일 JSON 만" 강조 재주입, 실패 시 FAILED |
 | 자식이 빈 응답 / 산문만 반환 | JSON 파싱 실패와 동일 처리 |
 | `pm-state.json` 손상 (parse error) | `.bak` 복구 시도 → 실패 시 사용자 동의 후 새 상태 생성 |
-| MCP 미가용 (lifecycle gate read) | speckiwi CLI fallback → 둘 다 실패 시 사용자 진행 동의 또는 `--auto` HALT (§4.4) |
+| MCP 미가용 (lifecycle gate read) | 정상 SRS read 불가이므로 HALT. CLI 는 진단/복구 안내에만 사용 (§4.4) |
 | MCP 미가용 (T-final update_status) | `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내 |
 | `update_status` transition guard 거부 (MCP 응답 reject) | catch → `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내. 강제 우회 없음. (`update_status` MCP 에 dryRun 옵션 없음 — 사전 시뮬레이션 불가, 호출 시점에 거부 가능성 catch) |
 | 자식이 `update_status` backward 시도 | kiwi-coder §0.G5 자체 차단. PM 무대응 |
-| `--auto` + business-decision NEEDS_USER | HALT 후 사용자 대화 복귀 |
+| `--auto` + business-decision NEEDS_USER | critical_gates[] 매칭 시 HALT, 아니면 decision worker |
 | `--auto` + lifecycle gate `draft` | 자동 HALT (§5.1 예외) |
 | plan/sidecar SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
 | `pm.lock` 30분 stale | 자동 해제 + 경고 log |
@@ -581,7 +574,7 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 | §11.6 비용 추적 (subprocess usage) | **제거** | 서브에이전트 usage 노출 정책은 런타임에 따름 — v0.2 후보 |
 | §15 plan.md 체크박스 + §15.8 checklist.md 폴백 | **유지** | 매칭 패턴 그대로 (§6.1) |
 | 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
-| `--auto` severity 가드레일 | **유지** | clarification/business-decision/rollback-confirmation |
+| `--auto` decision worker | **갱신** | clarification/business-decision/rollback-confirmation + critical_gates[] |
 | `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
 | `--max` / `--ultra` / `--no-self-heal` | **제거** | `--mini` 만 도입 (kiwi 시리즈 표준) |
 | `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
@@ -647,7 +640,7 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md SIDECAR_PATH=docs/plans/...plan.json
 
 1. **부팅 lifecycle gate** — speckiwi `list_requirements` read, Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 2. **Task 순차 spawn + 3상태 프로토콜** — sub-agent child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (§3)
-3. **`--auto` severity 가드레일** — clarification 자동 / business-decision 강제 HALT / rollback-confirmation 자동 승인 (§5.1)
+3. **`--auto` decision worker** — 공용 auto-option 정책. critical_gates[] 만 강제 HALT (§5.1)
 4. **plan.md 체크박스 + checklist.md 폴백** — 중앙 집중 관리, 자식 수정 금지 (§6.1)
 5. **T-final REQ status 마무리** — 모든 trace Task done 인 REQ 에 한해 `update_status(id, "implemented")` 일괄 + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
 6. **보고서 작성 + doculight MCP 표시** — 8섹션 마크다운 + (가용 시) `open_markdown` (§6.3)
@@ -678,7 +671,7 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md SIDECAR_PATH=docs/plans/...plan.json
 
 - `skill`: `"kiwi-pm"`
 - `status`: 모든 Task 완료 + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 = `NEEDS_USER`; Task FAILED 잔존 = `FAILED`
-- `next_hint`: 통상 `"kiwi-commit-auto-push"` (구현 완료)
+- `next_hint`: 통상 `"kiwi-review-fix-loop"` (close 검증 권고) 또는 `"kiwi-commit-auto-push"` (구현 완료)
 - `req_ids`: T-final 에서 `update_status("implemented")` 호출한 REQ-ID 배열
 - `artifacts.plan_file`: 입력 plan.md 경로
 - `artifacts.sidecar_file`: 입력 sidecar.json 경로

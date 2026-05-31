@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for commit and push workflows li
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 하고, 관련 GitHub issue 를 감지해 자동으로 닫고 코멘트한다. `git-commit-auto-push` 의 차별점:
 
@@ -329,6 +330,16 @@ issue: #N Refs (참조만, 미해결 코멘트 등록)
 - 민감 파일 자동 제외
 - 시그니처 0건 강제 (project signature-ban instruction)
 - **이슈 코멘트 본문도 시그니처 0건** (커밋 메시지와 동일 정책)
+
+### `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `stability-frozen-violation` | frozen REQ 변경은 명시 override reason 필요 | extended §11.3 |
+| `push-conflict-rebase-merge-choice` | push 충돌의 rebase/merge 선택은 비가역 위험 | Step 10 |
+| `force-push-forbidden` | force push 는 정책상 절대 금지 | Step 8 / Step 10 |
+| `issue-candidate-ambiguous` | 잘못된 issue trailer 는 GitHub issue close/reference 오동작 위험 | Step 3 |
+| `mcp-unavailable` | REQ trailers require MCP evidence/trace unless `--no-speckiwi` was explicit | speckiwi integration |
 
 ---
 

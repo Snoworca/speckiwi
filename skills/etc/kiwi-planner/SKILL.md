@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for producing implementation pla
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드카 JSON** 두 산출물 SSOT 로 영속화하는 계획 수립 스킬. 코딩·문서·파일 이동·이슈/PR·성능 테스트·인프라·리뷰 등 비-코딩 Task 도 1급으로 다룬다.
 
@@ -140,6 +141,17 @@ User clarification gate 4옵션:
 | green Task 의 `depends_on_task` 에 동일 AC red Task ID 누락 | Phase 3.5 작성자 재spawn | HIGH (axis A11) |
 | Task-level `depends_on_task` 그래프 순환 | 작성자 재spawn | ERROR (validator C24) |
 | refactor Task 가 동일 AC green Task 에 depends 미명시 | 작성자 재spawn | MEDIUM |
+
+#### §0.G9 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 가 Task files[] 또는 trace 에 진입 | §0.G2 |
+| `deferred-coverage-frozen-stable` | frozen/stable AC 미커버를 자동 defer 할 수 없음 | §0.G4 |
+| `force-proceed-after-divergence` | 발산 후 force-proceed 는 사용자 책임 | §0.G5 |
+| `scope-expansion-target-boundary` | target 외 REQ 포함/확장은 범위 변경 | §0.G6 |
+| `strict-tdd-block` | strict TDD 정책 위반은 자동 면제 불가 | §0.G7 |
+| `mcp-unavailable` | active target and requirement reads require `speckiwi mcp`; CLI diagnostics cannot replace normal workflow input | Phase 0 |
 
 ---
 

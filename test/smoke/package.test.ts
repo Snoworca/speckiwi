@@ -89,6 +89,9 @@ describe("package runtime contract", () => {
     expect(files).toContain("skills/codex/kiwi-pm/SKILL.md");
     expect(files).toContain("skills/claude/kiwi-pm/skill.md");
     expect(files).toContain("skills/etc/kiwi-pm/SKILL.md");
+    expect(files).toContain("skills/etc/kiwi-commit-auto-pr/SKILL.md");
+    expect(files).toContain("skills/etc/kiwi-hot-fix/SKILL.md");
+    expect(files).toContain("skills/etc/kiwi-review-fix-loop/SKILL.md");
   }, 120000);
 
   it("runs installed CLI init from an external cwd with full bundled rules", async () => {

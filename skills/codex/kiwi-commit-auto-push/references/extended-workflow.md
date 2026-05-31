@@ -25,7 +25,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - **trailer 키 5종 화이트리스트** (`Closes` / `Refs` / `REQ` / `Task` / `STABILITY-OVERRIDE`) — git native convention(`Closes`/`Refs`) + speckiwi REQ/Task 식별자 + frozen 가드의 4축 책임을 명시적으로 분리. 다른 trailer 키는 평가자가 거부.
 - **MCP type 컨벤션** — `add_trace_link.type="Code"`, `add_verification_evidence.type="commit"`. MCP schema 자체는 free-form string 이지만 kiwi 시리즈 내부 SSOT 일관성을 위해 본 스킬이 위 두 값을 점유. 다른 kiwi 스킬과 충돌 시 본 SKILL.md 만 갱신.
 - **자율 결정 원칙 예외 2건** — frozen REQ 변경 / push 충돌. 둘 다 비가역·고위험이므로 standalone 모드에서는 Codex clarification gate, child 모드에서는 NEEDS_USER bubble-up.
-- **speckiwi 연동 best-effort** — MCP 부재 / mutation 실패 시 commit/push 는 정상 완료. trailer 자체가 텍스트 SSOT 이므로 추후 재처리 가능.
+- **speckiwi 연동 게이트** — REQ trailer 가 없거나 사용자가 `--no-speckiwi` 를 명시한 경우에만 MCP 연동 실패를 warning 으로 둔다. REQ trailer 가 있고 `--no-speckiwi` 가 없으면 MCP trace/evidence 실패는 `FAILED` 또는 `NEEDS_USER` 이며 warning-only `TASK_DONE` 금지.
 
 ### 11.1 입력 컨텍스트 자동 감지 (Step 3 확장)
 
@@ -40,7 +40,7 @@ Step 3.1 의 후보 수집과 **병렬로** speckiwi 컨텍스트를 자동 추�
 | 5 | **branch 명 REQ 패턴** | `^(FR|NFR|CON|REQ)-[A-Z]+-\d+` 정규식 매칭 |
 | 6 | **diff 내 trace anchor** | speckiwi REQ 의 `trace[code].reference` 와 변경 파일 경로 교차 |
 
-`speckiwi` MCP / CLI 모두 부재 시: 출처 4 skip, 1·2·3·5·6 만 사용. 모두 0건이면 REQ trailer 없이 진행 (GitHub issue 처리는 정상 진행).
+`speckiwi mcp` 부재 시: 출처 4 skip, 1·2·3·5·6 만 사용. 자동 매칭 결과가 0건이면 REQ trailer 없이 진행할 수 있다. 사용자가 `--req` 를 명시했거나 diff/plan 에서 REQ trailer 를 붙이기로 결정한 뒤에는 MCP trace/evidence 가 필수이며 CLI 로 대체하지 않는다.
 
 ### 11.2 REQ-ID / Task-ID 매칭 평가 (Step 3.3 확장)
 
@@ -66,7 +66,7 @@ Step 3.3 의 lightweight 평가자에 평가 축 2종 추가:
 | `frozen` | **Codex clarification gate 3옵션** (자율 결정 원칙 예외 — frozen 변경은 비가역·범위 외 위험): (1) `STABILITY-OVERRIDE: <reason>` trailer 추가 후 진행 / (2) commit 중단 / (3) REQ 의 stability 갱신 후 재시도 (`$kiwi-srs-feasibility` 호출 권고) | `NEEDS_USER` 상태로 즉시 bubble-up. `decision_options` 에 standalone 3옵션을 직렬화 (§11.6 NEEDS_USER 스키마 참조). kiwi-pm 의 §0.G2 lifecycle gate 와 정합 |
 | `deprecated` | WARN 만 출력하고 trailer 부착 skip + 정상 진행 | 동일 (TASK_DONE + warning) |
 | `draft` | WARN + trailer 부착 skip (draft REQ 는 commit 대상 부적합 신호) | 동일 (TASK_DONE + warning) |
-| MCP 부재로 stability 미확인 | WARN 만, 정상 진행 | 동일 (TASK_DONE + warning) |
+| MCP 부재로 stability 미확인 | REQ trailer 를 붙이지 않는 경우만 WARN 진행. REQ trailer 를 붙이면 MCP 복구 전 HALT | child mode 에서는 REQ trailer 존재 시 `FAILED` 또는 `NEEDS_USER` |
 
 ### 11.4 커밋 메시지 trailer 다중 부착 순서 SSOT
 
@@ -134,9 +134,10 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우:
 
 #### 11.5.4 MCP 부재 / mutation 실패
 
-- speckiwi MCP / CLI 모두 부재 → §11.5 전체 skip + WARN ("speckiwi 연동 없음, commit trailer 는 부착됨")
-- 단일 mutation 실패 → 해당 호출만 skip + WARN + 다음 mutation 진행 (atomic 보장 안 함)
-- 모든 mutation 실패 후 보고에 명시
+- `--no-speckiwi` 명시 또는 REQ trailer 없음 → §11.5 전체 skip 가능 + WARN
+- REQ trailer 존재 + `--no-speckiwi` 없음 + MCP 부재 → `FAILED` 또는 child-mode `NEEDS_USER`
+- 특정 REQ mutation 실패 → 해당 REQ 를 warning-only 로 두지 말고 `FAILED` 또는 `NEEDS_USER`
+- commit/push 는 이미 성공했을 수 있으므로 payload 의 `partial_state` 에 commit hash / branch / push 상태를 기록한다.
 
 ### 11.6 `$kiwi-coder` / `$kiwi-pm` 와의 인계 프로토콜
 
@@ -197,7 +198,7 @@ KIWI_PM_CONTEXT:
 }
 ```
 
-`severity` enum (kiwi-pm `--auto` 가드레일 정합): `clarification` (자동 진행) / `business-decision` (사용자 강제) / `rollback-confirmation` (자동 승인). frozen / push 충돌은 `business-decision`.
+`severity` enum (kiwi-pm `--auto` 정합): `clarification` / `business-decision` / `rollback-confirmation`. frozen / push 충돌은 `business-decision` 이면서 `../../_shared/kiwi/auto-option.md` critical_gates[] 에 매핑되므로 자동 우회하지 않는다.
 
 **FAILED** (복구 불가 오류):
 ```json
@@ -224,7 +225,8 @@ KIWI_PM_CONTEXT:
 | rebase/merge 파일 충돌 | NEEDS_USER (reason: push_conflict_rebase / push_conflict_merge) |
 | issue 후보 매칭 모호 (예: lightweight 평가가 모든 후보 A 이하) | NEEDS_USER (reason: issue_candidate_ambiguous, severity: clarification — `--auto` 시 자동 trailer skip 처리) |
 | gh CLI 인증 실패 | FAILED (error: gh_cli_not_installed_required, partial_state.commit/push 채움) |
-| speckiwi MCP 호출 모두 실패 | TASK_DONE 진행 (warnings 채움) — speckiwi 연동은 best-effort 이므로 FAILED 처리 아님 |
+| REQ trailer 없음 또는 `--no-speckiwi` 명시 후 speckiwi MCP 호출 실패 | TASK_DONE 진행 (warnings 채움) |
+| REQ trailer 존재 + `--no-speckiwi` 없음 + speckiwi MCP 호출 실패 | FAILED 또는 NEEDS_USER (partial_state 에 commit/push 채움) |
 
 ### 11.7 옵션 매트릭스 (kiwi 전용)
 
@@ -238,6 +240,7 @@ KIWI_PM_CONTEXT:
 | `--task=T-PH001-01` | task 자동 감지 건너뛰고 명시된 task 만 사용 |
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer 자동 부착 (사용자 명시 책임) |
 | `--mini` | kiwi 시리즈 일관성 위해 추가 (현재는 lightweight 평가자가 기본이라 no-op, 미래 standard 평가자 도입 시 활성) |
+| `--auto` | standalone 사용자 게이트에 공용 auto-option decision worker 적용. frozen/push-conflict/force-push/issue ambiguity 는 critical gate |
 
 ### 11.8 보고 양식 확장
 

@@ -1,6 +1,6 @@
 ---
 name: kiwi-planner
-description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase-Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + high-reasoning×1+standard×1 SRS 만족도 평가자 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --mini 로 비용 절감(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트·validator.mjs·TDD 강제 불변)."
+description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase-Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + high-reasoning×1+standard×1 SRS 만족도 평가자 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. --mini 로 비용 절감(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트·validator.mjs·TDD 강제 불변)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-planner v0.6
@@ -36,6 +36,7 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 | §0.16 | **plan.md heading level SSOT**. `§N` 헤딩 = `## §N ...` (h2). `§3.<phase_id>` = `### §3.<phase_id> ...` (h3). `§3.<phase_id>.<task_id>` = `#### §3.<phase_id>.<task_id> ...` (h4). h5 이하 금지. validator 는 h4 정확 매칭으로 task 카운트 |
 | §0.17 | **TDD 원칙 SSOT**. 전역 AGENTS.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 $kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
 | §0.18 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 작성자", "high-reasoning×1 평가자", "high-reasoning×2 평가자" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 모두 불변 |
+| §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. scope ambiguity, deferred coverage, force-proceed, strict TDD block, and external path gates are governed by §0.G9 critical_gates[]. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -137,6 +138,16 @@ Codex clarification gate 4옵션:
 | Task-level `depends_on_task` 그래프 순환 | 작성자 재spawn | ERROR (validator C24) |
 | refactor Task 가 동일 AC green Task 에 depends 미명시 | 작성자 재spawn | MEDIUM |
 
+#### §0.G9 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 가 Task files[] 또는 trace 에 진입 | §0.G2 |
+| `deferred-coverage-frozen-stable` | frozen/stable AC 미커버를 자동 defer 할 수 없음 | §0.G4 |
+| `force-proceed-after-divergence` | 발산 후 force-proceed 는 사용자 책임 | §0.G5 |
+| `scope-expansion-target-boundary` | target 외 REQ 포함/확장은 범위 변경 | §0.G6 |
+| `strict-tdd-block` | strict TDD 정책 위반은 자동 면제 불가 | §0.G7 |
+
 ---
 
 ## 1. 입력 / 출력
@@ -155,6 +166,7 @@ Codex clarification gate 4옵션:
 | "코드 경로 X" | `CODE_PATH` | cwd |
 | "--max", "정밀 평가" | `--max` | off |
 | "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 | "--dry-run", "테스트 실행" | `--dry-run` | off |
 | "--report-channel telegram\|google-chat\|doculight" | `--report-channel` | `doculight` |
 | "--sync-retry-delay-ms N" | `--sync-retry-delay-ms` | 200 |
@@ -209,8 +221,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 판정 순서:
 1. MCP `get_active_target` 성공 → **PASS**
-2. CLI `speckiwi --version` exit 0 → **PASS** (`mode: "cli-fallback"`)
-3. 둘 다 실패 → **HALT** + 설치 가이드 출력 (kiwi-srs §3.0 메시지와 동일 양식)
+2. MCP 실패 → **HALT** + 설치 가이드 출력 (kiwi-srs §3.0 메시지와 동일 양식). CLI `speckiwi --version` 은 진단/복구 안내에만 사용하고 PASS 대체 조건으로 삼지 않는다.
 
 기록: `preflight.json: { mcp, cli, halted }`.
 
@@ -218,8 +229,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 1. `TARGET` 인자 → 최우선
 2. `get_active_target` → 활성 채택
-3. CLI `speckiwi targets --json` 단일 등록 → 자동 채택 + 안내
-4. Codex clarification gate → "어느 target 의 계획을 수립하시겠습니까?"
+3. MCP 로 target 을 확인할 수 없으면 Codex clarification gate 로 명시 target 재실행을 요청하거나 MCP 복구 후 재시도한다. CLI target 조회는 진단 출력에만 사용한다.
 
 ### 3.2 REQ 로드 + Stability 분류
 

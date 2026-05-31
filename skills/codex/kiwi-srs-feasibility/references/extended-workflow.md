@@ -37,7 +37,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 다음 단계
 - 비용 (--enable-research 활성 시)
 - 보고 채널
-- 12. MCP / CLI fallback
+- 12. MCP availability and remediation
 - 13. 수렴 기준 (Phase 8 객관 메트릭)
 - 14. 주의사항
 - 15. 파이프라인 위치
@@ -549,17 +549,22 @@ open_markdown({
 
 ---
 
-## 12. MCP / CLI fallback
+## 12. MCP availability and remediation
 
-| 작업 | MCP | CLI fallback |
+Normal target-scoped SRS reads, mutations, status/stability changes, evidence,
+trace links, and completed-work logging require `speckiwi mcp`. CLI commands may
+diagnose installation/version/configuration or help the user restore MCP, but
+they are not normal fallback mutation paths.
+
+| 작업 | MCP | CLI diagnostic only |
 |---|---|---|
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| Target 활성화 | `set_active_target` | `speckiwi set-active-target <t>` |
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
-| REQ 목록 | `list_requirements` | `speckiwi list --target <t> --json` |
-| **Stability 변경** | **`update_stability`** | **`speckiwi update-stability <id> <stability> --reason ... [--dry-run]`** |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary --target <t> --json` |
+| Active target | `get_active_target` | 설치/버전/설정 확인만 |
+| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
+| REQ 목록 | `list_requirements` | 설치/버전/설정 확인만 |
+| **Stability 변경** | **`update_stability`** | **설치/버전/설정 확인만** |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
 
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: kiwi-planner
-description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase>Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 Sonnet 사전조사 병렬 + Opus 시니어 작성자 + Opus×1+Sonnet×1 SRS 만족도 평가자 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --mini 로 비용 절감(모든 Opus→Sonnet override, `_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트·validator.mjs·TDD 강제 불변)."
+description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase와 Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 Sonnet 사전조사 병렬 + Opus 시니어 작성자 + Opus×1+Sonnet×1 SRS 만족도 평가자 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --mini 로 비용 절감(모든 Opus→Sonnet override, `_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트·validator.mjs·TDD 강제 불변)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-planner v0.6
 
-target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드카 JSON** 두 산출물 SSOT 로 영속화하는 계획 수립 스킬. 코딩·문서·파일 이동·이슈/PR·성능 테스트·인프라·리뷰 등 비-코딩 Task 도 1급으로 다룬다.
+target 활성 REQ 전수를 Phase와 Task 구조로 분해해 **plan.md + 사이드카 JSON** 두 산출물 SSOT 로 영속화하는 계획 수립 스킬. 코딩·문서·파일 이동·이슈/PR·성능 테스트·인프라·리뷰 등 비-코딩 Task 도 1급으로 다룬다.
 
 **규칙 진술 원칙**: 본 문서의 모든 규칙은 현재 적용되는 동작만 declarative 하게 기술한다. 연혁/정정은 git history 로 추적한다 (본문에 변경 이력 섹션 없음).
 
@@ -33,6 +33,7 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 | §0.16 | **plan.md heading level SSOT**. `§N` 헤딩 = `## §N ...` (h2). `§3.<phase_id>` = `### §3.<phase_id> ...` (h3). `§3.<phase_id>.<task_id>` = `#### §3.<phase_id>.<task_id> ...` (h4). h5 이하 금지. validator 는 h4 정확 매칭으로 task 카운트 |
 | §0.17 | **TDD 원칙 SSOT**. 전역 CLAUDE.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 /kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
 | §0.18 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "Opus 시니어 작성자", "Opus×1 평가자", "Opus×2 평가자" 등 Opus 인용은 모두 Sonnet 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 모두 불변 |
+| §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -156,6 +157,7 @@ AskUserQuestion 4옵션:
 | "--report-channel telegram\|google-chat\|doculight" | `--report-channel` | `doculight` |
 | "--sync-retry-delay-ms N" | `--sync-retry-delay-ms` | 200 |
 | "TDD 엄격", "면제 불허", "TDD 완화", "TDD off" | `--tdd-policy=strict\|relaxed\|disabled` | `relaxed` (§0.17, §0.G7) |
+| "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
 
 ### 1.3 출력
 
@@ -183,6 +185,18 @@ AskUserQuestion 4옵션:
 - 보고 `mode: "dry-run"` 명시
 - `outputs/proposed-plan/` 외 디렉토리 mutation 금지
 
+### 1.5 `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `frozen-stable-ac-uncovered` | frozen/stable REQ AC 미커버 시 `accept-as-deferred` 가 frozen REQ AC 유실 위험을 만든다 — 비가역 거버넌스 결정 | §0.G4 |
+| `improvement-loop-force-proceed` | 개선 루프 발산 시 `force-proceed` 는 mutation 전수 실행 + 사용자 책임 표명 필요 | §0.G5 |
+| `scope-boundary-expand-scope` | `task.req_ids` 가 target 외 ID 검출 시 `expand-scope` 는 planner 재실행 + TARGET 변경 — 거버넌스 결정 | §0.G6 |
+| `tdd-policy-strict-block` | `--tdd-policy=strict` 일 때 `block` 결정은 정책 위반 강제 차단이며 사용자 결정 의무 | §0.G7 |
+| `external-module-impact` | cwd 외부 path Task `files[]` 진입 — 외부 시스템 비가역 변경 | §0.G2 |
+
 ---
 
 ## 2. Phase 흐름
@@ -190,7 +204,7 @@ AskUserQuestion 4옵션:
 ```
 Phase 0  : Bootstrap (preflight, TARGET 확인, list_requirements, Stability 분류)
 Phase 1  : Pre-investigation (Sonnet × 3 병렬: intent / code-context / srs-mapping)
-Phase 2  : Plan drafting (Opus 시니어 — Phase>Task 분해, plan.md + 사이드카 동시 작성)
+Phase 2  : Plan drafting (Opus 시니어 — Phase와 Task 분해, plan.md + 사이드카 동시 작성)
 Phase 3  : SRS-satisfaction evaluation (Opus×1 + Sonnet×1 병렬; Max: Opus×2+Sonnet×1)
 Phase 3.5: Improvement loop → Phase 2 또는 Phase 4
 Phase 4  : Integrity validation (validator.mjs 실행)
@@ -304,7 +318,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 - target goal · `intent.json` · `code_context.json` · `srs_mapping.json`
 - 작성 규약: §0 전체 + §9 plan.md 스키마 + §10 사이드카 스키마
-- 시니어는 **plan.md 와 사이드카 JSON 을 동시에 생성** (Phase>Task 구조 일관성 보장)
+- 시니어는 **plan.md 와 사이드카 JSON 을 동시에 생성** (Phase와 Task 구조 일관성 보장)
 
 ### 5.2 Phase 분해 원칙
 

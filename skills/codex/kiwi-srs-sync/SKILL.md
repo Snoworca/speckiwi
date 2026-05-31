@@ -31,13 +31,14 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.6 | **할루시네이션 금지**. 존재하지 않는 함수·파일·CVE·테스트 항목 추가 금지. 사실 위조 거절 + `rejected_findings.log` |
 | §0.7 | **외부 모듈 수정 금지**. cwd 외부 path 가 diff 에 진입 시 즉시 §0.G2 발동 |
 | §0.8 | **시그니처 금지** (project signature-ban instruction). 커밋·SRS·산출물 어디에도 AI 식별 정보 금지 |
-| §0.9 | **speckiwi MCP 우선 + CLI fallback**. MCP 부재 시 `speckiwi` CLI 사용. 둘 다 실패 시 HALT |
+| §0.9 | **speckiwi MCP 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 fallback 이 아니다. MCP 부재 시 HALT |
 | §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
 | §0.11 | **4방향 분류 SSOT** (kiwi-srs §3.3 계승). 모든 변경 단위는 `conflict` / `update` / `new-feature` / `new-scope` 중 정확히 1개로 분류. `unclassified` 허용 안 함 (사용자 게이트 발동) |
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 Codex clarification gate 단일 호출 분해 |
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
 | §0.15 | **`--mini` 옵션 SSOT (v0.2 마이그레이션)**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. **정규명은 `--mini`**, 기존 `--squirrel` 은 v0.2 까지 deprecated alias 로 유지 (mini-option.md §10). `--mini` 활성 시 시니어 분석가 / 평가자 high-reasoning 축의 high-reasoning 인용을 standard 으로 read-time replace (평가자는 standard×2 토폴로지 적용). 3 standard 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto-apply` / `--yes-all` 은 사용자가 직접 명시했을 때만 dry-run 승인 단계 자체를 skip 하는 직접 적용 옵션이고, 부모 `--auto` 로 암묵 활성화되지 않는다. `--auto` 는 사용자 게이트를 decision worker 로 판단한다. 동시 명시 시 직접 사용자 입력으로 확인된 `--auto-apply` / `--yes-all` 의 직접 적용 의미가 우선이다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -46,7 +47,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | IF | THEN |
 |---|---|
 | 평가자 PASS (CRITICAL=0+HIGH=0) + `--auto-apply` 없음 | dry-run 산출물 생성 + Codex clarification gate 4옵션 (apply-all / apply-selected / dry-run-only / abandon) |
-| 평가자 PASS + `--auto-apply` 또는 `--yes-all` | 즉시 MCP mutation 진행 + 사후 보고 |
+| 평가자 PASS + 사용자가 직접 명시한 `--auto-apply` 또는 `--yes-all` | 즉시 MCP mutation 진행 + 사후 보고 |
 | 평가자 FAIL (CRITICAL 또는 HIGH 잔존) | dry-run 만 출력, mutation 0건, 사용자 보고 |
 
 #### §0.G2 — 외부 모듈 영향
@@ -73,6 +74,22 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | 평가자 재호출 2회 누적 + 동일 finding 잔존 | 동일 |
 | conflict 분류가 2라운드 연속 미해결 | 즉시 사용자 에스컬레이션 |
 
+#### §0.G5 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `apply-all-force-apply` | 대량 SRS mutation 즉시 적용은 비가역 | §0.G1 |
+| `conflict-code-rollback` | 코드 rollback 선택은 destructive 가능 | §0.G3 |
+| `new-scope-creation` | 신규 scope 생성은 `$kiwi-srs` 책임 | §0.G3 |
+| `stability-backward-transition` | stability backward transition 금지 | mutation planning |
+| `external-module-impact` | cwd 외부 path 영향 | §0.G2 |
+| `validate-spec-error` | validate_spec ERROR 잔존 시 mutation 금지 | final validation |
+| `draft-req-mutation` | draft REQ 변경은 명시적 사용자 결정 필요 | §0.13 |
+| `deprecated-req-mutation` | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.13 |
+| `frozen-req-mutation` | frozen REQ section/status/stability 변경은 release 정책 위험 | Phase 5 |
+| `conflict-ac-change` | conflict 로 인한 AC 변경은 제품 의미 변경 | §0.G3 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS mutation 대체 금지 | Phase 0 |
+
 ---
 
 ## 1. 입력 / 출력
@@ -93,6 +110,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | "어제부터", "ISO date 이후" | `--since=YYYY-MM-DD` | off |
 | "이 파일들만" | `--files=src/x.ts,src/y.ts` (콤마 분리) | git diff 자동 |
 | "자동 적용", "확인 없이" | `--auto-apply` 또는 `--yes-all` | off (dry-run 의무) |
+| "자동", "묻지 말고", "auto", "사용자 게이트 자동" | `--auto` | off (`../_shared/kiwi/auto-option.md`; `--auto-apply`/`--yes-all` 과 별개) |
 | "max 모드", "정밀" | `--max` | off (Normal) |
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
@@ -178,10 +196,10 @@ Phase 7 : MCP mutation 일괄 적용 + 보고서
 
 판정 순서:
 1. MCP `get_active_target` 성공 → PASS
-2. CLI `speckiwi --version` exit 0 → PASS (`mode: "cli-fallback"`)
+2. MCP 실패 → HALT. CLI `speckiwi --version` 은 설치/버전 진단과 MCP 복구 안내에만 사용하고 PASS 대체 조건으로 삼지 않는다.
 3. git 환경 확인: `git rev-parse --git-dir` 성공 → PASS, 실패 시 HALT + 가이드
 4. base/head ref 존재 확인: `git rev-parse --verify {ref}` 성공
-5. 위 셋 중 하나라도 실패 → HALT
+5. 위 필수 조건 중 하나라도 실패 → HALT
 
 기록: `docs/analysis/kiwi-srs-sync-{run-id}/preflight.json: { mcp, cli, git, base_ref, head_ref, halted }`.
 

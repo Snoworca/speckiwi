@@ -12,7 +12,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 
 | 모드 | 트리거 | 동작 |
 |---|---|---|
-| **standalone** | 직접 호출 (`Skill` 도구) | 연구 수행 + speckiwi `append_section_note` 로 REQ research 영속화 |
+| **standalone** | 직접 호출 (`$kiwi-srs-research`) | 연구 수행 + speckiwi `append_section_note` 로 REQ research 영속화 |
 | **subagent** | 다른 스킬(예: `kiwi-srs-feasibility`)이 Codex 서브에이전트로 호출 | **read-only**. JSON 반환만. MCP mutation 0건 |
 
 **파이프라인 SSOT**: `../_shared/kiwi/pipeline-v1.md` 참조.
@@ -40,6 +40,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.15 | **subagent 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) skill invocation or delegated sub-agent message `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 "high-reasoning×3 Researchers", "high-reasoning×1 Synthesizer" 등 high-reasoning 인용은 standard 으로 read-time replace. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--mini` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--mini` 전파 의무 (mini-option.md §7) |
+| §0.18 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. standalone 모드에서만 적용한다. `--mode=subagent` 에서는 mutation 0건이므로 `--auto` 를 silent skip 한다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -142,6 +143,16 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 - 본 SSOT 문서 자체를 다른 prompt 가 인용해도 인용 부분이 코드 블록 안이면 mode 강제되지 않음.
 - 호출자는 가능하면 채널 1(args/description) 사용 권장.
 
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `research-replace-existing` | existing Research section replace 는 정보 손실 가능 | §0.14 |
+| `external-module-impact` | 외부 모듈 변경 권고/영향 | §0.G2 |
+| `paraphrase-dissent-loss` | 이견을 합의로 위장하거나 제거 | §0.11 / §0.G4 |
+| `input-bias-detected` | 호출자 결론/권장 stability 주입 감지 | §0.G5 |
+| `mcp-unavailable` | standalone research 영속화 불가. CLI 진단 가능 여부와 무관하게 정상 SRS append 대체 금지 | Phase 0 |
+
 ---
 
 ## 1. 입력 / 출력
@@ -163,6 +174,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 | "context7 자료만" | `--external-sources` | `context7,websearch` |
 | "--dry-run", "제안만" | `--dry-run` | off |
 | "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (Researchers/Synthesizer high-reasoning → standard, 토폴로지 불변, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--auto", "자동", "묻지 말고" | `--auto` | off (standalone only; subagent mode silent skip) |
 
 ### 1.3 출력 — standalone 모드
 
@@ -224,9 +236,9 @@ Phase R3  : Mode 분기
 
 ### 3.0 speckiwi 가용성 사전 점검
 
-`kiwi-srs` §3.0 과 동일. MCP/CLI 둘 다 부재 시 HALT. subagent 모드 + REQ_ID 입력이면 speckiwi 필수 (REQ 본문 조회). question-only 입력 + subagent 모드면 speckiwi 없이도 진행 가능.
+`kiwi-srs` §3.0 과 동일. standalone 영속화 또는 REQ_ID 조회에는 MCP 필수이며, MCP 부재 시 HALT. CLI 는 진단/복구 안내에만 사용한다. question-only 입력 + subagent 모드면 speckiwi 없이도 진행 가능.
 
-추가 점검 — standalone 모드: `append_section_note` MCP 또는 CLI 가용성 확인.
+추가 점검 — standalone 모드: `append_section_note` MCP 가용성 확인.
 
 ### 3.1 Mode 결정
 

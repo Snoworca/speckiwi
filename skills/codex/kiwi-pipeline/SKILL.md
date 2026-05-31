@@ -32,7 +32,17 @@ description: "kiwi-* 스킬 파이프라인 메타 오케스트레이터. ./kiwi
 | §0.6 | **project signature-ban instruction** + **project change-history policy**. 본 스킬 본문에 변경 이력 섹션 없음 — git history 가 SSOT. |
 | §0.7 | **사용자 확인 의무**: 추천 후보 ≥2 개 / next_hint = null / 자기 호출 충돌 / schema major mismatch — 모두 `Codex clarification gate` 단일 호출 분해. |
 | §0.8 | **best-effort emit**: 자기 jsonl emit 실패가 본 작업 (추천 출력) 의 실패로 이어지면 안 됨. emit 실패 시 stderr WARN. |
-| §0.9 | **외부 스킬 spawn 모드**: `--auto --run` 시 추천 스킬을 `Skill` 도구로 호출. 추가 옵션은 prompt 끝에 인계. |
+| §0.9 | **외부 스킬 실행 모드**: `--auto --run` 시 추천 스킬을 Codex skill invocation prose로 실행하거나, 가능한 delegation 도구가 있으면 해당 스킬을 별도 작업으로 위임한다. 추가 옵션은 prompt 끝에 인계. |
+| §0.10 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 고유 `--auto --run` semantics 는 유지하되 §0.AG critical_gates[] 는 항상 HALT. |
+
+### §0.AG — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `pipeline-event-needs-user-or-failed` | 직전 이벤트가 NEEDS_USER/FAILED 이면 원 작업자의 사용자 결정이 필요 | §6.3 / §6.4 |
+| `self-recursive-spawn` | `kiwi-pipeline` 자기 호출 반복 방지 | §6.5 |
+| `pipeline-start-candidate-ambiguous` | pipeline 미시작 시 시작 후보 선택은 사용자 의도 영역 | §3 |
+| `pipeline-schema-major-mismatch` | major schema mismatch 는 자동 해석 금지 | §4 |
 
 ---
 
@@ -143,8 +153,11 @@ tail -n "$N" "$PIPE_FILE"
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
 | kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` 또는 `kiwi-commit-auto-push` |
+| kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` 또는 종료 |
+| kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료, 사용자 결정) |
+| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료, 사용자 결정) |
 | any | NEEDS_USER | (없음 — 사용자 결정 강제) |
 | any | FAILED | (없음 — 재시도/건너뛰기/중단 3지선다) |
 | any | DRY_RUN | (직전 동일 skill 의 실제 실행) |

@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for incremental SpecKiwi SRS aut
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. Existing QnA skip behavior remains local, but the `critical_gates[]` below always halt.
 
 신규 요구사항을 받아 **기존 코드 + 기존 speckiwi SRS**와 교차 분석하여 **4-way 분류** → **feasibility 판정** → **speckiwi MCP를 SSOT로 SRS 증분 작성·갱신**하는 스킬.
 
@@ -98,6 +99,16 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | `block-all` | 양쪽 skip; MCP 호출 0건; 사용자 결정 대기 |
 
 **우선순위**: prompt 가 OoS 명시 + conflict 동시 발견 → 본 G5 우선. prompt 가 OoS 명시만 (conflict 없음) → §0.G4 Rule 1 (yes 등가).
+
+#### §0.G6 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 또는 다른 target/scope 영향 | §0.G2 |
+| `scope-boundary-impact` | scope out-of-scope/constraints 변경 | §0.G4 |
+| `combined-boundary-conflict` | boundary 변경과 conflict 분류 동시 발생 | §0.G5 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI diagnostics cannot replace normal SRS read/mutation | Phase 0 |
+| `fact-fabrication-risk` | 코드/요구사항 증거 없는 기능/AC 작성 위험 | §0.4 / §0.15 |
 
 ---
 

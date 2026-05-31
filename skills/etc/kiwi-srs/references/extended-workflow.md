@@ -245,7 +245,7 @@ speckiwi 보장 사항:
 
 ### 11.2 종료 조건
 
-모든 모드는 `../_shared/kiwi/local-llm-profile.md` 를 따른다.
+모든 모드는 `../../_shared/kiwi/local-llm-profile.md` 를 따른다.
 
 - 단일 evaluator 가 개선사항 없음(no actionable improvement)을 **3회 연속** 반환해야 Phase 7 로 진행한다.
 - CRITICAL/HIGH/MEDIUM finding 은 개선사항으로 간주하고 Phase 4 개선 라우팅 후 clean counter 를 0으로 재설정한다.

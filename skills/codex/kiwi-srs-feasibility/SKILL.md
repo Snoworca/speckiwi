@@ -26,7 +26,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.3 | **코드 증거 우선**. 모든 implementability 판정은 코드 path:line 증거 첨부. 증거 없는 판정은 `evidence_strength: weak` 라벨 |
 | §0.4 | **할루시네이션 금지**. 존재하지 않는 코드/함수 인용 시 §8.2 axis 2 (Evidence existence) CRITICAL. 블로커 근거가 코드와 무관한 추측이면 §8.2 axis 5 (Blocker substantiation) HIGH |
 | §0.5 | **SRS-MD Authoring Rules v1.0.0 준수**. heading / ID 정규식 위반 금지 |
-| §0.6 | **speckiwi MCP 우선 + 황금률**. CLI 직접 호출은 MCP 부재 시에만. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** |
 | §0.7 | **stable/frozen 승급은 항상 사용자 확인**. 정책 파일이 자동 허용으로 설정해도 본 §0.7 우선. Codex clarification gate 단일 호출 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 코드/함수 판정 근거 거절 + `rejected_findings.log` |
@@ -36,6 +36,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.13 | **per-REQ 독립 mutation**. target 전체 일괄 트랜잭션 금지 — REQ 단위 독립 호출 + 결과 집계. 부분 실패 허용 |
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
 | §0.15 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 분석가", "high-reasoning×1 평가자", "high-reasoning×2 평가자" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--mini` 자동 전파 — §5.5.2 서브에이전트 호출 site 에서 채널 1(message token) + 채널 2(prompt 본문) 이중 명시 (mini-option.md §7, kiwi-srs-research §0.G6) |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 자식 `$kiwi-srs-research --mode=subagent` 호출 시 `--auto` 는 silent skip 대상이지만, 부모의 critical gates 는 유지된다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -98,6 +99,16 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | blocked | (default) | `deprecated` | ✅ 필수 |
 | (매칭 실패) | — | `keep` | ✅ 필수 |
 
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 영향 | §0.G2 |
+| `stability-stable-promotion` | stable 승급은 항상 사용자 확인 | §0.G5 |
+| `transition-guard-bypass` | SpecKiwi transition guard 강제 우회 금지 | §0.G4 |
+| `status-conflict` | blocked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS read/mutation 대체 금지 | Phase 0 |
+
 ---
 
 ## 1. 입력 / 출력
@@ -117,6 +128,7 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | "--dry-run", "제안만" | `--dry-run` | off (실제 mutation) |
 | "--max", "정밀 검증" | `--max` | off |
 | "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 | "코드 경로 X" | `CODE_PATH` | cwd |
 | "정책 파일 X" | `POLICY_PATH` | `.kiwi/feasibility-policy.yaml` 자동 탐색 |
 | "--enable-research", "연구 보강" | `--enable-research` | off (활성 시 Phase 2.5 가동) |
@@ -187,17 +199,17 @@ Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (do
 
 ### 3.0 speckiwi 가용성 사전 점검
 
-`kiwi-srs` §3.0 과 동일 절차. MCP/CLI 둘 다 부재 시 HALT + 설치 가이드 출력. 기록: `preflight.json: { mcp, cli, halted, version, tools_detected }`.
+`kiwi-srs` §3.0 과 동일 절차. MCP 부재 시 HALT + 설치 가이드 출력. CLI 는 진단/복구 안내에만 사용한다. 기록: `preflight.json: { mcp, cli, halted, version, tools_detected }`.
 
-추가 점검: 본 스킬이 사용하는 MCP 도구/CLI 명령의 **존재 여부 동적 점검**. 버전 번호 hardcode 대신 도구 자체의 가용성으로 판정 — speckiwi 버전 명명 정책이 바뀌어도 본 스킬은 견고.
+추가 점검: 본 스킬이 사용하는 MCP 도구의 **존재 여부 동적 점검**. 버전 번호 hardcode 대신 도구 자체의 가용성으로 판정 — speckiwi 버전 명명 정책이 바뀌어도 본 스킬은 견고.
 
-| 필수 도구 | MCP | CLI fallback | 미가용 시 |
+| 필수 도구 | MCP | CLI 진단 | 미가용 시 |
 |---|---|---|---|
-| `update_stability` | ✅ 필수 | `speckiwi update-stability` | HALT + 업그레이드 안내 |
-| `get_active_target` | ✅ 필수 | `speckiwi active-target` | HALT |
-| `list_requirements` | ✅ 필수 | `speckiwi list` | HALT |
-| `get_requirement` | ✅ 필수 | `speckiwi show` | HALT |
-| `validate_spec` / `summarize_target` | ✅ 필수 | `speckiwi validate` / `speckiwi summary` | HALT |
+| `update_stability` | ✅ 필수 | 설치/버전 확인만 | HALT + 업그레이드 안내 |
+| `get_active_target` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `list_requirements` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `get_requirement` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `validate_spec` / `summarize_target` | ✅ 필수 | 설치/버전 확인만 | HALT |
 | `tag_mutation` (가칭, 기존 REQ tag 갱신) | ⏳ optional | — | §11.3 첫 행 활성 토글에 사용 (없으면 임시 회피 경로 유지) |
 
 가용성 결과를 `preflight.json.tools_detected` 에 도구별 boolean 으로 기록.

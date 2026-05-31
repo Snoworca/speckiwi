@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for deriving SpecKiwi SRS from s
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 코드베이스를 역분석하여 **speckiwi MCP 도구**로 scope별 SRS Markdown 문서를 자동 생성하는 스킬.
 
@@ -63,6 +64,16 @@ description: "OpenCode/Hermes local-LLM variant for deriving SpecKiwi SRS from s
 | "local-LLM max profile", "local-LLM max profile", "local-LLM 안정성 우선", "local evaluator 으로" | `local-LLM max profile` | off (모든 local-LLM max-profile → local evaluator, `../_shared/kiwi/local-llm-profile.md` v1.0) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 User clarification gate 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
+
+### 1.4 `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `inferred-requirement-loss` | 추론 요구사항 손실/삭제는 사용자 검토 필요 | Phase 4/5 |
+| `scope-splitting-ambiguity` | scope 분할/병합은 SRS 구조 변경 | Phase 1/2 |
+| `inventory-coverage-gap` | public surface 누락 가능성 | Phase 7 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI diagnostics cannot replace normal SRS creation/validation | Phase 0 |
+| `fact-fabrication-risk` | 코드 증거 없는 요구사항 생성 위험 | §0.4 |
 
 ### 1.3 출력
 

@@ -22,7 +22,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 |---|---|
 | §0.1 | **TDD 의무화 제외**. 본 스킬은 reverse-direction (코드 우선) 이므로 `/kiwi-coder` 의 TDD 강제(§0.1) 미적용. 단, sync 결과 SRS 에 `tdd.applicable=true` REQ 가 추가됐는데 테스트가 없는 코드면 평가자가 MEDIUM 경고만 발행 (차단 X) |
 | §0.2 | **dry-run 선행 의무**. 모든 MCP mutation 은 dry-run 산출물(`docs/analysis/srs-sync-{run-id}/proposed-mutations.md`) 생성 후 사용자 승인을 거쳐야 실행. `--auto-apply`/`--yes-all` 명시 시에만 자동 진행 |
-| §0.3 | **/snoworca-\* 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 (프로젝트 CLAUDE.md §7 — `.skillfactory` 작업장 규약) |
+| §0.3 | **/snoworca-\* 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.4 | **검증자는 별도 서브에이전트**. 인라인 자가검증 금지 |
 | §0.5 | **검증자 입력 격리**. 시니어 분석가의 결론·정당화 전달 금지. 원본 diff + 기존 REQ + 분류 결과만 |
 | §0.6 | **할루시네이션 금지**. 존재하지 않는 함수·파일·CVE·테스트 항목 추가 금지. 사실 위조 거절 + `rejected_findings.log` |
@@ -35,6 +35,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 AskUserQuestion 단일 호출 분해 |
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
 | §0.15 | **`--mini` 옵션 SSOT (v0.2 마이그레이션)**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. **정규명은 `--mini`**, 기존 `--squirrel` 은 v0.2 까지 deprecated alias 로 유지 (mini-option.md §10). `--mini` 활성 시 시니어 분석가 / 평가자 Opus 축의 Opus 인용을 Sonnet 으로 read-time replace (평가자는 Sonnet×2 토폴로지 적용). 3 Sonnet 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -90,6 +91,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | "어제부터", "ISO date 이후" | `--since=YYYY-MM-DD` | off |
 | "이 파일들만" | `--files=src/x.ts,src/y.ts` (콤마 분리) | git diff 자동 |
 | "자동 적용", "확인 없이" | `--auto-apply` 또는 `--yes-all` | off (dry-run 의무) |
+| "자동", "묻지 말고", "auto", "사용자 게이트 자동" | `--auto` (SSOT: `_shared/kiwi/auto-option.md` v1.0. **`--auto-apply` / `--yes-all` 와 별개** — 의미 분리는 §0.16 + SSOT §11.1 참조) | off |
 | "max 모드", "정밀" | `--max` | off (Normal) |
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
@@ -540,7 +542,7 @@ failed: 0
 | 신규 요구사항 자연어 → SRS 증분 (spec-first) | `/kiwi-srs` |
 | target 활성 REQ 전수 feasibility + Stability 일괄 | `/kiwi-srs-feasibility` |
 | REQ 또는 연구 질문 deep research | `/kiwi-srs-research` |
-| 계획 수립 (Phase>Task 분해) | `/kiwi-planner` |
+| 계획 수립 (Phase와 Task 분해) | `/kiwi-planner` |
 | 계획 기반 TDD-first 구현 | `/kiwi-coder` |
 | **코드 변경(diff) → 기존 SRS 사후 동기화** (본 스킬) | `/kiwi-srs-sync` |
 

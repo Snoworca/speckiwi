@@ -35,6 +35,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + AskUserQuestion. 상세는 §0.G2 결정표 |
 | §0.20 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "Opus 시니어 작성자", "Opus×1 평가자", "Opus×2 평가자", "QnA Opus 라운드" 등 Opus 인용은 모두 Sonnet 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
+| §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 `--auto` 시맨틱 (Phase 1.5 QnA loop skip + AskUserQuestion 발동 대신 **차단** — §1.2 4번째 bullet) 은 유지되며, 차단 대상 게이트(외부 모듈 §0.G2 / scope-boundary §0.G4 / combined §0.G5)는 본 §0.G6 critical_gates 에 인라인된다. `--auto` 와 `--qna` 동시 명시 ERROR 시맨틱(§1.2) 도 critical. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -92,6 +93,22 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 
 **우선순위**: prompt 가 OoS 명시 + conflict 동시 발견 → 본 G5 우선. prompt 가 OoS 명시만 (conflict 없음) → §0.G4 Rule 1 (yes 등가).
 
+#### §0.G6 — `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트 (SSOT `_shared/kiwi/auto-option.md` §5 인터페이스 준수). 기존 §1.2 "AskUserQuestion 발동 대신 차단" 시맨틱의 대상 게이트를 본 표로 인라인 — 결정 서브에이전트로 우회 금지:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `external-module-impact` | trace 후보 / conflict / feasibility / code-context 가 cwd 외부 path 진입 (§0.G2) | §0.G2 |
+| `scope-boundary-impact` | 신규 REQ 가 §2 Out of Scope 또는 §3 Constraints 와 충돌 (§0.G4) | §0.G4 / §6.4 |
+| `combined-boundary-conflict` | §0.G5 단일 트랜잭션 4옵션 (boundary + conflict 동시) | §0.G5 |
+| `auto-qna-mutual-exclusion` | `--auto` + `--qna` 동시 명시 ERROR (§1.2 옵션 의미) | §1.2 |
+| `implementability-blocked` | Phase 3 feasibility 결과 `implementability=blocked` — 진행 불가 사용자 결정 필요 | §10.2 axis (feasibility) |
+| `mcp-cli-both-unavailable` | preflight MCP + CLI 모두 부재 (§3.0 case 3) — HALT 강제 | §3.0 |
+| `fact-fabrication-rejection` | 존재하지 않는 함수/CVE/파일 추가 요구 거절 (§0.9) — 사실 위조 시도 | §0.9 |
+
+**기존 시맨틱 보존**: §1.2 의 "`--auto` 명시 → ... 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *AskUserQuestion 발동 대신 차단* 으로 동작" 는 본 §0.G6 의 `critical_gates[]` 인라인 선언으로 보존된다 — 차단 동작은 SSOT §4 의 `critical` severity 처리 (HALT, --auto 무관) 와 동일.
+
 ---
 
 ## 1. 입력 / 출력
@@ -108,7 +125,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "scope X", "{slug}에 추가" | `SCOPE` | omit → Phase 2 분류 |
 | "target v0.X", "릴리즈 X" | `TARGET` | `get_active_target`; 없으면 사용자 질의 |
 | "코드 경로 X" | `CODE_PATH` | cwd |
-| "--auto", "자동", "묻지 말고", "질문 없이" | `--auto` | off (질문 활성이 기본) |
+| "--auto", "자동", "묻지 말고", "질문 없이" | `--auto` (SSOT: auto-option.md v1.0) | off (질문 활성이 기본) |
 | "--qna", "질문하며 작성" | `--qna` (deprecated alias) | — — 본 인자는 v0.11 까지 QnA 모드 alias 로 동작하고 v0.12 부터 제거. 사용 시 stderr `[DEPRECATED] --qna is now default; use --auto to suppress` |
 | "--max", "정밀 검증" | `--max` | off |
 | "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (모든 Opus → Sonnet, `_shared/kiwi/mini-option.md` v1.0) |
@@ -731,7 +748,7 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 | B | 분류 = `update` 이면서 영향 REQ status = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신 검토" | §9.2 update |
 | B | 분류 = `new-scope` | "신규 scope `{S}` 진입. `set_active_target` 또는 scope 인덱스 갱신 검토" | §7 Scope gate |
 | C | 신규 또는 영향 REQ 중 `addition_site` trace 잔존 | "{N}건 REQ 가 구현 증거 부재로 `proposed` 상한. 코드 추가 후 evidence 등록 → `update_status` 가능" | §0.14 trace cap |
-| C | 신규 REQ 의 `feasibility.implementability ∈ {high, very-high, infeasible}` OR blocker 모호 | "구현 가능성 모호 — `/kiwi-srs-feasibility` (target 전수 평가) 또는 `/kiwi-srs-research --req-id {NEW-ID}` (블로커 심화)" | pipeline §4.1 |
+| C | 신규 REQ 의 `feasibility.implementability ∈ {medium, low}` OR blocker 모호 | "구현 가능성 모호 — `/kiwi-srs-feasibility` (target 전수 평가) 또는 `/kiwi-srs-research --req-id {NEW-ID}` (블로커 심화)" | pipeline §4.1 |
 | C | 신규 REQ 의 `stability = draft` (초기) | "stability 라이프사이클 진행은 `/kiwi-srs-feasibility` 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
 | D | 위 권고 모두 부재 + 신규 REQ status = `proposed` + addition_site 없음 | "AC + trace 검토 후 `update_status(planned\|implemented)` 진행 가능. 구현은 `/kiwi-coder` (stability ≥ evolving 시)" | pipeline §4.2 |
 | D | (최종 catch-all, 다른 항목 매칭 시 생략) | "SRS 갱신 완료. 후속 행동 없음 — 다음 요구사항 대기" | — |

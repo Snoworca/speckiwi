@@ -11,12 +11,13 @@ description: "OpenCode/Hermes local-LLM variant for requirement research enrichm
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active in standalone mode. The `critical_gates[]` below always halt for user input; delegated-worker mode stays read-only.
 
 REQ 본문 또는 연구 질문에 대해 **single-worker 고정 토폴로지** 로 연구를 수행하는 스킬.
 
 | 모드 | 트리거 | 동작 |
 |---|---|---|
-| **standalone** | 직접 호출 (`Skill` 도구) | 연구 수행 + speckiwi `append_section_note` 로 REQ research 영속화 |
+| **standalone** | 직접 호출 또는 host skill invocation | 연구 수행 + speckiwi `append_section_note` 로 REQ research 영속화 |
 | **delegated worker** | 다른 스킬(예: `kiwi-srs-feasibility`)이 위임 worker로 호출 | **read-only**. JSON 반환만. MCP mutation 0건 |
 
 **파이프라인 SSOT**: `../_shared/kiwi/pipeline-v1.md` 참조.
@@ -145,6 +146,16 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 - 채널 2·3 의 매칭은 **백틱 코드 펜스(` ``` ` ~ ` ``` `) 및 인라인 코드(` ` ~ ` `) 안의 토큰을 제외**한다. 정규식 단계에서 먼저 코드 블록 영역을 마스킹 후 본문에서만 매칭.
 - 본 SSOT 문서 자체를 다른 prompt 가 인용해도 인용 부분이 코드 블록 안이면 mode 강제되지 않음.
 - 호출자는 가능하면 채널 1(args/description) 사용 권장.
+
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `research-replace-existing` | existing Research section replace 는 정보 손실 가능 | §0.14 |
+| `external-module-impact` | 외부 모듈 변경 권고/영향 | §0.G2 |
+| `paraphrase-dissent-loss` | 이견을 합의로 위장하거나 제거 | §0.11 / §0.G4 |
+| `input-bias-detected` | 호출자 결론/권장 stability 주입 감지 | §0.G5 |
+| `mcp-unavailable` | standalone research persistence requires `speckiwi mcp`; CLI diagnostics cannot replace append mutation | Phase 0 |
 
 ---
 

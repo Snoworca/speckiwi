@@ -9,8 +9,8 @@ description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능�
 
 deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티가 1(단일 SRS_PATH) → N(target 전수 REQ) 으로 역전됨. speckiwi MCP 를 SSOT 로 사용.
 
-**파이프라인 SSOT**: `docs/rule/kiwi-pipeline-v1.md` 참조.
-**매핑 정책 스키마**: `docs/rule/kiwi-feasibility-policy-schema-v1.md` 참조.
+**파이프라인 SSOT**: `_shared/kiwi/pipeline-event.md` (이벤트 schema + next_hint 결정표) 참조.
+**매핑 정책 스키마**: 본 문서 §0.G6 (기본 매핑 결정표) / §3.2 (정책 로드 우선순위) 참조.
 
 ---
 
@@ -27,12 +27,13 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.7 | **stable/frozen 승급은 항상 사용자 확인**. 정책 파일이 자동 허용으로 설정해도 본 §0.7 우선. AskUserQuestion 단일 호출 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 코드/함수 판정 근거 거절 + `rejected_findings.log` |
-| §0.10 | **Status 변경 권한 없음** (kiwi-pipeline-v1 §3.1). 신규 REQ 추가도 권한 없음. stability 만 변경. status 충돌 발견 시 보고만 |
+| §0.10 | **Status 변경 권한 없음**. 신규 REQ 추가도 권한 없음. stability 만 변경. status 충돌 발견 시 보고만 |
 | §0.11 | **transition guard 우회 금지**. SpecKiwi `stability-transition.js` 가 거부하는 transition 은 강제 진행 옵션 없음. `dryRun: true` 선행 검증 의무 |
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + AskUserQuestion. 상세는 §0.G2 |
 | §0.13 | **per-REQ 독립 mutation**. target 전체 일괄 트랜잭션 금지 — REQ 단위 독립 호출 + 결과 집계. 부분 실패 허용 |
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
 | §0.15 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "Opus 시니어 분석가", "Opus×1 평가자", "Opus×2 평가자" 등 Opus 인용은 모두 Sonnet 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--mini` 자동 전파 — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (mini-option.md §7, kiwi-srs-research §0.G6) |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조. **자식 호출 `kiwi-srs-research` 시 `--auto` 자동 전파 의무** — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (auto-option.md §7, kiwi-srs-research standalone 모드 한정 적용; subagent 모드는 silent skip). `--auto --mini` 합성 전파 시 둘 다 명시 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -77,13 +78,13 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | IF | THEN |
 |---|---|
 | 매핑 결과 `then.stability = stable` | 정책 `require_user_confirm` 값과 무관하게 **항상 AskUserQuestion** (§0.7) |
-| 매핑 결과 `then.stability = frozen` | **본 스킬 권한 외** (kiwi-pipeline-v1 §3.2 의 frozen 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
+| 매핑 결과 `then.stability = frozen` | **본 스킬 권한 외** (frozen 승급 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
 | 사용자 승인 (stable) | mutation 진행 |
 | 사용자 거부 | 해당 REQ stability 유지 (keep) + 결정 기록 |
 
 #### §0.G6 — 기본 feasibility → stability 매핑 (정책 파일 fallback)
 
-`docs/rule/kiwi-feasibility-policy-schema-v1.md` §3 의 기본 매핑을 본 스킬 내부 결정표로 동일 적용. 정책 파일 부재 시 본 표 자동 적용.
+아래 기본 매핑 결정표를 본 스킬 내부 정책으로 적용. 정책 파일 부재 시 본 표 자동 적용.
 
 | IF (feasibility) | IF (추가 조건) | THEN (stability) | 사용자 승인 |
 |---|---|---|---|
@@ -124,6 +125,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "비용 보고 생략" | `--no-cost-report` | off (§11.5.3 비용 섹션 생략) |
 | "sync retry 대기 N ms" | `--sync-retry-delay-ms` | 200 (§11.4 단계 a 대기 시간) |
 | "보고 채널 X" | `--report-channel` | `doculight` (§11.5.2 1차 채널; `telegram` / `google-chat` fallback 가능) |
+| "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
 
 ### 1.3 출력
 
@@ -159,6 +161,18 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | stable/frozen 승급 게이트 | `approve` (정책 `require_user_confirm: false` 인 경우) / `reject` (정책 strict) | `logged_ready` / `logged_blocked` |
 | Status 충돌 게이트 | 정책 `gates.status_conflict_policy` 값 따름 | `logged_noop` / `logged_warn` / `logged_block` |
 | 외부 모듈 영향 게이트 | `skip-req` (해당 REQ skip) | `logged_ext_skipped` |
+
+### 1.5 `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `stability-stable-promotion` | **stable 승급은 정책 무관 항상 사용자 확인** — 거버넌스 핵심. `then.stability = stable` 매핑은 release readiness 결정으로 비가역 | §0.G5 / §0.7 |
+| `stability-frozen-violation` | frozen 매핑은 본 스킬 권한 외 — 정책이 정의해도 거부 + ERROR | §0.G5 |
+| `status-conflict-block` | `gates.status_conflict_policy: block` 활성 시 평가 중단 — 사용자 결정 의무 | §0.G3 |
+| `transition-guard-bypass` | SpecKiwi `stability-transition.js` guard 거부 → 강제 진행 옵션 없음, 사용자 대체 stability 선택 의무 | §0.11 / §0.G4 |
+| `external-module-impact` | REQ trace 가 cwd 외부 path — 외부 시스템 비가역 변경 | §0.G2 |
 
 ---
 
@@ -210,7 +224,7 @@ Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (do
 3. 둘 다 미존재 시 §0.G6 기본 매핑 적용
 4. 로드된 정책을 `policy-resolved.json` 에 출처 + 내용 기록
 
-스키마 검증: `docs/rule/kiwi-feasibility-policy-schema-v1.md` §5 규칙. 실패 시 HALT.
+스키마 검증: 로드된 정책 파일의 필수 키(`rules[]`, `gates`) 존재 + 타입 정합성 확인. 실패 시 HALT.
 
 ### 3.3 Target Snapshot
 
@@ -952,7 +966,7 @@ kiwi-srs (authoring) → kiwi-srs-feasibility (target 전수 평가) → kiwi-co
                               ↑ 본 스킬
 ```
 
-상세는 `docs/rule/kiwi-pipeline-v1.md` 참조.
+상세는 `_shared/kiwi/pipeline-event.md` §4 (next_hint 결정표) 참조.
 
 ---
 

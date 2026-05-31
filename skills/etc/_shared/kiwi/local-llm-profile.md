@@ -47,6 +47,12 @@ Loop contract:
 
 For the local-LLM profile, "all evaluator delegated workers report no improvements for three consecutive rounds" means the single evaluator role has returned three consecutive clean evaluations.
 
+## `--auto` Policy
+
+When a Kiwi skill supports `--auto`, read `auto-option.md` at the first user-decision gate. The etc profile never creates a multi-worker decision topology for `--auto --max`; `--max` is already the default and the decision path remains one isolated worker/evaluator at a time.
+
+Every etc skill that uses `--auto` must declare `critical_gates[]`. A matching critical gate always halts for user input.
+
 ## Invocation Wording
 
 Use Open Agent Skills wording such as "use the `kiwi-srs` skill" or "run the `kiwi-planner` workflow". Avoid host-specific slash commands or provider-specific tool names.

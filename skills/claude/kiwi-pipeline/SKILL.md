@@ -30,6 +30,21 @@ description: "kiwi-* 스킬 파이프라인 메타 오케스트레이터. ./kiwi
 | §0.7 | **사용자 확인 의무**: 추천 후보 ≥2 개 / next_hint = null / 자기 호출 충돌 / schema major mismatch — 모두 `AskUserQuestion` 단일 호출 분해. |
 | §0.8 | **best-effort emit**: 자기 jsonl emit 실패가 본 작업 (추천 출력) 의 실패로 이어지면 안 됨. emit 실패 시 stderr WARN. |
 | §0.9 | **외부 스킬 spawn 모드**: `--auto --run` 시 추천 스킬을 `Skill` 도구로 호출. 추가 옵션은 prompt 끝에 인계. |
+| §0.10 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto` / `--auto --run` 의 본 스킬 고유 spawn 시맨틱(§0.4 / §0.5 / §0.9 / §6.1~§6.5) 은 보존되며, SSOT 는 게이트 결정 채널만 정규화한다. 본 스킬의 `critical_gates[]` 는 §0.AG (아래) 참조 |
+
+### §0.AG — `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트 (SSOT `auto-option.md` §5 인터페이스 준수). 아래 게이트는 `--auto` 무관 항상 사용자 결정 필요 — 자동 결정 서브에이전트로 우회 금지:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `pipeline-event-needs-user-or-failed` | 직전 이벤트 `status ∈ {NEEDS_USER, FAILED}` 시 자동 진행 차단 (§0.4) | §0.4 / §6.3 / §6.4 |
+| `self-recursive-spawn` | `next_hint == kiwi-pipeline` 또는 직전 이벤트가 `kiwi-pipeline` 인 경우 자기 무한 루프 방지 (§0.5 / §6.5) | §0.5 / §6.5 |
+| `multi-candidate-ambiguous` | 다음 단계 후보 ≥2 개 — 사용자 의도 모호로 자동 결정 금지 (§0.7 / §6.2) | §6.2 |
+| `pipeline-jsonl-absent-start-ambiguous` | jsonl 부재 시 시작 후보 (kiwi-srs / kiwi-srs-from-code) 자동 결정 불가 — 사용자 의도 모호 (§3) | §3 (Phase 0) |
+| `schema-major-mismatch` | `schema_version` major mismatch 발견 (§4 schema 검증) | §4 (Phase 1) |
+
+**비-critical (auto 자동 결정 적용 대상)**: 후보 1개 + 명확 / `next_hint == null` 종료 보고 / 통계 출력 — 이들은 사용자 게이트 없이 자동 진행 (단 종료 보고는 critical 아님 — §5.3).
 
 ---
 
@@ -43,7 +58,7 @@ description: "kiwi-* 스킬 파이프라인 메타 오케스트레이터. ./kiwi
 
 | 자연어 신호 | 인자 | 기본값 |
 |---|---|---|
-| "자동", "auto", "묻지 말고", "바로" | `--auto` | off |
+| "자동", "auto", "묻지 말고", "바로" | `--auto` (SSOT: auto-option.md v1.0) | off |
 | "마지막 N 개", "tail N" | `--tail=N` | 10 |
 | "통계만", "stats" | `--stats` | off (추천 + 통계 모두 출력) |
 | "실행해", "run", "진행해" | `--run` | off (추천만 출력) |
@@ -135,9 +150,12 @@ tail -n $N "$PIPE_FILE"
 | kiwi-srs-feasibility | TASK_DONE | `kiwi-planner` 우선; 블로커 모호 시 `kiwi-srs-research` 도 후보 |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
-| kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop --close-reqs` |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop --close-reqs` |
+| kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` 또는 PR mode 에서는 종료 |
+| kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 sync 후속 검토가 필요하면 `kiwi-pipeline` |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료, 사용자 결정) |
+| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료, 사용자 결정) |
 | any | NEEDS_USER | (없음 — 사용자 결정 강제) |
 | any | FAILED | (없음 — 재시도/건너뛰기/중단 3지선다) |
 | any | DRY_RUN | (직전 동일 skill 의 실제 실행) |
@@ -148,6 +166,7 @@ tail -n $N "$PIPE_FILE"
 직전 이벤트의 `next_hint` 필드가 명시되어 있으면 Table T1 보다 우선:
 
 - 직전 이벤트가 자신의 결과에 따라 `next_hint` 를 직접 결정한 경우 (e.g. feasibility 가 blocker 발견 → `kiwi-srs-research`) 이를 우선 채택.
+- `next_hint == "kiwi-review-fix-loop"` 이고 직전 skill 이 `kiwi-pm` 또는 standalone `kiwi-coder` 이면 호출 인자는 `--close-reqs` 를 기본 부착한다. `--auto` 활성 시 `--close-reqs --auto` 로 부착한다.
 - Table T1 결과와 다르면 두 후보를 모두 제시.
 
 ### 5.3 종료 신호
@@ -201,6 +220,7 @@ Skill({ skill: "kiwi-<chosen>", args: "<inherited or empty>" })
 추가 인자 인계:
 - `--auto` (kiwi-pipeline) → 자식 스킬에도 전파 (자식의 `--auto` 의미는 자체 SSOT 따름)
 - `--mini` (kiwi-pipeline 본 스킬에는 정의 안 됨; 그러나 사용자가 명시한 경우 자식에 전파)
+- 선택 스킬이 `kiwi-review-fix-loop` 이고 직전 skill 이 `kiwi-pm` 또는 standalone `kiwi-coder` 이면 `--close-reqs` 를 부착한다. `--auto` 활성 시 `--close-reqs --auto` 로 호출한다.
 
 spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 자기 jsonl 이벤트를 append 하므로 본 스킬이 별도 기록할 필요 없음.
 

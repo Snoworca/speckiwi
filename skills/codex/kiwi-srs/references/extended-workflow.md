@@ -27,7 +27,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - Unresolved user_required OQs (승급 차단 항목)
 - 다음 단계
 - 12.3 다음 단계 결정표
-- 13. MCP / CLI fallback
+- 13. MCP availability and remediation
 - 14. 수렴 기준 (Phase 7 객관 메트릭)
 - 15. 주의사항
 
@@ -355,28 +355,32 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 
 ---
 
-## 13. MCP / CLI fallback
+## 13. MCP availability and remediation
 
-| 작업 | MCP | CLI fallback |
+Normal target-scoped SRS reads, mutations, status/stability changes, evidence,
+trace links, and completed-work logging require `speckiwi mcp`. CLI commands may
+diagnose installation/version/configuration or help the user restore MCP, but
+they are not normal fallback mutation paths.
+
+| 작업 | MCP | CLI diagnostic only |
 |---|---|---|
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| Target Map 전체 | (미노출) | `speckiwi targets --json` |
-| Target 활성화 | `set_active_target` | `speckiwi set-active-target <t>` |
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
-| REQ 추가 | `add_requirement` | `speckiwi add-requirement --type ... --scope ... --target ... --title ... --requirement ... --ac ... --trace 'type\|reference\|relation\|notes'` |
-| Status 변경 | `update_status` | `speckiwi update-status <id> <status>` |
-| Trace 추가 | `add_trace_link` | `speckiwi add-trace <id> --type ... --reference ...` |
-| Evidence | `add_verification_evidence` | `speckiwi add-evidence <id> --type ... --reference ...` |
-| AC 체크 | `check_acceptance_criteria` | (MCP 필수) |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary --target <t> --json` |
-| 목록 | `list_requirements` | `speckiwi list --scope <s> --target <t> --json` |
+| Active target | `get_active_target` | 설치/버전/설정 확인만 |
+| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
+| REQ 추가 | `add_requirement` | 설치/버전/설정 확인만 |
+| Status 변경 | `update_status` | 설치/버전/설정 확인만 |
+| Trace 추가 | `add_trace_link` | 설치/버전/설정 확인만 |
+| Evidence | `add_verification_evidence` | 설치/버전/설정 확인만 |
+| AC 체크 | `check_acceptance_criteria` | 설치/버전/설정 확인만 |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
+| 목록 | `list_requirements` | 설치/버전/설정 확인만 |
 
 ---
 
 ## 14. 수렴 기준 (Phase 7 객관 메트릭)
 
-§0.1 위배 아님 — MCP/CLI 객관 출력 + 결정적 메트릭만.
+§0.1 위배 아님 — MCP 객관 출력 + 결정적 메트릭만.
 
 - `validate_spec` PASS
 - Normal: 루프 ≤ 5 iter; Max: ≤ 15 iter

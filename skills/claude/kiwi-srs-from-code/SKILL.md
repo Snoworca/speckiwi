@@ -9,12 +9,6 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 
 본체 `snoworca-srs-from-code`와 달리 단일 md/jsonl 직접 관리 대신 **speckiwi가 정의한 SRS-MD Authoring Rules v1.0.0**과 **speckiwi MCP 도구**를 사용하여 scope별 다중 `docs/spec/{NN}.{slug}.srs.md` 문서를 작성한다.
 
-**v1.1 변경 (2026-05-11, 감사 보고서 `172454_kiwi-srs-from-code v1.0 감사 보고서.md` 반영)**:
-- CRITICAL 패치: 다중 scope 부트스트랩(scope 파일 사전 Write), CLI 명령명 교정, Phase 3 resume protocol
-- HIGH 패치: update_status MCP 강제, add_requirement `trace` 필드 사용, Target 등록 절차, Phase 5 라우팅 메인 재할당, AskUserQuestion 호출 분해, spawn 가드레일(활성 scope만), Hallucination ↔ Scope-Creep 판정 신호 분리, public 표면 인벤토리 게이트, description 압축, 자연어→인자 파싱 매핑
-- MEDIUM 패치: `requirement` 1차 키 명시, status 결정 매트릭스, type prefix 제외, 진동 동등성 키, draft↔discarded 결정 트리, prefix-type cross-check, §0 SSOT화, Bash→Read/Glob, NFR trace 예외
-- LOW 패치: §13 → §13 "수렴 기준", validate_spec Edit 후 재호출, 전역 누적 상한
-
 ---
 
 ## 0. 공통 규약 (SSOT)
@@ -33,6 +27,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
 | §0.10 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 Phase 3 scope agent / Phase 4 검증자 4축 중 Opus 축은 Sonnet 으로 read-time replace. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
+| §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.4 (아래) 참조 |
 
 ---
 
@@ -54,6 +49,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | "최소 N scope", "scope N개부터" | `--scope-min` | 3 |
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
 | "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (모든 Opus → Sonnet, `_shared/kiwi/mini-option.md` v1.0) |
+| "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 AskUserQuestion 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
 
@@ -72,6 +68,17 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
   - `rejected_findings.log`
 
 `{run-id}` = `{YYYY-MM-DD}.{project-slug}`
+
+### 1.4 `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `draft-policy-discard-all-inferred` | `discard_all_inferred` 결정은 [INFERRED] 추정 요구사항 전수 삭제 — 정보 손실 비가역 | §6 draft↔discarded 결정 트리 |
+| `scope-split-confirmation` | scope 분할 자동 진행 금지 — 분할 결정은 SRS 구조 영구 변경 | §0.7 / §5.1 |
+| `inventory-coverage-gap` | Phase 7 인벤토리 미매핑 public 표면 검출 — 자동 진행 시 거버넌스 누락 위험 | §7 인벤토리 게이트 |
+| `mcp-cli-both-unavailable` | speckiwi MCP/CLI 모두 부재 시 mutation 불가, 사용자 결정 의무 | Phase 0 / §3.1 |
 
 ---
 

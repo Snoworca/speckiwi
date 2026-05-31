@@ -17,6 +17,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 8.1 조건
 - 8.2 플로우 (snoworca-coder §5 차용)
 - 8.3 최종 보고서
+- 8.4 후속 review-fix-loop handoff
 - 9. 호출 예시
 - 10. Out of Scope
 - 11. v0.x → v1.0 마일스톤 (예고)
@@ -81,10 +82,12 @@ sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
    args: { id: "FR-X-001", status: <전이값> }       # dryRun 인자 없음 (호출 시점 적용)
    전이 규칙:
    - Task 시작 시 → "in_progress" (kiwi-coder 권한)
-   - 해당 REQ 의 모든 ac 가 green_evidence 보유 + acceptance_tests 통과 → "verified"
+   - 해당 REQ 의 모든 ac 가 green_evidence 보유 + acceptance_tests 통과 → "implemented"
    - 일부 ac 만 pass → "implemented"
    - 회귀 발생 → "blocked"
    - 기존 status 보다 backward 면 §0.G5 자체 차단 (호출 안 함)
+
+   `verified` 전이는 `$kiwi-review-fix-loop --close-reqs` 만 수행한다. `kiwi-coder` 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를 직접 실행하지 않는다.
 
 4. add_completed_work — Task 종료 시 1건 (Task 단위 요약)
    args: { date: "YYYY-MM-DD",                      # 필수 (today)
@@ -317,6 +320,41 @@ state_ref: ./state.json
 8. MCP mutation 요약 (4종별 호출 수)
 9. 메타 (mode, 실측 토큰 추정, 총 소요 시간)
 
+### 8.4 후속 review-fix-loop handoff
+
+단독 실행에서 모든 Task 가 green + 회귀 PASS 로 종료되고 `state.failed_task_ids[]`
+가 비어 있으면, 후속 close 검증을 권고한다:
+
+```text
+Use $kiwi-review-fix-loop --close-reqs
+```
+
+`--auto` 활성 시에는 `../../_shared/kiwi/auto-option.md` 에 따라 다음을 자동
+선택할 수 있다:
+
+```text
+Use $kiwi-review-fix-loop --close-reqs --auto
+```
+
+전파 규칙:
+
+| Current flags | Handoff flags |
+|---|---|
+| `--auto` | `--close-reqs --auto` |
+| `--auto --mini` | `--close-reqs --auto --mini` |
+| `--auto --max` | `--close-reqs --auto --max` |
+
+다음 중 하나라도 참이면 자동 handoff 금지:
+
+- 실패 task 존재
+- 회귀 실패 잔존
+- MCP preflight 실패
+- implemented 상태가 아닌 REQ만 영향 후보로 남음
+- 사용자가 close 검증을 원하지 않는다고 명시
+
+`--close-reqs` 의 verified 전이는 전적으로 `$kiwi-review-fix-loop` 책임이다.
+`kiwi-coder` 는 verified 전이, bulk finalize, bulk archive 를 직접 수행하지 않는다.
+
 ---
 
 ## 9. 호출 예시
@@ -344,8 +382,8 @@ $kiwi-coder PLAN_PATH=... --dry-run
 | 구현 후 간극 검토 | (예정) `kiwi-reviewer` |
 | 실현가능성 사전 판단 | `kiwi-srs-feasibility` |
 | 외부 도구 비교 / 학습 | `kiwi-srs-research` |
-| PR/이슈 생성 | 본 스킬은 코드 변경만; PR 은 사용자 결정 |
-| git commit / push | 사용자 결정 (시그니처 금지 §0.10) |
+| PR/이슈 생성 | `$kiwi-commit-auto-pr` |
+| git commit / push | `$kiwi-commit-auto-push` 또는 `$kiwi-commit-auto-pr` |
 
 ---
 
@@ -363,7 +401,7 @@ $kiwi-coder PLAN_PATH=... --dry-run
 `../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 **호출 컨텍스트별 정책**:
-- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: 통상 `"kiwi-commit-auto-push"`.
+- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: 통상 `"kiwi-review-fix-loop"` (close 검증 권고) 또는 `"kiwi-commit-auto-push"`.
 - **kiwi-pm 자식으로 spawn**: 본 스킬은 emit 하지 않는다 — 부모(`kiwi-pm`) 의 Task 종료 시 부모가 일괄 emit. 자식의 결과는 부모의 보고에 인용.
 
 - `req_ids`: 본 Task 가 영향을 미친 REQ-ID 배열

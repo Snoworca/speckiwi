@@ -12,7 +12,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | **standalone** | 직접 호출 (`Skill` 도구) | 연구 수행 + speckiwi `append_section_note` 로 REQ research 영속화 |
 | **subagent** | 다른 스킬(예: `kiwi-srs-feasibility`)이 `Agent` 도구로 호출 | **read-only**. JSON 반환만. MCP mutation 0건 |
 
-**파이프라인 SSOT**: `docs/rule/kiwi-pipeline-v1.md` 참조.
+**파이프라인 SSOT**: `_shared/kiwi/pipeline-event.md` (이벤트 schema + next_hint 결정표) 참조.
 
 ---
 
@@ -32,11 +32,12 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.10 | **3 researcher 간 격리**. Opus A/B/C 는 서로 출력 미공유. Synthesizer 만 4종 raw 입력 수신 |
 | §0.11 | **이견 보존 의무**. Synthesizer 는 합의로 위장 금지. 1 vs 2+ 이견은 `dissent_findings` 에 명시 |
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + AskUserQuestion |
-| §0.13 | **Status/Stability 변경 권한 없음**. 본 스킬은 research 필드만 다룸. status/stability 는 다른 스킬 책임 (kiwi-pipeline-v1 §3) |
+| §0.13 | **Status/Stability 변경 권한 없음**. 본 스킬은 research 필드만 다룸. status/stability 는 다른 스킬 책임 |
 | §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크 |
 | §0.15 | **subagent 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) Skill/Agent 인자 `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 "Opus×3 Researchers", "Opus×1 Synthesizer" 등 Opus 인용은 Sonnet 으로 read-time replace. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--mini` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--mini` 전파 의무 (mini-option.md §7) |
+| §0.18 | **`--auto` 옵션 SSOT (standalone 모드 한정 적용)**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.7 (아래) 참조. **subagent 모드 호출 시 silent skip** — subagent 모드는 mutation 0건(§0.7)이므로 사용자 게이트 자체 부재 → `--auto` 인자 수신해도 무동작. **standalone 모드 한정 적용** — research 본문 영속화(`append_section_note`) 게이트 + Synthesizer 무결성 게이트 결정 + 외부 모듈 영향 게이트가 `--auto` 활성 시 §2 서브에이전트 결정으로 위임. **`--mode` 와 `--auto` 는 독립 축** — §0.G6 4채널 우선순위(mode 검출)와 `--auto` 검출(auto-option.md §1 4채널)은 직교하므로 (a) Skill/Agent 인자에 `--mode=standalone --auto` 동시 매칭 가능, (b) `--mode=subagent --auto` 매칭 시 `--auto` 만 silent skip, (c) `--mode` 채널과 `--auto` 채널 우선순위 충돌은 발생 불가 (서로 다른 토큰) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -160,6 +161,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 | "context7 자료만" | `--external-sources` | `context7,websearch` |
 | "--dry-run", "제안만" | `--dry-run` | off |
 | "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (Researchers/Synthesizer Opus → Sonnet, 토폴로지 불변, `_shared/kiwi/mini-option.md` v1.0) |
+| "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본; subagent 모드 시 silent skip) |
 
 ### 1.3 출력 — standalone 모드
 
@@ -197,6 +199,17 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 - standalone 모드여도 mutation 호출 0건 (전부 `dryRun: true` 또는 skip)
 - 제안 결과는 `outputs/proposed-research/{req-id}.md` 에 별도 저장
 - 보고에 `mode_effective: "dry-run"` 명시
+
+### 1.7 `--auto` critical_gates[] 선언 (standalone 모드 한정)
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트. **subagent 모드에서는 본 절 전체 무효** (mutation 0건이므로 게이트 부재 → §0.18).
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `standalone-replace-overwrite` | standalone 모드 `append_section_note` 의 `mode: "replace"` 결정은 기존 research 본문 전수 덮어쓰기 — 비가역 영속화 | §0.14 / §1.3 |
+| `external-module-impact` | 연구 대상 REQ trace 가 cwd 외부 path — 외부 시스템 영향 결정 비가역 | §0.G2 |
+| `paraphrase-detector-dissent` | Synthesizer paraphrase 검출 (§6.3.1) 이 researcher 간 사실 이견을 의역으로 위장한 경우 — 사실 무결성 결정은 사용자 의무 | §0.G4 / §6.3.1 / §10 axis 7~8 |
+| `input-bias-violation-standalone` | §0.G5 호출자 입력 bias strip 결과를 standalone 모드에서 영속화 시도 — §0.G1 mutation 가드 위반 | §0.G5 / §0.G1 |
 
 ---
 
@@ -658,7 +671,7 @@ text 본문 (500자 한도 — §0.14):
 1. **standalone**: 사용자가 단일 REQ 또는 일반 연구 질문에 대해 깊이 있는 조사 필요 시
 2. **subagent**: `kiwi-srs-feasibility` 가 feasibility ∈ {medium, low} 인 REQ 의 블로커 모호성 해소를 위해 Phase 2.5 에서 호출 (kiwi-srs-feasibility §1.2 `--enable-research`)
 
-상세는 `docs/rule/kiwi-pipeline-v1.md` §3 책임 매트릭스 참조.
+상세는 `_shared/kiwi/pipeline-event.md` §4 (next_hint 결정표) 참조.
 
 ---
 

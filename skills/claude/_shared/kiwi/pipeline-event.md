@@ -2,7 +2,7 @@
 
 본 파일은 모든 `kiwi-*` 스킬이 종료 시점에 append 해야 하는 **파이프라인 이벤트** 의 SSOT. 변경은 SemVer 를 따른다 (minor: 필드 추가만 / major: breaking).
 
-본 문서는 `docs/spec/30.kiwi-pipeline-meta.srs.md` 의 IR-PIPE-001 / IR-PIPE-002 를 구현 측면에서 풀어 쓴 것. 규칙 자체의 SSOT 는 SRS 다.
+본 문서는 `kiwi-*` 파이프라인 이벤트 schema(IR-PIPE-001) 및 파일 위치 규칙(IR-PIPE-002) 의 운영 SSOT 다.
 
 ---
 
@@ -75,6 +75,9 @@ kiwi-planner
 kiwi-coder
 kiwi-pm
 kiwi-commit-auto-push
+kiwi-commit-auto-pr
+kiwi-hot-fix
+kiwi-review-fix-loop
 kiwi-pipeline
 ```
 
@@ -91,9 +94,12 @@ kiwi-pipeline
 | kiwi-srs-feasibility | TASK_DONE | `kiwi-planner` (stability ≥ evolving 시) 또는 `kiwi-srs-research` (블로커 모호 시) |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
-| kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
+| kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
+| kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
+| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
 | any | NEEDS_USER | `null` |
 | any | FAILED | `null` |
 | any | DRY_RUN | (직전 동일 skill 의 실제 실행) |

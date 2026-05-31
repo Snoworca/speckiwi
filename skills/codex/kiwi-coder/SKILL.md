@@ -1,6 +1,6 @@
 ---
 name: kiwi-coder
-description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → standard×4 병렬 TDD 검증 → high-reasoning 시니어 구현 → standard 정형 검사 → high-reasoning 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --mini 로 비용 절감(시니어 코더+까칠 리뷰어 high-reasoning→standard, TDD 검증 standard×4 불변. `../_shared/kiwi/mini-option.md` v1.0. 기존 --squirrel 은 v0.2 까지 deprecated alias)."
+description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → standard×4 병렬 TDD 검증 → high-reasoning 시니어 구현 → standard 정형 검사 → high-reasoning 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --auto 는 공용 auto-option 정책으로 메인 게이트와 후속 kiwi-review-fix-loop --close-reqs handoff를 자동화하되 --yes-all/--auto-integration/--auto-cost-warning은 자동 활성하지 않음. --mini 로 비용 절감(시니어 코더+까칠 리뷰어 high-reasoning→standard, TDD 검증 standard×4 불변. `../_shared/kiwi/mini-option.md` v1.0. 기존 --squirrel 은 v0.2 까지 deprecated alias)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-coder v0.1.9
@@ -40,6 +40,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | §0.17.5 | **dedupe SSOT**. 기존 라인에서 REQ-ID 토큰을 추출할 때는 **lenient 정규식 (dedupe 전용)** `@req\s+([A-Z][A-Z0-9-]*[A-Z0-9])` (§0.17.3 와 동일 REQ-ID 형식, line-anchored 제거) 으로 lenient 검색. 부가 표기 (예: `@req FR-X-001 (legacy)` 의 `(legacy)`, 단일 라인 다중 태그 `/** @req X @param y */`) 가 붙은 비정상 라인에서도 토큰 추출. 추출된 모든 REQ-ID 토큰의 set 을 기존 부착 토큰 set 으로 간주. 새 토큰이 set 에 case-sensitive 일치 시 dedupe (추가 금지). **§0.17.3 wrapper-tolerant 정규식 (line-anchored, 부착 검증 + §0.17.6 면책 공용) 과 본 §0.17.5 lenient 정규식 (line-anchored 미적용, dedupe 전용) 은 별개 SSOT** — 두 정규식의 분리 사용으로 dedupe 의 부가 표기 흡수 (§0.17.5) 와 면책의 코드+태그 섞임 차단 (§0.17.3/§0.17.6) 동시 보장 |
 | §0.17.6 | **포괄 면책 (검증 leak 차단) + 운영 알고리즘**. `@req` 태그는 본 skill 의 다음 모든 단계에서 점검·비교·검증·존재 여부 확인 대상이 **아니다**: §0.G1~§0.G5 게이트, §4.2 standard×4 TDD 검증, §5.1.(b) Mock 금지 regex 스캔, §5.1.(d) ZERO TOLERANCE 계획-코드 일치 게이트, §5.1.(e) 정형 검사, §5.1.(f) 까칠 리뷰, §5.1.(j) DoD 검증, §6.1 회귀 테스트, §6.2 MCP mutation, §8.2 통합 테스트 정형/까칠 리뷰. **§0.7 의 ZERO TOLERANCE 평가 알고리즘 SSOT**: diff hunk 의 added-only 라인 중 **§0.17.3 wrapper-tolerant 정규식** (line-anchored, 부가 표기 흡수) 매칭 라인만 변경 set 에서 제거 후 sidecar.action 외 변경 판정. 부가 표기 라인 (예: `@req FR-X-001 (legacy)`) 은 wrapper-tolerant 가 직접 흡수. **코드+태그 섞임 라인** (예: `let x=1; // @req X`, `const msg="@req X"`) 은 라인 시작 anchor `^` 와 주석 prefix 강제로 자동 차단 → 변경 set 에 포함 (false-negative 방지). §0.17.5 lenient 정규식은 본 면책에 사용하지 않음 — dedupe 전용. 어느 검증자도 `@req` 관련 finding 발행 금지 |
 | §0.17.7 | **부착 누락의 처리**. 누락은 본 skill 의 어떤 게이트도 차단하지 않는다. 사후 보완은 별도 정리 Task 로 처리 (본 스킬 책임 외). 누락 발견 시 시니어 코더가 자기 점검으로 worklog `req_tag_missing_observed { task_id, member_path }` 정보성 append 가능 (severity 없음, §7.3 enum 21). 검증자는 본 이벤트 append 도 금지 (§0.17.6) |
+| §0.18 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto` 는 메인 게이트 결정과 §8.4 후속 `$kiwi-review-fix-loop --close-reqs --auto` handoff 에만 적용한다. `--yes-all`, `--auto-integration`, `--auto-cost-warning` 은 사용자가 명시했을 때만 활성화된다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -91,8 +92,21 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 |---|---|
 | `update_status` 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 | `add_completed_work` 호출 `summary` 가 일치 task 의 dod 와 불일치 | 차단 + 시니어에게 dod 재확인 요구 (summary 텍스트에 dod 항목 인코딩 필수, §6.2) |
-| MCP 도구 미가용 (preflight 실패) | CLI fallback (`speckiwi` 명령) 시도, 둘 다 실패 시 mutation skip + state.json `pending_mutations[]` 적재 + 사용자 보고 |
+| MCP 도구 미가용 (preflight 실패) | 정상 SRS reads/mutations 중단. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고, mutation 대체 실행 금지. state.json `pending_mutations[]` 적재 + 사용자 보고 |
 | 단일 Task 완료 시 mutation > 4건 시도 (4종 외 호출 또는 중복) | 차단 + 시니어 로직 재검토 |
+
+#### §0.G6 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 또는 plan 외 파일 변경 | §0.G2 |
+| `tdd-bypass-attempt` | TDD 강제 원칙 우회 시도 | §0.G1 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS mutation 대체 금지 | §0.G5 |
+| `lifecycle-gate-draft` | draft REQ 구현은 명시적 사용자 override 필요; `--auto` 중단 | Phase 0 |
+| `lifecycle-gate-deprecated-or-frozen` | deprecated/frozen REQ 구현은 정책상 중단 | Phase 0 |
+| `integration-test-user-consent` | `--auto-integration` 없이 통합 테스트 실행 동의 필요 | §8.2 |
+| `cost-warning-large-task` | 장시간/고비용 실행에 대한 별도 동의 필요 | §3.3 / §6.2 |
+| `followup-review-fix-loop-close-unsafe` | 실패 task 또는 회귀 실패가 남아 `--close-reqs`가 부적합 | §8.4 |
 
 ---
 
@@ -119,6 +133,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | "통합 테스트 skip" | `--skip-integration` | off |
 | "통합 테스트 자동 동의" | `--auto-integration` | off (사용자 동의 게이트 유지) |
 | "비용 경고 자동 skip" | `--auto-cost-warning` | off |
+| "자동", "auto", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`; 기존 세부 자동 옵션은 자동 활성하지 않음) |
 | "--mini", "mini 모드", "비용 절감", "standard 으로", "다람쥐" | `--mini` | off (정규명, 모든 high-reasoning → standard. `../_shared/kiwi/mini-option.md` v1.0) |
 | "--squirrel" (deprecated alias of `--mini`, v0.2 까지 유지) | `--squirrel` → `--mini` 로 alias 처리 | off (사용 시 mini-option.md §10 SSOT 안내 메시지 양식 그대로 출력: `ℹ️  `--squirrel` 은 kiwi 시리즈에서 `--mini` 로 통일되었습니다. 향후 `--mini` 사용 권장.` 출력 후 정상 실행) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
@@ -206,10 +221,18 @@ Phase 4 : 모든 Task 완료 후 (선택) 통합 테스트 + 최종 보고서
 
 판정 순서:
 1. MCP `get_active_target` 성공 → PASS
-2. CLI `speckiwi --version` exit 0 → PASS (`mode: "cli-fallback"`)
-3. 둘 다 실패 → HALT + 설치 가이드 출력
+2. MCP 실패 → HALT. CLI `speckiwi --version` 은 설치/버전 진단과 MCP 복구 안내에만 사용하고 PASS 대체 조건으로 삼지 않는다.
 
 `.kiwi/sessions/{run-id}/preflight.json` 기록: `{mcp, cli, halted, node_version, git_repo}`.
+
+### 3.0.1 lifecycle gate
+
+sidecar 의 모든 `traces[].req_id` 를 수집한 뒤 MCP `list_requirements` 로 Stability 를 확인한다.
+
+- `evolving` / `stable`: 진행 가능.
+- `draft`: 중단하고 사용자에게 명시적 override 를 요청한다. `--auto` 에서는 항상 HALT.
+- `deprecated` / `frozen`: 즉시 HALT.
+- MCP 미가용: 정상 SRS read 가 불가능하므로 HALT. CLI 는 진단/복구 안내에만 사용한다.
 
 ### 3.1 plan/sidecar 로드
 

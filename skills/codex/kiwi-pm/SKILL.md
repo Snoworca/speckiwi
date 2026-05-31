@@ -1,6 +1,6 @@
 ---
 name: kiwi-pm
-description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD) 을 입력 SSOT 로 받아 각 Task 를 격리된 sub-agent(kiwi-coder) 로 순차 실행하는 coder-loop runner v0.1. 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 메인 세션과 대화하며, 부팅 시 speckiwi Stability lifecycle gate(evolving/stable 만 진행), 종료 시 REQ status implemented 일괄 승급 + add_completed_work(plan-summary) 마무리, doculight MCP 가용 시 보고서 표시. --auto 시 severity 가드레일(clarification 자동 / business-decision 강제중단 / rollback-confirmation 자동승인). --mini 로 kiwi-coder 비용 절감 전파. --resume / --from-task 재개 가능. 트리거 — plan 돌려, kiwi pm, kiwi 코더 루프, task 루프 실행, 자동 코딩 실행, plan-driven loop, kiwi planner 산출물 실행, coder loop runner, plan 순차 실행, plan 자동 실행. 범위 외 — PRD/SRS/feasibility/planner/reviewer 호출 안 함, /snoworca-* 호출 절대 금지."
+description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD) 을 입력 SSOT 로 받아 각 Task 를 격리된 sub-agent(kiwi-coder) 로 순차 실행하는 coder-loop runner v0.1. 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 메인 세션과 대화하며, 부팅 시 speckiwi Stability lifecycle gate(evolving/stable 만 진행), 종료 시 REQ status implemented 일괄 승급 + add_completed_work(plan-summary) 마무리, doculight MCP 가용 시 보고서 표시. --auto 는 공용 auto-option 정책으로 clarification/business-decision/rollback-confirmation 게이트를 자동 결정하되 critical_gates[] 는 항상 중단한다. --mini 로 kiwi-coder 비용 절감 전파. --resume / --from-task 재개 가능. 트리거 — plan 돌려, kiwi pm, kiwi 코더 루프, task 루프 실행, 자동 코딩 실행, plan-driven loop, kiwi planner 산출물 실행, coder loop runner, plan 순차 실행, plan 자동 실행. 범위 외 — PRD/SRS/feasibility/planner/reviewer 호출 안 함, /snoworca-* 호출 절대 금지."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-pm v0.1
@@ -27,7 +27,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.5 | **메인 세션의 직접 파일 수정 금지** — 단, `plan.md` 체크박스 갱신 (§6.1) 과 `{plan_id}.checklist.md` 폴백 생성 (§6.1) 은 PM 중앙 집중 관리 책임으로 예외. 코드 파일은 어떤 경우에도 PM 이 직접 수정 안 함 |
 | §0.6 | **Mock 검출은 kiwi-coder 책임** (kiwi-coder §0.6). PM 은 무대응 |
 | §0.7 | **spawn 단위 = Task 1:1**. sidecar.tasks[] 가 곧 작업 단위이며 PM 이 임의로 분할/병합하지 않는다. 필요 시 `$kiwi-planner` 재실행 권고 (kiwi-coder §0.15 정합) |
-| §0.8 | **사용자 확인 의무** — 다음 시점에 `Codex clarification gate` 강제: ① lifecycle gate 차단 (§4) ② NEEDS_USER severity=business-decision (§5.1) ③ T-final mutation dryRun 결과 승인 (§6.2) ④ MCP 미가용 시 진행 동의 ⑤ plan/sidecar SHA256 mismatch on `--resume` (§5.4) |
+| §0.8 | **사용자 확인 의무 + `--auto` 처리** — 다음 시점에 `Codex clarification gate` 또는 `../_shared/kiwi/auto-option.md` decision worker 적용: ① lifecycle gate 차단 (§4) ② NEEDS_USER severity=business-decision (§5.1) ③ T-final mutation dryRun 결과 승인 (§6.2) ④ MCP 미가용 시 HALT 및 복구 안내 ⑤ plan/sidecar SHA256 mismatch on `--resume` (§5.4). §0.G7 critical_gates[] 는 `--auto` 로 우회하지 않는다. |
 | §0.9 | **외부 모듈 영향 처리는 kiwi-coder 책임** (kiwi-coder §0.G2). 자식이 `NEEDS_USER + severity=business-decision` 으로 PM 에 버블업하면 §5 가드레일 적용 |
 | §0.10 | **project signature-ban instruction** + **project change-history policy**. 본 스킬 본문에 `## 변경 이력` / `## Changelog` / `### v0.x.y` 섹션 없음 — git history 가 SSOT. 커밋 메시지·코드 주석·산출물 어디에도 AI 식별 정보 금지 |
 | §0.11 | **`.kiwi/sessions/{run_id}/pm-state.json` 영속 의무**. 모든 Task 종료 / NEEDS_USER 버블업 / FAILED / `--resume` 진입 / lifecycle gate 평가 직후 SAVE_STATE. 손상 시 `.bak` 복구 (§7.2) |
@@ -35,6 +35,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.13 | **회귀 테스트는 kiwi-coder §0.13 책임**. PM 은 별도 회귀 호출 안 함. 종합 통합 테스트가 필요하면 사용자에게 별도 안내 |
 | §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단 |
 | §0.15 | **서브에이전트 위임 모드 단일** — 사용 가능한 Codex sub-agent/delegation 도구로 자식 `kiwi-coder` 를 실행한다. 자식 모델 = high-reasoning (또는 `--mini` 시 kiwi-coder 내부에서 standard override). legacy `--headless` CLI subprocess 폐기. 메인 컨텍스트 직접 skill 재진입 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `business-decision` 은 더 이상 blanket hard halt 가 아니며, §0.G7 critical gate 에 해당하지 않는 경우 decision worker 가 결정할 수 있다. 자식 `$kiwi-coder` 호출에는 `--auto` 를 전파한다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -78,6 +79,18 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 
 speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거부할 경우, dryRun 단계에서 미리 감지 → 사용자에게 거부 사유 / 대체 옵션 제시. 강제 우회 없음 (kiwi-pipeline-v1 §5.3 정합).
 
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `lifecycle-gate-draft` | draft/deprecated/frozen lifecycle blocker | §4 |
+| `auto-skip-lifecycle-gate-combo` | `--auto --skip-lifecycle-gate` 조합은 사용자 책임 범위 | §1.3 |
+| `path-heuristic-business-decision` | auth/schema/migration 등 외부 관찰 가능 정책 변경 | §5.1 |
+| `sha-mismatch-on-resume` | plan/sidecar SHA mismatch 는 외부 변경 의심 | §5.4 |
+| `t-final-backward-transition` | status 역방향 전이 금지 | §0.G5 |
+| `t-final-dryrun-rejected` | final mutation dryRun/transition guard 거부 | §0.G6 |
+| `mcp-unavailable` | lifecycle 또는 final mutation 판단 불가. CLI 진단 가능 여부와 무관하게 정상 SRS read/mutation 대체 금지 | §4.4 / §6.2 |
+
 ---
 
 ## 1. 입력 / 출력
@@ -113,7 +126,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 $kiwi-pm PLAN_PATH=docs/plans/...plan.md
          [SIDECAR_PATH=...]              # 부재 시 frontmatter.sidecar_path 로 추론
          [CODE_PATH=.]                   # 부재 시 cwd
-         [--auto]                         # severity 가드레일 활성, business-decision 여전히 HALT
+         [--auto]                         # auto-option decision worker 활성, critical gates 는 HALT
          [--mini]                         # kiwi-coder 자식에 --mini 전파 (high-reasoning → standard)
          [--resume]                       # .kiwi/sessions/{run_id}/pm-state.json 이어가기
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
@@ -368,6 +381,7 @@ FUNCTION MAIN(args):
 - TARGET={state.target_slug}           # lifecycle gate 일관성 확인용
 - TASK_FILTER={task.task_id}           # 이번 자식은 이 Task 하나만 실행
 - CODE_PATH={args.code_path}
+- AUTO={true if args.auto else false}
 - MINI={true if args.mini else false}
 - LIFECYCLE_BLOCKED_REQS={state.lifecycle_gate_state.blocked_req_ids}
 - 이전 NEEDS_USER 답변 (재spawn 시):
@@ -379,7 +393,7 @@ FUNCTION MAIN(args):
 Codex skill invocation prose로 `kiwi-coder` 를 사용하라:
 
 ```
-Use $kiwi-coder with PLAN_PATH={args.plan_path} SIDECAR_PATH={args.sidecar_path} TASK_FILTER={task.task_id} RUN_ID={state.run_id}{' --mini' if args.mini else ''}
+Use $kiwi-coder with PLAN_PATH={args.plan_path} SIDECAR_PATH={args.sidecar_path} TASK_FILTER={task.task_id} RUN_ID={state.run_id}{' --auto' if args.auto else ''}{' --mini' if args.mini else ''}
 ```
 
 스킬 내용을 추측하거나 우회하지 말 것. 가능한 경우 실제 `kiwi-coder` skill body를 로드하고, 스킬 로딩 기능이 없으면 해당 skill folder의 `SKILL.md`를 직접 읽어 따른다.
@@ -422,7 +436,7 @@ sidecar 의 `{task.task_id}` 하나만 처리. 다른 Task 진행 금지. plan.m
         {{ "key": "A", "label": "...", "consequence": "..." }},
         {{ "key": "B", "label": "...", "consequence": "..." }}
       ],
-      "default_if_auto": "A | null"  // business-decision 은 null 강제
+      "default_if_auto": "A | null"  // business-decision 도 critical_gates[] 외에는 auto-option decision worker 대상
     }}
   ],
 

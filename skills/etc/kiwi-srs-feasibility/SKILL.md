@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for evaluating implementation fe
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 활성 target 의 SRS 전수에 대해 **구현 가능성(feasibility) 일괄 평가** + **stability 라이프사이클 갱신**을 수행하는 스킬. `kiwi-srs` (단일 REQ authoring) 와 `kiwi-coder` (구현) 사이의 **승급 게이트**.
 
@@ -101,6 +102,16 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | blocked | status ∈ {in_progress, implemented, verified} | `keep` + 충돌 보고 | ❌ NO-OP |
 | blocked | (default) | `deprecated` | ✅ 필수 |
 | (매칭 실패) | — | `keep` | ✅ 필수 |
+
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 영향 | §0.G2 |
+| `stability-stable-promotion` | stable 승급은 항상 사용자 확인 | §0.G5 |
+| `transition-guard-bypass` | SpecKiwi transition guard 강제 우회 금지 | §0.G4 |
+| `status-conflict` | blocked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI diagnostics cannot replace normal status/stability output | Phase 0 |
 
 ---
 

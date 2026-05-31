@@ -23,7 +23,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.3 | **코드 증거 우선**. 신규/갱신 REQ는 `add_requirement` 시 `trace` 배열에 source 첨부 (NFR/PERF 예외) |
 | §0.4 | **할루시네이션 금지**. 코드/요구사항 텍스트에 증거 없는 기능 작성 금지. 추정은 `stability=draft` + `[INFERRED:high\|med\|low]` |
 | §0.5 | **SRS-MD Authoring Rules v1.0.0 준수**. heading / ID 정규식 / prefix-type 매핑 위반 금지 |
-| §0.6 | **speckiwi MCP 우선 + 황금률**. CLI 직접 호출은 MCP 부재 시에만. **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** (예외는 §9.4) |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence/completed-work 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** (예외는 §9.4) |
 | §0.7 | **scope/target 결정은 사용자 확인**. Codex clarification gate 단일 호출 분해 |
 | §0.8 | **/snoworca-\* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 함수/CVE/파일 추가 요구는 거절 + `rejected_findings.log` |
@@ -38,6 +38,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + Codex clarification gate. 상세는 §0.G2 결정표 |
 | §0.20 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 작성자", "high-reasoning×1 평가자", "high-reasoning×2 평가자", "QnA high-reasoning 라운드" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
+| §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 QnA skip 의미는 유지하되 외부 모듈, scope boundary, combined conflict, MCP 부재, 사실 위조 게이트는 §0.G6 critical_gates[] 로 자동 우회하지 않는다. |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -94,6 +95,16 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | `block-all` | 양쪽 skip; MCP 호출 0건; 사용자 결정 대기 |
 
 **우선순위**: prompt 가 OoS 명시 + conflict 동시 발견 → 본 G5 우선. prompt 가 OoS 명시만 (conflict 없음) → §0.G4 Rule 1 (yes 등가).
+
+#### §0.G6 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 또는 다른 target/scope 영향 | §0.G2 |
+| `scope-boundary-impact` | scope out-of-scope/constraints 변경 | §0.G4 |
+| `combined-boundary-conflict` | boundary 변경과 conflict 분류 동시 발생 | §0.G5 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS read/mutation 대체 금지 | Phase 0 |
+| `fact-fabrication-risk` | 코드/요구사항 증거 없는 기능/AC 작성 위험 | §0.4 / §0.15 |
 
 ---
 
@@ -196,12 +207,12 @@ Phase 7   : Finalize (validate_spec + summarize_target + 사용자 보고)
 
 ### 3.0 speckiwi 가용성 사전 점검
 
-MCP 와 CLI 가 모두 부재하면 스킬을 즉시 차단하고 설치 가이드를 출력한다.
+MCP 가 부재하면 스킬을 즉시 차단하고 설치 가이드를 출력한다. CLI 는 진단/복구 안내에만 사용하며 정상 SRS read/mutation 의 PASS 대체 조건이 아니다.
 
 판정 순서:
 1. speckiwi MCP 도구 가용 (`get_active_target` 호출 성공) → **PASS**, Phase 0.1 진행
-2. MCP 불가 → CLI 체크: `speckiwi --version` (또는 `npx speckiwi --version`) exit 0 → **PASS** (`mode: "cli-fallback"` 기록), Phase 0.1 진행
-3. 둘 다 실패 → **HALT**. 사용자에게 다음 메시지 출력 후 종료. 어떤 부작용 호출도 금지:
+2. MCP 불가 → CLI 체크: `speckiwi --version` (또는 `npx speckiwi --version`) 는 진단 정보에만 기록
+3. **HALT**. 사용자에게 다음 메시지 출력 후 종료. 어떤 부작용 호출도 금지:
 
 ```
 ⛔ kiwi-srs 차단: speckiwi 가 설치되어 있지 않거나 MCP 가 비활성 상태입니다.
@@ -228,7 +239,7 @@ dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 
 1. **사용자 지정 `TARGET` 인자** — 최우선. 다른 모든 단계 skip.
 2. **MCP `get_active_target`** — 활성 target 채택.
-3. **CLI `speckiwi targets --json`** — 활성 없으면 등록 목록 확인. 단일 target만 있으면 자동 채택 + 사용자에게 안내 (질의 없음).
+3. MCP 에서 target 을 확인할 수 없으면 HALT 후 `speckiwi mcp` 복구 또는 사용자의 명시적 target 재실행을 요구한다. CLI target 조회는 진단 출력에만 사용하고 정상 채택 근거가 아니다.
 4. **Codex clarification gate (single)** — 위 모두 실패 시 "어느 target에 등록하시겠습니까?".
 5. 최종 선택한 TARGET이 활성과 다르면 `set_active_target` 호출. `classification.json.target` 에 기록.
 
@@ -385,8 +396,8 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
    - Q2: "prefix는? (제안: {proposed_prefix})"
    - Q3: "ordering NN? (인덱스 분석 후 제안)"
    - Q4 (§0.10 위반 시): type prefix 충돌 → 대안 선택
-2. Use an approved SpecKiwi MCP/CLI bootstrap path to create `docs/spec/{NN}.{slug}.srs.md` from the kiwi-srs-from-code §6.2 template.
-3. Use an approved SpecKiwi MCP/CLI bootstrap path to update `docs/spec/00.index.md` §2 SRS Documents + §4 Scope Map; if no supported bootstrap tool exists, halt with remediation guidance instead of treating raw Markdown edits as normal operation.
+2. Use an approved SpecKiwi MCP bootstrap path to create `docs/spec/{NN}.{slug}.srs.md` from the kiwi-srs-from-code §6.2 template.
+3. Use an approved SpecKiwi MCP bootstrap path to update `docs/spec/00.index.md` §2 SRS Documents + §4 Scope Map; if no supported MCP bootstrap tool exists, halt with remediation guidance instead of treating CLI or raw Markdown edits as normal operation.
 4. `set_active_target(TARGET)` — 활성이 다를 때
 5. `validate_spec` — 구조 검증
 

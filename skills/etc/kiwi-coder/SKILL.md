@@ -11,6 +11,7 @@ description: "OpenCode/Hermes local-LLM variant for executing kiwi-planner tasks
 
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 `kiwi-planner` 가 만든 plan.md + sidecar.json (plan_contract=1.2.0, schema_version=1.1.0, tdd_policy∈{strict, relaxed}) 을 입력 SSOT 로 삼아, Task 단위로 TDD 를 먼저 작성·검증한 뒤 본 구현을 진행하는 코딩 자동화 스킬. snoworca-coder 의 Phase 루프 로직만 차용하되 plan-contract-v1 의존을 제거하고 speckiwi MCP / kiwi-planner sidecar 를 1급 시민으로 사용한다. **모든 작업 상태는 `cwd/.kiwi/` 에 영속화하여 새 세션에서 재개 가능**.
 
@@ -96,6 +97,19 @@ description: "OpenCode/Hermes local-LLM variant for executing kiwi-planner tasks
 | `add_completed_work` 호출 `summary` 가 일치 task 의 dod 와 불일치 | 차단 + 시니어에게 dod 재확인 요구 (summary 텍스트에 dod 항목 인코딩 필수, §6.2) |
 | MCP 도구 미가용 (preflight 실패) | CLI diagnostics only; normal mutation HALT + MCP remediation guidance |
 | 단일 Task 완료 시 mutation > 4건 시도 (4종 외 호출 또는 중복) | 차단 + 시니어 로직 재검토 |
+
+#### §0.G6 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `external-module-impact` | cwd 외부 path 또는 plan 외 파일 변경 | §0.G2 |
+| `tdd-bypass-attempt` | TDD 강제 원칙 우회 시도 | §0.G1 |
+| `mcp-unavailable` | normal SRS mutation requires `speckiwi mcp`; CLI diagnostics cannot replace it | §0.G5 |
+| `lifecycle-gate-draft` | draft REQ 구현은 명시적 사용자 override 필요 | Phase 0 |
+| `lifecycle-gate-deprecated-or-frozen` | deprecated/frozen REQ 구현은 정책상 중단 | Phase 0 |
+| `integration-test-user-consent` | 통합 테스트 실행 동의 필요 | §8.2 |
+| `cost-warning-large-task` | 장시간/고비용 실행에 대한 별도 동의 필요 | §3.3 / §6.2 |
+| `followup-review-fix-loop-close-unsafe` | 실패 task 또는 회귀 실패가 남아 `--close-reqs`가 부적합 | §8.4 |
 
 ---
 

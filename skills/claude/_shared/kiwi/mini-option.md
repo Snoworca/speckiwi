@@ -1,6 +1,6 @@
 # `--mini` 공용 옵션 (kiwi-* Sonnet override)
 
-> **2026-05-19 신설** — kiwi 시리즈 7개 스킬:
+> **적용 대상** — kiwi 시리즈 7개 스킬:
 > - 명세 (신규 도입): `kiwi-srs`, `kiwi-srs-feasibility`, `kiwi-srs-from-code`, `kiwi-srs-research`
 > - 계획 (신규 도입): `kiwi-planner`
 > - 코딩 (마이그레이션): `kiwi-coder` — 기존 `--squirrel` 을 `--mini` 정규명으로 교체, `--squirrel` 은 deprecated alias 로 유지 (§11)
@@ -152,7 +152,3 @@ kiwi-* 스킬이 다른 kiwi-* 스킬을 서브에이전트로 호출하는 경�
 | **자연어 신호** | "다람쥐", "sonnet 으로", "squirrel" 도 `--mini` 매핑 (§8) |
 
 **marshalling 규약**: kiwi-coder / kiwi-srs-sync 의 skill.md 본문 §1 자연어 신호 표에서 "다람쥐", "sonnet 으로" → `--squirrel` 매핑은 유지하되, `--squirrel` 줄 옆에 "(deprecated alias of --mini)" 주석을 추가한다.
-
-## 11. 변경 이력
-
-- 2026-05-19: v1.0 신설. snoworca `_shared/snoworca/squirrel-option.md` v1.0 패턴을 kiwi 시리즈 7개 스킬에 이식. snoworca-* 호출 금지 규약 (CLAUDE.md §7) 에 따라 두 플래그 독립 운용. kiwi-coder / kiwi-srs-sync 의 기존 `--squirrel` 은 §10 정책에 따라 deprecated alias 로 유지.

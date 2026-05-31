@@ -30,7 +30,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - scope별 요약
 - verified 후보
 - 남은 작업 제안
-- 12. MCP / CLI fallback (CRITICAL 차단 해제)
+- 12. MCP availability and remediation
 - 13. 수렴 기준 (Phase 7 객관 메트릭)
 - 14. Pipeline event emit (의무)
 
@@ -255,32 +255,34 @@ MCP `summarize_target { target: TARGET }` 호출. 결과를 보고에 포함.
 
 ---
 
-## 12. MCP / CLI fallback (CRITICAL 차단 해제)
+## 12. MCP availability and remediation
 
-speckiwi MCP 도구 우선. 부재 시 CLI:
+Normal target-scoped SRS reads, mutations, status/stability changes, evidence,
+trace links, and completed-work logging require `speckiwi mcp`. CLI commands may
+diagnose installation/version/configuration or help the user restore MCP, but
+they are not normal fallback mutation paths.
 
-| 작업 | MCP | CLI fallback |
+| 작업 | MCP | CLI diagnostic only |
 |---|---|---|
-| 초기화 | `init_project` | `speckiwi init --target v0.1 [--scope <code>]` |
-| Active Target 조회 (단일) | `get_active_target` | `speckiwi active-target --json` |
-| Target Map 전체 조회 | (MCP 미노출) | `speckiwi targets --json` (read.ts:100 — `workspace.index.targets` 배열 반환) |
-| Target 활성화 | `set_active_target` | `speckiwi set-active-target <target>` |
-| 요구사항 추가 | `add_requirement` | `speckiwi add-requirement --type ... --scope ... --target ... --title ... --requirement ... --ac ... --ac ... [--trace 'Code\|src/...:L45-67\|verifies\|notes']` (CLI `--trace` 는 pipe 구분 4필드 `type\|reference\|relation\|notes` — mutations.ts:42 `parseTraceOptions`) |
-| Status 변경 | `update_status` | `speckiwi update-status <id> <status>` |
-| Trace 추가 | `add_trace_link` | `speckiwi add-trace <id> --type ... --reference ... --relation ... [--notes ...] [--json]` |
-| Verification 추가 | `add_verification_evidence` | `speckiwi add-evidence <id> --type ... --reference ... [--covers ...] [--notes ...] [--json]` |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary [--target <t>] --json` |
-| 목록 | `list_requirements` | `speckiwi list [--scope <s>] [--target <t>] [--status <s>] --json` |
-| 요구사항 조회 | `get_requirement` | `speckiwi show <id> [--markdown] --json` |
+| 초기화 | `init_project` | 설치/버전/설정 확인만 |
+| Active Target 조회 | `get_active_target` | 설치/버전/설정 확인만 |
+| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| 요구사항 추가 | `add_requirement` | 설치/버전/설정 확인만 |
+| Status 변경 | `update_status` | 설치/버전/설정 확인만 |
+| Trace 추가 | `add_trace_link` | 설치/버전/설정 확인만 |
+| Verification 추가 | `add_verification_evidence` | 설치/버전/설정 확인만 |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
+| 목록 | `list_requirements` | 설치/버전/설정 확인만 |
+| 요구사항 조회 | `get_requirement` | 설치/버전/설정 확인만 |
 
-CLI stdout JSON 을 메인이 직접 파싱. 에러 시 stderr 전체를 사용자에게 보고.
+MCP 미가용 시 정상 SRS 작업을 중단하고 복구 안내를 보고한다.
 
 ---
 
 ## 13. 수렴 기준 (Phase 7 객관 메트릭)
 
-본 절은 §0.1 "인라인 자가검증 금지" 와 충돌하지 않는다. 모두 MCP/CLI 의 객관 출력 또는 결정적 rg/search 결과를 사용하는 메트릭이며 메인의 주관 판단을 포함하지 않는다.
+본 절은 §0.1 "인라인 자가검증 금지" 와 충돌하지 않는다. 모두 MCP 의 객관 출력 또는 결정적 rg/search 결과를 사용하는 메트릭이며 메인의 주관 판단을 포함하지 않는다.
 
 - 인벤토리 100% 매핑 (Phase 7 게이트)
 - `validate_spec` PASS

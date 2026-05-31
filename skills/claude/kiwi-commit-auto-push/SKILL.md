@@ -1,6 +1,6 @@
 ---
 name: kiwi-commit-auto-push
-description: Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID/Task-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 Haiku 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.
+description: 'Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID/Task-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 Haiku 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.'
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-commit-auto-push
@@ -22,6 +22,7 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 하고, 관�
 | `--issue=N` | issue 자동 감지 건너뛰고 명시된 issue N 을 대상으로 (수동 override) |
 | `--no-issue` | issue 처리 비활성화 (issue trailer / 코멘트 둘 다 skip) |
 | `--no-comment` | trailer 만 부착하고 push 후 코멘트는 skip (GitHub 자동 close 만 사용) |
+| `--auto` | `--auto` SSOT (`_shared/kiwi/auto-option.md` v1.0). **standalone 모드 한정** — child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 가 `--auto` 가드레일 책임을 지며 본 스킬은 NEEDS_USER bubble-up (§11.6) 만 담당. critical_gates 인라인 선언 + 자율 결정 예외 매핑은 §11.10 참조 |
 
 ## 시그니처 완전 차단 정책
 
@@ -573,6 +574,30 @@ stability: frozen ⚠️ override (reason: "hotfix-CVE-2026-xxxx")
 ### 11.9 변경 이력 섹션 없음
 
 CLAUDE.md §7 — 스킬 본문에 changelog 작성 금지. 연혁은 `git log` 추적.
+
+### 11.10 `--auto` 옵션 SSOT
+
+본 스킬의 standalone 모드는 `_shared/kiwi/auto-option.md` v1.0 을 따른다. child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 의 `--auto` 가드레일을 따르며 본 스킬은 §11.6 의 NEEDS_USER bubble-up 만 담당 (본 절은 standalone 한정).
+
+**자연어 매핑**: "자동", "묻지 말고", "확인 없이", "auto" → `--auto`. `## 인자` 표의 `--auto` 행에서 활성. **본 §11.10 의 critical_gates 는 본 SKILL.md 의 "자율 결정 원칙 예외 2건" (§11 본문 — frozen REQ 변경 / push 충돌) 을 SSOT §5 인터페이스 형식으로 직렬화한 것**이다 (예외 시맨틱 변경 없음).
+
+본 스킬의 `critical_gates[]` (§11.6.1 NEEDS_USER reason enum 매핑):
+
+| gate_id | reason (enum 매핑) | 자율 결정 예외 카테고리 | 발생 위치 | critical 사유 |
+|---|---|---|---|---|
+| `stability-frozen-violation` | `stability_frozen` | frozen REQ 변경 (§11 예외 1) | §11.3 | frozen REQ 본문 변경은 비가역, SSOT §5.1 표준 카탈로그 등재 |
+| `push-conflict-non-fast-forward` | `push_conflict_non_fast_forward` | push 충돌 (§11 예외 2) | Step 10.1 | rebase/merge 자동 선택은 비가역 (SSOT §5.1 `push-conflict-rebase-merge-choice`) |
+| `push-conflict-rebase` | `push_conflict_rebase` | push 충돌 (§11 예외 2) | Step 10.2 | rebase 충돌 자동 해결 비가역 |
+| `push-conflict-merge` | `push_conflict_merge` | push 충돌 (§11 예외 2) | Step 10.3 | merge 충돌 자동 해결 비가역 |
+| `force-push-forbidden` | (해당 reason enum 없음 — `## 안전 규칙` 의 "`--force` push 절대 금지" 위반 시도 시 critical HALT) | — | §11 안전 규칙 | `--force` push 는 본 스킬 정책상 절대 금지 — `--auto` 무관 시도 자체 차단 |
+| `issue-candidate-ambiguous-critical` | `issue_candidate_ambiguous` (severity: clarification) | — | Step 3 / §11.6.2 | trailer 부착 결정이 commit 본문 영속화 → GitHub auto-close 오동작 시 비가역. clarification 이지만 critical 격상 |
+
+**critical_gates 외 게이트** (severity `clarification` / `business-decision` 자동 결정 대상): commit 메시지 평가자 A+ 미달 후 강제 진행, `Closes` vs `Refs` trailer 결정 (Haiku A+ 게이트 자체는 자동 — clarification), draft/deprecated stability WARN 시 trailer skip vs 부착, `--no-comment` 시 코멘트 skip 결정 등 — `--auto` 활성 시 §2 서브에이전트 결정 적용.
+
+**호환**:
+- `--auto --max` / `--auto --mini` 합성은 SSOT §2 / §8 그대로 적용
+- `--mini` 와 동시 명시 시 본 스킬은 Haiku no-op (기존 `--mini` 행 동일)
+- `--force` push 는 critical HALT 가드, `--auto` 우회 불가
 
 ---
 

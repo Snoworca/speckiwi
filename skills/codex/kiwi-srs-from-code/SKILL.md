@@ -31,11 +31,12 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.3 | **코드 증거 우선**. 모든 요구사항은 `add_requirement` 호출 시 `trace` 배열에 source 첨부 필수. manual file edit via apply_patch으로 사후 보강 금지 (단, NFR/PERF/REL 예외 §6.1) |
 | §0.4 | **할루시네이션·임의 요구사항 금지**. 코드에 존재 증거 없는 기능 작성 금지. 추정 항목은 `Stability=draft` + Rationale `[INFERRED:high\|med\|low]` 명시 |
 | §0.5 | **SRS-MD Authoring Rules v1.0.0 절대 준수**. `docs/rule/SRS-MD-Rules-v1.0.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
-| §0.6 | **speckiwi MCP 도구 우선**. CLI 직접 호출은 MCP 부재 시에만 사용. status 변경은 항상 `update_status` MCP(또는 CLI `update-status`). manual file edit via apply_patch 금지 |
+| §0.6 | **speckiwi MCP 도구 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 대체 경로가 아니다. status 변경은 항상 `update_status` MCP 로만 수행한다. manual file edit via apply_patch 금지 |
 | §0.7 | **scope 분할은 반드시 사용자 확인**. Codex clarification gate 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
 | §0.10 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 Phase 3 scope agent / Phase 4 검증자 4축 중 high-reasoning 축은 standard 으로 read-time replace. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
+| §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. inferred requirement loss, scope splitting, coverage gaps, and MCP absence are critical gates (§1.4). |
 
 ---
 
@@ -57,8 +58,19 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | "최소 N scope", "scope N개부터" | `--scope-min` | 3 |
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
 | "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 Codex clarification gate 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
+
+### 1.4 `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `inferred-requirement-loss` | 추론 요구사항 손실/삭제는 사용자 검토 필요 | Phase 4/5 |
+| `scope-splitting-ambiguity` | scope 분할/병합은 SRS 구조 변경 | Phase 1/2 |
+| `inventory-coverage-gap` | public surface 누락 가능성 | Phase 7 |
+| `mcp-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS read/mutation 대체 금지 | Phase 0 |
+| `fact-fabrication-risk` | 코드 증거 없는 요구사항 생성 위험 | §0.4 |
 
 ### 1.3 출력
 
@@ -102,11 +114,11 @@ Phase 7   : 인벤토리 게이트 + validate_spec + summarize_target 최종 보
 2. **MISSING + `--skip-init` 미지정**: MCP `init_project` 호출. 인자: `{ target: TARGET, force: false }` (`scope` 필드는 omit — undefined 명시 전달 금지).
 3. **EXISTS**: 건너뜀. `summarize_target { target: TARGET }` 로 컨텍스트 확인.
 4. **Target 등록 검증 (필수)**:
-   - **결정적 판정 도구는 CLI `speckiwi targets --json`** (read.ts:100, `workspace.index.targets` 전체 배열 반환). 응답의 `targets[]` 에 `target === TARGET` 인 row 가 있으면 등록됨.
-   - **MCP 우선 환경**에서도 위 CLI 명령을 우선 호출 (현재 MCP 에는 동급 도구 미노출 — read-tools 에 `targets` 등록 없음). MCP 만 사용해야 하는 환경이라면 fallback 으로 `00.index.md` §3 Target Map 을 file read 로 직접 파싱.
+   - MCP `get_active_target`, `summarize_target`, `list_requirements` 결과로 TARGET 을 확인한다. CLI `speckiwi targets --json` 은 진단 보조 출력으로만 사용하고 정상 판정/등록 근거로 삼지 않는다.
+   - MCP 로 등록 여부를 판정할 수 없으면 HALT 후 `speckiwi mcp` 복구 또는 명시적 target 재실행을 요구한다.
    - 미등록 시:
-     - `00.index.md` §3 Target Map 표에 행 추가: `| {TARGET} | version | active | (스킬 자동 등록) |`. manual edit via apply_patch 사용.
-     - 기존 active target 이 있고 본 TARGET 으로 바꿔야 하면 MCP `set_active_target { target: TARGET }` (또는 CLI `speckiwi set-active-target <target>`) 호출. 이미 active 면 호출 불필요.
+     - MCP `init_project` / `set_active_target` 등 승인된 MCP bootstrap 경로만 사용한다. 지원 MCP 경로가 없으면 HALT 하고 복구 안내를 출력한다.
+     - 기존 active target 이 있고 본 TARGET 으로 바꿔야 하면 MCP `set_active_target { target: TARGET }` 호출. 이미 active 면 호출 불필요.
    - **사용 금지 도구**:
      - `get_active_target` 응답에는 단일 active target 만 포함되고 전체 target 목록은 없으므로(read-tools.ts:48-52) 등록 여부 판정 불가.
      - `summarize_target` 은 미등록 target 에 대해 silently `total: 0` 의 ok 응답을 반환하므로(summary.ts:42 `records.filter`) 등록/미등록을 구분 못함.

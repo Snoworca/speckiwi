@@ -12,7 +12,7 @@
 
 1. `git rev-parse --show-toplevel` exit 0 → `{git_root}/kiwi/pipeline.jsonl`
 2. 위 실패 + cwd 에 `kiwi/` 디렉토리 존재 → `{cwd}/kiwi/pipeline.jsonl`
-3. MCP 부재 → `~/.kiwi/pipeline.jsonl` (홈 fallback)
+3. 둘 다 부재 → `~/.kiwi/pipeline.jsonl` (홈 fallback)
 
 결정 후 `{pipeline_dir}/.pipeline-path` 마커 파일에 절대 경로 1줄 기록 (같은 cwd 의 모든 스킬이 동일 경로 사용).
 
@@ -75,6 +75,9 @@ kiwi-planner
 kiwi-coder
 kiwi-pm
 kiwi-commit-auto-push
+kiwi-commit-auto-pr
+kiwi-hot-fix
+kiwi-review-fix-loop
 kiwi-pipeline
 ```
 
@@ -92,8 +95,11 @@ kiwi-pipeline
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
 | kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) 또는 `kiwi-commit-auto-push` |
+| kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
+| kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
+| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
 | any | NEEDS_USER | `null` |
 | any | FAILED | `null` |
 | any | DRY_RUN | (직전 동일 skill 의 실제 실행) |

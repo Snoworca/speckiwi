@@ -200,12 +200,12 @@ text 본문 (500자 한도 — §0.14):
 
 ## 8. MCP diagnostics
 
-| 작업 | MCP | CLI diagnostics/remediation |
+| 작업 | MCP | CLI diagnostics/remediation only |
 |---|---|---|
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
-| Research 필드 갱신 | **`append_section_note`** | (CLI 미확정 — MCP 필수) |
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
+| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` can diagnose MCP setup; it is not normal workflow input |
+| Research 필드 갱신 | **`append_section_note`** | MCP required; do not use CLI or raw Markdown fallback |
+| Active target | `get_active_target` | `speckiwi active-target --json` can diagnose MCP setup; it is not normal workflow input |
+| 검증 | `validate_spec` | `speckiwi validate --json` can diagnose MCP setup; MCP remains required for normal workflow |
 
 `append_section_note` CLI 미제공 시 standalone 모드는 MCP 필수. MCP 부재 + standalone 호출 → HALT.
 

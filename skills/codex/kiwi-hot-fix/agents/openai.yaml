@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Hot Fix"
+  short_description: "Triage and implement urgent Kiwi fixes"
+  default_prompt: "Use $kiwi-hot-fix to triage this urgent issue, apply a minimal fix, and synchronize requirements evidence."

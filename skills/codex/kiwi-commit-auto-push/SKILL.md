@@ -1,6 +1,6 @@
 ---
 name: kiwi-commit-auto-push
-description: Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID/Task-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 lightweight 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.
+description: Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID/Task-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 lightweight 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-commit-auto-push
@@ -25,6 +25,7 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 하고, 관�
 | `--issue=N` | issue 자동 감지 건너뛰고 명시된 issue N 을 대상으로 (수동 override) |
 | `--no-issue` | issue 처리 비활성화 (issue trailer / 코멘트 둘 다 skip) |
 | `--no-comment` | trailer 만 부착하고 push 후 코멘트는 skip (GitHub 자동 close 만 사용) |
+| `--auto` | `../_shared/kiwi/auto-option.md` v1.0 적용. standalone 모드에서 비critical 게이트를 decision worker 로 처리. child 모드는 부모에게 NEEDS_USER payload 를 반환 |
 
 ## 시그니처 완전 차단 정책
 
@@ -324,6 +325,15 @@ issue: #N Refs (참조만, 미해결 코멘트 등록)
 - 민감 파일 자동 제외
 - 시그니처 0건 강제 (project signature-ban instruction)
 - **이슈 코멘트 본문도 시그니처 0건** (커밋 메시지와 동일 정책)
+
+### `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `stability-frozen-violation` | frozen REQ 변경은 명시 override reason 필요 | extended §11.3 |
+| `push-conflict-rebase-merge-choice` | push 충돌의 rebase/merge 선택은 비가역 위험 | Step 10 |
+| `force-push-forbidden` | force push 는 정책상 절대 금지 | Step 8 / Step 10 |
+| `issue-candidate-ambiguous` | 잘못된 issue trailer 는 GitHub issue close/reference 오동작 위험 | Step 3 |
 
 ---
 

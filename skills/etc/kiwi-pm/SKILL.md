@@ -6,11 +6,10 @@ description: "OpenCode/Hermes local-LLM variant for running kiwi-planner task pl
 # kiwi-pm v0.1
 
 > etc local-LLM profile: read ../_shared/kiwi/local-llm-profile.md before executing. It requires working speckiwi mcp, treats --max as the default, disables multi-worker fanout, uses one delegated worker/evaluator at a time, and advances only after three consecutive no-improvement evaluations.
-
 **etc override:** If any legacy section below appears to allow CLI mutation fallback or direct normal SRS Markdown mutation, the shared etc local-LLM profile wins: normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only.
-
 > User clarification gate means: ask the user directly in Default mode; use `direct user prompt` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `local-LLM max-profile`, `local evaluator`, and `local evaluator` map to the current host agent model and effort options available in the session.
+> `--auto` policy: read `../_shared/kiwi/auto-option.md` when `--auto` is active. The `critical_gates[]` below always halt for user input.
 
 `kiwi-planner` 가 만든 plan.md + sidecar.json (`plan_contract=1.2.0`, `schema_version=1.1.0`) 을 입력 SSOT 로 받아, 각 Task 를 격리된 delegated worker(`kiwi-coder`) 로 순차 실행하는 coder-loop runner. 메인 세션 컨텍스트 누적 없이 장기 plan(40 Task+) 완주 가능.
 
@@ -81,6 +80,18 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 #### §0.G6 — T-final dryRun 거부 / transition guard 거부
 
 speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거부할 경우, dryRun 단계에서 미리 감지 → 사용자에게 거부 사유 / 대체 옵션 제시. 강제 우회 없음 (kiwi-pipeline-v1 §5.3 정합).
+
+#### §0.G7 — `--auto` critical_gates[]
+
+| gate_id | reason | location |
+|---|---|---|
+| `lifecycle-gate-draft` | draft/deprecated/frozen lifecycle blocker | §4 |
+| `auto-skip-lifecycle-gate-combo` | `--auto --skip-lifecycle-gate` 조합은 사용자 책임 범위 | §1.3 |
+| `path-heuristic-business-decision` | auth/schema/migration 등 외부 관찰 가능 정책 변경 | §5.1 |
+| `sha-mismatch-on-resume` | plan/sidecar SHA mismatch 는 외부 변경 의심 | §5.4 |
+| `t-final-backward-transition` | status 역방향 전이 금지 | §0.G5 |
+| `t-final-dryrun-rejected` | final mutation dryRun/transition guard 거부 | §0.G6 |
+| `mcp-unavailable` | lifecycle or final mutation judgment requires `speckiwi mcp`; CLI diagnostics cannot replace normal read/mutation | §4.4 / §6.2 |
 
 ---
 

@@ -2,7 +2,9 @@
 name: kiwi-coder
 description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → Sonnet×4 병렬 TDD 검증 → Opus 시니어 구현 → Sonnet 정형 검사 → Opus 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --mini 로 비용 절감(시니어 코더+까칠 리뷰어 Opus→Sonnet, TDD 검증 Sonnet×4 불변. `_shared/kiwi/mini-option.md` v1.0. 기존 --squirrel 은 v0.2 까지 deprecated alias)."
 ---
+
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+
 # kiwi-coder v0.1.9
 
 `kiwi-planner` 가 만든 plan.md + sidecar.json (plan_contract=1.2.0, schema_version=1.1.0, tdd_policy∈{strict, relaxed}) 을 입력 SSOT 로 삼아, Task 단위로 TDD 를 먼저 작성·검증한 뒤 본 구현을 진행하는 코딩 자동화 스킬. snoworca-coder 의 Phase 루프 로직만 차용하되 plan-contract-v1 의존을 제거하고 speckiwi MCP / kiwi-planner sidecar 를 1급 시민으로 사용한다. **모든 작업 상태는 `cwd/.kiwi/` 에 영속화하여 새 세션에서 재개 가능**.
@@ -37,6 +39,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | §0.17.5 | **dedupe SSOT**. 기존 라인에서 REQ-ID 토큰을 추출할 때는 **lenient 정규식 (dedupe 전용)** `@req\s+([A-Z][A-Z0-9-]*[A-Z0-9])` (§0.17.3 와 동일 REQ-ID 형식, line-anchored 제거) 으로 lenient 검색. 부가 표기 (예: `@req FR-X-001 (legacy)` 의 `(legacy)`, 단일 라인 다중 태그 `/** @req X @param y */`) 가 붙은 비정상 라인에서도 토큰 추출. 추출된 모든 REQ-ID 토큰의 set 을 기존 부착 토큰 set 으로 간주. 새 토큰이 set 에 case-sensitive 일치 시 dedupe (추가 금지). **§0.17.3 wrapper-tolerant 정규식 (line-anchored, 부착 검증 + §0.17.6 면책 공용) 과 본 §0.17.5 lenient 정규식 (line-anchored 미적용, dedupe 전용) 은 별개 SSOT** — 두 정규식의 분리 사용으로 dedupe 의 부가 표기 흡수 (§0.17.5) 와 면책의 코드+태그 섞임 차단 (§0.17.3/§0.17.6) 동시 보장 |
 | §0.17.6 | **포괄 면책 (검증 leak 차단) + 운영 알고리즘**. `@req` 태그는 본 skill 의 다음 모든 단계에서 점검·비교·검증·존재 여부 확인 대상이 **아니다**: §0.G1~§0.G5 게이트, §4.2 Sonnet×4 TDD 검증, §5.1.(b) Mock 금지 regex 스캔, §5.1.(d) ZERO TOLERANCE 계획-코드 일치 게이트, §5.1.(e) 정형 검사, §5.1.(f) 까칠 리뷰, §5.1.(j) DoD 검증, §6.1 회귀 테스트, §6.2 MCP mutation, §8.2 통합 테스트 정형/까칠 리뷰. **§0.7 의 ZERO TOLERANCE 평가 알고리즘 SSOT**: diff hunk 의 added-only 라인 중 **§0.17.3 wrapper-tolerant 정규식** (line-anchored, 부가 표기 흡수) 매칭 라인만 변경 set 에서 제거 후 sidecar.action 외 변경 판정. 부가 표기 라인 (예: `@req FR-X-001 (legacy)`) 은 wrapper-tolerant 가 직접 흡수. **코드+태그 섞임 라인** (예: `let x=1; // @req X`, `const msg="@req X"`) 은 라인 시작 anchor `^` 와 주석 prefix 강제로 자동 차단 → 변경 set 에 포함 (false-negative 방지). §0.17.5 lenient 정규식은 본 면책에 사용하지 않음 — dedupe 전용. 어느 검증자도 `@req` 관련 finding 발행 금지 |
 | §0.17.7 | **부착 누락의 처리**. 누락은 본 skill 의 어떤 게이트도 차단하지 않는다. 사후 보완은 별도 정리 Task 로 처리 (본 스킬 책임 외). 누락 발견 시 시니어 코더가 자기 점검으로 worklog `req_tag_missing_observed { task_id, member_path }` 정보성 append 가능 (severity 없음, §7.3 enum 21). 검증자는 본 이벤트 append 도 금지 (§0.17.6) |
+| §0.18 | **`--auto` 옵션 SSOT (신설)**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 신규 `--auto` 는 **§8.4 후속 review-fix-loop 자동 시작 게이트 + 메인 게이트 결정** 에만 적용된다 — `--auto` 활성이 기존 분리 옵션 (`--yes-all` / `--auto-integration` / `--auto-cost-warning`) 을 자동 활성하지 않으며, 3종 옵션은 fine-grained 자유도 보존을 위해 그대로 유지 (§1.2). 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -91,6 +94,25 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | MCP 도구 미가용 (preflight 실패) | CLI fallback (`speckiwi` 명령) 시도, 둘 다 실패 시 mutation skip + state.json `pending_mutations[]` 적재 + 사용자 보고 |
 | 단일 Task 완료 시 mutation > 4건 시도 (4종 외 호출 또는 중복) | 차단 + 시니어 로직 재검토 |
 
+#### §0.G6 — `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트 (SSOT `_shared/kiwi/auto-option.md` §5 인터페이스 준수). `--auto` 는 본 스킬에서 §8.4 후속 review-fix-loop 게이트 + 메인 게이트 결정 채널에 적용되며 (§0.18), 다음 게이트는 결정 서브에이전트로 우회 금지:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `external-module-impact` | sidecar files[] 또는 실제 변경이 cwd 외부 path 진입 (§0.9 / §0.G2) | §0.G2 |
+| `zero-tolerance-plan-code-mismatch` | sidecar.tasks[].files[]/action/dod ↔ 실제 변경 불일치 (§0.7) | §0.7 / §5.1.(d) |
+| `mock-detection` | Mock regex 자동 탐지 CRITICAL (§0.6) | §0.6 / §5.1.(b) |
+| `tdd-bypass-attempt` | TDD 우회 시도 (§0.G1 — 시니어가 테스트 작성 단계 skip 시도 / `tdd.applicable=false` + exempt 부재) | §0.G1 |
+| `improvement-loop-divergence-4opt` | §0.G4 4옵션 게이트 발동 (시니어/Sonnet×4/까칠 누적 + 회귀 2회 연속 fail) | §0.G4 / §7.4 |
+| `mcp-mutation-backward-status` | `update_status` backward 전이 시도 (§0.G5 Rule 1) | §0.G5 |
+| `mcp-mutation-batch-large` | MCP mutation ≥10건 batch (§0.8) | §0.8 |
+| `integration-test-user-consent` | 통합 테스트 실행 사용자 동의 (§8.2) — `--auto-integration` 부재 시 사용자 결정 필요 (본 게이트는 `--auto-integration` 명시로 우회 가능 — `--auto` 자동 활성 안 함 §0.18) | §8.2 |
+| `cost-warning-large-task` | 비용 경고 (실행 시간 ≥10분) — `--auto-cost-warning` 부재 시 사용자 결정 (본 게이트도 `--auto-cost-warning` 명시로만 우회 — §0.18) | §3.3 / §6.2 |
+| `followup-review-fix-loop-close-unsafe` | §8.4 후속 review-fix-loop 자동 시작 시 `state.failed_task_ids[]` 비어있지 않거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
+
+**기존 분리 옵션 보존 (§0.18 정합)**: `--yes-all` / `--auto-integration` / `--auto-cost-warning` 의 의미는 본 §0.G6 와 독립. 본 SSOT `--auto` 가 활성되어도 3종은 명시 입력 시에만 활성된다 (자동 활성 금지). `--auto` 활성 시 §8.4 후속 review-fix-loop spawn 의 args 에 `--close-reqs --auto` 전파는 §8.4 본문이 SSOT.
+
 ---
 
 ## 1. 입력 / 출력
@@ -116,6 +138,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | "통합 테스트 skip" | `--skip-integration` | off |
 | "통합 테스트 자동 동의" | `--auto-integration` | off (사용자 동의 게이트 유지) |
 | "비용 경고 자동 skip" | `--auto-cost-warning` | off |
+| "자동", "auto", "묻지 말고" (메인 게이트 + §8.4 후속) | `--auto` (SSOT: auto-option.md v1.0; 기존 `--yes-all`/`--auto-integration`/`--auto-cost-warning` 3종 자동 활성 안 함 — §0.18) | off |
 | "--mini", "mini 모드", "비용 절감", "sonnet 으로", "다람쥐" | `--mini` | off (정규명, 모든 Opus → Sonnet. `_shared/kiwi/mini-option.md` v1.0) |
 | "--squirrel" (deprecated alias of `--mini`, v0.2 까지 유지) | `--squirrel` → `--mini` 로 alias 처리 | off (사용 시 mini-option.md §10 SSOT 안내 메시지 양식 그대로 출력: `ℹ️  `--squirrel` 은 kiwi 시리즈에서 `--mini` 로 통일되었습니다. 향후 `--mini` 사용 권장.` 출력 후 정상 실행) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
@@ -207,6 +230,8 @@ Phase 4 : 모든 Task 완료 후 (선택) 통합 테스트 + 최종 보고서
 3. 둘 다 실패 → HALT + 설치 가이드 출력
 
 `.kiwi/sessions/{run-id}/preflight.json` 기록: `{mcp, cli, halted, node_version, git_repo}`.
+
+입력 인자에 `SPAWN_CONTEXT` 가 있으면 `state.spawn_context = "pm-child"` 로 저장. 부재 시 `state.spawn_context = "standalone"` 기본. (§8.4 자동 시작 게이트 분기에 사용)
 
 ### 3.1 plan/sidecar 로드
 
@@ -528,6 +553,7 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
   "target": "skf-v0.1",
   "mode": "normal|max|reviewer-off|squirrel|dry-run",
   "flags": ["--max"],
+  "spawn_context": "standalone",   // "standalone" | "pm-child" — §3.0 에서 입력 SPAWN_CONTEXT 기반 결정. §8.4 자동 시작 게이트 분기에 사용
   "started_at": "ISO-8601",
   "updated_at": "ISO-8601",
   "frozen_at": null,
@@ -698,6 +724,27 @@ state_ref: ./state.json
 8. MCP mutation 요약 (4종별 호출 수)
 9. 메타 (mode, 실측 토큰 추정, 총 소요 시간)
 
+### 8.4 kiwi-review-fix-loop 후속 권고 + 자동 시작 게이트 (단독 실행 시)
+
+본 스킬이 `kiwi-pm` 자식이 아닌 **단독 실행** (사용자가 `/kiwi-coder` 직접 호출) 으로 종료 시에만 발동. PM 자식 spawn 인 경우 부모 `kiwi-pm` §6.4 가 후속 처리하므로 본 §8.4 skip (`state.spawn_context == "pm-child"` 판정).
+
+(가드: `state.spawn_context == "pm-child"` 인 경우 본 §8.4 전체 skip — Skill 호출 자체 시도 금지. PM 컨텍스트 격리 정책 준수)
+
+단독 실행 시: §8.3 최종 보고서 작성 직후, 사용자에게 다음 안내:
+
+> "본 plan 의 REQ status 가 `implemented` 로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 `verified` 로 닫으려면 `/kiwi-review-fix-loop --close-reqs` 를 호출하십시오."
+
+`AskUserQuestion` 3지선다:
+- `(1) 지금 자동 시작` — 메인 세션에서 `Skill(skill="kiwi-review-fix-loop", args="--close-reqs --auto")` 호출 (본 스킬의 `--mini` / `--max` 활성 시 args 에 전파)
+- `(2) 나중에 수동`
+- `(3) skip` — verified 닫지 않음
+
+`--auto` 모드 시: (1) 자동 채택 + severity 가드레일 — `state.failed_task_ids[]` 비어있지 않거나 회귀 fail 잔존 시 (3) 자동 채택 (verified 닫기 부적합).
+
+자동 시작 시 후속 review-fix-loop 의 종료 상태 (`closed_reqs.json`) 는 본 coder 보고서 §10 "후속 close 결과" 신규 섹션에 첨부 (best-effort, review-fix-loop 종료 직후 갱신).
+
+본 §8.4 의 mutation (verified 전이) 은 review-fix-loop §6.6 에 위임 — kiwi-coder 의 mutation 4종 (§0.12) 외 신규 호출 없음.
+
 ---
 
 ## 9. 호출 예시
@@ -744,7 +791,7 @@ state_ref: ./state.json
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 **호출 컨텍스트별 정책**:
-- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: 통상 `"kiwi-commit-auto-push"`.
+- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: 통상 `"kiwi-review-fix-loop"` (`--close-reqs` 검증 권고). commit 은 review-fix-loop 통과 후 `kiwi-review-fix-loop` 의 `next_hint` 로 진행.
 - **kiwi-pm 자식으로 spawn**: 본 스킬은 emit 하지 않는다 — 부모(`kiwi-pm`) 의 Task 종료 시 부모가 일괄 emit. 자식의 결과는 부모의 보고에 인용.
 
 - `req_ids`: 본 Task 가 영향을 미친 REQ-ID 배열

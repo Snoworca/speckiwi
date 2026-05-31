@@ -132,7 +132,7 @@ speckiwi mcp
 speckiwi --root /path/to/project mcp
 ```
 
-Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, completed work 기록을 MCP 도구로 수행합니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
+Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, section note 추가, target goal 설정, completed work 기록을 MCP 도구로 수행합니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
 
 ## 6. Kiwi Skill 종류
 
@@ -147,6 +147,9 @@ Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance 
 | `kiwi-pm` | `kiwi-planner` 계획을 읽고 각 Task를 `kiwi-coder`로 순차 실행하는 coder-loop runner입니다. |
 | `kiwi-srs-sync` | 코드를 먼저 수정한 뒤 `git diff`를 분석해 SRS를 사후 동기화합니다. |
 | `kiwi-commit-auto-push` | Git 변경사항을 requirement evidence와 연결해 commit하고 push까지 진행합니다. |
+| `kiwi-commit-auto-pr` | Git 변경사항을 commit/push한 뒤 GitHub PR 생성 또는 갱신과 PR evidence 연결까지 진행합니다. |
+| `kiwi-hot-fix` | 긴급 버그나 production issue를 TDD, 회귀 검증, 사후 SRS sync로 빠르게 처리합니다. |
+| `kiwi-review-fix-loop` | 로컬 변경 또는 PR 코멘트를 review/fix/re-review 루프로 정리하고 선택적으로 REQ verified 전이를 수행합니다. |
 | `kiwi-pipeline` | `.kiwi/pipeline.jsonl` 이벤트를 읽어 다음 Kiwi skill 단계를 추천하거나 자동 진행합니다. |
 
 같은 skill set은 에이전트별 source tree로 배포됩니다.
@@ -167,10 +170,12 @@ flowchart TD
     B -->|새 요구사항| C["kiwi-srs: SRS requirement 작성/갱신"]
     B -->|기존 코드에서 역추출| D["kiwi-srs-from-code: 코드 기반 SRS 생성"]
     B -->|코드 먼저 수정됨| E["kiwi-srs-sync: git diff 기반 SRS 동기화"]
+    B -->|긴급 버그| Q["kiwi-hot-fix: 긴급 TDD 수정"]
 
     C --> F["kiwi-srs-feasibility: 구현 가능성/stability 평가"]
     D --> F
     E --> F
+    Q --> M
 
     F --> G{"블로커 또는 모호성?"}
     G -->|있음| H["kiwi-srs-research: risk/blocker 연구"]
@@ -181,9 +186,13 @@ flowchart TD
     J --> K["kiwi-coder: Task 단위 TDD/구현/검증"]
     K --> L{"남은 Task?"}
     L -->|있음| J
-    L -->|없음| M["SpecKiwi MCP: evidence/status/completed-work 기록"]
-    M --> N["kiwi-commit-auto-push: commit + push"]
+    L -->|없음| R["kiwi-review-fix-loop: review/fix/re-review"]
+    R --> M["SpecKiwi MCP: evidence/status/completed-work 기록"]
+    M --> S{"PR 필요?"}
+    S -->|아니오| N["kiwi-commit-auto-push: commit + push"]
+    S -->|예| T["kiwi-commit-auto-pr: commit + push + PR"]
     N --> O["완료"]
+    T --> O
 
     P["kiwi-pipeline: 이벤트 기반 다음 단계 추천/추적"] -.-> B
     P -.-> F
@@ -240,6 +249,16 @@ speckiwi show FR-APP-001 --markdown
 speckiwi completed-work --target v0.1.0 --order latest
 ```
 
+요구사항 상태·안정성 변경 (MCP가 정상 경로이며, 아래 CLI mutation 명령은 수동 운영·진단용입니다. `--reason`은 Change Notes 행을 남기고, `--dry-run`으로 변경 전 결과를 미리 볼 수 있습니다):
+
+```sh
+speckiwi update-status FR-APP-001 implemented --reason "AC 충족, 회귀 통과"
+speckiwi update-stability FR-APP-001 stable --reason "인터페이스 확정"
+speckiwi append-note FR-APP-001 --section rationale --text "결정 배경 기록"
+speckiwi set-target-goal v0.1.0 --goal "첫 사용 가능 릴리스"
+speckiwi set-active-target v0.2.0
+```
+
 skill 설치 계획 확인:
 
 ```sh
@@ -251,8 +270,9 @@ speckiwi skills install codex all --dry-run --json
 - `docs/spec/**/*.srs.md`가 요구사항의 유일한 원본입니다.
 - 요구사항 ID는 사람이 직접 임의로 만들지 말고 SpecKiwi mutation 도구로 생성합니다.
 - Requirement `Status`는 구현/검증 진행 상태를 나타냅니다.
-- Requirement `Stability`는 요구사항 문구의 성숙도와 변경 통제 수준을 나타냅니다.
-- `verified`는 acceptance criteria가 체크되고 verification evidence가 연결된 뒤에만 사용합니다.
+- Requirement `Stability`는 요구사항 문구의 성숙도와 변경 통제 수준을 나타냅니다. 값은 `draft` → `evolving` → `stable` → `frozen`과 `deprecated`이며, `draft`나 `deprecated` 요구사항은 명시적 승인 없이 구현하지 않습니다.
+- `Status`가 `discarded`이거나 `Stability`가 `draft`이면 요구사항 heading에 `[DISCARDED]` / `[DRAFT — pending decision]` 마커가 자동으로 붙고, 되살아나면 제거됩니다.
+- `verified`는 acceptance criteria가 체크되고 verification evidence가 연결된 뒤에만 사용합니다. 여러 요구사항을 한 번에 `verified`로 바꾸거나 Active Target을 일괄로 비우는 bulk mutation은 도구 수준에서 차단됩니다.
 - Kiwi skills는 정상 작업에서 raw Markdown 수정을 SRS mutation 경로로 사용하지 않습니다. MCP 도구가 우선입니다.
 
 ## 10. 패키지 개발자용
@@ -289,12 +309,17 @@ skills/etc/
 
 ## 관련 요구사항
 
-이 README의 skill 설치 및 workflow 설명은 다음 SpecKiwi 요구사항 범위를 문서화합니다.
+이 README의 skill 설치, mutation 명령, workflow 설명은 다음 SpecKiwi 요구사항 범위를 문서화합니다.
 
 - `IR-CLI-027`: `speckiwi skills install <agent> <skill|all>` CLI
 - `FR-NODE-016`: Kiwi skill installation core service
 - `FR-FLOW-012`: Kiwi skills require SpecKiwi MCP for normal operation
 - `MIG-FLOW-002`: OpenCode/Hermes용 `skills/etc` migration
+- `FR-PARSE-017` / `FR-MCP-017` / `IR-CLI-026`: Stability lifecycle과 `update_stability`
+- `FR-MCP-018`: `append_section_note` mutation
+- `FR-PARSE-018` / `FR-MCP-019`: Target Goal meta block과 `set_target_goal`
+- `FR-ARCH-005`: Mutation tool kind 분류 (bulk mutation 거버넌스)
+- `FR-PARSE-016` / `FR-NODE-015` / `IR-CLI-024` / `FR-MCP-016`: Completed Work Log 보고서 경로
 
 ---
 
@@ -430,7 +455,7 @@ You can also pass an explicit root.
 speckiwi --root /path/to/project mcp
 ```
 
-Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, and completed work logging. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
+Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, section notes, target goals, and completed work logging. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
 
 ## 6. Kiwi Skill Types
 
@@ -445,6 +470,9 @@ Kiwi skills use MCP tools for requirement reads, status changes, stability chang
 | `kiwi-pm` | Run a `kiwi-planner` plan by dispatching each task to `kiwi-coder` sequentially. |
 | `kiwi-srs-sync` | Analyze `git diff` after code-first work and synchronize the SRS afterward. |
 | `kiwi-commit-auto-push` | Connect Git changes to requirement evidence, then commit and push. |
+| `kiwi-commit-auto-pr` | Commit and push Git changes, then create or update a GitHub PR with PR evidence links. |
+| `kiwi-hot-fix` | Handle urgent bugs or production issues with TDD, regression checks, and post-fix SRS sync. |
+| `kiwi-review-fix-loop` | Run review/fix/re-review over local changes or PR comments and optionally verify REQs. |
 | `kiwi-pipeline` | Read `.kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
 
 The same skill set is distributed through agent-specific source trees.
@@ -465,10 +493,12 @@ flowchart TD
     B -->|New requirement| C["kiwi-srs: Write/update SRS requirement"]
     B -->|Reverse from existing code| D["kiwi-srs-from-code: Generate SRS from code"]
     B -->|Code changed first| E["kiwi-srs-sync: Sync SRS from git diff"]
+    B -->|Urgent bug| Q["kiwi-hot-fix: Urgent TDD fix"]
 
     C --> F["kiwi-srs-feasibility: Evaluate feasibility/stability"]
     D --> F
     E --> F
+    Q --> M
 
     F --> G{"Blocker or ambiguity?"}
     G -->|Yes| H["kiwi-srs-research: Research risk/blocker"]
@@ -479,9 +509,13 @@ flowchart TD
     J --> K["kiwi-coder: Task-level TDD/implementation/verification"]
     K --> L{"More tasks?"}
     L -->|Yes| J
-    L -->|No| M["SpecKiwi MCP: Record evidence/status/completed-work"]
-    M --> N["kiwi-commit-auto-push: Commit + push"]
+    L -->|No| R["kiwi-review-fix-loop: Review/fix/re-review"]
+    R --> M["SpecKiwi MCP: Record evidence/status/completed-work"]
+    M --> S{"PR needed?"}
+    S -->|No| N["kiwi-commit-auto-push: Commit + push"]
+    S -->|Yes| T["kiwi-commit-auto-pr: Commit + push + PR"]
     N --> O["Done"]
+    T --> O
 
     P["kiwi-pipeline: Recommend next step and track progress"] -.-> B
     P -.-> F
@@ -538,6 +572,16 @@ Read completed work:
 speckiwi completed-work --target v0.1.0 --order latest
 ```
 
+Change requirement status and stability (MCP is the normal path; the CLI mutation commands below are for manual operation and diagnostics. `--reason` records a Change Notes row, and `--dry-run` previews the result before applying):
+
+```sh
+speckiwi update-status FR-APP-001 implemented --reason "AC met, regression passed"
+speckiwi update-stability FR-APP-001 stable --reason "interface finalized"
+speckiwi append-note FR-APP-001 --section rationale --text "record decision background"
+speckiwi set-target-goal v0.1.0 --goal "first usable release"
+speckiwi set-active-target v0.2.0
+```
+
 Preview skill installation:
 
 ```sh
@@ -549,8 +593,9 @@ speckiwi skills install codex all --dry-run --json
 - `docs/spec/**/*.srs.md` is the only canonical requirements source.
 - Do not manually invent requirement IDs; use SpecKiwi mutation tools.
 - Requirement `Status` tracks implementation and verification progress.
-- Requirement `Stability` tracks the maturity and change-control level of the requirement text.
-- Use `verified` only after acceptance criteria are checked and verification evidence is linked.
+- Requirement `Stability` tracks the maturity and change-control level of the requirement text. Its values are `draft` → `evolving` → `stable` → `frozen`, plus `deprecated`; do not implement `draft` or `deprecated` requirements without explicit approval.
+- When `Status` is `discarded` or `Stability` is `draft`, the requirement heading is automatically decorated with a `[DISCARDED]` / `[DRAFT — pending decision]` marker, and the marker is removed on revival.
+- Use `verified` only after acceptance criteria are checked and verification evidence is linked. Bulk mutations that flip many requirements to `verified` at once or empty the Active Target are blocked at the tool level.
 - Kiwi skills do not use raw Markdown edits as the normal SRS mutation path. MCP tools come first.
 
 ## 10. Package Development
@@ -587,9 +632,14 @@ skills/etc/
 
 ## Related Requirements
 
-The skill installation and workflow documentation in this README maps to these SpecKiwi requirements.
+The skill installation, mutation command, and workflow documentation in this README maps to these SpecKiwi requirements.
 
 - `IR-CLI-027`: `speckiwi skills install <agent> <skill|all>` CLI
 - `FR-NODE-016`: Kiwi skill installation core service
 - `FR-FLOW-012`: Kiwi skills require SpecKiwi MCP for normal operation
 - `MIG-FLOW-002`: `skills/etc` migration for OpenCode and Hermes
+- `FR-PARSE-017` / `FR-MCP-017` / `IR-CLI-026`: Stability lifecycle and `update_stability`
+- `FR-MCP-018`: `append_section_note` mutation
+- `FR-PARSE-018` / `FR-MCP-019`: Target Goal meta block and `set_target_goal`
+- `FR-ARCH-005`: Mutation tool kind classification (bulk mutation governance)
+- `FR-PARSE-016` / `FR-NODE-015` / `IR-CLI-024` / `FR-MCP-016`: Completed Work Log report paths

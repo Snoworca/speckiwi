@@ -18,7 +18,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 영속화
 - 다음 단계
 - 7.2 subagent 모드
-- 8. MCP / CLI fallback
+- 8. MCP availability and remediation
 - 9. 수렴 기준
 - 10. 검증 축 (Synthesizer 자체 검증 + 호출자 측 점검)
 - 11. 주의사항
@@ -199,14 +199,18 @@ text 본문 (500자 한도 — §0.14):
 
 ---
 
-## 8. MCP / CLI fallback
+## 8. MCP availability and remediation
 
-| 작업 | MCP | CLI fallback |
+Standalone research persistence and REQ_ID lookup require `speckiwi mcp`. CLI
+commands may diagnose installation/version/configuration or help restore MCP,
+but they are not normal fallback mutation paths.
+
+| 작업 | MCP | CLI diagnostic only |
 |---|---|---|
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
+| REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
 | Research 필드 갱신 | **`append_section_note`** | (CLI 미확정 — MCP 필수) |
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
+| Active target | `get_active_target` | 설치/버전/설정 확인만 |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
 
 `append_section_note` CLI 미제공 시 standalone 모드는 MCP 필수. MCP 부재 + standalone 호출 → HALT.
 

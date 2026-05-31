@@ -148,6 +148,9 @@ $kiwi-srs-sync TARGET=v1.0.0
 $kiwi-srs-sync TARGET=v1.0.0 --base=develop
 ```
 
+`--auto-apply` / `--yes-all` 은 사용자가 직접 요청한 경우에만 사용한다.
+부모 skill 의 `--auto` 전파만으로 이 예시를 실행하지 않는다.
+
 자연어 매핑 예시:
 - "타겟 1.0.0 에 대하여 비교하고 업데이트 해줘" → `$kiwi-srs-sync TARGET=v1.0.0`
 - "v0.3 와 코드 동기화" → `$kiwi-srs-sync TARGET=v0.3`
