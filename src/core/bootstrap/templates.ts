@@ -11,7 +11,7 @@ export interface AgentInstructionOptions {
   version?: string;
 }
 
-export const AGENT_INSTRUCTION_VERSION = "1.3";
+export const AGENT_INSTRUCTION_VERSION = "1.4";
 export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
 export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 
@@ -235,6 +235,15 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "4. Read open work with MCP `list_requirements` for `status=in_progress`, `status=blocked`, and `status=implemented`; CLI fallback is `speckiwi list --status <status> --json`.",
     "5. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.",
     "6. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.",
+    "",
+    "Next target authoring workflow:",
+    "1. If the user asks to set the next target, first read the current Active Target and Target Map.",
+    "2. If the target is not registered, use a supported target-registration mutation such as MCP `set_active_target` with creation support, or CLI `speckiwi set-active-target <target> --create` when that option is available.",
+    "3. If the configured MCP/CLI cannot register the target, stop before target-scoped SRS changes and report the tool gap, unless the user explicitly authorizes a minimal SRS-MD patch.",
+    "4. After target assignment, confirm the resolved Active Target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
+    "5. When the user provides a target goal, record it with MCP `set_target_goal`, or CLI `speckiwi set-target-goal <target> --goal <text>` if MCP is unavailable.",
+    "6. For later SRS creation, omit the target only when the tool supports Active Target defaulting; otherwise pass the confirmed Active Target explicitly.",
+    "7. If the user provides an explicit different target for a requirement, the explicit target wins over Active Target.",
     "",
     "Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
     "",
