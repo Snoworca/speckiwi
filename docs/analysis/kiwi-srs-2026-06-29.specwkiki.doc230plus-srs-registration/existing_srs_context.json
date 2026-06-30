@@ -1,0 +1,27 @@
+{
+  "reused_existing_requirements": [
+    "FR-NODE-017",
+    "FR-NODE-018",
+    "FR-NODE-019",
+    "FR-NODE-020",
+    "FR-NODE-021",
+    "REL-NODE-003",
+    "FR-FLOW-013"
+  ],
+  "superseded_first_wave_requirements": [
+    "FR-NODE-022",
+    "FR-NODE-023",
+    "IR-CLI-033",
+    "IR-CLI-034",
+    "IR-CLI-039",
+    "FR-MCP-025",
+    "FR-MCP-026",
+    "FR-MCP-033",
+    "FR-MCP-036"
+  ],
+  "supersession_rationale": [
+    "First-wave workflow mutation requirements encoded stale journalKey semantics or mixed read-only and mutating surfaces.",
+    "Successor requirements split projection reads, guarded mutations, logical deletion, and migration preview into narrower implementation units.",
+    "FR-MCP-037 replaces FR-MCP-036 because the previous code trace referenced lines beyond the current source file length."
+  ]
+}

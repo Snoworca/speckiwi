@@ -10,6 +10,17 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 const execFileAsync = promisify(execFile);
 
+function npmCommand(args: string[]): { command: string; args: string[] } {
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath) return { command: process.execPath, args: [npmExecPath, ...args] };
+  return { command: process.platform === "win32" ? "npm.cmd" : "npm", args };
+}
+
+function runNpm(args: string[], options: { cwd?: string; timeout?: number } = {}) {
+  const npm = npmCommand(args);
+  return execFileAsync(npm.command, npm.args, options);
+}
+
 describe("release readiness and documentation", () => {
   it("summarizes target readiness without creating git tags", async () => {
     const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
@@ -116,7 +127,7 @@ describe("release readiness and documentation", () => {
   });
 
   it("prints targetSource from the release-check script without a hard-coded target fallback", async () => {
-    await execFileAsync("npm", ["run", "build", "--silent"], { cwd: process.cwd(), shell: true });
+    await runNpm(["run", "build", "--silent"], { cwd: process.cwd() });
     const env = { ...process.env };
     delete env.SPECKIWI_TARGET;
     delete env.SPECKIWI_STRICT_READY;

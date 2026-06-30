@@ -1,0 +1,320 @@
+{
+  "iter": 4,
+  "evaluator": "improvement-agent-iter4",
+  "trigger": "subagent Doc09 HIGH/MEDIUM findings and process MEDIUM finding",
+  "actions": [
+    {
+      "action": "add_requirement",
+      "req_ids": [
+        "FR-FLOW-013"
+      ],
+      "files": [
+        "docs/spec/60.workflow-release.srs.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC09-HIGH-001",
+          "finding_hash": "c6aa8e7dfaa49882",
+          "severity": "HIGH",
+          "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md:385",
+          "status": "resolved",
+          "resolution": "Add v2.3.0 wrapper so target lifecycle P1 work appears in active target work selection."
+        }
+      ],
+      "evidence_path": "docs/spec/60.workflow-release.srs.md",
+      "resolution": "Created FR-FLOW-013 wrapper and linked it to IR-CLI-023, FR-MCP-015, FR-NODE-014, and FR-FLOW-011.",
+      "args": {
+        "target": "v2.3.0",
+        "scope": "FLOW",
+        "type": "functional",
+        "result_id": "FR-FLOW-013"
+      }
+    },
+    {
+      "action": "research_text_update",
+      "req_ids": [
+        "FR-FLOW-013"
+      ],
+      "files": [
+        "docs/research/09.mcp-cli-tool-abandonment-research.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC09-HIGH-001",
+          "finding_hash": "c6aa8e7dfaa49882",
+          "severity": "HIGH",
+          "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md:385",
+          "status": "resolved",
+          "resolution": "Make Doc09 P1 target lifecycle section point to the v2.3.0 wrapper."
+        }
+      ],
+      "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md",
+      "resolution": "Doc09 now states FR-FLOW-013 tracks v2.3.0 completion while the v2.1.0 IDs remain detailed contracts.",
+      "args": {
+        "inserted_references": [
+          "FR-FLOW-013"
+        ]
+      }
+    },
+    {
+      "action": "trace_link_additions",
+      "req_ids": [
+        "REL-NODE-002"
+      ],
+      "files": [
+        "docs/spec/50.nodejs-implementation.srs.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-001",
+          "finding_hash": "52d05379bdbda0cc",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1614",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 dependency traces for agent workflow fixture corpus."
+        }
+      ],
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "resolution": "REL-NODE-002 now traces mutation parity, index sync, granular editing, diagnostics dedupe, signature parity, workspace-root, and target lifecycle requirements.",
+      "args": {
+        "added_refs": [
+          "FR-NODE-017",
+          "IR-CLI-028",
+          "FR-MCP-020",
+          "FR-NODE-018",
+          "FR-NODE-019",
+          "REL-PARSE-002",
+          "REL-FLOW-002",
+          "REL-MCP-003",
+          "FR-FLOW-013",
+          "IR-CLI-023",
+          "FR-MCP-015",
+          "FR-NODE-014",
+          "FR-FLOW-011"
+        ]
+      }
+    },
+    {
+      "action": "trace_link_additions",
+      "req_ids": [
+        "REL-FLOW-002"
+      ],
+      "files": [
+        "docs/spec/60.workflow-release.srs.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-002",
+          "finding_hash": "70b6ab61266e0920",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/60.workflow-release.srs.md:1138",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 dependency traces for tool signature parity."
+        }
+      ],
+      "evidence_path": "docs/spec/60.workflow-release.srs.md",
+      "resolution": "REL-FLOW-002 now traces mutation envelope, CLI/MCP search, CLI JSON errors, and MCP diagnostics envelopes.",
+      "args": {
+        "added_refs": [
+          "FR-NODE-017",
+          "IR-CLI-029",
+          "FR-MCP-021",
+          "IR-CLI-030",
+          "FR-MCP-022"
+        ]
+      }
+    },
+    {
+      "action": "trace_link_additions",
+      "req_ids": [
+        "IR-CLI-029",
+        "FR-MCP-021",
+        "FR-NODE-018",
+        "FR-NODE-019"
+      ],
+      "files": [
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-003",
+          "finding_hash": "d0d454ddd633f0b0",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/30.cli-interface.srs.md:1874",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 candidate dependency traces for search, diagnostics, index sync, and granular editing."
+        },
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-004",
+          "finding_hash": "d459275d3afc7cea",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/40.mcp-stdio-interface.srs.md:1613",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 candidate dependency traces for search, diagnostics, index sync, and granular editing."
+        },
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-005",
+          "finding_hash": "618b1aba3b34fe8e",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1493",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 candidate dependency traces for search, diagnostics, index sync, and granular editing."
+        },
+        {
+          "id": "SUBAGENT-DOC09-MEDIUM-006",
+          "finding_hash": "5727f235f1f00ed0",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1542",
+          "status": "resolved",
+          "resolution": "Add missing Doc09 candidate dependency traces for search, diagnostics, index sync, and granular editing."
+        }
+      ],
+      "evidence_path": "docs/spec/30.cli-interface.srs.md",
+      "resolution": "Added IR-CLI-030, FR-MCP-022, REL-PARSE-002, IR-CLI-028, and FR-MCP-020 trace dependencies to the corresponding v2.3.0 requirements.",
+      "args": {
+        "added_refs": {
+          "IR-CLI-029": [
+            "IR-CLI-030"
+          ],
+          "FR-MCP-021": [
+            "FR-MCP-022"
+          ],
+          "FR-NODE-018": [
+            "REL-PARSE-002"
+          ],
+          "FR-NODE-019": [
+            "IR-CLI-028",
+            "FR-MCP-020"
+          ]
+        }
+      }
+    },
+    {
+      "action": "audit_artifact_link_repair",
+      "files": [
+        "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/*.json"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-PROCESS-MEDIUM-001",
+          "finding_hash": "1c3dfe21f91d5e1a",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/improvement_iter2.json:53",
+          "status": "resolved",
+          "resolution": "Add evaluator, resolves, finding_hash, evidence_path, resolution, status, and args to improvement and delta artifacts."
+        }
+      ],
+      "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/improvement_iter4.json",
+      "resolution": "Improvement actions and srs_delta post_bridge_edits now include mechanical finding links and resolution metadata.",
+      "args": {
+        "files_updated": [
+          "improvement_iter1.json",
+          "improvement_iter2.json",
+          "improvement_iter3.json",
+          "improvement_iter4.json",
+          "srs_delta.json"
+        ]
+      }
+    },
+    {
+      "action": "manual_rollup_repair",
+      "files": [
+        "docs/spec/00.index.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "POST-WRAPPER-SRS-W019-W020",
+          "finding_hash": "19583548219a1887",
+          "severity": "MEDIUM",
+          "axis": "mcp_srsmd",
+          "req_id": "FR-NODE-018",
+          "evidence_path": "docs/spec/00.index.md",
+          "status": "resolved",
+          "resolution": "Updated Status Summary planned count and Requirement Type Summary functional count after FR-FLOW-013 add_requirement."
+        }
+      ],
+      "evidence_path": "docs/spec/00.index.md",
+      "resolution": "Updated Status Summary planned count and Requirement Type Summary functional count after FR-FLOW-013 add_requirement.",
+      "args": {
+        "planned_before": 30,
+        "planned_after": 31,
+        "functional_before": 83,
+        "functional_after": 84,
+        "cause": "FR-FLOW-013 add_requirement did not update index rollups automatically"
+      }
+    },
+    {
+      "action": "research_analysis_completion",
+      "req_ids": [
+        "FR-FLOW-013"
+      ],
+      "files": [
+        "docs/spec/60.workflow-release.srs.md"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "LOCAL-FR-FLOW-013-PLACEHOLDER",
+          "finding_hash": "local-placeholder-fr-flow-013",
+          "severity": "LOW",
+          "axis": "mcp_srsmd",
+          "req_id": "FR-FLOW-013",
+          "evidence_path": "docs/spec/60.workflow-release.srs.md",
+          "status": "resolved",
+          "resolution": "Replaced placeholder Research / Analysis with Doc09 P1 source reference."
+        }
+      ],
+      "evidence_path": "docs/spec/60.workflow-release.srs.md",
+      "resolution": "FR-FLOW-013 Research / Analysis now cites Doc09 P1 target lifecycle section and explains the wrapper relation to v2.1.0 detailed contracts.",
+      "args": {
+        "source": "docs/research/09.mcp-cli-tool-abandonment-research.md#P1 Complete target lifecycle and Active Target defaulting"
+      }
+    },
+    {
+      "action": "srs_delta_mcp_call_audit_completion",
+      "files": [
+        "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/srs_delta.json"
+      ],
+      "evaluator": "improvement-agent-iter4",
+      "status": "applied",
+      "resolves": [
+        {
+          "id": "SUBAGENT-PROCESS-MEDIUM-002",
+          "finding_hash": "process-mcp-calls-audit-metadata",
+          "severity": "MEDIUM",
+          "axis": "mcp_srsmd",
+          "req_id": "srs_delta.json",
+          "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/srs_delta.json:35",
+          "status": "resolved",
+          "resolution": "Added evaluator, resolves, evidence_path, resolution, and status to initial mcp_calls entries."
+        }
+      ],
+      "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/srs_delta.json",
+      "resolution": "Initial mcp_calls entries now carry full audit metadata; primary delta actions use resolves: [] explicitly.",
+      "args": {
+        "mcp_call_indexes": [
+          0,
+          1,
+          2
+        ]
+      }
+    }
+  ]
+}

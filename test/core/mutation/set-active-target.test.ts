@@ -48,4 +48,34 @@ describe("set active target mutation", () => {
     expect(result).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
     await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
   });
+
+  it("FR-FLOW-013 registers missing targets only when create is explicit", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const result = await setActiveTarget(await resolveProjectRoot(rootPath), {
+      target: "v2.3.0",
+      create: true,
+      targetType: "version",
+      description: "Tool improvement target"
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { activeTarget: "v2.3.0", previousActiveTarget: "v1.0.0", created: true, written: true } });
+    const index = await readFile(path.join(rootPath, "docs", "spec", "00.index.md"), "utf8");
+    expect(index).toContain("| Active Target | v2.3.0 |");
+    expect(index).toContain("| v1.0.0 | release | planned | Fixture release |");
+    expect(index).toContain("| v2.3.0 | version | active | Tool improvement target |");
+  });
+
+  it("FR-FLOW-013 rejects unsafe created target rows before writing", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(rootPath, "docs", "spec", "00.index.md");
+    const before = await readFile(indexPath, "utf8");
+    const result = await setActiveTarget(await resolveProjectRoot(rootPath), {
+      target: "v2.3.0",
+      create: true,
+      description: "bad | target"
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
+  });
 });

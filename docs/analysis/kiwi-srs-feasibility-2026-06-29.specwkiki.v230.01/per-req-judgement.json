@@ -1,0 +1,95 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "target": "v2.3.0",
+  "judgement_summary": {
+    "evaluated": 54,
+    "high": 54,
+    "medium": 0,
+    "low": 0,
+    "blocked": 0
+  },
+  "classification": {
+    "planned_without_verification": {
+      "count": 53,
+      "feasibility": "high",
+      "score_range": [
+        80,
+        88
+      ],
+      "has_verification": false,
+      "mapping": "evolving",
+      "mutation": "no-op because current stability is already evolving"
+    },
+    "verified_with_verification": {
+      "ids": [
+        "OPS-FLOW-001"
+      ],
+      "feasibility": "high",
+      "score": 92,
+      "has_verification": true,
+      "mapping": "stable",
+      "mutation": "requires user approval before live update"
+    }
+  },
+  "representative_judgements": [
+    {
+      "req_id": "OPS-FLOW-001",
+      "feasibility": "high",
+      "score": 92,
+      "axes": {
+        "implementability": {
+          "score": 29,
+          "evidence": [
+            "docs/spec/60.workflow-release.srs.md:1036",
+            "docs/spec/60.workflow-release.srs.md:1061",
+            "docs/spec/60.workflow-release.srs.md:1071"
+          ]
+        },
+        "evidence_strength": {
+          "score": 19,
+          "evidence": [
+            "docs/research/09.mcp-cli-tool-abandonment-research.md",
+            "docs/research/10.kiwi-planner-jsonl-tooling-research.md",
+            "docs/research/11.v2.3.0-tooling-code-improvement-plan.md"
+          ]
+        },
+        "dependency_health": {
+          "score": 14,
+          "evidence": [
+            "docs/spec/60.workflow-release.srs.md:1079"
+          ]
+        },
+        "ac_verifiability": {
+          "score": 14,
+          "evidence": [
+            "docs/spec/60.workflow-release.srs.md:1061-1065"
+          ]
+        },
+        "scope_fit": {
+          "score": 8,
+          "evidence": [
+            "docs/spec/00.index.md:61"
+          ]
+        },
+        "product_fit": {
+          "score": 8,
+          "evidence": [
+            "docs/spec/00.index.md:63"
+          ]
+        }
+      },
+      "blockers": [],
+      "conditions": [
+        "Stable promotion requires explicit user approval."
+      ],
+      "has_verification": true,
+      "current_stability": "evolving",
+      "current_status": "verified"
+    }
+  ],
+  "notes": [
+    "No non-discarded v2.3.0 requirement has missing Code trace paths or external Code trace paths.",
+    "No downgrade or deprecated candidate was found.",
+    "Planned requirements are implementation-ready enough to remain evolving, but they cannot be promoted to stable because they lack implementation and verification evidence."
+  ]
+}

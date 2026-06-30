@@ -1,0 +1,7 @@
+{"command":"npm run typecheck","status":"passed"}
+{"command":"npx vitest run test/core/mutation/edit-requirement.test.ts test/core/mutation/repair-requirement-id.test.ts --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism","status":"passed","tests":"11 passed"}
+{"command":"npx vitest run test/core/mutation/repair-requirement-id.test.ts test/cli/requirement-id-repair-command.test.ts test/mcp/requirement-id-repair-tools.test.ts --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism","status":"passed","tests":"10 passed"}
+{"command":"npm run build","status":"passed"}
+{"command":"node bin/speckiwi validate --fail-on-warning --json","status":"passed","diagnostics":"0 errors, 0 warnings"}
+{"command":"git diff --check","status":"passed"}
+{"command":"npm test","status":"passed","tests":"85 files, 506 tests"}

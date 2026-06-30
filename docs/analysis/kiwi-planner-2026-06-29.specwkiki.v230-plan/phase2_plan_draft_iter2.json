@@ -1,0 +1,11 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230-plan",
+  "plan_version": "0.2.0",
+  "phase_count": 18,
+  "task_count": 54,
+  "coverage_count": 54,
+  "planned_mcp_calls": 108,
+  "plan_file": "docs/plans/2026-06-29.specwkiki.v230-plan.plan.md",
+  "sidecar_file": "docs/plans/2026-06-29.specwkiki.v230-plan.sidecar.json",
+  "improvement_basis": "Expanded after max evaluator findings; supersedes phase2_plan_draft_iter1.json."
+}

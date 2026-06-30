@@ -1,0 +1,21 @@
+{
+  "iteration": 3,
+  "verdict": "changes_required",
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "summary": "REL-NODE-006 still referenced discarded FR-NODE-023 in AC-3, Trace Links, and Implementation Notes.",
+      "resolution": "Replaced those references with canonical successor FR-NODE-031 and recorded the change note."
+    },
+    {
+      "severity": "HIGH",
+      "summary": "FR-NODE-028 still had a normative extends link to discarded FR-NODE-022 and related links to first-wave discarded adapter requirements.",
+      "resolution": "Replaced stale predecessor links with canonical successors FR-NODE-030, IR-CLI-042, FR-MCP-037, and FR-NODE-031."
+    },
+    {
+      "severity": "MEDIUM",
+      "summary": "FR-MCP-038 linked FR-MCP-037 twice, with one duplicate blank-note dependency row.",
+      "resolution": "Removed the duplicate blank dependency row and retained the intentional extends relation."
+    }
+  ]
+}

@@ -1,0 +1,204 @@
+{
+  "iter": 2,
+  "actions": [
+    {
+      "action": "srs_requirement_refinement",
+      "req_ids": [
+        "FR-NODE-021"
+      ],
+      "files": [
+        "docs/spec/50.nodejs-implementation.srs.md"
+      ],
+      "reason": "Add Doc10 JSONL details for trailing LF enforcement, schema-version validation, and best-effort versus halt append policy.",
+      "evaluator": "improvement-agent-iter2",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC10-LOW-001",
+          "finding_hash": "1e05c2ab7b04f6a5",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+          "status": "resolved",
+          "resolution": "Add Doc10 JSONL details for trailing LF enforcement, schema-version validation, and best-effort versus halt append policy."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "resolution": "Add Doc10 JSONL details for trailing LF enforcement, schema-version validation, and best-effort versus halt append policy.",
+      "args": {
+        "req_ids": [
+          "FR-NODE-021"
+        ],
+        "files": [
+          "docs/spec/50.nodejs-implementation.srs.md"
+        ]
+      }
+    },
+    {
+      "action": "srs_requirement_refinement",
+      "req_ids": [
+        "FR-NODE-022",
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ],
+      "files": [
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md"
+      ],
+      "reason": "Add explicit plan checkbox check/uncheck mutation kinds, journal key/state metadata, and repair semantics from Doc10.",
+      "evaluator": "improvement-agent-iter2",
+      "resolves": [
+        {
+          "id": "EVAL1-MEDIUM-001",
+          "finding_hash": "c3a51c1ed925cb88",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1908",
+          "status": "resolved",
+          "resolution": "Add explicit plan checkbox check/uncheck mutation kinds, journal key/state metadata, and repair semantics from Doc10."
+        },
+        {
+          "id": "SUBAGENT-DOC10-LOW-001",
+          "finding_hash": "1e05c2ab7b04f6a5",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+          "status": "resolved",
+          "resolution": "Add explicit plan checkbox check/uncheck mutation kinds, journal key/state metadata, and repair semantics from Doc10."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "resolution": "Add explicit plan checkbox check/uncheck mutation kinds, journal key/state metadata, and repair semantics from Doc10.",
+      "args": {
+        "req_ids": [
+          "FR-NODE-022",
+          "IR-CLI-033",
+          "FR-MCP-025"
+        ],
+        "files": [
+          "docs/spec/50.nodejs-implementation.srs.md",
+          "docs/spec/30.cli-interface.srs.md",
+          "docs/spec/40.mcp-stdio-interface.srs.md"
+        ]
+      }
+    },
+    {
+      "action": "research_analysis_completion",
+      "req_ids": [
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ],
+      "files": [
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md"
+      ],
+      "reason": "Replace placeholder Research / Analysis sections with concrete Doc10 section references.",
+      "evaluator": "improvement-agent-iter2",
+      "resolves": [
+        {
+          "id": "EVAL2-LOW-001",
+          "finding_hash": "2a864c09d96e3757",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1496",
+          "status": "resolved",
+          "resolution": "Replace placeholder Research / Analysis sections with concrete Doc10 section references."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/30.cli-interface.srs.md",
+      "resolution": "Replace placeholder Research / Analysis sections with concrete Doc10 section references.",
+      "args": {
+        "req_ids": [
+          "IR-CLI-033",
+          "FR-MCP-025"
+        ],
+        "files": [
+          "docs/spec/30.cli-interface.srs.md",
+          "docs/spec/40.mcp-stdio-interface.srs.md"
+        ]
+      }
+    },
+    {
+      "action": "trace_relation_normalization",
+      "req_ids": "v2.3.0 planned bridge requirements",
+      "files": [
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md"
+      ],
+      "reason": "Planned code surfaces are related references, not implementation evidence.",
+      "evaluator": "improvement-agent-iter2",
+      "resolves": [
+        {
+          "id": "EVAL1-LOW-001",
+          "finding_hash": "2976aa991a18038d",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1496",
+          "status": "resolved",
+          "resolution": "Planned code surfaces are related references, not implementation evidence."
+        },
+        {
+          "id": "EVAL2-LOW-001",
+          "finding_hash": "2a864c09d96e3757",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1496",
+          "status": "resolved",
+          "resolution": "Planned code surfaces are related references, not implementation evidence."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/20.parser-validation.srs.md",
+      "resolution": "Planned code surfaces are related references, not implementation evidence.",
+      "args": {
+        "req_ids": "v2.3.0 planned bridge requirements",
+        "files": [
+          "docs/spec/20.parser-validation.srs.md",
+          "docs/spec/30.cli-interface.srs.md",
+          "docs/spec/40.mcp-stdio-interface.srs.md",
+          "docs/spec/50.nodejs-implementation.srs.md",
+          "docs/spec/60.workflow-release.srs.md"
+        ]
+      }
+    },
+    {
+      "action": "analysis_artifact_schema_repair",
+      "files": [
+        "eval_iter1.json",
+        "eval_iter2.json",
+        "srs_delta.json"
+      ],
+      "reason": "Add evaluator, finding_hash, evidence_path, req_id, args, and resolution details for auditability.",
+      "evaluator": "improvement-agent-iter2",
+      "resolves": [
+        {
+          "id": "EVAL2-MEDIUM-001",
+          "finding_hash": "e7fc0bef46cdd074",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/srs_delta.json:60",
+          "status": "resolved",
+          "resolution": "Add evaluator, finding_hash, evidence_path, req_id, args, and resolution details for auditability."
+        },
+        {
+          "id": "SUBAGENT-PROCESS-MEDIUM-001",
+          "finding_hash": "1c3dfe21f91d5e1a",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/improvement_iter2.json:53",
+          "status": "resolved",
+          "resolution": "Add evaluator, finding_hash, evidence_path, req_id, args, and resolution details for auditability."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "eval_iter1.json",
+      "resolution": "Add evaluator, finding_hash, evidence_path, req_id, args, and resolution details for auditability.",
+      "args": {
+        "files": [
+          "eval_iter1.json",
+          "eval_iter2.json",
+          "srs_delta.json"
+        ]
+      }
+    }
+  ],
+  "evaluator": "improvement-agent-iter2"
+}

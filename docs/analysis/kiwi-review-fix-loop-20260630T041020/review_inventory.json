@@ -1,0 +1,25 @@
+{
+  "primary_files_reviewed": [
+    "src/core/mutation/edit-requirement.ts",
+    "src/core/mutation/repair-requirement-id.ts",
+    "src/cli/commands/mutations.ts",
+    "src/cli/commands/repair.ts",
+    "src/mcp/tools/mutation-tools.ts",
+    "src/mcp/tools/read-tools.ts",
+    "src/mcp/server.ts",
+    "test/core/mutation/edit-requirement.test.ts",
+    "test/core/mutation/repair-requirement-id.test.ts",
+    "test/cli/granular-edit-commands.test.ts",
+    "test/cli/requirement-id-repair-command.test.ts",
+    "test/mcp/granular-edit-tools.test.ts",
+    "test/mcp/requirement-id-repair-tools.test.ts"
+  ],
+  "supporting_files_reviewed": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "agents.md",
+    "docs/next/2026-06-30-merge-time-duplicate-id-repair.md",
+    "src/core/bootstrap/templates.ts",
+    "test/release/merge-repair-runbook.test.ts"
+  ]
+}

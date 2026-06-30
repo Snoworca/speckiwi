@@ -1,0 +1,577 @@
+{
+  "req_anchors": [
+    {
+      "req_id": "CON-ARCH-003",
+      "files": []
+    },
+    {
+      "req_id": "FR-FLOW-013",
+      "files": []
+    },
+    {
+      "req_id": "FR-MCP-020",
+      "files": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/mutation-tools.ts:60-78",
+        "src/mcp/errors.ts:12-15"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-021",
+      "files": [
+        "src/mcp/tools/read-tools.ts:20-60",
+        "src/mcp/resources.ts:35-65"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-022",
+      "files": [
+        "src/mcp/errors.ts:12-15",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-023",
+      "files": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-024",
+      "files": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-030",
+      "files": [
+        "src/mcp/tools/read-tools.ts:56-60",
+        "src/mcp/tools/mutation-tools.ts:92-105"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-031",
+      "files": [
+        "src/mcp/resources.ts:45-52",
+        "test/mcp/read-tools-resources.test.ts:88-122"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-032",
+      "files": [
+        "src/mcp/tools/mutation-tools.ts:25-149",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-034",
+      "files": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-035",
+      "files": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-037",
+      "files": [
+        "src/mcp/server.ts:36-180",
+        "src/mcp/tools/mutation-tools.ts:1-150",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-038",
+      "files": [
+        "src/mcp/tools/mutation-tools.ts:1-150"
+      ]
+    },
+    {
+      "req_id": "FR-MCP-039",
+      "files": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/mutation-tools.ts:25-150",
+        "src/mcp/errors.ts:8-15"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-017",
+      "files": [
+        "src/core/mutation/add-requirement.ts:209-265",
+        "src/core/patch/hunk-summary.ts:4-10"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-018",
+      "files": [
+        "src/core/mutation/add-requirement.ts:209-265",
+        "src/core/validator/rules.ts:105-152"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-019",
+      "files": [
+        "src/core/mutation/render-requirement.ts:1-90",
+        "src/core/mutation/table-cell.ts:4-17"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-020",
+      "files": [
+        "src/core/fs/safe-path.ts:4-19",
+        "skills/codex/kiwi-planner/SKILL.md:177-180",
+        "skills/codex/kiwi-pm/SKILL.md:140-170"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-021",
+      "files": [
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63",
+        "skills/codex/kiwi-pm/SKILL.md:140-170"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-026",
+      "files": [
+        "src/core/query/completed-work.ts:39-42",
+        "src/core/mutation/add-completed-work.ts:242-298",
+        "src/core/query/summary.ts:69-87"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-027",
+      "files": [
+        "src/core/mutation/add-requirement.ts:28-35",
+        "src/core/mutation/add-requirement.ts:220-272",
+        "src/core/patch/apply-patch.ts:48-61"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-028",
+      "files": [
+        "src/core/patch/apply-patch.ts:48-61",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-029",
+      "files": [
+        "src/core/project-root.ts:14-29",
+        "src/core/mutation/add-completed-work.ts:150-185"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-030",
+      "files": [
+        "skills/codex/kiwi-pm/SKILL.md:140-170",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:279-325"
+      ]
+    },
+    {
+      "req_id": "FR-NODE-031",
+      "files": []
+    },
+    {
+      "req_id": "FR-NODE-032",
+      "files": [
+        "src/core/mutation/add-requirement.ts:28-35",
+        "src/core/mutation/add-requirement.ts:237-272",
+        "src/core/patch/apply-patch.ts:40-61",
+        "src/core/patch/patch-plan.ts:3-15"
+      ]
+    },
+    {
+      "req_id": "FR-PARSE-019",
+      "files": [
+        "src/core/query/filter.ts:3-9",
+        "src/core/query/records.ts:121"
+      ]
+    },
+    {
+      "req_id": "FR-PARSE-021",
+      "files": [
+        "src/core/parser/index-parser.ts:32-61",
+        "src/core/parser/workspace-parser.ts:8-50"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-028",
+      "files": [
+        "src/cli/commands/mutations.ts:184-267"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-029",
+      "files": [
+        "src/cli/commands/read.ts:66-88",
+        "src/core/query/lookup.ts:8-20"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-030",
+      "files": [
+        "src/cli/commands/read.ts:90-98",
+        "src/cli/formatters.ts"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-031",
+      "files": [
+        "src/cli/commands/read.ts:1-135",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:279-325"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-032",
+      "files": [
+        "src/cli/commands/read.ts:1-135",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-037",
+      "files": [
+        "src/cli/commands/read.ts:118-129",
+        "src/cli/commands/mutations.ts:158-182"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-038",
+      "files": [
+        "src/cli/commands/mutations.ts:68-270"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-040",
+      "files": [
+        "src/cli/index.ts:14-20",
+        "src/cli/commands/read.ts:53-147"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-041",
+      "files": [
+        "src/cli/index.ts:14-20",
+        "src/cli/commands/read.ts:53-147"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-042",
+      "files": [
+        "src/cli/commands/mutations.ts:1-270",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ]
+    },
+    {
+      "req_id": "IR-CLI-043",
+      "files": []
+    },
+    {
+      "req_id": "IR-CLI-044",
+      "files": [
+        "src/cli/commands/mutations.ts:1-270",
+        "src/cli/commands/read.ts:53-147"
+      ]
+    },
+    {
+      "req_id": "MIG-FLOW-003",
+      "files": [
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pm/SKILL.md",
+        "skills/codex/kiwi-coder/SKILL.md"
+      ]
+    },
+    {
+      "req_id": "MIG-FLOW-004",
+      "files": [
+        ".agents/skills/kiwi-pipeline/SKILL.md:1-40",
+        ".agents/skills/kiwi-planner/SKILL.md:1-45"
+      ]
+    },
+    {
+      "req_id": "OPS-FLOW-001",
+      "files": []
+    },
+    {
+      "req_id": "OPS-FLOW-002",
+      "files": [
+        "src/core/bootstrap/templates.ts:208-225",
+        "test/release/release-readiness.test.ts:1-80"
+      ]
+    },
+    {
+      "req_id": "OPS-NODE-003",
+      "files": [
+        "test/smoke/package.test.ts:57-90",
+        "src/mcp/metadata.ts:12-13",
+        "package.json:1-4"
+      ]
+    },
+    {
+      "req_id": "REL-FLOW-002",
+      "files": [
+        "src/cli/commands/read.ts:66-135",
+        "src/mcp/server.ts:36-113",
+        "src/core/bootstrap/templates.ts:213-234"
+      ]
+    },
+    {
+      "req_id": "REL-MCP-003",
+      "files": [
+        "src/core/project-root.ts:14-29",
+        "src/core/fs/safe-path.ts:4-19",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ]
+    },
+    {
+      "req_id": "REL-NODE-002",
+      "files": [
+        "test/cli/read-commands.test.ts:27-65",
+        "test/mcp/stdio-update-stability.test.ts:21-59"
+      ]
+    },
+    {
+      "req_id": "REL-NODE-003",
+      "files": [
+        "skills/codex/kiwi-planner/scripts/validator.mjs:17-39",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:64-102"
+      ]
+    },
+    {
+      "req_id": "REL-NODE-005",
+      "files": [
+        "src/core/patch/apply-patch.ts:40-61",
+        "src/core/mutation/add-requirement.ts:237-272",
+        "src/core/mutation/add-completed-work.ts:242-298"
+      ]
+    },
+    {
+      "req_id": "REL-NODE-006",
+      "files": [
+        "src/core/workflow/release-readiness.ts:145-179",
+        ".agents/skills/kiwi-planner/scripts/validator.mjs:278-620"
+      ]
+    },
+    {
+      "req_id": "REL-PARSE-002",
+      "files": [
+        "src/core/diagnostic.ts:24-41",
+        "src/core/validator/validate-workspace.ts:6-9"
+      ]
+    },
+    {
+      "req_id": "REL-PARSE-003",
+      "files": [
+        "src/core/validator/rules.ts:164-168",
+        "src/core/diagnostic-registry.ts:13-18",
+        "test/fixtures/workspaces/duplicate-id/docs/spec/10.product-architecture.srs.md:5-35"
+      ]
+    }
+  ],
+  "missing_anchors": [
+    {
+      "req_id": "CON-ARCH-003",
+      "reason": "no Code trace in SRS; phase files use inferred implementation anchors"
+    },
+    {
+      "req_id": "FR-FLOW-013",
+      "reason": "no Code trace in SRS; phase files use inferred implementation anchors"
+    },
+    {
+      "req_id": "FR-NODE-031",
+      "reason": "no Code trace in SRS; phase files use inferred implementation anchors"
+    },
+    {
+      "req_id": "IR-CLI-043",
+      "reason": "no Code trace in SRS; phase files use inferred implementation anchors"
+    },
+    {
+      "req_id": "OPS-FLOW-001",
+      "reason": "no Code trace in SRS; phase files use inferred implementation anchors"
+    }
+  ],
+  "external_paths_detected": [],
+  "addition_sites": [
+    {
+      "phase_id": "PH-001",
+      "files": [
+        "docs/research/09.mcp-cli-tool-abandonment-research.md",
+        "src/core/workflow/release-readiness.ts:1-240",
+        "test/smoke/package.test.ts:1-120",
+        "test/release/release-readiness.test.ts:1-120"
+      ],
+      "req_ids": [
+        "OPS-FLOW-001",
+        "CON-ARCH-003",
+        "REL-NODE-002",
+        "OPS-NODE-003"
+      ]
+    },
+    {
+      "phase_id": "PH-002",
+      "files": [
+        "src/core/diagnostic.ts:1-80",
+        "src/core/diagnostic-registry.ts:1-80",
+        "src/core/query/filter.ts:1-40",
+        "src/core/query/lookup.ts:1-80",
+        "src/core/query/records.ts:92-155",
+        "src/core/mutation/add-requirement.ts:209-272",
+        "src/cli/commands/read.ts:53-147",
+        "src/mcp/tools/read-tools.ts:1-80",
+        "src/mcp/errors.ts:1-80"
+      ],
+      "req_ids": [
+        "REL-PARSE-002",
+        "FR-PARSE-019",
+        "IR-CLI-029",
+        "FR-MCP-021",
+        "FR-NODE-017",
+        "FR-NODE-018",
+        "IR-CLI-030",
+        "FR-MCP-022"
+      ]
+    },
+    {
+      "phase_id": "PH-003",
+      "files": [
+        "src/core/mutation/add-requirement.ts:1-272",
+        "src/core/mutation/render-requirement.ts:1-90",
+        "src/core/mutation/table-cell.ts:1-80",
+        "src/core/patch/apply-patch.ts:1-90",
+        "src/cli/commands/mutations.ts:68-270",
+        "src/mcp/tools/mutation-tools.ts:25-150"
+      ],
+      "req_ids": [
+        "IR-CLI-028",
+        "FR-MCP-020",
+        "FR-NODE-019",
+        "FR-NODE-027",
+        "REL-NODE-005",
+        "IR-CLI-038",
+        "FR-MCP-032"
+      ]
+    },
+    {
+      "phase_id": "PH-004",
+      "files": [
+        "src/core/parser/index-parser.ts:1-120",
+        "src/core/parser/workspace-parser.ts:1-80",
+        "src/core/query/completed-work.ts:1-120",
+        "src/core/mutation/add-completed-work.ts:1-320",
+        "src/cli/commands/read.ts:118-129",
+        "src/cli/commands/mutations.ts:158-182",
+        "src/mcp/resources.ts:1-120"
+      ],
+      "req_ids": [
+        "FR-PARSE-021",
+        "FR-NODE-026",
+        "IR-CLI-037",
+        "FR-MCP-030",
+        "FR-MCP-031",
+        "FR-FLOW-013"
+      ]
+    },
+    {
+      "phase_id": "PH-005",
+      "files": [
+        "src/core/fs/safe-path.ts:1-80",
+        "src/core/project-root.ts:1-80",
+        "src/core/workflow/release-readiness.ts:1-240",
+        ".agents/skills/kiwi-planner/scripts/validator.mjs:1-620",
+        ".agents/skills/_shared/kiwi/pipeline-event.md"
+      ],
+      "req_ids": [
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "FR-NODE-028",
+        "REL-NODE-003",
+        "REL-NODE-006",
+        "FR-NODE-029"
+      ]
+    },
+    {
+      "phase_id": "PH-006",
+      "files": [
+        "src/cli/commands/read.ts:1-147",
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/read-tools.ts:1-80",
+        "src/mcp/resources.ts:1-120",
+        "src/core/project-root.ts:1-80",
+        "src/core/fs/safe-path.ts:1-80"
+      ],
+      "req_ids": [
+        "IR-CLI-031",
+        "FR-MCP-023",
+        "IR-CLI-032",
+        "FR-MCP-024",
+        "IR-CLI-040",
+        "FR-MCP-034",
+        "IR-CLI-041",
+        "FR-MCP-035",
+        "REL-MCP-003"
+      ]
+    },
+    {
+      "phase_id": "PH-007",
+      "files": [
+        "src/cli/commands/mutations.ts:1-270",
+        "src/mcp/tools/mutation-tools.ts:1-150",
+        "src/mcp/server.ts:36-180",
+        ".agents/skills/_shared/kiwi/pipeline-event.md",
+        "src/core/workflow/release-readiness.ts:1-240"
+      ],
+      "req_ids": [
+        "FR-NODE-030",
+        "IR-CLI-042",
+        "FR-MCP-037",
+        "FR-NODE-031",
+        "IR-CLI-043",
+        "FR-MCP-038"
+      ]
+    },
+    {
+      "phase_id": "PH-008",
+      "files": [
+        "src/core/validator/rules.ts:164-168",
+        "src/core/diagnostic-registry.ts:1-80",
+        "src/core/mutation/add-requirement.ts:1-272",
+        "src/core/patch/patch-plan.ts:1-80",
+        "src/cli/commands/mutations.ts:1-270",
+        "src/mcp/tools/mutation-tools.ts:25-150",
+        "src/core/bootstrap/templates.ts:208-225"
+      ],
+      "req_ids": [
+        "REL-PARSE-003",
+        "FR-NODE-032",
+        "IR-CLI-044",
+        "FR-MCP-039",
+        "OPS-FLOW-002"
+      ]
+    },
+    {
+      "phase_id": "PH-009",
+      "files": [
+        "src/cli/commands/read.ts:66-147",
+        "src/mcp/server.ts:36-117",
+        "src/core/bootstrap/templates.ts:208-234",
+        "src/core/skills/install-skill.ts:1-220",
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pm/SKILL.md",
+        "skills/codex/kiwi-coder/SKILL.md",
+        ".agents/skills/kiwi-planner/SKILL.md"
+      ],
+      "req_ids": [
+        "REL-FLOW-002",
+        "MIG-FLOW-004",
+        "MIG-FLOW-003"
+      ]
+    }
+  ]
+}

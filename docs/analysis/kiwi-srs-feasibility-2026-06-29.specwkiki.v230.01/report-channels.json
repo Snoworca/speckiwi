@@ -1,0 +1,16 @@
+{
+  "primary_channel_requested": "doculight",
+  "doculight": {
+    "status": "unavailable",
+    "path": "docs/analysis/kiwi-srs-feasibility-2026-06-29.specwkiki.v230.01/report.md"
+  },
+  "telegram": {
+    "status": "skipped"
+  },
+  "google_chat": {
+    "status": "skipped"
+  },
+  "chat_message": {
+    "status": "emitted"
+  }
+}

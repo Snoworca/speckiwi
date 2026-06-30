@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SRS Sync"
+  short_description: "Sync code changes back to SpecKiwi SRS"
+  default_prompt: "Use $kiwi-srs-sync to analyze the diff and propose SpecKiwi SRS updates."

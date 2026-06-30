@@ -1,0 +1,42 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "target": "v2.3.0",
+  "req_id": "OPS-FLOW-001",
+  "decision": "approved",
+  "committees": [
+    {
+      "name": "Committee A - evidence and acceptance criteria",
+      "approve": true,
+      "blockers": [],
+      "decision_reason": "OPS-FLOW-001 has 5/5 checked acceptance criteria and three verification evidence rows. The evidence documents substantively cover the research deliverable requirement."
+    },
+    {
+      "name": "Committee B - policy, transition, and dependency",
+      "approve": true,
+      "blockers": [],
+      "decision_reason": "The default policy maps high feasibility with verification evidence to stable, requires user approval, and the dry-run guard passed with no warnings."
+    },
+    {
+      "name": "Committee C - final adversarial decision",
+      "approve": true,
+      "blockers": [],
+      "decision_reason": "No counter-evidence was found. Dirty worktree state is an operational caution, not a blocker, because the intended MCP mutation is scoped to OPS-FLOW-001 and stale patch checks protect the write."
+    }
+  ],
+  "aggregate": {
+    "approvals": 3,
+    "rejections": 0,
+    "blockers": 0,
+    "stable_promotion_approved": true
+  },
+  "final_dry_run": {
+    "ok": true,
+    "written": false,
+    "warnings": []
+  },
+  "live_mutation": {
+    "ok": true,
+    "written": true,
+    "warnings": []
+  }
+}

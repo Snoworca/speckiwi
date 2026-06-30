@@ -1,0 +1,42 @@
+{
+  "target": "v2.3.0",
+  "classification": "new-feature",
+  "rationale": "The research documents describe new tool-improvement behavior and workflow-artifact operations not yet covered by existing implemented requirements. Existing target/defaulting requirements remain dependencies.",
+  "evidence_paths": [
+    "docs/research/09.mcp-cli-tool-abandonment-research.md",
+    "docs/research/10.kiwi-planner-jsonl-tooling-research.md"
+  ],
+  "affected_existing_reqs": [
+    {
+      "id": "OPS-FLOW-001",
+      "relation": "related_to",
+      "diff_summary": "Research anchor remains verified; implementation contracts are split into new v2.3.0 planned requirements."
+    },
+    {
+      "id": "IR-CLI-023",
+      "relation": "depends_on",
+      "diff_summary": "Target creation/defaulting is a dependency, not a replacement scope."
+    },
+    {
+      "id": "FR-MCP-015",
+      "relation": "depends_on",
+      "diff_summary": "MCP target creation/defaulting is a dependency, not a replacement scope."
+    },
+    {
+      "id": "FR-NODE-014",
+      "relation": "depends_on",
+      "diff_summary": "Core target lifecycle/defaulting is a dependency, not a replacement scope."
+    },
+    {
+      "id": "FR-FLOW-011",
+      "relation": "depends_on",
+      "diff_summary": "Workflow target authoring remains a dependency for agent reliability."
+    }
+  ],
+  "proposed_scope": "existing scopes",
+  "proposed_prefix": "PARSE, CLI, MCP, NODE, FLOW",
+  "proposed_type": "functional|interface|reliability|operational|migration",
+  "confidence": "high",
+  "scope_boundary_impact": null,
+  "external_module_impact": null
+}

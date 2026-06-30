@@ -524,7 +524,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 
 ### 4.4 MCP 미가용 fallback
 
-1. `mcp__speckiwi__list_requirements(target, includeContent: false)` 호출 시도
+1. `mcp__speckiwi__list_requirements(target, projection: "compact")` 호출 시도
 2. 실패 시 `speckiwi list --target {target} --json` CLI fallback
 3. CLI 도 실패 시:
    - interactive → `AskUserQuestion("lifecycle gate 평가 불가 — 진행 여부 결정")` + worklog `lifecycle_gate_mcp_unavailable` 기록
@@ -554,7 +554,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 
     # 3. 일괄 read
     TRY:
-        reqs = MCP_CALL(list_requirements, target=target, includeContent=False)
+        reqs = MCP_CALL(list_requirements, target=target, projection="compact")
     CATCH mcp_unavailable:
         TRY: reqs = CLI_FALLBACK(f"speckiwi list --target {target} --json")
         CATCH cli_failed:
@@ -817,7 +817,7 @@ git 관리는 사용자 책임. PM 은 자동 commit 하지 않음.
 ```
 FUNCTION T_FINAL_SRS_MUTATION(state, args):
     # 1. read REQ 현재 status
-    reqs = MCP_CALL(list_requirements, target=state.target_slug, includeContent=False)
+    reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
     reqs_by_id = {r.id: r for r in reqs}
 
     # 2. REQ 별 trace Task 집계

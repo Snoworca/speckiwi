@@ -10,6 +10,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 const execFileAsync = promisify(execFile);
 
+async function readPackageVersion(): Promise<string> {
+  const pkg = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+  return pkg.version;
+}
+
 describe("real stdio MCP server", () => {
   it("exposes tools, schemas, and resources without human stdout", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
@@ -24,6 +29,8 @@ describe("real stdio MCP server", () => {
     const client = new Client({ name: "speckiwi-test", version: "1.0.0" }, { capabilities: {} });
     await client.connect(transport);
     try {
+      expect(client.getServerVersion()).toMatchObject({ name: "speckiwi", version: await readPackageVersion() });
+
       const tools = await client.listTools();
       const addRequirement = tools.tools.find((tool) => tool.name === "add_requirement");
       const addCompletedWork = tools.tools.find((tool) => tool.name === "add_completed_work");

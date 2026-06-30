@@ -1,0 +1,16 @@
+{
+  "iter": 2,
+  "mode": "max",
+  "summary": {
+    "CRITICAL": 2,
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "top_findings": [
+    "First-wave SRS blocks had manual structured edits after MCP mutation, which violates the kiwi-srs golden rule.",
+    "classification=update was too strong because Doc230 adds new split tool features across existing scopes rather than superseding one existing requirement.",
+    "srs_delta.json still described manual trace and AC repairs instead of a clean MCP-only replacement strategy."
+  ],
+  "decision": "Do not continue repairing first-wave blocks. Add clean replacement requirements via MCP, discard first-wave IDs via MCP update_status, and rewrite analysis artifacts around the final canonical IDs."
+}

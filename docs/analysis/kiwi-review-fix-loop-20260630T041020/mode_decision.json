@@ -1,0 +1,6 @@
+{
+  "mode": "self",
+  "pr_mode": false,
+  "close_reqs": false,
+  "reason": "User requested kiwi-review-fix-loop --max as final local quality gate. No PR URL or close-reqs option was requested."
+}

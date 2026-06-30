@@ -34,6 +34,7 @@ describe("add requirement mutation", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.requirementId).toBe("FR-ARCH-002");
+    expect(result.value.targetSource).toBe("explicit");
     expect(result.value.record.id).toBe("FR-ARCH-002");
     expect(result.value.record.metadata.Priority).toBe("high");
     expect(result.value.record.priority).toBe("high");
@@ -101,6 +102,35 @@ describe("add requirement mutation", () => {
     });
     expect(legacy.ok).toBe(false);
     expect(await readFile(specPath, "utf8")).toBe(beforeInvalid);
+  });
+
+  it("FR-FLOW-013 defaults omitted target from Active Target and fails when Active Target is empty", async () => {
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const root = await resolveProjectRoot(rootPath);
+    const result = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      title: "Active target default",
+      statement: "Omitted target must resolve from the SRS Active Target.",
+      acceptanceCriteria: ["target is defaulted"]
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { targetSource: "active-target", record: { target: "v1.0.0", metadata: { Target: "v1.0.0" } } }
+    });
+
+    const indexPath = path.join(rootPath, "docs", "spec", "00.index.md");
+    await writeFile(indexPath, (await readFile(indexPath, "utf8")).replace("| Active Target | v1.0.0 |", "| Active Target |  |"), "utf8");
+    const missing = await addRequirement(root, {
+      type: "functional",
+      scope: "ARCH",
+      title: "No target",
+      statement: "Missing explicit and active target must fail before writing.",
+      acceptanceCriteria: ["rejected"]
+    });
+
+    expect(missing).toMatchObject({ ok: false, error: { code: "USAGE" } });
   });
 
   it("supports the repository SRS index Primary Document column in dry-run mode", async () => {

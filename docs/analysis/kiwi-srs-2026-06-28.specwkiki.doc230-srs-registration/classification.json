@@ -1,0 +1,34 @@
+{
+  "target": "v2.3.0",
+  "classification": "new-feature",
+  "rationale": "Doc230 research seeds add new tool-improvement behavior across existing parser, node, CLI, and MCP scopes. They relate to existing completed-work, add-requirement, mutation, CLI, and MCP contracts, but no single existing requirement is being directly superseded.",
+  "evidence_paths": [
+    "docs/research/230.md",
+    "docs/research/11.v2.3.0-tooling-code-improvement-plan.md",
+    "src/core/parser/index-parser.ts:32-61",
+    "src/core/mutation/add-requirement.ts:28-35",
+    "src/core/patch/apply-patch.ts:40-61",
+    "src/mcp/resources.ts:45-52"
+  ],
+  "affected_existing_reqs": [
+    {
+      "id": "OPS-FLOW-001",
+      "relation": "depends_on",
+      "diff_summary": "Research anchor for v2.3.0 tool improvements."
+    },
+    {
+      "id": "FR-PARSE-016",
+      "relation": "extends",
+      "diff_summary": "External completed-work parsing preserves report path grammar."
+    },
+    {
+      "id": "FR-NODE-013",
+      "relation": "extends",
+      "diff_summary": "Status cache and lock behavior preserve generated-ID concurrency checks."
+    }
+  ],
+  "proposed_scope": "existing",
+  "confidence": "high",
+  "scope_boundary_impact": null,
+  "external_module_impact": null
+}

@@ -1,0 +1,18 @@
+{
+  "name": "kiwi-commit-auto-pr",
+  "agent": "codex",
+  "installedAt": "2026-06-29T06:05:44.145Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-commit-auto-pr",
+  "installedPath": ".agents/skills/kiwi-commit-auto-pr",
+  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
+  "sourceChecksum": "sha256:7c9354e4b689d88b61648e23bb3aec633b83c986cbc9da640428c7763ac24fa5",
+  "installedChecksum": "sha256:7c9354e4b689d88b61648e23bb3aec633b83c986cbc9da640428c7763ac24fa5",
+  "sourceFileCount": 3,
+  "installedFileCount": 3,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-commit-auto-pr --json",
+  "noManualEdit": true
+}

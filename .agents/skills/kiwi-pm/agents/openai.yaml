@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi PM"
+  short_description: "Run plan-contract tasks with sub-agents"
+  default_prompt: "Use $kiwi-pm to run a kiwi-planner plan through isolated kiwi-coder tasks."

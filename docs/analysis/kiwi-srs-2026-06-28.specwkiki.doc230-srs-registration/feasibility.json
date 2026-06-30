@@ -1,0 +1,18 @@
+{
+  "implementability": "medium",
+  "product_fit": "core",
+  "rationale": "The requirements are implementable within existing parser, mutation, CLI, and MCP modules, but several depend on new shared infrastructure and fixture coverage.",
+  "code_evidence": [
+    "src/core/parser/index-parser.ts:32-61",
+    "src/core/mutation/add-requirement.ts:28-35",
+    "src/core/patch/apply-patch.ts:40-61",
+    "src/mcp/resources.ts:45-52"
+  ],
+  "blockers": [],
+  "conditions": [
+    "Implement external completed-work parser before core/CLI/MCP adapters.",
+    "Implement SRS lock core before CLI and MCP ignore-lock controls.",
+    "Keep kiwi/.status.json derived and rebuildable."
+  ],
+  "external_module_required": false
+}

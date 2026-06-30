@@ -1,0 +1,7 @@
+{
+  "critical": 0,
+  "high": 0,
+  "medium": 0,
+  "low": 0,
+  "residual_risk": "Low. Multi-file repair still cannot provide true filesystem-atomic rollback across files, but it now fails before the first write when any touched file is already stale and still uses per-file stale guards during writes."
+}

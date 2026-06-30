@@ -1,0 +1,72 @@
+{
+  "iter": 5,
+  "evaluator": "subagent-doc09-and-process-findings-record",
+  "evaluated_at": "2026-06-27",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "SUBAGENT-PROCESS-MEDIUM-001",
+      "finding_hash": "1c3dfe21f91d5e1a",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/improvement_iter2.json:53",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-HIGH-001",
+      "finding_hash": "c6aa8e7dfaa49882",
+      "severity": "HIGH",
+      "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md:385",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-001",
+      "finding_hash": "52d05379bdbda0cc",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1614",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-002",
+      "finding_hash": "70b6ab61266e0920",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:1138",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-003",
+      "finding_hash": "d0d454ddd633f0b0",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/30.cli-interface.srs.md:1874",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-004",
+      "finding_hash": "d459275d3afc7cea",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/40.mcp-stdio-interface.srs.md:1613",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-005",
+      "finding_hash": "618b1aba3b34fe8e",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1493",
+      "status": "resolved"
+    },
+    {
+      "id": "SUBAGENT-DOC09-MEDIUM-006",
+      "finding_hash": "5727f235f1f00ed0",
+      "severity": "MEDIUM",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1542",
+      "status": "resolved"
+    }
+  ],
+  "gate": "PASS_STRICT_USER_GOAL_PENDING_SUBAGENT_RERUN",
+  "reason": "Doc09 and process subagent findings were patched in SRS and audit artifacts; independent rerun is required before final closure."
+}

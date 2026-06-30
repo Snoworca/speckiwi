@@ -5,9 +5,13 @@ import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { isReadOnlyTool, toolSchemas } from "../../src/mcp/server.js";
 
 const EXPECTED_KINDS: Record<string, MutationToolKind> = {
+  sync_index: "workspace",
   update_status: "req-scoped",
   update_stability: "req-scoped",
   append_section_note: "req-scoped",
+  edit_requirement_fields: "req-scoped",
+  replace_acceptance_criteria: "req-scoped",
+  edit_requirement_table_rows: "req-scoped",
   check_acceptance_criteria: "req-scoped",
   add_verification_evidence: "req-scoped",
   add_trace_link: "req-scoped",
@@ -15,7 +19,16 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   set_active_target: "workspace",
   set_target_goal: "workspace",
   init_project: "workspace",
-  add_requirement: "workspace"
+  add_requirement: "workspace",
+  workflow_task_check: "workspace",
+  workflow_task_uncheck: "workspace",
+  workflow_checklist_set: "workspace",
+  workflow_task_status_set: "workspace",
+  workflow_pipeline_emit: "workspace",
+  workflow_worklog_emit: "workspace",
+  workflow_repair_record: "workspace",
+  workflow_logical_delete: "workspace",
+  apply_requirement_id_collision_repair: "workspace"
 };
 
 describe("FR-ARCH-005 — mutation tool kind classification", () => {
@@ -35,7 +48,7 @@ describe("FR-ARCH-005 — mutation tool kind classification", () => {
   });
 
   describe("TASK-P1-002: registerMutationTools declares kind for every tool", () => {
-    it("populates toolKinds with all 9 mutation tools using the expected classification", () => {
+    it("populates toolKinds for every mutation tool using the expected classification", () => {
       const server = createTestMcpServer({});
       registerMutationTools(server, {});
       expect(Object.keys(server.toolKinds).sort()).toEqual(Object.keys(EXPECTED_KINDS).sort());
@@ -75,6 +88,20 @@ describe("FR-ARCH-005 — mutation tool kind classification", () => {
       expect(cw.requirementIds).toBeDefined();
       const parsed = z.object({ requirementIds: cw.requirementIds }).safeParse({ requirementIds: ["FR-1", "FR-2"] });
       expect(parsed.success).toBe(true);
+    });
+
+    it("preview-capable AC, evidence, and trace mutations expose dryRun schema fields", () => {
+      for (const name of ["check_acceptance_criteria", "add_verification_evidence", "add_trace_link"] as const) {
+        const schema = toolSchemas[name];
+        expect(schema.dryRun, `${name}.dryRun should be declared`).toBeDefined();
+        expect(z.object({ dryRun: schema.dryRun }).safeParse({ dryRun: true }).success, `${name}.dryRun accepts boolean`).toBe(true);
+        expect(z.object({ dryRun: schema.dryRun }).safeParse({ dryRun: "true" }).success, `${name}.dryRun rejects strings`).toBe(false);
+      }
+      for (const name of ["add_verification_evidence", "add_trace_link"] as const) {
+        const schema = toolSchemas[name];
+        expect(schema.notes, `${name}.notes should be declared`).toBeDefined();
+        expect(z.object({ notes: schema.notes }).safeParse({ notes: "exact note" }).success, `${name}.notes accepts strings`).toBe(true);
+      }
     });
 
     it("workspace tools do not expose an id field", () => {

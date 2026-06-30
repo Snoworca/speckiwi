@@ -1,3 +1,4 @@
+import { access } from "node:fs/promises";
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { normalizeReportPathsInput, REPORT_PATHS_COLUMN } from "../completed-work/report-paths.js";
@@ -6,9 +7,13 @@ import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { parseMarkdownTable, splitTableRow, type ParsedTable } from "../parser/table.js";
+import { completedWorkSourceInfo } from "../query/completed-work.js";
 import type { Diagnostic, MutationResult, ParsedWorkspace, PatchSummary, ProjectRoot, TextFile } from "../types.js";
+import { validateWorkspace } from "../validator/validate-workspace.js";
+import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 export interface AddCompletedWorkInput {
   date: string;
@@ -19,6 +24,8 @@ export interface AddCompletedWorkInput {
   reportPaths?: string[] | null;
   allowIncomplete?: boolean;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 function findHeadingMatching(lines: string[], pattern: RegExp): number {
@@ -46,9 +53,9 @@ function tableBlock(row: string, includeReportPaths: boolean): string[] {
   return ["", tableHeader(includeReportPaths), tableSeparator(includeReportPaths), row];
 }
 
-function sectionBlock(row: string, includeReportPaths: boolean): string[] {
+function sectionBlock(row: string, includeReportPaths: boolean, sectionNumber = 7): string[] {
   return [
-    "## 7. Completed Work Log",
+    `## ${sectionNumber}. Completed Work Log`,
     "",
     tableHeader(includeReportPaths),
     tableSeparator(includeReportPaths),
@@ -58,9 +65,7 @@ function sectionBlock(row: string, includeReportPaths: boolean): string[] {
 }
 
 function sectionBlockWithNumber(row: string, sectionNumber: number, includeReportPaths: boolean): string[] {
-  const lines = sectionBlock(row, includeReportPaths);
-  lines[0] = `## ${sectionNumber}. Completed Work Log`;
-  return lines;
+  return sectionBlock(row, includeReportPaths, sectionNumber);
 }
 
 function findInsertionHeading(lines: string[]): { index: number; sectionNumber: number } | undefined {
@@ -163,7 +168,7 @@ function validateCompletedWorkTableForMutation(file: TextFile, table: ParsedTabl
   return undefined;
 }
 
-function planCompletedWorkPatch(file: TextFile, row: string, includeReportPaths: boolean): PatchOperation[] {
+function planCompletedWorkPatch(file: TextFile, row: string, includeReportPaths: boolean, defaultSectionNumber = 7): PatchOperation[] {
   const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
   if (completedHeading >= 0) {
     const table = parseMarkdownTable(file.lines, completedHeading + 1);
@@ -181,7 +186,7 @@ function planCompletedWorkPatch(file: TextFile, row: string, includeReportPaths:
       insertLinesOperation(file, insertionHeading.index + 1, sectionBlockWithNumber(row, insertionHeading.sectionNumber, includeReportPaths))
     ];
   }
-  return [appendLinesOperation(file, ["", ...sectionBlock(row, includeReportPaths)])];
+  return [appendLinesOperation(file, ["", ...sectionBlock(row, includeReportPaths, defaultSectionNumber)])];
 }
 
 function operationPreview(operations: PatchOperation[]): string[] {
@@ -200,7 +205,21 @@ function stalePatchMutationFailure(error: unknown, filePath: string): MutationRe
   if (!isStalePatchError(error)) return undefined;
   const message = `Mutation snapshot is stale for ${filePath}; rerun the command to retry against the latest file.`;
   const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
-  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+  return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } });
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  return access(filePath)
+    .then(() => true)
+    .catch(() => false);
+}
+
+async function readCompletedWorkMutationTarget(root: ProjectRoot): Promise<{ file: TextFile; external: boolean }> {
+  const externalPath = path.join(root.root, "docs", "spec", "05.completed-work.md");
+  if (await fileExists(externalPath)) {
+    return { file: await readUtf8File(externalPath, root.root), external: true };
+  }
+  return { file: await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root), external: false };
 }
 
 function splitScopeTokens(scope: string): string[] {
@@ -240,6 +259,10 @@ export function validateCompletedWorkInput(workspace: ParsedWorkspace, input: Ad
 }
 
 export async function addCompletedWork(root: ProjectRoot, input: AddCompletedWorkInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "add_completed_work", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addCompletedWorkUnlocked(root, input));
+}
+
+async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWorkInput): Promise<MutationResult> {
   const date = input.date.trim();
   const summary = input.summary.trim();
   const target = input.target?.trim() ?? "";
@@ -268,28 +291,41 @@ export async function addCompletedWork(root: ProjectRoot, input: AddCompletedWor
   const workspace = await parseWorkspace(root);
   const referenceDiagnostics = validateCompletedWorkInput(workspace, { ...input, target, scope, requirementIds });
   if (referenceDiagnostics.length > 0) {
-    return {
-      ok: false,
-      error: { code: "MUTATION_DENIED", message: "Completed Work Log references failed prevalidation" },
-      diagnostics: referenceDiagnostics
-    };
+    return mutationFail("MUTATION_DENIED", "Completed Work Log references failed prevalidation", referenceDiagnostics);
   }
+  const source = completedWorkSourceInfo(workspace);
+  const sourceDiagnostics = validateWorkspace(workspace).diagnostics.filter((item) => item.code === "SRS-W041");
 
-  const file = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
+  const { file, external } = await readCompletedWorkMutationTarget(root);
   const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
   const table = completedHeading >= 0 ? parseMarkdownTable(file.lines, completedHeading + 1) : undefined;
   const includeReportPaths = reportPaths.length > 0 || Boolean(table && tableHasReportPaths(table));
   const tableFailure = table ? validateCompletedWorkTableForMutation(file, table, includeReportPaths) : undefined;
   if (tableFailure) return tableFailure;
   const row = renderRow({ date, summary, target, scope, requirementIds, reportPaths }, includeReportPaths);
-  const operations = planCompletedWorkPatch(file, row, includeReportPaths);
+  const operations = planCompletedWorkPatch(file, row, includeReportPaths, external ? 1 : 7);
   const dryRun = input.dryRun ?? false;
   try {
-    const applied = await applyPatchPlan(createPatchPlan(file, operations), { dryRun });
-    return {
-      ...mutationOk({ date, target, scope, requirementIds, summary, reportPaths, written: applied.written }),
-      patch: patchSummary(applied.filePath, operations, dryRun)
-    };
+    const plan = createPatchPlan(file, operations);
+    const applied = await applyPatchPlan(plan, { dryRun });
+    return withMutationEnvelope(
+      mutationOk(
+        {
+          date,
+          target,
+          scope,
+          requirementIds,
+          summary,
+          reportPaths,
+          completedWorkMode: external ? "external-log" : "legacy-index",
+          completedWorkSource: source,
+          written: applied.written
+        },
+        sourceDiagnostics
+      ),
+      mutationEnvelopeFromPlan("add_completed_work", plan, dryRun, applied.written),
+      patchSummary(file.relativePath, operations, dryRun)
+    );
   } catch (error) {
     const staleFailure = stalePatchMutationFailure(error, file.relativePath);
     if (staleFailure) return staleFailure;

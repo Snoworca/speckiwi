@@ -3,9 +3,11 @@ import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import type { MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
+import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findSectionTableInsertionLine } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 export interface AddTraceInput {
   id: string;
@@ -14,6 +16,8 @@ export interface AddTraceInput {
   relation: string;
   notes?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 function insertLinesOperation(file: TextFile, line: number, lines: string[]): PatchOperation {
@@ -37,10 +41,14 @@ function stalePatchMutationFailure(error: unknown, filePath: string): MutationRe
   if (!isStalePatchError(error)) return undefined;
   const message = `Mutation snapshot is stale for ${filePath}; rerun the command to retry against the latest file.`;
   const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
-  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+  return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } });
 }
 
 export async function addTraceLink(root: ProjectRoot, input: AddTraceInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "add_trace_link", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addTraceLinkUnlocked(root, input));
+}
+
+async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Promise<MutationResult> {
   const notes = input.notes ?? "-";
   const unsafeCell = assertSafeMarkdownTableCells({
     "Trace Link type": input.type,
@@ -59,8 +67,13 @@ export async function addTraceLink(root: ProjectRoot, input: AddTraceInput): Pro
   if (!insertLine) return mutationFail("MUTATION_DENIED", "Trace Links table not found");
   const row = `| ${input.type} | ${input.reference} | ${input.relation} | ${notes} |`;
   try {
-    const applied = await applyPatchPlan(createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]), { dryRun: input.dryRun ?? false });
-    return mutationOk({ id: input.id, reference: input.reference, written: applied.written });
+    const dryRun = input.dryRun ?? false;
+    const plan = createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]);
+    const applied = await applyPatchPlan(plan, { dryRun });
+    return withMutationEnvelope(
+      mutationOk({ id: input.id, reference: input.reference, written: applied.written }),
+      mutationEnvelopeFromPlan("add_trace_link", plan, dryRun, applied.written)
+    );
   } catch (error) {
     const staleFailure = stalePatchMutationFailure(error, loaded.file.relativePath);
     if (staleFailure) return staleFailure;

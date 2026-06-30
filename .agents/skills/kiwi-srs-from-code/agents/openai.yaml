@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SRS From Code"
+  short_description: "Reverse-engineer SRS requirements from code"
+  default_prompt: "Use $kiwi-srs-from-code to extract SpecKiwi requirements from this codebase."

@@ -1,0 +1,16 @@
+{
+  "iteration": 1,
+  "verdict": "changes_required",
+  "findings": [
+    {
+      "severity": "HIGH",
+      "summary": "Earlier active workflow mutation requirements still contained stale journalKey semantics.",
+      "resolution": "Added canonical successor requirements FR-NODE-030, IR-CLI-042, and FR-MCP-036, then discarded FR-NODE-022, IR-CLI-033, IR-CLI-039, FR-MCP-025, and FR-MCP-033."
+    },
+    {
+      "severity": "MEDIUM",
+      "summary": "Read projections and mutating pipeline emit were mixed in a single CLI/MCP interface requirement.",
+      "resolution": "Split read-only projection requirements IR-CLI-041 and FR-MCP-035 from mutating requirements IR-CLI-042 and FR-MCP-036."
+    }
+  ]
+}

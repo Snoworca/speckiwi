@@ -1,0 +1,96 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "target": "v2.3.0",
+  "target_source": "active-target",
+  "total": 72,
+  "counts_by_status": {
+    "planned": 53,
+    "discarded": 18,
+    "verified": 1
+  },
+  "counts_by_stability": {
+    "evolving": 72
+  },
+  "counts_by_scope_evaluated": {
+    "ARCH": 1,
+    "FLOW": 6,
+    "MCP": 14,
+    "NODE": 17,
+    "PARSE": 4,
+    "CLI": 12
+  },
+  "filtered": {
+    "evaluated_count": 54,
+    "excluded": {
+      "discarded": 18,
+      "draft": 0,
+      "stable_or_frozen": 0,
+      "scope_or_priority_filter": 0
+    },
+    "evaluated_ids": [
+      "CON-ARCH-003",
+      "FR-FLOW-013",
+      "FR-MCP-020",
+      "FR-MCP-021",
+      "FR-MCP-022",
+      "FR-MCP-023",
+      "FR-MCP-024",
+      "FR-MCP-030",
+      "FR-MCP-031",
+      "FR-MCP-032",
+      "FR-MCP-034",
+      "FR-MCP-035",
+      "FR-MCP-037",
+      "FR-MCP-038",
+      "FR-MCP-039",
+      "FR-NODE-017",
+      "FR-NODE-018",
+      "FR-NODE-019",
+      "FR-NODE-020",
+      "FR-NODE-021",
+      "FR-NODE-026",
+      "FR-NODE-027",
+      "FR-NODE-028",
+      "FR-NODE-029",
+      "FR-NODE-030",
+      "FR-NODE-031",
+      "FR-NODE-032",
+      "FR-PARSE-019",
+      "FR-PARSE-021",
+      "IR-CLI-028",
+      "IR-CLI-029",
+      "IR-CLI-030",
+      "IR-CLI-031",
+      "IR-CLI-032",
+      "IR-CLI-037",
+      "IR-CLI-038",
+      "IR-CLI-040",
+      "IR-CLI-041",
+      "IR-CLI-042",
+      "IR-CLI-043",
+      "IR-CLI-044",
+      "MIG-FLOW-003",
+      "MIG-FLOW-004",
+      "OPS-FLOW-001",
+      "OPS-FLOW-002",
+      "OPS-NODE-003",
+      "REL-FLOW-002",
+      "REL-MCP-003",
+      "REL-NODE-002",
+      "REL-NODE-003",
+      "REL-NODE-005",
+      "REL-NODE-006",
+      "REL-PARSE-002",
+      "REL-PARSE-003"
+    ]
+  },
+  "summary": {
+    "stability_blockers": [],
+    "stability_warnings": [],
+    "diagnostics_summary": {
+      "errors": 0,
+      "warnings": 0,
+      "byCode": {}
+    }
+  }
+}

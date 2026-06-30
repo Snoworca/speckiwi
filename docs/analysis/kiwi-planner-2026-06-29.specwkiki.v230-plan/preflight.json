@@ -1,0 +1,24 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230-plan",
+  "target": "v2.3.0",
+  "mode_flags": [
+    "--max",
+    "--auto"
+  ],
+  "mcp": {
+    "get_active_target": true,
+    "list_requirements": true,
+    "summarize_target": true,
+    "validate_spec": true
+  },
+  "cli": {
+    "version": "2.2.4"
+  },
+  "halted": false,
+  "counts": {
+    "total": 72,
+    "active": 54,
+    "excluded": 18
+  },
+  "generated_at": "2026-06-29T07:29:10.027Z"
+}

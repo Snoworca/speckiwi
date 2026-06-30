@@ -1,0 +1,16 @@
+{
+  "iter": 3,
+  "changes": [
+    "Replaced IR-CLI-037 Research / Analysis via MCP append_section_note to reference docs/research/11 SRS Precondition instead of implementation plan phase 6.",
+    "Replaced FR-MCP-030 Research / Analysis via MCP append_section_note to reference docs/research/11 SRS Precondition instead of implementation plan phase 6.",
+    "Replaced IR-CLI-038 Research / Analysis via MCP append_section_note to reference docs/research/11 SRS Precondition instead of implementation plan phase 7.",
+    "Replaced FR-MCP-032 Research / Analysis via MCP append_section_note to reference docs/research/11 SRS Precondition instead of implementation plan phase 7."
+  ],
+  "deferred_low_findings": [
+    "IR-CLI-037 AC body duplicates AC labels. It is LOW severity and does not block kiwi-srs --max convergence; no manual AC edit was applied because current SRS mutation tools do not support AC text rewrite."
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

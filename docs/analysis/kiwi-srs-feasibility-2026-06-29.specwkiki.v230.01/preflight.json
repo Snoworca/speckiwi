@@ -1,0 +1,36 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "skill": "kiwi-srs-feasibility",
+  "mode": "max",
+  "target": "v2.3.0",
+  "started_at": "2026-06-29T15:46:58+09:00",
+  "mcp": {
+    "available": true,
+    "tools_detected": {
+      "get_active_target": true,
+      "list_requirements": true,
+      "get_requirement": true,
+      "update_stability": true,
+      "validate_spec": true,
+      "summarize_target": true,
+      "tag_mutation": false
+    }
+  },
+  "cli": {
+    "diagnostic_only": true,
+    "commands_used": [
+      "node bin/speckiwi summary --target v2.3.0 --json",
+      "node bin/speckiwi list --target v2.3.0 --json",
+      "node bin/speckiwi validate --fail-on-warning --json",
+      "node bin/speckiwi links check --json"
+    ]
+  },
+  "policy": {
+    "source": "default",
+    "project_policy_path": ".kiwi/feasibility-policy.yaml",
+    "project_policy_found": false,
+    "user_policy_path": "~/.kiwi/feasibility-policy.yaml",
+    "user_policy_found": false
+  },
+  "halted": false
+}

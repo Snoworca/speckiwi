@@ -1,0 +1,13 @@
+{
+  "iter": 4,
+  "changes": [
+    "Replaced FR-MCP-031 Research / Analysis via MCP append_section_note to reference docs/research/230.md sections 14.2 through 14.7 instead of non-existent section 14.8."
+  ],
+  "deferred_low_findings": [
+    "IR-CLI-037 AC body duplicates AC labels. It remains LOW severity and does not block kiwi-srs --max convergence."
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

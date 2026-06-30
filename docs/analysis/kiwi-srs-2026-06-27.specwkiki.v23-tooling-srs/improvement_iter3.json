@@ -1,0 +1,97 @@
+{
+  "iter": 3,
+  "trigger": "subagent Doc10/SRS evaluator LOW finding",
+  "actions": [
+    {
+      "action": "srs_acceptance_criteria_refinement",
+      "req_ids": [
+        "FR-NODE-022"
+      ],
+      "files": [
+        "docs/spec/50.nodejs-implementation.srs.md"
+      ],
+      "reason": "Bind core workflow mutation journal fields to Doc10 formula and state enum.",
+      "details": {
+        "journalKey": "sha256(tool|task_id|req_id|canonicalJson(flat_args))",
+        "journalState": [
+          "planned",
+          "applied",
+          "confirmed",
+          "failed",
+          "skipped_dry_run"
+        ],
+        "idempotencyKey": "equals journalKey unless caller supplies a stricter compatible key"
+      },
+      "evaluator": "improvement-agent-iter3",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC10-LOW-001",
+          "finding_hash": "1e05c2ab7b04f6a5",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+          "status": "resolved",
+          "resolution": "Bind core workflow mutation journal fields to Doc10 formula and state enum."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "resolution": "Bind core workflow mutation journal fields to Doc10 formula and state enum.",
+      "args": {
+        "req_ids": [
+          "FR-NODE-022"
+        ],
+        "files": [
+          "docs/spec/50.nodejs-implementation.srs.md"
+        ],
+        "details": {
+          "journalKey": "sha256(tool|task_id|req_id|canonicalJson(flat_args))",
+          "journalState": [
+            "planned",
+            "applied",
+            "confirmed",
+            "failed",
+            "skipped_dry_run"
+          ],
+          "idempotencyKey": "equals journalKey unless caller supplies a stricter compatible key"
+        }
+      }
+    },
+    {
+      "action": "adapter_parity_refinement",
+      "req_ids": [
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ],
+      "files": [
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md"
+      ],
+      "reason": "Expose the same canonical journalKey formula through CLI and MCP requirement surfaces.",
+      "evaluator": "improvement-agent-iter3",
+      "resolves": [
+        {
+          "id": "SUBAGENT-DOC10-LOW-001",
+          "finding_hash": "1e05c2ab7b04f6a5",
+          "severity": "LOW",
+          "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+          "status": "resolved",
+          "resolution": "Expose the same canonical journalKey formula through CLI and MCP requirement surfaces."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/30.cli-interface.srs.md",
+      "resolution": "Expose the same canonical journalKey formula through CLI and MCP requirement surfaces.",
+      "args": {
+        "req_ids": [
+          "IR-CLI-033",
+          "FR-MCP-025"
+        ],
+        "files": [
+          "docs/spec/30.cli-interface.srs.md",
+          "docs/spec/40.mcp-stdio-interface.srs.md"
+        ]
+      }
+    }
+  ],
+  "evaluator": "improvement-agent-iter3"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "kiwi-commit-auto-push",
+  "agent": "codex",
+  "installedAt": "2026-06-29T06:05:44.169Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-commit-auto-push",
+  "installedPath": ".agents/skills/kiwi-commit-auto-push",
+  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
+  "sourceChecksum": "sha256:558c399468be5b41336ab98fc0bee972c7e97f29dc1d1855655af91f0c3e5520",
+  "installedChecksum": "sha256:558c399468be5b41336ab98fc0bee972c7e97f29dc1d1855655af91f0c3e5520",
+  "sourceFileCount": 3,
+  "installedFileCount": 3,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-commit-auto-push --json",
+  "noManualEdit": true
+}

@@ -1,0 +1,26 @@
+{
+  "runtime_context": {
+    "cli_entrypoint": "src/cli/index.ts",
+    "cli_read_commands": "src/cli/commands/read.ts",
+    "cli_mutation_commands": "src/cli/commands/mutations.ts",
+    "mcp_server": "src/mcp/server.ts",
+    "mcp_read_tools": "src/mcp/tools/read-tools.ts",
+    "mcp_mutation_tools": "src/mcp/tools/mutation-tools.ts",
+    "project_root_resolution": "src/core/project-root.ts",
+    "planner_validator": ".agents/skills/kiwi-planner/scripts/validator.mjs",
+    "pipeline_event_schema": "skills/codex/_shared/kiwi/pipeline-event.md"
+  },
+  "line_count_checks": {
+    "src/mcp/tools/mutation-tools.ts": 150,
+    "src/cli/commands/read.ts": 147,
+    "src/cli/commands/mutations.ts": 271,
+    "src/mcp/tools/read-tools.ts": 61,
+    "src/mcp/server.ts": 238,
+    "src/core/project-root.ts": 30
+  },
+  "observations": [
+    "Existing CLI and MCP surfaces provide basic read/mutation command structure but not the Doc230 Plus workflow projection and migration-preview contracts.",
+    "MCP mutation trace references must not exceed the actual 150-line mutation-tools.ts file.",
+    "The SRS should keep read projections separate from mutating pipeline emit operations to avoid confusing safe read-only operations with side-effecting commands."
+  ]
+}

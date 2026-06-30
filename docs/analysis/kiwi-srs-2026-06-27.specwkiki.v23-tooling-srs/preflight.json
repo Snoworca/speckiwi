@@ -1,0 +1,18 @@
+{
+  "run_id": "2026-06-27.specwkiki.v23-tooling-srs",
+  "mode": "live",
+  "mcp": true,
+  "cli_diagnostic_only": true,
+  "active_target": "v2.3.0",
+  "target_goal": "Tool improvement release focused on CLI, MCP, validation diagnostics, install/update tooling, and agent-facing workflow reliability.",
+  "input_documents": [
+    "docs/research/09.mcp-cli-tool-abandonment-research.md",
+    "docs/research/10.kiwi-planner-jsonl-tooling-research.md"
+  ],
+  "preconditions": {
+    "read_index": "docs/spec/00.index.md",
+    "mcp_get_active_target": "PASS",
+    "mcp_summarize_target": "PASS",
+    "srs_rules": "docs/rule/SRS-MD-Rules-v1.0.0.md"
+  }
+}

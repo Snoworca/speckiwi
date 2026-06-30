@@ -1,0 +1,23 @@
+{
+  "name": "kiwi-pipeline",
+  "agent": "codex",
+  "installedAt": "2026-06-30T07:22:24.977Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-pipeline",
+  "installedPath": ".agents/skills/kiwi-pipeline",
+  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
+  "sourceChecksum": "sha256:68d6d076bc7fa57f81f0cdeea2898a1df3896f4ef6640ea431dbdc2fd98c1da4",
+  "installedChecksum": "sha256:68d6d076bc7fa57f81f0cdeea2898a1df3896f4ef6640ea431dbdc2fd98c1da4",
+  "sourceFileCount": 2,
+  "installedFileCount": 2,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/pipeline-event.md"
+  ],
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-pipeline --json",
+  "noManualEdit": true
+}

@@ -1,0 +1,15 @@
+{
+  "research_intent": "Promote Doc230 Plus workflow-tooling research into canonical v2.3.0 SRS requirements.",
+  "primary_goals": [
+    "Reduce token usage and hallucination risk when agents inspect kiwi-planner JSONL workflow outputs.",
+    "Expose deterministic read projections for next work, progress, summaries, and work-order profiles.",
+    "Add guarded mutation support for checkbox/progress state, logical deletion, and pipeline event emission.",
+    "Support read-only migration preview for legacy workflow artifacts.",
+    "Repair previous workflow journal identity ambiguity by standardizing on canonical run_id resolution."
+  ],
+  "out_of_scope": [
+    "Implementing runtime behavior in this SRS-registration task.",
+    "Creating an alternate requirements source of truth outside docs/spec.",
+    "Treating discarded first-wave requirements as implementation targets."
+  ]
+}

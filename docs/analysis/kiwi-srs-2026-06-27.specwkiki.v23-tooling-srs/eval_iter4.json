@@ -1,0 +1,26 @@
+{
+  "iter": 4,
+  "evaluator": "subagent-finding-resolution-record",
+  "evaluated_at": "2026-06-27",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "SUBAGENT-DOC10-LOW-001",
+      "finding_hash": "1e05c2ab7b04f6a5",
+      "severity": "LOW",
+      "axis": "trace",
+      "req_id": "FR-NODE-022",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "description": "Core FR-NODE-022 needed to explicitly bind journalKey, journalState, and idempotencyKey semantics to the Doc10 mutation journal formula.",
+      "resolution": "AC-4 and AC-5 now specify journalState enum, journalKey = sha256(tool|task_id|req_id|canonicalJson(flat_args)), and idempotencyKey relationship. CLI/MCP adapter requirements expose the same formula."
+    }
+  ],
+  "gate": "PASS_STRICT_USER_GOAL_PENDING_SUBAGENT_RERUN",
+  "reason": "Known LOW was patched; independent rerun is required before final closure."
+}

@@ -7,6 +7,7 @@ import type { ProjectRoot, TextFile } from "../types.js";
 export interface SrsFileSet {
   index: TextFile;
   scopeFiles: TextFile[];
+  completedWork?: TextFile;
   appendix?: TextFile;
 }
 
@@ -42,5 +43,14 @@ export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
   const appendix = (await access(appendixPath).then(() => true).catch(() => false))
     ? await readUtf8File(appendixPath, root.root)
     : undefined;
-  return appendix ? { index, scopeFiles, appendix } : { index, scopeFiles };
+  const completedWorkPath = path.join(specDir, "05.completed-work.md");
+  const completedWork = (await access(completedWorkPath).then(() => true).catch(() => false))
+    ? await readUtf8File(completedWorkPath, root.root)
+    : undefined;
+  return {
+    index,
+    scopeFiles,
+    ...(completedWork ? { completedWork } : {}),
+    ...(appendix ? { appendix } : {})
+  };
 }

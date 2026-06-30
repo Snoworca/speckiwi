@@ -1,0 +1,47 @@
+{
+  "classification": [
+    {
+      "research_theme": "Workflow diagnostic projection contracts",
+      "decision": "new reliability requirement",
+      "requirement_ids": [
+        "REL-NODE-006"
+      ]
+    },
+    {
+      "research_theme": "Canonical journal identity and repair inspection",
+      "decision": "new functional core requirement plus mutation successors",
+      "requirement_ids": [
+        "FR-NODE-028",
+        "FR-NODE-030",
+        "IR-CLI-042",
+        "FR-MCP-037"
+      ]
+    },
+    {
+      "research_theme": "Legacy workflow migration preview",
+      "decision": "new read-only core, CLI, and MCP requirements",
+      "requirement_ids": [
+        "FR-NODE-029",
+        "IR-CLI-040",
+        "FR-MCP-034"
+      ]
+    },
+    {
+      "research_theme": "Read projections and work-order profiles",
+      "decision": "split read-only interface requirements",
+      "requirement_ids": [
+        "IR-CLI-041",
+        "FR-MCP-035"
+      ]
+    },
+    {
+      "research_theme": "Logical workflow deletion state",
+      "decision": "new canonical successors for node, CLI, and MCP layers",
+      "requirement_ids": [
+        "FR-NODE-031",
+        "IR-CLI-043",
+        "FR-MCP-038"
+      ]
+    }
+  ]
+}

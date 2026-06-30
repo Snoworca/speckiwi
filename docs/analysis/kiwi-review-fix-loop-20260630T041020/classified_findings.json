@@ -1,0 +1,42 @@
+{
+  "findings": [
+    {
+      "id": "FND-001",
+      "axis": "edge",
+      "severity": "HIGH",
+      "title": "Granular edit CLI/core accepted malformed JSON-derived inputs",
+      "location": { "file": "src/core/mutation/edit-requirement.ts", "line_range": "87-278" },
+      "description": "Title newline, missing AC text, unknown table section, unknown operation kind, or non-string row values could reach patch planning from CLI casts or direct core calls.",
+      "suggested_fix": "Validate title as single-line text, validate AC item arrays and item text, validate table section, operation kind, values object, and string cell values before patch planning.",
+      "is_behavioral": true,
+      "tags": ["validation", "cli", "mutation"],
+      "classification": "immediate_fix"
+    },
+    {
+      "id": "FND-002",
+      "axis": "edge",
+      "severity": "HIGH",
+      "title": "Requirement ID repair accepted stale explicit reference edits",
+      "location": { "file": "src/core/mutation/repair-requirement-id.ts", "line_range": "217-249" },
+      "description": "An explicit reference edit whose source line no longer contains the requested from text was treated as planned, which could suppress ambiguity without changing the reference.",
+      "suggested_fix": "Validate every explicit reference edit file, line, and source token during planning and return STALE_PATCH with staleGuard on mismatch.",
+      "is_behavioral": true,
+      "tags": ["repair", "stale-guard"],
+      "classification": "immediate_fix"
+    },
+    {
+      "id": "FND-003",
+      "axis": "concurrency",
+      "severity": "MEDIUM",
+      "title": "Multi-file repair lacked all-touched-file freshness preflight",
+      "location": { "file": "src/core/mutation/repair-requirement-id.ts", "line_range": "369-377" },
+      "description": "Apply wrote patch plans sequentially. A stale later touched file could fail after an earlier file had already been written.",
+      "suggested_fix": "Before writes, compare snapshots for every touched file and fail with STALE_PATCH before the first write if any snapshot changed.",
+      "is_behavioral": true,
+      "tags": ["concurrency", "multi-file"],
+      "classification": "immediate_fix"
+    }
+  ],
+  "discussion_needed": [],
+  "rejected": []
+}

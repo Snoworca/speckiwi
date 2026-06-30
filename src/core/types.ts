@@ -104,6 +104,7 @@ export interface Diagnostic {
   filePath?: string;
   line?: number;
   requirementId?: string;
+  details?: unknown;
 }
 
 export interface DiagnosticsSummary {
@@ -128,6 +129,7 @@ export interface TargetEntry {
   type: string;
   status: string;
   description: string;
+  line?: number;
 }
 
 export interface ScopeEntry {
@@ -135,6 +137,7 @@ export interface ScopeEntry {
   prefix: string;
   document: string;
   description: string;
+  line?: number;
 }
 
 export interface CompletedWorkEntry {
@@ -144,8 +147,34 @@ export interface CompletedWorkEntry {
   requirementIds: string[];
   summary: string;
   reportPaths: string[];
+  filePath?: string;
   line?: number;
   reportPathsCell?: string;
+}
+
+export interface CompletedWorkPage {
+  total: number;
+  returned: number;
+  limit: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+}
+
+export interface CompletedWorkSourceInfo {
+  mode: "external" | "legacy";
+  authoritativeFilePath: "docs/spec/05.completed-work.md" | "docs/spec/00.index.md";
+  sources: string[];
+  hasExternalFile: boolean;
+  hasLegacyRows: boolean;
+  hasExternalRows: boolean;
+  duplicateSources: boolean;
+  migrationRecommended: boolean;
+}
+
+export interface CompletedWorkReadModel {
+  completedWork: CompletedWorkEntry[];
+  completedWorkPage: CompletedWorkPage;
+  completedWorkSource: CompletedWorkSourceInfo;
 }
 
 export interface StatusSummaryEntry {
@@ -212,14 +241,21 @@ export interface RequirementRecord {
   scope: string;
   filePath: string;
   headingLine: number;
+  marker?: "DISCARDED" | "DRAFT";
   metadata: Record<string, string>;
   acceptanceCriteria: AcceptanceCriterion[];
   verificationEvidence: EvidenceRow[];
   traceLinks: TraceLink[];
   changeNotes: ChangeNoteRow[];
   tags: string[];
+  relatedDocs?: string[];
+  evidenceReferences?: string[];
+  traceReferences?: string[];
+  newWorkCandidate?: boolean;
   requirement?: string;
   rationale?: string;
+  research?: string;
+  implementationNotes?: string;
   priority?: Priority;
   risk?: Risk;
   stability?: Stability;
@@ -260,6 +296,7 @@ export interface TargetSummary {
   stabilityWarnings: string[];
   diagnosticsSummary: DiagnosticsSummary;
   completedWork: CompletedWorkEntry[];
+  completedWorkPage: CompletedWorkPage;
   goal: string | null;
 }
 
@@ -317,9 +354,21 @@ export interface ReleaseReadinessSummary {
 export interface MutationResult<T = unknown> {
   ok: boolean;
   value?: T;
-  error?: { code: string; message: string; diagnostics?: Diagnostic[] };
+  error?: { code: string; message: string; diagnostics?: Diagnostic[]; staleGuard?: MutationStaleGuard; lock?: SrsMutationLockError };
   diagnostics: Diagnostic[];
+  diagnosticsSummary: DiagnosticsSummary;
   patch?: PatchSummary;
+  mutation?: MutationEnvelope;
+  indexSync?: IndexSyncMutationSummary;
+}
+
+export interface IndexSyncMutationSummary {
+  filePath: string;
+  written: boolean;
+  statusSummaryChanged: boolean;
+  typeSummaryChanged: boolean;
+  statusCounts: Record<string, number>;
+  typeCounts: Record<string, number>;
 }
 
 export interface PatchSummary {
@@ -329,10 +378,72 @@ export interface PatchSummary {
   preview: string[];
 }
 
+export interface MutationOperationDetail {
+  type: string;
+  line?: number;
+  startLine?: number;
+  endLine?: number;
+  lineCount?: number;
+  original?: string;
+  replacement?: string;
+  lines?: string[];
+  expectedBefore?: string;
+  expectedAfter?: string;
+  expectedLastLine?: string;
+}
+
+export interface MutationStaleGuard {
+  filePath: string;
+  retry: string;
+}
+
+export interface SrsMutationLockMetadata {
+  schemaVersion: "1.0.0";
+  owner: string;
+  operation: string;
+  requestId: string;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
+export interface SrsMutationLockRetry {
+  message: string;
+  recommendedDelayMs: number;
+}
+
+export interface SrsMutationLockError extends SrsMutationLockMetadata {
+  retry: SrsMutationLockRetry;
+}
+
+export interface MutationEnvelope {
+  kind: string;
+  filePath: string;
+  dryRun: boolean;
+  written: boolean;
+  operations: MutationOperationDetail[];
+  preview: string[];
+  staleGuard?: MutationStaleGuard;
+  journalKey?: string;
+  journalState?: string;
+  idempotencyKey?: string;
+  completedOperations?: string[];
+  pendingOperations?: string[];
+  pendingRepair?: unknown;
+  targetRecord?: unknown;
+  staleGuards?: MutationStaleGuard[];
+}
+
 export interface RequirementFilter {
   target?: string;
   status?: RequirementStatus;
   type?: RequirementType;
   scope?: string;
   tag?: string;
+  stability?: Stability;
+  priority?: Priority;
+  missingEvidence?: boolean;
+  relatedDoc?: string;
+  evidenceReference?: string;
+  traceReference?: string;
+  newWorkCandidate?: boolean;
 }

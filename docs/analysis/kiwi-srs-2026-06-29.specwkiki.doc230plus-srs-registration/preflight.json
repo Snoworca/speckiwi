@@ -1,0 +1,17 @@
+{
+  "run_id": "2026-06-29.specwkiki.doc230plus-srs-registration",
+  "skill": "kiwi-srs",
+  "mode": "max",
+  "target": "v2.3.0",
+  "target_goal": "Tool improvement release. Focus v2.3.0 work on making SpecKiwi tools more reliable, ergonomic, diagnosable, and safer in real project use before expanding non-tool surface area.",
+  "source_documents": [
+    "docs/research/230plus.md"
+  ],
+  "preflight": {
+    "active_target": "v2.3.0",
+    "index_read": "docs/spec/00.index.md",
+    "mcp_tools_available": true,
+    "mutation_channel": "speckiwi MCP",
+    "code_change": false
+  }
+}

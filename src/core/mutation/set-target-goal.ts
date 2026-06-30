@@ -4,7 +4,9 @@ import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
+import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 /**
  * FR-MCP-019 — set_target_goal mutation core.
@@ -20,6 +22,8 @@ export interface SetTargetGoalInput {
   target: string;
   goal: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface SetTargetGoalOutput {
@@ -64,6 +68,10 @@ function findTargetGoalBlock(lines: readonly string[], target: string): { headin
 }
 
 export async function setTargetGoal(root: ProjectRoot, input: SetTargetGoalInput): Promise<MutationResult<SetTargetGoalOutput>> {
+  return withSrsMutationLock(root, { operation: "set_target_goal", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => setTargetGoalUnlocked(root, input));
+}
+
+async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInput): Promise<MutationResult<SetTargetGoalOutput>> {
   const target = input.target.trim();
   if (!target) return mutationFail("USAGE", "target is required");
   const goal = input.goal.trim();
@@ -106,9 +114,16 @@ export async function setTargetGoal(root: ProjectRoot, input: SetTargetGoalInput
   }
 
   if (operations.length === 0) {
-    return mutationOk({ target, goal, written: false });
+    return withMutationEnvelope(
+      mutationOk({ target, goal, written: false }),
+      mutationNoopEnvelope("set_target_goal", file.relativePath, input.dryRun ?? false)
+    );
   }
   const plan = createPatchPlan(file, operations);
-  const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
-  return mutationOk({ target, goal, written: applied.written });
+  const dryRun = input.dryRun ?? false;
+  const applied = await applyPatchPlan(plan, { dryRun });
+  return withMutationEnvelope(
+    mutationOk({ target, goal, written: applied.written }),
+    mutationEnvelopeFromPlan("set_target_goal", plan, dryRun, applied.written)
+  );
 }

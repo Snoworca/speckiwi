@@ -1,0 +1,25 @@
+{
+  "summary": "Promote remaining Doc230 research seeds into canonical v2.3.0 SRS requirements.",
+  "intent_type_hint": "update",
+  "key_entities": [
+    "docs/research/230.md",
+    "docs/research/10.kiwi-planner-jsonl-tooling-research.md",
+    "docs/research/11.v2.3.0-tooling-code-improvement-plan.md",
+    "CAND-NODE-EXTERNAL-COMPLETED-WORK-LOG",
+    "CAND-NODE-REQ-ID-STATUS-CACHE",
+    "CAND-NODE-SRS-MUTATION-LOCK"
+  ],
+  "ambiguities": [],
+  "implied_requirements": [
+    "External completed-work log parsing, core, CLI, MCP tool, and MCP resource support.",
+    "Derived kiwi/.status.json Requirement ID allocation cache.",
+    "SRS-only mutation lock with CLI --ignore-lock and MCP ignoreLock controls."
+  ],
+  "semantic_equivalences": [
+    {
+      "research_term": "Doc230 logical workflow deletion",
+      "canonical_equivalent": ["FR-NODE-023", "IR-CLI-034", "FR-MCP-026"],
+      "confidence": "high"
+    }
+  ]
+}

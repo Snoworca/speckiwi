@@ -7,6 +7,17 @@ import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 
+function npmCommand(args: string[]): { command: string; args: string[] } {
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath) return { command: process.execPath, args: [npmExecPath, ...args] };
+  return { command: process.platform === "win32" ? "npm.cmd" : "npm", args };
+}
+
+function runNpm(args: string[], options: { cwd?: string; timeout?: number } = {}) {
+  const npm = npmCommand(args);
+  return execFileAsync(npm.command, npm.args, options);
+}
+
 async function readPackageJson() {
   const text = await readFile("package.json", "utf8");
   return JSON.parse(text) as {
@@ -59,7 +70,7 @@ describe("package runtime contract", () => {
     const lock = await readPackageLock();
     const rootPackage = lock.packages?.[""];
 
-    expect(pkg.version).toBe("2.2.3");
+    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/);
     expect(lock.name).toBe("speckiwi");
     expect(rootPackage?.name).toBe("speckiwi");
     expect(lock.version).toBe(pkg.version);
@@ -70,8 +81,9 @@ describe("package runtime contract", () => {
   });
 
   it("runs the package version guard script", async () => {
-    const { stdout } = await execFileAsync("npm", ["run", "version:check", "--silent"], { cwd: process.cwd(), timeout: 120000, shell: true });
-    expect(stdout).toContain("package version check passed: 2.2.3");
+    const { stdout } = await runNpm(["run", "version:check", "--silent"], { cwd: process.cwd(), timeout: 120000 });
+    const pkg = await readPackageJson();
+    expect(stdout).toContain(`package version check passed: ${pkg.version}`);
   }, 120000);
 
   it("does not expose stale package export paths", async () => {
@@ -82,12 +94,14 @@ describe("package runtime contract", () => {
   });
 
   it("packs the bundled rules document", async () => {
-    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { cwd: process.cwd(), timeout: 120000, shell: true });
+    const { stdout } = await runNpm(["pack", "--dry-run", "--json"], { cwd: process.cwd(), timeout: 120000 });
     const [packed] = JSON.parse(stdout) as Array<{ files?: Array<{ path: string }> }>;
     const files = packed?.files?.map((file) => file.path) ?? [];
     expect(files).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
     expect(files).toContain("skills/codex/kiwi-pm/SKILL.md");
-    expect(files).toContain("skills/claude/kiwi-pm/skill.md");
+    expect(files).toContain("skills/codex/kiwi-review-fix-loop/SKILL.md");
+    expect(files).toContain("skills/claude/kiwi-pm/SKILL.md");
+    expect(files).toContain("skills/claude/kiwi-review-fix-loop/SKILL.md");
     expect(files).toContain("skills/etc/kiwi-pm/SKILL.md");
     expect(files).toContain("skills/etc/kiwi-commit-auto-pr/SKILL.md");
     expect(files).toContain("skills/etc/kiwi-hot-fix/SKILL.md");
@@ -99,16 +113,27 @@ describe("package runtime contract", () => {
     const projectRoot = path.join(externalCwd, "project");
     await mkdir(path.join(projectRoot, ".git"), { recursive: true });
     try {
-      const { stdout } = await execFileAsync("npm", ["pack", "--json", "--pack-destination", externalCwd], { cwd: process.cwd(), timeout: 120000, shell: true });
+      const { stdout } = await runNpm(["pack", "--json", "--pack-destination", externalCwd], { cwd: process.cwd(), timeout: 120000 });
       const [packed] = JSON.parse(stdout) as Array<{ filename: string }>;
       const tarball = path.join(externalCwd, packed.filename);
-      await execFileAsync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline", tarball], {
+      await runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline", tarball], {
         cwd: externalCwd,
-        timeout: 120000,
-        shell: true
+        timeout: 120000
       });
       const installedCli = path.join(externalCwd, "node_modules", "speckiwi", "bin", "speckiwi");
       await execFileAsync(process.execPath, [installedCli, "--root", projectRoot, "init"], { cwd: externalCwd, timeout: 60000 });
+      const doctor = await execFileAsync(process.execPath, [installedCli, "--root", projectRoot, "doctor", "--json"], { cwd: externalCwd, timeout: 60000 });
+      const doctorReport = JSON.parse(doctor.stdout) as { ok?: boolean; package?: { version?: string }; checks?: Array<{ id?: string; status?: string }> };
+      expect(doctorReport.ok).toBe(true);
+      expect(doctorReport.package?.version).toBe((await readPackageJson()).version);
+      expect(doctorReport.checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "packed-skill-entrypoints", status: "pass" }),
+          expect.objectContaining({ id: "mcp-active-target-read", status: "pass" }),
+          expect.objectContaining({ id: "mcp-validation-read", status: "pass" }),
+          expect.objectContaining({ id: "mcp-dry-run-mutation", status: "pass" })
+        ])
+      );
       const skillDestination = path.join(projectRoot, "agent-skills");
       await execFileAsync(process.execPath, [installedCli, "--root", projectRoot, "skills", "install", "opencode", "kiwi-pm", "--dest", skillDestination, "--json"], {
         cwd: externalCwd,

@@ -1,6 +1,9 @@
 import { constants as fsConstants } from "node:fs";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, chmod, copyFile, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { fail, ok, type Result } from "../result.js";
 import {
@@ -35,6 +38,29 @@ const SOURCE_ROOT_BY_AGENT: Record<SkillAgent, "codex" | "claude" | "etc"> = {
 const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const CATEGORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const INSTALL_METADATA_FILE = ".speckiwi-skill-install.json";
+const execFileAsync = promisify(execFile);
+
+interface SkillInstallMetadata {
+  name?: string;
+  agent?: string;
+  category?: string;
+  installedAt?: string;
+  installMode?: string;
+  sourceAgent?: string;
+  sourceRoot?: string;
+  sourcePath?: string;
+  installedPath?: string;
+  sourceRevision?: string;
+  sourceChecksum?: string;
+  installedChecksum?: string;
+  sourceFileCount?: number;
+  installedFileCount?: number;
+  sharedResourceRoot?: string;
+  sharedResourceValidation?: string;
+  sharedResourceReferences?: string[];
+  refreshCommand?: string;
+  noManualEdit?: boolean;
+}
 
 export async function planSkillInstall(options: SkillInstallOptions): Promise<Result<SkillInstallPlan>> {
   try {
@@ -277,7 +303,12 @@ async function classifyExistingDestination(destination: string, sourcePackage: S
     return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["custom destination lacks SpecKiwi install metadata for same-identity update"], validationFindings: [] };
   }
   const comparison = await comparePackageToDestination(sourcePackage, destination);
-  if (comparison.identical) return { operation: "skip", changed: false, removedFiles: 0, conflicts: [], validationFindings: [] };
+  if (comparison.identical && metadata) {
+    const expectedMetadata = await buildInstallMetadata(sourcePackage, destination, identity);
+    if (metadataMatchesExpected(metadata, expectedMetadata)) {
+      return { operation: "skip", changed: false, removedFiles: 0, conflicts: [], validationFindings: [] };
+    }
+  }
   return { operation: "update", changed: true, removedFiles: comparison.staleFiles, conflicts: [], validationFindings: [] };
 }
 
@@ -296,6 +327,7 @@ async function readSourcePackage(sourceRoot: string, name: string, agent: SkillA
   }
   const files = await listPackageFiles(sourceDirectory, entrypoint);
   await validateReferencedResources(sourceDirectory, files);
+  await collectSharedResourceReferences(sourceRoot, files);
   return {
     name,
     sourceDirectory,
@@ -316,11 +348,11 @@ async function readDestinationPackage(destination: string): Promise<{ name: stri
   }
 }
 
-async function readInstallMetadata(destination: string): Promise<{ name?: string; agent?: string; category?: string } | undefined> {
+async function readInstallMetadata(destination: string): Promise<SkillInstallMetadata | undefined> {
   const metadataPath = path.join(destination, INSTALL_METADATA_FILE);
   if (!await pathExists(metadataPath)) return undefined;
   try {
-    return JSON.parse(await readFile(metadataPath, "utf8")) as { name?: string; agent?: string; category?: string };
+    return JSON.parse(await readFile(metadataPath, "utf8")) as SkillInstallMetadata;
   } catch {
     return undefined;
   }
@@ -367,6 +399,31 @@ async function validateReferencedResources(root: string, files: SkillPackageFile
   }
 }
 
+async function collectSharedResourceReferences(sourceRoot: string, files: SkillPackageFile[]): Promise<string[]> {
+  const references = new Set<string>();
+  const sharedRoot = path.join(sourceRoot, "_shared", "kiwi");
+  const pattern = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  for (const file of files) {
+    if (!file.sourceRelativePath.toLowerCase().endsWith(".md")) continue;
+    const text = await readFile(file.absolutePath, "utf8");
+    for (const match of text.matchAll(pattern)) {
+      const reference = match[1]?.replace(/[),.;:'"`]+$/g, "");
+      if (!reference) continue;
+      const target = path.resolve(path.dirname(file.absolutePath), reference);
+      const relativeToShared = path.relative(sharedRoot, target);
+      if (relativeToShared.startsWith("..") || path.isAbsolute(relativeToShared)) {
+        throw new SkillInstallError("SKILL_INSTALL_INVALID_SOURCE", `shared Kiwi resource reference escapes shared root: ${reference}`);
+      }
+      const sourceRelativePath = toPosix(path.relative(sourceRoot, target));
+      if (!await pathExists(target)) {
+        throw new SkillInstallError("SKILL_INSTALL_INVALID_SOURCE", `referenced shared Kiwi resource is missing: ${sourceRelativePath}`);
+      }
+      references.add(sourceRelativePath);
+    }
+  }
+  return [...references].sort((left, right) => left.localeCompare(right));
+}
+
 async function comparePackageToDestination(sourcePackage: SkillPackage, destination: string): Promise<{ identical: boolean; staleFiles: number }> {
   const sourceFiles = new Map(sourcePackage.files.map((file) => [file.destinationRelativePath, file]));
   const destinationFiles = await listDestinationFiles(destination);
@@ -410,7 +467,7 @@ async function executeOne(sourcePackage: SkillPackage, destination: string, iden
   const stage = await mkdtemp(path.join(destinationRoot, `.speckiwi-${sourcePackage.name}-stage-`));
   const backup = path.join(destinationRoot, `.speckiwi-${sourcePackage.name}-backup-${Date.now()}`);
   try {
-    await copyPackageTo(sourcePackage, stage, identity);
+    await copyPackageTo(sourcePackage, stage, identity, destination);
     await validateInstalledPackage(stage, sourcePackage.name);
     const destinationExists = await pathExists(destination);
     if (destinationExists) await rename(destination, backup);
@@ -428,20 +485,133 @@ async function executeOne(sourcePackage: SkillPackage, destination: string, iden
   }
 }
 
-async function copyPackageTo(sourcePackage: SkillPackage, destination: string, identity: SkillIdentity): Promise<void> {
+async function copyPackageTo(sourcePackage: SkillPackage, destination: string, identity: SkillIdentity, finalDestination = destination): Promise<void> {
   for (const file of sourcePackage.files) {
     const target = safeRelativeDestination(destination, file.destinationRelativePath);
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(file.absolutePath, target, fsConstants.COPYFILE_FICLONE).catch(async () => copyFile(file.absolutePath, target));
     await chmod(target, file.mode & 0o777).catch(() => undefined);
   }
-  const metadata = {
+  const metadata = await buildInstallMetadata(sourcePackage, finalDestination, identity);
+  await writeFile(path.join(destination, INSTALL_METADATA_FILE), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+}
+
+async function buildInstallMetadata(sourcePackage: SkillPackage, destination: string, identity: SkillIdentity): Promise<Required<Omit<SkillInstallMetadata, "category">> & { category?: string }> {
+  const projectRoot = inferProjectRoot(identity.sourceRoot);
+  const sourceDigest = await packageDigest(sourcePackage);
+  const sharedResourceReferences = await collectSharedResourceReferences(identity.sourceRoot, sourcePackage.files);
+  const installedPath = projectRoot ? toProjectPath(projectRoot, destination) : toPosix(path.resolve(destination));
+  const sourceRoot = projectRoot ? toProjectPath(projectRoot, identity.sourceRoot) : toPosix(path.resolve(identity.sourceRoot));
+  const sourcePath = projectRoot ? toProjectPath(projectRoot, sourcePackage.sourceDirectory) : toPosix(path.resolve(sourcePackage.sourceDirectory));
+  const destinationRoot = path.dirname(destination);
+  return {
     name: identity.name,
     agent: identity.agent,
     ...(identity.category ? { category: identity.category } : {}),
-    installedAt: new Date().toISOString()
+    installedAt: new Date().toISOString(),
+    installMode: "generated-runtime-mirror",
+    sourceAgent: path.basename(identity.sourceRoot),
+    sourceRoot,
+    sourcePath,
+    installedPath,
+    sourceRevision: await resolveSourceRevision(projectRoot),
+    sourceChecksum: sourceDigest.checksum,
+    installedChecksum: sourceDigest.checksum,
+    sourceFileCount: sourceDigest.fileCount,
+    installedFileCount: sourceDigest.fileCount,
+    sharedResourceRoot: projectRoot ? toProjectPath(projectRoot, path.join(destinationRoot, "_shared", "kiwi")) : toPosix(path.resolve(destinationRoot, "_shared", "kiwi")),
+    sharedResourceValidation: sharedResourceReferences.length > 0 ? "source-references-validated" : "not-required",
+    sharedResourceReferences,
+    refreshCommand: buildRefreshCommand(identity, projectRoot, destinationRoot),
+    noManualEdit: true
   };
-  await writeFile(path.join(destination, INSTALL_METADATA_FILE), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+}
+
+async function packageDigest(sourcePackage: SkillPackage): Promise<{ checksum: string; fileCount: number }> {
+  const hash = createHash("sha256");
+  for (const file of sourcePackage.files) {
+    hash.update(file.destinationRelativePath);
+    hash.update("\0");
+    hash.update(createHash("sha256").update(await readFile(file.absolutePath)).digest("hex"));
+    hash.update("\n");
+  }
+  return { checksum: `sha256:${hash.digest("hex")}`, fileCount: sourcePackage.files.length };
+}
+
+function metadataMatchesExpected(metadata: SkillInstallMetadata, expected: SkillInstallMetadata): boolean {
+  return (
+    metadata.name === expected.name &&
+    metadata.agent === expected.agent &&
+    (metadata.category ?? "") === (expected.category ?? "") &&
+    metadata.installMode === expected.installMode &&
+    metadata.sourceAgent === expected.sourceAgent &&
+    metadata.sourceRoot === expected.sourceRoot &&
+    metadata.sourcePath === expected.sourcePath &&
+    metadata.installedPath === expected.installedPath &&
+    metadata.sourceRevision === expected.sourceRevision &&
+    metadata.sourceChecksum === expected.sourceChecksum &&
+    metadata.installedChecksum === expected.installedChecksum &&
+    metadata.sourceFileCount === expected.sourceFileCount &&
+    metadata.installedFileCount === expected.installedFileCount &&
+    metadata.sharedResourceRoot === expected.sharedResourceRoot &&
+    metadata.sharedResourceValidation === expected.sharedResourceValidation &&
+    JSON.stringify(metadata.sharedResourceReferences ?? []) === JSON.stringify(expected.sharedResourceReferences ?? []) &&
+    metadata.refreshCommand === expected.refreshCommand &&
+    metadata.noManualEdit === true
+  );
+}
+
+function inferProjectRoot(sourceRoot: string): string | undefined {
+  const skillsRoot = path.dirname(sourceRoot);
+  if (path.basename(skillsRoot) !== "skills") return undefined;
+  return path.dirname(skillsRoot);
+}
+
+async function resolveSourceRevision(projectRoot: string | undefined): Promise<string> {
+  if (!projectRoot) return "unknown";
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", projectRoot, "rev-parse", "HEAD"]);
+    return stdout.trim() || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function buildRefreshCommand(identity: SkillIdentity, projectRoot: string | undefined, destinationRoot: string): string {
+  const args = ["node", "bin/speckiwi"];
+  if (projectRoot) args.push("--root", ".");
+  args.push("skills", "install", identity.agent, identity.name);
+  if (identity.category) args.push("--category", identity.category);
+  const defaultDestination = projectRoot ? defaultProjectDestination(projectRoot, identity.agent) : undefined;
+  if (!defaultDestination || path.resolve(defaultDestination) !== path.resolve(destinationRoot)) {
+    args.push("--dest", projectRoot ? toProjectPath(projectRoot, destinationRoot) : toPosix(path.resolve(destinationRoot)));
+  }
+  args.push("--json");
+  return args.map(shellToken).join(" ");
+}
+
+function defaultProjectDestination(projectRoot: string, agent: SkillAgent): string | undefined {
+  switch (agent) {
+    case "codex":
+      return path.join(projectRoot, ".agents", "skills");
+    case "claude":
+      return path.join(projectRoot, ".claude", "skills");
+    case "opencode":
+      return path.join(projectRoot, ".opencode", "skills");
+    case "hermes":
+      return undefined;
+  }
+}
+
+function toProjectPath(projectRoot: string, target: string): string {
+  const relative = path.relative(projectRoot, target);
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) return toPosix(relative || ".");
+  return toPosix(path.resolve(target));
+}
+
+function shellToken(value: string): string {
+  if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) return value;
+  return JSON.stringify(value);
 }
 
 async function validateInstalledPackage(directory: string, expectedName: string): Promise<void> {

@@ -1,0 +1,14 @@
+{
+  "iter": 2,
+  "changes": [
+    "Added MCP-only clean replacements FR-PARSE-021, FR-NODE-026, IR-CLI-037, FR-MCP-030, FR-MCP-031, FR-NODE-027, REL-NODE-005, IR-CLI-038, and FR-MCP-032.",
+    "Discarded first-wave IDs FR-PARSE-020, FR-NODE-024, IR-CLI-035, FR-MCP-027, FR-MCP-029, FR-NODE-025, REL-NODE-004, IR-CLI-036, and FR-MCP-028 through MCP update_status.",
+    "Reclassified the run as new-feature because the Doc230 work adds new tool features in existing scopes instead of directly superseding a single requirement.",
+    "Updated docs/research/230.md and docs/research/11.v2.3.0-tooling-code-improvement-plan.md to reference the final canonical IDs.",
+    "Rewrote srs_delta.json to separate final added IDs, discarded first-wave IDs, MCP calls, and the FR-NODE-018 index-rollup repair gap."
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

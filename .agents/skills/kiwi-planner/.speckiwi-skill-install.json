@@ -1,0 +1,24 @@
+{
+  "name": "kiwi-planner",
+  "agent": "codex",
+  "installedAt": "2026-06-29T06:05:44.243Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-planner",
+  "installedPath": ".agents/skills/kiwi-planner",
+  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
+  "sourceChecksum": "sha256:f503d71701c891ea2585d49f3d9ebd6717bb1098962283a9b7ac0a29180033f4",
+  "installedChecksum": "sha256:f503d71701c891ea2585d49f3d9ebd6717bb1098962283a9b7ac0a29180033f4",
+  "sourceFileCount": 4,
+  "installedFileCount": 4,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/mini-option.md",
+    "_shared/kiwi/pipeline-event.md"
+  ],
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-planner --json",
+  "noManualEdit": true
+}

@@ -3,9 +3,11 @@ import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findSectionTableInsertionLine } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 export interface AddEvidenceInput {
   id: string;
@@ -14,6 +16,8 @@ export interface AddEvidenceInput {
   covers?: string;
   notes?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 function insertLinesOperation(file: TextFile, line: number, lines: string[]): PatchOperation {
@@ -46,10 +50,14 @@ function stalePatchMutationFailure(error: unknown, filePath: string): MutationRe
   if (!isStalePatchError(error)) return undefined;
   const message = `Mutation snapshot is stale for ${filePath}; rerun the command to retry against the latest file.`;
   const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
-  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+  return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } });
 }
 
 export async function addVerificationEvidence(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "add_verification_evidence", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addVerificationEvidenceUnlocked(root, input));
+}
+
+async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
   if (!input.reference.trim()) return mutationFail("USAGE", "Evidence reference is required");
   const covers = input.covers ?? "all";
   const notes = input.notes ?? "-";
@@ -67,8 +75,13 @@ export async function addVerificationEvidence(root: ProjectRoot, input: AddEvide
   if (!insertLine) return mutationFail("MUTATION_DENIED", "Verification Evidence table not found");
   const row = `| ${next} | ${input.type} | ${input.reference} | ${covers} | ${notes} |`;
   try {
-    const applied = await applyPatchPlan(createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]), { dryRun: input.dryRun ?? false });
-    return mutationOk({ id: input.id, evidenceId: next, written: applied.written });
+    const dryRun = input.dryRun ?? false;
+    const plan = createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]);
+    const applied = await applyPatchPlan(plan, { dryRun });
+    return withMutationEnvelope(
+      mutationOk({ id: input.id, evidenceId: next, written: applied.written }),
+      mutationEnvelopeFromPlan("add_verification_evidence", plan, dryRun, applied.written)
+    );
   } catch (error) {
     const staleFailure = stalePatchMutationFailure(error, loaded.file.relativePath);
     if (staleFailure) return staleFailure;

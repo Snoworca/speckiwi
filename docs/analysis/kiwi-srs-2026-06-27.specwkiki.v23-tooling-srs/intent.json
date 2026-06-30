@@ -1,0 +1,29 @@
+{
+  "summary": "Create v2.3.0 SRS requirements from two research artifacts covering SpecKiwi tool abandonment and Kiwi planner JSONL workflow tooling.",
+  "intent_type_hint": "new-feature",
+  "key_entities": [
+    "MCP mutation parity",
+    "CLI mutation parity",
+    "compact requirement search",
+    "diagnostics envelopes",
+    "workflow artifact resolver",
+    "JSONL core utilities",
+    "workflow read tools",
+    "workflow progress mutations",
+    "next work-order tools",
+    "Kiwi skill migration"
+  ],
+  "ambiguities": [],
+  "implied_requirements": [
+    "Research candidates must map to canonical v2.3.0 Requirement IDs before implementation.",
+    "Tool gaps discovered while creating the SRS must be captured as v2.3.0 requirements.",
+    "Manual SRS-MD edits must remain exceptional and traceable to a missing tool capability."
+  ],
+  "semantic_equivalences": [
+    {
+      "prompt_term": "$kiki-planner",
+      "resolved_term": "$kiwi-planner",
+      "confidence": "high"
+    }
+  ]
+}

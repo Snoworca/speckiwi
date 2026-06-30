@@ -1,5 +1,5 @@
 import { discoverSrsFiles } from "./discover.js";
-import { extractTargetGoals, parseIndexDocument } from "./index-parser.js";
+import { extractTargetGoals, parseCompletedWork, parseIndexDocument } from "./index-parser.js";
 import { scanRequirementBlocks } from "./block-scanner.js";
 import { toRequirementRecord } from "../query/records.js";
 import { diagnostic } from "../diagnostic.js";
@@ -27,6 +27,9 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
       index.targetGoals[token] = goal;
     }
   }
+  if (discovered.completedWork) {
+    index.completedWork.push(...parseCompletedWork(discovered.completedWork));
+  }
 
   const records = [];
   for (const file of discovered.scopeFiles) {
@@ -38,9 +41,7 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
       diagnostics.push(...parsed.diagnostics);
     }
   }
-  const files = discovered.appendix
-    ? [discovered.index, ...discovered.scopeFiles, discovered.appendix]
-    : [discovered.index, ...discovered.scopeFiles];
+  const files = [discovered.index, ...discovered.scopeFiles, ...(discovered.completedWork ? [discovered.completedWork] : []), ...(discovered.appendix ? [discovered.appendix] : [])];
   return {
     root,
     index,

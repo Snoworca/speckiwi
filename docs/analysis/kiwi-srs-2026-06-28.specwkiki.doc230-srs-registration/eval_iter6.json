@@ -1,0 +1,25 @@
+{
+  "iter": 6,
+  "mode": "max",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 1
+  },
+  "findings": [
+    {
+      "id": "ac-6-1",
+      "severity": "LOW",
+      "axis": "ac",
+      "req_id": "IR-CLI-037",
+      "description": "IR-CLI-037 acceptance criteria duplicate AC labels inside the AC body. This remains parseable, validation-clean, and non-blocking."
+    }
+  ],
+  "max_convergence": {
+    "medium_or_higher_count": 0,
+    "consecutive_clean_rounds": 2,
+    "converged": true
+  },
+  "evaluator_note": "Original high-reasoning-C iter 6 session returned not_found during collection, so a read-only high-reasoning-C replacement evaluator was spawned and returned the convergence result recorded here."
+}

@@ -1,3 +1,6 @@
+import { createRequire } from "node:module";
+import path from "node:path";
+
 export type MutationToolKind = "req-scoped" | "log-append" | "workspace";
 
 export interface McpDependencies {
@@ -16,6 +19,8 @@ export interface McpServerHandle {
 }
 
 const VALID_KINDS: readonly MutationToolKind[] = ["req-scoped", "log-append", "workspace"];
+const requirePackage = createRequire(import.meta.url);
+const PACKAGE_VERSION = (requirePackage("../../package.json") as { version?: string }).version ?? "unknown";
 
 export function assertMutationKind(name: string, metadata?: { kind?: MutationToolKind }): MutationToolKind {
   const kind = metadata?.kind;
@@ -26,23 +31,55 @@ export function assertMutationKind(name: string, metadata?: { kind?: MutationToo
 }
 
 export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
-  void deps;
   const tools: Record<string, McpToolHandler> = {};
   const resourceTemplates: string[] = [];
   const toolKinds: Record<string, MutationToolKind> = {};
+  const workspaceRoot = deps.root ? path.resolve(deps.root) : path.resolve(process.cwd());
+  const workspaceIdentity = {
+    workspaceRoot,
+    rootSource: deps.root ? "explicit" : "server-cwd-discovery",
+    indexPath: path.posix.join("docs", "spec", "00.index.md"),
+    packageVersion: PACKAGE_VERSION
+  };
+  const unsupportedWorkspaceInput = (input: Record<string, unknown>): unknown | null => {
+    if (!("root" in input) && !("workspaceRoot" in input)) return null;
+    return {
+      ok: false,
+      error: {
+        code: "MCP_WORKSPACE_ROOT_UNSUPPORTED",
+        message: "Per-call workspace root override is not supported; start a server for the intended workspace root."
+      },
+      diagnostics: [
+        {
+          code: "SRS-E075",
+          severity: "error",
+          message: "MCP per-call workspace root override is not supported",
+          details: { root: input.root, workspaceRoot: input.workspaceRoot, rootSource: workspaceIdentity.rootSource }
+        }
+      ],
+      diagnosticsSummary: { errors: 1, warnings: 0, byCode: { "SRS-E075": 1 } },
+      mcpWorkspace: workspaceIdentity,
+      recovery: { tool: "restart_mcp_server", message: "Start SpecKiwi MCP with the intended workspace root instead of passing root per call." }
+    };
+  };
+  const attachWorkspace = (value: unknown): unknown => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+    if ("mcpWorkspace" in value) return value;
+    return { ...(value as Record<string, unknown>), mcpWorkspace: workspaceIdentity };
+  };
   return {
     tools,
     resourceTemplates,
     toolKinds,
     registerTool(name, handler, metadata) {
-      tools[name] = handler;
+      tools[name] = async (input) => unsupportedWorkspaceInput(input) ?? attachWorkspace(await handler(input));
       if (metadata?.kind && VALID_KINDS.includes(metadata.kind)) {
         toolKinds[name] = metadata.kind;
       }
     },
     registerResource(template, handler) {
       resourceTemplates.push(template);
-      tools[`resource:${template}`] = handler;
+      tools[`resource:${template}`] = async (input) => unsupportedWorkspaceInput(input) ?? attachWorkspace(await handler(input));
     },
     async callTool(name, input) {
       const handler = tools[name];

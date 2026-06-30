@@ -1,0 +1,26 @@
+{
+  "iter": 4,
+  "mode": "max",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "findings": [
+    {
+      "id": "DOC230-FR-MCP-031-TRACE-MISSING-SECTION",
+      "severity": "MEDIUM",
+      "axis": "trace",
+      "req_id": "FR-MCP-031",
+      "description": "FR-MCP-031 Research / Analysis referenced docs/research/230.md section 14.8, but section 14.8 does not exist."
+    },
+    {
+      "id": "DOC230-IR-CLI-037-DUPLICATE-AC-LABELS",
+      "severity": "LOW",
+      "axis": "ac",
+      "req_id": "IR-CLI-037",
+      "description": "IR-CLI-037 acceptance criteria duplicate AC labels inside the AC body."
+    }
+  ]
+}

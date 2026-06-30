@@ -4,6 +4,8 @@ import { attachInheritedOptionsHelp, buildCommand } from "../../src/cli/command.
 import { registerReadCommands } from "../../src/cli/commands/read.js";
 import { registerMutationCommands } from "../../src/cli/commands/mutations.js";
 import { registerMcpCommand } from "../../src/cli/commands/mcp.js";
+import { registerDoctorCommand } from "../../src/cli/commands/doctor.js";
+import { registerRepairCommands } from "../../src/cli/commands/repair.js";
 
 const SUBCOMMANDS_REQUIRING_HELP_VISIBILITY = [
   "validate",
@@ -15,11 +17,15 @@ const SUBCOMMANDS_REQUIRING_HELP_VISIBILITY = [
   "completed-work",
   "scopes",
   "summary",
+  "doctor",
   "mcp",
   "init",
   "update-status",
   "update-stability",
   "append-note",
+  "edit-requirement",
+  "replace-acceptance-criteria",
+  "edit-requirement-table-rows",
   "set-active-target",
   "set-target-goal",
   "add-completed-work"
@@ -37,6 +43,8 @@ function buildProgram(): Command {
   registerReadCommands(program, { io });
   registerMutationCommands(program, { io });
   registerMcpCommand(program, { io });
+  registerDoctorCommand(program, { io });
+  registerRepairCommands(program, { io });
   attachInheritedOptionsHelp(program);
   return program;
 }

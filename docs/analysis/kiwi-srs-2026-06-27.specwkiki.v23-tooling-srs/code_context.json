@@ -1,0 +1,52 @@
+{
+  "relevant_files": [
+    {
+      "path": "src/cli/commands/read.ts",
+      "line_range": "1-135",
+      "relevance": "CLI read command surface for compact requirement and workflow artifact reads."
+    },
+    {
+      "path": "src/cli/commands/mutations.ts",
+      "line_range": "1-220",
+      "relevance": "CLI mutation surface for target, requirement, evidence, trace, and future workflow mutation commands."
+    },
+    {
+      "path": "src/mcp/server.ts",
+      "line_range": "36-180",
+      "relevance": "MCP tool schema registration and server metadata surface."
+    },
+    {
+      "path": "src/mcp/tools/read-tools.ts",
+      "line_range": "20-60",
+      "relevance": "MCP read handler surface."
+    },
+    {
+      "path": "src/mcp/tools/mutation-tools.ts",
+      "line_range": "1-220",
+      "relevance": "MCP mutation handler surface and adapter parity risk."
+    },
+    {
+      "path": "src/core/mutation/add-requirement.ts",
+      "line_range": "209-265",
+      "relevance": "Representative mutation patch planning and result path."
+    },
+    {
+      "path": "skills/codex/kiwi-planner/references/extended-workflow.md",
+      "line_range": "279-325",
+      "relevance": "Plan sidecar task and checklist contract used by workflow tooling."
+    },
+    {
+      "path": "skills/codex/kiwi-pm/SKILL.md",
+      "line_range": "140-190",
+      "relevance": "PM ownership, plan checkbox, session state, and worklog contract."
+    }
+  ],
+  "related_modules": [
+    "src/core/query",
+    "src/core/diagnostic.ts",
+    "src/core/validator",
+    "src/core/patch"
+  ],
+  "missing_evidence": [],
+  "external_paths_detected": []
+}

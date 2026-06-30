@@ -1,0 +1,33 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "target": "v2.3.0",
+  "after_live_mutation": {
+    "counts_by_status": {
+      "planned": 53,
+      "discarded": 18,
+      "verified": 1
+    },
+    "counts_by_stability": {
+      "evolving": 71,
+      "stable": 1
+    },
+    "stability_blockers": [],
+    "stability_warnings": [],
+    "diagnostics_summary": {
+      "errors": 0,
+      "warnings": 0,
+      "byCode": {}
+    },
+    "release_check": {
+      "ready": false,
+      "reason": "v2.3.0 still has 53 planned requirements; OPS-FLOW-001 stable promotion is not a target release-ready signal."
+    }
+  },
+  "verification_commands": [
+    "mcp validate_spec failOnWarning=true",
+    "mcp summarize_target target=v2.3.0",
+    "node bin/speckiwi validate --fail-on-warning --json",
+    "node bin/speckiwi links check --json",
+    "SPECKIWI_TARGET=v2.3.0 node scripts/release-check.mjs --strict --json"
+  ]
+}

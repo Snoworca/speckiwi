@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "../mutation/guards.js";
+import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_VERSION,
@@ -22,6 +23,8 @@ export interface InitProjectInput {
   target?: string;
   scope?: string;
   force?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface InitProjectOutput {
@@ -131,6 +134,10 @@ function replaceAgentInstructionBlock(existing: string, block: AgentInstructionB
 }
 
 export async function initProject(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
+  return withSrsMutationLock(root, { operation: "init_project", ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => initProjectUnlocked(root, input));
+}
+
+async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
   const output: InitProjectOutput = { created: [], skipped: [], updated: [] };
   await mkdir(path.join(root.root, "docs", "spec"), { recursive: true });
   await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });

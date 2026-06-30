@@ -1,0 +1,16 @@
+{
+  "iteration": 2,
+  "verdict": "changes_required",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "summary": "Logical deletion requirements still normatively linked to discarded mutation requirements.",
+      "resolution": "Added canonical successors FR-NODE-031, IR-CLI-043, and FR-MCP-038, then discarded FR-NODE-023, IR-CLI-034, and FR-MCP-026."
+    },
+    {
+      "severity": "CRITICAL",
+      "summary": "FR-MCP-036 used an invalid code trace range beyond src/mcp/tools/mutation-tools.ts line count.",
+      "resolution": "Added FR-MCP-037 with valid trace range src/mcp/tools/mutation-tools.ts:1-150 and discarded FR-MCP-036."
+    }
+  ]
+}

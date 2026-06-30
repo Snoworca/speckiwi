@@ -3,10 +3,13 @@ import { parseWorkspace } from "../core/parser/workspace-parser.js";
 import { validateWorkspace } from "../core/validator/validate-workspace.js";
 import { getRequirement } from "../core/query/lookup.js";
 import { summarizeTarget } from "../core/query/summary.js";
-import { listCompletedWork } from "../core/query/completed-work.js";
+import { completedWorkReadModel } from "../core/query/completed-work.js";
 import { summarizeDiagnostics } from "../core/diagnostic.js";
 import type { Diagnostic, DiagnosticsSummary, ParsedWorkspace } from "../core/types.js";
 import type { McpDependencies, McpServerHandle } from "./adapter.js";
+import { mcpFailure } from "./errors.js";
+
+const MCP_COMPLETED_WORK_RESOURCE_LIMIT = 20;
 
 interface ResourceEnvelope<T> {
   ok: true;
@@ -44,15 +47,23 @@ export function registerResources(server: McpServerHandle, deps: McpDependencies
   });
   server.registerResource("speckiwi://completed-work", async () => {
     const parsed = await workspace(deps);
-    return resourceEnvelope(parsed, { completedWork: listCompletedWork(parsed) });
+    return resourceEnvelope(parsed, completedWorkReadModel(parsed, {}, { defaultLimit: MCP_COMPLETED_WORK_RESOURCE_LIMIT }));
   });
   server.registerResource("speckiwi://completed-work/{target}", async (input) => {
     const parsed = await workspace(deps);
-    return resourceEnvelope(parsed, { completedWork: listCompletedWork(parsed, { target: String(input.target) }) });
+    return resourceEnvelope(parsed, completedWorkReadModel(parsed, { target: String(input.target) }, { defaultLimit: MCP_COMPLETED_WORK_RESOURCE_LIMIT }));
   });
   server.registerResource("speckiwi://requirements/{id}", async (input) => {
     const parsed = await workspace(deps);
-    return resourceEnvelope(parsed, getRequirement(parsed, String(input.id), { includeMarkdown: true }));
+    const diagnostics = readDiagnostics(parsed);
+    try {
+      return resourceEnvelope(parsed, getRequirement(parsed, String(input.id), { includeMarkdown: true }), diagnostics);
+    } catch (error) {
+      return mcpFailure("NOT_FOUND", (error as Error).message, {
+        diagnostics,
+        recovery: { tool: "search_requirements", message: "Search for the requirement ID or title, then retry the requirement resource with the exact ID." }
+      });
+    }
   });
   server.registerResource("speckiwi://targets/{target}", async (input) => {
     const parsed = await workspace(deps);

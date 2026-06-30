@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -10,7 +10,190 @@ function io() {
   return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
 }
 
+async function writeExternalCompletedWorkFile(root: string): Promise<void> {
+  await writeFile(
+    path.join(root, "docs", "spec", "05.completed-work.md"),
+    [
+      "# Completed Work",
+      "",
+      "## 1. Completed Work Log",
+      "",
+      "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |",
+      "|---|---|---|---|---|---|",
+      "| 2026-05-12 | v1.0.0 | ARCH | FR-ARCH-001 | Existing external CLI row. | docs/reports/existing.md |"
+    ].join("\n"),
+    "utf8"
+  );
+}
+
+async function writeSrsLock(root: string): Promise<void> {
+  await mkdir(path.join(root, "kiwi"), { recursive: true });
+  await writeFile(
+    path.join(root, "kiwi", ".srs.lock"),
+    `${JSON.stringify(
+      {
+        schemaVersion: "1.0.0",
+        owner: "cli-test",
+        operation: "update_status",
+        requestId: "cli-lock",
+        acquiredAt: new Date(Date.now()).toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString()
+      },
+      null,
+      2
+    )}\n`,
+    "utf8"
+  );
+}
+
 describe("mutation CLI commands", () => {
+  it("exposes dry-run mutation envelopes for AC, evidence, and trace commands", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const scopePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const before = await readFile(scopePath, "utf8");
+
+    const acDryRun = io();
+    expect(await main(["--root", root, "check-ac", "FR-ARCH-001", "--all", "--dry-run", "--json"], acDryRun)).toBe(0);
+    expect(JSON.parse(acDryRun.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { id: "FR-ARCH-001", written: false },
+      diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} },
+      mutation: {
+        kind: "check_acceptance_criteria",
+        dryRun: true,
+        written: false,
+        filePath: "docs/spec/10.product-architecture.srs.md"
+      }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+
+    const evidenceDryRun = io();
+    expect(
+      await main(
+        [
+          "--root",
+          root,
+          "add-evidence",
+          "FR-ARCH-001",
+          "--type",
+          "test",
+          "--reference",
+          "test/cli/mutation-commands.test.ts",
+          "--notes",
+          "cli dry-run note",
+          "--dry-run",
+          "--json"
+        ],
+        evidenceDryRun
+      )
+    ).toBe(0);
+    expect(JSON.parse(evidenceDryRun.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { id: "FR-ARCH-001", written: false },
+      mutation: {
+        kind: "add_verification_evidence",
+        dryRun: true,
+        written: false,
+        preview: [expect.stringContaining("cli dry-run note")]
+      }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+
+    const evidenceRefAlias = io();
+    expect(await main(["--root", root, "add-evidence", "FR-ARCH-001", "--type", "test", "--ref", "test/cli/mutation-commands.test.ts", "--dry-run", "--json"], evidenceRefAlias)).toBe(0);
+    expect(JSON.parse(evidenceRefAlias.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      mutation: { kind: "add_verification_evidence", dryRun: true, written: false }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+
+    const traceDryRun = io();
+    expect(
+      await main(["--root", root, "add-trace", "FR-ARCH-001", "--type", "Requirement", "--ref", "FR-ARCH-001", "--relation", "self", "--notes", "trace alias note", "--dry-run", "--json"], traceDryRun)
+    ).toBe(0);
+    expect(JSON.parse(traceDryRun.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { id: "FR-ARCH-001", written: false },
+      mutation: {
+        kind: "add_trace_link",
+        dryRun: true,
+        written: false,
+        preview: [expect.stringContaining("trace alias note")]
+      }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+
+    const traceReferenceAlias = io();
+    expect(await main(["--root", root, "add-trace", "FR-ARCH-001", "--type", "Requirement", "--reference", "FR-ARCH-001", "--relation", "self", "--dry-run", "--json"], traceReferenceAlias)).toBe(0);
+    expect(JSON.parse(traceReferenceAlias.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      mutation: { kind: "add_trace_link", dryRun: true, written: false }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+  });
+
+  it("preserves dry-run mutation envelopes for existing mutation commands", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const scopePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const beforeIndex = await readFile(indexPath, "utf8");
+    const beforeScope = await readFile(scopePath, "utf8");
+    const cases = [
+      {
+        args: ["--root", root, "uncheck-ac", "FR-ARCH-001", "--all", "--dry-run", "--json"],
+        expected: { value: { id: "FR-ARCH-001", written: false, checked: false }, mutation: { kind: "check_acceptance_criteria", dryRun: true, written: false } }
+      },
+      {
+        args: ["--root", root, "update-status", "FR-ARCH-001", "implemented", "--dry-run", "--json"],
+        expected: { value: { id: "FR-ARCH-001", status: "implemented", written: false }, mutation: { kind: "update_status", dryRun: true, written: false } }
+      },
+      {
+        args: ["--root", root, "set-active-target", "v1.1.0", "--dry-run", "--json"],
+        expected: { value: { activeTarget: "v1.1.0", written: false }, mutation: { kind: "set_active_target", dryRun: true, written: false } }
+      },
+      {
+        args: ["--root", root, "set-target-goal", "v1.0.0", "--goal", "Fixture target goal.", "--dry-run", "--json"],
+        expected: { value: { target: "v1.0.0", goal: "Fixture target goal.", written: false }, mutation: { kind: "set_target_goal", dryRun: true, written: false } }
+      }
+    ];
+
+    for (const testCase of cases) {
+      const streams = io();
+      expect(await main(testCase.args, streams)).toBe(0);
+      expect(JSON.parse(streams.stdout.read()?.toString() ?? "")).toMatchObject({
+        ok: true,
+        diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} },
+        ...testCase.expected
+      });
+      await expect(readFile(indexPath, "utf8")).resolves.toBe(beforeIndex);
+      await expect(readFile(scopePath, "utf8")).resolves.toBe(beforeScope);
+    }
+  });
+
+  it("returns structured JSON errors for malformed table-cell mutation input before writing", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const scopePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const before = await readFile(scopePath, "utf8");
+
+    const denied = io();
+    expect(await main(["--root", root, "add-evidence", "FR-ARCH-001", "--type", "test", "--reference", "bad|cell", "--json"], denied)).toBe(5);
+    expect(JSON.parse(denied.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "MUTATION_DENIED" },
+      diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+
+    const traceDenied = io();
+    expect(await main(["--root", root, "add-trace", "FR-ARCH-001", "--type", "Requirement", "--reference", "FR-ARCH-001", "--relation", "bad|relation", "--json"], traceDenied)).toBe(5);
+    expect(JSON.parse(traceDenied.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "MUTATION_DENIED" },
+      diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} }
+    });
+    await expect(readFile(scopePath, "utf8")).resolves.toBe(before);
+  });
+
   it("updates status, AC, evidence, trace, and adds requirements", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const cases = [
@@ -49,6 +232,69 @@ describe("mutation CLI commands", () => {
     const scopeText = await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(scopeText).toContain("### FR-ARCH-002 — CLI 추가");
     expect(scopeText).toContain("| Stability | draft |");
+
+    const createdTarget = io();
+    expect(await main(["--root", root, "set-active-target", "v2.3.0", "--create", "--type", "version", "--description", "Tool improvement", "--json"], createdTarget)).toBe(0);
+    expect(JSON.parse(createdTarget.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { activeTarget: "v2.3.0", created: true, written: true }
+    });
+    const defaultedTarget = io();
+    expect(
+      await main(
+        [
+          "--root",
+          root,
+          "add-requirement",
+          "--type",
+          "functional",
+          "--scope",
+          "ARCH",
+          "--title",
+          "CLI target default",
+          "--requirement",
+          "CLI defaults omitted target from Active Target.",
+          "--ac",
+          "created",
+          "--json"
+        ],
+        defaultedTarget
+      )
+    ).toBe(0);
+    expect(JSON.parse(defaultedTarget.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: { targetSource: "active-target", record: { target: "v2.3.0", metadata: { Target: "v2.3.0" } } }
+    });
+
+    const emptyTargetRoot = await copyFixtureWorkspace("mutation-target");
+    const emptyIndexPath = path.join(emptyTargetRoot, "docs", "spec", "00.index.md");
+    await writeFile(emptyIndexPath, (await readFile(emptyIndexPath, "utf8")).replace("| Active Target | v1.0.0 |", "| Active Target |  |"), "utf8");
+    const emptyTarget = io();
+    expect(
+      await main(
+        [
+          "--root",
+          emptyTargetRoot,
+          "add-requirement",
+          "--type",
+          "functional",
+          "--scope",
+          "ARCH",
+          "--title",
+          "CLI no target",
+          "--requirement",
+          "CLI must fail when neither explicit target nor Active Target exists.",
+          "--ac",
+          "rejected",
+          "--json"
+        ],
+        emptyTarget
+      )
+    ).toBe(5);
+    expect(JSON.parse(emptyTarget.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "USAGE", message: expect.stringContaining("Active Target is empty") }
+    });
 
     expect(
       await main(
@@ -204,6 +450,128 @@ describe("mutation CLI commands", () => {
     }
   });
 
+  it("IR-CLI-037 appends completed work to the external log when present", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    await writeExternalCompletedWorkFile(root);
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const externalPath = path.join(root, "docs", "spec", "05.completed-work.md");
+    const beforeIndex = await readFile(indexPath, "utf8");
+
+    const dryRun = io();
+    expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-13", "--summary", "External CLI dry-run.", "--dry-run", "--json"], dryRun)).toBe(0);
+    expect(JSON.parse(dryRun.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: {
+        written: false,
+        completedWorkSource: {
+          mode: "external",
+          authoritativeFilePath: "docs/spec/05.completed-work.md"
+        }
+      },
+      diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W041" })]),
+      mutation: { filePath: "docs/spec/05.completed-work.md", dryRun: true, written: false },
+      patch: { filePath: "docs/spec/05.completed-work.md", dryRun: true }
+    });
+    await expect(readFile(externalPath, "utf8")).resolves.not.toContain("External CLI dry-run.");
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(beforeIndex);
+
+    const write = io();
+    expect(await main(["--root", root, "add-completed-work", "--date", "2026-05-14", "--summary", "External CLI write.", "--json"], write)).toBe(0);
+    expect(JSON.parse(write.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      value: {
+        written: true,
+        completedWorkSource: {
+          mode: "external",
+          authoritativeFilePath: "docs/spec/05.completed-work.md"
+        }
+      },
+      mutation: { filePath: "docs/spec/05.completed-work.md", dryRun: false, written: true },
+      patch: { filePath: "docs/spec/05.completed-work.md", dryRun: false }
+    });
+    await expect(readFile(externalPath, "utf8")).resolves.toContain("| 2026-05-14 |  |  |  | External CLI write. |");
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(beforeIndex);
+  });
+
+  it("IR-CLI-038 reports SRS locks and supports narrow ignore-lock", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const specPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    const before = await readFile(specPath, "utf8");
+    await writeSrsLock(root);
+
+    const denied = io();
+    expect(await main(["--root", root, "update-status", "FR-ARCH-001", "blocked", "--json"], denied)).toBe(5);
+    const deniedOutput = JSON.parse(denied.stdout.read()?.toString() ?? "");
+    expect(deniedOutput).toMatchObject({
+      ok: false,
+      error: {
+        code: "SRS_LOCKED",
+        lock: {
+          owner: "cli-test",
+          operation: "update_status",
+          requestId: "cli-lock",
+          retry: expect.any(Object)
+        }
+      },
+      diagnosticsSummary: { errors: 1, byCode: { "SRS-E065": 1 } }
+    });
+    await expect(readFile(specPath, "utf8")).resolves.toBe(before);
+
+    const preview = io();
+    expect(await main(["--root", root, "update-status", "FR-ARCH-001", "blocked", "--dry-run", "--json"], preview)).toBe(5);
+    expect(JSON.parse(preview.stdout.read()?.toString() ?? "")).toMatchObject({ ok: false, error: { code: "SRS_LOCKED" } });
+    await expect(readFile(specPath, "utf8")).resolves.toBe(before);
+
+    const human = io();
+    expect(await main(["--root", root, "update-status", "FR-ARCH-001", "blocked"], human)).toBe(5);
+    expect(human.stdout.read()?.toString() ?? "").toContain("cli-lock");
+
+    const initDenied = io();
+    expect(await main(["--root", root, "init", "--force", "--json"], initDenied)).toBe(5);
+    expect(JSON.parse(initDenied.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "SRS_LOCKED" }
+    });
+    await expect(readFile(specPath, "utf8")).resolves.toBe(before);
+
+    const unsafeBypass = io();
+    expect(await main(["--root", root, "add-evidence", "FR-ARCH-001", "--type", "test", "--reference", "bad|cell", "--ignore-lock", "--json"], unsafeBypass)).toBe(5);
+    expect(JSON.parse(unsafeBypass.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "MUTATION_DENIED" }
+    });
+    await expect(readFile(specPath, "utf8")).resolves.toBe(before);
+
+    const ignored = io();
+    expect(await main(["--root", root, "update-status", "FR-ARCH-001", "blocked", "--ignore-lock", "--json"], ignored)).toBe(0);
+    expect(JSON.parse(ignored.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W067" })])
+    });
+    await expect(readFile(specPath, "utf8")).resolves.toContain("| Status | blocked |");
+  });
+
+  it("IR-CLI-038 applies SRS locks to init and allows explicit SRS-only bypass", async () => {
+    const temp = await mkdtemp(path.join(tmpdir(), "speckiwi-cli-init-lock-"));
+    await writeSrsLock(temp);
+
+    const denied = io();
+    expect(await main(["--root", temp, "init", "--target", "v2.0.0", "--scope", "Payments:PAY", "--json"], denied)).toBe(5);
+    expect(JSON.parse(denied.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: false,
+      error: { code: "SRS_LOCKED" }
+    });
+    await expect(readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+
+    const ignored = io();
+    expect(await main(["--root", temp, "init", "--target", "v2.0.0", "--scope", "Payments:PAY", "--ignore-lock", "--json"], ignored)).toBe(0);
+    expect(JSON.parse(ignored.stdout.read()?.toString() ?? "")).toMatchObject({
+      ok: true,
+      diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W067" })])
+    });
+    await expect(readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain("10.payments.srs.md");
+  });
+
   it("documents completed-work report options in CLI help", async () => {
     const streams = io();
     expect(await main(["add-completed-work", "--help"], streams)).toBe(0);
@@ -212,6 +580,17 @@ describe("mutation CLI commands", () => {
     expect(help).toContain("repeatable");
     expect(help).toContain("stored comma-separated");
     expect(help).toContain("forbids absolute paths");
+  });
+
+  it("documents evidence and trace reference aliases in CLI help", async () => {
+    for (const commandName of ["add-evidence", "add-trace"]) {
+      const streams = io();
+      expect(await main([commandName, "--help"], streams)).toBe(0);
+      const help = (streams.stdout.read()?.toString() ?? "").replace(/\s+/g, " ");
+      expect(help).toContain("--reference <reference>");
+      expect(help).toContain("--ref <reference>");
+      expect(help).toContain("--dry-run");
+    }
   });
 
   it("passes init scope to generated files on empty repositories", async () => {

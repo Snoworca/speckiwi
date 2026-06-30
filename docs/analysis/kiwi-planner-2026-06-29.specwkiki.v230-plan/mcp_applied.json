@@ -1,0 +1,17 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230-plan",
+  "target": "v2.3.0",
+  "applied_at": "2026-06-29T08:04:42.000Z",
+  "mutation_path": "mcp__speckiwi",
+  "add_trace_link": {
+    "planned": 54,
+    "applied": 54,
+    "failed": 0
+  },
+  "add_verification_evidence": {
+    "planned": 54,
+    "applied": 54,
+    "failed": 0
+  },
+  "notes": "All planned kiwi-planner trace links and plan verification evidence entries were applied with MCP written=true responses."
+}

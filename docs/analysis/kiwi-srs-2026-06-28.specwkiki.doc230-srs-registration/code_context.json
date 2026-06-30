@@ -1,0 +1,49 @@
+{
+  "relevant_files": [
+    {
+      "path": "src/core/parser/index-parser.ts",
+      "line_range": "32-61",
+      "signature": "parseCompletedWork(lines)",
+      "relevance": "Current Completed Work Log parser is embedded in index parsing."
+    },
+    {
+      "path": "src/core/query/completed-work.ts",
+      "line_range": "39-42",
+      "signature": "listCompletedWork(workspace, filter)",
+      "relevance": "Current completed-work reads consume workspace.index.completedWork."
+    },
+    {
+      "path": "src/core/mutation/add-completed-work.ts",
+      "line_range": "242-298",
+      "signature": "addCompletedWork(root, input)",
+      "relevance": "Current completed-work writes patch docs/spec/00.index.md."
+    },
+    {
+      "path": "src/core/mutation/add-requirement.ts",
+      "line_range": "28-35, 220-272",
+      "signature": "generateNextRequirementId; addRequirement",
+      "relevance": "Current ID generation scans parsed workspace records and reparses before write."
+    },
+    {
+      "path": "src/core/patch/apply-patch.ts",
+      "line_range": "40-61",
+      "signature": "assertFreshSnapshot; applyPatchPlan",
+      "relevance": "Existing stale snapshot and atomic write discipline must remain independent from lock bypass."
+    },
+    {
+      "path": "src/mcp/resources.ts",
+      "line_range": "45-52",
+      "signature": "speckiwi://completed-work resources",
+      "relevance": "MCP completed-work resources need external log compatibility."
+    }
+  ],
+  "related_modules": [
+    "core parser",
+    "core completed-work query and mutation",
+    "core add-requirement mutation",
+    "CLI mutation/read adapters",
+    "MCP tools and resources"
+  ],
+  "missing_evidence": [],
+  "external_paths_detected": []
+}

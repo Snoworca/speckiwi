@@ -1,0 +1,16 @@
+{
+  "iter": 1,
+  "changes": [
+    "Added FR-MCP-029 for MCP completed-work resources.",
+    "Clarified FR-PARSE-020 fixed-path discovery trigger in statement and AC.",
+    "Clarified FR-MCP-027 bounded read semantics in AC.",
+    "Clarified REL-NODE-004 canonical lock path in AC.",
+    "Replaced new Requirement trace related_to relations with depends_on or extends.",
+    "Updated docs/research/230.md and docs/research/11.v2.3.0-tooling-code-improvement-plan.md canonical ID mappings.",
+    "Recorded this run under docs/analysis/kiwi-srs-2026-06-28.specwkiki.doc230-srs-registration."
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

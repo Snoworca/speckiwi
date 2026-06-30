@@ -1,0 +1,48 @@
+{
+  "run_id": "2026-06-28.specwkiki.doc230-srs-registration",
+  "skill": "kiwi-srs",
+  "mode": "max",
+  "target": "v2.3.0",
+  "classification": "new-feature",
+  "final_req_ids": [
+    "FR-PARSE-021",
+    "FR-NODE-026",
+    "IR-CLI-037",
+    "FR-MCP-030",
+    "FR-MCP-031",
+    "FR-NODE-027",
+    "REL-NODE-005",
+    "IR-CLI-038",
+    "FR-MCP-032"
+  ],
+  "discarded_first_wave_ids": [
+    "FR-PARSE-020",
+    "FR-NODE-024",
+    "IR-CLI-035",
+    "FR-MCP-027",
+    "FR-MCP-029",
+    "FR-NODE-025",
+    "REL-NODE-004",
+    "IR-CLI-036",
+    "FR-MCP-028"
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "target_summary": {
+    "planned": 39,
+    "discarded": 9,
+    "verified": 1,
+    "total": 49
+  },
+  "max_evaluation": {
+    "iterations": 6,
+    "consecutive_medium_plus_clean_rounds": 2,
+    "converged": true,
+    "residual_low_findings": [],
+    "post_convergence_cleanup": [
+      "IR-CLI-037 duplicate AC labels were removed after convergence using a minimal manual SRS patch because safe structured AC editing is tracked by FR-NODE-019 and is not implemented yet."
+    ]
+  }
+}

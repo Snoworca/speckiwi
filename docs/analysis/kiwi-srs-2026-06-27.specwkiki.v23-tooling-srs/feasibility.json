@@ -1,0 +1,21 @@
+{
+  "implementability": "high",
+  "product_fit": "core",
+  "rationale": "All requirements are tool-improvement work within the current SpecKiwi product boundary. Some items are broad but are decomposed across existing scopes and have clear CLI, MCP, core, parser, and workflow surfaces.",
+  "code_evidence": [
+    "src/cli/commands/read.ts:1-135",
+    "src/cli/commands/mutations.ts:1-220",
+    "src/mcp/server.ts:36-180",
+    "src/mcp/tools/read-tools.ts:20-60",
+    "src/mcp/tools/mutation-tools.ts:1-220",
+    "src/core/mutation/add-requirement.ts:209-265",
+    "skills/codex/kiwi-planner/references/extended-workflow.md:279-325",
+    "skills/codex/kiwi-pm/SKILL.md:140-190"
+  ],
+  "blockers": [],
+  "conditions": [
+    "Do not implement code until each planned requirement has failing tests and TDD coverage.",
+    "Do not claim token-reduction percentages until measurement fixtures record before/after payload sizes."
+  ],
+  "external_module_required": false
+}

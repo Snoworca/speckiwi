@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "mode": "max",
+  "iteration": 2,
+  "evaluators": [
+    {
+      "name": "Second clean-round evaluator 1",
+      "pass": true,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 1,
+      "low_summary": "Dedicated feasibility artifact and pipeline event did not exist yet; this report and pipeline event resolve the auditability concern."
+    },
+    {
+      "name": "Second clean-round evaluator 2",
+      "pass": true,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  ],
+  "aggregate": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 1,
+    "max_gate_clean_medium_zero": true,
+    "two_consecutive_medium_zero_rounds": true
+  }
+}

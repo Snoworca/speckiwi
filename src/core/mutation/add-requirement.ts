@@ -1,5 +1,5 @@
 import path from "node:path";
-import { diagnostic } from "../diagnostic.js";
+import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import { readUtf8File } from "../fs/read-text.js";
 import { resolveInsideRoot } from "../fs/safe-path.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
@@ -9,21 +9,31 @@ import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementType } from "../schema.js";
 import type { MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
 import { mutationFail } from "./guards.js";
+import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
+import { syncIndexRollups } from "./sync-index.js";
+import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
-export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type"> {
+export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target"> {
   type: RequirementType;
   scope: string;
+  target?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface AddRequirementOutput {
   requirementId: string;
   filePath: string;
   written: boolean;
+  targetSource: "explicit" | "active-target";
   record: RequirementRecord;
 }
+
+type ResolvedAddRequirementInput = AddRequirementInput & { target: string };
 
 export function generateNextRequirementId(workspace: ParsedWorkspace, type: RequirementType, scopePrefix: string): string {
   const prefix = prefixForType(type);
@@ -68,13 +78,13 @@ function stalePatchMutationFailure<T>(error: unknown, filePath: string): Mutatio
   if (!isStalePatchError(error)) return undefined;
   const message = `Mutation snapshot is stale for ${filePath}; rerun the command to retry against the latest file.`;
   const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
-  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+  return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } }) as MutationResult<T>;
 }
 
 function generatedIdConflictFailure(id: string, filePath: string): MutationResult<AddRequirementOutput> {
   const message = `Generated Requirement ID ${id} is no longer available; rerun the command to retry against the latest file.`;
   const staleDiagnostic = diagnostic("SRS-E032", "error", message, { filePath });
-  return { ok: false, error: { code: "STALE_PATCH", message, diagnostics: [staleDiagnostic] }, diagnostics: [staleDiagnostic] };
+  return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } }) as MutationResult<AddRequirementOutput>;
 }
 
 function assertSafeChangeNotes(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
@@ -99,7 +109,7 @@ function assertKnownStabilityInput(input: AddRequirementInput): MutationResult<A
   return undefined;
 }
 
-function assertSafeAddRequirementTableCells(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
+function assertSafeAddRequirementTableCells(input: ResolvedAddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
   const metadataFailure = assertSafeMarkdownTableCells<AddRequirementOutput>({
     "Requirement metadata Type": input.type,
     "Requirement metadata Target": input.target,
@@ -150,7 +160,7 @@ async function resolveScopeDocumentPath(root: ProjectRoot, document: string): Pr
   return resolved;
 }
 
-function buildOutputRecord(input: AddRequirementInput, id: string, filePath: string): RequirementRecord {
+function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, filePath: string): RequirementRecord {
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
   const changeNoteCells = input.changeNotes?.split("|").map((cell) => cell.trim());
   const record: RequirementRecord = {
@@ -207,23 +217,32 @@ function buildOutputRecord(input: AddRequirementInput, id: string, filePath: str
 }
 
 export async function addRequirement(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
+  return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, input));
+}
+
+async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
   if (!isRequirementType(input.type)) return mutationFail("USAGE", "Invalid requirement type");
-  if (!input.scope || !input.target || !input.title || !input.statement || input.acceptanceCriteria.length === 0) {
-    return mutationFail("USAGE", "type, scope, target, title, statement, and acceptanceCriteria are required");
+  if (!input.scope || !input.title || !input.statement || input.acceptanceCriteria.length === 0) {
+    return mutationFail("USAGE", "type, scope, title, statement, and acceptanceCriteria are required; target may be omitted only when Active Target is set");
   }
+  const workspace = await parseWorkspace(root);
+  const explicitTarget = input.target?.trim();
+  const resolvedTarget = explicitTarget || workspace.index.activeTarget.trim();
+  if (!resolvedTarget) return mutationFail("USAGE", "target is required when Active Target is empty");
+  const targetSource: AddRequirementOutput["targetSource"] = explicitTarget ? "explicit" : "active-target";
+  const resolvedInput: ResolvedAddRequirementInput = { ...input, target: resolvedTarget };
   const stabilityFailure = assertKnownStabilityInput(input);
   if (stabilityFailure) return stabilityFailure;
-  if (!canBeVerified(input)) return mutationFail("MUTATION_DENIED", "verified requires all checked AC and evidence");
-  const unsafeCell = assertSafeAddRequirementTableCells(input);
+  if (!canBeVerified(resolvedInput)) return mutationFail("MUTATION_DENIED", "verified requires all checked AC and evidence");
+  const unsafeCell = assertSafeAddRequirementTableCells(resolvedInput);
   if (unsafeCell) return unsafeCell;
 
-  const workspace = await parseWorkspace(root);
-  const scope = workspace.index.scopes.find((candidate) => candidate.prefix === input.scope);
-  if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${input.scope}`);
-  if (!workspace.index.targets.some((target) => target.target === input.target)) {
-    return mutationFail("MUTATION_DENIED", `Unknown target: ${input.target}`);
+  const scope = workspace.index.scopes.find((candidate) => candidate.prefix === resolvedInput.scope);
+  if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${resolvedInput.scope}`);
+  if (!workspace.index.targets.some((target) => target.target === resolvedInput.target)) {
+    return mutationFail("MUTATION_DENIED", `Unknown target: ${resolvedInput.target}`);
   }
-  for (const trace of input.trace ?? []) {
+  for (const trace of resolvedInput.trace ?? []) {
     if (trace.type === "Requirement" && trace.reference && !workspace.records.some((record: RequirementRecord) => record.id === trace.reference)) {
       return mutationFail("MUTATION_DENIED", `Trace target not found: ${trace.reference}`);
     }
@@ -234,34 +253,48 @@ export async function addRequirement(root: ProjectRoot, input: AddRequirementInp
   } catch (error) {
     return mutationFail("MUTATION_DENIED", (error as Error).message);
   }
-  let id = generateNextRequirementId(workspace, input.type, input.scope);
+  const cacheAllocation = await allocateRequirementIdFromStatusCache(root, workspace, resolvedInput.type, resolvedInput.scope);
+  const diagnostics = [...cacheAllocation.diagnostics];
+  let id = cacheAllocation.id ?? generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
+  if (workspace.records.some((record) => record.id === id)) {
+    diagnostics.push(diagnostic("SRS-W065", "warning", `SRS status cache ignored: cached Requirement ID already exists: ${id}`, { filePath: "kiwi/.status.json" }, { reason: "cached-id-collision", requirementId: id, fallback: "full-workspace-parse" }));
+    id = generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
+  }
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const latestWorkspace = await parseWorkspace(root);
     const relativePath = path.relative(root.root, filePath).replace(/\\/g, "/");
     if (latestWorkspace.records.some((record) => record.id === id)) {
       if (attempt === 0) {
-        id = generateNextRequirementId(latestWorkspace, input.type, input.scope);
+        id = generateNextRequirementId(latestWorkspace, resolvedInput.type, resolvedInput.scope);
         continue;
       }
       return generatedIdConflictFailure(id, relativePath);
     }
     const file = findWorkspaceFile(latestWorkspace, root, filePath) ?? (await readUtf8File(filePath, root.root));
-    const block = renderRequirementBlock({ ...input, id });
+    const block = renderRequirementBlock({ ...resolvedInput, id });
     const insertLine = findRequirementsAppendLine(file.lines);
     const lines = insertLine > file.lines.length ? ["", ...block] : [...block, ""];
     const plan = createPatchPlan(file, [insertLinesOperation(file, insertLine, lines)]);
     try {
-      const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
+      const dryRun = input.dryRun ?? false;
+      const applied = await applyPatchPlan(plan, { dryRun });
+      const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
+      if (indexSync && !indexSync.ok) return indexSync as unknown as MutationResult<AddRequirementOutput>;
+      const mergedDiagnostics = [...diagnostics, ...(indexSync?.diagnostics ?? [])];
       return {
         ok: true,
         value: {
           requirementId: id,
           filePath: file.relativePath,
           written: applied.written,
-          record: buildOutputRecord(input, id, file.relativePath)
+          targetSource,
+          record: buildOutputRecord(resolvedInput, id, file.relativePath)
         },
-        diagnostics: [],
-        patch: summarizePatch(plan, input.dryRun ?? false)
+        diagnostics: mergedDiagnostics,
+        diagnosticsSummary: summarizeDiagnostics(mergedDiagnostics),
+        patch: summarizePatch(plan, dryRun),
+        mutation: mutationEnvelopeFromPlan("add_requirement", plan, dryRun, applied.written),
+        ...(indexSync?.value ? { indexSync: indexSync.value } : {})
       };
     } catch (error) {
       const staleFailure = stalePatchMutationFailure<AddRequirementOutput>(error, file.relativePath);

@@ -2,12 +2,14 @@ import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { resolveSectionHeading, type AllowedSection } from "../rules/section-allowlist.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
+import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import {
   findSectionBodyRange,
   findSectionInsertionLine,
   loadRecordWithWorkspace
 } from "./internal.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 /**
  * FR-MCP-018 — append_section_note mutation.
@@ -25,6 +27,8 @@ export interface AppendSectionNoteInput {
   text: string;
   mode?: AppendSectionMode;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface AppendSectionNoteOutput {
@@ -39,6 +43,13 @@ function todayIso(): string {
 }
 
 export async function appendSectionNote(
+  root: ProjectRoot,
+  input: AppendSectionNoteInput
+): Promise<MutationResult<AppendSectionNoteOutput>> {
+  return withSrsMutationLock(root, { operation: "append_section_note", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => appendSectionNoteUnlocked(root, input));
+}
+
+async function appendSectionNoteUnlocked(
   root: ProjectRoot,
   input: AppendSectionNoteInput
 ): Promise<MutationResult<AppendSectionNoteOutput>> {
@@ -109,12 +120,19 @@ export async function appendSectionNote(
   }
 
   if (operations.length === 0) {
-    return mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: false });
+    return withMutationEnvelope(
+      mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: false }),
+      mutationNoopEnvelope("append_section_note", loaded.file.relativePath, input.dryRun ?? false)
+    );
   }
 
   const plan = createPatchPlan(loaded.file, operations);
-  const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
-  return mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: applied.written });
+  const dryRun = input.dryRun ?? false;
+  const applied = await applyPatchPlan(plan, { dryRun });
+  return withMutationEnvelope(
+    mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: applied.written }),
+    mutationEnvelopeFromPlan("append_section_note", plan, dryRun, applied.written)
+  );
 }
 
 function normalizeAllowedSection(heading: string): AllowedSection {

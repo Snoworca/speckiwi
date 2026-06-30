@@ -4,6 +4,10 @@
 # Dependencies and local execution state
 node_modules/
 .snoworca/
+kiwi/.pipeline-path
+kiwi/.status.json
+kiwi/.srs.lock
+kiwi/.srs.lock.guard
 
 # Build output (regenerated via `npm run build` / `prepack`)
 dist/

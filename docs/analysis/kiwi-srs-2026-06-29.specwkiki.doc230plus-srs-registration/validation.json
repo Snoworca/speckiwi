@@ -1,0 +1,25 @@
+{
+  "mcp_validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "cli_validate": {
+    "command": "node bin/speckiwi validate --fail-on-warning --json",
+    "errors": 0,
+    "warnings": 0
+  },
+  "cli_summary": {
+    "command": "node bin/speckiwi summary --target v2.3.0 --json",
+    "countsByStatus": {
+      "planned": 46,
+      "discarded": 18,
+      "verified": 1
+    },
+    "total": 65,
+    "diagnostics": 0
+  },
+  "diff_check": {
+    "command": "git diff --check",
+    "result": "pass"
+  }
+}

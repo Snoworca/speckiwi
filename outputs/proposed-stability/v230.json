@@ -1,0 +1,17 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "target": "v2.3.0",
+  "mode": "live",
+  "proposals": [
+    {
+      "req_id": "OPS-FLOW-001",
+      "from": "evolving",
+      "to": "stable",
+      "requires_user_confirm": true,
+      "dry_run_ok": true,
+      "approved": true,
+      "applied": true
+    }
+  ],
+  "no_op_count": 53
+}

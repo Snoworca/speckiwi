@@ -1,3 +1,4 @@
+import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { PREFIX_TYPE, type ChangeNoteRow, type Diagnostic, type EvidenceRow, type Priority, type RequirementRecord, type Risk, type Stability, type TextFile, type TraceLink } from "../types.js";
 import type { RequirementBlockRange } from "../parser/block-scanner.js";
@@ -75,6 +76,60 @@ function isPlaceholderCell(value: string): boolean {
   return normalized === "" || normalized === "-";
 }
 
+// @req FR-PARSE-019
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+// @req FR-PARSE-019
+function markdownLinkTargets(value: string): string[] {
+  return [...value.matchAll(/\[[^\]]+]\(([^)]+)\)/g)].map((match) => match[1] ?? "");
+}
+
+// @req FR-PARSE-019
+function splitReferenceTokens(value: string): string[] {
+  return value
+    .split(/[,;]/)
+    .map((token) => token.trim())
+    .filter((token) => !isPlaceholderCell(token));
+}
+
+// @req FR-PARSE-019
+function normalizeReferenceToken(value: string, baseFilePath: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || isPlaceholderCell(trimmed)) return "";
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed.replace(/#.*$/, "");
+  const withoutFragment = trimmed.replace(/#.*$/, "").replace(/\\/g, "/");
+  if (!withoutFragment) return "";
+  if (withoutFragment.startsWith("./") || withoutFragment.startsWith("../")) {
+    return path.posix.normalize(path.posix.join(path.posix.dirname(baseFilePath), withoutFragment));
+  }
+  return path.posix.normalize(withoutFragment.replace(/^\/+/, ""));
+}
+
+// @req FR-PARSE-019
+function relatedDocsFromMetadata(value: string | undefined, filePath: string): string[] {
+  if (!value || isPlaceholderCell(value)) return [];
+  const markdownTargets = markdownLinkTargets(value);
+  const tokens = markdownTargets.length > 0 ? markdownTargets : splitReferenceTokens(value);
+  return unique(tokens.map((token) => normalizeReferenceToken(token, filePath)));
+}
+
+// @req FR-PARSE-019
+function evidenceReferencesFromRows(rows: EvidenceRow[], filePath: string): string[] {
+  return unique(rows.flatMap((row) => splitReferenceTokens(row.reference).map((token) => normalizeReferenceToken(token, filePath))));
+}
+
+// @req FR-PARSE-019
+function traceReferencesFromRows(rows: TraceLink[], filePath: string): string[] {
+  return unique(rows.map((row) => normalizeReferenceToken(row.reference, filePath)));
+}
+
+// @req FR-PARSE-019
+function newWorkCandidateFor(record: Pick<RequirementRecord, "status" | "stability">): boolean {
+  return (record.status === "planned" || record.status === "in_progress" || record.status === "blocked") && record.stability !== "draft" && record.stability !== "deprecated";
+}
+
 function changeNotesFromTable(table: ParsedTable | undefined): ChangeNoteRow[] {
   return (table?.rows ?? [])
     .map((row, index) => {
@@ -104,6 +159,8 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
   diagnostics.push(...verificationEvidence.diagnostics);
   const traceLinks = parseSectionTable(sections["Trace Links"], file, block.heading.id, "SRS-W017", "Trace Links");
   diagnostics.push(...traceLinks.diagnostics);
+  const evidenceRows = evidenceRowsFromTable(verificationEvidence.table);
+  const traceRows = traceLinksFromTable(traceLinks.table);
   const changeNotes = parseSectionTable(sections["Change Notes"], file, block.heading.id, undefined, "Change Notes");
   diagnostics.push(...changeNotes.diagnostics);
   if (headingContainsForbiddenMarkdown(block.heading.title)) {
@@ -133,12 +190,16 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
     scope,
     filePath: file.relativePath,
     headingLine: block.startLine,
+    ...(block.heading.marker ? { marker: block.heading.marker } : {}),
     metadata,
     acceptanceCriteria: acceptanceCriteria.criteria,
-    verificationEvidence: evidenceRowsFromTable(verificationEvidence.table),
-    traceLinks: traceLinksFromTable(traceLinks.table),
+    verificationEvidence: evidenceRows,
+    traceLinks: traceRows,
     changeNotes: changeNotesFromTable(changeNotes.table),
     tags,
+    relatedDocs: relatedDocsFromMetadata(metadata["Related Docs"], file.relativePath),
+    evidenceReferences: evidenceReferencesFromRows(evidenceRows, file.relativePath),
+    traceReferences: traceReferencesFromRows(traceRows, file.relativePath),
     markdown: file.lines.slice(block.startLine - 1, block.endLine).join(file.newline),
     blockStartLine: block.startLine,
     blockEndLine: block.endLine,
@@ -147,10 +208,15 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
   if (metadata.Priority) record.priority = metadata.Priority as Priority;
   if (metadata.Risk) record.risk = metadata.Risk as Risk;
   if (metadata.Stability) record.stability = metadata.Stability as Stability;
+  record.newWorkCandidate = newWorkCandidateFor(record);
   const requirement = sectionText(sections.Requirement?.lines);
   if (requirement) record.requirement = requirement;
   const rationale = sectionText(sections.Rationale?.lines);
   if (rationale) record.rationale = rationale;
+  const research = sectionText(sections["Research / Analysis"]?.lines);
+  if (research) record.research = research;
+  const implementationNotes = sectionText(sections["Implementation Notes"]?.lines);
+  if (implementationNotes) record.implementationNotes = implementationNotes;
   return { record, diagnostics };
 }
 

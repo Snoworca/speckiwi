@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "mode": "live",
+  "applied": [
+    {
+      "req_id": "OPS-FLOW-001",
+      "from": "evolving",
+      "to": "stable",
+      "reason": "Feasibility committee approved stable promotion. OPS-FLOW-001 is verified, has 5/5 AC checked and VE-1..VE-3 evidence; dry-run passed with no warnings. Run: 2026-06-29.specwkiki.v230.01",
+      "ok": true,
+      "warnings": []
+    }
+  ],
+  "skipped": [
+    {
+      "count": 53,
+      "reason": "planned requirements map to keep/evolving and already have Stability=evolving"
+    }
+  ],
+  "pending_user_approval": [],
+  "guard_blocked": [],
+  "user_rejected": [],
+  "system_failed": [],
+  "summary": {
+    "applied_count": 1,
+    "skipped_count": 53,
+    "pending_user_approval_count": 0,
+    "guard_blocked_count": 0,
+    "user_rejected_count": 0,
+    "system_failed_count": 0
+  }
+}

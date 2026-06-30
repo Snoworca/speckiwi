@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Commit Auto PR"
+  short_description: "Commit, push, and open Kiwi pull requests"
+  default_prompt: "Use $kiwi-commit-auto-pr to commit the current changes, push a branch, and open a PR."

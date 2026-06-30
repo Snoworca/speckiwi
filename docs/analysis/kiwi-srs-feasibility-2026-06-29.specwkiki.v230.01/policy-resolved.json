@@ -1,0 +1,47 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "source": "default",
+  "mapping": [
+    {
+      "if": "feasibility=high and has_verification=true",
+      "then": "stable",
+      "requires_user_confirm": true
+    },
+    {
+      "if": "feasibility=high",
+      "then": "evolving",
+      "requires_user_confirm": false
+    },
+    {
+      "if": "feasibility=medium",
+      "then": "keep",
+      "requires_user_confirm": false
+    },
+    {
+      "if": "feasibility=low",
+      "then": "draft",
+      "requires_user_confirm": true
+    },
+    {
+      "if": "feasibility=blocked and status in in_progress,implemented,verified",
+      "then": "keep",
+      "requires_user_confirm": false,
+      "status_conflict": true
+    },
+    {
+      "if": "feasibility=blocked",
+      "then": "deprecated",
+      "requires_user_confirm": true
+    },
+    {
+      "if": "no match",
+      "then": "keep",
+      "requires_user_confirm": true
+    }
+  ],
+  "frozen_authority": "not permitted for kiwi-srs-feasibility",
+  "tag_mutation": {
+    "available": false,
+    "handling": "record proposed tags in analysis artifacts only"
+  }
+}

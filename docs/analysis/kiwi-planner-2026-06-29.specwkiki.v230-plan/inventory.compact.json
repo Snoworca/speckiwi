@@ -1,0 +1,4463 @@
+{
+  "target": "v2.3.0",
+  "total": 72,
+  "active": 54,
+  "excluded": [
+    {
+      "id": "FR-MCP-025",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-026",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-027",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-028",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-029",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-033",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-MCP-036",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-NODE-022",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-NODE-023",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-NODE-024",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-NODE-025",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "FR-PARSE-020",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "IR-CLI-033",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "IR-CLI-034",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "IR-CLI-035",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "IR-CLI-036",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "IR-CLI-039",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "id": "REL-NODE-004",
+      "status": "discarded",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    }
+  ],
+  "byScope": {
+    "ARCH": [
+      "CON-ARCH-003"
+    ],
+    "CLI": [
+      "IR-CLI-028",
+      "IR-CLI-029",
+      "IR-CLI-030",
+      "IR-CLI-031",
+      "IR-CLI-032",
+      "IR-CLI-037",
+      "IR-CLI-038",
+      "IR-CLI-040",
+      "IR-CLI-041",
+      "IR-CLI-042",
+      "IR-CLI-043",
+      "IR-CLI-044"
+    ],
+    "FLOW": [
+      "FR-FLOW-013",
+      "MIG-FLOW-003",
+      "MIG-FLOW-004",
+      "OPS-FLOW-001",
+      "OPS-FLOW-002",
+      "REL-FLOW-002"
+    ],
+    "MCP": [
+      "FR-MCP-020",
+      "FR-MCP-021",
+      "FR-MCP-022",
+      "FR-MCP-023",
+      "FR-MCP-024",
+      "FR-MCP-030",
+      "FR-MCP-031",
+      "FR-MCP-032",
+      "FR-MCP-034",
+      "FR-MCP-035",
+      "FR-MCP-037",
+      "FR-MCP-038",
+      "FR-MCP-039",
+      "REL-MCP-003"
+    ],
+    "NODE": [
+      "FR-NODE-017",
+      "FR-NODE-018",
+      "FR-NODE-019",
+      "FR-NODE-020",
+      "FR-NODE-021",
+      "FR-NODE-026",
+      "FR-NODE-027",
+      "FR-NODE-028",
+      "FR-NODE-029",
+      "FR-NODE-030",
+      "FR-NODE-031",
+      "FR-NODE-032",
+      "OPS-NODE-003",
+      "REL-NODE-002",
+      "REL-NODE-003",
+      "REL-NODE-005",
+      "REL-NODE-006"
+    ],
+    "PARSE": [
+      "FR-PARSE-019",
+      "FR-PARSE-021",
+      "REL-PARSE-002",
+      "REL-PARSE-003"
+    ]
+  },
+  "records": [
+    {
+      "id": "CON-ARCH-003",
+      "title": "Tooling artifact authority and derived-state boundaries",
+      "type": "constraint",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "ARCH",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "headingLine": 509,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "docs/spec Markdown remains the only canonical requirements source; workflow artifacts such as plans, pipeline JSONL, sessions, PM state, coder state, and worklogs are operational inputs or audit artifacts, not canonical Requirement Blocks."
+        },
+        {
+          "id": "AC-2",
+          "text": "kiwi/.status.json is treated only as a disposable derived cache; missing, stale, or corrupt cache content triggers canonical parsing fallback and visible diagnostics or regeneration metadata."
+        },
+        {
+          "id": "AC-3",
+          "text": "kiwi/.srs.lock or the documented successor lock file is the authoritative SRS mutation exclusion mechanism; deleting or regenerating derived cache files never releases an active lock."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI, MCP, and skill-facing workflow projections report artifact source kind, path, workspace root, and hash or mtime when combining SRS and workflow state."
+        },
+        {
+          "id": "AC-5",
+          "text": "Tests or inspection cover no alternate requirements source creation, cache corruption fallback, lock/cache separation, and workspace-boundary behavior for mixed SRS and workflow artifact reads."
+        }
+      ],
+      "trace_code": [],
+      "depends_on": [
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "FR-NODE-027",
+        "REL-NODE-005",
+        "REL-MCP-003"
+      ],
+      "related_req": [
+        {
+          "reference": "CON-ARCH-001",
+          "relation": "extends"
+        },
+        {
+          "reference": "CON-ARCH-002",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-027",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-005",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-MCP-003",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-FLOW-013",
+      "title": "v2.3.0 target lifecycle completion wrapper",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1233,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "v2.3.0 summary and work selection include a planned requirement that traces to IR-CLI-023, FR-MCP-015, FR-NODE-014, and FR-FLOW-011 or their explicit successors."
+        },
+        {
+          "id": "AC-2",
+          "text": "Release verification for this wrapper requires CLI set-active-target --create, MCP set_active_target creation support, add_requirement Active Target defaulting, safe failure when create is omitted for missing targets, and result targetSource reporting."
+        },
+        {
+          "id": "AC-3",
+          "text": "The wrapper can be marked implemented only when the linked CLI, MCP, core, and workflow requirements have implementation evidence or successor evidence that covers the same behavior."
+        },
+        {
+          "id": "AC-4",
+          "text": "The wrapper can be marked verified only when validation, CLI tests, MCP tests, and workflow/agent-instruction inspection evidence are attached to this requirement or to each linked requirement with explicit coverage notes."
+        },
+        {
+          "id": "AC-5",
+          "text": "Research and planning documents must reference this wrapper instead of treating OPS-FLOW-001 alone or the historical v2.1.0 requirements alone as the v2.3.0 implementation contract."
+        }
+      ],
+      "trace_code": [],
+      "depends_on": [
+        "IR-CLI-023",
+        "FR-MCP-015",
+        "FR-NODE-014",
+        "FR-FLOW-011"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "IR-CLI-023",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-015",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-014",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-FLOW-011",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [AGENTS.md](../../AGENTS.md), [CLAUDE.md](../../CLAUDE.md)"
+    },
+    {
+      "id": "FR-MCP-020",
+      "title": "MCP mutation parity for safe previews and notes",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1510,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP schemas for check_acceptance_criteria, add_verification_evidence, and add_trace_link accept dryRun when the underlying core mutation supports dry-run behavior."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP handlers forward notes and dryRun for evidence and trace mutations and preserve dryRun for AC mutations."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP mutation responses expose the shared mutation envelope from FR-NODE-017, including written state, operation preview, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP failure responses preserve core diagnostics arrays and diagnosticsSummary instead of returning only a code and message."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP parity tests prove dry-run calls leave fixture file hashes unchanged and notes round-trip exactly into Verification Evidence and Trace Links rows."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/mutation-tools.ts:60-78",
+        "src/mcp/errors.ts:12-15"
+      ],
+      "depends_on": [
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-005",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-006",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-007",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-MCP-021",
+      "title": "Compact MCP requirement search tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1573,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "list_requirements supports compact default projection and explicit full-detail or include-markdown opt-in."
+        },
+        {
+          "id": "AC-2",
+          "text": "search_requirements returns matching requirement IDs, titles, snippets, file paths, heading lines, target, status, stability, scope, and diagnostics summary."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP search filters match the normalized filter set from FR-PARSE-019, including stability, priority, related docs, evidence reference, trace reference, missing evidence, and new-work-candidate state."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP discovery responses use the same envelope and field semantics as CLI search and do not include raw Markdown bodies by default."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP and CLI parity tests prove equivalent search results for the same fixture query and filters."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/tools/read-tools.ts:20-60",
+        "src/mcp/resources.ts:35-65"
+      ],
+      "depends_on": [
+        "FR-PARSE-019",
+        "IR-CLI-029",
+        "FR-MCP-022"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-PARSE-019",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-001",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-MCP-022",
+      "title": "Diagnostics-preserving MCP envelopes",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1637,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP success envelopes include ok, value, diagnostics, diagnosticsSummary, and any relevant metadata without changing the domain-specific value shape unexpectedly."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP failure envelopes include ok false, error code, message, diagnostics, diagnosticsSummary, and recoverable next-action hints when available."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP mutation failures preserve stale-patch diagnostics and validation diagnostics emitted by core mutation services."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP read, resource, mutation, and workflow-artifact tests cover diagnostics-preserving success and failure paths."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP envelope behavior remains compatible with existing resource payload policy while documenting any legacy compatibility mode separately."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/errors.ts:12-15",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "REL-PARSE-002",
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-MCP-001",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-014",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-MCP-023",
+      "title": "MCP workflow artifact read tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1763,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers read tools for workspace info, artifact listing and resolution, plan status, plan task lookup, next plan task, pipeline status, pipeline tail, pipeline next recommendation, session status, resume hint, and worklog tail."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP workflow read tools return the same workflow-read envelope fields and compact defaults as CLI workflow reads."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP tools omit raw artifact bodies by default and require explicit includeBody or equivalent input for full bodies."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP read tools preserve diagnostics, cursor data, artifact references, hashes or mtimes, and blocking reasons needed for safe resume and next-task decisions."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP and CLI parity tests prove equivalent values for the same workflow fixture set, including legacy artifacts, ambiguous artifacts, invalid JSONL, and dependency-blocked next tasks."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "IR-CLI-031",
+        "FR-MCP-022"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-MCP-024",
+      "title": "MCP next work-order tool",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1825,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP exposes get_next_work_order or an equivalent named tool with inputs for explicit target, artifact selection, includeBody opt-in, measurement mode, and ambiguity handling."
+        },
+        {
+          "id": "AC-2",
+          "text": "The MCP tool returns the same action kinds, required fields, compact defaults, blockers, diagnostics, and payload measurement semantics as the CLI work-order command."
+        },
+        {
+          "id": "AC-3",
+          "text": "The MCP tool fails closed when workspace identity is ambiguous, active target is unavailable, pipeline state blocks automation, or workflow validators report stale or invalid artifacts."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP output includes enough artifact references, hashes or mtimes, requirement IDs, and recommended follow-up tool names for an agent to continue without raw artifact reads."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP and CLI work-order parity tests prove equivalent fixture decisions and verify no raw Markdown or raw JSON body appears by default."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-113",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "FR-MCP-021",
+        "FR-MCP-023",
+        "IR-CLI-032",
+        "REL-NODE-003",
+        "REL-MCP-003"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-023",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-MCP-003",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-MCP-030",
+      "title": "MCP external Completed Work Log tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2207,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP completed-work read tools return entries from the authoritative completed-work source with source file, source line, total count, returned count, hasMore, and continuation metadata."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP add_completed_work writes to docs/spec/05.completed-work.md when that file is present and falls back to docs/spec/00.index.md only for legacy workspaces without the external file."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP completed-work read and append responses are CLI-equivalent for limit, ordering, reportPaths, diagnostics, and duplicate-source handling."
+        },
+        {
+          "id": "AC-4",
+          "text": "If both index and external completed-work rows are non-empty, MCP read responses include the duplicate-source or migration diagnostic and MCP write responses fail closed unless the core source-selection policy explicitly permits the write."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP tests cover external-only, legacy-only, dual-source diagnostic, append-to-external, append-to-legacy, pagination metadata, malformed report paths, and dry-run append behavior."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/tools/read-tools.ts:56-60",
+        "src/mcp/tools/mutation-tools.ts:92-105"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-PARSE-021",
+        "FR-NODE-026",
+        "IR-CLI-037"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-026",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-037",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-012",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-016",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-027",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "FR-MCP-031",
+      "title": "MCP external Completed Work Log resources",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2271,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP resource listings include a completed-work resource or equivalent metadata that identifies whether the external log or legacy index is the authoritative source."
+        },
+        {
+          "id": "AC-2",
+          "text": "Completed-work resource reads are bounded by default and expose continuation metadata or guidance instead of dumping an unbounded history table."
+        },
+        {
+          "id": "AC-3",
+          "text": "Resource payloads include source file, source line when available, total count, returned count, and duplicate-source or migration diagnostics."
+        },
+        {
+          "id": "AC-4",
+          "text": "Resource behavior remains compatible with legacy workspaces that only have Completed Work Log rows in docs/spec/00.index.md."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP resource tests cover external-only, legacy-only, dual-source diagnostics, bounded reads, continuation metadata, and parity with FR-MCP-030 read-tool summaries."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/resources.ts:45-52",
+        "test/mcp/read-tools-resources.test.ts:88-122"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-PARSE-021",
+        "FR-NODE-026",
+        "FR-MCP-030"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-026",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-030",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-016",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-029",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "FR-MCP-032",
+      "title": "MCP SRS mutation lock controls",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2335,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "All MCP tools that can mutate docs/spec, docs/rule as part of SRS mutation contracts, SRS index rollups, or SRS mutation cache files acquire the shared SRS lock before writing."
+        },
+        {
+          "id": "AC-2",
+          "text": "When the lock is active and non-stale, MCP mutations fail before editing files with ok false, error.code SRS_LOCKED, diagnostics, diagnosticsSummary, owner, operation, requestId, acquiredAt, expiresAt, and retry guidance."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP exposes ignoreLock only on SRS mutation tool schemas, records diagnostics when it is used, and never lets the flag bypass stale patch guards, generated-ID collision checks, table-cell safety, trace validation, or SRS validation."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP dryRun calls report whether a real mutation would be lock-blocked without modifying lock state or SRS files."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP tests cover active lock denial, stale lock recovery, ignoreLock diagnostics, dryRun lock preview, and preservation of existing mutation safety failures under ignoreLock."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/tools/mutation-tools.ts:25-149",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "REL-NODE-005",
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "REL-NODE-005",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-020",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-028",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "FR-MCP-034",
+      "title": "MCP read-only legacy workflow migration preview",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2463,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers preview_workflow_migration, preview_legacy_workflow_migration, or an equivalent documented tool that returns the FR-NODE-029 preview envelope."
+        },
+        {
+          "id": "AC-2",
+          "text": "The tool reports legacy source paths, confidence, source hashes, proposed destinations, unsupported fields, data-loss risks, target drift, path drift, diagnostics, and diagnosticsSummary without raw bodies by default."
+        },
+        {
+          "id": "AC-3",
+          "text": "The tool always reports written false and does not create, update, move, delete, normalize, compact, or append any workflow, pipeline, plan, session, worklog, or SRS file."
+        },
+        {
+          "id": "AC-4",
+          "text": "Any input that requests apply, write, fix, normalize, or migrate behavior fails with a structured unsupported_operation diagnostic unless a later migration-apply requirement exists."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP and CLI parity tests cover legacy-only preview, mixed current and legacy artifacts, includeBody opt-in, unsupported apply requests, malformed legacy artifacts, target drift, and no-write file hash preservation."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-NODE-029",
+        "REL-NODE-006",
+        "IR-CLI-040",
+        "FR-MCP-022"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-023",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-NODE-006",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-040",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "FR-MCP-035",
+      "title": "MCP workflow read projections and work-order profiles",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2526,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers read-only projection tools or equivalent named operations for workflow diagnosis, normalized workflow diff, workflow schema-check, pipeline status, pipeline tail, and optional pipeline compact behavior, all returning compact envelopes without raw bodies by default."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP get_next_work_order or its equivalent accepts explain and compact context profile options that return decisionTrace, rejected candidates, blockers, artifact references, source hashes or mtimes, and diagnostics generated by the work-order engine."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP projection and profile tools fail closed on invalid artifacts, unsupported schema versions, dependency blockers, active FAILED or NEEDS_USER pipeline state, ambiguous workspace identity, and ambiguous target state."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP and CLI parity tests prove equivalent projection decisions, work-order explain output, compact context output, diagnostics, and raw-body omission for the same fixtures."
+        },
+        {
+          "id": "AC-5",
+          "text": "This requirement does not define any mutating pipeline emit behavior; official JSONL append tool naming belongs to the separate MCP mutation requirement that depends on FR-NODE-030."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-MCP-022",
+        "REL-NODE-006",
+        "IR-CLI-041"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-MCP-033",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-023",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-024",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-006",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-041",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-MCP-037",
+      "title": "MCP workflow mutation tools and pipeline emit with valid trace",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2658,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers workflow mutation tools for plan task check and uncheck, checklist item checked-state updates, PM task status updates, pipeline JSONL append, worklog JSONL append, and workflow repair record creation."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP workflow mutation schemas expose dryRun, runId, taskId when task-scoped, owner, stale guard inputs, idempotency key inputs, journalKey or canonical journal-key inputs computed exactly by FR-NODE-028, journalState result metadata, and repair metadata needed by the core workflow mutation services."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP handlers forward all workflow mutation fields to core services and return the shared mutation envelope without stripping diagnostics, diagnosticsSummary, operations, stale guards, result, or pendingRepair details."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP workflow mutations fail closed on stale artifacts, forbidden child-coder ownership, invalid JSONL, invalid task IDs, dependency-blocked writes, and partial-failure repair states with structured error or mutation results."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP registers emit_pipeline_event or an equivalent official pipeline append tool that validates schema, resolves the canonical pipeline path, serializes one JSON object per line, enforces trailing LF, dedupes by parsed skill and run_id, supports dryRun, and returns the shared mutation envelope."
+        },
+        {
+          "id": "AC-6",
+          "text": "MCP and CLI parity tests prove equivalent dry-run, no-op, write, stale, forbidden-owner, journal state, partial-failure, repair-record, and pipeline emit parsed-dedupe outcomes for the same workflow mutation fixtures."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-180",
+        "src/mcp/tools/mutation-tools.ts:1-150",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ],
+      "depends_on": [
+        "FR-NODE-030",
+        "FR-NODE-028",
+        "FR-NODE-017",
+        "IR-CLI-042",
+        "FR-MCP-022",
+        "REL-NODE-003"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-MCP-036",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-030",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-028",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-042",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-025",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "FR-MCP-033",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "FR-MCP-038",
+      "title": "MCP logical workflow deletion with canonical mutation dependency",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2727,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers logical-delete workflow tools or tool actions for supported record classes, including plan display/checklist records, PM task records, pipeline events, worklog events, and workflow repair records when those classes are implemented by core services."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP logical-delete mutation tool schemas expose dryRun, runId, taskId or record identity when applicable, owner, deletion reason, stale guard inputs, and idempotency key inputs; MCP read/list/tail tool schemas expose includeDeleted separately for deleted-record inspection."
+        },
+        {
+          "id": "AC-3",
+          "text": "MCP handlers forward all logical-delete fields to core services and return the shared mutation envelope without stripping operations, stale guards, target record metadata, journal state, pendingRepair, diagnostics, or diagnosticsSummary."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP logical-delete tools never physically remove JSONL lines or Markdown history during normal operation; they append or write guarded tombstone/repair state according to FR-NODE-031."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP logical-delete tools treat already-deleted records as successful no-op results with mutation.written false unless the caller explicitly requests an additional repair note."
+        },
+        {
+          "id": "AC-6",
+          "text": "MCP and CLI parity tests prove equivalent dry-run, write, no-op, stale, forbidden-owner, invalid JSONL, non-deletable record, includeDeleted read inspection, tombstone/correction-of-tombstone rejection, status=deleted rejection, and partial-failure repair outcomes for logical deletion fixtures."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/tools/mutation-tools.ts:1-150"
+      ],
+      "depends_on": [
+        "FR-NODE-031",
+        "IR-CLI-043",
+        "FR-NODE-017",
+        "FR-MCP-022",
+        "REL-NODE-003"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-MCP-026",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-031",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-037",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-043",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md), [docs/research/230.md](../research/230.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "FR-MCP-039",
+      "title": "MCP Requirement ID collision repair tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2795,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP registers diagnose_requirement_id_collisions, plan_requirement_id_collision_repair, and apply_requirement_id_collision_repair tools or documented equivalent names. Diagnose and plan schemas include duplicateId, occurrence identity, replacementId or allocation strategy, reference policy, explicit reference edits, and dryRun but reject ignoreLock with diagnostics; only the apply schema may include ignoreLock."
+        },
+        {
+          "id": "AC-2",
+          "text": "The diagnose and plan tools are no-write by default and return grouped SRS-E002 diagnostics, occurrence identity, generated replacement ID candidates, ambiguous inbound references, provenance hints, and patch preview when a plan is requested."
+        },
+        {
+          "id": "AC-3",
+          "text": "The apply tool requires explicit occurrence mapping or a prior plan identity, delegates all writes to FR-NODE-032, and returns the shared mutation envelope without stripping diagnostics, diagnosticsSummary, operations, stale guards, lock state, generated-ID collision detail, or pendingRepair metadata."
+        },
+        {
+          "id": "AC-4",
+          "text": "MCP failures return structured tool results for SRS_LOCKED, AMBIGUOUS_REQUIREMENT_DUPLICATE, AMBIGUOUS_REFERENCE, STALE_PATCH, GENERATED_ID_COLLISION, unresolved Git conflict markers, and PARTIAL_MUTATION_FAILURE instead of protocol-level errors for recoverable repair states."
+        },
+        {
+          "id": "AC-5",
+          "text": "ignoreLock bypasses only the SRS mutation lock and never bypasses stale patch checks, generated-ID collision checks, table-cell safety, trace validation, SRS validation, or explicit occurrence identity checks."
+        },
+        {
+          "id": "AC-6",
+          "text": "MCP and CLI parity tests prove equivalent dry-run, no-op, write, stale, lock, ambiguous-reference, generated-ID collision, partial-failure, and validation-clean outcomes for the same repair fixtures."
+        }
+      ],
+      "trace_code": [
+        "src/mcp/server.ts:36-117",
+        "src/mcp/tools/mutation-tools.ts:25-150",
+        "src/mcp/errors.ts:8-15"
+      ],
+      "depends_on": [
+        "FR-NODE-032",
+        "REL-PARSE-003",
+        "FR-MCP-020",
+        "FR-MCP-022",
+        "FR-MCP-032",
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-NODE-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-044",
+          "relation": "related_to"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md)"
+    },
+    {
+      "id": "FR-NODE-017",
+      "title": "Unified mutation envelope",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1393,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Core mutation success results include mutation.kind, mutation.filePath, mutation.dryRun, mutation.written, mutation.operations, mutation.preview, updated record data when applicable, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-2",
+          "text": "Core mutation failure results include a structured error code, message, diagnostics, diagnosticsSummary, and any safe stale-guard context needed for recovery."
+        },
+        {
+          "id": "AC-3",
+          "text": "Dry-run results set mutation.written to false and expose the planned operations without changing files."
+        },
+        {
+          "id": "AC-4",
+          "text": "Mutation operations include enough line or hunk detail for CLI and MCP adapters to display a minimal patch preview without reparsing raw Markdown."
+        },
+        {
+          "id": "AC-5",
+          "text": "Existing mutation services for requirement creation, status changes, AC checks, evidence additions, trace additions, stability updates, target goal updates, target activation, and completed-work additions are covered by parity tests for the shared envelope."
+        }
+      ],
+      "trace_code": [
+        "src/core/mutation/add-requirement.ts:209-265",
+        "src/core/patch/hunk-summary.ts:4-10"
+      ],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-002",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-013",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-NODE-018",
+      "title": "Index summary synchronization for mutations",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1453,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Requirement creation through core services does not leave Status Summary or Requirement Type Summary drift after the tool flow completes, unless the caller explicitly requested dry-run."
+        },
+        {
+          "id": "AC-2",
+          "text": "Status-changing mutations update or preview the affected Status Summary counts when the workspace has an index rollup table."
+        },
+        {
+          "id": "AC-3",
+          "text": "Type-affecting requirement mutations update or preview Requirement Type Summary counts when the workspace has an index rollup table."
+        },
+        {
+          "id": "AC-4",
+          "text": "If synchronization is exposed as a separate sync-index operation, the operation supports dry-run, stale guards, patch preview, and the shared mutation envelope from FR-NODE-017."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI and MCP tests cover add-requirement, update-status, and sync-index scenarios and validate that validate --fail-on-warning remains clean after the supported tool flow."
+        }
+      ],
+      "trace_code": [
+        "src/core/mutation/add-requirement.ts:209-265",
+        "src/core/validator/rules.ts:105-152"
+      ],
+      "depends_on": [
+        "FR-NODE-017",
+        "REL-PARSE-002"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-NODE-019",
+      "title": "Granular requirement editing services",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1514,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Core services can update requirement title, requirement statement, priority, risk, tags, related docs, verification method, GitHub issue, and other supported metadata without rewriting unrelated sections."
+        },
+        {
+          "id": "AC-2",
+          "text": "Core services can add, update, delete, and reorder acceptance criteria while preserving deterministic AC identifiers and preventing unsafe state transitions for verified requirements."
+        },
+        {
+          "id": "AC-3",
+          "text": "Core services can update and delete Verification Evidence rows and Trace Links rows with table-cell safety validation before writing."
+        },
+        {
+          "id": "AC-4",
+          "text": "All granular editing operations support dry-run, stale guards, Change Notes policy, the shared mutation envelope from FR-NODE-017, and updated record output."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI and MCP adapter tests prove each granular operation is available through an official tool or command before skills rely on it."
+        }
+      ],
+      "trace_code": [
+        "src/core/mutation/render-requirement.ts:1-90",
+        "src/core/mutation/table-cell.ts:4-17"
+      ],
+      "depends_on": [
+        "FR-NODE-017",
+        "FR-NODE-011",
+        "IR-CLI-028",
+        "FR-MCP-020"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-018",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-011",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-028",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-020",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-NODE-020",
+      "title": "Workflow artifact resolver",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1715,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The resolver supports explicit path, explicit run ID, current docs/plans artifacts, current .kiwi session artifacts, legacy docs/plan artifacts, legacy .snoworca session artifacts, and repository pipeline files."
+        },
+        {
+          "id": "AC-2",
+          "text": "Candidate scoring applies documented signals for explicit match, current contract path, target match, plan and sidecar run ID match, generated_at, legacy penalty, target mismatch, and parse errors."
+        },
+        {
+          "id": "AC-3",
+          "text": "Tie-breaking uses generated_at descending, file mtime descending, and relative path ascending; unresolved equal candidates return ambiguous_artifact unless the caller explicitly allows ambiguity."
+        },
+        {
+          "id": "AC-4",
+          "text": "Companion discovery uses plan frontmatter sidecar_path, basename matching, same-directory search, and missing-companion diagnostics in that order."
+        },
+        {
+          "id": "AC-5",
+          "text": "Resolver outputs include relative path, absolute-safe workspace root, artifact kind, legacy flag, confidence, hashes or mtimes needed for resume guards, diagnostics, and diagnosticsSummary."
+        }
+      ],
+      "trace_code": [
+        "src/core/fs/safe-path.ts:4-19",
+        "skills/codex/kiwi-planner/SKILL.md:177-180",
+        "skills/codex/kiwi-pm/SKILL.md:140-170"
+      ],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-MCP-003",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-NODE-001",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-NODE-021",
+      "title": "Workflow JSONL core utilities",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1776,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The JSONL parser reads one JSON object per line and reports invalid lines with line number, byte offset when available, raw-safe excerpt, diagnostics, and exclusion from latest-state selection."
+        },
+        {
+          "id": "AC-2",
+          "text": "Pipeline utilities compute eventKey from skill and run_id and detect duplicate event keys, missing correction targets, correction cycles, and correction chains deeper than the configured maximum."
+        },
+        {
+          "id": "AC-3",
+          "text": "Correction handling excludes corrected events from latest-state selection while keeping corrected events visible in tail output with correctedBy metadata."
+        },
+        {
+          "id": "AC-4",
+          "text": "Append utilities support single-line JSON serialization, trailing LF enforcement, schema-version validation, lock or stale guard semantics, configurable best-effort versus halt policy, and return the shared mutation envelope from FR-NODE-017 for write operations."
+        },
+        {
+          "id": "AC-5",
+          "text": "Tests cover invalid JSONL lines, missing or unsupported schema versions, missing trailing LF, duplicate event keys, correction missing target, correction depth, correction cycles, chronological tailing, latest-state selection, best-effort versus halt append policy, and dry-run append behavior."
+        }
+      ],
+      "trace_code": [
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63",
+        "skills/codex/kiwi-pm/SKILL.md:140-170"
+      ],
+      "depends_on": [
+        "FR-NODE-020",
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-NODE-026",
+      "title": "External Completed Work Log core services",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2215,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "listCompletedWork merges legacy and external completed-work rows only through an explicit source-aware read model and preserves each row source file and line."
+        },
+        {
+          "id": "AC-2",
+          "text": "addCompletedWork writes each new row to exactly one canonical target file: docs/spec/05.completed-work.md when present, otherwise docs/spec/00.index.md legacy table fallback."
+        },
+        {
+          "id": "AC-3",
+          "text": "addCompletedWork does not implicitly migrate historical completed-work rows as a hidden side effect."
+        },
+        {
+          "id": "AC-4",
+          "text": "A separate dry-run-capable migration operation or migration plan is required before moving historical rows from the index to the external file."
+        },
+        {
+          "id": "AC-5",
+          "text": "Summary generation exposes bounded completed-work data with total count, returned count, limit, and hasMore or continuation metadata when rows are omitted."
+        }
+      ],
+      "trace_code": [
+        "src/core/query/completed-work.ts:39-42",
+        "src/core/mutation/add-completed-work.ts:242-298",
+        "src/core/query/summary.ts:69-87"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-PARSE-021"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-010",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-015",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-024",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "FR-NODE-027",
+      "title": "Requirement ID status cache",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2278,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "kiwi/.status.json stores schemaVersion, generatedAt, source, specFingerprint data, idCounters keyed by requirement type and scope prefix, and mirrored SRS lock status for diagnostics."
+        },
+        {
+          "id": "AC-2",
+          "text": "add_requirement validates cache schema, source, fingerprints, ID prefix mapping, and relevant SRS file freshness before using cached counters."
+        },
+        {
+          "id": "AC-3",
+          "text": "If the cache is absent, malformed, stale, incomplete, or unsafe, add_requirement falls back to the existing full workspace parse and does not fail only because the cache is unusable."
+        },
+        {
+          "id": "AC-4",
+          "text": "Before any write, the selected Requirement ID is rechecked against canonical parsed SRS records so discarded or existing IDs are never reused."
+        },
+        {
+          "id": "AC-5",
+          "text": "After a successful SRS mutation, SpecKiwi regenerates or atomically updates kiwi/.status.json; cache write failure after a successful SRS mutation returns success with diagnostics because the cache is rebuildable."
+        },
+        {
+          "id": "AC-6",
+          "text": "Tests cover valid-cache allocation, missing-cache fallback, malformed-cache fallback, stale-fingerprint fallback, final collision detection, atomic cache write, and cache-write warning behavior."
+        }
+      ],
+      "trace_code": [
+        "src/core/mutation/add-requirement.ts:28-35",
+        "src/core/mutation/add-requirement.ts:220-272",
+        "src/core/patch/apply-patch.ts:48-61"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-008",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-018",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-025",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "FR-NODE-028",
+      "title": "Canonical workflow journal identity and repair inspection",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2472,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The canonical workflow mutation journalKey is sha256(tool|run_id|task_id|req_id|canonicalJson(flat_args)), where req_id uses a documented empty stable token for non-requirement-scoped workflow operations."
+        },
+        {
+          "id": "AC-2",
+          "text": "Canonical JSON for journalKey calculation is deterministic across CLI and MCP adapters, including stable object-key ordering, normalized absent optional fields, and exact treatment of task_id, req_id, and run_id."
+        },
+        {
+          "id": "AC-3",
+          "text": "Core mutation responses expose journalKey, journalState, idempotencyKey, completedOperations, pendingOperations, pendingRepair, diagnostics, and diagnosticsSummary using the canonical identity from this requirement."
+        },
+        {
+          "id": "AC-4",
+          "text": "Journal inspection reports planned, applied, confirmed, failed, and skipped_dry_run states as audit evidence only and never outranks plan sidecar, PM state, worklog, or validator source-of-truth precedence."
+        },
+        {
+          "id": "AC-5",
+          "text": "Repair application is dry-run-first by default, applies only a recorded pendingRepair whose stale guards still match, and never infers repairs from unchecked plan boxes or deleted/corrected JSONL records alone."
+        }
+      ],
+      "trace_code": [
+        "src/core/patch/apply-patch.ts:48-61",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-030",
+          "relation": "related_to"
+        },
+        {
+          "reference": "IR-CLI-042",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-037",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-031",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-NODE-029",
+      "title": "Read-only legacy workflow migration preview core",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2536,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The preview discovers legacy docs/plan, docs/plan/**, .snoworca/sessions, and .snoworca/sessions/** artifacts only through the shared workflow resolver and marks every returned source with legacy, confidence, source path, and source hash metadata."
+        },
+        {
+          "id": "AC-2",
+          "text": "The preview returns proposed current-format destinations, unsupported fields, lossy transforms, target mismatch, path drift, schema or contract mismatch, and required manual decisions without writing files."
+        },
+        {
+          "id": "AC-3",
+          "text": "The preview result always reports written false and does not move, delete, normalize, rewrite, compact, or append workflow, pipeline, plan, session, worklog, or SRS artifacts."
+        },
+        {
+          "id": "AC-4",
+          "text": "Legacy artifacts identified by preview are never promoted into current workflow state unless a separate future migration-apply requirement and explicit user action exist."
+        },
+        {
+          "id": "AC-5",
+          "text": "Tests cover legacy-only artifacts, mixed current and legacy artifacts, unsupported fields, target drift, source hash reporting, raw-body omission by default, includeBody opt-in, and written false under all preview outcomes."
+        }
+      ],
+      "trace_code": [
+        "src/core/project-root.ts:14-29",
+        "src/core/mutation/add-completed-work.ts:150-185"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "REL-NODE-003",
+        "REL-NODE-006"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-006",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "FR-NODE-030",
+      "title": "Guarded workflow progress mutations with canonical journal identity",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2598,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Workflow mutation kinds include plan_checkbox_check, plan_checkbox_uncheck, plan_checklist_item_update, pm_task_status_update, pipeline_event_append, worklog_event_append, workflow_repair_record, and any required task-progress companion operations."
+        },
+        {
+          "id": "AC-2",
+          "text": "Workflow mutations enforce owner rules so child coders cannot directly mutate plan checkboxes when PM owns the display state."
+        },
+        {
+          "id": "AC-3",
+          "text": "Mutations validate current plan, sidecar, PM state, coder state, and worklog guards before writing and return stale_artifact or blocked_dependency without writing when guards fail."
+        },
+        {
+          "id": "AC-4",
+          "text": "Multi-artifact writes follow a documented order that records planned mutation state, appends planned or applying worklog entries, applies guarded display changes, records applied events, confirms final PM state, and records journalState as one of planned, applied, confirmed, failed, or skipped_dry_run."
+        },
+        {
+          "id": "AC-5",
+          "text": "Partial failures return the shared mutation envelope with journalKey computed by FR-NODE-028 as sha256(tool|run_id|task_id|req_id|canonicalJson(flat_args)), journalState, idempotencyKey equal to journalKey unless a caller supplies a stricter compatible key, completedOperations, pendingOperations, pendingRepair, written false unless every required artifact write is confirmed, and a repair command hint."
+        }
+      ],
+      "trace_code": [
+        "skills/codex/kiwi-pm/SKILL.md:140-170",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:279-325"
+      ],
+      "depends_on": [
+        "FR-NODE-017",
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "REL-NODE-003",
+        "FR-NODE-028"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-NODE-022",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-028",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "FR-NODE-031",
+      "title": "Logical workflow deletion state with canonical mutation dependency",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2662,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 7,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Workflow logical-delete mutation kinds can mark supported workflow records as `deleted` effective state without physically removing the original JSONL line, Markdown checkbox line, PM state record, or repair record."
+        },
+        {
+          "id": "AC-2",
+          "text": "Each logical-delete write records the target record identity, deleted state, reason, owner, timestamp, canonical journalKey or idempotency key, stale guards, and source artifact hashes needed to prove what was deleted."
+        },
+        {
+          "id": "AC-3",
+          "text": "Default workflow read tools treat logically deleted records as inactive while preserving audit metadata, and expose an explicit includeDeleted or equivalent option for read/list/tail inspection and repair."
+        },
+        {
+          "id": "AC-4",
+          "text": "Logical-delete mutations reject stale artifacts, invalid record IDs, forbidden owners, malformed JSONL, dependency-blocked writes, attempts to delete records that are not in a deletable class, tombstone-of-tombstone, correction-of-tombstone, and plain deletion of CORRECTION events unless a future restore requirement defines safe semantics."
+        },
+        {
+          "id": "AC-5",
+          "text": "Logical-delete mutations are idempotent: deleting an already deleted record returns a successful no-op mutation envelope without writing a duplicate tombstone unless the caller explicitly requests a new repair note."
+        },
+        {
+          "id": "AC-6",
+          "text": "Pipeline logical-delete handling must not add `deleted` to the pipeline status enum; it must represent deletion as status=CORRECTION plus operation.kind=\"logical_delete\" or an equivalent tombstone/repair record, and apply logical-delete tombstones before normal correction chains so directly tombstoned records cannot be resurrected by correction-of-correction."
+        },
+        {
+          "id": "AC-7",
+          "text": "Tests cover logical delete, already-deleted no-op, non-deletable record rejection, stale hash rejection, invalid JSONL rejection, read filtering, includeDeleted inspection, tombstone/correction-of-tombstone rejection, status=deleted rejection, and partial-failure repair reporting."
+        }
+      ],
+      "trace_code": [],
+      "depends_on": [
+        "FR-NODE-021",
+        "REL-NODE-003",
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-NODE-023",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-030",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md), [docs/research/230.md](../research/230.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "FR-NODE-032",
+      "title": "Merge-time Requirement ID collision repair core",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2727,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 7,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Diagnose is read-only and returns duplicate Requirement ID groups from REL-PARSE-003, repair readiness diagnostics, candidate replacement IDs, ambiguous inbound references, and Git merge provenance when reliable provenance metadata is available."
+        },
+        {
+          "id": "AC-2",
+          "text": "Plan requires an explicit duplicateId plus keep and rename occurrences identified by filePath, headingLine, and blockHash or equivalent block identity, accepts either an explicit replacementId or allocationStrategy=next_available, and returns a dry-run multi-file patch plan without writing files."
+        },
+        {
+          "id": "AC-3",
+          "text": "Apply uses the REL-NODE-005 SRS mutation lock, FR-NODE-017 mutation envelope, FR-NODE-027 allocation cache fallback, and a final canonical full-parse check that permits the selected duplicate group being repaired while rejecting stale occurrence identity, replacementId collisions, and unrelated duplicate groups unless the plan explicitly reports them as pending; ignoreLock bypasses only the SRS lock."
+        },
+        {
+          "id": "AC-4",
+          "text": "Repair updates only the selected duplicate heading, the selected block's unambiguous self-reference rows, and explicitly mapped Trace Links or Completed Work Log Requirement IDs cells, while preserving Status, Stability, Acceptance Criteria, Verification Evidence, and free-text prose unless separate guarded mutations are invoked."
+        },
+        {
+          "id": "AC-5",
+          "text": "Ambiguous inbound references, Completed Work Log rows without explicit mapping, research and analysis files, pipeline logs, evidence notes, Change Notes prose, and arbitrary Markdown text are report-only by default and never rewritten by automatic inference."
+        },
+        {
+          "id": "AC-6",
+          "text": "Multi-file apply verifies all touched file snapshots before writing, records completed and pending operations, attempts rollback on partial failure, returns pendingRepair metadata when needed, and never reports written true unless every required write is confirmed."
+        },
+        {
+          "id": "AC-7",
+          "text": "Tests cover same-file and cross-file duplicates, multi-occurrence duplicates, unresolved Git conflict markers, ambiguous references, completed-work references, stale snapshots, generated-ID races, active locks, ignoreLock lock-only bypass, idempotent reruns, and post-apply validate, summary, and links gates."
+        }
+      ],
+      "trace_code": [
+        "src/core/mutation/add-requirement.ts:28-35",
+        "src/core/mutation/add-requirement.ts:237-272",
+        "src/core/patch/apply-patch.ts:40-61",
+        "src/core/patch/patch-plan.ts:3-15"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "REL-PARSE-003",
+        "FR-NODE-027",
+        "REL-NODE-005",
+        "FR-NODE-017",
+        "FR-NODE-019"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-027",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-005",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-019",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-013",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md)"
+    },
+    {
+      "id": "FR-PARSE-019",
+      "title": "Normalized query fields for requirement search",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1238,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Requirement records expose normalized relatedDocs tokens, evidence references, trace references, stability, priority, scope, type, status, target, tags, and new-work-candidate eligibility for query code."
+        },
+        {
+          "id": "AC-2",
+          "text": "Query filters can select by stability, priority, missing evidence, related docs reference, evidence reference, trace reference, and new-work-candidate state."
+        },
+        {
+          "id": "AC-3",
+          "text": "Filter matching is deterministic for both exact metadata fields and normalized path-like references."
+        },
+        {
+          "id": "AC-4",
+          "text": "Parser and query tests cover requirements with multiple related docs, multiple evidence references, multiple trace references, missing evidence, draft or deprecated stability, and active-target new-work eligibility."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI and MCP search features consume these normalized fields instead of reparsing raw Markdown in adapters."
+        }
+      ],
+      "trace_code": [
+        "src/core/query/filter.ts:3-9",
+        "src/core/query/records.ts:121"
+      ],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-PARSE-008",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-PARSE-015",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "FR-PARSE-021",
+      "title": "External Completed Work Log parsing",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1419,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Parser discovers docs/spec/05.completed-work.md by fixed path when it exists inside the project; an index link is not required for discovery, and absence of the file produces no diagnostic."
+        },
+        {
+          "id": "AC-2",
+          "text": "Parser reads Completed Work Log rows from the external file with the same columns and report-path grammar used by the legacy index table."
+        },
+        {
+          "id": "AC-3",
+          "text": "Parser preserves source file path and row line for every Completed Work Log entry so diagnostics identify the row source."
+        },
+        {
+          "id": "AC-4",
+          "text": "If both docs/spec/00.index.md and docs/spec/05.completed-work.md contain non-empty Completed Work Log rows, validation emits an explicit duplicate-source or migration diagnostic instead of silently ignoring one source."
+        },
+        {
+          "id": "AC-5",
+          "text": "Report Paths validation remains lexical by default and any path-existence validation is exposed only through an opt-in validation mode."
+        }
+      ],
+      "trace_code": [
+        "src/core/parser/index-parser.ts:32-61",
+        "src/core/parser/workspace-parser.ts:8-50"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-016",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-PARSE-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-PARSE-020",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "IR-CLI-028",
+      "title": "CLI mutation parity for safe previews",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1772,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI mutation commands for AC checks, evidence additions, trace additions, requirement creation, status changes, stability updates, target activation, target goal updates, and completed-work additions expose dry-run behavior when core supports it."
+        },
+        {
+          "id": "AC-2",
+          "text": "CLI mutation JSON output includes the shared mutation envelope from FR-NODE-017, including mutation.kind, mutation.written, operations, preview, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-3",
+          "text": "Documented aliases such as trace reference aliases are either implemented in Commander or removed from docs and skills through signature parity checks."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI mutation commands reject malformed table-cell input before writing and return structured JSON errors when JSON mode is active."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI and MCP mutation parity tests prove equivalent fixture changes and equivalent no-write dry-run behavior for the same core mutation scenario."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/mutations.ts:184-267"
+      ],
+      "depends_on": [
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-011",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-019",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "IR-CLI-029",
+      "title": "Compact CLI requirement search",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1834,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI list supports deterministic ids, compact, full, and selected-fields projections, and full Markdown is omitted unless explicitly requested."
+        },
+        {
+          "id": "AC-2",
+          "text": "CLI extract or its replacement supports target, scope, status, stability, priority, missing evidence, related docs, evidence reference, trace reference, tag, type, and new-work-candidate filters."
+        },
+        {
+          "id": "AC-3",
+          "text": "CLI search matches requirement IDs, titles, requirement statements, rationale, research text, acceptance criteria, evidence references, trace links, related docs, and change notes with bounded snippets."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI discovery commands support pagination or limit parameters and report cursor or truncation information in JSON output."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI tests compare ids, compact, full, selected fields, snippets, filters, and pagination outputs without requiring raw Markdown inspection."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:66-88",
+        "src/core/query/lookup.ts:8-20"
+      ],
+      "depends_on": [
+        "FR-PARSE-019",
+        "REL-PARSE-002",
+        "IR-CLI-030"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-PARSE-019",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-005",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-006",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-030",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "IR-CLI-030",
+      "title": "Structured JSON errors for CLI reads",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1897,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI read command failures in JSON mode return valid JSON on stdout or the documented JSON output channel with ok false, error.code, error.message, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-2",
+          "text": "Missing requirement, invalid filter, unknown target, malformed option, and workspace parse failures have stable error codes and nonzero exit status."
+        },
+        {
+          "id": "AC-3",
+          "text": "Human output includes compact diagnostics for nonzero diagnostics without replacing the JSON envelope in JSON mode."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI tests cover show on a missing requirement, extract or search invalid filters, target lookup failures, and validation diagnostics under JSON mode."
+        },
+        {
+          "id": "AC-5",
+          "text": "Structured CLI errors include recommended follow-up command names when recovery is deterministic, such as list, search, active-target, validate, or init."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:90-98",
+        "src/cli/formatters.ts"
+      ],
+      "depends_on": [
+        "REL-PARSE-002"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-018",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-021",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "IR-CLI-031",
+      "title": "CLI workflow artifact read commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1958,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI commands expose workspace info, artifacts list, latest artifact, artifact resolution, plan status, plan task lookup, next plan task, pipeline status, pipeline tail, pipeline next recommendation, session status, resume hint, and worklog tail."
+        },
+        {
+          "id": "AC-2",
+          "text": "Every workflow read command returns a compact envelope with ok, value, meta, artifacts, cursor when applicable, diagnostics, and diagnosticsSummary in JSON mode."
+        },
+        {
+          "id": "AC-3",
+          "text": "Full Markdown or full JSON artifact bodies are omitted by default and require an explicit include-body or equivalent option."
+        },
+        {
+          "id": "AC-4",
+          "text": "Next-task selection follows sidecar depends_on_task DAG semantics and PM execution state precedence instead of task ID sorting."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI workflow read tests cover current artifacts, legacy artifacts, target mismatch, ambiguous artifacts, dependency cycles, blocked dependencies, invalid JSONL, and bounded tail cursors."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:1-135",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:279-325"
+      ],
+      "depends_on": [
+        "FR-NODE-020",
+        "FR-NODE-021"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-029",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "IR-CLI-032",
+      "title": "CLI next work-order command",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2020,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The CLI work-order next command returns action kinds including create-plan, execute-task, resume-session, ask-user, fix-artifact, blocked, complete, and no-action when those states are supported by available evidence."
+        },
+        {
+          "id": "AC-2",
+          "text": "The command includes target, targetSource, requirement IDs, artifact references, hashes or mtimes, nextAction, reason, blockingDiagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-3",
+          "text": "The command fails closed when pipeline state is FAILED or NEEDS_USER, workflow validators report stale_artifact or invalid_artifact, or no active target or explicit target is available."
+        },
+        {
+          "id": "AC-4",
+          "text": "The command omits raw Markdown and raw JSON bodies by default and records payload measurement fields when invoked in measurement mode."
+        },
+        {
+          "id": "AC-5",
+          "text": "Integration tests cover execute-task, create-plan, resume-session, ask-user, fix-artifact, blocked, and complete fixtures with deterministic outputs."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:1-135",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ],
+      "depends_on": [
+        "IR-CLI-029",
+        "IR-CLI-031",
+        "REL-NODE-003",
+        "REL-NODE-002"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "IR-CLI-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-002",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "IR-CLI-037",
+      "title": "CLI external Completed Work Log commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2332,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "completed-work CLI reads merge or select the authoritative Completed Work Log source according to the parser/core source-selection result and report each entry source file and line in JSON output."
+        },
+        {
+          "id": "AC-2",
+          "text": "completed-work CLI appends new rows to docs/spec/05.completed-work.md when the external log exists and appends to docs/spec/00.index.md only for legacy workspaces without the external file."
+        },
+        {
+          "id": "AC-3",
+          "text": "CLI mutation output reports which file was written, whether legacy index mode or external-log mode was used, and any duplicate-source or migration diagnostics."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI supports a migration/preview flow that shows the proposed external completed-work file and index navigation link without deleting legacy rows automatically."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI tests cover external-only, legacy-only, dual-source diagnostic, append-to-external, append-to-legacy, malformed report paths, and dry-run preview behavior."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:118-129",
+        "src/cli/commands/mutations.ts:158-182"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-PARSE-021",
+        "FR-NODE-026"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-PARSE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-026",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-020",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-024",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-035",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "IR-CLI-038",
+      "title": "CLI SRS mutation lock controls",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2395,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "All CLI commands that can mutate docs/spec, docs/rule as part of SRS mutation contracts, SRS index rollups, or SRS mutation cache files acquire the shared SRS lock before writing."
+        },
+        {
+          "id": "AC-2",
+          "text": "When the lock is active and non-stale, CLI mutations fail before editing files and print owner, operation, requestId, acquiredAt, expiresAt, and retry guidance in human output and JSON output."
+        },
+        {
+          "id": "AC-3",
+          "text": "CLI exposes --ignore-lock only on SRS mutation commands, records diagnostics when it is used, and never lets the flag bypass stale patch guards, generated-ID collision checks, table-cell safety, trace validation, or SRS validation."
+        },
+        {
+          "id": "AC-4",
+          "text": "Dry-run or preview modes report whether a lock would block the real mutation without modifying lock state or SRS files."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI tests cover active lock denial, stale lock recovery, --ignore-lock diagnostics, dry-run lock preview, and preservation of existing mutation safety failures under --ignore-lock."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/mutations.ts:68-270"
+      ],
+      "depends_on": [
+        "REL-NODE-005",
+        "FR-NODE-017"
+      ],
+      "related_req": [
+        {
+          "reference": "REL-NODE-005",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-028",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-036",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "IR-CLI-040",
+      "title": "CLI read-only legacy workflow migration preview",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2519,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The CLI exposes speckiwi workflow migrate-preview --json or an equivalent documented command that returns the FR-NODE-029 preview envelope."
+        },
+        {
+          "id": "AC-2",
+          "text": "The command reports legacy source paths, confidence, source hashes, proposed destinations, unsupported fields, data-loss risks, target drift, path drift, diagnostics, and diagnosticsSummary without raw bodies by default."
+        },
+        {
+          "id": "AC-3",
+          "text": "The command always reports written false and does not create, update, move, delete, normalize, compact, or append any workflow, pipeline, plan, session, worklog, or SRS file."
+        },
+        {
+          "id": "AC-4",
+          "text": "Any apply, write, fix, normalize, or migrate flag for this command fails with a structured unsupported_operation diagnostic unless a later migration-apply requirement exists."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI tests cover legacy-only preview, mixed current and legacy artifacts, include-body opt-in, unsupported apply flags, malformed legacy artifacts, target drift, and no-write file hash preservation."
+        }
+      ],
+      "trace_code": [
+        "src/cli/index.ts:14-20",
+        "src/cli/commands/read.ts:53-147"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-NODE-029",
+        "REL-NODE-006"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-NODE-006",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "IR-CLI-041",
+      "title": "CLI workflow read projections and work-order profiles",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2580,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI read-only projection commands include workflow doctor, workflow diff, workflow schema-check or plan validate, pipeline status, pipeline tail, and optional pipeline compact alias, all returning the compact workflow-read envelope without raw bodies by default."
+        },
+        {
+          "id": "AC-2",
+          "text": "CLI work-order exposes explain and compact context profiles through the canonical work-order next command, including decisionTrace, rejected candidates, blockers, artifact references, and source hashes or mtimes generated by the work-order engine."
+        },
+        {
+          "id": "AC-3",
+          "text": "CLI projection and profile commands fail closed on invalid artifacts, unsupported schema versions, dependency blockers, active FAILED or NEEDS_USER pipeline state, and ambiguous workspace or target state."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI tests prove projection aliases produce decisions equivalent to canonical read or work-order commands, no duplicate selector is introduced, and raw artifact bodies require explicit include-body opt-in."
+        },
+        {
+          "id": "AC-5",
+          "text": "This requirement does not define any mutating pipeline emit behavior; official JSONL append command naming belongs to the separate CLI mutation requirement that depends on FR-NODE-030."
+        }
+      ],
+      "trace_code": [
+        "src/cli/index.ts:14-20",
+        "src/cli/commands/read.ts:53-147"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "REL-NODE-006"
+      ],
+      "related_req": [
+        {
+          "reference": "IR-CLI-039",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "extends"
+        },
+        {
+          "reference": "IR-CLI-032",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-NODE-006",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "IR-CLI-042",
+      "title": "CLI workflow mutation commands and pipeline emit",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2642,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI registers workflow mutation commands for plan task check and uncheck, checklist item checked-state updates, PM task status updates, pipeline JSONL append, worklog JSONL append, and workflow repair record creation."
+        },
+        {
+          "id": "AC-2",
+          "text": "Each CLI workflow mutation command supports dry-run and returns the shared mutation envelope, including mutation.kind, workflow.runId, workflow.taskId when task-scoped, workflow.owner, journalKey computed exactly by FR-NODE-028, journalState, operations, stale guards, written, result, pendingRepair, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-3",
+          "text": "Commands reject stale plan or sidecar hashes, stale PM state, forbidden child-coder ownership, invalid task IDs, invalid JSONL records, and dependency-blocked writes before mutating display state."
+        },
+        {
+          "id": "AC-4",
+          "text": "Commands treat already-applied checkbox, checklist, task-status, and append-idempotency states as successful no-op results with mutation.written false and use canonical journal states planned, applied, confirmed, failed, and skipped_dry_run."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI pipeline emit validates event schema, resolves the canonical pipeline path, serializes one JSON object per line, enforces trailing LF, dedupes by parsed skill and run_id, supports dry-run no-write behavior, and returns the shared mutation envelope."
+        },
+        {
+          "id": "AC-6",
+          "text": "CLI tests cover dry-run no-write, already checked, stale hash, forbidden owner, worklog append failure, guarded plan write failure, final PM confirmation failure, invalid JSONL append, repair-record creation, and pipeline emit parsed-dedupe behavior."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/mutations.ts:1-270",
+        "skills/codex/_shared/kiwi/pipeline-event.md:9-63"
+      ],
+      "depends_on": [
+        "FR-NODE-030",
+        "FR-NODE-028",
+        "FR-NODE-017",
+        "IR-CLI-031",
+        "REL-NODE-003"
+      ],
+      "related_req": [
+        {
+          "reference": "IR-CLI-033",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "IR-CLI-039",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-030",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-028",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "IR-CLI-043",
+      "title": "CLI logical workflow deletion with canonical mutation dependency",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2708,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI registers workflow logical-delete commands or subcommands for supported record classes, including plan display/checklist records, PM task records, pipeline events, worklog events, and workflow repair records when those classes are implemented by core services."
+        },
+        {
+          "id": "AC-2",
+          "text": "Each CLI logical-delete command requires or records a deletion reason, supports --dry-run and --json, and returns the shared mutation envelope with mutation.kind, workflow identity, target record identity, desired effective state `deleted`, canonical journalKey, journalState, operations, stale guards, written, result, pendingRepair, diagnostics, and diagnosticsSummary."
+        },
+        {
+          "id": "AC-3",
+          "text": "CLI logical-delete commands never physically remove JSONL lines or Markdown history during normal operation; they append or write guarded tombstone/repair state according to FR-NODE-031."
+        },
+        {
+          "id": "AC-4",
+          "text": "Commands treat already-deleted records as successful no-op results with mutation.written false unless the caller explicitly requests an additional repair note."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI read commands expose a way to include or inspect deleted records while default compact workflow reads treat deleted records as inactive."
+        },
+        {
+          "id": "AC-6",
+          "text": "CLI tests cover dry-run no-write, successful logical delete, already-deleted no-op, stale hash rejection, forbidden owner, invalid JSONL rejection, non-deletable record rejection, tombstone/correction-of-tombstone rejection, status=deleted rejection, includeDeleted read inspection, and parity with MCP logical-delete behavior."
+        }
+      ],
+      "trace_code": [],
+      "depends_on": [
+        "FR-NODE-031",
+        "FR-NODE-017",
+        "REL-NODE-003"
+      ],
+      "related_req": [
+        {
+          "reference": "IR-CLI-034",
+          "relation": "supersedes"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-031",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-042",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md), [docs/research/230.md](../research/230.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "IR-CLI-044",
+      "title": "CLI Requirement ID collision repair commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2772,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "CLI registers repair requirement-id-collisions diagnose, repair requirement-id-collisions plan, and repair requirement-id-collisions apply commands or documented equivalent names with JSON output support."
+        },
+        {
+          "id": "AC-2",
+          "text": "Plan and apply require an explicit plan file or explicit occurrence mapping using duplicateId plus keep and rename occurrence identity; a duplicate ID alone is never enough to write."
+        },
+        {
+          "id": "AC-3",
+          "text": "The command surface supports dry-run previews, replacement-id or allocate-next selection, write-plan output, explicit reference-edit entries, optional base/ours/theirs provenance hints, and --ignore-lock scoped only to SRS lock bypass."
+        },
+        {
+          "id": "AC-4",
+          "text": "CLI JSON output includes the shared mutation envelope, grouped duplicate diagnostics, generated replacement ID, patch preview, ambiguity report, lock diagnostics, touched files, written state, and retry guidance."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI refuses writes when validation has no selected SRS-E002 duplicate, Git conflict markers remain, occurrence identity is stale, inbound references are ambiguous without explicit edits, generated replacement IDs collide, or non-lock safety checks would be bypassed."
+        },
+        {
+          "id": "AC-6",
+          "text": "CLI tests prove no-write dry-run behavior, same-file and cross-file repairs, explicit mapping requirements, ambiguous-reference failure, stale snapshot failure, active lock and ignore-lock behavior, idempotent rerun behavior, and fixture outputs needed for MCP parity comparisons."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/mutations.ts:1-270",
+        "src/cli/commands/read.ts:53-147"
+      ],
+      "depends_on": [
+        "FR-NODE-032",
+        "REL-PARSE-003",
+        "IR-CLI-028",
+        "IR-CLI-038",
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "FR-NODE-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-028",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-038",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-039",
+          "relation": "related_to"
+        },
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md)"
+    },
+    {
+      "id": "MIG-FLOW-003",
+      "title": "Kiwi skills migration to official workflow tools",
+      "type": "migration",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1166,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "kiwi-planner, kiwi-pm, kiwi-coder, kiwi-pipeline, kiwi-srs, and related Kiwi skills instruct agents to use official workflow artifact readers and work-order tools before raw file reads for covered flows."
+        },
+        {
+          "id": "AC-2",
+          "text": "Skill text uses official guarded workflow mutation tools before shell JSONL append snippets or direct plan checkbox edits for covered flows."
+        },
+        {
+          "id": "AC-3",
+          "text": "Fallback to raw files is documented as degraded mode and requires captured tool diagnostics, affected artifact paths, active target, and follow-up requirement or candidate ID."
+        },
+        {
+          "id": "AC-4",
+          "text": "Skill snapshot or scanner tests fail when covered flows reference unsupported SpecKiwi CLI flags, MCP fields, legacy path assumptions, or bespoke JSONL append snippets after official tooling exists."
+        },
+        {
+          "id": "AC-5",
+          "text": "Migration notes preserve the existing MCP-required SRS workflow rule and do not reintroduce CLI as a normal replacement for MCP SRS mutations."
+        }
+      ],
+      "trace_code": [
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pm/SKILL.md",
+        "skills/codex/kiwi-coder/SKILL.md"
+      ],
+      "depends_on": [
+        "REL-FLOW-002",
+        "IR-CLI-032",
+        "FR-MCP-024",
+        "FR-NODE-030"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-FLOW-012",
+          "relation": "extends"
+        },
+        {
+          "reference": "MIG-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "MIG-FLOW-002",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-FLOW-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-024",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-030",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md), [docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "MIG-FLOW-004",
+      "title": "Runtime-installed Kiwi skill mirror coverage",
+      "type": "migration",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1360,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Migration inventory identifies canonical skill source trees and runtime-installed mirrors such as .agents/skills when they exist in the active checkout."
+        },
+        {
+          "id": "AC-2",
+          "text": "Each runtime mirror is either included in migration validation or classified as generated output with a documented refresh command, source manifest, and no-manual-edit rule."
+        },
+        {
+          "id": "AC-3",
+          "text": "Shared resource references from runtime mirrors, including ../_shared/kiwi paths, are validated or explicitly blocked before claiming migration readiness."
+        },
+        {
+          "id": "AC-4",
+          "text": "Scanner tests or inspection compare canonical source files, install metadata, runtime mirror paths, and shared-resource availability so stale or broken installed skills cannot pass unnoticed."
+        },
+        {
+          "id": "AC-5",
+          "text": "Skill migration remains gated on official workflow tools being implemented and validated; until then, runtime mirrors may document degraded raw-file fallback only with captured diagnostics and follow-up requirement IDs."
+        }
+      ],
+      "trace_code": [
+        ".agents/skills/kiwi-pipeline/SKILL.md:1-40",
+        ".agents/skills/kiwi-planner/SKILL.md:1-45"
+      ],
+      "depends_on": [
+        "FR-NODE-016",
+        "IR-CLI-027",
+        "REL-FLOW-002"
+      ],
+      "related_req": [
+        {
+          "reference": "MIG-FLOW-003",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-016",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-027",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-FLOW-012",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-FLOW-002",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md), [docs/research/230plus.md](../research/230plus.md)"
+    },
+    {
+      "id": "OPS-FLOW-001",
+      "title": "10-agent MCP and CLI tool abandonment research",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "verified",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1036,
+      "stability": "stable",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The research uses ten distinct investigation axes covering CLI reads, CLI mutations, MCP reads, MCP mutations, parser/validation diagnostics, agent workflow docs/templates, tests/fixtures, core architecture/API reliability, dogfood workflow simulation, and packaging/install/MCP registration environment."
+        },
+        {
+          "id": "AC-2",
+          "text": "The report identifies tool gaps with evidence from current source, SRS, tests, command output, or sub-agent findings, and distinguishes confirmed defects from design improvements."
+        },
+        {
+          "id": "AC-3",
+          "text": "The report recommends prioritized v2.3.0 improvements for CLI, MCP, diagnostics, workflow docs, test coverage, and packaging/install reliability."
+        },
+        {
+          "id": "AC-4",
+          "text": "The report is saved as a Markdown file under docs/research and is referenced from this requirement."
+        },
+        {
+          "id": "AC-5",
+          "text": "The report proposes follow-up v2.3.0 SRS requirement seeds or implementation work packages."
+        }
+      ],
+      "trace_code": [],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "IR-CLI-023",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-015",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-014",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-FLOW-011",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "OPS-FLOW-002",
+      "title": "Merge-time SRS duplicate ID repair workflow",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1293,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Agent instructions and workflow documentation require running validate before repair and using the repair workflow only when SRS-E002 duplicate Requirement ID diagnostics exist or a named duplicate ID is confirmed in parsed diagnostics."
+        },
+        {
+          "id": "AC-2",
+          "text": "The runbook requires normal Git conflict markers to be resolved first, then diagnose and dry-run repair, explicit keep and rename occurrence selection, apply from a plan or explicit mapping, and final validate, target summary, and link-check evidence."
+        },
+        {
+          "id": "AC-3",
+          "text": "The workflow explicitly distinguishes merge-time collision repair from general renumbering, gap filling, ID beautification, bulk archive, bulk finalize, or status and stability transition workflows."
+        },
+        {
+          "id": "AC-4",
+          "text": "The workflow prohibits hand-editing Requirement IDs when an implemented and validated runtime-callable CLI or MCP repair surface from IR-CLI-044 or FR-MCP-039 exists in the active checkout; planned requirements or core-only APIs do not block a degraded minimal SRS-MD patch path, but that path requires explicit user authorization, must be limited to the selected duplicate occurrence and explicitly mapped references, and must be followed by validate, target summary, and links checks."
+        },
+        {
+          "id": "AC-5",
+          "text": "The runbook states that duplicate logical requirements must first receive unique IDs, and any discard, logical deletion, supersedes, status, stability, AC, or evidence changes must happen through separate guarded SRS mutations."
+        },
+        {
+          "id": "AC-6",
+          "text": "Release or workflow verification for this feature requires evidence that duplicate IDs are zero after repair, ambiguous references were reported or explicitly mapped, and validation, target summary, and links checks pass."
+        }
+      ],
+      "trace_code": [
+        "src/core/bootstrap/templates.ts:208-225",
+        "test/release/release-readiness.test.ts:1-80"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "REL-PARSE-003",
+        "FR-NODE-032",
+        "IR-CLI-044",
+        "FR-MCP-039",
+        "REL-FLOW-002"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-032",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-044",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-039",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-FLOW-005",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-FLOW-002",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [AGENTS.md](../../AGENTS.md), [CLAUDE.md](../../CLAUDE.md)"
+    },
+    {
+      "id": "OPS-NODE-003",
+      "title": "Package and MCP doctor smoke gates",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1653,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Package smoke tests verify package.json, package-lock.json, built metadata, CLI version output, and MCP server metadata all report the same package version."
+        },
+        {
+          "id": "AC-2",
+          "text": "Packed package tests verify bundled skill paths and entrypoint casing for Codex, Claude, OpenCode, Hermes, and local-LLM variants that the package claims to install."
+        },
+        {
+          "id": "AC-3",
+          "text": "A doctor or smoke command checks MCP startup, root resolution, tool listing, active-target read, validation read, and at least one dry-run-safe mutation path against the installed package."
+        },
+        {
+          "id": "AC-4",
+          "text": "Doctor output includes structured JSON diagnostics and recommended remediation commands when package metadata, MCP startup, or skill path checks fail."
+        },
+        {
+          "id": "AC-5",
+          "text": "Release gates fail when package smoke expectations are stale relative to package metadata or when installed MCP metadata reports a hard-coded version."
+        }
+      ],
+      "trace_code": [
+        "test/smoke/package.test.ts:57-90",
+        "src/mcp/metadata.ts:12-13",
+        "package.json:1-4"
+      ],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-CLI-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "IR-CLI-027",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-016",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "REL-FLOW-002",
+      "title": "Tool signature parity across runtime and docs",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1099,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "A signature parity check compares Commander CLI commands and options against documented appendix examples for supported tool surfaces."
+        },
+        {
+          "id": "AC-2",
+          "text": "A signature parity check compares MCP tool schemas against documented MCP examples and managed agent snippets for supported parameters."
+        },
+        {
+          "id": "AC-3",
+          "text": "Kiwi skill snippets and managed instruction templates fail tests when they reference unsupported SpecKiwi CLI flags, MCP fields, or response shapes."
+        },
+        {
+          "id": "AC-4",
+          "text": "Runtime help, MCP schema metadata, appendix examples, and skill snippets are generated from a shared registry or validated against a shared extracted registry."
+        },
+        {
+          "id": "AC-5",
+          "text": "Tests include known drift cases from the v2.3.0 research, including unsupported target creation flags, optional target defaulting claims, include-content style drift, and mutation parameter aliases."
+        }
+      ],
+      "trace_code": [
+        "src/cli/commands/read.ts:66-135",
+        "src/mcp/server.ts:36-113",
+        "src/core/bootstrap/templates.ts:213-234"
+      ],
+      "depends_on": [
+        "FR-NODE-017",
+        "IR-CLI-029",
+        "FR-MCP-021",
+        "IR-CLI-030",
+        "FR-MCP-022"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-FLOW-005",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-FLOW-009",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-ARCH-005",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-030",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md)"
+    },
+    {
+      "id": "REL-MCP-003",
+      "title": "MCP workspace root identity and safety",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1700,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "MCP exposes a workspace information tool and includes workspaceRoot, rootSource, index path, active target, package version, and diagnosticsSummary in every read and mutation result envelope, or returns a structured diagnostic when an older envelope cannot carry those fields."
+        },
+        {
+          "id": "AC-2",
+          "text": "MCP root resolution distinguishes explicit root, server process cwd discovery, auto-init root, and rejected outside-root inputs in machine-readable output."
+        },
+        {
+          "id": "AC-3",
+          "text": "Optional per-call workspace arguments, if supported, are validated inside the project boundary and fail closed outside the configured root."
+        },
+        {
+          "id": "AC-4",
+          "text": "Multi-root MCP tests prove tools do not read or mutate a sibling repository when root identity differs from the caller's intended workspace."
+        },
+        {
+          "id": "AC-5",
+          "text": "MCP docs and managed agent instructions require checking workspace identity before target-scoped reads or mutations in multi-workspace sessions, and tests prove individual tools do not silently omit workspace identity metadata."
+        }
+      ],
+      "trace_code": [
+        "src/core/project-root.ts:14-29",
+        "src/core/fs/safe-path.ts:4-19",
+        "src/mcp/tools/read-tools.ts:20-60"
+      ],
+      "depends_on": [
+        "FR-MCP-022"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "REL-MCP-002",
+          "relation": "extends"
+        },
+        {
+          "reference": "SEC-MCP-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-022",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "REL-NODE-002",
+      "title": "Agent workflow fixture corpus",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1577,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Fixtures cover MCP-first requirement discovery, MCP mutation preview, MCP mutation write, CLI fallback discovery, CLI fallback mutation, target selection, missing evidence checks, and completed-work lookup."
+        },
+        {
+          "id": "AC-2",
+          "text": "Fixtures fail when a manual SRS-MD edit occurs without a captured command or tool error, affected requirement ID, active target, and follow-up SRS candidate label."
+        },
+        {
+          "id": "AC-3",
+          "text": "Payload measurement fixtures record baselineBytes, baselineApproxTokens, compactBytes, compactApproxTokens, requiredFieldsPresent, and reductionRatio for compact official tool paths."
+        },
+        {
+          "id": "AC-4",
+          "text": "Workflow tests include both successful tool paths and degraded paths where a documented tool gap allows a manual workaround with explicit evidence."
+        },
+        {
+          "id": "AC-5",
+          "text": "The fixture corpus is tied to v2.3.0 requirements and can be run in CI without depending on an external MCP client process unless the test explicitly marks itself as MCP integration."
+        }
+      ],
+      "trace_code": [
+        "test/cli/read-commands.test.ts:27-65",
+        "test/mcp/stdio-update-stability.test.ts:21-59"
+      ],
+      "depends_on": [
+        "IR-CLI-029",
+        "FR-MCP-021",
+        "FR-NODE-017",
+        "IR-CLI-028",
+        "FR-MCP-020",
+        "FR-NODE-018",
+        "FR-NODE-019",
+        "REL-PARSE-002",
+        "REL-FLOW-002",
+        "REL-MCP-003",
+        "FR-FLOW-013"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-003",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-004",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-FLOW-012",
+          "relation": "related_to"
+        },
+        {
+          "reference": "IR-CLI-029",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-017",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-028",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-MCP-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-018",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-019",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-FLOW-002",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-MCP-003",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-FLOW-013",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-023",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-015",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-014",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-FLOW-011",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "REL-NODE-003",
+      "title": "Workflow artifact validators and hallucination guards",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1837,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Validators treat sidecar tasks as the task catalog source of truth, depends_on_task as the ordering source of truth, PM state as execution status source of truth, and worklog as append-only audit evidence."
+        },
+        {
+          "id": "AC-2",
+          "text": "Validators detect dependency cycles, blocked dependencies, PM and plan checkbox drift, PM and coder state conflict, stale plan or sidecar hashes, stale locks, invalid JSONL lines, and invalid correction chains."
+        },
+        {
+          "id": "AC-3",
+          "text": "Validators normalize task.req_ids as the canonical task-to-requirement field and report legacy task.traces req_id fields as legacy_trace_field diagnostics without letting them outrank req_ids."
+        },
+        {
+          "id": "AC-4",
+          "text": "Resume validation returns explicit outcomes such as ok, confirmed_done, repairable_drift, stale_artifact, blocked_dependency, needs_user, invalid_artifact, or resume-blocked."
+        },
+        {
+          "id": "AC-5",
+          "text": "Integration tests cover hallucination guards for wrong artifact path, wrong next task due to ID sorting, stale resume state, missing req_ids, worklog mismatch, and pipeline correction conflict."
+        }
+      ],
+      "trace_code": [
+        "skills/codex/kiwi-planner/scripts/validator.mjs:17-39",
+        "skills/codex/kiwi-planner/references/extended-workflow.md:64-102"
+      ],
+      "depends_on": [
+        "FR-NODE-020",
+        "FR-NODE-021"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "IR-CLI-031",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-MCP-023",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "REL-NODE-005",
+      "title": "SRS mutation lock core",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2343,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 8,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "The authoritative SRS mutation lock path is kiwi/.srs.lock, and kiwi/.status.json only mirrors lock state for diagnostics."
+        },
+        {
+          "id": "AC-2",
+          "text": "The lock applies only to SRS mutations that can write docs/spec, docs/rule when part of an SRS mutation contract, SRS index rollups, or SRS mutation cache files."
+        },
+        {
+          "id": "AC-3",
+          "text": "Read-only operations remain available while a non-stale SRS mutation lock is active."
+        },
+        {
+          "id": "AC-4",
+          "text": "Lock acquisition uses single-winner atomic create semantics with no check-then-create race window; lock metadata is fully written and fsync-equivalent or platform-durable before the lock is considered acquired."
+        },
+        {
+          "id": "AC-5",
+          "text": "A non-stale active lock causes SRS mutation attempts to fail fast with structured SRS_LOCKED diagnostics including owner, operation, requestId, acquiredAt, expiresAt, and retry guidance."
+        },
+        {
+          "id": "AC-6",
+          "text": "Stale locks are recovered deterministically after expiry through a compare-and-replace or equivalent guarded replacement that rejects symlink locks, outside-root paths, malformed metadata, and concurrent replacement races."
+        },
+        {
+          "id": "AC-7",
+          "text": "Explicit lock bypass records diagnostics without disabling stale patch guards, generated-ID collision checks, table-cell safety, trace validation, SRS validation, symlink checks, or inside-root checks."
+        },
+        {
+          "id": "AC-8",
+          "text": "Tests cover active lock denial, stale lock recovery, single-winner concurrent acquisition, no check-then-create race, lock metadata durability, process crash simulation, ignored-lock diagnostics, symlink and outside-root rejection, and lock state mirroring into kiwi/.status.json."
+        }
+      ],
+      "trace_code": [
+        "src/core/patch/apply-patch.ts:40-61",
+        "src/core/mutation/add-requirement.ts:237-272",
+        "src/core/mutation/add-completed-work.ts:242-298"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-NODE-027"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-027",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-002",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "REL-NODE-004",
+          "relation": "supersedes"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md), [docs/research/11.v2.3.0-tooling-code-improvement-plan.md](../research/11.v2.3.0-tooling-code-improvement-plan.md)"
+    },
+    {
+      "id": "REL-NODE-006",
+      "title": "Workflow diagnostic projection contracts",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2409,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Diagnostic projections return a compact envelope with projection kind, artifact references, source hashes or mtimes, diagnostics, diagnosticsSummary, blocking state, and optional cursor metadata when the projection is tail-like."
+        },
+        {
+          "id": "AC-2",
+          "text": "Projection outcome codes include invalid_plan_contract, unsupported_schema_version, task_state_conflict, repairable_drift, stale_artifact, blocked_dependency, invalid_artifact, deleted_record_filtered, and no_actionable_drift when applicable."
+        },
+        {
+          "id": "AC-3",
+          "text": "Projection implementations consume FR-NODE-020, FR-NODE-021, REL-NODE-003, and FR-NODE-031 outputs and do not mutate workflow, pipeline, plan, PM, coder, worklog, or SRS artifacts."
+        },
+        {
+          "id": "AC-4",
+          "text": "Pipeline compact projections apply logical-delete tombstones before normal corrections, exclude invalid, corrected, deleted, and meta records from default latest-state selection, and reject status=DELETED as invalid pipeline status."
+        },
+        {
+          "id": "AC-5",
+          "text": "Tests cover doctor aggregation, normalized diff classes, fail-closed schema-check outcomes, compact pipeline latest-state calculation, raw-body omission by default, and parity of projection decisions with the underlying validator results."
+        }
+      ],
+      "trace_code": [
+        "src/core/workflow/release-readiness.ts:145-179",
+        ".agents/skills/kiwi-planner/scripts/validator.mjs:278-620"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001",
+        "FR-NODE-020",
+        "FR-NODE-021",
+        "FR-NODE-031"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-020",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "FR-NODE-021",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-NODE-003",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-NODE-031",
+          "relation": "depends_on"
+        }
+      ],
+      "related_docs": "[docs/research/230plus.md](../research/230plus.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "REL-PARSE-002",
+      "title": "Deduplicated and line-anchored diagnostics",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1298,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "Validation output applies a deterministic dedupe key using diagnostic code, file path, line when available, requirement ID when available, and message."
+        },
+        {
+          "id": "AC-2",
+          "text": "Index diagnostics for Target Map, Scope Map, Status Summary, Requirement Type Summary, and Completed Work Log include the offending row line when the row exists."
+        },
+        {
+          "id": "AC-3",
+          "text": "Human read output reports compact diagnostics when nonzero and JSON output preserves diagnostics and diagnosticsSummary consistently."
+        },
+        {
+          "id": "AC-4",
+          "text": "Regression tests prove malformed table diagnostics are not double counted when parser diagnostics and validator diagnostics are combined."
+        },
+        {
+          "id": "AC-5",
+          "text": "Diagnostics include structured details or recommended next action data for recoverable cases such as duplicate target rows, rollup drift, missing scope documents, and malformed completed-work report paths."
+        }
+      ],
+      "trace_code": [
+        "src/core/diagnostic.ts:24-41",
+        "src/core/validator/validate-workspace.ts:6-9"
+      ],
+      "depends_on": [],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "related_to"
+        },
+        {
+          "reference": "FR-PARSE-013",
+          "relation": "extends"
+        },
+        {
+          "reference": "FR-PARSE-014",
+          "relation": "extends"
+        },
+        {
+          "reference": "OBS-FLOW-001",
+          "relation": "related_to"
+        }
+      ],
+      "related_docs": "[docs/research/09.mcp-cli-tool-abandonment-research.md](../research/09.mcp-cli-tool-abandonment-research.md), [docs/research/10.kiwi-planner-jsonl-tooling-research.md](../research/10.kiwi-planner-jsonl-tooling-research.md)"
+    },
+    {
+      "id": "REL-PARSE-003",
+      "title": "Grouped duplicate Requirement ID diagnostics for repair",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1480,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "ac_texts": [
+        {
+          "id": "AC-1",
+          "text": "SRS-E002 diagnostics group records by duplicate Requirement ID and include every occurrence with filePath, headingLine, title, target, status, stability, marker state when available, and a stable blockHash or equivalent block identity."
+        },
+        {
+          "id": "AC-2",
+          "text": "The diagnostics summary counts duplicate-ID failures deterministically without double-counting repeated aggregation while machine-readable output preserves the full occurrence list for each duplicate group."
+        },
+        {
+          "id": "AC-3",
+          "text": "Grouped duplicate-ID diagnostics include a recoverable next-action hint that identifies when a selected occurrence is required before repair planning can write anything."
+        },
+        {
+          "id": "AC-4",
+          "text": "Tests cover same-file duplicates, cross-file duplicates, discarded or draft marked duplicates, more than two occurrences for one ID, and the existing duplicate-id fixture upgraded to assert grouped diagnostic detail."
+        },
+        {
+          "id": "AC-5",
+          "text": "CLI and MCP validation JSON preserve grouped SRS-E002 details through diagnostics and diagnosticsSummary without requiring raw Markdown bodies by default."
+        }
+      ],
+      "trace_code": [
+        "src/core/validator/rules.ts:164-168",
+        "src/core/diagnostic-registry.ts:13-18",
+        "test/fixtures/workspaces/duplicate-id/docs/spec/10.product-architecture.srs.md:5-35"
+      ],
+      "depends_on": [
+        "OPS-FLOW-001"
+      ],
+      "related_req": [
+        {
+          "reference": "OPS-FLOW-001",
+          "relation": "depends_on"
+        },
+        {
+          "reference": "REL-PARSE-002",
+          "relation": "extends"
+        }
+      ],
+      "related_docs": "[docs/research/230.md](../research/230.md)"
+    }
+  ]
+}

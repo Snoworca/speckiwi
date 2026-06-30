@@ -1,0 +1,1913 @@
+{
+  "req_inventory": [
+    {
+      "id": "CON-ARCH-003",
+      "title": "Tooling artifact authority and derived-state boundaries",
+      "type": "constraint",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "ARCH",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "headingLine": 509,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-FLOW-013",
+      "title": "v2.3.0 target lifecycle completion wrapper",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1233,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-020",
+      "title": "MCP mutation parity for safe previews and notes",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1510,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-021",
+      "title": "Compact MCP requirement search tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1573,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-022",
+      "title": "Diagnostics-preserving MCP envelopes",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1637,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-023",
+      "title": "MCP workflow artifact read tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1763,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-024",
+      "title": "MCP next work-order tool",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1825,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-030",
+      "title": "MCP external Completed Work Log tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2207,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-031",
+      "title": "MCP external Completed Work Log resources",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2271,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-032",
+      "title": "MCP SRS mutation lock controls",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2335,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-034",
+      "title": "MCP read-only legacy workflow migration preview",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2463,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-035",
+      "title": "MCP workflow read projections and work-order profiles",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2526,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-MCP-037",
+      "title": "MCP workflow mutation tools and pipeline emit with valid trace",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2658,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "FR-MCP-038",
+      "title": "MCP logical workflow deletion with canonical mutation dependency",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2727,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "FR-MCP-039",
+      "title": "MCP Requirement ID collision repair tools",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 2795,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "FR-NODE-017",
+      "title": "Unified mutation envelope",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1393,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-018",
+      "title": "Index summary synchronization for mutations",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1453,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-019",
+      "title": "Granular requirement editing services",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1514,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-020",
+      "title": "Workflow artifact resolver",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1715,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-021",
+      "title": "Workflow JSONL core utilities",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1776,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-026",
+      "title": "External Completed Work Log core services",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2215,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-027",
+      "title": "Requirement ID status cache",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2278,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "FR-NODE-028",
+      "title": "Canonical workflow journal identity and repair inspection",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2472,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-029",
+      "title": "Read-only legacy workflow migration preview core",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2536,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-030",
+      "title": "Guarded workflow progress mutations with canonical journal identity",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2598,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-NODE-031",
+      "title": "Logical workflow deletion state with canonical mutation dependency",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2662,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 7,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ]
+    },
+    {
+      "id": "FR-NODE-032",
+      "title": "Merge-time Requirement ID collision repair core",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2727,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 7,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ]
+    },
+    {
+      "id": "FR-PARSE-019",
+      "title": "Normalized query fields for requirement search",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1238,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "FR-PARSE-021",
+      "title": "External Completed Work Log parsing",
+      "type": "functional",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1419,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-028",
+      "title": "CLI mutation parity for safe previews",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1772,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-029",
+      "title": "Compact CLI requirement search",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1834,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-030",
+      "title": "Structured JSON errors for CLI reads",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1897,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-031",
+      "title": "CLI workflow artifact read commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 1958,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-032",
+      "title": "CLI next work-order command",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2020,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-037",
+      "title": "CLI external Completed Work Log commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2332,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-038",
+      "title": "CLI SRS mutation lock controls",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2395,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-040",
+      "title": "CLI read-only legacy workflow migration preview",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2519,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-041",
+      "title": "CLI workflow read projections and work-order profiles",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2580,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "IR-CLI-042",
+      "title": "CLI workflow mutation commands and pipeline emit",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2642,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "IR-CLI-043",
+      "title": "CLI logical workflow deletion with canonical mutation dependency",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2708,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "IR-CLI-044",
+      "title": "CLI Requirement ID collision repair commands",
+      "type": "interface",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "CLI",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "headingLine": 2772,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "MIG-FLOW-003",
+      "title": "Kiwi skills migration to official workflow tools",
+      "type": "migration",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1166,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "MIG-FLOW-004",
+      "title": "Runtime-installed Kiwi skill mirror coverage",
+      "type": "migration",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1360,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "OPS-FLOW-001",
+      "title": "10-agent MCP and CLI tool abandonment research",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "verified",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1036,
+      "stability": "stable",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "OPS-FLOW-002",
+      "title": "Merge-time SRS duplicate ID repair workflow",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1293,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 6,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ]
+    },
+    {
+      "id": "OPS-NODE-003",
+      "title": "Package and MCP doctor smoke gates",
+      "type": "operational",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1653,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-FLOW-002",
+      "title": "Tool signature parity across runtime and docs",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "FLOW",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "headingLine": 1099,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-MCP-003",
+      "title": "MCP workspace root identity and safety",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "MCP",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "headingLine": 1700,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-NODE-002",
+      "title": "Agent workflow fixture corpus",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1577,
+      "stability": "evolving",
+      "priority": "high",
+      "risk": "medium",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-NODE-003",
+      "title": "Workflow artifact validators and hallucination guards",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 1837,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-NODE-005",
+      "title": "SRS mutation lock core",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2343,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 8,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8"
+      ]
+    },
+    {
+      "id": "REL-NODE-006",
+      "title": "Workflow diagnostic projection contracts",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "NODE",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "headingLine": 2409,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-PARSE-002",
+      "title": "Deduplicated and line-anchored diagnostics",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1298,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    },
+    {
+      "id": "REL-PARSE-003",
+      "title": "Grouped duplicate Requirement ID diagnostics for repair",
+      "type": "reliability",
+      "target": "v2.3.0",
+      "status": "planned",
+      "scope": "PARSE",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "headingLine": 1480,
+      "stability": "evolving",
+      "priority": "critical",
+      "risk": "high",
+      "ac_total": 5,
+      "ac_ids": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ]
+    }
+  ],
+  "dependency_graph": [
+    {
+      "from": "CON-ARCH-003",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "CON-ARCH-003",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "CON-ARCH-003",
+      "to": "FR-NODE-027"
+    },
+    {
+      "from": "CON-ARCH-003",
+      "to": "REL-NODE-005"
+    },
+    {
+      "from": "CON-ARCH-003",
+      "to": "REL-MCP-003"
+    },
+    {
+      "from": "FR-FLOW-013",
+      "to": "IR-CLI-023"
+    },
+    {
+      "from": "FR-FLOW-013",
+      "to": "FR-MCP-015"
+    },
+    {
+      "from": "FR-FLOW-013",
+      "to": "FR-NODE-014"
+    },
+    {
+      "from": "FR-FLOW-013",
+      "to": "FR-FLOW-011"
+    },
+    {
+      "from": "FR-MCP-020",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-MCP-021",
+      "to": "FR-PARSE-019"
+    },
+    {
+      "from": "FR-MCP-021",
+      "to": "IR-CLI-029"
+    },
+    {
+      "from": "FR-MCP-021",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-022",
+      "to": "REL-PARSE-002"
+    },
+    {
+      "from": "FR-MCP-022",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-MCP-023",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "FR-MCP-023",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "FR-MCP-023",
+      "to": "IR-CLI-031"
+    },
+    {
+      "from": "FR-MCP-023",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-024",
+      "to": "FR-MCP-021"
+    },
+    {
+      "from": "FR-MCP-024",
+      "to": "FR-MCP-023"
+    },
+    {
+      "from": "FR-MCP-024",
+      "to": "IR-CLI-032"
+    },
+    {
+      "from": "FR-MCP-024",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-MCP-024",
+      "to": "REL-MCP-003"
+    },
+    {
+      "from": "FR-MCP-030",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-MCP-030",
+      "to": "FR-PARSE-021"
+    },
+    {
+      "from": "FR-MCP-030",
+      "to": "FR-NODE-026"
+    },
+    {
+      "from": "FR-MCP-030",
+      "to": "IR-CLI-037"
+    },
+    {
+      "from": "FR-MCP-031",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-MCP-031",
+      "to": "FR-PARSE-021"
+    },
+    {
+      "from": "FR-MCP-031",
+      "to": "FR-NODE-026"
+    },
+    {
+      "from": "FR-MCP-031",
+      "to": "FR-MCP-030"
+    },
+    {
+      "from": "FR-MCP-032",
+      "to": "REL-NODE-005"
+    },
+    {
+      "from": "FR-MCP-032",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-MCP-034",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-MCP-034",
+      "to": "FR-NODE-029"
+    },
+    {
+      "from": "FR-MCP-034",
+      "to": "REL-NODE-006"
+    },
+    {
+      "from": "FR-MCP-034",
+      "to": "IR-CLI-040"
+    },
+    {
+      "from": "FR-MCP-034",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-035",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-MCP-035",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-035",
+      "to": "REL-NODE-006"
+    },
+    {
+      "from": "FR-MCP-035",
+      "to": "IR-CLI-041"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "FR-NODE-030"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "FR-NODE-028"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "IR-CLI-042"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-037",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-MCP-038",
+      "to": "FR-NODE-031"
+    },
+    {
+      "from": "FR-MCP-038",
+      "to": "IR-CLI-043"
+    },
+    {
+      "from": "FR-MCP-038",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-MCP-038",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-038",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "FR-NODE-032"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "REL-PARSE-003"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "FR-MCP-020"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "FR-MCP-032"
+    },
+    {
+      "from": "FR-MCP-039",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-018",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-018",
+      "to": "REL-PARSE-002"
+    },
+    {
+      "from": "FR-NODE-019",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-019",
+      "to": "FR-NODE-011"
+    },
+    {
+      "from": "FR-NODE-019",
+      "to": "IR-CLI-028"
+    },
+    {
+      "from": "FR-NODE-019",
+      "to": "FR-MCP-020"
+    },
+    {
+      "from": "FR-NODE-021",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "FR-NODE-021",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-026",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-026",
+      "to": "FR-PARSE-021"
+    },
+    {
+      "from": "FR-NODE-027",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-028",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-029",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-029",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "FR-NODE-029",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "FR-NODE-029",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-NODE-029",
+      "to": "REL-NODE-006"
+    },
+    {
+      "from": "FR-NODE-030",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-030",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "FR-NODE-030",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "FR-NODE-030",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-NODE-030",
+      "to": "FR-NODE-028"
+    },
+    {
+      "from": "FR-NODE-031",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "FR-NODE-031",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "FR-NODE-031",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "REL-PARSE-003"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "FR-NODE-027"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "REL-NODE-005"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "FR-NODE-032",
+      "to": "FR-NODE-019"
+    },
+    {
+      "from": "FR-PARSE-021",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "IR-CLI-028",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "IR-CLI-029",
+      "to": "FR-PARSE-019"
+    },
+    {
+      "from": "IR-CLI-029",
+      "to": "REL-PARSE-002"
+    },
+    {
+      "from": "IR-CLI-029",
+      "to": "IR-CLI-030"
+    },
+    {
+      "from": "IR-CLI-030",
+      "to": "REL-PARSE-002"
+    },
+    {
+      "from": "IR-CLI-031",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "IR-CLI-031",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "IR-CLI-032",
+      "to": "IR-CLI-029"
+    },
+    {
+      "from": "IR-CLI-032",
+      "to": "IR-CLI-031"
+    },
+    {
+      "from": "IR-CLI-032",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "IR-CLI-032",
+      "to": "REL-NODE-002"
+    },
+    {
+      "from": "IR-CLI-037",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "IR-CLI-037",
+      "to": "FR-PARSE-021"
+    },
+    {
+      "from": "IR-CLI-037",
+      "to": "FR-NODE-026"
+    },
+    {
+      "from": "IR-CLI-038",
+      "to": "REL-NODE-005"
+    },
+    {
+      "from": "IR-CLI-038",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "IR-CLI-040",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "IR-CLI-040",
+      "to": "FR-NODE-029"
+    },
+    {
+      "from": "IR-CLI-040",
+      "to": "REL-NODE-006"
+    },
+    {
+      "from": "IR-CLI-041",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "IR-CLI-041",
+      "to": "REL-NODE-006"
+    },
+    {
+      "from": "IR-CLI-042",
+      "to": "FR-NODE-030"
+    },
+    {
+      "from": "IR-CLI-042",
+      "to": "FR-NODE-028"
+    },
+    {
+      "from": "IR-CLI-042",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "IR-CLI-042",
+      "to": "IR-CLI-031"
+    },
+    {
+      "from": "IR-CLI-042",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "IR-CLI-043",
+      "to": "FR-NODE-031"
+    },
+    {
+      "from": "IR-CLI-043",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "IR-CLI-043",
+      "to": "REL-NODE-003"
+    },
+    {
+      "from": "IR-CLI-044",
+      "to": "FR-NODE-032"
+    },
+    {
+      "from": "IR-CLI-044",
+      "to": "REL-PARSE-003"
+    },
+    {
+      "from": "IR-CLI-044",
+      "to": "IR-CLI-028"
+    },
+    {
+      "from": "IR-CLI-044",
+      "to": "IR-CLI-038"
+    },
+    {
+      "from": "IR-CLI-044",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "MIG-FLOW-003",
+      "to": "REL-FLOW-002"
+    },
+    {
+      "from": "MIG-FLOW-003",
+      "to": "IR-CLI-032"
+    },
+    {
+      "from": "MIG-FLOW-003",
+      "to": "FR-MCP-024"
+    },
+    {
+      "from": "MIG-FLOW-003",
+      "to": "FR-NODE-030"
+    },
+    {
+      "from": "MIG-FLOW-004",
+      "to": "FR-NODE-016"
+    },
+    {
+      "from": "MIG-FLOW-004",
+      "to": "IR-CLI-027"
+    },
+    {
+      "from": "MIG-FLOW-004",
+      "to": "REL-FLOW-002"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "REL-PARSE-003"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "FR-NODE-032"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "IR-CLI-044"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "FR-MCP-039"
+    },
+    {
+      "from": "OPS-FLOW-002",
+      "to": "REL-FLOW-002"
+    },
+    {
+      "from": "REL-FLOW-002",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "REL-FLOW-002",
+      "to": "IR-CLI-029"
+    },
+    {
+      "from": "REL-FLOW-002",
+      "to": "FR-MCP-021"
+    },
+    {
+      "from": "REL-FLOW-002",
+      "to": "IR-CLI-030"
+    },
+    {
+      "from": "REL-FLOW-002",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "REL-MCP-003",
+      "to": "FR-MCP-022"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "IR-CLI-029"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-MCP-021"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-NODE-017"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "IR-CLI-028"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-MCP-020"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-NODE-018"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-NODE-019"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "REL-PARSE-002"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "REL-FLOW-002"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "REL-MCP-003"
+    },
+    {
+      "from": "REL-NODE-002",
+      "to": "FR-FLOW-013"
+    },
+    {
+      "from": "REL-NODE-003",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "REL-NODE-003",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "REL-NODE-005",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "REL-NODE-005",
+      "to": "FR-NODE-027"
+    },
+    {
+      "from": "REL-NODE-006",
+      "to": "OPS-FLOW-001"
+    },
+    {
+      "from": "REL-NODE-006",
+      "to": "FR-NODE-020"
+    },
+    {
+      "from": "REL-NODE-006",
+      "to": "FR-NODE-021"
+    },
+    {
+      "from": "REL-NODE-006",
+      "to": "FR-NODE-031"
+    },
+    {
+      "from": "REL-PARSE-003",
+      "to": "OPS-FLOW-001"
+    }
+  ],
+  "excluded_reqs": [
+    {
+      "req_id": "FR-MCP-025",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-026",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-027",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-028",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-029",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-033",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-MCP-036",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-NODE-022",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-NODE-023",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-NODE-024",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-NODE-025",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "FR-PARSE-020",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "IR-CLI-033",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "IR-CLI-034",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "IR-CLI-035",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "IR-CLI-036",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "IR-CLI-039",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    },
+    {
+      "req_id": "REL-NODE-004",
+      "stability": "evolving",
+      "reason": "status=discarded"
+    }
+  ],
+  "stable_or_frozen_reqs": [
+    "OPS-FLOW-001"
+  ],
+  "feasibility_hints": {
+    "note": "Derived from Phase 1 mapping; low-risk phases are sequenced behind prerequisite core contracts."
+  }
+}

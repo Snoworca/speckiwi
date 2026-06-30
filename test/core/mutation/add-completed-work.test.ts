@@ -5,6 +5,24 @@ import { addCompletedWork } from "../../../src/core/mutation/add-completed-work.
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
+async function writeExternalCompletedWorkFile(root: string): Promise<string> {
+  const externalPath = path.join(root, "docs", "spec", "05.completed-work.md");
+  await writeFile(
+    externalPath,
+    [
+      "# Completed Work",
+      "",
+      "## 1. Completed Work Log",
+      "",
+      "| Date | Target | Scope | Requirement IDs | Summary | Report Paths |",
+      "|---|---|---|---|---|---|",
+      "| 2026-05-09 | v1.0.0 | ARCH | FR-ARCH-001 | Existing external completed row. | docs/reports/existing.md |"
+    ].join("\n"),
+    "utf8"
+  );
+  return externalPath;
+}
+
 describe("add completed work mutation", () => {
   it("appends a row to an existing Completed Work Log table", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
@@ -345,5 +363,51 @@ describe("add completed work mutation", () => {
     expect(dryRun).toMatchObject({ ok: true, value: { written: false, reportPaths: ["docs/reports/report.md"] }, patch: { dryRun: true } });
     expect(write).toMatchObject({ ok: true, value: { written: true, reportPaths: ["docs/reports/report.md"] }, patch: { dryRun: false } });
     expect(write.patch?.preview).toEqual(dryRun.patch?.preview);
+  });
+
+  it("FR-NODE-026 writes new rows only to external Completed Work Log when present", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const externalPath = await writeExternalCompletedWorkFile(root);
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const srsPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
+    await writeFile(srsPath, (await readFile(srsPath, "utf8")).replace("| Status | planned |", "| Status | implemented |"), "utf8");
+    const beforeIndex = await readFile(indexPath, "utf8");
+
+    const dryRun = await addCompletedWork(await resolveProjectRoot(root), {
+      date: "2026-05-10",
+      target: "v1.0.0",
+      scope: "ARCH",
+      requirementIds: ["FR-ARCH-001"],
+      summary: "External-only completed row.",
+      reportPaths: ["docs/reports/external-only.md"],
+      dryRun: true
+    });
+
+    expect(dryRun).toMatchObject({
+      ok: true,
+      value: { written: false },
+      mutation: { filePath: "docs/spec/05.completed-work.md", dryRun: true, written: false },
+      patch: { filePath: "docs/spec/05.completed-work.md", dryRun: true }
+    });
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(beforeIndex);
+    await expect(readFile(externalPath, "utf8")).resolves.not.toContain("External-only completed row.");
+
+    const written = await addCompletedWork(await resolveProjectRoot(root), {
+      date: "2026-05-10",
+      target: "v1.0.0",
+      scope: "ARCH",
+      requirementIds: ["FR-ARCH-001"],
+      summary: "External-only completed row.",
+      reportPaths: ["docs/reports/external-only.md"]
+    });
+
+    expect(written).toMatchObject({
+      ok: true,
+      value: { written: true },
+      mutation: { filePath: "docs/spec/05.completed-work.md", dryRun: false, written: true },
+      patch: { filePath: "docs/spec/05.completed-work.md", dryRun: false }
+    });
+    await expect(readFile(indexPath, "utf8")).resolves.toBe(beforeIndex);
+    await expect(readFile(externalPath, "utf8")).resolves.toContain("| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | External-only completed row. | docs/reports/external-only.md |");
   });
 });

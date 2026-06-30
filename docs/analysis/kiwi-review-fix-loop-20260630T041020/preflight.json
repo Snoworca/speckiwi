@@ -1,0 +1,9 @@
+{
+  "run_id": "20260630T041020",
+  "mode": "self",
+  "precision": "max",
+  "scope": "current working tree",
+  "git_diff_check": "passed",
+  "srs_validate": "passed",
+  "notes": "Working tree includes earlier staged and unstaged v2.3.0 changes; review focused on current implementation deltas and high-risk new surfaces."
+}

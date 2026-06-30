@@ -1,5 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -41,6 +45,26 @@ async function runNpmPackDryRun() {
   fail("npm pack dry-run did not return output");
 }
 
+async function assertMcpServerMetadata(pkg) {
+  const root = mkdtempSync(path.join(tmpdir(), "speckiwi-version-mcp-"));
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: ["bin/speckiwi", "--root", root, "mcp"],
+    cwd: process.cwd(),
+    stderr: "pipe"
+  });
+  const client = new Client({ name: "speckiwi-version-check", version: pkg.version }, { capabilities: {} });
+  try {
+    await client.connect(transport);
+    const serverVersion = client.getServerVersion();
+    assert(serverVersion?.name === pkg.name, `MCP server name ${serverVersion?.name} does not match package.json ${pkg.name}`);
+    assert(serverVersion?.version === pkg.version, `MCP server version ${serverVersion?.version} does not match package.json ${pkg.version}`);
+  } finally {
+    await client.close().catch(() => undefined);
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 const pkg = readJson("package.json");
 const lock = readJson("package-lock.json");
 const rootLock = lock.packages?.[""];
@@ -58,6 +82,7 @@ assert(!Object.prototype.hasOwnProperty.call(lock.packages ?? {}, "node_modules/
 
 const cliVersion = run(process.execPath, ["bin/speckiwi", "--version"]);
 assert(cliVersion === pkg.version, `CLI version ${cliVersion} does not match package.json ${pkg.version}`);
+await assertMcpServerMetadata(pkg);
 
 const packOutput = await runNpmPackDryRun();
 const [pack] = JSON.parse(packOutput);

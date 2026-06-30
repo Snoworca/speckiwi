@@ -94,7 +94,7 @@ describe("FR-MCP-019 — setTargetGoal", () => {
     expect(afterStatuses).toEqual(beforeStatuses);
   });
 
-  it("(10) concurrent writes: exactly one written=true and one STALE_PATCH (SHA snapshot guard)", async () => {
+  it("(10) concurrent writes: at least one write and the other is stale or SRS-locked", async () => {
     const root = await resolveProjectRoot(await copyFixtureWorkspace("mutation-target"));
     const [a, b] = await Promise.all([
       setTargetGoal(root, { target: "v1.0.0", goal: "A" }),
@@ -102,8 +102,9 @@ describe("FR-MCP-019 — setTargetGoal", () => {
     ]);
     const writtenCount = [a, b].filter((r) => r.ok && r.value.written).length;
     const stalePatchCount = [a, b].filter((r) => !r.ok && r.error.code === "STALE_PATCH").length;
-    expect(writtenCount + stalePatchCount).toBe(2);
-    // Allow either {1 write + 1 stale} or {2 writes when the second snapshot saw the first commit and reissued}
+    const lockedCount = [a, b].filter((r) => !r.ok && r.error.code === "SRS_LOCKED").length;
+    expect(writtenCount + stalePatchCount + lockedCount).toBe(2);
+    // Allow either {1 write + 1 stale}, {1 write + 1 locked}, or {2 writes when the second snapshot saw the first commit and reissued}
     // but never 2 stale (would mean no progress) and never 0 writes overall.
     expect(writtenCount).toBeGreaterThanOrEqual(1);
   });

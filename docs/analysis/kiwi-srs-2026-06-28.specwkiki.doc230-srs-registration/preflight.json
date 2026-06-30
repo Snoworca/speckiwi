@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-06-28.specwkiki.doc230-srs-registration",
+  "mode": "live",
+  "skill": "kiwi-srs",
+  "option": "--max",
+  "mcp": true,
+  "target": "v2.3.0",
+  "halted": false
+}

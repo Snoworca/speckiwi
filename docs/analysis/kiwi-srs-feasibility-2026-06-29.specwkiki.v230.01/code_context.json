@@ -1,0 +1,39 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "modules": [
+    {
+      "path": "src/cli/commands/read.ts:53",
+      "summary": "Current read commands register validate, extract, list, show, targets, active-target, completed-work, scopes, summary, and links check."
+    },
+    {
+      "path": "src/cli/commands/mutations.ts:68",
+      "summary": "Current mutation commands register init, update-status, update-stability, append-note, target mutations, completed-work, AC, evidence, trace, and add-requirement."
+    },
+    {
+      "path": "src/mcp/server.ts:41",
+      "summary": "MCP tool schemas include required read and mutation tools, including update_stability."
+    },
+    {
+      "path": "src/core/mutation/update-stability.ts:87",
+      "summary": "updateStability implements dryRun-capable stability patching and returns written/warnings."
+    },
+    {
+      "path": "src/core/query/summary.ts:38",
+      "summary": "summarizeTarget returns counts, new work candidates, stability blockers/warnings, diagnostics summary, completed work, and target goal."
+    }
+  ],
+  "trace_validation": {
+    "active_code_trace_refs": 109,
+    "active_paths_exist": 109,
+    "active_missing_paths": 0,
+    "active_external_paths": 0,
+    "active_stale_line_ranges": 0,
+    "all_status_code_trace_refs": 145,
+    "discarded_stale_line_ranges": 2,
+    "discarded_stale_refs": [
+      "FR-MCP-025 src/mcp/tools/mutation-tools.ts:1-220",
+      "FR-MCP-036 src/mcp/tools/mutation-tools.ts:1-220"
+    ]
+  },
+  "external_module_impact": []
+}

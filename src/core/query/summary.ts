@@ -6,6 +6,8 @@ interface TargetSummaryOptions extends TargetSelectionOptions {
   diagnostics?: Diagnostic[];
 }
 
+const TARGET_SUMMARY_COMPLETED_WORK_LIMIT = 20;
+
 export function resolveActiveTarget(workspace: ParsedWorkspace): string {
   return workspace.index.activeTarget;
 }
@@ -66,6 +68,8 @@ export function summarizeTarget(workspace: ParsedWorkspace, options: TargetSumma
     if (record.status !== "discarded" && (record.stability === "draft" || record.stability === "deprecated")) stabilityBlockers.push(record.id);
     if (record.status !== "discarded" && record.stability === "volatile") stabilityWarnings.push(record.id);
   }
+  const completedWorkRows = target ? listCompletedWork(workspace, { target }) : listCompletedWork(workspace);
+  const completedWork = completedWorkRows.slice(0, TARGET_SUMMARY_COMPLETED_WORK_LIMIT);
   return {
     target,
     targetSource: selection.targetSource,
@@ -82,7 +86,14 @@ export function summarizeTarget(workspace: ParsedWorkspace, options: TargetSumma
     stabilityBlockers,
     stabilityWarnings,
     diagnosticsSummary: summarizeDiagnostics(normalized.diagnostics ?? workspace.diagnostics),
-    completedWork: target ? listCompletedWork(workspace, { target }) : listCompletedWork(workspace),
+    completedWork,
+    completedWorkPage: {
+      total: completedWorkRows.length,
+      returned: completedWork.length,
+      limit: TARGET_SUMMARY_COMPLETED_WORK_LIMIT,
+      hasMore: completedWorkRows.length > completedWork.length,
+      nextOffset: completedWorkRows.length > completedWork.length ? completedWork.length : null
+    },
     goal: target && workspace.index.targetGoals[target] ? workspace.index.targetGoals[target] : null
   };
 }

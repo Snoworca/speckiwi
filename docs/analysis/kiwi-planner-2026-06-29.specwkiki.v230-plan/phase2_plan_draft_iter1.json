@@ -1,0 +1,9 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230-plan",
+  "phase_count": 9,
+  "task_count": 27,
+  "coverage_count": 54,
+  "planned_mcp_calls": 108,
+  "plan_file": "docs/plans/2026-06-29.specwkiki.v230-plan.plan.md",
+  "sidecar_file": "docs/plans/2026-06-29.specwkiki.v230-plan.sidecar.json"
+}

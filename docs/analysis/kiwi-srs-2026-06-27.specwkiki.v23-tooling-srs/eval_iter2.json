@@ -1,0 +1,48 @@
+{
+  "iter": 2,
+  "evaluator": "srs-process-evaluator-followup",
+  "evaluated_at": "2026-06-27",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "findings": [
+    {
+      "id": "EVAL2-MEDIUM-001",
+      "finding_hash": "e7fc0bef46cdd074",
+      "severity": "MEDIUM",
+      "axis": "mcp_srsmd",
+      "req_id": "FR-NODE-018",
+      "evidence_path": "docs/analysis/kiwi-srs-2026-06-27.specwkiki.v23-tooling-srs/srs_delta.json:60",
+      "description": "SRS index rollups still require a manual workaround after add_requirement until FR-NODE-018 is implemented.",
+      "suggested_action": "Keep the workaround documented and implement FR-NODE-018 before relying on bulk SRS creation.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "srs_delta.json args/manual workaround detail",
+        "FR-NODE-018"
+      ]
+    },
+    {
+      "id": "EVAL2-LOW-001",
+      "finding_hash": "2a864c09d96e3757",
+      "severity": "LOW",
+      "axis": "trace",
+      "req_id": null,
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1496",
+      "description": "Several planned requirements included code-surface trace links as implementation surfaces rather than verification evidence.",
+      "suggested_action": "Change v2.3.0 planned code-surface links to related_to and only use implementation/evidence relations after code exists.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "trace relation normalization to related_to across v2.3.0 blocks"
+      ]
+    }
+  ],
+  "gate": "PASS_FOR_NORMAL_KIWI_SRS_ONLY",
+  "reason": "Normal kiwi-srs gate allows LOW/MEDIUM residuals, but the user goal requires all LOW and above to be resolved."
+}

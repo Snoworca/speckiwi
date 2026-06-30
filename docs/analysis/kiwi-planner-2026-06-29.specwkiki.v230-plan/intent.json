@@ -1,0 +1,20 @@
+{
+  "target_intent": "v2.3.0 tool-improvement release focused on reliable CLI, MCP, diagnostics, mutation safety, package doctor, and Kiwi workflow tooling.",
+  "user_priorities": [
+    "tool trust before non-tool expansion",
+    "MCP-first normal workflow",
+    "CLI/MCP/core parity",
+    "TDD before behavior changes",
+    "read-only workflow tools before guarded mutations"
+  ],
+  "ambiguities": [
+    "FR-FLOW-013 maps v2.3.0 wrapper to historical target-lifecycle requirements",
+    "MIG-FLOW-004 must classify runtime-installed .agents skill mirrors before editing"
+  ],
+  "non_coding_signals": [
+    "signature parity checks",
+    "skill migration inventory",
+    "release and package smoke gates",
+    "runbook updates for duplicate ID repair"
+  ]
+}

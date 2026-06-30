@@ -5,9 +5,12 @@ import { isRequirementStatus } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
 import type { RequirementRecord } from "../types.js";
+import { syncIndexRollups } from "./sync-index.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.3 — `reason` 제공 시 Change Notes row 가 동일 atomic transaction 으로 append.
@@ -19,6 +22,8 @@ export interface UpdateStatusInput {
   status: RequirementStatus;
   reason?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 /**
@@ -83,6 +88,10 @@ function buildHeadingMarkerOp(
 }
 
 export async function updateStatus(root: ProjectRoot, input: UpdateStatusInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "update_status", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => updateStatusUnlocked(root, input));
+}
+
+async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput): Promise<MutationResult> {
   if (!isRequirementStatus(input.status)) return mutationFail("USAGE", `Invalid status: ${input.status}`);
   if (input.reason !== undefined) {
     if (input.reason.length > MAX_REASON_LENGTH) {
@@ -128,6 +137,15 @@ export async function updateStatus(root: ProjectRoot, input: UpdateStatusInput):
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
   const plan = createPatchPlan(loaded.file, operations);
-  const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
-  return mutationOk({ id: input.id, status: input.status, written: applied.written });
+  const dryRun = input.dryRun ?? false;
+  const applied = await applyPatchPlan(plan, { dryRun });
+  const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
+  if (indexSync && !indexSync.ok) return indexSync;
+  return {
+    ...withMutationEnvelope(
+    mutationOk({ id: input.id, status: input.status, written: applied.written }),
+    mutationEnvelopeFromPlan("update_status", plan, dryRun, applied.written)
+    ),
+    ...(indexSync?.value ? { indexSync: indexSync.value } : {})
+  };
 }

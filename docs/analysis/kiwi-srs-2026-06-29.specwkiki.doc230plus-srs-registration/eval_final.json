@@ -1,0 +1,43 @@
+{
+  "verdict": "PASS",
+  "mode": "max",
+  "final_evaluator": {
+    "checked_requirements": 14,
+    "requirements": [
+      "REL-NODE-006",
+      "FR-NODE-028",
+      "FR-NODE-029",
+      "FR-NODE-030",
+      "FR-NODE-031",
+      "IR-CLI-040",
+      "IR-CLI-041",
+      "IR-CLI-042",
+      "IR-CLI-043",
+      "FR-MCP-034",
+      "FR-MCP-035",
+      "FR-MCP-037",
+      "FR-MCP-038",
+      "MIG-FLOW-003"
+    ],
+    "normative_depends_on_or_extends_to_discarded_predecessors": 0,
+    "duplicate_or_blank_trace_rows": 0,
+    "findings": {
+      "CRITICAL": [],
+      "HIGH": [],
+      "MEDIUM": [],
+      "LOW": []
+    }
+  },
+  "validation": {
+    "mcp_validate_spec": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "cli_validate": {
+      "command": "node bin/speckiwi validate --fail-on-warning --json",
+      "errors": 0,
+      "warnings": 0
+    },
+    "git_diff_check": "pass"
+  }
+}

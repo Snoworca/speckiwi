@@ -1,0 +1,15 @@
+{
+  "iter": 1,
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 10,
+    "MEDIUM": 2,
+    "LOW": 2
+  },
+  "top_findings": [
+    "External Completed Work Log discovery trigger was ambiguous.",
+    "MCP completed-work resources were missing from the first split.",
+    "Requirement trace links used related_to where kiwi-srs requires canonical requirement relations.",
+    "Run delta artifact was missing for this run."
+  ]
+}

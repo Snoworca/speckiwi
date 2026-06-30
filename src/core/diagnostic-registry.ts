@@ -464,6 +464,254 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Target Goal block for '{target}' defined in both 00.index.md and 90.appendix.md; appendix value wins",
     sourceRule: "FR-PARSE-018",
     since: "v2.2.2"
+  },
+  {
+    code: "SRS-W041",
+    severity: "warning",
+    title: "Completed Work Log duplicate source",
+    messageTemplate: "Completed Work Log rows exist in both 00.index.md and 05.completed-work.md",
+    sourceRule: "FR-PARSE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E050",
+    severity: "error",
+    title: "Workflow artifact path escapes workspace",
+    messageTemplate: "Workflow artifact path is outside the project root: {path}",
+    sourceRule: "FR-NODE-020",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E051",
+    severity: "error",
+    title: "Ambiguous workflow artifact",
+    messageTemplate: "Workflow artifact resolution is ambiguous",
+    sourceRule: "FR-NODE-020",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W050",
+    severity: "warning",
+    title: "Workflow artifact parse warning",
+    messageTemplate: "Workflow artifact parse warning: {path}",
+    sourceRule: "FR-NODE-020",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W051",
+    severity: "warning",
+    title: "Workflow artifact companion missing",
+    messageTemplate: "Workflow artifact companion is missing: {path}",
+    sourceRule: "FR-NODE-020",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W052",
+    severity: "warning",
+    title: "Invalid workflow JSONL line",
+    messageTemplate: "Invalid workflow JSONL line",
+    sourceRule: "FR-NODE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W053",
+    severity: "warning",
+    title: "Duplicate workflow JSONL event key",
+    messageTemplate: "Duplicate workflow JSONL event key",
+    sourceRule: "FR-NODE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W054",
+    severity: "warning",
+    title: "Invalid workflow JSONL correction chain",
+    messageTemplate: "Invalid workflow JSONL correction chain",
+    sourceRule: "FR-NODE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W055",
+    severity: "warning",
+    title: "Unsupported workflow JSONL schema version",
+    messageTemplate: "Unsupported workflow JSONL schema version",
+    sourceRule: "FR-NODE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W056",
+    severity: "warning",
+    title: "Workflow JSONL missing trailing LF",
+    messageTemplate: "Workflow JSONL file is missing trailing LF",
+    sourceRule: "FR-NODE-021",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W057",
+    severity: "warning",
+    title: "Workflow task dependency issue",
+    messageTemplate: "Workflow task dependency issue",
+    sourceRule: "IR-CLI-031",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W058",
+    severity: "warning",
+    title: "Workflow PM and coder state conflict",
+    messageTemplate: "Workflow PM and coder state conflict",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W059",
+    severity: "warning",
+    title: "Workflow artifact hash is stale",
+    messageTemplate: "Workflow artifact hash is stale",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W060",
+    severity: "warning",
+    title: "Workflow plan checkbox drift",
+    messageTemplate: "Workflow plan checkbox drift",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W061",
+    severity: "warning",
+    title: "Workflow legacy trace field",
+    messageTemplate: "Workflow legacy trace field",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W062",
+    severity: "warning",
+    title: "Workflow stale lock",
+    messageTemplate: "Workflow stale lock",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W063",
+    severity: "warning",
+    title: "Workflow worklog audit mismatch",
+    messageTemplate: "Workflow worklog audit mismatch",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W064",
+    severity: "warning",
+    title: "Workflow task missing req_ids",
+    messageTemplate: "Workflow task missing req_ids",
+    sourceRule: "REL-NODE-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E065",
+    severity: "error",
+    title: "SRS mutation lock active",
+    messageTemplate: "SRS mutation lock is active",
+    sourceRule: "REL-NODE-005",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E070",
+    severity: "error",
+    title: "Workflow mutation owner denied",
+    messageTemplate: "Workflow mutation owner is not allowed",
+    sourceRule: "FR-NODE-030",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E071",
+    severity: "error",
+    title: "Invalid workflow mutation request",
+    messageTemplate: "Invalid workflow mutation request",
+    sourceRule: "FR-NODE-030",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E072",
+    severity: "error",
+    title: "Workflow mutation idempotency mismatch",
+    messageTemplate: "Workflow mutation idempotency key is incompatible",
+    sourceRule: "FR-NODE-028",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E073",
+    severity: "error",
+    title: "Workflow logical-delete denied",
+    messageTemplate: "Workflow logical-delete request is not permitted",
+    sourceRule: "FR-NODE-031",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E074",
+    severity: "error",
+    title: "Workflow dependency blocked",
+    messageTemplate: "Workflow mutation is blocked by task dependency state",
+    sourceRule: "FR-NODE-030",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E075",
+    severity: "error",
+    title: "MCP workspace root override rejected",
+    messageTemplate: "MCP per-call workspace root override is not supported",
+    sourceRule: "REL-MCP-003",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-E076",
+    severity: "error",
+    title: "Ambiguous Requirement ID reference",
+    messageTemplate: "Ambiguous Requirement ID references require explicit edits",
+    sourceRule: "FR-NODE-032",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W065",
+    severity: "warning",
+    title: "SRS status cache fallback",
+    messageTemplate: "SRS status cache ignored",
+    sourceRule: "FR-NODE-027",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W066",
+    severity: "warning",
+    title: "SRS status cache write failed",
+    messageTemplate: "SRS status cache write failed",
+    sourceRule: "FR-NODE-027",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W067",
+    severity: "warning",
+    title: "SRS mutation lock bypassed",
+    messageTemplate: "SRS mutation lock bypassed",
+    sourceRule: "REL-NODE-005",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W068",
+    severity: "warning",
+    title: "Stale SRS mutation lock recovered",
+    messageTemplate: "Stale SRS mutation lock recovered",
+    sourceRule: "REL-NODE-005",
+    since: "v2.3.0"
+  },
+  {
+    code: "SRS-W069",
+    severity: "warning",
+    title: "Invalid workflow deleted status",
+    messageTemplate: "Workflow JSONL status=DELETED is invalid",
+    sourceRule: "FR-NODE-031",
+    since: "v2.3.0"
   }
 ];
 

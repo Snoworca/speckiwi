@@ -1,0 +1,18 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230-plan",
+  "verdict": "NEEDS_IMPROVEMENT_FIXED",
+  "source": "three max evaluators",
+  "findings_fixed": [
+    "TDD-001: split placeholder REQ-level test cases into per-AC test cases",
+    "TDD-002: red tasks now carry deterministic REQ/AC failure signatures",
+    "READY-001: removed blocking open question by assigning FR-FLOW-013 to target lifecycle phase",
+    "A-COV-INTENT-001/SCOPE-001: FR-FLOW-013 separated from Completed Work Log phase",
+    "A-COV-INTENT-002: workflow core services split into product-code modules, skill validators are migration references only",
+    "ORDER-001: REL-FLOW-002 moved before OPS-FLOW-002 and MIG-FLOW-*",
+    "BOUNDARY-001: PH-006 broad read tooling split into core/read/work-order/projection phases",
+    "VERIFY-001: each phase now points to concrete per-surface test files",
+    "GROUNDING-001: stale line ranges removed from task file anchors",
+    "NEW-FILES-001: future modules and tests moved to planned_additions; validator now passes with --check-files",
+    "NEW-TDD-DECISION-SCHEMA-001: informational tdd_decisions removed; rationale remains in evaluation notes only"
+  ]
+}

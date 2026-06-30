@@ -1,0 +1,9 @@
+{
+  "fixed_findings": ["FND-001", "FND-002", "FND-003"],
+  "changes": [
+    "Added granular edit input validation for single-line title, AC items, table section, operation kind, values object, and row value strings.",
+    "Added stale explicit reference-edit validation in requirement ID collision planning.",
+    "Added all-touched-file snapshot preflight before multi-file requirement ID collision writes.",
+    "Added regression tests for malformed granular edit inputs and stale explicit reference edits."
+  ]
+}

@@ -9,9 +9,13 @@ import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
+import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
+import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
+import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
+import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import type { McpDependencies, McpServerHandle } from "../adapter.js";
-import { resultToMcp } from "../errors.js";
+import { mcpFailure, resultToMcp } from "../errors.js";
 
 async function root(deps: McpDependencies, input: Record<string, unknown>) {
   void input;
@@ -22,14 +26,80 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
+function mutationOptions(input: Record<string, unknown>): { dryRun?: boolean; ignoreLock?: boolean } {
+  return {
+    ...(input.dryRun === true ? { dryRun: true } : {}),
+    ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+  };
+}
+
+function workflowBase(kind: WorkflowMutationKind, input: Record<string, unknown>): WorkflowMutationInput {
+  return {
+    kind,
+    owner: typeof input.owner === "string" ? input.owner : "kiwi-pm",
+    runId: String(input.runId),
+    ...(typeof input.taskId === "string" ? { taskId: input.taskId } : {}),
+    ...(typeof input.reqId === "string" ? { reqId: input.reqId } : {}),
+    ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
+    ...(typeof input.expectedSha256 === "string" ? { expectedSha256: input.expectedSha256 } : {}),
+    ...(typeof input.idempotencyKey === "string" ? { idempotencyKey: input.idempotencyKey } : {}),
+    ...(input.dryRun === true ? { dryRun: true } : {})
+  };
+}
+
+function workflowJsonEvent(input: Record<string, unknown>): Record<string, unknown> {
+  return typeof input.event === "object" && input.event !== null && !Array.isArray(input.event) ? (input.event as Record<string, unknown>) : {};
+}
+
+function occurrenceInput(value: unknown): RequirementOccurrenceIdentity | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const record = value as Partial<RequirementOccurrenceIdentity>;
+  if (typeof record.filePath !== "string" || typeof record.headingLine !== "number" || typeof record.blockHash !== "string") return null;
+  return { filePath: record.filePath, headingLine: record.headingLine, blockHash: record.blockHash };
+}
+
+function referenceEditsInput(value: unknown): Array<{ filePath: string; line: number; from: string; to: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
+    const record = item as Partial<{ filePath: string; line: number; from: string; to: string }>;
+    if (typeof record.filePath !== "string" || typeof record.line !== "number" || typeof record.from !== "string" || typeof record.to !== "string") return [];
+    return [{ filePath: record.filePath, line: record.line, from: record.from, to: record.to }];
+  });
+}
+
+function repairApplyInput(input: Record<string, unknown>): RequirementIdCollisionRepairApplyInput | null {
+  const keep = occurrenceInput(input.keep);
+  const rename = occurrenceInput(input.rename);
+  if (typeof input.duplicateId !== "string" || !keep || !rename) return null;
+  if (typeof input.replacementId !== "string" && input.allocationStrategy !== "next_available") return null;
+  return {
+    duplicateId: input.duplicateId,
+    keep,
+    rename,
+    ...(typeof input.replacementId === "string" ? { replacementId: input.replacementId } : { allocationStrategy: "next_available" as const }),
+    referenceEdits: referenceEditsInput(input.referenceEdits),
+    ...mutationOptions(input)
+  };
+}
+
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
+  server.registerTool("sync_index", async (input) =>
+    resultToMcp(
+      await syncIndexRollups(await root(deps, input), {
+        ...(typeof input.expectedSha256 === "string" ? { expectedSha256: input.expectedSha256 } : {}),
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "workspace" }
+  );
   server.registerTool("update_status", async (input) =>
     resultToMcp(
       await updateStatus(await root(deps, input), {
         id: String(input.id),
         status: input.status as never,
         ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
-        ...(input.dryRun === true ? { dryRun: true } : {})
+        ...mutationOptions(input)
       })
     ),
     { kind: "req-scoped" }
@@ -40,7 +110,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         id: String(input.id),
         stability: input.stability as never,
         ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
-        ...(input.dryRun === true ? { dryRun: true } : {})
+        ...mutationOptions(input)
       })
     ),
     { kind: "req-scoped" }
@@ -52,13 +122,58 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         section: String(input.section),
         text: String(input.text),
         ...(typeof input.mode === "string" ? { mode: input.mode as "append" | "replace" } : {}),
-        ...(input.dryRun === true ? { dryRun: true } : {})
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  server.registerTool("edit_requirement_fields", async (input) =>
+    resultToMcp(
+      await updateRequirementFields(await root(deps, input), {
+        id: String(input.id),
+        ...(typeof input.title === "string" ? { title: input.title } : {}),
+        ...(typeof input.statement === "string" ? { statement: input.statement } : {}),
+        ...(typeof input.priority === "string" ? { priority: input.priority } : {}),
+        ...(typeof input.risk === "string" ? { risk: input.risk } : {}),
+        ...(Array.isArray(input.tags) ? { tags: input.tags.map(String) } : {}),
+        ...(Array.isArray(input.relatedDocs) ? { relatedDocs: input.relatedDocs.map(String) } : {}),
+        ...(typeof input.verificationMethod === "string" ? { verificationMethod: input.verificationMethod } : {}),
+        ...(typeof input.githubIssue === "string" ? { githubIssue: input.githubIssue } : {}),
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  server.registerTool("replace_acceptance_criteria", async (input) =>
+    resultToMcp(
+      await replaceAcceptanceCriteria(await root(deps, input), {
+        id: String(input.id),
+        items: Array.isArray(input.items) ? (input.items as Array<{ text: string; checked?: boolean }>) : [],
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  server.registerTool("edit_requirement_table_rows", async (input) =>
+    resultToMcp(
+      await editRequirementTableRows(await root(deps, input), {
+        id: String(input.id),
+        section: input.section as never,
+        operations: Array.isArray(input.operations) ? (input.operations as never) : [],
+        ...mutationOptions(input)
       })
     ),
     { kind: "req-scoped" }
   );
   server.registerTool("check_acceptance_criteria", async (input) =>
-    resultToMcp(await setAcceptanceCriteriaChecked(await root(deps, input), { id: String(input.id), acIds: Array.isArray(input.acIds) ? input.acIds.map(String) : [String(input.acIds)], checked: Boolean(input.checked) })),
+    resultToMcp(
+      await setAcceptanceCriteriaChecked(await root(deps, input), {
+        id: String(input.id),
+        acIds: Array.isArray(input.acIds) ? input.acIds.map(String) : [String(input.acIds)],
+        checked: Boolean(input.checked),
+        ...mutationOptions(input)
+      })
+    ),
     { kind: "req-scoped" }
   );
   server.registerTool("add_verification_evidence", async (input) =>
@@ -67,16 +182,40 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         id: String(input.id),
         type: String(input.type),
         reference: String(input.reference),
-        ...(typeof input.covers === "string" ? { covers: input.covers } : {})
+        ...(typeof input.covers === "string" ? { covers: input.covers } : {}),
+        ...(typeof input.notes === "string" ? { notes: input.notes } : {}),
+        ...mutationOptions(input)
       })
     ),
     { kind: "req-scoped" }
   );
   server.registerTool("add_trace_link", async (input) =>
-    resultToMcp(await addTraceLink(await root(deps, input), { id: String(input.id), type: String(input.type), reference: String(input.reference), relation: String(input.relation) })),
+    resultToMcp(
+      await addTraceLink(await root(deps, input), {
+        id: String(input.id),
+        type: String(input.type),
+        reference: String(input.reference),
+        relation: String(input.relation),
+        ...(typeof input.notes === "string" ? { notes: input.notes } : {}),
+        ...mutationOptions(input)
+      })
+    ),
     { kind: "req-scoped" }
   );
-  server.registerTool("set_active_target", async (input) => resultToMcp(await setActiveTarget(await root(deps, input), { target: String(input.target), dryRun: Boolean(input.dryRun) })), { kind: "workspace" });
+  server.registerTool(
+    "set_active_target",
+    async (input) =>
+      resultToMcp(
+        await setActiveTarget(await root(deps, input), {
+          target: String(input.target),
+          create: input.create === true,
+          ...(typeof input.type === "string" ? { targetType: input.type } : {}),
+          ...(typeof input.description === "string" ? { description: input.description } : {}),
+          ...mutationOptions(input)
+        })
+      ),
+    { kind: "workspace" }
+  );
   server.registerTool(
     "set_target_goal",
     async (input) =>
@@ -84,7 +223,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         await setTargetGoal(await root(deps, input), {
           target: String(input.target),
           goal: String(input.goal),
-          ...(input.dryRun === true ? { dryRun: true } : {})
+          ...mutationOptions(input)
         })
       ),
     { kind: "workspace" }
@@ -99,7 +238,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         requirementIds: stringArray(input.requirementIds),
         reportPaths: stringArray(input.reportPaths),
         allowIncomplete: Boolean(input.allowIncomplete),
-        dryRun: Boolean(input.dryRun)
+        ...mutationOptions(input)
       })
     ),
     { kind: "log-append" }
@@ -109,7 +248,6 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       const addInput = {
         type: input.type as never,
         scope: String(input.scope),
-        target: String(input.target),
         title: String(input.title),
         statement: "",
         acceptanceCriteria: stringArray(input.acceptanceCriteria),
@@ -118,13 +256,18 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         relatedDocs: stringArray(input.relatedDocs),
         evidence: Array.isArray(input.evidence) ? (input.evidence as never) : [],
         trace: Array.isArray(input.trace) ? (input.trace as never) : [],
-        dryRun: Boolean(input.dryRun)
+        ...mutationOptions(input)
       };
       const optional = input as Record<string, unknown>;
       const statement = typeof optional.requirement === "string" ? optional.requirement : typeof optional.statement === "string" ? optional.statement : undefined;
-      if (!statement) return { ok: false, error: { code: "USAGE", message: "add_requirement requires requirement" } };
+      if (!statement) {
+        return mcpFailure("USAGE", "add_requirement requires requirement", {
+          recovery: { tool: "add_requirement", message: "Provide a requirement or statement field before retrying." }
+        });
+      }
       Object.assign(addInput, { statement });
       if (typeof optional.status === "string") Object.assign(addInput, { status: optional.status });
+      if (typeof optional.target === "string") Object.assign(addInput, { target: optional.target });
       if (typeof optional.priority === "string") Object.assign(addInput, { priority: optional.priority });
       if (typeof optional.risk === "string") Object.assign(addInput, { risk: optional.risk });
       if (typeof optional.stability === "string") Object.assign(addInput, { stability: optional.stability });
@@ -140,10 +283,106 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
   );
   server.registerTool("init_project", async (input) =>
     {
-      const initInput = { force: Boolean(input.force) };
+      const initInput = { force: Boolean(input.force), ...(input.ignoreLock === true ? { ignoreLock: true } : {}) };
       if (typeof input.target === "string") Object.assign(initInput, { target: input.target });
       if (typeof input.scope === "string") Object.assign(initInput, { scope: input.scope });
       return resultToMcp(await initProject(await root(deps, input), initInput));
+    },
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_task_check", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("plan_checkbox_check", input),
+        taskId: String(input.taskId),
+        planPath: String(input.path ?? input.planPath)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_task_uncheck", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("plan_checkbox_uncheck", input),
+        taskId: String(input.taskId),
+        planPath: String(input.path ?? input.planPath)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_checklist_set", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("plan_checklist_item_update", input),
+        taskId: String(input.taskId),
+        planPath: String(input.path ?? input.planPath),
+        checked: input.checked === true
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_task_status_set", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("pm_task_status_update", input),
+        taskId: String(input.taskId),
+        pmStatePath: String(input.pmStatePath),
+        status: String(input.status)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_pipeline_emit", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("pipeline_event_append", input),
+        jsonlPath: typeof input.path === "string" ? input.path : "kiwi/pipeline.jsonl",
+        event: workflowJsonEvent(input)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_worklog_emit", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("worklog_event_append", input),
+        jsonlPath: typeof input.path === "string" ? input.path : `.kiwi/sessions/${String(input.runId)}/worklog.jsonl`,
+        event: workflowJsonEvent(input)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_repair_record", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("workflow_repair_record", input),
+        jsonlPath: typeof input.path === "string" ? input.path : `.kiwi/sessions/${String(input.runId)}/worklog.jsonl`,
+        event: workflowJsonEvent(input)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("workflow_logical_delete", async (input) =>
+    resultToMcp(
+      await applyWorkflowMutation(await root(deps, input), {
+        ...workflowBase("workflow_logical_delete", input),
+        jsonlPath: typeof input.path === "string" ? input.path : "kiwi/pipeline.jsonl",
+        recordType: String(input.recordType),
+        recordId: String(input.recordId)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool(
+    "apply_requirement_id_collision_repair",
+    async (input) => {
+      const parsed = repairApplyInput(input);
+      if (!parsed) {
+        return mcpFailure("USAGE", "apply_requirement_id_collision_repair requires duplicateId, keep, rename, and replacementId or allocationStrategy=next_available", {
+          recovery: { tool: "diagnose_requirement_id_collisions", message: "Run diagnose first and pass exact occurrence identities to apply." }
+        });
+      }
+      return resultToMcp(await applyRequirementIdCollisionRepair(await root(deps, input), parsed));
     },
     { kind: "workspace" }
   );

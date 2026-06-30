@@ -1,0 +1,18 @@
+{
+  "name": "kiwi-srs-from-code",
+  "agent": "codex",
+  "installedAt": "2026-06-29T06:05:44.363Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-srs-from-code",
+  "installedPath": ".agents/skills/kiwi-srs-from-code",
+  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
+  "sourceChecksum": "sha256:a1f2e96a5f46d2fde01b81a0b0f7f24ad7d34e8e87fe78dc4092a7b76113e5ea",
+  "installedChecksum": "sha256:a1f2e96a5f46d2fde01b81a0b0f7f24ad7d34e8e87fe78dc4092a7b76113e5ea",
+  "sourceFileCount": 3,
+  "installedFileCount": 3,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-srs-from-code --json",
+  "noManualEdit": true
+}

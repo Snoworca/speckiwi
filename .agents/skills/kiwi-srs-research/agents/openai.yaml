@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SRS Research"
+  short_description: "Research requirement risks and evidence"
+  default_prompt: "Use $kiwi-srs-research to research evidence, risks, and alternatives for this requirement."

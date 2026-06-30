@@ -523,9 +523,13 @@ describe("todo installable SRS workflow", () => {
 
     const missing = await runCliJson(["--root", rootPath, "show", "MISSING", "--json"]);
     expect(missing.code).not.toBe(0);
-    expect(missing.stderr).toContain("Requirement not found");
-    expect(missing.stdout).toBe("");
-    expect(missing.json).toBeUndefined();
+    expect(missing.stderr).toBe("");
+    expect(missing.json).toMatchObject({
+      ok: false,
+      error: { code: "NOT_FOUND", message: expect.stringContaining("Requirement not found") },
+      diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} },
+      recovery: { command: "search" }
+    });
   });
 
   it("reads, mutates, and revalidates the generated Todo SRS through MCP tools", async () => {

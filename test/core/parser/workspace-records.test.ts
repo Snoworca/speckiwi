@@ -25,7 +25,17 @@ describe("workspace parser", () => {
     });
     expect(workspace.index.completedWork[1]?.line).toBeGreaterThan(0);
     expect(workspace.records.map((record) => record.id)).toContain("FR-ARCH-001");
-    expect(JSON.parse(JSON.stringify(workspace.records[0]))).toHaveProperty("id");
+    const record = workspace.records[0];
+    expect(record).toMatchObject({
+      id: "FR-ARCH-001",
+      priority: "high",
+      stability: "stable",
+      relatedDocs: ["docs/spec/00.index.md"],
+      evidenceReferences: [],
+      traceReferences: ["FR-ARCH-001"],
+      newWorkCandidate: true
+    });
+    expect(JSON.parse(JSON.stringify(record))).toHaveProperty("id");
   });
 
   it("parses Change Notes and ignores empty placeholder rows", async () => {
@@ -207,6 +217,86 @@ describe("workspace parser", () => {
         expect(getDiagnosticDefinition(code).code).toBe(code);
       }
     }
+  });
+
+  it("FR-NODE-003 keeps reading many SRS documents in the problem matrix fixture", async () => {
+    const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("problem-matrix")));
+
+    expect(workspace.files.map((file) => file.relativePath)).toEqual(
+      expect.arrayContaining([
+        "docs/spec/00.index.md",
+        "docs/spec/05.completed-work.md",
+        "docs/spec/10.product-architecture.srs.md",
+        "docs/spec/20.parser-validation.srs.md",
+        "docs/spec/30.cli-interface.srs.md",
+        "docs/spec/40.mcp-stdio-interface.srs.md",
+        "docs/spec/50.nodejs-implementation.srs.md",
+        "docs/spec/60.workflow-release.srs.md",
+        "docs/spec/70.unregistered-extra.srs.md",
+        "docs/spec/71.stress-targets.srs.md",
+        "docs/spec/72.stress-metadata.srs.md",
+        "docs/spec/73.stress-lifecycle.srs.md",
+        "docs/spec/74.stress-trace-evidence.srs.md",
+        "docs/spec/75.stress-table-shape.srs.md",
+        "docs/spec/76.stress-headings.srs.md",
+        "docs/spec/77.stress-duplicates.srs.md",
+        "docs/spec/78.stress-unregistered-scopes.srs.md"
+      ])
+    );
+    expect(workspace.files.filter((file) => file.relativePath.endsWith(".srs.md"))).toHaveLength(15);
+    expect(workspace.records.map((record) => record.id)).toEqual(
+      expect.arrayContaining([
+        "FR-ARCH-701",
+        "FR-ARCH-801",
+        "REL-PARSE-701",
+        "FR-PARSE-707",
+        "REL-PARSE-804",
+        "FR-CLI-702",
+        "FR-CLI-816",
+        "REL-MCP-703",
+        "FR-MCP-710",
+        "FR-MCP-807",
+        "FR-NODE-704",
+        "FR-NODE-711",
+        "FR-NODE-813",
+        "FR-FLOW-706",
+        "FR-FLOW-810",
+        "FR-FLOW-712",
+        "FR-EXTRA-708",
+        "REL-NODE-820",
+        "SEC-SEC-821",
+        "OBS-OBS-822",
+        "PERF-PERF-823"
+      ])
+    );
+    expect(workspace.records.length).toBeGreaterThanOrEqual(35);
+    expect(workspace.diagnostics.map((item) => item.code)).toEqual(expect.arrayContaining(["SRS-E001", "SRS-E018", "SRS-E019", "SRS-E020", "SRS-E021", "SRS-W016", "SRS-W017"]));
+    expect(workspace.index.completedWork.map((entry) => entry.filePath)).toEqual(expect.arrayContaining(["docs/spec/00.index.md", "docs/spec/05.completed-work.md"]));
+  });
+
+  it("keeps additional high-risk SRS fixture workspaces inspectable", async () => {
+    const metadata = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("metadata-duplicate-empty-fields")));
+    expect(metadata.records.map((record) => record.id)).toEqual(["FR-ARCH-001", "FR-ARCH-002"]);
+    expect(metadata.records.find((record) => record.id === "FR-ARCH-001")?.metadata.Target).toBe("v9.9.9");
+
+    const marker = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("marker-state-drift")));
+    expect(marker.records.map((record) => ({ id: record.id, marker: record.marker, status: record.status, stability: record.stability }))).toEqual([
+      { id: "FR-ARCH-001", marker: "DRAFT", status: "planned", stability: "draft" },
+      { id: "FR-ARCH-002", marker: "DISCARDED", status: "planned", stability: "deprecated" },
+      { id: "FR-ARCH-003", marker: undefined, status: "discarded", stability: "deprecated" }
+    ]);
+
+    const unclosedFence = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("parser-hardening-unclosed-fence")));
+    expect(unclosedFence.records.map((record) => record.id)).toEqual(["FR-ARCH-001"]);
+
+    const externalCompleted = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("completed-work-external-only-malformed")));
+    expect(externalCompleted.records.map((record) => record.id)).toEqual(["FR-ARCH-001"]);
+    expect(externalCompleted.index.completedWork).toEqual([
+      expect.objectContaining({
+        filePath: "docs/spec/05.completed-work.md",
+        reportPaths: ["../bad.md"]
+      })
+    ]);
   });
 
   it("reports FR-PARSE-012 structural diagnostics with actionable parser context", async () => {

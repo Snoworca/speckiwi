@@ -11,6 +11,8 @@ import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
+import { syncIndexRollups } from "../../core/mutation/sync-index.js";
+import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
@@ -56,6 +58,12 @@ function parseTraceOptions(rows: string[]) {
   });
 }
 
+function parseJsonArrayOption(value: string, label: string): unknown[] {
+  const parsed = JSON.parse(value) as unknown;
+  if (!Array.isArray(parsed)) throw new InvalidArgumentError(`${label} must be a JSON array`);
+  return parsed;
+}
+
 function parseDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new InvalidArgumentError("date must use YYYY-MM-DD");
   return value;
@@ -66,16 +74,33 @@ function parseRequirementIds(value?: string): string[] {
 }
 
 export function registerMutationCommands(command: Command, context: CliContext): void {
-  command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--json").action(async (options) => {
+  command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--ignore-lock").option("--json").action(async (options) => {
     const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
     const result = await initProject(root, {
       ...(typeof options.target === "string" ? { target: options.target } : {}),
       ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
-      force: Boolean(options.force)
+      force: Boolean(options.force),
+      ...(options.ignoreLock ? { ignoreLock: true } : {})
     });
     output(context, { json: options.json || command.opts().json }, result);
     if (!result.ok) command.setOptionValue("exitCode", 5);
   });
+
+  command
+    .command("sync-index")
+    .option("--expected-sha256 <sha>")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (options) => {
+      const result = await syncIndexRollups(await rootFrom(command.opts()), {
+        ...(typeof options.expectedSha256 === "string" ? { expectedSha256: options.expectedSha256 } : {}),
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   command
     .command("update-status")
@@ -83,13 +108,15 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<status>")
     .option("--reason <text>", "Append a Change Notes row with the given reason (SRS-MD-Rules v1.1.0 §30.3)")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (id, status, options) => {
       const result = await updateStatus(await rootFrom(command.opts()), {
         id,
         status,
         ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -101,13 +128,15 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<stability>")
     .option("--reason <text>", "Append a Change Notes row with the given reason")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (id, stability, options) => {
       const result = await updateStability(await rootFrom(command.opts()), {
         id,
         stability,
         ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -120,6 +149,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--text <text>", "note text (max 500 UTF-16 code units)")
     .option("--mode <mode>", "append (default) or replace")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (id, options) => {
       const result = await appendSectionNote(await rootFrom(command.opts()), {
@@ -127,29 +157,118 @@ export function registerMutationCommands(command: Command, context: CliContext):
         section: options.section,
         text: options.text,
         ...(typeof options.mode === "string" ? { mode: options.mode as "append" | "replace" } : {}),
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  command.command("set-active-target").argument("<target>").option("--dry-run").option("--json").action(async (target, options) => {
-    const result = await setActiveTarget(await rootFrom(command.opts()), { target, dryRun: Boolean(options.dryRun) });
-    output(context, { json: options.json || command.opts().json }, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
-  });
+  command
+    .command("edit-requirement")
+    .argument("<id>")
+    .option("--title <title>")
+    .option("--statement <statement>")
+    .option("--priority <priority>")
+    .option("--risk <risk>")
+    .option("--tags <csv>")
+    .option("--related-docs <csv>")
+    .option("--verification-method <method>")
+    .option("--github-issue <url>")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await updateRequirementFields(await rootFrom(command.opts()), {
+        id,
+        ...(typeof options.title === "string" ? { title: options.title } : {}),
+        ...(typeof options.statement === "string" ? { statement: options.statement } : {}),
+        ...(typeof options.priority === "string" ? { priority: options.priority } : {}),
+        ...(typeof options.risk === "string" ? { risk: options.risk } : {}),
+        ...(typeof options.tags === "string" ? { tags: options.tags.split(",").map((item: string) => item.trim()).filter(Boolean) } : {}),
+        ...(typeof options.relatedDocs === "string" ? { relatedDocs: options.relatedDocs.split(",").map((item: string) => item.trim()).filter(Boolean) } : {}),
+        ...(typeof options.verificationMethod === "string" ? { verificationMethod: options.verificationMethod } : {}),
+        ...(typeof options.githubIssue === "string" ? { githubIssue: options.githubIssue } : {}),
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("replace-acceptance-criteria")
+    .argument("<id>")
+    .requiredOption("--items <json>", "JSON array of {text, checked?}")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await replaceAcceptanceCriteria(await rootFrom(command.opts()), {
+        id,
+        items: parseJsonArrayOption(options.items, "items") as Array<{ text: string; checked?: boolean }>,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("edit-requirement-table-rows")
+    .argument("<id>")
+    .requiredOption("--section <section>", "verification_evidence or trace_links")
+    .requiredOption("--operations <json>", "JSON array of row operations")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await editRequirementTableRows(await rootFrom(command.opts()), {
+        id,
+        section: options.section,
+        operations: parseJsonArrayOption(options.operations, "operations") as never,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("set-active-target")
+    .argument("<target>")
+    .option("--create", "register the target in Target Map when missing")
+    .option("--type <type>", "target type when --create is used: version, release, or milestone")
+    .option("--description <text>", "target description when --create is used")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (target, options) => {
+      const result = await setActiveTarget(await rootFrom(command.opts()), {
+        target,
+        create: Boolean(options.create),
+        ...(typeof options.type === "string" ? { targetType: options.type } : {}),
+        ...(typeof options.description === "string" ? { description: options.description } : {}),
+        dryRun: Boolean(options.dryRun),
+        ignoreLock: Boolean(options.ignoreLock)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   command
     .command("set-target-goal")
     .argument("<target>")
     .requiredOption("--goal <text>", "goal text (max 500 UTF-16 code units)")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (target, options) => {
       const result = await setTargetGoal(await rootFrom(command.opts()), {
         target,
         goal: options.goal,
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -165,6 +284,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--report <path>", "completion report path; repeatable, stored comma-separated; forbids absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, and #", pushReportPathOption, [])
     .option("--allow-incomplete", "allow historical or incomplete Completed Work Log references")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (options) => {
       const result = await addCompletedWork(await rootFrom(command.opts()), {
@@ -175,7 +295,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
         requirementIds: parseRequirementIds(options.requirements),
         reportPaths: collect(options.report),
         allowIncomplete: Boolean(options.allowIncomplete),
-        dryRun: Boolean(options.dryRun)
+        dryRun: Boolean(options.dryRun),
+        ignoreLock: Boolean(options.ignoreLock)
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -190,31 +311,81 @@ export function registerMutationCommands(command: Command, context: CliContext):
       .argument("<id>")
       .argument("[acIds...]")
       .option("--all")
+      .option("--dry-run")
+      .option("--ignore-lock")
       .option("--json")
       .action(async (id, acIds, options) => {
-        const result = await setAcceptanceCriteriaChecked(await rootFrom(command.opts()), { id, acIds: options.all ? ["all"] : collect(acIds), checked });
+        const result = await setAcceptanceCriteriaChecked(await rootFrom(command.opts()), {
+          id,
+          acIds: options.all ? ["all"] : collect(acIds),
+          checked,
+          ...(options.dryRun ? { dryRun: true } : {}),
+          ...(options.ignoreLock ? { ignoreLock: true } : {})
+        });
         output(context, { json: options.json || command.opts().json }, result);
         if (!result.ok) command.setOptionValue("exitCode", 5);
       });
   }
 
-  command.command("add-evidence").argument("<id>").requiredOption("--type <type>").requiredOption("--reference <reference>").option("--covers <covers>").option("--notes <notes>").option("--json").action(async (id, options) => {
-    const result = await addVerificationEvidence(await rootFrom(command.opts()), { id, type: options.type, reference: options.reference, covers: options.covers, notes: options.notes });
-    output(context, { json: options.json || command.opts().json }, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
-  });
+  command
+    .command("add-evidence")
+    .argument("<id>")
+    .requiredOption("--type <type>")
+    .option("--reference <reference>")
+    .option("--ref <reference>", "alias for --reference")
+    .option("--covers <covers>")
+    .option("--notes <notes>")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const reference = options.reference ?? options.ref;
+      if (!reference) command.error("required option '--reference <reference>' not specified", { exitCode: 2 });
+      const result = await addVerificationEvidence(await rootFrom(command.opts()), {
+        id,
+        type: options.type,
+        reference,
+        covers: options.covers,
+        notes: options.notes,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
-  command.command("add-trace").argument("<id>").requiredOption("--type <type>").requiredOption("--reference <reference>").requiredOption("--relation <relation>").option("--notes <notes>").option("--json").action(async (id, options) => {
-    const result = await addTraceLink(await rootFrom(command.opts()), { id, type: options.type, reference: options.reference, relation: options.relation, notes: options.notes });
-    output(context, { json: options.json || command.opts().json }, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
-  });
+  command
+    .command("add-trace")
+    .argument("<id>")
+    .requiredOption("--type <type>")
+    .option("--reference <reference>")
+    .option("--ref <reference>", "alias for --reference")
+    .requiredOption("--relation <relation>")
+    .option("--notes <notes>")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const reference = options.reference ?? options.ref;
+      if (!reference) command.error("required option '--reference <reference>' not specified", { exitCode: 2 });
+      const result = await addTraceLink(await rootFrom(command.opts()), {
+        id,
+        type: options.type,
+        reference,
+        relation: options.relation,
+        notes: options.notes,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   command
     .command("add-requirement")
     .requiredOption("--type <type>")
     .requiredOption("--scope <scope>")
-    .requiredOption("--target <target>")
+    .option("--target <target>")
     .requiredOption("--title <title>")
     .option("--statement <statement>")
     .option("--requirement <requirement>")
@@ -235,6 +406,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--evidence <row>", "evidence as type|reference|covers|notes; repeatable", pushOption, [])
     .option("--trace <row>", "trace as type|reference|relation|notes; repeatable", pushOption, [])
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (options) => {
       const statement = options.requirement ?? options.statement;
@@ -244,7 +416,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
       const result = await addRequirement(await rootFrom(command.opts()), {
         type: options.type,
         scope: options.scope,
-        target: options.target,
+        ...(typeof options.target === "string" ? { target: options.target } : {}),
         title: options.title,
         statement,
         acceptanceCriteria: collect(options.ac),
@@ -263,7 +435,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
         changeNotes: options.changeNotes,
         evidence: parseEvidenceOptions(collect(options.evidence)),
         trace: parseTraceOptions(collect(options.trace)),
-        dryRun: Boolean(options.dryRun)
+        dryRun: Boolean(options.dryRun),
+        ignoreLock: Boolean(options.ignoreLock)
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

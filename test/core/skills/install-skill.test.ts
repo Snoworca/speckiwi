@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -34,6 +34,42 @@ async function writeInstalledSkill(root: string, name: string, body = "# old"): 
   const skillDir = path.join(root, name);
   await mkdir(skillDir, { recursive: true });
   await writeFile(path.join(skillDir, "SKILL.md"), ["---", `name: ${name}`, "description: installed", "---", "", body].join("\n"), "utf8");
+}
+
+async function writeSharedKiwiResource(root: string, source: "codex" | "claude" | "etc", relativePath: string, body = "shared\n"): Promise<void> {
+  const target = path.join(root, "skills", source, "_shared", "kiwi", relativePath);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, body, "utf8");
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  return access(target).then(() => true).catch(() => false);
+}
+
+async function listRelativeFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
+  async function walk(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolutePath);
+      } else if (entry.isFile()) {
+        files.push(path.relative(root, absolutePath).split(path.sep).join("/"));
+      }
+    }
+  }
+  await walk(root);
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
+function sharedKiwiReferences(text: string): string[] {
+  const references = new Set<string>();
+  const pattern = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  for (const match of text.matchAll(pattern)) {
+    const value = match[1]?.replace(/[),.;:'"`]+$/g, "");
+    if (value) references.add(value);
+  }
+  return [...references].sort((left, right) => left.localeCompare(right));
 }
 
 function baseOptions(root: string, overrides: Partial<SkillInstallOptions> = {}): SkillInstallOptions {
@@ -156,6 +192,149 @@ describe("skill install core", () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.value.results[0]).toMatchObject({ operation: "install", entrypointNormalized: true });
     await expect(readFile(path.join(destinationRoot, "kiwi-pm", "SKILL.md"), "utf8")).resolves.toContain("name: kiwi-pm");
+  });
+
+  it("writes reproducible provenance metadata and refreshes legacy metadata", async () => {
+    const root = await tempRoot();
+    await writeSkill(root, "codex", "kiwi-pm");
+    const installed = await installSkill(baseOptions(root, { agent: "codex", dryRun: false }));
+    expect(installed.ok).toBe(true);
+    if (!installed.ok) throw new Error(installed.error.message);
+
+    const metadataPath = path.join(root, ".agents", "skills", "kiwi-pm", ".speckiwi-skill-install.json");
+    const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as Record<string, unknown>;
+    expect(metadata).toMatchObject({
+      name: "kiwi-pm",
+      agent: "codex",
+      installMode: "generated-runtime-mirror",
+      sourceAgent: "codex",
+      sourceRoot: "skills/codex",
+      sourcePath: "skills/codex/kiwi-pm",
+      installedPath: ".agents/skills/kiwi-pm",
+      sourceRevision: "unknown",
+      sourceFileCount: 2,
+      installedFileCount: 2,
+      sharedResourceRoot: ".agents/skills/_shared/kiwi",
+      sharedResourceValidation: "not-required",
+      sharedResourceReferences: [],
+      refreshCommand: "node bin/speckiwi --root . skills install codex kiwi-pm --json",
+      noManualEdit: true
+    });
+    expect(metadata.sourceChecksum).toBe(metadata.installedChecksum);
+
+    await writeFile(metadataPath, JSON.stringify({ ...metadata, sourceRevision: "stale", sourceChecksum: "sha256:stale", installedChecksum: "sha256:stale" }, null, 2), "utf8");
+    const plannedStaleRefresh = await planSkillInstall(baseOptions(root, { agent: "codex" }));
+    expect(plannedStaleRefresh.ok).toBe(true);
+    if (!plannedStaleRefresh.ok) throw new Error(plannedStaleRefresh.error.message);
+    expect(plannedStaleRefresh.value.results[0]).toMatchObject({ operation: "update", changed: true });
+
+    await writeFile(metadataPath, JSON.stringify({ name: "kiwi-pm", agent: "codex", installedAt: "legacy" }, null, 2), "utf8");
+    const plannedRefresh = await planSkillInstall(baseOptions(root, { agent: "codex" }));
+    expect(plannedRefresh.ok).toBe(true);
+    if (!plannedRefresh.ok) throw new Error(plannedRefresh.error.message);
+    expect(plannedRefresh.value.results[0]).toMatchObject({ operation: "update", changed: true });
+
+    const refreshed = await installSkill(baseOptions(root, { agent: "codex", dryRun: false }));
+    expect(refreshed.ok).toBe(true);
+    const refreshedMetadata = JSON.parse(await readFile(metadataPath, "utf8")) as Record<string, unknown>;
+    expect(refreshedMetadata.noManualEdit).toBe(true);
+    expect(refreshedMetadata.sourceChecksum).toBe(refreshedMetadata.installedChecksum);
+  });
+
+  it("validates shared Kiwi resource references and records them in mirror metadata", async () => {
+    const root = await tempRoot();
+    const body = "Read `../_shared/kiwi/auto-option.md` before auto mode.";
+    await writeSkill(root, "codex", "kiwi-pm", { body });
+
+    const missing = await planSkillInstall(baseOptions(root, { agent: "codex" }));
+    expect(missing.ok).toBe(false);
+    if (missing.ok) throw new Error("expected missing shared resource error");
+    expect(missing.error.code).toBe("SKILL_INSTALL_INVALID_SOURCE");
+    expect(missing.error.message).toContain("_shared/kiwi/auto-option.md");
+
+    await writeSharedKiwiResource(root, "codex", "auto-option.md");
+    const installed = await installSkill(baseOptions(root, { agent: "codex", dryRun: false }));
+    expect(installed.ok).toBe(true);
+    if (!installed.ok) throw new Error(installed.error.message);
+
+    const metadata = JSON.parse(await readFile(path.join(root, ".agents", "skills", "kiwi-pm", ".speckiwi-skill-install.json"), "utf8")) as Record<string, unknown>;
+    expect(metadata).toMatchObject({
+      installMode: "generated-runtime-mirror",
+      sharedResourceRoot: ".agents/skills/_shared/kiwi",
+      sharedResourceValidation: "source-references-validated",
+      sharedResourceReferences: ["_shared/kiwi/auto-option.md"],
+      noManualEdit: true
+    });
+  });
+
+  it("classifies scoped runtime Kiwi mirrors as generated outputs with valid shared resources", async () => {
+    const repoRoot = process.cwd();
+    const skillNames = ["kiwi-planner", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
+    for (const name of skillNames) {
+      const sourceDir = path.join(repoRoot, "skills", "codex", name);
+      const mirrorDir = path.join(repoRoot, ".agents", "skills", name);
+      const metadataPath = path.join(mirrorDir, ".speckiwi-skill-install.json");
+      const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as Record<string, unknown>;
+
+      expect(metadata).toMatchObject({
+        name,
+        agent: "codex",
+        installMode: "generated-runtime-mirror",
+        sourceAgent: "codex",
+        sourceRoot: "skills/codex",
+        sourcePath: `skills/codex/${name}`,
+        installedPath: `.agents/skills/${name}`,
+        sharedResourceRoot: ".agents/skills/_shared/kiwi",
+        sharedResourceValidation: "source-references-validated",
+        refreshCommand: `node bin/speckiwi --root . skills install codex ${name} --json`,
+        noManualEdit: true
+      });
+      expect(metadata.sharedResourceReferences).toEqual(expect.arrayContaining(["_shared/kiwi/pipeline-event.md"]));
+
+      const sourceFiles = await listRelativeFiles(sourceDir);
+      const mirrorFiles = (await listRelativeFiles(mirrorDir)).filter((file) => file !== ".speckiwi-skill-install.json");
+      expect(mirrorFiles).toEqual(sourceFiles);
+      for (const file of sourceFiles) {
+        await expect(readFile(path.join(mirrorDir, file), "utf8")).resolves.toBe(await readFile(path.join(sourceDir, file), "utf8"));
+      }
+
+      for (const file of mirrorFiles.filter((item) => item.endsWith(".md"))) {
+        const text = await readFile(path.join(mirrorDir, file), "utf8");
+        for (const reference of sharedKiwiReferences(text)) {
+          const resolved = path.resolve(path.dirname(path.join(mirrorDir, file)), reference);
+          expect(path.relative(path.join(repoRoot, ".agents", "skills", "_shared", "kiwi"), resolved).startsWith("..")).toBe(false);
+          expect(await pathExists(resolved)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("keeps scoped Kiwi skills on official workflow tools before degraded raw-file fallback", async () => {
+    const repoRoot = process.cwd();
+    const skillNames = ["kiwi-planner", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
+    const roots = ["skills/codex", ".agents/skills"];
+    for (const root of roots) {
+      for (const name of skillNames) {
+        const skillDir = path.join(repoRoot, root, name);
+        const files = (await listRelativeFiles(skillDir)).filter((file) => file.endsWith(".md"));
+        const text = (await Promise.all(files.map((file) => readFile(path.join(skillDir, file), "utf8")))).join("\n");
+
+        expect(text).toContain("Official Workflow Tool Policy");
+        expect(text).toContain("get_next_work_order");
+        expect(text).toContain("workflow_pipeline_emit");
+        expect(text).toContain("degraded mode");
+        expect(text).toContain("capturing tool diagnostics");
+        expect(text).toContain("affected artifact paths");
+        expect(text).toContain("active target");
+        expect(text).toContain("follow-up requirement or candidate ID");
+        expect(text).not.toContain("includeContent");
+
+        const officialIndex = text.indexOf("workflow_pipeline_emit");
+        const rawPipelineIndex = text.indexOf("./kiwi/pipeline.jsonl");
+        expect(officialIndex).toBeGreaterThanOrEqual(0);
+        if (rawPipelineIndex >= 0) expect(officialIndex).toBeLessThan(rawPipelineIndex);
+      }
+    }
   });
 
   it("rejects unsafe names, non-skill destination conflicts, and source symlinks without partial install", async () => {

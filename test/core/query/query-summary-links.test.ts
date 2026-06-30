@@ -67,6 +67,67 @@ describe("query services", () => {
     });
   });
 
+  it("FR-PARSE-019 filters by normalized query fields without raw Markdown scans", async () => {
+    const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
+    const base = workspace.records[0]!;
+    const records: RequirementRecord[] = [
+      {
+        ...base,
+        id: "FR-ARCH-010",
+        status: "planned",
+        stability: "stable",
+        priority: "high",
+        metadata: { ...base.metadata, Related: "ignored", Priority: "high", Stability: "stable" },
+        relatedDocs: ["docs/research/alpha.md", "docs/spec/00.index.md"],
+        verificationEvidence: [{ id: "VE-1", type: "test", reference: "test/a.test.ts", covers: "AC-1", notes: "" }],
+        evidenceReferences: ["test/a.test.ts", "npm test"],
+        traceLinks: [{ type: "Code", reference: "src/core/query/filter.ts", relation: "implements", notes: "" }],
+        traceReferences: ["src/core/query/filter.ts"],
+        newWorkCandidate: true
+      },
+      {
+        ...base,
+        id: "FR-ARCH-011",
+        status: "planned",
+        stability: "draft",
+        priority: "low",
+        metadata: { ...base.metadata, Priority: "low", Stability: "draft" },
+        relatedDocs: ["docs/research/beta.md"],
+        verificationEvidence: [],
+        evidenceReferences: [],
+        traceLinks: [{ type: "Requirement", reference: "FR-ARCH-010", relation: "depends_on", notes: "" }],
+        traceReferences: ["FR-ARCH-010"],
+        newWorkCandidate: false
+      },
+      {
+        ...base,
+        id: "FR-ARCH-012",
+        status: "blocked",
+        stability: "deprecated",
+        priority: "medium",
+        metadata: { ...base.metadata, Priority: "medium", Stability: "deprecated" },
+        relatedDocs: ["docs/research/beta.md"],
+        verificationEvidence: [{ id: "VE-1", type: "test", reference: "test/c.test.ts", covers: "AC-1", notes: "" }],
+        evidenceReferences: ["test/c.test.ts"],
+        traceLinks: [],
+        traceReferences: [],
+        newWorkCandidate: false
+      }
+    ];
+    const expanded = withRecords(workspace, records);
+
+    expect(listRequirements(expanded, { stability: "draft" }).map((record) => record.id)).toEqual(["FR-ARCH-011"]);
+    expect(listRequirements(expanded, { priority: "high" }).map((record) => record.id)).toEqual(["FR-ARCH-010"]);
+    expect(listRequirements(expanded, { missingEvidence: true }).map((record) => record.id)).toEqual(["FR-ARCH-011"]);
+    expect(listRequirements(expanded, { relatedDoc: "docs/research/alpha.md" }).map((record) => record.id)).toEqual(["FR-ARCH-010"]);
+    expect(listRequirements(expanded, { relatedDoc: "../research/beta.md" }).map((record) => record.id)).toEqual(["FR-ARCH-011", "FR-ARCH-012"]);
+    expect(listRequirements(expanded, { evidenceReference: "test/a.test.ts" }).map((record) => record.id)).toEqual(["FR-ARCH-010"]);
+    expect(listRequirements(expanded, { traceReference: "src/core/query/filter.ts" }).map((record) => record.id)).toEqual(["FR-ARCH-010"]);
+    expect(listRequirements(expanded, { traceReference: "FR-ARCH-010" }).map((record) => record.id)).toEqual(["FR-ARCH-011"]);
+    expect(listRequirements(expanded, { newWorkCandidate: true }).map((record) => record.id)).toEqual(["FR-ARCH-010"]);
+    expect(listRequirements(expanded, { newWorkCandidate: false }).map((record) => record.id)).toEqual(["FR-ARCH-011", "FR-ARCH-012"]);
+  });
+
   it("checks local links and requirement references without network calls", async () => {
     const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
     const result = await checkLinks(workspace);

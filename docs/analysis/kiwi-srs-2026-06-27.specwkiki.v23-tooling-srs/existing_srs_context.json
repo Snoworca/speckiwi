@@ -1,0 +1,38 @@
+{
+  "candidate_matches": [
+    {
+      "id": "OPS-FLOW-001",
+      "relation_hint": "research-anchor",
+      "similarity_score": 1.0
+    },
+    {
+      "id": "IR-CLI-023",
+      "relation_hint": "dependency",
+      "similarity_score": 0.82
+    },
+    {
+      "id": "FR-MCP-015",
+      "relation_hint": "dependency",
+      "similarity_score": 0.82
+    },
+    {
+      "id": "FR-NODE-014",
+      "relation_hint": "dependency",
+      "similarity_score": 0.8
+    },
+    {
+      "id": "FR-FLOW-011",
+      "relation_hint": "dependency",
+      "similarity_score": 0.78
+    }
+  ],
+  "relevant_scopes": [
+    "PARSE",
+    "CLI",
+    "MCP",
+    "NODE",
+    "FLOW"
+  ],
+  "no_match_reason": null,
+  "conclusion": "The research does not supersede existing target/defaulting requirements; it adds tool-improvement requirements that depend on or extend them."
+}

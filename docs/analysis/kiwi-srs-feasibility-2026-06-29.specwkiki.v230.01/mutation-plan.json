@@ -1,0 +1,37 @@
+{
+  "run_id": "2026-06-29.specwkiki.v230.01",
+  "mode": "live",
+  "plan": [
+    {
+      "req_id": "OPS-FLOW-001",
+      "current_stability": "evolving",
+      "proposed_stability": "stable",
+      "feasibility": "high",
+      "score": 92,
+      "has_verification": true,
+      "requires_user_confirm": true,
+      "reason": "Feasibility=high (score 92). Verified research requirement has all AC checked and evidence rows VE-1..VE-3. Run: 2026-06-29.specwkiki.v230.01",
+      "dryrun_guard_verdict": {
+        "ok": true,
+        "written": false,
+        "warnings": []
+      },
+      "user_decision": "approved by three-committee review",
+      "applied": true,
+      "live_result": {
+        "ok": true,
+        "written": true,
+        "warnings": []
+      }
+    }
+  ],
+  "summary": {
+    "evaluated": 54,
+    "auto_apply": 0,
+    "user_confirm_required": 0,
+    "user_confirm_approved": 1,
+    "no_op": 53,
+    "guard_blocked": 0,
+    "system_failed": 0
+  }
+}

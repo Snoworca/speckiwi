@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { diagnostic } from "../diagnostic.js";
 import { parseReportPathCell } from "../completed-work/report-paths.js";
 import {
@@ -25,16 +26,6 @@ function splitCsv(value: string): string[] {
     .filter(Boolean);
 }
 
-function duplicateValues(values: string[]): string[] {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  for (const value of values.map((item) => item.trim()).filter(Boolean)) {
-    if (seen.has(value)) duplicates.add(value);
-    seen.add(value);
-  }
-  return [...duplicates];
-}
-
 function normalizeScopeDocument(document: string): string {
   const withoutAnchor = document.trim().replace(/#.*$/, "").replace(/\\/g, "/");
   if (!withoutAnchor) return "";
@@ -50,15 +41,180 @@ function countBy(values: string[]): Map<string, number> {
   return counts;
 }
 
-function compareSummaryCounts(expected: Map<string, number>, actual: Map<string, number>): string[] {
-  const drifted = new Set<string>();
-  for (const [key, count] of expected) {
-    if ((actual.get(key) ?? 0) !== count) drifted.add(key);
+interface DuplicateRequirementOccurrence {
+  filePath: string;
+  headingLine: number;
+  title: string;
+  target: string;
+  status: string;
+  stability?: string;
+  marker?: "DISCARDED" | "DRAFT";
+  markerState?: "DISCARDED" | "DRAFT";
+  blockHash: string;
+}
+
+interface DuplicateRequirementDiagnosticDetails {
+  duplicateId: string;
+  occurrences: DuplicateRequirementOccurrence[];
+  nextAction: {
+    kind: "select-duplicate-occurrence";
+    requiresSelectedOccurrence: true;
+    message: string;
+  };
+}
+
+// @req REL-PARSE-003
+function compareRecordLocation(left: RequirementRecord, right: RequirementRecord): number {
+  const fileOrder = left.filePath.localeCompare(right.filePath);
+  if (fileOrder !== 0) return fileOrder;
+  return left.headingLine - right.headingLine;
+}
+
+// @req REL-PARSE-003
+function blockHashFor(record: RequirementRecord): string {
+  const source = record.markdown ?? `${record.id}\n${record.filePath}\n${record.headingLine}\n${record.title}`;
+  return createHash("sha256").update(source).digest("hex");
+}
+
+// @req REL-PARSE-003
+function duplicateRequirementDetails(duplicateId: string, records: RequirementRecord[]): DuplicateRequirementDiagnosticDetails {
+  const occurrences = records.map((record) => {
+    const occurrence: DuplicateRequirementOccurrence = {
+      filePath: record.filePath,
+      headingLine: record.headingLine,
+      title: record.title,
+      target: record.target,
+      status: record.status,
+      blockHash: blockHashFor(record)
+    };
+    if (record.stability) occurrence.stability = record.stability;
+    if (record.marker) {
+      occurrence.marker = record.marker;
+      occurrence.markerState = record.marker;
+    }
+    return occurrence;
+  });
+  return {
+    duplicateId,
+    occurrences,
+    nextAction: {
+      kind: "select-duplicate-occurrence",
+      requiresSelectedOccurrence: true,
+      message: "Select one duplicate occurrence before repair planning can modify SRS Markdown."
+    }
+  };
+}
+
+interface DiagnosticNextAction {
+  recommendedTool: string;
+  message: string;
+}
+
+interface IndexedRowOccurrence {
+  value: string;
+  line?: number;
+}
+
+interface SummaryDrift {
+  key: string;
+  expectedCount: number;
+  actualCount: number;
+  line?: number;
+}
+
+// @req REL-PARSE-002
+function nextAction(recommendedTool: string, message: string): DiagnosticNextAction {
+  return { recommendedTool, message };
+}
+
+// @req REL-PARSE-002
+function location(filePath: string, line?: number): { filePath: string; line?: number } {
+  return {
+    filePath,
+    ...(typeof line === "number" ? { line } : {})
+  };
+}
+
+// @req REL-PARSE-002
+function duplicateRowDetails(kind: string, field: "target" | "prefix", value: string, occurrences: IndexedRowOccurrence[]): Record<string, unknown> {
+  return {
+    kind,
+    [field]: value,
+    occurrences,
+    nextAction: nextAction("edit-index-row", `Resolve the duplicate ${field} row before continuing validation repair.`)
+  };
+}
+
+// @req REL-PARSE-002
+function rollupDriftDetails(summary: string, drift: SummaryDrift): Record<string, unknown> {
+  return {
+    kind: "rollup-drift",
+    summary,
+    key: drift.key,
+    expectedCount: drift.expectedCount,
+    actualCount: drift.actualCount,
+    nextAction: nextAction("update-index-rollup", `Recalculate the ${summary} row for ${drift.key}.`)
+  };
+}
+
+// @req REL-PARSE-002
+function missingScopeDocumentDetails(scopeDocument: string, scope: string): Record<string, unknown> {
+  return {
+    kind: "missing-scope-document",
+    document: scopeDocument,
+    scope,
+    nextAction: nextAction("create-scope-document-or-fix-scope-map", "Create the missing SRS file or correct the Scope Map document path.")
+  };
+}
+
+// @req REL-PARSE-002
+function malformedReportPathDetails(token: string, reason: string): Record<string, unknown> {
+  return {
+    kind: "malformed-completed-work-report-path",
+    token,
+    reason,
+    nextAction: nextAction("fix-completed-work-report-path", "Replace the malformed Completed Work Log report path with a repository-relative POSIX path.")
+  };
+}
+
+// @req FR-PARSE-021
+function duplicateCompletedWorkSourceDetails(sources: string[]): Record<string, unknown> {
+  return {
+    kind: "duplicate-completed-work-source",
+    sources,
+    nextAction: nextAction("migrate-completed-work-log", "Keep Completed Work Log rows in one source before continuing.")
+  };
+}
+
+// @req FR-PARSE-021
+function uniqueCompletedWorkSources(entries: Array<{ filePath?: string }>): string[] {
+  return [...new Set(entries.map((entry) => entry.filePath ?? "docs/spec/00.index.md"))].sort();
+}
+
+// @req REL-PARSE-002
+function summaryDrifts<T extends { count: number; line?: number }>(entries: T[], actual: Map<string, number>, keyFor: (entry: T) => string): SummaryDrift[] {
+  const expectedKeys = new Set<string>();
+  const drifts: SummaryDrift[] = [];
+  for (const entry of entries) {
+    const key = keyFor(entry).trim();
+    if (!key) continue;
+    expectedKeys.add(key);
+    const actualCount = actual.get(key) ?? 0;
+    if (actualCount !== entry.count) {
+      drifts.push({
+        key,
+        expectedCount: entry.count,
+        actualCount,
+        ...(typeof entry.line === "number" ? { line: entry.line } : {})
+      });
+    }
   }
-  for (const [key, count] of actual) {
-    if ((expected.get(key) ?? 0) !== count) drifted.add(key);
+  for (const [key, actualCount] of actual) {
+    if (!expectedKeys.has(key)) {
+      drifts.push({ key, expectedCount: 0, actualCount });
+    }
   }
-  return [...drifted];
+  return drifts;
 }
 
 function isKnownStabilityValue(value: string): boolean {
@@ -105,22 +261,78 @@ export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
 export function registerDefaultRules(): void {
   registerValidationRule((workspace) => {
     const diagnostics: Diagnostic[] = [...workspace.diagnostics];
-    const seen = new Map<string, RequirementRecord>();
     const targets = new Set(workspace.index.targets.map((target) => target.target));
     const scopes = new Set(workspace.index.scopes.flatMap((scope) => [scope.prefix, scope.scope]).filter(Boolean));
     const ids = new Set(workspace.records.map((record) => record.id));
     const recordsById = new Map(workspace.records.map((record) => [record.id, record]));
     const explicitActiveTarget = (workspace.index.metadata["Active Target"] ?? "").trim();
     const indexLocation = { filePath: "docs/spec/00.index.md" };
+    const recordsByRequirementId = new Map<string, RequirementRecord[]>();
 
-    for (const target of duplicateValues(workspace.index.targets.map((entry) => entry.target))) {
-      diagnostics.push(diagnostic("SRS-E022", "error", `Duplicate Target Map target: ${target}`, indexLocation));
+    for (const record of workspace.records) {
+      const records = recordsByRequirementId.get(record.id);
+      if (records) records.push(record);
+      else recordsByRequirementId.set(record.id, [record]);
     }
-    for (const prefix of duplicateValues(workspace.index.scopes.map((entry) => entry.prefix))) {
-      diagnostics.push(diagnostic("SRS-E023", "error", `Duplicate Scope Map prefix: ${prefix}`, indexLocation));
+
+    const targetRows = new Map<string, IndexedRowOccurrence[]>();
+    for (const entry of workspace.index.targets) {
+      const target = entry.target.trim();
+      if (!target) continue;
+      const rows = targetRows.get(target) ?? [];
+      rows.push({ value: target, ...(typeof entry.line === "number" ? { line: entry.line } : {}) });
+      targetRows.set(target, rows);
     }
-    if (workspace.index.targets.filter((target) => target.status === "active").length > 1) {
-      diagnostics.push(diagnostic("SRS-E024", "error", "Multiple Target Map rows are marked active", indexLocation));
+    for (const [target, rows] of targetRows) {
+      if (rows.length <= 1) continue;
+      const diagnosticLine = rows.at(-1)?.line;
+      diagnostics.push(
+        diagnostic(
+          "SRS-E022",
+          "error",
+          `Duplicate Target Map target: ${target}`,
+          location("docs/spec/00.index.md", diagnosticLine),
+          duplicateRowDetails("duplicate-target-row", "target", target, rows)
+        )
+      );
+    }
+
+    const scopeRows = new Map<string, IndexedRowOccurrence[]>();
+    for (const entry of workspace.index.scopes) {
+      const prefix = entry.prefix.trim();
+      if (!prefix) continue;
+      const rows = scopeRows.get(prefix) ?? [];
+      rows.push({ value: prefix, ...(typeof entry.line === "number" ? { line: entry.line } : {}) });
+      scopeRows.set(prefix, rows);
+    }
+    for (const [prefix, rows] of scopeRows) {
+      if (rows.length <= 1) continue;
+      const diagnosticLine = rows.at(-1)?.line;
+      diagnostics.push(
+        diagnostic(
+          "SRS-E023",
+          "error",
+          `Duplicate Scope Map prefix: ${prefix}`,
+          location("docs/spec/00.index.md", diagnosticLine),
+          duplicateRowDetails("duplicate-scope-row", "prefix", prefix, rows)
+        )
+      );
+    }
+    const activeTargets = workspace.index.targets.filter((target) => target.status === "active");
+    if (activeTargets.length > 1) {
+      diagnostics.push(
+        diagnostic(
+          "SRS-E024",
+          "error",
+          "Multiple Target Map rows are marked active",
+          location("docs/spec/00.index.md", activeTargets.at(-1)?.line),
+          {
+            kind: "multiple-active-target-rows",
+            occurrences: activeTargets.map((target) => ({ value: target.target, ...(typeof target.line === "number" ? { line: target.line } : {}) })),
+            nextAction: nextAction("edit-index-row", "Keep exactly one active target row in the Target Map.")
+          }
+        )
+      );
     }
 
     const discoveredScopeDocuments = new Set(workspace.files.map((file) => file.relativePath).filter((filePath) => filePath.endsWith(".srs.md")));
@@ -128,7 +340,15 @@ export function registerDefaultRules(): void {
     for (const scope of workspace.index.scopes) {
       const document = normalizeScopeDocument(scope.document);
       if (document && !discoveredScopeDocuments.has(document)) {
-        diagnostics.push(diagnostic("SRS-E025", "error", `Scope document file is missing: ${scope.document}`, indexLocation));
+        diagnostics.push(
+          diagnostic(
+            "SRS-E025",
+            "error",
+            `Scope document file is missing: ${scope.document}`,
+            location("docs/spec/00.index.md", scope.line),
+            missingScopeDocumentDetails(document, scope.scope || scope.prefix)
+          )
+        );
       }
     }
     for (const filePath of discoveredScopeDocuments) {
@@ -138,17 +358,31 @@ export function registerDefaultRules(): void {
     }
 
     if (workspace.index.statusSummary) {
-      const expected = new Map(workspace.index.statusSummary.filter((entry) => entry.status.trim()).map((entry) => [entry.status.trim(), entry.count]));
       const actual = countBy(workspace.records.map((record) => record.status));
-      for (const status of compareSummaryCounts(expected, actual)) {
-        diagnostics.push(diagnostic("SRS-W019", "warning", `Status Summary count drift for ${status}`, indexLocation));
+      for (const drift of summaryDrifts(workspace.index.statusSummary, actual, (entry) => entry.status)) {
+        diagnostics.push(
+          diagnostic(
+            "SRS-W019",
+            "warning",
+            `Status Summary count drift for ${drift.key}`,
+            location("docs/spec/00.index.md", drift.line),
+            rollupDriftDetails("Status Summary", drift)
+          )
+        );
       }
     }
     if (workspace.index.requirementTypeSummary) {
-      const expected = new Map(workspace.index.requirementTypeSummary.filter((entry) => entry.type.trim()).map((entry) => [entry.type.trim(), entry.count]));
       const actual = countBy(workspace.records.map((record) => record.type));
-      for (const type of compareSummaryCounts(expected, actual)) {
-        diagnostics.push(diagnostic("SRS-W020", "warning", `Requirement Type Summary count drift for ${type}`, indexLocation));
+      for (const drift of summaryDrifts(workspace.index.requirementTypeSummary, actual, (entry) => entry.type)) {
+        diagnostics.push(
+          diagnostic(
+            "SRS-W020",
+            "warning",
+            `Requirement Type Summary count drift for ${drift.key}`,
+            location("docs/spec/00.index.md", drift.line),
+            rollupDriftDetails("Requirement Type Summary", drift)
+          )
+        );
       }
     }
 
@@ -161,13 +395,22 @@ export function registerDefaultRules(): void {
       }
     }
 
-    for (const record of workspace.records) {
-      const existing = seen.get(record.id);
-      if (existing) {
-        diagnostics.push(diagnostic("SRS-E002", "error", `Duplicate requirement ID: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
-      }
-      seen.set(record.id, record);
+    for (const [duplicateId, records] of [...recordsByRequirementId.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+      if (records.length <= 1) continue;
+      const occurrences = [...records].sort(compareRecordLocation);
+      const primary = occurrences[0]!;
+      diagnostics.push(
+        diagnostic(
+          "SRS-E002",
+          "error",
+          `Duplicate requirement ID: ${duplicateId}`,
+          { filePath: primary.filePath, line: primary.headingLine, requirementId: duplicateId },
+          duplicateRequirementDetails(duplicateId, occurrences)
+        )
+      );
+    }
 
+    for (const record of workspace.records) {
       for (const field of ["Type", "Target", "Status"]) {
         if (!record.metadata[field]) {
           diagnostics.push(diagnostic("SRS-E003", "error", `Missing required metadata field: ${field}`, { filePath: record.filePath, line: record.headingLine }));
@@ -232,32 +475,53 @@ export function registerDefaultRules(): void {
     }
     for (const scope of workspace.index.scopes) {
       if (!scope.document) {
-        diagnostics.push(diagnostic("SRS-E016", "error", `Scope document is missing for ${scope.prefix || scope.scope}`, { filePath: "docs/spec/00.index.md" }));
+        diagnostics.push(diagnostic("SRS-E016", "error", `Scope document is missing for ${scope.prefix || scope.scope}`, location("docs/spec/00.index.md", scope.line)));
       }
     }
+    const completedWorkSources = uniqueCompletedWorkSources(workspace.index.completedWork);
+    if (completedWorkSources.includes("docs/spec/00.index.md") && completedWorkSources.includes("docs/spec/05.completed-work.md")) {
+      const externalEntry = workspace.index.completedWork.find((entry) => entry.filePath === "docs/spec/05.completed-work.md");
+      diagnostics.push(
+        diagnostic(
+          "SRS-W041",
+          "warning",
+          "Completed Work Log rows exist in both 00.index.md and 05.completed-work.md",
+          location("docs/spec/05.completed-work.md", externalEntry?.line),
+          duplicateCompletedWorkSourceDetails(completedWorkSources)
+        )
+      );
+    }
     for (const entry of workspace.index.completedWork) {
-      const location = { filePath: "docs/spec/00.index.md", ...(typeof entry.line === "number" ? { line: entry.line } : {}) };
+      const entryLocation = location(entry.filePath ?? "docs/spec/00.index.md", entry.line);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
-        diagnostics.push(diagnostic("SRS-W011", "warning", `Completed Work Log date is not YYYY-MM-DD: ${entry.date}`, location));
+        diagnostics.push(diagnostic("SRS-W011", "warning", `Completed Work Log date is not YYYY-MM-DD: ${entry.date}`, entryLocation));
       }
       if (entry.target.trim() && !targets.has(entry.target.trim())) {
-        diagnostics.push(diagnostic("SRS-W012", "warning", `Completed Work Log target is not registered: ${entry.target}`, location));
+        diagnostics.push(diagnostic("SRS-W012", "warning", `Completed Work Log target is not registered: ${entry.target}`, entryLocation));
       }
       for (const scope of splitCsv(entry.scope)) {
         if (!scopes.has(scope)) {
-          diagnostics.push(diagnostic("SRS-W013", "warning", `Completed Work Log scope is not registered: ${scope}`, location));
+          diagnostics.push(diagnostic("SRS-W013", "warning", `Completed Work Log scope is not registered: ${scope}`, entryLocation));
         }
       }
       for (const id of entry.requirementIds) {
         const record = recordsById.get(id);
         if (!record) {
-          diagnostics.push(diagnostic("SRS-W014", "warning", `Completed Work Log requirement does not exist: ${id}`, location));
+          diagnostics.push(diagnostic("SRS-W014", "warning", `Completed Work Log requirement does not exist: ${id}`, entryLocation));
         } else if (record.status !== "implemented" && record.status !== "verified") {
-          diagnostics.push(diagnostic("SRS-W015", "warning", `Completed Work Log requirement is not completed: ${id}`, location));
+          diagnostics.push(diagnostic("SRS-W015", "warning", `Completed Work Log requirement is not completed: ${id}`, entryLocation));
         }
       }
       for (const issue of parseReportPathCell(entry.reportPathsCell ?? entry.reportPaths.join(", ")).issues) {
-        diagnostics.push(diagnostic("SRS-W024", "warning", `Completed Work Log report path is malformed: ${issue.token || issue.reason}`, location));
+        diagnostics.push(
+          diagnostic(
+            "SRS-W024",
+            "warning",
+            `Completed Work Log report path is malformed: ${issue.token || issue.reason}`,
+            entryLocation,
+            malformedReportPathDetails(issue.token ?? "", issue.reason)
+          )
+        );
       }
     }
     return diagnostics;

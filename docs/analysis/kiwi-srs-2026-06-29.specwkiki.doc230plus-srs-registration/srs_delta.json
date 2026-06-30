@@ -1,0 +1,54 @@
+{
+  "active_added_or_retained": [
+    "REL-NODE-006",
+    "FR-NODE-028",
+    "FR-NODE-029",
+    "FR-NODE-030",
+    "FR-NODE-031",
+    "IR-CLI-040",
+    "IR-CLI-041",
+    "IR-CLI-042",
+    "IR-CLI-043",
+    "FR-MCP-034",
+    "FR-MCP-035",
+    "FR-MCP-037",
+    "FR-MCP-038",
+    "MIG-FLOW-003"
+  ],
+  "discarded_as_superseded": [
+    "FR-NODE-022",
+    "FR-NODE-023",
+    "IR-CLI-033",
+    "IR-CLI-034",
+    "IR-CLI-039",
+    "FR-MCP-025",
+    "FR-MCP-026",
+    "FR-MCP-033",
+    "FR-MCP-036"
+  ],
+  "updated_files": [
+    "docs/spec/00.index.md",
+    "docs/spec/30.cli-interface.srs.md",
+    "docs/spec/40.mcp-stdio-interface.srs.md",
+    "docs/spec/50.nodejs-implementation.srs.md",
+    "docs/spec/60.workflow-release.srs.md"
+  ],
+  "index_rollup": {
+    "countsByStatus": {
+      "planned": 46,
+      "discarded": 18,
+      "verified": 1
+    },
+    "countsByType": {
+      "functional": 38,
+      "reliability": 8,
+      "interface": 16,
+      "operational": 2,
+      "migration": 1
+    },
+    "countsByStability": {
+      "evolving": 65
+    },
+    "total": 65
+  }
+}

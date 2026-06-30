@@ -132,7 +132,7 @@ speckiwi mcp
 speckiwi --root /path/to/project mcp
 ```
 
-Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, section note 추가, target goal 설정, completed work 기록을 MCP 도구로 수행합니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
+Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, section note 추가, target goal 설정, completed work 기록을 MCP 도구로 수행합니다. 대표 도구에는 `list_requirements`, `add_verification_evidence`, `add_trace_link`, `check_acceptance_criteria`가 포함됩니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
 
 ## 6. Kiwi Skill 종류
 
@@ -150,7 +150,7 @@ Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance 
 | `kiwi-commit-auto-pr` | Git 변경사항을 commit/push한 뒤 GitHub PR 생성 또는 갱신과 PR evidence 연결까지 진행합니다. |
 | `kiwi-hot-fix` | 긴급 버그나 production issue를 TDD, 회귀 검증, 사후 SRS sync로 빠르게 처리합니다. |
 | `kiwi-review-fix-loop` | 로컬 변경 또는 PR 코멘트를 review/fix/re-review 루프로 정리하고 선택적으로 REQ verified 전이를 수행합니다. |
-| `kiwi-pipeline` | `.kiwi/pipeline.jsonl` 이벤트를 읽어 다음 Kiwi skill 단계를 추천하거나 자동 진행합니다. |
+| `kiwi-pipeline` | `kiwi/pipeline.jsonl` 이벤트를 읽어 다음 Kiwi skill 단계를 추천하거나 자동 진행합니다. |
 
 같은 skill set은 에이전트별 source tree로 배포됩니다.
 
@@ -254,6 +254,7 @@ speckiwi completed-work --target v0.1.0 --order latest
 ```sh
 speckiwi update-status FR-APP-001 implemented --reason "AC 충족, 회귀 통과"
 speckiwi update-stability FR-APP-001 stable --reason "인터페이스 확정"
+speckiwi add-evidence FR-APP-001 --type command --reference "npm test" --covers all --notes "회귀 통과"
 speckiwi append-note FR-APP-001 --section rationale --text "결정 배경 기록"
 speckiwi set-target-goal v0.1.0 --goal "첫 사용 가능 릴리스"
 speckiwi set-active-target v0.2.0
@@ -294,6 +295,12 @@ npm test
 npm run test:coverage
 npm run test:integration
 npm run release:check
+```
+
+릴리스 baseline tag 예시:
+
+```sh
+git tag srs-v1.0.0-baseline
 ```
 
 패키지는 다음 주요 항목을 배포합니다.
@@ -455,7 +462,7 @@ You can also pass an explicit root.
 speckiwi --root /path/to/project mcp
 ```
 
-Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, section notes, target goals, and completed work logging. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
+Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, section notes, target goals, and completed work logging. Representative tools include `list_requirements`, `add_verification_evidence`, `add_trace_link`, and `check_acceptance_criteria`. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
 
 ## 6. Kiwi Skill Types
 
@@ -473,7 +480,7 @@ Kiwi skills use MCP tools for requirement reads, status changes, stability chang
 | `kiwi-commit-auto-pr` | Commit and push Git changes, then create or update a GitHub PR with PR evidence links. |
 | `kiwi-hot-fix` | Handle urgent bugs or production issues with TDD, regression checks, and post-fix SRS sync. |
 | `kiwi-review-fix-loop` | Run review/fix/re-review over local changes or PR comments and optionally verify REQs. |
-| `kiwi-pipeline` | Read `.kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
+| `kiwi-pipeline` | Read `kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
 
 The same skill set is distributed through agent-specific source trees.
 
@@ -577,6 +584,7 @@ Change requirement status and stability (MCP is the normal path; the CLI mutatio
 ```sh
 speckiwi update-status FR-APP-001 implemented --reason "AC met, regression passed"
 speckiwi update-stability FR-APP-001 stable --reason "interface finalized"
+speckiwi add-evidence FR-APP-001 --type command --reference "npm test" --covers all --notes "regression passed"
 speckiwi append-note FR-APP-001 --section rationale --text "record decision background"
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
 speckiwi set-active-target v0.2.0
@@ -617,6 +625,12 @@ npm test
 npm run test:coverage
 npm run test:integration
 npm run release:check
+```
+
+Release baseline tag example:
+
+```sh
+git tag srs-v1.0.0-baseline
 ```
 
 The package distributes these main artifacts.

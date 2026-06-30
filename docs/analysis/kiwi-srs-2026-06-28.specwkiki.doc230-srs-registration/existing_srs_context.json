@@ -1,0 +1,29 @@
+{
+  "candidate_matches": [
+    {
+      "candidate": "CAND-KIWI-WORKFLOW-LOGICAL-DELETE",
+      "canonical_ids": ["FR-NODE-023", "IR-CLI-034", "FR-MCP-026"],
+      "relation_hint": "already_promoted"
+    },
+    {
+      "candidate": "CAND-NODE-EXTERNAL-COMPLETED-WORK-LOG",
+      "canonical_ids": ["FR-PARSE-021", "FR-NODE-026", "IR-CLI-037", "FR-MCP-030", "FR-MCP-031"],
+      "discarded_first_wave_ids": ["FR-PARSE-020", "FR-NODE-024", "IR-CLI-035", "FR-MCP-027", "FR-MCP-029"],
+      "relation_hint": "promoted_this_run"
+    },
+    {
+      "candidate": "CAND-NODE-REQ-ID-STATUS-CACHE",
+      "canonical_ids": ["FR-NODE-027"],
+      "discarded_first_wave_ids": ["FR-NODE-025"],
+      "relation_hint": "promoted_this_run"
+    },
+    {
+      "candidate": "CAND-NODE-SRS-MUTATION-LOCK",
+      "canonical_ids": ["REL-NODE-005", "IR-CLI-038", "FR-MCP-032"],
+      "discarded_first_wave_ids": ["REL-NODE-004", "IR-CLI-036", "FR-MCP-028"],
+      "relation_hint": "promoted_this_run"
+    }
+  ],
+  "relevant_scopes": ["PARSE", "NODE", "CLI", "MCP"],
+  "no_match_reason": null
+}

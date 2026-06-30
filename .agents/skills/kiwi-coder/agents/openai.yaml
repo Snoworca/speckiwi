@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Coder"
+  short_description: "Implement plan-contract tasks with TDD"
+  default_prompt: "Use $kiwi-coder to implement the selected plan-contract task with TDD."

@@ -268,7 +268,7 @@ prefix 규칙:
 | Last Updated | {YYYY-MM-DD} |
 | Product | {project_slug} <!-- 확장(선택) --> |
 | Product Version | {version} <!-- 확장(선택) --> |
-| Rules | [SRS-MD Authoring Rules v1.0.0](../rule/SRS-MD-Rules-v1.0.0.md) <!-- 확장(선택) --> |
+| Rules | SRS-MD Authoring Rules v1.0.0 (`docs/rule/SRS-MD-Rules-v1.0.0.md`) <!-- 확장(선택) --> |
 
 ## 1. Scope Overview
 

@@ -1,0 +1,122 @@
+{
+  "iter": 1,
+  "actions": [
+    {
+      "action": "add_requirement",
+      "result_id": "IR-CLI-033",
+      "reason": "Complete CLI surface for CAND-KIWI-WORKFLOW-MUTATION.",
+      "evaluator": "improvement-agent-iter1",
+      "resolves": [
+        {
+          "id": "EVAL1-HIGH-002",
+          "finding_hash": "8ae7c3083fcda541",
+          "severity": "HIGH",
+          "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+          "status": "resolved",
+          "resolution": "Complete CLI surface for CAND-KIWI-WORKFLOW-MUTATION."
+        },
+        {
+          "id": "EVAL1-MEDIUM-003",
+          "finding_hash": "1ec7b24c5a1cafa3",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+          "status": "resolved",
+          "resolution": "Complete CLI surface for CAND-KIWI-WORKFLOW-MUTATION."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "IR-CLI-033",
+      "resolution": "Complete CLI surface for CAND-KIWI-WORKFLOW-MUTATION.",
+      "args": {
+        "req_ids": [
+          "IR-CLI-033"
+        ]
+      }
+    },
+    {
+      "action": "add_requirement",
+      "result_id": "FR-MCP-025",
+      "reason": "Complete MCP surface for CAND-KIWI-WORKFLOW-MUTATION.",
+      "evaluator": "improvement-agent-iter1",
+      "resolves": [
+        {
+          "id": "EVAL1-HIGH-002",
+          "finding_hash": "8ae7c3083fcda541",
+          "severity": "HIGH",
+          "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+          "status": "resolved",
+          "resolution": "Complete MCP surface for CAND-KIWI-WORKFLOW-MUTATION."
+        },
+        {
+          "id": "EVAL1-MEDIUM-003",
+          "finding_hash": "1ec7b24c5a1cafa3",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+          "status": "resolved",
+          "resolution": "Complete MCP surface for CAND-KIWI-WORKFLOW-MUTATION."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "FR-MCP-025",
+      "resolution": "Complete MCP surface for CAND-KIWI-WORKFLOW-MUTATION.",
+      "args": {
+        "req_ids": [
+          "FR-MCP-025"
+        ]
+      }
+    },
+    {
+      "action": "manual_rollup_repair",
+      "file": "docs/spec/00.index.md",
+      "reason": "Repair SRS-W019/SRS-W020 after add_requirement until FR-NODE-018 is implemented.",
+      "evaluator": "improvement-agent-iter1",
+      "resolves": [
+        {
+          "id": "EVAL1-MEDIUM-002",
+          "finding_hash": "b1c68120868fa0c9",
+          "severity": "MEDIUM",
+          "evidence_path": "docs/spec/00.index.md:90",
+          "status": "resolved",
+          "resolution": "Repair SRS-W019/SRS-W020 after add_requirement until FR-NODE-018 is implemented."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/spec/00.index.md",
+      "resolution": "Repair SRS-W019/SRS-W020 after add_requirement until FR-NODE-018 is implemented.",
+      "args": {
+        "files": [
+          "docs/spec/00.index.md"
+        ]
+      }
+    },
+    {
+      "action": "research_registry_mapping",
+      "files": [
+        "docs/research/09.mcp-cli-tool-abandonment-research.md",
+        "docs/research/10.kiwi-planner-jsonl-tooling-research.md"
+      ],
+      "reason": "Replace pending bridge metadata with canonical Requirement IDs.",
+      "evaluator": "improvement-agent-iter1",
+      "resolves": [
+        {
+          "id": "EVAL1-HIGH-001",
+          "finding_hash": "260f9d8008d5f8a2",
+          "severity": "HIGH",
+          "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md:346",
+          "status": "resolved",
+          "resolution": "Replace pending bridge metadata with canonical Requirement IDs."
+        }
+      ],
+      "status": "applied",
+      "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md",
+      "resolution": "Replace pending bridge metadata with canonical Requirement IDs.",
+      "args": {
+        "files": [
+          "docs/research/09.mcp-cli-tool-abandonment-research.md",
+          "docs/research/10.kiwi-planner-jsonl-tooling-research.md"
+        ]
+      }
+    }
+  ],
+  "evaluator": "improvement-agent-iter1"
+}

@@ -1,0 +1,119 @@
+{
+  "iter": 1,
+  "evaluator": "srs-alignment-evaluator-initial",
+  "evaluated_at": "2026-06-27",
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 2,
+    "MEDIUM": 3,
+    "LOW": 1
+  },
+  "findings": [
+    {
+      "id": "EVAL1-HIGH-001",
+      "finding_hash": "260f9d8008d5f8a2",
+      "severity": "HIGH",
+      "axis": "delta",
+      "req_id": null,
+      "evidence_path": "docs/research/09.mcp-cli-tool-abandonment-research.md:346",
+      "description": "Research candidate registries still showed pending canonical IDs after SRS requirements had been created.",
+      "suggested_action": "Update research registries to map each CAND label to canonical Requirement IDs.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "docs/research/09.mcp-cli-tool-abandonment-research.md",
+        "docs/research/10.kiwi-planner-jsonl-tooling-research.md"
+      ]
+    },
+    {
+      "id": "EVAL1-HIGH-002",
+      "finding_hash": "8ae7c3083fcda541",
+      "severity": "HIGH",
+      "axis": "scope",
+      "req_id": "CAND-KIWI-WORKFLOW-MUTATION",
+      "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+      "description": "Doc10 workflow mutation candidate covered NODE, CLI, and MCP but only the NODE core requirement existed.",
+      "suggested_action": "Add CLI and MCP requirements or narrow the research candidate scope.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ]
+    },
+    {
+      "id": "EVAL1-MEDIUM-001",
+      "finding_hash": "c3a51c1ed925cb88",
+      "severity": "MEDIUM",
+      "axis": "internal_coherence",
+      "req_id": "FR-NODE-022",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1908",
+      "description": "Workflow mutation AC text used an open-ended companion-operations phrase without adapter requirements to bound CLI and MCP behavior.",
+      "suggested_action": "Constrain adapter-specific surfaces through CLI and MCP requirements.",
+      "vague_terms": [
+        "any required task-progress companion operations"
+      ],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ]
+    },
+    {
+      "id": "EVAL1-MEDIUM-002",
+      "finding_hash": "b1c68120868fa0c9",
+      "severity": "MEDIUM",
+      "axis": "mcp_srsmd",
+      "req_id": "FR-NODE-018",
+      "evidence_path": "docs/spec/00.index.md:90",
+      "description": "SRS index status and type rollups required manual repair after add_requirement created the bridge requirements.",
+      "suggested_action": "Document the workaround and keep FR-NODE-018 as the canonical capability gap.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "docs/spec/00.index.md",
+        "FR-NODE-018"
+      ]
+    },
+    {
+      "id": "EVAL1-MEDIUM-003",
+      "finding_hash": "1ec7b24c5a1cafa3",
+      "severity": "MEDIUM",
+      "axis": "trace",
+      "req_id": "CAND-KIWI-WORKFLOW-MUTATION",
+      "evidence_path": "docs/research/10.kiwi-planner-jsonl-tooling-research.md:427",
+      "description": "The workflow mutation candidate needed explicit NODE, CLI, and MCP Requirement IDs to avoid a hidden adapter gap.",
+      "suggested_action": "Map the candidate to core, CLI, and MCP requirements.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "FR-NODE-022",
+        "IR-CLI-033",
+        "FR-MCP-025"
+      ]
+    },
+    {
+      "id": "EVAL1-LOW-001",
+      "finding_hash": "2976aa991a18038d",
+      "severity": "LOW",
+      "axis": "trace",
+      "req_id": null,
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:1496",
+      "description": "Some planned v2.3.0 requirements used addition_site for implementation surfaces although no implementation evidence existed yet.",
+      "suggested_action": "Represent planned implementation surfaces as related_to until tests or code evidence are available.",
+      "vague_terms": [],
+      "linked_oq": [],
+      "status": "resolved",
+      "resolved_by": [
+        "trace relation normalization to related_to across v2.3.0 blocks"
+      ]
+    }
+  ],
+  "gate": "FAIL",
+  "reason": "Initial bridge required registry, adapter-surface, rollup, and trace-relation fixes."
+}

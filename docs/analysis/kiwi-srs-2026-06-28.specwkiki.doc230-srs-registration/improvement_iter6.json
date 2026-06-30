@@ -1,0 +1,14 @@
+{
+  "iter": 6,
+  "changes": [
+    "Removed duplicate AC labels from IR-CLI-037 Acceptance Criteria lines.",
+    "Used a minimal manual SRS patch because FR-MCP-018 explicitly denies Acceptance Criteria edits through append_section_note and FR-NODE-019 is the planned v2.3.0 requirement for safe structured AC editing services."
+  ],
+  "resolved_low_findings": [
+    "IR-CLI-037 AC text no longer duplicates AC labels inside the body."
+  ],
+  "validate_spec": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

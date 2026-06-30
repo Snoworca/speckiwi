@@ -69,8 +69,9 @@ describe("diagnostic registry", () => {
   it("summarizes diagnostics by severity and code", () => {
     const diagnostics = [
       diagnostic("SRS-E001", "error", "malformed"),
-      diagnostic("SRS-W002", "warning", "target"),
-      diagnostic("SRS-W002", "warning", "target")
+      diagnostic("SRS-W002", "warning", "target", { filePath: "docs/spec/00.index.md", line: 10 }),
+      diagnostic("SRS-W002", "warning", "target", { filePath: "docs/spec/00.index.md", line: 10 }),
+      diagnostic("SRS-W002", "warning", "target", { filePath: "docs/spec/00.index.md", line: 11 })
     ];
     expect(splitDiagnostics(diagnostics).errors).toHaveLength(1);
     expect(splitDiagnostics(diagnostics).warnings).toHaveLength(2);

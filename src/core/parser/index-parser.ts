@@ -29,14 +29,15 @@ function legacyActiveTarget(targets: TargetEntry[]): string {
   return targets.find((target) => target.status === "active")?.target ?? targets[0]?.target ?? "";
 }
 
-function parseCompletedWork(lines: string[]): CompletedWorkEntry[] {
-  const heading = findHeadingMatching(lines, /^##\s+\d+\.\s+Completed Work Log$/);
-  const table = heading >= 0 ? parseMarkdownTable(lines, heading + 1) : undefined;
+// @req FR-PARSE-021
+export function parseCompletedWork(file: Pick<TextFile, "lines" | "relativePath">): CompletedWorkEntry[] {
+  const heading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
+  const table = heading >= 0 ? parseMarkdownTable(file.lines, heading + 1) : undefined;
   if (!table) return [];
   return table.rows.map((row, index) => {
     const reportPathsIndex = table.headers.at(-1) === REPORT_PATHS_COLUMN ? table.headers.length - 1 : -1;
     const rowLine = table.rowLines[index] ?? table.startLine + 2 + index;
-    const sourceCells = splitTableRow(lines[rowLine - 1] ?? "");
+    const sourceCells = splitTableRow(file.lines[rowLine - 1] ?? "");
     const reportPathsCell =
       reportPathsIndex < 0
         ? ""
@@ -53,6 +54,7 @@ function parseCompletedWork(lines: string[]): CompletedWorkEntry[] {
         .filter(Boolean),
       summary: row.Summary ?? "",
       reportPaths: parseReportPathCell(reportPathsCell).paths,
+      filePath: file.relativePath,
       line: rowLine
     };
     Object.defineProperty(entry, "reportPathsCell", { value: reportPathsCell, enumerable: false });
@@ -103,20 +105,22 @@ export function parseIndexDocument(file: TextFile): { index: IndexDocument; diag
     diagnostics.push(diagnostic("SRS-E014", "error", "Scope Map table is missing", { filePath: file.relativePath }));
   }
 
-  const targets: TargetEntry[] = (targetTable?.rows ?? []).map((row) => ({
+  const targets: TargetEntry[] = (targetTable?.rows ?? []).map((row, index) => ({
     target: row.Target ?? "",
     type: row.Type ?? "",
     status: row.Status ?? "",
-    description: row.Description ?? ""
+    description: row.Description ?? "",
+    ...(typeof targetTable?.rowLines[index] === "number" ? { line: targetTable.rowLines[index] } : {})
   }));
-  const scopes: ScopeEntry[] = (scopeTable?.rows ?? []).map((row) => ({
+  const scopes: ScopeEntry[] = (scopeTable?.rows ?? []).map((row, index) => ({
     scope: row.Scope ?? "",
     document: extractLinkTarget(row.Document ?? row["Primary Document"] ?? ""),
     prefix: row.Prefix ?? "",
-    description: row.Description ?? row.Notes ?? ""
+    description: row.Description ?? row.Notes ?? "",
+    ...(typeof scopeTable?.rowLines[index] === "number" ? { line: scopeTable.rowLines[index] } : {})
   }));
   const activeTarget = hasMetadataField(metadata, "Active Target") ? (metadata["Active Target"] ?? "").trim() : legacyActiveTarget(targets);
-  const completedWork = parseCompletedWork(file.lines);
+  const completedWork = parseCompletedWork(file);
   const statusSummary = parseStatusSummary(file.lines);
   const requirementTypeSummary = parseRequirementTypeSummary(file.lines);
   const targetGoals = extractTargetGoals(file.lines);

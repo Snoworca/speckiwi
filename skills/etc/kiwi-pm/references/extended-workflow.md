@@ -63,7 +63,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ### 4.4 MCP 미가용
 
-1. `list_requirements(target, includeContent: false)` 호출 시도
+1. `list_requirements(target, projection: "compact")` 호출 시도
 2. 실패 시 HALT + worklog `lifecycle_gate_mcp_unavailable` 기록
 3. CLI 는 진단/복구 안내에만 사용하며, 사용자 승인으로 lifecycle gate 를 우회하지 않는다
 4. 평가 결과는 `state.lifecycle_gate_state.stability_snapshot` 에 저장 (REQ-ID → stability)
@@ -91,7 +91,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 
     # 3. 일괄 read
     TRY:
-        reqs = MCP_CALL(list_requirements, target=target, includeContent=False)
+        reqs = MCP_CALL(list_requirements, target=target, projection="compact")
     CATCH mcp_unavailable:
         HALT("speckiwi mcp 미가용: lifecycle gate 평가 불가. CLI 는 진단/복구 안내에만 사용")
 
@@ -342,7 +342,7 @@ git 관리는 사용자 책임. PM 은 자동 commit 하지 않음.
 ```
 FUNCTION T_FINAL_SRS_MUTATION(state, args):
     # 1. read REQ 현재 status
-    reqs = MCP_CALL(list_requirements, target=state.target_slug, includeContent=False)
+    reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
     reqs_by_id = {r.id: r for r in reqs}
 
     # 2. REQ 별 trace Task 집계

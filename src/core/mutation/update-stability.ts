@@ -5,9 +5,11 @@ import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { classifyStabilityTransition, type StabilityTransitionWarning } from "./stability-transition.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, Stability } from "../types.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.2 — `update_stability` mutation 이 `Stability=draft` 로 전이될 때
@@ -28,6 +30,8 @@ export interface UpdateStabilityInput {
   stability: Stability;
   reason?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface UpdateStabilityOutput {
@@ -88,6 +92,13 @@ export async function updateStability(
   root: ProjectRoot,
   input: UpdateStabilityInput
 ): Promise<MutationResult<UpdateStabilityOutput>> {
+  return withSrsMutationLock(root, { operation: "update_stability", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => updateStabilityUnlocked(root, input));
+}
+
+async function updateStabilityUnlocked(
+  root: ProjectRoot,
+  input: UpdateStabilityInput
+): Promise<MutationResult<UpdateStabilityOutput>> {
   if (!isCanonicalStability(input.stability)) {
     return mutationFail("USAGE", `Invalid stability: ${input.stability}`);
   }
@@ -143,6 +154,10 @@ export async function updateStability(
   }
 
   const plan = createPatchPlan(loaded.file, operations);
-  const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
-  return mutationOk({ id: input.id, stability: input.stability, written: applied.written, warnings });
+  const dryRun = input.dryRun ?? false;
+  const applied = await applyPatchPlan(plan, { dryRun });
+  return withMutationEnvelope(
+    mutationOk({ id: input.id, stability: input.stability, written: applied.written, warnings }),
+    mutationEnvelopeFromPlan("update_stability", plan, dryRun, applied.written)
+  );
 }

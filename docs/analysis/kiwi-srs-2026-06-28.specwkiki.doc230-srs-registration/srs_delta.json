@@ -1,0 +1,97 @@
+{
+  "classification": "new-feature",
+  "mode": "live",
+  "target": "v2.3.0",
+  "first_wave_replaced_due_to_max_eval": true,
+  "added_ids": [
+    "FR-PARSE-021",
+    "FR-NODE-026",
+    "IR-CLI-037",
+    "FR-MCP-030",
+    "FR-MCP-031",
+    "FR-NODE-027",
+    "REL-NODE-005",
+    "IR-CLI-038",
+    "FR-MCP-032"
+  ],
+  "discarded_ids": [
+    "FR-PARSE-020",
+    "FR-NODE-024",
+    "IR-CLI-035",
+    "FR-MCP-027",
+    "FR-MCP-029",
+    "FR-NODE-025",
+    "REL-NODE-004",
+    "IR-CLI-036",
+    "FR-MCP-028"
+  ],
+  "mcp_calls": [
+    {"tool": "add_requirement", "result_id": "FR-PARSE-020", "ok": true, "superseded_by": "FR-PARSE-021"},
+    {"tool": "add_requirement", "result_id": "FR-NODE-024", "ok": true, "superseded_by": "FR-NODE-026"},
+    {"tool": "add_requirement", "result_id": "IR-CLI-035", "ok": true, "superseded_by": "IR-CLI-037"},
+    {"tool": "add_requirement", "result_id": "FR-MCP-027", "ok": true, "superseded_by": "FR-MCP-030"},
+    {"tool": "add_requirement", "result_id": "FR-MCP-029", "ok": true, "superseded_by": "FR-MCP-031"},
+    {"tool": "add_requirement", "result_id": "FR-NODE-025", "ok": true, "superseded_by": "FR-NODE-027"},
+    {"tool": "add_requirement", "result_id": "REL-NODE-004", "ok": true, "superseded_by": "REL-NODE-005"},
+    {"tool": "add_requirement", "result_id": "IR-CLI-036", "ok": true, "superseded_by": "IR-CLI-038"},
+    {"tool": "add_requirement", "result_id": "FR-MCP-028", "ok": true, "superseded_by": "FR-MCP-032"},
+    {"tool": "add_requirement", "result_id": "FR-PARSE-021", "ok": true},
+    {"tool": "add_requirement", "result_id": "FR-NODE-026", "ok": true},
+    {"tool": "add_requirement", "result_id": "IR-CLI-037", "ok": true},
+    {"tool": "add_requirement", "result_id": "FR-MCP-030", "ok": true},
+    {"tool": "add_requirement", "result_id": "FR-MCP-031", "ok": true},
+    {"tool": "add_requirement", "result_id": "FR-NODE-027", "ok": true},
+    {"tool": "add_requirement", "result_id": "REL-NODE-005", "ok": true},
+    {"tool": "add_requirement", "result_id": "IR-CLI-038", "ok": true},
+    {"tool": "add_requirement", "result_id": "FR-MCP-032", "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-PARSE-020", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-NODE-024", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "IR-CLI-035", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-MCP-027", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-MCP-029", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-NODE-025", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "REL-NODE-004", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "IR-CLI-036", "status": "discarded"}, "ok": true},
+    {"tool": "update_status", "args": {"id": "FR-MCP-028", "status": "discarded"}, "ok": true},
+    {"tool": "append_section_note", "args": {"id": "IR-CLI-037", "section": "research", "mode": "replace"}, "ok": true},
+    {"tool": "append_section_note", "args": {"id": "FR-MCP-030", "section": "research", "mode": "replace"}, "ok": true},
+    {"tool": "append_section_note", "args": {"id": "IR-CLI-038", "section": "research", "mode": "replace"}, "ok": true},
+    {"tool": "append_section_note", "args": {"id": "FR-MCP-032", "section": "research", "mode": "replace"}, "ok": true},
+    {"tool": "append_section_note", "args": {"id": "FR-MCP-031", "section": "research", "mode": "replace"}, "ok": true}
+  ],
+  "scope_doc_edits": [
+    {"file": "docs/spec/20.parser-validation.srs.md", "section": "Requirements", "op": "append_via_mcp"},
+    {"file": "docs/spec/30.cli-interface.srs.md", "section": "Requirements", "op": "append_via_mcp_and_status_via_mcp"},
+    {"file": "docs/spec/40.mcp-stdio-interface.srs.md", "section": "Requirements", "op": "append_via_mcp_and_status_via_mcp"},
+    {"file": "docs/spec/50.nodejs-implementation.srs.md", "section": "Requirements", "op": "append_via_mcp_and_status_via_mcp"}
+  ],
+  "index_rollup_repair": {
+    "file": "docs/spec/00.index.md",
+    "reason": "Current add_requirement and update_status mutations do not update global Status Summary or Requirement Type Summary rollups.",
+    "covered_by_gap": "FR-NODE-018"
+  },
+  "research_doc_edits": [
+    "docs/research/230.md",
+    "docs/research/11.v2.3.0-tooling-code-improvement-plan.md"
+  ],
+  "validate_spec_result": {
+    "ok": true,
+    "errors": 0,
+    "warnings": 0
+  },
+  "max_convergence": {
+    "iterations": 6,
+    "consecutive_medium_plus_clean_rounds": 2,
+    "converged": true,
+    "residual_low_findings": [],
+    "post_convergence_cleanup": [
+      {
+        "file": "docs/spec/30.cli-interface.srs.md",
+        "requirement_id": "IR-CLI-037",
+        "section": "Acceptance Criteria",
+        "operation": "remove_duplicate_ac_labels",
+        "reason": "FR-MCP-018 denies Acceptance Criteria edits through append_section_note; FR-NODE-019 tracks the missing structured AC edit tool."
+      }
+    ]
+  }
+}

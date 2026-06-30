@@ -1490,6 +1490,16 @@ node scripts/spec/validate-spec.js
 | `SRS-E031` | error | Trace link target is broken |
 | `SRS-E032` | error | Stale mutation snapshot |
 | `SRS-E033` | error | Verified draft requirement |
+| `SRS-E050` | error | Workflow artifact path escapes workspace |
+| `SRS-E051` | error | Ambiguous workflow artifact |
+| `SRS-E065` | error | SRS mutation lock active |
+| `SRS-E070` | error | Workflow mutation owner denied |
+| `SRS-E071` | error | Invalid workflow mutation request |
+| `SRS-E072` | error | Workflow mutation idempotency mismatch |
+| `SRS-E073` | error | Workflow logical-delete denied |
+| `SRS-E074` | error | Workflow dependency blocked |
+| `SRS-E075` | error | MCP workspace root override rejected |
+| `SRS-E076` | error | Ambiguous Requirement ID reference |
 | `SRS-W001` | warning | Rationale section missing |
 | `SRS-W002` | warning | Target is not registered |
 | `SRS-W003` | warning | Related Docs local link missing |
@@ -1515,6 +1525,27 @@ node scripts/spec/validate-spec.js
 | `SRS-W023` | warning | Draft requirement in active or released target |
 | `SRS-W024` | warning | Malformed Completed Work Log report path |
 | `SRS-W040` | warning | Target Goal block conflict between index and appendix |
+| `SRS-W041` | warning | Completed Work Log duplicate source |
+| `SRS-W050` | warning | Workflow artifact parse warning |
+| `SRS-W051` | warning | Workflow artifact companion missing |
+| `SRS-W052` | warning | Invalid workflow JSONL line |
+| `SRS-W053` | warning | Duplicate workflow JSONL event key |
+| `SRS-W054` | warning | Invalid workflow JSONL correction chain |
+| `SRS-W055` | warning | Unsupported workflow JSONL schema version |
+| `SRS-W056` | warning | Workflow JSONL missing trailing LF |
+| `SRS-W057` | warning | Workflow task dependency issue |
+| `SRS-W058` | warning | Workflow PM and coder state conflict |
+| `SRS-W059` | warning | Workflow artifact hash is stale |
+| `SRS-W060` | warning | Workflow plan checkbox drift |
+| `SRS-W061` | warning | Workflow legacy trace field |
+| `SRS-W062` | warning | Workflow stale lock |
+| `SRS-W063` | warning | Workflow worklog audit mismatch |
+| `SRS-W064` | warning | Workflow task missing req_ids |
+| `SRS-W065` | warning | SRS status cache fallback |
+| `SRS-W066` | warning | SRS status cache write failed |
+| `SRS-W067` | warning | SRS mutation lock bypassed |
+| `SRS-W068` | warning | Stale SRS mutation lock recovered |
+| `SRS-W069` | warning | Invalid workflow deleted status |
 
 v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
 

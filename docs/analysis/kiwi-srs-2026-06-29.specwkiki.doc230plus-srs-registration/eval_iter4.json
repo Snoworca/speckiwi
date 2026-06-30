@@ -1,0 +1,27 @@
+{
+  "iteration": 4,
+  "verdict": "changes_required",
+  "findings": [
+    {
+      "severity": "HIGH",
+      "summary": "MIG-FLOW-003 still depended on discarded FR-NODE-022 for skill migration to guarded workflow mutations.",
+      "resolution": "Replaced the dependency with canonical successor FR-NODE-030 and recorded the change note."
+    }
+  ],
+  "post_fix_validation": {
+    "mcp_validate_spec": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "cli_validate": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "summary_total": 65,
+    "countsByStatus": {
+      "planned": 46,
+      "discarded": 18,
+      "verified": 1
+    }
+  }
+}
