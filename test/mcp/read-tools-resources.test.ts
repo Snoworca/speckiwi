@@ -86,18 +86,18 @@ describe("MCP read tools and resources", () => {
       ok: true,
       value: {
         workspaceRoot: root,
-        rootSource: "explicit",
+        rootSource: "server-cwd-discovery",
         indexPath: "docs/spec/00.index.md",
         activeTarget: "v1.0.0"
       },
-      mcpWorkspace: { workspaceRoot: root, rootSource: "explicit", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
+      mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
     });
     expect(await server.callTool("list_requirements", {})).toMatchObject({
       ok: true,
       value: expect.any(Object),
       diagnostics: expect.any(Array),
       diagnosticsSummary: expect.any(Object),
-      mcpWorkspace: { workspaceRoot: root, rootSource: "explicit", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
+      mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
     });
     const ignoredRoot = await server.callTool("list_requirements", { root: otherRoot });
     expect(ignoredRoot).toMatchObject({
@@ -311,7 +311,7 @@ describe("MCP read tools and resources", () => {
         value: expect.anything(),
         diagnostics: expect.any(Array),
         diagnosticsSummary: { errors: 0, warnings: expect.any(Number), byCode: expect.any(Object) },
-        mcpWorkspace: { workspaceRoot: root, rootSource: "explicit", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
+        mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
       });
     }
 

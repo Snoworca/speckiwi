@@ -138,7 +138,7 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
         parsed,
         {
           workspaceRoot: parsed.root.root,
-          rootSource: deps.root ? "explicit" : "server-cwd-discovery",
+          rootSource: "server-cwd-discovery",
           indexPath: "docs/spec/00.index.md",
           activeTarget: parsed.index.activeTarget
         },

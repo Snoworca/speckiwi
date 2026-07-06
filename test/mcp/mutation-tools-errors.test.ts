@@ -78,7 +78,7 @@ describe("MCP mutation tools and structured errors", () => {
       ok: true,
       value: { id: "FR-ARCH-001", written: false },
       diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} },
-      mcpWorkspace: { workspaceRoot: root, rootSource: "explicit", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) },
+      mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) },
       mutation: {
         kind: "check_acceptance_criteria",
         dryRun: true,

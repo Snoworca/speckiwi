@@ -20,6 +20,15 @@ const INHERITED_OPTIONS_HELP = [
   "  --quiet           suppress non-essential human output"
 ].join("\n");
 
+// IR-CLI-045 AC-9: mcp 는 --root 를 지원하지 않으므로 help 에서 안내하지 않는다.
+const INHERITED_OPTIONS_HELP_NO_ROOT = [
+  "",
+  "Global options:",
+  "  --json            write JSON to stdout",
+  "  --no-color        disable color",
+  "  --quiet           suppress non-essential human output"
+].join("\n");
+
 export function buildCommand(context: CliContext, registrars: CliCommandRegistrar[] = []): Command {
   const command = new Command();
   command
@@ -42,7 +51,7 @@ export function buildCommand(context: CliContext, registrars: CliCommandRegistra
 export function attachInheritedOptionsHelp(program: Command): void {
   function decorate(parent: Command): void {
     for (const sub of parent.commands) {
-      sub.addHelpText("after", INHERITED_OPTIONS_HELP);
+      sub.addHelpText("after", sub.name() === "mcp" ? INHERITED_OPTIONS_HELP_NO_ROOT : INHERITED_OPTIONS_HELP);
       decorate(sub);
     }
   }

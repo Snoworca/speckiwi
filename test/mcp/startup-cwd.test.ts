@@ -93,18 +93,19 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
     expect(result.root.startsWith(resolvedHome + path.sep)).toBe(false);
   });
 
-  it("AC-4: --root 옵션이 명시되면 사용자 홈 경계 규칙 없이 명시 경로가 그대로 채택된다", async () => {
+  it("IR-CLI-045 AC-5 / REL-MCP-004 AC-4: resolveMcpStartupRoot 는 explicit root 인자를 받지 않고 cwd 탐색만 사용한다", async () => {
     const home = path.join(scratch, "home4");
     await mkdir(home, { recursive: true });
-    const explicit = path.join(home, "explicit-root");
-    await mkdir(explicit, { recursive: true });
+    const cwd = path.join(home, "projects", "proj-explicit-removed");
+    await mkdir(cwd, { recursive: true });
 
     applyFakeHome(home);
-    process.chdir(originalCwd);
+    process.chdir(cwd);
 
-    const result = await resolveMcpStartupRoot(explicit);
+    expect(resolveMcpStartupRoot.length).toBe(0);
+    const result = await resolveMcpStartupRoot();
 
-    expect(result.root).toBe(await realpathSafe(explicit));
+    expect(result.root).toBe(await realpathSafe(cwd));
   });
 
   it("AC-1 보강: cwd 와 홈 사이의 중간 디렉터리에 SRS index 가 있으면 그 디렉터리가 project root 로 채택된다", async () => {

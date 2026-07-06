@@ -37,7 +37,8 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   const workspaceRoot = deps.root ? path.resolve(deps.root) : path.resolve(process.cwd());
   const workspaceIdentity = {
     workspaceRoot,
-    rootSource: deps.root ? "explicit" : "server-cwd-discovery",
+    // REL-MCP-004 AC-2: explicit root 소스는 존재하지 않는다. 내부 DI seam(deps.root)은 서버 cwd 를 대체하는 테스트 전용 경로다.
+    rootSource: "server-cwd-discovery",
     indexPath: path.posix.join("docs", "spec", "00.index.md"),
     packageVersion: PACKAGE_VERSION
   };

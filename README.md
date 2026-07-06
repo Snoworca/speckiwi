@@ -126,11 +126,7 @@ Kiwi skills의 정상 작업 흐름은 `speckiwi mcp`가 연결되어 있어야 
 speckiwi mcp
 ```
 
-또는 명시적으로 root를 지정합니다.
-
-```sh
-speckiwi --root /path/to/project mcp
-```
+MCP 서버는 root 옵션을 지원하지 않습니다. 서버 프로세스의 현재 작업 디렉터리에서 상위 탐색으로 project root를 해석하므로, MCP 클라이언트 설정에서 실행 디렉터리(cwd)를 프로젝트 루트로 지정하세요. `--root`와 함께 실행하면 서버를 시작하지 않고 오류로 종료합니다.
 
 Kiwi skills는 요구사항 조회, 상태 변경, stability 변경, acceptance criteria 체크, verification evidence 추가, trace link 추가, section note 추가, target goal 설정, completed work 기록을 MCP 도구로 수행합니다. 대표 도구에는 `list_requirements`, `add_verification_evidence`, `add_trace_link`, `check_acceptance_criteria`가 포함됩니다. CLI fallback은 진단과 복구 안내 용도이며, 정상적인 SRS mutation 경로가 아닙니다.
 
@@ -456,11 +452,7 @@ Normal Kiwi skill workflows require a connected `speckiwi mcp` server.
 speckiwi mcp
 ```
 
-You can also pass an explicit root.
-
-```sh
-speckiwi --root /path/to/project mcp
-```
+The MCP server does not support a root option. It resolves the project root from the server process current working directory by searching upward, so set the working directory (cwd) to the project root in your MCP client configuration. Running with `--root` exits with an error instead of starting the server.
 
 Kiwi skills use MCP tools for requirement reads, status changes, stability changes, acceptance criteria checks, verification evidence, trace links, section notes, target goals, and completed work logging. Representative tools include `list_requirements`, `add_verification_evidence`, `add_trace_link`, and `check_acceptance_criteria`. CLI fallback is for diagnostics and remediation guidance only; it is not the normal SRS mutation path.
 

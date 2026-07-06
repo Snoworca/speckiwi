@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { access, realpath, stat } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -15,8 +15,8 @@ import { registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
 
+// IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
 export interface McpServerOptions {
-  root?: string;
   transport?: "stdio";
 }
 
@@ -438,18 +438,6 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function explicitStartupRoot(explicitRoot: string): Promise<ProjectRoot> {
-  const resolved = await realpath(explicitRoot).catch(() => undefined);
-  if (!resolved) {
-    throw new Error(`Could not resolve explicit MCP project root: ${explicitRoot}`);
-  }
-  const info = await stat(resolved);
-  if (!info.isDirectory()) {
-    throw new Error(`Explicit MCP project root is not a directory: ${explicitRoot}`);
-  }
-  return { root: resolved };
-}
-
 async function findSrsRootFrom(start: string): Promise<string | null> {
   const home = await realpath(os.homedir()).catch(() => path.resolve(os.homedir()));
   let current = path.resolve(start);
@@ -467,15 +455,14 @@ async function findSrsRootFrom(start: string): Promise<string | null> {
   }
 }
 
-export async function resolveMcpStartupRoot(explicitRoot?: string): Promise<ProjectRoot> {
-  if (explicitRoot) return explicitStartupRoot(explicitRoot);
+export async function resolveMcpStartupRoot(): Promise<ProjectRoot> {
   const cwd = await realpath(process.cwd()).catch(() => path.resolve(process.cwd()));
   const srsRoot = await findSrsRootFrom(process.cwd());
   return { root: srsRoot ?? cwd };
 }
 
-async function ensureMcpStartupWorkspace(explicitRoot?: string): Promise<ProjectRoot> {
-  const root = await resolveMcpStartupRoot(explicitRoot);
+async function ensureMcpStartupWorkspace(): Promise<ProjectRoot> {
+  const root = await resolveMcpStartupRoot();
   const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
   if (!(await exists(indexPath))) {
     const result = await initProject(root, {});
@@ -487,8 +474,11 @@ async function ensureMcpStartupWorkspace(explicitRoot?: string): Promise<Project
 }
 
 export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
+  if (options.transport && options.transport !== "stdio") {
+    throw new Error(`Unsupported MCP transport: ${String(options.transport)}`);
+  }
   const sdk = new McpServer(MCP_SERVER_METADATA);
-  const root = await ensureMcpStartupWorkspace(options.root);
+  const root = await ensureMcpStartupWorkspace();
   const local = createMcpServer({ root: root.root });
   for (const [name, handler] of Object.entries(local.tools).filter(([name]) => !name.startsWith("resource:"))) {
     sdk.registerTool(name, {

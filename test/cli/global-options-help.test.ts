@@ -18,7 +18,6 @@ const SUBCOMMANDS_REQUIRING_HELP_VISIBILITY = [
   "scopes",
   "summary",
   "doctor",
-  "mcp",
   "init",
   "update-status",
   "update-stability",
@@ -30,6 +29,9 @@ const SUBCOMMANDS_REQUIRING_HELP_VISIBILITY = [
   "set-target-goal",
   "add-completed-work"
 ];
+
+// IR-CLI-045: mcp 는 --root 를 안내하지 않지만 --json 등 나머지 공통 옵션 가시성은 유지한다.
+const SUBCOMMANDS_REQUIRING_JSON_VISIBILITY = [...SUBCOMMANDS_REQUIRING_HELP_VISIBILITY, "mcp"];
 
 function fakeIo() {
   const noop = () => true;
@@ -74,7 +76,7 @@ describe("IR-CLI-025 — 서브커맨드 --help 에 공통 옵션 가시성 노�
     expect(help).toMatch(/--root\s+<path>/);
   });
 
-  it.each(SUBCOMMANDS_REQUIRING_HELP_VISIBILITY)("AC-4: `speckiwi %s --help` 출력은 --json 을 포함한다", (name) => {
+  it.each(SUBCOMMANDS_REQUIRING_JSON_VISIBILITY)("AC-4: `speckiwi %s --help` 출력은 --json 을 포함한다", (name) => {
     const program = buildProgram();
     const sub = findSubcommand(program, name);
     const help = captureHelpOutput(sub);
@@ -86,6 +88,14 @@ describe("IR-CLI-025 — 서브커맨드 --help 에 공통 옵션 가시성 노�
     const sub = findSubcommand(program, "mcp");
     const help = captureHelpOutput(sub);
     expect(help).toMatch(/Global options:/);
+  });
+
+  it("IR-CLI-045 AC-9: `speckiwi mcp --help` 출력은 --root 를 안내하지 않는다", () => {
+    const program = buildProgram();
+    const sub = findSubcommand(program, "mcp");
+    const help = captureHelpOutput(sub);
+    expect(help).not.toMatch(/--root/);
+    expect(help).toMatch(/--json\b/);
   });
 
   it("AC-3: parser 동작은 변경되지 않고 부모 --root 가 그대로 인식된다", async () => {

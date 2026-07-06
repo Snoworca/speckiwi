@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -169,29 +169,29 @@ describe("real stdio MCP server", () => {
     }
   }, 30000);
 
-  it("rejects a missing explicit MCP root instead of creating it", async () => {
+  it("IR-CLI-045 AC-7: rejects --root with a usage error instead of starting the server", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-explicit-root-"));
     const missing = path.join(root, "typo");
     await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });
 
     try {
       await expect(execFileAsync(process.execPath, [path.resolve("bin/speckiwi"), "--root", missing, "mcp"], { cwd: process.cwd(), timeout: 5000 })).rejects.toMatchObject({
-        stderr: expect.stringContaining("Could not resolve explicit MCP project root")
+        code: 2,
+        stderr: expect.stringContaining("does not support --root")
       });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   }, 30000);
 
-  it("rejects an explicit MCP root that is not a directory", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-file-root-"));
-    const fileRoot = path.join(root, "not-a-directory");
-    await writeFile(fileRoot, "not a directory", "utf8");
+  it("IR-CLI-045 AC-7: rejects --root even when the path exists", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-existing-root-"));
     await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });
 
     try {
-      await expect(execFileAsync(process.execPath, [path.resolve("bin/speckiwi"), "--root", fileRoot, "mcp"], { cwd: process.cwd(), timeout: 5000 })).rejects.toMatchObject({
-        stderr: expect.stringContaining("Explicit MCP project root is not a directory")
+      await expect(execFileAsync(process.execPath, [path.resolve("bin/speckiwi"), "--root", root, "mcp"], { cwd: process.cwd(), timeout: 5000 })).rejects.toMatchObject({
+        code: 2,
+        stderr: expect.stringContaining("does not support --root")
       });
     } finally {
       await rm(root, { recursive: true, force: true });
