@@ -1,0 +1,1060 @@
+{
+ "newCount": 90,
+ "overlapCount": 9,
+ "NEW": [
+  "DR-PARSE-001",
+  "FR-ARCH-006",
+  "FR-FLOW-014",
+  "FR-FLOW-015",
+  "FR-FLOW-016",
+  "FR-FLOW-017",
+  "FR-FLOW-018",
+  "FR-FLOW-019",
+  "FR-FLOW-020",
+  "FR-FLOW-023",
+  "FR-MCP-021",
+  "FR-MCP-022",
+  "FR-MCP-024",
+  "FR-MCP-025",
+  "FR-MCP-026",
+  "FR-MCP-027",
+  "FR-MCP-028",
+  "FR-MCP-031",
+  "FR-MCP-032",
+  "FR-MCP-033",
+  "FR-MCP-035",
+  "FR-MCP-036",
+  "FR-NODE-017",
+  "FR-NODE-018",
+  "FR-NODE-019",
+  "FR-NODE-020",
+  "FR-NODE-021",
+  "FR-NODE-022",
+  "FR-NODE-023",
+  "FR-NODE-024",
+  "FR-NODE-026",
+  "FR-NODE-027",
+  "FR-NODE-028",
+  "FR-NODE-029",
+  "FR-NODE-030",
+  "FR-NODE-031",
+  "FR-NODE-032",
+  "FR-NODE-033",
+  "FR-NODE-034",
+  "FR-NODE-035",
+  "FR-NODE-036",
+  "FR-NODE-037",
+  "FR-NODE-038",
+  "FR-NODE-039",
+  "FR-NODE-040",
+  "FR-NODE-041",
+  "FR-NODE-042",
+  "FR-NODE-043",
+  "FR-NODE-047",
+  "FR-NODE-048",
+  "FR-NODE-049",
+  "FR-NODE-051",
+  "FR-NODE-052",
+  "FR-NODE-053",
+  "FR-NODE-054",
+  "FR-PARSE-019",
+  "FR-PARSE-020",
+  "FR-PARSE-021",
+  "FR-PARSE-022",
+  "FR-PARSE-023",
+  "FR-PARSE-024",
+  "FR-PARSE-025",
+  "FR-PARSE-026",
+  "FR-PARSE-027",
+  "FR-PARSE-028",
+  "IR-CLI-028",
+  "IR-CLI-029",
+  "IR-CLI-030",
+  "IR-CLI-031",
+  "IR-CLI-033",
+  "IR-CLI-034",
+  "IR-CLI-035",
+  "IR-CLI-036",
+  "IR-CLI-038",
+  "IR-CLI-039",
+  "IR-CLI-041",
+  "IR-CLI-042",
+  "IR-CLI-043",
+  "IR-CLI-045",
+  "IR-CLI-046",
+  "IR-CLI-047",
+  "IR-CLI-048",
+  "IR-CLI-049",
+  "IR-CLI-050",
+  "IR-CLI-051",
+  "IR-CLI-052",
+  "IR-CLI-053",
+  "IR-CLI-054",
+  "IR-CLI-055",
+  "REL-ARCH-002"
+ ],
+ "OVERLAP": [
+  {
+   "id": "FR-MCP-023",
+   "cap": "Registers the gap mutation MCP tools update_requirement_statement (rewrites the requirement statement paragraph in place) and edit_acceptance_criteria (rewrites one AC's prose by acId, preserving checkbox/id)."
+  },
+  {
+   "id": "FR-MCP-034",
+   "cap": "MCP search_requirements read tool for searching requirement records (v3 core FR-NODE-046 full-text search)."
+  },
+  {
+   "id": "FR-NODE-025",
+   "cap": "update_requirement_statement mutation that replaces the '#### Requirement' section prose using a new findRequirementStatementRange helper, guarded against corrupting adjacent Acceptance Criteria, GFM tables, and fenced code blocks."
+  },
+  {
+   "id": "FR-NODE-046",
+   "cap": "A core full-text search over requirement records: returns records whose searchable text (statement + title + acceptance-criteria text) contains a query substring, deterministically ordered by requirement id."
+  },
+  {
+   "id": "FR-NODE-050",
+   "cap": "A sync-counts core mutation that recomputes the index Status Summary and Requirement Type Summary count cells from the global (cross-target) record set, defaults to a check that reports expected-vs-actual drift without writing, rewrites only the drifting summary cells on apply, and reuses the stale-snapshot patch guard."
+  },
+  {
+   "id": "IR-CLI-037",
+   "cap": "`speckiwi search <query> --field title|ac|rationale|notes|all` text search over requirement fields with the standard target/status/scope/type filters and --json output."
+  },
+  {
+   "id": "IR-CLI-040",
+   "cap": "CLI update-statement replaces a requirement's #### Requirement prose statement body, leaving Acceptance Criteria and Trace Links sections untouched, with dry-run and JSON envelope."
+  },
+  {
+   "id": "IR-CLI-044",
+   "cap": "CLI sync-counts recomputes the index Status Summary and Requirement Type Summary cells from records, defaulting to a drift check, writing with --apply, and gating CI non-zero with --check."
+  },
+  {
+   "id": "REL-PARSE-002",
+   "cap": "A fix ensuring diagnostics are deduplicated from a single source in the read envelope (src/cli/commands/read.ts, src/core/diagnostic.ts, src/core/validator/rules.ts)."
+  }
+ ],
+ "all": [
+  {
+   "id": "DR-PARSE-001",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Adds remediation and docsAnchor metadata fields to each DiagnosticDefinition and joins the runtime diagnostic registry so every diagnostic entry is fully populated (backing explain/remediation surfacing).",
+   "confidence": "medium",
+   "reason": "New DR-PARSE scope with no v2.3.0 counterpart. v2.3.0 diagnostic work was FR-PARSE-013 (registry/rules-doc code mapping), REL-PARSE-002 (dedup + line-anchoring), and REL-PARSE-003 (grouped duplicate-ID) — none surface per-diagnostic remediation guidance or docsAnchor, nor a runtime-registry full-population join. Current DiagnosticDefinition holds only remediation? and no docsAnchor, confirming the enrichment is not yet shipped.",
+   "verified": false
+  },
+  {
+   "id": "FR-ARCH-006",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A single ToolSpec metadata registry acts as SSOT for the entire command surface (23 CLI commands + 17 MCP tools), from which CLI command tree, MCP toolSchemas/toolNames/toolKinds/read-only predicate all derive with no hard-coded parallel lists.",
+   "confidence": "high",
+   "reason": "The test asserts a brand-new registry (toolSpecs + render helpers) that did not exist at red time and drives both CLI and MCP surfaces by derivation. v2.3.0's FR-ARCH-001 only guarantees CLI/MCP share a core service, and FR-ARCH-005 only classifies mutation-tool kind metadata; neither is a unified command-metadata SSOT registry.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-014",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "kiwi-step skill: a lightweight step-local authoring skill for the v3 steps/work-modes model.",
+   "confidence": "high",
+   "reason": "Part of v3's steps/work-modes surface. No v2.3.0 requirement defines a step-local authoring skill or a steps concept; the v2.3.0 flow skills are SRS/target/release oriented (FR-FLOW-001..013). NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-015",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "kiwi-spec-merge skill orchestrating per-REQ sequential merges of specs.",
+   "confidence": "high",
+   "reason": "v2.3.0's merge-time work (FR-NODE-032, IR-CLI-044, FR-MCP-039, OPS-FLOW-002) is Requirement-ID collision repair — detecting/renaming duplicate IDs. A per-REQ sequential spec-merge orchestrator skill is a different capability with no v2.3.0 equivalent. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-016",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Mode-conditional governance snippet in generated agent instructions (branching on sdd/vibe work mode) with an AGENT_INSTRUCTION_VERSION bump.",
+   "confidence": "high",
+   "reason": "v2.3.0 generates agent instructions (FR-FLOW-005/009) and adds stability-aware workflow (FR-FLOW-010), but has no work-mode concept and no mode-conditional governance content. The mode-conditional branching is a v3 work-modes addition. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-017",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A new bundled rule document Work-Modes-Rules v1.0.0 plus a CLAUDE.md reference to it.",
+   "confidence": "high",
+   "reason": "v2.3.0 bundles SRS-MD rules (FR-NODE-012 package-relative bundled rules loading) but has no Work-Modes-Rules doc or work-mode governance rule set. This is a new v3 rule artifact. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-018",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "kiwi-vibe skill providing vibe-mode entry.",
+   "confidence": "high",
+   "reason": "Vibe mode is entirely a v3 concept; no v2.3.0 requirement defines vibe entry or a kiwi-vibe skill. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-019",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "kiwi-vibe-commit skill that synthesizes captured code-comment traces into SRS requirements (trace-to-SRS synthesis).",
+   "confidence": "high",
+   "reason": "v3 vibe workflow feature (pairs with FR-NODE-041 synthesis engine). v2.3.0 has trace links and completed-work logging but no trace-to-SRS synthesis skill. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-020",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A code-comment trace-tag convention (e.g. @req tags in source) used by sdd and vibe modes to link code to requirements.",
+   "confidence": "high",
+   "reason": "v2.3.0 records trace links via the Trace Links table and add-trace mutation (FR-PARSE-007, IR-CLI-014); it has no in-source code-comment trace-tag convention for sdd/vibe. This is a new v3 trace-capture mechanism. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-FLOW-023",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "The init-generated agent workflow block declares a tool-first write policy (agents must write via tools/hooks rather than hand-edit).",
+   "confidence": "medium",
+   "reason": "The generation mechanism (init emits an agent workflow block) overlaps v2.3.0 FR-FLOW-005 / FR-FLOW-009, but the tool-first write policy content is v3-new, tied to the v3 hooks/trace.mjs tool-first-write architecture; v2.3.0's generated instructions contain no such declared policy. Substance is new, so NEW (mechanism-level adjacency only).",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-021",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers an MCP validate_step tool that runs step-local validation over docs/spec/steps/<name> and returns W044/W045 and STEP_* advisories scoped to a single named step.",
+   "confidence": "high",
+   "reason": "Steps (docs/spec/steps partition, step-origin records, step-local validators W044/W045/STEP_*) are a v3-only concept. v2.3.0 ships validate_spec (FR-MCP-003) which validates the whole workspace body and has no step partition or step-scoped validation pass. Different capability, not just a renamed diagnostics feature.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-022",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers compatibility-check mutation tools (add/refresh/revoke_compatibility_check writing checked_compatible fpv1-pinned trace rows) plus edge read tools list_dirty_edges and list_compat_edges.",
+   "confidence": "high",
+   "reason": "The compatibility-check graph (checked_compatible relation, fpv1 semantic-hash pins, dirty vs compat edges) is a v3-only concept with no v2.3.0 equivalent. v2.3.0 trace/query features (FR-PARSE-019, FR-MCP-007 add_trace_link) do not model bidirectional compatibility pins or edge liveness. The registeredMeaning collision (Diagnostics-preserving MCP envelopes) is unrelated.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-023",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [],
+   "capability": "Registers the gap mutation MCP tools update_requirement_statement (rewrites the requirement statement paragraph in place) and edit_acceptance_criteria (rewrites one AC's prose by acId, preserving checkbox/id).",
+   "confidence": "medium",
+   "reason": "v2.3.0 granular editing (FR-NODE-019: field edit, whole-AC replacement, evidence/trace update-delete) does NOT cover rewriting the requirement statement paragraph — the statement is body prose, not a metadata field — so update_requirement_statement is a genuine gap fill. edit_acceptance_criteria (single-AC in-place prose edit) only partially overlaps v2.3.0 whole-list AC replacement. Net new capability, with a partial AC-editing overlap noted.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-024",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers step-state MCP tools claim_step (write-skew two-stage gate, STEP_DIRECT_CONFLICT), update_step_state (state.md Status rewrite with enum guard), and list_steps (Kahn topological order over DependsOn).",
+   "confidence": "high",
+   "reason": "Step state (docs/spec/steps/state.md table, claim/write-skew concurrency, topological step ordering) is a v3-only concept absent from v2.3.0. v2.3.0's get_next_work_order (FR-MCP-024 in v2) is an unrelated work-order reader; the shared ID is a collision, not a shared capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-025",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers supersede_requirement (strict two-call: mint successor carrying a supersedes trace, then discard the old req) and promote_step_requirement (insert a step's pre-minted id verbatim into a body scope after a reservation-uniqueness check).",
+   "confidence": "high",
+   "reason": "v2.3.0 ships no supersede tool (supersedes is only mentioned as a manual guarded-mutation concept in workflow docs) and no step-to-body promotion (steps are v3-only). Both are new mutation capabilities.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-026",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers an MCP diff_steps read tool giving a four-way classification (added/removed/changed/unchanged) of step vs body requirements keyed on semanticSha.",
+   "confidence": "high",
+   "reason": "diff_steps compares step-origin records against body records via content semantic hashing (FR-NODE-034) — steps and semanticSha are v3-only. No v2.3.0 requirement provides step diffing.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-027",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers set_work_mode and get_work_mode MCP tools backed by the work-mode model (sdd/vibe, fail-open default) persisted in state.md.",
+   "confidence": "high",
+   "reason": "Work mode (sdd vs vibe mode selection, FR-NODE-035 model, state.md Mode metadata) is a new v3 governance concept with no v2.3.0 counterpart.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-028",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers a start_vibe_task MCP tool with intent-first argument ordering and task-name-or-auto-derive to open a vibe task.",
+   "confidence": "high",
+   "reason": "The vibe workflow (vibe tasks, intent-first capture, trace-to-SRS synthesis) is an entirely new v3 surface. v2.3.0 has no vibe concept.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-031",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Registers a retarget_requirements bulk mutation tool that moves a set of requirement ids to a destination Target with per-item dry-run plan and skip reasons (target-not-registered, frozen-needs-change-note, excluded), preserving newline style.",
+   "confidence": "medium",
+   "reason": "v2.3.0 target lifecycle (FR-FLOW-013/FR-MCP-015) creates targets and defaults the Active Target but never mass-moves requirements between targets; v2.3.0 field editing (FR-NODE-019) edits a single requirement's fields, not a bulk retarget with Target-Map validation and frozen change-note gating. The FR-NODE-047 core has a purpose-built req-scoped schema that structurally excludes status/active-target — a distinct new bulk capability. Editing one requirement's Target field tangentially overlaps v2.3.0 field editing, but the bulk/guarded retarget capability is new.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-032",
+   "verdict": "NEW",
+   "v2OverlapIds": [
+    "FR-NODE-019",
+    "FR-MCP-020"
+   ],
+   "capability": "Registers an update_requirement_field MCP mutation that rewrites a single requirement metadata field (priority/risk/title/target/verification-method), with a type/scope id-regeneration guard (regenerates the ID prefix and rewrites inbound trace refs on type/scope changes).",
+   "confidence": "medium",
+   "reason": "Partial overlap only, not a functional substitute. The plain single-field metadata rewrite (FR-NODE-048 AC-1) does overlap with v2.3.0 FR-NODE-019's granular field editing (exposed on MCP as edit_requirement_fields). BUT the core distinguishing capability of FR-MCP-032 — a type/scope edit that regenerates the requirement ID prefix (e.g. FR-ARCH-001 to NFR-ARCH-001 via generateNextRequirementId), defaults to dry-run, requires explicit sign-off, and rewrites inbound Trace Links references workspace-wide (FR-NODE-048 AC-2/AC-3/AC-4, verified in test/core/mutation/fr-node-048-update-field.test.ts) — is genuinely new. FR-NODE-019 AC-1 explicitly edits fields 'without rewriting unrelated sections' and does not list type/scope, has no ID regeneration, and no cascading inbound-trace rewrite; the only 'type to ID prefix' logic in v2.3.0 is generateNextRequirementId for add_requirement, not for editing an existing requirement. Moreover the MCP registration itself is net-new: src/mcp/schemas.ts:354 registers update-field with an undefined MCP tool name (CLI-only today), so FR-MCP-020 mutation parity does not cover an update_requirement_field tool. The v3 remap even renumbers the old FR-MCP-032 (mutation lock) to FR-MCP-049 to free the ID for this new tool. The OVERLAP argument mislabels the id-regeneration/migration guard (the requirement's core value across 3 of 5 ACs) as a mere layered enhancement. Per the conservative rule, partial overlap with a substantive new capability resolves to NEW to avoid wrongful discard.",
+   "verified": true
+  },
+  {
+   "id": "FR-MCP-033",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "MCP add_related_doc and add_change_note tools that append a Related Docs entry and a Change Notes table row as structural-metadata mutations (v3 core FR-NODE-049).",
+   "confidence": "medium",
+   "reason": "v2.3.0's closest tools are append_section_note (FR-MCP-018, appends prose to a section note) and granular field editing (FR-MCP-020 / FR-NODE-019, which replaces fields/AC/evidence/trace). Neither provides a dedicated append of a Change Notes row or a Related Docs list entry; v3 adds new dedicated core mutations for this. No v2 requirement provides this capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-MCP-034",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "FR-MCP-021"
+   ],
+   "capability": "MCP search_requirements read tool for searching requirement records (v3 core FR-NODE-046 full-text search).",
+   "confidence": "high",
+   "reason": "Confirmed capability duplicate of already-shipped, verified v2.3.0 FR-MCP-021 \"Compact MCP requirement search tools\". v2.3.0 already registers the MCP `search_requirements` read tool (src/mcp/tools/read-tools.ts:157, server.ts:62/437, schemas.ts:149), backed by searchRequirementRecords in src/core/query/discovery.ts:175, which does substring full-text search over id, title, requirement STATEMENT, rationale, research, ACCEPTANCE CRITERIA, evidence, traceLinks, relatedDocs, changeNotes, with snippets, filters, pagination, and id-ordering (AC-2 verified). v3 FR-MCP-034 proposes the identical MCP tool name (`search_requirements`) with the same agent capability (text-query search over requirement records returning matches), covering a strict SUBSET of fields (statement/title/AC only per plan T-PH016 line 3273 and FR-NODE-046 test). The v3 \"full-text engine\" (FR-NODE-046, test/core/query/fr-node-046-full-text-search.test.ts) is plain substring `includes` matching with no ranking/tokenization/index — the same mechanism v2.3.0 already uses (haystack.indexOf(needle)). Nothing an agent can do with v3's tool that FR-MCP-021 does not already do (and exceed). This is genuine functional equivalence, not partial overlap. Separately, the v3-reqs.json ID FR-MCP-034 also collides with a different existing v2.3.0 feature (legacy migration preview) and is remapped to FR-MCP-051, but the capability-duplicate verdict against FR-MCP-021 is independent of that ID collision.",
+   "verified": true
+  },
+  {
+   "id": "FR-MCP-035",
+   "verdict": "NEW",
+   "v2OverlapIds": [
+    "FR-FLOW-003",
+    "FR-FLOW-007",
+    "FR-FLOW-008"
+   ],
+   "capability": "MCP summarize_release_readiness read tool reporting release readiness (coverage / RTM / verified gate).",
+   "confidence": "medium",
+   "reason": "The claim conflates the release-readiness assessment capability (which exists as FR-FLOW-007/008 core contract + CLI) with its MCP tool surface (which does NOT exist). Code evidence contradicts the claim: in src/mcp/schemas.ts line 184, summarize_target (FR-MCP-008) is backed by summarizeTarget — a lighter TARGET STATUS summary (status/type counts, blocked, implemented-not-verified, missing-evidence; FR-MCP-008 AC-2), NOT the release-readiness gate. Line 203 shows release-readiness is backed by a SEPARATE function summarizeReleaseReadiness (src/core/workflow/release-readiness.ts, producing ReleaseReadinessSummary with ready gate/acCoverageGaps/commandEvidencePolicyViolations/brokenTraceLinks), and its MCP-tool-name slot is `undefined` = CLI-only, no MCP tool. `grep summarize_release_readiness src/` returns nothing, confirming no MCP exposure exists today. SpecKiwi's own model tracks MCP-tool exposure (FR-MCP) as separate requirements from workflow capability (FR-FLOW): FR-MCP-008 is the MCP exposure of FR-FLOW-003's summary. By that same pattern, FR-MCP-035 fills a real gap — the not-yet-existing MCP exposure of the FR-FLOW-007/008 readiness contract. An MCP-only agent currently cannot invoke release readiness at all; summarize_target is not functionally substitutable (different function, different/lighter payload). Overlap is only partial (shared underlying data), not identical capability, so per the conservative rule this is NEW to avoid wrongly discarding a genuine MCP-surface requirement.",
+   "verified": true
+  },
+  {
+   "id": "FR-MCP-036",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "MCP explain_diagnostic read tool returning a diagnostic code's human explanation, remediation, and docs anchor.",
+   "confidence": "medium",
+   "reason": "v2.3.0 has a diagnostic registry / rules-doc contract (FR-PARSE-013) and deduplicated line-anchored diagnostics (REL-PARSE-002), but no agent-facing explain-by-code tool with remediation guidance. The remediation/docsAnchor fields themselves are new v3 (DR-PARSE-001), with the CLI counterpart IR-CLI-035 (explain command). No v2 requirement provides this explain capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-017",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Origin-aware loadRecord/loadRecordWithWorkspace that route id lookups to body vs step records (docs/spec/steps/<step>/) via optional origin/stepName, defaulting to body for backward compatibility.",
+   "confidence": "high",
+   "reason": "The body-vs-step 'origin' partition is an entirely v3 steps concept (v3 FR-PARSE-019/020/021 origin split and stepName fields). v2.3.0 loadRecord has no step-partition routing. The v2 FR-NODE-017 registered meaning ('Unified mutation envelope') is a different capability (ID collision), not the same as origin-aware routing.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-018",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Successor-trace search over the union of body+step records to prevent status 'slot regression' when a superseding successor exists.",
+   "confidence": "medium",
+   "reason": "Operates on the v3 union-records/steps model plus successor/supersede semantics that do not exist in v2.3.0. No v2 requirement provides successor-over-union slot-regression protection. v2 FR-NODE-018 ('Index summary synchronization for mutations') is an unrelated ID collision. Judged from title only (no test/code files yet), but the union-records dependency is unambiguously a v3-steps construct.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-019",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "updateStatus guard that denies discarding a verified/stable/frozen/implemented-with-evidence requirement unless confirmDiscardVerified + reason are supplied, returning MUTATION_DENIED and leaving the doc untouched.",
+   "confidence": "high",
+   "reason": "The red-phase test confirms this verified-regression discard guard does not exist before implementation, so it is new behavior. v2.3.0 FR-NODE-019 ('Granular requirement editing services') is a different capability (ID collision); the Stability taxonomy (FR-PARSE-015) validates stability but does not gate verified->discarded transitions. No v2 requirement provides this guard.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-020",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "computeSemanticSha pure content-hash (sha1 under an fpv1 frozen vector) over normalized requirement/AC text, excluding checked-state, Status, Stability, Trace Links, Verification Evidence, and Change Notes.",
+   "confidence": "high",
+   "reason": "A novel semantic-equivalence hash used for compatibility-check pins (FR-NODE-022) and diff_steps classification (FR-NODE-034). It is distinct in contract and purpose from v2.3.0 blockHash (REL-PARSE-003 / FR-NODE-032), which identifies duplicate blocks for collision repair. v2 FR-NODE-020 ('Workflow artifact resolver') is an unrelated ID collision.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-021",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "compareReqId (raw-byte REQ-ID ordering to select the min-side canonical block) and computeBlastRadius (transitive depends_on closure bounded to 2 hops, cutting traversal at frozen/stable nodes).",
+   "confidence": "high",
+   "reason": "New pure utilities supporting v3 compatibility-check min-side selection and dependency blast-radius impact analysis. No v2.3.0 requirement provides raw-byte REQ-ID comparison or a dependency-closure computation. v2 FR-NODE-021 ('Workflow JSONL core utilities') is an unrelated ID collision.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-022",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "add_compatibility_check mutation writing exactly one checked_compatible Trace Links row on the compareReqId-minimum block, carrying bidirectional semanticSha pins, guarded by dedup, frozen-block, endpoint-liveness, and self-pair checks.",
+   "confidence": "high",
+   "reason": "Requirement-to-requirement compatibility checking is an entirely new v3 concept. Although it reuses addTraceLink and table-cell safety, no v2.3.0 requirement provides a compatibility-check mutation (FR-NODE-022 is absent from the v2 registry, so there is no ID collision either). Generic add_trace_link (FR-MCP-007/IR-CLI-014) does not provide compatibility pins or these guards.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-023",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "refresh_compatibility_check / revoke_compatibility_check mutations that relocate the single min-side checked_compatible trace row, recompute its self/peer semanticSha (fpv1) pins, or remove it via range replacement.",
+   "confidence": "high",
+   "reason": "Part of the v3-only compatibility-check subsystem (seeded by net-new FR-NODE-022 add_compatibility_check). v2.3.0 has no notion of checked_compatible pin rows or semanticSha drift; its granular editing (FR-NODE-019 evidence/trace update/delete) operates on generic trace rows, not content-hash compatibility pins. registeredMeaning is null (ID not even reused). No v2.3.0 requirement provides this capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-024",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "list_dirty_edges read path that fresh-parses the workspace and classifies each checked_compatible edge as clean/dirty/orphaned/missing via a whitelist gate (row-count==1, self/peer pins == current semanticSha, endpoints cache-live, Notes parse, fpv match).",
+   "confidence": "high",
+   "reason": "Reads and classifies the v3-only compatibility-edge cache (incremental contradiction cache A1/A3). v2.3.0 index-summary sync (FR-NODE-018) and query fields/search (FR-PARSE-019) do rollup and field projection, not compatibility-edge drift classification. No v2.3.0 requirement models compatibility edges at all.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-025",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [],
+   "capability": "update_requirement_statement mutation that replaces the '#### Requirement' section prose using a new findRequirementStatementRange helper, guarded against corrupting adjacent Acceptance Criteria, GFM tables, and fenced code blocks.",
+   "confidence": "medium",
+   "reason": "Confirmed by code: v2.3.0 granular editing (FR-NODE-019 -> updateRequirementFields / replaceAcceptanceCriteria / editRequirementTableRows) edits metadata fields, AC, and table rows but has no statement-prose editing surface; the pre-existing findSectionBodyRange (internal.ts) cannot target the Requirement section, so a new findRequirementStatementRange helper (internal.ts:183) and update-statement.ts were added. The 'edit requirement statement text' capability was absent in v2.3.0. Within the broad granular-editing family but a genuinely new editable surface, hence medium confidence.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-026",
+   "verdict": "NEW",
+   "v2OverlapIds": [
+    "FR-NODE-019"
+   ],
+   "capability": "edit_acceptance_criteria mutation that rewrites the prose of a single targeted AC entry in place while preserving its checked/unchecked state and leaving other sections untouched.",
+   "confidence": "medium",
+   "reason": "Adversarial re-check finds only partial overlap, not a true functional duplicate. v3 FR-NODE-026 editAcceptanceCriteria (src/core/mutation/check-ac.ts:68-106; test/core/mutation/check-ac.fr-node-026.test.ts) does a single-line replaceLine on one AC identified by acId, splicing new prose after the `AC-N:` marker so the checkbox state and exact AC id prefix are preserved structurally and all siblings + other sections stay byte-for-byte. The cited v2.3.0 FR-NODE-019 replaceAcceptanceCriteria (src/core/mutation/edit-requirement.ts:217-237) instead replaceRange-rewrites the ENTIRE Acceptance Criteria section from a full `items` list, renumbering AC ids by array index (AC-${index+1}) and defaulting checkbox to unchecked when `checked` is omitted, and it blocks verified requirements via assertEditable. It cannot replace the v3 capability: (1) it forces supplying the whole list; (2) it renumbers ids rather than preserving them, breaking Covers/trace references on non-contiguous lists; (3) checkbox preservation is a caller burden, not automatic; (4) it re-renders siblings rather than guaranteeing byte-for-byte; (5) different verified-guard behavior. The registeredMeaning ('External Completed Work Log core services') is an unrelated ID-string reuse and does not bear on the capability judgment. The claim itself is only medium confidence and calls FR-NODE-026 a 'refinement', which is a distinct, non-replaceable ergonomic/safety primitive. Conservative rule => NEW.",
+   "verified": true
+  },
+  {
+   "id": "FR-NODE-027",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "claim_step mutation over docs/spec/steps/state.md that declares TouchesScope/TouchesReq, appends a step row, and enforces a two-stage write-skew gate (hard-block STEP_DIRECT_CONFLICT, soft-block STEP_OVERLAP via depends_on closure, STEP_SUPERSEDE_PROTECTED, closure-unavailable degradation).",
+   "confidence": "high",
+   "reason": "Belongs to the net-new v3 steps/state.md parallel-development coordination subsystem, which does not exist in v2.3.0. The v2.3.0 ID meaning 'Requirement ID status cache' and the SRS mutation lock (REL-NODE-005 / FR-NODE-027 v2) are a coarse global .srs.lock serialization guard; claim_step is fine-grained per-step, per-REQ conflict detection across concurrent steps. Different capability entirely.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-028",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "update_step_state mutation that rewrites an existing state.md step row's Status (constrained to active/merging/merged/abandoned), DependsOn, and Updated fields, returning NOT_FOUND for a missing step.",
+   "confidence": "high",
+   "reason": "Operates on the v3-only steps/state.md Markdown step table. v2.3.0 guarded workflow progress mutations (FR-NODE-030 v2) append to pipeline.jsonl / worklog.jsonl (kiwi pipeline event journal) - a different artifact and purpose. The v2.3.0 ID meaning 'Canonical workflow journal identity and repair inspection' is the unrelated JSONL-journal feature, not step-state coordination. Net-new steps subsystem.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-029",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "list_steps read path that fresh-parses state.md and returns steps in Kahn topological order by DependsOn, sets cycle=true with a STEP_CYCLE advisory on dependency cycles, and emits STEP_SUPERSEDE_PROTECTED / STEP_ORPHAN / STEP_DRIFT advisories.",
+   "confidence": "high",
+   "reason": "Reads the net-new v3 steps/state.md subsystem with graph ordering and step advisories. The v2.3.0 ID meaning 'Read-only legacy workflow migration preview core' (FR-NODE-029 v2) classifies legacy workflow artifacts for migration - a completely different read path. No v2.3.0 requirement provides step topological ordering or STEP_* advisories.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-030",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "supersede_requirement strict ordered two-call mutation (T1 add_requirement minting a successor with a supersedes trace, T2 hardened updateStatus(oldId, discarded)) with self-reference/reverse-duplicate/N>1-successor guards, idempotent journal resumption, verified-regression override, and revoke_compatibility_check invalidation of the oldId endpoint.",
+   "confidence": "high",
+   "reason": "v2.3.0 ships add_requirement, update_status, and add_trace as separate primitives but no supersede orchestration; supersede (and its compatibility-row invalidation, an A1 v3-only concept) is a v3 addition (also surfaced as v3 CLI supersede / set-supersede and MCP supersede). The v2.3.0 ID meaning 'Guarded workflow progress mutations with canonical journal identity' is the unrelated JSONL-journal feature. No v2.3.0 requirement provides guarded supersede.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-031",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "promote_step_requirement mutation that inserts a step-origin requirement's pre-minted canonical id verbatim into a target body scope after verifying global uniqueness against a reservation view (HEAD body + step + reserved), explicitly NOT auto-generating or altering the id.",
+   "confidence": "high",
+   "reason": "Tied to the net-new v3 steps subsystem and its ID-reservation model. v2.3.0 add_requirement (FR-NODE-008) auto-generates the next sequential ID; promote deliberately preserves a verbatim reserved id and rejects reservation-view collisions - the opposite behavior. The v2.3.0 ID meaning 'Logical workflow deletion state with canonical mutation dependency' is unrelated. Net-new capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-032",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "MultiFileCommit four-phase engine (render -> stale-check -> write-tmp -> rename) with a durable merge-journal (renames, sha256, backups) enabling crash recovery: half-applied detection, roll-forward/roll-back, terminal roll-back, idempotent resumption, all-or-nothing across files, state.md excluded.",
+   "confidence": "high",
+   "reason": "A new low-level transactional durability primitive for multi-file merges. v2.3.0 has a single-file line-based patch engine (FR-NODE-002) and minimal-change preservation (REL-ARCH-001) but no durable multi-file merge-journal with crash-recovery roll-forward/roll-back. The v2.3.0 ID meaning 'Merge-time Requirement ID collision repair core' (FR-NODE-032 v2) is a diagnose/plan/apply ID-rename flow, not a general crash-safe multi-file commit engine. Genuinely new capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-033",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A durable merge-journal append-log for the MultiFileCommit engine: each entry records rename from/to, sha256 of final content, and captured requirementId, marked applied durably before each rename, so a crashed multi-file commit can resume and skip already-applied renames.",
+   "confidence": "high",
+   "reason": "The test drives crash-recovery: interrupt mid-rename, read the stranded journal (first rename applied, second not), then resume() replays only the outstanding rename and clears the journal. This is a general durable multi-file-commit crash-recovery primitive. v2.3.0's FR-NODE-032 reuses the ID for 'Merge-time Requirement ID collision repair core' (diagnose/plan/apply + lock), an unrelated capability with no crash-recovery journal or resume-skip. No v2.3.0 requirement provides durable multi-file commit journaling with resume.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-034",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "diffSteps read handler comparing step-origin requirement records against body records using computeSemanticSha as the equality key, producing a four-way classification (NEW / UPDATE / CONFLICT-PARTIAL / CONFLICT-FULL-GUARDED) with later-step-wins for same-rank peers.",
+   "confidence": "high",
+   "reason": "The test builds a workspace with docs/spec/steps/<stepName>/ step files parsed into workspace.stepRecords and classifies each step vs its body counterpart against the updateStatus protection surface. This is the v3 step/vibe-merge diff. v2.3.0 has no steps-directory origin split, no step-vs-body semanticSha diff, and no such classifier; the closest v2.3.0 items (collision-repair diagnose, query fields) address different problems. NEW capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-035",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A work-mode core (getWorkMode/setWorkMode) persisting Mode in {sdd, vibe, wait} plus vibe Active Task in docs/spec/steps/state.md, fail-open to wait on missing/invalid state, clearing stale Active Task on non-vibe transitions.",
+   "confidence": "high",
+   "reason": "The test exercises get/set over state.md metadata (Mode + Active Task) with fail-open-to-wait and init scaffolding of a usable state.md. The sdd/vibe/wait work-mode model is a wholly new v3 concept; v2.3.0 has no work-mode state at all (its state.md/status-cache items are about ID status caching, not work modes). NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-036",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi init hook-installer orchestration: scaffolds minimal work-mode state, installs agent/git hooks, handles clobber, and performs enterprise detection.",
+   "confidence": "high",
+   "reason": "v3Title and codeFiles (init-project.ts) place this in the v3 hook-installation family that wires up the trace.mjs/pre-commit.mjs hooks and work-mode scaffold. v2.3.0's init bootstrap (FR-NODE-009) and skill-install (FR-NODE-016 / IR-CLI-027) do not install per-edit/pre-commit hooks or do enterprise detection. The ID string IR-CLI-029 was reused in v2.3.0 for 'Compact CLI requirement search' — an unrelated capability. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-037",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A key-preserving JSON merger for Claude settings.json that adds hook registration entries without clobbering existing user keys.",
+   "confidence": "high",
+   "reason": "This is a Claude settings.json merge utility supporting the v3 hook-install flow. No v2.3.0 requirement writes or merges Claude settings.json; v2.3.0 has no agent-hook installation surface. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-038",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A Codex hooks.json writer with a version gate and trust-review guidance, registering the trace/pre-commit hooks for Codex.",
+   "confidence": "high",
+   "reason": "codeFiles (bootstrap/init-project.ts, templates.ts) and title tie this to the v3 hook-install family for Codex. v2.3.0 migration items for Codex skills (MIG-FLOW-001) install skills, not hooks.json; no v2.3.0 requirement writes a Codex hooks.json with a version gate. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-039",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A standalone trace.mjs PostToolUse hook script that, only in vibe mode, appends one JSONL record per edit to a per-session shard under the Active Task trace dir, parsing Claude tool_input paths and Codex apply_patch bodies, path-traversal-safe and fail-open (no-op that never blocks the edit).",
+   "confidence": "high",
+   "reason": "The test spawns the installed docs/.kiwi/hooks/trace.mjs and asserts vibe-only per-session shard writes, dual Claude/Codex path extraction, fail-open no-ops, contract fields, and traversal containment. This per-edit vibe trace hook is entirely new; v2.3.0's workflow JSONL utilities (FR-NODE-021) parse existing pipeline/worklog artifacts but there is no per-edit trace-capture hook. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-040",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A standalone pre-commit.mjs best-effort git gate that blocks (non-zero exit) a commit when Mode is vibe and the Active Task has no synthesized step directory, printing synthesis-skill guidance, and passes otherwise.",
+   "confidence": "high",
+   "reason": "The test spawns the installed docs/.kiwi/hooks/pre-commit.mjs and asserts blocking of unsynthesized vibe tasks with synthesis guidance. This git pre-commit gate for the vibe workflow does not exist in v2.3.0, which has no git-hook gating and no vibe/synthesis concept. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-041",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A vibe-to-SRS synthesis engine that merges a task intent.md, per-session trace shards (timestamp-ordered, torn-tail-tolerant), @step code comments, and the final diff into step SRS under docs/spec/steps/<Task>/, idempotent (no-op if present), with diff-size cap, gitignore exclusion, and secret redaction.",
+   "confidence": "high",
+   "reason": "The test drives synthesizeStepSrs over four input channels with idempotency, diff cap, gitignore exclusion, and multi-class secret redaction. This synthesis engine is core to the v3 vibe workflow and has no v2.3.0 analogue; v2.3.0's Completed Work Log / workflow services do not synthesize SRS from edit traces. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-042",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A vibe-step REQ-ID reservation minter that allocates reserved Requirement IDs for vibe steps and a guard that rejects unreserved IDs.",
+   "confidence": "medium",
+   "reason": "Title places this in the v3 vibe-step workflow: mint reserved IDs and reject unreserved ones during vibe synthesis. v2.3.0's FR-NODE-013 'Optimistic concurrency for generated-ID mutations' concerns concurrency on ID generation, not a vibe-step reservation registry with an unreserved-id rejection guard; no v2.3.0 requirement provides step-scoped ID reservation. NEW.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-043",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A vibe-only completion hard-gate (evaluateVibeCompletionGate) that blocks marking a vibe step complete while unacknowledged non-clean dirty/compatibility edges remain over its touched closure, distinguishing a synthesized step (step directory exists) from a contradiction-verified one, and staying advisory-only for non-vibe STEP flows.",
+   "confidence": "high",
+   "reason": "The vibe/step workflow, dirty-edge (compatibility) closure, and synthesized-vs-contradiction-verified distinction are all v3 concepts. Nothing in the v2.3.0 shipped set (which has no vibe flow, no steps, no dirty-edge/compatibility model, no completion hard-gate) provides this. The ID reuse is coincidental; the capability is absent from v2.3.0.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-046",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "FR-PARSE-019",
+    "IR-CLI-029",
+    "FR-MCP-021"
+   ],
+   "capability": "A core full-text search over requirement records: returns records whose searchable text (statement + title + acceptance-criteria text) contains a query substring, deterministically ordered by requirement id.",
+   "confidence": "high",
+   "reason": "Partial/conceptual overlap only, not functional substitution. FR-NODE-046 (src/core/query/records.ts:240) is a core primitive `searchRequirementRecords(records, query: string): RequirementRecord[]` returning FULL requirement records, case-SENSITIVE substring over title+statement+AC (3 fields), ordered by id. The cited v2.3.0 stack (FR-PARSE-019/IR-CLI-029/FR-MCP-021, impl src/core/query/discovery.ts:175) is a same-named but structurally different function `searchRequirementRecords(records, options): Record<string,unknown>` that returns a COMPACT projection object {id,title,snippets,filePath,headingLine,target,status,stability,scope}+page — never full records — with case-INSENSITIVE matching over 10 fields plus filters/pagination/bounded snippets, serving the CLI/MCP adapter surface. They coexist as two distinct functions with different signatures, return types, case semantics, and field coverage. The v2.3.0 search cannot return full RequirementRecord[]; a separate v3 requirement IR-CLI-037 (test/cli/search.ir-cli-037.test.ts:14) explicitly consumes FR-NODE-046 as 'the existing core search query' to emit an array of matching records. You cannot delete FR-NODE-046 and substitute the v2.3.0 capability without changing the shipped contract, so it is not a fully-substitutable duplicate. The shared function name is a real governance smell but does not make the capabilities identical. Per the conservative rule (partial/uncertain overlap -> NEW to avoid wrongful discard), verdict is NEW.",
+   "verified": true
+  },
+  {
+   "id": "FR-NODE-047",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A retarget core mutation that bulk-rewrites the Target of a set of requirements with a per-item dry-run plan, Target-Map registration validation (target-not-registered skip), frozen-block change-note gating, an exclude list, verified-inclusion-by-default, and newline-style preservation.",
+   "confidence": "high",
+   "reason": "v2.3.0's target capability (FR-NODE-014 target lifecycle mutation / default resolution) only creates targets and resolves the active/default target; it does not move requirements between targets in bulk with per-item skip reasons and frozen/exclude gating. No shipped v2.3.0 requirement provides a bulk retarget mutation, so the capability is net-new (the v3 MCP retarget_requirements ID reuse maps to an unrelated v2.3.0 meaning).",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-048",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "An update-field core mutation that rewrites a single metadata line (priority/risk/title/target/verification-method), and for type/scope edits regenerates the requirement id via generateNextRequirementId, rewrites inbound Trace Link references from the old id to the new id, defaults type/scope edits to dry-run, and requires an explicit sign-off to write.",
+   "confidence": "medium",
+   "reason": "Plain single-field editing partially overlaps v2.3.0 granular requirement editing (FR-NODE-019). But the defining capability of this requirement — changing a requirement's type or scope with automatic id-prefix regeneration and inbound trace-reference migration under a sign-off guard — is not achievable with v2.3.0 tools (which forbid manual id changes and route collisions only through the separate repair tool). The headline id-migration behaviour is net-new; classified NEW with the base field-edit overlap noted.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-049",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "add-related-doc and add-change-note core mutations that append structural metadata: a Related Docs entry (metadata field) and a Change Notes table row.",
+   "confidence": "medium",
+   "reason": "v2.3.0's closest surface is append_section_note (FR-MCP-018), which appends prose bullets to narrative sections (e.g. Research/Implementation Notes) — a different structure from the Related Docs metadata field and the Change Notes table. No shipped v2.3.0 requirement provides dedicated add-related-doc / add-change-note structural-metadata mutations, so the capability is net-new. (No test file; judged from title + code files add-related-doc.ts / add-change-note.ts.)",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-050",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "FR-NODE-018"
+   ],
+   "capability": "A sync-counts core mutation that recomputes the index Status Summary and Requirement Type Summary count cells from the global (cross-target) record set, defaults to a check that reports expected-vs-actual drift without writing, rewrites only the drifting summary cells on apply, and reuses the stale-snapshot patch guard.",
+   "confidence": "high",
+   "reason": "The overlap claim is overstated. FR-NODE-018's shipped implementation (src/core/mutation/sync-index.ts / syncIndexRollups) and FR-NODE-050 (src/core/mutation/sync-counts.ts / syncCounts) share only partial mechanics: both do a GLOBAL cross-target recount of Status/Type summary counts and both reuse the STALE_PATCH guard. They are NOT function-replaceable. Two decisive, non-cosmetic contract differences: (1) DEFAULT — sync-index defaults to WRITE (dryRun ?? false = false); sync-counts defaults to a non-writing CHECK (apply omitted -> written:false). The 1차 근거's claim that sync-index has a 'dry-run/check default' is false. (2) OUTPUT CONTRACT — FR-NODE-050 AC-1 (pinned by test lines 231-238 in test/core/query/fr-node-050-sync-counts.test.ts) requires a per-cell drift report cells:[{section,key,expected,actual}] giving declared-vs-actual per cell. sync-index instead returns actual-only statusCounts/typeCounts plus statusSummaryChanged/typeSummaryChanged booleans and has no per-cell expected-vs-actual output; it cannot satisfy AC-1. Additionally sync-index inserts missing rows and wraps the mutation envelope + SRS lock, whereas sync-counts is a surgical cell-only rewrite with none of that. Substituting syncIndexRollups for syncCounts would violate FR-NODE-050 AC-1 (output shape) and change default behavior. The presence of a separate, check-first, per-cell-drift implementation with its own AC-pinned test on this branch confirms FR-NODE-050 encodes a contract sync-index does not deliver (at most a refinement/supersession, not a redundant duplicate). Per the conservative rule (partial overlap -> NEW), verdict is NEW.",
+   "verified": true
+  },
+  {
+   "id": "FR-NODE-051",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A restore core mutation that un-discards a requirement: sets Status back to an active value (default planned), removes the heading strikethrough and [DISCARDED] marker, requires a reason (appended as one Change Notes row), and emits a stale acceptance-criteria/evidence warning when the requirement had previously been verified.",
+   "confidence": "medium",
+   "reason": "v2.3.0 ships generic status changes (update_status: FR-MCP-004 / IR-CLI-010) but no dedicated inverse un-discard that strips the discard decorations, mandates a reason, and warns about stale AC/evidence. Setting status via update_status would not clean the discard markers or emit the stale warning, so restore delivers behaviour not obtainable with v2.3.0 tools. Net-new gap-fill; classified NEW (some residual overlap with generic update_status).",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-052",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A set-supersede core mutation that writes the Supersedes / Superseded By metadata field in a requirement block and, when trace sync is enabled, atomically inserts the matching supersedes / superseded_by Trace Link row, with dry-run preview and NOT_FOUND handling.",
+   "confidence": "medium",
+   "reason": "v2.3.0 ships generic trace-link addition (add_trace_link: FR-MCP-007 / IR-CLI-014 add-trace) but has no supersede concept — no Supersedes/Superseded By metadata management and no atomic pairing of that metadata with a supersedes trace row. Supersede is introduced in v3, so the capability is net-new relative to the v2.3.0 shipped set.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-053",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A register-scopes core mutation that finds unregistered scope srs documents and adds each as an index Scope Map row, inferring the prefix from the document's requirement id prefixes, defaulting to dry-run, skipping prefix-conflict documents with a skip reason, and leaving requirement blocks and summary counts untouched.",
+   "confidence": "high",
+   "reason": "v2.3.0 can read scopes (IR-CLI-009) and validate Scope Map consistency / detect unregistered SRS docs (FR-PARSE-010, FR-PARSE-014 index consistency / SRS-W018), but provides no mutation to auto-register unregistered scope documents into the Scope Map. This remediation mutation is net-new.",
+   "verified": false
+  },
+  {
+   "id": "FR-NODE-054",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A scaffold-scope core mutation that creates a brand-new numbered scope srs.md from the scope template (with chosen prefix) and registers it in both the index §2 SRS Documents and §4 Scope Map sections in one operation, defaulting to a dry-run preview and rejecting name/prefix collisions without writing.",
+   "confidence": "high",
+   "reason": "v2.3.0 project bootstrap (init_project / FR-NODE-009) creates the initial workspace, but there is no shipped capability to create an additional scope document from template and dual-register it in the index. Scope scaffolding is net-new relative to the v2.3.0 set (distinct from FR-NODE-053, which only registers already-existing unregistered documents).",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-019",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "SRS file discovery partitions .srs.md files into scope (body) files vs origin-isolated step files under docs/spec/steps/<name>/, plus state.md discovery.",
+   "confidence": "high",
+   "reason": "discover.ts introduces the 'steps directory' origin partition (stepNameFromPosix, stepFiles, stateFile) — a concept v2.3.0 never had. The v2.3.0 requirement registered under this same ID ('Normalized query fields for requirement search') is a different capability (related-docs/evidence/trace/priority/stability query filters); no v2.3.0 requirement provides steps-directory origin isolation. ID collision only.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-020",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Workspace parser splits parsed requirements by origin into separate body records and step records.",
+   "confidence": "high",
+   "reason": "v2.3.0 has no step-records concept; its parser produces a single flat records array. Splitting into body vs step records is part of the new steps workflow and has no equivalent v2.3.0 shipped capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-021",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Adds optional origin ('body'|'step') and stepName fields to RequirementRecord, and stepRecords/stepFiles/stateFile to ParsedWorkspace types.",
+   "confidence": "high",
+   "reason": "Test (requirement-record-origin.fr-parse-021.test.ts) confirms the capability is type-level step-origin fields. The v2.3.0 requirement registered under this same ID ('External Completed Work Log parsing') is an unrelated capability; no v2.3.0 requirement adds step-origin record fields. ID collision only.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-022",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "E012 reference-ID resolution resolves IDs over the union of body records and step records.",
+   "confidence": "high",
+   "reason": "The capability extends ID resolution to include the new step-records set. Step records did not exist in v2.3.0, so union-over-step-records resolution is new; no v2.3.0 requirement provides it (v2.3.0 diagnostics work REL-PARSE-002/003 is dedup/grouped-duplicate-ID, a different concern).",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-023",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Loads docs/spec/steps/state.md and parses it via a new parseStepState parser for step workflow state.",
+   "confidence": "high",
+   "reason": "state.md and step-state parsing are part of the new steps/work-mode workflow. v2.3.0 has no state.md loader or step-state parser; no shipped capability overlaps.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-024",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Extends ValidationRule context and adds a validateWorkspaceScoped step-local validation pass.",
+   "confidence": "high",
+   "reason": "Step-local scoped validation is a new pass over the new step records; v2.3.0's validation registry has no step-scoped pass or the extended ctx. No overlapping shipped capability.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-025",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Adds step validators W044 (step-shadows-body) and W045 (step-overload) plus a STEP diagnostic namespace.",
+   "confidence": "high",
+   "reason": "New diagnostic codes for the new step-records feature. v2.3.0 diagnostics work (REL-PARSE-002/003) covers dedup and grouped duplicate-ID, not step shadowing/overload; no overlap.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-026",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "parseCompatibilityNotes strict tokenizer parses the checked_compatible Trace Links Notes cell into fpv/self/peer/checked-at fields with a restricted charset.",
+   "confidence": "high",
+   "reason": "Test confirms this parses the compatibility-check Notes format (part of the new add_compatibility_check feature, FR-NODE-022/023). v2.3.0 has no compatibility-check feature; no shipped capability parses compatibility notes.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-027",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Compatibility cache validators W041 (stale), W042 (missing), W043 (conflict-concealment) with an E012 relation template.",
+   "confidence": "high",
+   "reason": "New validators for the new compatibility-check/cache feature. No compatibility cache existed in v2.3.0; no shipped capability provides these validators.",
+   "verified": false
+  },
+  {
+   "id": "FR-PARSE-028",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "Parses work-mode metadata (Mode and Active Task) from state.md with fail-open behavior.",
+   "confidence": "high",
+   "reason": "Work-mode is a new v3 concept (paired with FR-NODE-035 work-mode model and FR-MCP-027 set/get_work_mode). v2.3.0 has no work-mode state or its metadata parsing; no overlapping shipped capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-028",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi step validate <name>` runs step-local validation (validateWorkspaceScoped) over docs/spec/steps/<name>/, emitting W044 step-shadows-body, W045 step-overload, and STEP_* advisories with an exit code reflecting step-local errors only.",
+   "confidence": "high",
+   "reason": "Steps (steps-directory partition, work modes) are an entirely v3 construct. v2.3.0's validate capability (IR-CLI-004 / FR-MCP-003 / FR-PARSE-009) validates the whole workspace and has no step-origin concept or step-scoped diagnostic namespace, so step-local validation is a new capability, not a re-expression of the existing validate.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-029",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi init` hook-install extension: installs Claude settings.json PostToolUse trace hook, Codex hooks.json, git pre-commit hook, and the docs/.kiwi scaffold + steps/state.md, reporting created/updated/skipped/warned with clobber and enterprise-suppression warnings.",
+   "confidence": "high",
+   "reason": "v2.3.0 init (IR-CLI-003) scaffolds SRS documents and Kiwi skill installation (IR-CLI-027 / FR-NODE-016) installs coding-agent skills; neither installs per-edit trace hooks, pre-commit gates, or the vibe/sdd docs/.kiwi runtime. Agent hook installation is a new v3 capability tied to the vibe trace-tag workflow.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-030",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi mode [sdd|vibe|wait]` reads or switches the persisted work mode and Active Task in steps/state.md (FR-NODE-035 getWorkMode/setWorkMode), rejecting invalid values with a structured JSON error.",
+   "confidence": "high",
+   "reason": "Work modes (sdd/vibe/wait) are a v3-only concept. Nothing in the v2.3.0 registry models or exposes a work-mode state, so reading/switching mode is a new capability rather than a reused v2.3.0 requirement.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-031",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi vibe-gate check` CI subcommand exits non-zero when Mode is vibe and an Active Task lacks its synthesized step directory, for wiring as a remote required status check (CI mirror of the FR-NODE-040 pre-commit gate).",
+   "confidence": "high",
+   "reason": "The vibe synthesis/gate workflow is v3-only. v2.3.0 has no vibe mode, no synthesized-step concept, and no vibe-gate CI check, so this is a new capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-033",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "validate human-readable renderer that groups diagnostics by file and by diagnostic code for scannable output.",
+   "confidence": "medium",
+   "reason": "v2.3.0 diagnostic-presentation work (REL-PARSE-002 dedup + line-anchoring, REL-PARSE-003 grouped duplicate-Requirement-ID diagnostics) only dedups/anchors and groups duplicate-ID collisions specifically; it does not group the full validate output by file and code. General file/code grouping of the validate human renderer is a new presentation capability, though adjacent to REL-PARSE-003.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-034",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "validate `--severity`, repeatable `--only`, and `--ignore` display filters that change which diagnostics are shown while the exit code is computed from the UNFILTERED error set (an --ignore of an error cannot flip exit 1 to 0).",
+   "confidence": "high",
+   "reason": "v2.3.0 filtering capability (FR-PARSE-019 priority/stability/status filters) applies to requirement search/list, not to validate diagnostic display. No v2.3.0 requirement provides validate severity/code display filters with the exit-code-from-unfiltered contract, so this is new.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-035",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi explain <code>` and `validate --explain <code>` print a diagnostic definition (title, severity, messageTemplate, sourceRule, since, remediation) from the registry, reject unknown codes non-zero, and support --json.",
+   "confidence": "high",
+   "reason": "v2.3.0 has the diagnostic registry / rules-doc contract (FR-PARSE-013) but no user-facing explain command or --explain option surfacing per-code remediation. The explain surface (backed by v3 DR-PARSE-001 remediation fields) is a new read capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-036",
+   "verdict": "NEW",
+   "v2OverlapIds": [
+    "FR-FLOW-007",
+    "FR-FLOW-008",
+    "IR-CLI-015",
+    "FR-FLOW-003"
+   ],
+   "capability": "read-only CLI `release-readiness`, `coverage`, and `rtm` commands that surface existing core release-readiness (blocked / implemented-not-verified / missing-evidence / stability-blockers), AC-coverage gaps, and requirement-to-evidence traceability for a target with a verified-gate banner.",
+   "confidence": "medium",
+   "reason": "Only partial overlap; the dominant deliverable is not provided by any cited requirement. IR-CLI-036 is an interface (IR-CLI) requirement adding three NEW read-only CLI commands (release-readiness, coverage, rtm) plus a verified-gate banner over the existing core. The cited FR-FLOW-003/007/008 are Type=functional CORE contracts (the summarizeReleaseReadiness / collectAcCoverageGaps computation and its result fields) — they are IR-CLI-036's dependencies/data source, NOT functional equivalents; having the core computation does not deliver a CLI surface. The only cited CLI requirement, IR-CLI-015, is a different command (`speckiwi summary`) whose output overlaps only with `release-readiness` (blocked / implemented-not-verified / missing-evidence) and does NOT provide the `coverage` command (per-AC coverage gaps for verified reqs), the `rtm` traceability matrix, stability-blocker presentation, or the verified-gate banner (AC-5). Implementation confirms non-overlap: src/cli/commands/read.ts registers four SEPARATE commands — summary (L761), release-readiness (L972), coverage (L989), rtm (L1000) — with distinct output shapes; a true duplicate would not coexist as distinct deliverables. The claim's own text concedes rtm is 'a new rendering,' and coverage is likewise a new command. The 'dominant capability already provided' argument is invalid because the dominant deliverable of an IR-CLI requirement is the CLI interface, which no cited v2.3.0 requirement delivers. Per the conservative rule (partial overlap → NEW to avoid wrongful discard).",
+   "verified": true
+  },
+  {
+   "id": "IR-CLI-037",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "IR-CLI-029",
+    "FR-PARSE-019",
+    "FR-MCP-021"
+   ],
+   "capability": "`speckiwi search <query> --field title|ac|rationale|notes|all` text search over requirement fields with the standard target/status/scope/type filters and --json output.",
+   "confidence": "medium",
+   "reason": "Partial overlap only, not identical capability. v2.3.0 IR-CLI-029 shipped a `search` command (added in commit a3c4e0d) that is an ALL-FIELD snippet search with standard filters + --json (backed by searchRequirementRecords); FR-PARSE-019 supplies normalized filter fields and FR-MCP-021 the MCP counterpart. However, IR-CLI-037's defining capability is the `--field title|ac|rationale|notes|all` selector that RESTRICTS matching to a single field — a behavior v2.3.0 does not provide. Git history confirms this: the field-scoped helper searchFieldTexts was added only in the v3 commit d165542, and the v3 code comment (src/cli/commands/read.ts:486) notes that `notes` (Implementation Notes) is a NEW searchable field the v2.3.0 snippet search does not scan. IR-CLI-037 AC-1 explicitly requires that a rationale-only marker must NOT match under `--field title` — exactly the case the v2.3.0 all-field search would get wrong, so the capabilities are not functionally substitutable. IR-CLI-029's own 'field selection' is output PROJECTION (--fields on list/extract, AC-1 selected-fields projections), not search-field scoping. This is a refinement that extends IR-CLI-029 (matching this repo's own extends-convention), not a true duplicate. Per the conservative rule (partial overlap → NEW to avoid wrongful discard), finalVerdict=NEW.",
+   "verified": true
+  },
+  {
+   "id": "IR-CLI-038",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "`speckiwi retarget --from/--to` bulk-moves requirements between targets with dry-run default, --apply, selection filters, --exclude, per-item skipReason (target-not-registered, excluded, frozen-needs-change-note), unregistered-target refusal, and frozen SRS-W009 Change-Notes governance (FR-NODE-047 core).",
+   "confidence": "high",
+   "reason": "v2.3.0 target lifecycle capability (FR-NODE-014 / IR-CLI-023 / FR-MCP-015 / FR-FLOW-013) only creates targets and resolves the Active Target default; it provides no bulk retargeting of existing requirements. Bulk cross-target movement with per-item skip reasons and frozen change-control is a new v3 mutation.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-039",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI update-field edits a metadata field (priority/risk/title/target/verification-method) and, for type/scope, regenerates the requirement ID via the deterministic generator under a dry-run + sign-off guard while rewriting inbound trace references.",
+   "confidence": "medium",
+   "reason": "The plain field-edit surface partially overlaps v2.3.0 granular requirement editing (FR-NODE-019 'field 편집'), but the requirement's defining capability — a type/scope migration that regenerates the Requirement ID (prefix-scope-NNN) and rewrites inbound Trace Links, gated by dry-run+confirm — is not shipped in any v2.3.0 requirement. Net-new capability, so NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-040",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [],
+   "capability": "CLI update-statement replaces a requirement's #### Requirement prose statement body, leaving Acceptance Criteria and Trace Links sections untouched, with dry-run and JSON envelope.",
+   "confidence": "medium",
+   "reason": "v2.3.0 granular requirement editing (FR-NODE-019) covers metadata field edits, AC replacement, and evidence/trace update/delete — but not editing the Requirement statement prose body. The statement is not a metadata field; no v2.3.0 requirement provides statement-body replacement. NEW (delegates to v3 core FR-NODE-025 update_requirement_statement).",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-041",
+   "verdict": "NEW",
+   "v2OverlapIds": [
+    "FR-NODE-019",
+    "FR-MCP-020"
+   ],
+   "capability": "CLI edit-ac edits the text of a single acceptance criterion while preserving its checkbox state and all other criteria, with dry-run and JSON envelope.",
+   "confidence": "medium",
+   "reason": "적대적 재검증 결과 OVERLAP 주장은 성립하지 않음. v3 IR-CLI-041(edit-ac)은 v2.3.0 FR-NODE-019/FR-MCP-020과 \"AC 내용을 편집한다\"는 능력 계열(family)만 공유할 뿐, 기능 대체 가능 수준으로 동일하지 않음(부분 유사 ≠ 기능 대체).\n\n증거:\n1) v2.3.0 FR-NODE-019(Granular editing) AC-2의 AC 편집은 실제 배포 CLI에서 `replace-acceptance-criteria`(mutations.ts:212)로 구현됨. 코어는 replaceAcceptanceCriteria(edit-requirement.ts:217-236)로, `items:{text,checked?}[]` 전체 배열을 받아 Acceptance Criteria 섹션 전체를 `replaceRange`로 교체하고 AC id를 위치기반(`AC-${index+1}`)으로 재부여함 = 통째 리스트 교체(whole-list replace).\n2) v3 IR-CLI-041(edit-ac, mutations.ts:475)은 별개의 코어 뮤테이션 editAcceptanceCriteria(FR-NODE-026, check-ac.ts:68-106)에 위임. `id, acId, text`로 단일 criterion을 acId로 지목해 그 한 줄만 `replaceLine`하고, 체크박스 마커와 `AC-N:` id 프리픽스를 verbatim 보존하며 나머지 criterion·섹션은 byte-for-byte 불변 보장. 빈/초과길이/제어문자 text-safety 검증과 patch preview까지 추가.\n3) 두 능력은 실제 코드베이스에 나란히 공존(replace-acceptance-criteria + edit-ac, 코어 뮤테이션도 2개 분리) → 프로젝트 자체가 별개 능력으로 취급하는 직접 증거. whole-list replace로 단일 AC 텍스트를 바꾸려면 호출자가 전체 리스트를 완벽 재구성해야 하고 그 과정에서 타 criterion의 checked 상태·id·순서를 훼손할 위험이 있어 edit-ac의 \"단일 criterion 보존 편집\" 보장을 대체하지 못함.\n4) FR-MCP-020(40.mcp-...:1512-1541)은 기존 뮤테이션(check_acceptance_criteria=체크박스 토글, evidence, trace)의 dry-run/notes/envelope 패리티 인프라이지 단일-AC 텍스트 편집 도구가 아님.\n\n주장이 근거로 든 \"same capability family (mutating AC content post-creation)\"은 정확히 부분 유사에 해당하며, 보수적 규칙(진짜 동일일 때만 OVERLAP, 불확실·부분겹침은 NEW)에 따라 NEW로 판정.",
+   "verified": true
+  },
+  {
+   "id": "IR-CLI-042",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI add-related-doc appends a Related Docs metadata entry and add-change-note appends a dated Change Notes table row to a requirement, both with dry-run and JSON.",
+   "confidence": "medium",
+   "reason": "These are structured-metadata append mutations (Related Docs cell, structured Date/Change/Reason Change Notes row) via v3 core FR-NODE-049. v2.3.0's nearest surface is append_section_note (FR-MCP-018), a generic free-prose section note — a different capability. No v2.3.0 requirement provides dedicated Related Docs / Change Notes structured appends. NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-043",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A common --input-json option (JSON arg object as a string or from stdin) accepted by ALL mutation commands, plus --help --json emitting a machine-readable command/kind/parameter descriptor sourced from the ToolSpec registry.",
+   "confidence": "high",
+   "reason": "v2.3.0 provides human/JSON output (FR-ARCH-004) and structured JSON errors for reads (IR-CLI-030), but not a uniform stdin/string JSON input channel for mutation commands nor registry-sourced --help --json descriptors. This is net-new CLI-wide input/introspection infrastructure (v3 core FR-ARCH-006 ToolSpec registry). NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-044",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "FR-NODE-018"
+   ],
+   "capability": "CLI sync-counts recomputes the index Status Summary and Requirement Type Summary cells from records, defaulting to a drift check, writing with --apply, and gating CI non-zero with --check.",
+   "confidence": "high",
+   "reason": "Partial overlap only, not true functional replacement. The recompute/reconcile core genuinely overlaps: v2.3.0 FR-NODE-018 (sync-index / syncIndexRollups, src/core/mutation/sync-index.ts:128-132) already recomputes the 00.index Status Summary + Requirement Type Summary from workspace.records with NO target filter (same GLOBAL arithmetic as v3 sync-counts, src/core/mutation/sync-counts.ts:103-104), writes those cells back, and supports a --dry-run preview plus a stale-snapshot guard. So the 1차 근거 is right that both belong to the same rollup-reconciliation family. BUT IR-CLI-044 (core FR-NODE-050) adds a capability the shipped sync-index does NOT provide: the --check CI-gate that returns a non-zero exit code when drift exists (CLI mutations.ts:680-681: exitCode 1 when cells.length > 0). sync-index has no --check option and only exits non-zero (5) on !result.ok — sync-index --dry-run reports drift but exits 0, so it cannot gate CI on drift. IR-CLI-044's defining statement ('gating CI non-zero with --check') is therefore unsatisfiable via FR-NODE-018 alone. It also inverts the default safety (sync-counts defaults to a read-only check; sync-index defaults to a mutating write) and was built as a separate coexisting core rather than a rename. Because the CI-gate/check capability is a genuine, non-subsumed functional delta, this is partial overlap, not feature substitution; per the conservative rule it resolves to NEW to avoid wrongful discard.",
+   "verified": true
+  },
+  {
+   "id": "IR-CLI-045",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI supersede mints a successor requirement carrying a 'supersedes <oldId>' trace and then discards the old requirement in one command (two-call add_requirement + updateStatus→discarded), returning the new id, delegating core guards with no bypass.",
+   "confidence": "high",
+   "reason": "No v2.3.0 requirement provides a combined supersede-and-discard requirement-lifecycle mutation; v2.3.0 has separate add-requirement and update-status but no superseding-successor flow, and merge-time collision repair (FR-NODE-032) only renames duplicate IDs. Distinct new capability (v3 core FR-NODE-030). NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-046",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI restore un-discards a requirement: rewrites Status back to an active value (default planned or --to), strips the strikethrough + [DISCARDED] heading marker, and appends a required-reason Change Notes row, with dry-run/JSON.",
+   "confidence": "medium",
+   "reason": "v2.3.0 update-status (IR-CLI-010) changes status but there is no dedicated un-discard capability that reverses the strikethrough/[DISCARDED] heading rewrite and enforces a required restore reason. This reverse-of-discard capability (v3 core FR-NODE-051) is not shipped in v2.3.0. NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-047",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI history outputs a single requirement's Change Notes as date/change/reason rows sorted chronologically, with an optional --since filter and JSON; read-only.",
+   "confidence": "high",
+   "reason": "No v2.3.0 requirement exposes a Change Notes history read command. v2.3.0 read surface (list/show/summary/search IR-CLI-029 etc.) does not project a chronologically-sorted per-requirement Change Notes timeline. New read capability over parsed Change Notes. NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-048",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "CLI changed-since aggregates, across all requirements, those whose most-recent Change Notes date is on/after a given date, with optional target/scope filters and JSON; read-only.",
+   "confidence": "high",
+   "reason": "No v2.3.0 requirement provides a cross-requirement change timeline keyed on most-recent Change Notes date. This aggregate 'what changed since' query (built at src/core/query/summary.ts over parsed Change Notes) is a distinct new read capability not present in v2.3.0's read commands. NEW.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-049",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi attention: a read-only, priority-ranked requirement work queue merging blocked / implemented-not-verified / missing-evidence / stability-blocker buckets with a priority>risk>status tie-break and --top limiting.",
+   "confidence": "medium",
+   "reason": "v2.3.0 ships the readiness buckets separately (summarizeTarget) and a workflow-artifact-driven get_next_work_order (FR-MCP-024/IR-CLI-032) that returns a single next pipeline action, not a merged deterministic requirement queue. work-order.ts is workflow/JSONL-driven (create-plan/execute-task), a different mechanism and output than a requirement-readiness ranked queue. No v2.3.0 requirement provides a merged, tie-broken, top-limited requirement work queue.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-050",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi commands: a machine-readable command catalog manifest rendered 1:1 from the ToolSpec registry (name, kind, args, options, read-only flag, result-exit mapping), self-listing and no-write.",
+   "confidence": "high",
+   "reason": "The catalog is derived from the new FR-ARCH-006 ToolSpec registry (toolSpecs in src/mcp/schemas.ts), which v2.3.0 does not have — v2.3.0 hand-maintained its command/tool surface. The closest v2.3.0 item is OPS-CLI-001 (per-command --help and examples), which is not a registry-derived full-catalog manifest. New capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-051",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi doctor: a consolidated environment health command reporting ok/warn/fail per topic (spec presence/parseability, agent-workflow-block version currency, bundled-vs-installed rules drift, Active Target set, scope/target consistency, Node version) with a --fix that re-upserts only missing/outdated workflow blocks.",
+   "confidence": "high",
+   "reason": "v2.3.0 OPS-NODE-003 (Package and MCP doctor smoke gates) is a CI/build-time smoke gate, not a user-facing multi-facet health diagnosis + idempotent --fix CLI command. No v2.3.0 requirement provides this consolidated runtime health command. New capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-052",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi set-supersede: a metadata-only mutation that writes a requirement's Supersedes or Superseded By field (delegating to the FR-NODE-052 setSupersede core), optionally inserting the matching supersedes/superseded_by Trace Link row via --sync-trace, with dry-run/json and no Status change.",
+   "confidence": "high",
+   "reason": "v2.3.0 has generic granular field editing (FR-NODE-019) but no supersede support whatsoever — supersede/restore lifecycle (FR-NODE-030/052, IR-CLI-045/046/052) is entirely v3. Setting supersede relationship metadata plus a synced trace row is not provided by any v2.3.0 requirement. New capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-053",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi register-scopes: batch-registers discoverable-but-unregistered scope documents into the index Scope Map (delegating to FR-NODE-053 registerScopes), dry-run by default with --apply, reporting a per-item prefix-conflict skip reason.",
+   "confidence": "high",
+   "reason": "v2.3.0 IR-CLI-009 (scopes) is a read-only listing command; there is no v2.3.0 mutation that inserts Scope Map rows for unregistered scope docs with conflict handling. New capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-054",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi scaffold-scope: creates a brand-new numbered scope srs.md file from the scope template and registers it in both the §2 SRS Documents and §4 Scope Map sections of the index (delegating to FR-NODE-054), with optional explicit prefix, dry-run default, and json.",
+   "confidence": "high",
+   "reason": "v2.3.0 only offers whole-project bootstrap via init (IR-CLI-003 / FR-NODE-009); no v2.3.0 requirement scaffolds and registers an individual new scope document. New capability.",
+   "verified": false
+  },
+  {
+   "id": "IR-CLI-055",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "speckiwi stale: read-only detection of requirements stuck in evolving stability whose most-recent Change Notes date is older than a threshold (default 90 days, --evolving-age override), computing age from SRS Change Notes date metadata only, with explicit null age for unparseable dates.",
+   "confidence": "high",
+   "reason": "v2.3.0 provides stability lifecycle (FR-PARSE-015/017) and summary stabilityWarnings/stabilityBlockers, but none compute requirement age from Change Notes dates to flag aging evolving requirements. This Change-Notes-date staleness projection is not delivered by any v2.3.0 requirement. New capability.",
+   "verified": false
+  },
+  {
+   "id": "REL-ARCH-002",
+   "verdict": "NEW",
+   "v2OverlapIds": [],
+   "capability": "A zero-drift reliability contract (assertZeroDriftToolSurface in src/mcp/schemas.ts) asserting that CLI/MCP tool enumeration and mutation handler option-forwarding are driven entirely from the single ToolSpec registry — every registry MCP/CLI name appears in the runtime surfaces and every declared option dest is forwarded.",
+   "confidence": "high",
+   "reason": "This contract sits over the new FR-ARCH-006 ToolSpec registry, which v2.3.0 lacks (v2.3.0 hand-wired its MCP surface via literal toolNames arrays). v2.3.0's nearest reliability items — REL-FLOW-002 (tool signature parity across runtime and docs) and REL-ARCH-001 (minimal change preservation) — are about docs/runtime parity and patch minimality, not a registry-driven enumerate/handler-forwarding zero-drift contract. New capability.",
+   "verified": false
+  },
+  {
+   "id": "REL-PARSE-002",
+   "verdict": "OVERLAP",
+   "v2OverlapIds": [
+    "REL-PARSE-002"
+   ],
+   "capability": "A fix ensuring diagnostics are deduplicated from a single source in the read envelope (src/cli/commands/read.ts, src/core/diagnostic.ts, src/core/validator/rules.ts).",
+   "confidence": "high",
+   "reason": "True functional overlap confirmed by code, not just title similarity. The v3 REL-PARSE-002 (\"Diagnostic dedup single-source read envelope fix\") targets the double-inclusion where readDiagnostics (src/cli/commands/read.ts:80) concatenates workspace.diagnostics again on top of validateWorkspace output (whose first rule already spreads [...workspace.diagnostics] at src/core/validator/rules.ts:263). But the shipped, verified v2.3.0 REL-PARSE-002 (\"Deduplicated and line-anchored diagnostics\") already provides the exact observable capability: dedupeDiagnostics (src/core/diagnostic.ts:26-42, literally tagged // @req REL-PARSE-002) collapses the identical duplicate objects, and every read seam funnels through splitDiagnostics/summarizeDiagnostics (buildReadEnvelope summary.ts:34-35; validate command read.ts:450-451), so structural codes (SRS-E013/E014) already report byCode=1. Mapping the ACs: v3 AC-1/2/3 (no double count of structural/parser diagnostics) are subsumed by v2.3.0 AC-1 (deterministic dedupe key) and AC-4 which explicitly enumerates \"malformed table diagnostics are not double counted when parser diagnostics and validator diagnostics are combined\" — the identical parser-plus-validator seam; v3 AC-4 (red no-double-count test) is subsumed by v2.3.0 AC-4; v3 AC-5 (CLI/MCP/resource parity) is subsumed by v2.3.0 AC-3 plus its cli-mcp-parity.test.ts. Both requirements claim implementation in the exact same three files (diagnostic.ts, validator/rules.ts, cli/commands/read.ts) and share the same ID. The only v3-unique element is a source cleanup (removing the redundant concat instead of relying on dedup to mask it), an implementation refinement of an already-shipped capability, not a new capability — discarding it leaves no functional gap since dedup already yields correct counts at every output path. This meets the functional-replacement bar (not partial similarity): v2.3.0 fully substitutes for v3. The remap-table entry assigning REL-PARSE-004 is mechanical ID-collision renumbering, not a capability adjudication, and does not change the merits.",
+   "verified": true
+  }
+ ]
+}

@@ -1,0 +1,104 @@
+{
+ "reconciled": [
+  {
+   "id": "FR-NODE-046",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "IR-CLI-037 / FR-MCP-034; src/core/query/discovery.ts:175 (searchRequirementRecords), wired via CLI search at src/cli/commands/read.ts:479 and MCP search_requirements at src/mcp/tools/read-tools.ts:157",
+   "reason": "능력 = \"requirement 레코드에 대한 free-text 부분문자열 검색(최소 statement+title+AC 텍스트 포함), id 결정적 정렬\". v3 FR-NODE-046(src/core/query/records.ts:240, `searchRequirementRecords(records, query): RequirementRecord[]`)은 title+requirement+AC 3필드만 case-sensitive include 검색 후 id 정렬하는 코어 함수이며, 이 브랜치에 존재하지만 자기 테스트(test/core/query/fr-node-046-full-text-search.test.ts)에서만 참조될 뿐 어떤 CLI/MCP 표면에도 배선되지 않음. 반면 v2.3.0은 동일 이름의 검색 엔진을 src/core/query/discovery.ts:175에 별도 설계로 이미 출시했고, 이는 id/title/requirement/rationale/research/acceptanceCriteria/verificationEvidence/traceLinks/relatedDocs/changeNotes 10개 필드를 case-insensitive 로 검색하고 id(localeCompare)로 정렬하며 snippet/pagination/filter 까지 제공한다. 이 v2.3.0 엔진은 실사용 표면에 완전 배선됨: CLI `speckiwi search <query>`(src/cli/commands/read.ts:479, --field 선택자로 requirement/ac/rationale/notes/title/all 스코프)와 MCP `search_requirements`(read-tools.ts:157, server.ts:62, schemas.ts:149). 즉 v3가 요구하는 능력(statement+title+AC 부분문자열 검색, id 정렬)은 v2.3.0이 상위집합으로 이미 실사용 가능 수준 제공. v3는 오히려 필드/기능이 더 적은 부분집합이라 세분화·차별 능력 없음 → OVERLAP."
+  },
+  {
+   "id": "IR-CLI-037",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "v2.3.0 IR-CLI-029 (registered: \"Compact CLI requirement search\"); code: src/cli/commands/read.ts search command + src/core/query/discovery.ts searchRequirementRecords:175 / textEntries:138.",
+   "reason": "v2.3.0 IR-CLI-029 already ships the exact command `speckiwi search <query>` with the same capability core the v3 requirement describes. At v2.3 commit a3c4e0d (read.ts:302-316) it provides: the <query> argument, standard list filters via addRequirementFilterOptions (--target/--status/--scope/--type), and --json, backed by searchRequirementRecords (discovery.ts:175). Its textEntries (discovery.ts:138-151) scans title, requirement, rationale, acceptanceCriteria (plus id/research/evidence/traceLinks/relatedDocs/changeNotes) and returns per-field snippets identifying which field matched. So \"requirement discovery by searching a query, filtered, with JSON\" — the essential IR-CLI-037 capability — is fully usable in v2.3.0. The v3 IR-CLI-037 delta is only the `--field` restrictor flag (requirement/ac/rationale/notes/title/all) with usage-error validation (AC-5) and Implementation-Notes coverage (`notes`, absent from v2.3.0 textEntries). In the current working tree the v2.3.0 discovery engine remains the default no-field path (read.ts:513-522) and the v3 code merely layers a field-scoped branch on top (read.ts:479-512, @req IR-CLI-037). That is a precision refinement of an already-shipped command, not a distinct capability class — hence OVERLAP. Minor residual gap: v2.3.0 all-field search does not scan Implementation Notes and cannot pre-restrict to a single field, but the dominant discovery capability is delivered."
+  },
+  {
+   "id": "FR-NODE-050",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "v2.3.0 FR-NODE-018 (verified) — syncIndexRollups in src/core/mutation/sync-index.ts:117-160; CLI src/cli/commands/mutations.ts:102 (`sync-index`); MCP src/mcp/tools/mutation-tools.ts:94 (`sync_index_rollups`).",
+   "reason": "v3 FR-NODE-050 syncCounts (src/core/mutation/sync-counts.ts) recomputes the 00.index Status Summary + Requirement Type Summary count cells from the FULL cross-target record set (countBy over workspace.records with no target filter), defaults to a non-writing check reporting per-cell expected-vs-actual drift, applies an in-place rewrite of only the drifting count cells via createPatchPlan/applyPatchPlan, no-ops when in sync, and reuses the patch-plan STALE_PATCH stale-snapshot guard. v2.3.0 FR-NODE-018 syncIndexRollups (sync-index.ts, Status=verified) already ships this exact capability as a superset: it counts status/type over the same all-records set with no target filter (lines 128-129), rewrites the same two summary tables in place through createPatchPlan/applyPatchPlan (statusOperations/typeOperations replaceLine), supports dryRun preview that writes nothing and returns statusSummaryChanged/typeSummaryChanged plus a patch preview, returns written:false as a no-op when operations.length===0, and enforces a stale guard via expectedSha256 + STALE_PATCH (staleFailure). It goes further by also inserting missing summary rows, holding the SRS mutation lock, and exposing CLI `sync-index` and MCP `sync_index_rollups`. The only deltas are surface-level: v3 makes check the default vs v2.3.0's explicit dryRun flag, and v3 returns per-cell {expected,actual} while v2.3.0 returns aggregate counts plus a line-level patch preview. Same core arithmetic, same target files (docs/spec/00.index.md summary tables), same stale guard mechanism, usable end-to-end via CLI and MCP today. Therefore the capability is already shipped and verified in v2.3.0."
+  },
+  {
+   "id": "IR-CLI-044",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "FR-NODE-018 (verified in v2.3.0) — CLI `sync-index` command: src/core/mutation/sync-index.ts (syncIndexRollups) + src/cli/commands/mutations.ts:101-115; spec docs/spec/50.nodejs-implementation.srs.md:1461-1490 (Status=verified), completed-work docs/spec/00.index.md:135.",
+   "reason": "v3 IR-CLI-044 \"sync-counts\" capability = a CLI command that recomputes the 00.index Status Summary + Requirement Type Summary count cells from the GLOBAL (cross-target) record set and rewrites them (src/core/mutation/sync-counts.ts syncCounts; countBy over workspace.records status/type). v2.3.0 already ships this exact capability at production/verified level as FR-NODE-018's `speckiwi sync-index` command (src/core/mutation/sync-index.ts:117-160 syncIndexRollups): identical GLOBAL countBy over workspace.records for status and type, rewrites the same two summary tables via replaceLine patch ops, with --dry-run preview, --expected-sha256 stale guard, --ignore-lock, and --json envelope (wired at src/cli/commands/mutations.ts:101-115), and it even auto-syncs after add-requirement/update-status. The v3 version only redesigns the surface: default flips from write→check, adds a --check CI-gate non-zero exit (v2.3.0's --dry-run already detects drift but returns 0), and outputs a per-cell {section,key,expected,actual} drift array instead of statusCounts/typeCounts. v2.3.0 is actually broader in one dimension (it also inserts missing summary rows). These are UX/interface refinements on the same core capability, not a materially different or more-granular capability. This is the flagged ID-reuse case: v2.3.0 reassigned the IR-CLI-044 ID to unrelated \"CLI Requirement ID collision repair\" work (docs/spec/30.cli-interface.srs.md:2843), while the sync-counts capability ships under FR-NODE-018. Verdict: OVERLAP."
+  },
+  {
+   "id": "FR-NODE-025",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "FR-NODE-019 (edit_requirement_fields); src/core/mutation/edit-requirement.ts:182-199 (statement path in updateRequirementFields via sectionContentRange); CLI src/cli/commands/mutations.ts:183,194-197 (--statement); MCP src/mcp/tools/mutation-tools.ts:140 (edit_requirement_fields {statement}); test/core/mutation/edit-requirement.test.ts:12,30,39",
+   "reason": "능력(#### Requirement 프로즈 본문 교체)으로 판정하면 v2.3.0이 이미 완전 제공한다. v3 FR-NODE-025는 전용 mutation updateRequirementStatement + findRequirementStatementRange 헬퍼(internal.ts:183-209)로 '#### Requirement' 프로즈를 교체하고 Acceptance Criteria/인접 GFM 표·코드펜스를 보존한다. 그런데 v2.3.0 FR-NODE-019의 updateRequirementFields는 이미 statement 파라미터를 받아 sectionContentRange로 '#### Requirement' 섹션 본문을 replaceRange로 통째 교체한다(edit-requirement.ts:182-199). 이 범위는 다음 '####' heading 직전까지이므로 Acceptance Criteria·메타데이터 등 무관 섹션은 건드리지 않는다. FR-NODE-019 AC-1은 명시적으로 'requirement statement'를 지원 필드로 열거하고 'without rewriting unrelated sections'를 보장한다. 이 능력은 core뿐 아니라 CLI(--statement, mutations.ts:183/194-197)와 MCP(edit_requirement_fields {statement}, mutation-tools.ts:140)로 모두 노출되고, edit-requirement.test.ts에서 updatedFields에 'statement' 포함을 검증한다(실사용·테스트 완비). 즉 '요구 서술문 본문을 교체한다'는 핵심 능력은 v2.3.0에서 지금 그대로 쓸 수 있다. v3와의 유일한 실질 차이는 statement 문단 안에 박힌 표/코드펜스를 보존하느냐인데(v2.3.0은 섹션 본문 전체를 새 프로즈로 대체, v3는 선행 프로즈 문단만 대체), 이는 SRS-MD의 통상적 프로즈-only Requirement 섹션에서는 동작이 동일한 좁은 엣지케이스 가드일 뿐 별개의 능력이 아니다. 따라서 OVERLAP."
+  },
+  {
+   "id": "FR-NODE-026",
+   "finalVerdict": "NEW",
+   "v2Ships": false,
+   "v2ReqOrCode": "FR-NODE-019 / src/core/mutation/edit-requirement.ts:211-237 (replaceAcceptanceCriteria = whole-section replaceRange)",
+   "reason": "능력이 실제로 다르므로 NEW. v3 FR-NODE-026 editAcceptanceCriteria(src/core/mutation/check-ac.ts:68-106)는 acId 하나를 지목해 그 AC 줄의 프로즈만 replaceLine 으로 교체하는 '단일 AC in-place 편집'이다. original.slice(0, markerIndex+marker.length) 로 '- [ ]/[x]' 체크박스와 'AC-N:' 접두를 자동 보존하고, 형제 AC 와 Requirement/Trace Links 는 byte-for-byte 유지한다(테스트 check-ac.fr-node-026.test.ts AC-2 가 [x] 체크박스 자동 보존을 명시 검증). 대조 대상인 v2.3.0 FR-NODE-019 의 AC 능력은 replaceAcceptanceCriteria(edit-requirement.ts:211-237, index.md:145 'acceptance-criteria replacement', verified)로서 items 배열 '전체 리스트'를 받아 Acceptance Criteria 섹션 전체를 replaceRange 로 재작성하고 각 줄을 `- [checked?x:' '] AC-${index+1}: text` 로 '재번호·재작성'한다 — 즉 체크박스는 호출자가 다시 넘긴 값만 반영(미지정 시 unchecked 로 조용히 뒤집힘)되고 ID 도 위치 기반 재부여된다. 두 능력은 코드베이스에 replace_acceptance_criteria 와 edit_acceptance_criteria 로 각각 별도 등록된 서로 다른 도구로 공존한다(schemas.ts:248/339, server.ts, mutation-tools.ts). v2.3.0 에는 '단일 AC 프로즈만 안전 편집(체크박스·형제 자동 보존)' 능력이 없고 오직 전체 교체만 존재하므로, v3 는 실질적으로 더 세분화된 다른 능력이다(전체 교체 vs 단일 프로즈 편집). 따라서 OVERLAP 이 아님."
+  },
+  {
+   "id": "FR-NODE-048",
+   "finalVerdict": "NEW",
+   "v2Ships": false,
+   "v2ReqOrCode": "Partial overlap: v2.3.0 FR-NODE-019 updateRequirementFields (src/core/mutation/edit-requirement.ts:14-27,151-208). Missing capability (type/scope ID-prefix migration) has no v2.3.0 equivalent.",
+   "reason": "FR-NODE-048's defining capability is update-field WITH ID-prefix migration for type/scope (its own v3Title, and 3 of 5 ACs). update-field.ts:125-188 migrateTypeOrScope: a type/scope edit regenerates the requirement id via generateNextRequirementId (FR-ARCH-001 -> NFR-ARCH-001), defaults to dry-run, requires signOff=true to write, and rewrites inbound Trace Links references old->new (collectInboundTraceRewrites, lines 195-216). v2.3.0 does NOT ship this. v2.3.0 FR-NODE-019 updateRequirementFields (edit-requirement.ts:14-27) input has only title/statement/priority/risk/tags/relatedDocs/verificationMethod/githubIssue — no type, no scope, no ID regeneration, no trace-link rewrite; it is pure single-line replacement. No other v2.3.0 mutation covers it: supersede-requirement (FR-NODE-030, supersede-requirement.ts:8-18) is a discard-old + create-new flow (addRequirement + updateStatus discarded), not an in-place type/scope edit that keeps the block and regenerates its ID; retarget handles only the target field; collision-repair only renames duplicate IDs. The overlap is limited to FR-NODE-048 AC-1's plain metadata-line rewrite (priority/risk/title/verification-method), which FR-NODE-019 already provides — but the requirement's core distinguishing capability (type/scope migration, AC-2/3/4) is genuinely absent from v2.3.0, so the capability as a whole does not ship in v2.3.0."
+  },
+  {
+   "id": "IR-CLI-040",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "FR-NODE-019 / src/cli/commands/mutations.ts:180-208 / src/core/mutation/edit-requirement.ts:194-199",
+   "reason": "v3 IR-CLI-040 능력 = CLI로 요구사항 statement 본문을 교체하는 명령(`update-statement <id> --text`), AC/Trace 보존 + --dry-run + --json (core updateRequirementStatement, FR-NODE-025). v2.3.0은 이 능력을 이미 verified 상태로 출시함: FR-NODE-019 \"Granular requirement editing services\"(Status=verified, Target=v2.3.0)의 Requirement 및 AC-1이 \"requirement statement\" 편집을 명시적으로 포함하고, AC-4가 dry-run+공유 mutation envelope, AC-5가 CLI 어댑터 명령 제공을 요구한다. 실제 출시 CLI 명령은 `speckiwi edit-requirement <id> --statement <statement>`(src/cli/commands/mutations.ts:180-208)로, core updateRequirementFields(src/core/mutation/edit-requirement.ts:194-199)가 `#### Requirement` 섹션 콘텐츠 range를 replaceRange로 교체해 statement 본문만 바꾸고 AC/Trace는 그대로 두며 --dry-run/--json/--ignore-lock을 지원한다. VE-2 테스트 test/cli/granular-edit-commands.test.ts:25-30이 `edit-requirement ... --statement \"...\"` 동작을 검증한다. 즉 \"CLI로 statement 본문을 안전하게(AC/Trace 보존, dry-run, JSON envelope) 편집\"이라는 능력은 v2.3.0이 실사용 가능 수준으로 완전 제공한다. v3의 `update-statement`는 동일 능력을 다중 필드 명령(edit-requirement) 대신 전용 단일 명령(--text)으로 좁혀 재포장한 surface 리팩터일 뿐, 새롭거나 더 세분화된 능력이 아니다(v3가 첫 prose 문단만 교체해 인접 표/코드블록을 더 보존하는 미세 설계 차이는 있으나 능력 자체는 동일). 따라서 OVERLAP."
+  },
+  {
+   "id": "IR-CLI-041",
+   "finalVerdict": "NEW",
+   "v2Ships": false,
+   "v2ReqOrCode": "Closest v2.3.0 code (insufficient): src/cli/commands/mutations.ts:211-227 replace-acceptance-criteria -> src/core/mutation/edit-requirement.ts:217-236 replaceAcceptanceCriteria; and mutations.ts:317-340 check-ac/uncheck-ac -> src/core/mutation/check-ac.ts:19-45 setAcceptanceCriteriaChecked. v3 artifact = mutations.ts:474-492 edit-ac -> check-ac.ts:68-106 editAcceptanceCriteria.",
+   "reason": "Judged by capability, v2.3.0 does NOT ship the v3 edit-ac capability (granular single-AC prose edit). v3 IR-CLI-041 (edit-ac) edits ONE acceptance criterion addressed by acId via a single replaceLine, auto-preserving that AC's checkbox state and AC-id and leaving siblings/other sections byte-for-byte intact (test/cli/edit-ac.ir-cli-041.test.ts asserts AC-2 unchanged, AC-1 [ ] preserved). v2.3.0's two AC tools are meaningfully different: (1) check-ac/uncheck-ac (IR-CLI-011/012) toggle checkbox state ONLY and cannot edit prose at all; (2) replace-acceptance-criteria requires the caller to supply --items JSON of the ENTIRE AC list, does a replaceRange over the whole section, RE-NUMBERS every AC to AC-{index+1}, and re-derives each checkbox from caller input (edit-requirement.ts:230-236) — so it cannot preserve an existing AC's state/id or byte-identical siblings without full-list reconstruction. That is a coarse bulk overwrite, not a targeted single-AC prose edit; v3 is substantially more granular and state/sibling-preserving, so per the decision rule this is NEW. Provenance confirms non-overlap: in the v2.3.0 SRS the SAME IDs were verified for unrelated features (IR-CLI-041 = 'CLI workflow read projections and work-order profiles', docs/spec/00.index.md:142; FR-NODE-026 = 'External Completed Work Log core services', 50.nodejs-implementation.srs.md:2258). The edit-ac command + editAcceptanceCriteria mutation present in the tree are v3 code coexisting on the feat/2.3.0.1 branch, not part of v2.3.0's verified surface."
+  },
+  {
+   "id": "FR-MCP-023",
+   "finalVerdict": "OVERLAP",
+   "v2Ships": true,
+   "v2ReqOrCode": "FR-NODE-019 (v2.3.0, verified) — MCP tools edit_requirement_fields (src/mcp/schemas.ts:236, --statement field) + replace_acceptance_criteria (schemas.ts:248); proven by test/mcp/granular-edit-tools.test.ts:22-36; parity envelope via FR-MCP-020",
+   "reason": "v3 FR-MCP-023 capability = MCP tools to (1) update the requirement statement prose and (2) edit acceptance-criteria prose. v2.3.0 already ships both via the verified FR-NODE-019 \"Granular requirement editing services\": AC-1 = update requirement statement, AC-2 = add/update/delete/reorder acceptance criteria, AC-5 = must be reachable through official CLI+MCP tools. Concretely v2.3.0 registers the MCP tools edit_requirement_fields (schemas.ts:236, exposes a statement field → core updateRequirementFields) and replace_acceptance_criteria (schemas.ts:248 → core replaceAcceptanceCriteria); test/mcp/granular-edit-tools.test.ts:22-36 proves both write through the MCP server (statement update and AC replacement each return ok/written:true). FR-MCP-020 supplies the dry-run/notes/diagnostics mutation envelope for these. v3's update_requirement_statement (schemas.ts:334) and edit_acceptance_criteria (schemas.ts:339) are just finer-grained single-field re-slices of the identical capability — their core update-statement.ts came from the v3.0.0 snapshot commit d165542, and v3 reuses IDs IR-CLI-040/041 that in shipped v2.3.0 mean unrelated things (legacy migration preview / workflow projections). Same end-user capability, already usable in v2.3.0 → OVERLAP."
+  },
+  {
+   "id": "IR-CLI-033",
+   "finalVerdict": "NEW",
+   "v2Ships": false,
+   "v2ReqOrCode": "Closest v2.3.0 surface: REL-PARSE-002 (verified) / src/cli/commands/read.ts:71-77 formatValidateHuman — but it does NOT ship the v3 capability.",
+   "reason": "v3 IR-CLI-033 capability = validate command prints a GROUPED human diagnostics report (group by file, then by code) with each diagnostic shown as file:line + code + severity + message + sourceRule (v3 plan docs/plans/2026-06-17.speckiwi.v3-0-0.plan.md:2011). v2.3.0's shipped validate human renderer is formatValidateHuman (src/cli/commands/read.ts:71-77): it prints a header 'Diagnostics: N errors, M warnings' then a FLAT loop emitting '${severity} ${code} ${location} ${message}' (line 74) — no file→code grouping and no sourceRule per line. REL-PARSE-002 AC-3 (docs/spec/20.parser-validation.srs.md:1330) explicitly scopes the human output to 'compact diagnostics', i.e. a flat list, not a grouped renderer. REL-PARSE-003 ('Grouped duplicate Requirement ID diagnostics', SRS:1495) only groups duplicate-ID occurrences into a JSON details.occurrences array for repair (test read-commands.test.ts:308-324) — not a human renderer and limited to duplicate IDs. I verified no file→code grouped human validate renderer exists anywhere in src: src/core/format/text.ts is a 26-line generic formatter and src/cli/formatters.ts (392 bytes) has no validate/group/sourceRule logic; sourceRule appears in rendering only via formatDiagnosticDefinition for the separate `validate --explain <code>` single-code path (read.ts:317). Therefore v2.3.0 does not provide the v3 grouped-by-file/code + sourceRule capability; v3 is materially more granular and structurally different. NEW."
+  },
+  {
+   "id": "IR-CLI-034",
+   "finalVerdict": "NEW",
+   "v2Ships": false,
+   "v2ReqOrCode": "v2.3 validate @ a3c4e0d src/cli/commands/read.ts:267-273 (only --fail-on-warning/--json, no filters); v2.3.0 SRS IR-CLI-034 = \"CLI logical workflow deletion commands\" DISCARDED→IR-CLI-043 (docs/spec/30.cli-interface.srs.md:2179,2774) — different capability. Filter code added only by v3 snapshot d165542 at read.ts:423-456.",
+   "reason": "능력 기준 판정: v3 IR-CLI-034 = validate 의 --severity/--only/--ignore 표시 필터 + \"exit-code는 UNFILTERED 오류집합에서 계산\"(--ignore 로 오류를 숨겨도 exit 1→0 로 바뀌지 않음) 계약. 이 능력은 src/cli/commands/read.ts:423-456(@req IR-CLI-034)에 구현되고 test/cli/validate-filters.ir-cli-034.test.ts(AC-1..AC-5)로 검증되는데, 이 코드는 커밋 d165542(\"wip: v3.0.0 구현 스냅샷\")에서 처음 도입됐다. 반면 v2.3.0 라인(커밋 a3c4e0d \"feat: v2.3 ...\")의 validate 는 read.ts:267-273 에서 --fail-on-warning/--json 만 있고 splitDiagnostics(diagnostics)를 그대로 써서 --severity/--only/--ignore 필터 자체가 전혀 없었다. 즉 표시 필터·unfiltered-exit 계약은 v2.3.0 에 미존재하며 v3 에서 신규 추가됨. 또한 ID 재사용 확인: v2.3.0 등록 SRS(docs/spec/30.cli-interface.srs.md:2179)에서 IR-CLI-034 는 \"CLI logical workflow deletion commands\"(DISCARDED→IR-CLI-043)로, validate 필터와 완전히 다른 기능이다. v2.3.0 SRS 전체에 validate severity/only/ignore 표시 필터를 제공하는 요구는 없다. 따라서 능력 중복 아님 → NEW."
+  }
+ ],
+ "newOverlaps": [
+  "FR-NODE-046",
+  "IR-CLI-037",
+  "FR-NODE-050",
+  "IR-CLI-044",
+  "FR-NODE-025",
+  "IR-CLI-040",
+  "FR-MCP-023"
+ ],
+ "stayNew": [
+  "FR-NODE-026",
+  "FR-NODE-048",
+  "IR-CLI-041",
+  "IR-CLI-033",
+  "IR-CLI-034"
+ ]
+}
