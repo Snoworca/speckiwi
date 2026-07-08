@@ -105,12 +105,6 @@ const SHAPES: readonly Shape[] = [
     json: { from: "v1.0.0", to: "v2.0.0", reason: "ir-cli-043" }
   },
   {
-    label: "id + option (update-statement)",
-    command: "update-statement",
-    flags: ["update-statement", TARGET_ID, "--text", "Updated statement.", "--dry-run"],
-    json: { id: TARGET_ID, text: "Updated statement.", dryRun: true }
-  },
-  {
     label: "mixed positionals (update-status)",
     command: "update-status",
     flags: ["update-status", TARGET_ID, "implemented", "--reason", "ir-cli-043", "--dry-run"],
@@ -176,13 +170,6 @@ const SHAPES: readonly Shape[] = [
       type: "functional"
     }
   },
-  {
-    label: "FND-002 sync-counts",
-    command: "sync-counts",
-    // sync-counts defaults to a non-writing check; both channels report the same drift.
-    flags: ["sync-counts"],
-    json: {}
-  }
 ];
 
 describe("IR-CLI-043 — parametrized --input-json equivalence across mutation command shapes", () => {
@@ -231,12 +218,12 @@ describe("IR-CLI-043 — parametrized --input-json equivalence across mutation c
   });
 
   // AC-2 over a non-update-status shape: stdin-fed --input-json - drives a CLI-only mutation command.
-  it("AC-2: --input-json - reads the JSON object from stdin for a CLI-only command (update-statement)", async () => {
+  it("AC-2: --input-json - reads the JSON object from stdin for a CLI-only command (edit-ac)", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const r = io();
-    const json = JSON.stringify({ id: TARGET_ID, text: "Stdin statement.", dryRun: true });
+    const json = JSON.stringify({ id: TARGET_ID, acId: "AC-1", text: "Stdin AC.", dryRun: true });
     const code = await withStdin(json, () =>
-      main(["--root", root, "update-statement", "--input-json", "-", "--json"], r)
+      main(["--root", root, "edit-ac", "--input-json", "-", "--json"], r)
     );
     expect(code).toBe(0);
     const parsed = JSON.parse(drain(r.stdout).trim()) as Record<string, unknown>;
@@ -244,7 +231,7 @@ describe("IR-CLI-043 — parametrized --input-json equivalence across mutation c
   });
 
   // FND-002: --help --json must reach supersede/restore/sync-counts (registry-derived description).
-  for (const command of ["supersede", "restore", "sync-counts"] as const) {
+  for (const command of ["supersede", "restore"] as const) {
     it(`FND-002 AC-4: ${command} --help --json prints a registry-derived description`, async () => {
       const r = io();
       const code = await main([command, "--help", "--json"], r);

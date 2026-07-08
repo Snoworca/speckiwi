@@ -349,33 +349,6 @@ function statusRank(status: string): number {
   return index < 0 ? ATTENTION_STATUS_ORDER.length : index;
 }
 
-// @req IR-CLI-037
-const SEARCH_FIELD_SELECTORS = new Set(["requirement", "ac", "rationale", "notes", "title", "all"]);
-
-// @req IR-CLI-037
-/** The record text fragments scanned for a given --field selector. */
-function searchFieldTexts(record: RequirementRecord, field: string): string[] {
-  const requirement = record.requirement ?? "";
-  const rationale = record.rationale ?? "";
-  const notes = record.implementationNotes ?? "";
-  const title = record.title;
-  const ac = record.acceptanceCriteria.map((criterion) => `${criterion.id}: ${criterion.text}`).join("\n");
-  switch (field) {
-    case "requirement":
-      return [requirement];
-    case "ac":
-      return [ac];
-    case "rationale":
-      return [rationale];
-    case "notes":
-      return [notes];
-    case "title":
-      return [title];
-    default:
-      return [requirement, ac, rationale, notes, title];
-  }
-}
-
 // @req IR-CLI-034
 function collectDiagnosticCode(value: string, previous: string[]): string[] {
   previous.push(value);
@@ -477,42 +450,12 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   const searchCommand = addDiscoveryOptions(addRequirementFilterOptions(command.command("search").argument("<query>")))
-    .option("--field <field>", "restrict matching to requirement, ac, rationale, notes, title, or all")
     .option("--json", "JSON output")
     .action(async (query, options) => {
       const workspace = await workspaceFrom(command.opts());
-      const json = options.json || command.opts().json;
-      // @req IR-CLI-037 — a --field selector scopes matching to one field group (default keeps the
-      // existing all-field snippet search). Notes maps to Implementation Notes, which the snippet
-      // search does not scan, so field-scoped matching is computed directly over the record fields.
-      if (typeof options.field === "string") {
-        if (!SEARCH_FIELD_SELECTORS.has(options.field)) {
-          searchCommand.error("field must be requirement, ac, rationale, notes, title, or all", { exitCode: 2 });
-          return;
-        }
-        const needle = query.trim().toLowerCase();
-        const filter = parseFilter(options);
-        const matched = workspace.records
-          .filter((record) => matchesRequirementFilter(record, filter))
-          .filter((record) => searchFieldTexts(record, options.field as string).some((text) => text.toLowerCase().includes(needle)))
-          .sort((a, b) => a.id.localeCompare(b.id))
-          .map((record) => ({
-            id: record.id,
-            title: record.title,
-            field: options.field,
-            target: record.target,
-            status: record.status,
-            stability: record.stability,
-            scope: record.scope,
-            filePath: record.filePath,
-            headingLine: record.headingLine
-          }));
-        outputRead(context, { json }, workspace, { records: matched, projection: "search", field: options.field });
-        return;
-      }
       outputRead(
         context,
-        { json },
+        { json: options.json || command.opts().json },
         workspace,
         searchRequirementRecords(workspace.records, {
           query,

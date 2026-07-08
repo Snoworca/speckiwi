@@ -402,8 +402,6 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   list_dirty_edges: { target: z.string().optional() },
   list_compat_edges: { target: z.string().optional() },
   // FR-MCP-023 — statement and acceptance-criteria gap mutation tools.
-  update_requirement_statement: { id: z.string(), text: z.string(), dryRun: z.boolean().optional() },
-  edit_acceptance_criteria: { id: z.string(), acId: z.string(), text: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   // FR-MCP-024 — step-state tools (claim/update are mutations, list_steps is read-only).
   claim_step: {
     step: z.string(),

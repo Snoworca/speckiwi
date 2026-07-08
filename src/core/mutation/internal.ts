@@ -179,31 +179,3 @@ export function evaluateVibeCompletionGate(input: {
   }
   return { allowed: true, enforced: true };
 }
-
-export function findRequirementStatementRange(
-  file: TextFile,
-  record: RequirementRecord
-): { startLine: number; endLine: number } | undefined {
-  const start = record.sectionLines?.["Requirement"];
-  if (!start) return undefined;
-  const end = record.blockEndLine ?? file.lines.length;
-  let statementStart = start + 1;
-  while (statementStart <= end && (file.lines[statementStart - 1] ?? "").trim() === "") statementStart += 1;
-  if (statementStart > end) return undefined;
-  const first = file.lines[statementStart - 1] ?? "";
-  const trimmedFirst = first.trim();
-  if (first.startsWith("#### ") || trimmedFirst === "" || trimmedFirst.startsWith("|") || trimmedFirst.startsWith("```")) {
-    return undefined;
-  }
-  // Capture the whole prose block, spanning blank lines between paragraphs, up to the next
-  // section boundary (heading, GFM table, or fenced code block). A multi-paragraph statement
-  // must be replaced as a unit so no stale later paragraph survives (FR-NODE-025 FND-004).
-  let statementEnd = statementStart;
-  for (let line = statementStart + 1; line <= end; line += 1) {
-    const text = file.lines[line - 1] ?? "";
-    const trimmed = text.trim();
-    if (text.startsWith("#### ") || trimmed.startsWith("|") || trimmed.startsWith("```")) break;
-    if (trimmed !== "") statementEnd = line;
-  }
-  return { startLine: statementStart, endLine: statementEnd };
-}

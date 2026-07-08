@@ -331,12 +331,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("update-statement", "update_requirement_statement", "req-scoped", "updateRequirementStatement", [
-    opt("--text <text>", "text"),
-    DRY_RUN,
-    IGNORE_LOCK
-  ]),
-  mutationSpec("edit-ac", "edit_acceptance_criteria", "req-scoped", "editAcceptanceCriteria", [
+  mutationSpec("edit-ac", undefined, "req-scoped", "editAcceptanceCriteria", [
     opt("--text <text>", "text"),
     DRY_RUN,
     IGNORE_LOCK
@@ -396,10 +391,6 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--reason <text>", "reason"),
     DRY_RUN,
     IGNORE_LOCK
-  ]),
-  mutationSpec("sync-counts", undefined, "workspace", "syncCounts", [
-    opt("--apply", "apply"),
-    opt("--check", "check")
   ]),
   // scaffold-scope: real CLI mutation; also hosts the v3 update_step_state MCP tool (no dedicated CLI).
   mutationSpec("scaffold-scope", "update_step_state", "workspace", "scaffoldScope", [

@@ -2,12 +2,11 @@ import { resolveProjectRoot } from "../../core/project-root.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
-import { editAcceptanceCriteria, setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
+import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement, promoteStepRequirement } from "../../core/mutation/add-requirement.js";
 import { addCompatibilityCheck, refreshCompatibilityCheck, revokeCompatibilityCheck } from "../../core/mutation/add-compatibility-check.js";
-import { updateRequirementStatement } from "../../core/mutation/update-statement.js";
 import { claimStep } from "../../core/mutation/claim-step.js";
 import { updateStepState } from "../../core/mutation/update-step-state.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
@@ -421,26 +420,6 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         aReqId: String(input.aReqId),
         bReqId: String(input.bReqId),
         ...(input.dryRun === true ? { dryRun: true } : {})
-      })
-    )
-  );
-  server.registerTool("update_requirement_statement", async (input) =>
-    resultToMcp(
-      await updateRequirementStatement(await root(deps, input), {
-        id: String(input.id),
-        text: String(input.text ?? ""),
-        ...(input.dryRun === true ? { dryRun: true } : {})
-      })
-    )
-  );
-  server.registerTool("edit_acceptance_criteria", async (input) =>
-    resultToMcp(
-      await editAcceptanceCriteria(await root(deps, input), {
-        id: String(input.id),
-        acId: String(input.acId),
-        text: String(input.text ?? ""),
-        ...(input.dryRun === true ? { dryRun: true } : {}),
-        ...(input.ignoreLock === true ? { ignoreLock: true } : {})
       })
     )
   );

@@ -16,12 +16,10 @@ import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementF
 import { updateField, type UpdateFieldName } from "../../core/mutation/update-field.js";
 import { retarget } from "../../core/mutation/retarget.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
-import { syncCounts } from "../../core/mutation/sync-counts.js";
 import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
 import { registerScopes } from "../../core/mutation/register-scopes.js";
 import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
 import { addChangeNote } from "../../core/mutation/add-change-note.js";
-import { updateRequirementStatement } from "../../core/mutation/update-statement.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { listRequirements } from "../../core/query/lookup.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
@@ -454,22 +452,6 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  command
-    .command("update-statement")
-    .argument("<id>")
-    .requiredOption("--text <text>", "new requirement statement body")
-    .option("--dry-run")
-    .option("--ignore-lock")
-    .option("--json")
-    .action(async (id, options) => {
-      const result = await updateRequirementStatement(await rootFrom(command.opts()), {
-        id,
-        text: options.text,
-        ...(options.dryRun ? { dryRun: true } : {})
-      });
-      output(context, { json: options.json || command.opts().json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
-    });
 
   command
     .command("edit-ac")
@@ -667,20 +649,6 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  command
-    .command("sync-counts")
-    .option("--apply", "rewrite the index summary count cells")
-    .option("--check", "exit non-zero when count drift exists (CI gate)")
-    .option("--json")
-    .action(async (options) => {
-      const result = await syncCounts(await rootFrom(command.opts()), { apply: Boolean(options.apply) });
-      output(context, { json: options.json || command.opts().json }, result);
-      if (!result.ok) {
-        command.setOptionValue("exitCode", 5);
-      } else if (options.check && (result.value?.cells?.length ?? 0) > 0) {
-        command.setOptionValue("exitCode", 1);
-      }
-    });
 
   command
     .command("scaffold-scope")

@@ -554,13 +554,3 @@ export interface ScaffoldScopeOutput {
   scopeMapRow: string;
 }
 
-export interface SyncCountsCell {
-  section: "status" | "type";
-  key: string;
-  expected: number;
-  actual: number;
-}
-export interface SyncCountsResult {
-  written: boolean;
-  cells: SyncCountsCell[];
-}

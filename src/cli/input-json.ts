@@ -20,7 +20,6 @@ import { writeJson } from "./formatters.js";
 export const MUTATION_COMMAND_NAMES: readonly string[] = [
   "init",
   "update-status",
-  "update-statement",
   "edit-ac",
   "update-stability",
   "append-note",
@@ -38,7 +37,6 @@ export const MUTATION_COMMAND_NAMES: readonly string[] = [
   "add-related-doc",
   "add-change-note",
   // FND-002: these are mutation commands too — they must accept --input-json and --help --json.
-  "sync-counts",
   "supersede",
   "restore"
 ];
