@@ -1,20 +1,32 @@
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
-import { updateStatus } from "../../core/mutation/update-status.js";
+import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
-import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
+import { setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
-import { addTraceLink } from "../../core/mutation/add-trace.js";
+import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
+import { updateField, type UpdateFieldName } from "../../core/mutation/update-field.js";
+import { retarget } from "../../core/mutation/retarget.js";
+import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
+import { syncCounts } from "../../core/mutation/sync-counts.js";
+import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
+import { registerScopes } from "../../core/mutation/register-scopes.js";
+import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
+import { addChangeNote } from "../../core/mutation/add-change-note.js";
+import { updateRequirementStatement } from "../../core/mutation/update-statement.js";
+import { parseWorkspace } from "../../core/parser/workspace-parser.js";
+import { listRequirements } from "../../core/query/lookup.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
 import type { CliContext } from "../command.js";
+import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
 async function rootFrom(options: { root?: string }) {
@@ -437,6 +449,267 @@ export function registerMutationCommands(command: Command, context: CliContext):
         trace: parseTraceOptions(collect(options.trace)),
         dryRun: Boolean(options.dryRun),
         ignoreLock: Boolean(options.ignoreLock)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("update-statement")
+    .argument("<id>")
+    .requiredOption("--text <text>", "new requirement statement body")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await updateRequirementStatement(await rootFrom(command.opts()), {
+        id,
+        text: options.text,
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("edit-ac")
+    .argument("<id>")
+    .argument("<acId>")
+    .requiredOption("--text <text>", "new acceptance criterion text")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, acId, options) => {
+      const result = await editAcceptanceCriteria(await rootFrom(command.opts()), {
+        id,
+        acId,
+        text: options.text,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("add-related-doc")
+    .argument("<id>")
+    .requiredOption("--link <link>", "Related Docs reference to append")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await addRelatedDoc(await rootFrom(command.opts()), {
+        id,
+        reference: options.link,
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("add-change-note")
+    .argument("<id>")
+    .requiredOption("--change <change>")
+    .requiredOption("--reason <reason>")
+    .option("--date <date>", "change-note date as YYYY-MM-DD (defaults to today)", parseDate)
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await addChangeNote(await rootFrom(command.opts()), {
+        id,
+        date: typeof options.date === "string" ? options.date : new Date().toISOString().slice(0, 10),
+        change: options.change,
+        reason: options.reason,
+        ...(options.dryRun ? { dryRun: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("update-field")
+    .argument("<id>")
+    .requiredOption("--field <field>", "priority | risk | title | target | verification-method | type | scope")
+    .requiredOption("--value <value>")
+    .option("--apply", "apply a type/scope migration (still requires --confirm)")
+    .option("--confirm", "confirm sign-off for a type/scope migration write")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (id, options) => {
+      const dryRun = options.dryRun ? true : options.apply ? false : undefined;
+      const result = await updateField(await rootFrom(command.opts()), {
+        id,
+        field: options.field as UpdateFieldName,
+        value: options.value,
+        signOff: Boolean(options.confirm),
+        ...(dryRun !== undefined ? { dryRun } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("retarget")
+    .requiredOption("--from <target>", "source target whose requirements are moved")
+    .requiredOption("--to <target>", "destination target")
+    .requiredOption("--reason <text>")
+    .option("--scope <scope>", "limit the move set to a scope prefix")
+    .option("--status <status>", "limit the move set to a status")
+    .option("--type <type>", "limit the move set to a requirement type")
+    .option("--id <id>", "explicit requirement id to move; repeatable", pushOption, [])
+    .option("--exclude <id>", "requirement id to exclude; repeatable", pushOption, [])
+    .option("--apply")
+    .option("--json")
+    .action(async (options) => {
+      const root = await rootFrom(command.opts());
+      const explicitIds = collect(options.id);
+      let ids: string[];
+      if (explicitIds.length > 0) {
+        ids = explicitIds;
+      } else {
+        const workspace = await parseWorkspace(root);
+        const filter: RequirementFilter = {
+          target: options.from,
+          ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
+          ...(typeof options.status === "string" ? { status: options.status as RequirementStatus } : {}),
+          ...(typeof options.type === "string" ? { type: options.type as RequirementType } : {})
+        };
+        ids = listRequirements(workspace, filter).map((record) => record.id);
+      }
+      const result = await retarget(root, {
+        ids,
+        toTarget: options.to,
+        reason: options.reason,
+        exclude: collect(options.exclude),
+        dryRun: options.apply !== true
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) {
+        command.setOptionValue("exitCode", 5);
+      } else if (result.value?.items?.some((item) => item.skipReason === "target-not-registered")) {
+        command.setOptionValue("exitCode", 5);
+      }
+    });
+
+  command
+    .command("supersede")
+    .requiredOption("--old <id>", "requirement to supersede and discard")
+    .requiredOption("--new-title <title>", "successor requirement title")
+    .requiredOption("--new-statement <statement>", "successor requirement statement")
+    .requiredOption("--scope <scope>", "successor scope prefix")
+    .option("--type <type>", "successor requirement type")
+    .option("--target <target>", "successor target (defaults to Active Target)")
+    .option("--successor <id>", "intended successor identity for the self-reference guard")
+    .option("--ac <criterion>", "successor acceptance criterion; repeatable", pushOption, [])
+    .option("--reason <text>")
+    .option("--apply")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (options) => {
+      const acceptanceCriteria = collect(options.ac);
+      const result = await supersedeRequirement(await rootFrom(command.opts()), {
+        oldId: options.old,
+        scope: options.scope,
+        target: typeof options.target === "string" ? options.target : "",
+        title: options.newTitle,
+        statement: options.newStatement,
+        acceptanceCriteria: acceptanceCriteria.length > 0 ? acceptanceCriteria : [`Successor of ${options.old}.`],
+        confirmDiscardVerified: true,
+        ...(typeof options.successor === "string" ? { successorId: options.successor } : {}),
+        ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
+        dryRun: options.dryRun === true || options.apply !== true
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("set-supersede")
+    .argument("<id>")
+    .option("--supersedes <id>", "write the Supersedes metadata field")
+    .option("--superseded-by <id>", "write the Superseded By metadata field")
+    .option("--sync-trace", "also insert the matching Trace Link row")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await setSupersede(await rootFrom(command.opts()), {
+        id,
+        ...(typeof options.supersedes === "string" ? { supersedes: options.supersedes } : {}),
+        ...(typeof options.supersededBy === "string" ? { supersededBy: options.supersededBy } : {}),
+        ...(options.syncTrace ? { syncTrace: true } : {}),
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("restore")
+    .argument("<id>")
+    .option("--to <status>", "active status to restore to (defaults to planned)")
+    .option("--reason <text>")
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await restore(await rootFrom(command.opts()), {
+        id,
+        reason: typeof options.reason === "string" ? options.reason : "",
+        ...(typeof options.to === "string" ? { status: options.to as RequirementStatus } : {}),
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("sync-counts")
+    .option("--apply", "rewrite the index summary count cells")
+    .option("--check", "exit non-zero when count drift exists (CI gate)")
+    .option("--json")
+    .action(async (options) => {
+      const result = await syncCounts(await rootFrom(command.opts()), { apply: Boolean(options.apply) });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) {
+        command.setOptionValue("exitCode", 5);
+      } else if (options.check && (result.value?.cells?.length ?? 0) > 0) {
+        command.setOptionValue("exitCode", 1);
+      }
+    });
+
+  command
+    .command("scaffold-scope")
+    .argument("<name>", "scope name or name:PREFIX")
+    .option("--apply", "create the scope file and register the index rows")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (name, options) => {
+      const separator = name.indexOf(":");
+      const scopeName = separator >= 0 ? name.slice(0, separator) : name;
+      const prefix = separator >= 0 ? name.slice(separator + 1) : scopeName.slice(0, 4).toUpperCase();
+      const result = await scaffoldScope(await rootFrom(command.opts()), {
+        name: scopeName,
+        prefix,
+        apply: Boolean(options.apply) && options.dryRun !== true
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  command
+    .command("register-scopes")
+    .option("--apply", "insert the planned Scope Map rows")
+    .option("--dry-run")
+    .option("--json")
+    .action(async (options) => {
+      const result = await registerScopes(await rootFrom(command.opts()), {
+        apply: Boolean(options.apply),
+        ...(options.dryRun ? { dryRun: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

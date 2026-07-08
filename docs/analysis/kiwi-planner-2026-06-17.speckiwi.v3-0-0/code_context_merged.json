@@ -1,0 +1,917 @@
+{
+ "FR-ARCH-006": {
+  "impl_files": [
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/adapter.ts",
+   "src/cli/command.ts",
+   "src/cli/commands/mutations.ts",
+   "src/cli/commands/read.ts",
+   "src/cli/options.ts"
+  ],
+  "test_file": "test/mcp/schemas.fr-arch-006.test.ts"
+ },
+ "REL-ARCH-002": {
+  "impl_files": [
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/tools/read-tools.ts",
+   "src/cli/command.ts",
+   "src/cli/commands/mutations.ts",
+   "src/cli/commands/read.ts"
+  ],
+  "test_file": "test/mcp/schemas.fr-arch-006.test.ts"
+ },
+ "DR-PARSE-001": {
+  "impl_files": [
+   "src/core/diagnostic.ts",
+   "src/core/diagnostic-registry.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/diagnostic-registry.test.ts"
+ },
+ "FR-PARSE-019": {
+  "impl_files": [
+   "src/core/parser/discover.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/parser/discover-steps-partition.test.ts"
+ },
+ "FR-PARSE-020": {
+  "impl_files": [
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/discover.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/parser/workspace-records.test.ts"
+ },
+ "FR-PARSE-021": {
+  "impl_files": [
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/types/requirement-record-origin.fr-parse-021.test.ts"
+ },
+ "FR-PARSE-022": {
+  "impl_files": [
+   "src/core/validator/rules.ts",
+   "src/core/validator/validate-workspace.ts",
+   "src/core/validator/rule-registry.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/validator/validation-rules.test.ts"
+ },
+ "FR-PARSE-023": {
+  "impl_files": [
+   "src/core/parser/discover.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/index-parser.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/parser/discover-steps-partition.test.ts"
+ },
+ "FR-PARSE-024": {
+  "impl_files": [
+   "src/core/validator/rules.ts",
+   "src/core/validator/validate-workspace.ts",
+   "src/core/validator/rule-registry.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/validator/validation-rules.test.ts"
+ },
+ "FR-PARSE-025": {
+  "impl_files": [
+   "src/core/diagnostic-registry.ts",
+   "src/core/validator/rules.ts",
+   "src/core/validator/rule-registry.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/diagnostic-registry.test.ts"
+ },
+ "FR-PARSE-026": {
+  "impl_files": [
+   "src/core/parser/table.ts",
+   "src/core/parser/trace-parser.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/parser/parse-compatibility-notes.fr-parse-026.test.ts"
+ },
+ "FR-PARSE-027": {
+  "impl_files": [
+   "src/core/validator/rules.ts",
+   "src/core/validator/rule-registry.ts",
+   "src/core/diagnostic-registry.ts",
+   "src/core/parser/table.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/validator/validation-rules.test.ts"
+ },
+ "FR-PARSE-028": {
+  "impl_files": [
+   "src/core/parser/discover.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/parser/discover-steps-partition.test.ts"
+ },
+ "REL-PARSE-002": {
+  "impl_files": [
+   "src/core/validator/rules.ts",
+   "src/core/validator/validate-workspace.ts",
+   "src/core/query/records.ts",
+   "src/mcp/tools/read-tools.ts"
+  ],
+  "test_file": "test/core/validator/validation-rules.test.ts"
+ },
+ "FR-NODE-017": {
+  "impl_files": [
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/query/records.ts"
+  ],
+  "test_file": "test/core/mutation/internal.fr-node-017.test.ts"
+ },
+ "FR-NODE-018": {
+  "impl_files": [
+   "src/core/mutation/trace-search.ts",
+   "src/core/mutation/update-status.ts",
+   "src/core/mutation/update-stability.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/trace-search.test.ts"
+ },
+ "FR-NODE-019": {
+  "impl_files": [
+   "src/core/mutation/update-status.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/update-status.fr-node-019.test.ts"
+ },
+ "FR-NODE-020": {
+  "impl_files": [
+   "src/core/mutation/records.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/records.fr-node-020.test.ts"
+ },
+ "FR-NODE-021": {
+  "impl_files": [
+   "src/core/mutation/records.ts",
+   "src/core/types.ts",
+   "src/core/query/records.ts"
+  ],
+  "test_file": "test/core/mutation/records.fr-node-021.test.ts"
+ },
+ "FR-NODE-022": {
+  "impl_files": [
+   "src/core/mutation/add-compatibility-check.ts",
+   "src/core/mutation/add-trace.ts",
+   "src/core/mutation/records.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/mutation/table-cell.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts"
+  ],
+  "test_file": "test/core/mutation/add-compatibility-check.fr-node-022.test.ts"
+ },
+ "FR-NODE-023": {
+  "impl_files": [
+   "src/core/mutation/add-compatibility-check.ts",
+   "src/core/mutation/trace-search.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/add-compatibility-check.fr-node-023.test.ts"
+ },
+ "FR-NODE-024": {
+  "impl_files": [
+   "src/core/query/summary.ts",
+   "src/core/mutation/records.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/query/list-dirty-edges.fr-node-024.test.ts"
+ },
+ "FR-NODE-025": {
+  "impl_files": [
+   "src/core/mutation/update-statement.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/update-statement.fr-node-025.test.ts"
+ },
+ "FR-NODE-026": {
+  "impl_files": [
+   "src/core/mutation/check-ac.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/check-ac.fr-node-026.test.ts"
+ },
+ "FR-NODE-027": {
+  "impl_files": [
+   "src/core/mutation/claim-step.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/records.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/mutation/claim-step.fr-node-027.test.ts"
+ },
+ "FR-NODE-028": {
+  "impl_files": [
+   "src/core/mutation/update-step-state.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/update-step-state.fr-node-028.test.ts"
+ },
+ "FR-NODE-029": {
+  "impl_files": [
+   "src/core/query/list-steps.ts",
+   "src/core/query/summary.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/query/list-steps.fr-node-029.test.ts"
+ },
+ "FR-NODE-030": {
+  "impl_files": [
+   "src/core/mutation/supersede-requirement.ts",
+   "src/core/mutation/update-status.ts",
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/add-compatibility-check.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/supersede-requirement.fr-node-030.test.ts"
+ },
+ "FR-NODE-031": {
+  "impl_files": [
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/render-requirement.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/mutation/add-requirement.fr-node-031.test.ts"
+ },
+ "FR-NODE-032": {
+  "impl_files": [
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/patch/merge-journal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/patch/multi-file-commit.fr-node-032.test.ts"
+ },
+ "FR-NODE-033": {
+  "impl_files": [
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/merge-journal.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/patch/merge-journal.fr-node-033.test.ts"
+ },
+ "FR-NODE-034": {
+  "impl_files": [
+   "src/core/query/diff-steps.ts",
+   "src/core/query/summary.ts",
+   "src/core/mutation/records.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/query/diff-steps.fr-node-034.test.ts"
+ },
+ "FR-NODE-035": {
+  "impl_files": [
+   "src/core/mutation/work-mode.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/guards.ts",
+   "src/core/patch/apply-patch.ts",
+   "src/core/patch/patch-plan.ts",
+   "src/core/types.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/core/mutation/work-mode.fr-node-035.test.ts"
+ },
+ "FR-NODE-036": {
+  "impl_files": [
+   "src/core/bootstrap/init-project.ts",
+   "src/core/bootstrap/templates.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ },
+ "FR-NODE-037": {
+  "impl_files": [
+   "src/core/bootstrap/init-project.ts",
+   "src/core/bootstrap/templates.ts"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ },
+ "FR-NODE-038": {
+  "impl_files": [
+   "src/core/bootstrap/init-project.ts",
+   "src/core/bootstrap/templates.ts"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ },
+ "FR-NODE-039": {
+  "impl_files": [
+   "docs/.kiwi/hooks/trace.mjs"
+  ],
+  "test_file": "test/core/mutation/fr-node-039-trace-hook.test.ts"
+ },
+ "FR-NODE-040": {
+  "impl_files": [
+   "docs/.kiwi/hooks/pre-commit.mjs"
+  ],
+  "test_file": "test/core/mutation/fr-node-040-pre-commit-hook.test.ts"
+ },
+ "FR-NODE-041": {
+  "impl_files": [
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/synthesis.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-041-synthesis-engine.test.ts"
+ },
+ "FR-NODE-042": {
+  "impl_files": [
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-042-req-id-reservation.test.ts"
+ },
+ "FR-NODE-043": {
+  "impl_files": [
+   "src/core/query/summary.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/query/fr-node-043-vibe-merge-contradiction-gate.test.ts"
+ },
+ "FR-NODE-044": {
+  "impl_files": [
+   "src/core/bootstrap/templates.ts",
+   "src/core/bootstrap/init-project.ts",
+   "package.json"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ },
+ "FR-NODE-046": {
+  "impl_files": [
+   "src/core/query/records.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/query/fr-node-046-full-text-search.test.ts"
+ },
+ "FR-NODE-047": {
+  "impl_files": [
+   "src/core/mutation/set-active-target.ts",
+   "src/core/mutation/retarget.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-047-retarget.test.ts"
+ },
+ "FR-NODE-048": {
+  "impl_files": [
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/update-field.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-048-update-field.test.ts"
+ },
+ "FR-NODE-049": {
+  "impl_files": [
+   "src/core/mutation/append-section-note.ts",
+   "src/core/mutation/table-cell.ts",
+   "src/core/mutation/add-related-doc.ts",
+   "src/core/mutation/add-change-note.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/append-section-note.test.ts"
+ },
+ "FR-NODE-050": {
+  "impl_files": [
+   "src/core/query/summary.ts",
+   "src/core/mutation/sync-counts.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/query/fr-node-050-sync-counts.test.ts"
+ },
+ "FR-NODE-051": {
+  "impl_files": [
+   "src/core/mutation/update-status.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-051-restore.test.ts"
+ },
+ "FR-NODE-052": {
+  "impl_files": [
+   "src/core/mutation/add-trace.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-052-set-supersede.test.ts"
+ },
+ "FR-NODE-053": {
+  "impl_files": [
+   "src/core/validator/rules.ts",
+   "src/core/mutation/register-scopes.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-053-register-scopes.test.ts"
+ },
+ "FR-NODE-054": {
+  "impl_files": [
+   "src/core/bootstrap/init-project.ts",
+   "src/core/bootstrap/templates.ts",
+   "src/core/mutation/scaffold-scope.ts",
+   "src/core/types.ts"
+  ],
+  "test_file": "test/core/mutation/fr-node-054-scaffold-scope.test.ts"
+ },
+ "IR-CLI-028": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/validator/validate-workspace.js",
+   "src/core/validator/rules.ts"
+  ],
+  "test_file": "test/cli/step-validate.ir-cli-028.test.ts"
+ },
+ "IR-CLI-029": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/core/bootstrap/init-project.ts"
+  ],
+  "test_file": "test/cli/mutation-commands.test.ts"
+ },
+ "IR-CLI-030": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/internal.ts"
+  ],
+  "test_file": "test/cli/mode.ir-cli-030.test.ts"
+ },
+ "IR-CLI-031": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/internal.ts"
+  ],
+  "test_file": "test/cli/vibe-gate.ir-cli-031.test.ts"
+ },
+ "IR-CLI-033": {
+  "impl_files": [
+   "src/core/format/text.ts",
+   "src/cli/commands/read.ts",
+   "src/cli/formatters.ts"
+  ],
+  "test_file": "test/cli/read-commands.test.ts"
+ },
+ "IR-CLI-034": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/core/format/text.ts",
+   "src/cli/formatters.ts"
+  ],
+  "test_file": "test/cli/validate-filters.ir-cli-034.test.ts"
+ },
+ "IR-CLI-035": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/diagnostic-registry.ts"
+  ],
+  "test_file": "test/cli/explain.ir-cli-035.test.ts"
+ },
+ "IR-CLI-036": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/workflow/release-readiness.ts"
+  ],
+  "test_file": "test/cli/release-readiness.ir-cli-036.test.ts"
+ },
+ "IR-CLI-037": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/query/records.ts"
+  ],
+  "test_file": "test/cli/search.ir-cli-037.test.ts"
+ },
+ "IR-CLI-038": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/set-active-target.ts"
+  ],
+  "test_file": "test/cli/retarget.ir-cli-038.test.ts"
+ },
+ "IR-CLI-039": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/add-requirement.ts"
+  ],
+  "test_file": "test/cli/update-field.ir-cli-039.test.ts"
+ },
+ "IR-CLI-040": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/internal.ts"
+  ],
+  "test_file": "test/cli/update-statement.ir-cli-040.test.ts"
+ },
+ "IR-CLI-041": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/check-ac.ts"
+  ],
+  "test_file": "test/cli/edit-ac.ir-cli-041.test.ts"
+ },
+ "IR-CLI-042": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/append-section-note.ts"
+  ],
+  "test_file": "test/cli/add-related-doc-change-note.ir-cli-042.test.ts"
+ },
+ "IR-CLI-043": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/cli/command.ts",
+   "src/cli/options.ts"
+  ],
+  "test_file": "test/cli/input-json.ir-cli-043.test.ts"
+ },
+ "IR-CLI-044": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/cli/sync-counts.ir-cli-044.test.ts"
+ },
+ "IR-CLI-045": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/update-status.ts"
+  ],
+  "test_file": "test/cli/supersede.ir-cli-045.test.ts"
+ },
+ "IR-CLI-046": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/update-status.ts"
+  ],
+  "test_file": "test/cli/restore.ir-cli-046.test.ts"
+ },
+ "IR-CLI-047": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/query/records.ts"
+  ],
+  "test_file": "test/cli/history.ir-cli-047.test.ts"
+ },
+ "IR-CLI-048": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/cli/changed-since.ir-cli-048.test.ts"
+ },
+ "IR-CLI-049": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/cli/attention.ir-cli-049.test.ts"
+ },
+ "IR-CLI-050": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/mcp/schemas.ts"
+  ],
+  "test_file": "test/cli/commands-catalog.ir-cli-050.test.ts"
+ },
+ "IR-CLI-051": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/bootstrap/init-project.ts"
+  ],
+  "test_file": "test/cli/doctor.ir-cli-051.test.ts"
+ },
+ "IR-CLI-052": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/mutation/add-trace.ts"
+  ],
+  "test_file": "test/cli/set-supersede.ir-cli-052.test.ts"
+ },
+ "IR-CLI-053": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/validator/rules.ts"
+  ],
+  "test_file": "test/cli/register-scopes.ir-cli-053.test.ts"
+ },
+ "IR-CLI-054": {
+  "impl_files": [
+   "src/cli/commands/mutations.ts",
+   "src/cli/index.ts",
+   "src/core/bootstrap/init-project.ts"
+  ],
+  "test_file": "test/cli/scaffold-scope.ir-cli-054.test.ts"
+ },
+ "IR-CLI-055": {
+  "impl_files": [
+   "src/cli/commands/read.ts",
+   "src/cli/index.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/cli/stale.ir-cli-055.test.ts"
+ },
+ "FR-MCP-020": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/add-trace.ts"
+  ],
+  "test_file": "test/mcp/add-trace-notes-dryrun.test.ts"
+ },
+ "FR-MCP-021": {
+  "impl_files": [
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/validator/validate-workspace.ts",
+   "src/core/validator/rules.ts",
+   "src/core/parser/workspace-parser.ts"
+  ],
+  "test_file": "test/mcp/validate-step.fr-mcp-021.test.ts"
+ },
+ "FR-MCP-022": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/add-trace.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/mcp/compat-tools.fr-mcp-022.test.ts"
+ },
+ "FR-MCP-023": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/mutation/check-ac.ts"
+  ],
+  "test_file": "test/mcp/statement-ac-tools.fr-mcp-023.test.ts"
+ },
+ "FR-MCP-024": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/discover.ts"
+  ],
+  "test_file": "test/mcp/step-state-tools.fr-mcp-024.test.ts"
+ },
+ "FR-MCP-025": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/update-status.ts",
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/add-trace.ts",
+   "src/core/mutation/internal.ts"
+  ],
+  "test_file": "test/mcp/supersede-promote-tools.fr-mcp-025.test.ts"
+ },
+ "FR-MCP-026": {
+  "impl_files": [
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/query/summary.ts",
+   "src/core/mutation/records.ts"
+  ],
+  "test_file": "test/mcp/diff-steps.fr-mcp-026.test.ts"
+ },
+ "FR-MCP-027": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/discover.ts"
+  ],
+  "test_file": "test/mcp/work-mode-tools.fr-mcp-027.test.ts"
+ },
+ "FR-MCP-028": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/internal.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/discover.ts"
+  ],
+  "test_file": "test/mcp/start-vibe-task.fr-mcp-028.test.ts"
+ },
+ "FR-MCP-029": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/add-evidence.ts"
+  ],
+  "test_file": "test/mcp/add-evidence-notes-dryrun.test.ts"
+ },
+ "FR-MCP-031": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/set-active-target.ts"
+  ],
+  "test_file": "test/mcp/retarget-requirements.fr-mcp-031.test.ts"
+ },
+ "FR-MCP-032": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/add-requirement.ts",
+   "src/core/mutation/internal.ts"
+  ],
+  "test_file": "test/mcp/update-requirement-field.fr-mcp-032.test.ts"
+ },
+ "FR-MCP-033": {
+  "impl_files": [
+   "src/mcp/tools/mutation-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/mutation/append-section-note.ts",
+   "src/core/mutation/table-cell.ts"
+  ],
+  "test_file": "test/mcp/related-doc-change-note-tools.fr-mcp-033.test.ts"
+ },
+ "FR-MCP-034": {
+  "impl_files": [
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/query/records.ts"
+  ],
+  "test_file": "test/mcp/search-requirements.fr-mcp-034.test.ts"
+ },
+ "FR-MCP-035": {
+  "impl_files": [
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/query/summary.ts"
+  ],
+  "test_file": "test/mcp/summarize-release-readiness.fr-mcp-035.test.ts"
+ },
+ "FR-MCP-036": {
+  "impl_files": [
+   "src/mcp/tools/read-tools.ts",
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/core/diagnostic-registry.ts",
+   "src/core/diagnostic.ts"
+  ],
+  "test_file": "test/mcp/explain-diagnostic.fr-mcp-036.test.ts"
+ },
+ "FR-FLOW-013": {
+  "impl_files": [
+   "docs/rule/SRS-MD-Rules-v3.0.0.md",
+   "docs/spec/90.appendix.md",
+   "skills/claude/kiwi-srs/SKILL.md",
+   "skills/codex/kiwi-srs/SKILL.md",
+   "skills/etc/kiwi-srs/SKILL.md",
+   "CLAUDE.md"
+  ],
+  "test_file": "test/release/srs-md-rules-v3-registration.test.ts"
+ },
+ "FR-FLOW-014": {
+  "impl_files": [
+   "skills/kiwi-step/skill.md"
+  ],
+  "test_file": "test/release/kiwi-step.fr-flow-014.test.ts"
+ },
+ "FR-FLOW-015": {
+  "impl_files": [
+   "skills/kiwi-spec-merge/skill.md"
+  ],
+  "test_file": "test/release/kiwi-spec-merge.fr-flow-015.test.ts"
+ },
+ "FR-FLOW-016": {
+  "impl_files": [
+   "src/core/bootstrap/templates.ts",
+   "src/core/bootstrap/init-project.ts"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ },
+ "FR-FLOW-017": {
+  "impl_files": [
+   "docs/rule/Work-Modes-Rules-v1.0.0.md",
+   "src/core/bootstrap/templates.ts",
+   "src/core/bootstrap/init-project.ts",
+   "CLAUDE.md"
+  ],
+  "test_file": "test/core/bootstrap/work-modes-rules.fr-flow-017.test.ts"
+ },
+ "FR-FLOW-018": {
+  "impl_files": [
+   "skills/kiwi-vibe/skill.md"
+  ],
+  "test_file": "test/release/kiwi-vibe.fr-flow-018.test.ts"
+ },
+ "FR-FLOW-019": {
+  "impl_files": [
+   "skills/kiwi-vibe-commit/skill.md"
+  ],
+  "test_file": "test/release/kiwi-vibe-commit.fr-flow-019.test.ts"
+ },
+ "FR-FLOW-020": {
+  "impl_files": [
+   "docs/rule/Work-Modes-Rules-v1.0.0.md",
+   "skills/kiwi-coder/skill.md",
+   "skills/claude/kiwi-coder/SKILL.md",
+   "skills/codex/kiwi-coder/SKILL.md",
+   "skills/etc/kiwi-coder/SKILL.md"
+  ],
+  "test_file": "test/release/work-modes-trace-tag.fr-flow-020.test.ts"
+ },
+ "FR-FLOW-023": {
+  "impl_files": [
+   "src/core/bootstrap/templates.ts",
+   "src/core/bootstrap/init-project.ts",
+   "docs/rule/SRS-MD-Rules-v3.0.0.md"
+  ],
+  "test_file": "test/core/bootstrap/init-project.test.ts"
+ }
+}

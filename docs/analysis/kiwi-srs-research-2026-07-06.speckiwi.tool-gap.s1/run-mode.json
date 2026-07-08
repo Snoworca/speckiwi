@@ -1,0 +1,7 @@
+{
+  "mode": "standalone",
+  "channel_used": 1,
+  "channel_evidence": "--mode=standalone in Skill args",
+  "warnings": [],
+  "notes": "question-only standalone: REQ 영속화 대상 없음 → mutation 0건, report.md + doculight 보고로 대체. 사용자 요청에 doculight 보고 명시."
+}

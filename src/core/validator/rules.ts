@@ -26,7 +26,7 @@ function splitCsv(value: string): string[] {
     .filter(Boolean);
 }
 
-function normalizeScopeDocument(document: string): string {
+export function normalizeScopeDocument(document: string): string {
   const withoutAnchor = document.trim().replace(/#.*$/, "").replace(/\\/g, "/");
   if (!withoutAnchor) return "";
   const withoutDot = withoutAnchor.replace(/^\.\//, "");

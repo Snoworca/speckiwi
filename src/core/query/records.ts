@@ -223,3 +223,22 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
 export function getRequirementMarkdown(records: RequirementRecord[], id: string): string | undefined {
   return records.find((record) => record.id === id)?.markdown;
 }
+
+// FR-NODE-046 — full-text search core query over requirement records.
+//
+// Returns the records whose searchable text contains the caller-supplied `query`
+// substring, deterministically ordered by requirement id. The searchable text
+// spans at least the requirement statement, the heading title, and the
+// acceptance criteria text. This is a free-text engine distinct from the
+// supersedes trace-search helper (src/core/mutation/trace-search.ts), which
+// resolves incoming rows by an exact type/relation/reference filter.
+function searchableText(record: RequirementRecord): string {
+  return [record.title, record.requirement ?? "", ...record.acceptanceCriteria.map((ac) => ac.text)].join("\n");
+}
+
+// @req FR-NODE-046
+export function searchRequirementRecords(records: readonly RequirementRecord[], query: string): RequirementRecord[] {
+  return records
+    .filter((record) => searchableText(record).includes(query))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}

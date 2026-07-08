@@ -1,0 +1,71 @@
+{
+  "FR-FLOW-013": {
+    "impl_files": [
+      "docs/rule/SRS-MD-Rules-v3.0.0.md",
+      "docs/spec/90.appendix.md",
+      "skills/claude/kiwi-srs/SKILL.md",
+      "skills/codex/kiwi-srs/SKILL.md",
+      "skills/etc/kiwi-srs/SKILL.md",
+      "CLAUDE.md"
+    ],
+    "test_file": "test/release/srs-md-rules-v3-registration.test.ts"
+  },
+  "FR-FLOW-014": {
+    "impl_files": [
+      "skills/kiwi-step/skill.md"
+    ],
+    "test_file": "test/release/kiwi-step.fr-flow-014.test.ts"
+  },
+  "FR-FLOW-015": {
+    "impl_files": [
+      "skills/kiwi-spec-merge/skill.md"
+    ],
+    "test_file": "test/release/kiwi-spec-merge.fr-flow-015.test.ts"
+  },
+  "FR-FLOW-016": {
+    "impl_files": [
+      "src/core/bootstrap/templates.ts",
+      "src/core/bootstrap/init-project.ts"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  },
+  "FR-FLOW-017": {
+    "impl_files": [
+      "docs/rule/Work-Modes-Rules-v1.0.0.md",
+      "src/core/bootstrap/templates.ts",
+      "src/core/bootstrap/init-project.ts",
+      "CLAUDE.md"
+    ],
+    "test_file": "test/core/bootstrap/work-modes-rules.fr-flow-017.test.ts"
+  },
+  "FR-FLOW-018": {
+    "impl_files": [
+      "skills/kiwi-vibe/skill.md"
+    ],
+    "test_file": "test/release/kiwi-vibe.fr-flow-018.test.ts"
+  },
+  "FR-FLOW-019": {
+    "impl_files": [
+      "skills/kiwi-vibe-commit/skill.md"
+    ],
+    "test_file": "test/release/kiwi-vibe-commit.fr-flow-019.test.ts"
+  },
+  "FR-FLOW-020": {
+    "impl_files": [
+      "docs/rule/Work-Modes-Rules-v1.0.0.md",
+      "skills/kiwi-coder/skill.md",
+      "skills/claude/kiwi-coder/SKILL.md",
+      "skills/codex/kiwi-coder/SKILL.md",
+      "skills/etc/kiwi-coder/SKILL.md"
+    ],
+    "test_file": "test/release/work-modes-trace-tag.fr-flow-020.test.ts"
+  },
+  "FR-FLOW-023": {
+    "impl_files": [
+      "src/core/bootstrap/templates.ts",
+      "src/core/bootstrap/init-project.ts",
+      "docs/rule/SRS-MD-Rules-v3.0.0.md"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  }
+}

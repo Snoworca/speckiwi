@@ -1,9 +1,11 @@
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
+import { validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { projectRequirementRecords, searchRequirementRecords } from "../../core/query/discovery.js";
-import { buildReadEnvelope, summarizeTarget } from "../../core/query/summary.js";
+import { buildReadEnvelope, listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
+import { listSteps } from "../../core/query/list-steps.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
 import type { Diagnostic, ParsedWorkspace } from "../../core/types.js";
@@ -238,4 +240,28 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("workflow_worklog_tail", async (input) => workflowWorklogTail(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("preview_legacy_workflow_migration", async (input) => unsupportedWorkflowMigrationInput(input) ?? workflowMigrationPreview(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("get_next_work_order", async (input) => buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), { readOnlyHint: true });
+  // FR-MCP-021 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories),
+  // scoped to a named step so a body-scope error never leaks into the step diagnostics.
+  server.registerTool("validate_step", async (input) => {
+    const parsed = await workspace(deps);
+    const result = validateWorkspaceScoped(parsed, { step: String(input.step) });
+    const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
+    return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, result.diagnostics);
+  }, { readOnlyHint: true });
+  // FR-MCP-022 — compatibility edge read tools. listDirtyEdges enumerates every checked_compatible
+  // edge with its clean/dirty/orphaned/missing classification; both readers project it.
+  server.registerTool("list_dirty_edges", async (input) =>
+    mcpSuccess(await listDirtyEdges(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
+    { readOnlyHint: true }
+  );
+  server.registerTool("list_compat_edges", async (input) =>
+    mcpSuccess(await listDirtyEdges(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
+    { readOnlyHint: true }
+  );
+  // FR-MCP-024 — list_steps returns the Kahn topological order of docs/spec/steps/state.md with
+  // cycle detection and advisory-only diagnostics.
+  server.registerTool("list_steps", async (input) =>
+    mcpSuccess(await listSteps(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
+    { readOnlyHint: true }
+  );
 }

@@ -1,15 +1,25 @@
+import { stat } from "node:fs/promises";
+import path from "node:path";
 import type { Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
+import { getWorkMode, setWorkMode } from "../../core/mutation/work-mode.js";
+import { getDiagnosticDefinition } from "../../core/diagnostic-registry.js";
+import { mutationFail, mutationOk } from "../../core/mutation/guards.js";
+import { PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
+import { renderReadOnlyToolNames, toolSpecs, type ToolSpec } from "../../mcp/schemas.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
 import { checkLinks } from "../../core/query/links.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
+import { matchesRequirementFilter } from "../../core/query/filter.js";
 import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementRecords, type RequirementDiscoveryOptions } from "../../core/query/discovery.js";
-import { buildReadEnvelope, summarizeTarget } from "../../core/query/summary.js";
+import { buildReadEnvelope, resolveTargetSelection, summarizeTarget } from "../../core/query/summary.js";
+import { validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
 import type { CliContext } from "../command.js";
-import type { Diagnostic, DiagnosticsSummary, ParsedWorkspace } from "../../core/types.js";
+import type { Diagnostic, DiagnosticsSummary, ParsedWorkspace, RequirementRecord, StepStateMode } from "../../core/types.js";
 import { planCompletedWorkMigration } from "../../core/completed-work/migration.js";
 import { parseFilter } from "../options.js";
 import { writeHuman, writeJson } from "../formatters.js";
@@ -262,20 +272,187 @@ function addDiscoveryOptions(target: Command): Command {
   return target.option("--format <format>", "ids, compact, or full").option("--fields <fields>", "comma-separated RequirementRecord fields").option("--include-markdown").option("--limit <n>").option("--offset <n>");
 }
 
+// @req IR-CLI-048 / IR-CLI-055
+/** Whether a string is a shape-valid AND calendar-valid ISO date (YYYY-MM-DD). */
+function isValidIsoDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+// @req IR-CLI-048 / IR-CLI-055
+/** The most recent (max) Change Notes date string for a record, or undefined when it has none. */
+function latestChangeDate(record: RequirementRecord): string | undefined {
+  let latest: string | undefined;
+  for (const row of record.changeNotes) {
+    if (latest === undefined || row.date > latest) latest = row.date;
+  }
+  return latest;
+}
+
+// @req IR-CLI-055
+/** Whole-day age of an ISO date relative to today (UTC), or null when the date is unparseable. */
+function ageInDays(dateString: string | undefined): number | null {
+  if (!dateString || !isValidIsoDate(dateString)) return null;
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString) as RegExpExecArray;
+  const then = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Math.floor((today - then) / 86_400_000);
+}
+
+// @req IR-CLI-035
+/** Renders a diagnostic definition as human text, surfacing remediation only when present. */
+function formatDiagnosticDefinition(definition: ToolSpecDiagnosticDefinition): string {
+  const lines = [
+    definition.code,
+    definition.title,
+    `severity: ${definition.severity}`,
+    `messageTemplate: ${definition.messageTemplate}`,
+    `sourceRule: ${definition.sourceRule}`,
+    `since: ${definition.since}`
+  ];
+  if (typeof definition.remediation === "string" && definition.remediation.trim() !== "") {
+    lines.push(`remediation: ${definition.remediation}`);
+  }
+  return lines.join("\n");
+}
+
+// DiagnosticDefinition may carry a remediation string (DR-PARSE-001). The core type does not yet
+// declare it, so surface it structurally without depending on the type shape.
+type ToolSpecDiagnosticDefinition = ReturnType<typeof getDiagnosticDefinition> & { remediation?: string };
+
+// @req IR-CLI-049
+/** Rank index for a priority (lower = more urgent); missing priority ranks last. */
+function priorityRank(priority: RequirementRecord["priority"]): number {
+  const index = priority ? PRIORITY_LEVELS.indexOf(priority) : -1;
+  return index < 0 ? PRIORITY_LEVELS.length : index;
+}
+
+// @req IR-CLI-049
+/** Rank index for a risk (higher risk ranks first); missing risk ranks lowest. */
+function riskRank(risk: RequirementRecord["risk"]): number {
+  const index = risk ? RISK_LEVELS.indexOf(risk) : -1;
+  return index;
+}
+
+const ATTENTION_STATUS_ORDER = ["blocked", "in_progress", "implemented", "planned", "verified", "discarded"];
+
+// @req IR-CLI-049
+function statusRank(status: string): number {
+  const index = ATTENTION_STATUS_ORDER.indexOf(status);
+  return index < 0 ? ATTENTION_STATUS_ORDER.length : index;
+}
+
+// @req IR-CLI-037
+const SEARCH_FIELD_SELECTORS = new Set(["requirement", "ac", "rationale", "notes", "title", "all"]);
+
+// @req IR-CLI-037
+/** The record text fragments scanned for a given --field selector. */
+function searchFieldTexts(record: RequirementRecord, field: string): string[] {
+  const requirement = record.requirement ?? "";
+  const rationale = record.rationale ?? "";
+  const notes = record.implementationNotes ?? "";
+  const title = record.title;
+  const ac = record.acceptanceCriteria.map((criterion) => `${criterion.id}: ${criterion.text}`).join("\n");
+  switch (field) {
+    case "requirement":
+      return [requirement];
+    case "ac":
+      return [ac];
+    case "rationale":
+      return [rationale];
+    case "notes":
+      return [notes];
+    case "title":
+      return [title];
+    default:
+      return [requirement, ac, rationale, notes, title];
+  }
+}
+
+// @req IR-CLI-034
+function collectDiagnosticCode(value: string, previous: string[]): string[] {
+  previous.push(value);
+  return previous;
+}
+
+// @req IR-CLI-035
+/** Prints a diagnostic definition (explain / validate --explain), rejecting unknown codes non-zero. */
+function renderExplain(context: CliContext, rootCommand: Command, code: string, json: boolean): void {
+  let definition: ToolSpecDiagnosticDefinition;
+  try {
+    definition = getDiagnosticDefinition(code) as ToolSpecDiagnosticDefinition;
+  } catch {
+    const message = `Unknown diagnostic code: ${code}`;
+    if (json) {
+      writeCliStructuredError(context.io, "NOT_FOUND", message, { recovery: { command: "validate" } });
+      rootCommand.setOptionValue("exitCode", 5);
+      return;
+    }
+    rootCommand.error(message, { exitCode: 5 });
+    return;
+  }
+  if (json) writeJson(context.io, definition);
+  else writeHuman(context.io, formatDiagnosticDefinition(definition));
+}
+
+// @req IR-CLI-050
+/** One command-catalog entry rendered from a ToolSpec registry entry (order-preserving 1:1). */
+function renderCommandCatalog(): Array<Record<string, unknown>> {
+  const readOnlyMcpNames = new Set(renderReadOnlyToolNames());
+  const isReadOnly = (spec: ToolSpec): boolean =>
+    spec.kind === "read" && typeof spec.mcpName === "string" && readOnlyMcpNames.has(spec.mcpName);
+  return toolSpecs.map((spec) => ({
+    name: spec.cliName,
+    kind: spec.kind,
+    args: spec.args,
+    options: spec.options,
+    readOnly: isReadOnly(spec),
+    resultExitMap: spec.resultExitMap
+  }));
+}
+
 export function registerReadCommands(command: Command, context: CliContext): void {
-  command
+  const validateCommand = command
     .command("validate")
     .option("--fail-on-warning", "fail when warnings exist")
+    .option("--severity <severity>", "display only diagnostics of this severity (error or warning)")
+    .option("--only <code>", "display only the listed diagnostic codes (repeatable)", collectDiagnosticCode, [])
+    .option("--ignore <code>", "hide the listed diagnostic codes from display (repeatable)", collectDiagnosticCode, [])
+    .option("--explain <code>", "print the diagnostic definition for a code and exit")
     .option("--json", "JSON output")
     .action(async (options) => {
+      const json = options.json || command.opts().json;
+      // @req IR-CLI-035 AC-3 — --explain short-circuits to a definition print, never a workspace run.
+      if (typeof options.explain === "string") {
+        renderExplain(context, validateCommand, options.explain, json);
+        return;
+      }
       const workspace = await workspaceFrom(command.opts());
       const diagnostics = readDiagnostics(workspace);
-      const result = splitDiagnostics(diagnostics);
-      const diagnosticsSummary = summarizeDiagnostics(diagnostics);
+      // @req IR-CLI-034 — exit code is computed from the UNFILTERED error set; display filters only
+      // change which diagnostics are shown, never the pass/fail decision.
+      const unfiltered = splitDiagnostics(diagnostics);
+      const displayed = diagnostics.filter((diagnostic) => {
+        if (typeof options.severity === "string" && diagnostic.severity !== options.severity) return false;
+        const only = options.only as string[];
+        const ignore = options.ignore as string[];
+        if (only.length > 0 && !only.includes(diagnostic.code)) return false;
+        if (ignore.length > 0 && ignore.includes(diagnostic.code)) return false;
+        return true;
+      });
+      const result = splitDiagnostics(displayed);
+      const diagnosticsSummary = summarizeDiagnostics(displayed);
       const value = { ...result, summary: diagnosticsSummary, diagnosticsSummary };
-      if (options.json || command.opts().json) output(context, { json: true }, value);
+      if (json) output(context, { json: true }, value);
       else output(context, { json: false }, formatValidateHuman(value));
-      if (result.errors.length > 0 || (options.failOnWarning && result.warnings.length > 0)) command.setOptionValue("exitCode", 1);
+      if (unfiltered.errors.length > 0 || (options.failOnWarning && unfiltered.warnings.length > 0)) command.setOptionValue("exitCode", 1);
     });
 
   command
@@ -300,12 +477,42 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   const searchCommand = addDiscoveryOptions(addRequirementFilterOptions(command.command("search").argument("<query>")))
+    .option("--field <field>", "restrict matching to requirement, ac, rationale, notes, title, or all")
     .option("--json", "JSON output")
     .action(async (query, options) => {
       const workspace = await workspaceFrom(command.opts());
+      const json = options.json || command.opts().json;
+      // @req IR-CLI-037 — a --field selector scopes matching to one field group (default keeps the
+      // existing all-field snippet search). Notes maps to Implementation Notes, which the snippet
+      // search does not scan, so field-scoped matching is computed directly over the record fields.
+      if (typeof options.field === "string") {
+        if (!SEARCH_FIELD_SELECTORS.has(options.field)) {
+          searchCommand.error("field must be requirement, ac, rationale, notes, title, or all", { exitCode: 2 });
+          return;
+        }
+        const needle = query.trim().toLowerCase();
+        const filter = parseFilter(options);
+        const matched = workspace.records
+          .filter((record) => matchesRequirementFilter(record, filter))
+          .filter((record) => searchFieldTexts(record, options.field as string).some((text) => text.toLowerCase().includes(needle)))
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map((record) => ({
+            id: record.id,
+            title: record.title,
+            field: options.field,
+            target: record.target,
+            status: record.status,
+            stability: record.stability,
+            scope: record.scope,
+            filePath: record.filePath,
+            headingLine: record.headingLine
+          }));
+        outputRead(context, { json }, workspace, { records: matched, projection: "search", field: options.field });
+        return;
+      }
       outputRead(
         context,
-        { json: options.json || command.opts().json },
+        { json },
         workspace,
         searchRequirementRecords(workspace.records, {
           query,
@@ -562,9 +769,258 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     outputRead(context, { json: options.json || command.opts().json }, workspace, summarizeTarget(workspace, { target: options.target, diagnostics }), diagnostics);
   });
 
+  // @req IR-CLI-035 — explain a diagnostic code from the DiagnosticDefinition registry.
+  command
+    .command("explain")
+    .argument("<code>", "diagnostic code (e.g. SRS-E001)")
+    .option("--json", "JSON output")
+    .action((code, options) => {
+      renderExplain(context, command, code, Boolean(options.json) || command.opts().json);
+    });
+
+  // @req IR-CLI-030 — read or switch the work mode over docs/spec/steps/state.md.
+  const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait"]);
+  command
+    .command("mode")
+    .argument("[value]", "switch target: sdd, vibe, or wait")
+    .option("--json", "JSON output")
+    .action(async (value, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      if (value === undefined) {
+        output(context, { json }, mutationOk(await getWorkMode(root)));
+        return;
+      }
+      if (!validModes.has(value as StepStateMode)) {
+        output(context, { json }, mutationFail("INVALID_MODE", `Invalid mode: ${value} (expected sdd, vibe, or wait)`));
+        command.setOptionValue("exitCode", 2);
+        return;
+      }
+      const result = await setWorkMode(root, { mode: value as StepStateMode });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-031 — CI-wireable vibe gate. Wire as a remote required status check to block
+  // unsynthesized vibe commits where local hooks can be bypassed.
+  const vibeGate = command
+    .command("vibe-gate")
+    .description("Vibe-synthesis gate for CI. Wire `vibe-gate check` as a remote required status check to block unsynthesized vibe commits.");
+  vibeGate
+    .command("check")
+    .description("Exit non-zero when an active vibe task has no synthesized step directory; use as a remote required status check.")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const workMode = await getWorkMode(root);
+      let synthesized = true;
+      if (workMode.mode === "vibe" && typeof workMode.activeTask === "string") {
+        const stepDir = path.join(root.root, "docs", "spec", "steps", workMode.activeTask);
+        synthesized = await isDirectory(stepDir);
+      }
+      output(context, { json }, synthesized ? mutationOk({ mode: workMode.mode, activeTask: workMode.activeTask, blocked: false }) : mutationFail("VIBE_GATE_BLOCKED", `Active vibe task '${workMode.activeTask}' has no synthesized step directory`));
+      if (!synthesized) command.setOptionValue("exitCode", 1);
+    });
+
+  // @req IR-CLI-048 — cross-requirement timeline: requirements whose most recent Change Notes date
+  // is on or after a given date, with optional target/scope filters. Never writes a file.
+  const changedSince = command
+    .command("changed-since")
+    .argument("<date>", "inclusive lower bound (YYYY-MM-DD)")
+    .option("--target <target>")
+    .option("--scope <scope>")
+    .option("--json", "JSON output")
+    .action(async (date, options) => {
+      if (!isValidIsoDate(date)) {
+        changedSince.error("date must use YYYY-MM-DD", { exitCode: 2 });
+        return;
+      }
+      const workspace = await workspaceFrom(command.opts());
+      const filter = parseFilter(options);
+      const requirements = workspace.records
+        .filter((record) => matchesRequirementFilter(record, filter))
+        .map((record) => ({ record, latest: latestChangeDate(record) }))
+        .filter(({ latest }) => typeof latest === "string" && isValidIsoDate(latest) && latest >= date)
+        .sort((a, b) => a.record.id.localeCompare(b.record.id))
+        .map(({ record, latest }) => ({ id: record.id, target: record.target, scope: record.scope, latestChangeDate: latest }));
+      outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements });
+    });
+
+  // @req IR-CLI-055 — aging requirements: evolving-stability requirements whose most recent Change
+  // Notes date is older than a threshold (default 90 days). Never writes a file.
+  const stale = command
+    .command("stale")
+    .option("--target <target>")
+    .option("--evolving-age <days>", "age threshold in days (default 90)")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const threshold = parsePositiveInteger(options.evolvingAge, "evolving-age", stale) ?? 90;
+      const workspace = await workspaceFrom(command.opts());
+      const filter = parseFilter(options);
+      const requirements = workspace.records
+        .filter((record) => matchesRequirementFilter(record, filter))
+        .filter((record) => record.stability === "evolving")
+        .map((record) => {
+          const latest = latestChangeDate(record);
+          return { record, latest, ageDays: ageInDays(latest) };
+        })
+        // FND-007: an undecidable age (null) is never treated as fresh — surface it rather than drop it.
+        .filter(({ ageDays }) => ageDays === null || ageDays > threshold)
+        .sort((a, b) => a.record.id.localeCompare(b.record.id))
+        .map(({ record, latest, ageDays }) => ({
+          id: record.id,
+          target: record.target,
+          stability: record.stability,
+          latestChangeDate: latest ?? null,
+          ageDays
+        }));
+      outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements, evolvingAge: threshold });
+    });
+
+  // @req IR-CLI-047 — Change Notes of one requirement, chronologically, with optional --since. Never
+  // writes a file.
+  command
+    .command("history")
+    .argument("<id>")
+    .option("--since <date>", "include rows on or after YYYY-MM-DD inclusive")
+    .option("--json", "JSON output")
+    .action(async (id, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const workspace = await workspaceFrom(command.opts());
+      const record = workspace.records.find((candidate) => candidate.id === id);
+      if (!record) {
+        readFailure(context, command, { json }, "NOT_FOUND", `Requirement not found: ${id}`, "show", 5);
+        return;
+      }
+      const since = typeof options.since === "string" ? options.since : undefined;
+      const changeNotes = record.changeNotes
+        .filter((row) => since === undefined || row.date >= since)
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((row) => ({ date: row.date, change: row.change, reason: row.reason }));
+      // Plain value (no diagnostics envelope): the timeline is the requirement's own Change Notes.
+      output(context, { json }, { id: record.id, changeNotes });
+    });
+
+  // @req IR-CLI-049 — priority-ranked work queue merging the readiness buckets. Never writes a file.
+  const attention = command
+    .command("attention")
+    .option("--target <target>")
+    .option("--top <n>", "limit to the first n ranked entries")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const top = parsePositiveInteger(options.top, "top", attention);
+      const workspace = await workspaceFrom(command.opts());
+      const diagnostics = readDiagnostics(workspace);
+      const summary = summarizeTarget(workspace, typeof options.target === "string" ? { target: options.target, diagnostics } : { diagnostics });
+      const ids = new Set<string>([
+        ...summary.blocked,
+        ...summary.implementedNotVerified,
+        ...summary.missingEvidence,
+        ...summary.stabilityBlockers
+      ]);
+      const byId = new Map(workspace.records.map((record) => [record.id, record]));
+      const ranked = [...ids]
+        .map((id) => byId.get(id))
+        .filter((record): record is RequirementRecord => record !== undefined)
+        .sort((a, b) =>
+          priorityRank(a.priority) - priorityRank(b.priority) ||
+          riskRank(b.risk) - riskRank(a.risk) ||
+          statusRank(a.status) - statusRank(b.status) ||
+          a.id.localeCompare(b.id))
+        .map((record) => ({ id: record.id, priority: record.priority ?? null, risk: record.risk ?? null, status: record.status, stability: record.stability ?? null }));
+      const requirements = top === undefined ? ranked : ranked.slice(0, top);
+      output(context, { json: Boolean(options.json) || command.opts().json }, { requirements });
+    });
+
+  // @req IR-CLI-050 — full command catalog rendered from the ToolSpec registry. Never writes a file.
+  command
+    .command("commands")
+    .option("--json", "JSON output")
+    .action((options) => {
+      output(context, { json: Boolean(options.json) || command.opts().json }, { commands: renderCommandCatalog() });
+    });
+
   const links = command.command("links");
   links.command("check").option("--json").action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
     outputRead(context, { json: options.json || command.opts().json }, workspace, await checkLinks(workspace));
   });
+
+  // @req IR-CLI-028 — step-local validation surface: run validateWorkspaceScoped for the named step
+  // and print its step-local diagnostics with an exit code reflecting step-local errors only.
+  const step = command.command("step");
+  step
+    .command("validate")
+    .argument("<name>", "step name under docs/spec/steps/<name>/")
+    .option("--json", "JSON output")
+    .action(async (name, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const workspace = await workspaceFrom(command.opts());
+      const result = validateWorkspaceScoped(workspace, { step: name });
+      const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
+      output(context, { json }, { ...result, diagnosticsSummary });
+      if (result.errors.length > 0) command.setOptionValue("exitCode", 1);
+    });
+
+  // @req IR-CLI-036 — release-readiness, coverage, and rtm read surfaces over the core release
+  // readiness module, defaulting to the Active Target, with a per-requirement verified-gate banner.
+  const VERIFIED_GATE_BANNER =
+    "Warning: the verified transition requires per-requirement verification evidence and is not auto-applied.";
+  command
+    .command("release-readiness")
+    .option("--target <target>")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const workspace = await workspaceFrom(command.opts());
+      const summary = summarizeReleaseReadiness(workspace, typeof options.target === "string" ? { target: options.target } : {});
+      const hasVerifiedCandidates = summary.implementedNotVerified.length > 0;
+      if (json) {
+        writeJson(context.io, hasVerifiedCandidates ? { ...summary, verifiedGateBanner: VERIFIED_GATE_BANNER } : summary);
+        return;
+      }
+      if (hasVerifiedCandidates) context.io.stderr.write(`${VERIFIED_GATE_BANNER}\n`);
+      writeHuman(context.io, summary);
+    });
+
+  command
+    .command("coverage")
+    .option("--target <target>")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const workspace = await workspaceFrom(command.opts());
+      const summary = summarizeReleaseReadiness(workspace, typeof options.target === "string" ? { target: options.target } : {});
+      output(context, { json }, { target: summary.target, acCoverageGaps: summary.acCoverageGaps });
+    });
+
+  command
+    .command("rtm")
+    .option("--target <target>")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const workspace = await workspaceFrom(command.opts());
+      const target = resolveTargetSelection(workspace, typeof options.target === "string" ? { target: options.target } : {}).target;
+      const requirements = workspace.records
+        .filter((record) => record.target === target)
+        .map((record) => ({
+          id: record.id,
+          status: record.status,
+          evidence: record.verificationEvidence.map((row) => ({ evidenceId: row.id, reference: row.reference, covers: row.covers }))
+        }));
+      output(context, { json }, { target, requirements });
+    });
+}
+
+// @req IR-CLI-031
+/** Whether a path exists and is a directory. */
+async function isDirectory(target: string): Promise<boolean> {
+  try {
+    return (await stat(target)).isDirectory();
+  } catch {
+    return false;
+  }
 }

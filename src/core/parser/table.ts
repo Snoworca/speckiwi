@@ -22,6 +22,7 @@ export interface ParseMarkdownTableOptions {
   diagnosticCode?: TableDiagnosticCode;
   requirementId?: string;
   tableLabel?: string;
+  skipNonTableLeading?: boolean;
 }
 
 function isSeparator(line: string): boolean {
@@ -50,7 +51,11 @@ function tableDiagnosticMessage(options: ParseMarkdownTableOptions): string {
 export function parseMarkdownTableResult(lines: string[], startLine: number, options: ParseMarkdownTableOptions = {}): ParsedTableResult {
   const diagnostics: Diagnostic[] = [];
   let line = startLine;
-  while (line < lines.length && lines[line]?.trim() === "") line += 1;
+  if (options.skipNonTableLeading) {
+    while (line < lines.length && !isTableLine(lines[line] ?? "")) line += 1;
+  } else {
+    while (line < lines.length && lines[line]?.trim() === "") line += 1;
+  }
   if (!isTableLine(lines[line] ?? "")) {
     return { diagnostics };
   }
@@ -94,8 +99,50 @@ export function parseMarkdownTableResult(lines: string[], startLine: number, opt
   return { table: { headers, rows, rowLines, startLine: line + 1, endLine: cursor }, diagnostics };
 }
 
-export function parseMarkdownTable(lines: string[], startLine: number): ParsedTable | undefined {
-  return parseMarkdownTableResult(lines, startLine).table;
+export function parseMarkdownTable(
+  lines: string[],
+  startLine: number,
+  options: ParseMarkdownTableOptions = {}
+): ParsedTable | undefined {
+  return parseMarkdownTableResult(lines, startLine, options).table;
+}
+
+// FR-PARSE-026: strict tokenizer for the checked_compatible Trace Links "Notes" cell
+// (SRS-MD-Rules-v3.0.0 §23.5). Items are separated by "; ", each item is "key: value",
+// keys are restricted to the recognized lowercase/hyphen set, and values are limited to
+// an alphanumeric + hyphen/colon/dot charset. The generic table-cell guard only rejects
+// pipe/CR/LF, so this dedicated tokenizer enforces the tighter charset and structure.
+export interface CompatibilityNotesResult {
+  ok: boolean;
+  fields?: Record<string, string>;
+  error?: string;
+}
+
+const COMPAT_RECOGNIZED_KEYS = new Set(["fpv", "self", "peer", "checked-at"]);
+const COMPAT_KEY_CHARSET = /^[a-z-]+$/;
+const COMPAT_VALUE_CHARSET = /^[A-Za-z0-9:.-]+$/;
+
+export function parseCompatibilityNotes(notes: string): CompatibilityNotesResult {
+  const trimmed = notes.trim();
+  if (trimmed === "") return { ok: true, fields: {} };
+  const fields: Record<string, string> = {};
+  for (const item of trimmed.split("; ")) {
+    const sep = item.indexOf(": ");
+    if (sep < 0) return { ok: false, error: `malformed compatibility item: ${item}` };
+    const key = item.slice(0, sep);
+    const value = item.slice(sep + 2);
+    if (!COMPAT_KEY_CHARSET.test(key) || !COMPAT_RECOGNIZED_KEYS.has(key)) {
+      return { ok: false, error: `unrecognized compatibility key: ${key}` };
+    }
+    if (!COMPAT_VALUE_CHARSET.test(value)) {
+      return { ok: false, error: `invalid compatibility value for ${key}: ${value}` };
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, key)) {
+      return { ok: false, error: `duplicate compatibility key: ${key}` };
+    }
+    fields[key] = value;
+  }
+  return { ok: true, fields };
 }
 
 export function parseMetadataRows(

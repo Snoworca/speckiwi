@@ -1,0 +1,29 @@
+{
+ "round": 1,
+ "evaluators": [
+  {
+   "model": "opus",
+   "pass": true,
+   "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+   },
+   "notes": "Sound across all axes; addition_site anchors grounded; doc/rules REQs follow repo markdown-content test precedent."
+  },
+  {
+   "model": "sonnet",
+   "pass": true,
+   "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+   },
+   "notes": "Exact set-comparison: 103/103 coverage, 836 test_case ids consistent, 0 orphans, valid phase DAG, all green depends_on red."
+  }
+ ],
+ "pass": true,
+ "gate": "Normal: CRITICAL=0 AND HIGH=0 -> PASS"
+}

@@ -1,0 +1,5 @@
+{
+  "mode": "standalone",
+  "mutations": [],
+  "note": "question-only 입력(RESEARCH_QUESTION) — append_section_note 영속화 대상 REQ 없음. 보고는 report.md + doculight. (주의: 동시 진행된 'MCP root 파라미터 제거' 작업의 SRS mutation(IR-CLI-045/REL-MCP-004 등록 등)은 본 연구 스킬 run 의 mutation 이 아니며 별도 사용자 지시로 수행됨.)"
+}

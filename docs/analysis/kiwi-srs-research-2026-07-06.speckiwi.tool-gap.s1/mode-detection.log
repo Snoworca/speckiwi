@@ -1,0 +1,4 @@
+channel 1 (Skill args): --mode=standalone → adopted
+channel 2 (prompt exact string): --mode=standalone (동일값, 충돌 없음)
+channel 3 (natural language): n/a
+conflicts: none

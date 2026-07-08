@@ -1,0 +1,201 @@
+{
+  "FR-NODE-017": {
+    "impl_files": [
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/query/records.ts"
+    ],
+    "test_file": "test/core/mutation/internal.fr-node-017.test.ts"
+  },
+  "FR-NODE-018": {
+    "impl_files": [
+      "src/core/mutation/trace-search.ts",
+      "src/core/mutation/update-status.ts",
+      "src/core/mutation/update-stability.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/trace-search.test.ts"
+  },
+  "FR-NODE-019": {
+    "impl_files": [
+      "src/core/mutation/update-status.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/update-status.fr-node-019.test.ts"
+  },
+  "FR-NODE-020": {
+    "impl_files": [
+      "src/core/mutation/records.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/records.fr-node-020.test.ts"
+  },
+  "FR-NODE-021": {
+    "impl_files": [
+      "src/core/mutation/records.ts",
+      "src/core/types.ts",
+      "src/core/query/records.ts"
+    ],
+    "test_file": "test/core/mutation/records.fr-node-021.test.ts"
+  },
+  "FR-NODE-022": {
+    "impl_files": [
+      "src/core/mutation/add-compatibility-check.ts",
+      "src/core/mutation/add-trace.ts",
+      "src/core/mutation/records.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/mutation/table-cell.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts"
+    ],
+    "test_file": "test/core/mutation/add-compatibility-check.fr-node-022.test.ts"
+  },
+  "FR-NODE-023": {
+    "impl_files": [
+      "src/core/mutation/add-compatibility-check.ts",
+      "src/core/mutation/trace-search.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/add-compatibility-check.fr-node-023.test.ts"
+  },
+  "FR-NODE-024": {
+    "impl_files": [
+      "src/core/query/summary.ts",
+      "src/core/mutation/records.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/query/list-dirty-edges.fr-node-024.test.ts"
+  },
+  "FR-NODE-025": {
+    "impl_files": [
+      "src/core/mutation/update-statement.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/update-statement.fr-node-025.test.ts"
+  },
+  "FR-NODE-026": {
+    "impl_files": [
+      "src/core/mutation/check-ac.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/check-ac.fr-node-026.test.ts"
+  },
+  "FR-NODE-027": {
+    "impl_files": [
+      "src/core/mutation/claim-step.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/records.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/mutation/claim-step.fr-node-027.test.ts"
+  },
+  "FR-NODE-028": {
+    "impl_files": [
+      "src/core/mutation/update-step-state.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/update-step-state.fr-node-028.test.ts"
+  },
+  "FR-NODE-029": {
+    "impl_files": [
+      "src/core/query/list-steps.ts",
+      "src/core/query/summary.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/query/list-steps.fr-node-029.test.ts"
+  },
+  "FR-NODE-030": {
+    "impl_files": [
+      "src/core/mutation/supersede-requirement.ts",
+      "src/core/mutation/update-status.ts",
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/add-compatibility-check.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/supersede-requirement.fr-node-030.test.ts"
+  },
+  "FR-NODE-031": {
+    "impl_files": [
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/render-requirement.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/mutation/add-requirement.fr-node-031.test.ts"
+  },
+  "FR-NODE-032": {
+    "impl_files": [
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/patch/merge-journal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/patch/multi-file-commit.fr-node-032.test.ts"
+  },
+  "FR-NODE-033": {
+    "impl_files": [
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/merge-journal.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/patch/merge-journal.fr-node-033.test.ts"
+  },
+  "FR-NODE-034": {
+    "impl_files": [
+      "src/core/query/diff-steps.ts",
+      "src/core/query/summary.ts",
+      "src/core/mutation/records.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/query/diff-steps.fr-node-034.test.ts"
+  },
+  "FR-NODE-035": {
+    "impl_files": [
+      "src/core/mutation/work-mode.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/guards.ts",
+      "src/core/patch/apply-patch.ts",
+      "src/core/patch/patch-plan.ts",
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/mutation/work-mode.fr-node-035.test.ts"
+  }
+}

@@ -1,0 +1,204 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { resolveProjectRoot } from "../../../src/core/project-root.js";
+import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
+// The green task (T-PH003-52) introduces a new export `mintStepRequirementId`
+// in src/core/mutation/add-requirement.ts (the tool-governed reservation minter).
+// Importing the not-yet-existing export makes the whole suite red (missing export)
+// until the green task implements it, alongside the unreserved-id rejection guard
+// added to the existing `promoteStepRequirement`.
+import { mintStepRequirementId, promoteStepRequirement } from "../../../src/core/mutation/add-requirement.js";
+
+// FR-NODE-042 — vibe step REQ-ID reservation minter and unreserved-id rejection guard.
+//
+// Red-phase suite (T-PH003-51): one test case per acceptance criterion (AC-1..AC-3).
+// These cases pin the future contract before src/core/mutation/add-requirement.ts
+// exports `mintStepRequirementId` and tightens `promoteStepRequirement`, so the whole
+// suite fails (missing export) until the green task (T-PH003-52) implements it.
+//
+// Requirement under test (from the requirement body and AC):
+//   Vibe synthesis mints step requirement IDs only through a tool-governed
+//   reservation over the view of HEAD, step, and reserved IDs, never by free-text
+//   selection, and promote_step_requirement rejects any ID not produced by the
+//   reservation minter.
+//     - AC-1: synthesized IDs are produced only by the reservation minter over the
+//             union of HEAD, step, and reserved IDs (the minted slot skips all three).
+//     - AC-2: the synthesis never assigns a literal ID itself — the minter output is
+//             a deterministic next-slot value derived purely from the view, not a
+//             free-text choice.
+//     - AC-3: promote_step_requirement rejects an ID not produced by the reservation
+//             minter, leaving the body scope untouched.
+
+const SPEC_DIR = path.join("docs", "spec");
+const ARCH_BODY_FILE = path.join(SPEC_DIR, "10.product-architecture.srs.md");
+
+/**
+ * Renders a minimal valid ARCH-scope requirement block (body block shape) so it can
+ * be staged inside a step scope file. Only `id` and `title` carry test meaning; the
+ * rest are parseable canonical defaults.
+ */
+function renderReqBlock(options: { id: string; title: string }): string {
+  return [
+    `### ${options.id} — ${options.title}`,
+    "",
+    "| Field | Value |",
+    "| --- | --- |",
+    "| Type | functional |",
+    "| Target | v1.0.0 |",
+    "| Status | planned |",
+    "| Priority | high |",
+    "| Tags | step, fixture |",
+    "| Risk | low |",
+    "| Stability | evolving |",
+    "| Verification Method | test |",
+    "| GitHub Issue | - |",
+    "| Related Docs | - |",
+    "",
+    "#### Requirement",
+    "",
+    `Step-scoped requirement ${options.id}.`,
+    "",
+    "#### Rationale",
+    "",
+    "- -",
+    "",
+    "#### Acceptance Criteria",
+    "",
+    "- [ ] AC-1: Step criterion.",
+    "",
+    "#### Verification Evidence",
+    "",
+    "| Evidence ID | Type | Reference | Covers | Notes |",
+    "| --- | --- | --- | --- | --- |",
+    "",
+    "#### Trace Links",
+    "",
+    "| Type | Reference | Relation | Notes |",
+    "| --- | --- | --- | --- |",
+    "",
+    "#### Research / Analysis",
+    "",
+    "- -",
+    "",
+    "#### Implementation Notes",
+    "",
+    "- -",
+    "",
+    "#### Change Notes",
+    "",
+    "| Date | Change | Reason |",
+    "| --- | --- | --- |",
+    "| 2026-06-05 | Created | Fixture |"
+  ].join("\n");
+}
+
+/**
+ * Writes an ARCH-scope step file under docs/spec/steps/<stepName>/ containing one
+ * requirement block carrying the given id.
+ */
+async function writeStepScopeFile(
+  rootPath: string,
+  stepName: string,
+  block: Parameters<typeof renderReqBlock>[0]
+): Promise<void> {
+  const stepDir = path.join(rootPath, SPEC_DIR, "steps", stepName);
+  await mkdir(stepDir, { recursive: true });
+  const content = [
+    "# Step Architecture",
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    "| Document Type | scope_srs |",
+    "| Scope | ARCH |",
+    "| Scope Name | Product Architecture |",
+    "",
+    "## 4. Requirements",
+    "",
+    renderReqBlock(block)
+  ].join("\n");
+  await writeFile(path.join(stepDir, "10.product-architecture.srs.md"), content, "utf8");
+}
+
+describe("FR-NODE-042 AC-1 — reservation minter produces IDs over HEAD, step, and reserved IDs", () => {
+  it("FR-NODE-042 AC-1: mints the next slot skipping the union of HEAD, step, and reserved IDs", () => {
+    // A reservation view whose three constituent sets each contribute a distinct
+    // occupied slot. The fixture HEAD already holds FR-ARCH-001; a step claims
+    // FR-ARCH-005; an explicitly reserved slot holds FR-ARCH-002. The minter must
+    // mint over the UNION of all three (max occupied = 005), never reusing any of
+    // them, so the produced id is FR-ARCH-006.
+    const minted = mintStepRequirementId({
+      type: "functional",
+      scope: "ARCH",
+      headIds: ["FR-ARCH-001"],
+      stepIds: ["FR-ARCH-005"],
+      reservedIds: ["FR-ARCH-002"]
+    });
+    expect(minted).toBe("FR-ARCH-006");
+    // The minted id collides with none of the three view sets.
+    expect(["FR-ARCH-001", "FR-ARCH-005", "FR-ARCH-002"]).not.toContain(minted);
+  });
+});
+
+describe("FR-NODE-042 AC-2 — synthesis never assigns a literal ID itself", () => {
+  it("FR-NODE-042 AC-2: the minter output is a deterministic next-slot value derived only from the view", () => {
+    // Over a view that occupies only FR-ARCH-001 (HEAD), the single tool-governed
+    // next slot is FR-ARCH-002. This is fully determined by the view — a synthesis
+    // skill cannot substitute a free-text literal of its own choosing.
+    const minted = mintStepRequirementId({
+      type: "functional",
+      scope: "ARCH",
+      headIds: ["FR-ARCH-001"],
+      stepIds: [],
+      reservedIds: []
+    });
+    expect(minted).toBe("FR-ARCH-002");
+
+    // The minter is the single source of the id: calling it again with the freshly
+    // minted slot now reserved advances to the next slot rather than re-emitting a
+    // caller-chosen literal.
+    const next = mintStepRequirementId({
+      type: "functional",
+      scope: "ARCH",
+      headIds: ["FR-ARCH-001"],
+      stepIds: [],
+      reservedIds: [minted]
+    });
+    expect(next).toBe("FR-ARCH-003");
+  });
+});
+
+describe("FR-NODE-042 AC-3 — promote_step_requirement rejects an unreserved (non-minter-produced) ID", () => {
+  it("FR-NODE-042 AC-3: denies promotion of a free-text id the reservation minter would never produce", async () => {
+    const rootPath = await copyFixtureWorkspace("valid-basic");
+    // The reservation view for this fixture is HEAD={FR-ARCH-001} plus the staged
+    // step. The minter over that view would produce FR-ARCH-002 — never FR-ARCH-501.
+    // FR-ARCH-501 is a free-text id not produced by the reservation minter, so the
+    // unreserved-id rejection guard must deny the promote.
+    const UNRESERVED_ID = "FR-ARCH-501";
+    const MINTER_PRODUCED_ID = "FR-ARCH-002";
+    await writeStepScopeFile(rootPath, "feature-x", {
+      id: UNRESERVED_ID,
+      title: "Free-text step requirement not produced by the minter"
+    });
+    const root = await resolveProjectRoot(rootPath);
+    const before = await readFile(path.join(rootPath, ARCH_BODY_FILE), "utf8");
+
+    const result = await promoteStepRequirement(root, {
+      id: UNRESERVED_ID,
+      fromStep: "feature-x",
+      toScope: "ARCH"
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.error.message.length).toBeGreaterThan(0);
+    }
+
+    // The rejected promote left the body scope document untouched: the unreserved id
+    // never reaches the body, and no minter-shaped id was inserted in its place.
+    const after = await readFile(path.join(rootPath, ARCH_BODY_FILE), "utf8");
+    expect(after).toBe(before);
+    expect(after).not.toContain(`### ${UNRESERVED_ID} `);
+    expect(after).not.toContain(`### ${MINTER_PRODUCED_ID} `);
+  });
+});

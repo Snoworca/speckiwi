@@ -6,6 +6,7 @@ import { registerSkillCommands } from "./commands/skills.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "./errors.js";
+import { expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
 export interface CliIo {
   stdout: NodeJS.WriteStream;
@@ -47,6 +48,18 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   registerDoctorCommand(command, { io });
   registerRepairCommands(command, { io });
   attachInheritedOptionsHelp(command);
+  if (tryRenderHelpJson(argv, io, command)) return 0;
+  try {
+    argv = await expandInputJsonArgv([...argv], command);
+  } catch (error) {
+    const message = (error as { message?: string }).message ?? "invalid --input-json payload";
+    if (jsonMode(argv, command)) {
+      writeCliStructuredError(io, "CLI_USAGE_ERROR", message, { recovery: readRecoveryForCommand(commandNameFromArgv(argv)) });
+    } else {
+      io.stderr.write(`${message}\n`);
+    }
+    return 2;
+  }
   try {
     await command.parseAsync(argv, { from: "user" });
     return typeof command.getOptionValue("exitCode") === "number"

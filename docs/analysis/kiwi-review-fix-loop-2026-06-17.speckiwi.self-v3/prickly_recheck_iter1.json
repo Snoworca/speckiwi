@@ -1,0 +1,28 @@
+{
+ "iter": 1,
+ "resolved": [
+  "FND-001",
+  "FND-002",
+  "FND-005",
+  "FND-006",
+  "FND-007",
+  "FND-008"
+ ],
+ "unresolved": [],
+ "new_findings": [],
+ "objective": {
+  "tsc": "pass",
+  "eslint": "pass",
+  "vitest": {
+   "passed": 428,
+   "failed": 6,
+   "new_failures": []
+  }
+ },
+ "by_severity_remaining": {
+  "CRITICAL": 0,
+  "HIGH": 0,
+  "MEDIUM": 0,
+  "LOW": 0
+ }
+}

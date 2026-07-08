@@ -70,6 +70,7 @@ export interface DiagnosticDefinition {
   messageTemplate: string;
   sourceRule: string;
   since: string;
+  remediation?: string;
 }
 
 export interface DiagnosticLocation {
@@ -263,6 +264,7 @@ export interface RequirementRecord {
   blockStartLine?: number;
   blockEndLine?: number;
   sectionLines?: Record<string, number>;
+  stepName?: string;
 }
 
 export interface ParsedWorkspace {
@@ -271,6 +273,8 @@ export interface ParsedWorkspace {
   files: TextFile[];
   records: RequirementRecord[];
   diagnostics: Diagnostic[];
+  stateFile?: TextFile;
+  stepRecords?: RequirementRecord[];
 }
 
 export interface ValidationResult {
@@ -446,4 +450,117 @@ export interface RequirementFilter {
   evidenceReference?: string;
   traceReference?: string;
   newWorkCandidate?: boolean;
+}
+
+// ── v3.0.0 step-state infrastructure ──────────────────────────────────
+export type StepStateStatus = "active" | "merging" | "merged" | "abandoned";
+export type StepStateMode = "sdd" | "vibe" | "wait";
+
+export interface StepStateEntry {
+  step: string;
+  status: string;
+  dependsOn: string;
+  touchesScope: string;
+  touchesReq: string;
+  created: string;
+  updated: string;
+  invalidStatus?: boolean;
+}
+
+export type StepStateParseResult = StepStateEntry[] & {
+  mode: StepStateMode;
+  activeTask?: string;
+  modeInvalid?: boolean;
+};
+
+export interface StepListEntry {
+  step: string;
+  status: string;
+  dependsOn: string[];
+}
+
+export interface StepAdvisory {
+  code: string;
+  step?: string;
+  message?: string;
+}
+
+export interface ListStepsResult {
+  steps: StepListEntry[];
+  advisories: StepAdvisory[];
+  cycle: boolean;
+}
+
+export interface StepDiffEntry {
+  id: string;
+  classification: "NEW" | "UPDATE" | "CONFLICT-PARTIAL" | "CONFLICT-FULL-GUARDED";
+  stepSha: string;
+  bodySha?: string;
+}
+
+export interface DiffStepsResult {
+  entries: StepDiffEntry[];
+}
+
+export interface DiffStepsOptions {
+  stepName?: string;
+}
+
+// ── v3.0.0 scope/target mutation output types ─────────────────────────
+export interface RegisterScopesInput {
+  apply?: boolean;
+  dryRun?: boolean;
+}
+export type RegisterScopesSkipReason = "cannot-infer-prefix" | "prefix-conflict";
+export interface RegisterScopesItemPlan {
+  document: string;
+  prefix?: string;
+  skipReason?: RegisterScopesSkipReason;
+}
+export interface RegisterScopesOutput {
+  dryRun: boolean;
+  items: RegisterScopesItemPlan[];
+}
+
+export interface RetargetInput {
+  ids: string[];
+  toTarget: string;
+  exclude?: string[];
+  reason?: string;
+  dryRun?: boolean;
+}
+export type RetargetSkipReason = "excluded" | "not-found" | "target-not-registered" | "frozen-needs-change-note";
+export interface RetargetItemPlan {
+  id: string;
+  fromTarget?: string;
+  toTarget?: string;
+  skipReason?: RetargetSkipReason;
+}
+export interface RetargetOutput {
+  dryRun: boolean;
+  items: RetargetItemPlan[];
+}
+
+export interface ScaffoldScopeInput {
+  name: string;
+  prefix: string;
+  apply?: boolean;
+}
+export interface ScaffoldScopeOutput {
+  dryRun: boolean;
+  document: string;
+  filePreview: string;
+  srsDocumentsRow: string;
+  scopeMapRow: string;
+}
+
+export interface SyncCountsCell {
+  section: "status" | "type";
+  key: string;
+  expected: number;
+  actual: number;
+}
+export interface SyncCountsResult {
+  written: boolean;
+  cells: SyncCountsCell[];
 }

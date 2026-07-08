@@ -1,0 +1,219 @@
+{
+  "IR-CLI-028": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/validator/validate-workspace.js",
+      "src/core/validator/rules.ts"
+    ],
+    "test_file": "test/cli/step-validate.ir-cli-028.test.ts"
+  },
+  "IR-CLI-029": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/core/bootstrap/init-project.ts"
+    ],
+    "test_file": "test/cli/mutation-commands.test.ts"
+  },
+  "IR-CLI-030": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/internal.ts"
+    ],
+    "test_file": "test/cli/mode.ir-cli-030.test.ts"
+  },
+  "IR-CLI-031": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/internal.ts"
+    ],
+    "test_file": "test/cli/vibe-gate.ir-cli-031.test.ts"
+  },
+  "IR-CLI-033": {
+    "impl_files": [
+      "src/core/format/text.ts",
+      "src/cli/commands/read.ts",
+      "src/cli/formatters.ts"
+    ],
+    "test_file": "test/cli/read-commands.test.ts"
+  },
+  "IR-CLI-034": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/core/format/text.ts",
+      "src/cli/formatters.ts"
+    ],
+    "test_file": "test/cli/validate-filters.ir-cli-034.test.ts"
+  },
+  "IR-CLI-035": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/diagnostic-registry.ts"
+    ],
+    "test_file": "test/cli/explain.ir-cli-035.test.ts"
+  },
+  "IR-CLI-036": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/workflow/release-readiness.ts"
+    ],
+    "test_file": "test/cli/release-readiness.ir-cli-036.test.ts"
+  },
+  "IR-CLI-037": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/query/records.ts"
+    ],
+    "test_file": "test/cli/search.ir-cli-037.test.ts"
+  },
+  "IR-CLI-038": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/set-active-target.ts"
+    ],
+    "test_file": "test/cli/retarget.ir-cli-038.test.ts"
+  },
+  "IR-CLI-039": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/add-requirement.ts"
+    ],
+    "test_file": "test/cli/update-field.ir-cli-039.test.ts"
+  },
+  "IR-CLI-040": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/internal.ts"
+    ],
+    "test_file": "test/cli/update-statement.ir-cli-040.test.ts"
+  },
+  "IR-CLI-041": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/check-ac.ts"
+    ],
+    "test_file": "test/cli/edit-ac.ir-cli-041.test.ts"
+  },
+  "IR-CLI-042": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/append-section-note.ts"
+    ],
+    "test_file": "test/cli/add-related-doc-change-note.ir-cli-042.test.ts"
+  },
+  "IR-CLI-043": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/cli/command.ts",
+      "src/cli/options.ts"
+    ],
+    "test_file": "test/cli/input-json.ir-cli-043.test.ts"
+  },
+  "IR-CLI-044": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/cli/sync-counts.ir-cli-044.test.ts"
+  },
+  "IR-CLI-045": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/update-status.ts"
+    ],
+    "test_file": "test/cli/supersede.ir-cli-045.test.ts"
+  },
+  "IR-CLI-046": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/update-status.ts"
+    ],
+    "test_file": "test/cli/restore.ir-cli-046.test.ts"
+  },
+  "IR-CLI-047": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/query/records.ts"
+    ],
+    "test_file": "test/cli/history.ir-cli-047.test.ts"
+  },
+  "IR-CLI-048": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/cli/changed-since.ir-cli-048.test.ts"
+  },
+  "IR-CLI-049": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/cli/attention.ir-cli-049.test.ts"
+  },
+  "IR-CLI-050": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/mcp/schemas.ts"
+    ],
+    "test_file": "test/cli/commands-catalog.ir-cli-050.test.ts"
+  },
+  "IR-CLI-051": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/bootstrap/init-project.ts"
+    ],
+    "test_file": "test/cli/doctor.ir-cli-051.test.ts"
+  },
+  "IR-CLI-052": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/mutation/add-trace.ts"
+    ],
+    "test_file": "test/cli/set-supersede.ir-cli-052.test.ts"
+  },
+  "IR-CLI-053": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/validator/rules.ts"
+    ],
+    "test_file": "test/cli/register-scopes.ir-cli-053.test.ts"
+  },
+  "IR-CLI-054": {
+    "impl_files": [
+      "src/cli/commands/mutations.ts",
+      "src/cli/index.ts",
+      "src/core/bootstrap/init-project.ts"
+    ],
+    "test_file": "test/cli/scaffold-scope.ir-cli-054.test.ts"
+  },
+  "IR-CLI-055": {
+    "impl_files": [
+      "src/cli/commands/read.ts",
+      "src/cli/index.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/cli/stale.ir-cli-055.test.ts"
+  }
+}

@@ -1,0 +1,24 @@
+{
+ "mode": "self",
+ "pr_url": null,
+ "pr_number": null,
+ "self_scope": {
+  "source": "files",
+  "files": [
+   "src/mcp/schemas.ts",
+   "src/mcp/server.ts",
+   "src/mcp/tools/mutation-tools.ts",
+   "src/core/types.ts",
+   "src/core/diagnostic.ts",
+   "src/core/diagnostic-registry.ts",
+   "src/core/validator/rules.ts",
+   "src/core/parser/workspace-parser.ts",
+   "src/core/parser/index-parser.ts",
+   "src/core/parser/discover.ts",
+   "src/core/parser/table.ts"
+  ],
+  "commit_range": null,
+  "diff_loc": 1446
+ },
+ "note": "scoped to this-session v3.0.0 implementation source"
+}

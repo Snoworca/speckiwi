@@ -12,6 +12,73 @@ export interface AgentInstructionOptions {
 }
 
 export const AGENT_INSTRUCTION_VERSION = "1.4";
+export const BUNDLED_RULES_VERSION = "1.0.0";
+
+/**
+ * The Codex CLI version at (and above) which the `apply_patch` PostToolUse hook is supported.
+ * A detected version below this floor cannot be trusted to honor the apply_patch hook, so the
+ * installer warns instead of relying on it (FND-005 / FR-NODE-038 AC-3).
+ */
+export const CODEX_APPLY_PATCH_HOOK_FLOOR = "0.20.0";
+
+interface ParsedSemver {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string[];
+}
+
+/** Reads the leading (anchored) semver token from a possibly-noisy version line. */
+function parseLeadingSemver(version: string): ParsedSemver | undefined {
+  const match = /^\s*v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(version);
+  if (!match) return undefined;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split(".") : []
+  };
+}
+
+/** Semver precedence comparison (returns -1, 0, or 1), honoring prerelease ordering. */
+function compareSemver(a: ParsedSemver, b: ParsedSemver): number {
+  if (a.major !== b.major) return a.major < b.major ? -1 : 1;
+  if (a.minor !== b.minor) return a.minor < b.minor ? -1 : 1;
+  if (a.patch !== b.patch) return a.patch < b.patch ? -1 : 1;
+  // A version with a prerelease has lower precedence than the same core without one.
+  if (a.prerelease.length === 0 && b.prerelease.length === 0) return 0;
+  if (a.prerelease.length === 0) return 1;
+  if (b.prerelease.length === 0) return -1;
+  const max = Math.max(a.prerelease.length, b.prerelease.length);
+  for (let i = 0; i < max; i += 1) {
+    const ai = a.prerelease[i];
+    const bi = b.prerelease[i];
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+    if (ai === bi) continue;
+    const aNum = /^\d+$/.test(ai);
+    const bNum = /^\d+$/.test(bi);
+    if (aNum && bNum) return Number(ai) < Number(bi) ? -1 : 1;
+    if (aNum) return -1;
+    if (bNum) return 1;
+    return ai < bi ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * Decides whether a detected `codex --version` string is below the apply_patch hook floor.
+ * The version is read from the leading semver token so a noisy line still compares its version.
+ * A prerelease of the floor core (e.g. 0.20.0-rc.1) precedes the final release and is below-floor.
+ * An unparseable version surfaces uncertainty as below-floor so the caller warns.
+ */
+export function isCodexVersionBelowApplyPatchFloor(version: string): boolean {
+  const parsed = parseLeadingSemver(version);
+  if (!parsed) return true;
+  const floor = parseLeadingSemver(CODEX_APPLY_PATCH_HOOK_FLOOR);
+  if (!floor) return true;
+  return compareSemver(parsed, floor) < 0;
+}
 export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
 export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 

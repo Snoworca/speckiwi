@@ -1,0 +1,23 @@
+{
+  "run_id": "2026-07-06.speckiwi.tool-gap.s1",
+  "skill": "kiwi-srs-research",
+  "skill_version": "0.5",
+  "date": "2026-07-06",
+  "input_type": "RESEARCH_QUESTION",
+  "research_question": "SpecKiwi v2.3.0 완료 시점 기준, 실사용 관점에서 더 필요한 기능 또는 도구 갭 심층 조사 (CLI/MCP/진단/워크플로/스킬 전반)",
+  "speckiwi_mcp": {
+    "available": true,
+    "probe": "get_active_target ok",
+    "active_target": "v2.3.0",
+    "target_summary": { "total": 72, "verified": 54, "discarded": 18, "blocked": 0, "missingEvidence": 0 }
+  },
+  "doculight_mcp": { "available": true, "tool": "mcp__doculight__open_markdown" },
+  "persistence_decision": {
+    "append_section_note": "skip — question-only 입력으로 대상 REQ_ID 없음. mutation 0건.",
+    "report_channel": ["docs/analysis/kiwi-srs-research-2026-07-06.speckiwi.tool-gap.s1/report.md", "doculight open_markdown"]
+  },
+  "code_path": "C:/Work/git/_Snoworca/speckiwi",
+  "external_sources": ["websearch", "context7"],
+  "mini": false,
+  "dry_run": false
+}

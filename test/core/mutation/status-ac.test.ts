@@ -77,7 +77,7 @@ describe("status and AC mutations", () => {
   it("applies SRS-MD-Rules v1.1.0 §30.1 [DISCARDED] marker when transitioning to discarded", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", reason: "merged into FR-ARCH-002" });
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", reason: "merged into FR-ARCH-002", confirmDiscardVerified: true });
     expect(result.ok).toBe(true);
     const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(file).toContain("### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED]");
@@ -87,7 +87,7 @@ describe("status and AC mutations", () => {
   it("removes [DISCARDED] marker on revival (discarded -> implemented)", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     await setAcceptanceCriteriaChecked(root, { id: "FR-ARCH-001", acIds: ["all"], checked: true });
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "implemented" });
     expect(result.ok).toBe(true);
@@ -100,9 +100,9 @@ describe("status and AC mutations", () => {
   it("idempotent: re-applying discarded to an already-discarded heading does not duplicate marker", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
-    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     const after2 = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     const count = (after2.match(/\[DISCARDED]/g) ?? []).length;
     expect(count).toBe(1);
@@ -124,7 +124,7 @@ describe("status and AC mutations", () => {
     });
     expect(newReq.ok).toBe(true);
     const successorId = (newReq.value as { requirementId: string }).requirementId;
-    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     expect(result.ok).toBe(true);
     const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(file).toContain(`### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED → see ${successorId}]`);
@@ -147,7 +147,7 @@ describe("status and AC mutations", () => {
       expect(created.ok).toBe(true);
       successors.push((created.value as { requirementId: string }).requirementId);
     }
-    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     expect(result.ok).toBe(true);
     const file = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(file).toContain(`### ~~FR-ARCH-001 — Mutable requirement~~ [DISCARDED → see ${successors[0]} +2]`);
@@ -176,7 +176,7 @@ describe("status and AC mutations", () => {
   it("revives heading and parser still recognises the plain form", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
+    await updateStatus(root, { id: "FR-ARCH-001", status: "discarded", confirmDiscardVerified: true });
     await setAcceptanceCriteriaChecked(root, { id: "FR-ARCH-001", acIds: ["all"], checked: true });
     const revive = await updateStatus(root, { id: "FR-ARCH-001", status: "implemented" });
     expect(revive.ok).toBe(true);

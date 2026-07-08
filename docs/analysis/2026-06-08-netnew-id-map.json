@@ -1,0 +1,13 @@
+{
+ "sync-counts core recomputes index summary cells from records": "FR-NODE-050",
+ "speckiwi sync-counts command": "IR-CLI-044",
+ "speckiwi supersede command": "IR-CLI-045",
+ "restore core un-discards a requirement with required reason": "FR-NODE-051",
+ "speckiwi restore command": "IR-CLI-046",
+ "speckiwi history command for requirement Change Notes": "IR-CLI-047",
+ "speckiwi changed-since command for cross-requirement timeline": "IR-CLI-048",
+ "speckiwi attention command for a ranked work queue": "IR-CLI-049",
+ "speckiwi commands catalog manifest": "IR-CLI-050",
+ "speckiwi doctor environment health command": "IR-CLI-051",
+ "init agent workflow block declares a tool-first write policy": "FR-FLOW-023"
+}

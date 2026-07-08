@@ -1,0 +1,4864 @@
+[
+ {
+  "id": "DR-PARSE-001",
+  "title": "DiagnosticDefinition remediation and docsAnchor fields with runtime registry join and full population",
+  "type": "data",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "DiagnosticDefinition MUST carry optional remediation and docsAnchor fields, every entry in the diagnostic registry MUST provide a non-empty remediation string, and the runtime diagnostic factory MUST join the registry definition so each emitted Diagnostic exposes title and sourceRule resolved from the registry by code, while existing registry entries and runtime Diagnostic consumers keep type-checking unchanged.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "DiagnosticDefinition declares optional remediation and docsAnchor string fields and existing registry entries type-check whether or not they supply docsAnchor."
+   },
+   {
+    "id": "AC-2",
+    "text": "Every entry in DIAGNOSTIC_DEFINITIONS provides a non-empty trimmed remediation string, verified by an enumeration test over getDiagnosticDefinition for every registered code."
+   },
+   {
+    "id": "AC-3",
+    "text": "The runtime Diagnostic shape exposes title and sourceRule populated from the registry definition resolved by the diagnostic code."
+   },
+   {
+    "id": "AC-4",
+    "text": "An emitted diagnostic whose code has a remediation in the registry exposes that remediation text on the runtime diagnostic, and the diagnostic factory throws for an unknown code so title and sourceRule are always registry-backed and never invented."
+   },
+   {
+    "id": "AC-5",
+    "text": "A failing automated test asserting title and sourceRule are joined onto emitted diagnostics is added, was red before implementation, and passes after."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/diagnostic.ts:14",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-013",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "REL-PARSE-002",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-013",
+   "REL-PARSE-002"
+  ]
+ },
+ {
+  "id": "FR-ARCH-006",
+  "title": "ToolSpec command metadata registry as single source of truth",
+  "type": "functional",
+  "scope": "ARCH",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MUST define every command in a single ToolSpec metadata registry whose entries carry cliName, mcpName, kind, args, options, coreFn, and resultExitMap, and MUST derive the CLI command registration, the MCP zod input schema, the MCP tool-name list, the MCP read-only predicate, and the MCP tool-kind table from that one registry rather than from separately maintained declarations.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Each ToolSpec entry declares cliName, mcpName, kind, args, options, coreFn, and resultExitMap fields, and the kind field is required for every entry."
+   },
+   {
+    "id": "AC-2",
+    "text": "Each ToolSpec option entry declares flag, dest, zod, repeatable, encoding, and oneOfGroup descriptors."
+   },
+   {
+    "id": "AC-3",
+    "text": "The MCP zod input schema object (currently server.ts toolSchemas), the MCP tool-name list (currently schemas.ts toolNames), and the read-only tool predicate (currently server.ts isReadOnlyTool) are produced by rendering the ToolSpec registry, not by independently authored literals."
+   },
+   {
+    "id": "AC-4",
+    "text": "The CLI command tree registers exactly the set of commands whose ToolSpec entries declare a cliName, with the same flag and dest descriptors the registry declares."
+   },
+   {
+    "id": "AC-5",
+    "text": "An automated test asserts that the count and names of CLI-registered commands, MCP toolNames entries, MCP toolSchemas keys, and MCP toolKinds keys are each derived from the ToolSpec registry and match it."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/schemas.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-005",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-005"
+  ]
+ },
+ {
+  "id": "FR-FLOW-013",
+  "title": "SRS-MD-Rules v3.0.0 registers checked_compatible relation",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "implemented",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SRS-MD-Rules must be promoted to v3.0.0 (version aligned to the product target), registering checked_compatible in the relation enum and defining the strict grammar for the compatibility Notes token (fpv, self, peer, checked-at) plus the semanticSha normalization contract and validator treatment (referential-existence only, liveness not enforced). The current relation enum lists 12 relations without checked_compatible.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "SRS-MD-Rules-v3.0.0.md relation enum includes checked_compatible"
+   },
+   {
+    "id": "AC-2",
+    "text": "The rules define the compatibility Notes token grammar with keys fpv, self, peer, checked-at and a restricted value charset"
+   },
+   {
+    "id": "AC-3",
+    "text": "90.appendix.md Rules version token is updated to v3.0.0"
+   },
+   {
+    "id": "AC-4",
+    "text": "skills/claude/kiwi-srs SKILL.md allowlist lists checked_compatible as an advisory-cache relation"
+   },
+   {
+    "id": "AC-5",
+    "text": "CLAUDE.md Rules pointer references SRS-MD-Rules v3.0.0 corrected from v1.0.0"
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "docs/rule/SRS-MD-Rules-v1.1.0.md:1069-1084",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-FLOW-014",
+  "title": "kiwi-step lightweight step-local authoring skill",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The kiwi-step skill provides lightweight step-local requirement authoring against docs/spec/steps/<name>/ using claim_step, the step-scoped mutations, and step-local validation.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "kiwi-step claims a step via claim_step before authoring step-local requirements."
+   },
+   {
+    "id": "AC-2",
+    "text": "kiwi-step authors requirements only under docs/spec/steps/<name>/ and never directly in body scope files."
+   },
+   {
+    "id": "AC-3",
+    "text": "kiwi-step runs step-local validation via validate_step as part of its workflow."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "skills/kiwi-step/skill.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-027",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-028",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-027",
+   "IR-CLI-028"
+  ]
+ },
+ {
+  "id": "FR-FLOW-015",
+  "title": "kiwi-spec-merge per-REQ sequential merge orchestrator skill",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The kiwi-spec-merge skill orchestrates a merge as a sequence of per-REQ single-REQ req-scoped calls (dry-run, user approval, 1-REQ call, journal, resume), routing each diff_steps class to promote_step_requirement (NEW), in-place body updates (UPDATE), or supersede_requirement (CONFLICT), with evidence migration and a post-merge verification-decrease report, never invoking an N-REQ batch finalize tool.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "kiwi-spec-merge issues exactly one REQ per mutation call and never calls an N-REQ batch finalize tool."
+   },
+   {
+    "id": "AC-2",
+    "text": "kiwi-spec-merge runs a dry-run and obtains user approval before each applied per-REQ call."
+   },
+   {
+    "id": "AC-3",
+    "text": "kiwi-spec-merge routes NEW to promote_step_requirement, UPDATE to in-place body updates, and CONFLICT to supersede_requirement."
+   },
+   {
+    "id": "AC-4",
+    "text": "kiwi-spec-merge resumes an interrupted merge from the merge-journal without duplicating applied calls."
+   },
+   {
+    "id": "AC-5",
+    "text": "kiwi-spec-merge produces a post-merge verification-decrease report and handles loser-evidence migration."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "skills/kiwi-spec-merge/skill.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-034",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-030",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-031",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-032",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-034",
+   "FR-NODE-030",
+   "FR-NODE-031",
+   "FR-NODE-032"
+  ]
+ },
+ {
+  "id": "FR-FLOW-016",
+  "title": "Mode-conditional governance snippet with AGENT_INSTRUCTION_VERSION bump",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The agent-instruction snippet rendered into CLAUDE.md and AGENTS.md is rewritten so the SRS workflow MUST rules apply only in sdd mode and delegate vibe behavior to Work-Modes-Rules, and AGENT_INSTRUCTION_VERSION is bumped so the existing versioned-marker upsert replaces the block idempotently.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "The rendered snippet states the SRS MUST rules apply in sdd mode and delegates vibe to Work-Modes-Rules."
+   },
+   {
+    "id": "AC-2",
+    "text": "AGENT_INSTRUCTION_VERSION is bumped so upsert replaces the prior block."
+   },
+   {
+    "id": "AC-3",
+    "text": "Re-running init leaves a single up-to-date instruction block with its end marker."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/templates.ts:199",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035"
+  ]
+ },
+ {
+  "id": "FR-FLOW-017",
+  "title": "Work-Modes-Rules v1.0.0 bundled rule doc and CLAUDE.md reference",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "A new docs/rule/Work-Modes-Rules-v1.0.0.md is added and written by init via the bundled-rules pattern, defining the three work modes, the vibe intent-first obligation, the task-name question and auto-derivation, the step task-name code comment convention, the trace contract, synthesis idempotency, and the commit gate, with a reference line added to CLAUDE.md.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "docs/rule/Work-Modes-Rules-v1.0.0.md defines sdd, vibe, wait and the vibe intent-first obligation."
+   },
+   {
+    "id": "AC-2",
+    "text": "The rule doc defines the task-name question with auto-derivation and the step task-name comment convention."
+   },
+   {
+    "id": "AC-3",
+    "text": "init writes the rule doc via the bundled-rules pattern when absent."
+   },
+   {
+    "id": "AC-4",
+    "text": "CLAUDE.md gains a reference line to the rule doc."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "docs/rule/Work-Modes-Rules-v1.0.0.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-016",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-FLOW-016"
+  ]
+ },
+ {
+  "id": "FR-FLOW-018",
+  "title": "kiwi-vibe skill for vibe entry",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The kiwi-vibe skill drives vibe entry by asking the implementation intent and the task name or auto-deriving the name from the intent, calling start_vibe_task to set state intent-first, and guiding the coding agent to insert step task-name comments.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "kiwi-vibe asks for the intent and the task name or auto-derives the name from the intent."
+   },
+   {
+    "id": "AC-2",
+    "text": "kiwi-vibe calls start_vibe_task so intent.md is written before Active Task is set."
+   },
+   {
+    "id": "AC-3",
+    "text": "kiwi-vibe guides insertion of step task-name comments during coding."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "skills/kiwi-vibe/skill.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-028",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-017",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-MCP-028",
+   "FR-FLOW-017"
+  ]
+ },
+ {
+  "id": "FR-FLOW-019",
+  "title": "kiwi-vibe-commit skill for trace-to-SRS synthesis",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The kiwi-vibe-commit skill orchestrates synthesis of the active vibe task into step SRS by invoking the synthesis engine, is idempotent as a no-op when the step already exists, and hands the result to kiwi-spec-merge for per-REQ promotion into the body.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "kiwi-vibe-commit synthesizes the active vibe task into step SRS via the synthesis engine."
+   },
+   {
+    "id": "AC-2",
+    "text": "kiwi-vibe-commit is a no-op when the task is already synthesized."
+   },
+   {
+    "id": "AC-3",
+    "text": "kiwi-vibe-commit hands the synthesized step to kiwi-spec-merge for promotion."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "skills/kiwi-vibe-commit/skill.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-041",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-015",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-018",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-041",
+   "FR-FLOW-015",
+   "FR-FLOW-018"
+  ]
+ },
+ {
+  "id": "FR-FLOW-020",
+  "title": "Code comment trace-tag convention for sdd and vibe",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "A code comment trace-tag convention requires sdd-mode changes to carry the SRS REQ-ID in a comment and vibe-mode changes to carry a step task-name tag since no REQ exists yet, inserted by the coding skills, so synthesis can attribute code regions to a task.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "sdd-mode code comments carry the SRS REQ-ID."
+   },
+   {
+    "id": "AC-2",
+    "text": "vibe-mode code comments carry the step task-name tag."
+   },
+   {
+    "id": "AC-3",
+    "text": "The convention is enforced by the coding skills and documented in Work-Modes-Rules."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "docs/rule/Work-Modes-Rules-v1.0.0.md:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-017",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-018",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-FLOW-017",
+   "FR-FLOW-018"
+  ]
+ },
+ {
+  "id": "FR-FLOW-023",
+  "title": "init agent workflow block declares a tool-first write policy",
+  "type": "functional",
+  "scope": "FLOW",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The init-injected agent instruction block, rendered by renderAgentInstructionSnippet and versioned by AGENT_INSTRUCTION_VERSION and made canonical by the SRS-MD-Rules managed block, states a tool-first write policy in which agents prefer SpecKiwi MCP tools and the speckiwi CLI when MCP is unavailable over direct Markdown editing for structured-data mutations, while agents may read SRS Markdown directly and may edit free-text prose directly, and when no tool covers a required mutation agents may edit Markdown directly but must report the missing-tool gap.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "The agent instruction block text states that structured-data mutations prefer SpecKiwi tools over direct Markdown editing and that reading Markdown and editing free-text prose directly is allowed."
+   },
+   {
+    "id": "AC-2",
+    "text": "The block states that a mutation with no covering tool may be done by direct edit but the missing-tool gap must be reported in the work summary."
+   },
+   {
+    "id": "AC-3",
+    "text": "The block reaffirms that the policy does not override docs-only operability and does not create a requirements source outside docs/spec."
+   },
+   {
+    "id": "AC-4",
+    "text": "AGENT_INSTRUCTION_VERSION is raised for this change and the idempotent init upsert deterministically replaces an outdated block."
+   },
+   {
+    "id": "AC-5",
+    "text": "The SRS-MD-Rules managed block body and the rendered template output contain the same tool-first wording."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/templates.ts:229",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-044",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-006",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-044",
+   "FR-FLOW-006"
+  ]
+ },
+ {
+  "id": "FR-MCP-020",
+  "title": "MCP add_trace_link handler forwards notes and dryRun",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "implemented",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP add_trace_link tool handler must forward the input notes and dryRun flag to the core addTraceLink call. The handler currently omits both, so notes is always recorded as the default placeholder and dryRun preview is unsupported.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Providing notes to an add_trace_link call records that value in the Trace Links row Notes column"
+   },
+   {
+    "id": "AC-2",
+    "text": "Providing dryRun=true to an add_trace_link call returns a patch preview without modifying any file"
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:76",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-MCP-021",
+  "title": "MCP validate_step tool registration",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "An MCP validate_step tool is registered that runs validateWorkspaceScoped for a named step and returns its step-local diagnostics including W044, W045, and STEP_* advisories.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "validate_step accepts a step name and returns diagnostics scoped to that step."
+   },
+   {
+    "id": "AC-2",
+    "text": "validate_step surfaces W044 and W045 warnings when present."
+   },
+   {
+    "id": "AC-3",
+    "text": "validate_step returns STEP_* diagnostics as advisory and never as gate-failing errors."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/read-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-024",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-024"
+  ]
+ },
+ {
+  "id": "FR-MCP-022",
+  "title": "MCP registration of compatibility-check tools and edge read tools",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers add_compatibility_check, refresh_compatibility_check, and revoke_compatibility_check mutation tools and list_dirty_edges and list_compat_edges read tools with zod input schemas.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "The three compatibility mutation tools are registered with zod schemas."
+   },
+   {
+    "id": "AC-2",
+    "text": "list_dirty_edges and list_compat_edges are registered MCP read tools."
+   },
+   {
+    "id": "AC-3",
+    "text": "Each compatibility mutation tool forwards its inputs to the corresponding core mutation."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-022",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-023",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-024",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-022",
+   "FR-NODE-023",
+   "FR-NODE-024"
+  ]
+ },
+ {
+  "id": "FR-MCP-023",
+  "title": "MCP registration of gap mutation tools statement and AC edit",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers update_requirement_statement and edit_acceptance_criteria mutation tools with zod schemas that forward to their core mutations.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "update_requirement_statement is a registered MCP tool with a zod schema forwarding to the core mutation."
+   },
+   {
+    "id": "AC-2",
+    "text": "edit_acceptance_criteria is a registered MCP tool with a zod schema forwarding to the core mutation."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-025",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-026",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-025",
+   "FR-NODE-026"
+  ]
+ },
+ {
+  "id": "FR-MCP-024",
+  "title": "MCP registration of step state tools",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers claim_step, update_step_state, and list_steps tools with zod schemas that forward to their core implementations.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "claim_step, update_step_state, and list_steps are registered MCP tools with zod schemas."
+   },
+   {
+    "id": "AC-2",
+    "text": "Each step-state tool forwards its inputs to the corresponding core implementation."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-027",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-028",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-029",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-027",
+   "FR-NODE-028",
+   "FR-NODE-029"
+  ]
+ },
+ {
+  "id": "FR-MCP-025",
+  "title": "MCP registration of supersede and promote mutation tools",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers supersede_requirement and promote_step_requirement mutation tools with zod schemas that forward to their core implementations.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "supersede_requirement is a registered MCP tool with a zod schema forwarding to the core mutation."
+   },
+   {
+    "id": "AC-2",
+    "text": "promote_step_requirement is a registered MCP tool with a zod schema forwarding to the core mutation."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-030",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-031",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-030",
+   "FR-NODE-031"
+  ]
+ },
+ {
+  "id": "FR-MCP-026",
+  "title": "MCP registration of diff_steps read tool",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers a diff_steps read tool with a zod schema that returns the four-way classification of step-vs-body requirement differences.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "diff_steps is a registered MCP read tool with a zod schema."
+   },
+   {
+    "id": "AC-2",
+    "text": "diff_steps returns NEW, UPDATE, CONFLICT-PARTIAL, and CONFLICT-FULL-GUARDED classifications to the caller."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/read-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-034",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-034"
+  ]
+ },
+ {
+  "id": "FR-MCP-027",
+  "title": "set_work_mode and get_work_mode MCP tools",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP server registers set_work_mode and get_work_mode tools with zod schemas that forward to the work-mode core, where set_work_mode switches Mode among sdd, vibe, wait and get_work_mode returns the current Mode and Active Task.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "get_work_mode returns the current Mode and, for vibe, the Active Task."
+   },
+   {
+    "id": "AC-2",
+    "text": "set_work_mode switches Mode to a value in sdd, vibe, wait."
+   },
+   {
+    "id": "AC-3",
+    "text": "Both tools are registered with zod schemas forwarding to the work-mode core."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035"
+  ]
+ },
+ {
+  "id": "FR-MCP-028",
+  "title": "start_vibe_task MCP tool with intent-first ordering and task-name or auto-derive",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP start_vibe_task tool captures a task name or derives a slug from the supplied intent when auto is requested, writes the task intent.md first and only then sets Mode=vibe and Active Task, guaranteeing intent-first ordering so a crash cannot leave an Active Task without an intent.md.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "start_vibe_task writes intent.md before setting Active Task."
+   },
+   {
+    "id": "AC-2",
+    "text": "start_vibe_task accepts an explicit task name or derives a slug from the intent when auto is requested."
+   },
+   {
+    "id": "AC-3",
+    "text": "On completion Mode is vibe and Active Task equals the task name."
+   },
+   {
+    "id": "AC-4",
+    "text": "A duplicate task name is disambiguated with a suffix."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-028",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035",
+   "FR-PARSE-028"
+  ]
+ },
+ {
+  "id": "FR-MCP-029",
+  "title": "MCP add_verification_evidence handler forwards notes and dryRun",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "implemented",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The MCP add_verification_evidence tool handler must forward the input notes and dryRun flag to the core addVerificationEvidence call. The handler currently omits both, so notes is always the default placeholder and dryRun preview is unsupported, mirroring the add_trace_link defect fixed by FR-MCP-020.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Providing notes to an add_verification_evidence call records that value in the Verification Evidence Notes column"
+   },
+   {
+    "id": "AC-2",
+    "text": "Providing dryRun=true to an add_verification_evidence call returns a patch preview without modifying any file"
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:64-74",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-MCP-031",
+  "title": "MCP retarget_requirements bulk mutation tool",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register a retarget_requirements tool that moves a selected set of Requirement IDs to a new Target through the shared retarget core, defaulting to a dry-run preview, returning a per-item result list that includes a skipReason for each unmoved requirement, and whose zod schema accepts neither a status field nor an active-target field.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "retarget_requirements is a registered MCP tool whose zod schema accepts an array of Requirement IDs and a destination target."
+   },
+   {
+    "id": "AC-2",
+    "text": "When dryRun is omitted the tool performs a preview and writes no file."
+   },
+   {
+    "id": "AC-3",
+    "text": "The result contains one entry per input Requirement ID with either a moved flag or a skipReason value."
+   },
+   {
+    "id": "AC-4",
+    "text": "A requirement whose target is not registered yields a skipReason of target-not-registered and is not moved."
+   },
+   {
+    "id": "AC-5",
+    "text": "The retarget_requirements schema does not accept any status field or any active-target field, and a frozen or section-16-5 requirement that is moved records the supplied reason into its Change Notes."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:25",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-005",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-047",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-005",
+   "FR-ARCH-006",
+   "FR-NODE-047"
+  ]
+ },
+ {
+  "id": "FR-MCP-032",
+  "title": "MCP update_requirement_field mutation tool with id-regeneration guard",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register an update_requirement_field tool that edits a single editable metadata field of one Requirement through the shared field-update core, and when the edited field is type or scope it MUST require a dry-run preview and an explicit signoff because the change regenerates the Requirement ID via the prefix-scope-NNN id generator.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "update_requirement_field is a registered MCP tool that accepts exactly one Requirement ID and one field name."
+   },
+   {
+    "id": "AC-2",
+    "text": "The accepted field set includes priority, risk, title, target, verificationMethod, type, and scope."
+   },
+   {
+    "id": "AC-3",
+    "text": "A type or scope edit without an explicit signoff flag returns a structured error and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "A confirmed type or scope edit regenerates the Requirement ID using the prefix-scope-NNN generator rather than accepting a caller-supplied id."
+   },
+   {
+    "id": "AC-5",
+    "text": "The update_requirement_field schema rejects an array of Requirement IDs at the schema layer."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:25",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-005",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-048",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-005",
+   "FR-ARCH-006",
+   "FR-NODE-048"
+  ]
+ },
+ {
+  "id": "FR-MCP-033",
+  "title": "MCP add_related_doc and add_change_note mutation tools",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register an add_related_doc tool that appends a Related Docs reference to one Requirement and an add_change_note tool that appends a dated Change Notes row to one Requirement, each forwarding to its shared core mutation and each classified as a req-scoped tool.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "add_related_doc is a registered MCP tool that accepts one Requirement ID and one document reference and appends it to the Related Docs field."
+   },
+   {
+    "id": "AC-2",
+    "text": "add_change_note is a registered MCP tool that accepts one Requirement ID and a note text and appends a dated row to the Change Notes table."
+   },
+   {
+    "id": "AC-3",
+    "text": "Both tools reject an array of Requirement IDs at the schema layer."
+   },
+   {
+    "id": "AC-4",
+    "text": "add_change_note prepends an ISO date to the appended Change Notes row."
+   },
+   {
+    "id": "AC-5",
+    "text": "Both tools are registered in src/mcp/tools/mutation-tools.ts and are absent from read-tools.ts."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:25",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-005",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-049",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-018",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-005",
+   "FR-ARCH-006",
+   "FR-NODE-049",
+   "FR-MCP-018"
+  ]
+ },
+ {
+  "id": "FR-MCP-034",
+  "title": "MCP search_requirements read tool",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register a read-only search_requirements tool that returns requirements matching a text query across requirement statements, titles, and Acceptance Criteria, using the same query core as the CLI search command and never mutating any file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "search_requirements is a registered MCP tool annotated read-only."
+   },
+   {
+    "id": "AC-2",
+    "text": "The tool accepts a query string and returns a list of matching requirement summaries."
+   },
+   {
+    "id": "AC-3",
+    "text": "A query that matches text inside a requirement statement returns that requirement."
+   },
+   {
+    "id": "AC-4",
+    "text": "A query that matches no requirement returns an empty result list rather than an error."
+   },
+   {
+    "id": "AC-5",
+    "text": "search_requirements does not appear in the mutation tool kinds map."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/read-tools.ts:20",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-013",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-046",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-MCP-013",
+   "FR-NODE-046"
+  ]
+ },
+ {
+  "id": "FR-MCP-035",
+  "title": "MCP summarize_release_readiness read tool",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register a read-only summarize_release_readiness tool that exposes the existing release-readiness core summary for a target, including counts of requirements by status and stability and the list of stability and verification blockers, without mutating any file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "summarize_release_readiness is a registered MCP tool annotated read-only."
+   },
+   {
+    "id": "AC-2",
+    "text": "The tool accepts an optional target and defaults to the Active Target when target is omitted."
+   },
+   {
+    "id": "AC-3",
+    "text": "The returned payload includes status counts and stability counts for the target."
+   },
+   {
+    "id": "AC-4",
+    "text": "The returned payload includes a list of blockers that prevent the target from being release-ready."
+   },
+   {
+    "id": "AC-5",
+    "text": "The tool delegates to the existing release-readiness core module rather than recomputing readiness inline."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/read-tools.ts:20",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-013",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-019",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-MCP-013",
+   "FR-MCP-019"
+  ]
+ },
+ {
+  "id": "FR-MCP-036",
+  "title": "MCP explain_diagnostic read tool",
+  "type": "functional",
+  "scope": "MCP",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MCP server MUST register a read-only explain_diagnostic tool that returns the title, severity, and remediation guidance for a given SRS diagnostic code from the diagnostic registry, returning a structured error for an unknown code and never mutating any file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "explain_diagnostic is a registered MCP tool annotated read-only."
+   },
+   {
+    "id": "AC-2",
+    "text": "The tool accepts a diagnostic code and returns that code title and severity."
+   },
+   {
+    "id": "AC-3",
+    "text": "The tool returns remediation guidance text for a known diagnostic code."
+   },
+   {
+    "id": "AC-4",
+    "text": "An unknown diagnostic code yields a structured error rather than an empty success."
+   },
+   {
+    "id": "AC-5",
+    "text": "explain_diagnostic does not appear in the mutation tool kinds map."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/read-tools.ts:20",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-013",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "DR-PARSE-001",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-MCP-013",
+   "DR-PARSE-001"
+  ]
+ },
+ {
+  "id": "FR-NODE-017",
+  "title": "Origin-aware record loading for mutation routing",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "loadRecord and loadRecordWithWorkspace accept optional origin and stepName parameters that, when omitted, prefer body records for backward compatibility, and when provided route the lookup to step records, enabling step mutations dispatched explicitly from MCP/CLI entry points.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "loadRecord with no origin returns the body record for an id present in both body and step."
+   },
+   {
+    "id": "AC-2",
+    "text": "loadRecord with origin=step and a stepName returns the matching step record."
+   },
+   {
+    "id": "AC-3",
+    "text": "Existing callers that pass no origin/stepName resolve body records identically to current behavior."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-020",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-021",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-020",
+   "FR-PARSE-021"
+  ]
+ },
+ {
+  "id": "FR-NODE-018",
+  "title": "Successor trace search over union records to prevent slot regression",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "findIncomingTraceRows receives the union of body and step records so that successor-slot derivation in update-status and update-stability continues to resolve incoming supersedes traces across origins without regression.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "findIncomingTraceRows resolves an incoming supersedes trace whose source is a step record when given the union of records."
+   },
+   {
+    "id": "AC-2",
+    "text": "deriveSuccessorSlot in update-status produces the same successor heading slot for body-only inputs as before this change."
+   },
+   {
+    "id": "AC-3",
+    "text": "update-stability successor handling resolves incoming traces over the union input."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/trace-search.ts:33-58",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-017",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-017"
+  ]
+ },
+ {
+  "id": "FR-NODE-019",
+  "title": "updateStatus verified-regression exit guard with explicit override",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "updateStatus denies a transition to discarded with MUTATION_DENIED when the current status is verified, or stability is frozen or stable, or status is implemented with verification evidence, unless an explicit override is supplied via reason plus confirmDiscardVerified.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Transitioning a verified requirement to discarded without confirmDiscardVerified returns MUTATION_DENIED."
+   },
+   {
+    "id": "AC-2",
+    "text": "Transitioning a frozen or stable requirement to discarded without confirmDiscardVerified returns MUTATION_DENIED."
+   },
+   {
+    "id": "AC-3",
+    "text": "Transitioning an implemented requirement that has verification evidence to discarded without confirmDiscardVerified returns MUTATION_DENIED."
+   },
+   {
+    "id": "AC-4",
+    "text": "Supplying reason and confirmDiscardVerified=true allows the discard transition to proceed."
+   },
+   {
+    "id": "AC-5",
+    "text": "A failing test reproducing the denied transition is written before the guard implementation."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/update-status.ts:98-107",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-020",
+  "title": "computeSemanticSha content-hash utility with fpv1 frozen vector",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "computeSemanticSha is a pure function exported under the fpv=1 contract that hashes sha1 over fpv1 joined with normalized requirement text, AC text excluding checked state, status, stability, and metadata (DENY={Status,Stability}, Scope included), excluding Trace Links, Verification Evidence, and Change Notes, using norm = CRLF to LF, per-line trailing-whitespace strip, whitespace runs collapsed to one space, and outer trim.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "computeSemanticSha excludes the Trace Links, Verification Evidence, and Change Notes sections from the hash input."
+   },
+   {
+    "id": "AC-2",
+    "text": "computeSemanticSha excludes Status and Stability metadata keys while including Scope metadata."
+   },
+   {
+    "id": "AC-3",
+    "text": "AC checked/unchecked state does not change the computed hash; AC text does."
+   },
+   {
+    "id": "AC-4",
+    "text": "Normalization applies CRLF to LF, per-line trailing-whitespace strip, whitespace-run collapse, and outer trim before hashing."
+   },
+   {
+    "id": "AC-5",
+    "text": "A frozen fpv1 test vector produces the documented hash asserted by an automated test."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/records.ts:142",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-021",
+  "title": "compareReqId raw-byte ordering and computeBlastRadius closure utility",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "compareReqId orders two REQ-IDs by raw byte comparison to select the min-side block for single-row normalization, and computeBlastRadius is a pure exported function returning the transitive depends_on closure limited to 2 hops with frozen/stable edges cut.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "compareReqId returns a stable ordering based on raw byte comparison of the two REQ-IDs."
+   },
+   {
+    "id": "AC-2",
+    "text": "computeBlastRadius returns the transitive depends_on closure bounded to at most 2 hops from the seed set."
+   },
+   {
+    "id": "AC-3",
+    "text": "computeBlastRadius stops traversal at requirements whose stability is frozen or stable."
+   },
+   {
+    "id": "AC-4",
+    "text": "computeBlastRadius is exported as a pure function with no I/O side effects."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/records.ts:1",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-022",
+  "title": "add_compatibility_check mutation with dedup frozen liveness guards and bidirectional pins",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "add_compatibility_check inserts a single checked_compatible Trace Links row on the min-side REQ-ID block, automatically computing self and peer semanticSha pins and checked-at, guarded by dedup (one row per min-max pair), frozen-block protection, and endpoint liveness (both endpoints exist, status not discarded, stability not deprecated).",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "add_compatibility_check writes exactly one checked_compatible row on the compareReqId-minimum block with self and peer pins set to current semanticSha values."
+   },
+   {
+    "id": "AC-2",
+    "text": "A second add_compatibility_check for the same min-max pair is rejected by the dedup guard."
+   },
+   {
+    "id": "AC-3",
+    "text": "add_compatibility_check on a frozen block is rejected."
+   },
+   {
+    "id": "AC-4",
+    "text": "add_compatibility_check is rejected when either endpoint is discarded, deprecated, or non-existent."
+   },
+   {
+    "id": "AC-5",
+    "text": "The written Reference is a bare live REQ-ID that passes SRS-E012 and addTraceLink guards."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/add-trace.ts:44",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-020",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-021",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-026",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-020",
+   "FR-NODE-021",
+   "FR-PARSE-026"
+  ]
+ },
+ {
+  "id": "FR-NODE-023",
+  "title": "refresh_compatibility_check and revoke_compatibility_check mutations",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "refresh_compatibility_check takes aReqId and bReqId, locates the min-side row, and replaces it via replaceLine returning NOT_FOUND when zero rows match and rejecting when two or more match; revoke_compatibility_check removes the row via replaceRange.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "refresh_compatibility_check locates the single min-side row and recomputes its self/peer pins via replaceLine."
+   },
+   {
+    "id": "AC-2",
+    "text": "refresh_compatibility_check returns NOT_FOUND when no matching row exists."
+   },
+   {
+    "id": "AC-3",
+    "text": "refresh_compatibility_check is rejected when two or more matching rows exist."
+   },
+   {
+    "id": "AC-4",
+    "text": "revoke_compatibility_check removes the compatibility row using a range replacement."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/trace-search.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-022",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-022"
+  ]
+ },
+ {
+  "id": "FR-NODE-024",
+  "title": "list_dirty_edges read path with clean whitelist gate",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "list_dirty_edges fresh-parses the workspace, builds an inverse index via summarizeTarget, and classifies each compatibility edge as clean only when all whitelist conditions hold (exactly one row, self pin equals current semanticSha, peer pin equals current, both endpoints cache-live, Notes parse, fpv match), otherwise dirty, additionally classifying orphaned and missing edges.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "An edge is reported clean only when row count is exactly 1 and both pins equal current semanticSha and both endpoints are cache-live and Notes parse and fpv matches."
+   },
+   {
+    "id": "AC-2",
+    "text": "Any edge failing one or more clean conditions is reported dirty with no blacklist path."
+   },
+   {
+    "id": "AC-3",
+    "text": "An edge whose endpoint is missing is classified missing and an edge whose peer was deleted is classified orphaned."
+   },
+   {
+    "id": "AC-4",
+    "text": "list_dirty_edges performs its own fresh parse rather than relying on summarizeTarget to parse."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:38-42",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-020",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-026",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-020",
+   "FR-PARSE-026"
+  ]
+ },
+ {
+  "id": "FR-NODE-025",
+  "title": "update_requirement_statement mutation with new Requirement range helper",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "update_requirement_statement replaces a requirement's statement body using a new range helper (since findSectionBodyRange cannot target the Requirement section) guarded against GFM table, code fence, and Acceptance Criteria boundary corruption.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "update_requirement_statement replaces the requirement statement text without altering the Acceptance Criteria section."
+   },
+   {
+    "id": "AC-2",
+    "text": "The mutation does not corrupt GFM tables or fenced code blocks adjacent to the statement."
+   },
+   {
+    "id": "AC-3",
+    "text": "A new range helper distinct from findSectionBodyRange locates the Requirement statement range."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-026",
+  "title": "edit_acceptance_criteria mutation",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "edit_acceptance_criteria edits the text of acceptance criteria entries on a requirement block without altering their checked state or other sections.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "edit_acceptance_criteria updates the text of a targeted AC entry."
+   },
+   {
+    "id": "AC-2",
+    "text": "edit_acceptance_criteria leaves the checked/unchecked state of AC entries unchanged."
+   },
+   {
+    "id": "AC-3",
+    "text": "edit_acceptance_criteria does not modify the requirement statement or Trace Links sections."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/check-ac.ts:1",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-027",
+  "title": "claim_step mutation with write-skew two-stage gate",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "claim_step declares TouchesScope and TouchesReq and appends a state.md row, enforcing a two-stage gate where a direct same-REQ intersection is a HARD-BLOCK STEP_DIRECT_CONFLICT (force not allowed) and a transitive-only intersection is a SOFT-BLOCK STEP_OVERLAP (force pins overlaps), using computeBlastRadius for the closure and marking verified/frozen supersede targets STEP_SUPERSEDE_PROTECTED.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "claim_step appends a state.md row with the declared TouchesScope and TouchesReq."
+   },
+   {
+    "id": "AC-2",
+    "text": "A claim whose TouchesReq directly intersects an active step's TouchesReq is HARD-BLOCKed with STEP_DIRECT_CONFLICT and cannot be forced."
+   },
+   {
+    "id": "AC-3",
+    "text": "A claim that intersects only transitively via the closure is SOFT-BLOCKed with STEP_OVERLAP and force pins an overlaps marker."
+   },
+   {
+    "id": "AC-4",
+    "text": "A claim against a verified or frozen supersede target yields STEP_SUPERSEDE_PROTECTED."
+   },
+   {
+    "id": "AC-5",
+    "text": "When closure is unavailable the gate degrades to 1-hop direct hard-block with transitive treated as advisory."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-023",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-021",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-023",
+   "FR-NODE-021"
+  ]
+ },
+ {
+  "id": "FR-NODE-028",
+  "title": "update_step_state mutation",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "update_step_state updates an existing state.md step row's Status, DependsOn, and Updated fields.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "update_step_state changes the Status field of an existing step row to a value in active, merging, merged, abandoned."
+   },
+   {
+    "id": "AC-2",
+    "text": "update_step_state updates the DependsOn and Updated fields of the targeted step row."
+   },
+   {
+    "id": "AC-3",
+    "text": "update_step_state targeting a non-existent step returns NOT_FOUND."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-023",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-023"
+  ]
+ },
+ {
+  "id": "FR-NODE-029",
+  "title": "list_steps topological ordering with cycle detection and advisories",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "list_steps returns steps in Kahn topological order with cycle detection, emitting STEP_SUPERSEDE_PROTECTED, orphan, and drift advisories.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "list_steps returns steps in a valid topological order honoring DependsOn edges."
+   },
+   {
+    "id": "AC-2",
+    "text": "list_steps detects a dependency cycle and reports STEP_CYCLE rather than producing a partial order silently."
+   },
+   {
+    "id": "AC-3",
+    "text": "list_steps emits STEP_SUPERSEDE_PROTECTED, orphan, and drift advisories where applicable."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-023",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-023"
+  ]
+ },
+ {
+  "id": "FR-NODE-030",
+  "title": "supersede_requirement strict two-call mutation with guards and A1 invalidation",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "supersede_requirement performs the strict ordered two-call sequence T1 add_requirement (id unspecified, trace supersedes oldId) capturing newId then T2 hardened updateStatus(oldId, discarded), enforcing self-reference, reverse-duplicate, and N>1 ambiguity guards, ensuring idempotent journal resumption by omitting reason or pre-checking the Change Note, and invalidating the oldId endpoint via revoke_compatibility_check.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "supersede_requirement executes T1 add_requirement then T2 hardened updateStatus in that fixed order, capturing the newId from T1."
+   },
+   {
+    "id": "AC-2",
+    "text": "supersede_requirement is rejected on self-reference, on a reverse-direction duplicate, and when N>1 successors are ambiguous."
+   },
+   {
+    "id": "AC-3",
+    "text": "The hardened updateStatus discard in T2 honors the verified-regression exit guard."
+   },
+   {
+    "id": "AC-4",
+    "text": "Journal resumption is idempotent: re-running does not append a duplicate Change Notes row."
+   },
+   {
+    "id": "AC-5",
+    "text": "The oldId endpoint's compatibility rows are invalidated via revoke_compatibility_check after supersede."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/update-status.ts:122",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-019",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-023",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-019",
+   "FR-NODE-023"
+  ]
+ },
+ {
+  "id": "FR-NODE-031",
+  "title": "promote_step_requirement mutation with reservation uniqueness verbatim insert",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "promote_step_requirement with id, fromStep, toScope inserts a step's pre-minted canonical requirement id verbatim into the target body scope after verifying global uniqueness against a reservation view (HEAD plus step plus reserved), preserving the step's id rather than auto-generating one.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "promote_step_requirement inserts the step requirement into toScope using the step's existing id verbatim."
+   },
+   {
+    "id": "AC-2",
+    "text": "promote_step_requirement rejects the insert when the id already exists in the reservation view."
+   },
+   {
+    "id": "AC-3",
+    "text": "promote_step_requirement does not auto-generate or alter the requirement id."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/add-requirement.ts:28-35",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-020",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-020"
+  ]
+ },
+ {
+  "id": "FR-NODE-032",
+  "title": "MultiFileCommit four-phase engine with durable merge-journal crash recovery",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "MultiFileCommit (Option A, net-new merge only) commits a single-REQ change touching a step file and a body file in one atomic operation via four phases (render all, stale-check, write tmp, batch rename) backed by a durable merge-journal (renames, sha256, backup) so an interrupted merge is rolled forward or back by the next merge, reusing the export-promoted assertFreshSnapshot.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "MultiFileCommit renders all files, performs a stale-check, writes tmp files, then performs all renames as the final phase."
+   },
+   {
+    "id": "AC-2",
+    "text": "A durable merge-journal records renames, sha256 hashes, and backups before the rename phase."
+   },
+   {
+    "id": "AC-3",
+    "text": "An interrupted merge is detected as half-applied by the next merge and rolled forward or back."
+   },
+   {
+    "id": "AC-4",
+    "text": "The journal write is itself atomic via tmp-rename, re-entrant resumption is idempotent, and a partial stale condition aborts all-or-nothing."
+   },
+   {
+    "id": "AC-5",
+    "text": "state.md is not included in the commit plan."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/patch/apply-patch.ts:40",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-NODE-033",
+  "title": "merge-journal append-log with resume skip",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The merge-journal records renames, sha256 hashes, and the captured requirement id as durable append-log entries that a resuming merge reads to skip already-applied operations.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Each merge-journal entry records the renames, their sha256 hashes, and the captured requirement id."
+   },
+   {
+    "id": "AC-2",
+    "text": "A resuming merge reads the journal and skips operations already recorded as applied."
+   },
+   {
+    "id": "AC-3",
+    "text": "Journal entries are appended durably before the corresponding rename is performed."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/patch/apply-patch.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-032",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-032"
+  ]
+ },
+ {
+  "id": "FR-NODE-034",
+  "title": "diff_steps four-way classification keyed on semanticSha",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "diff_steps classifies each step-vs-body requirement difference into NEW, UPDATE, CONFLICT-PARTIAL, or CONFLICT-FULL-GUARDED using computeSemanticSha as the comparison key with later-step-wins precedence for draft/evolving peers.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "diff_steps uses computeSemanticSha as the equality key when comparing step and body requirements."
+   },
+   {
+    "id": "AC-2",
+    "text": "diff_steps classifies a step-only id as NEW and a changed-body id as UPDATE."
+   },
+   {
+    "id": "AC-3",
+    "text": "diff_steps classifies conflicting changes as CONFLICT-PARTIAL or CONFLICT-FULL-GUARDED."
+   },
+   {
+    "id": "AC-4",
+    "text": "For draft/evolving same-rank peers the later step takes precedence."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-020",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-024",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-020",
+   "FR-NODE-024"
+  ]
+ },
+ {
+  "id": "FR-NODE-035",
+  "title": "Work mode model with get and set and fail-open default",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "A work-mode core provides getWorkMode and setWorkMode over state.md, where Mode is one of sdd, vibe, wait and Active Task names the current vibe task; getWorkMode returns wait when state.md is absent or invalid (fail-open), and setWorkMode persists Mode and, for vibe, Active Task into the state.md metadata block.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "getWorkMode returns the persisted Mode and, for vibe, the Active Task."
+   },
+   {
+    "id": "AC-2",
+    "text": "getWorkMode returns wait when state.md is absent or invalid."
+   },
+   {
+    "id": "AC-3",
+    "text": "setWorkMode persists Mode into the state.md metadata block."
+   },
+   {
+    "id": "AC-4",
+    "text": "setWorkMode to vibe persists the Active Task name alongside Mode."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-028",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-028"
+  ]
+ },
+ {
+  "id": "FR-NODE-036",
+  "title": "speckiwi init hook-installer orchestration with scaffold minimal state and clobber and enterprise detection",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "initProject is extended to scaffold the docs/.kiwi tree (hooks and trace directories), always create a minimal state.md, and orchestrate idempotent installation of the Claude, Codex, and git hooks, detecting and warning on an existing git pre-commit, core.hooksPath, husky, or lefthook (clobber) and on Codex allow_managed_hooks_only or Claude managed-settings.json (enterprise suppression) rather than overwriting silently.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi init creates docs/.kiwi/hooks and docs/.kiwi/trace when absent."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi init creates a minimal state.md when absent and leaves an existing one unchanged."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi init detects an existing git pre-commit, core.hooksPath, husky, or lefthook and warns instead of overwriting."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi init detects Codex allow_managed_hooks_only or Claude managed-settings.json and warns that installed hooks may be ignored."
+   },
+   {
+    "id": "AC-5",
+    "text": "Re-running speckiwi init does not duplicate any installed hook entry."
+   },
+   {
+    "id": "AC-6",
+    "text": "speckiwi init installs or marker-merges a .git/hooks/pre-commit that invokes docs/.kiwi/hooks/pre-commit.mjs and never silently overwrites an existing hook."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/init-project.ts:133",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035"
+  ]
+ },
+ {
+  "id": "FR-NODE-037",
+  "title": "Claude settings.json key-preserving JSON merger",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "A settings.json merger reads .claude/settings.json with JSONC-aware parsing, merges a PostToolUse hook entry matching Edit, Write, MultiEdit, NotebookEdit into hooks while preserving all other keys, dedups the matcher array, preserves the existing file BOM state (writing UTF-8 without a BOM for newly created files), takes a backup, and uses a sentinel marker so re-running is idempotent.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Merging into an existing settings.json preserves all unrelated keys and hooks."
+   },
+   {
+    "id": "AC-2",
+    "text": "The merged PostToolUse entry matches Edit, Write, MultiEdit, NotebookEdit and points at the trace hook."
+   },
+   {
+    "id": "AC-3",
+    "text": "The merger preserves the existing file BOM state, writes UTF-8 without a BOM for newly created files, and takes a backup of any prior file."
+   },
+   {
+    "id": "AC-4",
+    "text": "A second merge is a no-op via the sentinel marker and does not duplicate the entry."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/init-project.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-036",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-036"
+  ]
+ },
+ {
+  "id": "FR-NODE-038",
+  "title": "Codex hooks.json writer with version gate and trust-review guidance",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The installer writes a dedicated .codex/hooks.json registering a PostToolUse command hook matching apply_patch, Edit, Write with a commandWindows override, detects the installed Codex version via the codex --version command and refuses or warns when below the apply_patch hook floor, avoids inline config.toml hooks, and instructs the user to trust the repo and run the hooks command once because Codex skips non-managed hooks until trusted.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "The installer writes .codex/hooks.json with a PostToolUse command hook matching apply_patch, Edit, Write and a commandWindows override."
+   },
+   {
+    "id": "AC-2",
+    "text": "The installer does not write inline hooks into config.toml."
+   },
+   {
+    "id": "AC-3",
+    "text": "The installer detects the Codex version and warns or refuses when below the apply_patch hook floor."
+   },
+   {
+    "id": "AC-4",
+    "text": "The installer prints guidance to trust the repo and run the hooks command once for the hook to activate."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/init-project.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-036",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-036"
+  ]
+ },
+ {
+  "id": "FR-NODE-039",
+  "title": "trace.mjs per-edit hook script mode-aware with per-writer shard and fail-open",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The installed docs/.kiwi/hooks/trace.mjs reads the hook payload on stdin, reads work mode from state.md, and only when Mode is vibe appends one JSONL record per edit to docs/.kiwi/trace/ActiveTask/trace.sessionId.jsonl, branching on tool_name to read the Claude tool_input file path or to parse the Codex apply_patch patch body for changed paths, treating any read or parse failure or non-vibe mode as a safe no-op that never blocks the edit.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "trace.mjs appends a record only when state.md Mode is vibe."
+   },
+   {
+    "id": "AC-2",
+    "text": "trace.mjs writes to a per-session shard trace.sessionId.jsonl under the Active Task directory."
+   },
+   {
+    "id": "AC-3",
+    "text": "trace.mjs reads file paths from the Claude tool_input file path and from the Codex apply_patch patch body."
+   },
+   {
+    "id": "AC-4",
+    "text": "trace.mjs treats a missing or unparseable state.md or non-vibe mode as a no-op and never blocks the edit."
+   },
+   {
+    "id": "AC-5",
+    "text": "each appended JSONL line conforms to the contract fields ts, agent, sessionId, optional turnId, tool, files, op, and intentRef."
+   },
+   {
+    "id": "AC-6",
+    "text": "when Mode is vibe and Active Task is set but the task intent.md is missing, trace.mjs is a no-op and prints intent-recovery guidance, never appending a record."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "docs/.kiwi/hooks/trace.mjs:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035"
+  ]
+ },
+ {
+  "id": "FR-NODE-040",
+  "title": "pre-commit.mjs local best-effort gate for unsynthesized vibe trace",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The installed docs/.kiwi/hooks/pre-commit.mjs, invoked from .git/hooks/pre-commit, exits non-zero to block a commit when state.md Mode is vibe and an Active Task is set but no corresponding step directory exists (unsynthesized), printing guidance to run the synthesis skill, and exits zero otherwise; it is documented as a best-effort local gate that can be bypassed.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "pre-commit.mjs exits non-zero when Mode is vibe and Active Task is set with no matching step directory."
+   },
+   {
+    "id": "AC-2",
+    "text": "pre-commit.mjs exits zero once the matching step directory exists."
+   },
+   {
+    "id": "AC-3",
+    "text": "pre-commit.mjs prints guidance to run the synthesis skill on block."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "docs/.kiwi/hooks/pre-commit.mjs:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035"
+  ]
+ },
+ {
+  "id": "FR-NODE-041",
+  "title": "vibe-to-SRS synthesis engine idempotent with secret redaction and diff cap",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "A synthesis engine merges a task intent.md, the per-session trace shards, the step task-name code comments, and the final git diff into step SRS under docs/spec/steps/TaskName/, is idempotent (a no-op when the step directory already exists), caps diff size, and redacts recognized secret patterns and gitignored paths so credentials do not reach the committed SRS.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Synthesis writes step SRS under docs/spec/steps/TaskName/ from intent.md, trace shards, step comments, and the final diff."
+   },
+   {
+    "id": "AC-2",
+    "text": "Synthesis is a no-op when the step directory for the task already exists."
+   },
+   {
+    "id": "AC-3",
+    "text": "Synthesis caps the diff size and excludes gitignored paths."
+   },
+   {
+    "id": "AC-4",
+    "text": "Synthesis redacts recognized secret patterns from its inputs before writing SRS."
+   },
+   {
+    "id": "AC-5",
+    "text": "Synthesis merges the per-session trace shards in timestamp order and recovers from a partially written trailing JSONL line by discarding only that torn line."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/internal.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-031",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-034",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-042",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-043",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-031",
+   "FR-NODE-034",
+   "FR-NODE-042",
+   "FR-NODE-043"
+  ]
+ },
+ {
+  "id": "FR-NODE-042",
+  "title": "vibe step REQ-ID reservation minter and unreserved-id rejection guard",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "Vibe synthesis mints step requirement IDs only through a tool-governed reservation over the view of HEAD, step, and reserved IDs, never by free-text selection, and promote_step_requirement rejects any ID not produced by the reservation minter.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Synthesized step requirement IDs are produced only by the reservation minter over HEAD, step, and reserved IDs."
+   },
+   {
+    "id": "AC-2",
+    "text": "The synthesis skill never assigns a literal requirement ID itself."
+   },
+   {
+    "id": "AC-3",
+    "text": "promote_step_requirement rejects an ID not produced by the reservation minter."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/add-requirement.ts:28-35",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-031",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-031"
+  ]
+ },
+ {
+  "id": "FR-NODE-043",
+  "title": "vibe merge contradiction hard-gate distinguishing synthesized from contradiction-verified",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "Vibe synthesis and merge enforce a vibe-only hard-gate that distinguishes a synthesized step (step directory exists) from a contradiction-verified one, requiring list_dirty_edges over the touched closure to be empty or explicitly acknowledged before the step is marked complete, while the existing STEP namespace diagnostics remain advisory for non-vibe flows.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "A vibe step is not marked complete while list_dirty_edges over its touched closure is non-empty and unacknowledged."
+   },
+   {
+    "id": "AC-2",
+    "text": "Step-directory existence alone does not satisfy the contradiction-verified condition."
+   },
+   {
+    "id": "AC-3",
+    "text": "Explicit acknowledgement of remaining dirty edges allows completion."
+   },
+   {
+    "id": "AC-4",
+    "text": "Non-vibe STEP namespace diagnostics remain advisory and are unaffected by this gate."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:38-42",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-024",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-021",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-024",
+   "FR-NODE-021"
+  ]
+ },
+ {
+  "id": "FR-NODE-044",
+  "title": "init bundles and publishes the current SRS-MD-Rules version in lockstep",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The init bundled-rules path (loadBundledRulesDocument and templates), the init-project rules writeIfMissing path, and the package.json files publish manifest must advance to the current SRS-MD-Rules version in lockstep with their asserting tests, so newly scaffolded and published projects receive the current authoring rules rather than v1.0.0, and the cwd-versus-package-relative bundled-rules resolution defect is fixed.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "loadBundledRulesDocument resolves and returns the current SRS-MD-Rules version document"
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi init writes the current SRS-MD-Rules version document to a scaffolded project"
+   },
+   {
+    "id": "AC-3",
+    "text": "the package.json files manifest publishes the current SRS-MD-Rules version document"
+   },
+   {
+    "id": "AC-4",
+    "text": "the package and init tests assert the current rules version rather than a hardcoded v1.0.0"
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/templates.ts:184",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-FLOW-013",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-FLOW-013"
+  ]
+ },
+ {
+  "id": "FR-NODE-046",
+  "title": "full-text search core query over requirement records",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core query layer provides a full-text search function that returns requirement records whose searchable text matches a caller-supplied query string, scanning at least the requirement statement, title, and acceptance criteria text, and is implemented as a new query module distinct from the supersedes trace-search helper which is not a text search engine.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Searching for a substring that appears in a requirements statement text returns that requirement in the results."
+   },
+   {
+    "id": "AC-2",
+    "text": "Searching for a substring that appears only in a requirements acceptance criteria text returns that requirement in the results."
+   },
+   {
+    "id": "AC-3",
+    "text": "Searching for a string that appears in no requirement returns an empty result set."
+   },
+   {
+    "id": "AC-4",
+    "text": "The search is implemented in a new src/core/query module and does not reuse src/core/mutation/trace-search.ts, which only resolves incoming supersedes trace rows."
+   },
+   {
+    "id": "AC-5",
+    "text": "Search results are deterministically ordered by requirement id."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/records.ts:159",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-001",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-001"
+  ]
+ },
+ {
+  "id": "FR-NODE-047",
+  "title": "retarget core mutation with per-item loop dry-run and req-scoped schema",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a retarget mutation that reassigns the Target metadata of a caller-supplied set of requirement ids to a single destination target through a per-item loop with default dry-run, where the input type structurally excludes status and active-target fields so the mutation cannot finalize requirements or change the Active Target.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "The retarget input type has no status field and no active-target field, so a caller cannot pass either through the public mutation contract."
+   },
+   {
+    "id": "AC-2",
+    "text": "retarget defaults to dry-run and returns a per-item plan listing each requirement id with either a planned Target rewrite or a skipReason before any file is written."
+   },
+   {
+    "id": "AC-3",
+    "text": "A requirement whose destination target is not present in the index Target Map yields a per-item skipReason of target-not-registered and is not rewritten."
+   },
+   {
+    "id": "AC-4",
+    "text": "A requirement whose block is frozen or otherwise gated by SRS section 16.5 yields a per-item skipReason of frozen-needs-change-note unless a reason is supplied, and when supplied the reason is appended to that requirements Change Notes."
+   },
+   {
+    "id": "AC-5",
+    "text": "By default retarget includes requirements whose status is verified, and an explicit exclude list removes only the listed ids from the rewrite set."
+   },
+   {
+    "id": "AC-6",
+    "text": "Only with dry-run disabled does retarget write Target metadata rewrites, and it preserves each files existing newline style."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/set-active-target.ts:31",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-002",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-013",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-014",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-002",
+   "FR-NODE-013",
+   "FR-NODE-014"
+  ]
+ },
+ {
+  "id": "FR-NODE-048",
+  "title": "update-field core mutation for metadata fields with ID-prefix migration for type and scope",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides an update-field mutation that edits a single requirement metadata field among priority, risk, title, target, and verification-method by line replacement, and additionally supports type and scope edits by regenerating the requirement ID prefix via generateNextRequirementId under a dry-run plus sign-off gate while rewriting inbound trace references, treating ID regeneration as migration rather than manual ID change.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Calling update-field with field=priority, risk, title, target, or verification-method rewrites only that one metadata line of the requirement and leaves all other lines unchanged."
+   },
+   {
+    "id": "AC-2",
+    "text": "Calling update-field with field=type or field=scope regenerates the requirement id using generateNextRequirementId so the new id prefix matches the new type and scope."
+   },
+   {
+    "id": "AC-3",
+    "text": "A type or scope edit defaults to dry-run and returns the old id, the generated new id, and the planned block move before any file is written."
+   },
+   {
+    "id": "AC-4",
+    "text": "A type or scope edit without an explicit sign-off flag returns ok=false and writes no file changes, and a confirmed edit rewrites inbound Trace Links references from the old id to the new id."
+   },
+   {
+    "id": "AC-5",
+    "text": "Calling update-field on an unknown requirement id returns ok=false with error.code=NOT_FOUND and writes no file changes."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/add-requirement.ts:28",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-002",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-008",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-013",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-002",
+   "FR-NODE-008",
+   "FR-NODE-013"
+  ]
+ },
+ {
+  "id": "FR-NODE-049",
+  "title": "add-related-doc and add-change-note core mutations for structural metadata",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides add-related-doc and add-change-note mutations that append a related document reference to a requirements Related Docs metadata and append a dated row to a requirements Change Notes table respectively, reusing the shared Markdown table cell safety helper and preserving newline style.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "add-related-doc appends one document reference to the Related Docs metadata value of the targeted requirement and rewrites only that metadata line."
+   },
+   {
+    "id": "AC-2",
+    "text": "add-change-note appends exactly one row to the Change Notes table of the targeted requirement with date, change, and reason cells."
+   },
+   {
+    "id": "AC-3",
+    "text": "Both mutations reject pipe and newline characters in any supplied cell via the shared table cell safety helper and leave the target file unchanged on rejection."
+   },
+   {
+    "id": "AC-4",
+    "text": "Calling either mutation on an unknown requirement id returns ok=false with error.code=NOT_FOUND and writes no file changes."
+   },
+   {
+    "id": "AC-5",
+    "text": "A dry-run call for either mutation returns a patch summary and leaves the target file unchanged on disk."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/append-section-note.ts:41",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-008",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-011",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-008",
+   "FR-NODE-011"
+  ]
+ },
+ {
+  "id": "FR-NODE-050",
+  "title": "sync-counts core recomputes index summary cells from records",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a syncCounts mutation that recomputes the 00.index Status Summary and Requirement Type Summary count cells from the full set of Requirement Block records using the same countsByStatus and countsByType logic as summarizeTarget, rewrites only those summary cells in place, and defaults to a check that reports drift without writing.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "syncCounts defaults to a check that returns each summary cell expected versus actual count and writes no file."
+   },
+   {
+    "id": "AC-2",
+    "text": "With apply enabled syncCounts rewrites the Status Summary and Requirement Type Summary cells to the actual record counts and changes no other line."
+   },
+   {
+    "id": "AC-3",
+    "text": "syncCounts modifies no Requirement Block Status, Stability, or id and does not change the Active Target."
+   },
+   {
+    "id": "AC-4",
+    "text": "When the declared counts already equal the actual counts syncCounts performs zero write operations."
+   },
+   {
+    "id": "AC-5",
+    "text": "syncCounts reuses the existing patch-plan stale-snapshot guard so a concurrent edit yields a stale-patch failure."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:42",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-013",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-013"
+  ]
+ },
+ {
+  "id": "FR-NODE-051",
+  "title": "restore core un-discards a requirement with required reason",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a restore mutation that transitions a discarded requirement back to an active status defaulting to planned, removes the heading strikethrough and DISCARDED marker, restores the Status metadata, and appends a Change Notes row in one transaction, requiring a reason and warning when a previously verified requirement is restored.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "restore on a discarded requirement sets its Status to the requested active status, defaulting to planned."
+   },
+   {
+    "id": "AC-2",
+    "text": "restore removes the heading strikethrough and the DISCARDED marker from the requirement heading."
+   },
+   {
+    "id": "AC-3",
+    "text": "restore appends one Change Notes row carrying the supplied reason in the same patch."
+   },
+   {
+    "id": "AC-4",
+    "text": "restore without a reason returns ok false and writes no file."
+   },
+   {
+    "id": "AC-5",
+    "text": "restoring a requirement that was previously verified emits a stale acceptance-criteria and evidence warning."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/update-status.ts:78",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-019",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-019"
+  ]
+ },
+ {
+  "id": "FR-NODE-052",
+  "title": "set-supersede core pairs supersede metadata with trace",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "low",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a setSupersede mutation that updates either the Supersedes or the Superseded By metadata field of one requirement and, when trace sync is requested, also inserts the matching supersedes or superseded_by Trace Link row in the same transaction.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "setSupersede with a supersedes value writes only the Supersedes metadata field and changes no other metadata line."
+   },
+   {
+    "id": "AC-2",
+    "text": "setSupersede with a superseded-by value writes only the Superseded By metadata field."
+   },
+   {
+    "id": "AC-3",
+    "text": "setSupersede with trace sync enabled also inserts the matching supersedes or superseded_by Trace Link row."
+   },
+   {
+    "id": "AC-4",
+    "text": "setSupersede on an unknown requirement id returns ok false and writes no file."
+   },
+   {
+    "id": "AC-5",
+    "text": "A dry-run call returns a patch preview and leaves the file unchanged on disk."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/mutation/add-trace.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-008",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-008"
+  ]
+ },
+ {
+  "id": "FR-NODE-053",
+  "title": "register-scopes core registers unregistered scope documents",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a registerScopes mutation that adds every discovered srs.md scope document missing from the index Scope Map, the SRS-W018 set, as a Scope Map row, inferring the prefix from the requirement id prefixes in that document, defaulting to dry-run and reporting a skip reason for prefix conflicts.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "registerScopes in dry-run lists the unregistered scope documents it would add and writes no file."
+   },
+   {
+    "id": "AC-2",
+    "text": "registerScopes with apply inserts one Scope Map row for each unregistered scope document."
+   },
+   {
+    "id": "AC-3",
+    "text": "A scope document whose inferred prefix collides with an existing Scope Map prefix is skipped with a skip reason and not added."
+   },
+   {
+    "id": "AC-4",
+    "text": "registerScopes modifies no Requirement Block and no Status or Type summary count."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/validator/rules.ts:134",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009"
+  ]
+ },
+ {
+  "id": "FR-NODE-054",
+  "title": "scaffold-scope core creates and registers a new scope",
+  "type": "functional",
+  "scope": "NODE",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The core layer provides a scaffoldScope mutation that creates a new scope srs.md file from the scope template and registers it in the index SRS Documents section and Scope Map section in one operation, defaulting to dry-run.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "scaffoldScope creates a new numbered scope srs.md file containing the scope template frontmatter and sections."
+   },
+   {
+    "id": "AC-2",
+    "text": "scaffoldScope adds one row to the index SRS Documents section and one row to the Scope Map section."
+   },
+   {
+    "id": "AC-3",
+    "text": "scaffoldScope with a name or prefix that collides with an existing scope returns ok false and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "A dry-run call returns a preview of the file and index rows and writes no file."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/init-project.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-008",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-008"
+  ]
+ },
+ {
+  "id": "FR-PARSE-019",
+  "title": "Origin-isolating SRS file discovery with steps directory partition",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "implemented",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "discoverSrsFiles partitions discovered .srs.md files into body scope files and step files, where step files match /docs/spec/steps/<name>/*.srs.md and body files exclude /docs/rule/ and /docs/spec/steps/, exposing step files via SrsFileSet.stepFiles[] without including them in scopeFiles.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Files under docs/spec/steps/<name>/ ending in .srs.md appear in SrsFileSet.stepFiles[] and never in SrsFileSet.scopeFiles."
+   },
+   {
+    "id": "AC-2",
+    "text": "Files under docs/rule/ are excluded from both scopeFiles and stepFiles."
+   },
+   {
+    "id": "AC-3",
+    "text": "A body scope file outside steps/ continues to appear in scopeFiles unchanged."
+   },
+   {
+    "id": "AC-4",
+    "text": "SrsFileSet.stepFiles is present (possibly empty array) on all returned file sets."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/parser/discover.ts:31-39",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-PARSE-020",
+  "title": "Workspace parser origin split into body and step records",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The workspace parser flattens body files into records and step files into stepRecords, injecting RequirementRecord.origin ('body'|'step') and stepName, and excludes step files from both workspace.files and workspace.records while exposing stepRecords, stepFiles, and stateFile on ParsedWorkspace.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Requirements parsed from step files carry origin=step and a populated stepName; requirements from body files carry origin=body."
+   },
+   {
+    "id": "AC-2",
+    "text": "Step requirements appear only in ParsedWorkspace.stepRecords and never in workspace.records or workspace.files."
+   },
+   {
+    "id": "AC-3",
+    "text": "ParsedWorkspace exposes stepRecords, stepFiles, and stateFile fields."
+   },
+   {
+    "id": "AC-4",
+    "text": "Consumers reading the new fields default missing values so existing fixtures parse without modification."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/parser/workspace-parser.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-019",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-019"
+  ]
+ },
+ {
+  "id": "FR-PARSE-021",
+  "title": "Optional origin and stepName fields on RequirementRecord and ParsedWorkspace types",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "types.ts adds optional origin ('body'|'step') and stepName to RequirementRecord and optional stepRecords, stepFiles, and stateFile to ParsedWorkspace so that new fields are backward compatible with existing single-constructor and fixture call sites.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "RequirementRecord declares optional origin and stepName fields."
+   },
+   {
+    "id": "AC-2",
+    "text": "ParsedWorkspace declares optional stepRecords, stepFiles, and stateFile fields."
+   },
+   {
+    "id": "AC-3",
+    "text": "Existing code constructing RequirementRecord or ParsedWorkspace without the new fields type-checks unchanged."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/types.ts:1",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-PARSE-022",
+  "title": "E012 id resolution over union of body and step records",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The SRS-E012 referential-existence rule resolves trace references against the union of body records and step records (ids = body plus step) while the E002 duplicate-id rule iterates body records only, so cross-origin traces resolve and a step requirement sharing a body id does not trigger E002.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "A trace whose reference exists only in a step requirement resolves without E012."
+   },
+   {
+    "id": "AC-2",
+    "text": "A step requirement sharing an identical id with a body requirement does not emit E002."
+   },
+   {
+    "id": "AC-3",
+    "text": "W018 and E025 are not emitted for step scope files because discoveredScopeDocuments is files-based and step files are excluded."
+   },
+   {
+    "id": "AC-4",
+    "text": "HEAD diagnostics are zero when a step file declares the same ID as an unregistered scope."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/validator/rules.ts:111",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-020",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-020"
+  ]
+ },
+ {
+  "id": "FR-PARSE-023",
+  "title": "state.md loader and parseStepState parser",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "discover loads docs/spec/steps/state.md via the appendix access-then-read pattern into ParsedWorkspace.stateFile, and parseStepState parses its table (columns Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated; Status enum active|merging|merged|abandoned; metadata Step Warn Threshold=7 and Stale Days=14) by reusing parseMarkdownTable.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "When docs/spec/steps/state.md exists it is loaded and exposed as ParsedWorkspace.stateFile."
+   },
+   {
+    "id": "AC-2",
+    "text": "parseStepState returns one entry per state.md row with all seven columns populated."
+   },
+   {
+    "id": "AC-3",
+    "text": "parseStepState flags a Status value outside active, merging, merged, abandoned."
+   },
+   {
+    "id": "AC-4",
+    "text": "parseStepState reuses parseMarkdownTable rather than a new table parser."
+   },
+   {
+    "id": "AC-5",
+    "text": "Absence of state.md yields an undefined stateFile without error."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/parser/discover.ts:41-44",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-019",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-019"
+  ]
+ },
+ {
+  "id": "FR-PARSE-024",
+  "title": "ValidationRule ctx extension and validateWorkspaceScoped step-local pass",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The ValidationRule signature is extended to (workspace, ctx?) and validateWorkspaceScoped runs a single step-local validation pass over a workspace given ctx carrying origin, stepName, and touches, scoping diagnostics to one step.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "ValidationRule accepts an optional ctx argument carrying origin, stepName, and touches."
+   },
+   {
+    "id": "AC-2",
+    "text": "validateWorkspaceScoped runs validation limited to the named step's records."
+   },
+   {
+    "id": "AC-3",
+    "text": "Existing rules invoked without ctx behave identically to before the signature change."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/validator/rules.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-020",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-020"
+  ]
+ },
+ {
+  "id": "FR-PARSE-025",
+  "title": "Step validators W044 step-shadows-body and W045 step-overload plus STEP namespace",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The diagnostic registry registers SRS-W044 (step requirement shadows a body requirement, warning) and SRS-W045 (step overload at threshold >=7, warning) after the existing maximum W040, and defines a separate STEP_* diagnostic namespace (DIRECT_CONFLICT, OVERLAP, CYCLE, STALE, DRIFT, SUPERSEDE_PROTECTED) that is structurally excluded from release gates as advisory-only.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "SRS-W044 is emitted as a warning when a step requirement shadows a body requirement id."
+   },
+   {
+    "id": "AC-2",
+    "text": "SRS-W045 is emitted as a warning when a step's requirement count reaches or exceeds 7."
+   },
+   {
+    "id": "AC-3",
+    "text": "W044 and W045 are registered after W040 and do not collide with W041, W042, or W043."
+   },
+   {
+    "id": "AC-4",
+    "text": "STEP_* diagnostics live in a namespace separate from SRS-E/W codes and never cause a release gate to fail."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/diagnostic-registry.ts:468",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-024",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-024"
+  ]
+ },
+ {
+  "id": "FR-PARSE-026",
+  "title": "parseCompatibilityNotes strict tokenizer for compatibility Notes",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "parseCompatibilityNotes tokenizes a compatibility-check Notes cell with item separator semicolon-space, keys matching lowercase-and-hyphen, values matching a restricted charset (ellipsis disallowed), recognizing fpv, self, peer, and checked-at, performing charset validation that table-cell.ts (which only rejects pipe/CR/LF) does not.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "parseCompatibilityNotes splits items on semicolon-space and parses each into a key/value pair."
+   },
+   {
+    "id": "AC-2",
+    "text": "Keys or values outside the allowed charset are rejected."
+   },
+   {
+    "id": "AC-3",
+    "text": "A value containing an ellipsis or other out-of-charset character is rejected."
+   },
+   {
+    "id": "AC-4",
+    "text": "fpv, self, peer, and checked-at tokens are recognized and surfaced as structured fields."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/parser/table.ts:1",
+    "rel": "addition_site"
+   }
+  ],
+  "deps": []
+ },
+ {
+  "id": "FR-PARSE-027",
+  "title": "Compatibility cache validators W041 stale W042 missing W043 conflict-concealment with E012 relation template",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The validator emits SRS-W041 when a compatibility row's self or peer pin is stale against current semanticSha, SRS-W042 when a required compatibility row is missing for an adjacent pair, and SRS-W043 when a compatibility row conceals a conflict, and the SRS-E012 messageTemplate is extended with a relation placeholder.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "SRS-W041 is emitted when a stored self or peer pin differs from the endpoint's current semanticSha."
+   },
+   {
+    "id": "AC-2",
+    "text": "SRS-W042 is emitted when an expected compatibility row for an adjacent pair is absent."
+   },
+   {
+    "id": "AC-3",
+    "text": "SRS-W043 is emitted when a compatibility row conceals a detected conflict."
+   },
+   {
+    "id": "AC-4",
+    "text": "The SRS-E012 message renders the relation via a template placeholder."
+   },
+   {
+    "id": "AC-5",
+    "text": "W041, W042, and W043 do not collide with W044 or W045."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/validator/rules.ts:216",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-020",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-026",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-020",
+   "FR-PARSE-026"
+  ]
+ },
+ {
+  "id": "FR-PARSE-028",
+  "title": "Work-mode state.md metadata parsing for Mode and Active Task with fail-open",
+  "type": "functional",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "parseStepState is extended to read top-of-file state.md metadata keys Mode (one of sdd, vibe, wait) and Active Task (the current task name, present only when Mode is vibe) in the same single parse pass; when state.md is absent, unparseable, or the Mode line is malformed the parser yields Mode=wait as a fail-open default instead of throwing.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "parseStepState returns Mode equal to one of sdd, vibe, wait read from the state.md metadata block."
+   },
+   {
+    "id": "AC-2",
+    "text": "parseStepState returns Active Task as the task name when Mode is vibe and omits it otherwise."
+   },
+   {
+    "id": "AC-3",
+    "text": "A missing or unparseable state.md yields Mode=wait without throwing."
+   },
+   {
+    "id": "AC-4",
+    "text": "A Mode value outside sdd, vibe, wait is treated as wait and flagged."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/parser/discover.ts:41-44",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-023",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-023"
+  ]
+ },
+ {
+  "id": "IR-CLI-028",
+  "title": "speckiwi step validate command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The CLI exposes speckiwi step validate <name> which runs validateWorkspaceScoped for the named step and prints its step-local diagnostics with an exit code reflecting step-local errors only.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi step validate <name> runs step-local validation for the named step."
+   },
+   {
+    "id": "AC-2",
+    "text": "The command prints W044, W045, and STEP_* diagnostics for that step."
+   },
+   {
+    "id": "AC-3",
+    "text": "The command's exit code reflects step-local errors and is not affected by body-scope diagnostics."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/command.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-024",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-024"
+  ]
+ },
+ {
+  "id": "IR-CLI-029",
+  "title": "speckiwi init hook-install extension",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi init command is extended to perform the hook installation (Claude settings merge, Codex hooks.json with version gate, git pre-commit, docs/.kiwi scaffold, and minimal state.md), reporting created, updated, skipped, and warned paths and any clobber or enterprise-suppression warnings.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi init installs the Claude, Codex, and git hooks and the docs/.kiwi scaffold."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi init reports created, updated, skipped, and warned paths."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi init surfaces clobber and enterprise-suppression warnings in its output."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:69",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-036",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-036"
+  ]
+ },
+ {
+  "id": "IR-CLI-030",
+  "title": "speckiwi mode command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The CLI exposes speckiwi mode with an optional sdd, vibe, or wait argument to read or switch the work mode, printing the current Mode and Active Task and rejecting an invalid mode value with a non-zero exit code.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi mode with no argument prints the current Mode and Active Task."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi mode with a value switches Mode to a value in sdd, vibe, wait."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi mode rejects an invalid mode value with a non-zero exit code."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-035",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-027",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-035",
+   "FR-MCP-027"
+  ]
+ },
+ {
+  "id": "IR-CLI-031",
+  "title": "speckiwi vibe-gate check CI subcommand",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The CLI exposes speckiwi vibe-gate with a check option which exits non-zero when Mode is vibe and an Active Task is set without a corresponding synthesized step directory, intended for wiring into a remote required status check so that unsynthesized vibe commits are blocked where local hooks can be bypassed.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi vibe-gate check exits non-zero for a vibe Active Task with no synthesized step directory."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi vibe-gate check exits zero when no unsynthesized vibe task exists."
+   },
+   {
+    "id": "AC-3",
+    "text": "The command is documented for use as a remote required status check."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-040",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-041",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-040",
+   "FR-NODE-041"
+  ]
+ },
+ {
+  "id": "IR-CLI-033",
+  "title": "validate grouped human renderer with file and code grouping",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi validate command prints a grouped human-readable diagnostics report that groups diagnostics by file and then by code, shows each diagnostic as file:line plus code plus severity plus message plus sourceRule, emits a header counting N errors and M warnings across K files, and labels diagnostics that have no line as file with a no-line marker, replacing the JSON.stringify human-output fallback for validate output only.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi validate without --json prints a header line stating the number of errors, the number of warnings, and the number of distinct files with diagnostics."
+   },
+   {
+    "id": "AC-2",
+    "text": "Each diagnostic line includes the file path, the line number when present, the diagnostic code, the severity, the message, and the sourceRule from the diagnostic registry."
+   },
+   {
+    "id": "AC-3",
+    "text": "Diagnostics are grouped first by file path and then by diagnostic code within each file group."
+   },
+   {
+    "id": "AC-4",
+    "text": "A diagnostic that has no line number is rendered with an explicit no-line marker for its file instead of an empty or zero line value."
+   },
+   {
+    "id": "AC-5",
+    "text": "When there are zero diagnostics the command prints a clean-result header indicating zero errors and zero warnings rather than a raw JSON dump."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/format/text.ts:25",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-004",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "IR-CLI-004"
+  ]
+ },
+ {
+  "id": "IR-CLI-034",
+  "title": "validate severity only and ignore filters with exit-code-from-unfiltered contract",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi validate command supports a --severity filter and repeatable --only and --ignore code filters that affect which diagnostics are displayed, while the process exit code is computed from the unfiltered error set so that an --ignore filter that hides an error diagnostic cannot turn a failing validation into a zero exit code.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi validate --severity error displays only error-severity diagnostics in human output."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi validate --only <code> restricts displayed diagnostics to the listed codes and --ignore <code> removes the listed codes from display."
+   },
+   {
+    "id": "AC-3",
+    "text": "When an error diagnostic exists but is hidden by --ignore or --severity, the command still exits with code 1."
+   },
+   {
+    "id": "AC-4",
+    "text": "When only warnings exist and --fail-on-warning is not set, the command exits with code 0 regardless of display filters."
+   },
+   {
+    "id": "AC-5",
+    "text": "An automated test asserts that hiding an error via --ignore does not change the exit code from 1 to 0."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/read.ts:55",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-033",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-018",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "IR-CLI-033",
+   "IR-CLI-018"
+  ]
+ },
+ {
+  "id": "IR-CLI-035",
+  "title": "explain command and validate --explain for diagnostic codes",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi explain <code> command and a speckiwi validate --explain <code> option that print the diagnostic definition for the given code including its title, severity, message template, sourceRule, since version, and remediation when present, reject an unknown code with a non-zero exit code, and support --json to emit the definition as a machine-readable object.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi explain <code> prints the title, severity, messageTemplate, sourceRule, and since fields for a known diagnostic code."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi explain <code> includes the remediation text when the diagnostic definition provides one and omits it cleanly when absent."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi validate --explain <code> prints the same diagnostic definition fields as the explain command."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi explain with an unknown code exits with a non-zero exit code and prints a not-found message instead of throwing an unhandled error."
+   },
+   {
+    "id": "AC-5",
+    "text": "speckiwi explain supports --json and emits the diagnostic definition as a machine-readable object."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/read.ts:53",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "DR-PARSE-001",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "DR-PARSE-001"
+  ]
+ },
+ {
+  "id": "IR-CLI-036",
+  "title": "release-readiness coverage and rtm read commands with verified-gate banner",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi exposes read-only CLI commands that surface the existing core release readiness, acceptance-criteria coverage, and traceability matrix computations for a target, defaulting to the Active Target, and prints a per-requirement verification-evidence gate warning banner whenever it lists requirements eligible for a verified transition.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi release-readiness prints the release readiness summary for a target including blocked, implemented-not-verified, missing-evidence, and stability blockers, defaulting to the Active Target when no target is given."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi coverage prints acceptance-criteria coverage gaps for verified requirements in the selected target."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi rtm prints a requirement-to-evidence traceability listing for the selected target."
+   },
+   {
+    "id": "AC-4",
+    "text": "Each command supports --json and emits a machine-readable object derived from the existing core release readiness module."
+   },
+   {
+    "id": "AC-5",
+    "text": "When output lists requirements that are candidates for a verified transition, a warning banner states that the verified transition requires per-requirement verification evidence and is not auto-applied."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/workflow/release-readiness.ts:245",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-015",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "IR-CLI-015"
+  ]
+ },
+ {
+  "id": "IR-CLI-037",
+  "title": "search command over requirement fields",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi search <query> command with a --field selector for requirement, ac, rationale, notes, title, or all that returns matching requirements, supports the standard list filters, and supports --json output.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi search <query> --field title returns requirements whose title matches the query."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi search <query> --field all searches requirement statement, acceptance criteria, rationale, notes, and title fields."
+   },
+   {
+    "id": "AC-3",
+    "text": "The search command honors the standard --target, --status, --scope, and --type filters in combination with the query."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi search --json emits a machine-readable array of matching requirement records."
+   },
+   {
+    "id": "AC-5",
+    "text": "An unsupported --field value is rejected with a usage error and a non-zero exit code."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/read.ts:53",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-046",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-006",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-NODE-046",
+   "IR-CLI-006"
+  ]
+ },
+ {
+  "id": "IR-CLI-038",
+  "title": "retarget command with dry-run default and per-item skip reasons",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi retarget command that moves requirements selected by --from and --to with optional --scope, --status, --type, and --id filters under a required --reason, defaults to dry-run preview, includes verified requirements by default with an explicit --exclude opt-out, refuses to move into a target that is not registered in the Target Map, and reports a per-item skipReason for items it does not move.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi retarget --from <a> --to <b> --reason <text> previews the set of requirements whose target would change without writing unless --apply is given."
+   },
+   {
+    "id": "AC-2",
+    "text": "The command includes verified requirements in the move set by default and a documented --exclude option removes only the listed ids."
+   },
+   {
+    "id": "AC-3",
+    "text": "When --to names a target that is not present in the Target Map, the command refuses the operation and changes no files."
+   },
+   {
+    "id": "AC-4",
+    "text": "The preview reports each candidate with a per-item skipReason such as target-not-registered or frozen-needs-change-note for items it will not move."
+   },
+   {
+    "id": "AC-5",
+    "text": "When a moved requirement is frozen or falls under the frozen change-control rule, the supplied reason is recorded as a Change Notes row consistent with SRS-E028 governance."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-047",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "IR-CLI-008",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-NODE-047",
+   "IR-CLI-008"
+  ]
+ },
+ {
+  "id": "IR-CLI-039",
+  "title": "update-field command with id-regenerating type and scope migration guard",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi update-field <id> --field <field> --value <value> command that edits priority, risk, title, target, verification-method, type, or scope on a single requirement, and when the edited field is type or scope it regenerates the requirement ID via the deterministic ID generator under a dry-run plus sign-off migration guard and rewrites inbound trace references rather than mutating the ID prefix manually.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi update-field <id> --field priority --value <p> updates only the priority metadata cell for that requirement."
+   },
+   {
+    "id": "AC-2",
+    "text": "The command accepts field values priority, risk, title, target, verification-method, type, and scope and rejects any other field name with a usage error."
+   },
+   {
+    "id": "AC-3",
+    "text": "Editing field type or scope regenerates the requirement ID using the deterministic next-ID generator so the new ID matches the prefix-scope-NNN pattern."
+   },
+   {
+    "id": "AC-4",
+    "text": "A type or scope edit defaults to dry-run preview and requires an explicit apply plus confirmation flag before any file is written."
+   },
+   {
+    "id": "AC-5",
+    "text": "An automated test asserts that a type or scope edit produces a new non-colliding ID and updates inbound trace references to the old ID."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-048",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-NODE-048"
+  ]
+ },
+ {
+  "id": "IR-CLI-040",
+  "title": "update-statement CLI command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi update-statement <id> --text <text> command that replaces a single requirement statement body by delegating to the core update_requirement_statement mutation, supporting --dry-run and --json and leaving the Acceptance Criteria and other sections unchanged.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi update-statement <id> --text <text> replaces the requirement statement body of the targeted requirement."
+   },
+   {
+    "id": "AC-2",
+    "text": "The command leaves the Acceptance Criteria section and Trace Links section of the requirement unchanged."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi update-statement --dry-run prints a patch preview and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi update-statement --json emits the mutation result envelope consistent with other mutation commands."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-025",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-025",
+   "FR-ARCH-006"
+  ]
+ },
+ {
+  "id": "IR-CLI-041",
+  "title": "edit-ac CLI command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi edit-ac <id> <acId> --text <text> command that edits the text of a single acceptance criterion by delegating to the core edit_acceptance_criteria mutation, supporting --dry-run and --json and leaving the checked state and other acceptance criteria unchanged.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi edit-ac <id> <acId> --text <text> updates the text of the targeted acceptance criterion."
+   },
+   {
+    "id": "AC-2",
+    "text": "The command leaves the checked or unchecked state of the targeted criterion and all other criteria unchanged."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi edit-ac --dry-run prints a patch preview and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi edit-ac --json emits the mutation result envelope consistent with other mutation commands."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:184",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-026",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-026",
+   "FR-ARCH-006"
+  ]
+ },
+ {
+  "id": "IR-CLI-042",
+  "title": "add-related-doc and add-change-note commands",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi provides a speckiwi add-related-doc <id> --link <link> command that appends a Related Docs entry to a requirement and a speckiwi add-change-note <id> --change <change> --reason <reason> command that appends a Change Notes row to a requirement, both supporting --dry-run and --json.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi add-related-doc <id> --link <link> appends the link to the Related Docs of the targeted requirement without altering other sections."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi add-change-note <id> --change <change> --reason <reason> appends a dated Change Notes row to the targeted requirement."
+   },
+   {
+    "id": "AC-3",
+    "text": "Both commands support --dry-run and print a patch preview without writing a file."
+   },
+   {
+    "id": "AC-4",
+    "text": "Both commands support --json and emit the mutation result envelope consistent with other mutation commands."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:184",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-049",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-NODE-049"
+  ]
+ },
+ {
+  "id": "IR-CLI-043",
+  "title": "common --input-json stdin and --help --json for all mutation commands",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "All SpecKiwi mutation commands accept a common --input-json option that reads the full argument object as a JSON string or from stdin, and all commands support --help --json to emit a machine-readable description of the command name, kind, and parameters derived from the ToolSpec registry.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Every mutation command accepts --input-json <json> and parses the object as its full argument set equivalently to discrete flags."
+   },
+   {
+    "id": "AC-2",
+    "text": "When --input-json is given the value - or omitted with piped input, the command reads the JSON object from stdin."
+   },
+   {
+    "id": "AC-3",
+    "text": "Discrete flags and --input-json for the same command produce identical mutation results for equivalent inputs."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi <command> --help --json prints a machine-readable object containing the command name, its kind, and its parameter list sourced from the ToolSpec registry."
+   },
+   {
+    "id": "AC-5",
+    "text": "An automated test asserts --input-json and equivalent discrete flags yield the same patch for at least one mutation command."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:68",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006"
+  ]
+ },
+ {
+  "id": "IR-CLI-044",
+  "title": "speckiwi sync-counts command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi sync-counts command delegates to the syncCounts core, defaults to a non-writing check, writes the index summary cells only with apply, supports json output, and returns a non-zero exit code under check when count drift exists so it can gate CI.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi sync-counts with no apply prints a per-cell drift report and writes no file."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi sync-counts --apply updates the 00.index Status Summary and Requirement Type Summary cells."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi sync-counts --json emits the mutation result envelope consistent with other commands."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi sync-counts --check returns a non-zero exit code when any summary count differs from the actual record count."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-050",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-050"
+  ]
+ },
+ {
+  "id": "IR-CLI-045",
+  "title": "speckiwi supersede command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi supersede command mirrors the existing supersede_requirement core mutation by creating a successor requirement that traces supersedes the old id and then discarding the old requirement in one command, returning the new id, supporting dry-run and json, and delegating every core guard without a bypass option.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi supersede --old <id> --new-title <t> --new-statement <s> --scope <s> --type <ty> creates a successor requirement and discards the old requirement, returning the new id."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi supersede --dry-run prints a preview of the two-step sequence and writes no file."
+   },
+   {
+    "id": "AC-3",
+    "text": "The command passes the core self-reference, reverse-duplicate, and verified-regression guards through without any bypass flag."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi supersede --json emits the mutation result envelope consistent with other mutation commands."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-030",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-030"
+  ]
+ },
+ {
+  "id": "IR-CLI-046",
+  "title": "speckiwi restore command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi restore command delegates to the restore core to un-discard a requirement, requires a reason, supports an optional target status, dry-run, and json, and writes nothing when the reason is missing.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi restore <id> --reason <r> un-discards the requirement to planned by default."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi restore <id> --to <status> --reason <r> un-discards to the given active status."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi restore --dry-run prints a preview and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi restore without --reason returns a non-zero exit code and writes no file."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-051",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-051"
+  ]
+ },
+ {
+  "id": "IR-CLI-047",
+  "title": "speckiwi history command for requirement Change Notes",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi history command outputs the Change Notes of a single requirement as date, change, and reason rows sorted chronologically, supports an optional since filter and json, and never writes a file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi history <id> lists the requirement Change Notes rows in ascending date order."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi history <id> --since <date> includes only rows on or after the date inclusive."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi history on an unknown requirement id returns a non-zero exit code."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi history on a requirement with no Change Notes returns an empty result without error."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/records.ts:140",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009"
+  ]
+ },
+ {
+  "id": "IR-CLI-048",
+  "title": "speckiwi changed-since command for cross-requirement timeline",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi changed-since command aggregates requirements whose most recent Change Notes date is on or after a given date across all requirements, supports optional target and scope filters and json, and never writes a file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi changed-since <date> returns requirements with a Change Notes date on or after the date."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi changed-since <date> --target <t> and --scope <s> restrict the result set."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi changed-since with a malformed date returns exit code two."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi changed-since with a future date returns an empty result set."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:85",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009"
+  ]
+ },
+ {
+  "id": "IR-CLI-049",
+  "title": "speckiwi attention command for a ranked work queue",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi attention command merges blocked, implemented-not-verified, missing-evidence, and stability-blocker requirements into one priority-ranked work queue with a deterministic tie-break of priority then risk then status, supports optional target and top limit and json, and never writes a file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi attention ranks the merged queue deterministically by priority then risk then status."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi attention --top <n> limits the output to the first n entries."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi attention --top with a negative value returns exit code two."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi attention writes no file and reports the same order for identical input."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:85",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009"
+  ]
+ },
+ {
+  "id": "IR-CLI-050",
+  "title": "speckiwi commands catalog manifest",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi commands command renders the full command catalog with name, kind, args, options, read-only flag, and result exit mapping from the ToolSpec registry in a single call, supports json, and never writes a file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi commands --json emits every registered command with name, kind, args, options, and read-only flag."
+   },
+   {
+    "id": "AC-2",
+    "text": "The catalog is derived from the ToolSpec registry and does not hardcode an expected command list."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi commands writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "Adding a ToolSpec entry makes that command appear in the catalog without a separate edit."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/schemas.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "REL-ARCH-002",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "REL-ARCH-002"
+  ]
+ },
+ {
+  "id": "IR-CLI-051",
+  "title": "speckiwi doctor environment health command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi doctor command reports a consolidated health diagnosis covering docs spec presence and parseability, agent workflow block version currency, bundled versus installed rules version drift, Active Target set, scope and target consistency, and Node version, supports json, and with fix re-runs the idempotent init upsert for missing or outdated workflow blocks only.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi doctor reports each checked item with an ok, warn, or fail state and a remediation hint."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi doctor --json emits the structured diagnosis report."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi doctor without --fix writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi doctor --fix re-upserts only missing or outdated agent workflow blocks and changes no Requirement Block data."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/bootstrap/init-project.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-044",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-044"
+  ]
+ },
+ {
+  "id": "IR-CLI-052",
+  "title": "speckiwi set-supersede command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "low",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi set-supersede command delegates to the setSupersede core to update the Supersedes or Superseded By metadata of a requirement, supports a sync-trace flag, dry-run, and json, and edits no requirement Status.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi set-supersede <id> --supersedes <oldId> updates the Supersedes metadata field."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi set-supersede <id> --superseded-by <newId> updates the Superseded By metadata field."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi set-supersede --sync-trace also writes the matching Trace Link row."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi set-supersede --dry-run prints a preview and writes no file."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-052",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-052"
+  ]
+ },
+ {
+  "id": "IR-CLI-053",
+  "title": "speckiwi register-scopes command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi register-scopes command delegates to the registerScopes core to batch-register unregistered scope documents into the Scope Map, defaults to dry-run, writes only with apply, and supports json.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi register-scopes with no apply prints the planned Scope Map additions and writes no file."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi register-scopes --apply inserts the Scope Map rows."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi register-scopes --json emits the mutation result envelope."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi register-scopes reports a skip reason for each prefix-conflicting document."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-053",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-053"
+  ]
+ },
+ {
+  "id": "IR-CLI-054",
+  "title": "speckiwi scaffold-scope command",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "medium",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi scaffold-scope command delegates to the scaffoldScope core to create and register a new scope, accepts an optional prefix and description, defaults to dry-run, and supports json.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi scaffold-scope <name> creates the scope file and registers it in the index in one command."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi scaffold-scope <name:PREFIX> uses the given prefix instead of inferring one."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi scaffold-scope --dry-run prints a preview and writes no file."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi scaffold-scope --json emits the mutation result envelope."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/cli/commands/mutations.ts:1",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-NODE-054",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-NODE-054"
+  ]
+ },
+ {
+  "id": "IR-CLI-055",
+  "title": "speckiwi stale command for aging requirements",
+  "type": "interface",
+  "scope": "CLI",
+  "status": "planned",
+  "priority": "low",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The speckiwi stale command identifies requirements that have stayed in evolving stability past a threshold measured by their most recent Change Notes date or whose verification evidence is older than a threshold, computing age from SRS date metadata only, supports optional target and json, and never writes a file.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "speckiwi stale lists requirements in evolving stability whose latest Change Notes date is older than the evolving-age threshold."
+   },
+   {
+    "id": "AC-2",
+    "text": "speckiwi stale --evidence-age <days> flags requirements whose verification evidence is older than the given number of days."
+   },
+   {
+    "id": "AC-3",
+    "text": "speckiwi stale computes age only from SRS date metadata and never reads outside the repository."
+   },
+   {
+    "id": "AC-4",
+    "text": "speckiwi stale writes no file."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/query/summary.ts:42",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009"
+  ]
+ },
+ {
+  "id": "REL-ARCH-002",
+  "title": "Zero-drift enumerate and handler-forwarding contract over the ToolSpec registry",
+  "type": "reliability",
+  "scope": "ARCH",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "SpecKiwi MUST enforce a zero-drift contract in which every ToolSpec entry is present in the CLI registration, the MCP toolSchemas keys, the MCP toolNames list, and the MCP toolKinds table, and in which each MCP mutation handler forwards every declared option dest to its core function, so that no command surface and no input field is silently dropped, and the enumeration test MUST treat the ToolSpec registry as the only authority rather than hardcoding an expected tool list.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "An automated enumeration test fails when any ToolSpec entry is absent from CLI registration, from MCP toolSchemas keys, from MCP toolNames, or from MCP toolKinds, reporting the specific missing surface."
+   },
+   {
+    "id": "AC-2",
+    "text": "The test detects the current drift in which update_stability, append_section_note, and set_target_goal exist in toolSchemas and as registered MCP tools but are absent from toolNames in schemas.ts."
+   },
+   {
+    "id": "AC-3",
+    "text": "An automated test asserts that each MCP mutation handler passes every dest declared by its ToolSpec option set to its core function, so that an option declared in the registry but not forwarded by the handler fails the test."
+   },
+   {
+    "id": "AC-4",
+    "text": "The forwarding test covers the notes and dryRun dests for add_trace_link and add_verification_evidence, reproducing the FR-MCP-020 and FR-MCP-029 silently-dropped-field defect class and asserting it cannot recur."
+   },
+   {
+    "id": "AC-5",
+    "text": "When a new ToolSpec entry is added without a corresponding CLI command, toolSchemas key, toolNames entry, toolKinds entry, or handler dest forwarding, at least one enumeration or forwarding test fails, and the test does not hardcode the expected tool list."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/mcp/tools/mutation-tools.ts:65",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-006",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-ARCH-005",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-MCP-013",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-ARCH-006",
+   "FR-ARCH-005",
+   "FR-MCP-013"
+  ]
+ },
+ {
+  "id": "REL-PARSE-002",
+  "title": "Diagnostic dedup single-source read envelope fix",
+  "type": "reliability",
+  "scope": "PARSE",
+  "status": "planned",
+  "priority": "high",
+  "risk": "medium",
+  "stability": "evolving",
+  "statement": "The read-side diagnostic aggregation MUST expose each structural and parser diagnostic exactly once by treating the validation pass output as the single source that already includes workspace.diagnostics, instead of concatenating workspace.diagnostics a second time in readDiagnostics, fixing the double-count at exactly one seam without dropping any diagnostic code.",
+  "ac": [
+   {
+    "id": "AC-1",
+    "text": "Validating a workspace whose only diagnostics are structural (for example SRS-E013 Target Map missing and SRS-E014 Scope Map missing) yields diagnosticsSummary.byCode value of exactly 1 for each such structural code through the CLI validate command."
+   },
+   {
+    "id": "AC-2",
+    "text": "The MCP validate_spec summary.byCode reports exactly 1 occurrence for each structural diagnostic present once in workspace.diagnostics."
+   },
+   {
+    "id": "AC-3",
+    "text": "For any workspace, the count of each diagnostic code in the read envelope equals the count produced by a single validation pass and never doubles codes originating from workspace.diagnostics."
+   },
+   {
+    "id": "AC-4",
+    "text": "A failing automated test asserting the no-double-count invariant is added and passes after the fix, and was red before the fix."
+   },
+   {
+    "id": "AC-5",
+    "text": "The CLI validate, MCP validate_spec, and MCP resource read paths all return identical de-duplicated diagnostic counts for the same workspace, with the same set of diagnostic codes emitted as before the fix."
+   }
+  ],
+  "trace": [
+   {
+    "type": "Code",
+    "ref": "src/core/validator/rules.ts:107",
+    "rel": "addition_site"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-009",
+    "rel": "depends_on"
+   },
+   {
+    "type": "Requirement",
+    "ref": "FR-PARSE-013",
+    "rel": "depends_on"
+   }
+  ],
+  "deps": [
+   "FR-PARSE-009",
+   "FR-PARSE-013"
+  ]
+ }
+]

@@ -7,10 +7,71 @@ import type {
   RequirementTypeSummaryEntry,
   ScopeEntry,
   StatusSummaryEntry,
+  StepStateEntry,
+  StepStateMode,
+  StepStateParseResult,
   TargetEntry,
   TextFile
 } from "../types.js";
-import { parseMarkdownTable, parseMetadataRows, splitTableRow } from "./table.js";
+import { parseMarkdownTable, parseMarkdownTableResult, parseMetadataRows, splitTableRow } from "./table.js";
+
+const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abandoned"]);
+const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait"]);
+const STEP_MODE_RE = /^\s*Mode:\s*(.*)$/;
+const STEP_ACTIVE_TASK_RE = /^\s*Active Task:\s*(.*)$/;
+
+// @req FR-PARSE-023 @req FR-PARSE-028
+export function parseStepState(lines: readonly string[]): StepStateParseResult {
+  const src = lines as string[];
+  const result = parseMarkdownTableResult(src, 0, { skipNonTableLeading: true });
+  const table = result.table;
+
+  const entries: StepStateEntry[] = (table?.rows ?? []).map((row) => {
+    const status = row.Status ?? "";
+    const entry: StepStateEntry = {
+      step: row.Step ?? "",
+      status,
+      dependsOn: row.DependsOn ?? "",
+      touchesScope: row.TouchesScope ?? "",
+      touchesReq: row.TouchesReq ?? "",
+      created: row.Created ?? "",
+      updated: row.Updated ?? ""
+    };
+    if (!STEP_STATUS_ENUM.has(status)) entry.invalidStatus = true;
+    return entry;
+  });
+
+  // Scan the metadata block preceding the table (or the whole input when no table
+  // was found) for the Mode and Active Task keys in the same pass.
+  const metaCount = table ? table.startLine - 1 : lines.length;
+  let modeRaw: string | undefined;
+  let activeTaskRaw: string | undefined;
+  for (let i = 0; i < metaCount; i += 1) {
+    const l = lines[i] ?? "";
+    if (modeRaw === undefined) {
+      const m = STEP_MODE_RE.exec(l);
+      if (m) modeRaw = (m[1] ?? "").trim();
+    }
+    if (activeTaskRaw === undefined) {
+      const m = STEP_ACTIVE_TASK_RE.exec(l);
+      if (m) activeTaskRaw = (m[1] ?? "").trim();
+    }
+  }
+
+  let mode: StepStateMode = "wait";
+  let modeInvalid = false;
+  if (modeRaw !== undefined && modeRaw !== "") {
+    if (STEP_MODE_ENUM.has(modeRaw)) mode = modeRaw as StepStateMode;
+    else modeInvalid = true;
+  }
+  const activeTask = mode === "vibe" ? activeTaskRaw : undefined;
+
+  return Object.assign(entries, {
+    mode,
+    ...(activeTask !== undefined ? { activeTask } : {}),
+    ...(modeInvalid ? { modeInvalid: true } : {})
+  }) as StepStateParseResult;
+}
 
 function extractLinkTarget(value: string): string {
   const match = /\[[^\]]+]\(([^)]+)\)/.exec(value);
@@ -58,6 +119,10 @@ export function parseCompletedWork(file: Pick<TextFile, "lines" | "relativePath"
       line: rowLine
     };
     Object.defineProperty(entry, "reportPathsCell", { value: reportPathsCell, enumerable: false });
+    // FR-PARSE-030: attribute each entry to its originating file so dual-read merge and
+    // diagnostics can report the true source (index vs history) rather than a hardcoded path.
+    // Non-enumerable so existing deep-equality assertions over completedWork are unaffected.
+    Object.defineProperty(entry, "sourceFile", { value: file.relativePath, enumerable: false });
     return entry;
   });
 }

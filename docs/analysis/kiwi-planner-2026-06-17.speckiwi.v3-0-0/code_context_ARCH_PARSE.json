@@ -1,0 +1,129 @@
+{
+  "FR-ARCH-006": {
+    "impl_files": [
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/adapter.ts",
+      "src/cli/command.ts",
+      "src/cli/commands/mutations.ts",
+      "src/cli/commands/read.ts",
+      "src/cli/options.ts"
+    ],
+    "test_file": "test/mcp/schemas.fr-arch-006.test.ts"
+  },
+  "REL-ARCH-002": {
+    "impl_files": [
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/tools/read-tools.ts",
+      "src/cli/command.ts",
+      "src/cli/commands/mutations.ts",
+      "src/cli/commands/read.ts"
+    ],
+    "test_file": "test/mcp/schemas.fr-arch-006.test.ts"
+  },
+  "DR-PARSE-001": {
+    "impl_files": [
+      "src/core/diagnostic.ts",
+      "src/core/diagnostic-registry.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/diagnostic-registry.test.ts"
+  },
+  "FR-PARSE-019": {
+    "impl_files": [
+      "src/core/parser/discover.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/parser/discover-steps-partition.test.ts"
+  },
+  "FR-PARSE-020": {
+    "impl_files": [
+      "src/core/parser/workspace-parser.ts",
+      "src/core/parser/discover.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/parser/workspace-records.test.ts"
+  },
+  "FR-PARSE-021": {
+    "impl_files": [
+      "src/core/types.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/core/types/requirement-record-origin.fr-parse-021.test.ts"
+  },
+  "FR-PARSE-022": {
+    "impl_files": [
+      "src/core/validator/rules.ts",
+      "src/core/validator/validate-workspace.ts",
+      "src/core/validator/rule-registry.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/validator/validation-rules.test.ts"
+  },
+  "FR-PARSE-023": {
+    "impl_files": [
+      "src/core/parser/discover.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/parser/index-parser.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/parser/discover-steps-partition.test.ts"
+  },
+  "FR-PARSE-024": {
+    "impl_files": [
+      "src/core/validator/rules.ts",
+      "src/core/validator/validate-workspace.ts",
+      "src/core/validator/rule-registry.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/validator/validation-rules.test.ts"
+  },
+  "FR-PARSE-025": {
+    "impl_files": [
+      "src/core/diagnostic-registry.ts",
+      "src/core/validator/rules.ts",
+      "src/core/validator/rule-registry.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/diagnostic-registry.test.ts"
+  },
+  "FR-PARSE-026": {
+    "impl_files": [
+      "src/core/parser/table.ts",
+      "src/core/parser/trace-parser.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/parser/parse-compatibility-notes.fr-parse-026.test.ts"
+  },
+  "FR-PARSE-027": {
+    "impl_files": [
+      "src/core/validator/rules.ts",
+      "src/core/validator/rule-registry.ts",
+      "src/core/diagnostic-registry.ts",
+      "src/core/parser/table.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/validator/validation-rules.test.ts"
+  },
+  "FR-PARSE-028": {
+    "impl_files": [
+      "src/core/parser/discover.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/parser/discover-steps-partition.test.ts"
+  },
+  "REL-PARSE-002": {
+    "impl_files": [
+      "src/core/validator/rules.ts",
+      "src/core/validator/validate-workspace.ts",
+      "src/core/query/records.ts",
+      "src/mcp/tools/read-tools.ts"
+    ],
+    "test_file": "test/core/validator/validation-rules.test.ts"
+  }
+}

@@ -1,0 +1,77 @@
+{
+ "immediate_fix": [
+  {
+   "id": "FND-001",
+   "rationale": "lint break, trivial type-import",
+   "estimated_complexity": "trivial",
+   "is_behavioral": false,
+   "tags": [
+    "regression",
+    "style"
+   ]
+  },
+  {
+   "id": "FND-002",
+   "rationale": "parseMarkdownTable widening regresses ~15 callers; gate behind option",
+   "estimated_complexity": "medium",
+   "is_behavioral": true,
+   "tags": [
+    "regression",
+    "bug",
+    "design"
+   ]
+  },
+  {
+   "id": "FND-005",
+   "rationale": "CWL dedup key omits scope",
+   "estimated_complexity": "trivial",
+   "is_behavioral": true,
+   "tags": [
+    "bug"
+   ]
+  },
+  {
+   "id": "FND-006",
+   "rationale": "stale comment",
+   "estimated_complexity": "trivial",
+   "is_behavioral": false,
+   "tags": [
+    "doc"
+   ]
+  },
+  {
+   "id": "FND-007",
+   "rationale": "dead toolKinds export",
+   "estimated_complexity": "trivial",
+   "is_behavioral": false,
+   "tags": [
+    "design"
+   ]
+  },
+  {
+   "id": "FND-008",
+   "rationale": "stepName/isStepFile inconsistency edge",
+   "estimated_complexity": "small",
+   "is_behavioral": true,
+   "tags": [
+    "bug"
+   ]
+  }
+ ],
+ "discussion_needed": [
+  {
+   "id": "FND-003",
+   "rationale": "forwarding mirror not derived from handlers; needs round-trip test design",
+   "questions_for_user": [
+    "add per-tool round-trip forwarding test?"
+   ]
+  }
+ ],
+ "rejected": [
+  {
+   "id": "FND-004",
+   "rationale": "check_ac --all is CLI-only shaping; vacuous-pass but not a runtime bug; defer as residual",
+   "rejection_category": "out_of_scope"
+  }
+ ]
+}

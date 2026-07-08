@@ -238,7 +238,7 @@ describe("MCP mutation tools and structured errors", () => {
       })
     ).toMatchObject({ ok: false, error: { code: "MCP_WORKSPACE_ROOT_UNSUPPORTED" } });
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target | v2.3.0 |");
-    expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | MCP completed work row. |");
+    expect(await readFile(path.join(root, "docs", "spec", "91.completed-work-log.md"), "utf8")).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | MCP completed work row. |");
     expect(
       await server.callTool("add_requirement", {
         type: "functional",

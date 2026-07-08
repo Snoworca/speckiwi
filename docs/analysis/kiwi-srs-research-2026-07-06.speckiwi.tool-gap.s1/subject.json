@@ -1,0 +1,24 @@
+{
+  "type": "research_question",
+  "question": "SpecKiwi v2.3.0 완료 시점 기준, 실사용 관점에서 더 필요한 기능 또는 도구 갭 심층 조사 (CLI/MCP/진단/워크플로/스킬 전반)",
+  "intent": "v2.3.0(도구 개선 릴리스, 54 REQ verified) 이후 다음 타깃 후보가 될 기능/도구 갭을 실사용 관점에서 식별하고 우선순위 근거를 수집",
+  "keywords": ["CLI", "MCP", "diagnostics", "workflow JSONL", "mutation lock", "collision repair", "completed-work log", "kiwi skills", "doctor", "work-order", "agent workflow"],
+  "context_facts": {
+    "active_target": "v2.3.0",
+    "target_goal": "Tool improvement release. Focus v2.3.0 work on making SpecKiwi tools more reliable, ergonomic, diagnosable, and safer in real project use before expanding non-tool surface area.",
+    "target_state": "54 verified + 18 discarded = 72 REQ, blocked 0, missingEvidence 0 — 사실상 마감 단계",
+    "known_prior_research": [
+      "docs/research/09.mcp-cli-tool-abandonment-research.md (10-axis tool abandonment)",
+      "docs/research/230.md",
+      "docs/research/11.v2.3.0-tooling-code-improvement-plan.md"
+    ],
+    "working_tree_signals": [
+      "docs/plans/2026-06-17.speckiwi.v3-0-0.plan.md 등 v3.0.0 계획 아티팩트가 working tree에 존재 (untracked)",
+      "docs/next/ 에 v3.0.0 handoff/next-steps 문서 존재",
+      ".kiwi/ 파이프라인 상태 존재",
+      "docs/rule/SRS-MD-Rules-v3.0.0.md (untracked)"
+    ],
+    "distinction_required": "발견 갭은 (a) v3.0.0 계획에 이미 포함된 것 vs (b) net-new 갭으로 구분해야 함"
+  },
+  "candidate_sources": ["repo code (src/)", "docs/spec SRS", "docs/research", "docs/next", ".kiwi + kiwi/ artifacts", ".agents/skills", "external: requirements-tooling best practices"]
+}

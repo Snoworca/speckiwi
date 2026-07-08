@@ -1524,6 +1524,7 @@ node scripts/spec/validate-spec.js
 | `SRS-W022` | warning | Legacy volatile stability |
 | `SRS-W023` | warning | Draft requirement in active or released target |
 | `SRS-W024` | warning | Malformed Completed Work Log report path |
+| `SRS-W025` | warning | Completed Work Log duplicate across index and history |
 | `SRS-W040` | warning | Target Goal block conflict between index and appendix |
 | `SRS-W041` | warning | Completed Work Log duplicate source |
 | `SRS-W050` | warning | Workflow artifact parse warning |

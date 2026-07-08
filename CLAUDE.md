@@ -4,7 +4,7 @@ This repository stores requirements as Markdown SRS documents under `docs/spec/`
 
 Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback when MCP is unavailable. Never bypass SRS-MD rules, create an alternate requirements source of truth, or edit generated JSON as canonical requirements.
 
-For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v1.0.0.md](docs/rule/SRS-MD-Rules-v1.0.0.md).
+For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v3.0.0.md](docs/rule/SRS-MD-Rules-v3.0.0.md).
 
 ## Current Project Target
 
@@ -70,6 +70,6 @@ Merge-time duplicate Requirement ID repair workflow:
 7. When implemented runtime CLI or MCP repair tooling is available, do not hand-edit Requirement IDs. If tooling is unavailable and the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.
 8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json`, and `speckiwi links check --json` or MCP equivalents. Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.
 
-Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
+The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
 
 <!-- /SpecKiwi SRS 워크플로 -->

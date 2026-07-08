@@ -1,0 +1,9 @@
+{
+ "set-supersede core pairs supersede metadata with trace": "FR-NODE-052",
+ "speckiwi set-supersede command": "IR-CLI-052",
+ "register-scopes core registers unregistered scope documents": "FR-NODE-053",
+ "speckiwi register-scopes command": "IR-CLI-053",
+ "scaffold-scope core creates and registers a new scope": "FR-NODE-054",
+ "speckiwi scaffold-scope command": "IR-CLI-054",
+ "speckiwi stale command for aging requirements": "IR-CLI-055"
+}

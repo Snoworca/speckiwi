@@ -1,0 +1,18 @@
+{
+ "iter": 1,
+ "fixes": [
+  "FND-001",
+  "FND-002",
+  "FND-005",
+  "FND-006",
+  "FND-007",
+  "FND-008"
+ ],
+ "regression": {
+  "passed": 428,
+  "failed": 6,
+  "new_failures": 0
+ },
+ "tsc": "pass",
+ "eslint": "pass"
+}

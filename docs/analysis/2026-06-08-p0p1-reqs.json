@@ -1,0 +1,568 @@
+{
+ "register_new": [
+  {
+   "type": "functional",
+   "scope": "ARCH",
+   "title": "ToolSpec command metadata registry as single source of truth",
+   "statement": "SpecKiwi MUST define every command in a single ToolSpec metadata registry whose entries carry cliName, mcpName, kind, args, options, coreFn, and resultExitMap, and MUST derive the CLI command registration, the MCP zod input schema, the MCP tool-name list, the MCP read-only predicate, and the MCP tool-kind table from that one registry rather than from separately maintained declarations.",
+   "ac": [
+    "Each ToolSpec entry declares cliName, mcpName, kind, args, options, coreFn, and resultExitMap fields, and the kind field is required for every entry.",
+    "Each ToolSpec option entry declares flag, dest, zod, repeatable, encoding, and oneOfGroup descriptors.",
+    "The MCP zod input schema object (currently server.ts toolSchemas), the MCP tool-name list (currently schemas.ts toolNames), and the read-only tool predicate (currently server.ts isReadOnlyTool) are produced by rendering the ToolSpec registry, not by independently authored literals.",
+    "The CLI command tree registers exactly the set of commands whose ToolSpec entries declare a cliName, with the same flag and dest descriptors the registry declares.",
+    "An automated test asserts that the count and names of CLI-registered commands, MCP toolNames entries, MCP toolSchemas keys, and MCP toolKinds keys are each derived from the ToolSpec registry and match it."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/mcp/schemas.ts:1|addition_site",
+   "depends_on": [
+    "FR-ARCH-005"
+   ],
+   "guard_notes": "다음 free id = FR-ARCH-006. ToolSpec kind 필드는 bulk-mutation 거버넌스 판별자(FR-ARCH-005 확장): retarget류 entry 는 kind=req-scoped 로 선언해 status 와 active-target 이 인자 타입에서 구조적으로 배제되며, bulk-finalize 금지를 CLAUDE.md 텍스트가 아니라 schema 계층에서 강제한다. toolNames/toolSchemas/toolKinds/isReadOnlyTool 4-렌더러를 단일 registry 에서 파생해 §30.3 single-id 및 read/write 분리 불변(FR-ARCH-003)을 per-tool 예외 없이 보존한다. registry 는 메타데이터 전용이며 대체 요구사항 SSOT 가 되어서는 안 된다. Stability=draft 로 등록; 구현 전 feasibility/사인오프 필요. 라이브 드리프트 확인됨: schemas.ts:1-16 toolNames=14, update_stability/append_section_note/set_target_goal 누락."
+  },
+  {
+   "type": "reliability",
+   "scope": "ARCH",
+   "title": "Zero-drift enumerate and handler-forwarding contract over the ToolSpec registry",
+   "statement": "SpecKiwi MUST enforce a zero-drift contract in which every ToolSpec entry is present in the CLI registration, the MCP toolSchemas keys, the MCP toolNames list, and the MCP toolKinds table, and in which each MCP mutation handler forwards every declared option dest to its core function, so that no command surface and no input field is silently dropped, and the enumeration test MUST treat the ToolSpec registry as the only authority rather than hardcoding an expected tool list.",
+   "ac": [
+    "An automated enumeration test fails when any ToolSpec entry is absent from CLI registration, from MCP toolSchemas keys, from MCP toolNames, or from MCP toolKinds, reporting the specific missing surface.",
+    "The test detects the current drift in which update_stability, append_section_note, and set_target_goal exist in toolSchemas and as registered MCP tools but are absent from toolNames in schemas.ts.",
+    "An automated test asserts that each MCP mutation handler passes every dest declared by its ToolSpec option set to its core function, so that an option declared in the registry but not forwarded by the handler fails the test.",
+    "The forwarding test covers the notes and dryRun dests for add_trace_link and add_verification_evidence, reproducing the FR-MCP-020 and FR-MCP-029 silently-dropped-field defect class and asserting it cannot recur.",
+    "When a new ToolSpec entry is added without a corresponding CLI command, toolSchemas key, toolNames entry, toolKinds entry, or handler dest forwarding, at least one enumeration or forwarding test fails, and the test does not hardcode the expected tool list."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/mcp/tools/mutation-tools.ts:65|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "FR-ARCH-005",
+    "FR-MCP-013"
+   ],
+   "guard_notes": "다음 free id = REL-ARCH-002 (현재 REL-ARCH-001 만 존재). 이 contract 는 FR-MCP-020/029 silently-drop class(mutation-tools.ts:65,79) 와 toolNames-vs-toolSchemas 드리프트(schemas.ts:1-16=14 vs server.ts 16개)의 영구 회귀 가드다. 이 REQ 가 MCP 드래프트의 'MCP surface derived from SSOT' + 'MCP-CLI parity gate' 2건을 흡수한다 — 동일 enumerate 계약을 3중 저작하지 않기 위해 ARCH 단일 소유. enumeration test 는 registry 를 유일 권위로 취급하고 expected tool list 를 하드코딩하면 4번째 드리프트원이 되므로 금지. kind 기반 id-arity(FR-ARCH-005)와 read/write 분리(FR-ARCH-003)를 완화하지 않는다. FR-MCP-013(verified) 은 lineage 기록용 depends_on 이며 in-place 수정 아님. Stability=draft. TDD: toolNames 가 3개 누락임을 단언하는 실패 테스트를 먼저 작성."
+  },
+  {
+   "type": "reliability",
+   "scope": "PARSE",
+   "title": "Diagnostic dedup single-source read envelope fix",
+   "statement": "The read-side diagnostic aggregation MUST expose each structural and parser diagnostic exactly once by treating the validation pass output as the single source that already includes workspace.diagnostics, instead of concatenating workspace.diagnostics a second time in readDiagnostics, fixing the double-count at exactly one seam without dropping any diagnostic code.",
+   "ac": [
+    "Validating a workspace whose only diagnostics are structural (for example SRS-E013 Target Map missing and SRS-E014 Scope Map missing) yields diagnosticsSummary.byCode value of exactly 1 for each such structural code through the CLI validate command.",
+    "The MCP validate_spec summary.byCode reports exactly 1 occurrence for each structural diagnostic present once in workspace.diagnostics.",
+    "For any workspace, the count of each diagnostic code in the read envelope equals the count produced by a single validation pass and never doubles codes originating from workspace.diagnostics.",
+    "A failing automated test asserting the no-double-count invariant is added and passes after the fix, and was red before the fix.",
+    "The CLI validate, MCP validate_spec, and MCP resource read paths all return identical de-duplicated diagnostic counts for the same workspace, with the same set of diagnostic codes emitted as before the fix."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/core/validator/rules.ts:107|addition_site",
+   "depends_on": [
+    "FR-PARSE-009",
+    "FR-PARSE-013"
+   ],
+   "guard_notes": "다음 free id = REL-PARSE-002 (또는 FR-PARSE-032). 이 REQ 가 PARSE/CLI/NODE 3개 드래프트에 중복 등장한 single-count 항목의 단일 canonical 본이다(중복 제거). 버그 확인됨: rules.ts:107 이 [...workspace.diagnostics] 로 재시드 + readDiagnostics(read.ts:25, read-tools.ts:17, resources.ts:23)가 다시 prepend → 구조 진단이 정확히 2배 카운트. 단일 seam 에서만 수정(rules.ts:107 재시드 제거 OR 3개 readDiagnostics prepend 제거), 둘 다 건드려 진단을 누락시키지 말 것. 진단 코드 집합은 불변, 다중도(multiplicity)만 변경. status/active-target mutation 없음. TDD red-first 의무. 기준선 test/core/validator/validation-rules.test.ts. Stability=draft."
+  },
+  {
+   "type": "data",
+   "scope": "PARSE",
+   "title": "DiagnosticDefinition remediation and docsAnchor fields with runtime registry join and full population",
+   "statement": "DiagnosticDefinition MUST carry optional remediation and docsAnchor fields, every entry in the diagnostic registry MUST provide a non-empty remediation string, and the runtime diagnostic factory MUST join the registry definition so each emitted Diagnostic exposes title and sourceRule resolved from the registry by code, while existing registry entries and runtime Diagnostic consumers keep type-checking unchanged.",
+   "ac": [
+    "DiagnosticDefinition declares optional remediation and docsAnchor string fields and existing registry entries type-check whether or not they supply docsAnchor.",
+    "Every entry in DIAGNOSTIC_DEFINITIONS provides a non-empty trimmed remediation string, verified by an enumeration test over getDiagnosticDefinition for every registered code.",
+    "The runtime Diagnostic shape exposes title and sourceRule populated from the registry definition resolved by the diagnostic code.",
+    "An emitted diagnostic whose code has a remediation in the registry exposes that remediation text on the runtime diagnostic, and the diagnostic factory throws for an unknown code so title and sourceRule are always registry-backed and never invented.",
+    "A failing automated test asserting title and sourceRule are joined onto emitted diagnostics is added, was red before implementation, and passes after."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/core/diagnostic.ts:14|addition_site",
+   "depends_on": [
+    "FR-PARSE-013",
+    "NEW:Diagnostic dedup single-source read envelope fix"
+   ],
+   "guard_notes": "다음 free id = FR-PARSE-032/033. 충돌 조정: PARSE 드래프트(optional remediation+docsAnchor+registry join), CLI 드래프트(optional remediation only), NODE 드래프트(required remediation + 61개 전수 채움)가 충돌했다 → 단일 REQ 로 통합. 타입 필드는 optional(기존 61개 entry 와 런타임 소비자 backward-compat 유지), '모든 entry 가 non-empty remediation 을 갖는다'는 데이터-채움 의무는 별도 NODE 데이터 REQ 가 아니라 이 REQ 의 AC-2 로 흡수(원자적 채움이라야 type-check 안전). title/sourceRule 은 DIAGNOSTIC_DEFINITIONS 에서만 lookup(getDiagnosticDefinition), call site 손저작 금지(FR-PARSE-013 SSOT 보존). diagnostic-registry.ts 61개 entry 가 대상. src/core/skills/types.ts:15 의 무관한 remediation 과 혼동 금지. dedup REQ 에 의존(조인 필드가 summary 에서 이중 카운트되지 않도록). Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "validate grouped human renderer with file and code grouping",
+   "statement": "The speckiwi validate command prints a grouped human-readable diagnostics report that groups diagnostics by file and then by code, shows each diagnostic as file:line plus code plus severity plus message plus sourceRule, emits a header counting N errors and M warnings across K files, and labels diagnostics that have no line as file with a no-line marker, replacing the JSON.stringify human-output fallback for validate output only.",
+   "ac": [
+    "speckiwi validate without --json prints a header line stating the number of errors, the number of warnings, and the number of distinct files with diagnostics.",
+    "Each diagnostic line includes the file path, the line number when present, the diagnostic code, the severity, the message, and the sourceRule from the diagnostic registry.",
+    "Diagnostics are grouped first by file path and then by diagnostic code within each file group.",
+    "A diagnostic that has no line number is rendered with an explicit no-line marker for its file instead of an empty or zero line value.",
+    "When there are zero diagnostics the command prints a clean-result header indicating zero errors and zero warnings rather than a raw JSON dump."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/core/format/text.ts:25|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "IR-CLI-004"
+   ],
+   "guard_notes": "다음 free id = IR-CLI-033 부터. JSON.stringify human-output fallback(src/core/format/text.ts:25 formatHumanOutput)을 validate 출력에 한해 대체; --json shape 불변. 읽기 전용, mutation 없음, 거버넌스 위험 없음. sourceRule 은 getDiagnosticDefinition 으로 registry 에서 읽음. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "validate severity only and ignore filters with exit-code-from-unfiltered contract",
+   "statement": "The speckiwi validate command supports a --severity filter and repeatable --only and --ignore code filters that affect which diagnostics are displayed, while the process exit code is computed from the unfiltered error set so that an --ignore filter that hides an error diagnostic cannot turn a failing validation into a zero exit code.",
+   "ac": [
+    "speckiwi validate --severity error displays only error-severity diagnostics in human output.",
+    "speckiwi validate --only <code> restricts displayed diagnostics to the listed codes and --ignore <code> removes the listed codes from display.",
+    "When an error diagnostic exists but is hidden by --ignore or --severity, the command still exits with code 1.",
+    "When only warnings exist and --fail-on-warning is not set, the command exits with code 0 regardless of display filters.",
+    "An automated test asserts that hiding an error via --ignore does not change the exit code from 1 to 0."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/cli/commands/read.ts:55|addition_site",
+   "depends_on": [
+    "NEW:validate grouped human renderer with file and code grouping",
+    "IR-CLI-018"
+   ],
+   "guard_notes": "exit code 는 splitDiagnostics(unfiltered).errors(read.ts:63)에서 display 필터 적용 전에 산출 → IR-CLI-018 exit 1 계약 보존. 필터는 display-only. 읽기 전용. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "explain command and validate --explain for diagnostic codes",
+   "statement": "SpecKiwi provides a speckiwi explain <code> command and a speckiwi validate --explain <code> option that print the diagnostic definition for the given code including its title, severity, message template, sourceRule, since version, and remediation when present, reject an unknown code with a non-zero exit code, and support --json to emit the definition as a machine-readable object.",
+   "ac": [
+    "speckiwi explain <code> prints the title, severity, messageTemplate, sourceRule, and since fields for a known diagnostic code.",
+    "speckiwi explain <code> includes the remediation text when the diagnostic definition provides one and omits it cleanly when absent.",
+    "speckiwi validate --explain <code> prints the same diagnostic definition fields as the explain command.",
+    "speckiwi explain with an unknown code exits with a non-zero exit code and prints a not-found message instead of throwing an unhandled error.",
+    "speckiwi explain supports --json and emits the diagnostic definition as a machine-readable object."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/cli/commands/read.ts:53|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:DiagnosticDefinition remediation and docsAnchor fields with runtime registry join and full population"
+   ],
+   "guard_notes": "읽기 전용; DIAGNOSTIC_DEFINITIONS 를 getDiagnosticDefinition 으로 읽음. getDiagnosticDefinition 은 unknown code 에서 throw 하므로 명령은 catch 해 구조화된 not-found exit 로 매핑(uncaught throw 금지). remediation 표시는 PARSE remediation REQ 에 의존. mutation 없음. Stability=draft. (CLI 드래프트의 별도 'Diagnostic definition remediation field' 데이터 REQ 는 PARSE remediation REQ 로 흡수되어 등록하지 않음.)"
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "release-readiness coverage and rtm read commands with verified-gate banner",
+   "statement": "SpecKiwi exposes read-only CLI commands that surface the existing core release readiness, acceptance-criteria coverage, and traceability matrix computations for a target, defaulting to the Active Target, and prints a per-requirement verification-evidence gate warning banner whenever it lists requirements eligible for a verified transition.",
+   "ac": [
+    "speckiwi release-readiness prints the release readiness summary for a target including blocked, implemented-not-verified, missing-evidence, and stability blockers, defaulting to the Active Target when no target is given.",
+    "speckiwi coverage prints acceptance-criteria coverage gaps for verified requirements in the selected target.",
+    "speckiwi rtm prints a requirement-to-evidence traceability listing for the selected target.",
+    "Each command supports --json and emits a machine-readable object derived from the existing core release readiness module.",
+    "When output lists requirements that are candidates for a verified transition, a warning banner states that the verified transition requires per-requirement verification evidence and is not auto-applied."
+   ],
+   "priority": "P0",
+   "trace": "Code|src/core/workflow/release-readiness.ts:245|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "IR-CLI-015"
+   ],
+   "guard_notes": "기존 core src/core/workflow/release-readiness.ts(14 exports, CLI/MCP importer 0건 확인)를 읽기 전용 명령으로 노출. 어떤 REQ 도 verified 로 전이시키지 않음; gate banner 는 자문용이고 per-REQ evidence 가 SSOT 로 남는다 — CLAUDE.md bulk-finalize 금지 보존. summarizeReleaseReadiness/collectAcCoverageGaps/collectTraceabilityCoverage 재사용. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "search command over requirement fields",
+   "statement": "SpecKiwi provides a speckiwi search <query> command with a --field selector for requirement, ac, rationale, notes, title, or all that returns matching requirements, supports the standard list filters, and supports --json output.",
+   "ac": [
+    "speckiwi search <query> --field title returns requirements whose title matches the query.",
+    "speckiwi search <query> --field all searches requirement statement, acceptance criteria, rationale, notes, and title fields.",
+    "The search command honors the standard --target, --status, --scope, and --type filters in combination with the query.",
+    "speckiwi search --json emits a machine-readable array of matching requirement records.",
+    "An unsupported --field value is rejected with a usage error and a non-zero exit code."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/read.ts:53|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:full-text search core query over requirement records",
+    "IR-CLI-006"
+   ],
+   "guard_notes": "읽기 전용 query 명령; listRequirements 필터 plumbing(parseFilter) + 신규 search core 재사용. mutation 없음. --field enum 은 parse-time 검증해 잘못된 값에 exit 2(IR-CLI-018 일관). search 는 사용자 결정으로 P1 에 포함. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "retarget command with dry-run default and per-item skip reasons",
+   "statement": "SpecKiwi provides a speckiwi retarget command that moves requirements selected by --from and --to with optional --scope, --status, --type, and --id filters under a required --reason, defaults to dry-run preview, includes verified requirements by default with an explicit --exclude opt-out, refuses to move into a target that is not registered in the Target Map, and reports a per-item skipReason for items it does not move.",
+   "ac": [
+    "speckiwi retarget --from <a> --to <b> --reason <text> previews the set of requirements whose target would change without writing unless --apply is given.",
+    "The command includes verified requirements in the move set by default and a documented --exclude option removes only the listed ids.",
+    "When --to names a target that is not present in the Target Map, the command refuses the operation and changes no files.",
+    "The preview reports each candidate with a per-item skipReason such as target-not-registered or frozen-needs-change-note for items it will not move.",
+    "When a moved requirement is frozen or falls under the frozen change-control rule, the supplied reason is recorded as a Change Notes row consistent with SRS-E028 governance."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:1|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:retarget core mutation with per-item loop dry-run and req-scoped schema",
+    "IR-CLI-008"
+   ],
+   "guard_notes": "거버넌스-크리티컬 bulk 도구. 사용자 결정대로 verified REQ 기본 포함(--exclude opt-out), kind=req-scoped 로 status/active-target 이 인자 타입에서 구조적 배제 → bulk-finalize 불가. 기본 dry-run + --apply opt-in. frozen/§16.5 이동은 reason→Change Notes(SRS-E028). retarget 은 REQ ID 를 변경하지 않음(Target 은 메타데이터). Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "update-field command with id-regenerating type and scope migration guard",
+   "statement": "SpecKiwi provides a speckiwi update-field <id> --field <field> --value <value> command that edits priority, risk, title, target, verification-method, type, or scope on a single requirement, and when the edited field is type or scope it regenerates the requirement ID via the deterministic ID generator under a dry-run plus sign-off migration guard and rewrites inbound trace references rather than mutating the ID prefix manually.",
+   "ac": [
+    "speckiwi update-field <id> --field priority --value <p> updates only the priority metadata cell for that requirement.",
+    "The command accepts field values priority, risk, title, target, verification-method, type, and scope and rejects any other field name with a usage error.",
+    "Editing field type or scope regenerates the requirement ID using the deterministic next-ID generator so the new ID matches the prefix-scope-NNN pattern.",
+    "A type or scope edit defaults to dry-run preview and requires an explicit apply plus confirmation flag before any file is written.",
+    "An automated test asserts that a type or scope edit produces a new non-colliding ID and updates inbound trace references to the old ID."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:1|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:update-field core mutation for metadata fields with ID-prefix migration for type and scope"
+   ],
+   "guard_notes": "사용자 결정으로 type/scope 편집 허용하되 generateNextRequirementId 재생성 + dry-run + 사인오프로만 → 수동 ID 변경 아님(ID 재생성=마이그레이션). type/scope 편집은 inbound Trace Links 를 rewrite 해 SRS-E031 broken-trace 방지 의무. kind=req-scoped, single id. priority enum=high|medium|low|critical|optional; risk=low|medium|high|critical. status 는 편집 불가(finalize 불가). Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "update-statement CLI command",
+   "statement": "SpecKiwi provides a speckiwi update-statement <id> --text <text> command that replaces a single requirement statement body by delegating to the core update_requirement_statement mutation, supporting --dry-run and --json and leaving the Acceptance Criteria and other sections unchanged.",
+   "ac": [
+    "speckiwi update-statement <id> --text <text> replaces the requirement statement body of the targeted requirement.",
+    "The command leaves the Acceptance Criteria section and Trace Links section of the requirement unchanged.",
+    "speckiwi update-statement --dry-run prints a patch preview and writes no file.",
+    "speckiwi update-statement --json emits the mutation result envelope consistent with other mutation commands."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:1|addition_site",
+   "depends_on": [
+    "FR-NODE-025",
+    "NEW:ToolSpec command metadata registry as single source of truth"
+   ],
+   "guard_notes": "FR-NODE-025 core mutation 의 CLI 표면. kind=req-scoped, single id. core update_requirement_statement 에 위임; range helper 재구현 안 함. ID 변경 없음. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "edit-ac CLI command",
+   "statement": "SpecKiwi provides a speckiwi edit-ac <id> <acId> --text <text> command that edits the text of a single acceptance criterion by delegating to the core edit_acceptance_criteria mutation, supporting --dry-run and --json and leaving the checked state and other acceptance criteria unchanged.",
+   "ac": [
+    "speckiwi edit-ac <id> <acId> --text <text> updates the text of the targeted acceptance criterion.",
+    "The command leaves the checked or unchecked state of the targeted criterion and all other criteria unchanged.",
+    "speckiwi edit-ac --dry-run prints a patch preview and writes no file.",
+    "speckiwi edit-ac --json emits the mutation result envelope consistent with other mutation commands."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:184|addition_site",
+   "depends_on": [
+    "FR-NODE-026",
+    "NEW:ToolSpec command metadata registry as single source of truth"
+   ],
+   "guard_notes": "FR-NODE-026 core mutation 의 CLI 표면. kind=req-scoped, single id. core edit_acceptance_criteria 에 위임; AC checked state 변경 금지(그 경로는 check-ac/uncheck-ac 유지). ID 변경 없음. Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "add-related-doc and add-change-note commands",
+   "statement": "SpecKiwi provides a speckiwi add-related-doc <id> --link <link> command that appends a Related Docs entry to a requirement and a speckiwi add-change-note <id> --change <change> --reason <reason> command that appends a Change Notes row to a requirement, both supporting --dry-run and --json.",
+   "ac": [
+    "speckiwi add-related-doc <id> --link <link> appends the link to the Related Docs of the targeted requirement without altering other sections.",
+    "speckiwi add-change-note <id> --change <change> --reason <reason> appends a dated Change Notes row to the targeted requirement.",
+    "Both commands support --dry-run and print a patch preview without writing a file.",
+    "Both commands support --json and emit the mutation result envelope consistent with other mutation commands."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:184|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:add-related-doc and add-change-note core mutations for structural metadata"
+   ],
+   "guard_notes": "kind=req-scoped, single id. add-change-note 는 auto date; reason cell 은 Completed Work/table-cell escaping 규칙으로 pipe 문자 회피. ID 변경 없음. Related Docs local link 누락 시 SRS-W003(허용되는 warning). Stability=draft."
+  },
+  {
+   "type": "interface",
+   "scope": "CLI",
+   "title": "common --input-json stdin and --help --json for all mutation commands",
+   "statement": "All SpecKiwi mutation commands accept a common --input-json option that reads the full argument object as a JSON string or from stdin, and all commands support --help --json to emit a machine-readable description of the command name, kind, and parameters derived from the ToolSpec registry.",
+   "ac": [
+    "Every mutation command accepts --input-json <json> and parses the object as its full argument set equivalently to discrete flags.",
+    "When --input-json is given the value - or omitted with piped input, the command reads the JSON object from stdin.",
+    "Discrete flags and --input-json for the same command produce identical mutation results for equivalent inputs.",
+    "speckiwi <command> --help --json prints a machine-readable object containing the command name, its kind, and its parameter list sourced from the ToolSpec registry.",
+    "An automated test asserts --input-json and equivalent discrete flags yield the same patch for at least one mutation command."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/cli/commands/mutations.ts:68|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth"
+   ],
+   "guard_notes": "--input-json 은 동일 ToolSpec/zod schema 로 파싱되어 req-scoped id-arity(id 배열 불가)를 균일 강제 → bulk-mutation 우회 불가. --help --json 은 kind 를 registry 에서 읽어 FR-ARCH-005 가시성 강화. 기존 per-command mutation 외 신규 write 의미 없음. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "NODE",
+   "title": "retarget core mutation with per-item loop dry-run and req-scoped schema",
+   "statement": "The core layer provides a retarget mutation that reassigns the Target metadata of a caller-supplied set of requirement ids to a single destination target through a per-item loop with default dry-run, where the input type structurally excludes status and active-target fields so the mutation cannot finalize requirements or change the Active Target.",
+   "ac": [
+    "The retarget input type has no status field and no active-target field, so a caller cannot pass either through the public mutation contract.",
+    "retarget defaults to dry-run and returns a per-item plan listing each requirement id with either a planned Target rewrite or a skipReason before any file is written.",
+    "A requirement whose destination target is not present in the index Target Map yields a per-item skipReason of target-not-registered and is not rewritten.",
+    "A requirement whose block is frozen or otherwise gated by SRS section 16.5 yields a per-item skipReason of frozen-needs-change-note unless a reason is supplied, and when supplied the reason is appended to that requirements Change Notes.",
+    "By default retarget includes requirements whose status is verified, and an explicit exclude list removes only the listed ids from the rewrite set.",
+    "Only with dry-run disabled does retarget write Target metadata rewrites, and it preserves each files existing newline style."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/core/mutation/set-active-target.ts:31|addition_site",
+   "depends_on": [
+    "FR-NODE-002",
+    "FR-NODE-013",
+    "FR-NODE-014"
+   ],
+   "guard_notes": "다음 free id = FR-NODE-046 부터. 거버넌스-크리티컬 bulk path. bulk-finalize 는 schema 계층에서 금지: kind=req-scoped 입력 타입이 status/active-target 을 통째로 생략(런타임 검증 아닌 구조적 배제) → verified 전이도 Active Target 비우기도 불가. 기본 dry-run + per-item skipReason + reason→Change Notes(SRS-E028). verified REQ 기본 포함(--exclude opt-out, 사용자 결정). REQ ID 불변(Target 은 메타데이터). FR-NODE-013 stale-snapshot 가드 위에 구축. (NODE 드래프트가 remediation REQ 에 걸었던 depends_on 은 불필요해 제거 — retarget 은 remediation 데이터를 사용하지 않음.) Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "NODE",
+   "title": "update-field core mutation for metadata fields with ID-prefix migration for type and scope",
+   "statement": "The core layer provides an update-field mutation that edits a single requirement metadata field among priority, risk, title, target, and verification-method by line replacement, and additionally supports type and scope edits by regenerating the requirement ID prefix via generateNextRequirementId under a dry-run plus sign-off gate while rewriting inbound trace references, treating ID regeneration as migration rather than manual ID change.",
+   "ac": [
+    "Calling update-field with field=priority, risk, title, target, or verification-method rewrites only that one metadata line of the requirement and leaves all other lines unchanged.",
+    "Calling update-field with field=type or field=scope regenerates the requirement id using generateNextRequirementId so the new id prefix matches the new type and scope.",
+    "A type or scope edit defaults to dry-run and returns the old id, the generated new id, and the planned block move before any file is written.",
+    "A type or scope edit without an explicit sign-off flag returns ok=false and writes no file changes, and a confirmed edit rewrites inbound Trace Links references from the old id to the new id.",
+    "Calling update-field on an unknown requirement id returns ok=false with error.code=NOT_FOUND and writes no file changes."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/core/mutation/add-requirement.ts:28|addition_site",
+   "depends_on": [
+    "FR-NODE-002",
+    "FR-NODE-008",
+    "FR-NODE-013"
+   ],
+   "guard_notes": "Risk 도구 전면 허용(사용자 결정). type/scope 편집은 ID prefix 변경 → generateNextRequirementId(add-requirement.ts:28) 결정적 재생성으로 구현=마이그레이션, 수동 ID 편집 아님. dry-run+사인오프+stale-snapshot 가드(FR-NODE-013) 동반, inbound Trace Links rewrite 로 SRS-E031 방지. 단순 메타 필드(priority/risk/title/target/verification-method)는 single-line 교체로 ID 영향 없음. status 편집 불가 → finalize 불가. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "NODE",
+   "title": "add-related-doc and add-change-note core mutations for structural metadata",
+   "statement": "The core layer provides add-related-doc and add-change-note mutations that append a related document reference to a requirements Related Docs metadata and append a dated row to a requirements Change Notes table respectively, reusing the shared Markdown table cell safety helper and preserving newline style.",
+   "ac": [
+    "add-related-doc appends one document reference to the Related Docs metadata value of the targeted requirement and rewrites only that metadata line.",
+    "add-change-note appends exactly one row to the Change Notes table of the targeted requirement with date, change, and reason cells.",
+    "Both mutations reject pipe and newline characters in any supplied cell via the shared table cell safety helper and leave the target file unchanged on rejection.",
+    "Calling either mutation on an unknown requirement id returns ok=false with error.code=NOT_FOUND and writes no file changes.",
+    "A dry-run call for either mutation returns a patch summary and leaves the target file unchanged on disk."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/core/mutation/append-section-note.ts:41|addition_site",
+   "depends_on": [
+    "FR-NODE-008",
+    "FR-NODE-011"
+   ],
+   "guard_notes": "구조 메타 추가, per-requirement 전용. 단일 공유 table-cell 안전 정책(FR-NODE-011 assertSafeMarkdownTableCells) 재사용, 별도 정책 fork 금지. add-change-note 는 append 만 하고 기존 Change Notes 행을 rewrite 하지 않아 감사 이력 보존. Status/Active Target 변경 불가. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "NODE",
+   "title": "full-text search core query over requirement records",
+   "statement": "The core query layer provides a full-text search function that returns requirement records whose searchable text matches a caller-supplied query string, scanning at least the requirement statement, title, and acceptance criteria text, and is implemented as a new query module distinct from the supersedes trace-search helper which is not a text search engine.",
+   "ac": [
+    "Searching for a substring that appears in a requirements statement text returns that requirement in the results.",
+    "Searching for a substring that appears only in a requirements acceptance criteria text returns that requirement in the results.",
+    "Searching for a string that appears in no requirement returns an empty result set.",
+    "The search is implemented in a new src/core/query module and does not reuse src/core/mutation/trace-search.ts, which only resolves incoming supersedes trace rows.",
+    "Search results are deterministically ordered by requirement id."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/core/query/records.ts:159|addition_site",
+   "depends_on": [
+    "FR-NODE-001"
+   ],
+   "guard_notes": "읽기 전용 query, mutation 표면 없음, 거버넌스 위험 없음. 확인됨: src/core/query/ 에 search 모듈 없음(completed-work, filter, links, lookup, records, summary 만 존재), trace-search.ts(findIncomingTraceRows)는 supersedes 관계 resolver 일 뿐 content searcher 아님 → 신규 query 모듈 필요. query/records.ts 의 parsed RequirementRecord 필드 재사용. CLI search 및 MCP search_requirements 가 이 core 를 공유. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP retarget_requirements bulk mutation tool",
+   "statement": "SpecKiwi MCP server MUST register a retarget_requirements tool that moves a selected set of Requirement IDs to a new Target through the shared retarget core, defaulting to a dry-run preview, returning a per-item result list that includes a skipReason for each unmoved requirement, and whose zod schema accepts neither a status field nor an active-target field.",
+   "ac": [
+    "retarget_requirements is a registered MCP tool whose zod schema accepts an array of Requirement IDs and a destination target.",
+    "When dryRun is omitted the tool performs a preview and writes no file.",
+    "The result contains one entry per input Requirement ID with either a moved flag or a skipReason value.",
+    "A requirement whose target is not registered yields a skipReason of target-not-registered and is not moved.",
+    "The retarget_requirements schema does not accept any status field or any active-target field, and a frozen or section-16-5 requirement that is moved records the supplied reason into its Change Notes."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/mutation-tools.ts:25|addition_site",
+   "depends_on": [
+    "FR-ARCH-005",
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:retarget core mutation with per-item loop dry-run and req-scoped schema"
+   ],
+   "guard_notes": "다음 free id = FR-MCP-031 부터. bulk-by-item 이지만 거버넌스 안전: kind=req-scoped 가 Requirement IDs 만 받고 status/active-target 을 구조적 배제 → bulk-finalize 불가. 기본 dryRun + per-item skipReason + frozen reason→Change Notes(SRS-E028). verified REQ 기본 포함(explicit exclude opt-out). MCP 드래프트의 'MCP surface derived from SSOT' + 'MCP-CLI parity gate' 2건은 ARCH zero-drift contract 로 흡수되어 등록 안 함. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP update_requirement_field mutation tool with id-regeneration guard",
+   "statement": "SpecKiwi MCP server MUST register an update_requirement_field tool that edits a single editable metadata field of one Requirement through the shared field-update core, and when the edited field is type or scope it MUST require a dry-run preview and an explicit signoff because the change regenerates the Requirement ID via the prefix-scope-NNN id generator.",
+   "ac": [
+    "update_requirement_field is a registered MCP tool that accepts exactly one Requirement ID and one field name.",
+    "The accepted field set includes priority, risk, title, target, verificationMethod, type, and scope.",
+    "A type or scope edit without an explicit signoff flag returns a structured error and writes no file.",
+    "A confirmed type or scope edit regenerates the Requirement ID using the prefix-scope-NNN generator rather than accepting a caller-supplied id.",
+    "The update_requirement_field schema rejects an array of Requirement IDs at the schema layer."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/mutation-tools.ts:25|addition_site",
+   "depends_on": [
+    "FR-ARCH-005",
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:update-field core mutation for metadata fields with ID-prefix migration for type and scope"
+   ],
+   "guard_notes": "kind=req-scoped 로 single Requirement ID 만. type/scope 편집은 수동 ID 변경 아님: generateNextRequirementId 재생성 + dry-run + signoff → no-manual-ID-change 규칙 보존. status/stability/verification status 는 편집 집합에 없음 → 검증 거버넌스 분리. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP add_related_doc and add_change_note mutation tools",
+   "statement": "SpecKiwi MCP server MUST register an add_related_doc tool that appends a Related Docs reference to one Requirement and an add_change_note tool that appends a dated Change Notes row to one Requirement, each forwarding to its shared core mutation and each classified as a req-scoped tool.",
+   "ac": [
+    "add_related_doc is a registered MCP tool that accepts one Requirement ID and one document reference and appends it to the Related Docs field.",
+    "add_change_note is a registered MCP tool that accepts one Requirement ID and a note text and appends a dated row to the Change Notes table.",
+    "Both tools reject an array of Requirement IDs at the schema layer.",
+    "add_change_note prepends an ISO date to the appended Change Notes row.",
+    "Both tools are registered in src/mcp/tools/mutation-tools.ts and are absent from read-tools.ts."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/mutation-tools.ts:25|addition_site",
+   "depends_on": [
+    "FR-ARCH-005",
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "NEW:add-related-doc and add-change-note core mutations for structural metadata",
+    "FR-MCP-018"
+   ],
+   "guard_notes": "둘 다 kind=req-scoped. append-only 문서 mutation 으로 status/stability/AC checkmark/Verification Evidence 를 건드리면 안 됨(append_section_note deny-list 규율 FR-MCP-018 미러). add_change_note 는 retarget/field-edit 도구가 기록하는 감사 reason 채널. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP search_requirements read tool",
+   "statement": "SpecKiwi MCP server MUST register a read-only search_requirements tool that returns requirements matching a text query across requirement statements, titles, and Acceptance Criteria, using the same query core as the CLI search command and never mutating any file.",
+   "ac": [
+    "search_requirements is a registered MCP tool annotated read-only.",
+    "The tool accepts a query string and returns a list of matching requirement summaries.",
+    "A query that matches text inside a requirement statement returns that requirement.",
+    "A query that matches no requirement returns an empty result list rather than an error.",
+    "search_requirements does not appear in the mutation tool kinds map."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/read-tools.ts:20|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "FR-MCP-013",
+    "NEW:full-text search core query over requirement records"
+   ],
+   "guard_notes": "읽기 전용; registerReadTools 로 등록되어 readOnlyHint 를 가지며 toolKinds 에서 제외. CLI search 명령과 query core 공유 → ARCH zero-drift parity 계약이 이 도구를 커버. write 표면 없음. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP summarize_release_readiness read tool",
+   "statement": "SpecKiwi MCP server MUST register a read-only summarize_release_readiness tool that exposes the existing release-readiness core summary for a target, including counts of requirements by status and stability and the list of stability and verification blockers, without mutating any file.",
+   "ac": [
+    "summarize_release_readiness is a registered MCP tool annotated read-only.",
+    "The tool accepts an optional target and defaults to the Active Target when target is omitted.",
+    "The returned payload includes status counts and stability counts for the target.",
+    "The returned payload includes a list of blockers that prevent the target from being release-ready.",
+    "The tool delegates to the existing release-readiness core module rather than recomputing readiness inline."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/read-tools.ts:20|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "FR-MCP-013",
+    "FR-MCP-019"
+   ],
+   "guard_notes": "읽기 전용. CLI/MCP importer 0건인 release-readiness.ts core 를 노출해 dead-export gap 종료. Active Target 기본값은 get_active_target semantics 재사용. mutation path 없음 → CLI 대응 명령과의 read parity 만 거버넌스 제약. Stability=draft."
+  },
+  {
+   "type": "functional",
+   "scope": "MCP",
+   "title": "MCP explain_diagnostic read tool",
+   "statement": "SpecKiwi MCP server MUST register a read-only explain_diagnostic tool that returns the title, severity, and remediation guidance for a given SRS diagnostic code from the diagnostic registry, returning a structured error for an unknown code and never mutating any file.",
+   "ac": [
+    "explain_diagnostic is a registered MCP tool annotated read-only.",
+    "The tool accepts a diagnostic code and returns that code title and severity.",
+    "The tool returns remediation guidance text for a known diagnostic code.",
+    "An unknown diagnostic code yields a structured error rather than an empty success.",
+    "explain_diagnostic does not appear in the mutation tool kinds map."
+   ],
+   "priority": "P1",
+   "trace": "Code|src/mcp/tools/read-tools.ts:20|addition_site",
+   "depends_on": [
+    "NEW:ToolSpec command metadata registry as single source of truth",
+    "FR-MCP-013",
+    "NEW:DiagnosticDefinition remediation and docsAnchor fields with runtime registry join and full population"
+   ],
+   "guard_notes": "읽기 전용. DiagnosticDefinition remediation 필드(PARSE remediation REQ) 에 의존. diagnostic registry 순수 lookup, write 표면 없음. CLI explain 명령과의 read parity 만 거버넌스 제약. Stability=draft."
+  }
+ ],
+ "implement_existing": [
+  {
+   "id": "FR-NODE-019",
+   "title": "updateStatus verified-regression exit guard with explicit override",
+   "note": "NODE core. 현 update-status.ts 는 verified-MARK 가드(98-107)만 있고 discard-EXIT 가드 없음 — 신규 가드 필요 확인됨. discarded 전이를 verified/frozen/stable, 또는 verification evidence 있는 implemented 에서 MUTATION_DENIED 로 차단, reason+confirmDiscardVerified=true 명시 override 만 허용. reason→Change Notes 경로 기존 존재(update-status.ts:122). per-call override(bulk 아님). Status=planned/Stability=evolving/Target=v3.0.0 확인. TDD red-first(AC-5). CLI 표면 update-status 의 discard 가드도 이 core 위에 노출(별도 IR-CLI 불필요, 기존 IR-CLI-010 가 위임)."
+  },
+  {
+   "id": "FR-NODE-025",
+   "title": "update_requirement_statement mutation with new Requirement range helper",
+   "note": "NODE core. findSectionBodyRange(internal.ts:96-113)는 Rationale/Research/Implementation Notes 로 타입 제한 → Requirement-section 전용 신규 range helper 필요 확인됨. GFM table/code fence/AC 경계 비손상 가드. Status=planned/evolving/v3.0.0. 신규 CLI update-statement 와 MCP FR-MCP-023 가 이 core 에 의존. TDD red-first."
+  },
+  {
+   "id": "FR-NODE-026",
+   "title": "edit_acceptance_criteria mutation",
+   "note": "NODE core. check-ac.ts setAcceptanceCriteriaChecked 는 checkbox marker 만 flip(regex), AC text 미수정 → edit_acceptance_criteria 직교 확인됨. checked state 보존, 타 섹션 불변. Status=planned/evolving/v3.0.0. 신규 CLI edit-ac 와 MCP FR-MCP-023 가 이 core 에 의존. TDD red-first."
+  },
+  {
+   "id": "FR-MCP-023",
+   "title": "MCP registration of gap mutation tools statement and AC edit",
+   "note": "MCP 표면. update_requirement_statement + edit_acceptance_criteria 를 mutation-tools.ts 에 등록(read-tools.ts 아님), 각 zod schema 가 단일 Requirement ID 만 받고 배열 거부(kind=req-scoped). NODE core 는 FR-NODE-025/026 이 구현. Status=planned/evolving/v3.0.0 확인. MCP 드래프트의 중복 신규 REQ 대신 기존 planned REQ 를 implement-existing 으로 처리(중복 등록 방지)."
+  }
+ ],
+ "registration_order": [
+  "ToolSpec command metadata registry as single source of truth",
+  "Diagnostic dedup single-source read envelope fix",
+  "DiagnosticDefinition remediation and docsAnchor fields with runtime registry join and full population",
+  "Zero-drift enumerate and handler-forwarding contract over the ToolSpec registry",
+  "full-text search core query over requirement records",
+  "retarget core mutation with per-item loop dry-run and req-scoped schema",
+  "update-field core mutation for metadata fields with ID-prefix migration for type and scope",
+  "add-related-doc and add-change-note core mutations for structural metadata",
+  "validate grouped human renderer with file and code grouping",
+  "validate severity only and ignore filters with exit-code-from-unfiltered contract",
+  "explain command and validate --explain for diagnostic codes",
+  "release-readiness coverage and rtm read commands with verified-gate banner",
+  "search command over requirement fields",
+  "retarget command with dry-run default and per-item skip reasons",
+  "update-field command with id-regenerating type and scope migration guard",
+  "update-statement CLI command",
+  "edit-ac CLI command",
+  "add-related-doc and add-change-note commands",
+  "common --input-json stdin and --help --json for all mutation commands",
+  "MCP retarget_requirements bulk mutation tool",
+  "MCP update_requirement_field mutation tool with id-regeneration guard",
+  "MCP add_related_doc and add_change_note mutation tools",
+  "MCP search_requirements read tool",
+  "MCP summarize_release_readiness read tool",
+  "MCP explain_diagnostic read tool"
+ ],
+ "open_issues": [
+  "FR-MCP-013(Status=verified)을 enumerate 자동 게이트로 격상할지: 본 종합은 no-edit-verified-behavior 거버넌스를 지켜 ARCH REL-ARCH-002 를 신규 additive REQ 로 등록하고 depends_on 으로 lineage 만 기록. 사용자가 FR-MCP-013 in-place Change-Notes 확장을 원하면 verified-edit 게이트 명시 override 필요.",
+  "DiagnosticDefinition.docsAnchor 의 실사용처가 현재 명세에 없음(remediation 만 explain/grouped-validate 가 소비) — docsAnchor 를 이번 PARSE REQ 에 함께 추가할지, 또는 소비처가 생길 때까지 보류(YAGNI)할지 사용자 확인 필요. 현 종합본은 optional 필드로만 추가하고 채움 의무는 remediation 에만 부과.",
+  "update-status 의 discard 가드(FR-NODE-019) CLI 표면을 별도 IR-CLI REQ 로 신설하지 않고 기존 IR-CLI-010(update-status 명령)이 confirmDiscardVerified/reason 플래그를 노출하도록 위임 가정. 새 CLI REQ 가 필요하다는 판단이면 IR-CLI 1건 추가 등록 필요.",
+  "ARCH ToolSpec registry(FR-ARCH-006)는 25개 CLI 표면·MCP 표면 거의 전부의 depends_on 루트 — feasibility 미통과 시 P0/P1 전체가 draft 에 묶임. 등록 직후 ToolSpec feasibility 를 최우선 평가해 임계경로 차단 여부를 먼저 확정할 것.",
+  "retarget 의 frozen/§16.5 reason→Change Notes 기록이 add-change-note core 와 동일 append 경로를 공유해야 정책 분기가 안 생김 — retarget core(FR-NODE-046)와 add-change-note core 의 Change Notes append 헬퍼 공유 여부를 구현 전 확정 필요.",
+  "search core(scope=NODE)의 field 집합(requirement/ac/rationale/notes/title/all)이 CLI search --field enum 및 MCP search_requirements 노출 필드와 정확히 일치하는지 — 세 표면의 field 목록 SSOT 를 ToolSpec args 로 둘지 query core 상수로 둘지 결정 필요."
+ ]
+}

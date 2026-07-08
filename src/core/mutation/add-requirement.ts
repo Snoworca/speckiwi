@@ -8,7 +8,7 @@ import { summarizePatch } from "../patch/hunk-summary.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementType } from "../schema.js";
 import type { MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
-import { mutationFail } from "./guards.js";
+import { mutationFail, mutationOk } from "./guards.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
@@ -303,4 +303,78 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
     }
   }
   return generatedIdConflictFailure(id, path.relative(root.root, filePath).replace(/\\/g, "/"));
+}
+
+// FR-NODE-031 — promote_step_requirement mutation.
+//
+// Promotes a step-scoped requirement into a body scope, inserting the step's pre-minted
+// canonical Requirement ID verbatim (no auto-generation) after verifying the id is globally
+// unique against the reservation view (HEAD body records). The step block is copied
+// byte-for-byte so the promoted body requirement keeps the step's id, title, and content.
+
+export interface PromoteStepRequirementInput {
+  id: string;
+  fromStep: string;
+  toScope: string;
+  dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
+}
+
+export async function promoteStepRequirement(root: ProjectRoot, input: PromoteStepRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
+  return withSrsMutationLock(root, { operation: "promote_step_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => promoteStepRequirementUnlocked(root, input));
+}
+
+async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteStepRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
+  const workspace = await parseWorkspace(root);
+
+  // Reservation uniqueness: the pre-minted step id must not already exist in the body scope.
+  if (workspace.records.some((record) => record.id === input.id)) {
+    return mutationFail("MUTATION_DENIED", `Requirement ID already exists in the reservation view: ${input.id}`) as MutationResult<AddRequirementOutput>;
+  }
+
+  const stepRecord = (workspace.stepRecords ?? []).find((record) => record.id === input.id && record.stepName === input.fromStep);
+  if (!stepRecord) {
+    return mutationFail("NOT_FOUND", `Step requirement not found: ${input.id} in step ${input.fromStep}`) as MutationResult<AddRequirementOutput>;
+  }
+  if (!stepRecord.markdown) {
+    return mutationFail("MUTATION_DENIED", `Step requirement block is empty: ${input.id}`) as MutationResult<AddRequirementOutput>;
+  }
+
+  const scope = workspace.index.scopes.find((candidate) => candidate.prefix === input.toScope);
+  if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${input.toScope}`) as MutationResult<AddRequirementOutput>;
+  let filePath: string;
+  try {
+    filePath = await resolveScopeDocumentPath(root, scope.document);
+  } catch (error) {
+    return mutationFail("MUTATION_DENIED", (error as Error).message) as MutationResult<AddRequirementOutput>;
+  }
+
+  const file = findWorkspaceFile(workspace, root, filePath) ?? (await readUtf8File(filePath, root.root));
+  const block = stepRecord.markdown.split(/\r?\n/);
+  const insertLine = findRequirementsAppendLine(file.lines);
+  const lines = insertLine > file.lines.length ? ["", ...block] : [...block, ""];
+  const plan = createPatchPlan(file, [insertLinesOperation(file, insertLine, lines)]);
+  try {
+    const dryRun = input.dryRun ?? false;
+    const applied = await applyPatchPlan(plan, { dryRun });
+    const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
+    if (indexSync && !indexSync.ok) return indexSync as unknown as MutationResult<AddRequirementOutput>;
+    return {
+      ...mutationOk<AddRequirementOutput>({
+        requirementId: input.id,
+        filePath: file.relativePath,
+        written: applied.written,
+        targetSource: "explicit",
+        record: stepRecord
+      }),
+      patch: summarizePatch(plan, dryRun),
+      mutation: mutationEnvelopeFromPlan("promote_step_requirement", plan, dryRun, applied.written),
+      ...(indexSync?.value ? { indexSync: indexSync.value } : {})
+    };
+  } catch (error) {
+    const staleFailure = stalePatchMutationFailure<AddRequirementOutput>(error, file.relativePath);
+    if (staleFailure) return staleFailure;
+    throw error;
+  }
 }

@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { normalizeReportPathsInput, REPORT_PATHS_COLUMN } from "../completed-work/report-paths.js";
@@ -8,12 +8,15 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { parseMarkdownTable, splitTableRow, type ParsedTable } from "../parser/table.js";
 import { completedWorkSourceInfo } from "../query/completed-work.js";
-import type { Diagnostic, MutationResult, ParsedWorkspace, PatchSummary, ProjectRoot, TextFile } from "../types.js";
+import type { Diagnostic, MutationEnvelope, MutationResult, ParsedWorkspace, PatchSummary, ProjectRoot, TextFile } from "../types.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
-import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
+import { describePatchOperation, mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+
+export const HISTORY_BANNER =
+  "> This file is an append-only Completed Work Log summary. It is NOT a source of truth for completion; see each Requirement Block (Status, Acceptance Criteria, Verification Evidence, Change Notes).";
 
 export interface AddCompletedWorkInput {
   date: string;
@@ -214,12 +217,25 @@ async function fileExists(filePath: string): Promise<boolean> {
     .catch(() => false);
 }
 
-async function readCompletedWorkMutationTarget(root: ProjectRoot): Promise<{ file: TextFile; external: boolean }> {
+// FR-NODE-045 — new Completed Work Log rows are retargeted to the history file
+// docs/spec/91.completed-work-log.md (bootstrapped with a read-only banner when absent) rather
+// than 00.index.md. A pre-existing external 05.completed-work.md log still takes precedence.
+type CompletedWorkMode = "external-log" | "history-log";
+
+interface CompletedWorkTarget {
+  mode: CompletedWorkMode;
+  absPath: string;
+  relPath: string;
+  exists: boolean;
+}
+
+async function resolveCompletedWorkTarget(root: ProjectRoot): Promise<CompletedWorkTarget> {
   const externalPath = path.join(root.root, "docs", "spec", "05.completed-work.md");
   if (await fileExists(externalPath)) {
-    return { file: await readUtf8File(externalPath, root.root), external: true };
+    return { mode: "external-log", absPath: externalPath, relPath: "docs/spec/05.completed-work.md", exists: true };
   }
-  return { file: await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root), external: false };
+  const historyPath = path.join(root.root, "docs", "spec", "91.completed-work-log.md");
+  return { mode: "history-log", absPath: historyPath, relPath: "docs/spec/91.completed-work-log.md", exists: await fileExists(historyPath) };
 }
 
 function splitScopeTokens(scope: string): string[] {
@@ -296,7 +312,49 @@ async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWo
   const source = completedWorkSourceInfo(workspace);
   const sourceDiagnostics = validateWorkspace(workspace).diagnostics.filter((item) => item.code === "SRS-W041");
 
-  const { file, external } = await readCompletedWorkMutationTarget(root);
+  const logTarget = await resolveCompletedWorkTarget(root);
+  const dryRunFlag = input.dryRun ?? false;
+
+  // Bootstrap the history file (heading + read-only banner + table header) when it is absent.
+  if (logTarget.mode === "history-log" && !logTarget.exists) {
+    const includeReportPaths = reportPaths.length > 0;
+    const bootstrapRow = renderRow({ date, summary, target, scope, requirementIds, reportPaths }, includeReportPaths);
+    const bootstrapLines = [HISTORY_BANNER, "", "## 7. Completed Work Log", "", tableHeader(includeReportPaths), tableSeparator(includeReportPaths), bootstrapRow];
+    if (!dryRunFlag) {
+      await mkdir(path.dirname(logTarget.absPath), { recursive: true });
+      await writeFile(logTarget.absPath, `${bootstrapLines.join("\n")}\n`, "utf8");
+    }
+    const bootstrapOp: PatchOperation = { type: "appendLines", lines: bootstrapLines };
+    const envelope: MutationEnvelope = {
+      kind: "add_completed_work",
+      filePath: logTarget.relPath,
+      dryRun: dryRunFlag,
+      written: !dryRunFlag,
+      operations: [describePatchOperation(bootstrapOp)],
+      preview: bootstrapLines
+    };
+    return {
+      ...mutationOk(
+        {
+          date,
+          target,
+          scope,
+          requirementIds,
+          summary,
+          reportPaths,
+          completedWorkMode: "history-log",
+          completedWorkSource: source,
+          written: !dryRunFlag
+        },
+        sourceDiagnostics
+      ),
+      mutation: envelope,
+      patch: { filePath: logTarget.absPath, operations: 1, dryRun: dryRunFlag, preview: bootstrapLines }
+    };
+  }
+
+  const external = logTarget.mode === "external-log";
+  const file = await readUtf8File(logTarget.absPath, root.root);
   const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
   const table = completedHeading >= 0 ? parseMarkdownTable(file.lines, completedHeading + 1) : undefined;
   const includeReportPaths = reportPaths.length > 0 || Boolean(table && tableHasReportPaths(table));

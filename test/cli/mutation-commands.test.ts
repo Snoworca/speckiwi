@@ -228,7 +228,9 @@ describe("mutation CLI commands", () => {
     expect(index).toContain("| Active Target | v1.1.0 |");
     expect(index).toContain("| v1.0.0 | release | planned | Fixture release |");
     expect(index).toContain("| v1.1.0 | version | active | Next fixture target |");
-    expect(index).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | CLI completed work row. |");
+    const historyLog = await readFile(path.join(root, "docs", "spec", "91.completed-work-log.md"), "utf8");
+    expect(historyLog).toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | CLI completed work row. |");
+    expect(index).not.toContain("| 2026-05-10 | v1.1.0 | ARCH | FR-ARCH-001 | CLI completed work row. |");
     const scopeText = await readFile(path.join(root, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(scopeText).toContain("### FR-ARCH-002 — CLI 추가");
     expect(scopeText).toContain("| Stability | draft |");
@@ -402,7 +404,7 @@ describe("mutation CLI commands", () => {
         reportPaths: ["docs/reports/report-a.md", "docs/reports/report-a.md"]
       }
     });
-    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain(
+    await expect(readFile(path.join(root, "docs", "spec", "91.completed-work-log.md"), "utf8")).resolves.toContain(
       "| 2026-05-10 |  |  |  | CLI report path row. | docs/reports/report-a.md, docs/reports/report-a.md |"
     );
 
@@ -421,7 +423,7 @@ describe("mutation CLI commands", () => {
       value: { written: false, reportPaths: ["docs/reports/dry-run.md"] },
       patch: { dryRun: true }
     });
-    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.not.toContain("Dry-run report path.");
+    await expect(readFile(path.join(root, "docs", "spec", "91.completed-work-log.md"), "utf8")).resolves.not.toContain("Dry-run report path.");
   });
 
   it("rejects invalid completed-work report options before writing", async () => {

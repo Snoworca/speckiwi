@@ -1,0 +1,8 @@
+{
+  "step": "6.3.1 literal string match (deterministic)",
+  "total_quotes": 32,
+  "failures": 0,
+  "verified_at": "2026-07-06",
+  "script": "scratchpad/verify-quotes.mjs (node)",
+  "paraphrase_detectors": "Sonnet + Opus 병렬 판정 결과는 paraphrase-verdicts.json 참조"
+}

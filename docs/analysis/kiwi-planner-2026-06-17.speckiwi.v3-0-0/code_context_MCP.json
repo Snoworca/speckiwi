@@ -1,0 +1,164 @@
+{
+  "FR-MCP-020": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/add-trace.ts"
+    ],
+    "test_file": "test/mcp/add-trace-notes-dryrun.test.ts"
+  },
+  "FR-MCP-021": {
+    "impl_files": [
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/validator/validate-workspace.ts",
+      "src/core/validator/rules.ts",
+      "src/core/parser/workspace-parser.ts"
+    ],
+    "test_file": "test/mcp/validate-step.fr-mcp-021.test.ts"
+  },
+  "FR-MCP-022": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/add-trace.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/mcp/compat-tools.fr-mcp-022.test.ts"
+  },
+  "FR-MCP-023": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/check-ac.ts"
+    ],
+    "test_file": "test/mcp/statement-ac-tools.fr-mcp-023.test.ts"
+  },
+  "FR-MCP-024": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/parser/discover.ts"
+    ],
+    "test_file": "test/mcp/step-state-tools.fr-mcp-024.test.ts"
+  },
+  "FR-MCP-025": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/update-status.ts",
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/add-trace.ts",
+      "src/core/mutation/internal.ts"
+    ],
+    "test_file": "test/mcp/supersede-promote-tools.fr-mcp-025.test.ts"
+  },
+  "FR-MCP-026": {
+    "impl_files": [
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/query/summary.ts",
+      "src/core/mutation/records.ts"
+    ],
+    "test_file": "test/mcp/diff-steps.fr-mcp-026.test.ts"
+  },
+  "FR-MCP-027": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/parser/discover.ts"
+    ],
+    "test_file": "test/mcp/work-mode-tools.fr-mcp-027.test.ts"
+  },
+  "FR-MCP-028": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/parser/workspace-parser.ts",
+      "src/core/parser/discover.ts"
+    ],
+    "test_file": "test/mcp/start-vibe-task.fr-mcp-028.test.ts"
+  },
+  "FR-MCP-029": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/add-evidence.ts"
+    ],
+    "test_file": "test/mcp/add-evidence-notes-dryrun.test.ts"
+  },
+  "FR-MCP-031": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/set-active-target.ts"
+    ],
+    "test_file": "test/mcp/retarget-requirements.fr-mcp-031.test.ts"
+  },
+  "FR-MCP-032": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/internal.ts"
+    ],
+    "test_file": "test/mcp/update-requirement-field.fr-mcp-032.test.ts"
+  },
+  "FR-MCP-033": {
+    "impl_files": [
+      "src/mcp/tools/mutation-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/mutation/append-section-note.ts",
+      "src/core/mutation/table-cell.ts"
+    ],
+    "test_file": "test/mcp/related-doc-change-note-tools.fr-mcp-033.test.ts"
+  },
+  "FR-MCP-034": {
+    "impl_files": [
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/query/records.ts"
+    ],
+    "test_file": "test/mcp/search-requirements.fr-mcp-034.test.ts"
+  },
+  "FR-MCP-035": {
+    "impl_files": [
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/query/summary.ts"
+    ],
+    "test_file": "test/mcp/summarize-release-readiness.fr-mcp-035.test.ts"
+  },
+  "FR-MCP-036": {
+    "impl_files": [
+      "src/mcp/tools/read-tools.ts",
+      "src/mcp/schemas.ts",
+      "src/mcp/server.ts",
+      "src/core/diagnostic-registry.ts",
+      "src/core/diagnostic.ts"
+    ],
+    "test_file": "test/mcp/explain-diagnostic.fr-mcp-036.test.ts"
+  }
+}

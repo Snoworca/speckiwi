@@ -1,0 +1,143 @@
+{
+  "FR-NODE-036": {
+    "impl_files": [
+      "src/core/bootstrap/init-project.ts",
+      "src/core/bootstrap/templates.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  },
+  "FR-NODE-037": {
+    "impl_files": [
+      "src/core/bootstrap/init-project.ts",
+      "src/core/bootstrap/templates.ts"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  },
+  "FR-NODE-038": {
+    "impl_files": [
+      "src/core/bootstrap/init-project.ts",
+      "src/core/bootstrap/templates.ts"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  },
+  "FR-NODE-039": {
+    "impl_files": [
+      "docs/.kiwi/hooks/trace.mjs"
+    ],
+    "test_file": "test/core/mutation/fr-node-039-trace-hook.test.ts"
+  },
+  "FR-NODE-040": {
+    "impl_files": [
+      "docs/.kiwi/hooks/pre-commit.mjs"
+    ],
+    "test_file": "test/core/mutation/fr-node-040-pre-commit-hook.test.ts"
+  },
+  "FR-NODE-041": {
+    "impl_files": [
+      "src/core/mutation/internal.ts",
+      "src/core/mutation/synthesis.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-041-synthesis-engine.test.ts"
+  },
+  "FR-NODE-042": {
+    "impl_files": [
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-042-req-id-reservation.test.ts"
+  },
+  "FR-NODE-043": {
+    "impl_files": [
+      "src/core/query/summary.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/query/fr-node-043-vibe-merge-contradiction-gate.test.ts"
+  },
+  "FR-NODE-044": {
+    "impl_files": [
+      "src/core/bootstrap/templates.ts",
+      "src/core/bootstrap/init-project.ts",
+      "package.json"
+    ],
+    "test_file": "test/core/bootstrap/init-project.test.ts"
+  },
+  "FR-NODE-046": {
+    "impl_files": [
+      "src/core/query/records.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/query/fr-node-046-full-text-search.test.ts"
+  },
+  "FR-NODE-047": {
+    "impl_files": [
+      "src/core/mutation/set-active-target.ts",
+      "src/core/mutation/retarget.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-047-retarget.test.ts"
+  },
+  "FR-NODE-048": {
+    "impl_files": [
+      "src/core/mutation/add-requirement.ts",
+      "src/core/mutation/update-field.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-048-update-field.test.ts"
+  },
+  "FR-NODE-049": {
+    "impl_files": [
+      "src/core/mutation/append-section-note.ts",
+      "src/core/mutation/table-cell.ts",
+      "src/core/mutation/add-related-doc.ts",
+      "src/core/mutation/add-change-note.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/append-section-note.test.ts"
+  },
+  "FR-NODE-050": {
+    "impl_files": [
+      "src/core/query/summary.ts",
+      "src/core/mutation/sync-counts.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/query/fr-node-050-sync-counts.test.ts"
+  },
+  "FR-NODE-051": {
+    "impl_files": [
+      "src/core/mutation/update-status.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-051-restore.test.ts"
+  },
+  "FR-NODE-052": {
+    "impl_files": [
+      "src/core/mutation/add-trace.ts",
+      "src/core/mutation/internal.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-052-set-supersede.test.ts"
+  },
+  "FR-NODE-053": {
+    "impl_files": [
+      "src/core/validator/rules.ts",
+      "src/core/mutation/register-scopes.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-053-register-scopes.test.ts"
+  },
+  "FR-NODE-054": {
+    "impl_files": [
+      "src/core/bootstrap/init-project.ts",
+      "src/core/bootstrap/templates.ts",
+      "src/core/mutation/scaffold-scope.ts",
+      "src/core/types.ts"
+    ],
+    "test_file": "test/core/mutation/fr-node-054-scaffold-scope.test.ts"
+  }
+}

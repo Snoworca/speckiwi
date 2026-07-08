@@ -1,0 +1,65 @@
+{
+ "run_id": "2026-06-17.speckiwi.self-v3-ph2",
+ "mode": "self",
+ "scope": "PH-002 batch (FR-PARSE-024..028, REL-PARSE-002)",
+ "findings": {
+  "total": 7,
+  "by_severity": {
+   "CRITICAL": 0,
+   "HIGH": 1,
+   "MEDIUM": 3,
+   "LOW": 3
+  }
+ },
+ "fixed": [
+  "FND-001(HIGH validateWorkspaceScoped cold-call rule registration)",
+  "FND-002(MEDIUM E012 {relation} template/emit drift)",
+  "FND-006(LOW parseCompatibilityNotes dup-key/empty edge)"
+ ],
+ "recheck": {
+  "resolved": [
+   "FND-001",
+   "FND-002",
+   "FND-006"
+  ],
+  "unresolved": 0,
+  "new": 0
+ },
+ "residual": [
+  {
+   "id": "FND-003",
+   "sev": "MEDIUM",
+   "note": "validateWorkspaceScoped real rules do not narrow body records (contract gap, latent — no production caller)"
+  },
+  {
+   "id": "FND-004",
+   "sev": "MEDIUM",
+   "note": "parseStepState returns array-with-attached-props; serialization footgun. Recommend struct {entries,mode,activeTask,modeInvalid} before wiring production caller (touches FR-PARSE-023/028 contract)"
+  },
+  {
+   "id": "FND-005",
+   "sev": "LOW",
+   "note": "W041-W045 + STEP_* defined-not-emitted (TDD staging for FR-PARSE-025/027 validators)"
+  },
+  {
+   "id": "FND-007",
+   "sev": "LOW",
+   "note": "W025 dual-read dedupe key excludes reportPaths (latent)"
+  },
+  {
+   "id": "COV-1",
+   "sev": "LOW",
+   "note": "FR-PARSE-024 AC-2 test uses inline runValidationRules seam, not the real validateWorkspaceScoped entrypoint for step-record narrowing"
+  }
+ ],
+ "objective": {
+  "tsc": "pass",
+  "eslint": "pass",
+  "vitest": {
+   "passed": 458,
+   "failed": 6,
+   "new_failures": 0
+  }
+ },
+ "gate": "Normal PASS (CRITICAL=0 + HIGH=0); regression PASS"
+}

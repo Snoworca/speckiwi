@@ -1,0 +1,14 @@
+{
+  "task_id": "T-PH002-05",
+  "req": "FR-PARSE-020",
+  "phase": "red",
+  "exit_code": 1,
+  "tests": "4 failed / 11 passed (15)",
+  "acs": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4"
+  ],
+  "note": "pm-child inline 4-axis verification; red authoritative via vitest run"
+}

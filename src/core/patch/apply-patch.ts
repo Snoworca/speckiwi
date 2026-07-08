@@ -37,7 +37,7 @@ async function readCurrentSnapshot(filePath: string): Promise<TextFileSnapshot> 
   }
 }
 
-async function assertFreshSnapshot(plan: PatchPlan): Promise<void> {
+export async function assertFreshSnapshot(plan: PatchPlan): Promise<void> {
   const expected = plan.file.snapshot ?? createTextFileSnapshot(plan.file.text);
   const current = await readCurrentSnapshot(plan.file.path);
   if (!snapshotsMatch(expected, current)) {

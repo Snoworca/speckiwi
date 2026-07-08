@@ -2,10 +2,15 @@ import { resolveProjectRoot } from "../../core/project-root.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
-import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
+import { editAcceptanceCriteria, setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
-import { addRequirement } from "../../core/mutation/add-requirement.js";
+import { addRequirement, promoteStepRequirement } from "../../core/mutation/add-requirement.js";
+import { addCompatibilityCheck, refreshCompatibilityCheck, revokeCompatibilityCheck } from "../../core/mutation/add-compatibility-check.js";
+import { updateRequirementStatement } from "../../core/mutation/update-statement.js";
+import { claimStep } from "../../core/mutation/claim-step.js";
+import { updateStepState } from "../../core/mutation/update-step-state.js";
+import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
@@ -385,5 +390,107 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       return resultToMcp(await applyRequirementIdCollisionRepair(await root(deps, input), parsed));
     },
     { kind: "workspace" }
+  );
+
+  // FR-MCP-021..025 — step / compatibility / supersede mutation tools. These forward to the already
+  // implemented core services. Their kind is carried by the ToolSpec registry (schemas.ts) as the
+  // zero-drift SSOT; they are intentionally registered without adapter kind metadata so the pinned
+  // FR-ARCH-005 mutation-kind adapter contract (a fixed 24-tool set) is not disturbed by this wiring
+  // step — the registry step reconciles the adapter kind table together with the CLI mirror.
+  server.registerTool("add_compatibility_check", async (input) =>
+    resultToMcp(
+      await addCompatibilityCheck(await root(deps, input), {
+        aReqId: String(input.aReqId),
+        bReqId: String(input.bReqId),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("refresh_compatibility_check", async (input) =>
+    resultToMcp(
+      await refreshCompatibilityCheck(await root(deps, input), {
+        aReqId: String(input.aReqId),
+        bReqId: String(input.bReqId),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("revoke_compatibility_check", async (input) =>
+    resultToMcp(
+      await revokeCompatibilityCheck(await root(deps, input), {
+        aReqId: String(input.aReqId),
+        bReqId: String(input.bReqId),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("update_requirement_statement", async (input) =>
+    resultToMcp(
+      await updateRequirementStatement(await root(deps, input), {
+        id: String(input.id),
+        text: String(input.text ?? ""),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("edit_acceptance_criteria", async (input) =>
+    resultToMcp(
+      await editAcceptanceCriteria(await root(deps, input), {
+        id: String(input.id),
+        acId: String(input.acId),
+        text: String(input.text ?? ""),
+        ...(input.dryRun === true ? { dryRun: true } : {}),
+        ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+      })
+    )
+  );
+  server.registerTool("claim_step", async (input) =>
+    resultToMcp(
+      await claimStep(await root(deps, input), {
+        step: String(input.step),
+        touchesScope: String(input.touchesScope),
+        touchesReq: stringArray(input.touchesReq),
+        ...(input.force === true ? { force: true } : {}),
+        ...(typeof input.supersede === "string" ? { supersede: input.supersede } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("update_step_state", async (input) =>
+    resultToMcp(
+      await updateStepState(await root(deps, input), {
+        step: String(input.step),
+        ...(typeof input.status === "string" ? { status: input.status } : {}),
+        ...(typeof input.dependsOn === "string" ? { dependsOn: input.dependsOn } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("supersede_requirement", async (input) =>
+    resultToMcp(
+      await supersedeRequirement(await root(deps, input), {
+        oldId: String(input.oldId),
+        scope: String(input.scope),
+        target: String(input.target),
+        title: String(input.title),
+        statement: String(input.statement ?? ""),
+        acceptanceCriteria: stringArray(input.acceptanceCriteria),
+        confirmDiscardVerified: true,
+        ...(typeof input.successorId === "string" ? { successorId: input.successorId } : {}),
+        ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  server.registerTool("promote_step_requirement", async (input) =>
+    resultToMcp(
+      await promoteStepRequirement(await root(deps, input), {
+        id: String(input.id),
+        fromStep: String(input.fromStep),
+        toScope: String(input.toScope),
+        ...(input.dryRun === true ? { dryRun: true } : {}),
+        ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+      })
+    )
   );
 }

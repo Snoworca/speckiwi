@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "../mutation/guards.js";
@@ -31,6 +32,7 @@ export interface InitProjectOutput {
   created: string[];
   skipped: string[];
   updated: string[];
+  warnings?: string[];
 }
 
 interface AgentInstructionBlock {
@@ -42,6 +44,165 @@ interface AgentInstructionBlock {
 
 const VERSIONED_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS 워크플로 v(?<version>[0-9]+(?:\.[0-9]+)*)$/gm;
 const LEGACY_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS workflow$/m;
+
+// FND-001 / FR-NODE-035 — scaffold docs/spec/steps/state.md at the reader SSOT
+// path with a parseable `Mode: wait` metadata block above an empty FR-PARSE-023
+// step-state table, so getWorkMode/setWorkMode operate on a fresh repo instead of
+// failing-open to wait and erroring NOT_FOUND on the first setWorkMode.
+function renderStepStateTemplate(): string {
+  return [
+    "# Step State",
+    "",
+    "Mode: wait",
+    "",
+    "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    ""
+  ].join("\n");
+}
+
+// FND-005 / FR-NODE-038 — the `speckiwi init` hook installer materialises the
+// Claude PostToolUse trace hook, the Codex apply_patch hook, the git pre-commit
+// gate that delegates to the docs/.kiwi runner, and the docs/.kiwi scaffold
+// directories, while surfacing clobber and enterprise-policy suppression
+// warnings instead of silently overwriting existing files.
+
+const GIT_PRE_COMMIT_RUNNER = "docs/.kiwi/hooks/pre-commit.mjs";
+
+function renderGitPreCommitHook(): string {
+  return [
+    "#!/bin/sh",
+    "# speckiwi managed pre-commit hook — delegates to the docs/.kiwi runner.",
+    `node "\${CLAUDE_PROJECT_DIR:-.}/${GIT_PRE_COMMIT_RUNNER}" "$@"`,
+    ""
+  ].join("\n");
+}
+
+function renderClaudeSettings(): string {
+  return `${JSON.stringify(
+    {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "Edit|Write|MultiEdit",
+            hooks: [{ type: "command", command: "node docs/.kiwi/hooks/trace.mjs" }]
+          }
+        ]
+      }
+    },
+    null,
+    2
+  )}\n`;
+}
+
+function renderCodexHooks(): string {
+  return `${JSON.stringify(
+    {
+      hooks: {
+        PostToolUse: [{ match: { tool: "apply_patch" }, command: ["node", "docs/.kiwi/hooks/trace.mjs"] }]
+      }
+    },
+    null,
+    2
+  )}\n`;
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await stat(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Reads a bundled docs/.kiwi runner shipped with the package, or undefined when absent. */
+async function loadBundledHookRunner(name: string): Promise<string | undefined> {
+  const candidate = fileURLToPath(new URL(`../../../docs/.kiwi/hooks/${name}`, import.meta.url));
+  try {
+    return await readFile(candidate, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return undefined;
+  }
+}
+
+async function installHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+  // docs/.kiwi scaffold: hook runner directory, trace output directory, and the
+  // best-effort runner scripts the installed hooks delegate to.
+  const kiwiHooksDir = path.join(root, "docs", ".kiwi", "hooks");
+  await mkdir(kiwiHooksDir, { recursive: true });
+  await mkdir(path.join(root, "docs", ".kiwi", "trace"), { recursive: true });
+  for (const runner of ["pre-commit.mjs", "trace.mjs"] as const) {
+    const bundled = await loadBundledHookRunner(runner);
+    await writeIfMissing(path.join(kiwiHooksDir, runner), bundled ?? "#!/usr/bin/env node\nprocess.exit(0);\n", output, force);
+  }
+
+  await installGitPreCommitHook(root, output, warnings);
+  await installClaudeSettings(root, output, warnings, force);
+  await installCodexHooks(root, output, warnings, force);
+}
+
+async function installGitPreCommitHook(root: string, output: InitProjectOutput, warnings: string[]): Promise<void> {
+  const gitDir = path.join(root, ".git");
+  if (!(await pathExists(gitDir))) {
+    warnings.push("No .git directory found; skipped installing the pre-commit hook.");
+    return;
+  }
+  const hookPath = path.join(gitDir, "hooks", "pre-commit");
+  let existing: string | undefined;
+  try {
+    existing = await readFile(hookPath, "utf8");
+  } catch {
+    existing = undefined;
+  }
+  if (existing === undefined) {
+    await mkdir(path.dirname(hookPath), { recursive: true });
+    await writeFile(hookPath, renderGitPreCommitHook(), "utf8");
+    output.created.push(hookPath);
+    return;
+  }
+  if (existing.includes(GIT_PRE_COMMIT_RUNNER)) {
+    output.skipped.push(hookPath);
+    return;
+  }
+  warnings.push(
+    "Existing .git/hooks/pre-commit hook left unchanged; speckiwi did not overwrite it. " +
+      `Delegate to node ${GIT_PRE_COMMIT_RUNNER} manually to enable the pre-commit gate.`
+  );
+}
+
+async function installClaudeSettings(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+  const claudeDir = path.join(root, ".claude");
+  if (await pathExists(path.join(claudeDir, "managed-settings.json"))) {
+    warnings.push(
+      "Claude enterprise policy detected (.claude/managed-settings.json); skipped installing .claude/settings.json PostToolUse hook."
+    );
+    return;
+  }
+  await writeIfMissing(path.join(claudeDir, "settings.json"), renderClaudeSettings(), output, force);
+}
+
+async function installCodexHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+  const codexDir = path.join(root, ".codex");
+  let managedHooksOnly = false;
+  try {
+    const config = await readFile(path.join(codexDir, "config.toml"), "utf8");
+    managedHooksOnly = /^\s*allow_managed_hooks_only\s*=\s*true/m.test(config);
+  } catch {
+    managedHooksOnly = false;
+  }
+  if (managedHooksOnly) {
+    warnings.push(
+      "Codex enterprise policy allow_managed_hooks_only = true detected in .codex/config.toml; skipped installing .codex/hooks.json."
+    );
+  } else {
+    await writeIfMissing(path.join(codexDir, "hooks.json"), renderCodexHooks(), output, force);
+  }
+  // Codex only runs project hooks after the repository is trusted, so this
+  // advisory is always surfaced regardless of the managed-hooks policy.
+  warnings.push("Codex runs project hooks only after you trust the repository (codex: trust the repo when prompted).");
+}
 
 async function writeIfMissing(filePath: string, content: string, output: InitProjectOutput, force = false): Promise<void> {
   try {
@@ -138,16 +299,19 @@ export async function initProject(root: ProjectRoot, input: InitProjectInput): P
 }
 
 async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
-  const output: InitProjectOutput = { created: [], skipped: [], updated: [] };
+  const warnings: string[] = [];
+  const output: InitProjectOutput = { created: [], skipped: [], updated: [], warnings };
   await mkdir(path.join(root.root, "docs", "spec"), { recursive: true });
   await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
   const scope = parseScopeOption(input.scope);
   await writeIfMissing(path.join(root.root, "docs", "spec", "00.index.md"), renderIndexTemplate(input), output, input.force);
   await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force);
   await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force);
   await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force);
   for (const agentFile of REQUIRED_AGENT_FILES) {
     await upsertAgentInstruction(root.root, agentFile, output);
   }
+  await installHooks(root.root, output, warnings, Boolean(input.force));
   return mutationOk(output);
 }
