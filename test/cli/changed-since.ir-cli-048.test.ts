@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-048 — `speckiwi changed-since <date>` command for a cross-requirement timeline.
+// IR-CLI-062 — `speckiwi changed-since <date>` command for a cross-requirement timeline.
 //
 // Red-phase suite (T-PH004-39): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/read.ts` teach the CLI a
@@ -15,7 +15,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // (src/core/query/records.ts changeNotesFromTable → RequirementRecord.changeNotes, FR-PARSE-009)
 // aggregated across every requirement (addition site src/core/query/summary.ts).
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-048):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-062):
 //
 //   The speckiwi changed-since command aggregates requirements whose most recent Change Notes date is
 //   on or after a given date across all requirements, supports optional target and scope filters and
@@ -236,9 +236,9 @@ function idsFrom(out: string): string[] {
   return (rows as Array<Record<string, unknown>>).map((row) => String(row.id));
 }
 
-describe("IR-CLI-048 — changed-since command for cross-requirement timeline", () => {
+describe("IR-CLI-062 — changed-since command for cross-requirement timeline", () => {
   // AC-1: `changed-since <date>` returns requirements with a Change Notes date on or after the date.
-  it("IR-CLI-048 AC-1: changed-since returns requirements whose most recent change is on or after the date", async () => {
+  it("IR-CLI-062 AC-1: changed-since returns requirements whose most recent change is on or after the date", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendChangedSinceFixture(root);
 
@@ -261,7 +261,7 @@ describe("IR-CLI-048 — changed-since command for cross-requirement timeline", 
   });
 
   // AC-2: `changed-since <date> --target <t>` and `--scope <s>` restrict the result set.
-  it("IR-CLI-048 AC-2: changed-since --target and --scope restrict the result set", async () => {
+  it("IR-CLI-062 AC-2: changed-since --target and --scope restrict the result set", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendChangedSinceFixture(root);
 
@@ -287,7 +287,7 @@ describe("IR-CLI-048 — changed-since command for cross-requirement timeline", 
   });
 
   // AC-3: `changed-since` with a malformed date returns exit code two.
-  it("IR-CLI-048 AC-3: changed-since with a malformed date returns exit code two", async () => {
+  it("IR-CLI-062 AC-3: changed-since with a malformed date returns exit code two", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendChangedSinceFixture(root);
 
@@ -304,7 +304,7 @@ describe("IR-CLI-048 — changed-since command for cross-requirement timeline", 
   // AC-3 (calendar guard): a date that is shape-valid (YYYY-MM-DD) but calendar-impossible (month 13,
   // day 45) must also be a handled usage error (exit 2), not a silently-accepted exit-0 query. The
   // shape regex alone admits 2026-13-45; the calendar gate must reject it.
-  it("IR-CLI-048 AC-3: changed-since with a calendar-impossible date returns exit code two", async () => {
+  it("IR-CLI-062 AC-3: changed-since with a calendar-impossible date returns exit code two", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendChangedSinceFixture(root);
 
@@ -318,7 +318,7 @@ describe("IR-CLI-048 — changed-since command for cross-requirement timeline", 
   });
 
   // AC-4: `changed-since` with a future date returns an empty result set.
-  it("IR-CLI-048 AC-4: changed-since with a future date returns an empty result set", async () => {
+  it("IR-CLI-062 AC-4: changed-since with a future date returns an empty result set", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendChangedSinceFixture(root);
 

@@ -82,7 +82,7 @@ async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Pr
   }
 }
 
-// FR-NODE-052 — setSupersede core.
+// FR-NODE-063 — setSupersede core.
 //
 // Writes the Supersedes / Superseded By metadata field on a requirement and, when trace sync
 // is enabled, the matching `supersedes` / `superseded_by` Trace Link row — in a single patch,
@@ -115,7 +115,7 @@ interface SupersedeField {
 /**
  * Finds the line just after the last row of the requirement's `| Field | Value |` metadata
  * table so a new metadata row can be appended without disturbing any existing line.
- * @req FR-NODE-052
+ * @req FR-NODE-063
  */
 function findMetadataTableInsertionLine(file: TextFile, record: RequirementRecord): number | undefined {
   const end = record.blockEndLine ?? file.lines.length;

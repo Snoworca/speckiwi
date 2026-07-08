@@ -39,7 +39,7 @@ import { registerReadCommands } from "../../src/cli/commands/read.js";
 import { registerMutationCommands } from "../../src/cli/commands/mutations.js";
 
 // Load-bearing counts derived FROM the registry rather than hard-pinned, so adding a new
-// command (e.g. IR-CLI-028 `step validate`) does not re-break the count assertions. The
+// command (e.g. IR-CLI-046 `step validate`) does not re-break the count assertions. The
 // drift-detection power lives in the bidirectional set-equality assertions below
 // (actualCliNames === registryCliNames, rendered* === registry projections), not in these
 // counts. A non-empty floor guards against the registry collapsing to an empty list.

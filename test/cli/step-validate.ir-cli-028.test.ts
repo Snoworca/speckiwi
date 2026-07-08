@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-028 — speckiwi step validate command.
+// IR-CLI-046 — speckiwi step validate command.
 //
 // Red-phase suite (T-PH004-01): one test case per acceptance criterion (AC-1..AC-3).
 // These cases pin the future CLI contract before src/cli exposes the `step validate`
@@ -14,7 +14,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // (T-PH004-02) wires `speckiwi step validate <name>` to validateWorkspaceScoped.
 //
 // Contract under test (from the requirement body and AC, SRS
-// docs/spec/30.cli-interface.srs.md IR-CLI-028):
+// docs/spec/30.cli-interface.srs.md IR-CLI-046):
 //
 //   The CLI exposes `speckiwi step validate <name>` which runs validateWorkspaceScoped
 //   for the named step and prints its step-local diagnostics with an exit code
@@ -190,9 +190,9 @@ function parseJson(stream: NodeJS.WriteStream): { errors: Array<{ code: string }
   return JSON.parse((stream as unknown as PassThrough).read()?.toString() ?? "");
 }
 
-describe("IR-CLI-028 — speckiwi step validate command", () => {
+describe("IR-CLI-046 — speckiwi step validate command", () => {
   // AC-1: `speckiwi step validate <name>` runs step-local validation for the named step.
-  it("IR-CLI-028 AC-1: runs step-local validation for the named step and returns a JSON envelope", async () => {
+  it("IR-CLI-046 AC-1: runs step-local validation for the named step and returns a JSON envelope", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
 
@@ -209,7 +209,7 @@ describe("IR-CLI-028 — speckiwi step validate command", () => {
   });
 
   // AC-2: The command prints W044, W045, and STEP_* diagnostics for that step.
-  it("IR-CLI-028 AC-2: prints W044, W045, and a STEP_* diagnostic for that step", async () => {
+  it("IR-CLI-046 AC-2: prints W044, W045, and a STEP_* diagnostic for that step", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
 
@@ -228,7 +228,7 @@ describe("IR-CLI-028 — speckiwi step validate command", () => {
 
   // AC-3: The command's exit code reflects step-local errors and is not affected by
   // body-scope diagnostics.
-  it("IR-CLI-028 AC-3: exit code reflects step-local errors only, ignoring body-scope errors", async () => {
+  it("IR-CLI-046 AC-3: exit code reflects step-local errors only, ignoring body-scope errors", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
     // A genuine body-scope error must NOT influence the step-validate exit code.
@@ -255,7 +255,7 @@ describe("IR-CLI-028 — speckiwi step validate command", () => {
   // AC-3 positive branch: a step-anchored ERROR (parse-time SRS-E001 from a malformed step heading)
   // must drive the step-validate exit code to 1, and a co-existing body-only error must NOT (isolation
   // is bidirectional — body errors don't leak into the step exit, step errors do count).
-  it("IR-CLI-028 AC-3: a step-local error exits 1 while a body-only error does not affect the step exit", async () => {
+  it("IR-CLI-046 AC-3: a step-local error exits 1 while a body-only error does not affect the step exit", async () => {
     const stepName = "step-err";
 
     // (a) Step-local error alone → exit 1, and the error is anchored under the step tree.

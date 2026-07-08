@@ -5,24 +5,24 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-052 — `speckiwi set-supersede` command.
+// IR-CLI-066 — `speckiwi set-supersede` command.
 //
 // Red-phase suite (T-PH004-47): one test case per acceptance criterion (AC-1..AC-4). These cases pin the
 // future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI a
 // `set-supersede` command, so the whole suite fails today — commander rejects the unknown `set-supersede`
 // command (non-zero usage exit, `{ ok:false, error:{ code:"CLI_USAGE_ERROR" } }` under --json) — until the
 // green task (T-PH004-48) wires the command against the EXISTING core mutation
-// (src/core/mutation/add-trace.ts `setSupersede`, FR-NODE-052): the metadata-only mutation that writes
+// (src/core/mutation/add-trace.ts `setSupersede`, FR-NODE-063): the metadata-only mutation that writes
 // either the `Supersedes` or the `Superseded By` field of one requirement, optionally inserts the matching
 // `supersedes` / `superseded_by` Trace Link row when sync-trace is requested, supports dry-run and json,
 // and edits no requirement Status.
 //
-// IR-CLI-052 (set-supersede = metadata-only setSupersede, FR-NODE-052) is intentionally distinct from
-// IR-CLI-045 (supersede = the full-lifecycle command that mints a successor and discards the old id via
-// FR-NODE-030). This suite pins the metadata-only contract: it MUST NOT discard the requirement or change
+// IR-CLI-066 (set-supersede = metadata-only setSupersede, FR-NODE-063) is intentionally distinct from
+// IR-CLI-059 (supersede = the full-lifecycle command that mints a successor and discards the old id via
+// FR-NODE-045). This suite pins the metadata-only contract: it MUST NOT discard the requirement or change
 // its Status.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-052):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-066):
 //
 //   The speckiwi set-supersede command delegates to the setSupersede core to update the Supersedes or
 //   Superseded By metadata of a requirement, supports a sync-trace flag, dry-run, and json, and edits no
@@ -77,9 +77,9 @@ function fieldValue(block: string, field: string): string | undefined {
   return match?.[1]?.trim();
 }
 
-describe("IR-CLI-052 — set-supersede command updates supersede metadata without editing Status", () => {
+describe("IR-CLI-066 — set-supersede command updates supersede metadata without editing Status", () => {
   // AC-1: `set-supersede <id> --supersedes <oldId>` updates the Supersedes metadata field.
-  it("IR-CLI-052 AC-1: --supersedes writes the Supersedes metadata field and edits no Status", async () => {
+  it("IR-CLI-066 AC-1: --supersedes writes the Supersedes metadata field and edits no Status", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readArch(root);
     // sanity: the requirement starts present, planned, with no Supersedes row yet.
@@ -100,12 +100,12 @@ describe("IR-CLI-052 — set-supersede command updates supersede metadata withou
     const block = requirementBlock(after, ID);
     // The Supersedes metadata field now carries the old id, written into the field block.
     expect(fieldValue(block, "Supersedes")).toBe(SUPERSEDES_ID);
-    // Status is untouched (metadata-only mutation, distinct from IR-CLI-045 supersede).
+    // Status is untouched (metadata-only mutation, distinct from IR-CLI-059 supersede).
     expect(fieldValue(block, "Status")).toBe("planned");
   });
 
   // AC-2: `set-supersede <id> --superseded-by <newId>` updates the Superseded By metadata field.
-  it("IR-CLI-052 AC-2: --superseded-by writes the Superseded By metadata field and edits no Status", async () => {
+  it("IR-CLI-066 AC-2: --superseded-by writes the Superseded By metadata field and edits no Status", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     const run = io();
@@ -125,7 +125,7 @@ describe("IR-CLI-052 — set-supersede command updates supersede metadata withou
   });
 
   // AC-3: `set-supersede --sync-trace` also writes the matching Trace Link row.
-  it("IR-CLI-052 AC-3: --sync-trace also writes the matching supersedes Trace Link row", async () => {
+  it("IR-CLI-066 AC-3: --sync-trace also writes the matching supersedes Trace Link row", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     const run = io();
@@ -148,7 +148,7 @@ describe("IR-CLI-052 — set-supersede command updates supersede metadata withou
   });
 
   // AC-4: `set-supersede --dry-run` prints a preview and writes no file.
-  it("IR-CLI-052 AC-4: --dry-run prints a preview and writes no file", async () => {
+  it("IR-CLI-066 AC-4: --dry-run prints a preview and writes no file", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readArch(root);
 

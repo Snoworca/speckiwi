@@ -44,7 +44,7 @@ async function setAcceptanceCriteriaCheckedUnlocked(root: ProjectRoot, input: Se
   );
 }
 
-// FR-NODE-026 — edit_acceptance_criteria mutation.
+// FR-NODE-041 — edit_acceptance_criteria mutation.
 //
 // Replaces the prose text of a single targeted acceptance criterion, preserving its
 // checked/unchecked state and its `AC-N:` id prefix, and leaving sibling criteria and every

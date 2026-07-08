@@ -11,7 +11,7 @@ import type { RequirementStatus, Stability } from "../../../src/core/types.js";
 // Importing the not-yet-existing module makes the whole suite red until then.
 import { addCompatibilityCheck } from "../../../src/core/mutation/add-compatibility-check.js";
 
-// FR-NODE-022 — add_compatibility_check mutation with dedup, frozen, and liveness
+// FR-NODE-038 — add_compatibility_check mutation with dedup, frozen, and liveness
 // guards plus bidirectional semanticSha pins.
 //
 // Red-phase suite (T-PH003-11): one test case per acceptance criterion
@@ -223,11 +223,11 @@ async function currentSha(rootPath: string, id: string): Promise<string> {
 const MIN_ID = "FR-NODE-100";
 const MAX_ID = "FR-NODE-200";
 
-describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and liveness guards", () => {
+describe("FR-NODE-038 add_compatibility_check mutation with dedup, frozen, and liveness guards", () => {
   // AC-1: add_compatibility_check writes exactly one checked_compatible row on the
   // compareReqId-minimum block, with self and peer pins set to the current
   // semanticSha values and the peer REQ-ID as the row Reference.
-  it("FR-NODE-022 AC-1: writes one checked_compatible row on the min block with self+peer sha pins", async () => {
+  it("FR-NODE-038 AC-1: writes one checked_compatible row on the min block with self+peer sha pins", async () => {
     // Sanity: MIN_ID really is the compareReqId-minimum of the pair.
     expect(compareReqId(MIN_ID, MAX_ID)).toBeLessThan(0);
 
@@ -254,7 +254,7 @@ describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and l
 
   // AC-2: a second add_compatibility_check for the same min-max pair is rejected
   // by the dedup guard (one row per pair).
-  it("FR-NODE-022 AC-2: rejects a duplicate compatibility check for the same min-max pair", async () => {
+  it("FR-NODE-038 AC-2: rejects a duplicate compatibility check for the same min-max pair", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const root = await resolveProjectRoot(rootPath);
 
@@ -272,7 +272,7 @@ describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and l
 
   // AC-3: add_compatibility_check on a frozen min-side block is rejected and the
   // document is left unmodified.
-  it("FR-NODE-022 AC-3: rejects a compatibility check when the min-side block is frozen", async () => {
+  it("FR-NODE-038 AC-3: rejects a compatibility check when the min-side block is frozen", async () => {
     const rootPath = await buildWorkspace([
       { id: MIN_ID, stability: "frozen" },
       { id: MAX_ID }
@@ -292,7 +292,7 @@ describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and l
 
   // AC-4: add_compatibility_check is rejected when either endpoint is discarded,
   // deprecated, or non-existent.
-  it("FR-NODE-022 AC-4: rejects a compatibility check when an endpoint is discarded, deprecated, or non-existent", async () => {
+  it("FR-NODE-038 AC-4: rejects a compatibility check when an endpoint is discarded, deprecated, or non-existent", async () => {
     // Discarded peer endpoint.
     const discardedRoot = await resolveProjectRoot(
       await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID, status: "discarded" }])
@@ -317,7 +317,7 @@ describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and l
   // compatibility check of a requirement against itself (aReqId === bReqId)
   // would write a self-referential checked_compatible row, so it must be
   // rejected and leave the document unmodified.
-  it("FR-NODE-022 rejects a self-pair compatibility check (aReqId === bReqId)", async () => {
+  it("FR-NODE-038 rejects a self-pair compatibility check (aReqId === bReqId)", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const scoped = path.join(rootPath, SCOPE_FILE);
     const before = await readFile(scoped, "utf8");
@@ -335,7 +335,7 @@ describe("FR-NODE-022 add_compatibility_check mutation with dedup, frozen, and l
   // AC-5: the written Reference is a bare live REQ-ID that passes SRS-E012 and the
   // addTraceLink existence guard — i.e. the workspace validates with no SRS-E012
   // diagnostic after the row is written.
-  it("FR-NODE-022 AC-5: written Reference is a bare live REQ-ID that passes SRS-E012", async () => {
+  it("FR-NODE-038 AC-5: written Reference is a bare live REQ-ID that passes SRS-E012", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const root = await resolveProjectRoot(rootPath);
 

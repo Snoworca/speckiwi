@@ -7,19 +7,19 @@ import { resolveProjectRoot } from "../../src/core/project-root.js";
 import { updateStatus } from "../../src/core/mutation/update-status.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-046 — `speckiwi restore` command.
+// IR-CLI-060 — `speckiwi restore` command.
 //
 // Red-phase suite (T-PH004-35): one test case per acceptance criterion (AC-1..AC-4). These cases pin the
 // future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI a
 // `restore` command, so the whole suite fails today — commander rejects the unknown `restore` command
 // (non-zero usage exit, `{ ok:false, error:{ code:"CLI_USAGE_ERROR" } }` under --json) — until the green
 // task (T-PH004-36) wires the command against the existing core mutation (src/core/mutation/update-status.ts
-// `restore`, FR-NODE-051): the single-transaction un-discard that rewrites Status back to an active value
+// `restore`, FR-NODE-062): the single-transaction un-discard that rewrites Status back to an active value
 // (defaulting to planned), strips the heading strikethrough + DISCARDED marker, appends one Change Notes
 // row carrying the required reason, supports --to / --dry-run / --json, and writes nothing when --reason
 // is absent.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-046):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-060):
 //
 //   The speckiwi restore command delegates to the restore core to un-discard a requirement, requires a
 //   reason, supports an optional target status, dry-run, and json, and writes nothing when the reason is
@@ -94,7 +94,7 @@ function findValue(parsed: unknown): Record<string, unknown> | undefined {
 async function discardedWorkspace(): Promise<string> {
   const rootPath = await copyFixtureWorkspace("mutation-target");
   const root = await resolveProjectRoot(rootPath);
-  // FR-ARCH-001 is Stability=stable (a protected state), so the FR-NODE-019 discard guard requires the
+  // FR-ARCH-001 is Stability=stable (a protected state), so the FR-NODE-035 discard guard requires the
   // explicit override (reason + confirmDiscardVerified) to reach the discarded precondition.
   const discarded = await updateStatus(root, {
     id: ID,
@@ -111,9 +111,9 @@ async function discardedWorkspace(): Promise<string> {
   return rootPath;
 }
 
-describe("IR-CLI-046 — restore command un-discards a requirement via the restore core", () => {
+describe("IR-CLI-060 — restore command un-discards a requirement via the restore core", () => {
   // AC-1: `restore <id> --reason <r>` un-discards the requirement to planned by default.
-  it("IR-CLI-046 AC-1: --reason un-discards to planned by default and clears the DISCARDED marker", async () => {
+  it("IR-CLI-060 AC-1: --reason un-discards to planned by default and clears the DISCARDED marker", async () => {
     const root = await discardedWorkspace();
 
     const run = io();
@@ -138,7 +138,7 @@ describe("IR-CLI-046 — restore command un-discards a requirement via the resto
   });
 
   // AC-2: `restore <id> --to <status> --reason <r>` un-discards to the given active status.
-  it("IR-CLI-046 AC-2: --to <status> un-discards to the requested active status", async () => {
+  it("IR-CLI-060 AC-2: --to <status> un-discards to the requested active status", async () => {
     const root = await discardedWorkspace();
 
     const run = io();
@@ -160,7 +160,7 @@ describe("IR-CLI-046 — restore command un-discards a requirement via the resto
   });
 
   // AC-3: `restore --dry-run` prints a preview and writes no file.
-  it("IR-CLI-046 AC-3: --dry-run previews the un-discard and writes no file", async () => {
+  it("IR-CLI-060 AC-3: --dry-run previews the un-discard and writes no file", async () => {
     const root = await discardedWorkspace();
     const before = await readArch(root);
 
@@ -186,9 +186,9 @@ describe("IR-CLI-046 — restore command un-discards a requirement via the resto
 
   // AC-4: `restore` without --reason returns a non-zero exit code and writes no file. The failure must be
   // the delegated CORE reason guard (mutationFail "USAGE"), NOT commander rejecting an unknown command
-  // (CLI_USAGE_ERROR) — pinning the code proves the command exists and delegates restore (FR-NODE-051)
+  // (CLI_USAGE_ERROR) — pinning the code proves the command exists and delegates restore (FR-NODE-062)
   // without a bypass.
-  it("IR-CLI-046 AC-4: a missing --reason fails (non-zero) via the core reason guard and writes no file", async () => {
+  it("IR-CLI-060 AC-4: a missing --reason fails (non-zero) via the core reason guard and writes no file", async () => {
     const root = await discardedWorkspace();
     const before = await readArch(root);
 

@@ -4,7 +4,7 @@ import path from "node:path";
 import { assertFreshSnapshot } from "./apply-patch.js";
 import { renderPatchedLines, type PatchPlan } from "./patch-plan.js";
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 // Net-new MultiFileCommit four-phase engine (Option A: net-new merge only) backed by a
 // durable merge-journal. Commits a single-REQ change touching a step file and a body file in
 // one atomic operation. The existing single-file applyPatchPlan path in apply-patch.ts is left
@@ -23,9 +23,9 @@ export interface MergeJournalRename {
   to: string;
   sha256: string;
   backup: string;
-  // @req FR-NODE-033
+  // @req FR-NODE-048
   requirementId?: string | undefined;
-  // @req FR-NODE-033
+  // @req FR-NODE-048
   applied?: boolean | undefined;
 }
 
@@ -34,14 +34,14 @@ export interface MergeJournal {
   // never forward, so a retried recovery after a roll-back can never partially apply the merge.
   status: "half-applied" | "applied" | "rolled-back";
   renames: MergeJournalRename[];
-  // @req FR-NODE-033
+  // @req FR-NODE-048
   requirementId?: string | undefined;
 }
 
 export interface MergeCommitOptions {
   onPhase?: (phase: MergePhase) => void | Promise<void>;
   onRename?: (to: string) => void | Promise<void>;
-  // @req FR-NODE-033
+  // @req FR-NODE-048
   requirementId?: string | undefined;
 }
 
@@ -68,14 +68,14 @@ function sha256Of(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 async function writeJournal(root: string, journal: MergeJournal): Promise<void> {
   const tmp = path.join(root, `${JOURNAL_FILE}.${randomUUID()}.tmp`);
   await writeFile(tmp, JSON.stringify(journal), "utf8");
   await rename(tmp, journalPath(root));
 }
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 export async function readMergeJournal(root: string): Promise<MergeJournal | null> {
   try {
     const raw = await readFile(journalPath(root), "utf8");
@@ -89,7 +89,7 @@ async function clearJournal(root: string): Promise<void> {
   await rm(journalPath(root), { force: true });
 }
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 export class MultiFileCommit {
   constructor(
     private readonly root: string,
@@ -100,7 +100,7 @@ export class MultiFileCommit {
     return path.basename(filePath) === "state.md";
   }
 
-  // @req FR-NODE-032
+  // @req FR-NODE-047
   plannedPaths(): string[] {
     return this.files
       .map((file) => file.plan.file.path)
@@ -115,7 +115,7 @@ export class MultiFileCommit {
     }
   }
 
-  // @req FR-NODE-032
+  // @req FR-NODE-047
   async commit(options: MergeCommitOptions): Promise<MergeCommitResult> {
     this.assertNoStateFile();
 
@@ -144,7 +144,7 @@ export class MultiFileCommit {
       const backup = path.join(dir, `.speckiwi-${token}.bak`);
       await copyFile(finalPath, backup);
       await writeFile(tmp, entry.text, "utf8");
-      // @req FR-NODE-033
+      // @req FR-NODE-048
       renames.push({
         from: tmp,
         to: finalPath,
@@ -154,7 +154,7 @@ export class MultiFileCommit {
         applied: false
       });
     }
-    // @req FR-NODE-033
+    // @req FR-NODE-048
     const journal: MergeJournal = { status: "half-applied", renames, requirementId };
     await writeJournal(this.root, journal);
 
@@ -164,7 +164,7 @@ export class MultiFileCommit {
     for (const entry of renames) {
       await options.onRename?.(entry.to);
       await rename(entry.from, entry.to);
-      // @req FR-NODE-033
+      // @req FR-NODE-048
       entry.applied = true;
       await writeJournal(this.root, journal);
     }
@@ -176,7 +176,7 @@ export class MultiFileCommit {
     return { committed: true };
   }
 
-  // @req FR-NODE-033
+  // @req FR-NODE-048
   // Resume an interrupted merge: read the durable journal, skip any rename already recorded as
   // applied, replay only the outstanding renames (marking each applied durably), then clear it.
   async resume(options: MergeCommitOptions): Promise<MergeCommitResult> {
@@ -203,7 +203,7 @@ export class MultiFileCommit {
   }
 }
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 // Roll the whole merge back to its pre-merge state, TERMINALLY and IDEMPOTENTLY.
 //
 // Invariant: once a roll-back begins it must never be reversed into a partial forward apply.
@@ -235,7 +235,7 @@ async function rollBackMerge(root: string, journal: MergeJournal): Promise<void>
   }
 }
 
-// @req FR-NODE-032
+// @req FR-NODE-047
 export async function recoverMerge(root: string): Promise<MergeRecoveryResult> {
   const journal = await readMergeJournal(root);
   if (journal === null) {

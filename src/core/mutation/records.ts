@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { RequirementRecord, Stability } from "../types.js";
 
-// FR-NODE-020 — content-hash utilities for requirement records.
+// FR-NODE-036 — content-hash utilities for requirement records.
 
 /**
  * Frozen-protocol version tag for the semantic hash. The hash input is bound to
@@ -16,7 +16,7 @@ const METADATA_DENY = new Set(["Status", "Stability"]);
 /**
  * Normalizes text for hashing: CRLF to LF, per-line trailing-whitespace strip,
  * whitespace runs collapsed to a single space, and outer trim.
- * @req FR-NODE-020
+ * @req FR-NODE-036
  */
 function normalize(text: string): string {
   return text
@@ -40,7 +40,7 @@ function normalize(text: string): string {
  * the only way Scope contributes to the hash for real parsed records. Trace
  * Links, Verification Evidence, Change Notes, and the record-level
  * status/stability fields do not contribute.
- * @req FR-NODE-020
+ * @req FR-NODE-036
  */
 export function computeSemanticSha(record: RequirementRecord): string {
   const acceptance = record.acceptanceCriteria
@@ -60,7 +60,7 @@ export function computeSemanticSha(record: RequirementRecord): string {
   return createHash("sha1").update(input, "utf8").digest("hex");
 }
 
-// FR-NODE-021 — REQ-ID raw-byte ordering and depends_on blast-radius closure.
+// FR-NODE-037 — REQ-ID raw-byte ordering and depends_on blast-radius closure.
 
 /**
  * Orders two REQ-IDs by raw byte (code-unit) comparison, selecting the min-side
@@ -68,7 +68,7 @@ export function computeSemanticSha(record: RequirementRecord): string {
  * before `b`, a positive number when after, and zero when equal. The ordering
  * is antisymmetric and locale-independent: `<`/`>` on JavaScript strings compare
  * by UTF-16 code unit, so uppercase letters sort before lowercase ones.
- * @req FR-NODE-021
+ * @req FR-NODE-037
  */
 export function compareReqId(a: string, b: string): number {
   if (a < b) return -1;
@@ -91,7 +91,7 @@ const BLAST_RADIUS_MAX_HOPS = 2;
  *
  * Pure function: it neither mutates the input records (nor their trace links)
  * nor performs I/O, and returns an equal closure for equal inputs.
- * @req FR-NODE-021
+ * @req FR-NODE-037
  */
 export function computeBlastRadius(seeds: readonly string[], records: readonly RequirementRecord[]): Set<string> {
   const byId = new Map<string, RequirementRecord>();

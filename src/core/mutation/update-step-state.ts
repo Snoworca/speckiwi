@@ -6,9 +6,9 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
 import type { MutationResult, ProjectRoot, StepStateStatus } from "../types.js";
 
-// @req FR-NODE-028
+// @req FR-NODE-043
 /**
- * FR-NODE-028 — update_step_state mutation.
+ * FR-NODE-043 — update_step_state mutation.
  *
  * Updates an existing docs/spec/steps/state.md step row in place:
  *   - AC-1: rewrites the Status cell to a value in {active, merging, merged, abandoned}
@@ -31,16 +31,16 @@ export interface UpdateStepStateValue {
   written: boolean;
 }
 
-// @req FR-NODE-028
-/** The Status enum a step row may transition into (FR-PARSE-023 / StepStateStatus). */
+// @req FR-NODE-043
+/** The Status enum a step row may transition into (FR-PARSE-026 / StepStateStatus). */
 const ALLOWED_STATUSES: readonly StepStateStatus[] = ["active", "merging", "merged", "abandoned"];
 
-// @req FR-NODE-028
+// @req FR-NODE-043
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// @req FR-NODE-028
+// @req FR-NODE-043
 /** Split a pipe-delimited table row into its trimmed cells (between the outer pipes). */
 function rowCells(line: string): string[] {
   return line

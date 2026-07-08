@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-034 — validate severity / only / ignore display filters with an
+// IR-CLI-051 — validate severity / only / ignore display filters with an
 // exit-code-from-unfiltered contract.
 //
 // Red-phase suite (T-PH004-11): one test case per acceptance criterion (AC-1..AC-5).
@@ -13,7 +13,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // filtered display) — until the green task (T-PH004-12) wires the filters and the
 // exit-code-from-unfiltered-error-set contract.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-034):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-051):
 //
 //   The speckiwi validate command supports a --severity filter and repeatable --only and
 //   --ignore code filters that affect which diagnostics are DISPLAYED, while the process
@@ -54,9 +54,9 @@ function parseJson(stream: NodeJS.WriteStream): {
 const ERROR_CODE = "SRS-E015";
 const WARNING_CODE = "SRS-W018";
 
-describe("IR-CLI-034 — validate severity / only / ignore display filters", () => {
+describe("IR-CLI-051 — validate severity / only / ignore display filters", () => {
   // AC-1: `validate --severity error` displays only error-severity diagnostics in human output.
-  it("IR-CLI-034 AC-1: --severity error shows only error-severity diagnostics in human output", async () => {
+  it("IR-CLI-051 AC-1: --severity error shows only error-severity diagnostics in human output", async () => {
     const root = await copyFixtureWorkspace("index-drift-unregistered-srs");
 
     const streams = io();
@@ -72,7 +72,7 @@ describe("IR-CLI-034 — validate severity / only / ignore display filters", () 
 
   // AC-2: `--only <code>` restricts displayed diagnostics to the listed codes and
   //       `--ignore <code>` removes the listed codes from display.
-  it("IR-CLI-034 AC-2: --only restricts display to listed codes and --ignore removes listed codes", async () => {
+  it("IR-CLI-051 AC-2: --only restricts display to listed codes and --ignore removes listed codes", async () => {
     // --only WARNING_CODE → only the warning code is displayed, the error code is hidden.
     const onlyRoot = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const onlyStreams = io();
@@ -91,7 +91,7 @@ describe("IR-CLI-034 — validate severity / only / ignore display filters", () 
   });
 
   // AC-3: When an error diagnostic exists but is hidden by --ignore or --severity, exit is still 1.
-  it("IR-CLI-034 AC-3: a hidden error (via --ignore or --severity) still exits 1", async () => {
+  it("IR-CLI-051 AC-3: a hidden error (via --ignore or --severity) still exits 1", async () => {
     // Hidden via --ignore <error code>: display drops the error but exit stays 1 (unfiltered set).
     const ignoreRoot = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const ignoreStreams = io();
@@ -110,7 +110,7 @@ describe("IR-CLI-034 — validate severity / only / ignore display filters", () 
   });
 
   // AC-4: When only warnings exist and --fail-on-warning is not set, exit is 0 regardless of filters.
-  it("IR-CLI-034 AC-4: warnings-only workspace exits 0 regardless of display filters", async () => {
+  it("IR-CLI-051 AC-4: warnings-only workspace exits 0 regardless of display filters", async () => {
     // Baseline: warnings-only fixture exits 0 without filters.
     const baseRoot = await copyFixtureWorkspace("index-drift-status-summary");
     const baseStreams = io();
@@ -134,7 +134,7 @@ describe("IR-CLI-034 — validate severity / only / ignore display filters", () 
   });
 
   // AC-5: Hiding an error via --ignore does not change the exit code from 1 to 0.
-  it("IR-CLI-034 AC-5: hiding an error via --ignore does not flip the exit code from 1 to 0", async () => {
+  it("IR-CLI-051 AC-5: hiding an error via --ignore does not flip the exit code from 1 to 0", async () => {
     // Without filters the workspace fails (exit 1) because the error is in the unfiltered set.
     const baselineRoot = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const baselineStreams = io();

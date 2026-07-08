@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
-// retarget is the FR-NODE-047 core mutation introduced by the green task (T-PH003-60).
+// retarget is the FR-NODE-059 core mutation introduced by the green task (T-PH003-60).
 // It does not exist yet, so this import fails at collection time — the red signal for the
 // whole suite. RetargetInput / RetargetItemPlan / RetargetOutput are the public contract
 // types asserted by the structural-exclusion criterion (AC-1).
@@ -14,7 +14,7 @@ import {
 } from "../../../src/core/mutation/retarget.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-047 — retarget core mutation with per-item loop dry-run and req-scoped schema.
+// FR-NODE-059 — retarget core mutation with per-item loop dry-run and req-scoped schema.
 // Red-phase suite (T-PH003-59): one test case per acceptance criterion (AC-1..AC-6),
 // asserted against the future retarget contract. Each case fails before the mutation and
 // its input type exist in src/core/mutation/retarget.ts.
@@ -39,11 +39,11 @@ function planFor(output: RetargetOutput, id: string): RetargetItemPlan | undefin
   return output.items.find((item) => item.id === id);
 }
 
-describe("FR-NODE-047 retarget core mutation", () => {
+describe("FR-NODE-059 retarget core mutation", () => {
   // AC-1: The retarget input type has no status field and no active-target field, so a
   // caller cannot pass either through the public mutation contract. Asserted at the type
   // level: 'status', 'activeTarget', and 'active-target' must not be keys of RetargetInput.
-  it("FR-NODE-047 AC-1: input type structurally excludes status and active-target fields", () => {
+  it("FR-NODE-059 AC-1: input type structurally excludes status and active-target fields", () => {
     type InputKeys = keyof RetargetInput;
     // The key set must not contain any status / active-target field.
     expectTypeOf<Extract<InputKeys, "status">>().toEqualTypeOf<never>();
@@ -56,7 +56,7 @@ describe("FR-NODE-047 retarget core mutation", () => {
 
   // AC-2: retarget defaults to dry-run and returns a per-item plan listing each requirement
   // id with either a planned Target rewrite or a skipReason, before any file is written.
-  it("FR-NODE-047 AC-2: defaults to dry-run and returns a per-item plan without writing", async () => {
+  it("FR-NODE-059 AC-2: defaults to dry-run and returns a per-item plan without writing", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const before = await readFile(await specPath(rootPath), "utf8");
@@ -82,7 +82,7 @@ describe("FR-NODE-047 retarget core mutation", () => {
 
   // AC-3: A requirement whose destination target is not present in the index Target Map
   // yields a per-item skipReason of 'target-not-registered' and is not rewritten.
-  it("FR-NODE-047 AC-3: unregistered destination target yields target-not-registered skip", async () => {
+  it("FR-NODE-059 AC-3: unregistered destination target yields target-not-registered skip", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const before = await readFile(await specPath(rootPath), "utf8");
@@ -105,7 +105,7 @@ describe("FR-NODE-047 retarget core mutation", () => {
   // AC-4: A requirement whose block is frozen (SRS section 16 rule 5) yields a per-item
   // skipReason of 'frozen-needs-change-note' unless a reason is supplied; when supplied the
   // reason is appended to that requirement's Change Notes.
-  it("FR-NODE-047 AC-4: frozen block needs a change-note reason, which is appended when supplied", async () => {
+  it("FR-NODE-059 AC-4: frozen block needs a change-note reason, which is appended when supplied", async () => {
     // Without a reason: skip.
     const skipRoot = await copyFixtureWorkspace("mutation-target");
     await setMetadataValue(skipRoot, "Stability", "frozen");
@@ -137,7 +137,7 @@ describe("FR-NODE-047 retarget core mutation", () => {
 
   // AC-5: By default retarget includes requirements whose status is verified, and an explicit
   // exclude list removes only the listed ids from the rewrite set.
-  it("FR-NODE-047 AC-5: includes verified by default; exclude list removes only listed ids", async () => {
+  it("FR-NODE-059 AC-5: includes verified by default; exclude list removes only listed ids", async () => {
     // Default: a verified requirement is included in the rewrite plan.
     const includeRoot = await copyFixtureWorkspace("mutation-target");
     await setMetadataValue(includeRoot, "Status", "verified");
@@ -167,7 +167,7 @@ describe("FR-NODE-047 retarget core mutation", () => {
 
   // AC-6: Only with dry-run disabled does retarget write Target metadata rewrites, and it
   // preserves each file's existing newline style.
-  it("FR-NODE-047 AC-6: only writes when dry-run disabled and preserves newline style", async () => {
+  it("FR-NODE-059 AC-6: only writes when dry-run disabled and preserves newline style", async () => {
     // dry-run disabled on an LF fixture: the Target row is rewritten and LF is preserved.
     const lfRoot = await copyFixtureWorkspace("mutation-target");
     const rootA = await resolveProjectRoot(lfRoot);

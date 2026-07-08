@@ -7,10 +7,10 @@ import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { parseCompatibilityNotes } from "../../../src/core/parser/table.js";
 import { compareReqId, computeSemanticSha } from "../../../src/core/mutation/records.js";
 import type { RequirementStatus, Stability } from "../../../src/core/types.js";
-// FR-NODE-022 — used to seed an initial checked_compatible row that the
-// FR-NODE-023 refresh/revoke mutations operate on. This export already exists.
+// FR-NODE-038 — used to seed an initial checked_compatible row that the
+// FR-NODE-039 refresh/revoke mutations operate on. This export already exists.
 import { addCompatibilityCheck } from "../../../src/core/mutation/add-compatibility-check.js";
-// FR-NODE-023 — the green task (T-PH003-14) introduces refreshCompatibilityCheck
+// FR-NODE-039 — the green task (T-PH003-14) introduces refreshCompatibilityCheck
 // and revokeCompatibilityCheck in src/core/mutation/add-compatibility-check.ts.
 // Importing these not-yet-existing exports keeps the whole suite red until then.
 import {
@@ -18,7 +18,7 @@ import {
   revokeCompatibilityCheck
 } from "../../../src/core/mutation/add-compatibility-check.js";
 
-// FR-NODE-023 — refresh_compatibility_check and revoke_compatibility_check
+// FR-NODE-039 — refresh_compatibility_check and revoke_compatibility_check
 // mutations.
 //
 // Red-phase suite (T-PH003-13): one test case per acceptance criterion
@@ -242,12 +242,12 @@ async function appendRawCompatibilityRow(rootPath: string, holderId: string, pee
 const MIN_ID = "FR-NODE-100";
 const MAX_ID = "FR-NODE-200";
 
-describe("FR-NODE-023 refresh_compatibility_check and revoke_compatibility_check mutations", () => {
+describe("FR-NODE-039 refresh_compatibility_check and revoke_compatibility_check mutations", () => {
   // AC-1: refresh_compatibility_check locates the single min-side row and
   // recomputes its self/peer pins via replaceLine. After a content change on an
   // endpoint, the refreshed row's pins must differ from the originally recorded
   // ones, while remaining exactly one row on the min-side block.
-  it("FR-NODE-023 AC-1: relocates the single min-side row and recomputes its self/peer pins", async () => {
+  it("FR-NODE-039 AC-1: relocates the single min-side row and recomputes its self/peer pins", async () => {
     // Sanity: MIN_ID really is the compareReqId-minimum of the pair.
     expect(compareReqId(MIN_ID, MAX_ID)).toBeLessThan(0);
 
@@ -297,7 +297,7 @@ describe("FR-NODE-023 refresh_compatibility_check and revoke_compatibility_check
 
   // AC-2: refresh_compatibility_check returns NOT_FOUND when no matching row
   // exists (the pair was never checked).
-  it("FR-NODE-023 AC-2: returns NOT_FOUND when no matching compatibility row exists", async () => {
+  it("FR-NODE-039 AC-2: returns NOT_FOUND when no matching compatibility row exists", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const root = await resolveProjectRoot(rootPath);
 
@@ -311,7 +311,7 @@ describe("FR-NODE-023 refresh_compatibility_check and revoke_compatibility_check
 
   // AC-3: refresh_compatibility_check is rejected when two or more matching rows
   // exist on the min-side block (ambiguous target).
-  it("FR-NODE-023 AC-3: is rejected when two or more matching rows exist", async () => {
+  it("FR-NODE-039 AC-3: is rejected when two or more matching rows exist", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const root = await resolveProjectRoot(rootPath);
 
@@ -330,7 +330,7 @@ describe("FR-NODE-023 refresh_compatibility_check and revoke_compatibility_check
 
   // AC-4: revoke_compatibility_check removes the compatibility row using a range
   // replacement, leaving the block with no checked_compatible row.
-  it("FR-NODE-023 AC-4: removes the compatibility row via a range replacement", async () => {
+  it("FR-NODE-039 AC-4: removes the compatibility row via a range replacement", async () => {
     const rootPath = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const root = await resolveProjectRoot(rootPath);
 

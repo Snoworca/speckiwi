@@ -7,7 +7,7 @@ import { addVerificationEvidence } from "../../../src/core/mutation/add-evidence
 import { updateStatus, type UpdateStatusInput } from "../../../src/core/mutation/update-status.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-019 — updateStatus verified-regression exit guard with explicit override.
+// FR-NODE-035 — updateStatus verified-regression exit guard with explicit override.
 // Red-phase suite (T-PH003-05): each acceptance criterion (AC-1..AC-5) is asserted
 // against the future guard behaviour described in the requirement. These cases fail
 // before the guard exists in src/core/mutation/update-status.ts.
@@ -43,7 +43,7 @@ async function makeVerified(rootPath: string): Promise<void> {
   await setMetadataValue(rootPath, "Status", "verified");
 }
 
-describe("FR-NODE-019 updateStatus verified-regression exit guard", () => {
+describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
   // AC-1: Transitioning a verified requirement to discarded without
   // confirmDiscardVerified returns MUTATION_DENIED.
   it("AC-1: denies verified -> discarded without confirmDiscardVerified", async () => {

@@ -5,7 +5,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 import { claimStep } from "../../../src/core/mutation/claim-step.js";
 
-// FR-NODE-027 — hardening tests for claim_step.
+// FR-NODE-042 — hardening tests for claim_step.
 //
 // FND-003 (input sanitize): step / touchesScope / TouchesReq tokens are written
 //   verbatim into a pipe-delimited state.md row. A `|` would split the row into
@@ -36,7 +36,7 @@ async function readStateMd(root: string): Promise<string> {
   return readFile(path.join(root, STATE_MD_REL), "utf8");
 }
 
-describe("FR-NODE-027 FND-003 — claim_step rejects unsafe state.md cell inputs and writes nothing", () => {
+describe("FR-NODE-042 FND-003 — claim_step rejects unsafe state.md cell inputs and writes nothing", () => {
   const cases: Array<{ label: string; input: { step: string; touchesScope: string; touchesReq: string[] } }> = [
     { label: "pipe in step", input: { step: "feat|x", touchesScope: "ARCH", touchesReq: ["FR-ARCH-010"] } },
     { label: "newline in step", input: { step: "feat\nx", touchesScope: "ARCH", touchesReq: ["FR-ARCH-010"] } },
@@ -62,7 +62,7 @@ describe("FR-NODE-027 FND-003 — claim_step rejects unsafe state.md cell inputs
   }
 });
 
-describe("FR-NODE-027 FND-006 — claim_step honours dryRun", () => {
+describe("FR-NODE-042 FND-006 — claim_step honours dryRun", () => {
   it("writes nothing and reports written:false when dryRun is true", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeEmptyStateMd(root);

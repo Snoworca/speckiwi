@@ -10,15 +10,15 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 const posix = (p: string) => p.replace(/\\/g, "/");
 
-// A well-formed docs/spec/steps/state.md sample table for FR-PARSE-023.
+// A well-formed docs/spec/steps/state.md sample table for FR-PARSE-026.
 // Columns (all seven): Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated.
 const STATE_MD = [
   "# Step State",
   "",
   "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
   "| --- | --- | --- | --- | --- | --- | --- |",
-  "| alpha | active | - | PARSE | FR-PARSE-023 | 2026-06-01 | 2026-06-02 |",
-  "| beta | merging | alpha | NODE | FR-NODE-017 | 2026-06-03 | 2026-06-04 |",
+  "| alpha | active | - | PARSE | FR-PARSE-026 | 2026-06-01 | 2026-06-02 |",
+  "| beta | merging | alpha | NODE | FR-NODE-033 | 2026-06-03 | 2026-06-04 |",
   ""
 ].join("\n");
 
@@ -28,14 +28,14 @@ async function writeStateMd(root: string, content = STATE_MD): Promise<void> {
   await writeFile(path.join(stepsDir, "state.md"), content, "utf8");
 }
 
-// FR-PARSE-019: discoverSrsFiles partitions discovered .srs.md files into body scope
+// FR-PARSE-022: discoverSrsFiles partitions discovered .srs.md files into body scope
 // files and origin-isolated step files (docs/spec/steps/<name>/*.srs.md). Body files
 // exclude /docs/rule/ and /docs/spec/steps/; step files are exposed via SrsFileSet.stepFiles[]
 // and never appear in scopeFiles. stepFiles is always present (possibly empty).
-describe("FR-PARSE-019 discoverSrsFiles steps partition", () => {
+describe("FR-PARSE-022 discoverSrsFiles steps partition", () => {
   // AC-1: Files under docs/spec/steps/<name>/ ending in .srs.md appear in
   // SrsFileSet.stepFiles[] and never in SrsFileSet.scopeFiles.
-  it("FR-PARSE-019 AC-1: routes step files to stepFiles[] and never into scopeFiles", async () => {
+  it("FR-PARSE-022 AC-1: routes step files to stepFiles[] and never into scopeFiles", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepDir = path.join(root, "docs", "spec", "steps", "my-step");
     await mkdir(stepDir, { recursive: true });
@@ -69,7 +69,7 @@ describe("FR-PARSE-019 discoverSrsFiles steps partition", () => {
   });
 
   // AC-2: Files under docs/rule/ are excluded from both scopeFiles and stepFiles.
-  it("FR-PARSE-019 AC-2: excludes docs/rule/ .srs.md from both scopeFiles and stepFiles", async () => {
+  it("FR-PARSE-022 AC-2: excludes docs/rule/ .srs.md from both scopeFiles and stepFiles", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const ruleDir = path.join(root, "docs", "rule");
     await mkdir(ruleDir, { recursive: true });
@@ -84,7 +84,7 @@ describe("FR-PARSE-019 discoverSrsFiles steps partition", () => {
   });
 
   // AC-3: A body scope file outside steps/ continues to appear in scopeFiles unchanged.
-  it("FR-PARSE-019 AC-3: keeps a body scope file outside steps/ in scopeFiles", async () => {
+  it("FR-PARSE-022 AC-3: keeps a body scope file outside steps/ in scopeFiles", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const files = await discoverSrsFiles(await resolveProjectRoot(root));
 
@@ -94,7 +94,7 @@ describe("FR-PARSE-019 discoverSrsFiles steps partition", () => {
   });
 
   // AC-4: SrsFileSet.stepFiles is present (possibly empty array) on all returned file sets.
-  it("FR-PARSE-019 AC-4: always exposes stepFiles as an array (empty when no steps dir)", async () => {
+  it("FR-PARSE-022 AC-4: always exposes stepFiles as an array (empty when no steps dir)", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const files = await discoverSrsFiles(await resolveProjectRoot(root));
 
@@ -103,13 +103,13 @@ describe("FR-PARSE-019 discoverSrsFiles steps partition", () => {
   });
 });
 
-// FR-PARSE-023: discover loads docs/spec/steps/state.md via the appendix access-then-read
+// FR-PARSE-026: discover loads docs/spec/steps/state.md via the appendix access-then-read
 // pattern into ParsedWorkspace.stateFile, and parseStepState parses its table (columns
 // Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated; Status enum
 // active|merging|merged|abandoned) by reusing parseMarkdownTable.
-describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
+describe("FR-PARSE-026 state.md loader and parseStepState parser", () => {
   // AC-1: When docs/spec/steps/state.md exists it is loaded and exposed as ParsedWorkspace.stateFile.
-  it("FR-PARSE-023 AC-1: loads docs/spec/steps/state.md into ParsedWorkspace.stateFile", async () => {
+  it("FR-PARSE-026 AC-1: loads docs/spec/steps/state.md into ParsedWorkspace.stateFile", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root);
 
@@ -121,7 +121,7 @@ describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
   });
 
   // AC-2: parseStepState returns one entry per state.md row with all seven columns populated.
-  it("FR-PARSE-023 AC-2: returns one entry per row with all seven columns populated", () => {
+  it("FR-PARSE-026 AC-2: returns one entry per row with all seven columns populated", () => {
     const entries = parseStepState(STATE_MD.split("\n"));
 
     expect(entries).toHaveLength(2);
@@ -130,17 +130,17 @@ describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
     expect(first?.status).toBe("active");
     expect(first?.dependsOn).toBe("-");
     expect(first?.touchesScope).toBe("PARSE");
-    expect(first?.touchesReq).toBe("FR-PARSE-023");
+    expect(first?.touchesReq).toBe("FR-PARSE-026");
     expect(first?.created).toBe("2026-06-01");
     expect(first?.updated).toBe("2026-06-02");
   });
 
   // AC-3: parseStepState flags a Status value outside active, merging, merged, abandoned.
-  it("FR-PARSE-023 AC-3: flags a Status value outside the active/merging/merged/abandoned enum", () => {
+  it("FR-PARSE-026 AC-3: flags a Status value outside the active/merging/merged/abandoned enum", () => {
     const badStatus = [
       "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
       "| --- | --- | --- | --- | --- | --- | --- |",
-      "| gamma | bogus | - | PARSE | FR-PARSE-023 | 2026-06-05 | 2026-06-06 |"
+      "| gamma | bogus | - | PARSE | FR-PARSE-026 | 2026-06-05 | 2026-06-06 |"
     ];
     const entries = parseStepState(badStatus);
 
@@ -148,7 +148,7 @@ describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
   });
 
   // AC-4: parseStepState reuses parseMarkdownTable rather than a new table parser.
-  it("FR-PARSE-023 AC-4: row decomposition matches parseMarkdownTable (reuse, not a new parser)", () => {
+  it("FR-PARSE-026 AC-4: row decomposition matches parseMarkdownTable (reuse, not a new parser)", () => {
     const lines = STATE_MD.split("\n");
     // parseStepState opts into skipNonTableLeading to walk past the state.md heading; the reuse
     // baseline must use the same option to compare the extracted rows (FND-002).
@@ -165,7 +165,7 @@ describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
   // Discriminating control: the same loader that yields a populated stateFile when the
   // file is present must yield a falsy stateFile (no throw) when it is absent. This drives
   // the access-then-read loader rather than the current static `stateFile: null` placeholder.
-  it("FR-PARSE-023 AC-5: absence yields a falsy stateFile while presence loads it, both without error", async () => {
+  it("FR-PARSE-026 AC-5: absence yields a falsy stateFile while presence loads it, both without error", async () => {
     const present = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(present);
     const loaded = await discoverSrsFiles(await resolveProjectRoot(present));
@@ -179,15 +179,15 @@ describe("FR-PARSE-023 state.md loader and parseStepState parser", () => {
   });
 });
 
-// FR-PARSE-028: parseStepState is extended to read, in the same single parse pass, the
+// FR-PARSE-031: parseStepState is extended to read, in the same single parse pass, the
 // top-of-file state.md metadata keys Mode (one of sdd, vibe, wait) and Active Task (present
 // only when Mode is vibe). The work-mode metadata is exposed on the parseStepState result as
 // .mode / .activeTask / .modeInvalid alongside the existing StepStateEntry[] rows (the array
-// contract from FR-PARSE-023 is preserved). When state.md is absent, unparseable, or the Mode
+// contract from FR-PARSE-026 is preserved). When state.md is absent, unparseable, or the Mode
 // line is malformed, the parser fails open to Mode=wait instead of throwing.
 //
 // A state.md document with a top-of-file work-mode metadata block followed by the
-// FR-PARSE-023 step-state table. `mode`/`activeTask` are the metadata values under test.
+// FR-PARSE-026 step-state table. `mode`/`activeTask` are the metadata values under test.
 const stateMdWithMode = (options: { mode?: string; activeTask?: string } = {}): string => {
   const metaLines: string[] = ["# Step State", ""];
   if (options.mode !== undefined) metaLines.push(`Mode: ${options.mode}`);
@@ -197,14 +197,14 @@ const stateMdWithMode = (options: { mode?: string; activeTask?: string } = {}): 
     ...metaLines,
     "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
     "| --- | --- | --- | --- | --- | --- | --- |",
-    "| alpha | active | - | PARSE | FR-PARSE-028 | 2026-06-10 | 2026-06-11 |",
+    "| alpha | active | - | PARSE | FR-PARSE-031 | 2026-06-10 | 2026-06-11 |",
     ""
   ].join("\n");
 };
 
-describe("FR-PARSE-028 parseStepState work-mode metadata (Mode, Active Task) with fail-open", () => {
+describe("FR-PARSE-031 parseStepState work-mode metadata (Mode, Active Task) with fail-open", () => {
   // AC-1: parseStepState returns Mode equal to one of sdd, vibe, wait read from the metadata block.
-  it("FR-PARSE-028 AC-1: returns Mode read from the state.md metadata block (sdd|vibe|wait)", () => {
+  it("FR-PARSE-031 AC-1: returns Mode read from the state.md metadata block (sdd|vibe|wait)", () => {
     expect(parseStepState(stateMdWithMode({ mode: "sdd" }).split("\n")).mode).toBe("sdd");
 
     const vibe = parseStepState(stateMdWithMode({ mode: "vibe", activeTask: "refactor-parser" }).split("\n"));
@@ -215,7 +215,7 @@ describe("FR-PARSE-028 parseStepState work-mode metadata (Mode, Active Task) wit
   });
 
   // AC-2: Active Task is returned as the task name when Mode is vibe and omitted otherwise.
-  it("FR-PARSE-028 AC-2: exposes Active Task only when Mode is vibe and omits it otherwise", () => {
+  it("FR-PARSE-031 AC-2: exposes Active Task only when Mode is vibe and omits it otherwise", () => {
     const vibe = parseStepState(stateMdWithMode({ mode: "vibe", activeTask: "refactor-parser" }).split("\n"));
     expect(vibe.mode).toBe("vibe");
     expect(vibe.activeTask).toBe("refactor-parser");
@@ -227,7 +227,7 @@ describe("FR-PARSE-028 parseStepState work-mode metadata (Mode, Active Task) wit
   });
 
   // AC-3: A missing or unparseable state.md yields Mode=wait without throwing.
-  it("FR-PARSE-028 AC-3: fails open to Mode=wait for missing/unparseable metadata without throwing", () => {
+  it("FR-PARSE-031 AC-3: fails open to Mode=wait for missing/unparseable metadata without throwing", () => {
     // No Mode line at all in the metadata block.
     const noMode = parseStepState(stateMdWithMode().split("\n"));
     expect(noMode.mode).toBe("wait");
@@ -243,7 +243,7 @@ describe("FR-PARSE-028 parseStepState work-mode metadata (Mode, Active Task) wit
   });
 
   // AC-4: A Mode value outside sdd, vibe, wait is treated as wait and flagged.
-  it("FR-PARSE-028 AC-4: treats an out-of-enum Mode as wait and flags it via modeInvalid", () => {
+  it("FR-PARSE-031 AC-4: treats an out-of-enum Mode as wait and flags it via modeInvalid", () => {
     const bogus = parseStepState(stateMdWithMode({ mode: "turbo" }).split("\n"));
     expect(bogus.mode).toBe("wait");
     expect(bogus.modeInvalid).toBe(true);
@@ -253,14 +253,14 @@ describe("FR-PARSE-028 parseStepState work-mode metadata (Mode, Active Task) wit
     expect(valid.modeInvalid).toBeFalsy();
   });
 
-  // Regression guard for FR-PARSE-023: extending parseStepState with work-mode metadata must
+  // Regression guard for FR-PARSE-026: extending parseStepState with work-mode metadata must
   // preserve the StepStateEntry[] row contract (array semantics) in the same single parse pass.
-  it("FR-PARSE-028: preserves the FR-PARSE-023 StepStateEntry[] row contract on the same result", () => {
+  it("FR-PARSE-031: preserves the FR-PARSE-026 StepStateEntry[] row contract on the same result", () => {
     const result = parseStepState(stateMdWithMode({ mode: "vibe", activeTask: "refactor-parser" }).split("\n"));
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(1);
     expect(result[0]?.step).toBe("alpha");
     expect(result[0]?.status).toBe("active");
-    expect(result[0]?.touchesReq).toBe("FR-PARSE-028");
+    expect(result[0]?.touchesReq).toBe("FR-PARSE-031");
   });
 });

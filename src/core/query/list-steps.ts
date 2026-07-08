@@ -9,11 +9,11 @@ import type {
   StepStateEntry
 } from "../types.js";
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /**
- * FR-NODE-029 — list_steps topological ordering with cycle detection and advisories.
+ * FR-NODE-044 — list_steps topological ordering with cycle detection and advisories.
  *
- * The handler fresh-parses docs/spec/steps/state.md (FR-PARSE-023 row columns
+ * The handler fresh-parses docs/spec/steps/state.md (FR-PARSE-026 row columns
  * Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated) from the
  * ProjectRoot and orders the steps with a Kahn topological sort that honours the
  * DependsOn edges. Alongside the order it emits advisory-only diagnostics from the
@@ -30,7 +30,7 @@ export interface ListStepsOptions {
   target?: string;
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /** Split a DependsOn/TouchesReq cell (comma/space separated) into its tokens. */
 function parseCellTokens(cell: string): string[] {
   return cell
@@ -39,19 +39,19 @@ function parseCellTokens(cell: string): string[] {
     .filter((token) => token !== "" && token !== "-");
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /** A non-active step has merged into history and no longer participates in flight. */
 function isActiveStep(entry: StepStateEntry): boolean {
   return entry.status === "active" || entry.status === "merging";
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /** A requirement is protected once it is verified or frozen (claim-step parity). */
 function isProtectedRecord(record: RequirementRecord | undefined): boolean {
   return record !== undefined && (record.status === "verified" || record.stability === "frozen");
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /** Parse `<!-- supersede: step -> target -->` markers seeded below the state table. */
 function parseSupersedeMarkers(lines: readonly string[]): Map<string, string[]> {
   const markers = new Map<string, string[]>();
@@ -69,7 +69,7 @@ function parseSupersedeMarkers(lines: readonly string[]): Map<string, string[]> 
   return markers;
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 /**
  * Kahn topological sort over the DependsOn edges. Returns the order plus the set
  * of step names that could not be placed (the members of one or more cycles);
@@ -113,7 +113,7 @@ function kahnOrder(
   return { order, unordered };
 }
 
-// @req FR-NODE-029
+// @req FR-NODE-044
 export async function listSteps(root: ProjectRoot, options: ListStepsOptions = {}): Promise<ListStepsResult> {
   void options;
   const workspace = await parseWorkspace(root);

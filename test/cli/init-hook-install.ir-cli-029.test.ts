@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 
 /**
- * IR-CLI-029 — speckiwi init hook-install extension (CLI-surface verification).
+ * IR-CLI-047 — speckiwi init hook-install extension (CLI-surface verification).
  *
  * These tests drive the real `speckiwi init` command through the CLI `main()`
  * entry point (no mocks) and assert each acceptance criterion at the CLI
@@ -47,8 +47,8 @@ async function exists(target: string): Promise<boolean> {
   }
 }
 
-describe("IR-CLI-029 speckiwi init hook-install extension (CLI surface)", () => {
-  it("IR-CLI-029 AC-1: installs the Claude, Codex, and git hooks and the docs/.kiwi scaffold", async () => {
+describe("IR-CLI-047 speckiwi init hook-install extension (CLI surface)", () => {
+  it("IR-CLI-047 AC-1: installs the Claude, Codex, and git hooks and the docs/.kiwi scaffold", async () => {
     const root = await emptyRepo();
     const streams = io();
     const exitCode = await main(["--root", root, "init", "--json"], streams);
@@ -85,7 +85,7 @@ describe("IR-CLI-029 speckiwi init hook-install extension (CLI surface)", () => 
     expect(report.value.created).toContain(kiwiState);
   });
 
-  it("IR-CLI-029 AC-2: reports created, updated, skipped, and warned paths", async () => {
+  it("IR-CLI-047 AC-2: reports created, updated, skipped, and warned paths", async () => {
     const root = await emptyRepo();
 
     const first = io();
@@ -113,7 +113,7 @@ describe("IR-CLI-029 speckiwi init hook-install extension (CLI surface)", () => 
     expect(secondReport.created).not.toContain(path.join(root, ".claude", "settings.json"));
   });
 
-  it("IR-CLI-029 AC-3: surfaces clobber and enterprise-suppression warnings in its output", async () => {
+  it("IR-CLI-047 AC-3: surfaces clobber and enterprise-suppression warnings in its output", async () => {
     const root = await emptyRepo();
 
     // Pre-existing non-speckiwi pre-commit hook -> clobber warning.

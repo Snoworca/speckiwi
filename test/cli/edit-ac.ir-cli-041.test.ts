@@ -5,18 +5,18 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-041 — `speckiwi edit-ac <id> <acId> --text <text>` command.
+// IR-CLI-056 — `speckiwi edit-ac <id> <acId> --text <text>` command.
 //
 // Red-phase suite (T-PH004-25): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI an
 // `edit-ac` command, so the whole suite fails today — commander rejects the unknown `edit-ac` command
 // (non-zero usage exit, no mutation payload printed) — until the green task (T-PH004-26) wires the
 // command against the existing core mutation
-// (src/core/mutation/check-ac.ts `editAcceptanceCriteria`, FR-NODE-026): a single Acceptance Criterion
+// (src/core/mutation/check-ac.ts `editAcceptanceCriteria`, FR-NODE-041): a single Acceptance Criterion
 // text replacement that leaves the checkbox state and every other criterion / section intact, with a
 // --dry-run preview and a --json mutation result envelope.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-041):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-056):
 //
 //   SpecKiwi provides a `speckiwi edit-ac <id> <acId> --text <text>` command that edits the text of a
 //   single acceptance criterion by delegating to the core edit_acceptance_criteria mutation, supporting
@@ -81,9 +81,9 @@ function findValue(parsed: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
-describe("IR-CLI-041 — edit-ac command edits a single acceptance criterion's text", () => {
+describe("IR-CLI-056 — edit-ac command edits a single acceptance criterion's text", () => {
   // AC-1: `edit-ac <id> <acId> --text <text>` updates the text of the targeted acceptance criterion.
-  it("IR-CLI-041 AC-1: updates the text of the targeted acceptance criterion", async () => {
+  it("IR-CLI-056 AC-1: updates the text of the targeted acceptance criterion", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readScope(root);
     // sanity: fixture precondition — the old AC-1 line is present, the new text is absent.
@@ -103,7 +103,7 @@ describe("IR-CLI-041 — edit-ac command edits a single acceptance criterion's t
   });
 
   // AC-2: leaves the checked/unchecked state of the targeted criterion and all other criteria unchanged.
-  it("IR-CLI-041 AC-2: leaves the checked state and other acceptance criteria unchanged", async () => {
+  it("IR-CLI-056 AC-2: leaves the checked state and other acceptance criteria unchanged", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readScope(root);
     const traceBefore = sectionSlice(before, "Trace Links");
@@ -132,7 +132,7 @@ describe("IR-CLI-041 — edit-ac command edits a single acceptance criterion's t
   });
 
   // AC-3: `edit-ac --dry-run` prints a patch preview and writes no file.
-  it("IR-CLI-041 AC-3: --dry-run prints a patch preview and writes no file", async () => {
+  it("IR-CLI-056 AC-3: --dry-run prints a patch preview and writes no file", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readScope(root);
 
@@ -155,7 +155,7 @@ describe("IR-CLI-041 — edit-ac command edits a single acceptance criterion's t
   });
 
   // AC-4: `edit-ac --json` emits the mutation result envelope consistent with other mutation commands.
-  it("IR-CLI-041 AC-4: --json emits a mutation result envelope consistent with other mutation commands", async () => {
+  it("IR-CLI-056 AC-4: --json emits a mutation result envelope consistent with other mutation commands", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     const run = io();

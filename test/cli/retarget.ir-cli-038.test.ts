@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-038 — `speckiwi retarget` command with dry-run default and per-item skip reasons.
+// IR-CLI-054 — `speckiwi retarget` command with dry-run default and per-item skip reasons.
 //
 // Red-phase suite (T-PH004-19): one test case per acceptance criterion (AC-1..AC-5). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI a
 // `retarget` command, so the whole suite fails today — commander rejects the unknown `retarget`
 // command (non-zero usage exit, no retarget plan payload printed) — until the green task (T-PH004-20)
 // wires the command against the existing core mutation (src/core/mutation/retarget.ts `retarget`,
-// FR-NODE-047) plus selection filters and an --apply flag that flips the core's dry-run default off.
+// FR-NODE-059) plus selection filters and an --apply flag that flips the core's dry-run default off.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-038):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-054):
 //
 //   SpecKiwi provides a `speckiwi retarget` command that moves requirements selected by --from and
 //   --to with optional --scope, --status, --type, and --id filters under a required --reason, defaults
@@ -152,10 +152,10 @@ function findItems(parsed: unknown): Array<Record<string, unknown>> | undefined 
   return undefined;
 }
 
-describe("IR-CLI-038 — retarget command with dry-run default and per-item skip reasons", () => {
+describe("IR-CLI-054 — retarget command with dry-run default and per-item skip reasons", () => {
   // AC-1: `retarget --from <a> --to <b> --reason <text>` previews the set of requirements whose target
   //       would change without writing unless --apply is given.
-  it("IR-CLI-038 AC-1: previews the move set in dry-run by default and writes only under --apply", async () => {
+  it("IR-CLI-054 AC-1: previews the move set in dry-run by default and writes only under --apply", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     // Preview (no --apply): both targets are registered, so FR-ARCH-001 (target v1.0.0) is a candidate
@@ -189,7 +189,7 @@ describe("IR-CLI-038 — retarget command with dry-run default and per-item skip
 
   // AC-2: The command includes verified requirements in the move set by default and a documented
   //       --exclude option removes only the listed ids.
-  it("IR-CLI-038 AC-2: includes verified requirements by default and --exclude drops only listed ids", async () => {
+  it("IR-CLI-054 AC-2: includes verified requirements by default and --exclude drops only listed ids", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendMoveSet(root);
 
@@ -223,7 +223,7 @@ describe("IR-CLI-038 — retarget command with dry-run default and per-item skip
 
   // AC-3: When --to names a target that is not present in the Target Map, the command refuses the
   //       operation and changes no files.
-  it("IR-CLI-038 AC-3: refuses an unregistered --to target and changes no files", async () => {
+  it("IR-CLI-054 AC-3: refuses an unregistered --to target and changes no files", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readFile(path.join(root, SCOPE_DOC), "utf8");
 
@@ -256,7 +256,7 @@ describe("IR-CLI-038 — retarget command with dry-run default and per-item skip
 
   // AC-4: The preview reports each candidate with a per-item skipReason such as target-not-registered
   //       or frozen-needs-change-note for items it will not move.
-  it("IR-CLI-038 AC-4: preview reports per-item skipReason for items it will not move", async () => {
+  it("IR-CLI-054 AC-4: preview reports per-item skipReason for items it will not move", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendMoveSet(root);
 
@@ -295,7 +295,7 @@ describe("IR-CLI-038 — retarget command with dry-run default and per-item skip
 
   // AC-5: When a moved requirement is frozen or falls under the frozen change-control rule, the
   //       supplied reason is recorded as a Change Notes row consistent with SRS-W009 governance.
-  it("IR-CLI-038 AC-5: a frozen move records the reason as a Change Notes row (SRS-W009 governance)", async () => {
+  it("IR-CLI-054 AC-5: a frozen move records the reason as a Change Notes row (SRS-W009 governance)", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendMoveSet(root);
 

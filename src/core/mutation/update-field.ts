@@ -17,7 +17,7 @@ import { findMetadataLine } from "./internal.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
 /**
- * FR-NODE-048 — single-metadata-field edits handled by simple line replacement. `type`
+ * FR-NODE-060 — single-metadata-field edits handled by simple line replacement. `type`
  * and `scope` are migrations (id-prefix regeneration) and are handled separately, not as
  * line-replacement fields.
  */
@@ -115,9 +115,9 @@ async function updateLineReplaceField(
   return mutationOk({ id: input.id, field: input.field, written: applied.written });
 }
 
-// @req FR-NODE-048
+// @req FR-NODE-060
 /**
- * FR-NODE-048 AC-2/AC-3/AC-4 — a `type` or `scope` edit regenerates the requirement id
+ * FR-NODE-060 AC-2/AC-3/AC-4 — a `type` or `scope` edit regenerates the requirement id
  * (new prefix via generateNextRequirementId), defaults to dry-run, and requires an explicit
  * sign-off to write. A confirmed migration rewrites the heading id, the affected metadata
  * line (Type for a type edit), and inbound Trace Links references from the old id to the new.
@@ -188,7 +188,7 @@ async function migrateTypeOrScope(
 }
 
 /**
- * FR-NODE-048 AC-4 — for a confirmed migration, queue a line-replacement for every inbound Trace
+ * FR-NODE-060 AC-4 — for a confirmed migration, queue a line-replacement for every inbound Trace
  * Links row whose Type is Requirement and whose Reference is the old id, rewriting it to the new
  * id. Operations are pushed onto the shared per-file map so all edits land in one write per file.
  */
@@ -219,9 +219,9 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// @req FR-NODE-048
+// @req FR-NODE-060
 /**
- * FR-NODE-048 — update-field core mutation. Edits a single requirement metadata field
+ * FR-NODE-060 — update-field core mutation. Edits a single requirement metadata field
  * (priority / risk / title / target / verification-method) by line replacement, or migrates a
  * `type` / `scope` edit by regenerating the requirement id prefix under a dry-run plus sign-off
  * gate while rewriting inbound trace references. An unknown id returns NOT_FOUND with no write.
@@ -237,7 +237,7 @@ export async function updateField(
   }
   // FND-001: the supplied value is written verbatim into a metadata cell or the heading
   // title, so a pipe / newline / CR would corrupt the row or inject extra lines (violating
-  // FR-NODE-048 AC-1's single-line rewrite). Reject before building any patch, with no write.
+  // FR-NODE-060 AC-1's single-line rewrite). Reject before building any patch, with no write.
   const unsafeValue = assertSafeMarkdownTableCell<UpdateFieldOutput>(`${input.field} value`, input.value);
   if (unsafeValue) return unsafeValue;
   if ((MIGRATION_FIELDS as readonly string[]).includes(input.field)) {

@@ -6,10 +6,10 @@ import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { validateWorkspaceScoped } from "../../../src/core/validator/validate-scoped.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-PARSE-024 / FR-PARSE-025 — core step-local validation pass.
+// FR-PARSE-027 / FR-PARSE-028 — core step-local validation pass.
 //
 // These cases pin the CORE contract that the CLI `speckiwi step validate <name>`
-// (IR-CLI-028) and MCP `validate_step` (FR-MCP-021) surfaces both compose over:
+// (IR-CLI-046) and MCP `validate_step` (FR-MCP-040) surfaces both compose over:
 // validateWorkspaceScoped(workspace, { step }) runs a single step-local pass whose
 // diagnostics are scoped to docs/spec/steps/<step>/ and adds the step advisory rules
 // SRS-W044 (step-shadows-body), SRS-W045 (step-overload >= 7), and a STEP_* namespace

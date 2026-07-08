@@ -8,15 +8,15 @@ import type {
   StepDiffEntry
 } from "../types.js";
 
-// FR-NODE-034 — diff_steps four-way classification keyed on semanticSha.
+// FR-NODE-049 — diff_steps four-way classification keyed on semanticSha.
 
 /**
  * Reports whether a body endpoint is protected — the updateStatus EXIT guard
- * surface (FR-NODE-019): status verified, stability frozen or stable, or status
+ * surface (FR-NODE-035): status verified, stability frozen or stable, or status
  * implemented with verification evidence. A conflicting change against a
  * protected endpoint is classified CONFLICT-FULL-GUARDED; against an unprotected
  * endpoint, CONFLICT-PARTIAL.
- * @req FR-NODE-034
+ * @req FR-NODE-049
  */
 function isProtectedEndpoint(record: RequirementRecord): boolean {
   const hasEvidence = record.verificationEvidence.some((row) => row.reference.trim() !== "");
@@ -32,7 +32,7 @@ function isProtectedEndpoint(record: RequirementRecord): boolean {
  * Reports whether a step record represents a contradicting change rather than a
  * clean additive update (design §2.2). A step that discards/replaces the body
  * content is a conflict; any other content change is an in-place UPDATE.
- * @req FR-NODE-034
+ * @req FR-NODE-049
  */
 function isConflictingStep(step: RequirementRecord): boolean {
   return step.status === "discarded";
@@ -49,7 +49,7 @@ function isConflictingStep(step: RequirementRecord): boolean {
  * The handler performs its own parse from the ProjectRoot rather than accepting a
  * pre-parsed workspace, mirroring listDirtyEdges, so the diff reflects on-disk
  * state.
- * @req FR-NODE-034
+ * @req FR-NODE-049
  */
 export async function diffSteps(root: ProjectRoot, options: DiffStepsOptions = {}): Promise<DiffStepsResult> {
   const workspace = await parseWorkspace(root);

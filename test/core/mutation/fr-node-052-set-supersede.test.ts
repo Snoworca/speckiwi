@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-// @req FR-NODE-052 — setSupersede core: pairs Supersedes/Superseded By metadata with an optional
+// @req FR-NODE-063 — setSupersede core: pairs Supersedes/Superseded By metadata with an optional
 // matching supersedes/superseded_by Trace Link row, in the same call. The addition site is
-// src/core/mutation/add-trace.ts (per the FR-NODE-052 Trace Links table). Importing the not-yet-
+// src/core/mutation/add-trace.ts (per the FR-NODE-063 Trace Links table). Importing the not-yet-
 // implemented export is itself part of the red signal.
 import { setSupersede } from "../../../src/core/mutation/add-trace.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
@@ -39,8 +39,8 @@ function metadataRows(text: string): string[] {
   return rows;
 }
 
-describe("FR-NODE-052 setSupersede core pairs supersede metadata with trace", () => {
-  it("FR-NODE-052 AC-1: a supersedes value writes only the Supersedes metadata field and changes no other metadata line", async () => {
+describe("FR-NODE-063 setSupersede core pairs supersede metadata with trace", () => {
+  it("FR-NODE-063 AC-1: a supersedes value writes only the Supersedes metadata field and changes no other metadata line", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = metadataRows(await readFile(archPath(root), "utf8"));
 
@@ -65,7 +65,7 @@ describe("FR-NODE-052 setSupersede core pairs supersede metadata with trace", ()
     expect(after.length).toBe(before.length + 1);
   });
 
-  it("FR-NODE-052 AC-2: a superseded-by value writes only the Superseded By metadata field", async () => {
+  it("FR-NODE-063 AC-2: a superseded-by value writes only the Superseded By metadata field", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = metadataRows(await readFile(archPath(root), "utf8"));
 
@@ -88,7 +88,7 @@ describe("FR-NODE-052 setSupersede core pairs supersede metadata with trace", ()
     expect(after.length).toBe(before.length + 1);
   });
 
-  it("FR-NODE-052 AC-3: with trace sync enabled, the matching supersedes (or superseded_by) Trace Link row is also inserted", async () => {
+  it("FR-NODE-063 AC-3: with trace sync enabled, the matching supersedes (or superseded_by) Trace Link row is also inserted", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     const supersedesResult = await setSupersede(await resolveProjectRoot(root), {
@@ -116,7 +116,7 @@ describe("FR-NODE-052 setSupersede core pairs supersede metadata with trace", ()
     expect(text).toMatch(/\|\s*Requirement\s*\|\s*FR-ARCH-100\s*\|\s*superseded_by\s*\|/);
   });
 
-  it("FR-NODE-052 AC-4: an unknown requirement id returns ok false and writes no file", async () => {
+  it("FR-NODE-063 AC-4: an unknown requirement id returns ok false and writes no file", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readFile(archPath(root), "utf8");
 
@@ -131,7 +131,7 @@ describe("FR-NODE-052 setSupersede core pairs supersede metadata with trace", ()
     await expect(readFile(archPath(root), "utf8")).resolves.toBe(before);
   });
 
-  it("FR-NODE-052 AC-5: a dry-run call returns a patch preview and leaves the file unchanged on disk", async () => {
+  it("FR-NODE-063 AC-5: a dry-run call returns a patch preview and leaves the file unchanged on disk", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readFile(archPath(root), "utf8");
 

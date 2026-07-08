@@ -5,9 +5,9 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 
-// IR-CLI-053 — speckiwi register-scopes command.
+// IR-CLI-067 — speckiwi register-scopes command.
 //
-// The speckiwi register-scopes command delegates to the registerScopes core (FR-NODE-053) to
+// The speckiwi register-scopes command delegates to the registerScopes core (FR-NODE-064) to
 // batch-register unregistered scope documents into the Scope Map, defaults to dry-run, writes only
 // with --apply, and supports --json.
 //
@@ -16,11 +16,11 @@ import { main } from "../../src/cli/index.js";
 // register-scopes command, so the whole suite fails today — commander rejects the unknown
 // register-scopes command (non-zero usage exit, no mutation payload printed) — until the green task
 // (T-PH004-50) wires the command against the existing core mutation
-// (src/core/mutation/register-scopes.ts registerScopes, FR-NODE-053): a dry-run plan of Scope Map
+// (src/core/mutation/register-scopes.ts registerScopes, FR-NODE-064): a dry-run plan of Scope Map
 // additions, an --apply that inserts the rows, a --json mutation result envelope, and a per-item
 // skip reason for every prefix-conflicting document.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-053):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-067):
 //   - AC-1: speckiwi register-scopes with no apply prints the planned Scope Map additions and writes
 //           no file.
 //   - AC-2: speckiwi register-scopes --apply inserts the Scope Map rows.
@@ -238,8 +238,8 @@ afterEach(async () => {
   await rm(workspaceRoot, { recursive: true, force: true });
 });
 
-describe("IR-CLI-053 speckiwi register-scopes command", () => {
-  it("IR-CLI-053 AC-1: register-scopes with no apply prints the planned Scope Map additions and writes no file", async () => {
+describe("IR-CLI-067 speckiwi register-scopes command", () => {
+  it("IR-CLI-067 AC-1: register-scopes with no apply prints the planned Scope Map additions and writes no file", async () => {
     // TC-REQ-IR-CLI-053-AC1-01
     const before = await indexContents();
     const streams = io();
@@ -258,7 +258,7 @@ describe("IR-CLI-053 speckiwi register-scopes command", () => {
     expect(await indexContents()).not.toContain("20.extra.srs.md");
   });
 
-  it("IR-CLI-053 AC-2: register-scopes --apply inserts the Scope Map rows", async () => {
+  it("IR-CLI-067 AC-2: register-scopes --apply inserts the Scope Map rows", async () => {
     // TC-REQ-IR-CLI-053-AC2-01
     const streams = io();
 
@@ -280,7 +280,7 @@ describe("IR-CLI-053 speckiwi register-scopes command", () => {
     expect(extraRows.length).toBe(1);
   });
 
-  it("IR-CLI-053 AC-3: register-scopes --json emits the mutation result envelope", async () => {
+  it("IR-CLI-067 AC-3: register-scopes --json emits the mutation result envelope", async () => {
     // TC-REQ-IR-CLI-053-AC3-01
     const streams = io();
 
@@ -308,7 +308,7 @@ describe("IR-CLI-053 speckiwi register-scopes command", () => {
     );
   });
 
-  it("IR-CLI-053: register-scopes --dry-run forwards dryRun and writes no file", async () => {
+  it("IR-CLI-067: register-scopes --dry-run forwards dryRun and writes no file", async () => {
     // FND-003: the --dry-run flag must be a declared option that the handler forwards so the explicit
     // dry-run preview never writes. The CLI declares --apply/--dry-run/--json, so an explicit --dry-run
     // is a non-writing plan whose envelope reports dryRun=true.
@@ -327,7 +327,7 @@ describe("IR-CLI-053 speckiwi register-scopes command", () => {
     expect(await indexContents()).not.toContain("20.extra.srs.md");
   });
 
-  it("IR-CLI-053: register-scopes --apply --dry-run lets dry-run supersede apply (no write)", async () => {
+  it("IR-CLI-067: register-scopes --apply --dry-run lets dry-run supersede apply (no write)", async () => {
     // FND-003: when both flags are present, dry-run must win — the handler forwards dryRun so apply
     // cannot silently override an explicit dry-run preview into a write.
     const before = await indexContents();
@@ -344,7 +344,7 @@ describe("IR-CLI-053 speckiwi register-scopes command", () => {
     expect(await indexContents()).not.toContain("20.extra.srs.md");
   });
 
-  it("IR-CLI-053 AC-4: register-scopes reports a skip reason for each prefix-conflicting document", async () => {
+  it("IR-CLI-067 AC-4: register-scopes reports a skip reason for each prefix-conflicting document", async () => {
     // TC-REQ-IR-CLI-053-AC4-01
     const streams = io();
 

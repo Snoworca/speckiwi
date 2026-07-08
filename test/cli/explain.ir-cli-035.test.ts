@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { getDiagnosticDefinition } from "../../src/core/diagnostic-registry.js";
 
-// IR-CLI-035 — `speckiwi explain <code>` command and `speckiwi validate --explain <code>`
+// IR-CLI-052 — `speckiwi explain <code>` command and `speckiwi validate --explain <code>`
 // option for diagnostic codes.
 //
 // Red-phase suite (T-PH004-13): one test case per acceptance criterion (AC-1..AC-5).
@@ -15,7 +15,7 @@ import { getDiagnosticDefinition } from "../../src/core/diagnostic-registry.js";
 // DiagnosticDefinition registry (DR-PARSE-001: registry SSOT for title / severity /
 // messageTemplate / sourceRule / since / remediation).
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-035):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-052):
 //
 //   SpecKiwi provides a `speckiwi explain <code>` command and a
 //   `speckiwi validate --explain <code>` option that print the diagnostic definition
@@ -56,10 +56,10 @@ const UNKNOWN_CODE = "SRS-Z999";
 // non-empty remediation (DR-PARSE-001 AC-2 enforces non-empty remediation on every code).
 const KNOWN = getDiagnosticDefinition(KNOWN_CODE);
 
-describe("IR-CLI-035 — explain command and validate --explain for diagnostic codes", () => {
+describe("IR-CLI-052 — explain command and validate --explain for diagnostic codes", () => {
   // AC-1: `explain <code>` prints the title, severity, messageTemplate, sourceRule, and
   //       since fields for a known diagnostic code.
-  it("IR-CLI-035 AC-1: explain <code> prints title, severity, messageTemplate, sourceRule, and since", async () => {
+  it("IR-CLI-052 AC-1: explain <code> prints title, severity, messageTemplate, sourceRule, and since", async () => {
     const streams = io();
     const code = await main(["explain", KNOWN_CODE], streams);
     const text = drain(streams.stdout);
@@ -79,7 +79,7 @@ describe("IR-CLI-035 — explain command and validate --explain for diagnostic c
 
   // AC-2: `explain <code>` includes the remediation text when the diagnostic definition
   //       provides one and omits it cleanly when absent.
-  it("IR-CLI-035 AC-2: explain includes remediation when present and renders no empty/undefined remediation", async () => {
+  it("IR-CLI-052 AC-2: explain includes remediation when present and renders no empty/undefined remediation", async () => {
     // SRS-E001 carries a remediation: it must be present verbatim in the output.
     expect(typeof KNOWN.remediation).toBe("string");
     expect((KNOWN.remediation ?? "").trim()).not.toBe("");
@@ -99,7 +99,7 @@ describe("IR-CLI-035 — explain command and validate --explain for diagnostic c
 
   // AC-3: `validate --explain <code>` prints the same diagnostic definition fields as the
   //       explain command.
-  it("IR-CLI-035 AC-3: validate --explain <code> prints the same definition fields as explain", async () => {
+  it("IR-CLI-052 AC-3: validate --explain <code> prints the same definition fields as explain", async () => {
     const streams = io();
     const code = await main(["validate", "--explain", KNOWN_CODE], streams);
     const text = drain(streams.stdout);
@@ -118,7 +118,7 @@ describe("IR-CLI-035 — explain command and validate --explain for diagnostic c
 
   // AC-4: `explain` with an unknown code exits with a non-zero exit code and prints a
   //       not-found message instead of throwing an unhandled error.
-  it("IR-CLI-035 AC-4: explain with an unknown code exits non-zero with a not-found message", async () => {
+  it("IR-CLI-052 AC-4: explain with an unknown code exits non-zero with a not-found message", async () => {
     const streams = io();
     const code = await main(["explain", UNKNOWN_CODE], streams);
     const out = drain(streams.stdout);
@@ -137,7 +137,7 @@ describe("IR-CLI-035 — explain command and validate --explain for diagnostic c
 
   // AC-5: `explain` supports --json and emits the diagnostic definition as a
   //       machine-readable object.
-  it("IR-CLI-035 AC-5: explain --json emits the definition as a machine-readable object", async () => {
+  it("IR-CLI-052 AC-5: explain --json emits the definition as a machine-readable object", async () => {
     const streams = io();
     const code = await main(["explain", KNOWN_CODE, "--json"], streams);
     const raw = drain(streams.stdout);

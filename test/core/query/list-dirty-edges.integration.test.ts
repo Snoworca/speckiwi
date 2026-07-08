@@ -13,9 +13,9 @@ import {
 import { listDirtyEdges } from "../../../src/core/query/summary.js";
 import type { RequirementStatus, Stability } from "../../../src/core/types.js";
 
-// FR-NODE-022 / FR-NODE-023 / FR-NODE-024 — writer→reader integration.
+// FR-NODE-038 / FR-NODE-039 / FR-NODE-040 — writer→reader integration.
 //
-// FND-002 regression guard: the FR-NODE-024 unit suite and the FR-NODE-023 AC-1
+// FND-002 regression guard: the FR-NODE-040 unit suite and the FR-NODE-039 AC-1
 // unit case both hand-author the canonical pin Notes grammar (or assert only
 // "notes changed"), so neither exercises the actual addCompatibilityCheck /
 // refreshCompatibilityCheck *writer* output flowing through the listDirtyEdges

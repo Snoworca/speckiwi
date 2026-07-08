@@ -7,9 +7,9 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
 import type { MutationResult, ProjectRoot, StepStateMode, TextFile } from "../types.js";
 
-// @req FR-NODE-035
+// @req FR-NODE-050
 /**
- * FR-NODE-035 — work-mode model over docs/spec/steps/state.md.
+ * FR-NODE-050 — work-mode model over docs/spec/steps/state.md.
  *
  * getWorkMode reads the top-of-file work-mode metadata block (the Mode and, for
  * vibe, the Active Task lines above the step-state table) and is fail-open: an
@@ -35,7 +35,7 @@ export interface SetWorkModeValue {
   written: boolean;
 }
 
-// @req FR-NODE-035
+// @req FR-NODE-050
 /**
  * AC-1 / AC-2 — return the persisted Mode (and, for vibe, the Active Task) read
  * from the state.md metadata block, falling open to wait when state.md is absent
@@ -54,7 +54,7 @@ export async function getWorkMode(root: ProjectRoot): Promise<WorkMode> {
     : { mode: parsed.mode };
 }
 
-// @req FR-NODE-035
+// @req FR-NODE-050
 /** The 1-based exclusive end of the work-mode metadata block: the line above the
  * step-state table header, or the whole file when there is no table. */
 function metadataEndLine(stateFile: TextFile): number {
@@ -62,7 +62,7 @@ function metadataEndLine(stateFile: TextFile): number {
   return table ? table.startLine : stateFile.lines.length + 1;
 }
 
-// @req FR-NODE-035
+// @req FR-NODE-050
 /** First line in [1, limit) whose text matches `prefix` (e.g. "Mode:"), or -1. */
 function findMetadataField(stateFile: TextFile, limit: number, regex: RegExp): number {
   for (let line = 1; line < limit; line += 1) {
@@ -71,7 +71,7 @@ function findMetadataField(stateFile: TextFile, limit: number, regex: RegExp): n
   return -1;
 }
 
-// @req FR-NODE-035
+// @req FR-NODE-050
 /**
  * AC-3 / AC-4 — persist Mode (and, for vibe, the Active Task name) into the
  * state.md metadata block. An existing Mode / Active Task line is rewritten in

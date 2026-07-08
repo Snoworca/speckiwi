@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-047 — `speckiwi history <id>` command for requirement Change Notes.
+// IR-CLI-061 — `speckiwi history <id>` command for requirement Change Notes.
 //
 // Red-phase suite (T-PH004-37): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/read.ts` teach the CLI a
@@ -14,7 +14,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // wires the command against the existing parsed Change Notes (src/core/query/records.ts
 // changeNotesFromTable → RequirementRecord.changeNotes, FR-PARSE-009).
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-047):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-061):
 //
 //   The speckiwi history command outputs the Change Notes of a single requirement as date, change,
 //   and reason rows sorted chronologically, supports an optional since filter and json, and never
@@ -143,9 +143,9 @@ function findChangeNoteArray(parsed: unknown): Array<Record<string, unknown>> | 
   return undefined;
 }
 
-describe("IR-CLI-047 — history command for requirement Change Notes", () => {
+describe("IR-CLI-061 — history command for requirement Change Notes", () => {
   // AC-1: `history <id>` lists the requirement Change Notes rows in ascending date order.
-  it("IR-CLI-047 AC-1: history lists Change Notes rows in ascending date order", async () => {
+  it("IR-CLI-061 AC-1: history lists Change Notes rows in ascending date order", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendHistoryFixture(root);
 
@@ -179,7 +179,7 @@ describe("IR-CLI-047 — history command for requirement Change Notes", () => {
   });
 
   // AC-2: `history <id> --since <date>` includes only rows on or after the date inclusive.
-  it("IR-CLI-047 AC-2: history --since includes only rows on or after the date inclusive", async () => {
+  it("IR-CLI-061 AC-2: history --since includes only rows on or after the date inclusive", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendHistoryFixture(root);
 
@@ -205,7 +205,7 @@ describe("IR-CLI-047 — history command for requirement Change Notes", () => {
   });
 
   // AC-3: `history` on an unknown requirement id returns a non-zero exit code.
-  it("IR-CLI-047 AC-3: history on an unknown requirement id exits non-zero", async () => {
+  it("IR-CLI-061 AC-3: history on an unknown requirement id exits non-zero", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendHistoryFixture(root);
 
@@ -225,7 +225,7 @@ describe("IR-CLI-047 — history command for requirement Change Notes", () => {
   });
 
   // AC-4: `history` on a requirement with no Change Notes returns an empty result without error.
-  it("IR-CLI-047 AC-4: history on a requirement with no Change Notes returns an empty result without error", async () => {
+  it("IR-CLI-061 AC-4: history on a requirement with no Change Notes returns an empty result without error", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendHistoryFixture(root);
 

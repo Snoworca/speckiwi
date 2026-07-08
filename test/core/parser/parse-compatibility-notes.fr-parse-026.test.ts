@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-// FR-PARSE-026: parseCompatibilityNotes strict tokenizer for the checked_compatible
+// FR-PARSE-029: parseCompatibilityNotes strict tokenizer for the checked_compatible
 // Trace Links "Notes" cell. Contract per SRS-MD-Rules-v3.0.0 §23.5:
 //   - items separated by "; " (semicolon-space)
 //   - each item is "key: value"
@@ -16,8 +16,8 @@ import { describe, expect, it } from "vitest";
 //   }
 import { parseCompatibilityNotes } from "../../../src/core/parser/table.js";
 
-describe("parseCompatibilityNotes (FR-PARSE-026)", () => {
-  it("FR-PARSE-026 AC-1: splits items on semicolon-space and parses each into a key/value pair", () => {
+describe("parseCompatibilityNotes (FR-PARSE-029)", () => {
+  it("FR-PARSE-029 AC-1: splits items on semicolon-space and parses each into a key/value pair", () => {
     const result = parseCompatibilityNotes("fpv: fpv1; self: abc123; peer: def456");
     expect(result.ok).toBe(true);
     expect(result.fields).toMatchObject({
@@ -27,7 +27,7 @@ describe("parseCompatibilityNotes (FR-PARSE-026)", () => {
     });
   });
 
-  it("FR-PARSE-026 AC-2: rejects keys or values outside the allowed charset", () => {
+  it("FR-PARSE-029 AC-2: rejects keys or values outside the allowed charset", () => {
     // Uppercase key violates the lowercase-and-hyphen key rule.
     const badKey = parseCompatibilityNotes("FPV: fpv1");
     expect(badKey.ok).toBe(false);
@@ -37,7 +37,7 @@ describe("parseCompatibilityNotes (FR-PARSE-026)", () => {
     expect(badValue.ok).toBe(false);
   });
 
-  it("FR-PARSE-026 AC-3: rejects a value containing an ellipsis or other out-of-charset character", () => {
+  it("FR-PARSE-029 AC-3: rejects a value containing an ellipsis or other out-of-charset character", () => {
     const ellipsis = parseCompatibilityNotes("self: abc…");
     expect(ellipsis.ok).toBe(false);
 
@@ -45,7 +45,7 @@ describe("parseCompatibilityNotes (FR-PARSE-026)", () => {
     expect(tripleDotEllipsisToken.ok).toBe(false);
   });
 
-  it("FR-PARSE-026 AC-4: recognizes fpv, self, peer, and checked-at tokens as structured fields", () => {
+  it("FR-PARSE-029 AC-4: recognizes fpv, self, peer, and checked-at tokens as structured fields", () => {
     const result = parseCompatibilityNotes(
       "fpv: fpv1; self: 1a2b3c; peer: 4d5e6f; checked-at: 2026-06-17"
     );

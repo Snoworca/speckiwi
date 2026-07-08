@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-043 — common --input-json stdin and --help --json for all mutation commands.
+// IR-CLI-058 — common --input-json stdin and --help --json for all mutation commands.
 //
 // Red-phase suite (T-PH004-29): one test case per acceptance criterion (AC-1..AC-5). These cases pin
 // the future CLI contract before the green task (T-PH004-30) teaches the CLI a common --input-json
@@ -14,7 +14,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - `update-status --help --json` prints the human help text, not a machine-readable object, so
 //     JSON.parse of stdout throws / yields no command-name + kind + parameter-list object.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-043):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-058):
 //
 //   All SpecKiwi mutation commands accept a common --input-json option that reads the full argument
 //   object as a JSON string or from stdin, and all commands support --help --json to emit a
@@ -85,10 +85,10 @@ async function withStdin<T>(text: string, body: () => Promise<T>): Promise<T> {
   }
 }
 
-describe("IR-CLI-043 — common --input-json stdin and --help --json", () => {
+describe("IR-CLI-058 — common --input-json stdin and --help --json", () => {
   // AC-1: Every mutation command accepts --input-json <json> and parses the object as its full
   //       argument set equivalently to discrete flags.
-  it("IR-CLI-043 AC-1: a mutation command accepts --input-json carrying its full argument object", async () => {
+  it("IR-CLI-058 AC-1: a mutation command accepts --input-json carrying its full argument object", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const json = JSON.stringify({ id: TARGET_ID, status: NEXT_STATUS, dryRun: true });
     const run = io();
@@ -105,7 +105,7 @@ describe("IR-CLI-043 — common --input-json stdin and --help --json", () => {
 
   // AC-2: When --input-json is given the value - or omitted with piped input, the command reads the
   //       JSON object from stdin.
-  it("IR-CLI-043 AC-2: --input-json - reads the JSON argument object from stdin", async () => {
+  it("IR-CLI-058 AC-2: --input-json - reads the JSON argument object from stdin", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const json = JSON.stringify({ id: TARGET_ID, status: NEXT_STATUS, dryRun: true });
     const run = io();
@@ -123,7 +123,7 @@ describe("IR-CLI-043 — common --input-json stdin and --help --json", () => {
 
   // AC-3: Discrete flags and --input-json for the same command produce identical mutation results for
   //       equivalent inputs.
-  it("IR-CLI-043 AC-3: discrete args and --input-json yield identical mutation results", async () => {
+  it("IR-CLI-058 AC-3: discrete args and --input-json yield identical mutation results", async () => {
     const flagsRoot = await copyFixtureWorkspace("mutation-target");
     const flagsRun = io();
     const flagsCode = await main(
@@ -148,7 +148,7 @@ describe("IR-CLI-043 — common --input-json stdin and --help --json", () => {
 
   // AC-4: speckiwi <command> --help --json prints a machine-readable object containing the command
   //       name, its kind, and its parameter list sourced from the ToolSpec registry.
-  it("IR-CLI-043 AC-4: --help --json prints a registry-sourced command/kind/parameter object", async () => {
+  it("IR-CLI-058 AC-4: --help --json prints a registry-sourced command/kind/parameter object", async () => {
     const run = io();
     const code = await main(["update-status", "--help", "--json"], run);
     expect(code).toBe(0);
@@ -176,7 +176,7 @@ describe("IR-CLI-043 — common --input-json stdin and --help --json", () => {
 
   // AC-5: An automated test asserts --input-json and equivalent discrete flags yield the same patch
   //       for at least one mutation command.
-  it("IR-CLI-043 AC-5: --input-json and discrete flags yield the same patch for update-status", async () => {
+  it("IR-CLI-058 AC-5: --input-json and discrete flags yield the same patch for update-status", async () => {
     // Discrete-flag dry run.
     const flagsRoot = await copyFixtureWorkspace("mutation-target");
     const flagsRun = io();

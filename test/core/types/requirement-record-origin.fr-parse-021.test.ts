@@ -5,15 +5,15 @@ import type {
   TextFile
 } from "../../../src/core/types.js";
 
-// FR-PARSE-021: types.ts adds optional origin ('body'|'step') and stepName to
+// FR-PARSE-024: types.ts adds optional origin ('body'|'step') and stepName to
 // RequirementRecord and optional stepRecords, stepFiles, and stateFile to ParsedWorkspace
 // so that new fields are backward compatible with existing single-constructor and fixture
 // call sites. These are compile-time (type-level) acceptance criteria, verified with
 // vitest's type-level assertions plus a no-new-field construction.
 
-describe("FR-PARSE-021 optional origin and stepName fields on RequirementRecord and ParsedWorkspace", () => {
+describe("FR-PARSE-024 optional origin and stepName fields on RequirementRecord and ParsedWorkspace", () => {
   // AC-1: RequirementRecord declares optional origin and stepName fields.
-  it("FR-PARSE-021 AC-1", () => {
+  it("FR-PARSE-024 AC-1", () => {
     expectTypeOf<RequirementRecord["origin"]>().toEqualTypeOf<"body" | "step" | undefined>();
     expectTypeOf<RequirementRecord["stepName"]>().toEqualTypeOf<string | undefined>();
     // Both fields must be optional (assignable from a record that omits them).
@@ -23,7 +23,7 @@ describe("FR-PARSE-021 optional origin and stepName fields on RequirementRecord 
   });
 
   // AC-2: ParsedWorkspace declares optional stepRecords, stepFiles, and stateFile fields.
-  it("FR-PARSE-021 AC-2", () => {
+  it("FR-PARSE-024 AC-2", () => {
     expectTypeOf<ParsedWorkspace["stepRecords"]>().toEqualTypeOf<RequirementRecord[] | undefined>();
     expectTypeOf<ParsedWorkspace["stepFiles"]>().toEqualTypeOf<TextFile[] | undefined>();
     expectTypeOf<ParsedWorkspace["stateFile"]>().toEqualTypeOf<TextFile | null | undefined>();
@@ -31,7 +31,7 @@ describe("FR-PARSE-021 optional origin and stepName fields on RequirementRecord 
 
   // AC-3: Existing code constructing RequirementRecord or ParsedWorkspace without the new
   // fields type-checks unchanged.
-  it("FR-PARSE-021 AC-3", () => {
+  it("FR-PARSE-024 AC-3", () => {
     // A RequirementRecord literal that omits origin/stepName must remain assignable.
     const recordWithoutNewFields: RequirementRecord = {
       id: "FR-ARCH-001",

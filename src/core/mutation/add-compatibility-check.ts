@@ -7,7 +7,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { loadRecord } from "./internal.js";
 import { compareReqId, computeSemanticSha } from "./records.js";
 
-// FR-NODE-022 — add_compatibility_check mutation.
+// FR-NODE-038 — add_compatibility_check mutation.
 //
 // Records that two requirements have been checked for mutual compatibility by
 // inserting a single `checked_compatible` Trace Links row on the
@@ -40,7 +40,7 @@ const COMPATIBILITY_FPV = "fpv1";
  * The ISO `checkedAt` value stays within the §23.5 value charset
  * (alphanumerics, hyphen, colon, dot) and survives the parser's first-colon
  * key/value split. All separators are markdown-table safe (no pipe/newline).
- * @req FR-NODE-022
+ * @req FR-NODE-038
  */
 function renderPins(selfSha: string, peerSha: string, checkedAt: string): string {
   return `fpv: ${COMPATIBILITY_FPV}; self: ${selfSha}; peer: ${peerSha}; checked-at: ${checkedAt}`;
@@ -49,7 +49,7 @@ function renderPins(selfSha: string, peerSha: string, checkedAt: string): string
 /**
  * Reports whether `record` already holds a `checked_compatible` row referencing
  * `peerId`, used by the per-pair dedup guard.
- * @req FR-NODE-022
+ * @req FR-NODE-038
  */
 function hasCompatibilityRow(record: RequirementRecord, peerId: string): boolean {
   return record.traceLinks.some((link) => link.relation === COMPATIBLE_RELATION && link.reference === peerId);
@@ -62,7 +62,7 @@ function hasCompatibilityRow(record: RequirementRecord, peerId: string): boolean
  * min-side block. Rejected when either endpoint is non-existent, discarded, or
  * deprecated, when the min-side block is frozen, or when the pair has already
  * been recorded (dedup).
- * @req FR-NODE-022
+ * @req FR-NODE-038
  */
 export async function addCompatibilityCheck(
   root: ProjectRoot,
@@ -123,11 +123,11 @@ export async function addCompatibilityCheck(
   return addTraceLink(root, traceInput);
 }
 
-// FR-NODE-023 — refresh_compatibility_check and revoke_compatibility_check
+// FR-NODE-039 — refresh_compatibility_check and revoke_compatibility_check
 // mutations.
 //
 // These operate on the single normalized `checked_compatible` row that
-// FR-NODE-022 placed on the compareReqId-minimum (self) block of a pair. Both
+// FR-NODE-038 placed on the compareReqId-minimum (self) block of a pair. Both
 // are order-independent: the pair always normalizes to the same min-side block,
 // so the caller may pass the two REQ-IDs in either order. refresh recomputes the
 // row's self/peer semanticSha pins (so a content change on either endpoint is
@@ -149,7 +149,7 @@ export interface RevokeCompatibilityCheckInput {
  * Normalizes the (aReqId, bReqId) pair to its compareReqId-minimum (self) and
  * peer (max) side so refresh/revoke target the same min-side block regardless of
  * argument order.
- * @req FR-NODE-023
+ * @req FR-NODE-039
  */
 function normalizePair(aReqId: string, bReqId: string): { selfId: string; peerId: string } {
   return compareReqId(aReqId, bReqId) <= 0
@@ -161,7 +161,7 @@ function normalizePair(aReqId: string, bReqId: string): { selfId: string; peerId
  * Returns every `checked_compatible` Trace Links row referencing `peerId` on the
  * loaded self record, so callers can enforce the exactly-one-row invariant before
  * editing.
- * @req FR-NODE-023
+ * @req FR-NODE-039
  */
 function matchingCompatibilityRows(record: RequirementRecord, peerId: string): TraceLink[] {
   return record.traceLinks.filter((link) => link.relation === COMPATIBLE_RELATION && link.reference === peerId);
@@ -174,7 +174,7 @@ function matchingCompatibilityRows(record: RequirementRecord, peerId: string): T
  * rows exist (the pair was never checked) and is rejected when two or more
  * matching rows exist (ambiguous target), leaving the file untouched in both
  * rejection cases.
- * @req FR-NODE-023
+ * @req FR-NODE-039
  */
 export async function refreshCompatibilityCheck(
   root: ProjectRoot,
@@ -225,7 +225,7 @@ export async function refreshCompatibilityCheck(
  * Returns NOT_FOUND when zero matching rows exist and is rejected when two or
  * more matching rows exist (ambiguous target), leaving the file untouched in both
  * rejection cases.
- * @req FR-NODE-023
+ * @req FR-NODE-039
  */
 export async function revokeCompatibilityCheck(
   root: ProjectRoot,

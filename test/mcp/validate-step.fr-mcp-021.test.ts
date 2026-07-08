@@ -6,7 +6,7 @@ import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { renderToolNames, renderToolSchemas, renderReadOnlyToolNames } from "../../src/mcp/schemas.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// FR-MCP-021 — MCP validate_step tool registration.
+// FR-MCP-040 — MCP validate_step tool registration.
 //
 // Red-phase suite (T-PH005-03): one test case per acceptance criterion (AC-1..AC-3).
 // These cases pin the future MCP contract before src/mcp exposes the `validate_step`
@@ -17,7 +17,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // project the new tool.
 //
 // Contract under test (from the requirement body and AC, SRS
-// docs/spec/40.mcp-stdio-interface.srs.md FR-MCP-021):
+// docs/spec/40.mcp-stdio-interface.srs.md FR-MCP-040):
 //
 //   An MCP validate_step tool is registered that runs validateWorkspaceScoped for a named
 //   step and returns its step-local diagnostics including W044, W045, and STEP_* advisories.
@@ -170,9 +170,9 @@ function envelopeDiagnostics(value: { errors?: Diagnostic[]; warnings?: Diagnost
   return { errors: value.errors ?? [], warnings: value.warnings ?? [] };
 }
 
-describe("FR-MCP-021 — MCP validate_step tool registration", () => {
+describe("FR-MCP-040 — MCP validate_step tool registration", () => {
   // AC-1: validate_step accepts a step name and returns diagnostics scoped to that step.
-  it("FR-MCP-021 AC-1: accepts a step name and returns diagnostics scoped to that step", async () => {
+  it("FR-MCP-040 AC-1: accepts a step name and returns diagnostics scoped to that step", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
     // A genuine body-scope error must NOT leak into the step-scoped diagnostics.
@@ -195,7 +195,7 @@ describe("FR-MCP-021 — MCP validate_step tool registration", () => {
   });
 
   // AC-2: validate_step surfaces W044 and W045 warnings when present.
-  it("FR-MCP-021 AC-2: surfaces W044 and W045 warnings when present", async () => {
+  it("FR-MCP-040 AC-2: surfaces W044 and W045 warnings when present", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
 
@@ -212,7 +212,7 @@ describe("FR-MCP-021 — MCP validate_step tool registration", () => {
   });
 
   // AC-3: validate_step returns STEP_* diagnostics as advisory and never as gate-failing errors.
-  it("FR-MCP-021 AC-3: returns STEP_* diagnostics as advisory warnings, never as errors", async () => {
+  it("FR-MCP-040 AC-3: returns STEP_* diagnostics as advisory warnings, never as errors", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepName = await seedStepWithStepLocalDiagnostics(root);
 
@@ -235,7 +235,7 @@ describe("FR-MCP-021 — MCP validate_step tool registration", () => {
   // AC-1 (zero-drift pin): the tool is projected from the single ToolSpec registry, so the
   // registry-derived MCP surfaces (toolNames / toolSchemas / read-only set) carry it. This pins
   // the STANDING RULE that the green task registers `mcpName: "validate_step"` (kind "read").
-  it("FR-MCP-021 AC-1: validate_step is a read-only tool projected from the ToolSpec registry", () => {
+  it("FR-MCP-040 AC-1: validate_step is a read-only tool projected from the ToolSpec registry", () => {
     expect(renderToolNames()).toContain("validate_step");
     expect(Object.keys(renderToolSchemas())).toContain("validate_step");
     expect(renderReadOnlyToolNames()).toContain("validate_step");

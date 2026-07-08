@@ -3,17 +3,17 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-// FR-MCP-024 — MCP registration of step state tools.
+// FR-MCP-042 — MCP registration of step state tools.
 //
 // Red-phase suite (T-PH005-09): one test case per acceptance criterion (AC-1, AC-2).
-// These cases describe the future MCP surface of FR-MCP-024 before the three step
+// These cases describe the future MCP surface of FR-MCP-042 before the three step
 // state tools (claim_step, update_step_state, list_steps) are registered, so the
 // whole suite fails until the green task (T-PH005-10) gives the ToolSpec entries
 // (src/mcp/schemas.ts) an mcpName and wires the handlers in registerMutationTools /
 // registerReadTools (src/mcp/tools/*.ts) forwarding to the core implementations
-// claimStep (FR-NODE-027), updateStepState (FR-NODE-028), and listSteps (FR-NODE-029).
+// claimStep (FR-NODE-042), updateStepState (FR-NODE-043), and listSteps (FR-NODE-044).
 //
-// Contract under test (FR-MCP-024 requirement body + AC):
+// Contract under test (FR-MCP-042 requirement body + AC):
 //   - AC-1: claim_step, update_step_state, and list_steps are registered MCP tools
 //           with zod schemas.
 //   - AC-2: each step-state tool forwards its inputs to the corresponding core
@@ -183,7 +183,7 @@ function renderIndexDocument(): string {
   ].join("\n");
 }
 
-// FR-PARSE-023 state.md columns: Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated.
+// FR-PARSE-026 state.md columns: Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated.
 function renderStateDocument(
   rows: Array<{ step: string; status?: string; dependsOn?: string; touchesScope: string; touchesReq: string }>
 ): string {
@@ -226,9 +226,9 @@ async function stateText(rootPath: string): Promise<string> {
   return readFile(path.join(rootPath, "docs", "spec", "steps", "state.md"), "utf8");
 }
 
-describe("FR-MCP-024 — MCP registration of step state tools", () => {
+describe("FR-MCP-042 — MCP registration of step state tools", () => {
   // AC-1: claim_step, update_step_state, and list_steps are registered MCP tools with zod schemas.
-  it("FR-MCP-024 AC-1: claim_step, update_step_state, and list_steps are registered MCP tools with zod schemas", () => {
+  it("FR-MCP-042 AC-1: claim_step, update_step_state, and list_steps are registered MCP tools with zod schemas", () => {
     const registered = registeredMcpToolNames();
     const toolNames = new Set(renderToolNames());
     const schemas = renderToolSchemas();
@@ -267,8 +267,8 @@ describe("FR-MCP-024 — MCP registration of step state tools", () => {
   });
 
   // AC-2: each step-state tool forwards its inputs to the corresponding core implementation.
-  it("FR-MCP-024 AC-2: each step-state tool forwards its inputs to the corresponding core implementation", async () => {
-    // ── claim_step → core claimStep (FR-NODE-027) ────────────────────────────
+  it("FR-MCP-042 AC-2: each step-state tool forwards its inputs to the corresponding core implementation", async () => {
+    // ── claim_step → core claimStep (FR-NODE-042) ────────────────────────────
     // An unconflicted claim appends a state.md row carrying the declared TouchesScope/TouchesReq.
     {
       const rootPath = await buildWorkspace([]);
@@ -305,7 +305,7 @@ describe("FR-MCP-024 — MCP registration of step state tools", () => {
       expect(await stateText(rootPath)).not.toContain("challenger");
     }
 
-    // ── update_step_state → core updateStepState (FR-NODE-028) ───────────────
+    // ── update_step_state → core updateStepState (FR-NODE-043) ───────────────
     // Rewrites the Status cell of an existing step row in place.
     {
       const rootPath = await buildWorkspace([
@@ -328,7 +328,7 @@ describe("FR-MCP-024 — MCP registration of step state tools", () => {
       expect(missing).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
     }
 
-    // ── list_steps → core listSteps (FR-NODE-029) ────────────────────────────
+    // ── list_steps → core listSteps (FR-NODE-044) ────────────────────────────
     // Returns the Kahn topological order honouring DependsOn edges. step-b depends on step-a,
     // so step-a must be ordered before step-b.
     {

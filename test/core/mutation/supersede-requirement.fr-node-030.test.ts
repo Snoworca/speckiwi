@@ -13,7 +13,7 @@ import { setAcceptanceCriteriaChecked } from "../../../src/core/mutation/check-a
 // implements it.
 import { supersedeRequirement } from "../../../src/core/mutation/supersede-requirement.js";
 
-// FR-NODE-030 — supersede_requirement strict two-call mutation with guards and
+// FR-NODE-045 — supersede_requirement strict two-call mutation with guards and
 // A1 invalidation.
 //
 // Red-phase suite (T-PH003-27): one test case per acceptance criterion
@@ -139,7 +139,7 @@ async function incomingSupersedesCount(rootPath: string, oldId: string): Promise
   return count;
 }
 
-/** Standard non-protected (evolving) supersede target so the FR-NODE-019 guard is open. */
+/** Standard non-protected (evolving) supersede target so the FR-NODE-035 guard is open. */
 const OLD_ID = "FR-ARCH-100";
 
 /** The minimal new-requirement payload that T1 add_requirement consumes. */
@@ -155,7 +155,7 @@ function supersedeInput(oldId: string, overrides: Record<string, unknown> = {}) 
   };
 }
 
-describe("FR-NODE-030 AC-1 — strict T1 add_requirement then T2 updateStatus, capturing newId", () => {
+describe("FR-NODE-045 AC-1 — strict T1 add_requirement then T2 updateStatus, capturing newId", () => {
   it("AC-1: executes add_requirement then discards oldId in that order and captures the newId", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // A non-protected (evolving) supersede target so the discard in T2 is allowed.
@@ -185,7 +185,7 @@ describe("FR-NODE-030 AC-1 — strict T1 add_requirement then T2 updateStatus, c
   });
 });
 
-describe("FR-NODE-030 AC-2 — self-reference, reverse-duplicate, and N>1 ambiguity guards", () => {
+describe("FR-NODE-045 AC-2 — self-reference, reverse-duplicate, and N>1 ambiguity guards", () => {
   it("AC-2: rejects a self-referential supersede", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(rootPath, [{ id: OLD_ID, title: "Supersede target" }]);
@@ -268,7 +268,7 @@ describe("FR-NODE-030 AC-2 — self-reference, reverse-duplicate, and N>1 ambigu
   });
 });
 
-describe("FR-NODE-030 AC-3 — T2 hardened updateStatus honors the verified-regression exit guard", () => {
+describe("FR-NODE-045 AC-3 — T2 hardened updateStatus honors the verified-regression exit guard", () => {
   it("AC-3: denies supersede of a protected (verified) requirement without an override", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(rootPath, [{ id: OLD_ID, title: "Protected target", stability: "stable" }]);
@@ -311,7 +311,7 @@ describe("FR-NODE-030 AC-3 — T2 hardened updateStatus honors the verified-regr
   });
 });
 
-describe("FR-NODE-030 AC-4 — idempotent journal resumption (no duplicate Change Notes row)", () => {
+describe("FR-NODE-045 AC-4 — idempotent journal resumption (no duplicate Change Notes row)", () => {
   it("AC-4: re-running supersede does not append a duplicate Change Notes row to oldId", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(rootPath, [{ id: OLD_ID, title: "Supersede target", stability: "evolving" }]);
@@ -342,7 +342,7 @@ describe("FR-NODE-030 AC-4 — idempotent journal resumption (no duplicate Chang
   });
 });
 
-describe("FR-NODE-030 AC-5 — oldId compatibility rows are invalidated via revoke_compatibility_check", () => {
+describe("FR-NODE-045 AC-5 — oldId compatibility rows are invalidated via revoke_compatibility_check", () => {
   it("AC-5: revokes the oldId endpoint's checked_compatible rows after supersede", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // OLD_ID and a peer both exist; a compatibility check is recorded between

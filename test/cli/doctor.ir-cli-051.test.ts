@@ -10,7 +10,7 @@ import {
 } from "../../src/core/bootstrap/templates.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-051 — `speckiwi doctor` environment health command.
+// IR-CLI-065 — `speckiwi doctor` environment health command.
 //
 // Red-phase suite (T-PH004-45): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before the green task (T-PH004-46) teaches the CLI a `doctor` command, so
@@ -20,7 +20,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // ToolSpec entry under the FR-ARCH-006 zero-drift contract, the green task must also register it in
 // src/mcp/schemas.ts.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-051):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-065):
 //
 //   The speckiwi doctor command reports a consolidated health diagnosis covering docs spec presence
 //   and parseability, agent workflow block version currency, bundled versus installed rules version
@@ -131,9 +131,9 @@ const REQUIRED_HEALTH_TOPICS: ReadonlyArray<{ topic: string; keywords: readonly 
   { topic: "Node version", keywords: ["node"] }
 ];
 
-describe("IR-CLI-051 — speckiwi doctor environment health command", () => {
+describe("IR-CLI-065 — speckiwi doctor environment health command", () => {
   // AC-1: speckiwi doctor reports each checked item with an ok/warn/fail state and a remediation hint.
-  it("IR-CLI-051 AC-1: doctor reports each checked item with an ok/warn/fail state and a remediation hint", async () => {
+  it("IR-CLI-065 AC-1: doctor reports each checked item with an ok/warn/fail state and a remediation hint", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     const streams = io();
@@ -168,7 +168,7 @@ describe("IR-CLI-051 — speckiwi doctor environment health command", () => {
   });
 
   // AC-2: speckiwi doctor --json emits the structured diagnosis report.
-  it("IR-CLI-051 AC-2: doctor --json emits the structured diagnosis report", async () => {
+  it("IR-CLI-065 AC-2: doctor --json emits the structured diagnosis report", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     const streams = io();
@@ -193,7 +193,7 @@ describe("IR-CLI-051 — speckiwi doctor environment health command", () => {
   });
 
   // AC-3: speckiwi doctor without --fix writes no file.
-  it("IR-CLI-051 AC-3: doctor without --fix writes no file", async () => {
+  it("IR-CLI-065 AC-3: doctor without --fix writes no file", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const before = await snapshotTree(root);
 
@@ -211,7 +211,7 @@ describe("IR-CLI-051 — speckiwi doctor environment health command", () => {
 
   // AC-4: speckiwi doctor --fix re-upserts only missing or outdated agent workflow blocks and changes
   //       no Requirement Block data.
-  it("IR-CLI-051 AC-4: doctor --fix re-upserts only the workflow blocks and leaves Requirement Block data unchanged", async () => {
+  it("IR-CLI-065 AC-4: doctor --fix re-upserts only the workflow blocks and leaves Requirement Block data unchanged", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     // The fixture ships no agent files, so the SpecKiwi workflow block is MISSING — exactly the
@@ -251,7 +251,7 @@ describe("IR-CLI-051 — speckiwi doctor environment health command", () => {
   // AC-4 (idempotent branch): running --fix twice must be a fixed point. The first run upserts the
   // missing workflow blocks; the second run finds them already current and changes nothing — the agent
   // files are byte-identical across runs and no other file is added, removed, or modified.
-  it("IR-CLI-051 AC-4: doctor --fix is idempotent — a second run leaves the agent files byte-identical and touches no other file", async () => {
+  it("IR-CLI-065 AC-4: doctor --fix is idempotent — a second run leaves the agent files byte-identical and touches no other file", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     // First --fix: upserts the missing CLAUDE.md / AGENTS.md workflow blocks.

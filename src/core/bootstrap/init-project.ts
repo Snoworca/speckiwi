@@ -45,8 +45,8 @@ interface AgentInstructionBlock {
 const VERSIONED_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS 워크플로 v(?<version>[0-9]+(?:\.[0-9]+)*)$/gm;
 const LEGACY_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS workflow$/m;
 
-// FND-001 / FR-NODE-035 — scaffold docs/spec/steps/state.md at the reader SSOT
-// path with a parseable `Mode: wait` metadata block above an empty FR-PARSE-023
+// FND-001 / FR-NODE-050 — scaffold docs/spec/steps/state.md at the reader SSOT
+// path with a parseable `Mode: wait` metadata block above an empty FR-PARSE-026
 // step-state table, so getWorkMode/setWorkMode operate on a fresh repo instead of
 // failing-open to wait and erroring NOT_FOUND on the first setWorkMode.
 function renderStepStateTemplate(): string {
@@ -61,7 +61,7 @@ function renderStepStateTemplate(): string {
   ].join("\n");
 }
 
-// FND-005 / FR-NODE-038 — the `speckiwi init` hook installer materialises the
+// FND-005 / FR-NODE-053 — the `speckiwi init` hook installer materialises the
 // Claude PostToolUse trace hook, the Codex apply_patch hook, the git pre-commit
 // gate that delegates to the docs/.kiwi runner, and the docs/.kiwi scaffold
 // directories, while surfacing clobber and enterprise-policy suppression

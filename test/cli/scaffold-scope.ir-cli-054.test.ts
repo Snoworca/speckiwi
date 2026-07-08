@@ -5,9 +5,9 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 
-// IR-CLI-054 — speckiwi scaffold-scope command.
+// IR-CLI-068 — speckiwi scaffold-scope command.
 //
-// The speckiwi scaffold-scope command delegates to the scaffoldScope core (FR-NODE-054) to create
+// The speckiwi scaffold-scope command delegates to the scaffoldScope core (FR-NODE-065) to create
 // and register a brand-new scope: it writes a new numbered scope srs.md file from the scope template
 // and adds one row to the §2 SRS Documents section and one row to the §4 Scope Map section of
 // 00.index.md, accepts an optional prefix (via the `<name:PREFIX>` argument), defaults to dry-run,
@@ -18,11 +18,11 @@ import { main } from "../../src/cli/index.js";
 // scaffold-scope command, so the whole suite fails today — commander rejects the unknown
 // scaffold-scope command (non-zero usage exit, no scope file created, no mutation envelope printed) —
 // until the green task (T-PH004-52) wires the command against the existing core mutation
-// (src/core/mutation/scaffold-scope.ts scaffoldScope, FR-NODE-054): a default dry-run preview that
+// (src/core/mutation/scaffold-scope.ts scaffoldScope, FR-NODE-065): a default dry-run preview that
 // writes nothing, an --apply that creates the file and registers both index rows, and a --json
 // mutation result envelope.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-054):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-068):
 //   - AC-1: speckiwi scaffold-scope <name> creates the scope file and registers it in the index in
 //           one command.
 //   - AC-2: speckiwi scaffold-scope <name:PREFIX> uses the given prefix instead of inferring one.
@@ -208,8 +208,8 @@ afterEach(async () => {
   await rm(workspaceRoot, { recursive: true, force: true });
 });
 
-describe("IR-CLI-054 speckiwi scaffold-scope command", () => {
-  it("IR-CLI-054 AC-1: scaffold-scope <name> creates the scope file and registers it in the index in one command", async () => {
+describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
+  it("IR-CLI-068 AC-1: scaffold-scope <name> creates the scope file and registers it in the index in one command", async () => {
     // TC-REQ-IR-CLI-054-AC1-01
     const before = await specFileNames();
     expect(before).toEqual(["00.index.md", "10.product-architecture.srs.md"]);
@@ -217,7 +217,7 @@ describe("IR-CLI-054 speckiwi scaffold-scope command", () => {
 
     // --apply turns the default dry-run into a real scaffold: one command creates the file and
     // registers it. The next decade above ARCH's 10. document is 20., so the new file is
-    // 20.payments.srs.md (scaffoldScope.nextScopeDocument, FR-NODE-054).
+    // 20.payments.srs.md (scaffoldScope.nextScopeDocument, FR-NODE-065).
     const exitCode = await main(
       ["--root", workspaceRoot, "scaffold-scope", "Payments:PAY", "--apply"],
       streams
@@ -239,7 +239,7 @@ describe("IR-CLI-054 speckiwi scaffold-scope command", () => {
     expect(payRows.length).toBe(2);
   });
 
-  it("IR-CLI-054 AC-2: scaffold-scope <name:PREFIX> uses the given prefix instead of inferring one", async () => {
+  it("IR-CLI-068 AC-2: scaffold-scope <name:PREFIX> uses the given prefix instead of inferring one", async () => {
     // TC-REQ-IR-CLI-054-AC2-01
     const streams = io();
 
@@ -266,7 +266,7 @@ describe("IR-CLI-054 speckiwi scaffold-scope command", () => {
     }
   });
 
-  it("IR-CLI-054 AC-3: scaffold-scope --dry-run prints a preview and writes no file", async () => {
+  it("IR-CLI-068 AC-3: scaffold-scope --dry-run prints a preview and writes no file", async () => {
     // TC-REQ-IR-CLI-054-AC3-01
     const beforeIndex = await indexContents();
     const beforeFiles = await specFileNames();
@@ -290,7 +290,7 @@ describe("IR-CLI-054 speckiwi scaffold-scope command", () => {
     expect(await indexContents()).not.toContain("20.payments.srs.md");
   });
 
-  it("IR-CLI-054 AC-4: scaffold-scope --json emits the mutation result envelope", async () => {
+  it("IR-CLI-068 AC-4: scaffold-scope --json emits the mutation result envelope", async () => {
     // TC-REQ-IR-CLI-054-AC4-01
     const streams = io();
 

@@ -391,7 +391,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
     { kind: "workspace" }
   );
 
-  // FR-MCP-021..025 — step / compatibility / supersede mutation tools. These forward to the already
+  // FR-MCP-040..043 — step / compatibility / supersede mutation tools. These forward to the already
   // implemented core services. Their kind is carried by the ToolSpec registry (schemas.ts) as the
   // zero-drift SSOT; they are intentionally registered without adapter kind metadata so the pinned
   // FR-ARCH-005 mutation-kind adapter contract (a fixed 24-tool set) is not disturbed by this wiring

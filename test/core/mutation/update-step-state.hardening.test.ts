@@ -5,7 +5,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 import { updateStepState } from "../../../src/core/mutation/update-step-state.js";
 
-// FR-NODE-028 — hardening tests for update_step_state.
+// FR-NODE-043 — hardening tests for update_step_state.
 //
 // FND-003 (input sanitize): the dependsOn cell is written verbatim into a
 //   pipe-delimited state.md row, so a `|` / newline / control char would corrupt
@@ -47,7 +47,7 @@ async function readStateMd(root: string): Promise<string> {
   return readFile(path.join(root, STATE_MD_REL), "utf8");
 }
 
-describe("FR-NODE-028 FND-003 — update_step_state rejects unsafe dependsOn inputs and writes nothing", () => {
+describe("FR-NODE-043 FND-003 — update_step_state rejects unsafe dependsOn inputs and writes nothing", () => {
   const cases: Array<{ label: string; dependsOn: string }> = [
     { label: "pipe", dependsOn: "feature-y | extra-col" },
     { label: "newline", dependsOn: "feature-y\ninjected" },
@@ -72,7 +72,7 @@ describe("FR-NODE-028 FND-003 — update_step_state rejects unsafe dependsOn inp
   }
 });
 
-describe("FR-NODE-028 FND-006 — update_step_state honours dryRun", () => {
+describe("FR-NODE-043 FND-006 — update_step_state honours dryRun", () => {
   it("writes nothing and reports written:false when dryRun is true", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, [{ step: "feature-x", status: "active" }]);
@@ -92,7 +92,7 @@ describe("FR-NODE-028 FND-006 — update_step_state honours dryRun", () => {
   });
 });
 
-describe("FR-NODE-028 FND-008 — update_step_state identifies the target row by the Step column", () => {
+describe("FR-NODE-043 FND-008 — update_step_state identifies the target row by the Step column", () => {
   it("does not mistake the table header row for a step named 'Step'", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, [{ step: "feature-x" }]);

@@ -10,7 +10,7 @@ import { setAcceptanceCriteriaChecked } from "../../../src/core/mutation/check-a
 // implements it.
 import { editAcceptanceCriteria } from "../../../src/core/mutation/check-ac.js";
 
-// FR-NODE-026 — edit_acceptance_criteria mutation.
+// FR-NODE-041 — edit_acceptance_criteria mutation.
 //
 // Red-phase suite (T-PH003-19): one test case per acceptance criterion
 // (AC-1..AC-3). These cases describe the future contract of
@@ -31,7 +31,7 @@ async function readArch(rootPath: string): Promise<string> {
   return readFile(path.join(rootPath, ARCH_FILE), "utf8");
 }
 
-describe("FR-NODE-026 AC-1 — updates the text of a targeted AC entry", () => {
+describe("FR-NODE-041 AC-1 — updates the text of a targeted AC entry", () => {
   it("replaces the prose of the targeted acceptance criterion and leaves siblings untouched", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
@@ -56,7 +56,7 @@ describe("FR-NODE-026 AC-1 — updates the text of a targeted AC entry", () => {
   });
 });
 
-describe("FR-NODE-026 AC-2 — leaves the checked/unchecked state of AC entries unchanged", () => {
+describe("FR-NODE-041 AC-2 — leaves the checked/unchecked state of AC entries unchanged", () => {
   it("preserves a checked AC's checkbox when editing its text", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
@@ -87,7 +87,7 @@ describe("FR-NODE-026 AC-2 — leaves the checked/unchecked state of AC entries 
   });
 });
 
-describe("FR-NODE-026 AC-3 — does not modify the requirement statement or Trace Links sections", () => {
+describe("FR-NODE-041 AC-3 — does not modify the requirement statement or Trace Links sections", () => {
   it("leaves the Requirement statement and Trace Links section untouched when editing an AC", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);

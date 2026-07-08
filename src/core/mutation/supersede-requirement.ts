@@ -5,7 +5,7 @@ import { updateStatus } from "./update-status.js";
 import { revokeCompatibilityCheck } from "./add-compatibility-check.js";
 import { mutationFail, mutationOk } from "./guards.js";
 
-// FR-NODE-030 — supersede_requirement strict two-call mutation with guards and A1
+// FR-NODE-045 — supersede_requirement strict two-call mutation with guards and A1
 // invalidation.
 //
 // supersede_requirement performs the strict ordered two-call sequence
@@ -27,7 +27,7 @@ const COMPATIBLE_RELATION = "checked_compatible";
  * successor identity so the self-reference and reverse-direction-duplicate guards
  * can reject an ill-formed supersede before any mutation. reason /
  * confirmDiscardVerified flow into the hardened T2 discard.
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 export interface SupersedeRequirementInput {
   oldId: string;
@@ -57,7 +57,7 @@ export interface SupersedeRequirementInput {
  * Result value surfaced on a successful supersede: the newId minted by T1
  * add_requirement (undefined only when an idempotent resumption skipped T1), and
  * the discarded oldId.
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 export interface SupersedeRequirementOutput {
   oldId: string;
@@ -68,7 +68,7 @@ export interface SupersedeRequirementOutput {
 /**
  * Counts how many requirements in the workspace carry an outgoing
  * `supersedes oldId` trace row, i.e. how many successors already supersede oldId.
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 function countIncomingSupersedes(records: readonly RequirementRecord[], oldId: string): number {
   let count = 0;
@@ -86,7 +86,7 @@ function countIncomingSupersedes(records: readonly RequirementRecord[], oldId: s
  * Reports whether `candidateId` already has an outgoing `supersedes oldId` edge,
  * which would make a fresh supersede in that direction a reverse-direction
  * duplicate.
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 function hasOutgoingSupersedes(records: readonly RequirementRecord[], candidateId: string, oldId: string): boolean {
   const candidate = records.find((record) => record.id === candidateId);
@@ -101,7 +101,7 @@ function hasOutgoingSupersedes(records: readonly RequirementRecord[], candidateI
  * touches `oldId` — whether oldId holds the row (peer = row reference) or is the
  * referenced peer (peer = row holder). Each pair is revoked after supersede so no
  * compatibility row referencing oldId survives (AC-5).
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 function compatibilityPeers(records: readonly RequirementRecord[], oldId: string): string[] {
   const peers = new Set<string>();
@@ -124,7 +124,7 @@ function compatibilityPeers(records: readonly RequirementRecord[], oldId: string
  * untouched. Journal resumption is idempotent: when oldId is already discarded
  * with a successor, T1 is skipped and the T2 reason is omitted so no duplicate
  * Change Notes row is appended.
- * @req FR-NODE-030
+ * @req FR-NODE-045
  */
 export async function supersedeRequirement(
   root: ProjectRoot,

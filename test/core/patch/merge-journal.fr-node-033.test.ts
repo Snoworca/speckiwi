@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { readUtf8File } from "../../../src/core/fs/read-text.js";
 import { createPatchPlan } from "../../../src/core/patch/patch-plan.js";
-// FR-NODE-033 extends the FR-NODE-032 merge-journal so that each journal entry captures the
+// FR-NODE-048 extends the FR-NODE-047 merge-journal so that each journal entry captures the
 // requirement id alongside its sha256, marks operations as applied, and is appended durably
 // before the corresponding rename runs. The symbols exercised below (the requirementId field on
 // journal renames, the per-entry `applied` marker, and the resume-skipping commit) are introduced
@@ -38,10 +38,10 @@ function sha256Of(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
-describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
+describe("FR-NODE-048 merge-journal append-log with resume skip", () => {
   // AC-1: Each merge-journal entry records the renames, their sha256 hashes, and the captured
   // requirement id.
-  it("FR-NODE-033 AC-1: records renames, sha256 hashes, and the captured requirement id", async () => {
+  it("FR-NODE-048 AC-1: records renames, sha256 hashes, and the captured requirement id", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -52,7 +52,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
       await buildCommitFile(bodyPath, "# body committed")
     ]);
     await commit.commit({
-      requirementId: "FR-NODE-033",
+      requirementId: "FR-NODE-048",
       onPhase: async (phase: string) => {
         if (phase === "rename") {
           journalAtRename = await readMergeJournal(root);
@@ -63,7 +63,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
     expect(journalAtRename).not.toBeNull();
     const journal = journalAtRename!;
     // The captured requirement id is durably recorded on the journal.
-    expect(journal.requirementId).toBe("FR-NODE-033");
+    expect(journal.requirementId).toBe("FR-NODE-048");
     expect(journal.renames.length).toBe(2);
     for (const entry of journal.renames) {
       expect(typeof entry.from).toBe("string");
@@ -71,7 +71,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
       // sha256 of the final content for this rename.
       expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
       // The requirement id is captured per entry as well.
-      expect(entry.requirementId).toBe("FR-NODE-033");
+      expect(entry.requirementId).toBe("FR-NODE-048");
     }
     // sha256 hashes correspond to the actual final file contents that get renamed in.
     const stepEntry = journal.renames.find((entry) => entry.to === stepPath);
@@ -80,7 +80,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
   });
 
   // AC-2: A resuming merge reads the journal and skips operations already recorded as applied.
-  it("FR-NODE-033 AC-2: a resuming merge skips operations already recorded as applied", async () => {
+  it("FR-NODE-048 AC-2: a resuming merge skips operations already recorded as applied", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -95,7 +95,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
     let renamesDone = 0;
     await expect(
       commit.commit({
-        requirementId: "FR-NODE-033",
+        requirementId: "FR-NODE-048",
         onRename: () => {
           renamesDone += 1;
           if (renamesDone === 2) {
@@ -118,7 +118,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
       await buildCommitFile(bodyPath, "# body committed")
     ]);
     const result = await resume.resume({
-      requirementId: "FR-NODE-033",
+      requirementId: "FR-NODE-048",
       onRename: (to: string) => {
         replayed.push(to);
       }
@@ -135,7 +135,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
   });
 
   // AC-3: Journal entries are appended durably before the corresponding rename is performed.
-  it("FR-NODE-033 AC-3: each journal entry is appended durably before its rename runs", async () => {
+  it("FR-NODE-048 AC-3: each journal entry is appended durably before its rename runs", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -157,7 +157,7 @@ describe("FR-NODE-033 merge-journal append-log with resume skip", () => {
     }> = [];
     let renamesSeen = 0;
     await commit.commit({
-      requirementId: "FR-NODE-033",
+      requirementId: "FR-NODE-048",
       onRename: async (to: string) => {
         const journal = await readMergeJournal(root);
         const entry = journal?.renames.find((candidate) => candidate.to === to) ?? null;

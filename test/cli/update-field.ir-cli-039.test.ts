@@ -5,19 +5,19 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-039 — `speckiwi update-field` command with id-regenerating type/scope and a migration guard.
+// IR-CLI-055 — `speckiwi update-field` command with id-regenerating type/scope and a migration guard.
 //
 // Red-phase suite (T-PH004-21): one test case per acceptance criterion (AC-1..AC-5). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI an
 // `update-field` command, so the whole suite fails today — commander rejects the unknown `update-field`
 // command (non-zero usage exit, no mutation payload printed) — until the green task (T-PH004-22) wires
 // the command against the existing core mutation (src/core/mutation/update-field.ts `updateField`,
-// FR-NODE-048): a line-replacement edit for priority/risk/title/target/verification-method, and a
+// FR-NODE-060): a line-replacement edit for priority/risk/title/target/verification-method, and a
 // type/scope migration that regenerates the requirement ID via the deterministic next-ID generator
 // (src/core/mutation/add-requirement.ts `generateNextRequirementId`) under a dry-run + sign-off guard
 // while rewriting inbound trace references.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-039):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-055):
 //
 //   SpecKiwi provides a `speckiwi update-field <id> --field <field> --value <value>` command that edits
 //   priority, risk, title, target, verification-method, type, or scope on a single requirement, and when
@@ -146,9 +146,9 @@ function findValue(parsed: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
-describe("IR-CLI-039 — update-field command with id-regenerating type and scope migration guard", () => {
+describe("IR-CLI-055 — update-field command with id-regenerating type and scope migration guard", () => {
   // AC-1: `update-field <id> --field priority --value <p>` updates only the priority metadata cell.
-  it("IR-CLI-039 AC-1: edits only the priority metadata cell for the requirement", async () => {
+  it("IR-CLI-055 AC-1: edits only the priority metadata cell for the requirement", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     expect(await metadataCell(root, TARGET_ID, "Priority")).toBe("high");
@@ -176,7 +176,7 @@ describe("IR-CLI-039 — update-field command with id-regenerating type and scop
   });
 
   // AC-2: accepts priority/risk/title/target/verification-method/type/scope, rejects any other field.
-  it("IR-CLI-039 AC-2: accepts the seven documented fields and rejects an unknown field name", async () => {
+  it("IR-CLI-055 AC-2: accepts the seven documented fields and rejects an unknown field name", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     // A line-replacement field (risk) is accepted and applied.
@@ -201,7 +201,7 @@ describe("IR-CLI-039 — update-field command with id-regenerating type and scop
   });
 
   // AC-3: a type or scope edit regenerates the ID via the deterministic generator (prefix-scope-NNN).
-  it("IR-CLI-039 AC-3: a type/scope edit regenerates a deterministic prefix-scope-NNN id", async () => {
+  it("IR-CLI-055 AC-3: a type/scope edit regenerates a deterministic prefix-scope-NNN id", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     // type functional → interface keeps scope ARCH and yields IR-ARCH-001 (no prior IR-ARCH-* id).
@@ -224,7 +224,7 @@ describe("IR-CLI-039 — update-field command with id-regenerating type and scop
   });
 
   // AC-4: a type/scope edit defaults to dry-run and requires an explicit apply + confirmation flag.
-  it("IR-CLI-039 AC-4: type/scope edit defaults to dry-run and writes only under apply + confirm", async () => {
+  it("IR-CLI-055 AC-4: type/scope edit defaults to dry-run and writes only under apply + confirm", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readFile(path.join(root, SCOPE_DOC), "utf8");
 
@@ -259,7 +259,7 @@ describe("IR-CLI-039 — update-field command with id-regenerating type and scop
     expect(text).not.toContain(`### ${TARGET_ID} — Mutable requirement`);
   });
 
-  // FND-003 (IR-CLI-039 AC-1): --dry-run on a line-replacement field must be honored — written=false
+  // FND-003 (IR-CLI-055 AC-1): --dry-run on a line-replacement field must be honored — written=false
   // and the file is unchanged. The advertised --dry-run flag was previously forwarded only for the
   // type/scope migration fields, so a priority/risk/title/target/verification-method dry-run was
   // silently ignored and the workspace file was written.
@@ -285,7 +285,7 @@ describe("IR-CLI-039 — update-field command with id-regenerating type and scop
   });
 
   // AC-5: a type/scope edit produces a new non-colliding id AND updates inbound trace references.
-  it("IR-CLI-039 AC-5: migration yields a non-colliding id and rewrites inbound trace references", async () => {
+  it("IR-CLI-055 AC-5: migration yields a non-colliding id and rewrites inbound trace references", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     // A second requirement holds an inbound Trace Link to FR-ARCH-001.
     await appendBlock(root, inboundReferer("FR-ARCH-002", TARGET_ID));

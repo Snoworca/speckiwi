@@ -4,7 +4,7 @@ import {
   isCodexVersionBelowApplyPatchFloor
 } from "../../../src/core/bootstrap/templates.js";
 
-// FND-005 / FR-NODE-038 AC-3 — the Codex version gate decides whether the
+// FND-005 / FR-NODE-053 AC-3 — the Codex version gate decides whether the
 // detected `codex --version` string is below the apply_patch hook floor
 // (CODEX_APPLY_PATCH_HOOK_FLOOR). The boundary cases below pin the corrected
 // semantics:
@@ -14,14 +14,14 @@ import {
 //     BELOW the X.Y.Z floor, because the prerelease precedes the final release;
 //   - an unparseable version surfaces uncertainty as below-floor (so the caller
 //     warns) rather than silently passing.
-// The two FR-NODE-038 AC-3 anchors (0.0.1 below, 999.0.0 not below) must keep
+// The two FR-NODE-053 AC-3 anchors (0.0.1 below, 999.0.0 not below) must keep
 // passing.
 describe("FND-005 — isCodexVersionBelowApplyPatchFloor boundary semantics", () => {
-  it("treats a clearly-old version as below the floor (FR-NODE-038 AC-3 anchor)", () => {
+  it("treats a clearly-old version as below the floor (FR-NODE-053 AC-3 anchor)", () => {
     expect(isCodexVersionBelowApplyPatchFloor("0.0.1")).toBe(true);
   });
 
-  it("treats a clearly-new version as at/above the floor (FR-NODE-038 AC-3 anchor)", () => {
+  it("treats a clearly-new version as at/above the floor (FR-NODE-053 AC-3 anchor)", () => {
     expect(isCodexVersionBelowApplyPatchFloor("999.0.0")).toBe(false);
   });
 

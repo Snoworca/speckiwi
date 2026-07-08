@@ -8,7 +8,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // the whole suite red until the green task implements it.
 import { claimStep } from "../../../src/core/mutation/claim-step.js";
 
-// FR-NODE-027 — claim_step mutation with write-skew two-stage gate.
+// FR-NODE-042 — claim_step mutation with write-skew two-stage gate.
 //
 // Red-phase suite (T-PH003-21): one test case per acceptance criterion
 // (AC-1..AC-5). These cases describe the future contract of claimStep before
@@ -122,7 +122,7 @@ async function appendReqBlocks(
 
 /**
  * Writes a docs/spec/steps/state.md table seeded with the supplied active steps.
- * Columns match the FR-PARSE-023 layout
+ * Columns match the FR-PARSE-026 layout
  * (Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated).
  */
 async function writeStateMd(
@@ -158,7 +158,7 @@ async function readStateMd(root: string): Promise<string> {
   return readFile(path.join(root, STATE_MD_REL), "utf8");
 }
 
-describe("FR-NODE-027 AC-1 — claim_step appends a state.md row with declared TouchesScope/TouchesReq", () => {
+describe("FR-NODE-042 AC-1 — claim_step appends a state.md row with declared TouchesScope/TouchesReq", () => {
   it("appends a row carrying the declared TouchesScope and TouchesReq to state.md", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(root, [{ id: "FR-ARCH-010", title: "Claim target" }]);
@@ -182,7 +182,7 @@ describe("FR-NODE-027 AC-1 — claim_step appends a state.md row with declared T
   });
 });
 
-describe("FR-NODE-027 AC-2 — direct same-REQ intersection is a HARD-BLOCK STEP_DIRECT_CONFLICT that cannot be forced", () => {
+describe("FR-NODE-042 AC-2 — direct same-REQ intersection is a HARD-BLOCK STEP_DIRECT_CONFLICT that cannot be forced", () => {
   it("hard-blocks a claim whose TouchesReq directly intersects an active step, even with force", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(root, [{ id: "FR-ARCH-010", title: "Shared target" }]);
@@ -219,7 +219,7 @@ describe("FR-NODE-027 AC-2 — direct same-REQ intersection is a HARD-BLOCK STEP
   });
 });
 
-describe("FR-NODE-027 AC-3 — transitive-only intersection is a SOFT-BLOCK STEP_OVERLAP and force pins an overlaps marker", () => {
+describe("FR-NODE-042 AC-3 — transitive-only intersection is a SOFT-BLOCK STEP_OVERLAP and force pins an overlaps marker", () => {
   it("soft-blocks a transitive-only intersection and force pins an overlaps marker", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Closure topology: FR-ARCH-020 depends_on FR-ARCH-021. The incumbent step
@@ -260,7 +260,7 @@ describe("FR-NODE-027 AC-3 — transitive-only intersection is a SOFT-BLOCK STEP
   });
 });
 
-describe("FR-NODE-027 AC-4 — claim against a verified OR frozen supersede target yields STEP_SUPERSEDE_PROTECTED", () => {
+describe("FR-NODE-042 AC-4 — claim against a verified OR frozen supersede target yields STEP_SUPERSEDE_PROTECTED", () => {
   // The protection condition is `verified OR frozen`. Seeding a target that is
   // BOTH would let a buggy `verified AND frozen` implementation pass too, so each
   // disjunct is exercised independently, plus a non-protected target that must be
@@ -333,7 +333,7 @@ describe("FR-NODE-027 AC-4 — claim against a verified OR frozen supersede targ
   });
 });
 
-describe("FR-NODE-027 AC-5 — when closure is unavailable the gate degrades to 1-hop direct hard-block with transitive advisory", () => {
+describe("FR-NODE-042 AC-5 — when closure is unavailable the gate degrades to 1-hop direct hard-block with transitive advisory", () => {
   it("hard-blocks a direct conflict but only advises on a transitive one when closure is unavailable", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReqBlocks(root, [

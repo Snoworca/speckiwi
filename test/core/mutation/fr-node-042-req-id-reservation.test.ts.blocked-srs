@@ -10,7 +10,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // added to the existing `promoteStepRequirement`.
 import { mintStepRequirementId, promoteStepRequirement } from "../../../src/core/mutation/add-requirement.js";
 
-// FR-NODE-042 — vibe step REQ-ID reservation minter and unreserved-id rejection guard.
+// FR-NODE-057 — vibe step REQ-ID reservation minter and unreserved-id rejection guard.
 //
 // Red-phase suite (T-PH003-51): one test case per acceptance criterion (AC-1..AC-3).
 // These cases pin the future contract before src/core/mutation/add-requirement.ts
@@ -120,8 +120,8 @@ async function writeStepScopeFile(
   await writeFile(path.join(stepDir, "10.product-architecture.srs.md"), content, "utf8");
 }
 
-describe("FR-NODE-042 AC-1 — reservation minter produces IDs over HEAD, step, and reserved IDs", () => {
-  it("FR-NODE-042 AC-1: mints the next slot skipping the union of HEAD, step, and reserved IDs", () => {
+describe("FR-NODE-057 AC-1 — reservation minter produces IDs over HEAD, step, and reserved IDs", () => {
+  it("FR-NODE-057 AC-1: mints the next slot skipping the union of HEAD, step, and reserved IDs", () => {
     // A reservation view whose three constituent sets each contribute a distinct
     // occupied slot. The fixture HEAD already holds FR-ARCH-001; a step claims
     // FR-ARCH-005; an explicitly reserved slot holds FR-ARCH-002. The minter must
@@ -140,8 +140,8 @@ describe("FR-NODE-042 AC-1 — reservation minter produces IDs over HEAD, step, 
   });
 });
 
-describe("FR-NODE-042 AC-2 — synthesis never assigns a literal ID itself", () => {
-  it("FR-NODE-042 AC-2: the minter output is a deterministic next-slot value derived only from the view", () => {
+describe("FR-NODE-057 AC-2 — synthesis never assigns a literal ID itself", () => {
+  it("FR-NODE-057 AC-2: the minter output is a deterministic next-slot value derived only from the view", () => {
     // Over a view that occupies only FR-ARCH-001 (HEAD), the single tool-governed
     // next slot is FR-ARCH-002. This is fully determined by the view — a synthesis
     // skill cannot substitute a free-text literal of its own choosing.
@@ -168,8 +168,8 @@ describe("FR-NODE-042 AC-2 — synthesis never assigns a literal ID itself", () 
   });
 });
 
-describe("FR-NODE-042 AC-3 — promote_step_requirement rejects an unreserved (non-minter-produced) ID", () => {
-  it("FR-NODE-042 AC-3: denies promotion of a free-text id the reservation minter would never produce", async () => {
+describe("FR-NODE-057 AC-3 — promote_step_requirement rejects an unreserved (non-minter-produced) ID", () => {
+  it("FR-NODE-057 AC-3: denies promotion of a free-text id the reservation minter would never produce", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // The reservation view for this fixture is HEAD={FR-ARCH-001} plus the staged
     // step. The minter over that view would produce FR-ARCH-002 — never FR-ARCH-501.

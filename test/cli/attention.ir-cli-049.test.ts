@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-049 — `speckiwi attention` command for a ranked work queue.
+// IR-CLI-063 — `speckiwi attention` command for a ranked work queue.
 //
 // Red-phase suite (T-PH004-41): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/read.ts` / the addition site
@@ -14,7 +14,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // printed) — until the green task (T-PH004-42) wires the command against the existing readiness buckets
 // (summarizeTarget: blocked / implementedNotVerified / missingEvidence / stabilityBlockers).
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-049):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-063):
 //
 //   The speckiwi attention command merges blocked, implemented-not-verified, missing-evidence, and
 //   stability-blocker requirements into one priority-ranked work queue with a deterministic tie-break of
@@ -176,9 +176,9 @@ async function snapshotTree(root: string): Promise<Map<string, string>> {
   return snapshot;
 }
 
-describe("IR-CLI-049 — attention command for a ranked work queue", () => {
+describe("IR-CLI-063 — attention command for a ranked work queue", () => {
   // AC-1: attention ranks the merged queue deterministically by priority then risk then status.
-  it("IR-CLI-049 AC-1: attention ranks the merged queue by priority (primary), then risk, then status", async () => {
+  it("IR-CLI-063 AC-1: attention ranks the merged queue by priority (primary), then risk, then status", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendAttentionFixture(root);
 
@@ -209,7 +209,7 @@ describe("IR-CLI-049 — attention command for a ranked work queue", () => {
   });
 
   // AC-2: attention --top <n> limits the output to the first n entries.
-  it("IR-CLI-049 AC-2: attention --top <n> limits the output to the first n ranked entries", async () => {
+  it("IR-CLI-063 AC-2: attention --top <n> limits the output to the first n ranked entries", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendAttentionFixture(root);
 
@@ -230,7 +230,7 @@ describe("IR-CLI-049 — attention command for a ranked work queue", () => {
   });
 
   // AC-3: attention --top with a negative value returns exit code two.
-  it("IR-CLI-049 AC-3: attention --top with a negative value returns exit code two", async () => {
+  it("IR-CLI-063 AC-3: attention --top with a negative value returns exit code two", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendAttentionFixture(root);
 
@@ -245,7 +245,7 @@ describe("IR-CLI-049 — attention command for a ranked work queue", () => {
   });
 
   // AC-4: attention writes no file and reports the same order for identical input.
-  it("IR-CLI-049 AC-4: attention writes no file and reports a stable order for identical input", async () => {
+  it("IR-CLI-063 AC-4: attention writes no file and reports a stable order for identical input", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendAttentionFixture(root);
 

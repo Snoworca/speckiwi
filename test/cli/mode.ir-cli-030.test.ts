@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-030 — speckiwi mode command.
+// IR-CLI-048 — speckiwi mode command.
 //
 // Red-phase suite (T-PH004-05): one test case per acceptance criterion (AC-1..AC-3).
 // These cases pin the future CLI contract before src/cli exposes the `mode` subcommand,
 // so the whole suite fails (commander rejects the unknown `mode` command, and/or the
 // output / mode-switch / exit-code assertions are unmet) until the green task
 // (T-PH004-06) wires `speckiwi mode [sdd|vibe|wait]` to getWorkMode / setWorkMode
-// (FR-NODE-035, src/core/mutation/work-mode.ts).
+// (FR-NODE-050, src/core/mutation/work-mode.ts).
 //
 // Contract under test (from the requirement body and AC, SRS
-// docs/spec/30.cli-interface.srs.md IR-CLI-030):
+// docs/spec/30.cli-interface.srs.md IR-CLI-048):
 //
 //   The CLI exposes `speckiwi mode` with an optional sdd, vibe, or wait argument to
 //   read or switch the work mode, printing the current Mode and Active Task and
@@ -63,9 +63,9 @@ async function readStateMd(root: string): Promise<string> {
   return readFile(path.join(root, SPEC_DIR, "steps", "state.md"), "utf8");
 }
 
-describe("IR-CLI-030 — speckiwi mode command", () => {
+describe("IR-CLI-048 — speckiwi mode command", () => {
   // AC-1: `speckiwi mode` with no argument prints the current Mode and Active Task.
-  it("IR-CLI-030 AC-1: with no argument prints the current Mode and Active Task", async () => {
+  it("IR-CLI-048 AC-1: with no argument prints the current Mode and Active Task", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // A vibe mode with a named Active Task: both fields must be surfaced.
     await writeStateMd(root, { mode: "vibe", activeTask: "T-PH004-05" });
@@ -83,7 +83,7 @@ describe("IR-CLI-030 — speckiwi mode command", () => {
   });
 
   // AC-1 (human-readable): the non-JSON output also names the current Mode and Active Task.
-  it("IR-CLI-030 AC-1: human output names both the current Mode and the Active Task", async () => {
+  it("IR-CLI-048 AC-1: human output names both the current Mode and the Active Task", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "vibe", activeTask: "T-PH004-05" });
 
@@ -97,7 +97,7 @@ describe("IR-CLI-030 — speckiwi mode command", () => {
   });
 
   // AC-2: `speckiwi mode <value>` switches Mode to a value in sdd, vibe, wait.
-  it("IR-CLI-030 AC-2: with a value switches Mode and persists it to state.md", async () => {
+  it("IR-CLI-048 AC-2: with a value switches Mode and persists it to state.md", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Start in sdd, then switch to wait via the CLI.
     await writeStateMd(root, { mode: "sdd" });
@@ -122,7 +122,7 @@ describe("IR-CLI-030 — speckiwi mode command", () => {
   });
 
   // AC-2 (each accepted enum value): sdd, vibe, and wait are all accepted switch targets.
-  it("IR-CLI-030 AC-2: accepts each of sdd, vibe, wait as a switch target", async () => {
+  it("IR-CLI-048 AC-2: accepts each of sdd, vibe, wait as a switch target", async () => {
     for (const mode of ["sdd", "vibe", "wait"] as const) {
       const root = await copyFixtureWorkspace("valid-basic");
       await writeStateMd(root, { mode: "sdd" });
@@ -137,7 +137,7 @@ describe("IR-CLI-030 — speckiwi mode command", () => {
   });
 
   // AC-3: `speckiwi mode` rejects an invalid mode value with a non-zero exit code.
-  it("IR-CLI-030 AC-3: rejects an invalid mode value with a non-zero exit code", async () => {
+  it("IR-CLI-048 AC-3: rejects an invalid mode value with a non-zero exit code", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "sdd" });
 

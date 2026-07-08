@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-055 — `speckiwi stale` command for aging requirements.
+// IR-CLI-069 — `speckiwi stale` command for aging requirements.
 //
 // Red-phase suite (T-PH004-53): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/read.ts` / the addition site
@@ -15,7 +15,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // (src/core/query/records.ts changeNotesFromTable → RequirementRecord.changeNotes, FR-PARSE-009)
 // and the per-record stability field.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-055):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-069):
 //
 //   The speckiwi stale command identifies requirements that have stayed in evolving stability past a
 //   threshold measured by their most recent Change Notes date, computing age from SRS date metadata
@@ -27,7 +27,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-3: speckiwi stale computes age only from SRS date metadata and never reads outside the repo.
 //   - AC-4: speckiwi stale writes no file.
 //
-// SCOPE RECONCILIATION (authoritative — IR-CLI-055 Implementation Notes 2026-06-08, the latest
+// SCOPE RECONCILIATION (authoritative — IR-CLI-069 Implementation Notes 2026-06-08, the latest
 // requirement-block decision): the originally drafted AC-2 `--evidence-age <days>` is REMOVED because
 // EvidenceRow (types.ts EvidenceRow = id|type|reference|covers|notes) carries no date field, so
 // evidence age is non-decidable as written. The decided contract is a SINGLE age axis driven by the
@@ -237,9 +237,9 @@ async function snapshotTree(root: string): Promise<Map<string, string>> {
   return snapshot;
 }
 
-describe("IR-CLI-055 — stale command for aging requirements", () => {
+describe("IR-CLI-069 — stale command for aging requirements", () => {
   // AC-1: stale lists evolving requirements whose latest Change Notes date is older than the threshold.
-  it("IR-CLI-055 AC-1: stale lists evolving requirements past the default evolving-age threshold", async () => {
+  it("IR-CLI-069 AC-1: stale lists evolving requirements past the default evolving-age threshold", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendStaleFixture(root);
 
@@ -263,7 +263,7 @@ describe("IR-CLI-055 — stale command for aging requirements", () => {
 
   // AC-2: a configurable threshold flag (--evolving-age <days>) flags requirements older than that many
   // days (the decided replacement for the removed --evidence-age axis; see SCOPE RECONCILIATION above).
-  it("IR-CLI-055 AC-2: stale --evolving-age <days> applies the given threshold", async () => {
+  it("IR-CLI-069 AC-2: stale --evolving-age <days> applies the given threshold", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendStaleFixture(root);
 
@@ -286,7 +286,7 @@ describe("IR-CLI-055 — stale command for aging requirements", () => {
 
   // AC-3: stale computes age only from SRS date metadata (the most-recent Change Notes date) and never
   // reads outside the repository — so its result is a pure function of the on-disk Change Notes dates.
-  it("IR-CLI-055 AC-3: stale computes age only from the most-recent Change Notes date", async () => {
+  it("IR-CLI-069 AC-3: stale computes age only from the most-recent Change Notes date", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendStaleFixture(root);
 
@@ -322,7 +322,7 @@ describe("IR-CLI-055 — stale command for aging requirements", () => {
   // FND-007: an evolving requirement whose MOST RECENT Change Notes date is unparseable must NOT be
   // silently dropped from the stale set by a NaN age comparison. Because its age cannot be decided as
   // "fresh", the requirement is surfaced (flagged stale) rather than silently disappearing.
-  it("IR-CLI-055 (FND-007): an evolving requirement with an unparseable most-recent date is not silently dropped", async () => {
+  it("IR-CLI-069 (FND-007): an evolving requirement with an unparseable most-recent date is not silently dropped", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendStaleFixture(root);
     await appendMalformedDateFixture(root);
@@ -354,7 +354,7 @@ describe("IR-CLI-055 — stale command for aging requirements", () => {
   });
 
   // AC-4: stale writes no file.
-  it("IR-CLI-055 AC-4: stale writes no file", async () => {
+  it("IR-CLI-069 AC-4: stale writes no file", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     await appendStaleFixture(root);
 

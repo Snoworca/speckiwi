@@ -8,7 +8,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // whole suite red until the green task implements it.
 import { listSteps } from "../../../src/core/query/list-steps.js";
 
-// FR-NODE-029 — list_steps topological ordering with cycle detection and advisories.
+// FR-NODE-044 — list_steps topological ordering with cycle detection and advisories.
 //
 // Red-phase suite (T-PH003-25): one test case per acceptance criterion
 // (AC-1..AC-3). These cases describe the future contract of listSteps before
@@ -16,12 +16,12 @@ import { listSteps } from "../../../src/core/query/list-steps.js";
 // module/export) until the green task (T-PH003-26) implements it.
 //
 // Contract under test (from the requirement body and AC, SRS
-// docs/spec/50.nodejs-implementation.srs.md FR-NODE-029):
+// docs/spec/50.nodejs-implementation.srs.md FR-NODE-044):
 //
 //   listSteps(root: ProjectRoot, options?: { target?: string }):
 //     Promise<{ steps: StepListEntry[]; advisories: StepAdvisory[]; cycle: boolean }>
 //
-//   where the handler fresh-parses docs/spec/steps/state.md (FR-PARSE-023 row
+//   where the handler fresh-parses docs/spec/steps/state.md (FR-PARSE-026 row
 //   columns Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated)
 //   and:
 //     - AC-1: returns `steps` in a valid Kahn topological order honoring the
@@ -133,7 +133,7 @@ interface StateRow {
 
 /**
  * Writes a docs/spec/steps/state.md table seeded with the supplied steps.
- * Columns match the FR-PARSE-023 layout
+ * Columns match the FR-PARSE-026 layout
  * (Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated). When a
  * row declares a supersede target, a marker comment is appended below the table
  * so the supersede-protected advisory can discover it.
@@ -188,8 +188,8 @@ async function writeStepReqBlock(
   await writeFile(path.join(dir, `${block.id}.srs.md`), content, "utf8");
 }
 
-describe("FR-NODE-029 AC-1 — list_steps returns steps in valid topological order honoring DependsOn", () => {
-  it("FR-NODE-029 AC-1: orders dependent steps after the steps they depend on", async () => {
+describe("FR-NODE-044 AC-1 — list_steps returns steps in valid topological order honoring DependsOn", () => {
+  it("FR-NODE-044 AC-1: orders dependent steps after the steps they depend on", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Topology: c depends_on b; b depends_on a. A valid Kahn order must place
     // a before b and b before c. The state.md row insertion order (c, a, b) is
@@ -217,8 +217,8 @@ describe("FR-NODE-029 AC-1 — list_steps returns steps in valid topological ord
   });
 });
 
-describe("FR-NODE-029 AC-2 — list_steps detects a dependency cycle and reports STEP_CYCLE", () => {
-  it("FR-NODE-029 AC-2: flags a DependsOn cycle as STEP_CYCLE instead of a silent partial order", async () => {
+describe("FR-NODE-044 AC-2 — list_steps detects a dependency cycle and reports STEP_CYCLE", () => {
+  it("FR-NODE-044 AC-2: flags a DependsOn cycle as STEP_CYCLE instead of a silent partial order", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Cycle: x depends_on y and y depends_on x. No valid total order exists.
     await writeStateMd(root, [
@@ -235,8 +235,8 @@ describe("FR-NODE-029 AC-2 — list_steps detects a dependency cycle and reports
   });
 });
 
-describe("FR-NODE-029 AC-3 — list_steps emits STEP_SUPERSEDE_PROTECTED, orphan, and drift advisories", () => {
-  it("FR-NODE-029 AC-3: emits a supersede-protected, an orphan, and a drift advisory where applicable", async () => {
+describe("FR-NODE-044 AC-3 — list_steps emits STEP_SUPERSEDE_PROTECTED, orphan, and drift advisories", () => {
+  it("FR-NODE-044 AC-3: emits a supersede-protected, an orphan, and a drift advisory where applicable", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // A verified requirement is a protected supersede target.
     await appendReqBlocks(root, [
@@ -266,7 +266,7 @@ describe("FR-NODE-029 AC-3 — list_steps emits STEP_SUPERSEDE_PROTECTED, orphan
     expect(`${orphanAdvisory?.step ?? ""} ${orphanAdvisory?.message ?? ""}`).toMatch(/dangling|ghost-step/);
   });
 
-  it("FR-NODE-029 AC-3: a same-id unprotected step copy does not shadow a protected body requirement", async () => {
+  it("FR-NODE-044 AC-3: a same-id unprotected step copy does not shadow a protected body requirement", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Body requirement FR-ARCH-050 is verified → protected.
     await appendReqBlocks(root, [

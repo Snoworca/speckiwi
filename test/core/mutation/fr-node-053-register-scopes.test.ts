@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
-// registerScopes is the FR-NODE-053 core mutation introduced by the green task (T-PH003-72).
+// registerScopes is the FR-NODE-064 core mutation introduced by the green task (T-PH003-72).
 // It lives in src/core/mutation/register-scopes.ts and does not exist yet, so this import
 // fails at collection time — the red signal for the whole suite. RegisterScopesInput /
 // RegisterScopesItemPlan / RegisterScopesOutput are the public contract types the cases below
@@ -15,7 +15,7 @@ import {
 } from "../../../src/core/mutation/register-scopes.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-053 — register-scopes core registers unregistered scope documents.
+// FR-NODE-064 — register-scopes core registers unregistered scope documents.
 //
 // The index-drift-unregistered-srs fixture is the canonical SRS-W018 case: it ships a registered
 // scope document (10.product-architecture.srs.md, Scope Map prefix ARCH) and one *unregistered*
@@ -79,11 +79,11 @@ async function addUnregisteredScopeDoc(rootPath: string, fileName: string, prefi
   await writeFile(path.join(specDir, fileName), body, "utf8");
 }
 
-describe("FR-NODE-053 registerScopes core mutation", () => {
+describe("FR-NODE-064 registerScopes core mutation", () => {
   // AC-1: registerScopes in dry-run lists the unregistered scope documents it would add and
   // writes no file. dry-run is the default (no apply flag), and the per-item plan must name the
   // unregistered 20.unregistered.srs.md while the index file on disk stays byte-identical.
-  it("FR-NODE-053 AC-1: dry-run lists unregistered scope documents and writes nothing", async () => {
+  it("FR-NODE-064 AC-1: dry-run lists unregistered scope documents and writes nothing", async () => {
     const rootPath = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const root = await resolveProjectRoot(rootPath);
     const before = await readFile(indexPath(rootPath), "utf8");
@@ -109,7 +109,7 @@ describe("FR-NODE-053 registerScopes core mutation", () => {
   // AC-2: registerScopes with apply inserts one Scope Map row for each unregistered scope
   // document. After apply, the index Scope Map names 20.unregistered.srs.md exactly once with its
   // inferred prefix.
-  it("FR-NODE-053 AC-2: apply inserts one Scope Map row per unregistered scope document", async () => {
+  it("FR-NODE-064 AC-2: apply inserts one Scope Map row per unregistered scope document", async () => {
     const rootPath = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const root = await resolveProjectRoot(rootPath);
 
@@ -132,7 +132,7 @@ describe("FR-NODE-053 registerScopes core mutation", () => {
   // AC-3: A scope document whose inferred prefix collides with an existing Scope Map prefix is
   // skipped with a skip reason and not added. The fixture already registers prefix ARCH, so an
   // extra unregistered document inferring ARCH must be skipped (not written).
-  it("FR-NODE-053 AC-3: prefix collision is skipped with a skip reason and not added", async () => {
+  it("FR-NODE-064 AC-3: prefix collision is skipped with a skip reason and not added", async () => {
     const rootPath = await copyFixtureWorkspace("index-drift-unregistered-srs");
     // 10.product-architecture.srs.md is registered with prefix ARCH; add a colliding document.
     await addUnregisteredScopeDoc(rootPath, "30.collision.srs.md", "ARCH");
@@ -156,7 +156,7 @@ describe("FR-NODE-053 registerScopes core mutation", () => {
   // AC-4: registerScopes modifies no Requirement Block and no Status or Type summary count.
   // After apply, every requirement block in the scope documents and the index Status Summary /
   // Requirement Type Summary count tables are byte-identical to before.
-  it("FR-NODE-053 AC-4: leaves requirement blocks and summary counts unchanged", async () => {
+  it("FR-NODE-064 AC-4: leaves requirement blocks and summary counts unchanged", async () => {
     const rootPath = await copyFixtureWorkspace("index-drift-unregistered-srs");
     const root = await resolveProjectRoot(rootPath);
 

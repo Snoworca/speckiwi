@@ -21,9 +21,9 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// @req FR-NODE-047
+// @req FR-NODE-059
 /**
- * FR-NODE-047 — reads the registered destination targets from the index Target Map
+ * FR-NODE-059 — reads the registered destination targets from the index Target Map
  * (docs/spec/00.index.md). A retarget destination that is not present here yields the
  * per-item `target-not-registered` skip reason.
  */
@@ -39,9 +39,9 @@ async function readRegisteredTargets(root: ProjectRoot): Promise<Set<string>> {
   return registered;
 }
 
-// @req FR-NODE-047
+// @req FR-NODE-059
 /**
- * FR-NODE-047 — per-item retarget core mutation. Reassigns the Target metadata of the
+ * FR-NODE-059 — per-item retarget core mutation. Reassigns the Target metadata of the
  * caller-supplied requirement ids to a single destination through a per-item loop that
  * defaults to dry-run. The input type structurally excludes status and active-target, so
  * the mutation can neither finalize requirements nor change the Active Target. Each id

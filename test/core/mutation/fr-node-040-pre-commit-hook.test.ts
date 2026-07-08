@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-040 — pre-commit.mjs local best-effort gate for unsynthesized vibe
+// FR-NODE-055 — pre-commit.mjs local best-effort gate for unsynthesized vibe
 // trace.
 //
 // Red-phase suite (T-PH003-47): one test case per acceptance criterion
@@ -16,7 +16,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // point), so the whole suite is red until the green task creates the script.
 //
 // Contract under test (from the requirement body and AC, SSOT
-// docs/spec/50.nodejs-implementation.srs.md#FR-NODE-040):
+// docs/spec/50.nodejs-implementation.srs.md#FR-NODE-055):
 //   The installed docs/.kiwi/hooks/pre-commit.mjs, invoked from
 //   .git/hooks/pre-commit, exits non-zero to block a commit when state.md Mode
 //   is vibe and an Active Task is set but no corresponding step directory exists
@@ -29,7 +29,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 //     - AC-3: prints guidance to run the synthesis skill on block.
 //
 // The "matching step directory" is the per-task step SRS directory
-// docs/spec/steps/<ActiveTask>/ that the synthesis engine (FR-NODE-041 AC-1/AC-2)
+// docs/spec/steps/<ActiveTask>/ that the synthesis engine (FR-NODE-056 AC-1/AC-2)
 // writes; its existence marks the active vibe task as synthesized.
 
 // The hook script lives at this fixed, installed location relative to the
@@ -88,7 +88,7 @@ function runPreCommitHook(root: string): Promise<HookResult> {
 /**
  * Seeds docs/spec/steps/state.md with a top-of-file work-mode metadata block
  * (Mode / Active Task lines above the step-state table, matching the
- * FR-PARSE-023/FR-PARSE-028 layout). When `mode` is undefined the Mode line is
+ * FR-PARSE-026/FR-PARSE-031 layout). When `mode` is undefined the Mode line is
  * omitted; when `raw` is supplied it is written verbatim (malformed block).
  */
 async function writeStateMd(
@@ -122,7 +122,7 @@ async function writeStateMd(
 /**
  * Creates the per-task step SRS directory docs/spec/steps/<activeTask>/ with a
  * step SRS file, marking the active vibe task as synthesized (the state the
- * synthesis engine leaves behind, FR-NODE-041 AC-1).
+ * synthesis engine leaves behind, FR-NODE-056 AC-1).
  */
 async function writeStepDir(root: string, activeTask: string): Promise<void> {
   const taskDir = path.join(root, SPEC_STEPS_REL, activeTask);
@@ -134,7 +134,7 @@ async function writeStepDir(root: string, activeTask: string): Promise<void> {
   );
 }
 
-describe("FR-NODE-040 AC-1 — pre-commit.mjs exits non-zero when Mode is vibe and Active Task is set with no matching step directory", () => {
+describe("FR-NODE-055 AC-1 — pre-commit.mjs exits non-zero when Mode is vibe and Active Task is set with no matching step directory", () => {
   it("blocks the commit (non-zero exit) for an unsynthesized active vibe task", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const activeTask = "polish-login";
@@ -150,7 +150,7 @@ describe("FR-NODE-040 AC-1 — pre-commit.mjs exits non-zero when Mode is vibe a
   });
 });
 
-describe("FR-NODE-040 AC-2 — pre-commit.mjs exits zero once the matching step directory exists", () => {
+describe("FR-NODE-055 AC-2 — pre-commit.mjs exits zero once the matching step directory exists", () => {
   it("allows the commit (exit 0) once the active vibe task has been synthesized", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const activeTask = "polish-login";
@@ -208,7 +208,7 @@ describe("FND-004 — pre-commit.mjs Mode-line parsing matches the core (first M
   });
 });
 
-describe("FR-NODE-040 AC-3 — pre-commit.mjs prints guidance to run the synthesis skill on block", () => {
+describe("FR-NODE-055 AC-3 — pre-commit.mjs prints guidance to run the synthesis skill on block", () => {
   it("surfaces synthesis-skill guidance when it blocks an unsynthesized vibe commit", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const activeTask = "polish-login";

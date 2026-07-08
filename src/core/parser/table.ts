@@ -107,7 +107,7 @@ export function parseMarkdownTable(
   return parseMarkdownTableResult(lines, startLine, options).table;
 }
 
-// FR-PARSE-026: strict tokenizer for the checked_compatible Trace Links "Notes" cell
+// FR-PARSE-029: strict tokenizer for the checked_compatible Trace Links "Notes" cell
 // (SRS-MD-Rules-v3.0.0 §23.5). Items are separated by "; ", each item is "key: value",
 // keys are restricted to the recognized lowercase/hyphen set, and values are limited to
 // an alphanumeric + hyphen/colon/dot charset. The generic table-cell guard only rejects

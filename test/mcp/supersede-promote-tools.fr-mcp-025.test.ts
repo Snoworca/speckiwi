@@ -2,21 +2,21 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-// FR-MCP-025 — MCP registration of supersede and promote mutation tools.
+// FR-MCP-043 — MCP registration of supersede and promote mutation tools.
 //
 // Red-phase suite (T-PH005-11): one test case per acceptance criterion (AC-1, AC-2).
-// These cases describe the future MCP surface of FR-MCP-025 before the two mutation
+// These cases describe the future MCP surface of FR-MCP-043 before the two mutation
 // tools (supersede_requirement, promote_step_requirement) are registered, so the whole
 // suite fails until the green task (T-PH005-12) gives the supersede / promote ToolSpec
 // entries (src/mcp/schemas.ts) an mcpName and wires the handlers in registerMutationTools
 // (src/mcp/tools/mutation-tools.ts) forwarding to the core supersedeRequirement
-// (FR-NODE-030) / promoteStepRequirement (FR-NODE-031).
+// (FR-NODE-045) / promoteStepRequirement (FR-NODE-046).
 //
-// Contract under test (FR-MCP-025 requirement body + AC):
+// Contract under test (FR-MCP-043 requirement body + AC):
 //   - AC-1: supersede_requirement is a registered MCP tool with a zod schema
-//           forwarding to the core mutation supersedeRequirement (FR-NODE-030).
+//           forwarding to the core mutation supersedeRequirement (FR-NODE-045).
 //   - AC-2: promote_step_requirement is a registered MCP tool with a zod schema
-//           forwarding to the core mutation promoteStepRequirement (FR-NODE-031).
+//           forwarding to the core mutation promoteStepRequirement (FR-NODE-046).
 import {
   renderToolNames,
   renderToolSchemas,
@@ -50,8 +50,8 @@ async function bodyRecordById(rootPath: string, id: string) {
   return workspace.records.find((record) => record.id === id);
 }
 
-// ── Step-scope fixture writer (FR-NODE-031 promote forwarding fixture) ─────────
-// Mirrors the FR-NODE-031 core suite: stages an ARCH-scope step file under
+// ── Step-scope fixture writer (FR-NODE-046 promote forwarding fixture) ─────────
+// Mirrors the FR-NODE-046 core suite: stages an ARCH-scope step file under
 // docs/spec/steps/<stepName>/ carrying one requirement block whose pre-minted
 // canonical id promote_step_requirement is expected to insert verbatim into the body.
 
@@ -133,10 +133,10 @@ async function writeStepScopeFile(
   await writeFile(path.join(stepDir, "10.product-architecture.srs.md"), content, "utf8");
 }
 
-describe("FR-MCP-025 — MCP registration of supersede and promote mutation tools", () => {
+describe("FR-MCP-043 — MCP registration of supersede and promote mutation tools", () => {
   // AC-1: supersede_requirement is a registered MCP tool with a zod schema forwarding
-  // to the core mutation supersedeRequirement (FR-NODE-030).
-  it("FR-MCP-025 AC-1: supersede_requirement is a registered MCP tool whose zod schema forwards to the core mutation", async () => {
+  // to the core mutation supersedeRequirement (FR-NODE-045).
+  it("FR-MCP-043 AC-1: supersede_requirement is a registered MCP tool whose zod schema forwards to the core mutation", async () => {
     const registered = registeredMcpToolNames();
     const toolNames = new Set(renderToolNames());
     const schemas = renderToolSchemas();
@@ -163,7 +163,7 @@ describe("FR-MCP-025 — MCP registration of supersede and promote mutation tool
     // derived surface (FR-ARCH-006 / REL-ARCH-002 STANDING RULE).
     expect(() => assertZeroDriftToolSurface()).not.toThrow();
 
-    // Forwarding (no mocks): the handler reaches the core supersedeRequirement (FR-NODE-030),
+    // Forwarding (no mocks): the handler reaches the core supersedeRequirement (FR-NODE-045),
     // which performs the strict two-call sequence — T1 mints a successor carrying a
     // `supersedes oldId` trace, T2 discards the old requirement.
     const rootPath = await copyFixtureWorkspace("valid-basic");
@@ -210,8 +210,8 @@ describe("FR-MCP-025 — MCP registration of supersede and promote mutation tool
   });
 
   // AC-2: promote_step_requirement is a registered MCP tool with a zod schema forwarding
-  // to the core mutation promoteStepRequirement (FR-NODE-031).
-  it("FR-MCP-025 AC-2: promote_step_requirement is a registered MCP tool whose zod schema forwards to the core mutation", async () => {
+  // to the core mutation promoteStepRequirement (FR-NODE-046).
+  it("FR-MCP-043 AC-2: promote_step_requirement is a registered MCP tool whose zod schema forwards to the core mutation", async () => {
     const registered = registeredMcpToolNames();
     const toolNames = new Set(renderToolNames());
     const schemas = renderToolSchemas();
@@ -235,7 +235,7 @@ describe("FR-MCP-025 — MCP registration of supersede and promote mutation tool
     expect(() => assertZeroDriftToolSurface()).not.toThrow();
 
     // Forwarding (no mocks): the handler reaches the core promoteStepRequirement
-    // (FR-NODE-031), which inserts a step's pre-minted id verbatim into the target body
+    // (FR-NODE-046), which inserts a step's pre-minted id verbatim into the target body
     // scope after a reservation-uniqueness check.
     const rootPath = await copyFixtureWorkspace("valid-basic");
     const STEP_ID = "FR-ARCH-501";

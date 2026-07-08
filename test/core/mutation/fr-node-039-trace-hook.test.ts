@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-039 — trace.mjs per-edit hook script mode-aware with per-writer shard
+// FR-NODE-054 — trace.mjs per-edit hook script mode-aware with per-writer shard
 // and fail-open.
 //
 // Red-phase suite (T-PH003-45): one test case per acceptance criterion
@@ -16,7 +16,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // so the whole suite is red until the green task creates the script.
 //
 // Contract under test (from the requirement body and AC, SSOT
-// docs/spec/50.nodejs-implementation.srs.md#FR-NODE-039):
+// docs/spec/50.nodejs-implementation.srs.md#FR-NODE-054):
 //   The installed docs/.kiwi/hooks/trace.mjs reads the hook payload on stdin,
 //   reads work mode from state.md, and only when Mode is vibe appends one JSONL
 //   record per edit to docs/.kiwi/trace/<ActiveTask>/trace.<sessionId>.jsonl,
@@ -38,7 +38,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 // The hook script lives at this fixed, installed location relative to the
 // project root the script is run against (the requirement body and the
-// FR-NODE-037/038 settings markers both pin docs/.kiwi/hooks/trace.mjs).
+// FR-NODE-052/038 settings markers both pin docs/.kiwi/hooks/trace.mjs).
 const HOOK_REL = path.join("docs", ".kiwi", "hooks", "trace.mjs");
 const SPEC_STEPS_REL = path.join("docs", "spec", "steps");
 const STATE_MD_REL = path.join(SPEC_STEPS_REL, "state.md");
@@ -94,7 +94,7 @@ function runTraceHook(root: string, payload: unknown): Promise<HookResult> {
 /**
  * Seeds docs/spec/steps/state.md with a top-of-file work-mode metadata block
  * (Mode / Active Task lines above the step-state table, matching the
- * FR-PARSE-023/FR-PARSE-028 layout). When `mode` is undefined the Mode line is
+ * FR-PARSE-026/FR-PARSE-031 layout). When `mode` is undefined the Mode line is
  * omitted; when `raw` is supplied it is written verbatim (malformed block).
  */
 async function writeStateMd(
@@ -222,7 +222,7 @@ function codexApplyPatchPayload(opts: {
   };
 }
 
-describe("FR-NODE-039 AC-1 — trace.mjs appends a record only when state.md Mode is vibe", () => {
+describe("FR-NODE-054 AC-1 — trace.mjs appends a record only when state.md Mode is vibe", () => {
   it("appends exactly one record when Mode is vibe", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-vibe-1";
@@ -258,7 +258,7 @@ describe("FR-NODE-039 AC-1 — trace.mjs appends a record only when state.md Mod
   });
 });
 
-describe("FR-NODE-039 AC-2 — trace.mjs writes to a per-session shard trace.sessionId.jsonl under the Active Task directory", () => {
+describe("FR-NODE-054 AC-2 — trace.mjs writes to a per-session shard trace.sessionId.jsonl under the Active Task directory", () => {
   it("isolates records from two sessions into two distinct per-session shards", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const activeTask = "polish-login";
@@ -282,7 +282,7 @@ describe("FR-NODE-039 AC-2 — trace.mjs writes to a per-session shard trace.ses
   });
 });
 
-describe("FR-NODE-039 AC-3 — trace.mjs reads file paths from the Claude tool_input file path and from the Codex apply_patch patch body", () => {
+describe("FR-NODE-054 AC-3 — trace.mjs reads file paths from the Claude tool_input file path and from the Codex apply_patch patch body", () => {
   it("records the Claude tool_input file path", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-claude";
@@ -318,7 +318,7 @@ describe("FR-NODE-039 AC-3 — trace.mjs reads file paths from the Claude tool_i
   });
 });
 
-describe("FR-NODE-039 AC-4 — trace.mjs treats a missing or unparseable state.md or non-vibe mode as a no-op and never blocks the edit", () => {
+describe("FR-NODE-054 AC-4 — trace.mjs treats a missing or unparseable state.md or non-vibe mode as a no-op and never blocks the edit", () => {
   it("exits 0 and writes nothing when state.md is absent", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-missing-state";
@@ -350,7 +350,7 @@ describe("FR-NODE-039 AC-4 — trace.mjs treats a missing or unparseable state.m
   });
 });
 
-describe("FR-NODE-039 AC-5 — each appended JSONL line conforms to the contract fields ts, agent, sessionId, optional turnId, tool, files, op, and intentRef", () => {
+describe("FR-NODE-054 AC-5 — each appended JSONL line conforms to the contract fields ts, agent, sessionId, optional turnId, tool, files, op, and intentRef", () => {
   it("emits a record carrying the full required contract field set", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-contract";
@@ -381,7 +381,7 @@ describe("FR-NODE-039 AC-5 — each appended JSONL line conforms to the contract
   });
 });
 
-describe("FR-NODE-039 AC-6 — when Mode is vibe and Active Task is set but the task intent.md is missing, trace.mjs is a no-op and prints intent-recovery guidance, never appending a record", () => {
+describe("FR-NODE-054 AC-6 — when Mode is vibe and Active Task is set but the task intent.md is missing, trace.mjs is a no-op and prints intent-recovery guidance, never appending a record", () => {
   it("appends no record and prints intent-recovery guidance when intent.md is missing", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-no-intent";

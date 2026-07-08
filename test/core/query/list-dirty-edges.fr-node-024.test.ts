@@ -11,7 +11,7 @@ import type { RequirementStatus, Stability } from "../../../src/core/types.js";
 // whole suite red until then.
 import { listDirtyEdges } from "../../../src/core/query/summary.js";
 
-// FR-NODE-024 — list_dirty_edges read path with clean whitelist gate.
+// FR-NODE-040 — list_dirty_edges read path with clean whitelist gate.
 //
 // Red-phase suite (T-PH003-15): one test case per acceptance criterion
 // (AC-1..AC-4). These cases describe the future contract of listDirtyEdges
@@ -250,12 +250,12 @@ function edgeFor(
   return matches[0];
 }
 
-describe("FR-NODE-024 list_dirty_edges read path with clean whitelist gate", () => {
+describe("FR-NODE-040 list_dirty_edges read path with clean whitelist gate", () => {
   // AC-1: An edge is reported clean only when row count is exactly 1 and both
   // pins equal current semanticSha and both endpoints are cache-live and Notes
   // parse and fpv matches. The fixture authors a single canonical row whose self
   // and peer pins are the live shas, both endpoints planned/evolving (cache-live).
-  it("FR-NODE-024 AC-1: classifies an edge clean only when every whitelist condition holds", async () => {
+  it("FR-NODE-040 AC-1: classifies an edge clean only when every whitelist condition holds", async () => {
     // First materialize the two requirements (no rows) so their current shas can
     // be computed, then rebuild with a row pinned to exactly those shas.
     const shaRoot = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
@@ -275,7 +275,7 @@ describe("FR-NODE-024 list_dirty_edges read path with clean whitelist gate", () 
   // AC-2: Any edge failing one or more clean conditions is reported dirty with no
   // blacklist path. Here the self pin is stale (does not equal the current self
   // semanticSha), so the single failing condition flips the edge to dirty.
-  it("FR-NODE-024 AC-2: reports an edge with a stale pin as dirty (no blacklist path)", async () => {
+  it("FR-NODE-040 AC-2: reports an edge with a stale pin as dirty (no blacklist path)", async () => {
     const shaRoot = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const peerSha = await currentSha(shaRoot, MAX_ID);
     // A stale self pin: a well-formed but non-current sha (40 hex zeros).
@@ -296,7 +296,7 @@ describe("FR-NODE-024 list_dirty_edges read path with clean whitelist gate", () 
 
   // AC-3: An edge whose endpoint is missing is classified missing and an edge
   // whose peer was deleted is classified orphaned.
-  it("FR-NODE-024 AC-3: classifies a deleted peer as orphaned and a missing endpoint as missing", async () => {
+  it("FR-NODE-040 AC-3: classifies a deleted peer as orphaned and a missing endpoint as missing", async () => {
     // Orphaned: a well-formed live edge whose referenced peer (FR-NODE-200) does
     // not exist in the workspace at all — the peer was deleted, leaving the
     // holder's row pointing at a removed counterpart.
@@ -332,7 +332,7 @@ describe("FR-NODE-024 list_dirty_edges read path with clean whitelist gate", () 
   // summarizeTarget to parse. The handler accepts a ProjectRoot (not a
   // pre-parsed workspace), so calling it with only a root must surface the
   // on-disk edges — proving it parsed the workspace itself.
-  it("FR-NODE-024 AC-4: performs its own fresh parse from the ProjectRoot", async () => {
+  it("FR-NODE-040 AC-4: performs its own fresh parse from the ProjectRoot", async () => {
     const shaRoot = await buildWorkspace([{ id: MIN_ID }, { id: MAX_ID }]);
     const selfSha = await currentSha(shaRoot, MIN_ID);
     const peerSha = await currentSha(shaRoot, MAX_ID);

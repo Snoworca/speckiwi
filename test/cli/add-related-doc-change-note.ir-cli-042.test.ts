@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-042 — `speckiwi add-related-doc <id> --link <link>` and
+// IR-CLI-057 — `speckiwi add-related-doc <id> --link <link>` and
 //              `speckiwi add-change-note <id> --change <change> --reason <reason>` commands.
 //
 // Red-phase suite (T-PH004-27): one test case per acceptance criterion (AC-1..AC-4). These cases pin
@@ -14,10 +14,10 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // `add-change-note` commands (non-zero usage exit, no mutation payload printed) — until the green task
 // (T-PH004-28) wires the commands against the existing core mutations
 // (src/core/mutation/add-related-doc.ts `addRelatedDoc` and src/core/mutation/add-change-note.ts
-// `addChangeNote`, both FR-NODE-049): a single Related Docs metadata-line append and a single dated
+// `addChangeNote`, both FR-NODE-061): a single Related Docs metadata-line append and a single dated
 // Change Notes row append, each with a --dry-run preview and a --json mutation result envelope.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-042):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-057):
 //
 //   SpecKiwi provides a `speckiwi add-related-doc <id> --link <link>` command that appends a Related
 //   Docs entry to a requirement and a `speckiwi add-change-note <id> --change <change> --reason <reason>`
@@ -48,12 +48,12 @@ const SCOPE_DOC = path.join("docs", "spec", "10.product-architecture.srs.md");
 const TARGET_ID = "FR-ARCH-001";
 
 const RELATED_DOC_PLACEHOLDER_LINE = "| Related Docs | - |";
-const NEW_LINK = "docs/spec/30.cli-interface.srs.md#IR-CLI-042";
+const NEW_LINK = "docs/spec/30.cli-interface.srs.md#IR-CLI-057";
 const NEW_RELATED_DOC_LINE = `| Related Docs | ${NEW_LINK} |`;
 
 const EXISTING_CHANGE_NOTE_ROW = "| 2026-05-08 | Created | Fixture |";
 const NEW_CHANGE = "Documented add-related-doc";
-const NEW_REASON = "IR-CLI-042";
+const NEW_REASON = "IR-CLI-057";
 
 const AC1_LINE = "- [ ] AC-1: The status can be updated.";
 const AC2_LINE = "- [ ] AC-2: Evidence can be added.";
@@ -94,10 +94,10 @@ function findValue(parsed: unknown, requiredKeys: readonly string[]): Record<str
   return undefined;
 }
 
-describe("IR-CLI-042 — add-related-doc and add-change-note commands", () => {
+describe("IR-CLI-057 — add-related-doc and add-change-note commands", () => {
   // AC-1: `add-related-doc <id> --link <link>` appends the link to the Related Docs of the targeted
   //       requirement without altering other sections.
-  it("IR-CLI-042 AC-1: add-related-doc appends the link without altering other sections", async () => {
+  it("IR-CLI-057 AC-1: add-related-doc appends the link without altering other sections", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readScope(root);
     const acBefore = sectionSlice(before, "Acceptance Criteria");
@@ -125,7 +125,7 @@ describe("IR-CLI-042 — add-related-doc and add-change-note commands", () => {
 
   // AC-2: `add-change-note <id> --change <change> --reason <reason>` appends a dated Change Notes row
   //       to the targeted requirement.
-  it("IR-CLI-042 AC-2: add-change-note appends a dated Change Notes row preserving existing rows", async () => {
+  it("IR-CLI-057 AC-2: add-change-note appends a dated Change Notes row preserving existing rows", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readScope(root);
     const acBefore = sectionSlice(before, "Acceptance Criteria");
@@ -158,7 +158,7 @@ describe("IR-CLI-042 — add-related-doc and add-change-note commands", () => {
   });
 
   // AC-3: Both commands support --dry-run and print a patch preview without writing a file.
-  it("IR-CLI-042 AC-3: --dry-run prints a patch preview and writes no file for both commands", async () => {
+  it("IR-CLI-057 AC-3: --dry-run prints a patch preview and writes no file for both commands", async () => {
     // add-related-doc --dry-run
     const docRoot = await copyFixtureWorkspace("mutation-target");
     const docBefore = await readScope(docRoot);
@@ -213,7 +213,7 @@ describe("IR-CLI-042 — add-related-doc and add-change-note commands", () => {
 
   // AC-4: Both commands support --json and emit the mutation result envelope consistent with other
   //       mutation commands.
-  it("IR-CLI-042 AC-4: --json emits a mutation result envelope for both commands", async () => {
+  it("IR-CLI-057 AC-4: --json emits a mutation result envelope for both commands", async () => {
     // add-related-doc --json → { ok, value: { id, reference, written }, diagnostics }
     const docRoot = await copyFixtureWorkspace("mutation-target");
     const docRun = io();
@@ -259,7 +259,7 @@ describe("IR-CLI-042 — add-related-doc and add-change-note commands", () => {
 
 // Anti-vacuity sanity: the fixture facts these tests pin are stable, and the AC lines exist so the
 // "other sections unchanged" assertions are meaningful rather than trivially true.
-describe("IR-CLI-042 fixture preconditions", () => {
+describe("IR-CLI-057 fixture preconditions", () => {
   it("the mutation-target fixture exposes the pinned Related Docs / Change Notes / AC facts", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const text = await readScope(root);

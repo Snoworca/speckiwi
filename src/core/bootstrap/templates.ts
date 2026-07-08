@@ -17,7 +17,7 @@ export const BUNDLED_RULES_VERSION = "1.0.0";
 /**
  * The Codex CLI version at (and above) which the `apply_patch` PostToolUse hook is supported.
  * A detected version below this floor cannot be trusted to honor the apply_patch hook, so the
- * installer warns instead of relying on it (FND-005 / FR-NODE-038 AC-3).
+ * installer warns instead of relying on it (FND-005 / FR-NODE-053 AC-3).
  */
 export const CODEX_APPLY_PATCH_HOOK_FLOOR = "0.20.0";
 

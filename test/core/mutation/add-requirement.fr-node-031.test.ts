@@ -9,7 +9,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // makes the whole suite red (missing export) until the green task implements it.
 import { promoteStepRequirement } from "../../../src/core/mutation/add-requirement.js";
 
-// FR-NODE-031 — promote_step_requirement mutation with reservation uniqueness
+// FR-NODE-046 — promote_step_requirement mutation with reservation uniqueness
 // verbatim insert.
 //
 // Red-phase suite (T-PH003-29): one test case per acceptance criterion
@@ -129,8 +129,8 @@ async function bodyRecordById(rootPath: string, id: string) {
   return workspace.records.find((record) => record.id === id);
 }
 
-describe("FR-NODE-031 AC-1 — promote_step_requirement inserts the step id verbatim into toScope", () => {
-  it("FR-NODE-031 AC-1: inserts the step requirement into the body scope using its existing id verbatim", async () => {
+describe("FR-NODE-046 AC-1 — promote_step_requirement inserts the step id verbatim into toScope", () => {
+  it("FR-NODE-046 AC-1: inserts the step requirement into the body scope using its existing id verbatim", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // A step requirement with a pre-minted canonical id that does NOT collide
     // with any body id, so the promote is allowed.
@@ -160,8 +160,8 @@ describe("FR-NODE-031 AC-1 — promote_step_requirement inserts the step id verb
   });
 });
 
-describe("FR-NODE-031 AC-2 — promote_step_requirement rejects an id that already exists in the reservation view", () => {
-  it("FR-NODE-031 AC-2: denies the insert when the step id collides with an existing body requirement", async () => {
+describe("FR-NODE-046 AC-2 — promote_step_requirement rejects an id that already exists in the reservation view", () => {
+  it("FR-NODE-046 AC-2: denies the insert when the step id collides with an existing body requirement", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // The fixture already contains body requirement FR-ARCH-001. Stage a step
     // requirement re-using that exact id so the reservation view (HEAD body +
@@ -190,8 +190,8 @@ describe("FR-NODE-031 AC-2 — promote_step_requirement rejects an id that alrea
   });
 });
 
-describe("FR-NODE-031 AC-3 — promote_step_requirement does not auto-generate or alter the requirement id", () => {
-  it("FR-NODE-031 AC-3: preserves the step id rather than minting the next sequential body id", async () => {
+describe("FR-NODE-046 AC-3 — promote_step_requirement does not auto-generate or alter the requirement id", () => {
+  it("FR-NODE-046 AC-3: preserves the step id rather than minting the next sequential body id", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     // A non-sequential pre-minted id. If the mutation auto-generated an id it
     // would derive the next ARCH slot (e.g. FR-ARCH-002) instead of preserving

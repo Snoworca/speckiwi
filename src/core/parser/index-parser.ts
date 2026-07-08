@@ -20,7 +20,7 @@ const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait"]);
 const STEP_MODE_RE = /^\s*Mode:\s*(.*)$/;
 const STEP_ACTIVE_TASK_RE = /^\s*Active Task:\s*(.*)$/;
 
-// @req FR-PARSE-023 @req FR-PARSE-028
+// @req FR-PARSE-026 @req FR-PARSE-031
 export function parseStepState(lines: readonly string[]): StepStateParseResult {
   const src = lines as string[];
   const result = parseMarkdownTableResult(src, 0, { skipNonTableLeading: true });

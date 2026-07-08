@@ -104,7 +104,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
   }
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
-  // FR-NODE-019 — verified-regression EXIT guard: discarding a protected requirement
+  // FR-NODE-035 — verified-regression EXIT guard: discarding a protected requirement
   // (verified, frozen/stable stability, or implemented-with-evidence) requires an
   // explicit confirmDiscardVerified=true override. Runs before any patch is built so a
   // denied discard leaves the document byte-identical.
@@ -170,7 +170,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
   };
 }
 
-// FR-NODE-051 — restore core.
+// FR-NODE-062 — restore core.
 //
 // Un-discards a requirement: sets its Status to the requested active status (defaulting to
 // planned), removes the heading strikethrough and [DISCARDED] marker, and appends exactly one

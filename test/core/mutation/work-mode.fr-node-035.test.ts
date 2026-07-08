@@ -11,7 +11,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // implements it.
 import { getWorkMode, setWorkMode } from "../../../src/core/mutation/work-mode.js";
 
-// FR-NODE-035 — Work mode model with get and set and fail-open default.
+// FR-NODE-050 — Work mode model with get and set and fail-open default.
 //
 // Red-phase suite (T-PH003-37): one test case per acceptance criterion
 // (AC-1..AC-4). These cases describe the future contract of getWorkMode /
@@ -33,7 +33,7 @@ const STATE_MD_REL = path.join(SPEC_DIR, "steps", "state.md");
 /**
  * Writes a docs/spec/steps/state.md seeded with the supplied top-of-file
  * work-mode metadata block (Mode / Active Task lines above the step-state
- * table). Columns of the table match the FR-PARSE-023 layout
+ * table). Columns of the table match the FR-PARSE-026 layout
  * (Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated).
  *
  * When `mode` is undefined the Mode line is omitted entirely so the
@@ -72,7 +72,7 @@ async function readStateMd(root: string): Promise<string> {
   return readFile(path.join(root, STATE_MD_REL), "utf8");
 }
 
-describe("FR-NODE-035 AC-1 — getWorkMode returns the persisted Mode and, for vibe, the Active Task", () => {
+describe("FR-NODE-050 AC-1 — getWorkMode returns the persisted Mode and, for vibe, the Active Task", () => {
   it("returns the persisted non-vibe Mode read from the state.md metadata block", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "sdd" });
@@ -97,7 +97,7 @@ describe("FR-NODE-035 AC-1 — getWorkMode returns the persisted Mode and, for v
   });
 });
 
-describe("FR-NODE-035 AC-2 — getWorkMode returns wait when state.md is absent or invalid (fail-open)", () => {
+describe("FR-NODE-050 AC-2 — getWorkMode returns wait when state.md is absent or invalid (fail-open)", () => {
   it("returns Mode=wait without throwing when state.md is absent", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     // Deliberately do NOT create docs/spec/steps/state.md.
@@ -120,7 +120,7 @@ describe("FR-NODE-035 AC-2 — getWorkMode returns wait when state.md is absent 
   });
 });
 
-describe("FR-NODE-035 AC-3 — setWorkMode persists Mode into the state.md metadata block", () => {
+describe("FR-NODE-050 AC-3 — setWorkMode persists Mode into the state.md metadata block", () => {
   it("rewrites the Mode value in the state.md metadata block so getWorkMode reads it back", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "sdd" });
@@ -138,7 +138,7 @@ describe("FR-NODE-035 AC-3 — setWorkMode persists Mode into the state.md metad
   });
 });
 
-describe("FR-NODE-035 AC-4 — setWorkMode to vibe persists the Active Task name alongside Mode", () => {
+describe("FR-NODE-050 AC-4 — setWorkMode to vibe persists the Active Task name alongside Mode", () => {
   it("persists both Mode=vibe and the Active Task name into the state.md metadata block", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "sdd" });
@@ -202,7 +202,7 @@ describe("FND-001 — setWorkMode to a non-vibe mode clears any stale Active Tas
 // (docs/spec/steps/state.md) with a parseable Mode line, so that getWorkMode /
 // setWorkMode operate on a fresh repo instead of failing-open to wait and
 // erroring NOT_FOUND. The prior scaffold targeted docs/.kiwi/state.md (a dead
-// file no reader consults), leaving FR-NODE-035 inoperable after init.
+// file no reader consults), leaving FR-NODE-050 inoperable after init.
 describe("FND-001 — speckiwi init scaffolds a usable work-mode state.md at the reader SSOT path", () => {
   async function emptyRepo(): Promise<string> {
     const root = await mkdtemp(path.join(tmpdir(), "speckiwi-fnd001-"));

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-036 — release-readiness, coverage, and rtm read commands with verified-gate banner.
+// IR-CLI-053 — release-readiness, coverage, and rtm read commands with verified-gate banner.
 //
 // Red-phase suite (T-PH004-15): one test case per acceptance criterion (AC-1..AC-5). These cases
 // pin the future CLI contract before `src/cli/commands/read.ts` / `src/cli/index.ts` teach the CLI
@@ -15,7 +15,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // `summarizeReleaseReadiness` / `collectAcCoverageGaps` core module
 // (src/core/workflow/release-readiness.ts).
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-036):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-053):
 //
 //   SpecKiwi exposes read-only CLI commands that surface the existing core release readiness,
 //   acceptance-criteria coverage, and traceability matrix computations for a target, defaulting to
@@ -154,10 +154,10 @@ function findReadinessPayload(parsed: unknown): Record<string, unknown> | undefi
   return undefined;
 }
 
-describe("IR-CLI-036 — release-readiness, coverage, and rtm read commands with verified-gate banner", () => {
+describe("IR-CLI-053 — release-readiness, coverage, and rtm read commands with verified-gate banner", () => {
   // AC-1: `release-readiness` prints the readiness summary (blocked, implemented-not-verified,
   //       missing-evidence, stability blockers), defaulting to the Active Target.
-  it("IR-CLI-036 AC-1: release-readiness prints blocked/implemented-not-verified/missing-evidence/stability blockers for the Active Target", async () => {
+  it("IR-CLI-053 AC-1: release-readiness prints blocked/implemented-not-verified/missing-evidence/stability blockers for the Active Target", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReadinessFixture(root);
 
@@ -177,7 +177,7 @@ describe("IR-CLI-036 — release-readiness, coverage, and rtm read commands with
   });
 
   // AC-2: `coverage` prints acceptance-criteria coverage gaps for verified requirements.
-  it("IR-CLI-036 AC-2: coverage prints acceptance-criteria coverage gaps for verified requirements", async () => {
+  it("IR-CLI-053 AC-2: coverage prints acceptance-criteria coverage gaps for verified requirements", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReadinessFixture(root);
 
@@ -195,7 +195,7 @@ describe("IR-CLI-036 — release-readiness, coverage, and rtm read commands with
   });
 
   // AC-3: `rtm` prints a requirement-to-evidence traceability listing for the selected target.
-  it("IR-CLI-036 AC-3: rtm prints a requirement-to-evidence traceability listing", async () => {
+  it("IR-CLI-053 AC-3: rtm prints a requirement-to-evidence traceability listing", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReadinessFixture(root);
 
@@ -215,7 +215,7 @@ describe("IR-CLI-036 — release-readiness, coverage, and rtm read commands with
 
   // AC-4: Each command supports --json and emits a machine-readable object derived from the existing
   //       core release readiness module.
-  it("IR-CLI-036 AC-4: release-readiness/coverage/rtm support --json emitting machine-readable objects", async () => {
+  it("IR-CLI-053 AC-4: release-readiness/coverage/rtm support --json emitting machine-readable objects", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReadinessFixture(root);
 
@@ -251,7 +251,7 @@ describe("IR-CLI-036 — release-readiness, coverage, and rtm read commands with
   // AC-5: When output lists requirements that are candidates for a verified transition, a warning
   //       banner states that the verified transition requires per-requirement verification evidence
   //       and is not auto-applied.
-  it("IR-CLI-036 AC-5: a verified-transition candidate triggers a per-requirement evidence-gate banner", async () => {
+  it("IR-CLI-053 AC-5: a verified-transition candidate triggers a per-requirement evidence-gate banner", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await appendReadinessFixture(root);
 

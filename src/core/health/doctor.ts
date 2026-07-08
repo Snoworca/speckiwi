@@ -9,8 +9,8 @@ import {
   BUNDLED_RULES_VERSION
 } from "../bootstrap/templates.js";
 
-// @req IR-CLI-051
-// IR-CLI-051 — `speckiwi doctor` consolidated environment health diagnosis.
+// @req IR-CLI-065
+// IR-CLI-065 — `speckiwi doctor` consolidated environment health diagnosis.
 //
 // The doctor reports one diagnosis check per health topic the SRS enumerates: docs spec presence and
 // parseability, agent workflow block version currency, bundled-versus-installed rules version drift,
@@ -42,17 +42,17 @@ export interface DoctorReport {
   checks: DoctorCheck[];
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 // The agent files the workflow-block currency check inspects (the same pair init upserts).
 const AGENT_FILES: readonly string[] = ["CLAUDE.md", "AGENTS.md"];
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /** Extracts the leading semver (X.Y.Z or X.Y) token from a string, or undefined when absent. */
 function extractVersion(text: string): string | undefined {
   return /\bv?(\d+(?:\.\d+){1,2})\b/.exec(text)?.[1];
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /** Reads a file as UTF-8, returning undefined when it is absent or unreadable. */
 async function readOrUndefined(target: string): Promise<string | undefined> {
   try {
@@ -62,7 +62,7 @@ async function readOrUndefined(target: string): Promise<string | undefined> {
   }
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
  * Docs spec presence and parseability: the workspace must expose at least one parsed requirement
  * record and carry no structural parse-time errors. A parse error is a fail; an empty-but-clean
@@ -98,7 +98,7 @@ function checkSpecPresence(workspace: ParsedWorkspace): DoctorCheck {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
  * Agent workflow block version currency: each agent file (CLAUDE.md / AGENTS.md) should carry the
  * current versioned workflow heading plus its end marker. A missing file or a stale/markerless block
@@ -132,7 +132,7 @@ async function checkWorkflowCurrency(root: string): Promise<DoctorCheck> {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
  * Bundled-versus-installed rules version drift: compares this package's bundled SRS-MD rules version
  * against the version the workspace index's Rules link advertises. A mismatch warns; a match is ok;
@@ -169,7 +169,7 @@ function checkRulesDrift(workspace: ParsedWorkspace): DoctorCheck {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /** Active Target set: the index must declare a non-empty Active Target. */
 function checkActiveTarget(workspace: ParsedWorkspace): DoctorCheck {
   const topic = "Active Target set";
@@ -192,7 +192,7 @@ function checkActiveTarget(workspace: ParsedWorkspace): DoctorCheck {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
  * Scope and target consistency: every requirement's scope must be a registered scope in the index
  * Scope Map, and its target must be a registered target in the Target Map. Any unregistered scope or
@@ -247,7 +247,7 @@ function checkScopeTargetConsistency(workspace: ParsedWorkspace): DoctorCheck {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
  * Node version: the running Node major version must meet the supported floor. Below the floor is a
  * fail; an unparseable process.version warns; at or above the floor is ok.
@@ -283,9 +283,9 @@ function checkNodeVersion(nodeVersion: string): DoctorCheck {
   };
 }
 
-// @req IR-CLI-051
+// @req IR-CLI-065
 /**
- * IR-CLI-051 — build the consolidated doctor diagnosis. Returns one check per SRS health topic, each
+ * IR-CLI-065 — build the consolidated doctor diagnosis. Returns one check per SRS health topic, each
  * with a {ok, warn, fail} state and a non-empty remediation hint. Pure read: no file is written.
  */
 export async function diagnoseHealth(

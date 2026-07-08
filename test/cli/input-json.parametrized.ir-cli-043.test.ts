@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// @req IR-CLI-043
-// IR-CLI-043 AC-1/AC-3 — parametrized equivalence of --input-json and discrete flags across EVERY
+// @req IR-CLI-058
+// IR-CLI-058 AC-1/AC-3 — parametrized equivalence of --input-json and discrete flags across EVERY
 // mutation command shape, not just update-status. The earlier suite only exercised update-status,
 // which hid that expandInputJsonArgv sourced CLI positionals from the MCP input schema (spec.args)
 // rather than the command's actual declared positionals: commands whose registry args disagree with
@@ -172,7 +172,7 @@ const SHAPES: readonly Shape[] = [
   },
 ];
 
-describe("IR-CLI-043 — parametrized --input-json equivalence across mutation command shapes", () => {
+describe("IR-CLI-058 — parametrized --input-json equivalence across mutation command shapes", () => {
   for (const shape of SHAPES) {
     it(`AC-1/AC-3 ${shape.label}: --input-json parses and matches discrete flags`, async () => {
       const flagsResult = await run(shape.flags);

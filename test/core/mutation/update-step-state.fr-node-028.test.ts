@@ -8,7 +8,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // makes the whole suite red until the green task implements it.
 import { updateStepState } from "../../../src/core/mutation/update-step-state.js";
 
-// FR-NODE-028 — update_step_state mutation.
+// FR-NODE-043 — update_step_state mutation.
 //
 // Red-phase suite (T-PH003-23): one test case per acceptance criterion
 // (AC-1..AC-3). These cases describe the future contract of updateStepState
@@ -28,7 +28,7 @@ const STATE_MD_REL = path.join(SPEC_DIR, "steps", "state.md");
 
 /**
  * Writes a docs/spec/steps/state.md table seeded with the supplied step rows.
- * Columns match the FR-PARSE-023 layout
+ * Columns match the FR-PARSE-026 layout
  * (Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated).
  */
 async function writeStateMd(
@@ -88,7 +88,7 @@ function rowCells(stateMd: string, step: string): string[] | undefined {
     .map((cell) => cell.trim());
 }
 
-describe("FR-NODE-028 AC-1 — update_step_state changes the Status field of an existing step row to an allowed value", () => {
+describe("FR-NODE-043 AC-1 — update_step_state changes the Status field of an existing step row to an allowed value", () => {
   it("updates the Status of the targeted step row to a value in {active, merging, merged, abandoned}", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, [
@@ -127,7 +127,7 @@ describe("FR-NODE-028 AC-1 — update_step_state changes the Status field of an 
   });
 });
 
-describe("FR-NODE-028 AC-2 — update_step_state updates the DependsOn and Updated fields of the targeted step row", () => {
+describe("FR-NODE-043 AC-2 — update_step_state updates the DependsOn and Updated fields of the targeted step row", () => {
   it("rewrites the DependsOn cell and refreshes the Updated stamp of the targeted row", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, [
@@ -157,7 +157,7 @@ describe("FR-NODE-028 AC-2 — update_step_state updates the DependsOn and Updat
   });
 });
 
-describe("FR-NODE-028 AC-3 — update_step_state targeting a non-existent step returns NOT_FOUND", () => {
+describe("FR-NODE-043 AC-3 — update_step_state targeting a non-existent step returns NOT_FOUND", () => {
   it("returns NOT_FOUND and writes nothing when the targeted step row does not exist", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, [

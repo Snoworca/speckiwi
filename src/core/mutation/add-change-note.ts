@@ -5,9 +5,9 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 
-// @req FR-NODE-049
+// @req FR-NODE-061
 /**
- * FR-NODE-049 (AC-2) — addChangeNote appends exactly one dated row to the
+ * FR-NODE-061 (AC-2) — addChangeNote appends exactly one dated row to the
  * `Change Notes` table of a requirement with date, change, and reason cells,
  * preserving the existing rows. Every supplied cell is guarded by the shared
  * Markdown table cell safety helper (AC-3) so a pipe or newline yields
@@ -31,7 +31,7 @@ function patchSummary(filePath: string, row: string, dryRun: boolean): PatchSumm
   return { filePath, operations: 1, dryRun, preview: [row] };
 }
 
-// @req FR-NODE-049
+// @req FR-NODE-061
 export async function addChangeNote(
   root: ProjectRoot,
   input: AddChangeNoteInput

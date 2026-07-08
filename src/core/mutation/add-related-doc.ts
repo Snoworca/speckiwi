@@ -5,9 +5,9 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
-// @req FR-NODE-049
+// @req FR-NODE-061
 /**
- * FR-NODE-049 (AC-1) — addRelatedDoc appends one document reference to the
+ * FR-NODE-061 (AC-1) — addRelatedDoc appends one document reference to the
  * `Related Docs` metadata value of a requirement and rewrites only that single
  * metadata line. The placeholder `-` is replaced by the supplied reference;
  * an existing comma-separated value gets the reference appended. The reference
@@ -31,7 +31,7 @@ function patchSummary(filePath: string, replacement: string, dryRun: boolean): P
   return { filePath, operations: 1, dryRun, preview: [replacement] };
 }
 
-// @req FR-NODE-049
+// @req FR-NODE-061
 export async function addRelatedDoc(
   root: ProjectRoot,
   input: AddRelatedDocInput

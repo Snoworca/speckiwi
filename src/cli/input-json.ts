@@ -3,8 +3,8 @@ import { describeCommandForHelp, findSpecByCliName } from "../mcp/schemas.js";
 import type { CliIo } from "./index.js";
 import { writeJson } from "./formatters.js";
 
-// @req IR-CLI-043
-// IR-CLI-043 — common --input-json option and --help --json renderer for all mutation commands.
+// @req IR-CLI-058
+// IR-CLI-058 — common --input-json option and --help --json renderer for all mutation commands.
 //
 // `--input-json <json>` (or `--input-json -` / piped stdin) carries the full argument object for a
 // mutation command. Rather than re-declaring positionals as optional on every command (which would

@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { readUtf8File } from "../../../src/core/fs/read-text.js";
 import { createPatchPlan } from "../../../src/core/patch/patch-plan.js";
-// FR-NODE-032: net-new MultiFileCommit four-phase engine + durable merge-journal.
+// FR-NODE-047: net-new MultiFileCommit four-phase engine + durable merge-journal.
 // These symbols are introduced by the green task (T-PH003-32) and do not exist yet,
 // so this suite is expected to be red until the implementation lands.
 import {
@@ -34,9 +34,9 @@ async function buildCommitFile(filePath: string, replacement: string): Promise<M
   return { plan };
 }
 
-describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journal", () => {
+describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journal", () => {
   // AC-1: render all files, stale-check, write tmp, then rename as final phase.
-  it("FR-NODE-032 AC-1: commits a step file and a body file atomically via four phases", async () => {
+  it("FR-NODE-047 AC-1: commits a step file and a body file atomically via four phases", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\nbody\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\ncontent\n");
@@ -60,7 +60,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   });
 
   // AC-2: durable merge-journal records renames, sha256, and backups before rename phase.
-  it("FR-NODE-032 AC-2: writes a durable journal of renames, sha256 hashes, and backups before renaming", async () => {
+  it("FR-NODE-047 AC-2: writes a durable journal of renames, sha256 hashes, and backups before renaming", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -90,7 +90,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   });
 
   // AC-3: an interrupted merge is detected as half-applied by the next merge and rolled forward or back.
-  it("FR-NODE-032 AC-3: the next merge detects a half-applied interrupted merge and recovers it", async () => {
+  it("FR-NODE-047 AC-3: the next merge detects a half-applied interrupted merge and recovers it", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -140,7 +140,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   // error, recovery must roll the already-applied renames BACK to their pre-merge state from
   // the backups rather than silently swallowing the failure and discarding the journal/backups
   // (which would leave the body partially applied and unrecoverable).
-  it("FR-NODE-032 AC-3: a real rename failure during recovery rolls the merge back to pre-merge state", async () => {
+  it("FR-NODE-047 AC-3: a real rename failure during recovery rolls the merge back to pre-merge state", async () => {
     const root = await makeWorkspace();
     // Pre-merge ("original") contents. step.md was already renamed forward before the crash;
     // body.md still holds its original content with the new content staged in a tmp file.
@@ -206,7 +206,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   // must be terminal — a retried recovery (after the transient lock clears) must NEVER re-apply the
   // outstanding rename forward. Re-forwarding even one file would leave the merge partially applied
   // (one target rolled back, the other committed), violating all-or-nothing.
-  it("FR-NODE-032 AC-3: a retried recovery after a roll-back never re-applies the merge forward (terminal roll-back)", async () => {
+  it("FR-NODE-047 AC-3: a retried recovery after a roll-back never re-applies the merge forward (terminal roll-back)", async () => {
     const root = await makeWorkspace();
     // step.md was already renamed forward before the crash; body.md still holds its original content.
     const stepPath = await seedFile(root, "step.md", "# step committed\n");
@@ -271,7 +271,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   // AC-3/AC-4 (interrupted roll-back resumes as roll-back): a journal left with the durable
   // "rolled-back" marker (e.g. a roll-back that crashed before clearing the journal) must be
   // resumed as a roll-back by the next recovery — never re-applied forward.
-  it("FR-NODE-032 AC-3: a journal marked rolled-back resumes as a roll-back, never forward", async () => {
+  it("FR-NODE-047 AC-3: a journal marked rolled-back resumes as a roll-back, never forward", async () => {
     const root = await makeWorkspace();
     // step.md was already renamed forward before the crash; body.md still holds its original content.
     const stepPath = await seedFile(root, "step.md", "# step committed\n");
@@ -322,7 +322,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   });
 
   // AC-4: journal write is atomic via tmp-rename; re-entrant resumption is idempotent; partial stale aborts all-or-nothing.
-  it("FR-NODE-032 AC-4: resumption is idempotent and a partial stale condition aborts all-or-nothing", async () => {
+  it("FR-NODE-047 AC-4: resumption is idempotent and a partial stale condition aborts all-or-nothing", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const bodyPath = await seedFile(root, "body.md", "# body original\n");
@@ -348,7 +348,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   });
 
   // AC-5: state.md is not included in the commit plan.
-  it("FR-NODE-032 AC-5: state.md is never part of a MultiFileCommit plan", async () => {
+  it("FR-NODE-047 AC-5: state.md is never part of a MultiFileCommit plan", async () => {
     const root = await makeWorkspace();
     const stepPath = await seedFile(root, "step.md", "# step original\n");
     const statePath = await seedFile(root, "state.md", "# state original\n");
@@ -365,7 +365,7 @@ describe("FR-NODE-032 MultiFileCommit four-phase engine with durable merge-journ
   });
 
   // Cross-AC: the export-promoted assertFreshSnapshot from apply-patch is reused by the engine.
-  it("FR-NODE-032: reuses the export-promoted assertFreshSnapshot", () => {
+  it("FR-NODE-047: reuses the export-promoted assertFreshSnapshot", () => {
     expect(typeof assertFreshSnapshot).toBe("function");
   });
 });

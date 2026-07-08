@@ -393,16 +393,16 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },
-  // FR-MCP-021 — step-scoped validation read tool.
+  // FR-MCP-040 — step-scoped validation read tool.
   validate_step: { step: z.string() },
-  // FR-MCP-022 — compatibility-check mutation tools and edge read tools.
+  // FR-MCP-041 — compatibility-check mutation tools and edge read tools.
   add_compatibility_check: { aReqId: z.string(), bReqId: z.string(), dryRun: z.boolean().optional() },
   refresh_compatibility_check: { aReqId: z.string(), bReqId: z.string(), dryRun: z.boolean().optional() },
   revoke_compatibility_check: { aReqId: z.string(), bReqId: z.string(), dryRun: z.boolean().optional() },
   list_dirty_edges: { target: z.string().optional() },
   list_compat_edges: { target: z.string().optional() },
   // FR-MCP-023 — statement and acceptance-criteria gap mutation tools.
-  // FR-MCP-024 — step-state tools (claim/update are mutations, list_steps is read-only).
+  // FR-MCP-042 — step-state tools (claim/update are mutations, list_steps is read-only).
   claim_step: {
     step: z.string(),
     touchesScope: z.string(),
@@ -413,7 +413,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   },
   update_step_state: { step: z.string(), status: z.string().optional(), dependsOn: z.string().optional(), dryRun: z.boolean().optional() },
   list_steps: { step: z.string().optional(), target: z.string().optional() },
-  // FR-MCP-025 — supersede and promote mutation tools.
+  // FR-MCP-043 — supersede and promote mutation tools.
   supersede_requirement: {
     oldId: z.string(),
     scope: z.string(),

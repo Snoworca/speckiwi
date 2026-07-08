@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-051 — `speckiwi doctor` scope/target consistency must not report a false "ok".
+// IR-CLI-065 — `speckiwi doctor` scope/target consistency must not report a false "ok".
 //
 // FND-004: checkScopeTargetConsistency only inspected unregistered scopes/targets when the index
 // Scope Map / Target Map were non-empty (knownScopes.size > 0). When the index map is EMPTY but
@@ -81,8 +81,8 @@ async function emptyScopeMap(root: string): Promise<void> {
   await writeFile(indexPath, stripped, "utf8");
 }
 
-describe("IR-CLI-051 — doctor scope/target consistency with an empty index Scope Map (FND-004)", () => {
-  it("IR-CLI-051: an empty Scope Map with a record that references a scope is not a false 'ok'", async () => {
+describe("IR-CLI-065 — doctor scope/target consistency with an empty index Scope Map (FND-004)", () => {
+  it("IR-CLI-065: an empty Scope Map with a record that references a scope is not a false 'ok'", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await emptyScopeMap(root);
 

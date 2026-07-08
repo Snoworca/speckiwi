@@ -3,22 +3,22 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-// FR-MCP-022 — MCP registration of compatibility-check tools and edge read tools.
+// FR-MCP-041 — MCP registration of compatibility-check tools and edge read tools.
 //
 // Red-phase suite (T-PH005-05): one test case per acceptance criterion
-// (AC-1..AC-3). These cases describe the future MCP surface of FR-MCP-022 before
+// (AC-1..AC-3). These cases describe the future MCP surface of FR-MCP-041 before
 // the three compatibility mutation tools (add_compatibility_check,
 // refresh_compatibility_check, revoke_compatibility_check) and the two edge read
 // tools (list_dirty_edges, list_compat_edges) are registered, so the whole suite
 // fails until the green task (T-PH005-06) registers them in the ToolSpec registry
 // (src/mcp/schemas.ts) and wires the handlers.
 //
-// Contract under test (FR-MCP-022 requirement body + AC):
+// Contract under test (FR-MCP-041 requirement body + AC):
 //   - AC-1: the three compatibility MUTATION tools are registered with zod schemas.
 //   - AC-2: list_dirty_edges and list_compat_edges are registered MCP READ tools.
 //   - AC-3: each compatibility mutation tool forwards its inputs to the
 //           corresponding core mutation (addCompatibilityCheck / refreshCompatibilityCheck /
-//           revokeCompatibilityCheck, FR-NODE-022 / FR-NODE-023).
+//           revokeCompatibilityCheck, FR-NODE-038 / FR-NODE-039).
 import {
   renderToolNames,
   renderToolSchemas,
@@ -48,7 +48,7 @@ function registeredMcpToolNames(): string[] {
 }
 
 // ── Self-contained NODE-scope workspace builder (AC-3 forwarding fixture) ─────
-// Mirrors the FR-NODE-022 core suite fixture so the compatibility mutations have
+// Mirrors the FR-NODE-038 core suite fixture so the compatibility mutations have
 // two live requirements (FR-NODE-100 < FR-NODE-200) to operate on through the MCP
 // tool handlers.
 
@@ -216,9 +216,9 @@ async function compatibilityRows(rootPath: string): Promise<Array<{ holder: stri
   return rows;
 }
 
-describe("FR-MCP-022 — MCP registration of compatibility-check tools and edge read tools", () => {
+describe("FR-MCP-041 — MCP registration of compatibility-check tools and edge read tools", () => {
   // AC-1: The three compatibility mutation tools are registered with zod schemas.
-  it("FR-MCP-022 AC-1: the three compatibility mutation tools are registered with zod input schemas", () => {
+  it("FR-MCP-041 AC-1: the three compatibility mutation tools are registered with zod input schemas", () => {
     const registered = registeredMcpToolNames();
     const toolNames = new Set(renderToolNames());
     const schemas = renderToolSchemas();
@@ -248,7 +248,7 @@ describe("FR-MCP-022 — MCP registration of compatibility-check tools and edge 
   });
 
   // AC-2: list_dirty_edges and list_compat_edges are registered MCP read tools.
-  it("FR-MCP-022 AC-2: list_dirty_edges and list_compat_edges are registered as read-only MCP tools", () => {
+  it("FR-MCP-041 AC-2: list_dirty_edges and list_compat_edges are registered as read-only MCP tools", () => {
     const registered = registeredMcpToolNames();
     const toolNames = new Set(renderToolNames());
     const readOnly = new Set(renderReadOnlyToolNames());
@@ -271,7 +271,7 @@ describe("FR-MCP-022 — MCP registration of compatibility-check tools and edge 
   // refresh re-pins it in place, revoke removes it — each driven only by the {aReqId, bReqId}
   // inputs the handler forwards to addCompatibilityCheck / refreshCompatibilityCheck /
   // revokeCompatibilityCheck.
-  it("FR-MCP-022 AC-3: each compatibility mutation tool forwards aReqId/bReqId to its core mutation", async () => {
+  it("FR-MCP-041 AC-3: each compatibility mutation tool forwards aReqId/bReqId to its core mutation", async () => {
     const rootPath = await buildWorkspace();
     const server = createMcpServer({ root: rootPath });
 

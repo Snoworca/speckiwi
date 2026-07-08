@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { synthesizeStepSrs } from "../../../src/core/mutation/synthesis.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 
-// FR-NODE-041 — vibe-to-SRS synthesis engine. RED suite (one test case per AC).
+// FR-NODE-056 — vibe-to-SRS synthesis engine. RED suite (one test case per AC).
 //
 // The synthesis engine merges a task intent.md, the per-session trace shards, the step
 // task-name code comments, and the final git diff into step SRS under
@@ -69,7 +69,7 @@ async function seedStepInputs(
 const stepSrsPath = (root: string, task: string): string =>
   path.join(root, "docs", "spec", "steps", task, `${task}.srs.md`);
 
-describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
+describe("FR-NODE-056 vibe-to-SRS synthesis engine", () => {
   let root: string;
 
   beforeEach(async () => {
@@ -82,7 +82,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-1: Synthesis writes step SRS under docs/spec/steps/TaskName/ from intent.md,
   // trace shards, step comments, and the final diff.
-  it("FR-NODE-041 AC-1: writes step SRS from intent.md, trace shards, step comments, and the diff", async () => {
+  it("FR-NODE-056 AC-1: writes step SRS from intent.md, trace shards, step comments, and the diff", async () => {
     await seedStepInputs(root, TASK_NAME, {
       intent: `# ${TASK_NAME}\n\nLimit login attempts to 5 per minute.\n`,
       shards: [
@@ -110,7 +110,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
   });
 
   // AC-2: Synthesis is a no-op when the step directory for the task already exists.
-  it("FR-NODE-041 AC-2: is an idempotent no-op when the step SRS already exists (byte-identical)", async () => {
+  it("FR-NODE-056 AC-2: is an idempotent no-op when the step SRS already exists (byte-identical)", async () => {
     await seedStepInputs(root, TASK_NAME, {
       intent: `# ${TASK_NAME}\n\nFirst body.\n`,
       shards: [{ name: "session-1.jsonl", body: `${JSON.stringify({ ts: "2026-06-17T00:00:01Z", note: "one" })}\n` }],
@@ -135,7 +135,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
   });
 
   // AC-3: Synthesis caps the diff size and excludes gitignored paths.
-  it("FR-NODE-041 AC-3: caps an oversized diff and excludes gitignored paths", async () => {
+  it("FR-NODE-056 AC-3: caps an oversized diff and excludes gitignored paths", async () => {
     const hugeDiff = [
       "diff --git a/src/keep.ts b/src/keep.ts",
       "+const KEEP_TOKEN = 1;",
@@ -175,7 +175,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
   });
 
   // AC-4: Synthesis redacts recognized secret patterns from its inputs before writing SRS.
-  it("FR-NODE-041 AC-4: redacts recognized secret patterns from intent, shards, comments, and diff", async () => {
+  it("FR-NODE-056 AC-4: redacts recognized secret patterns from intent, shards, comments, and diff", async () => {
     const awsKey = "AKIAIOSFODNN7EXAMPLE";
     const githubPat = "ghp_0123456789abcdefghijklmnopqrstuvwx12";
     const bearer = "Bearer abcDEF123456ghiJKL789mnoPQR0";
@@ -210,7 +210,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-4 (FND-001): the PEM redaction must cover the whole BEGIN...END block, not just the
   // header line, so the base64 key body never reaches the committed SRS.
-  it("FR-NODE-041 AC-4: redacts the full PEM private key block including the base64 body", async () => {
+  it("FR-NODE-056 AC-4: redacts the full PEM private key block including the base64 body", async () => {
     const keyBody = "MIIEowIBAAKCAQEAsecretbase64bodythatmustnotleakAAAA1234567890";
     const pem = ["-----BEGIN RSA PRIVATE KEY-----", keyBody, "QUJDREVGc2Vjb25kbGluZQ==", "-----END RSA PRIVATE KEY-----"].join(
       "\n"
@@ -234,7 +234,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-4 (FND-002): additional recognized credential classes (key=value secrets, JWT,
   // Slack, OpenAI, fine-grained GitHub PAT) must not leak verbatim.
-  it("FR-NODE-041 AC-4: redacts key=value secrets, JWT, Slack, OpenAI, and fine-grained GitHub PAT", async () => {
+  it("FR-NODE-056 AC-4: redacts key=value secrets, JWT, Slack, OpenAI, and fine-grained GitHub PAT", async () => {
     const password = "password=hunter2SuperSecret";
     const apiKey = "api_key: AKfycbxLeakThisKeyValue123";
     const jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N";
@@ -271,7 +271,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
   // AC-4 (NF-001): key=value redaction must target plausible literal credentials, not normal
   // code expressions or prose that happen to contain a key word. A value that is a code
   // expression (parens, semicolons, whitespace+word, comparison operators) must survive verbatim.
-  it("FR-NODE-041 AC-4: does not redact key-words used in code or prose (no over-redaction)", async () => {
+  it("FR-NODE-056 AC-4: does not redact key-words used in code or prose (no over-redaction)", async () => {
     const callExpr = "this.token = computeToken();"; // code: function call value
     const comparison = "if (password === storedHash)"; // code: comparison operator
     const prose = "The token: design uses a refresh"; // prose: word value after colon+space
@@ -303,7 +303,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-4 (NF-001): genuine key=value credentials must still be redacted after the precision
   // tightening — a no-space assignment, a colon+space token with digits, and a quoted value.
-  it("FR-NODE-041 AC-4: still redacts genuine key=value credentials (no under-redaction)", async () => {
+  it("FR-NODE-056 AC-4: still redacts genuine key=value credentials (no under-redaction)", async () => {
     const noSpace = "password=hunter2"; // no-space assignment
     const colonSpaceToken = "api_key: sk_live_abc123XYZ"; // colon + space + credential token
     const quoted = 'token: "ghp_xxxxYYYYzzzz1234"'; // quoted value
@@ -333,7 +333,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-4 (NF-002): a lowercase PEM private key block must be redacted just like the uppercase
   // form — the PEM patterns are case-insensitive (full block + bare header/footer fallback).
-  it("FR-NODE-041 AC-4: redacts a lowercase PEM private key block", async () => {
+  it("FR-NODE-056 AC-4: redacts a lowercase PEM private key block", async () => {
     const keyBody = "MIIEowIBAAKCAQEAlowercasepemBodyThatMustNotLeak1234567890";
     const pem = ["-----begin private key-----", keyBody, "-----end private key-----"].join("\n");
     await seedStepInputs(root, TASK_NAME, {
@@ -353,7 +353,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-3 (FND-003): a diff hunk whose `diff --git` header references a gitignored path must be
   // dropped from the SRS, the same way trace/comment channels exclude gitignored paths.
-  it("FR-NODE-041 AC-3: drops diff hunks for gitignored paths", async () => {
+  it("FR-NODE-056 AC-3: drops diff hunks for gitignored paths", async () => {
     const diff = [
       "diff --git a/src/keep.ts b/src/keep.ts",
       "+const KEEP_TOKEN = 1;",
@@ -382,7 +382,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-3 (FND-004): a trailing-glob gitignore entry like `*.env` must exclude matching files
   // and matching diff hunks/trace paths, so common secret-bearing files do not leak.
-  it("FR-NODE-041 AC-3: honors a trailing-glob gitignore entry (*.env)", async () => {
+  it("FR-NODE-056 AC-3: honors a trailing-glob gitignore entry (*.env)", async () => {
     const diff = [
       "diff --git a/src/keep.ts b/src/keep.ts",
       "+const KEEP = 1;",
@@ -412,7 +412,7 @@ describe("FR-NODE-041 vibe-to-SRS synthesis engine", () => {
 
   // AC-5: Synthesis merges the per-session trace shards in timestamp order and recovers from a
   // partially written trailing JSONL line by discarding only that torn line.
-  it("FR-NODE-041 AC-5: merges shards in timestamp order and discards only a torn trailing line", async () => {
+  it("FR-NODE-056 AC-5: merges shards in timestamp order and discards only a torn trailing line", async () => {
     // Two shards whose interleaving only resolves correctly when sorted by ts (not filename).
     const shardB = [
       JSON.stringify({ ts: "2026-06-17T00:00:01Z", note: "alpha-first" }),

@@ -7,8 +7,8 @@ import { upsertAgentInstruction, type AgentFileMode, type InitProjectOutput } fr
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
-// @req IR-CLI-051 / OPS-NODE-003
-// `speckiwi doctor` reports a consolidated environment-health diagnosis (IR-CLI-051) alongside the
+// @req IR-CLI-065 / OPS-NODE-003
+// `speckiwi doctor` reports a consolidated environment-health diagnosis (IR-CLI-065) alongside the
 // package/MCP smoke checks (OPS-NODE-003). The env-health `checks` are exposed under `health` so the
 // two check shapes (package `{id,status}` vs health `{topic,state,remediation}`) stay distinct. With
 // `--fix`, only the missing/outdated agent workflow blocks are re-upserted (the idempotent init upsert);

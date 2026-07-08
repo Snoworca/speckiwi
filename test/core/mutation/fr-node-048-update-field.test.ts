@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
-// update-field is the FR-NODE-048 core mutation introduced by the green task (T-PH003-62).
+// update-field is the FR-NODE-060 core mutation introduced by the green task (T-PH003-62).
 // It does not exist yet, so this import fails at collection time — the red signal for the
 // whole suite. UpdateFieldInput / UpdateFieldOutput are the public contract types exercised
 // by the dry-run / sign-off / ID-prefix-migration criteria.
@@ -13,7 +13,7 @@ import {
 } from "../../../src/core/mutation/update-field.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-NODE-048 — update-field core mutation for metadata fields with ID-prefix migration
+// FR-NODE-060 — update-field core mutation for metadata fields with ID-prefix migration
 // for type and scope. Red-phase suite (T-PH003-61): one test case per acceptance
 // criterion (AC-1..AC-5), asserted against the future update-field contract. Each case
 // fails before the mutation and its input/output types exist in
@@ -94,11 +94,11 @@ async function addInboundTraceRequirement(rootPath: string): Promise<void> {
   await writeFile(file, `${text.trimEnd()}\n${block}\n`, "utf8");
 }
 
-describe("FR-NODE-048 update-field core mutation", () => {
+describe("FR-NODE-060 update-field core mutation", () => {
   // AC-1: Calling update-field with field=priority (one of priority/risk/title/target/
   // verification-method) rewrites only that one metadata line and leaves every other line
   // of the requirement unchanged.
-  it("FR-NODE-048 AC-1: rewrites only the single targeted metadata line", async () => {
+  it("FR-NODE-060 AC-1: rewrites only the single targeted metadata line", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const before = await readSpec(rootPath);
@@ -126,7 +126,7 @@ describe("FR-NODE-048 update-field core mutation", () => {
   // generateNextRequirementId so the new id prefix matches the new type (and scope). For
   // FR-ARCH-001 (functional/ARCH) migrating to non_functional, the regenerated id is the
   // first free NFR-ARCH slot: NFR-ARCH-001.
-  it("FR-NODE-048 AC-2: a type edit regenerates the id prefix via generateNextRequirementId", async () => {
+  it("FR-NODE-060 AC-2: a type edit regenerates the id prefix via generateNextRequirementId", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
 
@@ -153,7 +153,7 @@ describe("FR-NODE-048 update-field core mutation", () => {
 
   // AC-3: A type (or scope) edit defaults to dry-run and returns the old id, the generated
   // new id, and the planned block move before any file is written.
-  it("FR-NODE-048 AC-3: a type edit defaults to dry-run, reports old/new id and planned move, writes nothing", async () => {
+  it("FR-NODE-060 AC-3: a type edit defaults to dry-run, reports old/new id and planned move, writes nothing", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const before = await readSpec(rootPath);
@@ -182,7 +182,7 @@ describe("FR-NODE-048 update-field core mutation", () => {
   // AC-4: A type/scope edit without an explicit sign-off flag returns ok=false and writes
   // no file changes; a confirmed edit rewrites inbound Trace Links references from the old
   // id to the new id.
-  it("FR-NODE-048 AC-4: no sign-off blocks the write; a confirmed edit rewrites inbound trace references", async () => {
+  it("FR-NODE-060 AC-4: no sign-off blocks the write; a confirmed edit rewrites inbound trace references", async () => {
     // Part A: dry-run disabled but no sign-off — the migration is refused and nothing is written.
     const refuseRoot = await copyFixtureWorkspace("mutation-target");
     const rootA = await resolveProjectRoot(refuseRoot);
@@ -218,7 +218,7 @@ describe("FR-NODE-048 update-field core mutation", () => {
 
   // AC-5: Calling update-field on an unknown requirement id returns ok=false with
   // error.code=NOT_FOUND and writes no file changes.
-  it("FR-NODE-048 AC-5: unknown requirement id returns NOT_FOUND and writes nothing", async () => {
+  it("FR-NODE-060 AC-5: unknown requirement id returns NOT_FOUND and writes nothing", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const before = await readSpec(rootPath);

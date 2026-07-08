@@ -40,7 +40,7 @@ export function isNewWorkCandidate(record: RequirementRecord): boolean {
   return (record.status === "planned" || record.status === "in_progress" || record.status === "blocked") && record.stability !== "draft" && record.stability !== "deprecated";
 }
 
-// FR-NODE-024 — list_dirty_edges read path with clean whitelist gate.
+// FR-NODE-040 — list_dirty_edges read path with clean whitelist gate.
 //
 // One DirtyEdge describes a single `checked_compatible` compatibility edge as
 // discovered from a fresh parse: `self` is the holder block (the block that
@@ -69,7 +69,7 @@ function pairKey(a: string, b: string): string {
   return compareReqId(a, b) <= 0 ? `${a}::${b}` : `${b}::${a}`;
 }
 
-// @req FR-NODE-024
+// @req FR-NODE-040
 export async function listDirtyEdges(root: ProjectRoot, options: { target?: string } = {}): Promise<{ edges: DirtyEdge[] }> {
   const workspace = await parseWorkspace(root);
   const byId = new Map<string, RequirementRecord>();

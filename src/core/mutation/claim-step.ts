@@ -7,9 +7,9 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, StepStateEntry } from "../types.js";
 
-// @req FR-NODE-027
+// @req FR-NODE-042
 /**
- * FR-NODE-027 — claim_step mutation with a write-skew two-stage gate.
+ * FR-NODE-042 — claim_step mutation with a write-skew two-stage gate.
  *
  * A claim declares the scope and requirements a step touches and appends a row to
  * docs/spec/steps/state.md. Before writing, it screens the claim against the active
@@ -39,13 +39,13 @@ export interface ClaimStepValue {
   written: boolean;
 }
 
-// @req FR-NODE-027
+// @req FR-NODE-042
 /** Only steps that are still in flight participate in the intersection gate. */
 function isActiveStep(entry: StepStateEntry): boolean {
   return entry.status === "active" || entry.status === "merging";
 }
 
-// @req FR-NODE-027
+// @req FR-NODE-042
 /** Split a TouchesReq cell (comma/space separated) into its requirement ids. */
 function parseReqCell(cell: string): string[] {
   return cell
@@ -54,12 +54,12 @@ function parseReqCell(cell: string): string[] {
     .filter((token) => token !== "" && token !== "-");
 }
 
-// @req FR-NODE-027
+// @req FR-NODE-042
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// @req FR-NODE-027
+// @req FR-NODE-042
 /** Resolve a requirement record by id across body and step records. */
 function findRecord(records: readonly RequirementRecord[], id: string): RequirementRecord | undefined {
   return records.find((record) => record.id === id);

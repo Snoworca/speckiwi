@@ -272,7 +272,7 @@ function addDiscoveryOptions(target: Command): Command {
   return target.option("--format <format>", "ids, compact, or full").option("--fields <fields>", "comma-separated RequirementRecord fields").option("--include-markdown").option("--limit <n>").option("--offset <n>");
 }
 
-// @req IR-CLI-048 / IR-CLI-055
+// @req IR-CLI-062 / IR-CLI-069
 /** Whether a string is a shape-valid AND calendar-valid ISO date (YYYY-MM-DD). */
 function isValidIsoDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -285,7 +285,7 @@ function isValidIsoDate(value: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-// @req IR-CLI-048 / IR-CLI-055
+// @req IR-CLI-062 / IR-CLI-069
 /** The most recent (max) Change Notes date string for a record, or undefined when it has none. */
 function latestChangeDate(record: RequirementRecord): string | undefined {
   let latest: string | undefined;
@@ -295,7 +295,7 @@ function latestChangeDate(record: RequirementRecord): string | undefined {
   return latest;
 }
 
-// @req IR-CLI-055
+// @req IR-CLI-069
 /** Whole-day age of an ISO date relative to today (UTC), or null when the date is unparseable. */
 function ageInDays(dateString: string | undefined): number | null {
   if (!dateString || !isValidIsoDate(dateString)) return null;
@@ -306,7 +306,7 @@ function ageInDays(dateString: string | undefined): number | null {
   return Math.floor((today - then) / 86_400_000);
 }
 
-// @req IR-CLI-035
+// @req IR-CLI-052
 /** Renders a diagnostic definition as human text, surfacing remediation only when present. */
 function formatDiagnosticDefinition(definition: ToolSpecDiagnosticDefinition): string {
   const lines = [
@@ -327,14 +327,14 @@ function formatDiagnosticDefinition(definition: ToolSpecDiagnosticDefinition): s
 // declare it, so surface it structurally without depending on the type shape.
 type ToolSpecDiagnosticDefinition = ReturnType<typeof getDiagnosticDefinition> & { remediation?: string };
 
-// @req IR-CLI-049
+// @req IR-CLI-063
 /** Rank index for a priority (lower = more urgent); missing priority ranks last. */
 function priorityRank(priority: RequirementRecord["priority"]): number {
   const index = priority ? PRIORITY_LEVELS.indexOf(priority) : -1;
   return index < 0 ? PRIORITY_LEVELS.length : index;
 }
 
-// @req IR-CLI-049
+// @req IR-CLI-063
 /** Rank index for a risk (higher risk ranks first); missing risk ranks lowest. */
 function riskRank(risk: RequirementRecord["risk"]): number {
   const index = risk ? RISK_LEVELS.indexOf(risk) : -1;
@@ -343,19 +343,19 @@ function riskRank(risk: RequirementRecord["risk"]): number {
 
 const ATTENTION_STATUS_ORDER = ["blocked", "in_progress", "implemented", "planned", "verified", "discarded"];
 
-// @req IR-CLI-049
+// @req IR-CLI-063
 function statusRank(status: string): number {
   const index = ATTENTION_STATUS_ORDER.indexOf(status);
   return index < 0 ? ATTENTION_STATUS_ORDER.length : index;
 }
 
-// @req IR-CLI-034
+// @req IR-CLI-051
 function collectDiagnosticCode(value: string, previous: string[]): string[] {
   previous.push(value);
   return previous;
 }
 
-// @req IR-CLI-035
+// @req IR-CLI-052
 /** Prints a diagnostic definition (explain / validate --explain), rejecting unknown codes non-zero. */
 function renderExplain(context: CliContext, rootCommand: Command, code: string, json: boolean): void {
   let definition: ToolSpecDiagnosticDefinition;
@@ -375,7 +375,7 @@ function renderExplain(context: CliContext, rootCommand: Command, code: string, 
   else writeHuman(context.io, formatDiagnosticDefinition(definition));
 }
 
-// @req IR-CLI-050
+// @req IR-CLI-064
 /** One command-catalog entry rendered from a ToolSpec registry entry (order-preserving 1:1). */
 function renderCommandCatalog(): Array<Record<string, unknown>> {
   const readOnlyMcpNames = new Set(renderReadOnlyToolNames());
@@ -402,14 +402,14 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--json", "JSON output")
     .action(async (options) => {
       const json = options.json || command.opts().json;
-      // @req IR-CLI-035 AC-3 — --explain short-circuits to a definition print, never a workspace run.
+      // @req IR-CLI-052 AC-3 — --explain short-circuits to a definition print, never a workspace run.
       if (typeof options.explain === "string") {
         renderExplain(context, validateCommand, options.explain, json);
         return;
       }
       const workspace = await workspaceFrom(command.opts());
       const diagnostics = readDiagnostics(workspace);
-      // @req IR-CLI-034 — exit code is computed from the UNFILTERED error set; display filters only
+      // @req IR-CLI-051 — exit code is computed from the UNFILTERED error set; display filters only
       // change which diagnostics are shown, never the pass/fail decision.
       const unfiltered = splitDiagnostics(diagnostics);
       const displayed = diagnostics.filter((diagnostic) => {
@@ -712,7 +712,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     outputRead(context, { json: options.json || command.opts().json }, workspace, summarizeTarget(workspace, { target: options.target, diagnostics }), diagnostics);
   });
 
-  // @req IR-CLI-035 — explain a diagnostic code from the DiagnosticDefinition registry.
+  // @req IR-CLI-052 — explain a diagnostic code from the DiagnosticDefinition registry.
   command
     .command("explain")
     .argument("<code>", "diagnostic code (e.g. SRS-E001)")
@@ -721,7 +721,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       renderExplain(context, command, code, Boolean(options.json) || command.opts().json);
     });
 
-  // @req IR-CLI-030 — read or switch the work mode over docs/spec/steps/state.md.
+  // @req IR-CLI-048 — read or switch the work mode over docs/spec/steps/state.md.
   const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait"]);
   command
     .command("mode")
@@ -744,7 +744,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  // @req IR-CLI-031 — CI-wireable vibe gate. Wire as a remote required status check to block
+  // @req IR-CLI-049 — CI-wireable vibe gate. Wire as a remote required status check to block
   // unsynthesized vibe commits where local hooks can be bypassed.
   const vibeGate = command
     .command("vibe-gate")
@@ -766,7 +766,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (!synthesized) command.setOptionValue("exitCode", 1);
     });
 
-  // @req IR-CLI-048 — cross-requirement timeline: requirements whose most recent Change Notes date
+  // @req IR-CLI-062 — cross-requirement timeline: requirements whose most recent Change Notes date
   // is on or after a given date, with optional target/scope filters. Never writes a file.
   const changedSince = command
     .command("changed-since")
@@ -790,7 +790,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements });
     });
 
-  // @req IR-CLI-055 — aging requirements: evolving-stability requirements whose most recent Change
+  // @req IR-CLI-069 — aging requirements: evolving-stability requirements whose most recent Change
   // Notes date is older than a threshold (default 90 days). Never writes a file.
   const stale = command
     .command("stale")
@@ -821,7 +821,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements, evolvingAge: threshold });
     });
 
-  // @req IR-CLI-047 — Change Notes of one requirement, chronologically, with optional --since. Never
+  // @req IR-CLI-061 — Change Notes of one requirement, chronologically, with optional --since. Never
   // writes a file.
   command
     .command("history")
@@ -846,7 +846,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       output(context, { json }, { id: record.id, changeNotes });
     });
 
-  // @req IR-CLI-049 — priority-ranked work queue merging the readiness buckets. Never writes a file.
+  // @req IR-CLI-063 — priority-ranked work queue merging the readiness buckets. Never writes a file.
   const attention = command
     .command("attention")
     .option("--target <target>")
@@ -877,7 +877,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       output(context, { json: Boolean(options.json) || command.opts().json }, { requirements });
     });
 
-  // @req IR-CLI-050 — full command catalog rendered from the ToolSpec registry. Never writes a file.
+  // @req IR-CLI-064 — full command catalog rendered from the ToolSpec registry. Never writes a file.
   command
     .command("commands")
     .option("--json", "JSON output")
@@ -891,7 +891,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     outputRead(context, { json: options.json || command.opts().json }, workspace, await checkLinks(workspace));
   });
 
-  // @req IR-CLI-028 — step-local validation surface: run validateWorkspaceScoped for the named step
+  // @req IR-CLI-046 — step-local validation surface: run validateWorkspaceScoped for the named step
   // and print its step-local diagnostics with an exit code reflecting step-local errors only.
   const step = command.command("step");
   step
@@ -907,7 +907,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (result.errors.length > 0) command.setOptionValue("exitCode", 1);
     });
 
-  // @req IR-CLI-036 — release-readiness, coverage, and rtm read surfaces over the core release
+  // @req IR-CLI-053 — release-readiness, coverage, and rtm read surfaces over the core release
   // readiness module, defaulting to the Active Target, with a per-requirement verified-gate banner.
   const VERIFIED_GATE_BANNER =
     "Warning: the verified transition requires per-requirement verification evidence and is not auto-applied.";
@@ -958,7 +958,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 }
 
-// @req IR-CLI-031
+// @req IR-CLI-049
 /** Whether a path exists and is a directory. */
 async function isDirectory(target: string): Promise<boolean> {
   try {

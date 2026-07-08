@@ -4,7 +4,7 @@ import type { ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import type { DirtyEdge } from "../query/summary.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 
-// FR-NODE-017: origin-aware record lookup. When origin/stepName are omitted the lookup
+// FR-NODE-033: origin-aware record lookup. When origin/stepName are omitted the lookup
 // prefers the body scope records (backward compatible). When origin=step and a stepName are
 // supplied the lookup routes to the matching step record, tagging it with origin/stepName so
 // mutation routing can distinguish a promoted step copy from the body copy of the same id.
@@ -149,7 +149,7 @@ export function findSectionBodyRange(
   return { startLine: bodyStart, endLine: bodyEnd };
 }
 
-// FR-NODE-043 — vibe merge contradiction hard-gate. A vibe synthesis/merge flow
+// FR-NODE-058 — vibe merge contradiction hard-gate. A vibe synthesis/merge flow
 // may only be marked complete once its touched dirty-edge closure is
 // contradiction-verified (empty) or the remaining contradictions are explicitly
 // acknowledged. Being SYNTHESIZED (a step directory exists) is orthogonal to

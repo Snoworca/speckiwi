@@ -7,7 +7,7 @@ import type { DirtyEdge } from "../../../src/core/query/summary.js";
 // export) until the green task implements it.
 import { evaluateVibeCompletionGate } from "../../../src/core/mutation/internal.js";
 
-// FR-NODE-043 — vibe merge contradiction hard-gate distinguishing a synthesized
+// FR-NODE-058 — vibe merge contradiction hard-gate distinguishing a synthesized
 // step (step directory exists) from a contradiction-verified one.
 //
 // Red-phase suite (T-PH003-53): one test case per acceptance criterion
@@ -46,7 +46,7 @@ import { evaluateVibeCompletionGate } from "../../../src/core/mutation/internal.
 // hard-gate is vibe-only; non-vibe STEP namespace diagnostics stay advisory.
 
 // A non-clean compatibility edge over the touched closure — a real contradiction
-// the hard-gate must observe. Mirrors the FR-NODE-024 DirtyEdge shape.
+// the hard-gate must observe. Mirrors the FR-NODE-040 DirtyEdge shape.
 const DIRTY_EDGE: DirtyEdge = {
   self: "FR-NODE-100",
   peer: "FR-NODE-200",
@@ -54,10 +54,10 @@ const DIRTY_EDGE: DirtyEdge = {
   reason: "endpoint pin is stale"
 };
 
-describe("FR-NODE-043 vibe merge contradiction hard-gate distinguishing synthesized from contradiction-verified", () => {
+describe("FR-NODE-058 vibe merge contradiction hard-gate distinguishing synthesized from contradiction-verified", () => {
   // AC-1: A vibe step is not marked complete while list_dirty_edges over its
   // touched closure is non-empty and unacknowledged. The vibe hard-gate fires.
-  it("FR-NODE-043 AC-1: blocks completion of a vibe step with non-empty, unacknowledged dirty edges", () => {
+  it("FR-NODE-058 AC-1: blocks completion of a vibe step with non-empty, unacknowledged dirty edges", () => {
     const result = evaluateVibeCompletionGate({
       vibe: true,
       stepDirectoryExists: true,
@@ -75,7 +75,7 @@ describe("FR-NODE-043 vibe merge contradiction hard-gate distinguishing synthesi
   // contradiction-verified condition. Being SYNTHESIZED (step directory exists)
   // must not, by itself, let the step complete while dirty edges remain — the
   // synthesized state is orthogonal to the contradiction-verified state.
-  it("FR-NODE-043 AC-2: step-directory existence alone does not satisfy contradiction-verified", () => {
+  it("FR-NODE-058 AC-2: step-directory existence alone does not satisfy contradiction-verified", () => {
     // Synthesized (step directory exists) yet contradiction edges remain
     // unacknowledged: the gate must still block.
     const synthesizedButDirty = evaluateVibeCompletionGate({
@@ -99,7 +99,7 @@ describe("FR-NODE-043 vibe merge contradiction hard-gate distinguishing synthesi
   });
 
   // AC-3: Explicit acknowledgement of remaining dirty edges allows completion.
-  it("FR-NODE-043 AC-3: explicit acknowledgement of remaining dirty edges allows completion", () => {
+  it("FR-NODE-058 AC-3: explicit acknowledgement of remaining dirty edges allows completion", () => {
     const result = evaluateVibeCompletionGate({
       vibe: true,
       stepDirectoryExists: true,
@@ -115,7 +115,7 @@ describe("FR-NODE-043 vibe merge contradiction hard-gate distinguishing synthesi
   // by this gate. The very same non-empty, unacknowledged dirty closure that
   // blocks a vibe step must NOT block a non-vibe flow — there the hard-gate is
   // never enforced.
-  it("FR-NODE-043 AC-4: non-vibe STEP namespace diagnostics remain advisory and are unaffected by this gate", () => {
+  it("FR-NODE-058 AC-4: non-vibe STEP namespace diagnostics remain advisory and are unaffected by this gate", () => {
     const result = evaluateVibeCompletionGate({
       vibe: false,
       stepDirectoryExists: true,

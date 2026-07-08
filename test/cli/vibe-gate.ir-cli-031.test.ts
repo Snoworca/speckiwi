@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-031 — speckiwi vibe-gate check CI subcommand.
+// IR-CLI-049 — speckiwi vibe-gate check CI subcommand.
 //
 // Red-phase suite (T-PH004-07): one test case per acceptance criterion
 // (AC-1..AC-3). The green task (T-PH004-08) wires `speckiwi vibe-gate check`
@@ -15,7 +15,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // until the green task registers it.
 //
 // Contract under test (from the requirement body and AC, SSOT
-// docs/spec/30.cli-interface.srs.md IR-CLI-031):
+// docs/spec/30.cli-interface.srs.md IR-CLI-049):
 //
 //   The CLI exposes `speckiwi vibe-gate` with a check option which exits non-zero
 //   when Mode is vibe and an Active Task is set without a corresponding
@@ -30,9 +30,9 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-3: The command is documented for use as a remote required status check.
 //
 // The "synthesized step directory" is the per-task step SRS directory
-// docs/spec/steps/<ActiveTask>/ that the synthesis engine (FR-NODE-041 AC-1/AC-2)
+// docs/spec/steps/<ActiveTask>/ that the synthesis engine (FR-NODE-056 AC-1/AC-2)
 // writes; its existence marks the active vibe task as synthesized. This mirrors
-// the FR-NODE-040 pre-commit gate, exposed here as a CI-wireable subcommand.
+// the FR-NODE-055 pre-commit gate, exposed here as a CI-wireable subcommand.
 
 function io() {
   return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
@@ -49,7 +49,7 @@ function drain(stream: NodeJS.WriteStream): string {
 /**
  * Seeds docs/spec/steps/state.md with a top-of-file work-mode metadata block (the
  * Mode and, for vibe, the Active Task lines above the step-state table, matching
- * the FR-PARSE-023/FR-PARSE-028 layout). parseStepState reads these back, so this
+ * the FR-PARSE-026/FR-PARSE-031 layout). parseStepState reads these back, so this
  * is what `speckiwi vibe-gate check` resolves the current work mode from.
  */
 async function writeStateMd(root: string, opts: { mode: string; activeTask?: string }): Promise<void> {
@@ -73,7 +73,7 @@ async function writeStateMd(root: string, opts: { mode: string; activeTask?: str
 /**
  * Creates the per-task step SRS directory docs/spec/steps/<activeTask>/ with a
  * step SRS file, marking the active vibe task as synthesized (the state the
- * synthesis engine leaves behind, FR-NODE-041 AC-1).
+ * synthesis engine leaves behind, FR-NODE-056 AC-1).
  */
 async function writeStepDir(root: string, activeTask: string): Promise<void> {
   const taskDir = path.join(root, SPEC_STEPS_REL, activeTask);
@@ -85,10 +85,10 @@ async function writeStepDir(root: string, activeTask: string): Promise<void> {
   );
 }
 
-describe("IR-CLI-031 — speckiwi vibe-gate check CI subcommand", () => {
+describe("IR-CLI-049 — speckiwi vibe-gate check CI subcommand", () => {
   // AC-1: `speckiwi vibe-gate check` exits non-zero for a vibe Active Task with no
   // synthesized step directory.
-  it("IR-CLI-031 AC-1: exits non-zero for a vibe Active Task with no synthesized step directory", async () => {
+  it("IR-CLI-049 AC-1: exits non-zero for a vibe Active Task with no synthesized step directory", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const activeTask = "polish-login";
     await writeStateMd(root, { mode: "vibe", activeTask });
@@ -114,7 +114,7 @@ describe("IR-CLI-031 — speckiwi vibe-gate check CI subcommand", () => {
   // AC-2: `speckiwi vibe-gate check` exits zero when no unsynthesized vibe task
   // exists. Covered in two ways: (a) the active vibe task has been synthesized, and
   // (b) Mode is not vibe so the gate never engages.
-  it("IR-CLI-031 AC-2: exits zero when no unsynthesized vibe task exists", async () => {
+  it("IR-CLI-049 AC-2: exits zero when no unsynthesized vibe task exists", async () => {
     const activeTask = "polish-login";
 
     // (a) Synthesized: the matching step directory exists.
@@ -132,7 +132,7 @@ describe("IR-CLI-031 — speckiwi vibe-gate check CI subcommand", () => {
   // AC-3: The command is documented for use as a remote required status check.
   // The subcommand help text describes its intended CI wiring as a required status
   // check, so the contract is discoverable from the CLI itself.
-  it("IR-CLI-031 AC-3: documents use as a remote required status check", async () => {
+  it("IR-CLI-049 AC-3: documents use as a remote required status check", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "wait" });
 

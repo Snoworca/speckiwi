@@ -12,7 +12,7 @@ import {
 } from "../../src/mcp/schemas.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-050 — `speckiwi commands` catalog manifest.
+// IR-CLI-064 — `speckiwi commands` catalog manifest.
 //
 // Red-phase suite (T-PH004-43): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before the green task (T-PH004-44) teaches the CLI a `commands` command, so
@@ -22,7 +22,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // (per the FR-ARCH-006 zero-drift contract) the green task must also register it in the registry — and
 // the catalog, being registry-derived, then lists itself.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-050):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-064):
 //
 //   The speckiwi commands command renders the full command catalog with name, kind, args, options,
 //   read-only flag, and result exit mapping from the ToolSpec registry in a single call, supports json,
@@ -114,9 +114,9 @@ function specIsReadOnly(spec: ToolSpec): boolean {
   return spec.kind === "read" && typeof spec.mcpName === "string" && READ_ONLY_MCP_NAMES.has(spec.mcpName);
 }
 
-describe("IR-CLI-050 — commands catalog manifest", () => {
+describe("IR-CLI-064 — commands catalog manifest", () => {
   // AC-1: commands --json emits every registered command with name, kind, args, options, and read-only flag.
-  it("IR-CLI-050 AC-1: commands --json emits name, kind, args, options, and read-only flag for every command", async () => {
+  it("IR-CLI-064 AC-1: commands --json emits name, kind, args, options, and read-only flag for every command", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     const streams = io();
@@ -171,7 +171,7 @@ describe("IR-CLI-050 — commands catalog manifest", () => {
   });
 
   // AC-2: the catalog is derived from the ToolSpec registry and does not hardcode an expected command list.
-  it("IR-CLI-050 AC-2: the catalog command set equals the registry-derived command set (no hardcoded list)", async () => {
+  it("IR-CLI-064 AC-2: the catalog command set equals the registry-derived command set (no hardcoded list)", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     const streams = io();
@@ -184,7 +184,7 @@ describe("IR-CLI-050 — commands catalog manifest", () => {
 
     // The registry (renderCliCommandNames === every toolSpecs[].cliName) is the single authority. The
     // catalog's command-name *multiset* must equal it EXACTLY — neither a curated subset nor a superset,
-    // and counting duplicate cliNames (e.g. the top-level `validate` plus the IR-CLI-028 `step validate`
+    // and counting duplicate cliNames (e.g. the top-level `validate` plus the IR-CLI-046 `step validate`
     // subcommand, which share cliName="validate"). A hardcoded list inside the command would drift from
     // the registry and fail this equality. (Sorted arrays compare multisets, so repeated names must match
     // in count, not just in set membership.)
@@ -225,7 +225,7 @@ describe("IR-CLI-050 — commands catalog manifest", () => {
   });
 
   // AC-3: speckiwi commands writes no file.
-  it("IR-CLI-050 AC-3: commands writes no file", async () => {
+  it("IR-CLI-064 AC-3: commands writes no file", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const before = await snapshotTree(root);
 
@@ -241,7 +241,7 @@ describe("IR-CLI-050 — commands catalog manifest", () => {
   });
 
   // AC-4: adding a ToolSpec entry makes that command appear in the catalog without a separate edit.
-  it("IR-CLI-050 AC-4: every ToolSpec registry entry surfaces in the catalog with no per-command catalog edit", async () => {
+  it("IR-CLI-064 AC-4: every ToolSpec registry entry surfaces in the catalog with no per-command catalog edit", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
 
     const streams = io();

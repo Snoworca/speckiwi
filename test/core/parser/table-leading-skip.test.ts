@@ -47,7 +47,7 @@ describe("parseMarkdownTable leading-skip behavior (FND-002)", () => {
       "",
       "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
       "| --- | --- | --- | --- | --- | --- | --- |",
-      "| alpha | active | - | PARSE | FR-PARSE-023 | 2026-06-01 | 2026-06-02 |"
+      "| alpha | active | - | PARSE | FR-PARSE-026 | 2026-06-01 | 2026-06-02 |"
     ];
     const entries = parseStepState(stateLines);
     expect(entries).toHaveLength(1);

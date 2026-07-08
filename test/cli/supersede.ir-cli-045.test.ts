@@ -5,19 +5,19 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
-// IR-CLI-045 — `speckiwi supersede` command.
+// IR-CLI-059 — `speckiwi supersede` command.
 //
 // Red-phase suite (T-PH004-33): one test case per acceptance criterion (AC-1..AC-4). These cases pin
 // the future CLI contract before `src/cli/index.ts` / `src/cli/commands/mutations.ts` teach the CLI a
 // `supersede` command, so the whole suite fails today — commander rejects the unknown `supersede`
 // command (non-zero usage exit, no mutation payload printed) — until the green task (T-PH004-34) wires
 // the command against the existing core mutation (src/core/mutation/supersede-requirement.ts
-// `supersedeRequirement`, FR-NODE-030): the strict ordered two-call sequence that mints a successor
+// `supersedeRequirement`, FR-NODE-045): the strict ordered two-call sequence that mints a successor
 // requirement carrying a `supersedes <oldId>` trace row (T1 add_requirement) and then discards the old
 // requirement (T2 updateStatus → discarded), returning the new id, with a --dry-run preview, a --json
 // mutation result envelope, and every core guard delegated through without a bypass option.
 //
-// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-045):
+// Contract under test (SRS docs/spec/30.cli-interface.srs.md IR-CLI-059):
 //
 //   The speckiwi supersede command mirrors the existing supersede_requirement core mutation by creating
 //   a successor requirement that traces supersedes the old id and then discarding the old requirement in
@@ -98,10 +98,10 @@ function findValue(parsed: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
-describe("IR-CLI-045 — supersede command creates a successor and discards the old requirement", () => {
+describe("IR-CLI-059 — supersede command creates a successor and discards the old requirement", () => {
   // AC-1: `supersede --old <id> --new-title <t> --new-statement <s> --scope <s> --type <ty>` creates a
   // successor requirement and discards the old requirement, returning the new id.
-  it("IR-CLI-045 AC-1: creates a successor that supersedes the old id, discards the old, returns the new id", async () => {
+  it("IR-CLI-059 AC-1: creates a successor that supersedes the old id, discards the old, returns the new id", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readArch(root);
     // sanity: the old requirement starts present and is not yet discarded.
@@ -153,7 +153,7 @@ describe("IR-CLI-045 — supersede command creates a successor and discards the 
   });
 
   // AC-2: `supersede --dry-run` prints a preview of the two-step sequence and writes no file.
-  it("IR-CLI-045 AC-2: --dry-run previews the two-step sequence and writes no file", async () => {
+  it("IR-CLI-059 AC-2: --dry-run previews the two-step sequence and writes no file", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readArch(root);
 
@@ -197,7 +197,7 @@ describe("IR-CLI-045 — supersede command creates a successor and discards the 
   // AC-3: passes the core self-reference (and reverse-duplicate / verified-regression) guards through
   // without any bypass flag. Pinned via the self-reference guard: superseding an id with itself is
   // rejected by the core, the CLI surfaces the failure (non-zero exit), and writes no file.
-  it("IR-CLI-045 AC-3: delegates the core self-reference guard with no bypass flag", async () => {
+  it("IR-CLI-059 AC-3: delegates the core self-reference guard with no bypass flag", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const before = await readArch(root);
 
@@ -242,7 +242,7 @@ describe("IR-CLI-045 — supersede command creates a successor and discards the 
   });
 
   // AC-4: `supersede --json` emits the mutation result envelope consistent with other mutation commands.
-  it("IR-CLI-045 AC-4: --json emits a mutation result envelope consistent with other mutation commands", async () => {
+  it("IR-CLI-059 AC-4: --json emits a mutation result envelope consistent with other mutation commands", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
 
     const run = io();

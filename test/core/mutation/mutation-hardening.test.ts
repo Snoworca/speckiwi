@@ -189,7 +189,7 @@ describe("FND-002 retarget is atomic across per-item operations", () => {
 });
 
 describe("FND-004 setSupersede emits a compatibility-cache stale advisory", () => {
-  // FR-NODE-052 Implementation Notes MUST: set-supersede either invalidates the affected
+  // FR-NODE-063 Implementation Notes MUST: set-supersede either invalidates the affected
   // endpoint compatibility cache or emits an advisory stale warning. We adopt the warning.
   it("FND-004: a successful setSupersede surfaces a compatibility-cache stale advisory warning", async () => {
     const root = await copyFixtureWorkspace("mutation-target");

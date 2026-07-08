@@ -34,7 +34,7 @@ async function diffSteps(root: ProjectRoot, options?: DiffStepsOptions): Promise
   return mod.diffSteps(root, options);
 }
 
-// FR-NODE-034 — diff_steps four-way classification keyed on semanticSha.
+// FR-NODE-049 — diff_steps four-way classification keyed on semanticSha.
 //
 // Red-phase suite (T-PH003-35): one test case per acceptance criterion
 // (AC-1..AC-4). These cases describe the future contract of diffSteps before
@@ -303,12 +303,12 @@ function entryFor(
   return matches[0] as (typeof matches)[number];
 }
 
-describe("FR-NODE-034 diff_steps four-way classification keyed on semanticSha", () => {
+describe("FR-NODE-049 diff_steps four-way classification keyed on semanticSha", () => {
   // AC-1: diff_steps uses computeSemanticSha as the equality key. A step record
   // whose content is byte-for-byte different in formatting but normalizes to the
   // SAME semanticSha as the body record is NOT a difference and MUST NOT appear
   // as a changed entry; a step record whose semanticSha actually differs DOES.
-  it("FR-NODE-034 AC-1: uses computeSemanticSha as the equality key when comparing step and body", async () => {
+  it("FR-NODE-049 AC-1: uses computeSemanticSha as the equality key when comparing step and body", async () => {
     const EQUAL_ID = "FR-NODE-100";
     const CHANGED_ID = "FR-NODE-101";
 
@@ -350,7 +350,7 @@ describe("FR-NODE-034 diff_steps four-way classification keyed on semanticSha", 
 
   // AC-2: a step-only id (no body counterpart) is NEW; an id whose body exists
   // but whose step content differs is UPDATE (non-conflicting body update).
-  it("FR-NODE-034 AC-2: classifies a step-only id as NEW and a changed-body id as UPDATE", async () => {
+  it("FR-NODE-049 AC-2: classifies a step-only id as NEW and a changed-body id as UPDATE", async () => {
     const NEW_ID = "FR-NODE-110"; // exists only in the step
     const UPDATE_ID = "FR-NODE-111"; // body exists, step changes it
 
@@ -376,7 +376,7 @@ describe("FR-NODE-034 diff_steps four-way classification keyed on semanticSha", 
   // AC-3: a conflicting change is classified CONFLICT-PARTIAL when the body
   // endpoint is unprotected, and CONFLICT-FULL-GUARDED when the body endpoint is
   // protected (verified/frozen/stable — the updateStatus EXIT guard surface).
-  it("FR-NODE-034 AC-3: classifies conflicting changes as CONFLICT-PARTIAL or CONFLICT-FULL-GUARDED", async () => {
+  it("FR-NODE-049 AC-3: classifies conflicting changes as CONFLICT-PARTIAL or CONFLICT-FULL-GUARDED", async () => {
     const PARTIAL_ID = "FR-NODE-120"; // unprotected body conflict
     const GUARDED_ID = "FR-NODE-121"; // verified/frozen body conflict
 
@@ -410,7 +410,7 @@ describe("FR-NODE-034 diff_steps four-way classification keyed on semanticSha", 
   // Two steps (s1 earlier, s2 later) both touch the same id with different
   // content; the diff against the body reflects the LATER step (s2), so the
   // entry's stepSha equals s2's semanticSha, not s1's.
-  it("FR-NODE-034 AC-4: lets the later step win for draft/evolving same-rank peers", async () => {
+  it("FR-NODE-049 AC-4: lets the later step win for draft/evolving same-rank peers", async () => {
     const PEER_ID = "FR-NODE-130";
 
     const root = await buildWorkspace(

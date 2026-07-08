@@ -9,7 +9,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 const posix = (p: string) => p.replace(/\\/g, "/");
 
-// FR-NODE-017: loadRecord / loadRecordWithWorkspace gain optional origin and stepName
+// FR-NODE-033: loadRecord / loadRecordWithWorkspace gain optional origin and stepName
 // parameters. When omitted they prefer body records (backward compatible). When
 // origin=step + stepName are supplied the lookup routes to step records. These signatures
 // do not exist yet, so we describe the future widened call shape and cast through it so the
@@ -117,9 +117,9 @@ async function workspaceWithBodyAndStep(): Promise<ProjectRoot> {
   return resolveProjectRoot(dir);
 }
 
-describe("FR-NODE-017 — Origin-aware record loading for mutation routing", () => {
+describe("FR-NODE-033 — Origin-aware record loading for mutation routing", () => {
   // AC-1: loadRecord with no origin returns the body record for an id present in both body and step.
-  it("FR-NODE-017 AC-1: loadRecord with no origin returns the body record when id is in both body and step", async () => {
+  it("FR-NODE-033 AC-1: loadRecord with no origin returns the body record when id is in both body and step", async () => {
     const root = await workspaceWithBodyAndStep();
 
     // Precondition: the id genuinely exists in both partitions.
@@ -135,7 +135,7 @@ describe("FR-NODE-017 — Origin-aware record loading for mutation routing", () 
   });
 
   // AC-2: loadRecord with origin=step and a stepName returns the matching step record.
-  it("FR-NODE-017 AC-2: loadRecord with origin=step and a stepName returns the matching step record", async () => {
+  it("FR-NODE-033 AC-2: loadRecord with origin=step and a stepName returns the matching step record", async () => {
     const root = await workspaceWithBodyAndStep();
 
     const loaded = await loadRecordOriginAware(root, "FR-ARCH-001", "step", STEP_NAME);
@@ -147,7 +147,7 @@ describe("FR-NODE-017 — Origin-aware record loading for mutation routing", () 
   });
 
   // AC-3: Existing callers that pass no origin/stepName resolve body records identically to current behavior.
-  it("FR-NODE-017 AC-3: existing no-arg callers resolve the body record identically to parseWorkspace", async () => {
+  it("FR-NODE-033 AC-3: existing no-arg callers resolve the body record identically to parseWorkspace", async () => {
     const root = await workspaceWithBodyAndStep();
     const workspace = await parseWorkspace(root);
     const expectedBody = workspace.records.find((r) => r.id === "FR-ARCH-001");

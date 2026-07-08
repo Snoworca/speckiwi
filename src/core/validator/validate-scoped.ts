@@ -2,11 +2,11 @@ import { splitDiagnostics } from "../diagnostic.js";
 import { parseStepState } from "../parser/index-parser.js";
 import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, StepStateEntry, ValidationResult } from "../types.js";
 
-// @req FR-PARSE-024 FR-PARSE-025 IR-CLI-028 FR-MCP-021
+// @req FR-PARSE-027 FR-PARSE-028 IR-CLI-046 FR-MCP-040
 //
 // validateWorkspaceScoped runs a single step-local validation pass over an already
-// parsed workspace. It is the core the CLI `speckiwi step validate <name>` (IR-CLI-028)
-// and MCP `validate_step` (FR-MCP-021) surfaces both compose over: given a step name it
+// parsed workspace. It is the core the CLI `speckiwi step validate <name>` (IR-CLI-046)
+// and MCP `validate_step` (FR-MCP-040) surfaces both compose over: given a step name it
 //   1. scopes parse-time diagnostics to docs/spec/steps/<step>/ (so a body-scope error
 //      never flips the step exit code, and a step-anchored parse error does), and
 //   2. adds the step advisory rules — SRS-W044 (a step requirement shadows a body
@@ -15,7 +15,7 @@ import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, StepStateEntry, V
 //      non-gate-failing warnings.
 //
 // SRS-W044 / SRS-W045 / STEP_* live in a namespace registered separately from this module
-// (FR-PARSE-025 diagnostic registry). To keep the step-local pass self-contained and free
+// (FR-PARSE-028 diagnostic registry). To keep the step-local pass self-contained and free
 // of the body-scope rule set, the advisories are constructed structurally here rather than
 // through the registry-backed diagnostic() helper.
 
@@ -34,7 +34,7 @@ function normalizePath(filePath: string | undefined): string {
   return (filePath ?? "").replace(/\\/g, "/");
 }
 
-// @req FR-PARSE-025
+// @req FR-PARSE-028
 /** Construct an advisory warning outside the registry-backed diagnostic() helper. */
 function advisory(code: string, message: string, location: DiagnosticLocation = {}): Diagnostic {
   return {
@@ -47,7 +47,7 @@ function advisory(code: string, message: string, location: DiagnosticLocation = 
   };
 }
 
-// @req FR-PARSE-025
+// @req FR-PARSE-028
 /** Split a TouchesReq / DependsOn cell (comma/space separated) into its tokens. */
 function parseCellTokens(cell: string): string[] {
   return cell
@@ -56,13 +56,13 @@ function parseCellTokens(cell: string): string[] {
     .filter((token) => token !== "" && token !== "-");
 }
 
-// @req FR-PARSE-025
+// @req FR-PARSE-028
 /** Only steps still in flight participate in the direct-conflict advisory. */
 function isActiveStep(entry: StepStateEntry): boolean {
   return entry.status === "active" || entry.status === "merging";
 }
 
-// @req FR-PARSE-025
+// @req FR-PARSE-028
 /**
  * The active peer steps that share a touched requirement with the named step. An empty
  * list means no direct same-requirement conflict. The named step must itself be active for
@@ -86,7 +86,7 @@ function directConflictPeers(workspace: ParsedWorkspace, stepName: string): stri
   return peers;
 }
 
-// @req FR-PARSE-024 FR-PARSE-025
+// @req FR-PARSE-027 FR-PARSE-028
 export function validateWorkspaceScoped(workspace: ParsedWorkspace, options: ScopedValidationOptions): ValidationResult {
   const stepName = options.step;
   const segment = stepPathSegment(stepName);

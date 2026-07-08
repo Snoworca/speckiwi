@@ -305,7 +305,7 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
   return generatedIdConflictFailure(id, path.relative(root.root, filePath).replace(/\\/g, "/"));
 }
 
-// FR-NODE-031 — promote_step_requirement mutation.
+// FR-NODE-046 — promote_step_requirement mutation.
 //
 // Promotes a step-scoped requirement into a body scope, inserting the step's pre-minted
 // canonical Requirement ID verbatim (no auto-generation) after verifying the id is globally

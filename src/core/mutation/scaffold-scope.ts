@@ -15,14 +15,14 @@ import type {
 export type { ScaffoldScopeInput, ScaffoldScopeOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 
-// @req FR-NODE-054
+// @req FR-NODE-065
 
 /**
- * FR-NODE-054 — derive the numbered file name for a new scope document. Scans the discovered
+ * FR-NODE-065 — derive the numbered file name for a new scope document. Scans the discovered
  * .srs.md documents for their leading numeric prefix and returns the next decade above the
  * highest one (10 when none exist), so a fresh scope never reuses an existing document number.
  * The slug comes from the template info, mirroring the init scaffold's naming.
- * @req FR-NODE-054
+ * @req FR-NODE-065
  */
 function nextScopeDocument(existing: readonly string[], slugDocument: string): string {
   let maxDecade = 0;
@@ -40,21 +40,21 @@ function nextScopeDocument(existing: readonly string[], slugDocument: string): s
 }
 
 /**
- * FR-NODE-054 — render an index row for the new scope. Both the §2 SRS Documents and the §4
+ * FR-NODE-065 — render an index row for the new scope. Both the §2 SRS Documents and the §4
  * Scope Map sections share the `| Scope | Document | Prefix | Description |` shape, so the Document
  * cell is a markdown link to the bare file name (matching the init scaffold rows) and the row names
  * the document once with its prefix.
- * @req FR-NODE-054
+ * @req FR-NODE-065
  */
 function renderScopeRow(scope: ScopeTemplateInfo, document: string): string {
   return `| ${scope.name} | [${document}](./${document}) | ${scope.prefix} | ${scope.name} |`;
 }
 
 /**
- * FR-NODE-054 — locate the line after the last table row of an index section so a new row is
+ * FR-NODE-065 — locate the line after the last table row of an index section so a new row is
  * appended without disturbing any existing line. Scans from the `## N. <heading>` line for the
  * table rows and returns the line just past the final consecutive table row.
- * @req FR-NODE-054
+ * @req FR-NODE-065
  */
 function findSectionInsertionLine(file: TextFile, heading: RegExp): number | undefined {
   const headingLine = file.lines.findIndex((line) => heading.test(line.trim()));
@@ -72,15 +72,15 @@ const SRS_DOCUMENTS_HEADING = /^##\s+\d+\.\s+SRS Documents$/;
 const SCOPE_MAP_HEADING = /^##\s+\d+\.\s+Scope Map$/;
 
 /**
- * FR-NODE-054 — scaffoldScope core mutation. Creates a new numbered scope srs.md file from the
+ * FR-NODE-065 — scaffoldScope core mutation. Creates a new numbered scope srs.md file from the
  * scope template and registers it in the index in one operation: one row added to the §2 SRS
  * Documents section and one row to the §4 Scope Map section. It defaults to dry-run (no apply
  * flag), returning a preview of the file body and both index rows while writing nothing. A name
  * or prefix that collides with an already-registered scope returns ok false and writes no file.
- * Unlike registerScopes (FR-NODE-053), which only adds Scope Map rows for already-existing
+ * Unlike registerScopes (FR-NODE-064), which only adds Scope Map rows for already-existing
  * unregistered documents, scaffoldScope creates a brand-new document and registers it in both
  * index sections.
- * @req FR-NODE-054
+ * @req FR-NODE-065
  */
 export async function scaffoldScope(
   root: ProjectRoot,

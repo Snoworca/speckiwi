@@ -3,9 +3,9 @@ import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "./guards.js";
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
- * FR-NODE-041 — vibe-to-SRS synthesis engine.
+ * FR-NODE-056 — vibe-to-SRS synthesis engine.
  *
  * Merges a task `intent.md`, the per-session trace shards, the step task-name code
  * comments, and the final git diff into step SRS under docs/spec/steps/<TaskName>/.
@@ -32,7 +32,7 @@ export interface SynthesizeStepSrsValue {
 // not the whole SRS — intent/trace/comment sections are not counted against this budget.
 const MAX_SRS_BYTES = 64 * 1024;
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Recognized secret patterns. Each match is replaced by REDACTION_MARKER before any input
  * reaches the committed SRS. Patterns are intentionally specific to avoid over-redaction; the
@@ -71,7 +71,7 @@ interface RedactionResult {
   count: number;
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /** Replace every recognized secret with REDACTION_MARKER, counting each replacement. */
 function redactSecrets(input: string): RedactionResult {
   let count = 0;
@@ -85,7 +85,7 @@ function redactSecrets(input: string): RedactionResult {
   return { text, count };
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 interface IgnoreRule {
   /** Literal directory/path prefix form (e.g. `secret-build`). */
   prefix?: string;
@@ -93,7 +93,7 @@ interface IgnoreRule {
   glob?: RegExp;
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Parse a .gitignore into ignore rules. Literal prefix/dir forms (e.g. `secret-build/`) are
  * matched by path prefix. Trailing-glob forms common to secret files (`*.env`, `*.key`,
@@ -108,7 +108,7 @@ function parseGitignore(text: string): IgnoreRule[] {
     .map((line) => compileIgnoreRule(line));
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 function compileIgnoreRule(raw: string): IgnoreRule {
   const cleaned = raw.replace(/\/$/, "");
   if (cleaned.includes("*")) {
@@ -117,7 +117,7 @@ function compileIgnoreRule(raw: string): IgnoreRule {
   return { prefix: cleaned.replace(/^\//, "") };
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Compile the supported subset of gitignore globs into a RegExp. `*` matches any run of
  * non-slash characters; a leading double-star directory glob (or a pattern without any `/`)
@@ -134,7 +134,7 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${prefix}${body}$`);
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /** True when a POSIX-relative path is covered by one of the gitignore rules. */
 function isIgnored(relPosix: string, ignores: readonly IgnoreRule[]): boolean {
   return ignores.some((rule) => {
@@ -151,7 +151,7 @@ interface TraceEntry {
   record: Record<string, unknown>;
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Parse one trace shard's JSONL body. Well-formed lines become entries; a torn (unparseable)
  * trailing line is dropped silently, recovering the shard rather than failing the whole run.
@@ -172,7 +172,7 @@ function parseShard(body: string): TraceEntry[] {
   return entries;
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /** Recursively collect file paths under a directory, skipping .git and the spec tree itself. */
 async function collectSourceFiles(dir: string, root: string, acc: string[]): Promise<void> {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -188,7 +188,7 @@ async function collectSourceFiles(dir: string, root: string, acc: string[]): Pro
   }
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Drop diff hunks whose `diff --git a/<path> b/<path>` header references a gitignored path, so
  * gitignored content does not reach the SRS through the diff channel (AC-3). A hunk runs from
@@ -213,7 +213,7 @@ function filterDiffByGitignore(diff: string, ignores: readonly IgnoreRule[]): st
   return out.join("\n");
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /** Extract `// @step <task>:` / `# @step <task>:` comment text from source file contents. */
 function extractStepComments(task: string, contents: string): string[] {
   const out: string[] = [];
@@ -227,7 +227,7 @@ function extractStepComments(task: string, contents: string): string[] {
   return out;
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 async function exists(filePath: string): Promise<boolean> {
   try {
     await stat(filePath);
@@ -237,7 +237,7 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-// @req FR-NODE-041
+// @req FR-NODE-056
 /**
  * Synthesize the step SRS for `input.task`. See the file-level contract above for the merge,
  * idempotency, diff-cap, gitignore, redaction, and shard-ordering guarantees.
