@@ -295,7 +295,13 @@ describe("skill install core", () => {
       const mirrorFiles = (await listRelativeFiles(mirrorDir)).filter((file) => file !== ".speckiwi-skill-install.json");
       expect(mirrorFiles).toEqual(sourceFiles);
       for (const file of sourceFiles) {
-        await expect(readFile(path.join(mirrorDir, file), "utf8")).resolves.toBe(await readFile(path.join(sourceDir, file), "utf8"));
+        const [mirrorText, sourceText] = await Promise.all([
+          readFile(path.join(mirrorDir, file), "utf8"),
+          readFile(path.join(sourceDir, file), "utf8")
+        ]);
+        // EOL-agnostic: the git index is byte-identical LF; only the Windows working-tree
+        // materialization (core.autocrlf) can diverge, so compare logical content.
+        expect(mirrorText.replace(/\r\n/g, "\n")).toBe(sourceText.replace(/\r\n/g, "\n"));
       }
 
       for (const file of mirrorFiles.filter((item) => item.endsWith(".md"))) {

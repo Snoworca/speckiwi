@@ -1,0 +1,201 @@
+{
+  "target": "v2.3.0.1",
+  "scope_analyzed": "FLOW (docs/spec/60.workflow-release.srs.md)",
+  "planned_reqs": [
+    {
+      "id": "FR-FLOW-014",
+      "title": "kiwi-step lightweight step-local authoring skill",
+      "gist": "kiwi-step skill authors requirements only under docs/spec/steps/<name>/, never body-scope SRS. Must claim_step before authoring and run validate_step as part of the authoring workflow.",
+      "ac_count": 3,
+      "trace_count": 0,
+      "status": "planned",
+      "stability": "evolving",
+      "priority": "high"
+    },
+    {
+      "id": "FR-FLOW-015",
+      "title": "kiwi-spec-merge per-REQ sequential merge orchestrator skill",
+      "gist": "kiwi-spec-merge orchestrates SRS merge as per-REQ, single-REQ operations (dry-run, approval, one mutation call, journal append, resume), never an N-REQ batch finalize. Routes diff_steps classification NEW->promote_step_requirement, UPDATE->in-place body update, CONFLICT->supersede_requirement. On completion migrates loser-side verification evidence and emits a post-merge verification-decrease report.",
+      "ac_count": 5,
+      "trace_count": 0,
+      "status": "planned",
+      "stability": "evolving",
+      "priority": "high"
+    },
+    {
+      "id": "FR-FLOW-018",
+      "title": "kiwi-vibe skill for vibe entry",
+      "gist": "kiwi-vibe skill elicits implementation intent, accepts an explicit task name or auto-derives one, invokes start_vibe_task with intent-first ordering (intent.md written before Active Task state), and guides the coding agent to insert step task-name trace comments during implementation.",
+      "ac_count": 3,
+      "trace_count": 0,
+      "status": "planned",
+      "stability": "evolving",
+      "priority": "high"
+    }
+  ],
+  "implemented_flow_reqs": [
+    {
+      "id": "FR-FLOW-016",
+      "title": "Versioned agent-instruction governance snippet with idempotent AGENT_INSTRUCTION_VERSION upsert",
+      "gist": "init idempotently upserts a versioned SpecKiwi SRS-workflow governance snippet (MUST rules, Status/Stability, TDD, current-work/next-target workflow) into CLAUDE.md and AGENTS.md, replacing stale versioned/legacy blocks in place.",
+      "layer": "other"
+    },
+    {
+      "id": "FR-FLOW-017",
+      "title": "Work-Modes-Rules v1.0.0 bundled rule document and CLAUDE.md reference",
+      "gist": "init writes docs/rule/Work-Modes-Rules-v1.0.0.md (defines sdd/vibe/wait modes, vibe intent-first obligation, task-name question, per-step code-comment convention) write-if-missing, and adds a CLAUDE.md reference line.",
+      "layer": "other"
+    },
+    {
+      "id": "FR-FLOW-019",
+      "title": "kiwi-vibe-commit skill for trace-to-SRS synthesis",
+      "gist": "kiwi-vibe-commit orchestrates synthesis of the active vibe task into a step-scoped SRS via the vibe-to-SRS synthesis engine, is an idempotent no-op if already synthesized, and hands the synthesized step to kiwi-spec-merge (FR-FLOW-015) for per-REQ promotion.",
+      "layer": "skill"
+    },
+    {
+      "id": "FR-FLOW-020",
+      "title": "Code comment trace-tag convention for sdd and vibe modes",
+      "gist": "Defines the @req <REQ-ID> comment convention for sdd-mode changes and the active-step-task-name tag for vibe-mode changes; purely informational, gates nothing.",
+      "layer": "other"
+    },
+    {
+      "id": "FR-FLOW-021",
+      "title": "Init-injected agent instruction block declares a tool-first SRS policy",
+      "gist": "init idempotently injects a versioned managed block into CLAUDE.md/AGENTS.md (and the bundled SRS-MD-Rules doc) declaring MCP-first / CLI-fallback tool policy and forbidding an alternate requirements source outside docs/spec/.",
+      "layer": "other"
+    }
+  ],
+  "runtime_layer_req_ids": [
+    "FR-MCP-040",
+    "FR-MCP-042",
+    "FR-MCP-043",
+    "FR-MCP-044",
+    "FR-MCP-046",
+    "FR-NODE-019",
+    "FR-NODE-042",
+    "FR-NODE-043",
+    "FR-NODE-044",
+    "FR-NODE-045",
+    "FR-NODE-046",
+    "FR-NODE-047",
+    "FR-NODE-048",
+    "FR-NODE-049",
+    "FR-NODE-050",
+    "FR-NODE-056",
+    "FR-PARSE-027",
+    "FR-PARSE-028"
+  ],
+  "runtime_layer_req_details": [
+    { "id": "FR-MCP-040", "title": "MCP validate_step tool registration", "status": "implemented", "stability": "evolving", "scope": "MCP" },
+    { "id": "FR-MCP-042", "title": "MCP registration of step state tools (claim_step, update_step_state, list_steps)", "status": "implemented", "stability": "evolving", "scope": "MCP" },
+    { "id": "FR-MCP-043", "title": "MCP registration of supersede and promote mutation tools (supersede_requirement, promote_step_requirement)", "status": "implemented", "stability": "evolving", "scope": "MCP" },
+    { "id": "FR-MCP-044", "title": "MCP registration of diff_steps read tool", "status": "implemented", "stability": "evolving", "scope": "MCP" },
+    { "id": "FR-MCP-046", "title": "start_vibe_task MCP tool with intent-first ordering and task-name or auto-derive", "status": "implemented", "stability": "evolving", "scope": "MCP" },
+    { "id": "FR-NODE-019", "title": "Granular requirement editing services (title/statement/metadata/AC/evidence/trace edits)", "status": "verified", "stability": "evolving", "scope": "NODE", "target": "v2.3.0", "note": "cross-target (shipped in v2.3.0); best available candidate backing for kiwi-spec-merge's UPDATE-class 'in-place body update' routing target, but not explicitly cited by FR-FLOW-015" },
+    { "id": "FR-NODE-042", "title": "claim_step mutation with write-skew two-stage gate (core claimStep)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-043", "title": "update_step_state mutation for step-state rows (core updateStepState)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-044", "title": "Read-only list_steps query with topological ordering (core listSteps)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-045", "title": "supersede_requirement strict two-call mutation with guards (core supersedeRequirement)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-046", "title": "promote_step_requirement mutation with reservation-unique verbatim id insertion (core promoteStepRequirement)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-047", "title": "MultiFileCommit four-phase engine with durable merge-journal crash recovery", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-048", "title": "Merge-journal append-log with resume skip", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-049", "title": "diff_steps four-way classification of step records against body (core diffSteps)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-050", "title": "Work Mode Model with Fail-Open Get and Persisting Set over state.md (getWorkMode/setWorkMode, Mode/Active Task)", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-NODE-056", "title": "Vibe-to-SRS step synthesis engine (synthesizeStepSrs) with idempotency, secret redaction, and diff cap", "status": "implemented", "stability": "evolving", "scope": "NODE" },
+    { "id": "FR-PARSE-027", "title": "Step-local scoped validation pass with extended ValidationRule context (core validateWorkspaceScoped)", "status": "implemented", "stability": "evolving", "scope": "PARSE" },
+    { "id": "FR-PARSE-028", "title": "Step-local advisory validators: W044 step-shadows-body, W045 step-overload, and STEP_* conflict namespace", "status": "implemented", "stability": "evolving", "scope": "PARSE" }
+  ],
+  "skill_layer_req_ids": ["FR-FLOW-014", "FR-FLOW-015", "FR-FLOW-018"],
+  "skill_layer_req_ids_note": "FR-FLOW-019 (implemented) is also skill-layer (orchestration skill), not runtime; it is listed separately in implemented_flow_reqs with layer=skill because it is not one of the 3 planned skills but does sit in the same orchestration layer.",
+  "dependency_edges": [
+    { "from": "FR-FLOW-014", "to": "FR-MCP-042", "kind": "skill-depends-on-runtime-req", "capability": "claim_step tool" },
+    { "from": "FR-FLOW-014", "to": "FR-NODE-042", "kind": "skill-depends-on-runtime-req", "capability": "claimStep core mutation (transitive, via FR-MCP-042)" },
+    { "from": "FR-FLOW-014", "to": "FR-MCP-040", "kind": "skill-depends-on-runtime-req", "capability": "validate_step tool" },
+    { "from": "FR-FLOW-014", "to": "FR-PARSE-027", "kind": "skill-depends-on-runtime-req", "capability": "validateWorkspaceScoped core pass (transitive, via FR-MCP-040)" },
+    { "from": "FR-FLOW-014", "to": "FR-PARSE-028", "kind": "skill-depends-on-runtime-req", "capability": "step advisory validators surfaced by validate_step" },
+    { "from": "FR-FLOW-015", "to": "FR-MCP-044", "kind": "skill-depends-on-runtime-req", "capability": "diff_steps tool (classification input)" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-049", "kind": "skill-depends-on-runtime-req", "capability": "diffSteps core (transitive, via FR-MCP-044)" },
+    { "from": "FR-FLOW-015", "to": "FR-MCP-043", "kind": "skill-depends-on-runtime-req", "capability": "promote_step_requirement / supersede_requirement tools" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-046", "kind": "skill-depends-on-runtime-req", "capability": "promoteStepRequirement core (NEW-class routing)" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-045", "kind": "skill-depends-on-runtime-req", "capability": "supersedeRequirement core (CONFLICT-class routing)" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-019", "kind": "skill-depends-on-runtime-req", "capability": "in-place requirement-statement edit (UPDATE-class routing) — inferred capability match, not an explicit citation; FR-NODE-019 is a v2.3.0 (prior-target) requirement" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-047", "kind": "skill-depends-on-runtime-req", "capability": "MultiFileCommit / merge-journal crash recovery (resume)" },
+    { "from": "FR-FLOW-015", "to": "FR-NODE-048", "kind": "skill-depends-on-runtime-req", "capability": "merge-journal append-log with resume skip" },
+    { "from": "FR-FLOW-018", "to": "FR-MCP-046", "kind": "skill-depends-on-runtime-req", "capability": "start_vibe_task tool" },
+    { "from": "FR-FLOW-018", "to": "FR-NODE-050", "kind": "skill-depends-on-runtime-req", "capability": "Work Mode Model (Mode=vibe / Active Task persistence, transitive via FR-MCP-046)" },
+    { "from": "FR-FLOW-018", "to": "FR-FLOW-020", "kind": "skill-depends-on-implemented-flow-req", "capability": "code-comment trace-tag convention (intra-FLOW-scope dependency, not cross-scope)" },
+    { "from": "FR-FLOW-019", "to": "FR-NODE-056", "kind": "implemented-skill-depends-on-runtime-req", "capability": "vibe-to-SRS synthesis engine (correct id; FR-FLOW-019 body text mis-cites this as FR-NODE-041)" },
+    { "from": "FR-FLOW-019", "to": "FR-FLOW-015", "kind": "implemented-skill-depends-on-planned-skill-req", "capability": "hands synthesized step off to kiwi-spec-merge for per-REQ promotion" }
+  ],
+  "unbacked_dependencies": [
+    {
+      "skill_req": "FR-FLOW-015",
+      "runtime_capability": "post-merge verification-decrease report and loser-side (superseded) verification-evidence migration (AC-5)",
+      "backing_req": "none",
+      "note": "No requirement anywhere in docs/spec/ specifies an evidence-migration or verification-decrease-report function. FR-NODE-045 (supersedeRequirement) invalidates checked_compatible rows on discard but does not migrate Verification Evidence rows or produce any decrease report."
+    }
+  ],
+  "id_citation_drift": [
+    {
+      "citing_req": "FR-FLOW-019",
+      "cited_id": "FR-NODE-041",
+      "cited_id_actual_title": "edit_acceptance_criteria core mutation",
+      "correct_id": "FR-NODE-056",
+      "correct_id_title": "Vibe-to-SRS step synthesis engine",
+      "note": "FR-FLOW-019 requirement text and AC-1 both cite FR-NODE-041 for the synthesis engine, but FR-NODE-041 is an unrelated AC-editing mutation. The synthesis engine (synthesizeStepSrs) is actually specified under FR-NODE-056."
+    },
+    {
+      "citing_req": "FR-MCP-042",
+      "cited_id": "FR-NODE-027",
+      "cited_id_actual_title": "Requirement ID status cache",
+      "correct_id": "FR-NODE-042",
+      "correct_id_title": "claim_step mutation with write-skew two-stage gate",
+      "note": "cited for claimStep"
+    },
+    {
+      "citing_req": "FR-MCP-042",
+      "cited_id": "FR-NODE-028",
+      "cited_id_actual_title": "Canonical workflow journal identity and repair inspection",
+      "correct_id": "FR-NODE-043",
+      "correct_id_title": "update_step_state mutation for step-state rows",
+      "note": "cited for updateStepState"
+    },
+    {
+      "citing_req": "FR-MCP-042",
+      "cited_id": "FR-NODE-029",
+      "cited_id_actual_title": "Read-only legacy workflow migration preview core",
+      "correct_id": "FR-NODE-044",
+      "correct_id_title": "Read-only list_steps query with topological ordering",
+      "note": "cited for listSteps"
+    },
+    {
+      "citing_req": "FR-MCP-043",
+      "cited_id": "FR-NODE-030",
+      "cited_id_actual_title": "Guarded workflow progress mutations with canonical journal identity",
+      "correct_id": "FR-NODE-045",
+      "correct_id_title": "supersede_requirement strict two-call mutation with guards",
+      "note": "cited for supersedeRequirement"
+    },
+    {
+      "citing_req": "FR-MCP-043",
+      "cited_id": "FR-NODE-031",
+      "cited_id_actual_title": "Logical workflow deletion state with canonical mutation dependency",
+      "correct_id": "FR-NODE-046",
+      "correct_id_title": "promote_step_requirement mutation with reservation-unique verbatim id insertion",
+      "note": "cited for promoteStepRequirement"
+    },
+    {
+      "citing_req": "FR-MCP-044",
+      "cited_id": "FR-NODE-034",
+      "cited_id_actual_title": "Successor trace search over union records to prevent slot regression",
+      "correct_id": "FR-NODE-049",
+      "correct_id_title": "diff_steps four-way classification of step records against body",
+      "note": "cited for diffSteps"
+    }
+  ],
+  "additional_observations": [
+    "All 5 implemented FLOW-scope requirements (016,017,019,020,021) are either documentation/governance-snippet requirements (016,017,020,021 = layer 'other') or an orchestration skill (019 = layer 'skill'). None of the implemented FLOW-scope requirements specify runtime step/vibe mutation behavior themselves; the actual runtime backing for claim_step/validate_step/diff_steps/promote_step_requirement/supersede_requirement/start_vibe_task lives entirely outside FLOW scope, split across MCP scope (tool registration) and NODE/PARSE scope (core implementation).",
+    "FR-FLOW-019 (implemented, kiwi-vibe-commit) already hands its output to FR-FLOW-015 (planned, kiwi-spec-merge) per its own requirement text ('after synthesis it SHALL hand the resulting step off to the kiwi-spec-merge skill (FR-FLOW-015)'). This means an implemented, presumably-in-use skill requirement already presumes the existence of a still-planned skill requirement.",
+    "The FR-NODE ID citations embedded in FR-MCP-042/043/044 and FR-FLOW-019 requirement prose are a consistent +15 off from the correct IDs (e.g. FR-NODE-027 -> FR-NODE-042, FR-NODE-041 -> FR-NODE-056), consistent with a renumbering event in docs/spec/50.nodejs-implementation.srs.md that was not propagated to cross-references in prose text. The underlying capabilities themselves are present and implemented under the correct (uncited) IDs."
+  ]
+}

@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -24,8 +25,8 @@ describe("real stdio MCP server — update_stability (v2.2.1 §5.2)", () => {
 
     const transport = new StdioClientTransport({
       command: process.execPath,
-      args: ["bin/speckiwi", "--root", root, "mcp"],
-      cwd: process.cwd(),
+      args: [path.resolve("bin/speckiwi"), "mcp"],
+      cwd: root,
       stderr: "pipe"
     });
     const client = new Client({ name: "speckiwi-update-stability-test", version: "1.0.0" }, { capabilities: {} });

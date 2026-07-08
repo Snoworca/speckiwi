@@ -1,0 +1,73 @@
+{
+  "run_id": "2026-07-08.speckiwi.v2301.01",
+  "target": "v2.3.0.1",
+  "evaluation_scope": "status=planned (FR-FLOW-014, FR-FLOW-015, FR-FLOW-018)",
+  "evidence_basis": "Two isolated Sonnet pre-investigation analysts (code_context.json, existing_srs_context.json) + direct objective verification (grep src/, read schemas.ts, read FR-MCP-046 block). Code evidence prioritized over SRS status labels per §0.4/§0.3.",
+  "judgements": [
+    {
+      "req_id": "FR-FLOW-014",
+      "feasibility": "high",
+      "score": 85,
+      "axes": {
+        "implementability": { "score": 26, "rationale": "claim_step + validate_step both exist and are tool-exposed. Skill is markdown orchestration.", "evidence": ["src/core/mutation/claim-step.ts:68", "src/core/validator/validate-scoped.ts:90", "src/mcp/schemas.ts:382 (claim_step)", "src/mcp/schemas.ts:202 (validate_step / 'step validate' CLI)"] },
+        "evidence_strength": { "score": 16, "rationale": "Runtime deps present; caveat: no guarded mutation authors INTO a step dir, so the skill hand-writes step draft markdown then validate_step. Steps are pre-promotion drafts, so this is acceptable.", "evidence": ["src/core/mutation/add-requirement.ts:324 (promoteStepRequirement is step->body only)"] },
+        "dependency_health": { "score": 13, "rationale": "claim_step (FR-MCP-042) and validate_step (FR-MCP-040) are genuinely implemented+registered (verified in schemas.ts), evolving." },
+        "ac_verifiability": { "score": 13, "rationale": "AC-1 claim-before-author, AC-2 step-only writes, AC-3 validate_step run — all test-observable." },
+        "scope_fit": { "score": 9, "rationale": "FLOW scope; step-local authoring fits." },
+        "product_fit": { "score": 8, "rationale": "Core workflow tooling." }
+      },
+      "blockers": [],
+      "conditions": ["Skill hand-writes step draft markdown (no guarded author-into-step mutation exists); acceptable for pre-promotion drafts."],
+      "has_verification": false,
+      "current_stability": "evolving",
+      "current_status": "planned",
+      "external_module_impact": null,
+      "verdict": "READY to implement now."
+    },
+    {
+      "req_id": "FR-FLOW-015",
+      "feasibility": "low",
+      "score": 44,
+      "axes": {
+        "implementability": { "score": 8, "rationale": "diff_steps core exists but is NOT exposed as any MCP tool or CLI command; merge-journal code exists but is completely unwired (no caller). Skill cannot fulfill AC-3 (route diff_steps classification) or AC-4 (resume from merge-journal) without runtime-exposure work first.", "evidence": ["src/core/query/diff-steps.ts:54 (core only)", "src/mcp/schemas.ts:165 registers 'workflow_diff' NOT diff_steps", "src/core/patch/merge-journal.ts (unwired, no caller in src/)"] },
+        "evidence_strength": { "score": 8, "rationale": "promote_step_requirement (schemas.ts:401) + supersede_requirement (CLI+MCP) exist. But SRS FR-MCP-044 claims diff_steps is an implemented MCP tool — it is NOT registered => phantom-implemented." },
+        "dependency_health": { "score": 4, "rationale": "diff_steps dependency BROKEN at the tool layer; merge-journal dependency BROKEN (unwired)." },
+        "ac_verifiability": { "score": 7, "rationale": "ACs testable in principle but currently unachievable. AC-5 (post-merge verification-decrease report + loser evidence migration) has no runtime backing but is skill-implementable via add_verification_evidence + summary diff." },
+        "scope_fit": { "score": 9, "rationale": "FLOW scope, fits." },
+        "product_fit": { "score": 8, "rationale": "Useful merge orchestrator." }
+      },
+      "blockers": [
+        "diff_steps (FR-MCP-044) not exposed as MCP tool or CLI — core-only at src/core/query/diff-steps.ts:54.",
+        "merge-journal (src/core/patch/merge-journal.ts) unwired — no resume path callable."
+      ],
+      "conditions": ["Requires exposing diff_steps as a tool + wiring merge-journal (runtime work) BEFORE the skill can satisfy AC-3/AC-4."],
+      "has_verification": false,
+      "current_stability": "evolving",
+      "current_status": "planned",
+      "external_module_impact": null,
+      "verdict": "GATED on runtime exposure work (diff_steps tool + merge-journal wiring). Recommend keep(evolving)+report, NOT downgrade — the gap is fixable dependency exposure, not intrinsic infeasibility."
+    },
+    {
+      "req_id": "FR-FLOW-018",
+      "feasibility": "blocked",
+      "score": 31,
+      "axes": {
+        "implementability": { "score": 4, "rationale": "start_vibe_task does not exist anywhere in src/ (core/MCP/CLI). AC-1/AC-2/AC-3 all reference start_vibe_task and are unachievable. Closest primitive setWorkMode (work-mode.ts:82) is CLI-only and the CLI 'mode' command never surfaces an activeTask argument.", "evidence": ["grep start_vibe_task/startVibeTask across src/ = 0 files", "src/core/mutation/work-mode.ts:82 (setWorkMode, CLI-only)", "src/mcp/schemas.ts:186 ('mode' read only)"] },
+        "evidence_strength": { "score": 3, "rationale": "SRS FR-MCP-046 (docs/spec/40...:3338-3389) is Status=implemented for start_vibe_task, but ALL 4 ACs unchecked, Verification Evidence + Trace Links tables empty, and zero implementing code => phantom-implemented." },
+        "dependency_health": { "score": 2, "rationale": "start_vibe_task dependency does not exist." },
+        "ac_verifiability": { "score": 5, "rationale": "ACs blocked; step task-name comment half is real (extractStepComments synthesis.ts:218)." },
+        "scope_fit": { "score": 9, "rationale": "FLOW scope, fits; depends intra-scope on FR-FLOW-020 (implemented)." },
+        "product_fit": { "score": 8, "rationale": "Useful vibe entry." }
+      },
+      "blockers": [
+        "start_vibe_task runtime tool MISSING (FR-MCP-046 falsely marked implemented; no code, no evidence, no trace)."
+      ],
+      "conditions": ["Requires actually implementing start_vibe_task (i.e. genuinely delivering FR-MCP-046) BEFORE the skill can be authored to satisfy AC-1/AC-2/AC-3."],
+      "has_verification": false,
+      "current_stability": "evolving",
+      "current_status": "planned",
+      "external_module_impact": null,
+      "verdict": "BLOCKED on missing runtime (start_vibe_task). Recommend keep(evolving)+report, NOT deprecate — the correct fix is to implement FR-MCP-046, not discard FR-FLOW-018."
+    }
+  ]
+}

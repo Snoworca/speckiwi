@@ -116,12 +116,19 @@ describe("SRS mutation lock and status cache", () => {
     if (cache.ok) expect(cache.value.lock.active).toBe(false);
   });
 
-  it("REL-NODE-005 rejects symlink locks before writing", async () => {
+  it("REL-NODE-005 rejects symlink locks before writing", async (ctx) => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     await mkdir(path.join(rootPath, "kiwi"), { recursive: true });
     await writeFile(path.join(rootPath, "kiwi", "outside-lock.json"), "{}", "utf8");
-    await symlink("outside-lock.json", path.join(rootPath, "kiwi", ".srs.lock"));
+    try {
+      await symlink("outside-lock.json", path.join(rootPath, "kiwi", ".srs.lock"));
+    } catch {
+      // Windows without symlink privilege cannot create the symlink fixture; the source's
+      // symlink-lock rejection (SRS-E065) is verified on POSIX/CI. Skip where unsupported.
+      ctx.skip();
+      return;
+    }
 
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "blocked" });
     expect(result).toMatchObject({

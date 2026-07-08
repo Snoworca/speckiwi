@@ -13,8 +13,10 @@ async function removeIndexCompletedWorkRows(root: string): Promise<void> {
   const original = await readFile(indexPath, "utf8");
   await writeFile(
     indexPath,
+    // CRLF-tolerant: fixtures are committed LF but a Windows checkout (core.autocrlf)
+    // materializes them CRLF, so match the row separator with \r?\n.
     original.replace(
-      "| 2026-05-09 |  | ARCH |  | Cross-target fixture setup completed. |\n| 2026-05-10 | v1.0.0 | ARCH | FR-ARCH-001 | Fixture parser coverage completed. |\n",
+      /\| 2026-05-09 \| {2}\| ARCH \| {2}\| Cross-target fixture setup completed\. \|\r?\n\| 2026-05-10 \| v1\.0\.0 \| ARCH \| FR-ARCH-001 \| Fixture parser coverage completed\. \|\r?\n/,
       ""
     ),
     "utf8"

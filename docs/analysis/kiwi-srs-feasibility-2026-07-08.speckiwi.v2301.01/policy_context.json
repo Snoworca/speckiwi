@@ -1,0 +1,42 @@
+{
+  "policy_source": "default",
+  "mappings_count": 7,
+  "note": "§0.G6 default mapping. All 3 reqs currently stability=evolving, status=planned, has_verification=false. Predicted transition depends on feasibility label (resolved in Phase 4).",
+  "predicted_transitions": [
+    {
+      "req_id": "FR-FLOW-014",
+      "current_stability": "evolving",
+      "by_feasibility": {
+        "high": "evolving (keep — no verification evidence, so no stable promotion)",
+        "medium": "keep (evolving)",
+        "low": "draft (DOWNGRADE — requires_user_confirm)",
+        "blocked": "deprecated (requires_user_confirm; status=planned so not a status-conflict NO-OP)"
+      },
+      "requires_user_confirm": "only if feasibility ∈ {low(downgrade), blocked}"
+    },
+    {
+      "req_id": "FR-FLOW-015",
+      "current_stability": "evolving",
+      "by_feasibility": {
+        "high": "evolving (keep)",
+        "medium": "keep (evolving)",
+        "low": "draft (DOWNGRADE — requires_user_confirm)",
+        "blocked": "deprecated (requires_user_confirm)"
+      },
+      "requires_user_confirm": "only if feasibility ∈ {low(downgrade), blocked}"
+    },
+    {
+      "req_id": "FR-FLOW-018",
+      "current_stability": "evolving",
+      "by_feasibility": {
+        "high": "evolving (keep)",
+        "medium": "keep (evolving)",
+        "low": "draft (DOWNGRADE — requires_user_confirm)",
+        "blocked": "deprecated (requires_user_confirm)"
+      },
+      "requires_user_confirm": "only if feasibility ∈ {low(downgrade), blocked}"
+    }
+  ],
+  "transition_guard_warnings": [],
+  "no_stable_promotion_possible": "All 3 lack verification evidence, so the high+has_verification->stable rule cannot match; no §0.G5 stable-promotion critical gate will fire this run."
+}

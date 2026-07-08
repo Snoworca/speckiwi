@@ -1,0 +1,14 @@
+{
+  "policy_source": "default",
+  "reason": "No .kiwi/feasibility-policy.yaml (project) or ~/.kiwi/feasibility-policy.yaml (user). §0.G6 default mapping applied.",
+  "mappings": [
+    { "if": { "feasibility": "high", "has_verification": true }, "then": { "stability": "stable" }, "requires_user_confirm": true },
+    { "if": { "feasibility": "high" }, "then": { "stability": "evolving" }, "requires_user_confirm": false },
+    { "if": { "feasibility": "medium" }, "then": { "stability": "keep" }, "requires_user_confirm": false },
+    { "if": { "feasibility": "low" }, "then": { "stability": "draft" }, "requires_user_confirm": "on_downgrade" },
+    { "if": { "feasibility": "blocked", "status_in": ["in_progress", "implemented", "verified"] }, "then": { "stability": "keep", "note": "status_conflict" }, "requires_user_confirm": false },
+    { "if": { "feasibility": "blocked" }, "then": { "stability": "deprecated" }, "requires_user_confirm": true },
+    { "if": "no_match", "then": { "stability": "keep" }, "requires_user_confirm": true }
+  ],
+  "gates": { "status_conflict_policy": "warn" }
+}

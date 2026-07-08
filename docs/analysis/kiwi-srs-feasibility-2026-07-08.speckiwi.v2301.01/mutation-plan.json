@@ -1,0 +1,46 @@
+{
+  "run_id": "2026-07-08.speckiwi.v2301.01",
+  "mode": "normal (auto)",
+  "plan": [
+    {
+      "req_id": "FR-FLOW-014",
+      "current_stability": "evolving",
+      "proposed_stability": "evolving",
+      "matched_rule_index": 1,
+      "action": "keep (no-op)",
+      "requires_user_confirm": false,
+      "reason": "Feasibility=high (85). has_verification=false so high maps to evolving = current. No change.",
+      "dryrun_guard_verdict": "n/a (no-op)",
+      "user_decision": null
+    },
+    {
+      "req_id": "FR-FLOW-015",
+      "current_stability": "evolving",
+      "proposed_stability": "evolving",
+      "matched_rule_index": 3,
+      "action": "keep (report blocker) — override of §0.G6 low->draft",
+      "requires_user_confirm": false,
+      "reason": "Feasibility=low (44) but the low score is driven by a FIXABLE dependency-exposure gap (diff_steps not exposed, merge-journal unwired), not intrinsic infeasibility. §14 permits keep+report for a fixable blocker; downgrading to draft would misrepresent the requirement quality. Blocker reported instead.",
+      "dryrun_guard_verdict": "n/a (no-op)",
+      "user_decision": null
+    },
+    {
+      "req_id": "FR-FLOW-018",
+      "current_stability": "evolving",
+      "proposed_stability": "evolving",
+      "matched_rule_index": 5,
+      "action": "keep (report blocker) — override of §0.G6 blocked->deprecated",
+      "requires_user_confirm": false,
+      "reason": "Feasibility=blocked (31) because start_vibe_task does not exist. Per §14, a blocked req may be kept + reported rather than mutated. Deprecating FR-FLOW-018 would be wrong: the correct remediation is to genuinely implement FR-MCP-046 (start_vibe_task). No stability change; blocker + governance defect reported.",
+      "dryrun_guard_verdict": "n/a (no-op)",
+      "user_decision": null
+    }
+  ],
+  "summary": {
+    "total_mutations": 0,
+    "auto_apply": 0,
+    "user_confirm_required": 0,
+    "no_op": 3,
+    "guard_blocked": 0
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "req_inventory": [
+    {
+      "req_id": "FR-FLOW-014",
+      "stability": "evolving",
+      "status": "planned",
+      "ac_total": 3,
+      "ac_ids": ["AC-1", "AC-2", "AC-3"],
+      "ac_text": {
+        "AC-1": "kiwi-step claims a step via claim_step before authoring any step-local requirement.",
+        "AC-2": "kiwi-step authors requirements only under docs/spec/steps/<name>/ and never writes into body-scope SRS files.",
+        "AC-3": "kiwi-step runs step-local validation via validate_step as part of its authoring workflow."
+      },
+      "files_from_trace": [],
+      "depends_on": [],
+      "feasibility_hint": "high",
+      "runtime_deps": {
+        "claim_step": "MCP tool (src/core/mutation/claim-step.ts; schemas.ts hosted on set-supersede)",
+        "validate_step": "MCP tool + CLI 'speckiwi step validate <name>' (src/core/validator/validate-scoped.ts; schemas.ts:202)"
+      }
+    }
+  ],
+  "dependency_graph": []
+}

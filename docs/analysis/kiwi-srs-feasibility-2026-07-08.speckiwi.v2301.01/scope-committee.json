@@ -1,0 +1,19 @@
+{
+  "gate": "scope-decision (feasibility NEEDS_USER resolution under --auto)",
+  "run_id": "2026-07-08.speckiwi.v2301.01",
+  "question": "Scope for the autonomous 4-stage pipeline given 1/3 skills ready and 2/3 blocked on missing/phantom runtime.",
+  "options": { "A": "full (fix statuses + build runtime + 3 skills)", "B": "minimal (FR-FLOW-014 only; record 015/018 gaps)", "C": "spec-only" },
+  "members": [
+    { "seat": "member-1", "decision": "B", "confidence": "medium", "key_point": "015/018 blocked by business-decision-level defect that --auto's own guardrail would hard-stop on; A contradicts tool autonomy semantics." },
+    { "seat": "member-2", "decision": "A", "confidence": "medium", "key_point": "User intent + governance favor fixing false status then building; conditions: guarded status mutation, planner sequences runtime prereqs, stop if start_vibe_task not spec-implementable." },
+    { "seat": "member-3", "decision": "B", "confidence": "medium", "key_point": "Unattended new-runtime build is a different-risk scope expansion; high rollback cost." }
+  ],
+  "tally": { "A": 1, "B": 2, "C": 0 },
+  "decision": "B",
+  "resolved_actions": [
+    "Run the 4-stage pipeline (feasibility->planner->pm->review-fix-loop) with --auto on FR-FLOW-014 (kiwi-step) only.",
+    "Record FR-FLOW-015 and FR-FLOW-018 runtime-gap blockers as explicit SRS Implementation Notes (no status change).",
+    "Do NOT auto-correct FR-MCP-044/046 phantom-implemented status; surface it and propose scope A as an explicit follow-up requiring user/kiwi-srs correction.",
+    "Keep severity guardrails intact for the FR-FLOW-014 pipeline."
+  ]
+}

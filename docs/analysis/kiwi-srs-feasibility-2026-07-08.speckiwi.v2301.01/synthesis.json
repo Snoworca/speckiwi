@@ -1,0 +1,25 @@
+{
+  "target": "v2.3.0.1",
+  "evaluation_scope": "3 unimplemented (planned) requirements",
+  "total_reqs_evaluated": 3,
+  "feasibility_distribution": { "high": 1, "medium": 0, "low": 1, "blocked": 1 },
+  "target_verdict": "not-ready",
+  "verdict_reason": "Only FR-FLOW-014 is cleanly implementable now. FR-FLOW-015 and FR-FLOW-018 depend on runtime capabilities that are marked implemented in the SRS but are absent or unexposed in code.",
+  "critical_blockers": [
+    { "req_id": "FR-FLOW-015", "blocker": "diff_steps (FR-MCP-044) is core-only, not registered as any MCP tool or CLI command; merge-journal is unwired." },
+    { "req_id": "FR-FLOW-018", "blocker": "start_vibe_task (FR-MCP-046) has no implementing code at all." }
+  ],
+  "governance_defect": {
+    "type": "phantom-implemented requirements",
+    "description": "FR-MCP-044 (diff_steps MCP tool) and FR-MCP-046 (start_vibe_task MCP tool) carry Status=implemented but have no tool registration / no code, empty Acceptance Criteria checks, empty Verification Evidence and Trace Links. Inherited from the 2026-07-08 v3->v2.3.0.1 salvage file-existence heuristic.",
+    "confirmed": ["FR-MCP-044", "FR-MCP-046"],
+    "verified_genuinely_implemented": ["FR-MCP-040 validate_step", "FR-MCP-042 claim_step", "FR-MCP-043 promote_step_requirement"],
+    "systemic_risk": "The step/vibe MCP-tool family's 'implemented' labels should be audited for tool-exposure completeness; the salvage marked implementation by file existence, not by verified tool registration."
+  },
+  "dependency_chains": [
+    { "chain": ["FR-FLOW-018", "FR-MCP-046 (start_vibe_task)"], "weakest_link_score": 0, "note": "runtime dependency missing" },
+    { "chain": ["FR-FLOW-015", "FR-MCP-044 (diff_steps)"], "weakest_link_score": 0, "note": "runtime tool unexposed" }
+  ],
+  "stability_drift_candidates": [],
+  "next_step_recommendation": "null / user-decision: mixed readiness + SRS integrity defect. Cannot cleanly auto-proceed to kiwi-planner for all 3."
+}

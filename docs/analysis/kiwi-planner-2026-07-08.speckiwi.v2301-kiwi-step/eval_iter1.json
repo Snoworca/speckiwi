@@ -1,0 +1,14 @@
+{
+  "iter": 1,
+  "evaluators": ["opus", "sonnet"],
+  "both_pass": true,
+  "summary": { "critical": 0, "high": 0, "medium": 4, "low": 3 },
+  "verdict": "Both independent evaluators PASS (0 CRITICAL, 0 HIGH). RED->GREEN mechanism verified directly against src/doctor/package-doctor.ts and existing package-doctor test; claim_step MCP-only confirmed; all 3 ACs mapped with test_cases; TDD ordering correct; natural-language untestability (R-01) honestly disclosed.",
+  "convergent_medium_findings": [
+    "Content test should assert AC-1 claim_step-BEFORE-authoring ordering (not just substring) + the MCP-unavailable halt clause.",
+    "Content test should assert AC-2 explicit body-scope-write prohibition (not just 'steps/').",
+    "Content test should parametrize over all 3 skill variants (claude/codex/etc), not read only claude."
+  ],
+  "improvement_applied": "Plan T-PH001-01/02 action, DoD, and test_case descriptions/signatures strengthened to require: ordering cue for AC-1, MCP-unavailable halt clause, explicit body-scope prohibition for AC-2, and content assertions parametrized over all 3 variants. Re-validated: validator exit 0, errors 0, warnings 0.",
+  "pass": true
+}

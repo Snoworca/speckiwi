@@ -22,8 +22,8 @@ describe("real stdio MCP server", () => {
 
     const transport = new StdioClientTransport({
       command: process.execPath,
-      args: ["bin/speckiwi", "--root", root, "mcp"],
-      cwd: process.cwd(),
+      args: [path.resolve("bin/speckiwi"), "mcp"],
+      cwd: root,
       stderr: "pipe"
     });
     const client = new Client({ name: "speckiwi-test", version: "1.0.0" }, { capabilities: {} });

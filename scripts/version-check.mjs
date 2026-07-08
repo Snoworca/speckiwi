@@ -49,8 +49,8 @@ async function assertMcpServerMetadata(pkg) {
   const root = mkdtempSync(path.join(tmpdir(), "speckiwi-version-mcp-"));
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["bin/speckiwi", "--root", root, "mcp"],
-    cwd: process.cwd(),
+    args: [path.resolve("bin/speckiwi"), "mcp"],
+    cwd: root,
     stderr: "pipe"
   });
   const client = new Client({ name: "speckiwi-version-check", version: pkg.version }, { capabilities: {} });

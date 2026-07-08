@@ -1,0 +1,8 @@
+{
+  "target": "v2.3.0.1",
+  "target_intent": "Tool improvement release. This plan scope: implement the single unimplemented, feasibility-READY requirement FR-FLOW-014 (kiwi-step lightweight step-local authoring skill).",
+  "req_filter": ["FR-FLOW-014"],
+  "user_priorities": ["Deliver the kiwi-step skill that orchestrates claim_step -> step-local authoring -> validate_step", "Confine writes to docs/spec/steps/<name>/", "Automated verification of the skill"],
+  "ambiguities": ["A SKILL.md is agent-instruction markdown, not runtime code; the automated 'test' must assert skill-file structure/content (frontmatter + required orchestration references) rather than execute the agent."],
+  "non_coding_signals": ["Author SKILL.md (doc)", "Mirror skill across skill roots (file_op)", "Add/extend a structural test for the skill (code)", "Register in packaged skills / installer manifest if required"]
+}

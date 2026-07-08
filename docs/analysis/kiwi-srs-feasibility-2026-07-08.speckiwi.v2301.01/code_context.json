@@ -1,0 +1,135 @@
+{
+  "runtime_ops": [
+    {
+      "op": "claim_step",
+      "status": "exists",
+      "core_fn": "src/core/mutation/claim-step.ts:68 (claimStep)",
+      "mcp_tool": "claim_step (registered src/mcp/server.ts:406, src/mcp/tools/mutation-tools.ts:426-428 calls claimStep directly; catalog entry src/mcp/schemas.ts:382)",
+      "cli": "NONE. schemas.ts:382 attaches the claim_step catalog entry to CLI node 'set-supersede' purely for registry bookkeeping (see schemas.ts:133-139 comment: 'A handful of MCP tools have NO dedicated CLI command of their own ... the v3 step/compatibility read+mutation services'). The real CLI command 'set-supersede' (src/cli/commands/mutations.ts:610-630) calls a different, unrelated function setSupersede (src/core/mutation/add-trace.ts:138, writes Supersedes/Superseded-By metadata) -- it does NOT call claimStep. So claim_step is MCP-only.",
+      "notes": "Appends a row to docs/spec/steps/state.md with a two-stage write-skew conflict gate (STEP_DIRECT_CONFLICT / STEP_OVERLAP / STEP_SUPERSEDE_PROTECTED). Does not create the docs/spec/steps/<name>/ directory or any requirement content itself."
+    },
+    {
+      "op": "validate_step",
+      "status": "exists",
+      "core_fn": "src/core/validator/validate-scoped.ts:90 (validateWorkspaceScoped)",
+      "mcp_tool": "validate_step (src/mcp/schemas.ts:202, src/mcp/server.ts:397, registered src/mcp/tools/read-tools.ts:245-247)",
+      "cli": "speckiwi step validate <name> (src/cli/commands/read.ts:896-908, calls validateWorkspaceScoped at line 904)",
+      "notes": "Fully wired on both CLI and MCP surfaces with matching arg shape ({step: string})."
+    },
+    {
+      "op": "step-scoped requirement authoring (add_requirement into a step, or promote/step mechanism)",
+      "status": "core-only / gap",
+      "core_fn": "No dedicated core mutation exists for authoring a NEW requirement block directly inside docs/spec/steps/<name>/. The only step-file writers are: (a) src/core/mutation/claim-step.ts (state.md row only, no requirement content), (b) src/core/mutation/synthesis.ts:245 synthesizeStepSrs (writes docs/spec/steps/<name>/<task>.srs.md as an Intent+Trace+diff merge document, not a formal Requirement Block), and (c) src/core/mutation/add-requirement.ts:324 promoteStepRequirement, which goes the OPPOSITE direction (copies an EXISTING step requirement block into a body scope file, byte-for-byte; it never writes into the step file).",
+      "mcp_tool": "add_requirement (schemas.ts:308) only resolves target files via workspace.index.scopes, which is populated by registerScopes (src/core/mutation/register-scopes.ts) from docs/spec/*.srs.md files that discover.ts (src/core/parser/discover.ts:53) EXPLICITLY EXCLUDES from step files (stepNameFromPosix check). There is no '--step' option on add_requirement in src/cli/commands/mutations.ts:308-333 nor in src/mcp/schemas.ts:308-333.",
+      "cli": "None (add-requirement CLI command has no step-scoped mode; see src/cli/commands/mutations.ts:395-333)",
+      "notes": "GAP: the codebase has no guarded mutation to create a requirement block inside docs/spec/steps/<name>/. A kiwi-step skill would have to author the step .srs.md content itself via direct file writes outside any guarded mutation, then rely on discover.ts/workspace-parser.ts (which does parse step files into workspace.stepRecords) to pick it up for later validate_step / diff_steps / promote_step_requirement use."
+    },
+    {
+      "op": "diff_steps",
+      "status": "missing",
+      "core_fn": "src/core/query/diff-steps.ts:54 (diffSteps) -- classifies each step requirement vs its body counterpart via computeSemanticSha into NEW, UPDATE, CONFLICT-PARTIAL, or CONFLICT-FULL-GUARDED (src/core/query/diff-steps.ts:11,74-92).",
+      "mcp_tool": "NOT REGISTERED. Exhaustive search of src/mcp/schemas.ts, src/mcp/server.ts, src/mcp/tools/read-tools.ts, src/mcp/tools/mutation-tools.ts finds zero occurrences of 'diff_steps' or 'diffSteps'. The only 'diff' entry in schemas.ts is readSpec('diff', 'workflow_diff', 'workflowDiff') at line 165, which is the unrelated plan/worklog workflow-diff tool.",
+      "cli": "NOT REGISTERED. No 'diff-steps' or 'diff steps' command anywhere in src/cli/commands/*.",
+      "notes": "Core function is fully implemented and exported but has zero CLI or MCP surface. This is the clearest 'core-only' gap found."
+    },
+    {
+      "op": "promote_step_requirement",
+      "status": "exists",
+      "core_fn": "src/core/mutation/add-requirement.ts:324 (promoteStepRequirement), guarded by withSrsMutationLock at line 325",
+      "mcp_tool": "promote_step_requirement (schemas.ts:401, server.ts:428, registered src/mcp/tools/mutation-tools.ts:464-466 which imports promoteStepRequirement from add-requirement.js at mutation-tools.ts:8)",
+      "cli": "NONE. schemas.ts:401 comment: 'register-scopes: real CLI mutation; also hosts the v3 promote_step_requirement MCP tool.' The actual CLI command 'register-scopes' (src/cli/commands/mutations.ts, calls registerScopes) is unrelated -- it registers Scope Map documents, not requirement promotion. So promote_step_requirement is MCP-only, same pattern as claim_step.",
+      "notes": "Copies (not moves) the step requirement's markdown block byte-for-byte into the target body scope file (add-requirement.ts:353-357); the source step file is left untouched, so origin/stepName tagging (src/core/mutation/internal.ts:7-21) is used to distinguish the promoted body copy from the still-present step copy of the same id."
+    },
+    {
+      "op": "supersede_requirement",
+      "status": "exists",
+      "core_fn": "src/core/mutation/supersede-requirement.ts:129 (supersedeRequirement)",
+      "mcp_tool": "supersede_requirement (schemas.ts:367, server.ts:417, registered src/mcp/tools/mutation-tools.ts:448-450, imported from supersede-requirement.js at mutation-tools.ts:12)",
+      "cli": "speckiwi supersede <id> ... (mutationSpec('supersede', 'supersede_requirement', 'workspace', 'supersedeRequirement', ...) at schemas.ts:367; CLI import src/cli/commands/mutations.ts:18)",
+      "notes": "Fully wired on both CLI and MCP surfaces, unlike claim_step/promote_step_requirement which are MCP-only."
+    },
+    {
+      "op": "merge-journal / resume mechanism",
+      "status": "core-only / unwired",
+      "core_fn": "src/core/patch/merge-journal.ts -- MultiFileCommit class (commit at line 119, resume at line 182) and recoverMerge (line 239), backed by a durable '.speckiwi-merge-journal.json' file with phases render/stale-check/write-tmp/rename and a terminal rolled-back marker.",
+      "mcp_tool": "NONE. grep across src/ shows merge-journal.ts is referenced ONLY by itself -- no other file in src/core, src/cli, or src/mcp imports MultiFileCommit or recoverMerge. It is dead/unwired code today.",
+      "cli": "NONE.",
+      "notes": "promote_step_requirement (the function that would plausibly need a durable multi-file merge journal) actually uses the ordinary single-file applyPatchPlan path (add-requirement.ts:357-360), not MultiFileCommit. The generic 'workflow_resume_hint' MCP tool / CLI 'workflow resume-hint' (src/core/workflow/read.ts:586) is unrelated -- it resumes kiwi-planner/kiwi-pm plan.json task execution, not an SRS merge. So a kiwi-spec-merge skill has no existing runtime primitive to persist/resume its own per-REQ merge progress; it would need to build its own journal (e.g. a plain JSON file it manages itself, similar to kiwi/pipeline.jsonl) since no CLI/MCP surface exposes the existing merge-journal.ts module."
+    },
+    {
+      "op": "start_vibe_task",
+      "status": "missing",
+      "core_fn": "NONE FOUND. Exhaustive grep across src/ for start_vibe_task, startVibeTask, start-vibe-task, vibe_task, vibeTask returns zero matches outside documentation/analysis files. No function writes docs/spec/steps/<name>/intent.md anywhere in src/ -- intent.md is only ever READ (src/core/mutation/synthesis.ts:265-269, inside synthesizeStepSrs), never created.",
+      "mcp_tool": "NONE REGISTERED. Zero occurrences of start_vibe_task in src/mcp/schemas.ts, src/mcp/server.ts, or src/mcp/tools/*.",
+      "cli": "NONE. The only work-mode CLI surface is 'speckiwi mode [value]' (src/cli/commands/read.ts:724-745), which accepts value in {sdd, vibe, wait} ONLY -- it has no activeTask/task-name argument, so it cannot set the Active Task even though the underlying core function supports it (see notes). It also never writes intent.md.",
+      "notes": "CLOSEST EXISTING PRIMITIVE: src/core/mutation/work-mode.ts:82 setWorkMode(root, {mode, activeTask}) DOES support writing both Mode and Active Task into docs/spec/steps/state.md (work-mode.ts:117-129), including proper ordering control by the caller -- but (1) it is not exposed via MCP at all (readSpec('mode', undefined, 'workMode', ...) at schemas.ts:186 has mcpName=undefined), (2) the CLI 'mode' command never passes activeTask through to setWorkMode (read.ts:742 calls setWorkMode(root, {mode: value}) only), and (3) setWorkMode never writes intent.md or performs task-name auto-derivation or duplicate-suffix disambiguation. IMPORTANT SRS/CODE DISCREPANCY: docs/spec/40.mcp-stdio-interface.srs.md:3338-3366 defines FR-MCP-046 'start_vibe_task MCP tool with intent-first ordering and task-name or auto-derive' with Status=implemented (line 3344), yet all 4 of its Acceptance Criteria checkboxes are unchecked ([ ]) and its Verification Evidence and Trace Links tables are both empty (lines 3368-3376) -- and no corresponding code exists anywhere in src/. The SRS Status field contradicts the actual runtime surface."
+    }
+  ],
+  "per_req_dep_status": {
+    "FR-FLOW-014": {
+      "all_deps_exist": false,
+      "missing": ["step-scoped requirement authoring mutation (no add_requirement-into-step or equivalent exists)"],
+      "notes": "claim_step exists (MCP-only, core claim-step.ts:68) and validate_step exists (MCP+CLI, validate-scoped.ts:90). However the requirement's own text says the skill 'authors requirements under docs/spec/steps/<name>/' and no runtime mutation performs that write -- add_requirement's scope registry (register-scopes.ts + discover.ts) only covers body-scope .srs.md files, never step files. A kiwi-step skill would have to hand-author the step markdown directly (outside any guarded mutation) and rely on the parser picking it up afterward."
+    },
+    "FR-FLOW-015": {
+      "all_deps_exist": false,
+      "missing": ["diff_steps (core fn exists at src/core/query/diff-steps.ts:54 but is not registered in CLI or MCP)", "merge-journal/resume runtime surface (module src/core/patch/merge-journal.ts exists but is unwired/unused, and generic workflow_resume_hint is unrelated to SRS merges)"],
+      "notes": "promote_step_requirement exists (MCP-only, add-requirement.ts:324) and supersede_requirement exists (MCP+CLI, supersede-requirement.ts:129), satisfying the NEW-and-CONFLICT routing legs. diff_steps -- the function that produces the NEW/UPDATE/CONFLICT classification the skill must route on -- has a real core implementation but zero CLI/MCP surface, so the skill cannot call it today without new plumbing. No batch/N-REQ 'finalize' tool was found anywhere in schemas.ts (grep for finalize|bulk_|batch_ returned nothing), consistent with AC-1's per-REQ-only requirement being structurally satisfiable once diff_steps is exposed."
+    },
+    "FR-FLOW-018": {
+      "all_deps_exist": false,
+      "missing": ["start_vibe_task"],
+      "notes": "start_vibe_task does not exist in any form (no core function, no MCP tool, no CLI command) despite SRS requirement FR-MCP-046 in docs/spec/40.mcp-stdio-interface.srs.md claiming Status=implemented with unchecked ACs and empty evidence/trace tables. The closest primitive, setWorkMode (work-mode.ts:82), supports Mode+ActiveTask writes but is CLI-only (not MCP-exposed), the CLI 'mode' command does not surface an activeTask argument, and nothing anywhere writes intent.md (only synthesis.ts reads it). Task-name trace-comment extraction for later synthesis attribution does exist as a private helper, extractStepComments (synthesis.ts:218), consumed internally by synthesizeStepSrs -- this is a real, working mechanism for the 'later synthesis attribution' half of the requirement, but it is not itself a separately invokable runtime op."
+    }
+  },
+  "reference_skills": {
+    "existing_kiwi_skills": [
+      "kiwi-coder",
+      "kiwi-commit-auto-pr",
+      "kiwi-commit-auto-push",
+      "kiwi-hot-fix",
+      "kiwi-pipeline",
+      "kiwi-planner",
+      "kiwi-pm",
+      "kiwi-review-fix-loop",
+      "kiwi-srs",
+      "kiwi-srs-feasibility",
+      "kiwi-srs-from-code",
+      "kiwi-srs-research",
+      "kiwi-srs-sync"
+    ],
+    "skill_dirs": [
+      "skills/claude/<skill-name>/SKILL.md",
+      "skills/codex/<skill-name>/SKILL.md",
+      "skills/etc/<skill-name>/SKILL.md",
+      ".agents/skills/<skill-name>/SKILL.md"
+    ],
+    "shared_kiwi_dir": "skills/claude/_shared/kiwi/, skills/codex/_shared/kiwi/, skills/etc/_shared/kiwi/, .agents/skills/_shared/kiwi/ -- each contains auto-option.md, mini-option.md, pipeline-event.md (identical set of 13 kiwi-* skills mirrored across all four locations; every skill directory holds exactly one SKILL.md file)"
+  },
+  "trace_validation": [
+    {
+      "req_id": "FR-FLOW-014",
+      "trace_paths": [],
+      "all_paths_exist": true,
+      "external_paths_detected": [],
+      "notes": "docs/spec/60.workflow-release.srs.md:1488-1491 Trace Links table has header only, zero rows."
+    },
+    {
+      "req_id": "FR-FLOW-015",
+      "trace_paths": [],
+      "all_paths_exist": true,
+      "external_paths_detected": [],
+      "notes": "docs/spec/60.workflow-release.srs.md:1543-1546 Trace Links table has header only, zero rows."
+    },
+    {
+      "req_id": "FR-FLOW-018",
+      "trace_paths": [],
+      "all_paths_exist": true,
+      "external_paths_detected": [],
+      "notes": "docs/spec/60.workflow-release.srs.md:1705-1708 Trace Links table has header only, zero rows."
+    }
+  ],
+  "code_metrics": {
+    "note": "All cited evidence paths are inside the working tree C:\\Work\\git\\_Snoworca\\speckiwi (relative paths shown, e.g. src/core/..., docs/spec/...). No external (outside-cwd) paths were referenced by any of the three requirements or by any of the runtime ops investigated."
+  }
+}

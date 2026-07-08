@@ -1,0 +1,346 @@
+{
+  "schema_version": "1.1.0",
+  "plan_contract": "1.2.0",
+  "run_id": "2026-07-08.speckiwi.v2301-kiwi-step",
+  "target": "v2.3.0.1",
+  "plan_version": "0.1.0",
+  "generated_at": "2026-07-08T00:00:00Z",
+  "tool_versions": {
+    "speckiwi": "2.3.0",
+    "kiwi_planner": "0.6.0",
+    "validator": "0.6.0"
+  },
+  "tdd_policy": "relaxed",
+  "md_path": "docs/plans/2026-07-08.speckiwi.v2301-kiwi-step.plan.md",
+  "md_sha256": "3d262384a5a81054ebd9f12a6403fdb7c3a706c7eec1b8a4bb5893fe173c2e0a",
+  "phases": [
+    {
+      "id": "PH-001",
+      "title": "kiwi-step skill (TDD red -> green)",
+      "goal": "Deliver the kiwi-step authoring skill covering FR-FLOW-014 AC-1/2/3",
+      "depends_on": [],
+      "task_ids": [
+        "T-PH001-01",
+        "T-PH001-02"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-PH001-01",
+      "phase_id": "PH-001",
+      "title": "Write failing tests for kiwi-step skill (doctor registry entry + content assertions)",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-014"
+      ],
+      "files": [
+        {
+          "path": "src/doctor/package-doctor.ts",
+          "line_range": "58-72"
+        },
+        {
+          "path": "test/skills/kiwi-step-content.test.ts"
+        }
+      ],
+      "action": "Append 'kiwi-step' to EXPECTED_KIWI_SKILLS in src/doctor/package-doctor.ts and create test/skills/kiwi-step-content.test.ts. The content test MUST parametrize over ALL THREE variants (skills/claude, skills/codex, skills/etc) so mirror drift is caught, and for each assert: (AC-1) the skill invokes claim_step BEFORE authoring using an explicit ordering cue (e.g. text matching /claim_step[\\s\\S]{0,200}before[\\s\\S]{0,80}author/i or a numbered step ordering) AND documents halting when MCP is unavailable (claim_step is MCP-only); (AC-2) authoring is confined to docs/spec/steps/<name>/ AND an explicit prohibition on writing body-scope SRS files (e.g. text matching /never[\\s\\S]{0,60}body-scope/i or 'do not write into docs/spec/*.srs.md'); (AC-3) validate_step is run in the workflow. Run the two test files and confirm RED (they fail because the SKILL.md files do not yet exist).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/doctor/package-doctor.test.ts test/skills/kiwi-step-content.test.ts",
+          "expected_exit": 1
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/doctor/package-doctor.test.ts test/skills/kiwi-step-content.test.ts",
+        "windows": "npx vitest run test/doctor/package-doctor.test.ts test/skills/kiwi-step-content.test.ts"
+      },
+      "dod": [
+        "kiwi-step appended to EXPECTED_KIWI_SKILLS (src/doctor/package-doctor.ts)",
+        "test/skills/kiwi-step-content.test.ts created, parametrized over all 3 variants (claude/codex/etc)",
+        "AC-1 assertion checks claim_step-before-authoring ORDERING plus the MCP-unavailable halt clause",
+        "AC-2 assertion checks docs/spec/steps confinement AND an explicit body-scope-write prohibition",
+        "AC-3 assertion checks validate_step is run",
+        "both test files run RED (failing) because SKILL.md files are absent"
+      ],
+      "rollback": "git checkout -- src/doctor/package-doctor.ts && rm -f test/skills/kiwi-step-content.test.ts",
+      "estimated_effort": "S",
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC1-01",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "claim_step-before-authoring ordering + MCP-unavailable halt (all 3 variants)",
+            "kind": "unit",
+            "expected_failure_signature": "ENOENT|claim_step.*before|MCP"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC2-01",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "steps-dir confinement + explicit body-scope-write prohibition (all 3 variants)",
+            "kind": "unit",
+            "expected_failure_signature": "ENOENT|steps/|never.*body-scope"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC3-01",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "validate_step run in workflow (all 3 variants)",
+            "kind": "unit",
+            "expected_failure_signature": "ENOENT|validate_step"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      },
+      "trace_links": [
+        {
+          "link_id": "TL-01",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-014"
+          },
+          "relation": "depends_on"
+        }
+      ]
+    },
+    {
+      "id": "T-PH001-02",
+      "phase_id": "PH-001",
+      "title": "Author kiwi-step SKILL.md across claude/codex/etc to turn tests green",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-014"
+      ],
+      "files": [
+        {
+          "path": "skills/claude/kiwi-step/SKILL.md"
+        },
+        {
+          "path": "skills/codex/kiwi-step/SKILL.md"
+        },
+        {
+          "path": "skills/etc/kiwi-step/SKILL.md"
+        }
+      ],
+      "action": "Author the canonical skills/claude/kiwi-step/SKILL.md (frontmatter name=kiwi-step + description, no changelog section) instructing the agent to: claim the target step via claim_step (MCP-only; explicitly halt if MCP unavailable) BEFORE authoring; author requirements ONLY under docs/spec/steps/<name>/<NN>.<slug>.srs.md with an explicit prohibition on writing body-scope SRS files; run validate_step to close the workflow. Add the Codex-neutral (skills/codex) and opencode/etc (skills/etc) mirrors carrying EQUIVALENT AC-1/2/3 content (the content test parametrizes over all three, so wording must satisfy the same assertions). Run package-doctor + content tests to confirm GREEN and run the full suite for no regressions.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/doctor/package-doctor.test.ts test/skills/kiwi-step-content.test.ts",
+          "expected_exit": 0
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test",
+        "windows": "npm test"
+      },
+      "dod": [
+        "skills/claude|codex|etc/kiwi-step/SKILL.md all exist and each satisfies the content assertions (AC-1/2/3 + MCP-halt + body-scope prohibition)",
+        "frontmatter: name=kiwi-step + description present, no changelog section (asserted by content test)",
+        "body sequences claim_step (halt if no MCP) -> author under docs/spec/steps/<name>/ (never body-scope) -> validate_step",
+        "package-doctor and content tests GREEN",
+        "full npm test shows no regressions"
+      ],
+      "rollback": "rm -rf skills/claude/kiwi-step skills/codex/kiwi-step skills/etc/kiwi-step",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH001-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC1-02",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "kiwi-step SKILL.md requires claim_step before authoring",
+            "kind": "unit"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC2-02",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "kiwi-step SKILL.md confines authoring to docs/spec/steps",
+            "kind": "unit"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-014-AC3-02",
+            "req_id": "FR-FLOW-014",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-step-content.test.ts",
+            "test_symbol": "kiwi-step SKILL.md runs validate_step",
+            "kind": "unit"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      },
+      "trace_links": [
+        {
+          "link_id": "TL-02",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-014"
+          },
+          "relation": "implements"
+        }
+      ]
+    }
+  ],
+  "coverage": [
+    {
+      "req_id": "FR-FLOW-014",
+      "stability": "evolving",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH001-01",
+        "T-PH001-02"
+      ],
+      "ac_test_map": [
+        {
+          "ac_id": "AC-1",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-014-AC1-01",
+            "TC-REQ-FR-FLOW-014-AC1-02"
+          ]
+        },
+        {
+          "ac_id": "AC-2",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-014-AC2-01",
+            "TC-REQ-FR-FLOW-014-AC2-02"
+          ]
+        },
+        {
+          "ac_id": "AC-3",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-014-AC3-01",
+            "TC-REQ-FR-FLOW-014-AC3-02"
+          ]
+        }
+      ]
+    }
+  ],
+  "orphans": [],
+  "unreferenced_reqs": [],
+  "excluded_reqs": [],
+  "deferred_ac": [],
+  "risks": [
+    {
+      "id": "R-01",
+      "severity": "low",
+      "description": "A SKILL.md is natural-language agent instruction; AC-1/2/3 behavior cannot be executed in a unit test. Mitigated by content-assertion + packaging tests and by the already-tested underlying ops (claim_step, validate_step).",
+      "mitigation": "Content-assertion test on canonical SKILL.md + package-doctor registry test; underlying ops unit-tested.",
+      "affected_task_ids": [
+        "T-PH001-01",
+        "T-PH001-02"
+      ]
+    }
+  ],
+  "open_questions": [],
+  "external_module_impact": [],
+  "tdd_decisions": [],
+  "coder_handoff_readiness": [
+    {
+      "phase_id": "PH-001",
+      "ready": true,
+      "blockers": []
+    }
+  ],
+  "mcp_call_log": [
+    {
+      "seq": 1,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-014"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "3227f15b7db4de4c2855c41447a505021f98bd8c",
+      "response_hash": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 2,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-014"
+        },
+        "relation": "implements"
+      },
+      "args_hash": "c1dab16d3c0df37441e0c5e1ba669de4c2703f45",
+      "response_hash": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 3,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-014",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-08.speckiwi.v2301-kiwi-step.plan.md#T-PH001-02"
+      },
+      "args_hash": "a60a83ab06954aefe563f3811063bd035a86557c",
+      "response_hash": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "ok": true
+    }
+  ]
+}

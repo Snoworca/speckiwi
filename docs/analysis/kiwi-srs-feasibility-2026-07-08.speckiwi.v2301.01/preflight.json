@@ -1,0 +1,20 @@
+{
+  "run_id": "2026-07-08.speckiwi.v2301.01",
+  "target": "v2.3.0.1",
+  "mode": "normal",
+  "auto": true,
+  "mcp": true,
+  "cli": true,
+  "halted": false,
+  "tools_detected": {
+    "get_active_target": true,
+    "list_requirements": true,
+    "get_requirement": true,
+    "update_stability": true,
+    "validate_spec": true,
+    "summarize_target": true,
+    "tag_mutation": false
+  },
+  "scope_note": "User directive '구현 안 된 srs 에 대하여' scopes evaluation to the 3 unimplemented (status=planned) requirements FR-FLOW-014, FR-FLOW-015, FR-FLOW-018. N=3 (<7) => no prescreen; direct Opus senior judgement.",
+  "auto_gate_policy": "auto-option.md SSOT absent from installed skill; project convention applies: user-decision gates auto-decided by 3-member independent committee with bias-isolated inputs (precedent: 2026-06-29 OPS-FLOW-001 stable promotion). NEEDS_USER only if committee cannot converge."
+}

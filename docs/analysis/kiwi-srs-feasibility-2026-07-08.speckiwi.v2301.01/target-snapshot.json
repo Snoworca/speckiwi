@@ -1,0 +1,36 @@
+{
+  "target": "v2.3.0.1",
+  "target_total": 90,
+  "countsByStatus": { "implemented": 87, "planned": 3 },
+  "countsByStability": { "evolving": 90 },
+  "evaluation_scope": "status=planned (unimplemented)",
+  "filtered_reqs": ["FR-FLOW-014", "FR-FLOW-015", "FR-FLOW-018"],
+  "filtered_count": 3,
+  "empty_reason": null,
+  "reqs": [
+    {
+      "id": "FR-FLOW-014",
+      "title": "kiwi-step lightweight step-local authoring skill",
+      "scope": "FLOW", "status": "planned", "stability": "evolving", "priority": "high", "risk": "medium",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "runtime_deps": ["claim_step", "validate_step"],
+      "ac_count": 3, "trace_count": 0, "has_verification_evidence": false
+    },
+    {
+      "id": "FR-FLOW-015",
+      "title": "kiwi-spec-merge per-REQ sequential merge orchestrator skill",
+      "scope": "FLOW", "status": "planned", "stability": "evolving", "priority": "high", "risk": "medium",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "runtime_deps": ["diff_steps", "promote_step_requirement", "supersede_requirement"],
+      "ac_count": 5, "trace_count": 0, "has_verification_evidence": false
+    },
+    {
+      "id": "FR-FLOW-018",
+      "title": "kiwi-vibe skill for vibe entry",
+      "scope": "FLOW", "status": "planned", "stability": "evolving", "priority": "high", "risk": "medium",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "runtime_deps": ["start_vibe_task"],
+      "ac_count": 3, "trace_count": 0, "has_verification_evidence": false
+    }
+  ]
+}

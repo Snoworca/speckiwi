@@ -1,0 +1,14 @@
+{
+  "run_id": "2026-07-08.speckiwi.self-kiwi-step",
+  "trigger": "--close-reqs",
+  "scope_mode": "self",
+  "candidates_total": 1,
+  "verified_transitioned": 1,
+  "transitioned": [
+    { "req_id": "FR-FLOW-014", "from_status": "implemented", "to_status": "verified", "stability": "evolving", "acs_checked": ["AC-1", "AC-2", "AC-3"], "evidence": ["VE-2 test content", "VE-3 test packaging", "VE-4 review-fix-loop pass"] }
+  ],
+  "skipped": [],
+  "failed": [],
+  "evidence_refs": ["test/skills/kiwi-step-content.test.ts", "test/doctor/package-doctor.test.ts"],
+  "note": "Content-level verification (SKILL.md encodes AC-1/2/3, confirmed by parametrized content test over 3 variants + independent prickly review). Underlying runtime ops (claim_step, validate_step) unit-tested separately. 6 pre-existing unrelated test failures at branch HEAD do NOT touch FR-FLOW-014 and are tracked as separate work."
+}
