@@ -1,0 +1,3738 @@
+{
+  "schema_version": "1.1.0",
+  "run_id": "2026-07-10.speckiwi.v2301-flow",
+  "target": "v2.3.0.1",
+  "plan_version": "1.0.0",
+  "plan_contract": "1.2.0",
+  "tdd_policy": "relaxed",
+  "generated_at": "2026-07-10T00:00:00Z",
+  "tool_versions": {
+    "speckiwi": "2.3.0",
+    "kiwi_planner": "0.2.0",
+    "validator": "0.6.0"
+  },
+  "md_path": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md",
+  "md_sha256": "a2e7306ccf6ebe328a1b27dbb4a82c57967cea48ab50c0ec056ff6339ac9ed1a",
+  "phases": [
+    {
+      "id": "PH-001",
+      "title": "Foundations: single-model verification + --auto committee",
+      "goal": "Remove --mini and adopt a single current-session-model verification subagent, and rebuild the --auto decision committee ladder.",
+      "depends_on": [],
+      "task_ids": [
+        "T-PH001-01",
+        "T-PH001-02",
+        "T-PH001-03",
+        "T-PH001-04"
+      ]
+    },
+    {
+      "id": "PH-002",
+      "title": "kiwi-srs research loop + kiwi-planner side-branches",
+      "goal": "Add the kiwi-srs research verify/improve A/B loop and route kiwi-planner through workflow_* tools with a coverage loop.",
+      "depends_on": [
+        "PH-001"
+      ],
+      "task_ids": [
+        "T-PH002-01",
+        "T-PH002-02",
+        "T-PH002-03",
+        "T-PH002-04",
+        "T-PH002-05",
+        "T-PH002-06"
+      ]
+    },
+    {
+      "id": "PH-003",
+      "title": "kiwi-srs ambiguity/qna + kiwi-pipeline core",
+      "goal": "Add kiwi-srs unbounded ambiguity qna and the kiwi-pipeline end-to-end orchestration core.",
+      "depends_on": [
+        "PH-002"
+      ],
+      "task_ids": [
+        "T-PH003-01",
+        "T-PH003-02",
+        "T-PH003-03",
+        "T-PH003-04"
+      ]
+    },
+    {
+      "id": "PH-004",
+      "title": "kiwi-pipeline extensions",
+      "goal": "Add kiwi-pipeline worktree isolation and GitHub-issue entry modes.",
+      "depends_on": [
+        "PH-003"
+      ],
+      "task_ids": [
+        "T-PH004-01",
+        "T-PH004-02",
+        "T-PH004-03",
+        "T-PH004-04"
+      ]
+    },
+    {
+      "id": "PH-005",
+      "title": "kiwi-wave-master (net-new)",
+      "goal": "Author the net-new kiwi-wave-master multi-wave orchestrator and its epic-issue entry mode.",
+      "depends_on": [
+        "PH-003"
+      ],
+      "task_ids": [
+        "T-PH005-01",
+        "T-PH005-02",
+        "T-PH005-03",
+        "T-PH005-04"
+      ]
+    },
+    {
+      "id": "PH-006",
+      "title": "Installed mirror sync + repo-wide consistency",
+      "goal": "Regenerate the git-tracked .agents/skills codex mirror from the edited skills/codex source so no skill edit (PH-001..PH-005) drifts the install-skill mirror drift test.",
+      "depends_on": [
+        "PH-001",
+        "PH-002",
+        "PH-003",
+        "PH-004",
+        "PH-005"
+      ],
+      "task_ids": [
+        "T-PH006-01"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-PH001-01",
+      "phase_id": "PH-001",
+      "title": "Author failing --mini removal content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-022"
+      ],
+      "files": [
+        "test/skills/kiwi-mini-removal-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-mini-removal-content.test.ts: assert `--mini`/`mini-option` are ABSENT REPO-WIDE — across every skills/**/SKILL.md, every skills/**/_shared/kiwi/** SSOT doc, every skills/**/references/**.md, AND every .agents/skills/** file (the git-tracked installed codex mirror) — while EXPLICITLY excluding ONLY skills/etc/MIGRATION_PLAN.md (a historical migration doc, not active skill instruction); assert ALL THREE _shared/kiwi/mini-option.md copies are gone (skills/claude, skills/codex, AND .agents/skills/_shared/kiwi/mini-option.md — the installed mirror's third copy, 33 --mini refs today); the `--mini`/`mini-option` ABSENCE assertion (AC-1) stays REPO-WIDE including skills/etc (whose only --mini reference lives in the excluded MIGRATION_PLAN.md), but the single-current-session-model (AC-2) + `--model`/user-named-override (AC-3) PRESENCE assertions are SCOPED to the claude and codex variants only — they carry the Opus+Sonnet dual-model evaluator panels being collapsed, whereas skills/etc has no Opus/Sonnet/--model wording and T-PH001-02 edits zero skills/etc files, so a repo-wide presence assertion would be unsatisfiable for etc. Uses raw-text presence/absence + indexOf ordering assertions (kiwi-step precedent), not skill execution.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-022 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-mini-removal-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-mini-removal-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-mini-removal-content.test.ts"
+      },
+      "dod": "New content test file exists and fails (red) because --mini refs are still present repo-wide (skills/** source AND the .agents/skills/** mirror) and single-model wording is absent; all three mini-option.md copies still exist. Scope excludes ONLY skills/etc/MIGRATION_PLAN.md (historical doc).",
+      "rollback": "Delete test/skills/kiwi-mini-removal-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH001-01-FR-FLOW-022",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-022"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC1-01",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-022 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC2-01",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-022 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC3-01",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-022 AC-3"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH001-02",
+      "phase_id": "PH-001",
+      "title": "Remove --mini and shared mini-option SSOT across kiwi skills",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-022"
+      ],
+      "files": [
+        "skills/claude/_shared/kiwi/auto-option.md",
+        "skills/claude/_shared/kiwi/mini-option.md",
+        "skills/claude/kiwi-coder/SKILL.md",
+        "skills/claude/kiwi-commit-auto-pr/SKILL.md",
+        "skills/claude/kiwi-commit-auto-push/SKILL.md",
+        "skills/claude/kiwi-hot-fix/SKILL.md",
+        "skills/claude/kiwi-pipeline/SKILL.md",
+        "skills/claude/kiwi-planner/SKILL.md",
+        "skills/claude/kiwi-pm/SKILL.md",
+        "skills/claude/kiwi-review-fix-loop/SKILL.md",
+        "skills/claude/kiwi-srs-feasibility/SKILL.md",
+        "skills/claude/kiwi-srs-from-code/SKILL.md",
+        "skills/claude/kiwi-srs-research/SKILL.md",
+        "skills/claude/kiwi-srs-sync/SKILL.md",
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/_shared/kiwi/auto-option.md",
+        "skills/codex/_shared/kiwi/mini-option.md",
+        "skills/codex/kiwi-coder/SKILL.md",
+        "skills/codex/kiwi-coder/references/extended-workflow.md",
+        "skills/codex/kiwi-commit-auto-pr/SKILL.md",
+        "skills/codex/kiwi-commit-auto-push/references/extended-workflow.md",
+        "skills/codex/kiwi-hot-fix/SKILL.md",
+        "skills/codex/kiwi-hot-fix/references/extended-workflow.md",
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-planner/SKILL.md",
+        "skills/codex/kiwi-pm/SKILL.md",
+        "skills/codex/kiwi-pm/references/extended-workflow.md",
+        "skills/codex/kiwi-review-fix-loop/SKILL.md",
+        "skills/codex/kiwi-srs-feasibility/SKILL.md",
+        "skills/codex/kiwi-srs-from-code/SKILL.md",
+        "skills/codex/kiwi-srs-research/SKILL.md",
+        "skills/codex/kiwi-srs-sync/SKILL.md",
+        "skills/codex/kiwi-srs/SKILL.md",
+        ".agents/skills/",
+        ".agents/skills/_shared/kiwi/mini-option.md"
+      ],
+      "action": "Delete the two source mini-option.md (skills/{claude,codex}/_shared/kiwi/mini-option.md) and the installed mirror's third copy (.agents/skills/_shared/kiwi/mini-option.md), and scrub every `--mini` reference REPO-WIDE — 376 literal occurrences across 52 files raw (skills/** 260 in 34 files; .agents/skills/** 116 in 18 mirror files), of which 2 (skills/etc/MIGRATION_PLAN.md, 1 file) are EXCLUDED (historical migration doc). In-scope: 374 occurrences → 97 removed by the 3 whole-file mini-option.md deletions (skills/claude 31 + skills/codex 33 + .agents/skills 33) and 277 by in-place scrubs (skills/** 194 across 31 files + .agents/skills/** 83 across 17 mirror files) — plus the deprecated `--squirrel` alias where it co-occurs. Hand-edit the 31 skills/** source scrub-files; the .agents/skills/** mirror (deletion + scrub) is cleared by re-running the install-skill mirror generator against the edited codex source so the repo-wide absence test (T-PH001-01) passes here — PH-006/T-PH006-01 is the canonical byte-identical re-sync afterward. Replace the Opus+Sonnet dual-model evaluator panels with a single verification subagent inheriting the current session model, with `--model <name>` (or a user-named model) override wording.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-mini-removal-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-022 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-mini-removal-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-mini-removal-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-mini-removal-content.test.ts passes (green); a repo-wide grep for `--mini` over skills/**/SKILL.md + skills/**/_shared/kiwi/** + skills/**/references/**.md + .agents/skills/** (excluding ONLY skills/etc/MIGRATION_PLAN.md) returns zero; all three mini-option.md copies removed.",
+      "rollback": "git checkout the SKILL.md files and restore the two mini-option.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH001-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH001-02-FR-FLOW-022",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-022"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC1-02",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC2-02",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-022-AC3-02",
+            "req_id": "FR-FLOW-022",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-mini-removal-content.test.ts",
+            "test_symbol": "FR-FLOW-022 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH001-03",
+      "phase_id": "PH-001",
+      "title": "Author failing --auto committee ladder content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-025"
+      ],
+      "files": [
+        "test/skills/kiwi-auto-committee-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-auto-committee-content.test.ts: assert the 3->5->7 committee ladder, non-unanimity escalation, plurality decision with lead-member (#1) deterministic tie-break, and critical/business-decision-still-halt gating in each variant _shared/kiwi/auto-option.md (claude KO, codex/etc EN). Raw-text token + ordering assertions.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-025 AC-1/AC-2/AC-3/AC-4.",
+            "`npm test -- test/skills/kiwi-auto-committee-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-auto-committee-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-auto-committee-content.test.ts"
+      },
+      "dod": "New test fails (red) because auto-option.md still encodes the prior block-instead-of-ask semantics.",
+      "rollback": "Delete test/skills/kiwi-auto-committee-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH001-03-FR-FLOW-025",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-03"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-025"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC1-01",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-025 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC2-01",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-025 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC3-01",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-025 AC-3"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC4-01",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 red :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-025 AC-4"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH001-04",
+      "phase_id": "PH-001",
+      "title": "Rewrite auto-option committee ladder and tie-break",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-025"
+      ],
+      "files": [
+        "skills/claude/_shared/kiwi/auto-option.md",
+        "skills/codex/_shared/kiwi/auto-option.md",
+        "skills/etc/_shared/kiwi/auto-option.md"
+      ],
+      "action": "Rewrite auto-option.md topology and merge rules in all three variants to a research-performing decision committee: 3 members (--auto) / 5 (--max), non-unanimous 3 escalates to 5, non-unanimous 5 decides by plurality with lead committee member #1 as the deterministic tie-break, and under --max 5 escalates to 7 plurality; critical gates and business decisions still halt.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-auto-committee-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-025 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-auto-committee-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-auto-committee-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-auto-committee-content.test.ts passes (green).",
+      "rollback": "git checkout the three auto-option.md files.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH001-03"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH001-04-FR-FLOW-025",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-04"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-025"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC1-02",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC2-02",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC3-02",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-025-AC4-02",
+            "req_id": "FR-FLOW-025",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-auto-committee-content.test.ts",
+            "test_symbol": "FR-FLOW-025 green :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-01",
+      "phase_id": "PH-002",
+      "title": "Author failing kiwi-srs research verify/improve loop tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-023"
+      ],
+      "files": [
+        "test/skills/kiwi-srs-research-loop-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-srs-research-loop-content.test.ts: (AC-1) assert kiwi-srs ACCEPTS one or more research documents as an explicit argument OR resolves them from a prompt reference (net-new — kiwi-srs has zero research-document intake today) before entering the loop; assert Process A (verification subagent compares research docs vs authored SRS: missing/incorrect reqs + implementability + existing-feature-break flag, writes improvements doc, terminates when clean) and Process B (separate subagent applies improvements, returns control) A/B loop tokens; (AC-4) assert that under --max Process A uses 3 verification subagents on the single-document baseline (which AC-5 then generalizes to document-count × 3 for multiple documents); (AC-5) assert --max spawns (document count × 3) verification subagents for multiple documents while the non-max path spawns them per-document sequentially; plus the divergence cap (5 normal / 8 --max) in kiwi-srs (claude SKILL.md; codex/etc references/extended-workflow.md).",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-023 AC-1/AC-2/AC-3/AC-4/AC-5.",
+            "`npm test -- test/skills/kiwi-srs-research-loop-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts"
+      },
+      "dod": "New test fails (red).",
+      "rollback": "Delete test/skills/kiwi-srs-research-loop-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-01-FR-FLOW-023",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-023"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC1-01",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-srs to encode FR-FLOW-023 AC-1 — accepting one or more research documents as an explicit argument OR resolving them from a prompt reference before the A/B loop (net-new intake)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC2-01",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-023 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC3-01",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-023 AC-3"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC4-01",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 red :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-srs to encode FR-FLOW-023 AC-4 — under --max Process A uses 3 verification subagents on the single-document baseline (AC-5 generalizes to document-count × 3 for multiple documents)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC5-01",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 red :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-srs to encode FR-FLOW-023 AC-5 — --max spawns (document count × 3) verification subagents for multiple documents while the non-max path processes documents per-document sequentially"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-02",
+      "phase_id": "PH-002",
+      "title": "Author kiwi-srs A/B research verify/improve loop",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-023"
+      ],
+      "files": [
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/kiwi-srs/references/extended-workflow.md",
+        "skills/etc/kiwi-srs/references/extended-workflow.md",
+        "skills/claude/_shared/kiwi/feasibility-policy-schema-v1.md"
+      ],
+      "action": "Author the A/B verify/improve loop as a new Phase inserted before the closing section of kiwi-srs (claude SKILL.md ~537; codex/etc extended-workflow.md ~135) and the §1.2 option table; add (AC-1) a research-document intake — kiwi-srs accepts one or more research documents as an explicit argument or resolves them from a prompt reference (net-new content) and feeds them into Process A — plus (AC-4) the single-document --max baseline in which Process A runs 3 verification subagents (AC-5 generalizes this to document-count × 3), and (AC-5) the --max fan-out that spawns (document count × 3) verification subagents for multiple documents while the non-max path processes documents per-document sequentially; seed the missing skills/claude/_shared/kiwi/feasibility-policy-schema-v1.md. Feasibility reuse is treated as an INLINE heuristic (no new dual-mode interface) per OQ-023-feasibility-reuse.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-023 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-srs-research-loop-content.test.ts passes (green).",
+      "rollback": "git checkout kiwi-srs files and remove the seeded feasibility schema.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH002-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-02-FR-FLOW-023",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-023"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC1-02",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC2-02",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC3-02",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC4-02",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 green :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-023-AC5-02",
+            "req_id": "FR-FLOW-023",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-023 green :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-03",
+      "phase_id": "PH-002",
+      "title": "Author failing kiwi-planner workflow-tools content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-031"
+      ],
+      "files": [
+        "test/skills/kiwi-planner-workflow-tools-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-planner-workflow-tools-content.test.ts: (AC-1) assert the 9 target workflow_* tools (workflow_plan_status/workflow_plan_task/workflow_next_plan_task read; workflow_doctor/workflow_schema_check/workflow_diff validate; workflow_task_check/workflow_task_uncheck/workflow_checklist_set mutate) are named by operation category in all three kiwi-planner SKILL.md; ALSO assert the install-skill.test.ts token contract is PRESERVED in the codex + .agents/skills kiwi-planner mirror (the target-9 routing is APPENDED to, not a replacement of, the existing 'Official Workflow Tool Policy' section) — i.e. the section still contains get_next_work_order, workflow_pipeline_emit, the 'degraded mode'/'capturing tool diagnostics'/'affected artifact paths'/'active target'/'follow-up requirement or candidate ID' wording, still does NOT contain includeContent, and still keeps workflow_pipeline_emit before ./kiwi/pipeline.jsonl (mirrors test/core/skills/install-skill.test.ts 'keeps scoped Kiwi skills on official workflow tools'); (AC-3) assert a degraded raw-file fallback statement in each SKILL.md AND a coverage-preservation grep over the three validator.mjs copies (skills/claude/kiwi-planner/validator.mjs, skills/codex/kiwi-planner/scripts/validator.mjs, skills/etc/kiwi-planner/scripts/validator.mjs) that counts the makeCheck rule IDs and requires all 28 makeCheck rule IDs (C00b, C01-C25, R01, R04) to still be present (count not decreased; SRS AC-3 formally scopes to C01-C25). Direction of red: the validator.mjs grep passes from the START (validator.mjs is unmodified in this plan), so it is an always-green preservation guard, NOT the red driver — the AC-3 red comes from the ABSENT workflow-tool-policy + degraded-fallback wording in the claude & etc kiwi-planner SKILL.md (0 workflow_* refs today).",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-031 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts` shows the new assertions failing (red) before implementation — the red driver is the absent workflow-tool-policy + degraded-fallback wording in the claude & etc kiwi-planner SKILL.md.",
+            "AC-3 preserved-coverage assertion greps the 3 validator.mjs copies and requires all 28 makeCheck rule IDs (C00b, C01-C25, R01, R04; count not decreased) — an always-green preservation guard (validator.mjs unmodified), not the red driver."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts"
+      },
+      "dod": "New test fails (red) because the claude & etc kiwi-planner SKILL.md lack the workflow-tool-policy + degraded-fallback wording (0 workflow_* refs today). The AC-3 validator.mjs coverage-preservation grep — requiring all 28 makeCheck rule IDs (C00b, C01-C25, R01, R04; count not decreased) — passes from the start (validator.mjs is unmodified) and is a preservation guard, not the red driver.",
+      "rollback": "Delete test/skills/kiwi-planner-workflow-tools-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-03-FR-FLOW-031",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-03"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-031"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC1-01",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected all three kiwi-planner SKILL.md to name the target-9 workflow_* tools by operation category, and the codex + .agents/skills kiwi-planner 'Official Workflow Tool Policy' section to PRESERVE the install-skill.test.ts token contract (get_next_work_order, workflow_pipeline_emit, degraded-mode wording, no includeContent, workflow_pipeline_emit before ./kiwi/pipeline.jsonl) after appending the target-9 routing"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC2-01",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-031 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC3-01",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected claude & etc kiwi-planner SKILL.md to contain the workflow-tool-policy + degraded-fallback wording (0 workflow_* refs today) — the validator.mjs coverage-preservation grep for the 28 makeCheck rule IDs (C00b, C01-C25, R01, R04) is a separate always-green assertion, not the red driver"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-04",
+      "phase_id": "PH-002",
+      "title": "Route kiwi-planner through workflow_* MCP tools",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-031"
+      ],
+      "files": [
+        "skills/claude/kiwi-planner/SKILL.md",
+        "skills/codex/kiwi-planner/SKILL.md",
+        "skills/etc/kiwi-planner/SKILL.md",
+        "skills/claude/kiwi-planner/validator.mjs",
+        "skills/codex/kiwi-planner/scripts/validator.mjs",
+        "skills/etc/kiwi-planner/scripts/validator.mjs"
+      ],
+      "action": "For claude and etc kiwi-planner SKILL.md (net-new, 0 existing workflow_* refs), ADD an 'Official Workflow Tool Policy' section routing read/validate/mutate through the workflow_* family and marking §8 validator.mjs as superseded-but-coverage-preserved. For codex kiwi-planner SKILL.md the 'Official Workflow Tool Policy' section ALREADY EXISTS and is hard-asserted by test/core/skills/install-skill.test.ts ('keeps scoped Kiwi skills on official workflow tools', over BOTH skills/codex and the .agents/skills mirror); the edit APPENDS the target-9 operation-category routing to that existing section as a SUPERSET (NOT a replacement) and MUST PRESERVE the install-skill token contract — get_next_work_order, workflow_pipeline_emit, the 'degraded mode'/'capturing tool diagnostics'/'affected artifact paths'/'active target'/'follow-up requirement or candidate ID' wording, the ABSENCE of includeContent, and workflow_pipeline_emit appearing before ./kiwi/pipeline.jsonl. codex already references a DIFFERENT 9-tool superset (workflow_workspace_info/workflow_artifacts_list/workflow_plan_status/workflow_next_plan_task/workflow_doctor/workflow_schema_check/workflow_pipeline_emit/workflow_worklog_emit/workflow_repair_record) of which only 4 of the target-9 (workflow_plan_status, workflow_next_plan_task, workflow_doctor, workflow_schema_check) are present, so the codex edit ADDS the 5 missing target tools (workflow_plan_task, workflow_diff, workflow_task_check, workflow_task_uncheck, workflow_checklist_set) into the operation-category mapping while KEEPING the pre-existing tools and get_next_work_order (superset, so the token contract survives). Audit C01–C25 to confirm no regression — the AC-3 preserved-coverage test greps each validator.mjs copy for all 28 makeCheck rule IDs (C00b, C01-C25, R01, R04; count not decreased), an always-green preservation guard since validator.mjs is unmodified — and keep raw docs/plans access as documented degraded fallback (schemas.ts:157-181,407-414 read-only reference).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/core/skills/install-skill.test.ts -t \"official workflow tools\"",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-031 content assertions pass (green).",
+            "Install-skill token contract preserved: test/core/skills/install-skill.test.ts -t \"official workflow tools\" passes (get_next_work_order, workflow_pipeline_emit, degraded-mode wording, no includeContent, emit-before-pipeline.jsonl order) for codex + .agents/skills kiwi-planner. Name-filtered because the full install-skill.test.ts byte-identical drift test only goes green after the PH-006 mirror regen.",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts && npm test -- test/core/skills/install-skill.test.ts -t \"official workflow tools\"",
+        "windows": "npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts && npm test -- test/core/skills/install-skill.test.ts -t \"official workflow tools\""
+      },
+      "dod": "npm test on test/skills/kiwi-planner-workflow-tools-content.test.ts passes (green); the install-skill token-contract test (test/core/skills/install-skill.test.ts -t \"official workflow tools\") passes (green), proving the codex + .agents/skills kiwi-planner 'Official Workflow Tool Policy' section preserved get_next_work_order/workflow_pipeline_emit/degraded-mode wording, no includeContent, and workflow_pipeline_emit-before-./kiwi/pipeline.jsonl order after appending the target-9 routing; the coverage-preservation audit is verified by the AC-3 assertion that greps all three validator.mjs copies for all 28 makeCheck rule IDs (C00b, C01-C25, R01, R04; count not decreased) — SRS AC-3 formally scopes to C01-C25.",
+      "rollback": "git checkout the three SKILL.md; validator.mjs copies unchanged.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH002-03"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-04-FR-FLOW-031",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-04"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-031"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC1-02",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC2-02",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-031-AC3-02",
+            "req_id": "FR-FLOW-031",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-planner-workflow-tools-content.test.ts",
+            "test_symbol": "FR-FLOW-031 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-05",
+      "phase_id": "PH-002",
+      "title": "Author failing kiwi-planner coverage-loop content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-032"
+      ],
+      "files": [
+        "test/skills/kiwi-planner-coverage-loop-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-planner-coverage-loop-content.test.ts: assert 2 sequential current-model verification subagents, persistent verification-complete marking, count-reconcile-then-per-req cross-check, (AC-3) the omission-repair loop — on a detected omission, kiwi-planner improves the plan and re-verifies ONLY the not-yet-marked items, iterating until every requirement is marked verification-complete (bounded by the divergence guard) — divergence cap, and --max strengthening (AC-granularity, independent third refuter, two-consecutive-zero-omission termination) in all three kiwi-planner SKILL.md.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-032 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts"
+      },
+      "dod": "New test fails (red).",
+      "rollback": "Delete test/skills/kiwi-planner-coverage-loop-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-05-FR-FLOW-032",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-05"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-032"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC1-01",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-032 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC2-01",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-032 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC3-01",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-planner to encode FR-FLOW-032 AC-3 — on a detected omission, kiwi-planner improves the plan and re-verifies ONLY the not-yet-marked items, iterating until every requirement is marked verification-complete (bounded by the divergence guard)"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-06",
+      "phase_id": "PH-002",
+      "title": "Add kiwi-planner plan-vs-SRS coverage verification loop",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-032"
+      ],
+      "files": [
+        "skills/claude/kiwi-planner/SKILL.md",
+        "skills/codex/kiwi-planner/SKILL.md",
+        "skills/etc/kiwi-planner/SKILL.md"
+      ],
+      "action": "Rewrite kiwi-planner Phase 3/3.5 (SKILL.md §6/§7) to run the coverage verification loop: reconcile SRS req count vs plan coverage, cross-check each req id one-by-one via 2 sequential current-model subagents with persistent marking, (AC-3) on a detected omission improve the plan and re-verify ONLY the not-yet-marked items, iterating until every requirement is marked verification-complete (bounded by the divergence guard), and the --max variant with AC-granularity + third refuter + two-consecutive-zero-omission termination.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-032 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-planner-coverage-loop-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-planner-coverage-loop-content.test.ts passes (green).",
+      "rollback": "git checkout the three SKILL.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH002-05"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH002-06-FR-FLOW-032",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-06"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-032"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC1-02",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC2-02",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-032-AC3-02",
+            "req_id": "FR-FLOW-032",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-planner-coverage-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-032 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH003-01",
+      "phase_id": "PH-003",
+      "title": "Extend tests for kiwi-srs ambiguity and qna flow",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-024"
+      ],
+      "files": [
+        "test/skills/kiwi-srs-research-loop-content.test.ts"
+      ],
+      "action": "EXTEND test/skills/kiwi-srs-research-loop-content.test.ts: assert unbounded qna loop, vague-request auto-trigger (game few-shot heuristic), `-qna` force, (AC-2) --auto suppression handing off to the FR-FLOW-025 committee, and — as a distinct AC-3 path from the --auto/-qna suppression — the NON-auto qna loop ENDING on an explicit user end-signal after which kiwi-srs AUTO-DECIDES the remaining unresolved ambiguities itself (rather than continuing to prompt); and the 3 requirement-gathering research subagents writing to docs/research/ then proceeding to the FR-FLOW-023 loop.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-024 AC-1/AC-2/AC-3/AC-4.",
+            "`npm test -- test/skills/kiwi-srs-research-loop-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts"
+      },
+      "dod": "New assertions fail (red).",
+      "rollback": "Revert the added blocks in test/skills/kiwi-srs-research-loop-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH002-01",
+        "T-PH002-02"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH003-01-FR-FLOW-024",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-024"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC1-01",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-024 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC2-01",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-024 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC3-01",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-srs to encode FR-FLOW-024 AC-3 — the NON-auto qna loop ends on an explicit user end-signal, after which kiwi-srs auto-decides the remaining unresolved ambiguities itself (distinct from AC-2's --auto/-qna committee suppression)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC4-01",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 red :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-024 AC-4"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH003-02",
+      "phase_id": "PH-003",
+      "title": "Author kiwi-srs ambiguity resolution and unbounded qna",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-024"
+      ],
+      "files": [
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/kiwi-srs/SKILL.md",
+        "skills/etc/kiwi-srs/SKILL.md"
+      ],
+      "action": "Edit kiwi-srs Phase 1.5 in all three main SKILL.md (~309-333) to add no-research-document ambiguity detection (question only genuinely non-standard ambiguities; re-check user decisions), unbounded qna (auto-trigger on vague requests, `-qna` force, --auto suppresses to committee), the AC-3 transition where the NON-auto qna loop ENDS on an explicit user end-signal and kiwi-srs then AUTO-DECIDES the remaining unresolved ambiguities itself (distinct from the AC-2 --auto/-qna committee-suppression path), and the 3 requirement-gathering research subagents -> docs/research/ -> FR-FLOW-023 loop handoff.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-024 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-srs-research-loop-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-srs-research-loop-content.test.ts passes (green).",
+      "rollback": "git checkout the three kiwi-srs SKILL.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH003-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH003-02-FR-FLOW-024",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-024"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC1-02",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC2-02",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC3-02",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-024-AC4-02",
+            "req_id": "FR-FLOW-024",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-srs-research-loop-content.test.ts",
+            "test_symbol": "FR-FLOW-024 green :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH003-03",
+      "phase_id": "PH-003",
+      "title": "Author failing kiwi-pipeline orchestration content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-026"
+      ],
+      "files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-pipeline-content.test.ts: assert the 5-stage chain (kiwi-srs -> conditional kiwi-srs-feasibility -> kiwi-planner -> kiwi-pm -> kiwi-review-fix-loop) where (AC-2) kiwi-pipeline runs kiwi-srs-feasibility ONLY when the just-authored requirements carry draft stability or unverified implementability (otherwise it is skipped), --auto committee gating with NEEDS_USER/FAILED/critical-gate halt, --max propagation to every sub-skill, and research-doc passthrough to kiwi-srs.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-026 AC-1/AC-2/AC-3/AC-4/AC-5.",
+            "`npm test -- test/skills/kiwi-pipeline-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "New test fails (red).",
+      "rollback": "Delete test/skills/kiwi-pipeline-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH003-03-FR-FLOW-026",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-03"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-026"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC1-01",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-026 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC2-01",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected kiwi-pipeline to encode FR-FLOW-026 AC-2 — kiwi-srs-feasibility runs ONLY when the just-authored requirements carry draft stability or unverified implementability (otherwise the feasibility stage is skipped)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC3-01",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-026 AC-3"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC4-01",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 red :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-026 AC-4"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC5-01",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 red :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-026 AC-5"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH003-04",
+      "phase_id": "PH-003",
+      "title": "Author kiwi-pipeline end-to-end cycle orchestration",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-026"
+      ],
+      "files": [
+        "skills/claude/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/etc/kiwi-pipeline/SKILL.md",
+        "skills/claude/_shared/kiwi/pipeline-v1.md"
+      ],
+      "action": "Rewrite kiwi-pipeline §1/§2/§6/§7 in all three variants to chain the full research->plan->implement cycle (conditional feasibility — (AC-2) kiwi-pipeline runs kiwi-srs-feasibility ONLY when the just-authored requirements carry draft stability or unverified implementability, otherwise skipping the feasibility stage — --auto committee gating, --max propagation, research-doc passthrough); seed the missing skills/claude/_shared/kiwi/pipeline-v1.md. Additionally document a skip-authoring / resume-from-stage entry so a caller whose SRS is already authored can ENTER the cycle at feasibility/planning instead of re-running /kiwi-srs; this is the capability FR-FLOW-029's per-wave invocation (T-PH005-02, AC-4) consumes — the 029->026 cross-skill integration tracked by R-005. FR-FLOW-026's own ACs do not gate this entry, so it adds no FR-FLOW-026 test_case; it is asserted from the FR-FLOW-029 side (T-PH005-01/02), whose AC-4 content assertion cross-checks BOTH the consumer (kiwi-wave-master) AND this provider — the kiwi-pipeline SKILL.md skip-authoring / resume-from-stage entry authored here.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-026 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-pipeline-content.test.ts passes (green).",
+      "rollback": "git checkout the three kiwi-pipeline SKILL.md and remove the seeded pipeline-v1.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH003-03"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH003-04-FR-FLOW-026",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-04"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-026"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC1-02",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC2-02",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC3-02",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC4-02",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 green :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-026-AC5-02",
+            "req_id": "FR-FLOW-026",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-026 green :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH004-01",
+      "phase_id": "PH-004",
+      "title": "Extend tests for kiwi-pipeline worktree completion gate",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-027"
+      ],
+      "files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ],
+      "action": "EXTEND test/skills/kiwi-pipeline-content.test.ts: assert `--wt`/worktree-request creates a dedicated worktree, the non-auto completion gate asks merge-vs-PR, and --auto opens a PR (kiwi-commit-auto-pr) without direct-merging the base branch.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-027 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-pipeline-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "New assertions fail (red).",
+      "rollback": "Revert the added blocks in test/skills/kiwi-pipeline-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH003-03",
+        "T-PH003-04"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH004-01-FR-FLOW-027",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-027"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC1-01",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-027 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC2-01",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-027 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC3-01",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-027 AC-3"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH004-02",
+      "phase_id": "PH-004",
+      "title": "Add kiwi-pipeline worktree isolation and merge-or-PR gate",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-027"
+      ],
+      "files": [
+        "skills/claude/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/etc/kiwi-pipeline/SKILL.md"
+      ],
+      "action": "Add worktree phases to kiwi-pipeline (0 existing worktree refs): create dedicated git worktree under --wt or on request; non-auto completion asks merge-or-PR; --auto opens PR and never direct-merges base. kiwi-commit-auto-pr is invoked as-is with 0 edits (OQ-027-autopr).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-027 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-pipeline-content.test.ts passes (green).",
+      "rollback": "git checkout the three kiwi-pipeline SKILL.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH004-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH004-02-FR-FLOW-027",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-027"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC1-02",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC2-02",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-027-AC3-02",
+            "req_id": "FR-FLOW-027",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-027 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH004-03",
+      "phase_id": "PH-004",
+      "title": "Extend tests for kiwi-pipeline issue entry mode",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-028"
+      ],
+      "files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ],
+      "action": "EXTEND test/skills/kiwi-pipeline-content.test.ts: assert a GitHub issue-number entry runs kiwi-srs-research + implementation-approach research before kiwi-srs, escalates to `-qna` when research is insufficient, and suppresses `-qna` under --auto (committee), then continues through planner/pm/review.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-028 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-pipeline-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "New assertions fail (red).",
+      "rollback": "Revert the added blocks in test/skills/kiwi-pipeline-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH003-03",
+        "T-PH003-04",
+        "T-PH004-02"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH004-03-FR-FLOW-028",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-03"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-028"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC1-01",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-028 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC2-01",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-028 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC3-01",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-028 AC-3"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH004-04",
+      "phase_id": "PH-004",
+      "title": "Add kiwi-pipeline GitHub issue entry research-first flow",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-028"
+      ],
+      "files": [
+        "skills/claude/kiwi-pipeline/SKILL.md",
+        "skills/codex/kiwi-pipeline/SKILL.md",
+        "skills/etc/kiwi-pipeline/SKILL.md",
+        "skills/claude/kiwi-srs-research/SKILL.md",
+        "skills/codex/kiwi-srs-research/SKILL.md",
+        "skills/etc/kiwi-srs-research/SKILL.md"
+      ],
+      "action": "Edit kiwi-pipeline Phase 0 (all variants) to detect a GitHub issue number and run kiwi-srs-research + implementation research first, feeding kiwi-srs; wire kiwi-srs-research input handling in its three SKILL.md; escalate to -qna only when research is insufficient (committee under --auto).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-028 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-pipeline-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-pipeline-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-pipeline-content.test.ts passes (green).",
+      "rollback": "git checkout the kiwi-pipeline and kiwi-srs-research SKILL.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH004-03"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH004-04-FR-FLOW-028",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-04"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-028"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC1-02",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC2-02",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-028-AC3-02",
+            "req_id": "FR-FLOW-028",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-pipeline-content.test.ts",
+            "test_symbol": "FR-FLOW-028 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH005-01",
+      "phase_id": "PH-005",
+      "title": "Author failing kiwi-wave-master content tests",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-029"
+      ],
+      "files": [
+        "test/skills/kiwi-wave-master-content.test.ts"
+      ],
+      "action": "NEW test/skills/kiwi-wave-master-content.test.ts: assert the net-new kiwi-wave-master in all three variants: wave decomposition into ordered scoped wave-{n} targets via kiwi-srs, waves.jsonl progress, per-wave kiwi-pipeline in order, resumable-from-first-incomplete, --auto/--max propagation, and the wave-split heuristic (headers first, else 3-8 coherent sub-goals per wave). For AC-1 skill existence/registration, ALSO add a raw-text assertion that src/doctor/package-doctor.ts registers kiwi-wave-master in EXPECTED_KIWI_SKILLS so the packed-skill-entrypoints doctor check (package-doctor.ts:159-167) covers the three skills/{codex,claude,etc}/kiwi-wave-master/SKILL.md entrypoints (FR-FLOW-014 kiwi-step precedent). For AC-4, assert (a) the per-wave /kiwi-pipeline SKIPS re-authoring — kiwi-wave-master enters at feasibility/planning because the up-front /kiwi-srs already authored each wave's SRS — AND (b) as a CROSS-FILE content assertion, that the PROVIDER kiwi-pipeline SKILL.md (all three variants, authored by T-PH003-04) itself contains the skip-authoring / resume-from-stage entry the consumer relies on, so the 029->026 capability is proven on both sides (the cross-skill skip-authoring entry from FR-FLOW-026 / T-PH003-04, R-005).",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-029 AC-1/AC-2/AC-3/AC-4/AC-5.",
+            "`npm test -- test/skills/kiwi-wave-master-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-wave-master-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-wave-master-content.test.ts"
+      },
+      "dod": "New test fails (red) because the skill does not yet exist.",
+      "rollback": "Delete test/skills/kiwi-wave-master-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH005-01-FR-FLOW-029",
+          "source": {
+            "type": "Task",
+            "id": "T-PH005-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-029"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC1-01",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-029 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC1-03",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-1 doctor-registration",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected src/doctor/package-doctor.ts EXPECTED_KIWI_SKILLS to register kiwi-wave-master so the packed-skill-entrypoints doctor check covers the three kiwi-wave-master SKILL.md entrypoints (kiwi-step precedent)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC2-01",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-029 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC3-01",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-029 AC-3"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC4-01",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected FR-FLOW-029 AC-4 to hold on BOTH sides — (a) kiwi-wave-master's per-wave /kiwi-pipeline SKIPS re-authoring and enters at feasibility/planning because the up-front /kiwi-srs already authored the wave SRS, AND (b) the provider kiwi-pipeline SKILL.md (all three variants) itself contains the skip-authoring / resume-from-stage entry (cross-file assertion; cross-skill entry from FR-FLOW-026 / T-PH003-04)"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC5-01",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 red :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-029 AC-5"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH005-02",
+      "phase_id": "PH-005",
+      "title": "Author kiwi-wave-master multi-wave orchestrator skill",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-029"
+      ],
+      "files": [
+        "skills/claude/kiwi-wave-master/SKILL.md",
+        "skills/codex/kiwi-wave-master/SKILL.md",
+        "skills/etc/kiwi-wave-master/SKILL.md",
+        "skills/claude/_shared/kiwi/waves-event.md",
+        "skills/codex/_shared/kiwi/waves-event.md",
+        "skills/etc/_shared/kiwi/waves-event.md",
+        "src/doctor/package-doctor.ts"
+      ],
+      "action": "Author skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md and a kiwi/waves.jsonl schema doc (_shared/kiwi/waves-event.md, modeled on _shared/kiwi/pipeline-event.md and kiwi/pipeline.jsonl): decompose research/plan docs into ordered waves, register scoped wave-{n} targets via kiwi-srs, persist waves.jsonl, run per-wave kiwi-pipeline in order, mark complete only after success (resumable), propagate --auto/--max. AC-4 detail: the per-wave /kiwi-pipeline SKIPS re-authoring — kiwi-wave-master invokes the pipeline so it ENTERS at feasibility/planning (not /kiwi-srs) because the up-front /kiwi-srs already authored that wave's SRS; this consumes the skip-authoring / resume-from-stage entry T-PH003-04 adds to kiwi-pipeline (FR-FLOW-026), the 029->026 cross-skill dependency tracked by R-005; the AC-4 content assertion cross-checks BOTH this consumer AND the kiwi-pipeline provider SKILL.md skip-authoring entry (authored in T-PH003-04, a depends_on_task). ALSO register kiwi-wave-master in EXPECTED_KIWI_SKILLS in src/doctor/package-doctor.ts (FR-FLOW-014 kiwi-step precedent) so the packed-skill-entrypoints doctor check covers the three kiwi-wave-master SKILL.md entrypoints.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-wave-master-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/doctor/package-doctor.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-029 content assertions pass (green).",
+            "package-doctor gate: test/doctor/package-doctor.test.ts passes after registering kiwi-wave-master in EXPECTED_KIWI_SKILLS (src/doctor/package-doctor.ts), so the packed-skill-entrypoints check covers the three kiwi-wave-master entrypoints (FR-FLOW-014 kiwi-step precedent).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-wave-master-content.test.ts && npm test -- test/doctor/package-doctor.test.ts",
+        "windows": "npm test -- test/skills/kiwi-wave-master-content.test.ts && npm test -- test/doctor/package-doctor.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-wave-master-content.test.ts passes (green); npm test on test/doctor/package-doctor.test.ts passes (green), confirming the packed-skill-entrypoints doctor check covers the net-new kiwi-wave-master entrypoints after registration.",
+      "rollback": "Delete the three kiwi-wave-master SKILL.md and the three waves-event.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH005-01",
+        "T-PH003-04"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH005-02-FR-FLOW-029",
+          "source": {
+            "type": "Task",
+            "id": "T-PH005-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-029"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC1-02",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC1-04",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-1 doctor-registration",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC2-02",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC3-02",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC4-02",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-4",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-029-AC5-02",
+            "req_id": "FR-FLOW-029",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-029 green :: AC-5",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH005-03",
+      "phase_id": "PH-005",
+      "title": "Extend tests for kiwi-wave-master epic-issue entry",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-030"
+      ],
+      "files": [
+        "test/skills/kiwi-wave-master-content.test.ts"
+      ],
+      "action": "EXTEND test/skills/kiwi-wave-master-content.test.ts: assert an epic-issue entry extracts ordered waves from the epic (structure/task list/linked sub-issues) and then proceeds identically to FR-FLOW-029, skipping ONLY the up-front wave-split research while per-wave kiwi-pipelines still research.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "Failing content assertion authored for each of FR-FLOW-030 AC-1/AC-2/AC-3.",
+            "`npm test -- test/skills/kiwi-wave-master-content.test.ts` shows the new assertions failing (red) before implementation."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-wave-master-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-wave-master-content.test.ts"
+      },
+      "dod": "New assertions fail (red).",
+      "rollback": "Revert the added blocks in test/skills/kiwi-wave-master-content.test.ts.",
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH005-01",
+        "T-PH005-02"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH005-03-FR-FLOW-030",
+          "source": {
+            "type": "Task",
+            "id": "T-PH005-03"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-030"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC1-01",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 red :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-030 AC-1"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC2-01",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 red :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-030 AC-2"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC3-01",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 red :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-030 AC-3"
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH005-04",
+      "phase_id": "PH-005",
+      "title": "Add kiwi-wave-master epic-issue entry mode",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-030"
+      ],
+      "files": [
+        "skills/claude/kiwi-wave-master/SKILL.md",
+        "skills/codex/kiwi-wave-master/SKILL.md",
+        "skills/etc/kiwi-wave-master/SKILL.md"
+      ],
+      "action": "Add the epic-issue entry mode to kiwi-wave-master SKILL.md (all variants): derive ordered waves from the epic, reuse the FR-FLOW-029 scoped-target/waves.jsonl/per-wave-pipeline machinery, skip only up-front wave-split research. Epic-research-skip semantics are provisional pending user confirmation (OQ-030).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/skills/kiwi-wave-master-content.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "checklist",
+          "items": [
+            "All FR-FLOW-030 content assertions pass (green).",
+            "No unrelated skill test regresses (npm test -- test/skills)."
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/skills/kiwi-wave-master-content.test.ts",
+        "windows": "npm test -- test/skills/kiwi-wave-master-content.test.ts"
+      },
+      "dod": "npm test on test/skills/kiwi-wave-master-content.test.ts passes (green).",
+      "rollback": "git checkout the three kiwi-wave-master SKILL.md.",
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH005-03",
+        "T-PH005-02"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH005-04-FR-FLOW-030",
+          "source": {
+            "type": "Task",
+            "id": "T-PH005-04"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-030"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC1-02",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 green :: AC-1",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC2-02",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 green :: AC-2",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-030-AC3-02",
+            "req_id": "FR-FLOW-030",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "FR-FLOW-030 green :: AC-3",
+            "kind": "content-assertion",
+            "expected_failure_signature": null
+          }
+        ],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH006-01",
+      "phase_id": "PH-006",
+      "title": "Regenerate installed .agents/skills mirror from edited source",
+      "type": "file_op",
+      "req_ids": [
+        "FR-FLOW-022"
+      ],
+      "files": [
+        ".agents/skills/",
+        ".agents/skills/_shared/kiwi/mini-option.md"
+      ],
+      "action": "Regenerate the git-tracked .agents/skills installed mirror — a CURATED SUBSET mirror (the 13 previously-installed kiwi skills: kiwi-coder, kiwi-commit-auto-pr, kiwi-commit-auto-push, kiwi-hot-fix, kiwi-pipeline, kiwi-planner, kiwi-pm, kiwi-review-fix-loop, kiwi-srs-feasibility, kiwi-srs-from-code, kiwi-srs-research, kiwi-srs-sync, kiwi-srs), each byte-identical PER-SKILL to its skills/codex/<name> source (SOURCE_ROOT_BY_AGENT maps codex -> .agents/skills), verified by test/core/skills/install-skill.test.ts 'classifies scoped runtime Kiwi mirrors' + 'keeps scoped Kiwi skills on official workflow tools' — by RE-INSTALLING those exact 13 mirrored skills BY NAME from the edited skills/codex source (`node bin/speckiwi --root . skills install codex <name> --json` for each, the refreshCommand recorded in each mirror's .speckiwi-skill-install.json). Do NOT run `speckiwi skills install codex all`: `all` expands to every skills/codex dir and would materialize OUT-OF-SCOPE .agents/skills/kiwi-step (a pre-existing net-new skill never mirrored) and .agents/skills/kiwi-wave-master (this plan's net-new skill) mirrors. kiwi-wave-master is INTENTIONALLY NOT added to the mirror (the install-skill drift tests do not require it and the FR-FLOW-014 kiwi-step precedent shows net-new skills are not auto-mirrored, so the mirror set stays 13, not 14/15). Also re-sync the .agents/skills/_shared/kiwi shared-resource mirror and delete the now-orphaned third .agents/skills/_shared/kiwi/mini-option.md copy, so the FR-FLOW-022 repo-wide --mini/mini-option absence (skills/** + .agents/skills/**, all three mini-option.md gone) holds under this scoped regen. Runs LAST (after every PH-001..PH-005 skills/codex edit) so the full npm test install-skill drift assertions (per-skill byte-identical mirror + provenance checksums + Official-Workflow-Tool-Policy in both roots) stay green. src/core/skills/install-skill.ts is invoked as-is (0 source edits).",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npm test -- test/core/skills/install-skill.test.ts",
+          "expected_exit": 0
+        },
+        {
+          "kind": "file_state",
+          "path": ".agents/skills/_shared/kiwi/mini-option.md",
+          "exists": false
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test -- test/core/skills/install-skill.test.ts",
+        "windows": "npm test -- test/core/skills/install-skill.test.ts"
+      },
+      "dod": "npm test on test/core/skills/install-skill.test.ts passes (green): the .agents/skills mirror is byte-identical to the edited skills/codex source (drift test) and .agents/skills/_shared/kiwi/mini-option.md no longer exists.",
+      "rollback": "git checkout .agents/skills/ to restore the previous committed mirror.",
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH001-02",
+        "T-PH001-04",
+        "T-PH002-02",
+        "T-PH002-04",
+        "T-PH002-06",
+        "T-PH003-02",
+        "T-PH003-04",
+        "T-PH004-02",
+        "T-PH004-04",
+        "T-PH005-02",
+        "T-PH005-04"
+      ],
+      "covers_ac": [
+        "AC-1"
+      ],
+      "trace_links": [
+        {
+          "link_id": "TL-T-PH006-01-FR-FLOW-022",
+          "source": {
+            "type": "Task",
+            "id": "T-PH006-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-022"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "tdd": {
+        "applicable": false,
+        "phase": "n/a",
+        "test_cases": [],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "req_id": "FR-FLOW-022",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH001-01",
+        "T-PH001-02",
+        "T-PH006-01"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-022-AC1-01",
+          "TC-REQ-FR-FLOW-022-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-022-AC2-01",
+          "TC-REQ-FR-FLOW-022-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-022-AC3-01",
+          "TC-REQ-FR-FLOW-022-AC3-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-023",
+      "ac_total": 5,
+      "ac_covered": 5,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH002-01",
+        "T-PH002-02"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-023-AC1-01",
+          "TC-REQ-FR-FLOW-023-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-023-AC2-01",
+          "TC-REQ-FR-FLOW-023-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-023-AC3-01",
+          "TC-REQ-FR-FLOW-023-AC3-02"
+        ],
+        "AC-4": [
+          "TC-REQ-FR-FLOW-023-AC4-01",
+          "TC-REQ-FR-FLOW-023-AC4-02"
+        ],
+        "AC-5": [
+          "TC-REQ-FR-FLOW-023-AC5-01",
+          "TC-REQ-FR-FLOW-023-AC5-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-024",
+      "ac_total": 4,
+      "ac_covered": 4,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH003-01",
+        "T-PH003-02"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-024-AC1-01",
+          "TC-REQ-FR-FLOW-024-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-024-AC2-01",
+          "TC-REQ-FR-FLOW-024-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-024-AC3-01",
+          "TC-REQ-FR-FLOW-024-AC3-02"
+        ],
+        "AC-4": [
+          "TC-REQ-FR-FLOW-024-AC4-01",
+          "TC-REQ-FR-FLOW-024-AC4-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-025",
+      "ac_total": 4,
+      "ac_covered": 4,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH001-03",
+        "T-PH001-04"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-025-AC1-01",
+          "TC-REQ-FR-FLOW-025-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-025-AC2-01",
+          "TC-REQ-FR-FLOW-025-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-025-AC3-01",
+          "TC-REQ-FR-FLOW-025-AC3-02"
+        ],
+        "AC-4": [
+          "TC-REQ-FR-FLOW-025-AC4-01",
+          "TC-REQ-FR-FLOW-025-AC4-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-026",
+      "ac_total": 5,
+      "ac_covered": 5,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH003-03",
+        "T-PH003-04"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-026-AC1-01",
+          "TC-REQ-FR-FLOW-026-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-026-AC2-01",
+          "TC-REQ-FR-FLOW-026-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-026-AC3-01",
+          "TC-REQ-FR-FLOW-026-AC3-02"
+        ],
+        "AC-4": [
+          "TC-REQ-FR-FLOW-026-AC4-01",
+          "TC-REQ-FR-FLOW-026-AC4-02"
+        ],
+        "AC-5": [
+          "TC-REQ-FR-FLOW-026-AC5-01",
+          "TC-REQ-FR-FLOW-026-AC5-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-027",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH004-01",
+        "T-PH004-02"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-027-AC1-01",
+          "TC-REQ-FR-FLOW-027-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-027-AC2-01",
+          "TC-REQ-FR-FLOW-027-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-027-AC3-01",
+          "TC-REQ-FR-FLOW-027-AC3-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-028",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH004-03",
+        "T-PH004-04"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-028-AC1-01",
+          "TC-REQ-FR-FLOW-028-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-028-AC2-01",
+          "TC-REQ-FR-FLOW-028-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-028-AC3-01",
+          "TC-REQ-FR-FLOW-028-AC3-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-029",
+      "ac_total": 5,
+      "ac_covered": 5,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH005-01",
+        "T-PH005-02"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-029-AC1-01",
+          "TC-REQ-FR-FLOW-029-AC1-02",
+          "TC-REQ-FR-FLOW-029-AC1-03",
+          "TC-REQ-FR-FLOW-029-AC1-04"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-029-AC2-01",
+          "TC-REQ-FR-FLOW-029-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-029-AC3-01",
+          "TC-REQ-FR-FLOW-029-AC3-02"
+        ],
+        "AC-4": [
+          "TC-REQ-FR-FLOW-029-AC4-01",
+          "TC-REQ-FR-FLOW-029-AC4-02"
+        ],
+        "AC-5": [
+          "TC-REQ-FR-FLOW-029-AC5-01",
+          "TC-REQ-FR-FLOW-029-AC5-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-030",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH005-03",
+        "T-PH005-04"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-030-AC1-01",
+          "TC-REQ-FR-FLOW-030-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-030-AC2-01",
+          "TC-REQ-FR-FLOW-030-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-030-AC3-01",
+          "TC-REQ-FR-FLOW-030-AC3-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-031",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH002-03",
+        "T-PH002-04"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-031-AC1-01",
+          "TC-REQ-FR-FLOW-031-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-031-AC2-01",
+          "TC-REQ-FR-FLOW-031-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-031-AC3-01",
+          "TC-REQ-FR-FLOW-031-AC3-02"
+        ]
+      }
+    },
+    {
+      "req_id": "FR-FLOW-032",
+      "ac_total": 3,
+      "ac_covered": 3,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH002-05",
+        "T-PH002-06"
+      ],
+      "ac_test_map": {
+        "AC-1": [
+          "TC-REQ-FR-FLOW-032-AC1-01",
+          "TC-REQ-FR-FLOW-032-AC1-02"
+        ],
+        "AC-2": [
+          "TC-REQ-FR-FLOW-032-AC2-01",
+          "TC-REQ-FR-FLOW-032-AC2-02"
+        ],
+        "AC-3": [
+          "TC-REQ-FR-FLOW-032-AC3-01",
+          "TC-REQ-FR-FLOW-032-AC3-02"
+        ]
+      }
+    }
+  ],
+  "orphans": [],
+  "unreferenced_reqs": [],
+  "excluded_reqs": [],
+  "deferred_ac": [],
+  "risks": [
+    {
+      "id": "R-001",
+      "description": "Scrubbing --mini is a large surface — 376 literal occurrences across 52 files (skills/** 260 in 34 files + .agents/skills/** 116 in 18 mirror files); 2 (skills/etc/MIGRATION_PLAN.md) are excluded; 374 in-scope = 97 via the 3 whole-file mini-option.md deletions (31+33+33) + 277 in-place scrubs (skills/** 194 + .agents/skills/** 83) — a missed alias or nested reference is a real hazard.",
+      "severity": "medium",
+      "mitigation": "Repo-wide absence assertions in test/skills/kiwi-mini-removal-content.test.ts cover every skills/**/SKILL.md, shared SSOT, references/**, AND .agents/skills/** (all three mini-option.md gone); repo-wide grep gate in DoD; PH-006 byte-identical mirror regeneration.",
+      "req_ids": [
+        "FR-FLOW-022"
+      ]
+    },
+    {
+      "id": "R-002",
+      "description": "kiwi-planner routing to workflow_* tools could silently drop a C01-C25 check.",
+      "severity": "high",
+      "mitigation": "AC-3 coverage-preservation audit + explicit degraded-fallback wording asserted by tests.",
+      "req_ids": [
+        "FR-FLOW-031"
+      ]
+    },
+    {
+      "id": "R-003",
+      "description": "kiwi-wave-master is net-new across three variants; scope drift beyond a wave is a real hazard.",
+      "severity": "medium",
+      "mitigation": "Scoped per-wave targets registered via kiwi-srs; content tests assert bounded scope.",
+      "req_ids": [
+        "FR-FLOW-029",
+        "FR-FLOW-030"
+      ]
+    },
+    {
+      "id": "R-004",
+      "description": "OQ-030 epic-research-skip is provisional in the SRS.",
+      "severity": "medium",
+      "mitigation": "Adopt literal AC as working default but flag a user-confirmation checkpoint before finalizing.",
+      "req_ids": [
+        "FR-FLOW-030"
+      ]
+    },
+    {
+      "id": "R-005",
+      "description": "FR-FLOW-029 AC-4 requires the per-wave /kiwi-pipeline to skip kiwi-srs re-authoring and enter at feasibility/planning, but FR-FLOW-026's ACs define no such skip-authoring entry — a 029->026 cross-skill integration dependency.",
+      "severity": "medium",
+      "mitigation": "T-PH003-04 (026 green) adds a documented skip-authoring / resume-from-stage entry to kiwi-pipeline; T-PH005-02 (029 green) declares depends_on_task T-PH003-04 and its per-wave invocation consumes that entry; the FR-FLOW-029 AC-4 content assertion (T-PH005-01) verifies the per-wave pipeline enters at feasibility/planning rather than re-running kiwi-srs.",
+      "req_ids": [
+        "FR-FLOW-029",
+        "FR-FLOW-026"
+      ]
+    },
+    {
+      "id": "R-006",
+      "description": "The FR-FLOW-031 kiwi-planner rewrite (T-PH002-04) must PRESERVE the install-skill.test.ts token contract for the 'Official Workflow Tool Policy' section in BOTH the skills/codex AND the .agents/skills kiwi-planner mirror (test/core/skills/install-skill.test.ts 'keeps scoped Kiwi skills on official workflow tools'): get_next_work_order, workflow_pipeline_emit, the degraded-mode / capturing-tool-diagnostics / affected-artifact-paths / active-target / follow-up-requirement-or-candidate-ID wording, the ABSENCE of includeContent, and workflow_pipeline_emit before ./kiwi/pipeline.jsonl. The target-9 routing is APPENDED as a superset, NEVER a replacement, or the contract test breaks at PH-006. The same contract applies to every edited codex fixed-subset skill (kiwi-planner/kiwi-pm/kiwi-coder/kiwi-pipeline/kiwi-srs), so kiwi-pipeline (T-PH003-04/T-PH004-02/T-PH004-04) and kiwi-srs (T-PH002-02/T-PH003-02) edits must preserve it too.",
+      "severity": "high",
+      "mitigation": "T-PH002-04 gates BEFORE PH-006 on the name-filtered contract test (npm test -- test/core/skills/install-skill.test.ts -t \"official workflow tools\"), which is stable across the mirror-divergence window because the full byte-identical drift test only goes green after the PH-006 mirror regen; T-PH002-03 red asserts the preserved tokens; PH-006 runs the full install-skill.test.ts as the final backstop.",
+      "req_ids": [
+        "FR-FLOW-031"
+      ]
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OQ-023",
+      "req_ids": [
+        "FR-FLOW-023",
+        "FR-FLOW-032"
+      ],
+      "question": "Divergence-guard cap for the verify/improve and coverage loops.",
+      "provisional_default": "cap = 5 rounds (normal) / 8 (--max); a round = one full per-requirement re-verification pass.",
+      "auto_severity": "clarification",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-024",
+      "req_ids": [
+        "FR-FLOW-024"
+      ],
+      "question": "What counts as a \"vague\"/non-standard ambiguity worth asking the user vs auto-defaulting.",
+      "provisional_default": "prompted heuristic; question-worthy only when no domain-reasonable default exists (game example few-shot).",
+      "auto_severity": "clarification",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-023-feasibility-reuse",
+      "req_ids": [
+        "FR-FLOW-023"
+      ],
+      "question": "How to reuse kiwi-srs-feasibility inside Process A.",
+      "provisional_default": "INLINE heuristic reuse (no new dual-mode interface).",
+      "auto_severity": "clarification",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-025-tiebreak",
+      "req_ids": [
+        "FR-FLOW-025"
+      ],
+      "question": "Deterministic tie-break for a non-unanimous committee plurality.",
+      "provisional_default": "lead committee member #1 (first spawned); recorded once in auto-option.md.",
+      "auto_severity": "business-decision",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-027-autopr",
+      "req_ids": [
+        "FR-FLOW-027"
+      ],
+      "question": "Whether kiwi-commit-auto-pr needs edits for the --auto PR path.",
+      "provisional_default": "invoked as-is, 0 edits.",
+      "auto_severity": "clarification",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-029-split",
+      "req_ids": [
+        "FR-FLOW-029"
+      ],
+      "question": "Wave-splitting heuristic when the document lacks explicit wave structure.",
+      "provisional_default": "headers first, else coherent sub-goals of 3-8 items per wave along dependency boundaries.",
+      "auto_severity": "business-decision",
+      "blocks_task": false,
+      "needs_clarification": false
+    },
+    {
+      "id": "OQ-030",
+      "req_ids": [
+        "FR-FLOW-030"
+      ],
+      "question": "Epic-research-skip semantics (marked provisional in the SRS itself, pending user confirmation).",
+      "provisional_default": "adopt the literal AC: skip only up-front wave-split research; per-wave pipelines still research.",
+      "auto_severity": "business-decision",
+      "blocks_task": false,
+      "needs_clarification": false,
+      "resolved": true,
+      "resolved_at": "2026-07-10",
+      "resolved_by": "5-member decision committee (technical-fit/governance/risk/alternatives/user-intent; votes 3A/1B/1conditional, all high-confidence)",
+      "resolution": "CONFIRM literal AC-3 (skip up-front wave-split research for epics with explicit structure: task-list groups or >=2 linked sub-issues; per-wave pipelines still research) PLUS a structure-detection GUARD: if the epic has no extractable structure (free-form prose, <2 linked sub-issues, no partitionable task list), fall back to FR-FLOW-029's existing wave-split subagent instead of silently mis-splitting. No new component (reuses FR-FLOW-029 machinery). kiwi-coder MUST encode this guard when implementing T-PH005-03/04.",
+      "note": "Resolved by committee per the 2026-07-10 user directive (5-member research committee auto-decision). User may revisit."
+    },
+    {
+      "id": "OQ-032-divergence",
+      "req_ids": [
+        "FR-FLOW-032"
+      ],
+      "question": "Coverage-loop divergence cap and termination.",
+      "provisional_default": "cap = 5 (normal) / 8 (--max); --max terminates only after two consecutive zero-omission rounds.",
+      "auto_severity": "clarification",
+      "blocks_task": false,
+      "needs_clarification": false
+    }
+  ],
+  "external_module_impact": [],
+  "tdd_decisions": [
+    {
+      "req_id": "FR-FLOW-022",
+      "applicable": true,
+      "rationale": "type=code (not file_op): although this task deletes the mini-option.md SSOT and scrubs --mini across 33 skill files, it is gated by enforced red→green automated content-assertion tests (npm test -- test/skills/kiwi-mini-removal-content.test.ts) asserting token absence and single-model wording over raw SKILL.md text (FR-FLOW-014 kiwi-step precedent) — verified by executable tests, not merely a file operation.",
+      "test_files": [
+        "test/skills/kiwi-mini-removal-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-023",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-srs-research-loop-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-024",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-srs-research-loop-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-025",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-auto-committee-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-026",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-027",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-028",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-pipeline-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-029",
+      "applicable": true,
+      "rationale": "type=code (not file_op): authoring the net-new kiwi-wave-master skill and waves.jsonl schema is verified by enforced red→green automated content-assertion tests (npm test -- test/skills/kiwi-wave-master-content.test.ts) asserting wave decomposition, ordering, resumability and --auto/--max propagation tokens over raw SKILL.md text (FR-FLOW-014 kiwi-step precedent) — not a mere file operation.",
+      "test_files": [
+        "test/skills/kiwi-wave-master-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-030",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-wave-master-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-031",
+      "applicable": true,
+      "rationale": "type=code (not file_op): routing kiwi-planner through the workflow_* tools plus the C01–C25 coverage-preservation audit is verified by enforced red→green automated content-assertion tests (npm test -- test/skills/kiwi-planner-workflow-tools-content.test.ts), including a grep-count assertion over the three validator.mjs copies — not a mere file operation.",
+      "test_files": [
+        "test/skills/kiwi-planner-workflow-tools-content.test.ts"
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-032",
+      "applicable": true,
+      "rationale": "SKILL.md is agent instruction, not executable code; verified via content-assertion tests on raw SKILL.md text (token presence, indexOf ordering, absence assertions) per the FR-FLOW-014 kiwi-step precedent (test/skills/kiwi-step-content.test.ts).",
+      "test_files": [
+        "test/skills/kiwi-planner-coverage-loop-content.test.ts"
+      ]
+    }
+  ],
+  "coder_handoff_readiness": [
+    {
+      "phase_id": "PH-001",
+      "ready": true,
+      "notes": "All 4 tasks are type=code with red->green TDD pairs, grounded file anchors, and per-task verification_cmd. Sub-skill content tests run under vitest (npm test -- test/skills/...)."
+    },
+    {
+      "phase_id": "PH-002",
+      "ready": true,
+      "notes": "All 6 tasks are type=code with red->green TDD pairs, grounded file anchors, and per-task verification_cmd. Sub-skill content tests run under vitest (npm test -- test/skills/...)."
+    },
+    {
+      "phase_id": "PH-003",
+      "ready": true,
+      "notes": "All 4 tasks are type=code with red->green TDD pairs, grounded file anchors, and per-task verification_cmd. Sub-skill content tests run under vitest (npm test -- test/skills/...)."
+    },
+    {
+      "phase_id": "PH-004",
+      "ready": true,
+      "notes": "All 4 tasks are type=code with red->green TDD pairs, grounded file anchors, and per-task verification_cmd. Sub-skill content tests run under vitest (npm test -- test/skills/...)."
+    },
+    {
+      "phase_id": "PH-005",
+      "ready": true,
+      "notes": "All 4 tasks are type=code with red->green TDD pairs, grounded file anchors, and per-task verification_cmd. Sub-skill content tests run under vitest (npm test -- test/skills/...)."
+    },
+    {
+      "phase_id": "PH-006",
+      "ready": true,
+      "notes": "Single type=file_op task (T-PH006-01, file_op auto-exempt from TDD): regenerate the .agents/skills codex mirror via the install-skill mechanism after all PH-001..PH-005 skills/codex edits; verified by the executable install-skill drift test (npm test -- test/core/skills/install-skill.test.ts) + a file_state check, not a TDD red/green pair."
+    }
+  ],
+  "mcp_call_log": [
+    {
+      "seq": 1,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-022"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "27c82bcab3a708cab51f78af524b5984a36c688e",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 2,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-022"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "0396ccd665abb1de1bee3a6e38a41882b026dc04",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 3,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-03"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-025"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "ee92b6045219e4d8e1cf89ab044554bb4c13c80b",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 4,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-04"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-025"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "4e30b4516d382c2c278b50c27f4fa3ac4fd5d373",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 5,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-023"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "f9cf920dfc140e0117282d7789f2d2a75795d079",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 6,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-023"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "7bb15138367609339d08ef4771e721a7830adc36",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 7,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-03"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-031"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "1ef1232521fd7401259b423249a470b203669356",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 8,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-04"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-031"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "1a35a7a342424399ab0486ee8f871de4fc3a9aec",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 9,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-05"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-032"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "e7029dbef738571f113ae087bd5a5b451d412caa",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 10,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-06"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-032"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "50100549c0ca684084e7098cede1658fb416cede",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 11,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-024"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "e7cd22cd3854138d40d23818def6d4f77c6c4ac5",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 12,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-024"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "a52d7997186fcf6937af6aa7dac0f653ff348e12",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 13,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-03"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-026"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "adcc03034008336b36b94a2242ea898f44871de8",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 14,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-04"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-026"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "f8c109c0e84c8e107c6f4eacdee31091e4d3d3cc",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 15,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-027"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "ce56e1684c7a2a5c303c6b9ee033e5983cd27e86",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 16,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-027"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "57b5a5271884fc323f510b05a9e0269f2085d274",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 17,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-03"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-028"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "403038f4170829321ad9d09caced43db99265723",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 18,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-04"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-028"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "605c765f16c9f48c340c081df7b4ee50c6ce6e7d",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 19,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH005-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-029"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "9800a22578dfc97be87e7174ef8247ce73f046d8",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 20,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH005-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-029"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "445443970769b1c7ef6fa67412dc294128467ecc",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 21,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH005-03"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-030"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "007b7450d287f3f8344e3e718e157e6d264f3901",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 22,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH005-04"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-030"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "5a533732290d6feda9ec151c016c65158ab12088",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 23,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-022",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH001-02"
+      },
+      "args_hash": "926dd5f572d1ffba7e12ec8720a3e8efdde9d46b",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 24,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-023",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH002-02"
+      },
+      "args_hash": "ab907e010a94ca6e51716fea5e7af7e65cda3c0a",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 25,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-024",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH003-02"
+      },
+      "args_hash": "9a3b9d82083579601ea53c24b36ff993dc7947fd",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 26,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-025",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH001-04"
+      },
+      "args_hash": "8f1cd7f82c5e60ee64e9a8a8cb0c9e90b97a1e50",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 27,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-026",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH003-04"
+      },
+      "args_hash": "b20122cb5f402fbb3911e94bbb923c8b30d07a70",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 28,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-027",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH004-02"
+      },
+      "args_hash": "e0121c943b9f2a1dd740d4b99069b528693d9573",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 29,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-028",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH004-04"
+      },
+      "args_hash": "1fc8873c73041fce7e94d0c1bdd50631b2b66908",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 30,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-029",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH005-02"
+      },
+      "args_hash": "021c7673dfb4cf97df5c3afb9fbcf6102e2fb058",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 31,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-030",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH005-04"
+      },
+      "args_hash": "ae98fc89b608ca258fd78a7d2687a8d8797cccb6",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 32,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-031",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH002-04"
+      },
+      "args_hash": "3f3404f889612c9b50a8dd69cc5d1c0bf59ff7f9",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 33,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-032",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-10.speckiwi.v2301-flow.plan.md#T-PH002-06"
+      },
+      "args_hash": "31e8f20bd713f90da5dc31ed0f558badd6e384fb",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    },
+    {
+      "seq": 34,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH006-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-022"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "8870b86b8ea22c1cdb99a2339cb0cd1d5d8518f1",
+      "ok": null,
+      "dry_run": false,
+      "response_hash": null,
+      "timestamp": "2026-07-10T00:00:00Z"
+    }
+  ]
+}
