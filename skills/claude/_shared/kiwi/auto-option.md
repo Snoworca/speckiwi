@@ -294,13 +294,13 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 | `--auto --model <name>` | `--auto --model <name>` |
 | `--auto --max --model <name>` | `--auto --max --model <name>` |
 
-### 7.1 합성 옵션 처리
+### 7.1 자식 전파 시 옵션 처리
 
-일부 스킬은 `--auto` 가 다른 옵션의 합성 의미를 갖는다. 전파 시 합성 규칙 보존:
+자식 스킬로 전파할 때, 부모 `--auto` 는 자식의 안전 게이트(dry-run 선행·사용자 승인)를 우회하는 옵션(`--auto-apply` / `--yes-all` 등)을 자동으로 생성하지 않는다. 아래 전파 규칙을 따른다:
 
-| 부모 스킬 | 자식 스킬 | 전파 시 합성 |
+| 부모 스킬 | 자식 스킬 | 자식 호출 전파 |
 |---|---|---|
-| `kiwi-hot-fix --auto` | `kiwi-srs-sync` | `--auto --auto-apply --yes-all` (기존 `--auto = --auto-apply + --yes-all` 시맨틱 보존) |
+| `kiwi-hot-fix --auto` | `kiwi-srs-sync` | `--auto` 만 전파. `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않으며, 사용자가 직접 그 플래그를 지정한 경우에만 전파 |
 | `kiwi-pm --auto` | `kiwi-coder` | `--auto` (별개 옵션 `--yes-all`/`--auto-integration` 은 사용자 명시 시에만 추가) |
 
 전파 누락 시 자식이 사용자 게이트에 막혀 비-자동 동작 — LOW severity 로 보고.
@@ -364,7 +364,7 @@ docs/analysis/{skill-run-id}/auto_decisions.json
 |---|---|---|
 | `kiwi-pm` | 3종 severity enum (clarification/business-decision/rollback-confirmation), business-decision = HALT | severity enum 유지, **business-decision = 서브에이전트 자동 결정** (사용자 사양에 따라 변경, **kiwi-pm §5.1 / §0.G7 / description / 관련 본문 6+ 위치 갱신 의무**), 기존 business-decision 중 비가역/외부영향 큰 항목은 `critical_gates[]` 로 인라인 |
 | `kiwi-review-fix-loop` | severity → 액션 매핑 표 (CRITICAL/HIGH/MEDIUM → fix, LOW → reject) | finding 분류용 매핑은 별개 정책으로 유지. `--auto` 게이트 결정만 SSOT 적용 |
-| `kiwi-hot-fix` | `--auto` = `--auto-apply --yes-all` 합성 (자식 sync 전파) | SSOT §7.1 합성 표에 명시. 본 스킬 게이트 결정은 SSOT |
+| `kiwi-hot-fix` | `--auto` 는 사용자 게이트 자동 결정. sync 위임 시 `--auto` 만 전파하고 `--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만 전파 | SSOT §7.1 전파 표에 명시. 본 스킬 게이트 결정은 SSOT |
 | `kiwi-srs` | `--auto` = AskUserQuestion 발동 대신 **차단** | 차단 대상 게이트(외부 모듈/scope-boundary)를 `critical_gates[]` 로 인라인. 나머지는 SSOT |
 | `kiwi-pipeline` | NEEDS_USER/FAILED/자기호출/다지선다 차단 | 4개 모두 `critical_gates[]` 인라인. `--auto --run` 단독 spawn 시맨틱은 유지 |
 | `kiwi-coder` | `--auto` 자체 미정의, `--yes-all`/`--auto-integration`/`--auto-cost-warning` 3종 분리 | 3종 옵션 그대로 유지 (fine-grained 자유도 보존). 신설 `--auto` 는 **§8.4 후속 review-fix-loop 게이트 + 메인 게이트 결정** 에만 적용. `--auto` 활성이 3종 옵션을 자동 활성하지는 않음 (별도 의사) |
@@ -381,3 +381,5 @@ docs/analysis/{skill-run-id}/auto_decisions.json
 | `--auto` | 모든 사용자 게이트 자동 결정 (서브에이전트). dry-run 게이트도 자동 결정 → 결과적으로 `--auto-apply` 와 유사 효과 가능, 단 `--auto` 는 서브에이전트가 선택지 평가 후 결정 (apply-selected 도 가능) |
 
 동시 명시 시 `--auto-apply` 가 우선 (dry-run 단계 skip → `--auto` 의 다른 게이트 결정은 그대로 적용).
+
+부모 스킬의 `--auto` 전파는 이 두 플래그를 자동 생성하지 않는다 — `--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만 자식에 전달된다 (§7.1). 따라서 `kiwi-srs-sync` 는 부모 `--auto` 단독으로는 dry-run 선행 + 사용자 승인 게이트를 유지한다.

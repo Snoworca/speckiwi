@@ -120,6 +120,7 @@ export async function installSkill(options: SkillInstallOptions): Promise<Result
       await executeOne(sourcePackage, result.destination, result.identity);
       executedResults.push(result);
     }
+    await syncSharedMirror(planned.value.sourceRoot, planned.value.destinationRoot);
     return ok({ ...planned.value, results: executedResults });
   } catch (error) {
     if (error instanceof SkillInstallError) return fail(error.code, error.message);
@@ -494,6 +495,87 @@ async function copyPackageTo(sourcePackage: SkillPackage, destination: string, i
   }
   const metadata = await buildInstallMetadata(sourcePackage, finalDestination, identity);
   await writeFile(path.join(destination, INSTALL_METADATA_FILE), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+}
+
+async function syncSharedMirror(sourceRoot: string, destinationRoot: string): Promise<void> {
+  const desired = await collectDesiredSharedResources(destinationRoot);
+  if (desired.size === 0) return;
+  const sharedSourceRoot = path.join(sourceRoot, "_shared", "kiwi");
+  const sharedMirrorRoot = path.join(destinationRoot, "_shared", "kiwi");
+  for (const relativePath of desired) {
+    const source = safeRelativeDestination(sharedSourceRoot, relativePath);
+    const stat = await lstat(source).catch(() => undefined);
+    if (!stat?.isFile()) continue;
+    const target = safeRelativeDestination(sharedMirrorRoot, relativePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    const existingTarget = await lstat(target).catch(() => undefined);
+    if (existingTarget?.isSymbolicLink()) await rm(target, { force: true });
+    await copyFile(source, target, fsConstants.COPYFILE_FICLONE).catch(async () => copyFile(source, target));
+    await chmod(target, stat.mode & 0o777).catch(() => undefined);
+  }
+  await pruneSharedMirror(sharedMirrorRoot, desired);
+}
+
+async function collectDesiredSharedResources(destinationRoot: string): Promise<Set<string>> {
+  const desired = new Set<string>();
+  const entries = await readdir(destinationRoot, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith("_") || !SKILL_NAME_PATTERN.test(entry.name)) continue;
+    const skillDir = path.join(destinationRoot, entry.name);
+    if (!await pathExists(path.join(skillDir, "SKILL.md"))) continue;
+    await collectSkillSharedReferences(destinationRoot, skillDir, desired);
+  }
+  return desired;
+}
+
+async function collectSkillSharedReferences(destinationRoot: string, skillDir: string, desired: Set<string>): Promise<void> {
+  const sharedMirrorRoot = path.resolve(destinationRoot, "_shared", "kiwi");
+  const pattern = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  async function walk(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolutePath);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md")) continue;
+      const text = await readFile(absolutePath, "utf8");
+      for (const match of text.matchAll(pattern)) {
+        const reference = match[1]?.replace(/[),.;:'"`]+$/g, "");
+        if (!reference) continue;
+        const resolved = path.resolve(path.dirname(absolutePath), reference);
+        const relativePath = path.relative(sharedMirrorRoot, resolved);
+        if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) continue;
+        desired.add(toPosix(relativePath));
+      }
+    }
+  }
+  await walk(skillDir);
+}
+
+async function pruneSharedMirror(sharedMirrorRoot: string, desired: Set<string>): Promise<void> {
+  if (!await directoryExists(sharedMirrorRoot)) return;
+  const existing = await listSharedMirrorFiles(sharedMirrorRoot);
+  for (const relativePath of existing) {
+    if (desired.has(relativePath)) continue;
+    await rm(safeRelativeDestination(sharedMirrorRoot, relativePath), { force: true });
+  }
+}
+
+async function listSharedMirrorFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
+  async function walk(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolutePath);
+        continue;
+      }
+      if (entry.isFile()) files.push(toPosix(path.relative(root, absolutePath)));
+    }
+  }
+  await walk(root);
+  return files;
 }
 
 async function buildInstallMetadata(sourcePackage: SkillPackage, destination: string, identity: SkillIdentity): Promise<Required<Omit<SkillInstallMetadata, "category">> & { category?: string }> {

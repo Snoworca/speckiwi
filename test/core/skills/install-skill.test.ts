@@ -435,4 +435,43 @@ describe("skill install core", () => {
     await expect(readFile(path.join(destinationRoot, "kiwi-pm", "SKILL.md"), "utf8")).resolves.toContain("# replacement");
     await expect(lstat(path.join(destinationRoot, "kiwi-pm", "stale.txt"))).rejects.toThrow();
   });
+
+  it("materializes referenced shared Kiwi resources into the mirror and prunes stale shared files", async () => {
+    const root = await tempRoot();
+    await writeSkill(root, "codex", "kiwi-pm", { body: "Read `../_shared/kiwi/auto-option.md` before auto mode." });
+    await writeSharedKiwiResource(root, "codex", "auto-option.md", "auto option v1\n");
+
+    const sharedMirror = path.join(root, ".agents", "skills", "_shared", "kiwi");
+    await mkdir(sharedMirror, { recursive: true });
+    await writeFile(path.join(sharedMirror, "stale.md"), "stale shared\n", "utf8");
+
+    const installed = await installSkill(baseOptions(root, { agent: "codex", dryRun: false }));
+    expect(installed.ok).toBe(true);
+    if (!installed.ok) throw new Error(installed.error.message);
+
+    const mirrorAutoOption = path.join(sharedMirror, "auto-option.md");
+    expect(await pathExists(mirrorAutoOption)).toBe(true);
+    await expect(readFile(mirrorAutoOption, "utf8")).resolves.toBe("auto option v1\n");
+    expect(await pathExists(path.join(sharedMirror, "stale.md"))).toBe(false);
+  });
+
+  it("preserves cross-skill shared resources when a single skill is reinstalled", async () => {
+    const root = await tempRoot();
+    await writeSkill(root, "codex", "kiwi-pm", { body: "Read `../_shared/kiwi/auto-option.md`." });
+    await writeSkill(root, "codex", "kiwi-srs-feasibility", { body: "Schema `../_shared/kiwi/feasibility-policy-schema-v1.md`." });
+    await writeSharedKiwiResource(root, "codex", "auto-option.md", "auto\n");
+    await writeSharedKiwiResource(root, "codex", "feasibility-policy-schema-v1.md", "schema\n");
+
+    const both = await installSkill(baseOptions(root, { agent: "codex", selector: "all", dryRun: false }));
+    expect(both.ok).toBe(true);
+
+    const sharedMirror = path.join(root, ".agents", "skills", "_shared", "kiwi");
+    expect(await pathExists(path.join(sharedMirror, "auto-option.md"))).toBe(true);
+    expect(await pathExists(path.join(sharedMirror, "feasibility-policy-schema-v1.md"))).toBe(true);
+
+    const single = await installSkill(baseOptions(root, { agent: "codex", selector: "kiwi-pm", dryRun: false }));
+    expect(single.ok).toBe(true);
+    expect(await pathExists(path.join(sharedMirror, "auto-option.md"))).toBe(true);
+    expect(await pathExists(path.join(sharedMirror, "feasibility-policy-schema-v1.md"))).toBe(true);
+  });
 });

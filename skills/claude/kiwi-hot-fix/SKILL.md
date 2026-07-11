@@ -35,7 +35,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | §0.11 | **`.kiwi/` 상태 영속**. 모든 단계 종료마다 `cwd/.kiwi/sessions/{run-id}/state.json` 갱신. 재개 가능 (kiwi-coder §7 패턴 계승, 단순화 버전) |
 | §0.12 | **stability 게이트 우회 허용 (사후 정합화 전제)**. speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료 시 `/kiwi-srs-sync` 위임으로 사후 정합화 의무 (§0.9). `--no-sync` 시 우회 금지 (stability 검사 강제) |
 | §0.13 | **fix 단위 = 단일 의미 변경**. 본 스킬은 1회 실행당 단일 fix 의미 단위만 처리. 다중 이슈는 별도 실행으로 분리. 단일 fix 가 N개 파일에 걸쳐도 무방, 단 N개 파일이 서로 무관한 fix 면 거부 + 분리 권고 (사전조사 단계에서 판정) |
-| §0.14 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `--auto` 는 **합성 옵션** = `--auto-apply --yes-all` 합성 (자식 `kiwi-srs-sync` 호출 전파 의무 — SSOT §7.1). `--auto-apply` / `--yes-all` 와의 의미 분리는 SSOT §11.1 참조. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
+| §0.14 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `--auto` 는 자식 `kiwi-srs-sync` 호출에 **`--auto` 만 전파**하며 `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않는다 — 사용자가 직접 그 플래그를 지정한 경우에만 전파 (SSOT §7.1). `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행과 critical_gates HALT (예: apply-all 비가역 MCP mutation) 를 유지하므로 부모 `--auto` 만으로 사용자 승인 게이트가 우회되지 않는다. 모든 런타임 변형(claude/codex/etc)이 동일한 안전 전파 계약을 따른다. `--auto-apply` / `--yes-all` 와의 의미 분리는 SSOT §11.1 참조. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -72,7 +72,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 |---|---|
 | `--no-sync` 명시 | sync 위임 skip + state.json `sync_skipped: "user-opt-out"` |
 | §0.G3.1 옵션 (1)(4) 선택 | sync 위임 skip (변경물 미존재 또는 미확정) |
-| fix 적용 성공 + 회귀 PASS + 위 미해당 | `/kiwi-srs-sync` Skill 호출 (자동), `--auto` 시 `--auto-apply --yes-all` 전파 |
+| fix 적용 성공 + 회귀 PASS + 위 미해당 | `/kiwi-srs-sync` Skill 호출 (자동), `--auto` 시 `--auto` 만 전파 (`--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만) |
 | Skill 호출 자체 실패 (Skill 도구 오류) | state.json `pending_sync: {reason}` + 사용자 보고 + 본 스킬 종료 |
 
 #### §0.G5 — 외부 모듈 영향이 fix 의 본질인 경우
@@ -95,7 +95,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | `mock-detection` | Mock regex 자동 탐지 CRITICAL (§0.6) | §0.6 / §5.2 |
 | `mcp-cli-both-unavailable` | preflight MCP + CLI 모두 실패 — sync 위임 차단 / `--no-sync` 강제 | §3.0 case 5 |
 
-**자식 sync 전파 (§7.1 SSOT 합성)**: 본 스킬 `--auto` 활성 시 `kiwi-srs-sync` 호출 args 에 `--auto --auto-apply --yes-all` 자동 합성 — 기존 `--auto = --auto-apply + --yes-all` 시맨틱 보존.
+**자식 sync 전파 (§7.1 SSOT)**: 본 스킬 `--auto` 활성 시 `kiwi-srs-sync` 호출 args 에 `--auto` 만 전파한다. `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않으며, 사용자가 직접 그 플래그를 지정한 경우에만 전파한다 — codex/etc 변형과 동일한 안전 계약. `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행과 critical_gates HALT 를 유지한다.
 
 ---
 
@@ -114,7 +114,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | "재현 안 됨", "테스트 작성 어려움" — exempt 사유 | `TDD_EXEMPT_REASON="..."` (≥20자) | TDD 의무 강제 |
 | "sync 건너뜀", "SRS 동기화 안 함" | `--no-sync` | sync 의무 |
 | "max 모드", "정밀" | `--max` | off (Normal) |
-| "자동 적용", "확인 없이" | `--auto` (= `--auto-apply` + `--yes-all`) (SSOT: auto-option.md v1.0) | off |
+| "자동 적용", "확인 없이", "자동", "묻지 말고" | `--auto` (사용자 게이트 자동 결정; SSOT: auto-option.md v1.0. sync 위임 시 `--auto` 만 전파하고 `--auto-apply` / `--yes-all` 는 자동 추가 안 함) | off |
 | "dry-run", "변경 없이" | `--dry-run` | off |
 | "회귀 skip" | `--skip-regression` | off (회귀 의무) |
 | "리뷰 강도 낮춤" — **불가** | (해당 인자 없음 — 까칠 리뷰는 §0.2 의무) | — |
@@ -368,12 +368,12 @@ severity: P1-P5 CRITICAL, P6 HIGH, P7 HIGH (정보성 가능).
 조건 통과 시 다음을 메인이 수행:
 
 ```
-Skill(skill="kiwi-srs-sync", args="{model} {auto-apply} --staged 또는 --files={fix 대상 파일 콤마}")
+Skill(skill="kiwi-srs-sync", args="{auto} {model} --staged 또는 --files={fix 대상 파일 콤마}")
 ```
 
-`args` 합성 규칙:
+`args` 구성 규칙:
+- `--auto` → `--auto` 만 전파 (`--auto-apply` / `--yes-all` 는 자동으로 추가하지 않으며, 사용자가 직접 그 플래그를 지정한 경우에만 전파). `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행 + critical_gates HALT 를 유지
 - `--model <name>` 활성 → 전파 (부모가 지정한 검증 모델을 자식에 명시)
-- `--auto` → `--auto-apply --yes-all` 전파
 - `--dry-run` → `--dry-run-only` 전파
 - fix 대상 파일이 명확 (`fix_summary.json.files`) → `--files=...` 전달, 그 외 `--staged`
 

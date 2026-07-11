@@ -1,0 +1,45 @@
+{
+  "decision": "D4",
+  "title": "hot-fix -> srs-sync --auto propagation: align cross-runtime safety gate to the safe side",
+  "new_req_id": "FR-FLOW-033",
+  "new_req_status": "planned",
+  "new_req_stability": "evolving",
+  "new_req_note": "Registered as planned per D4 directive (not verified). Implementation is complete and tests are green; status promotion is deferred to the committee unified close pass, consistent with sibling FR-FLOW-022~032.",
+  "direction": "align claude to safe (no --auto-apply/--yes-all synthesis)",
+  "root_cause": "claude kiwi-hot-fix defined `--auto` as the synthesis `--auto-apply --yes-all` and propagated it to child kiwi-srs-sync (SKILL.md §0.14/§0.G4/§0.G6/§1.2/§6.2.1 + _shared/kiwi/auto-option.md §7.1/§11), bypassing kiwi-srs-sync dry-run precedence + user-approval + apply-all critical_gate. codex/etc already forbid the synthesis. kiwi-srs-sync under `--auto` alone already retains critical_gates HALT (apply-all-force-apply) and dry-run committee decision, so the synthesis was redundant and only removed reviewer discretion.",
+  "files_changed": [
+    "docs/spec/60.workflow-release.srs.md (FR-FLOW-033 requirement block added via MCP add_requirement)",
+    "skills/claude/kiwi-hot-fix/SKILL.md (§0.14, §0.G4, §0.G6, §1.2, §6.2.1 — removed --auto-apply/--yes-all synthesis; now propagates --auto only, apply flags only if user-supplied; notes srs-sync retains dry-run+critical_gates under --auto alone; cross-variant parity stated)",
+    "skills/claude/_shared/kiwi/auto-option.md (§7.1 heading/intro/hot-fix row, §11 migration row, §11.1 note — removed synthesis, matched codex/etc safe contract)",
+    "test/skills/kiwi-hot-fix-safe-propagation-content.test.ts (new content-assertion TDD test)"
+  ],
+  "files_not_changed_intentionally": [
+    "skills/codex/** and skills/etc/** (already safe; confirm-only)",
+    "skills/{claude,codex,etc}/kiwi-srs-sync/** (safety invariant already correct; AC-3 asserts it, unchanged)",
+    "src/core/skills/install-skill.ts (D1 owns; parallel run)",
+    ".agents/skills/** (generated mirror of skills/codex which is unchanged; install-skill mirror byte-identity test passed)"
+  ],
+  "index_reconciliation": "docs/spec/00.index.md §5/§6 count tables were reconciled by the add_requirement MCP tool (planned 0->1, functional bump) plus a concurrent committee agent (implemented 90->91). Not hand-edited. Final validate_spec is clean.",
+  "test_tdd": {
+    "test_file": "test/skills/kiwi-hot-fix-safe-propagation-content.test.ts",
+    "style": "raw-text content assertions (SKILL.md/auto-option.md are agent instructions, not executable code); 3 AC x 3 variants (claude/codex/etc) = 9 tests; bilingual token windows",
+    "acceptance_criteria": {
+      "AC-1": "kiwi-hot-fix --auto sync delegation propagates only --auto and does not auto-synthesize --auto-apply/--yes-all (unless user-supplied)",
+      "AC-2": "auto-option.md special-propagation table (all variants) forbids hot-fix->srs-sync synthesis (cross-variant symmetry)",
+      "AC-3": "kiwi-srs-sync retains dry-run precedence so a parent --auto alone cannot skip user approval"
+    },
+    "red": "2 failed (claude AC-1, claude AC-2) / 7 passed (codex+etc AC-1/2/3, claude AC-3) — synthesis present, safe contract absent in claude",
+    "green": "9 passed / 0 failed after claude alignment",
+    "tdd_order": "requirement registered (planned) -> failing test written and red confirmed -> minimal doc edits -> green -> regression"
+  },
+  "cross_variant_symmetric": true,
+  "cross_variant_evidence": "grep across skills/{claude,codex,etc}: no --auto-apply --yes-all synthesis (adjacency/equation), no '합성 옵션'/'자동 합성 ' in any kiwi-hot-fix or _shared/kiwi/auto-option.md. Remaining '--auto-apply --yes-all' adjacencies are only kiwi-srs-sync direct user-invocation examples (present symmetrically in all 3 variants; legitimate user-supplied usage).",
+  "critical_gates_preserved": "kiwi-srs-sync critical_gates[] (apply-all-force-apply irreversible MCP mutation, etc) and dry-run precedence unchanged; --auto alone still HALTs at apply-all and produces a dry-run committee decision (AC-3 green in all variants).",
+  "regression": {
+    "test_skills": "176 passed / 0 failed (10 files, incl. new test + kiwi-auto-committee-content.test.ts regression from the auto-option.md edits)",
+    "install_skill": "19 passed / 0 failed (task expected 17; suite has grown, all pass; mirror byte-identity test included)",
+    "new_failures": 0
+  },
+  "validate": "0/0",
+  "mirror_action": "none required — only skills/claude changed; .agents/skills is the generated codex mirror and codex is unchanged; no manual cp of _shared/auto-option.md needed (avoided D1 tool-gap overlap)"
+}

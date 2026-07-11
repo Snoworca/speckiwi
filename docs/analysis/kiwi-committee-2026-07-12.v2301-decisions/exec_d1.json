@@ -1,0 +1,28 @@
+{
+  "decision": "D1",
+  "new_req_id": "FR-NODE-066",
+  "srs_scope": "NODE",
+  "srs_title": "Kiwi skill install shared-resource mirror sync",
+  "srs_status": "implemented",
+  "srs_stability": "evolving",
+  "related_req": "FR-NODE-016",
+  "test_tdd": {
+    "red": "Added 2 tests to test/core/skills/install-skill.test.ts ('materializes referenced shared Kiwi resources into the mirror and prunes stale shared files', 'preserves cross-skill shared resources when a single skill is reinstalled'); ran npx vitest -> 2 failed / 17 passed (referenced _shared/kiwi file not copied to mirror; feasibility-policy-schema-v1.md not copied on selector=all).",
+    "green": "Implemented syncSharedMirror; ran npx vitest run test/core/skills/install-skill.test.ts -> 19 passed / 19 (17 pre-existing + 2 new)."
+  },
+  "install_skill_change": "src/core/skills/install-skill.ts: added syncSharedMirror(sourceRoot, destinationRoot) called once in installSkill after the skill-copy loop (non-dry-run path only). It computes the desired shared set as the UNION of ../_shared/kiwi/* references across ALL skill dirs present under destinationRoot (collectDesiredSharedResources + collectSkillSharedReferences), copies each referenced file from sourceRoot/_shared/kiwi into destinationRoot/_shared/kiwi with byte-identical content + preserved mode (source symlink-guarded via lstat isFile; target symlink removed before copy), then prunes mirror files not in the union (pruneSharedMirror + listSharedMirrorFiles). Skips entirely when the union is empty to avoid touching unrelated content. Existing behavior (copyPackageTo, executeOne, collectSharedResourceReferences, install metadata/token contract, _shared exclusion) unchanged; additive only.",
+  "prune_scope": "union across all destination skills (not just invocation) — single-skill reinstall cannot delete another installed skill's referenced shared file (covered by cross-skill test).",
+  "mirror_synced_files": {
+    "full_source_all_15_skills_temp_install": ["auto-option.md", "feasibility-policy-schema-v1.md", "pipeline-event.md", "pipeline-v1.md", "waves-event.md"],
+    "repo_mirror_13_skills_reference_based": ["auto-option.md", "feasibility-policy-schema-v1.md", "pipeline-event.md", "pipeline-v1.md"]
+  },
+  "waves_event_finding": "waves-event.md is referenced ONLY by kiwi-wave-master, which is intentionally excluded from the .agents/skills mirror (13 skills). Under the reference-based model, the 13-skill repo mirror correctly contains exactly the 4 files it references; waves-event.md is NOT drift for that mirror. Full 15-skill install (temp dest) DOES copy waves-event.md, proving copy works. The real repo .agents/skills/_shared/kiwi already matched the reference-based union (4 files), so no repo mirror regeneration was performed (avoids metadata churn; surgical).",
+  "verification": {
+    "unit_tests": "test/core/skills/install-skill.test.ts 19/19; test/core/skills + test/cli/skills-cli.test.ts green; only unrelated FR-FLOW-033 hot-fix content tests (another teammate, untracked) had transient failures and now pass 9/9.",
+    "real_data_integration": "node bin/speckiwi skills install codex all --dest <temp> -> 15 skills; temp _shared/kiwi = 5 files incl waves-event.md, all content-matched to source. 13-skill temp install -> 4 files (no waves-event.md), identical set to real .agents/skills/_shared/kiwi.",
+    "subagent_review": "independent verifier PASS on AC-1/2/4/5, AC-3 functional PASS (empty-union guard documented in SRS ImplementationNotes)."
+  },
+  "tsc": "0",
+  "eslint": "clean",
+  "validate": "0/0"
+}
