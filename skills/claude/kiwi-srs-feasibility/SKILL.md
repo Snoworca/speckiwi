@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-feasibility
-description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능성(feasibility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target → list_requirements → per-REQ implementability/score → 종합 판정 → dryRun 선행 → 사용자 승인 → update_stability 적용. 3 Sonnet 사전조사 병렬 + Opus 시니어 분석가 + Opus×1+Sonnet×1 평가자(Max는 Opus×2+Sonnet×1) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — feasibility 검증, 활성 target feasibility, kiwi srs feasibility, target 전수 평가, stability 승급, 구현 가능성 일괄 평가, release readiness, freeze 게이트, 스프린트 진입 평가, kiwi feasibility, kiwi-srs-feasibility, batch feasibility, target-wide feasibility, srs feasibility gate, implementability assessment. --max 로 평가자 승격(Opus×2+Sonnet×1, 2연속 MEDIUM-zero 종료). --dry-run 으로 mutation 없이 제안만 출력. --scope/--priority 로 부분집합 평가. --mini 로 비용 절감(모든 Opus→Sonnet override, `_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트 불변, 자식 research 호출에 자동 전파)."
+description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능성(feasibility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target → list_requirements → per-REQ implementability/score → 종합 판정 → dryRun 선행 → 사용자 승인 → update_stability 적용. 3 Sonnet 사전조사 병렬 + Opus 시니어 분석가 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — feasibility 검증, 활성 target feasibility, kiwi srs feasibility, target 전수 평가, stability 승급, 구현 가능성 일괄 평가, release readiness, freeze 게이트, 스프린트 진입 평가, kiwi feasibility, kiwi-srs-feasibility, batch feasibility, target-wide feasibility, srs feasibility gate, implementability assessment. --max 로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 2연속 MEDIUM-zero 종료). --dry-run 으로 mutation 없이 제안만 출력. --scope/--priority 로 부분집합 평가. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변, 자식 research 호출에 자동 전파)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-feasibility v0.8
@@ -32,8 +32,8 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + AskUserQuestion. 상세는 §0.G2 |
 | §0.13 | **per-REQ 독립 mutation**. target 전체 일괄 트랜잭션 금지 — REQ 단위 독립 호출 + 결과 집계. 부분 실패 허용 |
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
-| §0.15 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "Opus 시니어 분석가", "Opus×1 평가자", "Opus×2 평가자" 등 Opus 인용은 모두 Sonnet 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--mini` 자동 전파 — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (mini-option.md §7, kiwi-srs-research §0.G6) |
-| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조. **자식 호출 `kiwi-srs-research` 시 `--auto` 자동 전파 의무** — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (auto-option.md §7, kiwi-srs-research standalone 모드 한정 적용; subagent 모드는 silent skip). `--auto --mini` 합성 전파 시 둘 다 명시 |
+| §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--model` 자동 전파 — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (kiwi-srs-research §0.G6) |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조. **자식 호출 `kiwi-srs-research` 시 `--auto` 자동 전파 의무** — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (auto-option.md §7, kiwi-srs-research standalone 모드 한정 적용; subagent 모드는 silent skip). `--auto --model <name>` 합성 전파 시 둘 다 명시 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -114,7 +114,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "stable REQ 도 재평가" | `--include-stable` | off (stable/frozen 은 skip) |
 | "--dry-run", "제안만" | `--dry-run` | off (실제 mutation) |
 | "--max", "정밀 검증" | `--max` | off |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (모든 Opus → Sonnet, `_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 | "코드 경로 X" | `CODE_PATH` | cwd |
 | "정책 파일 X" | `POLICY_PATH` | `.kiwi/feasibility-policy.yaml` 자동 탐색 |
 | "--enable-research", "연구 보강" | `--enable-research` | off (활성 시 Phase 2.5 가동) |
@@ -186,7 +186,7 @@ Phase 2   : Per-REQ feasibility judgement (Opus 시니어, senior_targets 만)
 Phase 2.5 : Research enrichment (조건부, --enable-research 시; kiwi-srs-research subagent 모드 호출)
 Phase 3   : Target-wide synthesis (Opus 시니어, REQ 간 의존성·우선순위 종합)
 Phase 4   : Mapping resolution (정책 → per-REQ stability 제안)
-Phase 5   : Evaluation (Opus×1+Sonnet×1; Max: Opus×2+Sonnet×1)
+Phase 5   : Verification (단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스)
 Phase 6   : Severity gate + loop → §9.3 라우팅 (Phase 2.0/2/2.5/3/4) 또는 Phase 7
 Phase 7   : User approval + dryRun verification
 Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (doculight + chat)
@@ -526,7 +526,7 @@ per_req.research_enrichment = {
   - Phase 2.0 prescreen = ceil(N / chunk-size) (Sonnet, N≥7 시)
   - Phase 2 per-REQ = senior_targets 수 (Opus)
   - Phase 2.5 = 최대 75
-  - Phase 5 evaluator = 2-3 × iter (Normal 최대 5 iter / Max 최대 15)
+  - Phase 5 evaluator = 1-2 × iter (Normal 단일 검증 서브에이전트 1 / Max +독립 2차 패스 2; Normal 최대 5 iter / Max 최대 15)
   - **총량 가드**: 위 합산이 사용자가 직관적으로 예측 가능하도록 `cost-estimate.json` 산출물(Phase 0 종료 시) 에 사전 추정치 기록 + 사용자에게 보고. `--cost-cap N` 옵션으로 상한 강제 가능 (초과 시 HALT + 옵션 조정 안내).
 
 ### 5.5.7 산출물
@@ -639,10 +639,12 @@ per-REQ judgement + 정책 → per-REQ stability 제안.
 
 ### 8.4 토폴로지
 
-| 모드 | Evaluator A | B | C |
-|---|---|---|---|
-| Normal | Opus | Sonnet | — |
-| --max | Opus | Sonnet | Opus |
+평가·검증은 **단일 검증 서브에이전트**가 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다.
+
+| 모드 | 검증 서브에이전트 | 모델 |
+|---|---|---|
+| Normal | 단일 검증 서브에이전트 × 1 | 현재 세션 모델 (`--model` override) |
+| --max | 단일 검증 서브에이전트 + 독립 2차 검증 패스 | 현재 세션 모델 (`--model` override) |
 
 ---
 

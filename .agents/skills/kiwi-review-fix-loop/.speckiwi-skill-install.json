@@ -1,18 +1,23 @@
 {
   "name": "kiwi-review-fix-loop",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.293Z",
+  "installedAt": "2026-07-10T14:50:36.011Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-review-fix-loop",
   "installedPath": ".agents/skills/kiwi-review-fix-loop",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:92b24d1dfda555086f17acd39a77a0548eb0703eb7d82dac61833080297adbdf",
-  "installedChecksum": "sha256:92b24d1dfda555086f17acd39a77a0548eb0703eb7d82dac61833080297adbdf",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:58b3efa37f559ac7672a9b039e62abe9e4784bb2f8e6b0f62a27abb941e4e606",
+  "installedChecksum": "sha256:58b3efa37f559ac7672a9b039e62abe9e4784bb2f8e6b0f62a27abb941e4e606",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/pipeline-event.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-review-fix-loop --json",
   "noManualEdit": true
 }

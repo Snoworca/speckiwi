@@ -1,0 +1,79 @@
+{
+  "round": 4,
+  "req": "FR-FLOW-022 (AC-2) + QB-204",
+  "summary": "Collapsed the leftover dual-model evaluator/verifier operational topology tables in 5 kiwi-* skills to a single current-session-model verification subagent (+--model override), matching each skill's already-fixed §0.x SSOT; aligned local-llm-profile.md's --auto decision path to auto-option.md's committee model.",
+  "tdd": {
+    "test_extended": "test/skills/kiwi-mini-removal-content.test.ts — appended describe 'FR-FLOW-022 AC-2 — operational evaluator topology tables carry no live dual-model panel'. Section-scoped precise matching: tableAfterHeading() grabs only the markdown table under §10.4/§8.4/§8.1/§1.3 and asserts no MODEL_TIER token (Opus|Sonnet|high-reasoning|standard|lightweight|local evaluator|local-LLM max-profile) in the table cells across 5 skills × 3 variants (claude SKILL.md + codex/etc references/extended-workflow.md); plus a PANEL_ENUM assertion that the §10.3 output-schema drops the '<tier>-A|<tier>-B|<tier>-C' 3-slot signature. Trigger descriptions, historical 'replaces Opus×1+Sonnet×1' SSOT notes, phase-flow blocks, and authoring roles are excluded by construction.",
+    "red_confirmed": "npx vitest run test/skills/kiwi-mini-removal-content.test.ts -> exit 1 (6 failed | 5 passed): kiwi-srs/feasibility/from-code/review-fix-loop/hot-fix topology tables + kiwi-srs §10.3 enum",
+    "green_confirmed": "npx vitest run test/skills/kiwi-mini-removal-content.test.ts -> exit 0 (11 passed)"
+  },
+  "fixes": [
+    {
+      "finding_id": "QA-301",
+      "target": "kiwi-srs §10.3 enum + §10.4 토폴로지",
+      "files_changed": [
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/kiwi-srs/references/extended-workflow.md",
+        "skills/etc/kiwi-srs/references/extended-workflow.md"
+      ],
+      "action": "fixed",
+      "detail": "§10.4 'Evaluator A|B|C' dual/triple panel table -> single verification subagent table (Normal: 단일 서브에이전트 ×1 / --max: +독립 2차 검증 패스), both 현재 세션 모델 with --model override. §10.3 enum 'opus-A|sonnet-B|opus-C' (codex 'high-reasoning-A|...', etc 'local-LLM max-profile-A|...') -> 'verify-pass-1|verify-pass-2'."
+    },
+    {
+      "finding_id": "feasibility-§8.4",
+      "target": "kiwi-srs-feasibility §8.4 토폴로지 (clone of §10.4)",
+      "files_changed": [
+        "skills/claude/kiwi-srs-feasibility/SKILL.md",
+        "skills/codex/kiwi-srs-feasibility/references/extended-workflow.md",
+        "skills/etc/kiwi-srs-feasibility/references/extended-workflow.md"
+      ],
+      "action": "fixed",
+      "detail": "§8.4 table -> same single-subagent form as QA-301. Also aligned the Phase-5-evaluator cost-count line ('2-3 × iter' -> '1-2 × iter: Normal 1 / Max +독립 2차 패스 2') in claude (L529) and codex (L157); etc already read 'single evaluator, 3 consecutive clean'. Pre-investigation (Sonnet×3) and senior analyst (Opus/high-reasoning) writer roles left untouched (out of FR-FLOW-022 evaluator scope)."
+    },
+    {
+      "finding_id": "QA-302",
+      "target": "kiwi-srs-from-code §8.1 검증자 4종",
+      "files_changed": [
+        "skills/claude/kiwi-srs-from-code/SKILL.md",
+        "skills/codex/kiwi-srs-from-code/references/extended-workflow.md",
+        "skills/etc/kiwi-srs-from-code/references/extended-workflow.md"
+      ],
+      "action": "fixed",
+      "detail": "Dropped the '모델 (1st iter) | 모델 (escalation)' Sonnet/Opus (codex standard/high-reasoning, etc local) model columns; kept the 4 axes + 책임 and added a header line pinning all 4 verifiers to 현재 세션 모델 (--model override), consistent with §0.10 SSOT. Reframed the ex-'비용 가드레일' as '반복(iteration) 정책': repeat findings trigger axis re-run (반복 확증), NOT a model escalation (검증 모델은 현재 세션 모델 불변)."
+    },
+    {
+      "finding_id": "QA-303",
+      "target": "kiwi-review-fix-loop §1.3 + kiwi-hot-fix §1.3 모드 매트릭스",
+      "files_changed": [
+        "skills/claude/kiwi-review-fix-loop/SKILL.md",
+        "skills/claude/kiwi-hot-fix/SKILL.md"
+      ],
+      "action": "fixed",
+      "detail": "review-fix-loop §1.3: removed Opus data cells + '(Sonnet)' role-column labels; collapsed the 4 mode rows to Normal/--max, all roles 현재 세션 모델, --max escalates COUNT (×2) not model, --model override in intro note. Also removed the residual Sonnet pinning of 분류기/정형 검사 from the §0.9 model-policy SSOT and the §0.12 / §0.G5 / §5 phase-flow classifier labels (per 'roles kept, model assignment only changed'). hot-fix: §1.3 table ONLY (removed Root-cause 사전조사/정형 검사 '(Sonnet)' headers + Opus data cells, all roles 현재 세션 모델, count-only --max). codex/etc variants of these two skills have no such table (fully English-rewritten) — nothing to change there.",
+      "scope_note": "hot-fix limited to §1.3 per team-lead directive; hot-fix §0.2/§0.10/phase-flow/frontmatter still hold pre-existing (T-PH001-02) hardcoded Opus/Sonnet outside §1.3 — deliberately NOT touched (out of scope, and adjacent to the propagation policy the directive protects)."
+    }
+  ],
+  "local_llm_profile": {
+    "path": "skills/etc/_shared/kiwi/local-llm-profile.md",
+    "changed": true,
+    "detail": "QB-204: rewrote the '--auto Policy' + carve-outs in 'Single-Worker Policy' and 'Default Mode' so the --auto user-decision committee follows auto-option.md's committee model (--auto=3, --auto --max=5; --max raises the committee, NOT a no-op) rather than the old 'one isolated worker / --max is already the default / never creates a multi-worker decision topology'. Committee members run SEQUENTIALLY on fanout-disabled hosts but size/voting/merge are preserved; the single-evaluator verification/evaluation loop (FR-FLOW-022) is kept as a distinct, unchanged mechanism. Corrected an initial over-reach: local-llm-profile.md does NOT force etc --auto to 5 by default (etc auto-option.md already states etc --auto=3), so it is now byte-consistent with the etc auto-option.md SSOT.",
+    "mirror": "not mirrored — local-llm-profile.md is etc-only and .agents/ mirrors the codex variant (no codex copy exists); the task's manual-cp note was moot."
+  },
+  "qb205": "deferred (out-of-scope, untouched) — hot-fix propagation policy (§0.14 / §7.1 Special propagation / kiwi-srs-sync --auto-apply --yes-all cross-variant branching) not modified.",
+  "regression": {
+    "extended_test": "test/skills/kiwi-mini-removal-content.test.ts: 11 passed (5 original AC-1/2/3 + 6 new AC-2 table/enum)",
+    "skills_suite": "npx vitest run test/skills/ : 9 files, 165 passed (0 failed)",
+    "install_skill": "npx vitest run test/core/skills/install-skill.test.ts : 17 passed",
+    "signature_scans": "0 remaining 'Evaluator A | B | C' / '모델 (1st iter)' / 'opus-A|sonnet-B' / 'high-reasoning-A|standard-B' / 'local-LLM max-profile-A' across skills/{claude,codex,etc} + .agents; 0 orphaned old-panel refs; local-llm-profile.md free of the 3 stale phrases.",
+    "independent_verification": "general-purpose subagent (bias-free input: verbatim SRS req only) confirmed all 5 tables PASS, QB-204 PASS, no orphaned 3-slot panel; surfaced the codex feasibility '2-3 × iter' miss, which was then fixed."
+  },
+  "mirror_resynced": [
+    ".agents/skills/kiwi-srs (byte-equal references/extended-workflow.md)",
+    ".agents/skills/kiwi-srs-feasibility (byte-equal references/extended-workflow.md)",
+    ".agents/skills/kiwi-srs-from-code (byte-equal references/extended-workflow.md)"
+  ],
+  "out_of_scope_observations": [
+    "Pre-existing (T-PH001-02) writer/analyst-role model tags remain and are NOT evaluator-panel contradictions: kiwi-srs §11.3 'Improvement agent, Opus' + Phase-4 writer Opus×1; feasibility §0.15 over-includes '시니어 분석가' while Phase 2/3 keep 'Opus 시니어 분석가'; from-code §7 L301 'scope 1개 = Opus 서브에이전트' vs §0.10 listing the scope agent; frontmatter descriptions of review-fix-loop/hot-fix still open with 'Opus 까칠 리뷰어'. All out of FR-FLOW-022's verification/evaluation scope and this task's table focus.",
+    "auto-option.md 'Definition' section still reads 'one isolated decision worker' (slightly stale vs its own 3/5 committee section) — inside auto-option.md, outside QB-204's local-llm-profile.md target; not modified."
+  ]
+}

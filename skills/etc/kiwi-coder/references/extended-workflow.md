@@ -145,7 +145,7 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
   "plan_path": "docs/plans/2026-05-19.skf.v01.plan.md",
   "sidecar_path": "docs/plans/2026-05-19.skf.v01.sidecar.json",
   "target": "skf-v0.1",
-  "mode": "normal|max|reviewer-off|squirrel|dry-run",
+  "mode": "normal|max|reviewer-off|model|dry-run",
   "flags": ["--max"],
   "started_at": "ISO-8601",
   "updated_at": "ISO-8601",

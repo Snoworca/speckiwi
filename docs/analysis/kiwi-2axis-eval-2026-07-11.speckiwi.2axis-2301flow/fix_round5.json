@@ -1,0 +1,44 @@
+{
+  "round": 5,
+  "req": "FR-FLOW-022",
+  "precedent_verified": "kiwi-coder 정형검사=현재세션/TDD=Sonnet (skills/claude/kiwi-coder/SKILL.md §0.16 line 33 + §1.3 mode matrix line 147: '정형 검사 (현재 세션 모델)' 와 'TDD 검증 (Sonnet)' 한 표 공존; --model 은 정형검사·까칠리뷰 검증 서브에이전트만 override, 시니어 코더는 영향 없음)",
+  "resolution": "정형검사·까칠리뷰·fixer→현재세션; root-cause 사전조사·TDD→Sonnet 고정. --model 은 검증 서브에이전트(정형검사·까칠리뷰)만 override 하고 시니어 fixer 는 영향 없음(시니어 코더와 동일)",
+  "hotfix_locations_fixed": [
+    "frontmatter(line3) 파이프라인 서술: 'Opus 시니어 fixer + Sonnet 정형 검사 + Opus 까칠 리뷰어' → '시니어 fixer + 정형 검사 + 까칠 리뷰어' (Sonnet×2 root-cause 유지)",
+    "frontmatter(line3) 모델 정책절: '시니어 fixer + 까칠 리뷰어는 현재 세션 모델 --model override' → '검증(정형 검사·까칠 리뷰어) 서브에이전트 현재 세션 모델 --model override(시니어 fixer 영향 없음; root-cause·TDD Sonnet 불변)'",
+    "§0.2(line26): 'Opus 까칠 리뷰어' → '까칠 리뷰어 (현재 세션 모델)'",
+    "§0.10(line34 SSOT): 'Sonnet 정형 검사'를 Sonnet-고정 목록에서 제거 → 정형검사=현재세션 검증 서브에이전트, 시니어 fixer --model 영향 없음 명시, root-cause/TDD 만 Sonnet 고정 (Axis A F-01 수정)",
+    "§1.3 note(line126): 'Root-cause 사전조사'를 '현재 세션'으로 과잉선언한 것 제거 → 정형검사·까칠리뷰만 현재세션, root-cause·TDD Sonnet 고정 (Axis B QB-206 수정)",
+    "§1.3 mode matrix(line128) 헤더: kiwi-coder line147 패턴 도입 → 'Root-cause 사전조사 (Sonnet) | 시니어 fixer (현재 세션 모델) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델)'",
+    "§1.4(line143/144): 'Sonnet 정형 검사 결과'→'정형 검사 결과 (현재 세션 모델)', 'Opus 까칠 리뷰 결과'→'까칠 리뷰 결과 (현재 세션 모델)' (line140 Sonnet×2 root-cause 유지)",
+    "§2 phase-flow(line169/170): 'Opus 시니어 fixer'→'시니어 fixer(현재 세션 모델)', '정형 검사(Sonnet×1)+까칠 리뷰(Opus×1/2)'→'정형 검사(현재 세션 모델×1)+까칠 리뷰(현재 세션 모델×1/2)' (line167 Sonnet×2 root-cause 유지)",
+    "§5.1(line290): '시니어 fixer (Opus; --model override 가능)' → '시니어 fixer (현재 세션 모델; --model 영향 없음)'",
+    "§5.3.1(line315): '정형 검사 (Sonnet×1, 4축)' → '정형 검사 (현재 세션 모델×1, 4축)'",
+    "§5.3.2(line328): '까칠 리뷰 (Opus×1, 7축)' → '까칠 리뷰 (현재 세션 모델×1, 7축)'"
+  ],
+  "hotfix_locations_left_as_is_correct": [
+    "§4 header(line241)/phase-flow(line167) Sonnet×2 root-cause (정답)",
+    "§5.3.3(line351) fixer 재호출의 'Sonnet×2 사전조사 결과' 참조 (root-cause = Sonnet, 정답)",
+    "§7.1(line406) report enum 'mode: normal|max|mini|max-mini|dry-run' — 'mini' 는 이전 mini-removal 잔재이나 본 라운드(role-model) 범위 밖 + MINI_TOKEN(/--mini/) 미매치로 무해. 미변경, 관찰만 보고"
+  ],
+  "reviewfixloop": "fixed",
+  "reviewfixloop_detail": "hot-fix 와 동일 오정합(시니어 fixer 를 --model override 대상으로 그룹핑 + 프론트매터 'Opus 까칠 리뷰어'/'Opus 시니어 fixer' 스테일 라벨)이 존재 → kiwi-coder 선례로 정합. 변경: frontmatter(Opus 라벨 2건 제거 + 정책절을 '검증(까칠 리뷰어·분류기·정형 검사) 현재 세션 --model override; 시니어 fixer 영향 없음'), §0.9, §1.3 note. §1.3 표는 원래 model-free(root-cause/TDD Sonnet 역할 없음)라 미변경. Axis B '내부 모순 없음'은 맞으나 Axis A 'incomplete'(선례 대비 fixer/--model 미정합)가 정확",
+  "test_refined": {
+    "file": "test/skills/kiwi-mini-removal-content.test.ts",
+    "change": "AC-2 확장(operational topology table) offender 조건을 'MODEL_TIER.test(table)'(임의 1개 tier) → 'distinctModelTiers(table).length >= 2'(서로 다른 고정 모델 2개 = 이중모델 평가자 패널)로 정밀화. distinctModelTiers 헬퍼 추가, it() 명/메시지/주석블록 갱신. TDD/root-cause 의 정당한 단일 Sonnet 허용(kiwi-coder line147 공존 패턴)",
+    "red": "(1) 정교화 전 unrefined any-tier assertion 이 정정된 hot-fix §1.3 표의 정당한 root-cause (Sonnet) 를 false-red → offender=[skills/claude/kiwi-hot-fix/SKILL.md]. (2) 정교화 후 비-vacuity 검증: §1.3 표에 이중패널(정형 검사 (Sonnet) | 까칠 리뷰어 (Opus)=2 distinct) 일시 주입 시 refined assertion RED (offender 재현) → 원복",
+    "green": "정교화 후 정정된 hot-fix §1.3 표(root-cause 만 Sonnet=1 distinct)에서 refined assertion GREEN. mini-removal 11/11 pass. 다른 4스킬(kiwi-srs §10.4 / feasibility §8.4 / from-code §8.1 / review-fix-loop §1.3) 표는 fixed tier 0개라 회귀 없이 GREEN 유지"
+  },
+  "regression": {
+    "test_skills_suite": "8 files / 148 tests PASS",
+    "install_skill_test": "17/17 PASS",
+    "mini_removal_test": "11/11 PASS",
+    "scope": "skills/{claude,codex,etc} + test 만 편집 대상; 실제 편집은 claude 2개 SKILL.md + test 1개"
+  },
+  "mirror_resynced": [],
+  "mirror_note": "재sync 불필요. hot-fix + review-fix-loop 은 13-스킬 미러 대상(.agents/skills 에 존재)이나, codex/etc 변형은 이미 정책 정합('verification model | --model | current session model', 이중패널·§1.3 토폴로지표 없음)이라 변경하지 않음. claude 변형만 편집했고 .agents/skills 미러는 codex 소스에서 install 되므로 codex 소스 무변경 → 미러 IN SYNC(diff 확인). codex 변경이 없어 'node bin/speckiwi skills install codex ...' 재sync 트리거 조건 미해당",
+  "out_of_scope_untouched": [
+    "QB-205 (hot-fix→srs-sync 전파 정책) — 지시대로 미변경",
+    "kiwi-coder (선례/레퍼런스) — 미변경. 단 kiwi-coder frontmatter 파이프라인 서술 'Sonnet 정형 검사 → Opus 까칠 리뷰'는 authoritative §0.16 절과 스테일 불일치(관찰). 본 라운드 범위 밖이라 미변경, 보고만"
+  ]
+}

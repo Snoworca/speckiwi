@@ -34,12 +34,19 @@ Silent skip cases:
 Record active flags in the skill's preflight or analysis log, for example
 `mode_flags: ["--auto", "--max"]`.
 
-## Decision Worker
+## Decision Committee
 
-Use one isolated decision worker for `--auto`. For `--auto --max`, use two
-independent workers with the same prompt and merge their decisions. Use current
-Codex delegation tools available in the session; if delegation is unavailable,
-halt instead of guessing for high-risk gates.
+When `--auto` is active, convene a research-performing decision committee of 3 members that
+investigates the gate context (research) and votes for the most reasonable option to adopt
+(select), instead of a single rubber-stamp worker. Under `--auto --max` the decision
+committee is raised to 5 members. Committee members are isolated sub-agents spawned in a
+single message (3 for `--auto`, 5 for `--auto --max`, 7 after a `--max` escalation) and
+inherit the current session model unless `--model <name>` overrides the committee model (no
+dual-model evaluator panel). Member #1 is the lead committee member and the deterministic
+tie-breaker (see the committee merge ladder). Use current Codex delegation tools; if
+delegation is unavailable, halt instead of guessing for high-risk gates.
+
+Each committee member receives the same worker input and returns the same JSON vote.
 
 Worker input:
 
@@ -70,24 +77,40 @@ Required worker output is raw JSON:
 }
 ```
 
-## Merge For `--auto --max`
+## Committee Merge Ladder (unanimous -> escalate -> plurality -> tie-break)
 
-1. Run two workers independently.
-2. Normalize `decision` by trimming whitespace and comparing lowercased exact
-   option IDs. Do not use substring matching.
-3. If both decisions match, apply it and record both rationales.
-4. If decisions differ, run one merge worker with the original gate input plus
-   both worker results. The merge worker must choose worker 1, worker 2, or halt.
-5. If the merge worker proposes a third unrelated answer, halt for user input.
+Collect each member's vote and decide with this ladder. Escalation keeps the existing votes
+and adds two new members, then re-decides.
+
+1. `--auto` (3-member committee): each of the 3 members researches the gate and votes.
+   - If the 3-member committee is unanimous, apply that decision and record all rationales.
+   - If the 3-member committee is not unanimous, escalate to a 5-member committee and
+     re-decide.
+2. 5-member committee: after adding two members, re-decide.
+   - If unanimous, apply it.
+   - If not unanimous, the 5-member committee decides by plurality (most votes); unanimity is
+     not required at 5 members.
+   - Under `--max`, if the 5-member committee is not unanimous, escalate to a 7-member
+     committee instead of stopping at plurality.
+3. 7-member committee (`--max` only): after adding two members, the 7-member committee
+   decides by plurality (most votes) without requiring unanimity.
+4. Tie-break (all sizes): any committee tie is broken deterministically by the lead committee
+   member (#1) ranking; member #1 is the fixed tie-breaker. The 7-member committee also breaks
+   any tie by the lead member (#1) ranking.
+5. Critical gates and business decisions listed in `critical_gates[]` still halt for the user
+   under `--auto`; the committee never overrides a critical halt.
+
+Normalize `decision` by trimming whitespace and comparing lowercased exact option IDs; do not
+use substring matching. A member that returns free text instead of an option ID is treated as
+a failed member.
 
 Failure handling:
 
 | Failure | Action |
 |---|---|
-| Empty response, timeout, invalid JSON, or missing `decision` | Retry once; if still invalid, halt. |
-| `--auto --max` one worker fails and the other succeeds | Retry the failed worker once; if it still fails, use the successful worker with a LOW warning. |
-| Both initial workers fail | Halt. |
-| Merge worker fails | Halt. |
+| Member timeout, empty response, invalid JSON, or missing `decision` | Retry that member once; if still invalid, drop it and proceed only if a majority quorum remains, otherwise halt. |
+| A majority of members fail | Halt for user input. |
+| Lead member (#1) fails so a tie cannot be broken | Retry member #1 once; if it still fails, halt (never break a tie arbitrarily). |
 
 ## Severity Policy
 
@@ -110,7 +133,22 @@ Adjust confidence before applying:
 | `risk_assessment=high` and confidence > 0.7 | multiply by 0.6 |
 | Mutation, push, PR, or status gate with empty `side_effects[]` | multiply by 0.7 |
 
-For `--mini`, increase thresholds by 0.1.
+Committee confidence cross-check: if the spread between the highest and lowest member
+confidence is >= 0.3, the vote is unreliable. If the committee is below its terminal size
+(`--auto` 3 members, or `--max` 5 members), escalate one rung on the merge ladder (3->5, 5->7)
+and re-vote once even when unanimous (the non-max ladder terminates at 5 members because 7
+members is `--max` only). If the committee is already at its terminal size (non-max 5 members,
+or `--max` 7 members), do not re-vote; escalate the low-confidence agreement to critical and
+halt for the user (same safety policy as the confidence adjustments above), never proceeding
+arbitrarily.
+
+When `--auto --model <name>` overrides the committee model, increase the confidence thresholds
+by 0.1 only when the named model is a lower tier than the current session model. Model tier
+SSOT (highest to lowest): `opus` > `sonnet` > `haiku`; compare the named and session models
+deterministically by this ranking (equal or higher tier -> no change, e.g. session `sonnet` +
+`--model opus`). Safe default: if the named model is not in the ranking or the session model is
+unknown so the comparison is impossible, always apply +0.1 (treat the unknown model as
+lower-capability).
 
 ## `critical_gates[]`
 
@@ -147,7 +185,8 @@ Recommended catalog:
 For a skill that references this file:
 
 - "Codex clarification gate" means `critical_gates[]` match halts; otherwise
-  `--auto` may use the decision worker.
+  `--auto` may use the decision committee (see Decision Committee and Committee
+  Merge Ladder).
 - `NEEDS_USER` payloads are decision gates. In child mode, return the payload to
   the parent only when the gate is critical or delegation is unavailable.
 - `default_if_auto` may be applied directly for low-risk clarification gates
@@ -164,16 +203,16 @@ When a parent Kiwi skill delegates to a child Kiwi skill:
 |---|---|
 | `--auto` | `--auto` |
 | `--auto --max` | `--auto --max` |
-| `--auto --mini` | `--auto --mini` |
-| `--auto --max --mini` | `--auto --max --mini` |
+| `--auto --model <name>` | `--auto --model <name>` |
+| `--auto --max --model <name>` | `--auto --max --model <name>` |
 
 Special propagation:
 
 | Parent | Child | Added flags |
 |---|---|---|
 | `kiwi-hot-fix --auto` | `kiwi-srs-sync` | `--auto` only; never add `--auto-apply` or `--yes-all` unless the user explicitly supplied those flags |
-| `kiwi-pm --auto` | `kiwi-coder` | `--auto`; add `--mini` or `--max` only when the parent explicitly has those flags |
-| `kiwi-coder --auto` standalone close handoff | `kiwi-review-fix-loop` | `--close-reqs --auto`, plus inherited `--mini` or `--max` |
+| `kiwi-pm --auto` | `kiwi-coder` | `--auto`; add `--model <name>` or `--max` only when the parent explicitly has those flags |
+| `kiwi-coder --auto` standalone close handoff | `kiwi-review-fix-loop` | `--close-reqs --auto`, plus inherited `--model <name>` or `--max` |
 
 ## Logging
 
@@ -189,9 +228,13 @@ Append or write `docs/analysis/{skill-run-id}/auto_decisions.json`:
       "gate_id": "gate",
       "severity": "business-decision",
       "options": ["a", "b"],
-      "worker_results": [],
+      "committee_votes": [
+        {"member": "#1", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.82},
+        {"member": "#2", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.79},
+        {"member": "#3", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.80}
+      ],
       "merged_decision": "a",
-      "merge_method": "single|unanimous|merge-worker",
+      "merge_method": {"rule": "unanimous", "committee_size": 3},
       "applied_at": "ISO-8601"
     }
   ],

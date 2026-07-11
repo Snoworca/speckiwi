@@ -94,7 +94,7 @@ kiwi-pipeline
 | kiwi-srs-feasibility | TASK_DONE | `kiwi-planner` (stability ≥ evolving 시) 또는 `kiwi-srs-research` (블로커 모호 시) |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
-| kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
 | kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) 또는 `kiwi-commit-auto-push` |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |

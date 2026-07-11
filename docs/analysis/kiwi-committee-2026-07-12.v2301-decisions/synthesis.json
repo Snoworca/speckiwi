@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-07-11T19:03:41.862Z",
+  "committee": "5-member (technical/governance/risk/alternatives/purpose)",
+  "decisions": {
+    "D1": {
+      "verdict": "FIX",
+      "detail": "register v2.3.0.x SRS req + fix install-skill.ts _shared mirror copy (TDD), separate from FR-FLOW-022~032 commit",
+      "vote": "5/5 a",
+      "confidence": "high"
+    },
+    "D2": {
+      "verdict": "RENAME",
+      "detail": "-qna -> --qna-force via SRS edit-ac on FR-FLOW-024 + skill(3 variants) + fail-closed parsing (unrecognized/single-dash hard-error)",
+      "vote": "5/5 rename",
+      "confidence": "medium-high"
+    },
+    "D3": {
+      "verdict": "KEEP-REMOVED",
+      "detail": "no action; if ever reintroduced, single worktree for whole wave sequence (NOT per-wave which breaks sequential deps)",
+      "vote": "5/5 b",
+      "confidence": "high"
+    },
+    "D4": {
+      "verdict": "ALIGN-SAFE+SRS",
+      "detail": "align claude hot-fix DOWN to codex/etc (forbid --auto-apply --yes-all synthesis; propagate only --auto) + register unified propagation-safety SRS req; update auto-option §7.1 SSOT",
+      "vote": "a+d",
+      "confidence": "high on direction"
+    },
+    "D5": {
+      "verdict": "COMMIT->verified(per-req)->followups->push",
+      "detail": "commit converged work first (protect); verified via per-req evidence (2-axis ALL_MATCH + tests, NOT bulk-flip); push feature branch last",
+      "vote": "commit unanimous; verified split(purpose+technical yes per-req / governance+risk defer)->main decides per-req evidence-based; push feature-branch majority-ok",
+      "confidence": "high on commit"
+    }
+  },
+  "main_synthesis": "위원회 다수+목적적합. 실행: (1) converged 작업 커밋 (2) D2 rename (3) D1 fix (4) D4 align-safe+SRS (5) verified per-req evidence (6) push feature branch. D3 무행동+노트. verified는 per-req 증거첨부로 anti-bulk 규칙 준수 + 사용자 목적(fidelity 검증) payoff."
+}

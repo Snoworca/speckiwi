@@ -1,0 +1,93 @@
+{
+  "round": 6,
+  "req": "FR-FLOW-022",
+  "scope": "verifier(정형 검사·까칠 리뷰·평가자) 모델 라벨의 최종 doc-hygiene 스윕. verifier 라벨이 각 스킬의 '현재 세션 모델' 정책절과 모순될 때만 genericize. authoring(Opus 시니어 작성자/구현/분석) 과 cheap-fixed helper(Sonnet 사전조사·Sonnet×4 TDD 검증) 는 미변경.",
+  "fixes": [
+    {
+      "finding_id": "QB-208",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-coder/SKILL.md",
+        "skills/codex/kiwi-coder/SKILL.md"
+      ],
+      "detail": [
+        "claude L3 frontmatter arrow: 'Sonnet 정형 검사 → Opus 까칠 리뷰' → '정형 검사 → 까칠 리뷰' ('Opus 시니어 구현'·'Sonnet×4 병렬 TDD 검증' 유지)",
+        "claude L178/L179 분석로그 라벨: '(Sonnet 정형)'/'(Opus 까칠)' → '(현재 세션 모델 정형)'/'(현재 세션 모델 까칠)' (L177 '(Sonnet×4 결과 통합)' TDD 라벨 유지)",
+        "codex L3 frontmatter arrow: 'standard 정형 검사 → high-reasoning 까칠 리뷰' → '정형 검사 → 까칠 리뷰' ('high-reasoning 시니어 구현'·'standard×4 병렬 TDD 검증' 유지)",
+        "codex L182/L183 분석로그 라벨: '(standard 정형)'/'(high-reasoning 까칠)' → '(현재 세션 모델 정형)'/'(현재 세션 모델 까칠)' (L181 '(standard×4 결과 통합)' TDD 라벨 유지)"
+      ],
+      "etc_variant": "no-change: etc/kiwi-coder 는 local-LLM 프로파일 용어('local evaluator'/'local-LLM max-profile'/'single delegated reviewer')로 이미 일관. Opus/Sonnet 고정 라벨 없음 + '현재 세션 모델' 정책절 부재이므로 genericize 트리거 미해당. references/extended-workflow.md(3변형)도 모델 라벨 없음(정형/까칠 이벤트명만)."
+    },
+    {
+      "finding_id": "QB-207/F-R6-01",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-hot-fix/SKILL.md"
+      ],
+      "detail": [
+        "§7.1 report mode enum (L406): 'mode: normal|max|mini|max-mini|dry-run' → 'mode: normal|max|dry-run'. --mini 옵션은 이미 제거됨 → enum 의 mini|max-mini 는 죽은 값. round5 가 관찰만 하고 미룬 잔재(fix_round5.json hotfix_locations_left_as_is_correct §7.1)를 정리."
+      ],
+      "codex_etc_variant": "no-change: codex/etc kiwi-hot-fix 는 짧은 영어 재작성판으로 §7.1 report enum 자체가 없음(report 는 --model=current session model 표기, mini|max-mini 부재). 전체 트리 grep 결과 mini|max-mini enum 은 claude L406 유일."
+    },
+    {
+      "finding_id": "F-R6-02",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-hot-fix/SKILL.md"
+      ],
+      "detail": [
+        "L3 frontmatter 정책절: 'Root-cause 사전조사·TDD 검증 Sonnet 불변' → 'Root-cause 사전조사 Sonnet 불변'",
+        "§0.10 SSOT (L34): '**Sonnet×2 root-cause 사전조사 / TDD 검증은 모든 모드·--model 무관 Sonnet 고정**' → '**Sonnet×2 root-cause 사전조사는 모든 모드·--model 무관 Sonnet 고정**'",
+        "§1.3 prose (L126): '**Root-cause 사전조사·TDD 검증은 Sonnet 고정**' → '**Root-cause 사전조사는 Sonnet 고정**'"
+      ],
+      "rationale": "hot-fix 에는 TDD 검증 서브에이전트 역할이 없음(시니어 fixer 가 회귀 테스트를 직접 작성). 'TDD 검증 Sonnet 고정'은 kiwi-coder(Sonnet×4 TDD 검증 실존)에서 복사된 죽은 참조. 'Root-cause 사전조사 Sonnet 고정'(hot-fix Sonnet×2 root-cause 실존 역할)은 유지. §1.3 mode matrix table(L128 'Root-cause 사전조사 (Sonnet)') 은 미변경 → AC-2 topology 테스트에서 1개 tier 로 유지(offender 아님).",
+      "codex_etc_variant": "no-change: codex/etc kiwi-hot-fix 재작성판에 'TDD 검증 Sonnet 고정' 언급 없음."
+    },
+    {
+      "finding_id": "kiwi-pm-L465",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-pm/SKILL.md",
+        "skills/codex/kiwi-pm/SKILL.md"
+      ],
+      "detail": [
+        "claude L465: 'Opus 까칠 코드 리뷰어 finding → kiwi-coder Phase 2.h 개선 루프' → '까칠 코드 리뷰어 finding → ...'",
+        "codex L467: 'high-reasoning 까칠 코드 리뷰어 finding → ...' → '까칠 코드 리뷰어 finding → ...'"
+      ],
+      "reason": "kiwi-coder 리뷰어 참조인데 kiwi-coder 리뷰어는 이제 현재 세션 모델 → 고정 모델 라벨이 스테일.",
+      "etc_variant": "no-change: etc/kiwi-pm L459 'local-LLM max-profile 까칠 코드 리뷰어' 는 etc/kiwi-coder 리뷰어 용어('까칠 리뷰어 (local-LLM max-profile)', L143) 와 일관. etc 는 '현재 세션 모델' 정책이 아니라 local-LLM 프로파일이므로 라벨이 모순되지 않음 → 스코프상 미변경."
+    }
+  ],
+  "srs_research_tier": "no-change(§0.5↔§0.17 은 상호 모순이 아니라 상호 정합. 두 절 모두 이미 '서브에이전트 모델은 현재 세션 모델을 상속하며 --model override 가능'을 명시함(§0.5 본문 + §0.17 SSOT, §0.17 이 §0.5 토폴로지를 cross-ref). Sonnet×1(Triage) + Opus×3(Researchers) + Opus×1(Synthesizer) [codex: standard×1 + high-reasoning×3 + high-reasoning×1] 의 Sonnet/Opus 라벨은 고정 5-서브에이전트 토폴로지의 role-tier 약칭(Triage=경량/사전조사 tier, Researchers/Synthesizer=심층/저작 tier)이며 verifier 모델 핀이 아님. 이는 스코프가 명시한 '의도된 tier-role 설계(저작/사전조사 tier)' 케이스 → 미변경. Synthesizer(부분 verifier)는 §0.17 이 명시적으로 '현재 세션 모델 상속'으로 커버함. claude/codex 동일 구조.)",
+  "scope_kept_untouched": [
+    "Opus 시니어 authoring: kiwi-coder 'Opus 시니어 구현'(claude) / 'high-reasoning 시니어 구현'(codex) — FR-FLOW-022 밖, 유지",
+    "Sonnet TDD 검증: kiwi-coder 'Sonnet×4 병렬 TDD 검증'(claude) / 'standard×4'(codex) 및 분석로그 '(Sonnet×4 결과 통합)' — cheap-fixed helper, 유지",
+    "Sonnet 사전조사: kiwi-hot-fix 'Root-cause 사전조사 (Sonnet)' §1.3 table + 'Sonnet×2 root-cause' §0.10/§2/§5 — 실존 역할, 유지",
+    "kiwi-coder L153/L157 '시니어 코더·TDD 검증은 영향 없음' — kiwi-coder 실존 TDD 검증(Sonnet×4) 지칭, 정당, 유지",
+    "etc local-LLM 프로파일 용어(kiwi-coder/kiwi-pm) — 프로파일 정합, 유지",
+    "QB-205 (out-of-scope) — 미변경",
+    "kiwi-srs-research §0.5/§0.17 tier 라벨(claude/codex) — 의도된 tier-role 설계, 미변경"
+  ],
+  "regression": {
+    "command": "npx vitest run test/skills/ test/core/skills/install-skill.test.ts",
+    "test_skills_suite": "8 files / 148 tests PASS (kiwi-mini-removal-content 11/11 포함)",
+    "install_skill_test": "17/17 PASS",
+    "total": "9 files / 165 tests PASS",
+    "mini_removal_impact": "없음. AC-1 MINI_TOKEN(/--mini\\b|mini-option/) 은 enum 의 'mini'/'max-mini'(리터럴 --mini 아님)를 매치하지 않아 F-R6-01 편집 전후 무관. AC-2 topology 테이블 테스트는 hot-fix §1.3 table 미변경(root-cause Sonnet 1개 tier)으로 offender 아님. verifier-label genericize 는 어떤 assert 문자열과도 충돌 없음(테스트 소스 grep 0건)."
+  },
+  "mirror_resynced": [
+    "kiwi-coder (codex → .agents/skills): operation=update, changed=true, 3 files copied",
+    "kiwi-pm (codex → .agents/skills): operation=update, changed=true, 3 files copied",
+    "kiwi-hot-fix (codex → .agents/skills): operation=skip, changed=false (codex 소스 무변경 — F-R6 는 claude 전용)"
+  ],
+  "mirror_note": ".agents/skills 는 codex 소스 미러(sourceAgent=codex, sourceRoot=skills/codex). codex 소스가 바뀐 kiwi-coder·kiwi-pm 만 update 되고 kiwi-hot-fix 는 skip. 미러 grep 결과 옛 검증자 라벨 0건, 새 라벨(현재 세션 모델 정형/까칠, 까칠 코드 리뷰어) 반영 확인. claude 변형은 Claude 가 직접 로드하는 소스라 별도 미러 없음.",
+  "edited_files_summary": [
+    "skills/claude/kiwi-coder/SKILL.md",
+    "skills/codex/kiwi-coder/SKILL.md",
+    "skills/claude/kiwi-hot-fix/SKILL.md",
+    "skills/claude/kiwi-pm/SKILL.md",
+    "skills/codex/kiwi-pm/SKILL.md",
+    ".agents/skills/kiwi-coder/ (mirror resync)",
+    ".agents/skills/kiwi-pm/ (mirror resync)"
+  ]
+}

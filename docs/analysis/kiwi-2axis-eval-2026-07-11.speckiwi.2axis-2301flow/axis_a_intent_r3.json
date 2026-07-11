@@ -1,0 +1,84 @@
+{
+  "axis": "A",
+  "role": "SRS intent-match evaluator",
+  "round": 3,
+  "scope": "FR-FLOW-022..032",
+  "spec_file": "docs/spec/60.workflow-release.srs.md",
+  "impl_surfaces": [
+    "skills/{claude,codex,etc}/kiwi-*/SKILL.md",
+    "skills/*/_shared/kiwi/{auto-option,pipeline-event,waves-event}.md",
+    "src/doctor/package-doctor.ts",
+    "test/skills/*"
+  ],
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "partial",
+      "notes": "AC-1 PASS (no --mini / mini-option.md in any skill body or shared SSOT; residuals only in MIGRATION_PLAN.md docs + regression test + SRS text). AC-3 PASS (--model override row present across applicable skills). AC-2 NOT fully realized: the exact 'Opus x1 + Sonnet x1 (Max Opus x2 + Sonnet x1) dual-model evaluator panel' that AC-2 names for replacement still lives as a LIVE topology/output table in kiwi-srs (claude) and is cloned/hardcoded in kiwi-srs-feasibility and kiwi-srs-from-code, directly contradicting each skill's own single-current-session-model SSOT clause. See QA-301/302/303."
+    },
+    {"req": "FR-FLOW-023", "intent_match": "full", "notes": "kiwi-srs SKILL §9.6 A/B loop: AC-1 research-doc via --research-doc arg or prompt ref (L560); AC-2 Process A missing/incorrect/feasibility(reuse) + break-existing-features flag -> improvements doc to run-scoped temp, terminate if none (L564); AC-3 Process B applies then returns to A, max-iter divergence guard 5/8 (L566,L568); AC-4 --max = 3 verification subagents (L572); AC-5 multi-doc non-max sequential per-doc, --max = doc-count x3 (L573-574). Full."},
+    {"req": "FR-FLOW-024", "intent_match": "full", "notes": "kiwi-srs SKILL §5.1-5.4: AC-1 no-research ambiguity detection asking only genuinely non-standard, user-decision re-examined (§5.1); AC-2 vague auto-activates unbounded qna, -qna forces, --auto suppresses and delegates to FR-FLOW-025 committee, anchor-rule distinguishes -qna vs --qna (§5.2 + §1.2 L139); AC-3 non-auto end-signal -> auto-decision of remaining ambiguities (§5.3); AC-4 3 requirement-gathering research subagents (architecture/algorithms/plan) saved under docs/research/ then proceed to FR-FLOW-023 (§5.4). Full."},
+    {"req": "FR-FLOW-025", "intent_match": "full", "notes": "ROUND FOCUS. _shared/kiwi/auto-option.md: AC-1 --auto 3-member research committee (§2 L31, §3 step1); AC-2 --max = 5 (§2 L32); AC-3 non-unanimous 3 -> escalate 5 -> plurality, tie-break by lead member #1 (§3 steps 2/4); AC-4 --max non-unanimous 5 -> 7 plurality no unanimity (§2 L32, §3 step3). QB-201 fix verified: §2 mode table now consistent with §3 ladder (3->5 escalate; 5 plurality; --max 5->7). QB-202 fix verified: log example uses merged_decision (§10 L348), zero applied_decision residuals across all 3 variants. critical/business-decision guard preserved (§3 step5, Impl Notes L2123). Full."},
+    {"req": "FR-FLOW-026", "intent_match": "full", "notes": "kiwi-pipeline (claude) §2.5-§7.2: AC-1 full chain kiwi-srs->(cond)feasibility->planner->pm->review-fix-loop, no stop-after-one-hint (§2.5 L111-113); AC-2 conditional feasibility only when draft/unverified (§2.5.1 L117); AC-3 per-stage gate unless --auto; under --auto committee auto-decides to end, sub-skill NEEDS_USER/FAILED + critical still halt (§6.6 L281, §6.1 L254); AC-4 --max propagated to all 5 sub-skills (§7.1 L302); AC-5 research doc passthrough to kiwi-srs (§7.2 L306). Full."},
+    {"req": "FR-FLOW-027", "intent_match": "full", "notes": "kiwi-pipeline (claude) §2.6: AC-1 --wt / NL request creates dedicated worktree, runs cycle inside (§2.6.1 L137); AC-2 interactive completion asks merge-or-PR, no integration before choice (§2.6.2 L141); AC-3 --auto opens PR via kiwi-commit-auto-pr, no direct base merge (§2.6.3 L145). Full."},
+    {"req": "FR-FLOW-028", "intent_match": "full", "notes": "kiwi-pipeline (claude) §2.7: AC-1 issue number -> kiwi-srs-research (resolution + impl-approach) before kiwi-srs (§2.7.1 L155); AC-2 ambiguity -> kiwi-srs -qna; --auto suppresses -qna and defers to FR-FLOW-025 committee (§2.7.2 L159); AC-3 continues through planner/pm/review-fix-loop (§2.7.3 L163). Full."},
+    {"req": "FR-FLOW-029", "intent_match": "full", "notes": "kiwi-wave-master (claude): AC-1 ordered wave decomposition, explicit-structure-else-subagent-flow-analysis (§3 L67-76); AC-2 per-wave wave-{n} target via kiwi-srs with bounded scope so downstream does not look beyond (§4 L80-86); AC-3 ./kiwi/waves.jsonl, complete only after success, resume from first incomplete (§6 L102-106); AC-4 per-wave kiwi-pipeline in order, up-front kiwi-srs authors, pipeline --from=feasibility skips re-authoring (§5 L90-98); AC-5 --auto all waves to end with per-wave gates, --max propagated (§7 L110-122). waves.jsonl fields snake_case consistent with waves-event.md SSOT. Full."},
+    {"req": "FR-FLOW-030", "intent_match": "full", "notes": "kiwi-wave-master (claude) §8: AC-1 epic -> extract ordered waves from structure/task-list/linked-sub-issues instead of research/plan doc (§8.1 L130-136); AC-2 then identical to FR-FLOW-029 flow (§8.2 L138-144); AC-3 only up-front wave-split skipped, per-wave pipeline still researches (§8.3 L146-155). OQ-030 GUARD present: no-extractable-structure (free-form prose / <2 sub-issues / no partitionable task list) -> fall back to FR-FLOW-029 wave-split subagent, no new component (§8.3 branch b L152-155). Full."},
+    {"req": "FR-FLOW-031", "intent_match": "full", "notes": "kiwi-planner ALL 3 variants: AC-1 workflow_* family primary for read(workflow_plan_status/plan_task/next_plan_task)/validate(workflow_doctor/schema_check/diff)/mutate(workflow_task_check/uncheck/checklist_set) superseding validator.mjs (claude L14-24, codex L11-26, etc L22-30); AC-2 all 3 variants route through workflow_*, claude brought into compliance (reads + checkbox mutations), test kiwi-planner-workflow-tools-content asserts read+mutate present; AC-3 C01-C25 preserved (28 makeCheck rule IDs greped across all 3 validator.mjs copies) + raw docs/plans documented degraded fallback. workflow_* tools real in src/mcp/tools/*. 22/22 content tests green. Full."},
+    {"req": "FR-FLOW-032", "intent_match": "full", "notes": "kiwi-planner ALL 3 variants §6.8 coverage loop: AC-1 reconcile REQ count then one-by-one per-req cross-check (claude L419-420); AC-2 2 sequential subagents on CURRENT SESSION MODEL (FR-FLOW-022, --model override) - first confirms, then independent second re-confirms, persistent verification-complete marking; --max adds AC-granularity + independent third refuter (claude L417,L421-422); AC-3 omission (incl out-of-SRS-scope task) -> improve plan, re-verify only not-yet-marked, divergence guard; --max 2-consecutive-zero termination (claude L423-424). No Opus+Sonnet hardcode for the verification subagents (current-session-model confirmed). Full."}
+  ],
+  "findings": [
+    {
+      "id": "QA-301",
+      "req": "FR-FLOW-022",
+      "ac": "AC-2",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "confirmed_by": "direct read (main evaluator) + independent subagent audit",
+      "title": "Stale Opus+Sonnet verification-topology tables contradict the single-current-session-model SSOT (the exact panel AC-2 names for replacement still lives)",
+      "evidence": [
+        "skills/claude/kiwi-srs/SKILL.md §10.3 L646: output schema still enumerates evaluator: 'opus-A|sonnet-B|opus-C'; §10.4 'toplogy' table L642-645: Normal = Opus|Sonnet|-, --max = Opus|Sonnet|Opus (= exactly the Opus x1+Sonnet x1 / Opus x2+Sonnet x1 panel AC-2 says to replace). Contradicts §0.20 L37 (declared SSOT: single subagent, current session model, 'replaces the former Opus x1+Sonnet x1 panel'), description L3, Phase-flow L204, and §10.2 L601 ('the verification subagent ... Max 2nd pass').",
+        "skills/claude/kiwi-srs-feasibility/SKILL.md §8.4 L640-645: verbatim clone of the same table (Normal Opus|Sonnet, --max Opus|Sonnet|Opus); L636 even states 'same structure as kiwi-srs §10.3'. Contradicts its own §0.15 single-current-session clause."
+      ],
+      "why_gap": "§0.20 explicitly scopes its change to the 'verification-subagent composition' (leaving everything else unchanged). That composition IS precisely what §10.3/§10.4 (and §8.4) define, yet those tables were never updated and carry no read-time-replace pointer to §0.20 (unlike the explicit read-time-replace pattern used in auto-option.md). An agent reaching §10.4 would spawn Opus+Sonnet, violating FR-FLOW-022 AC-2's single-current-session intent. Sibling skills (kiwi-planner, kiwi-coder, kiwi-srs-sync) were converted cleanly with no live Opus+Sonnet evaluator table, confirming these are genuine leftovers, not intentional.",
+      "suggested_fix": "Update §10.3 evaluator enum + §10.4 topology (and feasibility §8.4) to declare a single verification subagent on the current session model (Max = + independent 2nd pass), or add an explicit 'overridden by §0.20 at read time' pointer, matching the clean pattern already used in kiwi-planner."
+    },
+    {
+      "id": "QA-302",
+      "req": "FR-FLOW-022",
+      "ac": "AC-2",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "confirmed_by": "direct read (main evaluator)",
+      "title": "kiwi-srs-from-code 4-axis verifier hardcodes verifier models (Sonnet 1st / Opus escalation) instead of the current session model",
+      "evidence": [
+        "skills/claude/kiwi-srs-from-code/SKILL.md §8.1 L384-391: the 4-axis verification panel pins models - Missing-Detector & Correctness-Auditor 'Sonnet (1st) / Opus (escalation)', Hallucination-Hunter & Scope-Creep-Reviewer 'Sonnet / Sonnet' (L391 cost guardrail escalates to Opus). This is a model-hardcoded verification panel contradicting the skill's §0 single-current-session-model claim for its Phase-4 verifiers."
+      ],
+      "why_gap": "Different shape from the Opus+Sonnet 2-panel, but still a model-hardcoded verification panel that FR-FLOW-022 'verification performed by a single subagent inheriting the current session model' would govern.",
+      "suggested_fix": "Rebind the 4 verifier axes to the current session model (with --model override), moving the Sonnet->Opus escalation into an iteration policy rather than a hardcoded model assignment, or document it as an explicit exception."
+    },
+    {
+      "id": "QA-303",
+      "req": "FR-FLOW-022",
+      "ac": "AC-2",
+      "severity": "LOW",
+      "confidence": "medium",
+      "confirmed_by": "direct read (main evaluator); interpretation-dependent",
+      "title": "kiwi-review-fix-loop and kiwi-hot-fix default the verification/reviewer role model to Opus rather than the current session model (secondary, role-labeled)",
+      "evidence": [
+        "skills/claude/kiwi-review-fix-loop/SKILL.md §1.3 L178-181: mode matrix pins '까칠 리뷰어' (picky reviewer = the quality-gate evaluator) to Opus x1 (Normal) / Opus x2 (--max) and '정형 검사' to Sonnet; the '--model <name>' rows (L182-183) do honor override (AC-3 OK) but the DEFAULT is Opus, not the current session model.",
+        "skills/claude/kiwi-hot-fix/SKILL.md §1.3 L126-129: same pattern (까칠 리뷰어 Opus x1/x2, 정형 검사 Sonnet)."
+      ],
+      "why_gap": "These skills use a reviewer/fixer pipeline (a different architecture from the 'dual-model evaluator panel' AC-2 literally names). Whether the code-review 까칠 리뷰어 counts as FR-FLOW-022 'verification/evaluation' is interpretation-dependent; if it does, defaulting it to Opus (not current session model) violates AC-2's default clause. Lower confidence / lower severity than QA-301/302.",
+      "suggested_fix": "If in scope, change the 까칠 리뷰어 / 정형 검사 default from Opus/Sonnet to the current session model (keeping --model override and count escalation); otherwise add a scoping note that these reviewer roles are exempt from FR-FLOW-022."
+    }
+  ],
+  "summary": {
+    "reqs_full": 10,
+    "reqs_partial": 1,
+    "reqs_mismatch": 0,
+    "findings_total": 3
+  },
+  "verdict": "GAPS_FOUND",
+  "overall": "Round-3 focus (FR-FLOW-025 committee) is CLEAN and full-match: the QB-201 fix made the auto-option.md §2 mode table consistent with the §3 escalation ladder (3->5 escalate; non-unanimous 5 plurality; --max 5->7 plurality; lead-member #1 tie-break), and the QB-202 fix (merged_decision field) is consistent across all 3 variants with zero applied_decision residuals. FR-FLOW-023/024/026/027/028/029/030/031/032 are all full-match. The single gap is FR-FLOW-022 AC-2, which is PRE-EXISTING and orthogonal to the round-3 fixes: the very Opus+Sonnet dual-model evaluator panel AC-2 names for replacement still lives as a live topology/output table in kiwi-srs (§10.3/§10.4) and its verbatim clone in kiwi-srs-feasibility (§8.4), and kiwi-srs-from-code (§8.1) still hardcodes its 4-axis verifier models - each contradicting its own §0 single-current-session-model SSOT clause (QA-301/302); review-fix-loop/hot-fix §1.3 default their reviewer role to Opus (QA-303, secondary/interpretation-dependent). Fix is documentation-internal consistency: update the stale tables to single-current-session-model, mirroring the clean pattern already implemented in kiwi-planner/kiwi-coder/kiwi-srs-sync."
+}

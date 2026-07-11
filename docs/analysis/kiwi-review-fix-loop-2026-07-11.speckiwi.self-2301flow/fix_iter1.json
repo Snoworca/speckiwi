@@ -1,0 +1,101 @@
+{
+  "iter": 1,
+  "fixes": [
+    {
+      "finding_id": "FND-001",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/_shared/kiwi/auto-option.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "§8 호환 노트 line 303 이 구 토폴로지('--auto --max = 서브에이전트 2개 병렬')를 유지해, 같은 파일 §2 표(line 32: --auto --max = 5인 위원회)·§3 사다리와 자기모순이었다. line 303 을 위원회 모델로 정합: '--max 와 공존 가능 — --auto --max = 5인 위원회 (만장일치 아니면 7인 격상, §2/§3)'. codex/etc auto-option.md §8 은 실측 결과 해당 stale 라인을 보유하지 않아(codex 는 '공존 가능' 문구 자체 없음, etc 는 '2개 병렬' 0건) claude-only 회귀로 확인, claude 만 수정."
+    },
+    {
+      "finding_id": "FND-002",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/codex/kiwi-wave-master/SKILL.md", "loc_changed": 22 },
+        { "path": "skills/etc/kiwi-wave-master/SKILL.md", "loc_changed": 22 }
+      ],
+      "rationale_full": "표기 관례 실측: codex/etc 는 서브스킬 invocation 에 $kiwi- 를 사용(codex kiwi-pipeline SKILL.md 는 $kiwi- 15건 / /kiwi- 0건, codex kiwi-pm 는 $kiwi-pm/$kiwi-coder/$kiwi-planner 로 호출). 반면 /kiwi- 는 경로 참조(docs/analysis/kiwi-coder-{run-id}/, ../kiwi-planner/scripts/)에만 등장하며 invocation 아님. claude=/kiwi-, codex/etc=$kiwi- 규칙 확정. codex/etc wave-master 는 신규 파일이라 claude 식 /kiwi-srs·/kiwi-pipeline 을 invocation 으로 사용(각 22건, 토큰은 이 둘뿐 — 정밀 grep 확인). replace_all 로 /kiwi-srs→$kiwi-srs, /kiwi-pipeline→$kiwi-pipeline 교체(frontmatter description 포함 — description 도 invocation 표기를 담고 있고 etc lint(MIGRATION_PLAN.md line 91) 가 /kiwi- 를 SKILL.md 전면 금지하므로 description 까지 정합해야 lint 통과, 또한 codex/etc description 은 언어가 서로 달라 verbatim 공유본 아님). 사후 검증: codex/etc wave-master 각각 /kiwi- 0건."
+    },
+    {
+      "finding_id": "FND-003",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/kiwi-srs/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-srs/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "frontmatter description 이 유한 'Normal 3/Max 7 라운드' QnA 를 광고했으나 본문 §5.2(FR-FLOW-024 AC-2)·§5 line 323 은 '무제한 qna 루프'로 대체됨. claude('Agent Dropout, Normal 3/Max 7 라운드')·codex('reviewer dropout, Normal 3/Max 7 라운드') description 의 'Normal 3/Max 7 라운드' 를 '무제한 qna 루프'로 교체. etc 는 실측 결과 description 에 'Normal 3'/'3/Max 7' 미보유(clean) 라 finding 대로 scope=claude+codex."
+    },
+    {
+      "finding_id": "FND-004",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/kiwi-planner/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-planner/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/etc/kiwi-planner/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "판단: §6.1 과 §6.8 은 별개 개념이다. §6.1=FR-FLOW-022(SRS-satisfaction finding 평가, axis A1~A13, Normal 1패스/Max 2패스), §6.8=FR-FLOW-032(요구사항 단위 커버리지 완료 마킹, Normal 2회 순차/Max +독립 3차 반박). 두 절은 각자 자기 SRS 요구를 정확히 인코딩하고 있으며 pass 수가 다른 것이 SRS 의도(패스 수 정렬은 SRS 위반이므로 금지). 결함은 §6.8 lead 문장이 '§6.1~6.5 의 SRS-satisfaction 검증은 아래 커버리지 루프로 ... 확정한다'며 §6.8 을 §6.1 의 메커니즘으로 동일시한 점뿐. lead 문장을 '별개 검증'으로 재서술하고 두 절의 측정 대상·패스 수 차이를 명시(구분 문구 추가). claude/codex 는 동일 문장(패스 수 Normal 1·2 / Max 2·3 명시)으로, etc 는 §6.1 이 'single evaluator, 3 consecutive clean evaluations' 로 다른 형태라 그 형태에 맞춰(3회 연속 clean 종료 vs 2회 순차/Max +독립 3차) 맞춤 서술."
+    },
+    {
+      "finding_id": "FND-005",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/kiwi-coder/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-coder/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "§1.2 --model 행 기본값 괄호가 '현재 세션 모델 (단일 검증 서브에이전트)' 였으나 kiwi-coder 는 검증자 2종(정형 검사 2.e + 까칠 리뷰 2.f, --max 시 ×2)을 보유 — 같은 파일 line 157('정형 검사·까칠 리뷰 검증 서브에이전트의 모델을 override')·§1.3 모드 매트릭스(2 컬럼)와 모순. 괄호를 '(정형 검사·까칠 리뷰 검증 서브에이전트에 적용)' 로 수정해 모델(에이전트 수 아님)을 반영. claude(line 142)·codex(line 146) 동일 텍스트. .agents 미러는 직접 수정 안 함(FND-005 는 소스만, PH-006 미러 재sync 는 아래 mirror_resynced 로 처리)."
+    },
+    {
+      "finding_id": "FND-006",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/codex/_shared/kiwi/pipeline-event.md", "loc_changed": 1 },
+        { "path": "skills/etc/_shared/kiwi/pipeline-event.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-pipeline/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/etc/kiwi-pipeline/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "§5.1 T1 kiwi-pm next-hint 가 claude=kiwi-review-fix-loop --close-reqs, codex/etc=kiwi-commit-auto-push 로 불일치했고, 세 변형 모두 신규 §2.5 cycle chain 은 'kiwi-pm → kiwi-review-fix-loop' 라 codex/etc 내부에서도 상충. 근본 원인은 T1 표가 'pipeline-event.md §4 의 표를 그대로 적용' 이라 명시하는데 codex/etc pipeline-event.md §4 line 97 이 kiwi-commit-auto-push 로 divergent 했던 것(claude pipeline-event.md 는 이미 kiwi-review-fix-loop). SKILL.md T1 만 고치면 자기 SSOT(pipeline-event §4)와 새 모순이 생기므로 codex/etc 의 pipeline-event.md §4 와 SKILL.md T1 을 둘 다 claude 와 동일하게 정합(pipeline-event: 'kiwi-review-fix-loop (--close-reqs 검증 후)', SKILL.md T1: 'kiwi-review-fix-loop --close-reqs'). 결과적으로 §2.5·§2.7.3·issue-flow·T1·pipeline-event §4 가 모두 review-fix-loop 로 uniform."
+    },
+    {
+      "finding_id": "FND-007",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "test/skills/kiwi-wave-master-content.test.ts", "loc_changed": 2 }
+      ],
+      "rationale_full": "AC-5 maxPropagates 는 --max 의 ±300자 창에서 PROPAGATE && SUBSKILL 을 요구하나 SUBSKILL 정규식이 kiwi-pipeline|every wave|모든 wave|각 wave 를 포함해, 사실상 '--max 근처 propagate 토큰' 으로 약화(sub-skill 전파 주장에 과소제약, false-green 위험). 이 4토큰을 제거해 SUBSKILL 을 /sub-?skill|하위 스킬|서브 스킬|자식 스킬/i 로 조임. SUBSKILL 은 line 246 AC-5 에서만 사용(확인), 세 변형 §7.2 가 모두 '하위 스킬(sub-skill)' 을 --max·전파와 인접 보유해 조인 뒤에도 통과. 조인 후 npx vitest run test/skills/kiwi-wave-master-content.test.ts = 25/25 green 확인. (lines 443-454 proximity 강화는 finding 의 optional 'consider' 라 surgical 원칙상 미적용.)"
+    },
+    {
+      "finding_id": "FND-008",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/kiwi-wave-master/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-wave-master/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/etc/kiwi-wave-master/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "kiwi-pipeline §2.5.2 는 --from=feasibility|planner 를 --cycle 오케스트레이션의 resume-from-stage 진입점으로만 정의(§2.5 'End-to-end 사이클' 하위). wave-master §6 은 'pipeline 을 --from=feasibility 로 호출' 이라며 --cycle 을 명시하지 않아 전체 feasibility→plan→implement 사이클이 트리거되는지 모호. 세 변형 모두 `--from=feasibility` → `--cycle --from=feasibility` 로 교체해 per-wave 전체 사이클을 명확화. 테스트 AC-4 는 --from= substring 을 검사하므로 --cycle 추가 후에도 통과(25/25 green)."
+    },
+    {
+      "finding_id": "FND-009",
+      "action": "fixed",
+      "files_changed": [
+        { "path": "skills/claude/kiwi-srs/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/codex/kiwi-srs/SKILL.md", "loc_changed": 1 },
+        { "path": "skills/etc/kiwi-srs/SKILL.md", "loc_changed": 1 }
+      ],
+      "rationale_full": "§5.2 는 단일 대시 -qna(무제한 qna 강제 진입, 신규)와 이중 대시 --qna(기본과 등가인 v0.11 deprecated alias)를 대시 1개 차이로 반대 의미로 정의. -qna 는 SRS(FR-FLOW-024)가 명명한 의도적 이름이라 rename 은 SRS 위반이므로 금지. finding 의 최소 권고('§1.2 근처에 -qna(force)≠--qna(deprecated) 명시')를 채택: §1.2 '옵션 의미' 블록의 --qna deprecated 설명 바로 아래에 대시 개수로 의미가 반대임을 경고하는 구분 노트 1줄을 추가. claude/codex/etc 동일 구조라 3변형 모두 적용."
+    },
+    {
+      "finding_id": "FND-010",
+      "action": "skipped",
+      "skip_reason": "역사적 마이그레이션 기록이라 정확한 history 이므로 두고 보고만(finding tags: historical/out-of-scope, 'No action needed'). codex MIGRATION_PLAN.md 26/50/117 은 모두 과거 마이그레이션 행위 기록 — line 117 은 'Completed on 2026-05-19', line 26/50 은 무엇을 복사·in-place 재작성했는지의 disposition. etc MIGRATION_PLAN.md 56 은 mini-option.md 를 etc 로 복사하지 않은 '제외 사유', 68 은 --mini/--squirrel rewrite rule, 91 은 lint grep. FR-FLOW-022 의 mini-option.md 삭제는 이 마이그레이션 이후 발생했고, 문서는 당시 마이그레이션 상태를 정확히 기술한다(현재 유효 지침으로 삭제 파일을 가리키는 dangling ref 아님). 역사적 기록을 'superseded/deleted' 로 주석하면 오히려 history 를 오염시키므로 미변경.",
+      "files_changed": []
+    }
+  ],
+  "regression": {
+    "test_skills": "142/142",
+    "install_skill": "17/17"
+  },
+  "mirror_resynced": ["kiwi-srs", "kiwi-planner", "kiwi-coder", "kiwi-pipeline"],
+  "notes": "FND-006 은 shared 리소스 skills/codex(etc)/_shared/kiwi/pipeline-event.md 를 수정했다. 프로덕션 install-skill 코드(src/core/skills/install-skill.ts)는 shared _shared/kiwi/ 트리를 destination 으로 복사하지 않고 참조만 검증하므로, per-skill 'install codex <name>' 로는 shared 미러(.agents/skills/_shared/kiwi/pipeline-event.md)를 동기화할 수 없다. 변경 전 shared 미러는 codex 소스와 동기 상태(둘 다 kiwi-commit-auto-push)였고 FND-006 소스 수정으로 신규 드리프트가 생겼으나, '전체 install 금지' + '.agents 미러 수동 수정 금지' 제약상 shared 미러 재sync 는 PH-006 도메인(전체 미러 재생성)이다. per-skill 미러 4종(kiwi-srs/kiwi-planner/kiwi-coder/kiwi-pipeline)은 install codex <name> 로 재sync 완료(각 changed:true), install-skill.test.ts 17/17 green."
+}

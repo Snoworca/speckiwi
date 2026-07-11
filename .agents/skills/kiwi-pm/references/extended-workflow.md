@@ -576,7 +576,7 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 | 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
 | `--auto` decision worker | **갱신** | clarification/business-decision/rollback-confirmation + critical_gates[] |
 | `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
-| `--max` / `--ultra` / `--no-self-heal` | **제거** | `--mini` 만 도입 (kiwi 시리즈 표준) |
+| `--max` / `--ultra` / `--no-self-heal` | **제거** | `--model` 만 도입 (kiwi 시리즈 표준) |
 | `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
 | `mode = "headless"/"interactive"` | **단일 모드** | interactive 만 |
 | lifecycle gate (Stability) | **신규** | kiwi-pipeline-v1 §4.2 정합 (§4) |
@@ -614,7 +614,7 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 $kiwi-pm PLAN_PATH=docs/plans/2026-05-19.kiwi-pm.v0-1.plan.md
 
 # 자동 모드 + 비용 절감
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto --mini
+$kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto --model <name>
 
 # 이전 세션 재개
 $kiwi-pm PLAN_PATH=docs/plans/...plan.md --resume

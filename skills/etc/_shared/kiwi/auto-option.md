@@ -2,8 +2,10 @@
 
 This reference is the etc-local SSOT for `--auto` user-gate handling across
 OpenCode/Hermes/local-LLM `kiwi-*` skills. It must be interpreted together with
-`local-llm-profile.md`: `--max` is already the default, multi-worker fanout is
-disabled, and only one delegated decision worker or evaluator may run at a time.
+`local-llm-profile.md`: multi-worker fanout is disabled, so committee members and
+evaluators run sequentially (one delegated worker at a time). Committee size still
+follows the shared model (`--auto` = 3 members, `--auto --max` = 5), identical to
+the claude/codex variants — `--max` raises the committee and is not a no-op.
 
 ## Definition
 
@@ -36,12 +38,20 @@ Silent skip cases:
 Record active flags in the skill preflight or analysis log, for example
 `mode_flags: ["--auto", "--max"]`.
 
-## Decision Worker
+## Decision Committee
 
-Use one isolated decision worker for `--auto`. `--auto --max` does not create an
-extra merge topology because etc skills already run with the default local-LLM
-max profile. If delegation is unavailable, apply only explicit low-risk
-`default_if_auto` values; otherwise halt instead of guessing.
+When `--auto` is active, convene a research-performing decision committee of 3 members that
+investigates the gate context (research) and votes for the most reasonable option to adopt
+(select), instead of a single rubber-stamp worker. Because etc runs the local-LLM profile
+with multi-worker fanout disabled, the 3 committee members are evaluated sequentially (one
+delegated worker at a time), not in parallel. Under `--auto --max` the decision committee is
+raised to 5 members. Committee members run on the current session model unless `--model
+<name>` overrides the committee model (no dual-model evaluator panel). Member #1 is the lead
+committee member and the deterministic tie-breaker (see the committee merge ladder). If
+delegation is unavailable, apply only explicit low-risk `default_if_auto` values; otherwise
+halt instead of guessing.
+
+Each committee member receives the same worker input and returns the same JSON vote.
 
 Worker input:
 
@@ -72,14 +82,42 @@ Required worker output is raw JSON:
 }
 ```
 
-Failure handling:
+Failure handling (committee/member/quorum semantics, matching the claude/codex variants):
 
 | Failure | Action |
 |---|---|
-| Empty response, timeout, invalid JSON, or missing `decision` | Retry once; if still invalid, halt. |
-| Decision is not one of the explicit options | Halt. |
+| Member timeout, empty response, invalid JSON, or missing `decision` | Retry that member once; if still invalid, drop it and proceed only if a majority quorum remains, otherwise halt. |
+| A majority of members fail | Halt for user input. |
+| A member returns free text instead of an option ID | Treat as a failed member (retry once, then drop if a majority quorum remains). |
 | Decision contradicts a `critical_gates[]` match | Halt. |
-| Worker reports high risk below threshold | Halt. |
+
+Lead member (#1) failure that blocks a tie-break is handled in the committee merge ladder step 5 (retry once, then halt; never break a tie arbitrarily).
+
+## Committee Merge Ladder (unanimous -> escalate -> plurality -> tie-break)
+
+Because etc disables multi-worker fanout, evaluate the committee members sequentially (one
+delegated worker at a time) and then apply this ladder. Escalation keeps the existing votes
+and adds two more members, then re-decides.
+
+1. `--auto` (3-member committee): each of the 3 members researches the gate and votes.
+   - If the 3-member committee is unanimous, apply that decision.
+   - If the 3-member committee is not unanimous, escalate to a 5-member committee and
+     re-decide.
+2. 5-member committee: after adding two members, re-decide.
+   - If unanimous, apply it.
+   - If not unanimous, the 5-member committee decides by plurality (most votes); unanimity is
+     not required at 5 members.
+   - Under `--max`, if the 5-member committee is not unanimous, escalate to a 7-member
+     committee instead of stopping at plurality.
+3. 7-member committee (`--max` only): after adding two members, the 7-member committee
+   decides by plurality (most votes) without requiring unanimity.
+4. Tie-break (all sizes): any committee tie is broken deterministically by the lead committee
+   member (#1) ranking; member #1 is the fixed tie-breaker. The 7-member committee also breaks
+   any tie by the lead member (#1) ranking.
+5. Critical gates and business decisions listed in `critical_gates[]` still halt for the user
+   under `--auto`; the committee never overrides a critical halt. If the lead member (#1) fails
+   so a tie cannot be broken, retry member #1 once, then halt rather than break the tie
+   arbitrarily.
 
 ## Severity Policy
 
@@ -101,6 +139,23 @@ Adjust confidence before applying:
 | Average rationale item shorter than 20 characters | multiply by 0.8 |
 | `risk_assessment=high` and confidence > 0.7 | multiply by 0.6 |
 | Mutation, push, PR, status, or stability gate with empty `side_effects[]` | multiply by 0.7 |
+
+Committee confidence cross-check: if the spread between the highest and lowest member
+confidence is >= 0.3, the vote is unreliable. If the committee is below its terminal size
+(`--auto` 3 members, or `--max` 5 members), escalate one rung on the merge ladder (3->5, 5->7)
+and re-vote once even when unanimous (the non-max ladder terminates at 5 members because 7
+members is `--max` only). If the committee is already at its terminal size (non-max 5 members,
+or `--max` 7 members), do not re-vote; escalate the low-confidence agreement to critical and
+halt for the user (same safety policy as the confidence adjustments above), never proceeding
+arbitrarily.
+
+When `--auto --model <name>` overrides the committee model, increase the confidence thresholds
+by 0.1 only when the named model is a lower tier than the current session model. Model tier
+SSOT (highest to lowest): `opus` > `sonnet` > `haiku`; compare the named and session models
+deterministically by this ranking (equal or higher tier -> no change, e.g. session `sonnet` +
+`--model opus`). Safe default: if the named model is not in the ranking or the session model is
+unknown so the comparison is impossible, always apply +0.1 (treat the unknown model as
+lower-capability).
 
 ## `critical_gates[]`
 
@@ -139,7 +194,8 @@ Recommended catalog:
 For a skill that references this file:
 
 - "User clarification gate" means `critical_gates[]` matches halt; otherwise
-  `--auto` may use the single decision worker.
+  `--auto` may use the decision committee (see Decision Committee and Committee
+  Merge Ladder).
 - `NEEDS_USER` payloads are decision gates. In child mode, return the payload to
   the parent only when the gate is critical or delegation is unavailable.
 - `default_if_auto` may be applied directly only for low-risk clarification
@@ -155,15 +211,17 @@ When a parent Kiwi skill delegates to a child Kiwi skill:
 | Parent flags | Child flags |
 |---|---|
 | `--auto` | `--auto` |
-| `--auto --max` | `--auto` (`--max` is already default) |
+| `--auto --max` | `--auto --max` |
+| `--auto --model <name>` | `--auto --model <name>` |
+| `--auto --max --model <name>` | `--auto --max --model <name>` |
 
 Special propagation:
 
 | Parent | Child | Added flags |
 |---|---|---|
 | `kiwi-hot-fix --auto` | `kiwi-srs-sync` | `--auto` only; never add `--auto-apply` or `--yes-all` unless the user explicitly supplied those flags |
-| `kiwi-pm --auto` | `kiwi-coder` | `--auto` |
-| `kiwi-coder --auto` standalone close handoff | `kiwi-review-fix-loop` | `--close-reqs --auto` only after regression and task completion gates are clean |
+| `kiwi-pm --auto` | `kiwi-coder` | `--auto`; add `--model <name>` or `--max` only when the parent explicitly has those flags |
+| `kiwi-coder --auto` standalone close handoff | `kiwi-review-fix-loop` | `--close-reqs --auto`, plus inherited `--model <name>` or `--max` |
 
 ## Logging
 
@@ -179,9 +237,15 @@ Append or write `docs/analysis/{skill-run-id}/auto_decisions.json`:
       "gate_id": "gate",
       "severity": "business-decision",
       "options": ["a", "b"],
-      "worker_results": [],
-      "applied_decision": "a",
-      "merge_method": "single",
+      "committee_votes": [
+        {"member": "#1", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.82},
+        {"member": "#2", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.79},
+        {"member": "#3", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.80},
+        {"member": "#4", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.77},
+        {"member": "#5", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.81}
+      ],
+      "merged_decision": "a",
+      "merge_method": {"rule": "unanimous", "committee_size": 5},
       "applied_at": "ISO-8601"
     }
   ],

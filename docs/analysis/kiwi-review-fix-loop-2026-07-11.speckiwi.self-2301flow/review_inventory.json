@@ -1,0 +1,120 @@
+{
+  "findings": [
+    {
+      "id": "FND-001",
+      "axis": "P1",
+      "severity": "MEDIUM",
+      "title": "claude auto-option.md §8 stale line contradicts the new decision-committee model (--auto --max = 2 SA vs 5인 위원회)",
+      "location": { "file": "skills/claude/_shared/kiwi/auto-option.md", "line_range": "303" },
+      "description": "This diff replaces the old 1/2-SA topology with a 3/5/7-member committee ladder (FR-FLOW-025). §2 table (line 32) now states `--auto --max` = 5인 위원회 and §3 defines the escalation ladder. But the §8 호환/자연어 매칭 appendix still says `--max 와 공존 가능 — --auto --max = 서브에이전트 2개 병렬` (line 303). The `--mini`→`--model` line directly below it (line 304) WAS updated in this same edit, but the `--max` line was left stale, so the file now self-contradicts on the committee size for `--auto --max`. codex/etc Compatibility Notes do not carry this line (claude-only regression). An agent following §8 would convene 2 sub-agents instead of the 5-member committee that FR-FLOW-025 mandates. Mitigated by the fact that §2/§3 are the primary, unambiguous algorithm sections — but this is the highest-priority fix in the batch.",
+      "suggested_fix": "Update line 303 to reflect the committee model, e.g. `--max 와 공존 가능 — --auto --max = 5인 위원회 (만장일치 아니면 7인 격상, §2/§3)`.",
+      "is_behavioral": true,
+      "tags": ["bug", "consistency", "cross-variant"]
+    },
+    {
+      "id": "FND-002",
+      "axis": "P2",
+      "severity": "MEDIUM",
+      "title": "New codex + etc kiwi-wave-master use claude `/kiwi-` slash notation (17 occ each) instead of the variant `$kiwi-` convention",
+      "location": { "file": "skills/codex/kiwi-wave-master/SKILL.md; skills/etc/kiwi-wave-master/SKILL.md", "line_range": "throughout (§0,§4,§5,§6,§8)" },
+      "description": "The net-new codex and etc wave-master bodies invoke sub-skills with claude-style `/kiwi-srs` / `/kiwi-pipeline` (17 `/kiwi-` matches each; codex wave-master has 0 `$kiwi-`). This violates each variant's established invocation convention: codex uses `$kiwi-X` exclusively (codex kiwi-pm/kiwi-hot-fix bodies, and codex kiwi-pipeline has 0 `/kiwi-`), and etc likewise uses `$kiwi-X`. Notably etc/MIGRATION_PLAN.md line 91 defines a lint grep that lists `/kiwi-` as a FORBIDDEN pattern in skills/etc — so the etc wave-master fails a documented project self-check. The claude wave-master is correct (claude uses `/kiwi-`). The same author correctly converted `/kiwi-srs`→`$kiwi-srs` in the codex kiwi-pipeline edits (§7.2), so this is an oversight in the new files. Functional impact is low (LLMs infer intent) but it is a systematic per-variant convention breach and an explicit etc-lint failure.",
+      "suggested_fix": "In codex + etc wave-master bodies, replace `/kiwi-srs`→`$kiwi-srs`, `/kiwi-pipeline`→`$kiwi-pipeline` (leave the shared frontmatter `description` as-is if descriptions are intentionally copied). Run the etc/MIGRATION_PLAN.md line-91 grep against skills/etc/kiwi-wave-master to confirm 0 `/kiwi-` remain.",
+      "is_behavioral": false,
+      "tags": ["consistency", "cross-variant", "convention", "etc-lint"]
+    },
+    {
+      "id": "FND-003",
+      "axis": "P2",
+      "severity": "MEDIUM",
+      "title": "kiwi-srs frontmatter description still advertises finite `Normal 3/Max 7 라운드` QnA, contradicting body §5.2 unbounded qna loop (FR-FLOW-024)",
+      "location": { "file": "skills/claude/kiwi-srs/SKILL.md line 3; skills/codex/kiwi-srs/SKILL.md line 3", "line_range": "3 (frontmatter) vs body §5 lines 323/337-339" },
+      "description": "Body §5.2 (FR-FLOW-024 AC-2) explicitly replaces the finite QnA with an unbounded loop: `기존의 유한 3/7 라운드 QnA 를 무제한 qna 루프로 대체한다`, and §5 line 323 says `유한 라운드가 아니라 무제한 qna 루프로 운영된다`. But the frontmatter `description` (loaded on every trigger, i.e. the skill's advertised contract) still reads `기본 QnA 활성 (Agent Dropout, Normal 3/Max 7 라운드, ...)` in both claude and codex variants. The description edit updated evaluator/--mini wording but left the stale round cap. The etc kiwi-srs description does not carry this claim (etc clean), so scope = claude + codex.",
+      "suggested_fix": "Update the claude+codex kiwi-srs description to drop `Normal 3/Max 7 라운드` and state the unbounded qna loop (e.g. `기본 QnA 활성 (Agent Dropout, 무제한 qna 루프, Phase 1 모호성 0건 시 skip)`).",
+      "is_behavioral": false,
+      "tags": ["consistency", "doc", "frontmatter", "cross-variant"]
+    },
+    {
+      "id": "FND-004",
+      "axis": "P1",
+      "severity": "MEDIUM",
+      "title": "kiwi-planner §6.1 vs §6.8 disagree on verification-pass count for the same modes (Normal 1/Max 2 vs Normal 2/Max 3)",
+      "location": { "file": "skills/claude/kiwi-planner/SKILL.md; skills/codex/kiwi-planner/SKILL.md", "line_range": "§6.1 lines 364-365 vs §6.8 steps 3-4 lines 421-422" },
+      "description": "§6.8 (FR-FLOW-032 coverage loop) opens by framing itself as the mechanism of §6.1~6.5: `§6.1~6.5 의 SRS-satisfaction 검증은 아래 커버리지 루프로 ... 확정한다`. Yet the two sections give different pass counts: §6.1 states Normal = 단일 검증 서브에이전트 (1 pass) and Max = + 독립 2차 검증 패스 (2 passes); §6.8 step 3 states each requirement's coverage is confirmed by `2회의 순차적 검증` (Normal = 2 passes) and step 4 says Max adds `독립적인 세 번째 검증` (3 passes). Normal 1-vs-2 is arguably reconcilable (one subagent doing two sequential passes), but the Max count genuinely diverges (2 vs 3). An implementing agent reading Phase 3 would be unsure whether Max runs 2 or 3 verification passes. Same in claude and codex; etc §6.1 uses its own local-LLM '3 consecutive clean evaluations' wording so the mismatch there is differently shaped.",
+      "suggested_fix": "Reconcile the two sections: either scope §6.1's counts to the finding-eval loop and §6.8's counts to the per-requirement coverage-marking (making the distinction explicit in §6.8's lead sentence), or align the Max pass count so §6.1 and §6.8 agree.",
+      "is_behavioral": true,
+      "tags": ["consistency", "completeness", "cross-variant"]
+    },
+    {
+      "id": "FND-005",
+      "axis": "P2",
+      "severity": "LOW",
+      "title": "kiwi-coder §1.2 `--model` row default '(단일 검증 서브에이전트)' is inaccurate — kiwi-coder has TWO verifiers",
+      "location": { "file": "skills/claude/kiwi-coder/SKILL.md §1.2; skills/codex/kiwi-coder/SKILL.md line 146", "line_range": "§1.2 옵션 테이블 --model 행" },
+      "description": "The §1.2 option table lists the `--model <name>` default as `현재 세션 모델 (단일 검증 서브에이전트)`. But kiwi-coder runs TWO distinct verification subagents — 정형 검사 (2.e) and 까칠 리뷰 (2.f, ×2 under --max) — as stated in the same file's frontmatter (`검증(정형 검사·까칠 리뷰) 서브에이전트`), §0.16, and the §1.3 mode matrix (two separate columns). So '단일 검증 서브에이전트' is wrong for kiwi-coder. (Contrast: kiwi-planner/kiwi-srs genuinely use a single verifier, so the identical parenthetical is correct there.) FR-FLOW-022's intent was '단일 (현재 세션) 모델'; the wording drifted to '단일 서브에이전트'. PM-flagged, confirmed in both claude and codex.",
+      "suggested_fix": "In kiwi-coder §1.2, change the parenthetical to reflect the model, not the agent count, e.g. `현재 세션 모델 (정형 검사·까칠 리뷰 검증 서브에이전트에 적용)`.",
+      "is_behavioral": false,
+      "tags": ["consistency", "clarity", "cross-variant"]
+    },
+    {
+      "id": "FND-006",
+      "axis": "P2",
+      "severity": "LOW",
+      "title": "kiwi-pipeline §5.1 T1 kiwi-pm next-hint diverges across variants and now conflicts with the new §2.5 cycle chain",
+      "location": { "file": "skills/claude/kiwi-pipeline/SKILL.md line 222; skills/codex/kiwi-pipeline/SKILL.md line 230; skills/etc/kiwi-pipeline/SKILL.md line 228", "line_range": "T1 decision table `kiwi-pm` row" },
+      "description": "The §5.1 T1 single-next-step table recommends different successors after kiwi-pm: claude = `kiwi-review-fix-loop --close-reqs`, but codex/etc = `kiwi-commit-auto-push`. Meanwhile this diff adds the §2.5 cycle chain to ALL variants stating `... kiwi-pm → kiwi-review-fix-loop`. So codex/etc kiwi-pipeline now hold an internal tension (T1 →commit vs §2.5 →review) and the claude-vs-codex/etc T1 divergence persists. The T1 drift itself is pre-existing (not introduced by this diff), but adding §2.5 without reconciling T1 makes it visible. PM-flagged LOW.",
+      "suggested_fix": "Decide whether T1's single-step recommendation after kiwi-pm should be review-fix-loop (matching §2.5 cycle chain) uniformly, or explicitly document why single-step T1 (→commit) intentionally differs from the cycle (→review). Align codex/etc T1 with claude if uniformity is intended.",
+      "is_behavioral": true,
+      "tags": ["consistency", "cross-variant", "drift"]
+    },
+    {
+      "id": "FND-007",
+      "axis": "P6",
+      "severity": "LOW",
+      "title": "wave-master test AC-5 SUBSKILL regex under-constrains the 'propagate to sub-skills' claim (weak red-driver)",
+      "location": { "file": "test/skills/kiwi-wave-master-content.test.ts", "line_range": "119-120 (SUBSKILL), used 245-246; also 443-454" },
+      "description": "SUBSKILL = /sub-?skill|하위 스킬|...|every wave|모든 wave|각 wave|kiwi-pipeline/i. AC-5 maxPropagates asserts `PROPAGATE && SUBSKILL` in a ±300-char window of `--max`. Because SUBSKILL's alternation includes `kiwi-pipeline`, `모든 wave`, `각 wave` — tokens that appear next to virtually every `--max` mention — the assertion effectively reduces to 'a propagate token near --max', without actually requiring the prose to state propagation to SUB-SKILLS. The current wave-master text is correct (it does say `하위 스킬`), so this is not a live false-green, but the regex would green a future edit that dropped the sub-skill semantics. Additionally, several FR-FLOW-030 AC-3 branch checks (lines 443-454) are section-level presence tests (HAS_STRUCTURE_COND && SKIP && DECOMPOSE, etc.) rather than proximity, so scattered tokens could satisfy them. Content-assertion limitation worth tightening.",
+      "suggested_fix": "Drop `kiwi-pipeline|every wave|모든 wave|각 wave` from SUBSKILL (or split into a separate PIPELINE token) so the AC-5 assertion genuinely requires a sub-skill token co-located with propagation. Consider proximity windows for the AC-3 branch checks.",
+      "is_behavioral": false,
+      "tags": ["test", "false-green-risk"]
+    },
+    {
+      "id": "FND-008",
+      "axis": "P3",
+      "severity": "LOW",
+      "title": "wave-master §6 invokes `/kiwi-pipeline --from=feasibility` without stating `--cycle`; --from is only defined as a cycle modifier",
+      "location": { "file": "skills/claude/kiwi-wave-master/SKILL.md §6; codex/etc equivalents", "line_range": "§6 (Phase 3)" },
+      "description": "kiwi-pipeline defines `--from=feasibility|planner` exclusively as a resume-from-stage entry of the `--cycle` orchestration (§2.5.2, nested under §2.5 'End-to-end 사이클'). Single-next-step mode has no --from semantics. wave-master §6 says it calls the per-wave pipeline `--from=feasibility 로 호출` but never states `--cycle`, so it is ambiguous whether the full feasibility→plan→implement cycle is actually triggered or just a single next-step. The provider/consumer AC-4 assertion (SKIP_REAUTHOR + `--from=`) does not catch the missing `--cycle`, so the gap is untested.",
+      "suggested_fix": "State the invocation explicitly as `/kiwi-pipeline --cycle --from=feasibility` (or confirm in kiwi-pipeline that `--from` implies `--cycle`) so the per-wave full cycle is unambiguous.",
+      "is_behavioral": true,
+      "tags": ["completeness", "ambiguity", "cross-skill"]
+    },
+    {
+      "id": "FND-009",
+      "axis": "P4",
+      "severity": "LOW",
+      "title": "kiwi-srs `-qna` (single-dash new force flag) vs `--qna` (double-dash deprecated alias) collide with opposite meanings",
+      "location": { "file": "skills/claude/kiwi-srs/SKILL.md §5.2 + §1.2; codex/etc equivalents", "line_range": "§5.2 '-qna 강제' bullet; §1.2 --qna deprecated row" },
+      "description": "§5.2 introduces `-qna` (single dash) as a new flag that FORCES the unbounded qna loop, and explicitly notes it is 'v0.11 까지의 deprecated --qna 별칭과는 별개'. So `-qna` (force) and `--qna` (deprecated alias of the default) are one dash apart yet carry different semantics. This is a real footgun for both users and agents parsing args, and single-dash multi-char flags are unusual. It is SRS-driven (FR-FLOW-024 names `-qna`), hence intentional, but the near-collision is easy to mistype/misroute.",
+      "suggested_fix": "Consider a clearer distinct name for the force flag (e.g. `--force-qna`) or add an explicit disambiguation note near §1.2 that `-qna` (force) ≠ `--qna` (deprecated). At minimum keep the §5.2 distinction sentence prominent.",
+      "is_behavioral": false,
+      "tags": ["clarity", "footgun"]
+    },
+    {
+      "id": "FND-010",
+      "axis": "P7",
+      "severity": "LOW",
+      "title": "Dangling `mini-option.md` references remain in codex/etc MIGRATION_PLAN.md after the file was deleted (historical, out-of-primary-scope)",
+      "location": { "file": "skills/codex/MIGRATION_PLAN.md; skills/etc/MIGRATION_PLAN.md", "line_range": "codex 26/50/117; etc 56/68/91" },
+      "description": "FR-FLOW-022 deletes _shared/kiwi/mini-option.md in all three variants. No SKILL.md body retains a dangling reference or residual --mini/--squirrel token (verified clean — the migration itself is complete). However codex/etc MIGRATION_PLAN.md still reference the now-deleted mini-option.md as if present. PM already flagged this as historical/out-of-scope; recorded here only for completeness. Note the same etc/MIGRATION_PLAN.md line 91 lint grep is what substantiates FND-002.",
+      "suggested_fix": "Optional: annotate the MIGRATION_PLAN.md entries as superseded/deleted, or leave as historical record. No action needed for the deliverable.",
+      "is_behavioral": false,
+      "tags": ["doc", "historical", "out-of-scope"]
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "by_severity": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 4, "LOW": 6 },
+    "by_axis": { "P1": 2, "P2": 4, "P3": 1, "P4": 1, "P5": 0, "P6": 1, "P7": 1 }
+  },
+  "overall": "FR-FLOW-022~032 across claude/codex/etc is largely sound and cross-variant-consistent: the FR-FLOW-025 committee ladder (3/5/7 + #1 tie-break) is faithfully mirrored in all three auto-option.md variants, the mini→model migration leaves zero dangling mini-option.md refs or residual --mini/--squirrel in any SKILL.md body, kiwi-wave-master (029/030) + package-doctor EXPECTED_KIWI_SKILLS registration are present, and all 142 content-assertion tests pass. No CRITICAL/HIGH defects — the change clears the CRITICAL=0+HIGH=0 gate. The four MEDIUMs are internal contradictions/drift, not functional breaks: (1) a stale claude auto-option §8 line still says `--auto --max`=2 SA against the new 5-member committee; (2) codex+etc wave-master use claude `/kiwi-` slash notation, breaking the `$kiwi-` convention and the documented etc lint; (3) claude+codex kiwi-srs frontmatter still advertises finite 3/7 QnA rounds vs the body's unbounded loop; (4) kiwi-planner §6.1 vs §6.8 disagree on Max verification-pass count (2 vs 3). The six LOWs are wording/clarity/test-tightening items. Highest-priority fix: FND-001 (contradiction in the very SSOT that defines --auto --max)."
+}

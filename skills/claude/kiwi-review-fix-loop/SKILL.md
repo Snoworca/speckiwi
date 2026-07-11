@@ -1,6 +1,6 @@
 ---
 name: kiwi-review-fix-loop
-description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌리는 스킬. **셀프 리뷰가 기본** — Opus 까칠 리뷰어 서브에이전트가 working tree 변경분(git status)을 분석. `--pr`/`-pr`/`--PR`/`-PR` 옵션 또는 사용자가 'PR 리뷰 읽고 수정' 명시 시 GitHub PR 모드 전환(`gh pr view --comments`). **코드 리뷰와 코드 개선은 반드시 서브에이전트로 수행**(메인 직접 수정 절대 금지). Finding 3분류(즉시수정/논의필요/거절+사유) + TDD 회귀 테스트 + Opus 시니어 fixer + 까칠 리뷰어 재검증 루프 + 심각도 게이트(CRITICAL=0+HIGH=0) + 회귀 PASS 의무. 트리거 — kiwi review fix loop, 리뷰 루프, 리뷰 수정 루프, 셀프 리뷰, 코드 리뷰해줘, 셀프 코드 리뷰, review fix, self review, code review loop, 리뷰 자동 적용, PR 리뷰 읽고 수정, PR 코멘트 적용, gh pr review fix, pr 응답, 머지 전 셀프 리뷰, 품질 게이트 돌려줘. --pr/-pr/--PR/-PR 로 PR 모드 활성. --mini 로 비용 절감(까칠 리뷰어 + 시니어 fixer Opus→Sonnet, `_shared/kiwi/mini-option.md`). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-respond 로 PR 모드에서 PR 코멘트 응답 skip. --close-reqs 로 회귀 PASS + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (셀프 모드 전용, 기본 off)."
+description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌리는 스킬. **셀프 리뷰가 기본** — 까칠 리뷰어 서브에이전트가 working tree 변경분(git status)을 분석. `--pr`/`-pr`/`--PR`/`-PR` 옵션 또는 사용자가 'PR 리뷰 읽고 수정' 명시 시 GitHub PR 모드 전환(`gh pr view --comments`). **코드 리뷰와 코드 개선은 반드시 서브에이전트로 수행**(메인 직접 수정 절대 금지). Finding 3분류(즉시수정/논의필요/거절+사유) + TDD 회귀 테스트 + 시니어 fixer + 까칠 리뷰어 재검증 루프 + 심각도 게이트(CRITICAL=0+HIGH=0) + 회귀 PASS 의무. 트리거 — kiwi review fix loop, 리뷰 루프, 리뷰 수정 루프, 셀프 리뷰, 코드 리뷰해줘, 셀프 코드 리뷰, review fix, self review, code review loop, 리뷰 자동 적용, PR 리뷰 읽고 수정, PR 코멘트 적용, gh pr review fix, pr 응답, 머지 전 셀프 리뷰, 품질 게이트 돌려줘. --pr/-pr/--PR/-PR 로 PR 모드 활성. 검증(까칠 리뷰어·분류기·정형 검사) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-respond 로 PR 모드에서 PR 코멘트 응답 skip. --close-reqs 로 회귀 PASS + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (셀프 모드 전용, 기본 off)."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -28,10 +28,10 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.6 | **시그니처 금지** (CLAUDE.md §6). 커밋·코드 주석·PR 응답 코멘트·산출물 어디에도 AI 식별 정보 금지 |
 | §0.7 | **/snoworca-\* 호출 절대 금지** (프로젝트 CLAUDE.md §7). 로직만 차용 |
 | §0.8 | **MCP mutation 자체 호출 금지 (느슨 결합)**. 본 스킬은 직접 `add_requirement` / `add_trace_link` / `update_status` 등을 호출하지 않는다. 리뷰-fix 흐름에서 SRS 변경이 필요한 finding 이 발생하면 사용자 보고 + `/kiwi-srs-sync` 또는 `/kiwi-srs` 위임 권고 (Skill 자동 호출 안 함 — review-fix-loop 의 책임 경계 외). **예외 (옵션 opt-in)**: 사용자가 `--close-reqs` 명시 시 셀프 모드 한정으로 `update_status` (implemented→verified, forward-only) + `add_verification_evidence` (type=test) 2종 호출 허용 (§0.G7 + §6.6). 기본 동작은 종전대로 mutation 금지 유지. read 호출 (`get_active_target` / `summarize_target` / `list_requirements`) 은 mutation 이 아니므로 §0.8 적용 외 — `--close-reqs` 미활성 상태에서도 호출 가능. |
-| §0.9 | **`--mini` 옵션 SSOT**. `_shared/kiwi/mini-option.md` v1.0 적용. 까칠 리뷰어 / 시니어 fixer 의 Opus 인용을 Sonnet 으로 read-time replace. 분류기 (Sonnet×1) / 정형 검사 (Sonnet×1) 는 모든 모드 공통 |
+| §0.9 | **검증 서브에이전트 모델 정책 SSOT** (kiwi-coder §0.16 정합). 까칠 리뷰어 / 분류기 / 정형 검사 등 **검증 서브에이전트**는 기본적으로 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 그 모델을 override 한다. **시니어 fixer 는 현재 세션 모델이나 `--model` 영향 없음** (kiwi-coder 시니어 코더와 동일). count 는 모든 모드 공통 (각 ×1) |
 | §0.10 | **`.kiwi/` 상태 영속**. `cwd/.kiwi/sessions/{run-id}/state.json` 갱신. 재개 가능 (`--resume`) |
 | §0.11 | **모드 결정 SSOT (§0.G1)**. 기본은 셀프 모드. `--pr` / `-pr` / `--PR` / `-PR` 옵션 또는 자연어 명시 ("PR 리뷰 읽고 수정", "PR 코멘트 적용", "gh pr review fix") 시 PR 모드. 두 모드는 상호 배타 |
-| §0.12 | **PR 모드 사용자 의사결정 권한**. PR 리뷰 코멘트는 동료의 의견 — 본 스킬이 자동 거절·자동 수용 모두 위험. 분류기 (Sonnet) 의 판정은 사용자 게이트 후 적용. `--auto` 시 severity 가드레일 (CRITICAL→자동수정 / HIGH→자동수정 / MEDIUM→자동수정 / LOW→자동 거절 with 사유) |
+| §0.12 | **PR 모드 사용자 의사결정 권한**. PR 리뷰 코멘트는 동료의 의견 — 본 스킬이 자동 거절·자동 수용 모두 위험. 분류기의 판정은 사용자 게이트 후 적용. `--auto` 시 severity 가드레일 (CRITICAL→자동수정 / HIGH→자동수정 / MEDIUM→자동수정 / LOW→자동 거절 with 사유) |
 | §0.13 | **PR 응답 코멘트 의무 (PR 모드 + 응답 활성)**. `--no-respond` 부재 + PR 모드 + fix 1건 이상 적용 시 PR 에 응답 코멘트 1개 작성 (수정 완료 항목 + 거절 항목 + 사유). `gh pr comment` 사용. 시그니처 §0.6 적용 |
 | §0.14 | **셀프 모드 우선순위 결정**. 셀프 모드의 리뷰 대상 범위는 다음 순서: (1) 인자 `--files` / `--commits` / `--since` / `--base` `--head` 우선 / (2) 부재 시 `git status` 변경분 (working tree + staged) / (3) 변경분 0건 시 `HEAD~5..HEAD` fallback (사용자 확인 게이트 후) |
 | §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 3분류 매핑 (immediate_fix / discussion_needed / rejected) 및 §0.12 severity 가드레일 표 (CRITICAL/HIGH/MEDIUM → 자동수정, LOW → 자동 거절) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
@@ -95,7 +95,7 @@ self_scope.source enum 매핑 (§3.1):
 
 #### §0.G5 — Finding 3분류 SSOT
 
-분류기 (Sonnet×1) 가 각 finding 에 대해 다음 중 정확히 1개로 분류:
+분류기 (×1) 가 각 finding 에 대해 다음 중 정확히 1개로 분류:
 
 | 분류 | 정의 | 액션 |
 |---|---|---|
@@ -169,18 +169,18 @@ self_scope.source enum 매핑 (§3.1):
 | "dry-run", "변경 없이 리뷰만" | `--dry-run` | off (fix 적용) |
 | "회귀 skip" | `--skip-regression` | off |
 | "PR 응답 안 함" | `--no-respond` | off (PR 모드 응답 의무) |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (정규명) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "REQ 닫기", "verified 전이", "검증 완료 표시" | `--close-reqs` | off (셀프 모드 + 회귀 PASS + finding 0건 시에만 활성) |
 | "재개" | `--resume` | off |
 
 ### 1.3 모드 매트릭스
 
-| 모드 | 까칠 리뷰어 | 분류기 (Sonnet) | 시니어 fixer | 정형 검사 (Sonnet) | 비용 배수 |
+까칠 리뷰어 / 분류기 / 정형 검사 **검증 서브에이전트**는 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 그 모델을 override 한다. 시니어 fixer 는 현재 세션 모델이나 `--model` 영향 없음 (kiwi-coder 시니어 코더와 동일). `--max` 는 모델이 아니라 **count** 를 격상한다.
+
+| 모드 | 까칠 리뷰어 | 분류기 | 시니어 fixer | 정형 검사 | 비용 배수 |
 |---|---|---|---|---|---|
-| Normal (기본) | Opus × 1 | × 1 | Opus × 1 | × 1 | 1.0× (기준) |
-| `--max` | Opus × 2 (2 연속 MEDIUM=0 종료) | × 1 | Opus × 2 | × 1 | 3~4× |
-| `--mini` | Sonnet × 1 | × 1 | Sonnet × 1 | × 1 | 0.4× |
-| `--max --mini` | Sonnet × 2 | × 1 | Sonnet × 2 | × 1 | 0.8× |
+| Normal (기본) | × 1 | × 1 | × 1 | × 1 | 1.0× (기준) |
+| `--max` | × 2 (2 연속 MEDIUM=0 종료) | × 1 | × 2 | × 1 | 2× |
 
 까칠 리뷰어 / 시니어 fixer 는 **항상 서브에이전트** (§0.1). off 플래그 없음.
 
@@ -219,7 +219,7 @@ Phase 0 : Bootstrap (preflight, 모드 결정, 범위 결정, .kiwi init/resume)
 Phase 1 : 리뷰 인벤토리 수집
   1.s (셀프): 까칠 리뷰어 서브에이전트 → working tree diff 리뷰
   1.p (PR)  : gh pr view --comments + reviews → 정규화
-Phase 2 : Finding 3분류 (분류기 Sonnet×1)
+Phase 2 : Finding 3분류 (분류기 ×1)
 Phase 3 : 즉시수정 항목에 회귀 테스트 작성 (TDD 조건부, §0.3)
 Phase 4 : 시니어 fixer 적용 (서브에이전트)
 Phase 5 : 까칠 리뷰어 재검증 (서브에이전트, 입력 격리 §0.2)
@@ -271,7 +271,7 @@ state.json 초기 스키마:
   "schema_version": "1.0.0",
   "started_at": "ISO-8601",
   "mode": "self|pr",
-  "mode_flags": ["--mini?", "--max?", "--auto?", "--dry-run?", "--no-respond?", "--close-reqs?"],
+  "mode_flags": ["--model?", "--max?", "--auto?", "--dry-run?", "--no-respond?", "--close-reqs?"],
   "phase": "0|1|...|8",
   "finding_queue": [],
   "fix_iter": 0,
@@ -347,7 +347,7 @@ resume 알고리즘 (`--resume` 활성 시):
 
 ---
 
-## 5. Phase 2 — Finding 3분류 (분류기 Sonnet×1, §0.G5)
+## 5. Phase 2 — Finding 3분류 (분류기 ×1, §0.G5)
 
 분류기 spawn:
 입력:
@@ -619,7 +619,7 @@ Regression tests: PASS (N tests)
 /kiwi-review-fix-loop --commits=HEAD~3
 /kiwi-review-fix-loop --base=develop --head=HEAD
 /kiwi-review-fix-loop --max
-/kiwi-review-fix-loop --mini
+/kiwi-review-fix-loop --model claude-sonnet-4-6
 /kiwi-review-fix-loop --auto
 /kiwi-review-fix-loop --dry-run
 /kiwi-review-fix-loop --resume
@@ -634,7 +634,7 @@ Regression tests: PASS (N tests)
 /kiwi-review-fix-loop -PR
 /kiwi-review-fix-loop --pr=https://github.com/owner/repo/pull/42
 /kiwi-review-fix-loop --pr --no-respond
-/kiwi-review-fix-loop --pr --auto --mini
+/kiwi-review-fix-loop --pr --auto --model claude-sonnet-4-6
 ```
 
 ### 자연어 매핑 예시

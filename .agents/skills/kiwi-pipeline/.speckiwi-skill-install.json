@@ -1,22 +1,23 @@
 {
   "name": "kiwi-pipeline",
   "agent": "codex",
-  "installedAt": "2026-06-30T07:22:24.977Z",
+  "installedAt": "2026-07-10T15:43:07.259Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-pipeline",
   "installedPath": ".agents/skills/kiwi-pipeline",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:68d6d076bc7fa57f81f0cdeea2898a1df3896f4ef6640ea431dbdc2fd98c1da4",
-  "installedChecksum": "sha256:68d6d076bc7fa57f81f0cdeea2898a1df3896f4ef6640ea431dbdc2fd98c1da4",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:fbab895341eb7dc1a9a7d687f266a3b1b8a9a78fd0f9fb143ac235f1938107f9",
+  "installedChecksum": "sha256:fbab895341eb7dc1a9a7d687f266a3b1b8a9a78fd0f9fb143ac235f1938107f9",
   "sourceFileCount": 2,
   "installedFileCount": 2,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
   "sharedResourceValidation": "source-references-validated",
   "sharedResourceReferences": [
     "_shared/kiwi/auto-option.md",
-    "_shared/kiwi/pipeline-event.md"
+    "_shared/kiwi/pipeline-event.md",
+    "_shared/kiwi/pipeline-v1.md"
   ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-pipeline --json",
   "noManualEdit": true

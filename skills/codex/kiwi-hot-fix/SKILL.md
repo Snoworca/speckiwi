@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to planner to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --mini, --max, --dry-run, --no-sync, --skip-regression, --resume."
+description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to planner to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -54,7 +54,7 @@ change and report that SRS synchronization was intentionally skipped.
 | TDD exception | `TDD_EXEMPT_REASON="..."` | none |
 | skip SRS sync | `--no-sync` | off |
 | precision | `--max` | off |
-| lower cost | `--mini` | off |
+| verification model | `--model <name>` | current session model |
 | auto gates | `--auto` | off |
 | dry run | `--dry-run` | off |
 | skip broader regression | `--skip-regression` | off |

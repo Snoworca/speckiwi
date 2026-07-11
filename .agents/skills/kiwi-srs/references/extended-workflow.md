@@ -8,7 +8,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 9.2 분류별 MCP 시퀀스
 - 9.4 Markdown 반영 (speckiwi 황금률)
 - 9.5 산출물
-- 10. Phase 5 — Evaluation
+- 10. Phase 5 — Verification
 - 10.1 평가자 입력 (§0.2 격리)
 - 10.2 검증 축 (10개)
 - 10.3 출력 스키마
@@ -131,9 +131,27 @@ speckiwi 보장 사항:
 }
 ```
 
+### 9.6 리서치 문서 기반 SRS 검증/개선 (A/B) 루프 (Phase 4.5)
+
+`kiwi-srs` 는 하나 이상의 **리서치 문서**(연구 문서)를 명시적 `--research-doc <path>` **인자**(반복 지정 가능)로 받거나, 사용자 **프롬프트**에서 **참조**된 경로("docs/research/foo.md 리서치 문서를 사용" 형태)로 해석하여 루프 진입 전에 확보한다. 확보한 리서치 문서는 프로세스 A 로 투입된다. 리서치 문서가 주어지면 kiwi-srs 는 단발 Phase 4→7 패스 대신 아래 A/B 검증/개선 루프를 돈다.
+
+이 루프는 두 개의 독립 서브에이전트 — **프로세스 A**(검증)와 **프로세스 B**(적용) — 가 번갈아 도는 A/B 구조다.
+
+**프로세스 A — 검증.** 프로세스 A 는 리서치 문서를 이미 작성된 SRS 와 대조하여 다음을 보고한다: (i) 리서치에는 있으나 SRS 에 **누락된 요구**사항, (ii) **잘못 작성**된(요구 의도와 어긋나게 기술된) 부정확 요구사항, (iii) 각 요구사항의 현재 아키텍처상 **구현 가능성**(feasibility) — feasibility-policy-schema-v1 의 인라인 feasibility 휴리스틱을 재사용한다(새 dual-mode 인터페이스 없음). 또한 프로세스 A 는 제안된 SRS 변경이 **기존 제품 기능**을 **회귀**(손상)시키는지 플래그한다. 프로세스 A 는 **개선사항 문서**를 run-scoped **임시 디렉터리**(실행 단위 임시 경로, run-id 로 키된 OS temp 경로)에 기록한다. 프로세스 A 가 개선사항이 없다고 판단하면 루프를 **종료**한다(개선사항이 없으면 종료; 0건이면 exit).
+
+**프로세스 B — 적용.** 프로세스 B 는 개선사항 문서를 읽어 개선 내용을 Phase 4 speckiwi MCP mutation 시퀀스(§9.2)로 SRS 에 **반영/적용**한 뒤, 재검증을 위해 **제어권을 프로세스 A 로 반환**한다.
+
+**발산 가드(divergence guard).** A/B 루프는 최대 반복(maximum-iteration) 발산 가드로 상한을 둔다: **5 (기본) / 8 (--max)** 회 반복에서 멈춘다. 상한 도달 시 루프를 중단하고 잔여 개선사항을 사용자 결정용으로 보고한다.
+
+**검증 팬아웃(fan-out).**
+- 기본, 단일 리서치 문서: 프로세스 A 는 검증 서브에이전트 1개를 돌린다.
+- `--max`, 단일 문서 기준: 프로세스 A 는 그 단일 문서에 대해 검증 **서브에이전트 3개**(3 verification subagents)를 교차 검증에 투입한다.
+- 다중 리서치 문서, 비-max: 프로세스 A 는 검증 서브에이전트를 **문서별로 순차**(sequential, per document)로 생성한다(문서 1개당 서브에이전트 1개, 한 번에 한 문서씩).
+- 다중 리서치 문서, `--max`: 프로세스 A 는 (**문서 수 × 3**, document count × 3)개의 검증 서브에이전트를 병렬로 팬아웃한다 — 단일 문서 3-서브에이전트 기준을 리서치 문서 수만큼 스케일한다.
+
 ---
 
-## 10. Phase 5 — Evaluation
+## 10. Phase 5 — Verification
 
 ### 10.1 평가자 입력 (§0.2 격리)
 
@@ -201,7 +219,7 @@ speckiwi 보장 사항:
 
 ```json
 {
-  "evaluator": "high-reasoning-A|standard-B|high-reasoning-C",
+  "evaluator": "verify-pass-1|verify-pass-2",
   "iter": N,
   "findings": [
     {
@@ -225,10 +243,12 @@ speckiwi 보장 사항:
 
 ### 10.4 토폴로지
 
-| 모드 | Evaluator A | B | C |
-|---|---|---|---|
-| Normal | high-reasoning | standard | — |
-| --max | high-reasoning | standard | high-reasoning |
+평가·검증은 **단일 검증 서브에이전트**가 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다.
+
+| 모드 | 검증 서브에이전트 | 모델 |
+|---|---|---|
+| Normal | 단일 검증 서브에이전트 × 1 | 현재 세션 모델 (`--model` override) |
+| --max | 단일 검증 서브에이전트 + 독립 2차 검증 패스 | 현재 세션 모델 (`--model` override) |
 
 ---
 

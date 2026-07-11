@@ -1,0 +1,50 @@
+{
+  "round": 4,
+  "reviewer": "prickly-recheck-final",
+  "input_isolation": "직전 수정자 rationale 미수신(제목만 격리 수신). git diff HEAD + 현재 파일 상태 + test/skills 142/142 green 실행 근거만 사용. fix_iter3.json 미열람.",
+  "resolved_findings": [
+    "FND-201",
+    "FND-202"
+  ],
+  "resolved_detail": [
+    {
+      "id": "FND-201",
+      "severity_was": "LOW",
+      "why_resolved": "codex/etc auto-option 'Read-Time Interpretation' 산문의 '--auto = single decision worker' 잔재가 두 변형 모두 위원회 모델로 통일됨. codex L173: '`--auto` may use the decision committee (see Decision Committee and Committee Merge Ladder).' etc L176: 동일 문구('`--auto` may use the decision committee (see Decision Committee and Committee Merge Ladder).'). 'single decision worker' 문구는 두 파일에서 완전 소멸(grep 0건). 잔존 'decision worker' 지칭(codex L12 입력격리 rationale·L238 복수 'decision workers', etc L6/L11 입력격리)은 위원=worker 일반지칭으로 §Decision Committee(3인, --max 5인, 격상 7인)와 비모순 — 이전 라운드 판정과 일치. claude 한국어 정본은 원래 clean(위원/위원회 일관). Read-Time Interpretation ↔ Decision Committee 모순 해소 확인."
+    },
+    {
+      "id": "FND-202",
+      "severity_was": "LOW",
+      "why_resolved": "etc reference 2파일의 --mini deprecated 별칭 'squirrel' 모드 enum 잔재가 'model' 로 전환됨. etc/kiwi-coder/references/extended-workflow.md L148: '\"mode\": \"normal|max|reviewer-off|model|dry-run\"'(squirrel→model). etc/kiwi-srs-sync/references/extended-workflow.md L109: 'mode: normal|max|model|dry-run-only'(squirrel→model). 이로써 claude/codex kiwi-coder(model) ↔ etc(구 squirrel) worklog-schema cross-variant drift 소멸 + etc MIGRATION_PLAN '--mini/--squirrel 제거' 의도 충족. 전 skills/ + test/skills 트리 재스윕(MIGRATION_PLAN 역사기록 제외) 결과 --mini/--squirrel/mini-option/squirrel 리터럴은 test/skills/kiwi-mini-removal-content.test.ts(제거 검증 테스트가 금지 토큰을 명명해 부재를 단언 — 정상) 외 skill 콘텐츠 파일에서 0건."
+    }
+  ],
+  "still_open": [],
+  "new_findings": [],
+  "non_blocking_notes": [
+    "FR-FLOW-022 AC-1 테스트 정규식 MINI_TOKEN=/--mini\\b|mini-option/ 은 '--squirrel' 별칭을 매칭하지 않으나, (1) AC-1 은 '--mini' 리터럴 제거만 규정하므로 정규식이 AC 를 정확히 구현하고 (2) squirrel 토큰이 skill 콘텐츠에 0건이라 실제 사각지대가 없어 false-green 아님 — finding 아님(SRS 초과 강화는 억지). 원하면 방어적 확장(/--mini\\b|--squirrel\\b|mini-option/) 가능하나 불요.",
+    "etc kiwi-planner §6.8 커버리지 루프의 '단일 evaluator·순차 단일' 표현은 claude/codex 의 '검증 서브에이전트' 와 다르나, etc 로컬-LLM 순차 프로파일의 의도된 variant 적응이며 4단계(reconcile / per-REQ / 2회 순차 + 영속 마킹 / --max 3차 반박+AC 단위)는 동일 — cross-variant 불일치 아님."
+  ],
+  "final_sweep_evidence": {
+    "FR-FLOW-022_mini_removal": "skills/ + test/skills 전수 grep: --mini/--squirrel/mini-option/squirrel 리터럴이 제거-검증 테스트 파일 외 콘텐츠 0건. mini-option.md 3부(claude/codex/.agents) 삭제 반영.",
+    "FR-FLOW-025_committee": "3 변형 auto-option 위원회 사다리 정합 — 3인(만장일치)→5인 격상(다수결, --max 시 7인 격상)→7인(다수결) + 동점은 전 규모 공통 선임 위원(#1) 랭킹 tie-break. §10 로깅 merge_method{rule,committee_size} ↔ mode_flags 정합(codex committee_size:3/auto, etc committee_size:5/max).",
+    "FR-FLOW-029_wave_master_doctor": "src/doctor/package-doctor.ts EXPECTED_KIWI_SKILLS 에 kiwi-wave-master 등록(L73). EXPECTED_SKILL_ENTRYPOINTS = {codex,claude,etc}×EXPECTED 이 요구하는 skills/{codex,claude,etc}/kiwi-wave-master/SKILL.md 3개 모두 존재. kiwi-wave-master-content.test.ts AC-1 doctor-registration 이 raw-text 로 등록을 단언(green).",
+    "FR-FLOW-031_workflow_tools": "3 변형 kiwi-planner 모두 target-9 workflow_* 도구 라우팅(읽기 workflow_plan_status/plan_task/next_plan_task, 검증 workflow_doctor/schema_check/diff, 변경 workflow_task_check/uncheck/checklist_set) 보유. install-skill 토큰계약 보존.",
+    "FR-FLOW-032_coverage_loop": "3 변형 kiwi-planner §6.8 커버리지 검증 루프 존재·동일 4단계. 현재 세션 모델(FR-FLOW-022) 검증 + 2회 순차 + 영속 verification-complete 마킹 + --max 독립 3차 반박+AC 단위. §6.1 finding 루프와 별개 명시.",
+    "test_false_green_guard": "test/skills 에 .skip/.only/.todo/xit/xdescribe 0건(유일 매칭은 regex 리터럴 내 'stop|halt' 문자열). 142/142 실행 green, 8/8 파일 pass."
+  },
+  "summary": {
+    "resolved": 2,
+    "still_open": 0,
+    "new": 0,
+    "by_severity_open": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 0
+    }
+  },
+  "regression": "test/skills 142/142",
+  "gate": "PASS",
+  "clean": true,
+  "overall": "4라운드 최종 재검증: 직전 2건(FND-201/202) 모두 실제 해소 확인 — diff·현재 파일·grep·test 142/142 근거. FND-201 codex L173+etc L176 'single decision worker' → 'decision committee' 통일(잔존 worker 지칭은 위원=worker 일반지칭 비모순). FND-202 etc kiwi-coder L148·kiwi-srs-sync L109 squirrel→model 전환으로 cross-variant drift·MIGRATION_PLAN 의도 미충족 해소, 전 트리 squirrel 콘텐츠 0건. 신규 finding 0건. 최종 전체 스윕 FR-FLOW-022~032 통과: 위원회 사다리(025) 3/5/7+선임#1 tie-break 3변형 정합, package-doctor+kiwi-wave-master(029) 등록·3 entrypoint 존재·AC-1 테스트 커버, workflow_*(031)·coverage 루프(032) 3변형 일관. --mini/--squirrel/mini-option 잔재는 제거-검증 테스트 파일 외 0건, false-green(.skip/.only/.todo) 0건. MINI_TOKEN 정규식의 --squirrel 미커버 및 etc 단일-evaluator 표현은 각각 AC 정합·의도된 variant 적응으로 finding 아님(억지 배제). 게이트 PASS, 정말 clean."
+}

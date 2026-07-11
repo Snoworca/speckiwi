@@ -65,6 +65,11 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | "통계만", "stats" | `--stats` | off (추천 + 통계 모두 출력) |
 | "실행해", "run", "진행해" | `--run` | off (추천만 출력) |
 | "이전 단계로", "이전" | `--prev` | off (마지막 이벤트 무시하고 그 직전으로) |
+| "풀 사이클", "처음부터 끝까지", "연구부터 구현까지", "cycle" | `--cycle` (전체 연구→구현 사이클 오케스트레이션 §2.5) | off (단일 다음-단계 추천) |
+| "중간부터", "feasibility 부터", "계획부터" | `--from=<stage>` (skip-authoring 진입 §2.5.2) | off (kiwi-srs 부터) |
+| "연구 문서로", "리서치 문서 첨부" | 연구 문서 경로 (research document → `$kiwi-srs` passthrough §7.2) | (없음) |
+| "max 모드", "고강도" | `--max` (모든 하위 스킬로 전파 §7.1) | off |
+| "워크트리에서", "격리해서", "worktree isolation" | `--wt` (전용 git worktree 격리 사이클 §2.6) | off |
 
 옵션 매트릭스:
 - `--stats` 단독 → 통계만, 추천·실행 없음
@@ -94,6 +99,70 @@ Phase 3  : 사용자 게이트 또는 자동 결정
 Phase 4  : (--run 시) 선택된 스킬 spawn
 Phase 5  : 통계 출력 + 자기 이벤트 emit
 ```
+
+`--cycle` 활성 시 위 Phase 0~5 는 단일 다음-단계가 아니라 §2.5 의 전체 사이클을 순차 오케스트레이션하는 루프로 확장된다.
+
+---
+
+## 2.5 End-to-end 사이클 오케스트레이션 (research → plan → implement)
+
+`--cycle` (자연어 "처음부터 끝까지", "풀 사이클", "연구부터 구현까지") 로 호출하면 본 스킬은 단일 다음-단계 추천을 넘어 전체 연구→계획→구현 사이클을 하나의 체인으로 오케스트레이션한다. 각 단계는 직전 단계의 `TASK_DONE` 이벤트를 게이트로 다음 단계를 spawn 한다. 사이클 계약의 공유 참조는 `../_shared/kiwi/pipeline-v1.md` 이다.
+
+**체인 순서**:
+
+`kiwi-srs → (조건부) kiwi-srs-feasibility → kiwi-planner → kiwi-pm → kiwi-review-fix-loop`
+
+즉 본 스킬은 하나의 다음 단계에서 멈추지 않고 위 다섯 단계를 연결된 사이클로 진행한다.
+
+### 2.5.1 조건부 feasibility (AC-2)
+
+`kiwi-srs` 가 방금 작성·갱신한 요구사항이 **draft** stability 이거나 implementability(구현 가능성)가 **unverified**(미검증) 인 경우에만 `kiwi-srs-feasibility` 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility 단계를 **skip**(생략)하고 곧바로 `kiwi-planner` 로 진행한다. 즉 feasibility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
+
+### 2.5.2 skip-authoring / resume-from-stage 진입
+
+SRS 가 이미 저작되어 있으면 `--from=feasibility` 또는 `--from=planner` 로 `kiwi-srs` 저작을 건너뛰고 사이클을 중간 단계에서 시작한다. 이 진입점은 `kiwi-wave-master`(FR-FLOW-029)의 wave 별 사이클 호출이 소비한다 (R-005 크로스-스킬 통합).
+
+### 2.5.3 사이클 게이트·전파 요약
+
+- `--auto` 위원회 자동 결정 + 완주 규약: §6.6.
+- `--max` 하위 스킬 전파: §7.1.
+- 연구 문서 `$kiwi-srs` passthrough: §7.2.
+
+---
+
+## 2.6 Worktree 격리 + 완료 게이트 (merge-or-PR, FR-FLOW-027)
+
+`--wt` 인자 또는 워크트리 격리(worktree isolation) 요청("워크트리에서 돌려", "격리해서 진행")으로 호출하면, 본 스킬은 사이클 전체를 현재 작업 트리와 분리된 공간에서 실행하기 위해 전용 worktree 를 준비한다. `--wt` 미지정 + 격리 요청이 없으면 현재 작업 트리에서 그대로 진행한다.
+
+### 2.6.1 Worktree 격리 진입 (AC-1)
+
+`--wt` 또는 worktree 격리 요청 시, 본 스킬은 현재 작업 트리를 오염시키지 않도록 **전용(dedicated) git worktree** 를 새로 **생성(create)** 한다 — `git worktree add <path> -b <cycle-branch>` 로 사이클 전용 브랜치를 별도 worktree 에 배치한다. 이후 §2.5 의 전체 연구→계획→구현 사이클은 그 생성된 **worktree 안에서(inside the worktree)** 실행되며, 원래 작업 트리(base 작업 공간)는 건드리지 않는다.
+
+### 2.6.2 완료 게이트 — 비-auto 대화형 (AC-2)
+
+비-auto(non-auto) 대화형(interactive) 모드에서 사이클이 성공적으로 **완료(completion)** 되면, 본 스킬은 격리에 사용한 worktree 브랜치를 어떻게 통합할지 사용자에게 **묻는다(ask)**: worktree 브랜치를 base 로 **머지(merge)** 할지, 아니면 **PR** 을 열지 여부를 `Codex clarification gate` 2지선다로 질문한다. 사용자가 선택하기 전에는 어느 통합도 자동으로 수행하지 않는다.
+
+### 2.6.3 완료 게이트 — --auto 자동 PR (AC-3)
+
+`--auto` 활성 시에는 위 merge-or-PR 질문을 사용자에게 묻지 않고, 완료(completion) 후 항상 `kiwi-commit-auto-pr` 를 호출하여 **PR 을 연다**. 이때 **base 브랜치(base branch)** 를 **직접 병합하지 않는다**(base 브랜치로의 direct-merge 금지) — `--auto` 라도 base 브랜치에 직접 merge 하지 않고 반드시 PR 경로로만 통합한다. `kiwi-commit-auto-pr` 는 편집 없이 그대로(as-is) 호출한다(OQ-027-autopr).
+
+---
+
+## 2.7 GitHub 이슈 진입 모드 — research-first 흐름 (FR-FLOW-028)
+
+GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진입 인자 또는 프롬프트 참조로 제공되면, 본 스킬은 Phase 0(§3)에서 이를 이슈 진입 큐로 감지하고 요구사항 저작 이전에 연구를 먼저 수행하는 **research-first** 흐름으로 분기한다. 이슈 번호가 없으면 §2.5 의 일반 사이클(또는 단일 다음-단계 추천)로 진행한다.
+
+### 2.7.1 이슈 해결 + 구현 접근 연구 (AC-1)
+
+이슈 번호(issue number)가 감지되면, 본 스킬은 곧바로 저작 단계로 가지 않고 먼저 `kiwi-srs-research` 를 실행하여 (1) 이슈의 해결(resolution) 방향과 (2) 추가로 구현 접근(implementation-approach)을 연구한다. 즉 이슈가 트리거하는 첫 파이프라인 단계는 반드시 `kiwi-srs-research` 이며, 이 연구가 끝난 뒤에야 `kiwi-srs` 로 SRS 저작을 시작한다 (research-first order). 이슈 진입 큐와 `kiwi-srs` 시작 사이에는 오직 `kiwi-srs-research` 만 위치하고, 연구 없이 `kiwi-srs` 를 곧바로 시작하지 않는다.
+
+### 2.7.2 불충분한 연구 시 -qna 에스컬레이션 (AC-2)
+
+`kiwi-srs-research` 연구만으로 요구사항이 여전히 모호(ambiguous)하거나 불충분(insufficient)하면, 본 스킬은 `kiwi-srs` 를 `-qna` 로 시작하여 남은 미해결(unresolved) 모호성을 사용자와 해소한다. 단 `--auto` 활성 시에는 `-qna` 를 **억제(suppress)**하여 -qna 없이 진행하고, 남은 모호성은 FR-FLOW-025 결정 위원회(decision committee)가 자동 결정한다.
+
+### 2.7.3 이슈 흐름의 사이클 계속 (AC-3)
+
+이슈 번호(issue number) 기반의 연구와 SRS 저작이 끝나면, 이 이슈 진입 흐름은 §2.5 의 표준 사이클로 **계속(continue)**되어 `kiwi-planner` → `kiwi-pm` → `kiwi-review-fix-loop` 로 이어진다. 즉 이슈에서 시작한 작업도 연구·저작 이후 planner/pm/review 단계를 그대로 진행한다.
 
 ---
 
@@ -158,7 +227,7 @@ tail -n "$N" "$PIPE_FILE"
 | kiwi-srs-feasibility | TASK_DONE | `kiwi-planner` 우선; 블로커 모호 시 `kiwi-srs-research` 도 후보 |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
-| kiwi-pm | TASK_DONE | `kiwi-commit-auto-push` |
+| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop --close-reqs` |
 | kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` 또는 `kiwi-commit-auto-push` |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` 또는 종료 |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` |
@@ -214,6 +283,10 @@ tail -n "$N" "$PIPE_FILE"
 - 직전 직전 이벤트(마지막 2개 이벤트 중 첫 번째)를 기준으로 다시 추론
 - 만약 그것도 `kiwi-pipeline` 이면 → ERROR + "kiwi-pipeline 이 연속 2회 호출됨. 직접 다음 스킬 호출 권장." 메시지 출력 후 종료
 
+### 6.6 사이클 모드 게이트 (--auto 위원회 자동 결정, AC-3)
+
+`--cycle` + `--auto` 활성 시 단계 사이의 모든 게이트(inter-stage gate)는 `../_shared/kiwi/auto-option.md` 의 결정 위원회(decision committee)가 자동 결정하며, 사이클은 사용자 개입 없이 **끝까지**(to the end) 완주한다. 단, 어떤 하위 스킬이 `NEEDS_USER` 또는 `FAILED` 를 반환하거나 §0.AG 의 critical gate 에 도달하면 위원회 자동 결정을 우회하지 않고 즉시 **중단**(halt)하여 사용자 결정을 받는다 — `--auto` 라도 이 게이트는 항상 중단한다.
+
 ---
 
 ## 7. Phase 4 — 외부 스킬 실행 (--run 시)
@@ -226,9 +299,17 @@ Use $kiwi-<chosen> <inherited-or-empty-args>
 
 추가 인자 인계:
 - `--auto` (kiwi-pipeline) → 자식 스킬에도 전파 (자식의 `--auto` 의미는 자체 SSOT 따름)
-- `--mini` (kiwi-pipeline 본 스킬에는 정의 안 됨; 그러나 사용자가 명시한 경우 자식에 전파)
+- `--model <name>` (kiwi-pipeline 본 스킬에는 정의 안 됨; 그러나 사용자가 명시한 경우 자식에 전파)
 
 spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 `workflow_pipeline_emit` 로 자기 이벤트를 기록하므로 본 스킬이 별도 기록할 필요 없음.
+
+### 7.1 --max 전파 (AC-4)
+
+`--max` 로 본 스킬을 호출하면 사이클이 spawn 하는 **모든 하위 스킬(every spawned sub-skill)** — `kiwi-srs` · `kiwi-srs-feasibility` · `kiwi-planner` · `kiwi-pm` · `kiwi-review-fix-loop` — 에 `--max` 를 그대로 **전파**(propagate)한다. 하위 스킬의 `--max` 의미는 각자의 SSOT 를 따른다.
+
+### 7.2 연구 문서 passthrough (AC-5)
+
+사용자가 **연구 문서**(research document)를 인자 또는 프롬프트 참조로 제공하면, 사이클 시작 시 본 스킬은 그 문서를 `$kiwi-srs` 로 **전달**(passthrough)하여 SRS 저작의 입력으로 공급한다. `kiwi-srs` 는 이를 FR-FLOW-023 research verify/improve 루프의 입력으로 사용한다.
 
 `--run` 미지정 시 본 Phase skip.
 

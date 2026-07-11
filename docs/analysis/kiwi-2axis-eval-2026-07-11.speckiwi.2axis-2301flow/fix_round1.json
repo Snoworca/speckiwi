@@ -1,0 +1,116 @@
+{
+  "round": 1,
+  "fixes": [
+    {
+      "finding_id": "QB-001",
+      "severity": "MEDIUM",
+      "action": "fixed",
+      "files_changed": ["skills/claude/_shared/kiwi/auto-option.md"],
+      "rationale_full": "§4.1.2 confidence-spread 격상 규칙을 종단 규모 처리를 명문화하도록 재작성. §3 사다리/FR-FLOW-025 확인: 비-max 는 5인이 종단(다수결), --max 는 7인이 종단. (a) 비종단 규모(--auto 3인 / --max 5인)면 §3 사다리로 다음 규모(3→5, 5→7)로 1회 격상하여 재투표하고 비-max 3인의 '다음 규모'가 5인임을 명시(7인은 --max 전용). (b) 종단 규모(비-max 5인 / --max 7인)면 더 격상할 위원회가 없으므로 재투표하지 않고 confidence 신뢰성 저하를 critical 로 격상해 HALT — §4.1.1 '임계값 미만이면 critical 격상' 과 동일 안전 정책. HALT-to-critical 을 택한 이유: 넓은 confidence 불일치는 신뢰 불가한 결정이므로 안전측(사용자 결정)이 §4.1 confidence 신뢰성 검증 취지와 정합. 이 수정판은 QB-009 를 통해 codex/etc 에도 동일 이식."
+    },
+    {
+      "finding_id": "QB-002",
+      "severity": "MEDIUM",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/kiwi-srs/SKILL.md",
+        "skills/etc/kiwi-srs/SKILL.md"
+      ],
+      "rationale_full": "SRS 불가침: FR-FLOW-024 AC-2 가 `-qna` 이름을 명시하므로 이름 변경 금지. 대신 §1.2 옵션 의미 bullet 을 앵커 규칙으로 crisp 화: `-qna`(강제)는 정확히 대시 1개 + 앞뒤 토큰 경계(`(?<![-\\w])-qna\\b`), `--qna`(deprecated)는 대시 2개(`(?<![-\\w])--qna\\b`)로 판별하고, `-qna` 가 `--qna` 의 부분문자열이므로 경계·대시 개수 검사 없는 substring 매칭이 `--qna` 를 `-qna` 로 오탐함을 경고, substring 매칭 금지 명문화. 정규식은 테스트의 QNA_FORCE discriminator 와 동일. §5.2 `-qna 강제` bullet 에 §1.2 앵커 규칙 교차참조 추가. 이름 변경 제안은 SRS 영역이므로 수정하지 않고 srs_suggestions 에 기록만."
+    },
+    {
+      "finding_id": "QB-003",
+      "severity": "MEDIUM",
+      "action": "fixed",
+      "files_changed": ["skills/etc/_shared/kiwi/auto-option.md"],
+      "rationale_full": "etc Failure handling 표의 단일-worker 잔재를 codex 의 위원회(committee/member/quorum) 정책으로 갱신. claude(§3.1)/codex(Failure handling 표) 실제 표현을 Read 로 확인: per-member 1회 재spawn 후 재실패 시 과반 정족수(majority quorum) 충족되면 진행·미충족 시 halt, 과반 위원 실패 시 halt, 자유텍스트 decision 은 실패 위원 취급. etc 로 이식하되 lead-member(#1) tie-break 실패는 etc 가 이미 merge ladder step 5 에서 처리하므로 표에 중복하지 않고 표 하단에 참조 문장으로 명시. 단일-worker 행('Retry once; if still invalid, halt', 'Worker reports high risk below threshold | Halt', 'Decision is not one of the explicit options | Halt')을 제거하고 위원회 시맨틱으로 대체 — 세 변형 실패 행동 정합."
+    },
+    {
+      "finding_id": "QB-004",
+      "severity": "MEDIUM",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/_shared/kiwi/auto-option.md",
+        "skills/codex/_shared/kiwi/auto-option.md",
+        "skills/etc/_shared/kiwi/auto-option.md"
+      ],
+      "rationale_full": "`--model <name>` 저성능 판정을 결정적으로 규정. 모델 tier SSOT(성능 순위, 높음→낮음: opus > sonnet > haiku)를 도입하고 '지정 모델 tier < 세션 모델 tier 일 때만 임계값 +0.1' 로 명문화 — 같거나 높은 tier(예: 세션 sonnet + --model opus)는 조정 없음. tier 판정 불가(순위표에 없는 모델명 / 세션 모델 미상) 시 안전측 디폴트로 항상 +0.1(미확인 모델을 저성능 간주). claude §4.1.3 / codex 'lower-capability' 문장을 이 규정으로 대체. etc 는 원래 model-threshold 규칙 자체가 부재했으므로 codex/claude 와 parity 를 위해 신규 추가. 세 변형 정합."
+    },
+    {
+      "finding_id": "QB-005",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": ["skills/claude/kiwi-wave-master/SKILL.md"],
+      "rationale_full": "claude wave-master 내 waves-event.md 표기 혼용(§0.1 절대경로 vs 진행추적 절 상대경로 `_shared/kiwi/waves-event.md`)을 형제 스킬 pipeline-event.md 관례(`~/.claude/skills/_shared/kiwi/...`)에 맞춰 절대경로로 통일. QB-006 스왑으로 진행추적 절이 §6 로 이동했고 그 본문의 schema 경로를 `~/.claude/skills/_shared/kiwi/waves-event.md` 로 수정(§0.1·§9 pipeline-event 와 동일 관례). codex/etc 는 §0.1·진행추적 절 모두 `../_shared/...` 로 이미 일관이라 무수정."
+    },
+    {
+      "finding_id": "QB-006",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-wave-master/SKILL.md",
+        "skills/codex/kiwi-wave-master/SKILL.md",
+        "skills/etc/kiwi-wave-master/SKILL.md"
+      ],
+      "rationale_full": "§5(Phase 4 진행추적)/§6(Phase 3 pipeline 실행) 블록을 스왑해 섹션 순서를 Phase 실행 순서(Phase 3 실행 → Phase 4 추적)에 맞춤 — 결과적으로 §N = Phase(N-2) 패턴 복원(§3→P1, §4→P2, §5→P3, §6→P4). 스왑에 맞춰 교차참조 갱신: §2 Phase 흐름 블록의 (§6)/(§5) → (§5)/(§6), §8.2 동일진행 문장·bullet 의 §5↔§6, §9 emit 절의 '(§5, waves-event.md)' → '(§6, waves-event.md)'. 세 변형 정합. (claude 20행 §6 은 CLAUDE.md §6 외부참조로 무관.)"
+    },
+    {
+      "finding_id": "QB-007",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-wave-master/SKILL.md",
+        "skills/codex/kiwi-wave-master/SKILL.md",
+        "skills/etc/kiwi-wave-master/SKILL.md"
+      ],
+      "rationale_full": "SRS 근거 확인 결과 --wt 를 제거. FR-FLOW-029/030(kiwi-wave-master 요구)에는 --wt 근거가 전혀 없고, 오직 FR-FLOW-027(kiwi-pipeline)만 --wt 워크트리 격리를 명세. FR-FLOW-029 AC-5 는 전파 대상 플래그로 --auto/--max 만 명시하고 --wt 는 부재. CLAUDE.md/SRS 워크플로('SRS 미커버 동작 구현 금지' + '반쯤 명세된 옵션 배포 금지')에 따라 description frontmatter 와 §1.2 표에서 --wt 선언 제거(surgical). --wt 를 wave 별 pipeline 으로 전파하는 자연스러운 확장은 SRS 개정이 선행되어야 하므로 srs_suggestions 에 기록."
+    },
+    {
+      "finding_id": "QB-008",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-srs/SKILL.md",
+        "skills/codex/kiwi-srs/SKILL.md",
+        "skills/etc/kiwi-srs/SKILL.md"
+      ],
+      "rationale_full": "무제한 qna 루프(§5.2)에 진동/반복 감지 가드 bullet 을 명시적으로 추가. §5 각 라운드 list 의 step 4('동일 질문 2회 → 사용자 확인')가 이미 약한 진동 가드였으나 §5.2(FR-FLOW-024 AC-2 무제한 루프 정의)에는 연결이 없어, '무제한 루프라도 동일 미해결 모호성 반복 시(step 4 의 2회) 자동 진행 없이 사용자 확인 — 구 Max 모드의 진동 감지 시 사용자 호출 안전장치를 무제한 루프에 유지' 를 §5.2 에 명문화. 대화형 루프 전용(--auto/-qna 위원회 위임 경로 FR-FLOW-025 는 제외)으로 §5.3 사용자 종료 신호와 이중 안전장치. FR-FLOW-024 의도(무제한이되 사용자 종료 신호까지)와 정합. 세 변형 정합."
+    },
+    {
+      "finding_id": "QB-009",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": [
+        "skills/codex/_shared/kiwi/auto-option.md",
+        "skills/etc/_shared/kiwi/auto-option.md"
+      ],
+      "rationale_full": "claude 에만 있던 위원 confidence 교차검증(최고·최저 차이 >= 0.3 → 격상) 규칙을 codex/etc auto-option 에 이식해 안전 규칙 parity 완결. QB-001 의 종단 처리(비종단 규모면 한 rung 격상+재투표, 종단 규모면 재투표 없이 critical HALT)를 포함한 최종 버전으로 이식 — Adjust confidence 표 직후에 'Committee confidence cross-check' 문단으로 추가(codex 는 기존 --model 라인 위치, etc 는 표 하단 신규). 세 변형 안전 시맨틱 정합."
+    },
+    {
+      "finding_id": "QB-010",
+      "severity": "LOW",
+      "action": "fixed",
+      "files_changed": [
+        "skills/claude/kiwi-wave-master/SKILL.md",
+        "skills/codex/kiwi-wave-master/SKILL.md",
+        "skills/etc/kiwi-wave-master/SKILL.md"
+      ],
+      "rationale_full": "CLAUDE.md §7(스킬 본문 이력/provenance 배제) 준수: §8.3 헤더의 'OQ-030 구조 가드' 를 '구조 가드' 로, 볼드 라벨 'OQ-030 구조 가드 (5인 연구 위원회 결정, high-confidence)' 를 '구조 가드' 로 축약해 결정 이력·open-question ID 메타를 제거하고 구조 가드 규칙 (a)/(b)만 declarative 하게 유지. OQ-030 추적은 SRS FR-FLOW-030 Implementation Notes([2026-07-10] OQ-030 RESOLVED ...)에 이미 보존되어 있어 스킬에서 제거해도 무방. 세 변형 정합."
+    }
+  ],
+  "srs_suggestions": [
+    "QB-002 (-qna rename): SRS FR-FLOW-024 AC-2 가 단일 대시 `-qna` 강제 플래그를 명시하는데, `--qna`(deprecated) 와 대시 1개 차이로 의미가 정반대라 사용자·에이전트 모두에 footgun. 이름 변경은 SRS 영역이므로 스킬에서 수정하지 않음(현 스킬은 앵커 규칙만 crisp 화). 향후 FR-FLOW-024 에서 강제 플래그를 혼동 없는 이름(예: `--qna-force` / `--always-ask`)으로 재명명 검토 권장.",
+    "QB-007 (--wt 근거 부재 → 제거): kiwi-wave-master 의 --wt 는 FR-FLOW-029/030 에 근거가 없어 스킬에서 제거함(FR-FLOW-027 은 kiwi-pipeline 에만 --wt 를 근거함). wave 별 kiwi-pipeline 으로 --wt 전파(각 wave 사이클을 워크트리 격리)가 바람직하면, FR-FLOW-029 AC(현재 AC-5 는 --auto/--max 전파만 명시)에 --wt 전파 동작(생성시점/cleanup/격리범위/실패폴백)을 먼저 추가한 뒤 스킬에 재도입 권장."
+  ],
+  "regression": {
+    "skills_content_suite": "npx vitest run test/skills/ -> 8 files / 142 tests PASSED",
+    "install_skill_suite": "npx vitest run test/core/skills/install-skill.test.ts -> 17 tests PASSED (초기 1건 실패는 codex kiwi-srs 소스 수정 후 .agents 미러 미동기 상태 때문; 재sync 후 GREEN)",
+    "combined_final": "npx vitest run test/skills/ test/core/skills/install-skill.test.ts -> 9 files / 159 tests PASSED (exit 0)"
+  },
+  "mirror_resynced": [
+    ".agents/skills/kiwi-srs/SKILL.md — `node bin/speckiwi skills install codex kiwi-srs` (operation=update, filesCopied=3), byte-equal(LF) 검증 통과",
+    ".agents/skills/_shared/kiwi/auto-option.md — 수동 cp skills/codex/_shared/kiwi/auto-option.md (install 이 _shared 미러 미복사; 도구 갭), byte-equal(LF) 검증 통과",
+    "kiwi-wave-master: .agents 미러 부재(net-new 스킬, 최초부터 .agents 미설치 + install-skill 테스트의 tracked 리스트에 없음). 스코프 확장 회피 위해 신규 미러 생성하지 않음 — 필요 시 `node bin/speckiwi skills install codex kiwi-wave-master` 로 별도 설치 권장(후속 결정)."
+  ]
+}

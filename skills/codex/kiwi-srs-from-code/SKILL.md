@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-from-code
-description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdown을 자동 생성. 4축 서브에이전트 검증(누락/오류/할루시네이션/scope-creep) 루프로 모든 scope의 결함이 사라질 때까지 반복. 트리거 — kiwi srs from code, speckiwi srs 역추출, 코드로 speckiwi srs 만들어줘, kiwi 코드 분석 SRS, 기존 코드로 kiwi srs 생성. 필수 CODE_PATH. 선택 TARGET(기본 v0.1) / --max-eval-iter(기본 3) / --skip-init / --mini(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 4축 토폴로지·게이트 불변).
+description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdown을 자동 생성. 4축 서브에이전트 검증(누락/오류/할루시네이션/scope-creep) 루프로 모든 scope의 결함이 사라질 때까지 반복. 트리거 — kiwi srs from code, speckiwi srs 역추출, 코드로 speckiwi srs 만들어줘, kiwi 코드 분석 SRS, 기존 코드로 kiwi srs 생성. 필수 CODE_PATH. 선택 TARGET(기본 v0.1) / --max-eval-iter(기본 3) / --skip-init / 검증 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 가능(4축 토폴로지·게이트 불변).
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-from-code v1.4
@@ -35,7 +35,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.7 | **scope 분할은 반드시 사용자 확인**. Codex clarification gate 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
-| §0.10 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 Phase 3 scope agent / Phase 4 검증자 4축 중 high-reasoning 축은 standard 으로 read-time replace. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
+| §0.10 | **검증 서브에이전트 모델 정책 SSOT**. Phase 3 scope agent / Phase 4 검증자 4축 등 검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
 | §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. inferred requirement loss, scope splitting, coverage gaps, and MCP absence are critical gates (§1.4). |
 
 ---
@@ -57,7 +57,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | "루프 N회", "N번 검증" | `--max-eval-iter` | 3 |
 | "최소 N scope", "scope N개부터" | `--scope-min` | 3 |
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
-| "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 Codex clarification gate 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).

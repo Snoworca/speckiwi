@@ -1,0 +1,46 @@
+{
+  "round": 7,
+  "scope": "etc single-worker adaptation of FR-FLOW-023/024/028 additions (skills/etc only; claude/codex untouched)",
+  "ssot_basis": [
+    "skills/etc/*/SKILL.md line 8 header: disables multi-worker fanout, one delegated worker/evaluator at a time, --max default, three consecutive no-improvement",
+    "skills/etc/_shared/kiwi/local-llm-profile.md (Single-Worker Policy: at most one delegated worker/evaluator at a time; sequential single evaluator)",
+    "skills/etc/MIGRATION_PLAN.md forbidden tokens (parallel/병렬/multi-subagent/5-서브에이전트/standard×N)"
+  ],
+  "fixes": [
+    {
+      "finding_id": "QB-209",
+      "files_changed": [
+        "skills/etc/kiwi-srs/SKILL.md",
+        "skills/etc/kiwi-srs/references/extended-workflow.md",
+        "skills/etc/kiwi-srs-research/SKILL.md"
+      ],
+      "rewrites": [
+        "kiwi-srs/SKILL.md:352 (FR-FLOW-024 AC-4) — '리서치 서브에이전트 3개를 병렬 투입' → '리서치 서브에이전트 3개를 순차로(sequential, 한 번에 하나씩) 투입' (3-subagent SRS 의도 유지, 병렬→순차)",
+        "kiwi-srs/references/extended-workflow.md:146 — heading '검증 팬아웃(fan-out).' → '검증 서브에이전트 실행(순차, 한 번에 하나씩).'",
+        "kiwi-srs/references/extended-workflow.md:148 (FR-FLOW-023 --max single-doc) — '검증 서브에이전트 3개를 교차 검증에 투입' → '검증 서브에이전트를 3회 순차(3 sequential passes, one at a time)로 돌려 교차 검증' (+ '--max(etc 기본)' 표기)",
+        "kiwi-srs/references/extended-workflow.md:150 (multi-doc --max) — '(문서 수 × 3)개의 검증 서브에이전트를 병렬로 팬아웃' → '(문서 수 × 3)회의 검증을 순차로(sequential, one at a time) 실행'; tail '단일 문서 3-서브에이전트 기준' → '단일 문서 3회 순차 검증 기준'",
+        "kiwi-srs-research/SKILL.md:168 (FR-FLOW-028 issue-entry) — '5-서브에이전트 토폴로지에 투입' → 'single-worker 순차 연구 토폴로지(§4 Triage → §5 Sequential Research)에 투입'"
+      ],
+      "srs_intent_preserved": "FR-FLOW-024 AC-4 '3 subagents 조사(architecture/algorithm/impl-plan → docs/research/ → FR-FLOW-023 loop)' 어휘 및 count(3) 유지, 실행만 병렬→순차 단일-워커로 재프레이밍. FR-FLOW-023 검증 3회/문서수×3 count 유지.",
+      "action": "fixed"
+    }
+  ],
+  "etc_forbidden_token_grep_after": "grep -rniE '병렬|parallel|팬아웃|fan-?out|동시 spawn|N개 서브에이전트 병렬' skills/etc → QB-209 substantive 3 locations = 0 잔여. 잔존 매치는 전부 prohibitive SSOT (SKILL.md:8 'disables multi-worker fanout', §0.x rows 'multi-worker fanout 은 금지', kiwi-review-fix-loop:20 'never as multi-worker fanout', kiwi-pm/kiwi-srs-research description 'does not use / collapses ... fanout', local-llm-profile.md/auto-option.md 'fanout is disabled / not in parallel / committee sequential') + MIGRATION_PLAN.md grep-pattern line 91 및 policy 문장. 신규 위반 0.",
+  "qb210": "fixed — kiwi-srs/references/extended-workflow.md §10.4 (line 246 prose + table rows 250/251): '현재 세션 모델(current session model) 상속 + --model <name> override' → 'etc 는 단일 로컬 모델(single local model)로 실행, 별도 모델 선택 없이 현재 로컬 모델 사용(--model 미노출)'. 행동 무관(cosmetic).",
+  "out_of_scope_observations": [
+    "동일 '현재 세션 모델 + --model override' 패턴이 kiwi-srs-feasibility/references/extended-workflow.md:270/274/275 와 kiwi-srs-from-code/references/extended-workflow.md:43 에도 존재하나, QB-210 지목(kiwi-srs §10.4) 및 이번 세션 FR-FLOW-023/024/028 범위 밖(별도 스킬)이라 미변경 — surgical scope 유지, 팀리드 판단용으로 보고.",
+    "auto-option.md 의 --model 참조(48/152/156/215/216/223/224)는 --auto 결정위원회 SSOT의 의도된 예외(scoped exception)로 정상 — 미변경."
+  ],
+  "mirror": "n/a (etc not mirrored; mirror target = codex 추적). skills/etc 만 수정, claude/codex 불변.",
+  "regression": {
+    "vitest_test_skills": "148/148 pass (8 files); AC-4 red 테스트 THREE_NEAR_SUBAGENT 재충족 확인(서브에이전트 3개 adjacency 유지 + 병렬 제거)",
+    "install_skill": "17/17 pass (test/core/skills/install-skill.test.ts)"
+  },
+  "constraints_honored": {
+    "only_skills_etc_modified": true,
+    "claude_codex_untouched": true,
+    "qb205_unchanged": true,
+    "no_mock_no_signature_no_changelog": true,
+    "surgical": true
+  }
+}

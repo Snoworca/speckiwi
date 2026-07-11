@@ -1,0 +1,15 @@
+{"ts":"2026-07-10T17:02:55.084Z","event":"2axis_round1","axis_a":"ALL_MATCH 11/11","axis_b":"FINDINGS 10 (MED4/LOW6)"}
+{"ts":"2026-07-10T17:02:55.084Z","event":"fix_round1_spawn","targets":"QB-001..010; IA-001 skip(historical)"}
+{"ts":"2026-07-10T17:25:51.271Z","event":"fix_round1_done","fixed":10,"regression":"159/159","wt_removed":true,"provenance_removed":true}
+{"ts":"2026-07-10T17:40:38.736Z","event":"fix_round2_done","fixed":2,"regression":"142/142+17/17","trend":"10->2->final-check"}
+{"ts":"2026-07-10T17:54:55.017Z","event":"fix_round3_done","fixed":"QB-203 (etc auto-option full old-model sweep)","regression":"142/142+17/17","axis_a_r3":"no-output-respawn"}
+{"ts":"2026-07-10T18:00:57.223Z","event":"axis_a_r3_gap","req":"FR-FLOW-022","verdict":"partial","findings":["QA-301 kiwi-srs §10.3/10.4","QA-302 from-code §8.1","QA-303 review-fix-loop/hot-fix §1.3"],"scope_decision":"SRS says All kiwi-* skills + AC-2 names the panels -> all in-scope; original impl incomplete","plan":"consolidated fix round: complete AC-2 across all kiwi-* + extend test repo-wide"}
+{"ts":"2026-07-10T18:03:59.034Z","event":"axis_b_r4","resolved":"QB-203","new":["QB-204 HIGH local-llm-profile.md old committee model","QB-205 MEDIUM hot-fix->srs-sync propagation divergence"]}
+{"ts":"2026-07-10T18:54:12.118Z","event":"fix_round4_done","scope":"FR-FLOW-022 AC-2 completion (QA-301/302/303 + feasibility §8.4) + QB-204 local-llm-profile + test extended repo-wide","tdd":"red 6->green 11","regression":"165/165","qb205":"deferred out-of-scope","codex_etc_reviewfix_hotfix":"role-tier abstraction, AC-2 compliant by design"}
+{"ts":"2026-07-10T19:05:46.898Z","event":"axis_b_r5","resolved":["QB-204","FR-FLOW-022 AC-2 topology"],"accepted":["QB-205"],"new":["QB-206 MEDIUM claude hot-fix §1.3 note vs §0.10 (round4-introduced tail)"]}
+{"ts":"2026-07-10T19:37:04.681Z","event":"fix_round5_done","resolution":"hot-fix role-model precedent-grounded (정형검사·까칠리뷰·fixer=현재세션; root-cause·TDD=Sonnet); test refined to distinctTiers>=2; committee skipped per rule exception (objective precedent)","regression":"165/165","trend":"R1:10->R2:2->R3:1->R4:FR-FLOW-022gap->R5:1"}
+{"ts":"2026-07-10T20:08:13.025Z","event":"fix_round6_done","fixed":["QB-208 verifier labels","QB-207 hot-fix enum","F-R6-02 TDD vestigial","kiwi-pm L465"],"srs_research":"no-change (intended tier design)","regression":"165/165","scope":"verifier labels only; Opus senior authoring kept"}
+{"ts":"2026-07-10T20:19:30.142Z","event":"axis_a_r7","verdict":"ALL_MATCH 11/11"}
+{"ts":"2026-07-10T20:19:30.142Z","event":"axis_b_r7","resolved":["QB-207","QB-208","F-R6-02","kiwi-pm-L465"],"new":["QB-209 MEDIUM substantive etc single-worker fanout violation","QB-210 LOW cosmetic etc --model term"]}
+{"ts":"2026-07-10T20:30:50.025Z","event":"fix_round7_done","fixed":["QB-209 etc fanout->sequential (3 loc)","QB-210 etc --model term"],"etc_violation_grep":0,"ac4_preserved":true,"regression":"165/165"}
+{"ts":"2026-07-10T20:37:31.317Z","event":"2axis_converged","axis_a":"ALL_MATCH 11/11 (r6/r7/r8)","axis_b":"substantive_clean","fix_rounds":7,"final_regression":"1047 pass / 2 pre-existing flaky / 0 new failures"}

@@ -1,6 +1,6 @@
 ---
 name: kiwi-planner
-description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase-Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + high-reasoning×1+standard×1 SRS 만족도 평가자 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. --mini 로 비용 절감(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트·validator.mjs·TDD 강제 불변)."
+description: "target 활성 REQ 전수(deprecated 제외)에 대해 Phase-Task 구조의 구현 계획을 수립. 코딩뿐 아니라 문서 수정, 파일 이동, 이슈/PR, 성능 테스트, 인프라 변경, 리뷰 등 비-코딩 Task도 포함. plan.md + 사이드카 JSON 양면 SSOT. speckiwi MCP add_trace_link / add_verification_evidence 로 plan-step ↔ REQ 그래프 영속화. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + 현재 세션 모델을 상속하는 단일 SRS 만족도 검증 서브에이전트 + validator.mjs 무결성 검증 + 개선-검증 루프. 트리거 — kiwi planner, 계획 수립, 구현 계획, plan 작성, kiwi plan, 계획 작성, 작업 분해, 작업 계획, task 분해, 구현 절차, REQ 구현 계획, target 구현 계획, srs 구현 계획, 계획 검증, plan validate, plan 사이드카, requirement to plan, implement plan. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트·validator.mjs·TDD 강제 불변)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-planner v0.6
@@ -16,6 +16,14 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 2. Use guarded workflow mutations (`workflow_pipeline_emit`, `workflow_worklog_emit`, `workflow_repair_record`, and plan-task/checklist mutations when applicable) before shell JSONL append snippets or direct plan checkbox edits.
 3. Use CLI `speckiwi workflow ... --json` only as diagnostic/remediation fallback when MCP workflow tools are unavailable; CLI is not a normal replacement for MCP SRS mutations.
 4. Raw file fallback is degraded mode. It is allowed only after capturing tool diagnostics, affected artifact paths, active target, and a follow-up requirement or candidate ID in the report/worklog.
+
+Target-9 planner-document workflow tools, grouped by SRS operation category. This mapping is a SUPERSET that KEEPS every tool listed above and get_next_work_order, and ADDS the five previously missing target tools (`workflow_plan_task`, `workflow_diff`, `workflow_task_check`, `workflow_task_uncheck`, `workflow_checklist_set`):
+
+- Reading (읽기/조회) plan state: `workflow_plan_status`, `workflow_plan_task`, `workflow_next_plan_task`.
+- Validating (검증/진단) plan integrity: `workflow_doctor`, `workflow_schema_check`, `workflow_diff`.
+- Mutating (변경/체크박스) plan checkboxes and checklists: `workflow_task_check`, `workflow_task_uncheck`, `workflow_checklist_set`.
+
+Raw docs/plans file access stays a degraded fallback only, on the same conditions as item 4. §8 validator.mjs is superseded-but-coverage-preserved (all C01–C25 plan-contract checks retained; count not decreased).
 
 target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드카 JSON** 두 산출물 SSOT 로 영속화하는 계획 수립 스킬. 코딩·문서·파일 이동·이슈/PR·성능 테스트·인프라·리뷰 등 비-코딩 Task 도 1급으로 다룬다.
 
@@ -44,7 +52,7 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 | §0.15 | **plan_contract enum SSOT**. plan.md frontmatter 와 사이드카 `plan_contract` 의 허용 값 = `["1.1.0", "1.2.0"]` (dual-accept). 신규 plan 은 `1.2.0` 권장 (TDD 필드 포함). validator 가 enum 외 값은 ERROR. v0.7 에서 `1.1.0` deprecate 예정 |
 | §0.16 | **plan.md heading level SSOT**. `§N` 헤딩 = `## §N ...` (h2). `§3.<phase_id>` = `### §3.<phase_id> ...` (h3). `§3.<phase_id>.<task_id>` = `#### §3.<phase_id>.<task_id> ...` (h4). h5 이하 금지. validator 는 h4 정확 매칭으로 task 카운트 |
 | §0.17 | **TDD 원칙 SSOT**. 전역 AGENTS.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 $kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
-| §0.18 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 작성자", "high-reasoning×1 평가자", "high-reasoning×2 평가자" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 모두 불변 |
+| §0.18 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 불변 |
 | §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. scope ambiguity, deferred coverage, force-proceed, strict TDD block, and external path gates are governed by §0.G9 critical_gates[]. |
 
 ### §0.G — 핵심 게이트 결정표
@@ -174,7 +182,7 @@ Codex clarification gate 4옵션:
 | "draft 포함", "draft만 제외" | `--draft-policy=prompt\|include-all\|exclude-draft\|feasibility-first\|block-all` | `prompt` (§0.G3) |
 | "코드 경로 X" | `CODE_PATH` | cwd |
 | "--max", "정밀 평가" | `--max` | off |
-| "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 | "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 | "--dry-run", "테스트 실행" | `--dry-run` | off |
 | "--report-channel telegram\|google-chat\|doculight" | `--report-channel` | `doculight` |
@@ -189,7 +197,7 @@ Codex clarification gate 4옵션:
 - **분석 로그**: `docs/analysis/kiwi-planner-{run-id}/`
   - `intent.json` / `code_context.json` / `srs_mapping.json`
   - `phase2_plan_draft_iter{N}.json`
-  - `eval_iter{N}.json` (high-reasoning + standard 결과 통합)
+  - `eval_iter{N}.json` (검증 서브에이전트 결과)
   - `improvement_iter{N}.json`
   - `mcp_call_log.jsonl`
   - `rejected_findings.log` / `preflight.json`
@@ -215,7 +223,7 @@ Codex clarification gate 4옵션:
 Phase 0  : Bootstrap (preflight, TARGET 확인, list_requirements, Stability 분류)
 Phase 1  : Pre-investigation (standard × 3 병렬: intent / code-context / srs-mapping)
 Phase 2  : Plan drafting (high-reasoning 시니어 — Phase>Task 분해, plan.md + 사이드카 동시 작성)
-Phase 3  : SRS-satisfaction evaluation (high-reasoning×1 + standard×1 병렬; Max: high-reasoning×2+standard×1)
+Phase 3  : SRS-satisfaction verification (단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스)
 Phase 3.5: Improvement loop → Phase 2 또는 Phase 4
 Phase 4  : Integrity validation (validator.mjs 실행)
 Phase 4.5: Validator-driven improvement → Phase 2 또는 Phase 5
@@ -353,12 +361,13 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 ---
 
-## 6. Phase 3 — SRS-satisfaction evaluation (high-reasoning + standard)
+## 6. Phase 3 — SRS-satisfaction verification (단일 현재 세션 모델 검증 서브에이전트)
 
-### 6.1 평가자 구성
+### 6.1 검증 서브에이전트 구성
 
-- Normal: high-reasoning×1 + standard×1 (병렬)
-- Max: high-reasoning×2 + standard×1 (병렬)
+- Normal: 단일 검증 서브에이전트 (현재 세션 모델 상속)
+- Max: 단일 검증 서브에이전트 + 독립 2차 검증 패스 (현재 세션 모델; 2 연속 MEDIUM=0 종료)
+- `--model <name>` 지정 시 검증 서브에이전트 모델을 override (기본은 현재 세션 모델)
 
 ### 6.2 평가자 입력 (§0.2 격리)
 
@@ -406,6 +415,17 @@ A4 와 A12 의 책임 분리: **A4** = task-level (AC 가 어떤 Task 에라도 
 ### 6.7 산출물
 
 `eval_iter{N}.json`: { findings[], summary, pass }
+
+### 6.8 커버리지 검증 루프 (plan ↔ SRS coverage verification loop, FR-FLOW-032)
+
+본 절은 §6.1~6.5 의 SRS-satisfaction finding 평가(FR-FLOW-022)와 **별개의** 검증으로, plan 이 target SRS 를 **요구사항 단위로** 빠짐없이 커버하는지 확정하는 커버리지 루프(FR-FLOW-032)다. 두 절의 검증 패스 수는 측정 대상이 달라 서로 다르다 — §6.1 은 plan 전체를 axis(A1~A13)로 평가하는 finding 패스(Normal 1 / Max 2)이고, 본 절은 요구사항마다 커버리지 완료를 확인하는 순차 검증 패스(Normal 2 / Max +독립 3차 반박)다. 각 단계는 현재 세션 모델(FR-FLOW-022, `--model <name>` 로 override 가능) 검증 서브에이전트가 수행한다.
+
+1. **개수 대조 (reconcile)** — 루프는 target SRS 요구사항 개수를 plan coverage 항목 수와 대조(reconcile)하는 것으로 시작한다. 두 수가 어긋나면 즉시 누락 후보로 기록한다.
+2. **요구사항 id 일대일 교차 검증** — 그다음 각 요구사항 id 를 plan 과 하나씩(one-by-one) 교차 검증(cross-check)한다. 집계 퍼센트가 아니라 요구사항마다 개별 대응 Task 존재를 하나하나 확인한다.
+3. **2회 순차 검증 + 검증 완료 마킹 (verification-complete)** — 각 요구사항의 커버리지는 현재 세션 모델(FR-FLOW-022)에서 2회의 순차적(2 sequential) 검증으로 확인한다. 첫 번째(first) 검증이 통과한 후에야 독립적인(independent) 두 번째(second) 검증이 재확인(re-confirm)하며, 두 검증이 모두 확인해야 해당 요구사항을 **검증 완료(verification-complete)** 로 마킹한다. 이 검증 완료 마킹은 영속적(persistent)이어서, 한 번 마킹된 요구사항은 이후 반복에서 다시 검증하지 않고 고정 유지된다.
+4. **--max 강화 (독립 3차 반박 + AC 단위)** — `--max` 에서는 독립적인 세 번째(independent third) 검증이 완전 커버리지를 반박(refute)하는 데 실패해야 요구사항을 마킹한다. 또한 `--max` 에서는 커버리지를 AC 단위(acceptance-criterion granularity)로 검사한다.
+5. **누락 수리 루프 (omission-repair)** — 누락(omission)이 감지되면 kiwi-planner 는 계획을 개선(improve the plan)한다. 누락은 미커버(uncovered) 요구사항/AC 뿐 아니라 SRS 범위 밖(outside the SRS scope)의 plan task 도 포함한다. 개선 후에는 아직 마킹되지 않은(not-yet-marked) 항목만 재검증(re-verify)하며, 모든 요구사항이 검증 완료로 마킹될 때까지 반복(iterate)한다. 이 루프는 §0.G5 의 발산 가드(divergence guard)로 상한이 걸린다.
+6. **--max 종료 조건** — `--max` 에서는 새 누락 0건(zero new omissions)인 라운드가 2 라운드 연속(two consecutive)일 때만 루프를 종료(terminate)한다.
 
 ---
 

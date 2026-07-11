@@ -553,7 +553,7 @@ KIWI_PM_CONTEXT:
 | `--req=FR-X` | REQ 자동 감지 건너뛰고 명시된 REQ 만 사용 |
 | `--task=T-PH001-01` | task 자동 감지 건너뛰고 명시된 task 만 사용 |
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer 자동 부착 (사용자 명시 책임) |
-| `--mini` | kiwi 시리즈 일관성 위해 추가 (현재는 Haiku 평가자가 기본이라 no-op, 미래 Sonnet 평가자 도입 시 활성) |
+| `--model <name>` | kiwi 시리즈 일관성 위해 추가 (현재는 Haiku 평가자가 기본이라 사실상 no-op, 미래 별도 검증 서브에이전트 도입 시 지정 모델 적용) |
 
 ### 11.8 보고 양식 확장
 
@@ -595,8 +595,8 @@ CLAUDE.md §7 — 스킬 본문에 changelog 작성 금지. 연혁은 `git log` 
 **critical_gates 외 게이트** (severity `clarification` / `business-decision` 자동 결정 대상): commit 메시지 평가자 A+ 미달 후 강제 진행, `Closes` vs `Refs` trailer 결정 (Haiku A+ 게이트 자체는 자동 — clarification), draft/deprecated stability WARN 시 trailer skip vs 부착, `--no-comment` 시 코멘트 skip 결정 등 — `--auto` 활성 시 §2 서브에이전트 결정 적용.
 
 **호환**:
-- `--auto --max` / `--auto --mini` 합성은 SSOT §2 / §8 그대로 적용
-- `--mini` 와 동시 명시 시 본 스킬은 Haiku no-op (기존 `--mini` 행 동일)
+- `--auto --max` / `--auto --model` 합성은 SSOT §2 / §8 그대로 적용
+- `--model` 와 동시 명시 시 본 스킬은 Haiku no-op (기존 `--model` 행 동일)
 - `--force` push 는 critical HALT 가드, `--auto` 우회 불가
 
 ---

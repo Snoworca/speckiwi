@@ -1,0 +1,156 @@
+{
+  "axis": "A — SRS intent match (round 2 re-check)",
+  "evaluator": "independent Axis A re-check; judged only from SRS statements/AC and actual post-fix skill text; verified the 10 round-1 quality fixes (QB-001..QB-010) did not harm intent realization",
+  "date": "2026-07-11",
+  "round": 2,
+  "scope": "FR-FLOW-022..032 (v2.3.0.1); focus on files touched by round-1 fixes (_shared/kiwi/auto-option.md, kiwi-srs/SKILL.md, kiwi-wave-master/SKILL.md) across claude/codex/etc variants; other REQ carry-forward spot-checked for non-disturbance",
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "Glob **/mini-option.md -> No files found (all 3 _shared copies still deleted); Grep --mini over skills -> only skills/etc/MIGRATION_PLAN.md (historical migration doc, NOT a skill body or shared SSOT — outside operative AC-1 clause). Not disturbed by QB-002/QB-008 edits."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "kiwi-srs SKILL.md:131 '--model <name> ... 현재 세션 모델 (단일 검증 서브에이전트)'; :204 Phase 5 '단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스'; auto-option.md:116 (claude) single current-session model, no dual-model panel. Intact after fixes."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "kiwi-srs SKILL.md:131 --model override maps to verification subagent; auto-option.md §2.3.1 model resolution table unchanged. QB-004 added a model-tier +0.1 safety adjustment ON TOP of --model without altering the override itself."}
+      ],
+      "notes": "Unchanged core; fixes did not touch §0.20/Phase-5 verification wording. Only residue remains the historical MIGRATION_PLAN.md mention (IA-001, LOW, carried forward — one file now vs two in round 1)."
+    },
+    {
+      "req": "FR-FLOW-023",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-srs SKILL.md:132 --research-doc <path> (repeatable) or prompt reference; §9.6 A/B loop. Adjacent QB-002 §1.2 anchor edit did not disturb the --research-doc option row."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:562-564 Process A verification (missing/incorrect/implementability + feature-break flag), improvements doc to run-scoped temp, terminates on 0 improvements. Intact."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:566 Process B applies via Phase 4 MCP mutation, returns control to A; divergence guard preserved. Intact."},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:572 '--max, 단일 문서 기준: 검증 서브에이전트 3개'. Intact."},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md:573 non-max multi-doc sequential (1/doc); :574 --max = (문서 수 × 3) fan-out. Intact."}
+      ],
+      "notes": "§9.6 A/B machinery untouched by round-1 fixes; QB-002 (§1.2) and QB-008 (§5.2) edits are in different sections and did not regress the A/B loop."
+    },
+    {
+      "req": "FR-FLOW-024",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-srs SKILL.md:334-336 (§5.1) self-detect ambiguity, ask ONLY genuinely non-standard w/ no reasonable default; user decision re-checked/re-questioned. Unchanged."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:340-345 (§5.2) unbounded qna replaces bounded 3/7; :342 vague 'game' auto-trigger; :343 single-dash -qna force w/ §1.2 anchor rule (QB-002); :344 --auto suppresses interactive loop + -qna, delegates to FR-FLOW-025 committee; :345 NEW oscillation guard (QB-008) is interactive-loop-only and explicitly excludes the --auto/-qna committee path."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:349 (§5.3) non-auto loop: explicit user end-signal -> auto-decide remaining ambiguities. Unchanged; §5.2 oscillation guard cited as the second safety layer alongside §5.3 end-signal."},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:353 (§5.4) 3 requirement-gathering research subagents -> docs/research/ -> proceed to FR-FLOW-023 A/B loop. Unchanged."}
+      ],
+      "notes": "RE-CHECK FOCUS (QB-008 oscillation guard vs unbounded intent): NO HARM. The guard fires on repeated same-question oscillation (§5 step-4 '동일 질문 2회') and asks the user '잔존 모호성 기록 후 진행할까?' — it is a USER confirmation prompt, NOT an auto-termination or a global round cap. Unboundedness is preserved: (i) no fixed round limit; the check is per-ambiguity oscillation, so distinct ambiguities can still span unlimited rounds; (ii) user retains control — 'no, keep asking' continues the loop, 'yes' is itself an end-signal; (iii) FR-FLOW-024 'run until the user signals end' is honored — the guard surfaces the end-signal decision point when progress stalls rather than looping silently or exiting unilaterally; (iv) guard is scoped to the interactive loop and explicitly does NOT apply to the --auto/-qna committee-delegation path, so it does not interfere with the FR-FLOW-025 auto path. Verified identical across claude:345 / codex:345 / etc:344."
+    },
+    {
+      "req": "FR-FLOW-025",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "auto-option.md §2 table + §3.1: --auto convenes 3-member research committee, each isolated subagent investigates + votes. Ladder core §3.1-3.4 UNCHANGED by fixes."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "auto-option.md §2 table '--auto --max | 5인 위원회'; §3.2 escalate to 5. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "auto-option.md §3.1-3.2 non-unanimous 3 -> escalate 5 -> re-decide; non-max 5 decides by plurality (최다 득표); §3.4 tie broken by lead member #1. Unchanged."},
+        {"ac": "AC-4", "satisfied": true, "evidence": "auto-option.md §3.2-3.3 --max: non-unanimous 5 -> escalate 7 -> plurality without unanimity; §3.4 7-member tie also broken by lead #1. Unchanged."}
+      ],
+      "notes": "RE-CHECK FOCUS (QB-001/003/004/009 vs 3/5/7 ladder + tie-break): NO HARM to the ladder. (1) The core §3 ladder + §3.4 lead-#1 deterministic tie-break is byte-for-byte the same intent and was NOT modified by any fix. (2) QB-001/009 rewrote §4.1.2 (committee confidence cross-check) to DEFINE previously-undefined terminal-size behavior: non-terminal size (--auto 3 / --max 5) escalates one rung and re-votes; terminal size (non-max 5 / --max 7) cannot escalate further so it critical-HALTs on low-confidence spread. This fills a gap and is a supplementary RELIABILITY guard layered on the ladder (keyed on confidence-spread, orthogonal to the vote-counting rule), consistent with the pre-existing §4.1.1 critical-escalation pattern and the FR-FLOW-025 Implementation Notes guardrail ('critical/business-decision gates STILL halt under --auto; the committee does not auto-resolve a decision the prior guardrail required to halt'). (3) QB-004 §4.1.3 model-tier +0.1 supports FR-FLOW-022 --model and does not alter FR-FLOW-025 vote rules. (4) QB-003 replaced etc single-worker failure rows with committee/member/quorum semantics ('matching the claude/codex variants'). Parity verified: committee cross-check terminal-HALT + model-tier SSOT present identically in claude(§4.1.2/§4.1.3), codex(auto-option.md:136-151), etc(auto-option.md:141-156); etc failure handling (auto-option.md:83-89) now committee-quorum. See IA-201 for the narrow, non-blocking confidence-HALT-vs-plurality observation."
+    },
+    {
+      "req": "FR-FLOW-026",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md §2.5 arrow chain kiwi-srs -> (conditional) feasibility -> planner -> pm -> review-fix-loop. File NOT touched by round-1 fixes; round-1 full verdict stands."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §2.5.1 conditional feasibility. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §6.6 --auto gates via auto-option committee (which now carries the QB-001/004/009 safety guards, inheriting them without change to pipeline body). Unchanged."},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md §7.1 --max propagation. Unchanged."},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md §7.2 research-doc passthrough. Unchanged."}
+      ],
+      "notes": "kiwi-pipeline body unmodified by round-1 fixes; it consumes auto-option.md whose fixes are safety-consistent. No regression."
+    },
+    {
+      "req": "FR-FLOW-027",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md §2.6 --wt or worktree-isolation request creates dedicated worktree. NOTE: --wt is CORRECTLY retained here (FR-FLOW-027 is the sole SRS basis for --wt). QB-007 removed --wt only from kiwi-wave-master, not from kiwi-pipeline. Unchanged."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §2.6 non-auto asks merge-vs-PR. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §2.6 --auto opens PR, no base direct-merge. Unchanged."}
+      ],
+      "notes": "kiwi-pipeline --wt basis (FR-FLOW-027) is intact and untouched. QB-007's removal was correctly scoped to kiwi-wave-master (which had NO SRS basis for --wt)."
+    },
+    {
+      "req": "FR-FLOW-028",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md §2.7.1 issue# -> kiwi-srs-research first. Unchanged."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §2.7.2 research-insufficient -> -qna; --auto suppresses -qna, resolves via FR-FLOW-025 committee. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §2.7.3 continues planner -> pm -> review-fix-loop. Unchanged."}
+      ],
+      "notes": "kiwi-pipeline body unmodified; committee reference inherits the (safety-consistent) auto-option fixes without body change. No regression."
+    },
+    {
+      "req": "FR-FLOW-029",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-wave-master SKILL.md §3 (lines 67-76) two-branch heuristic (headers-first / subagent flow analysis 3-8 sub-goals). Unaffected by QB-006 swap (which swapped §5<->§6, not §3)."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §4 (80-86) per-wave /kiwi-srs registers wave-{n} target, scope bounded. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §6 (102-106, post-swap = Phase 4 progress tracking) waves.jsonl append-only, mark complete only after success, resume from first incomplete. QB-006 relocated this from §5 to §6; §2 Phase-flow map (line 59 'Phase 4 : waves.jsonl 갱신 (§6)') and §8.2/§9 cross-refs all consistent."},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md §5 (90-98, post-swap = Phase 3 pipeline execution) per-wave /kiwi-pipeline in order, skip-authoring via --cycle --from=feasibility, provider/consumer both stated. QB-006 relocated this from §6 to §5; §2 map (line 58 'Phase 3 : ... (§5)') consistent."},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md §7 (110-122) --auto all-wave autonomy w/ per-wave safety gates (§0.4); --max propagated to every wave's pipeline + sub-skills. Propagation flags are --auto/--max only — consistent with QB-007 removing the SRS-unsupported --wt (Grep --wt over kiwi-wave-master -> No matches across all 3 variants)."}
+      ],
+      "notes": "RE-CHECK FOCUS (QB-006 §5<->§6 swap; QB-007 --wt removal): NO HARM. (a) Swap restored §N=Phase(N-2) ordering; every cross-reference (§2 Phase map, §8.2 'identical progression', §9 emit) points to the correct post-swap section — verified internally consistent. (b) --wt removed from description frontmatter and §1.2 across claude/codex/etc; this IMPROVES SRS alignment because FR-FLOW-029 AC-5 enumerates only --auto/--max as propagated flags and FR-FLOW-029/030 give no basis for --wt (that basis lives solely in FR-FLOW-027/kiwi-pipeline). Removing an unsupported flag is faithful to the SRS, not a regression. (c) QB-005 unified waves-event.md to the absolute ~/.claude/skills/_shared/kiwi/ convention in §0.1/§6, matching sibling pipeline-event.md."
+    },
+    {
+      "req": "FR-FLOW-030",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-wave-master SKILL.md §8.1 (130-136) epic entry extracts ordered waves from structure / task list / linked sub-issues, instead of analyzing a research/plan doc. Unchanged."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §8.2 (138-144) after extraction proceeds identical to FR-FLOW-029: scoped wave-{n} target (§4), waves.jsonl (§6), per-wave /kiwi-pipeline (§5) in order. Post-QB-006 cross-refs (§4/§5/§6) are correct."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §8.3 (146-155) only up-front wave-split research skipped; per-wave /kiwi-pipeline still does own research; structure guard (a) structured epic (task-list group / >=2 linked sub-issues) -> skip + decompose from structure, (b) unstructured/free-form/<2 sub-issues -> fallback to FR-FLOW-029 wave-split subagent (no new component). Both branches fully preserved."}
+      ],
+      "notes": "RE-CHECK FOCUS (QB-010 provenance removal vs structure-guard rule): NO HARM. QB-010 stripped only the meta-provenance ('OQ-030', '5인 연구 위원회 결정, high-confidence') from the §8.3 header and bold label per CLAUDE.md §7. The declarative guard RULES (a)/(b) — the actual behavioral content of FR-FLOW-030 AC-3 — remain complete and executable. The OQ-030 decision trail stays traceable in SRS FR-FLOW-030 Implementation Notes ('[2026-07-10] OQ-030 RESOLVED ...'), so removing it from the skill body loses no requirement content. QB-006 swap did not touch §8.3. Verified across claude/codex/etc."
+    },
+    {
+      "req": "FR-FLOW-031",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-planner SKILL.md Official Workflow Tool Policy: reads/validate/mutate via workflow_* family; validator.mjs superseded w/ C01-C25 coverage preserved. File NOT touched by round-1 fixes; round-1 full verdict stands."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "All 3 variants carry the policy; claude variant brought into compliance (also MIG-FLOW-003). Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "Raw docs/plans access only degraded fallback. Unchanged."}
+      ],
+      "notes": "kiwi-planner body unmodified by round-1 fixes. No regression."
+    },
+    {
+      "req": "FR-FLOW-032",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-planner SKILL.md §6.8 loop reconciles target SRS req count vs plan coverage, then one-by-one cross-check. File NOT touched by round-1 fixes."},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md §6.8 2 sequential verifications on current session model (FR-FLOW-022), persistent marking; --max 3rd-refuter + AC-granularity. Unchanged."},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md §6.8 omission -> improve -> re-verify not-yet-marked -> divergence guard; --max 2x-zero termination. Unchanged."}
+      ],
+      "notes": "kiwi-planner body unmodified by round-1 fixes. The FR-FLOW-022 current-session-model dependency it references is itself intact. No regression."
+    }
+  ],
+  "findings": [
+    {
+      "id": "IA-001",
+      "req": "FR-FLOW-022",
+      "severity": "LOW",
+      "title": "Historical MIGRATION_PLAN.md still contains the literal '--mini' string (carried forward)",
+      "location": {"file": "skills/etc/MIGRATION_PLAN.md", "line_range": "historical mentions"},
+      "description": "AC-1 wording says '--mini ... removed repo-wide'. skills/etc/MIGRATION_PLAN.md still mentions '--mini' while documenting the removal (round 1 also flagged skills/codex/MIGRATION_PLAN.md; the current Grep now returns only the etc file). This is NOT a skill body nor shared SSOT, so the operative AC-1 clause ('No kiwi-* skill body or shared SSOT references --mini') is satisfied and all 3 _shared/kiwi/mini-option.md copies remain deleted (Glob: No files found). Reported for transparency only; not an intent mismatch.",
+      "suggested_fix": "Optional: scrub or annotate the historical MIGRATION_PLAN.md '--mini' mention as historical. Non-blocking."
+    },
+    {
+      "id": "IA-201",
+      "req": "FR-FLOW-025",
+      "severity": "LOW",
+      "title": "Confidence cross-check can critical-HALT a terminal-size committee that FR-FLOW-025 ACs describe as deciding by plurality (defensible safety layer, non-blocking)",
+      "location": {"file": "skills/claude/_shared/kiwi/auto-option.md (+ codex/etc parity)", "line_range": "claude §4.1.2 (209-212); codex 136-143; etc 141-148"},
+      "description": "Introduced/clarified by QB-001/009. FR-FLOW-025 AC-3 says a non-unanimous non-max 5-member committee 'decides by plurality', and AC-4 says the --max 7-member committee decides by plurality 'without requiring unanimity'. The §4.1.2 committee confidence cross-check adds a path where a TERMINAL-size committee (non-max 5 / --max 7) with a highest-lowest confidence spread >= 0.3 does NOT decide by plurality but escalates to critical and HALTs for the user. A strict reading could see this as narrowing FR-FLOW-025's 'auto-decide replaces block'. It is judged NOT a mismatch because: (i) the trigger is a reliability signal (confidence spread), orthogonal to the plurality vote-counting rule the ACs specify — the plurality rule remains the default and is preserved; (ii) the SRS is silent on confidence; (iii) it mirrors the pre-existing §4.1.1 safety pattern (business-decision confidence below threshold -> critical) and the FR-FLOW-025 Implementation Notes guardrail that critical escalations still halt under --auto. Flagged for transparency and for the SRS record.",
+      "suggested_fix": "Optional (SRS-side, not a skill defect): if the confidence-reliability HALT at terminal committee size should be a governed behavior, add a one-line FR-FLOW-025 AC or Implementation Note acknowledging that a terminal committee may escalate to a user HALT on unreliable confidence rather than always deciding by plurality. No skill change required."
+    }
+  ],
+  "summary": {
+    "reqs_full": 11,
+    "reqs_partial": 0,
+    "reqs_mismatch": 0,
+    "findings_total": 2,
+    "by_severity": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2}
+  },
+  "verdict": "ALL_MATCH",
+  "overall": "Round-2 re-check confirms all 11 requirements (FR-FLOW-022..032) remain a FULL intent match after the 10 round-1 quality fixes (QB-001..QB-010); no fix harmed SRS-intent realization, and one fix (QB-007) improved SRS alignment. The three task-directed re-check points are cleared: (A) FR-FLOW-024 QB-008 oscillation guard does NOT undermine unboundedness — it triggers a USER confirmation prompt (not an auto-termination or round cap), is per-ambiguity (distinct ambiguities still span unlimited rounds), keeps the 'run until user signals end' contract, and is scoped to the interactive loop only (excludes the --auto/-qna committee path). (B) FR-FLOW-029/030 QB-006 §5<->§6 swap keeps every cross-reference (§2 Phase map, §8.2, §9) internally consistent; QB-007 --wt removal from kiwi-wave-master is faithful to the SRS (FR-FLOW-029 AC-5 propagates only --auto/--max; --wt basis lives solely in FR-FLOW-027/kiwi-pipeline, where it is correctly retained); QB-010 provenance removal strips only OQ-030/committee meta while the §8.3 structure-guard (a)/(b) both branches remain fully declarative and executable (trail preserved in SRS Implementation Notes). (C) FR-FLOW-025 QB-001/003/004/009 leave the 3/5/7 ladder + lead-#1 deterministic tie-break (§3.1-3.4) unchanged; QB-001 filled a previously-undefined terminal-size gap with a critical-HALT that is a reliability guard layered on the ladder (consistent with the §4.1.1 pattern and the FR-FLOW-025 guardrail note); QB-004 model-tier +0.1 and QB-003 etc committee-quorum failure handling reach claude/codex/etc parity (verified identical). Two LOW/informational findings only: IA-001 (historical MIGRATION_PLAN.md '--mini' mention, outside operative AC-1, carried forward) and IA-201 (a transparent, defensible observation that the confidence cross-check can HALT a terminal committee the ACs otherwise describe as plurality-deciding — not a mismatch, SRS is silent on confidence). No forced findings; no partial or mismatch REQ."
+}

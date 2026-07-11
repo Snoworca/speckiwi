@@ -69,7 +69,8 @@ const EXPECTED_KIWI_SKILLS = [
   "kiwi-srs-from-code",
   "kiwi-srs-research",
   "kiwi-srs-sync",
-  "kiwi-step"
+  "kiwi-step",
+  "kiwi-wave-master"
 ];
 
 const EXPECTED_SKILL_ENTRYPOINTS = ["codex", "claude", "etc"].flatMap((agent) => EXPECTED_KIWI_SKILLS.map((skill) => `skills/${agent}/${skill}/SKILL.md`));

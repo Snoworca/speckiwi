@@ -239,7 +239,7 @@ KIWI_PM_CONTEXT:
 | `--req=FR-X` | REQ 자동 감지 건너뛰고 명시된 REQ 만 사용 |
 | `--task=T-PH001-01` | task 자동 감지 건너뛰고 명시된 task 만 사용 |
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer 자동 부착 (사용자 명시 책임) |
-| `--mini` | kiwi 시리즈 일관성 위해 추가 (현재는 lightweight 평가자가 기본이라 no-op, 미래 standard 평가자 도입 시 활성) |
+| `--model <name>` | kiwi 시리즈 일관성 위해 추가 (현재는 lightweight 평가자가 기본이라 사실상 no-op, 미래 별도 검증 서브에이전트 도입 시 지정 모델 적용) |
 | `--auto` | standalone 사용자 게이트에 공용 auto-option decision worker 적용. frozen/push-conflict/force-push/issue ambiguity 는 critical gate |
 
 ### 11.8 보고 양식 확장

@@ -165,6 +165,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 
 - `REQ_ID` — speckiwi REQ id (e.g. `FR-TODO-005`). 본 스킬이 REQ 본문 자동 조회 (`get_requirement`)
 - `RESEARCH_QUESTION` — 자연어 연구 질문 (REQ 와 무관한 일반 연구 시)
+- `GITHUB_ISSUE` — GitHub 이슈 번호(issue number, 예: `#123`) 또는 이슈 본문/컨텍스트. `kiwi-pipeline` 의 이슈 진입 흐름(FR-FLOW-028)이 이슈 해결(resolution) 방향 + 구현 접근(implementation-approach) 연구를 위해 본 입력으로 전달한다. 이슈 본문·연결 정보를 `RESEARCH_QUESTION` 으로 정규화하여 single-worker 순차 연구 토폴로지(§4 Triage → §5 Sequential Research)에 투입한다.
 
 ### 1.2 선택 입력 + 자연어 매핑
 

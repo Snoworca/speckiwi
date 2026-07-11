@@ -1,0 +1,72 @@
+{
+  "axis": "B-quality",
+  "round": "r4-final",
+  "scope_reviewed": [
+    "skills/claude/_shared/kiwi/auto-option.md",
+    "skills/codex/_shared/kiwi/auto-option.md",
+    "skills/etc/_shared/kiwi/auto-option.md",
+    "skills/etc/_shared/kiwi/local-llm-profile.md",
+    "skills/{claude,codex,etc}/kiwi-hot-fix/SKILL.md",
+    "skills/{claude,codex,etc}/kiwi-srs-sync/SKILL.md",
+    "test/skills/"
+  ],
+  "resolved_findings": [
+    {
+      "id": "QB-203",
+      "title": "etc auto-option.md header + committee model legacy residue",
+      "verdict": "RESOLVED",
+      "evidence": "grep -niE \"already the default|single (decision )?worker|2 (sub-?agent|SA)\" skills/etc/_shared/kiwi/auto-option.md -> 0 matches (exit 1). Header L2-8 now: multi-worker fanout disabled -> committee members evaluated SEQUENTIALLY (one worker at a time), committee size = shared model (--auto=3, --auto --max=5), '--max raises the committee and is not a no-op'. Decision Committee (3, --max 5), Committee Merge Ladder (3->5->7, 7 only --max, lead-member #1 tie-break), Failure handling (member/quorum), Severity, Propagation (--auto/--auto --max/--model rows), Logging (committee_votes + merged_decision + merge_method{rule,committee_size}) are all present and symmetric with codex.",
+      "symmetry": "etc auto-option.md is fully aligned with codex/_shared/kiwi/auto-option.md (same section topology: Definition/Activation/Decision Committee/Merge Ladder/Severity/critical_gates/Read-Time/Propagation/Logging/Compatibility). claude/_shared/kiwi/auto-option.md carries the same committee model in Korean (§2 3/5/7 topology, §3 ladder, §7 propagation with --model rows). Committee model is symmetric across all 3 variants."
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "QB-204",
+      "severity": "high",
+      "title": "QB-203 fix is INCOMPLETE: local-llm-profile.md still carries the exact old model QB-203 removed (live internal contradiction, hides the committee fix from etc agents)",
+      "file": "skills/etc/_shared/kiwi/local-llm-profile.md",
+      "locations": {
+        "auto_policy": "L50-52 (§`--auto` Policy)",
+        "default_mode": "L18-24 (§Default Mode)"
+      },
+      "description": "auto-option.md L4 explicitly says '[auto-option] must be interpreted together with local-llm-profile.md'. local-llm-profile.md is referenced by 31 sites across every etc kiwi skill (kiwi-coder/hot-fix/pipeline/planner/pm/review-fix-loop/srs/... SKILL.md). QB-203 rewrote auto-option.md's committee model but LEFT local-llm-profile.md untouched (empty diff-stat), so its companion SSOT still asserts the pre-QB-203 model that directly contradicts the fix: (1) §--auto Policy L52 verbatim: 'The etc profile never creates a multi-worker decision topology for `--auto --max`; `--max` is already the default and the decision path remains one isolated worker/evaluator at a time.' -- this is the EXACT phrase ('--max is already the default') and the single-worker topology QB-203 removed from auto-option.md, and it flatly contradicts auto-option.md's 3/5-member committee ('--max raises the committee and is not a no-op'). Note the team-lead grep was scoped only to auto-option.md, so it returned clean; the residue relocated to / survived in this referenced companion. (2) §Default Mode L20-22: 'The etc variant always runs as if `--max` is enabled. Treat `--max` as the default, even when the user does not write it.' -- contradicts auto-option.md's '`--auto`=3 members, `--auto --max`=5 members, identical to claude/codex', which requires --max to be a distinct opt-in that raises the committee, not an always-on default.",
+      "distinction": "This is TOPOLOGY, not execution order. auto-option.md reconciles the fanout ban by evaluating the 3/5-member committee SEQUENTIALLY ('one delegated worker at a time'). local-llm-profile.md L52 instead denies the multi-member topology itself ('never creates a multi-worker decision topology', 'one isolated worker') -- a genuine contradiction, not a paraphrase.",
+      "impact": "An etc agent following the reference chain reads both files; L52's explicit 'never a multi-worker decision topology for --auto --max' + 'one isolated worker' would make it NOT convene the committee, defeating the QB-203 committee fix for the entire etc variant. Live false-green residue.",
+      "false_positive_check": "Verified real: file untouched by working-tree diff; 31 live references; verbatim legacy phrase present; contradicts the fixed SSOT it is paired with. Not a hallucination.",
+      "suggested_fix": "Update local-llm-profile.md §`--auto` Policy and §Default Mode to the committee model: --auto convenes a 3-member (5 under --max) decision committee evaluated sequentially (one worker at a time under the fanout ban); --max raises the committee (3->5) and is not a no-op for the --auto decision path; keep the single-worker EXECUTION framing only for the §Evaluation Loop / §Single-Worker Policy evaluator axis, which is a separate concern from the --auto decision committee TOPOLOGY. (Reconciling §Default Mode 'always --max' vs auto-option '--auto=3 / --auto --max=5' is a design decision the team must make explicit -- either etc's committee is always 5, or --max stays a distinct opt-in; the two files must agree.)"
+    },
+    {
+      "id": "QB-205",
+      "severity": "medium",
+      "title": "3-variant asymmetry: kiwi-hot-fix --auto -> kiwi-srs-sync propagation composes --auto-apply/--yes-all in claude but is forbidden in codex/etc",
+      "files": [
+        "skills/claude/_shared/kiwi/auto-option.md (§7.1, §11)",
+        "skills/claude/kiwi-hot-fix/SKILL.md (§0.14, §0.G4 L75, L98, L117, Phase6 L376)",
+        "skills/codex/_shared/kiwi/auto-option.md (Special propagation)",
+        "skills/etc/_shared/kiwi/auto-option.md (Special propagation L222)",
+        "skills/codex/kiwi-hot-fix/SKILL.md (§0.7)"
+      ],
+      "description": "claude: 'kiwi-hot-fix --auto | kiwi-srs-sync | --auto --auto-apply --yes-all (기존 --auto = --auto-apply + --yes-all 시맨틱 보존)'; hot-fix §0.14 declares --auto a synthetic option = --auto-apply --yes-all, propagated to the child. codex/etc: 'kiwi-hot-fix --auto | kiwi-srs-sync | --auto only; never add --auto-apply or --yes-all unless the user explicitly supplied those flags'; codex hot-fix §0.7 spells out the same ban. --auto-apply/--yes-all skip kiwi-srs-sync's dry-run human-approval gate before MCP mutation, so the same command auto-applies SRS mutations on claude but requires approval on codex/etc.",
+      "nature": "Each variant is INTERNALLY consistent (auto-option + its own hot-fix skill agree), so this is a deliberate design divergence, not a stray orphan. claude documents it as legacy-semantic preservation (§11); codex/etc deliberately chose the safer conservative semantic. etc/codex are aligned; claude is the outlier.",
+      "impact": "Cross-runtime behavioral parity defect on a safety gate (bypass vs preserve dry-run approval for irreversible MCP mutation). Not introduced by QB-203; not previously flagged in r1-r3.",
+      "false_positive_check": "Verified in 6+ locations across 3 variants; internally coherent per-variant. Reported as a divergence needing an SSOT decision (not asserted as a definite bug in either variant).",
+      "suggested_fix": "Team decides the single SSOT semantic and aligns the odd variant: either (a) codex/etc's safer 'never auto-compose --auto-apply/--yes-all' becomes canonical and claude §7.1/§11 + hot-fix §0.14/§0.G4/L98/L117/L376 are updated, or (b) claude's legacy composition is confirmed intentional and documented as a deliberate per-runtime difference."
+    }
+  ],
+  "summary": {
+    "resolved": 1,
+    "still_open": 0,
+    "new": 2,
+    "by_severity_open": {
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "low": 0
+    }
+  },
+  "regression": "test/skills 142/142",
+  "gate": "FAIL",
+  "clean": false,
+  "overall": "QB-203 itself is RESOLVED and clean: etc auto-option.md's header/committee-model legacy residue is gone (team-lead grep 0/exit1), and the committee model (3/5/7 ladder, sequential eval, propagation, committee_votes+merged_decision logging) is symmetric across claude/codex/etc. test/skills 142/142 green. BUT the fix is INCOMPLETE and a hidden tail remains: local-llm-profile.md -- the companion SSOT that auto-option.md L4 explicitly says to 'interpret together with', referenced by 31 sites across every etc skill -- was never updated and still carries the exact removed model ('--max is already the default', 'never creates a multi-worker decision topology for --auto --max', 'one isolated worker/evaluator'). This is a LIVE internal contradiction (HIGH, QB-204) that would make an etc agent skip the committee, silently defeating the QB-203 fix for the whole etc variant; the team-lead grep missed it only because it was scoped to auto-option.md. Separately, a pre-existing 3-variant asymmetry (MEDIUM, QB-205) exists on kiwi-hot-fix --auto -> kiwi-srs-sync auto-apply/yes-all composition (claude composes; codex/etc forbid). Not clean. Recommend a QB-204 fix pass on local-llm-profile.md, then re-run this axis."
+}

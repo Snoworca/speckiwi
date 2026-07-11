@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-research
-description: "REQ 또는 연구 질문을 받아 5-서브에이전트 토폴로지(Sonnet×1 Triage + Opus×3 Code/External/Risk + Opus×1 Synthesizer)로 연구를 수행하고, dual-mode 로 동작한다. standalone 모드는 speckiwi MCP 에 research 본문을 영속화하고, subagent 모드는 read-only JSON 만 반환한다(kiwi-srs-feasibility 등이 호출). 트리거 — REQ 연구, kiwi srs research, 요구사항 연구, research enrichment, 연구 보강, deep research, requirement research, srs research, 연구문서 작성, 도메인 조사. --mode=standalone|subagent 로 모드 분기. --target/--scope/--req-id 로 입력 지정. --mini 로 비용 절감(Researchers/Synthesizer Opus→Sonnet, 토폴로지 불변, `_shared/kiwi/mini-option.md` v1.0)."
+description: "REQ 또는 연구 질문을 받아 5-서브에이전트 토폴로지(Sonnet×1 Triage + Opus×3 Code/External/Risk + Opus×1 Synthesizer)로 연구를 수행하고, dual-mode 로 동작한다. standalone 모드는 speckiwi MCP 에 research 본문을 영속화하고, subagent 모드는 read-only JSON 만 반환한다(kiwi-srs-feasibility 등이 호출). 트리거 — REQ 연구, kiwi srs research, 요구사항 연구, research enrichment, 연구 보강, deep research, requirement research, srs research, 연구문서 작성, 도메인 조사. --mode=standalone|subagent 로 모드 분기. --target/--scope/--req-id 로 입력 지정. 검증·연구 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 가능(토폴로지 불변)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-research v0.5
@@ -24,7 +24,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.2 | **검증자/Synthesizer 입력 격리**. Triage 의 분류 의도 + researcher 의 내부 모놀로그는 strip. 사실 데이터(코드 path, 외부 URL, 발견 항목)만 |
 | §0.3 | **코드 증거 우선**. 모든 finding 은 path:line 또는 URL 증거 첨부. 증거 없는 finding 은 `evidence_strength: weak` 라벨 |
 | §0.4 | **할루시네이션 금지**. Synthesizer 는 입력 4종에 없는 신규 주장 추가 금지. 위반 시 §10 axis 8 CRITICAL |
-| §0.5 | **5-서브에이전트 토폴로지 고정**. Sonnet×1 (Triage) + Opus×3 (Code/External/Risk) + Opus×1 (Synthesizer). 사용자 임의 변경 불가. **`--mini` 활성 시 모델만 Sonnet 으로 read-time replace**, 5-서브에이전트 토폴로지·격리·역할 분담은 그대로 (§0.17 참조) |
+| §0.5 | **5-서브에이전트 토폴로지 고정**. Sonnet×1 (Triage) + Opus×3 (Code/External/Risk) + Opus×1 (Synthesizer). 사용자 임의 변경 불가. **서브에이전트 모델은 현재 세션 모델을 상속하며 `--model` 로 override 가능**, 5-서브에이전트 토폴로지·격리·역할 분담은 그대로 (§0.17 참조) |
 | §0.6 | **speckiwi MCP 우선 + 황금률**. standalone 모드만 mutation. mutation 호출 1회 = Markdown line-patch 1회. mutation 호출 후 동일 SRS 파일 `Edit` 도구 절대 금지 |
 | §0.7 | **subagent 모드 mutation 0건**. 어떤 speckiwi mutation 도구도 호출 금지. JSON 반환만 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
@@ -36,7 +36,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크 |
 | §0.15 | **subagent 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) Skill/Agent 인자 `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
-| §0.17 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 "Opus×3 Researchers", "Opus×1 Synthesizer" 등 Opus 인용은 Sonnet 으로 read-time replace. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--mini` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--mini` 전파 의무 (mini-option.md §7) |
+| §0.17 | **검증 서브에이전트 모델 정책 SSOT**. Researchers·Synthesizer 등 연구·검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 서브에이전트의 모델을 override 한다. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--model` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--model` 전파 의무 |
 | §0.18 | **`--auto` 옵션 SSOT (standalone 모드 한정 적용)**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.7 (아래) 참조. **subagent 모드 호출 시 silent skip** — subagent 모드는 mutation 0건(§0.7)이므로 사용자 게이트 자체 부재 → `--auto` 인자 수신해도 무동작. **standalone 모드 한정 적용** — research 본문 영속화(`append_section_note`) 게이트 + Synthesizer 무결성 게이트 결정 + 외부 모듈 영향 게이트가 `--auto` 활성 시 §2 서브에이전트 결정으로 위임. **`--mode` 와 `--auto` 는 독립 축** — §0.G6 4채널 우선순위(mode 검출)와 `--auto` 검출(auto-option.md §1 4채널)은 직교하므로 (a) Skill/Agent 인자에 `--mode=standalone --auto` 동시 매칭 가능, (b) `--mode=subagent --auto` 매칭 시 `--auto` 만 silent skip, (c) `--mode` 채널과 `--auto` 채널 우선순위 충돌은 발생 불가 (서로 다른 토큰) |
 
 ### §0.G — 핵심 게이트 결정표
@@ -148,6 +148,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 
 - `REQ_ID` — speckiwi REQ id (e.g. `FR-TODO-005`). 본 스킬이 REQ 본문 자동 조회 (`get_requirement`)
 - `RESEARCH_QUESTION` — 자연어 연구 질문 (REQ 와 무관한 일반 연구 시)
+- `GITHUB_ISSUE` — GitHub 이슈 번호(issue number, 예: `#123`) 또는 이슈 본문/컨텍스트. `kiwi-pipeline` 의 이슈 진입 흐름(FR-FLOW-028)이 이슈 해결(resolution) 방향 + 구현 접근(implementation-approach) 연구를 위해 본 입력으로 전달한다. 이슈 본문·연결 정보를 `RESEARCH_QUESTION` 으로 정규화하여 5-서브에이전트 토폴로지에 투입한다.
 
 ### 1.2 선택 입력 + 자연어 매핑
 
@@ -160,7 +161,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 | "외부 검색 제외" | `--no-external` | external 활성 |
 | "context7 자료만" | `--external-sources` | `context7,websearch` |
 | "--dry-run", "제안만" | `--dry-run` | off |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (Researchers/Synthesizer Opus → Sonnet, 토폴로지 불변, `_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (연구·검증 서브에이전트) |
 | "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본; subagent 모드 시 silent skip) |
 
 ### 1.3 출력 — standalone 모드

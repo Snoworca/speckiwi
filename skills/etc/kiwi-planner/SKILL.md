@@ -19,6 +19,18 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 
 ---
 
+## Official Workflow Tool Policy
+
+계획 문서(plan.md + 사이드카)의 조회·검증·체크박스 변경 등 **커버되는 흐름**은 원본 파일 직접 접근 전에 공식 SpecKiwi workflow_* MCP 도구를 우선 사용한다. target-9 workflow_* 도구를 SRS 연산 범주별로 라우팅한다:
+
+- 읽기(reading/조회): `workflow_plan_status`, `workflow_plan_task`, `workflow_next_plan_task` 로 계획 상태를 판독한다.
+- 검증(validating/진단): `workflow_doctor`, `workflow_schema_check`, `workflow_diff` 로 계획 무결성을 검증한다.
+- 변경(mutating/체크박스): `workflow_task_check`, `workflow_task_uncheck`, `workflow_checklist_set` 로 계획 체크박스·체크리스트를 뮤테이션한다(체크박스 변경은 kiwi-coder/kiwi-pm 실행 시점 연산이며, planner 자신의 SRS mutation 은 `add_trace_link`/`add_verification_evidence` 로 한정된다).
+
+plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경로이며 degraded 가 아니다. 위 커버 흐름에 한해, 원본 `docs/plans` 파일 직접 접근은 degraded 폴백(degraded mode)으로만 허용하며, 도구 진단·영향 산출물 경로·활성 target·후속 요구/후보 ID 를 기록한 뒤에만 사용한다. §8 validator.mjs 는 superseded 이지만 coverage 는 보존한다(C01–C25 plan-contract 검사 전수 유지, 개수 감소 없음).
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -403,6 +415,17 @@ A4 와 A12 의 책임 분리: **A4** = task-level (AC 가 어떤 Task 에라도 
 ### 6.7 산출물
 
 `eval_iter{N}.json`: { findings[], summary, pass }
+
+### 6.8 커버리지 검증 루프 (plan ↔ SRS coverage verification loop, FR-FLOW-032)
+
+본 절은 §6.1~6.5 의 SRS-satisfaction finding 평가(FR-FLOW-022; 단일 evaluator 가 3회 연속 clean 이면 종료)와 **별개의** 검증으로, plan 이 target SRS 를 **요구사항 단위로** 빠짐없이 커버하는지 확정하는 커버리지 루프(FR-FLOW-032)다. 두 절의 검증 횟수는 측정 대상이 달라 서로 다르다 — §6.1 은 plan 전체를 axis(A1~A13)로 평가하는 finding 루프(3회 연속 clean 종료)이고, 본 절은 요구사항마다 커버리지 완료를 확인하는 순차 검증(2회 순차 / Max +독립 3차 반박)이다. 각 단계는 현재 세션 모델(FR-FLOW-022) 검증 평가자(evaluator)가 수행한다.
+
+1. **개수 대조 (reconcile)** — 루프는 target SRS 요구사항 개수를 plan coverage 항목 수와 대조(reconcile)하는 것으로 시작한다. 두 수가 어긋나면 즉시 누락 후보로 기록한다.
+2. **요구사항 id 일대일 교차 검증** — 그다음 각 요구사항 id 를 plan 과 하나씩(one-by-one) 교차 검증(cross-check)한다. 집계 퍼센트가 아니라 요구사항마다 개별 대응 Task 존재를 하나하나 확인한다.
+3. **2회 순차 검증 + 검증 완료 마킹 (verification-complete)** — 각 요구사항의 커버리지는 현재 세션 모델(FR-FLOW-022)에서 2회의 순차적(2 sequential) 검증으로 확인한다. 첫 번째(first) 검증이 통과한 후에야 독립적인(independent) 두 번째(second) 검증이 재확인(re-confirm)하며, 두 검증이 모두 확인해야 해당 요구사항을 **검증 완료(verification-complete)** 로 마킹한다. 이 검증 완료 마킹은 영속적(persistent)이어서, 한 번 마킹된 요구사항은 이후 반복에서 다시 검증하지 않고 고정 유지된다.
+4. **--max 강화 (독립 3차 반박 + AC 단위)** — `--max` 에서는 독립적인 세 번째(independent third) 검증이 완전 커버리지를 반박(refute)하는 데 실패해야 요구사항을 마킹한다. 또한 `--max` 에서는 커버리지를 AC 단위(acceptance-criterion granularity)로 검사한다.
+5. **누락 수리 루프 (omission-repair)** — 누락(omission)이 감지되면 kiwi-planner 는 계획을 개선(improve the plan)한다. 누락은 미커버(uncovered) 요구사항/AC 뿐 아니라 SRS 범위 밖(outside the SRS scope)의 plan task 도 포함한다. 개선 후에는 아직 마킹되지 않은(not-yet-marked) 항목만 재검증(re-verify)하며, 모든 요구사항이 검증 완료로 마킹될 때까지 반복(iterate)한다. 이 루프는 §0.G5 의 발산 가드(divergence guard)로 상한이 걸린다.
+6. **--max 종료 조건** — `--max` 에서는 새 누락 0건(zero new omissions)인 라운드가 2 라운드 연속(two consecutive)일 때만 루프를 종료(terminate)한다.
 
 ---
 

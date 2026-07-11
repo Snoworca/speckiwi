@@ -1,6 +1,6 @@
 # `--auto` 공용 옵션 (kiwi-* 사용자 게이트 자동 결정)
 
-본 모듈은 13개 kiwi-* 스킬이 공유하는 `--auto` 의미·토폴로지·합치 알고리즘·전파·로깅 SSOT 다. `mini-option.md` v1.0 과 동일한 read-time replace 패턴을 따른다 — 본문 수정 없이 §0 에 본 모듈 참조 한 줄과 §X 의 `critical_gates[]` 인라인만으로 작동.
+본 모듈은 13개 kiwi-* 스킬이 공유하는 `--auto` 의미·토폴로지·합치 알고리즘·전파·로깅 SSOT 다. 본문 수정 없이 §0 에 본 모듈 참조 한 줄과 §X 의 `critical_gates[]` 인라인만으로 작동하는 read-time replace 패턴을 따른다.
 
 ## 0. 한 줄 정의
 
@@ -15,21 +15,25 @@
 | (3) 자연어 신호 | 3 | "자동", "묻지 말고", "확인 없이", "auto" 등 §8 매핑 어휘 — 사용자에게 1회 확인 후 활성 |
 | (4) 부모 호출 전파 | 4 | §7 표에 따른 자동 전파 |
 
-활성 시 분석 로그 (`docs/analysis/{skill-run-id}/preflight.json` 등) 의 `mode_flags` 에 `"--auto"` 기록. `--auto --max` / `--auto --mini` 시 함께 기록.
+활성 시 분석 로그 (`docs/analysis/{skill-run-id}/preflight.json` 등) 의 `mode_flags` 에 `"--auto"` 기록. `--auto --max` / `--auto --model` 시 함께 기록.
 
 **비활성 조건 (silent skip)**:
 - `kiwi-srs-research --mode=subagent` 호출 (mutation 0건 — 게이트 자체 부재)
 - 본 모듈을 참조하지 않는 스킬
 - 스킬의 `critical_gates[]` 가 미선언 상태 → `--auto` 비활성 (안전 디폴트)
 
-## 2. 서브에이전트 토폴로지
+## 2. 결정 위원회 토폴로지
 
-| 모드 조합 | 서브에이전트 수 | 모델 | 합치 |
-|---|---|---|---|
-| `--auto` | 1 | Opus | 결정 그대로 채택 |
-| `--auto --max` | 2 (병렬) | Opus | §3 합치 알고리즘 |
-| `--auto --mini` | 1 | Sonnet | 결정 그대로 채택 |
-| `--auto --max --mini` | 2 (병렬) | Sonnet | §3 합치 알고리즘 |
+`--auto` 가 활성화되면 단일 거수기 작업자 대신 **리서치 수행 결정 위원회 3인**을 소집한다. 3인 위원 각각은 격리된 서브에이전트로서 게이트 컨텍스트를 독립적으로 조사(research)하고 가장 합리적인 옵션을 선택·채택하도록 1표를 던진다. 위원은 `--model <name>` 로 위원회 모델을 덮어쓰지 않는 한 **현재 세션 모델**을 상속한다.
+
+| 모드 조합 | 위원회 규모 | 합치 규칙 |
+|---|---|---|
+| `--auto` | 3인 위원회 | 만장일치일 때 결정. 만장일치가 아니면 §3 사다리로 5인 격상 |
+| `--auto --max` | 5인 위원회 | `--max` 는 결정 위원회를 5인으로 격상. 5인이 만장일치가 아니면 다수결로 멈추지 않고 7인으로 격상해 다수결로 결정 (§3) |
+| `--auto --model <name>` | 3인 위원회 | 전 위원 모델을 지정 모델로 고정 |
+| `--auto --max --model <name>` | 5인 위원회 | 위 5인 규칙 + 전 위원 지정 모델 |
+
+위원회 사다리·합치·동점 tie-break SSOT 는 §3.
 
 ### 2.1 서브에이전트 입력 (편향 없음)
 
@@ -57,19 +61,19 @@
 }
 ```
 
-### 2.3 결정 서브에이전트 호출 표준 의사코드
+### 2.3 위원 spawn 표준 의사코드
 
-본 모듈을 따르는 스킬이 결정 SA 를 spawn 할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지):
+본 모듈을 따르는 스킬이 위원회를 소집할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지). K = 위원회 규모(`--auto`=3, `--auto --max`=5, 격상 시 5→7). K 명의 위원은 **단일 메시지에서 K회 동시 호출**(병렬·격리 보장)하며 모든 위원의 prompt 는 완전히 동일하다. description 만 "위원 #1 … 위원 #K" 로 구분하고 **위원 #1 을 선임 위원(§3 동점 tie-breaker)** 으로 고정한다.
 
-#### `--auto` 단독 (SA×1)
+#### 위원 1인 호출 (모든 위원 동일 형식)
 
 ```
 Agent(
-  description: "결정 SA: <gate_id 요약>",
+  description: "결정 위원 #i/K: <gate_id 요약>",
   subagent_type: "general-purpose",
   model: "<model_resolution>",   # §2.3.1 참조
   prompt: """
-    당신은 '--auto' 결정 서브에이전트다. CLAUDE.md §5: 편향 없는 입력만 받았다.
+    당신은 '--auto' 결정 위원회의 위원 #i 다. CLAUDE.md §5: 편향 없는 입력만 받았다. 게이트 컨텍스트를 독립적으로 조사(research)하고 가장 합리적인 옵션을 선택해 1표를 던진다.
 
     ## 게이트
     gate_id: <gate_id>
@@ -98,46 +102,18 @@ Agent(
 )
 ```
 
-#### `--auto --max` (SA×2 병렬)
+#### 위원회 격상 (3→5, 5→7)
 
-위 호출을 **단일 메시지에서 2회 동시 호출** (병렬 보장). 두 호출의 prompt 는 **완전히 동일** (격리 보장). description 만 "SA1" / "SA2" 로 구분.
+위원회가 만장일치가 아니면 §3 사다리에 따라 격상한다. 격상은 기존 위원의 표를 유지한 채 새 위원 2인을 추가로 spawn 해 재투표하는 방식이며, 별도의 중재자 SA 를 두지 않는다 (중재 대신 위원 증원 + 다수결). description 만 "위원 #4" / "위원 #5" (5→7 격상 시 "위원 #6" / "위원 #7") 로 이어 붙이고, 추가 위원의 prompt 는 기존 위원과 완전히 동일하다.
 
-#### `--auto --max` 합치 SA3 (불일치 시)
-
-```
-Agent(
-  description: "결정 SA3 중재",
-  subagent_type: "general-purpose",
-  model: "<model_resolution>",
-  prompt: """
-    당신은 결정 합치 중재자다. 두 1차 결정자가 동일 게이트에 다른 결론을 냈다.
-
-    ## 게이트 (1차와 동일 입력 전체)
-    <gate_id, severity, gate_context, options, safety_rules, available_evidence>
-
-    ## 1차 결과
-    SA1: decision=<...>, rationale=<...>, risk=<...>, confidence=<...>
-    SA2: decision=<...>, rationale=<...>, risk=<...>, confidence=<...>
-
-    ## 출력 (필수, JSON only)
-    {"decision": "<SA1 또는 SA2 의 decision 값 채택, 또는 새 결정>",
-     "matches_sa": "SA1" | "SA2" | "neither",
-     "rationale": [...],
-     "confidence": <0.0-1.0>}
-  """
-)
-```
-
-#### 2.3.1 model 결정 (FN-003)
+#### 2.3.1 위원 model 결정 (FN-003)
 
 | 모드 조합 | `model` 파라미터 값 |
 |---|---|
-| `--auto` 단독 | `"opus"` |
-| `--auto --max` | SA1/SA2/SA3 모두 `"opus"` |
-| `--auto --mini` | `"sonnet"` |
-| `--auto --max --mini` | SA1/SA2/SA3 모두 `"sonnet"` |
+| `--auto` / `--auto --max` | 전 위원 **현재 세션 모델** 상속 (모델명 미지정) |
+| `--auto --model <name>` / `--auto --max --model <name>` | 전 위원 지정 모델 `<name>` |
 
-mini-option.md §2 read-time replace 가 본 §2.3.1 표를 통해 적용됨 — 본 표가 결정 SA 호출의 SSOT.
+본 §2.3.1 표가 위원 호출의 model 파라미터 SSOT. 위원회는 이중 모델 평가자 패널을 쓰지 않고 단일 현재 세션 모델(또는 `--model` 지정 모델)로 통일한다.
 
 ### 2.4 decision 적용 (dispatch) 규약
 
@@ -164,37 +140,32 @@ AskUserQuestion(...)
 
 본 라벨은 §2.4.1 매핑 우선순위 1 의 lookup 키. 라벨 없으면 LLM 이 본문 컨텍스트로 추론.
 
-## 3. 합치 알고리즘 (`--auto --max` 전용)
+## 3. 위원회 합치 사다리 (만장일치 → 격상 → 다수결 → 동점 tie-break)
 
-```
-1. 서브에이전트 SA1, SA2 를 병렬 spawn (Agent 도구 단일 메시지 내 2회 호출, isolation 보장)
-2. 두 결과 수집 (타임아웃 §3.1 참조)
-3. decision 정규화 (§3.2 참조) 후 합치 판정:
-   - normalize(SA1.decision) == normalize(SA2.decision) → 채택, side_effects 합집합 기록
-   - 결정 불일치 → 4) 로 진행
-4. 3차 중재 서브에이전트 SA3 spawn (§2.3 표준 의사코드):
-   - 입력: gate_context + SA1.{decision, rationale, risk, confidence} + SA2.{decision, rationale, risk, confidence}
-   - 모델: §2.3.1 표 따름
-   - 출력: matches_sa ∈ {"SA1", "SA2", "neither"} + decision
-5. SA3 결과 판정:
-   - matches_sa == "SA1" 또는 "SA2" → 다수결 (3중 2) 채택
-   - matches_sa == "neither" → critical 로 격상, 사용자 HALT
-6. 결정 + 합치 과정 전체를 docs/analysis/{run-id}/auto_decisions.json 에 적재 (§10)
-```
+`--auto` 결정 위원회는 다음 사다리로 최종 결정을 만든다. 위원은 §2.3 표준 의사코드로 병렬·격리 spawn 하며, 격상은 기존 위원의 표를 유지한 채 위원 2인을 추가해 재투표한다.
 
-**금지**: SA3 가 SA1/SA2 둘 다 거부하고 본인 결정만 채택 (다수결 위반) — 즉시 HALT.
+1. **`--auto` (3인 위원회)**: 3인 위원이 각자 조사(research) 후 투표한다.
+   - 만장일치(unanimous) → 그 결정 채택, `side_effects` 합집합 기록.
+   - 만장일치가 아니면 → 2) 로 격상.
+2. **5인으로 격상**: 위원 2인을 추가해 5인 위원회로 재결정한다.
+   - 만장일치 → 채택.
+   - 만장일치가 아니면 → 다수결(plurality, 최다 득표)로 결정. 5인 위원회는 만장일치를 요구하지 않는다.
+   - `--max` 이면 5인이 만장일치가 아닐 때 다수결로 멈추지 않고 3) 으로 격상.
+3. **7인으로 격상 (`--max` 전용)**: 위원 2인을 추가해 7인 위원회로 만들고 다수결(plurality, 최다 득표)로 결정한다. 7인 위원회도 만장일치를 요구하지 않는다.
+4. **동점 tie-break (전 규모 공통)**: 어떤 규모의 위원회든 표가 동점(tie)이면 **선임 위원(#1, 1순위)의 랭킹**으로 결정론적으로 깬다. 선임 위원(#1)이 고정 tie-breaker 다. 7인 위원회의 동점도 선임 위원(#1)의 랭킹으로 동일하게 깬다.
+5. **critical / business-decision 가드**: critical 게이트와 `critical_gates[]` 에 등록된 business-decision 은 `--auto` 여부와 무관하게 여전히 사용자에게 중단(halt)된다 — 위원회는 critical 중단을 절대 덮어쓰지 않는다.
+6. 결정 + 합치 과정 전체를 `docs/analysis/{run-id}/auto_decisions.json` 에 적재(§10). `merge_method` 는 승리 규칙(`unanimous` / `plurality` / `tie-break-lead`)과 최종 위원회 규모를 기록.
 
-### 3.1 SA 실패 fallback (FN-004)
+**금지**: 위원회가 만장일치도 최다 득표도 아닌 임의 결정을 채택(사다리 위반) — 즉시 HALT.
+
+### 3.1 위원 실패 fallback (FN-004)
 
 | 실패 시나리오 | 처리 |
 |---|---|
-| SA timeout (Agent 도구 응답 무) | critical 격상, HALT (안전 디폴트). 로그 적재. |
-| SA 응답이 빈 문자열 | critical 격상, HALT |
-| SA 응답 JSON 파싱 실패 | 1회 재호출 (동일 prompt). 재실패 시 critical HALT |
-| SA 응답에 `decision` 필드 없음 | 1회 재호출. 재실패 시 critical HALT |
-| `--auto --max` 에서 SA1 성공 + SA2 실패 | SA2 1회 재호출. 재실패 시 SA1 결정 단독 채택 + LOW 경고 |
-| `--auto --max` 에서 SA1/SA2 둘 다 실패 | critical HALT |
-| SA3 실패 (--max 합치 단계) | critical HALT |
+| 위원 timeout / 빈 응답 | 해당 위원 1회 재spawn. 재실패 시 그 위원을 제외하고 과반 정족수 충족되면 진행, 미충족 시 critical HALT |
+| 위원 응답 JSON 파싱 실패 / `decision` 필드 없음 | 해당 위원 1회 재spawn (동일 prompt). 재실패 시 위와 동일 처리 |
+| 위원 과반 이상 실패 | critical HALT (안전 디폴트) |
+| 선임 위원(#1) 실패로 동점 tie-break 불가 | 선임 위원 1회 재spawn. 재실패 시 critical HALT (임의 tie-break 금지) |
 
 ### 3.2 decision 정규화 (FN-005)
 
@@ -205,7 +176,7 @@ AskUserQuestion(...)
 
 예: `"Proceed "` / `"PROCEED"` / `"proceed"` → 모두 `"proceed"` 로 정규화 후 비교.
 
-**enum/id 외 자유 텍스트 decision 은 §2.2 출력 형식 위반** — `decision` 필드 값은 반드시 `options[].id` 와 정확히 일치하거나 NEEDS_USER reason enum 값과 일치. 자유 텍스트 반환 시 SA 실패로 간주 (§3.1 의 "decision 필드 없음" 분기).
+**enum/id 외 자유 텍스트 decision 은 §2.2 출력 형식 위반** — `decision` 필드 값은 반드시 `options[].id` 와 정확히 일치하거나 NEEDS_USER reason enum 값과 일치. 자유 텍스트 반환 시 위원 실패로 간주 (§3.1 의 "decision 필드 없음" 분기).
 
 ## 4. severity 분기 정책
 
@@ -233,15 +204,22 @@ SA 자기보고 `confidence` 가 무비판 채택되면 critical 격상 트리�
 
 조정된 confidence 가 임계값 미만이면 critical 격상.
 
-#### 4.1.2 `--auto --max` 교차 검증
+#### 4.1.2 위원 confidence 교차 검증
 
-SA1.confidence 와 SA2.confidence 차이 ≥ 0.3 → 신뢰성 부족, SA3 강제 호출 (decision 일치 여부와 무관).
+위원회 내 최고·최저 confidence 차이 ≥ 0.3 → 신뢰성 부족. 대응은 현재 위원회가 §3 사다리의 **종단 규모**(비-max 5인 / --max 7인)에 도달했는지에 따라 갈린다:
 
-#### 4.1.3 안전 임계
+- **비종단 규모** (`--auto` 3인, 또는 `--max` 5인): 만장일치여도 §3 사다리로 다음 규모(3→5, 5→7)로 1회 격상하여 재투표 (decision 일치 여부와 무관). 비-max 3인의 "다음 규모" 는 5인이며, 7인은 --max 전용이므로 비-max 는 5인이 종단이다.
+- **종단 규모** (비-max 5인 / --max 7인): 더 격상할 위원회가 없으므로 재투표하지 않고, confidence 신뢰성 저하를 critical 로 격상해 HALT — 사용자 결정을 받는다 (§4.1.1 "임계값 미만이면 critical 격상" 과 동일 안전 정책). 종단 규모에서 임의 진행 금지.
 
-`--auto --mini` (Sonnet) 일 때 임계값 +0.1 (Opus 대비 보수적):
-- clarification: 기본 0.5 → mini 0.6
-- business-decision: 기본 0.7 → mini 0.8
+#### 4.1.3 안전 임계 (`--model` tier 판정)
+
+`--auto --model <name>` 로 위원 모델을 덮어쓸 때, 지정 모델이 현재 세션 모델보다 **낮은 tier** 면 임계값 +0.1 (기본 모델 대비 보수적):
+- clarification: 기본 0.5 → 0.6
+- business-decision: 기본 0.7 → 0.8
+
+**모델 tier SSOT** (성능 순위, 높음→낮음): `opus` > `sonnet` > `haiku`. 세션·지정 모델의 tier 를 이 순위표로 결정적으로 비교한다 — 지정 모델 tier < 세션 모델 tier 일 때만 +0.1. 같거나 높으면 조정 없음 (예: 세션 sonnet + `--model opus` → 조정 없음).
+
+**tier 판정 불가 시 안전 디폴트**: `<name>` 이 순위표에 없거나 세션 모델을 알 수 없어 tier 비교가 불가능하면, 안전측으로 항상 +0.1 을 적용한다 (미확인 모델을 저성능으로 간주).
 
 ## 5. `critical_gates[]` 인터페이스
 
@@ -313,8 +291,8 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 |---|---|
 | `--auto` | `--auto` |
 | `--auto --max` | `--auto --max` |
-| `--auto --mini` | `--auto --mini` |
-| `--auto --max --mini` | `--auto --max --mini` |
+| `--auto --model <name>` | `--auto --model <name>` |
+| `--auto --max --model <name>` | `--auto --max --model <name>` |
 
 ### 7.1 합성 옵션 처리
 
@@ -329,8 +307,8 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 
 ## 8. 호환 / 자연어 매칭
 
-- `--max` 와 공존 가능 — `--auto --max` = 서브에이전트 2개 병렬
-- `--mini` 와 공존 가능 — `--auto --mini` = 서브에이전트 모델 Sonnet
+- `--max` 와 공존 가능 — `--auto --max` = 5인 위원회 (만장일치 아니면 7인 격상, §2/§3)
+- `--model <name>` 와 공존 가능 — `--auto --model <name>` = 결정 서브에이전트 모델 지정
 - `--dry-run` 과 공존 가능 — dry-run 게이트는 `--auto` 영향 없음 (사용자 검토 필수)
 - `--no-auto` 부정 플래그 없음 — 옵션 미지정이 곧 사용자 결정 활성
 - 미지원 스킬에 `--auto` 전달 시 silent ignore (스킬이 본 모듈 참조 안 하거나 `critical_gates[]` 미선언)
@@ -360,12 +338,15 @@ docs/analysis/{skill-run-id}/auto_decisions.json
       "gate_id": "lifecycle-gate-evolving",
       "severity": "clarification",
       "options": ["proceed", "block"],
-      "subagent_results": [
-        {"agent": "SA1", "decision": "proceed", "rationale": [...], "confidence": 0.85},
-        {"agent": "SA2", "decision": "proceed", "rationale": [...], "confidence": 0.78}
+      "committee_votes": [
+        {"member": "#1", "decision": "proceed", "rationale": [...], "confidence": 0.85},
+        {"member": "#2", "decision": "proceed", "rationale": [...], "confidence": 0.78},
+        {"member": "#3", "decision": "proceed", "rationale": [...], "confidence": 0.81},
+        {"member": "#4", "decision": "proceed", "rationale": [...], "confidence": 0.74},
+        {"member": "#5", "decision": "proceed", "rationale": [...], "confidence": 0.80}
       ],
       "merged_decision": "proceed",
-      "merge_method": "unanimous",
+      "merge_method": {"rule": "unanimous", "committee_size": 5},
       "applied_at": "2026-05-26T14:30:00Z"
     }
   ],

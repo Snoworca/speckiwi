@@ -148,7 +148,7 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
   "plan_path": "docs/plans/2026-05-19.skf.v01.plan.md",
   "sidecar_path": "docs/plans/2026-05-19.skf.v01.sidecar.json",
   "target": "skf-v0.1",
-  "mode": "normal|max|reviewer-off|squirrel|dry-run",
+  "mode": "normal|max|reviewer-off|model|dry-run",
   "flags": ["--max"],
   "started_at": "ISO-8601",
   "updated_at": "ISO-8601",
@@ -341,7 +341,7 @@ Use $kiwi-review-fix-loop --close-reqs --auto
 | Current flags | Handoff flags |
 |---|---|
 | `--auto` | `--close-reqs --auto` |
-| `--auto --mini` | `--close-reqs --auto --mini` |
+| `--auto --model <name>` | `--close-reqs --auto --model <name>` |
 | `--auto --max` | `--close-reqs --auto --max` |
 
 다음 중 하나라도 참이면 자동 handoff 금지:
@@ -366,7 +366,7 @@ $kiwi-coder PLAN_PATH=... TASK_FILTER=T-PH001-01,T-PH001-02
 $kiwi-coder PLAN_PATH=... PHASE_FROM=2 PHASE_TO=3
 $kiwi-coder PLAN_PATH=... --max
 $kiwi-coder PLAN_PATH=... --reviewer-off --skip-regression
-$kiwi-coder PLAN_PATH=... --squirrel
+$kiwi-coder PLAN_PATH=... --model <name>
 $kiwi-coder PLAN_PATH=... --resume
 $kiwi-coder PLAN_PATH=... --dry-run
 ```

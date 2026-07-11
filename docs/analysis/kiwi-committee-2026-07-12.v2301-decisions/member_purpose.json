@@ -1,0 +1,52 @@
+{
+  "lens": "user-intent-purpose",
+  "north_star": "이 파이프라인+2축평가의 존재 이유 = SRS↔코드 충실도 갭을 자동 포착·차단하는 메커니즘. 각 결정을 '이것이 그 메커니즘을 강화/보존하는가, 아니면 갭·미명세·러버스탬프를 재유입시키는가'로 판정. 형식보다 실질.",
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "install-skill 이 _shared/kiwi/* 를 .agents 미러에 미복사 (수동 cp 회피)",
+      "recommend": "a",
+      "rationale": "이것은 사용자 근본 목적의 교과서적 사례 — '구현이 소스/의도와 드리프트'가 하필 거버넌스 도구(install) 자체에서 발생한 메타-케이스다. install 이 _shared 미러를 빠뜨리면 SRS↔코드 충실도를 강제해야 할 kiwi-* 스킬들이 불완전/깨진 채로 설치된다 = 드리프트 감시자 안의 드리프트. (b)요구만 등록은 수동 cp 회피를 영구 존치시켜 실제 갭을 닫지 않으므로 '갭을 닫는다'는 사용자 목적에 정면 배치. (c)수동회피는 최악. 또한 CLAUDE.md 타깃 목표가 install/update tooling 을 v2.3.0 in-scope 로 명시하고 '도구 갭은 수동 회피 전에 SRS work 로 기록하라'고 규정 — 등록+수정이 규약과도 정합.",
+      "confidence": "high",
+      "execution_note": "신규 SRS 요구로 등록하되 현재 미커밋 2축 작업에 끼워넣지 말 것. 별도 TDD 사이클(실패하는 install 테스트 먼저 — _shared 미러 부재 재현 → 최소 수정 → green)로 독립 진행. 현재 커밋 범위 확장 금지(§3 Surgical).",
+      "fidelity_impact": "high"
+    },
+    {
+      "id": "D2",
+      "topic": "-qna(단일대시 강제) vs --qna(deprecated alias) footgun — FR-FLOW-024 AC-2",
+      "recommend": "a",
+      "rationale": "관례 반전이 footgun: 사용자·에이전트가 자연스럽게 타이핑하는 --qna 가 deprecated no-op 이고, 실제 강제는 단일대시 -qna 다. 잘못된 플래그 사용 → kiwi-srs 가 의도와 다른 QnA 동작 → 상류(SRS 저작) 신뢰도 저하 → 하류 드리프트. 다만 이는 2차 효과이고 2축 보고서도 [SRS-SUGGESTION](현재 블로커 아님)으로 분류. 리네임(예: 강제 플래그를 --qna-force 로, deprecated --qna alias 제거 → 단일 명확 플래그)이 혼동을 실질적으로 줄임.",
+      "confidence": "medium",
+      "execution_note": "저우선 후속 REQ 로 분리. 현재 커밋을 블로킹하지 말 것. implemented FR-FLOW-024 의 AC-2 문구+스킬+content 테스트를 함께 갱신하는 소규모 가드 mutation.",
+      "fidelity_impact": "low-medium"
+    },
+    {
+      "id": "D3",
+      "topic": "FR-FLOW-029 kiwi-wave-master --wt (근거 부재로 제거됨) 재도입 여부",
+      "recommend": "b",
+      "rationale": "메커니즘이 실제로 작동한 결과다 — 2축 루프가 'SRS AC 백킹 없는 옵션(--wt)'을 미명세 드리프트로 포착해 제거했다. 이것이 시스템이 본연의 일을 한 것. (b)제거유지는 'SRS 백킹 없는 코드는 싣지 않는다' 원칙을 지키며 방금 얻은 충실도 승리를 보존한다. (a)AC먼저 없이 재도입은 그 드리프트를 재생성. 게다가 FR-FLOW-029 는 '순차 정렬 wave(registration order)' 설계라 wave별 워크트리 격리는 설계와 논리적으로도 부정합. 실수요 증거 없음(§2 Simplicity — 요청되지 않은 유연성 금지).",
+      "confidence": "high",
+      "execution_note": "제거 상태 유지. 향후 wave별 워크트리 실수요가 확인되면 그때 (a) 정식 경로: FR-FLOW-029 에 전파 AC 를 먼저 작성 → 구현. SRS-우선 순서 강제.",
+      "fidelity_impact": "medium"
+    },
+    {
+      "id": "D4",
+      "topic": "kiwi-hot-fix→kiwi-srs-sync 전파 비대칭 (claude=--auto-apply --yes-all / codex·etc=금지)",
+      "recommend": "d",
+      "rationale": "srs-sync 는 역방향 충실도 경로 — hot-fix 가 코드 먼저 바꾸고 SRS 를 사후 정합시켜 갭을 재봉합하는 도구. 그러나 사용자 근본 목적은 '코드가 SRS 에 충실'이지 'SRS 가 코드에 자동 추종'이 아니다. claude 의 --auto-apply --yes-all 은 리뷰 없이 나쁜 hot-fix 를 SRS 로 각인시켜 SRS(=source of truth)를 코드의 거울로 전락시킬 위험 — 메커니즘 철학을 약화. codex/etc 의 금지(게이트)가 오히려 SRS-as-deliberate-SoT 에 정합. 변형 간 미문서화 행동 비대칭 자체가 드리프트이므로, 해결책은 이를 SRS 거버넌스 하에 두는 것(d). 방향은 (b)전면 auto-apply 가 아니라 (a)가드된 parity 로 수렴 권장. 단 실제 결정은 business-decision 으로 사용자 소유.",
+      "confidence": "medium",
+      "execution_note": "즉시: 비대칭을 (c)문서화해 우발적 divergence 가 아님을 명시. 근본해결: (d) 후속 SRS 요구 등록해 parity 를 거버넌스로 확정하되, fidelity-lens 의견으로 '가드된 sync(위원회/증거 게이트 통과 후 apply)' 방향 명기. v2.3.0.1 밖(out-of-scope) — 현재 커밋 블로킹 금지.",
+      "fidelity_impact": "medium"
+    },
+    {
+      "id": "D5",
+      "topic": "후속: commit / implemented→verified 전이 / push / 종료 — verified 가 '충실도 검증 완료' 신호로 의미있나",
+      "recommend": "commit→per-req-evidence-verify→validate→push→종료",
+      "rationale": "이것이 메커니즘의 payoff 이자 신뢰의 핵심. verified 는 '코드가 SRS 에 실증적으로 충실'을 의미해야만 가치가 있다 — 그리고 지금 그 증거가 존재한다: 2축 ALL_MATCH(11/11 개별 full intent match, r6·r7·r8 3연속) + 회귀 148/148 + install 17/17. 이는 러버스탬프가 아니라 REQ별 실증. 따라서 verified 전이는 '의미있다' 그리고 '해야 한다'. 단 CLAUDE.md 가드레일: per-req 증거·stability 게이트 없는 bulk-flip 금지. 현 상태 위험: (1) 11 REQ 의 VE 가 아직 'plan' 증거뿐 → 2축+회귀 결과를 REQ별 test/inspection 증거로 첨부 필요, (2) FR-FLOW-022 AC 가 SRS 에서 아직 미체크([ ])인데 보고서는 AC-2 완성이라 함 → AC 체크 선행 필요(FR-FLOW-008 AC-1: verified 는 전 AC 체크 요구). 미커밋 상태는 충실도 승리를 위험에 방치하므로 커밋이 최우선(안전·가역).",
+      "confidence": "high",
+      "execution_note": "순서: (1) 현재 2축 작업 커밋(가역·안전, 최우선). (2) verified 전이는 bulk-flip 금지 — REQ별로 ACs 체크 + 2축 ALL_MATCH(axis_a_intent_r8.json)·회귀 테스트를 verification evidence 로 첨부 + stability 게이트 확인 후 개별 전이. speckiwi MCP mutation 사용, 수기 편집 금지. (3) validate --fail-on-warning 클린 확인 후 push. D1~D4 는 별개 후속이므로 이 11 REQ verified 를 지연시키지 않음.",
+      "fidelity_impact": "high"
+    }
+  ],
+  "overall": "메커니즘은 작동 중이다 — 2축 루프가 이전 3패스(review-fix-loop 3라운드·Axis A r1/r2)가 놓친 FR-FLOW-022 AC-2 운영 토폴로지 표 누락과 --wt 미명세 드리프트를 실제로 포착했다. 관통 원리: 모든 결정은 (a)실제 SRS↔코드 갭을 닫거나, (b)방금 얻은 충실도 승리를 보존하거나, (c)미명세·미거버넌스 행동의 재유입을 막아야 한다. 실질 우선 — D5 에서 verified 를 러버스탬프하지 말고 per-req 증거로 의미를 지킬 것, D3 에서 백킹 없는 --wt 를 재도입하지 말 것, D4 에서 SRS-as-SoT 를 코드-추종 auto-apply 로 전락시키지 말 것, D1 install 드리프트를 영구 수동회피로 방치하지 말 것. 우선순위(fidelity_impact): D1(high, 메타-케이스)·D5(high, payoff) > D3·D4(medium) > D2(low-medium). 커밋 블로킹 여부: D5 만 즉시 실행(커밋+가드된 verify), D1~D4 는 별개 후속 REQ 로 분리해 현재 커밋 범위를 오염시키지 않음."
+}

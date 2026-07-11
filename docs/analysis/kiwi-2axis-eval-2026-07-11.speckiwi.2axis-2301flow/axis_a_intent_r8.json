@@ -1,0 +1,74 @@
+{
+  "axis": "A",
+  "role": "SRS intent-consistency evaluator",
+  "round": 8,
+  "target_file": "docs/spec/60.workflow-release.srs.md",
+  "scope": "FR-FLOW-022..FR-FLOW-032 (11 REQ)",
+  "basis": "SRS document unchanged since r7 (round-7 fix edited only skills/etc/*: parallel->sequential rewrite of FR-FLOW-024 3 requirement-gathering subagents, FR-FLOW-023 verification passes, FR-FLOW-028 kiwi-srs-research topology reference). Re-verified FR-FLOW-023/024/028 SRS text directly + regression scan of the other 8 REQ.",
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "full",
+      "notes": "Requirement + AC-1/2/3 consistent: remove --mini and _shared/kiwi/mini-option.md, single current-session-model verification subagent replacing prior Opus×1+Sonnet×1 (Max Opus×2+Sonnet×1) panels, --model override. AC-2's mention of the prior dual panels describes what is being REPLACED (no contradiction). Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-023",
+      "intent_match": "full",
+      "notes": "A/B verify/improve loop; research-doc input; Process A verification subagent(s), Process B improver, divergence guard. AC-4 '--max uses 3 verification subagents' and AC-5 '(document count × 3)' specify COUNT and ROLE only — no parallelism is mandated; AC-5 already frames non-max as 'sequentially per document'. The etc single-worker rewrite (3 verification passes run one-at-a-time) preserves count(3)/role intent, so it is a valid runtime adaptation, not a mismatch. No regression."
+    },
+    {
+      "req": "FR-FLOW-024",
+      "intent_match": "full",
+      "notes": "No-research-doc ambiguity resolution, unbounded qna loop (--auto suppresses, FR-FLOW-025 committee resolves), auto-decision mode, then 'spawn 3 subagents' requirement-gathering research to docs/research/, hands to FR-FLOW-023. AC-4 wording is 'spawns 3 subagents that gather requirements and research' — the SRS binds count(3) and role, NOT concurrency. The etc parallel->sequential rewrite keeps the 3-subagent adjacency and role, preserving the SRS intent. AC-1..AC-4 consistent. No regression."
+    },
+    {
+      "req": "FR-FLOW-025",
+      "intent_match": "full",
+      "notes": "Decision committee 3(--auto)/5(--max), non-unanimity escalation 3->5->plurality, --max 5->7 plurality with deterministic tie-break. Consistent, no SHALL/AC contradiction. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-026",
+      "intent_match": "full",
+      "notes": "kiwi-pipeline end-to-end chaining srs->(conditional feasibility)->planner->pm->review-fix-loop; user gate unless --auto (FR-FLOW-025 committee), --max propagation, research-doc passthrough. AC-1..AC-5 consistent. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-027",
+      "intent_match": "full",
+      "notes": "Worktree isolation via --wt; interactive merge-or-PR ask; --auto opens PR (kiwi-commit-auto-pr) and never direct-merges base. AC-1..AC-3 consistent. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-028",
+      "intent_match": "full",
+      "notes": "GitHub-issue entry: /kiwi-srs-research first, then /kiwi-srs; -qna only when research insufficient, suppressed under --auto (FR-FLOW-025 committee); continues planner/pm/review-fix-loop. The SRS is agnostic to kiwi-srs-research's INTERNAL topology (it only requires running the research skill first), so the etc rewrite of '5-subagent topology' -> 'single-worker sequential research topology' does not touch this REQ's intent. AC-1..AC-3 consistent. No regression."
+    },
+    {
+      "req": "FR-FLOW-029",
+      "intent_match": "full",
+      "notes": "kiwi-wave-master multi-wave orchestrator; explicit-structure vs subagent wave-split; per-wave scoped target via kiwi-srs; waves.jsonl resumability; per-wave kiwi-pipeline; --auto all-wave autonomy, --max propagation. AC-1..AC-5 consistent. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-030",
+      "intent_match": "full",
+      "notes": "Epic-issue entry: extract ordered waves then identical FR-FLOW-029 flow; only up-front wave-split research skipped, per-wave pipeline still researches. AC-1..AC-3 consistent; OQ-030 resolved with guard fallback to FR-FLOW-029 wave-split. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-031",
+      "intent_match": "full",
+      "notes": "kiwi-planner uses v2.3.0 workflow_* MCP family as primary read/validate/mutate path superseding validator.mjs; all variants compliant (MIG-FLOW-003); validation coverage (C01-C25) must not regress, raw file access documented degraded fallback. AC-1..AC-3 consistent. Unchanged from r7."
+    },
+    {
+      "req": "FR-FLOW-032",
+      "intent_match": "full",
+      "notes": "Plan-vs-SRS coverage verification loop: count reconciliation then per-REQ cross-check; 2 sequential subagents 'running on the current session model per FR-FLOW-022' (cross-ref consistent with FR-FLOW-022 AC-2); persistent verification-complete marking; --max adds AC-granularity + 3rd refuter + two-zero-omission termination; omission-driven improve/re-verify with divergence guard. AC-1..AC-3 consistent. Unchanged from r7."
+    }
+  ],
+  "findings": [],
+  "summary": {
+    "reqs_full": 11,
+    "reqs_partial": 0,
+    "reqs_mismatch": 0,
+    "findings_total": 0
+  },
+  "verdict": "ALL_MATCH",
+  "overall": "All 11 REQ (FR-FLOW-022..032) are full intent matches. The SRS document is unchanged since r7; only skills/etc/* were edited (parallel->sequential single-worker rewrite). Re-verified the impacted REQs directly: FR-FLOW-023 (AC-4/AC-5) and FR-FLOW-024 (AC-4) bind subagent COUNT(3) and ROLE only and do not mandate parallel execution — AC-5 already frames non-max as 'sequentially per document' — so the etc single-worker sequential execution preserves the N-research/verification intent and is a valid runtime adaptation, not a partial or mismatch. FR-FLOW-028 is agnostic to kiwi-srs-research's internal topology, so its research-first intent is untouched. The remaining 8 REQ show no regression from r7 ALL_MATCH. Zero findings."
+}

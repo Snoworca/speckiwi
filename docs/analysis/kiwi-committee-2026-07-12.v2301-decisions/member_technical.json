@@ -1,0 +1,46 @@
+{
+  "lens": "technical-fit",
+  "decisions": [
+    {
+      "id": "D1",
+      "recommend": "a",
+      "rationale": "코드 조사로 실제 드리프트를 확인함. install-skill.ts 에서 _shared/kiwi 를 다루는 곳은 collectSharedResourceReferences(L402) 뿐이고, 이 함수는 (1) 참조가 source 에 존재하는지 검증하고 (2) sourceRelativePath 목록을 반환해 metadata(sharedResourceReferences/sharedResourceValidation/sharedResourceRoot, L522~524)에 '기록'만 한다. copyPackageTo(L488)는 sourcePackage.files(스킬 디렉토리 내부 파일)만 복사하므로 형제 _shared/kiwi/* 는 목적지에 절대 복사되지 않는다. src/ 전체에도 _shared 를 복사하는 다른 경로가 없다. 결과적으로 _shared/kiwi 가 3벌로 분기됨: source skills/claude(5개: auto-option/feasibility/pipeline-event/pipeline-v1/waves-event), mirror .agents(4개, waves-event.md 누락), installed ~/.claude(2개, 제거된 mini-option 잔존 + auto-option/waves-event 등 누락). 즉 설치된 스킬이 참조하는 SSOT(auto-option.md, waves-event.md)가 목적지에 아예 없거나 stale 이라 스킬이 잘못된/없는 정책 위에서 동작한다. install-skill.test.ts(L217~265)는 '검증+기록만' 을 명시적으로 assert 하므로 현재 동작은 테스트로 고정된 의도된 결함이다. (b)는 SRS만 등록하고 드리프트 방치 = 반쪽, (c)는 수동 cp 영속화 = 프로젝트 목적(드리프트 차단)에 정면 배치. 유일하게 근본 해결하는 (a) 권고.",
+      "confidence": "high",
+      "execution_note": "TDD: install-skill.test.ts 에 '참조된 _shared/kiwi/* 가 sharedResourceRoot 에 mirror 되고, source 에서 제거된 파일은 목적지에서도 prune 된다(additive-copy 아닌 sync)' 는 실패 테스트를 먼저 추가하고 red 확인 후 구현. 설계 주의: _shared 는 전 스킬 공용이므로 per-skill copyPackageTo 에 넣으면 매 스킬마다 중복 overwrite/경쟁이 생긴다 → CLI install 오케스트레이터에 install-run 당 1회 idempotent 한 shared-sync 단계로 배치할 것. executeOne 의 stage/rename 원자성은 스킬 디렉토리 대상이므로 _shared sync 는 별도 단계로 분리. 신규 v2.3.0.x SRS FR(스킬 설치 시 _shared 미러 동기화 + prune) 선등록 필수.",
+      "fidelity_impact": "HIGH(+). 설치 시점 SSOT 동기화를 보장해 '스킬 텍스트(source)=런타임 로드본(installed)' 을 성립시킨다. 현재는 설치본이 참조하는 auto-option/waves-event 가 부재/stale 이라 스킬이 spec 과 다른 정책으로 실행되는 무성(silent) 드리프트가 있고, 이를 제거한다."
+    },
+    {
+      "id": "D2",
+      "recommend": "a",
+      "rationale": "-qna(단일대시 다문자)는 그 자체로 CLI 관례 위반이다. POSIX/GNU 관례상 단일대시는 단문자 short flag 이므로 -qna 는 -q -n -a 결합으로 오파싱될 소지가 있고, deprecated 인 --qna(kiwi-srs 설명상 v0.11 까지 alias)와 대시 1개 차이라 오타·혼동 위험이 크다. 게다가 강제 의미('충분히 모호하지 않아도 unbounded qna 강제', FR-FLOW-024 AC-2 / FR-FLOW-028 AC-2)를 담기에 이름이 비서술적이다. 리네임(--qna-force 또는 --always-ask)은 관례 준수(double-dash long flag) + 서술성 + deprecated alias 와의 충돌 제거를 동시에 달성한다. 다만 이것은 하드 argv 파서가 아닌 LLM 이 SKILL.md 를 읽어 해석하는 skill flag 라 실행 오류라기보다 '에이전트 오해' 리스크이고, --qna 자체가 v0.11 에 제거 예정이라 혼동창은 한시적이므로 긴급도는 중간.",
+      "confidence": "medium",
+      "execution_note": "edit-ac 로 FR-FLOW-024(Requirement 본문+AC-2)와 FR-FLOW-028(Requirement 본문+AC-2)의 -qna 를 새 이름으로 갱신하고, kiwi-srs / kiwi-pipeline 스킬을 claude/codex/etc 3런타임 모두 수정(3벌 정합). 이름은 도메인 용어 보존 관점에서 --qna-force 권장(스킬 전반이 qna 용어를 씀 → 발견성 유지), 사용자 친화성 우선 시 --always-ask. -qna 는 한 릴리스 동안 deprecated alias 로 인식만 하고 경고하도록 두면 이행 안전.",
+      "fidelity_impact": "MEDIUM(+). 직접적 SRS↔코드 매핑 영향은 작지만, 에이전트가 의도한 모드(force-qna vs deprecated no-op)를 정확히 선택하게 해 오호출로 인한 워크플로 드리프트를 줄인다."
+    },
+    {
+      "id": "D3",
+      "recommend": "b",
+      "rationale": "제거 유지가 spec-fidelity 상 옳다. FR-FLOW-029 Requirement/AC 어디에도 --wt 근거가 없고 AC-5 는 --auto/--max 전파만 규정한다(--wt 는 FR-FLOW-027 kiwi-pipeline 고유). 스킬(skills/claude/kiwi-wave-master)도 현재 --auto/--max 만 보유해 SRS 와 정합한다. 더 중요한 기술적 이유: wave-master 는 N 개 wave 를 순차 kiwi-pipeline 으로 돌리고 FR-FLOW-029 AC-3 은 'clear/restart 세션이 첫 미완료 wave 부터 재개' 하는 JSONL 재개성을 요구하는데, worktree 는 세션·파일시스템 상태라 세션이 clear 되면 살아있으리란 보장이 없다. 즉 --wt(특히 effort 전체 단일 worktree 모델)는 재개성과 정면 충돌하고, per-wave worktree 모델이면 N 개 worktree 의 생성/merge/PR 생명주기가 미정의다. 두 모델 중 무엇도 SRS 에 없으므로 재도입은 무성 설계결정 + 드리프트다.",
+      "confidence": "high",
+      "execution_note": "대형 effort 의 격리가 실제로 필요하면 플래그를 임시 재도입하지 말고, worktree 모델(effort당 단일 vs wave당)과 JSONL 재개성과의 상호작용(세션 clear 후 worktree 재부착/재생성 전략)을 명시하는 신규 AC 또는 별도 REQ 를 의도적으로 authoring 한 뒤 스킬에 반영할 것. 그 전까지는 제거 상태가 SRS 와 정합.",
+      "fidelity_impact": "(+) by omission. 미명세 기능을 넣지 않음으로써 '스킬=SRS' 정합을 유지한다. 무근거 --wt 재도입은 오히려 새 드리프트를 만든다."
+    },
+    {
+      "id": "D4",
+      "recommend": "a",
+      "rationale": "비대칭 확인됨: claude kiwi-hot-fix 는 §0.14/§7.1 에서 --auto 를 '--auto-apply --yes-all 합성' 으로 정의해 자식 kiwi-srs-sync 에 전파(auto-option.md §7.1 SSOT 표에도 명시), codex/etc 는 §0.7 에서 'sync 위임에 --auto 만 전파, 사용자가 명시하지 않는 한 --auto-apply/--yes-all 추가 금지' 로 규정한다. 의미 분석(srs-sync §0.16 + auto-option §11.1): --auto 단독이면 dry-run 게이트를 격리 서브에이전트가 결정(apply-all/apply-selected/dry-run-only 선택 가능)하고 critical_gates(new-scope-creation/stability-backward/conflict-code-rollback/validate-spec-error 등)는 HALT 유지 = 이미 안전한 자율 경로가 존재한다. 반면 claude 가 추가하는 --auto-apply 는 dry-run 단계를 강제 skip 해 서브에이전트의 apply-selected/거부(dry-run-only) 재량과 사람-검토용 proposed-mutations.md 산출을 없애고 분석가 제안을 무조건 apply-all 로 영속화한다. 즉 자율성 획득에는 --auto 로 충분하고 --auto-apply --yes-all 합성은 redundant 하면서 SRS mutation 재량/검토만 제거하는 fidelity 리스크다. 동일 논리 스킬이 런타임별로 다르게 SRS 를 쓴다는 것 자체가 결함이므로 (c)문서화는 기술부채 정당화, (b)는 전 런타임을 더 공격적으로 = fidelity 악화. 안전측 정렬 (a) 권고.",
+      "confidence": "medium",
+      "execution_note": "주의: (a)는 현재 auto-option.md §7.1/§11.1 SSOT(claude 합성을 '의도된 것' 으로 문서화)를 뒤집는 결정이므로 스킬 3벌 텍스트만 고치면 SSOT 와 모순된다 → §7.1 합성표 행과 §11.1 을 안전 해석(자식 sync 에 --auto 만 전파)으로 함께 갱신해야 정합. 실무적 안전 델타는 중간임을 명시: claude 도 --auto 를 함께 넘기므로 critical_gates HALT 는 양쪽 다 유지되고, 실제 차이는 'apply-selected/dry-run-only 재량 + 검토 산출물 유무' 다. 재드리프트 방지를 위해 cross-runtime --auto 전파 안전규약을 신규 SRS FR(옵션 d 취지)로 앵커링하는 것을 병행 권고 — 방향은 (a), 거버넌스는 (d)로 고정.",
+      "fidelity_impact": "MEDIUM(+). 동일 논리 스킬의 런타임 간 SRS-mutation 안전동작을 일치시키고(consistency 결함 제거), 자동 SRS 사후동기화가 서브에이전트 검토 재량을 거치게 해 무검토 일괄 mutation 으로 인한 SRS 오기재 위험을 낮춘다."
+    },
+    {
+      "id": "D5",
+      "recommend": "commit+push, no-bulk-verify",
+      "rationale": "권장 순서: (1) D2/D3/D4 중 이 브랜치 스킬/SRS 텍스트에 국한된 값싼 항목을 먼저 반영해 커밋이 확정 상태를 담게 함(특히 D4 는 SSOT 정합까지 한 커밋에). (2) 관련 테스트 green 확인 — 실측: vitest test/skills + install-skill.test.ts 165 passed(객관 사실, 자기검증 허용 범주)라 커밋은 안전. (3) implemented 작업 커밋. (4) feature branch(feat/2.3.0.1)이므로 push 안전(보호 브랜치 아님). (5) D1 은 코드+신규 SRS FR 규모라 별도 후속 커밋/작업으로 분리. verified 전이는 하면 안 된다: CLAUDE.md/워크플로가 '증거 없는 verified 금지' + '다수 요구를 per-req 증거·stability 게이트 없이 일괄 verified 로 뒤집는 bulk-finalize 금지' 를 명시하는데, 2축 위원회 평가는 리뷰이지 per-req 테스트 증거가 아니고 대상 11요구는 evolving/implemented 다. verified 는 kiwi-review-fix-loop --close-reqs(회귀 PASS+finding 0) 또는 per-req 명시 증거 경로로만 개별 승급.",
+      "confidence": "high",
+      "execution_note": "커밋 메시지에 서명/AI 식별자 금지, 제목에 Phase/Step 표식 금지(무엇이 바뀌었는가만). 커밋 전 git diff 로 미의도 변경(.agents 미러 수동 cp 흔적 등) 점검. push 후 필요 시 PR 은 선택. 절대 금지: summary 기반 일괄 update_status verified.",
+      "fidelity_impact": "(+) 프로세스. 실제 구현된(테스트 통과) 작업만 커밋하고, verified 는 증거 게이트를 우회하지 않아 '검증됨' 상태의 신뢰도(=SRS 상태 필드의 fidelity)를 보존한다."
+    }
+  ],
+  "overall": "핵심은 '스킬 텍스트(source SRS)와 런타임 로드본의 일치'다. D1(_shared 미install-copy)은 설치본이 참조 SSOT 를 못 보는 실측 3-way 드리프트라 최우선 수정(a), D4 는 동일 스킬의 런타임 간 SRS-mutation 안전 비대칭이라 안전측 정렬(a)+SSOT/SRS 앵커링. D2 는 -qna 관례위반 footgun 리네임(a, 중간우선), D3 는 무근거 --wt 재도입이 재개성과 충돌하므로 제거 유지(b). D5 는 테스트 green 근거로 commit+push 하되 2축평가는 per-req 증거가 아니므로 bulk verified 전이 금지."
+}

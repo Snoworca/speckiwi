@@ -1,18 +1,23 @@
 {
   "name": "kiwi-srs-from-code",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.363Z",
+  "installedAt": "2026-07-10T18:37:57.289Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-srs-from-code",
   "installedPath": ".agents/skills/kiwi-srs-from-code",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:a1f2e96a5f46d2fde01b81a0b0f7f24ad7d34e8e87fe78dc4092a7b76113e5ea",
-  "installedChecksum": "sha256:a1f2e96a5f46d2fde01b81a0b0f7f24ad7d34e8e87fe78dc4092a7b76113e5ea",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:d3529ad6430bb6c1c17f39b56ba7db34353ddcb702ff0295ae6a05b919edd4a5",
+  "installedChecksum": "sha256:d3529ad6430bb6c1c17f39b56ba7db34353ddcb702ff0295ae6a05b919edd4a5",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/pipeline-event.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-srs-from-code --json",
   "noManualEdit": true
 }

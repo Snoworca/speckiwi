@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "axis": "B",
+    "role": "quality-evaluator",
+    "req_scope": "v2.3.0.1 FR-FLOW-022~032",
+    "date": "2026-07-11",
+    "review_basis": "working-tree diff of skills/{claude,codex,etc}, test/skills, src/doctor/package-doctor.ts (.agents/skills mirror + docs/.kiwi excluded)",
+    "objective_checks": {
+      "skills_content_test_suite": "npx vitest run test/skills/ -> 8 files / 142 tests PASSED (exit 0)"
+    },
+    "notes_on_dropped_candidates": "Two initial candidate findings were falsified during verification and are NOT reported: (1) 'codex/etc kiwi-srs §5.1/§5.4 reference a non-existent §9.6 A/B loop' — the A/B loop (FR-FLOW-023) IS authored for codex/etc in references/extended-workflow.md §9.6 with continuous §-numbering, so the cross-reference resolves and cross-variant parity holds; (2) 'wave-master claude uses a wrong ~/.claude/skills path' — that absolute path matches the established claude convention used by kiwi-srs/kiwi-pipeline for pipeline-event.md. All three new shared modules (waves-event.md, pipeline-v1.md, feasibility-policy-schema-v1.md) exist in every variant."
+  },
+  "findings": [
+    {
+      "id": "QB-001",
+      "axis": "P1",
+      "severity": "MEDIUM",
+      "title": "위원회 confidence-spread 격상(§4.1.2)이 §3 위원회 사다리의 종단 규모에서 모순/미정의",
+      "location": {"file": "skills/claude/_shared/kiwi/auto-option.md", "line_range": "140-155 (§3), 204-209 (§4.1.2)"},
+      "description": "이번 diff 가 §4.1.2 를 위원회 용어로 재작성하며 '위원회 내 최고·최저 confidence 차이 >= 0.3 -> 만장일치여도 다음 규모로 1회 격상(§3)하여 재투표' 규칙을 넣었다. 그러나 §3 사다리는 (a) 비-max 는 5인에서 종료(다수결), 7인은 --max 전용이고 (b) --max 는 7인이 종단이다. 따라서 비-max 5인 위원회가 만장일치+confidence spread>=0.3 이면 '다음 규모'=7인은 --max 전용이라 격상 대상이 없고, 7인(max) 위원회의 spread>=0.3 도 다음 규모가 없어 동작이 미정의된다. 안전 결정 경로의 핵심 알고리즘에 종단 조건 미처리 겸 §3 과의 규칙 충돌이 있다.",
+      "suggested_fix": "§4.1.2 에 종단 처리 명문화: '이미 종단 규모(비-max 5인 / --max 7인)면 격상 대신 confidence 저하를 critical 로 격상해 HALT' 또는 '최종 규모에서는 재투표 없이 진행' 중 하나로 §3 과 정합시키고, 비-max 5인의 '다음 규모'가 7인이 아님을 명시.",
+      "tags": ["logic", "auto-committee", "edge-case", "FR-FLOW-025"]
+    },
+    {
+      "id": "QB-002",
+      "axis": "P4",
+      "severity": "MEDIUM",
+      "title": "`-qna`(단일 대시)와 `--qna`(이중 대시)의 정반대 의미 — 인자 파싱 footgun",
+      "location": {"file": "skills/{claude,codex,etc}/kiwi-srs/SKILL.md", "line_range": "claude 138 (§1.2 옵션의미), 173-178 (§5.2)"},
+      "description": "`-qna`(단일 대시)는 모호성이 없어도 무제한 qna 루프를 '강제 진입'시키는 신규 플래그이고, `--qna`(이중 대시)는 v0.11 까지의 deprecated alias(=기본 동작, --auto 로 억제됨)다. 즉 대시 1개 차이로 의미가 정반대이며 문서 스스로 '대시 개수로 의미가 반대이니 혼동 주의'라고 경고한다. 게다가 `-qna` 는 `--qna` 의 부분문자열이라, 스킬이 앵커 없는 매칭(예: /-qna/)을 쓰면 `--qna` 입력도 `-qna` 로 오탐할 수 있어 파싱 견고성 위험이 있다. SRS(FR-FLOW-024 AC-2) 유래일 수 있으나, 사용자·에이전트 모두에게 오작동 유발 가능성이 높은 설계다.",
+      "suggested_fix": "혼동을 유발하지 않는 별개 이름(예: `--qna-force` 또는 `--always-ask`)으로 강제 플래그를 명명하도록 SRS(FR-FLOW-024) 재검토를 제안. 유지해야 한다면 매칭을 반드시 앵커(^|\\s 경계 + 정확한 대시 개수)로 규정하고 `-qna`/`--qna` 판별 알고리즘을 §1.2 에 명시.",
+      "tags": ["usability", "arg-parsing", "robustness", "FR-FLOW-024"]
+    },
+    {
+      "id": "QB-003",
+      "axis": "P2",
+      "severity": "MEDIUM",
+      "title": "etc auto-option 위원회 실패 처리 표가 단일-worker 시맨틱으로 남아 claude/codex 와 불일치",
+      "location": {"file": "skills/etc/_shared/kiwi/auto-option.md", "line_range": "38-90 (Decision Committee + Failure handling)"},
+      "description": "etc 변이는 'Decision Worker' -> 'Decision Committee'(3/5/7 인) 로 바뀌고 Committee Merge Ladder 를 추가했지만, 그 아래 'Failure handling' 표는 단일-worker 시절 문구('Empty response, timeout, invalid JSON, or missing decision | Retry once; if still invalid, halt', 'Worker reports high risk below threshold | Halt')를 그대로 두었다. 반면 claude/codex 는 위원회 용어로 갱신해 '해당 위원 1회 재spawn -> 재실패 시 그 위원 제외하고 과반 정족수 충족되면 진행'이라는 per-member drop-if-quorum 정책을 도입했다. 결과적으로 etc 위원회는 위원 1인 실패 시 무조건 halt 하게 되어 세 변이의 실패 행동이 갈리며, etc 의 per-member 실패 시맨틱이 미명세다(§5 ladder 는 선임 위원 #1 실패만 다룸).",
+      "suggested_fix": "etc Failure handling 표를 committee/member/quorum 용어로 갱신하거나(claude/codex 와 동일 정책), etc 가 의도적으로 '위원 실패 즉시 halt'(보수적) 라면 그 사유를 표에 명시해 세 변이 간 divergence 를 문서화.",
+      "tags": ["cross-variant", "consistency", "failure-handling", "FR-FLOW-025"]
+    },
+    {
+      "id": "QB-004",
+      "axis": "P1",
+      "severity": "MEDIUM",
+      "title": "`--model <name>` 저성능 판정 기반 confidence 임계값 +0.1(§4.1.3)이 비결정적",
+      "location": {"file": "skills/{claude,codex,etc}/_shared/kiwi/auto-option.md", "line_range": "claude 207-211 (§4.1.3); codex/etc 'lower-capability' 문장"},
+      "description": "제거된 `--mini` 는 항상 Sonnet(세션 기본 Opus 대비 확정적 저성능)이라 '+0.1 보수화' 트리거가 결정적이었다. 이번 리팩터는 이를 '`--auto --model <name>` 로 더 낮은 성능 모델을 지정한 경우 임계값 +0.1'(claude) / 'When --model <name> selects a lower-capability model'(codex/etc) 로 바꿨는데, 임의의 `<name>` 이 현재 세션 모델보다 '저성능'인지 스킬이 결정적으로 판정할 근거가 없다(예: 세션=Sonnet 에 `--model opus` 는 오히려 고성능). 안전 임계값을 좌우하는 조건이 LLM 의 주관적 모델 성능 추정에 의존하게 되어 트리거가 모호해졌다. 세 변이 공통 설계 이슈.",
+      "suggested_fix": "모델 성능 순위 테이블(또는 tier enum)을 SSOT 로 두고 '세션 모델보다 낮은 tier 지정 시 +0.1' 을 결정적으로 규정하거나, 판정 불가 시 안전측(항상 +0.1) 디폴트를 명시.",
+      "tags": ["logic", "determinism", "safety-threshold", "FR-FLOW-022"]
+    },
+    {
+      "id": "QB-005",
+      "axis": "P7",
+      "severity": "LOW",
+      "title": "kiwi-wave-master(claude)에서 waves-event.md 참조 경로가 파일 내부에서 불일치",
+      "location": {"file": "skills/claude/kiwi-wave-master/SKILL.md", "line_range": "18 (§0.1), 94 (§5)"},
+      "description": "동일한 waves-event.md 를 §0.1 은 절대 설치경로 `~/.claude/skills/_shared/kiwi/waves-event.md` 로, §5 는 상대경로 `_shared/kiwi/waves-event.md` 로 참조한다(같은 파일, 두 표기). codex/etc 변이는 `../_shared/kiwi/waves-event.md` 로 일관된다. 파일 내 표기 혼용은 에이전트가 SSOT 모듈 위치를 찾을 때 혼란 소지가 있다. (claude 의 `~/.claude/skills/...` 절대표기 자체는 pipeline-event.md 에서 형제 스킬과 일치하므로 오류는 아님 — 오직 파일 내 waves-event 표기 혼용만 문제.)",
+      "suggested_fix": "claude wave-master 내 waves-event.md 표기를 §0.1/§5 에서 하나로 통일(형제 스킬이 pipeline-event 에 쓰는 `~/.claude/skills/_shared/kiwi/...` 관례를 따르거나 상대표기로 통일).",
+      "tags": ["cross-variant", "path-reference", "hygiene", "FR-FLOW-029"]
+    },
+    {
+      "id": "QB-006",
+      "axis": "P4",
+      "severity": "LOW",
+      "title": "kiwi-wave-master 섹션 헤더가 Phase 순서와 어긋남(§5=Phase 4 가 §6=Phase 3 보다 앞)",
+      "location": {"file": "skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md", "line_range": "claude 92 (§5 Phase 4), 100 (§6 Phase 3)"},
+      "description": "§2 Phase 흐름은 Phase 0~5 순이지만 본문 섹션은 §3=Phase1, §4=Phase2, §5='Phase 4' 진행추적, §6='Phase 3' kiwi-pipeline 실행 순으로 배치되어 Phase 4 섹션이 Phase 3 섹션보다 먼저 나온다. 상호 참조가 있어 탐색은 가능하나, Phase 번호와 문서 순서의 불일치가 가독성을 떨어뜨린다.",
+      "suggested_fix": "섹션을 Phase 실행 순서(Phase 3 실행 -> Phase 4 추적)로 재배치하거나, 섹션 번호와 Phase 번호를 일치시켜 혼선을 제거.",
+      "tags": ["readability", "structure", "FR-FLOW-029"]
+    },
+    {
+      "id": "QB-007",
+      "axis": "P3",
+      "severity": "LOW",
+      "title": "kiwi-wave-master `--wt`(워크트리 격리) 옵션이 선언만 되고 동작 미명세",
+      "location": {"file": "skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md", "line_range": "3 (description), 42 (§1.2)"},
+      "description": "`--wt` 는 description 과 §1.2 자연어 매핑('워크트리에서', '격리해서')에 선언되어 있으나('wave 사이클을 전용 git worktree 에서 실행'), 본문 어느 절에서도 wave 별 워크트리 생성/정리/격리 보장/실패 처리 같은 실제 동작을 규정하지 않는다. 옵션이 선언만 되고 실행 규약이 비어 있어 에이전트가 결정적으로 수행하기 어렵다.",
+      "suggested_fix": "`--wt` 전용 절을 추가해 wave 사이클당 워크트리 생성 시점, 정리/cleanup, 격리 범위, 실패 시 폴백을 명시하거나(신규 SRS 필요 시 등록), 미구현이면 옵션을 제거.",
+      "tags": ["completeness", "under-specified", "FR-FLOW-029"]
+    },
+    {
+      "id": "QB-008",
+      "axis": "P5",
+      "severity": "LOW",
+      "title": "kiwi-srs 무제한 qna 루프 전환 시 기존 Max 진동 감지 가드가 사라짐",
+      "location": {"file": "skills/{claude,codex,etc}/kiwi-srs/SKILL.md", "line_range": "claude 154-162 (§5 각 라운드)"},
+      "description": "이번 diff 는 '- Normal: max 3 라운드 / - Max: max 7 라운드 (진동 감지 시 사용자 호출)' 를 삭제하고 '무제한 qna 루프' 로 대체했다. 새 '각 라운드' 절차에는 반복/진동(oscillation) 감지가 없어, 기존 Max 모드의 '진동 감지 시 사용자 호출' 안전장치가 회귀 삭제됐다. 대화형이라 사용자가 종료 신호(§5.3)로 멈출 수 있어 무한루프는 아니지만, 동일 질문 반복 시 자동 개입 가드가 없어졌다.",
+      "suggested_fix": "무제한 루프에도 진동/반복 감지(동일 미해결 모호성이 N 회 반복되면 사용자 호출) 가드를 §5.2 에 추가하거나, 가드 제거가 의도라면 사유를 명시.",
+      "tags": ["regression", "safety-guard", "FR-FLOW-024"]
+    },
+    {
+      "id": "QB-009",
+      "axis": "P2",
+      "severity": "LOW",
+      "title": "위원회 confidence-spread 교차검증(§4.1.2)이 claude 에만 있고 codex/etc auto-option 엔 부재",
+      "location": {"file": "skills/{claude vs codex,etc}/_shared/kiwi/auto-option.md", "line_range": "claude 204-209 (§4.1.2); codex/etc 해당 규칙 없음"},
+      "description": "claude auto-option 은 '위원 confidence 교차 검증(최고·최저 차이 >=0.3 -> 격상)' 규칙(§4.1.2)을 갖지만 codex/etc auto-option 에는 confidence-spread 기반 안전 격상 규칙 자체가 없다. 위원회 결정의 confidence 기반 재투표 안전장치가 변이 간 비대칭이다. (codex/etc auto-option 이 원래 더 간결한 미러라 pre-existing 비대칭일 가능성이 높으나, 위원회 도입으로 안전 규칙 parity 가 완결되지 않은 점은 유효.)",
+      "suggested_fix": "confidence-spread 격상 규칙을 codex/etc auto-option 에도 이식하거나, 변이별로 의도적으로 다르다면 그 사유를 각 파일에 주석화.",
+      "tags": ["cross-variant", "consistency", "pre-existing-suspect", "FR-FLOW-025"]
+    },
+    {
+      "id": "QB-010",
+      "axis": "P7",
+      "severity": "LOW",
+      "title": "kiwi-wave-master §8.3 에 결정 이력·open-question 메타데이터가 스킬 본문에 삽입됨",
+      "location": {"file": "skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md", "line_range": "claude 154 (§8.3 'OQ-030 구조 가드 (5인 연구 위원회 결정, high-confidence)')"},
+      "description": "§8.3 헤더에 '(5인 연구 위원회 결정, high-confidence)' 라는 결정 provenance 와 'OQ-030' open-question ID 가 스킬 본문에 들어가 있다. 이는 런타임 동작에 기여하지 않는 프로세스 산출물이며, 스킬은 호출마다 전체 로드되므로(CLAUDE.md §7 의 변경이력 배제 취지와 유사 맥락) 규칙 SSOT 에 이력성 메타를 남기는 것은 소음이다. 동작상 결함은 아님.",
+      "suggested_fix": "'(5인 연구 위원회 결정, high-confidence)' 같은 결정 이력 표기는 제거하고, 규칙(구조 가드 (a)/(b))만 declarative 하게 남긴다. OQ-030 추적이 필요하면 계획/분석 문서에 보관.",
+      "tags": ["skill-hygiene", "structure", "FR-FLOW-030"]
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "by_severity": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 4, "LOW": 6},
+    "by_axis": {"P1": 2, "P2": 2, "P3": 1, "P4": 2, "P5": 1, "P6": 0, "P7": 2}
+  },
+  "verdict": "FINDINGS",
+  "overall": "전반적으로 높은 품질의 산출물이다. --mini 완전 제거(3개 mini-option.md 사본 삭제 포함)와 --auto 단일 worker -> 3/5/7 결정 위원회 리팩터가 claude/codex/etc 3변이에 일관되게 적용됐고, kiwi-srs A/B 루프(§9.6)·planner 커버리지 루프(§6.8)·워크플로 도구 정책·kiwi-wave-master 신규 스킬 모두 변이 parity 를 유지한다(codex/etc 는 extended-workflow.md 로 분리되는 관례를 정확히 따름). 신규 content-assertion 테스트 7종은 부재 토큰 앵커·discriminating co-occurrence window 로 false-green 을 견고하게 차단하며 142개 전부 green 이다. CRITICAL/HIGH 는 없다. 남은 이슈는 (1) 위원회 confidence-spread 격상이 종단 규모에서 §3 과 모순되는 로직 gap, (2) `-qna` vs `--qna` 대시-반전 footgun, (3) etc 위원회 실패 처리 표의 단일-worker 잔재, (4) `--model` 저성능 판정의 비결정성 등 MEDIUM 4건과, wave-master 경로 표기 혼용·Phase 순서 어긋남·`--wt` 미명세 등 LOW 6건이다. 어느 것도 병합 차단 수준은 아니며 후속 정정 대상이다."
+}

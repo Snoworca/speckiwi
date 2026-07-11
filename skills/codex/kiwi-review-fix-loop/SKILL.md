@@ -1,6 +1,6 @@
 ---
 name: kiwi-review-fix-loop
-description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, CRITICAL/HIGH-zero exit, optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --mini, --max, --dry-run, --no-respond, --close-reqs, and --resume."
+description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, CRITICAL/HIGH-zero exit, optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -50,7 +50,7 @@ performed by separate delegated workers or clearly separated passes.
 | file scope | `--files=a,b` | working tree |
 | commit/range scope | `--commits=HEAD~3`, `--since=YYYY-MM-DD`, `--base=main --head=HEAD` | working tree |
 | precision | `--max` | off |
-| lower cost | `--mini` | off |
+| verification model | `--model <name>` | current session model |
 | auto gates | `--auto` | off |
 | dry run | `--dry-run` | off |
 | skip PR response | `--no-respond` | off |

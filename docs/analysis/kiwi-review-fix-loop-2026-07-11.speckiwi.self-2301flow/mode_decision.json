@@ -1,0 +1,14 @@
+{
+  "mode": "self",
+  "pr_url": null,
+  "pr_number": null,
+  "self_scope": {
+    "source": "working-tree",
+    "files": null,
+    "commit_range": null,
+    "diff_loc": 1340,
+    "deliverable_files": 42,
+    "mirror_exempt": 49,
+    "note": "review scope = source skills+tests+package-doctor; .agents mirror byte-identical (install-skill.test.ts verified) exempt; docs/.kiwi process artifacts exempt"
+  }
+}

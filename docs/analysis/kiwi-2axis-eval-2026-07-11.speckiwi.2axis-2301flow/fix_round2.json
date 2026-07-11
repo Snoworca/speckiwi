@@ -1,0 +1,28 @@
+{
+  "round": 2,
+  "fixes": [
+    {
+      "finding_id": "QB-201",
+      "severity": "low",
+      "files_changed": ["skills/claude/_shared/kiwi/auto-option.md"],
+      "action": "fixed",
+      "detail": "§2 모드표 L32 `--auto --max` 행을 §3 SSOT 사다리와 정합. 기존 '만장일치가 아니면 다수결, 그래도 미결이면 7인으로 격상'(5인 다수결이 종단이고 tie 때만 격상하는 것처럼 오독) -> '5인이 만장일치가 아니면 다수결로 멈추지 않고 7인으로 격상해 다수결로 결정 (§3)' 로 수정. §3 불변식(--max 는 5-plurality 를 종단으로 삼지 않음) 반영.",
+      "codex_etc_checked": "codex/etc auto-option 에는 §2 Decision Committee 모드 요약표(합치 규칙 열)가 없어 해당 없음 — claude 전용 결함 확인(grep 으로 검증)."
+    },
+    {
+      "finding_id": "QB-202",
+      "severity": "trivial",
+      "files_changed": ["skills/etc/_shared/kiwi/auto-option.md"],
+      "action": "fixed",
+      "detail": "Logging 예시 JSON 필드명 통일. etc L243 `applied_decision` -> `merged_decision` (claude L348 / codex L236 정본에 맞춤 — 다수결 병합 의미 정확). grep 결과 3계열 전부 `merged_decision` 단일화 완료."
+    }
+  ],
+  "regression": {
+    "test_skills": "142/142 pass",
+    "install_skill": "17/17 pass",
+    "command": "npx vitest run test/skills/ ; npx vitest run test/core/skills/install-skill.test.ts",
+    "gate": "PASS"
+  },
+  "mirror_resynced": [],
+  "mirror_note": ".agents/skills/_shared/kiwi/auto-option.md 미러는 skills/codex/_shared/kiwi/auto-option.md 를 추적(diff byte-identical 확인). 이번 수정은 claude(QB-201)/etc(QB-202)만 변경하고 codex 는 미변경이므로 미러 재동기화 불필요."
+}

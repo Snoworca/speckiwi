@@ -1,0 +1,57 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": "r8-termination-confirm",
+  "date": "2026-07-11",
+  "scope": "git diff HEAD -- skills/ test/skills src/doctor/package-doctor.ts (.agents mirror excluded). Confirm QB-209/QB-210 resolution by fix_round7 (etc parallel->sequential rewrite + §10.4 --model), then final substantive remnant sweep (FR-FLOW-022~032 impl defects / self-contradiction / cross-variant non-adaptation / false-green). Loop terminates iff substantive residual = 0.",
+  "resolved_findings": [
+    {
+      "id": "QB-209",
+      "title": "etc local-LLM (single-worker) variants received verbatim claude/codex parallel-fanout / multi-subagent wording in FR-FLOW-023/024/028 additions, contradicting etc's own single-worker SSOT",
+      "severity": "MEDIUM",
+      "severity_class": "substantive",
+      "evidence": "RESOLVED by fix_round7 across all 3 sites, verified against etc single-worker SSOT (SKILL.md L8 header 'disables multi-worker fanout, uses one delegated worker/evaluator at a time' + kiwi-srs §0.20 L45 + kiwi-srs-research §0.5). (a) etc/kiwi-srs §5.4 L352 now reads '리서치 서브에이전트 3개를 순차로(sequential, 한 번에 하나씩) 투입' — parallel wording gone; count 3 preserved is SRS-mandated (FR-FLOW-024 AC-4 = architecture/algorithm/impl-plan, 3 domains) and NOT a contradiction, since '한 번에 하나씩' (one at a time) directly satisfies the §0.20 concurrency rule (policy governs concurrency, not cumulative count over time). (b) etc/kiwi-srs extended-workflow §9.6: heading L146 '검증 서브에이전트 실행(순차, 한 번에 하나씩)'; L148 '서브에이전트를 3회 순차(3 sequential passes, one at a time)로 돌려 교차 검증' (+'--max(etc 기본)'); L150 '(문서 수 × 3)회의 검증을 순차로(sequential, one at a time) 실행' + tail '단일 문서 3회 순차 검증 기준' — all '병렬/팬아웃' removed, counts preserved. (c) etc/kiwi-srs-research L168 '5-서브에이전트 토폴로지' → 'single-worker 순차 연구 토폴로지(§4 Triage → §5 Sequential Research)'; cross-ref verified NON-dangling: §4 = 'Phase R0 — Triage (local evaluator × 1)' (L283), §5 = 'Phase R1 — Sequential Research (local-LLM max-profile × 1, 격리, 순차 단일)' (L335). etc forbidden-token sweep (rg '병렬|parallel|팬아웃|fan-out|5-서브에이전트|서브에이전트 N개') across skills/etc = 0 actual parallel instructions; every remaining hit is a prohibition/negation (SKILL.md L8, §0.x SSOT rows 'multi-worker fanout 은 금지', kiwi-review-fix-loop L20 '...but never as multi-worker fanout', kiwi-pm desc 'does not use multi-worker fanout', kiwi-srs-research desc 'collapses ... fanout to one delegated worker', auto-option.md/local-llm-profile.md 'fanout is disabled / not in parallel / sequentially') or the MIGRATION_PLAN.md L91 grep pattern itself + policy prose. Cross-variant asymmetry now intentional & correct: codex/kiwi-srs L5.4 KEEPS '리서치 서브에이전트 3개를 병렬 투입' and codex/kiwi-srs-research L168 KEEPS '5-서브에이전트 토폴로지' (git-diff-confirmed) because codex/claude carry NO single-worker constraint — etc alone is adapted.",
+      "status": "resolved"
+    },
+    {
+      "id": "QB-210",
+      "title": "etc/kiwi-srs extended-workflow §10.4 adopted claude/codex '현재 세션 모델 + --model <name>' terminology/option instead of etc local-LLM vocabulary; referenced an etc-undefined --model option",
+      "severity": "LOW",
+      "severity_class": "cosmetic_nit",
+      "evidence": "RESOLVED by fix_round7. §10.4 prose L246 now '평가·검증은 단일 검증 서브에이전트가 수행한다. etc 는 단일 로컬 모델(single local model)로 실행하므로, 별도 모델 선택 없이 현재 로컬 모델을 그대로 사용한다(--model 미노출).'; table rows L250/L251 model column '단일 로컬 모델 (etc, --model 미노출)'. '현재 세션 모델' claude/codex phrasing removed; '--model' in etc/kiwi-srs now appears ONLY as '미노출' (not-exposed) statements (grep confirmed 3 hits, all §10.4, all declaring absence) — the dangling usable-option reference is gone. §10.4 topology count (단일 + 독립 2차 순차 검증 패스) remains sequential, consistent with the etc single-worker profile.",
+      "status": "resolved"
+    }
+  ],
+  "new_findings": [],
+  "accepted_as_deferred": ["QB-205"],
+  "observations_non_finding": [
+    {
+      "ref": "etc/kiwi-srs §5.4 retains '서브에이전트 3개' count under sequential framing",
+      "note": "Considered and REJECTED as a finding. FR-FLOW-024 AC-4 mandates 3 requirement-gathering research subagents (architecture/algorithm/impl-plan). The etc §0.20 single-worker rule constrains CONCURRENCY ('한 번에 하나만' / one at a time), not the cumulative number of delegated workers used over the phase. '3개를 순차로(...한 번에 하나씩) 투입' explicitly runs them one-at-a-time, so the count and the policy are mutually consistent. Raising this would be forcing/hallucinated."
+    },
+    {
+      "ref": "etc/kiwi-pipeline FR-FLOW-025 '결정 위원회(decision committee)' + §6.6 --cycle gate additions",
+      "note": "No parallel-fanout leak. The committee reference resolves to _shared/kiwi/auto-option.md, which for etc explicitly runs 'the committee members sequentially (one delegated worker at a time), not in parallel' (auto-option.md L46-47/L98; local-llm-profile.md L36/L56 scoped exception). The committee is a documented scoped exception to the Single-Worker Policy that preserves full committee size + voting while running members sequentially. Consistent, not a defect."
+    },
+    {
+      "ref": "cross-variant asymmetry claude/codex(parallel) vs etc(sequential) for FR-FLOW-023/024/028",
+      "note": "Now the intended, correct design. claude/codex have no single-worker constraint so retain parallel fanout / 5-subagent topology; etc is the local-LLM single-worker profile and is uniquely adapted to sequential. Verified symmetric between claude and codex (both keep parallel) and divergent only for etc."
+    },
+    {
+      "ref": "QB-205",
+      "note": "accepted_as_deferred per r5-r7 convention; not re-reported."
+    }
+  ],
+  "summary": {
+    "resolved": 2,
+    "new": 0,
+    "substantive": 0,
+    "cosmetic": 0,
+    "out_of_scope": 0
+  },
+  "regression": "test/skills 148/148 pass (8 files; npx vitest run test/skills/, 05:32 run). No test change this round; green preserved.",
+  "gate": "PASS",
+  "substantive_clean": true,
+  "clean": true,
+  "overall": "Termination confirmed. fix_round7 fully and correctly resolved the two open r7 findings. QB-209 (MEDIUM substantive): all three etc single-worker sites — kiwi-srs §5.4 L352, extended-workflow §9.6 L146/148/150, kiwi-srs-research L168 — are rewritten to sequential/one-at-a-time wording that honors the etc §0.20/§0.5 single-worker SSOT; SRS-mandated counts (3 subagents, doc×3) are preserved without concurrency contradiction; the L168 cross-reference to §4 Triage / §5 Sequential Research is non-dangling; and the etc MIGRATION_PLAN forbidden-token sweep returns 0 actual parallel instructions (all residual matches are prohibitions/negations or the grep pattern itself). The claude/codex FR-FLOW additions correctly retain parallel-fanout / 5-subagent wording (no single-worker constraint), making the cross-variant asymmetry intentional and internally consistent. QB-210 (LOW cosmetic): §10.4 is re-worded to etc single-local-model vocabulary and the previously-dangling '--model <name>' usable-option reference is reduced to explicit '미노출' (not-exposed) declarations. Final substantive remnant sweep across FR-FLOW-022~032 surfaced no new implementation defect, self-contradiction, cross-variant non-adaptation, or false-green. Regression 148/148 green. substantive residual = 0 → substantive_clean:true, gate PASS. This converge loop can terminate."
+}

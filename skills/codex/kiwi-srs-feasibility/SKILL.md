@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-feasibility
-description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능성(feasibility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target → list_requirements → per-REQ implementability/score → 종합 판정 → dryRun 선행 → 사용자 승인 → update_stability 적용. 3 standard 사전조사 병렬 + high-reasoning 시니어 분석가 + high-reasoning×1+standard×1 평가자(Max는 high-reasoning×2+standard×1) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — feasibility 검증, 활성 target feasibility, kiwi srs feasibility, target 전수 평가, stability 승급, 구현 가능성 일괄 평가, release readiness, freeze 게이트, 스프린트 진입 평가, kiwi feasibility, kiwi-srs-feasibility, batch feasibility, target-wide feasibility, srs feasibility gate, implementability assessment. --max 로 평가자 승격(high-reasoning×2+standard×1, 2연속 MEDIUM-zero 종료). --dry-run 으로 mutation 없이 제안만 출력. --scope/--priority 로 부분집합 평가. --mini 로 비용 절감(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트 불변, 자식 research 호출에 자동 전파)."
+description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능성(feasibility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target → list_requirements → per-REQ implementability/score → 종합 판정 → dryRun 선행 → 사용자 승인 → update_stability 적용. 3 standard 사전조사 병렬 + high-reasoning 시니어 분석가 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — feasibility 검증, 활성 target feasibility, kiwi srs feasibility, target 전수 평가, stability 승급, 구현 가능성 일괄 평가, release readiness, freeze 게이트, 스프린트 진입 평가, kiwi feasibility, kiwi-srs-feasibility, batch feasibility, target-wide feasibility, srs feasibility gate, implementability assessment. --max 로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 2연속 MEDIUM-zero 종료). --dry-run 으로 mutation 없이 제안만 출력. --scope/--priority 로 부분집합 평가. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변, 자식 research 호출에 자동 전파)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-feasibility v0.8
@@ -35,7 +35,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + Codex clarification gate. 상세는 §0.G2 |
 | §0.13 | **per-REQ 독립 mutation**. target 전체 일괄 트랜잭션 금지 — REQ 단위 독립 호출 + 결과 집계. 부분 실패 허용 |
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
-| §0.15 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 분석가", "high-reasoning×1 평가자", "high-reasoning×2 평가자" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--mini` 자동 전파 — §5.5.2 서브에이전트 호출 site 에서 채널 1(message token) + 채널 2(prompt 본문) 이중 명시 (mini-option.md §7, kiwi-srs-research §0.G6) |
+| §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--model` 자동 전파 — §5.5.2 서브에이전트 호출 site 에서 채널 1(message token) + 채널 2(prompt 본문) 이중 명시 (kiwi-srs-research §0.G6) |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 자식 `$kiwi-srs-research --mode=subagent` 호출 시 `--auto` 는 silent skip 대상이지만, 부모의 critical gates 는 유지된다. |
 
 ### §0.G — 핵심 게이트 결정표
@@ -127,7 +127,7 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | "stable REQ 도 재평가" | `--include-stable` | off (stable/frozen 은 skip) |
 | "--dry-run", "제안만" | `--dry-run` | off (실제 mutation) |
 | "--max", "정밀 검증" | `--max` | off |
-| "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 | "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
 | "코드 경로 X" | `CODE_PATH` | cwd |
 | "정책 파일 X" | `POLICY_PATH` | `.kiwi/feasibility-policy.yaml` 자동 탐색 |
@@ -187,7 +187,7 @@ Phase 2   : Per-REQ feasibility judgement (high-reasoning 시니어, senior_targ
 Phase 2.5 : Research enrichment (조건부, --enable-research 시; kiwi-srs-research subagent 모드 호출)
 Phase 3   : Target-wide synthesis (high-reasoning 시니어, REQ 간 의존성·우선순위 종합)
 Phase 4   : Mapping resolution (정책 → per-REQ stability 제안)
-Phase 5   : Evaluation (high-reasoning×1+standard×1; Max: high-reasoning×2+standard×1)
+Phase 5   : Verification (단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스)
 Phase 6   : Severity gate + loop → §9.3 라우팅 (Phase 2.0/2/2.5/3/4) 또는 Phase 7
 Phase 7   : User approval + dryRun verification
 Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (doculight + chat)

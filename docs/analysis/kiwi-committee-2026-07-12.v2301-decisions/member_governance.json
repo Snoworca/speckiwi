@@ -1,0 +1,56 @@
+{
+  "lens": "governance-invariants",
+  "member": "#2",
+  "evidence_base": [
+    "docs/spec/60.workflow-release.srs.md FR-FLOW-022~032 (all Status=implemented, Stability=evolving, Target=v2.3.0.1)",
+    "mcp get_active_target v2.3.0.1: implemented=95 verified=1 discarded=5; FR-FLOW-022~032 in implementedNotVerified (VE-1 type=plan only, VM=test)",
+    "docs/analysis/kiwi-review-fix-loop-2026-07-11...report.md §6 (install-skill _shared mirror gap) and §7 (no --close-reqs => verified not transitioned)",
+    "skills/{claude}/_shared/kiwi/auto-option.md §7.1 L303 vs skills/{codex,etc}/_shared/kiwi/auto-option.md L213/L222 (deliberate cross-variant --auto propagation divergence)",
+    "skills/claude/kiwi-srs/SKILL.md §1.2 L139 (-qna vs --qna anchor parsing; flag names fixed by SRS FR-FLOW-024)",
+    "skills/claude/kiwi-srs-sync/SKILL.md §0.G1/§11.1 (--auto-apply skips dry-run gate; --auto keeps dry-run artifact + subagent deliberation)",
+    "project CLAUDE.md: 'when tools lack a documented capability, record the gap as v2.3.0.1 SRS work before relying on manual workarounds'; SRS-first; verified requires per-req evidence (forward-only)"
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "recommend": "a (register v2.3.0.x SRS requirement now via kiwi-srs/add_requirement, then fix installer with a failing-test-first TDD gate) — as a SEPARATE requirement/commit, not folded into the FR-FLOW-022~032 batch. (b) is the acceptable minimum if the maintainer wants this session surgical; (c) is prohibited.",
+      "rationale": "Project CLAUDE.md mandates recording a tool gap as v2.3.0.1 SRS work BEFORE relying on a manual workaround. install-skill verifying that _shared references exist but not mirroring _shared/kiwi/* means the .agents mirror silently goes stale after any SSOT edit, held byte-equal only by manual cp with no test gate — the exact source-vs-mirror drift the project exists to prevent. Option (c) keep-manual-workaround directly violates the CLAUDE.md gap-recording rule and REJECTED. Between (a)/(b) both are SRS-first-compliant; (a) closes the drift durably with a test gate. Registration must go through kiwi-srs/add_requirement (not hand-edit); implementation must be TDD (red first, since 'no test gate' today).",
+      "confidence": "high (that c is prohibited and SRS must be recorded); medium (fix-now vs defer)",
+      "execution_note": "Do NOT bundle the installer code change into the FR-FLOW-022~032 commit — it is genuinely new installer scope (adjacent to FR-NODE-016/IR-CLI-027/FR-FLOW-012), so it gets its own REQ id and commit. Add a test asserting install copies _shared/kiwi/* into the mirror and that mirror==source byte-equal.",
+      "fidelity_impact": "high positive — converts a silent, untested mirror-staleness path into a tested, SRS-tracked invariant; directly removes a drift vector."
+    },
+    {
+      "id": "D2",
+      "recommend": "a (rename the force flag via edit-ac on FR-FLOW-024 AC-2, SRS-first, then sync the skill) — with the caveat that (b) keep+document is defensible given the existing robust mitigation. Either way: NEVER a skill-only rename.",
+      "rationale": "A flag where a single-dash/double-dash difference flips meaning to the opposite AND where -qna is a substring of --qna is a latent footgun and a standing drift/error source. The skill already mitigates with anchor regex and correctly refuses to rename unilaterally because 'the name is fixed by SRS FR-FLOW-024' — that is exactly the SRS-first discipline we want. Because Stability=evolving makes an AC edit cheap and legitimate, and v2.3.0.1's goal explicitly includes tool ergonomics/safety, removing the hazard at its SRS source (edit FR-FLOW-024 AC-2 -> give the force-qna flag an unambiguous name) is cleaner than perpetually mitigating it. This is low-priority polish, not a blocker; (b) is acceptable because the SRS pins the name and the anchor parsing is sound.",
+      "confidence": "medium",
+      "execution_note": "Mandatory ordering: edit FR-FLOW-024 AC-2 in SRS first (Change Notes entry), then update the 3 skill variants to match. Do not touch the skill before the AC. Consider retiring the deprecated --qna alias (already slated for v0.12 removal) at the same time to eliminate the collision entirely.",
+      "fidelity_impact": "medium positive — removes an interface hazard at the SRS source; keeps SRS as the single authority for the flag name."
+    },
+    {
+      "id": "D3",
+      "recommend": "b (keep --wt removed)",
+      "rationale": "FR-FLOW-029 AC-1~5 contain no --wt/worktree clause, so the current skill (no --wt) is already SRS-consistent — the disciplined baseline. Worktree isolation is ALREADY provided per wave by kiwi-pipeline (FR-FLOW-027) with a merge-or-PR completion gate, so there is no unmet functional need. Re-introducing --wt (option a) would (1) require an SRS-first AC addition to FR-FLOW-029, (2) expand scope beyond the requirement's defined ACs, and (3) overlap/collide semantically with FR-FLOW-027's per-pipeline worktree (which worktree wins?). Removing an unspecified surface that has no SRS backing is the SRS-first-correct move; keep it removed.",
+      "confidence": "high",
+      "execution_note": "If a genuine wave-level (all-waves-in-one-worktree) isolation need later emerges, it must be a NEW deliberate requirement with explicit interaction rules against FR-FLOW-027 — never a silent flag re-add.",
+      "fidelity_impact": "high positive — skill stays aligned to SRS; avoids scope creep and a worktree-semantics ambiguity."
+    },
+    {
+      "id": "D4",
+      "recommend": "a + d: align claude DOWN to the safer codex/etc behavior (propagate only --auto to kiwi-srs-sync; do not auto-compose --auto-apply/--yes-all), AND pin the standardized --auto->srs-sync propagation safety contract in SRS so all three SSOTs derive from one requirement. REJECT (b). (c) documentation-only is insufficient.",
+      "rationale": "The asymmetry is a deliberate cross-variant SAFETY divergence baked into the SSOTs: claude SSOT §7.1 (L303) auto-composes --auto-apply --yes-all, which per kiwi-srs-sync §0.G1 SKIPS the dry-run review gate and force-applies SRS mutations; codex/etc SSOTs (L213/L222) propagate only --auto, preserving the dry-run artifact and subagent deliberation (apply-selected still possible; critical_gates still HALT). The codex/etc behavior is the governance-aligned one — auto-applying SRS mutations without dry-run review during a hot-fix (post-hoc, exactly when SRS sync should be reviewable) is a mutation-governance weakening adjacent to CLAUDE.md's 'do not bypass per-requirement review' principle. Option (b) would loosen the safe variants for the sake of symmetry — REJECTED. Crucially, this propagation contract is governed ONLY by the skill-internal SSOT and by NO SRS requirement (none of FR-FLOW-022~032 covers it) — an SRS gap per CLAUDE.md, hence (d) to pin it durably.",
+      "confidence": "high (on safety direction a over b); medium (formal SRS req vs SSOT-only reconciliation for d)",
+      "execution_note": "Concretely: edit claude _shared/kiwi/auto-option.md §7.1 L303 to match codex/etc (propagate --auto only), update claude kiwi-hot-fix §0.14/§7.1/L98/L376 accordingly, and register a small v2.3.0.x FR (or extend FR-FLOW-025 scope) fixing the cross-variant --auto->srs-sync propagation as 'never force-apply SRS mutations without user-authorized --auto-apply'. Note claude SSOT says it preserves an 'existing' legacy semantic — confirm with user before demoting, but governance default is the safe path.",
+      "fidelity_impact": "high positive — removes a cross-runtime safety-posture divergence (same logical skill, different mutation-safety by host) and pins the contract to SRS; kills a drift + governance-risk vector at once."
+    },
+    {
+      "id": "D5",
+      "recommend": "Order: commit -> report -> DEFER verified transition -> DEFER push -> 종료. Commit YES; verified NO (now); push NO (now).",
+      "rationale": "Commit: the 11 REQ are implemented, review-fix-loop converged clean (CRITICAL=0/HIGH=0, regression 142/142), branch is feat/2.3.0.1 (non-protected) — committing preserves coherent work and is safe. Verified transition NO: FR-FLOW-022~032 carry only VE-1 type=plan evidence with VM=test and sit in implementedNotVerified; CLAUDE.md forbids marking verified without per-requirement evidence, and the completed-work log itself defers verified to 'kiwi-review-fix-loop --close-reqs + 2-axis eval', which was NOT run (loop ran without --close-reqs). Transitioning now would be an evidence-less verified flip — a forward-only, hard-to-reverse governance violation. Push NO: the prior explicit user instruction 'push 금지' stands; no agent/task message is user consent to override it.",
+      "confidence": "high",
+      "execution_note": "Commit message: no AI signatures/trailers (global CLAUDE.md §6), no 'Phase/Step/TASK' in the title. To reach verified later: run kiwi-review-fix-loop --close-reqs (or a dedicated 2-axis ALL_MATCH eval) that attaches per-REQ test-grade verification evidence and transitions each of FR-FLOW-022~032 individually. Push only after the user explicitly lifts the push hold.",
+      "fidelity_impact": "high positive — preserves the verified-evidence integrity gate and honors standing user control over release surface (commit/push separation)."
+    }
+  ],
+  "overall": "Governance-invariant reading is consistent across all five: honor SRS-first + change-control ordering and do not trade safety for symmetry or speed. REGISTER the D1 installer gap as SRS work (c is prohibited). For D2, remove the -qna/--qna footgun the SRS-first way (edit-ac first) but it is optional polish given robust mitigation. D3 keep --wt removed — the skill already matches the SRS and worktree need is met by FR-FLOW-027. D4 is the only genuine SAFETY finding: align claude to the safer codex/etc no-force-apply behavior AND pin the cross-variant --auto->srs-sync propagation contract in SRS. D5: commit now, but verified and push both DEFER — verified lacks per-REQ test evidence + 2-axis eval, and push is blocked by a standing user hold. Net theme: every recommendation reduces SRS<->code/mirror drift and preserves per-requirement evidence and user release control, which is the project's core purpose."
+}

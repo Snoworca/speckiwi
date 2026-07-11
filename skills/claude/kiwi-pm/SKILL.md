@@ -1,6 +1,6 @@
 ---
 name: kiwi-pm
-description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD) 을 입력 SSOT 로 받아 각 Task 를 격리된 Agent 서브에이전트(kiwi-coder) 로 순차 spawn 하는 coder-loop runner v0.1. 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 메인 세션과 대화하며, 부팅 시 speckiwi Stability lifecycle gate(evolving/stable 만 진행), 종료 시 REQ status implemented 일괄 승급 + add_completed_work(plan-summary) 마무리, doculight MCP 가용 시 보고서 표시. --auto 시 severity 가드레일(clarification 자동 / business-decision 서브에이전트 자동 결정 — confidence ≥ 0.7 미만 시 critical 격상 / rollback-confirmation 자동승인, SSOT `_shared/kiwi/auto-option.md` §4). --mini 로 kiwi-coder 비용 절감 전파. --resume / --from-task 재개 가능. 트리거 — plan 돌려, kiwi pm, kiwi 코더 루프, task 루프 실행, 자동 코딩 실행, plan-driven loop, kiwi planner 산출물 실행, coder loop runner, plan 순차 실행, plan 자동 실행. 범위 외 — PRD/SRS/feasibility/planner/reviewer 호출 안 함, /snoworca-* 호출 절대 금지."
+description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD) 을 입력 SSOT 로 받아 각 Task 를 격리된 Agent 서브에이전트(kiwi-coder) 로 순차 spawn 하는 coder-loop runner v0.1. 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 메인 세션과 대화하며, 부팅 시 speckiwi Stability lifecycle gate(evolving/stable 만 진행), 종료 시 REQ status implemented 일괄 승급 + add_completed_work(plan-summary) 마무리, doculight MCP 가용 시 보고서 표시. --auto 시 severity 가드레일(clarification 자동 / business-decision 서브에이전트 자동 결정 — confidence ≥ 0.7 미만 시 critical 격상 / rollback-confirmation 자동승인, SSOT `_shared/kiwi/auto-option.md` §4). `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 지정 전파. --resume / --from-task 재개 가능. 트리거 — plan 돌려, kiwi pm, kiwi 코더 루프, task 루프 실행, 자동 코딩 실행, plan-driven loop, kiwi planner 산출물 실행, coder loop runner, plan 순차 실행, plan 자동 실행. 범위 외 — PRD/SRS/feasibility/planner/reviewer 호출 안 함, /snoworca-* 호출 절대 금지."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-pm v0.1
@@ -31,7 +31,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.12 | **MCP 호출 분담 + 시그니처 SSOT** — speckiwi MCP 실제 schema 기준. PM 호출 2종: (a) `update_status(id, status)` — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) `add_completed_work(date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun])` — T-final plan-summary, plan_id/run_id/tasks 같은 임의 필드는 summary 텍스트에 인코딩. read 2종: `get_active_target` / `list_requirements`. 자식 kiwi-coder 4종 mutation: `add_trace_link(id, type, reference, relation)` / `add_verification_evidence(id, type, reference, [covers, notes])` / `update_status(id, status="in_progress")` / `add_completed_work(date, summary, ...)`. doculight MCP: `open_markdown` / `update_markdown` (§6.3) |
 | §0.13 | **회귀 테스트는 kiwi-coder §0.13 책임**. PM 은 별도 회귀 호출 안 함. 종합 통합 테스트가 필요하면 사용자에게 별도 안내 |
 | §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단 |
-| §0.15 | **spawn 모드 단일** — `Agent` 도구만. 자식 모델 = Opus (또는 `--mini` 시 kiwi-coder 내부에서 Sonnet override). snoworca-pm 의 `--headless` (claude CLI subprocess) 폐기. `Skill` 도구 직접 호출 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
+| §0.15 | **spawn 모드 단일** — `Agent` 도구만. 자식 모델 = 현재 세션 모델 (또는 `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 override). snoworca-pm 의 `--headless` (claude CLI subprocess) 폐기. `Skill` 도구 직접 호출 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 3종 severity enum (`clarification` / `business-decision` / `rollback-confirmation`) 은 §5.1 에서 유지되며, SSOT §4 severity 분기 정책의 정확한 mapping 대상이다 (SSOT §11 마이그레이션 표 참조: 기존 business-decision HALT 중 비가역/외부영향 큰 항목은 본 §0.G7 critical_gates 로 인라인). 본 스킬의 `critical_gates[]` 는 §0.G7 (아래) 참조 |
 
 ### §0.G — 핵심 게이트 결정표
@@ -119,7 +119,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "T-PH001-XX 부터" | `--from-task=T-PH001-XX` | 첫 pending Task |
 | "자동", "auto", "묻지 말고" | `--auto` (SSOT: auto-option.md v1.0) | false (interactive) |
 | "재개", "이어서", "resume" | `--resume` | false (신규 세션) |
-| "비용 절약", "mini", "sonnet 으로" | `--mini` | false (Opus) |
+| "검증 모델 지정", "다른 모델로 검증" | `--model <name>` | 현재 세션 모델 |
 | "이전 lock 무시", "강제" | `--force` | false |
 | "lifecycle 무시" (위험) | `--skip-lifecycle-gate` | false |
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
@@ -131,7 +131,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
          [SIDECAR_PATH=...]              # 부재 시 frontmatter.sidecar_path 로 추론
          [CODE_PATH=.]                   # 부재 시 cwd
          [--auto]                         # severity 가드레일 활성, business-decision = 서브에이전트 자동 결정 (§5.1)
-         [--mini]                         # kiwi-coder 자식에 --mini 전파 (Opus → Sonnet)
+         [--model <name>]                 # kiwi-coder 자식에 --model 전파 (검증 서브에이전트 모델 지정)
          [--resume]                       # .kiwi/sessions/{run_id}/pm-state.json 이어가기
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
          [--force]                        # stale lock 강제 해제 (주의 경고 후 진행)
@@ -373,7 +373,7 @@ FUNCTION MAIN(args):
 
 ### 3.2 Agent 자식 spawn 프롬프트
 
-`Agent` 도구 호출 시 다음 프롬프트를 자식에게 전달. `subagent_type = "general-purpose"`, `model = "opus"` (또는 `--mini` 시 kiwi-coder 내부에서 Sonnet override 처리).
+`Agent` 도구 호출 시 다음 프롬프트를 자식에게 전달. `subagent_type = "general-purpose"`, `model = "opus"` (또는 `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 override).
 
 ```
 당신은 kiwi-coder 스킬을 실행하는 격리된 서브에이전트입니다.
@@ -399,7 +399,7 @@ FUNCTION MAIN(args):
         args="PLAN_PATH={args.plan_path} SIDECAR_PATH={args.sidecar_path} \
               TASK_FILTER={task.task_id} RUN_ID={state.run_id}\
               {' --auto' if args.auto else ''}\
-              {' --mini' if args.mini else ''}")
+              {' --model ' + args.model if args.model else ''}")
 
 **`--auto` 자식 전파**: 본 스킬이 `--auto` 활성 상태에서 `kiwi-coder` 를 spawn 할 때 자식 args 에 `--auto` 명시 전파 (SSOT auto-option.md §7). 단, kiwi-coder 의 `--yes-all` / `--auto-integration` / `--auto-cost-warning` 3종 옵션은 별개이며 자동 활성하지 않음.
 
@@ -462,7 +462,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 
 - TDD red 실패 → kiwi-coder 시니어 코더 재시도
 - Sonnet×4 TDD 검증 finding → kiwi-coder Phase 1.3 개선 루프
-- Opus 까칠 코드 리뷰어 finding → kiwi-coder Phase 2.h 개선 루프
+- 까칠 코드 리뷰어 finding → kiwi-coder Phase 2.h 개선 루프
 - 회귀 테스트 fail → kiwi-coder §0.13 개선 루프
 - Mock 검출 (§0.6) → kiwi-coder CRITICAL 자체 차단
 
@@ -1005,7 +1005,7 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 > "본 plan 의 REQ status 가 `implemented` 로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 `verified` 로 닫으려면 `/kiwi-review-fix-loop --close-reqs` 를 호출하십시오."
 
 `AskUserQuestion` 3지선다:
-- `(1) 지금 자동 시작` — 메인 세션에서 `Skill(skill="kiwi-review-fix-loop", args="--close-reqs --auto")` 호출 (부모 PM 의 `--mini` 활성 시 args 에 전파)
+- `(1) 지금 자동 시작` — 메인 세션에서 `Skill(skill="kiwi-review-fix-loop", args="--close-reqs --auto")` 호출 (부모 PM 의 `--model` 활성 시 args 에 전파)
 - `(2) 나중에 수동` — 안내만 출력하고 본 스킬 종료 (사용자가 직접 호출 시점 결정)
 - `(3) skip` — verified 닫지 않음 (`implemented` 상태 유지)
 
@@ -1070,7 +1070,7 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 | 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
 | `--auto` severity 가드레일 | **유지** (시맨틱 변경) | enum 3종 유지. business-decision = 서브에이전트 자동 결정 (SSOT auto-option.md §4 / §11 마이그레이션) |
 | `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
-| `--max` / `--ultra` / `--no-self-heal` | **제거** | `--mini` 만 도입 (kiwi 시리즈 표준) |
+| `--max` / `--ultra` / `--no-self-heal` | **제거** | `--model` 만 도입 (kiwi 시리즈 표준) |
 | `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
 | `mode = "headless"/"interactive"` | **단일 모드** | interactive 만 |
 | lifecycle gate (Stability) | **신규** | Stability 라이프사이클 게이트 (§4) |
@@ -1108,7 +1108,7 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 /kiwi-pm PLAN_PATH=docs/plans/2026-05-19.kiwi-pm.v0-1.plan.md
 
 # 자동 모드 + 비용 절감
-/kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto --mini
+/kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto --model claude-sonnet-4-6
 
 # 이전 세션 재개
 /kiwi-pm PLAN_PATH=docs/plans/...plan.md --resume

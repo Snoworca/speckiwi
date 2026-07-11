@@ -1,0 +1,36 @@
+{
+  "round": 3,
+  "fixes": [
+    {
+      "finding_id": "QB-203",
+      "severity": "medium",
+      "files_changed": [
+        "skills/etc/_shared/kiwi/auto-option.md"
+      ],
+      "residuals_swept": [
+        "header",
+        "propagation-main-table",
+        "propagation-special-table"
+      ],
+      "details": {
+        "header": "L5-6 '--max is already the default' (신규 위원회 모델과 정면 모순) 삭제 → 'multi-worker fanout disabled = 순차 평가' 는 legit platform 적응으로 보존하되, committee size(`--auto`=3 / `--auto --max`=5)는 claude/codex 와 동일하며 --max 는 no-op 아님을 명시",
+        "propagation-main-table": "L212 부모 `--auto --max` → 자식 `--auto` (--max 강등, silent 3인 downgrade) 를 `--auto --max` 완전 전파로 교정. 누락된 `--auto --model <name>` / `--auto --max --model <name>` 2개 행 추가 → codex propagation 섹션과 byte-identical",
+        "propagation-special-table": "`kiwi-pm --auto`→`kiwi-coder` 와 `kiwi-coder` close handoff→`kiwi-review-fix-loop` 행이 상속 `--model`/`--max` 를 드롭하던 것을 codex 와 동일하게 상속 전파하도록 정합"
+      },
+      "action": "fixed"
+    }
+  ],
+  "prior_round_state_preserved": "Decision Committee / Committee Merge Ladder / confidence cross-check / logging(committee_votes+merge_method:{rule,committee_size}) 섹션은 round1-2(QB-003/QB-202) 산출로 이미 위원회 모델 정합 상태였고 이번 라운드에서 미변경. etc 고유 적응(순차 평가 = multi-worker fanout disabled) 유지.",
+  "grep_residual_after": "grep -niE 'already the default|already default|2 (sub-?agent|SA)|single (decision )?worker|is a no-op' → 0 matches (exit 1). 'single rubber-stamp worker'(부정 서술=위원회 모델) 및 'delegated worker at a time'(legit 순차 적응) 만 위원회 문맥으로 잔존 = 정당.",
+  "cross_variant_symmetry": {
+    "propagation_section": "diff skills/codex vs skills/etc Propagation..Logging = EMPTY (byte-identical)",
+    "committee_size": "etc `--auto`=3 / `--auto --max`=5 / escalation 5→7(--max) 로 claude/codex 와 동등",
+    "propagation_full": "부모 --max → 자식 --max 완전 전파 복원 (claude §7 / codex 와 동등)"
+  },
+  "regression": {
+    "test/skills": "142/142 passed",
+    "test/core/skills/install-skill.test.ts": "17/17 passed"
+  },
+  "mirror_resynced": [],
+  "mirror_note": "이번 라운드는 skills/etc/ 만 변경. auto-option.md(_shared) 미러(.agents/skills/_shared/kiwi/auto-option.md)는 codex 추적이므로 codex 미변경 → 재sync 불필요. 확인: diff skills/codex/_shared/kiwi/auto-option.md .agents/skills/_shared/kiwi/auto-option.md = IDENTICAL (기존 동기 상태 유지)."
+}

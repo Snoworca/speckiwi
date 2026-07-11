@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-from-code
-description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdown을 자동 생성. 4축 서브에이전트 검증(누락/오류/할루시네이션/scope-creep) 루프로 모든 scope의 결함이 사라질 때까지 반복. 트리거 — kiwi srs from code, speckiwi srs 역추출, 코드로 speckiwi srs 만들어줘, kiwi 코드 분석 SRS, 기존 코드로 kiwi srs 생성. 필수 CODE_PATH. 선택 TARGET(기본 v0.1) / --max-eval-iter(기본 3) / --skip-init / --mini(모든 Opus→Sonnet override, `_shared/kiwi/mini-option.md` v1.0 — 4축 토폴로지·게이트 불변).
+description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdown을 자동 생성. 4축 서브에이전트 검증(누락/오류/할루시네이션/scope-creep) 루프로 모든 scope의 결함이 사라질 때까지 반복. 트리거 — kiwi srs from code, speckiwi srs 역추출, 코드로 speckiwi srs 만들어줘, kiwi 코드 분석 SRS, 기존 코드로 kiwi srs 생성. 필수 CODE_PATH. 선택 TARGET(기본 v0.1) / --max-eval-iter(기본 3) / --skip-init / 검증 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 가능(4축 토폴로지·게이트 불변).
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-from-code v1.4
@@ -26,7 +26,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.7 | **scope 분할은 반드시 사용자 확인**. AskUserQuestion 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
-| §0.10 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 Phase 3 scope agent / Phase 4 검증자 4축 중 Opus 축은 Sonnet 으로 read-time replace. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
+| §0.10 | **검증 서브에이전트 모델 정책 SSOT**. Phase 3 scope agent / Phase 4 검증자 4축 등 검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
 | §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.4 (아래) 참조 |
 
 ---
@@ -48,7 +48,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | "루프 N회", "N번 검증" | `--max-eval-iter` | 3 |
 | "최소 N scope", "scope N개부터" | `--scope-min` | 3 |
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (모든 Opus → Sonnet, `_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 AskUserQuestion 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
@@ -381,14 +381,16 @@ existing_ids (재실행 시 중복 방지용): [...]
 
 ### 8.1 검증자 4종 (모두 격리 컨텍스트)
 
-| 축 | 모델 (1st iter) | 모델 (escalation) | 책임 |
-|---|---|---|---|
-| **Missing-Detector** | Sonnet | Opus | `inventory.json` 의 모든 항목이 최소 1개 요구사항에 매핑되는지 전수 점검 |
-| **Correctness-Auditor** | Sonnet | Opus | SRS 항목의 statement·AC가 실제 코드 동작과 일치하는지 검증 |
-| **Hallucination-Hunter** | Sonnet | Sonnet | **단정 서술 + 코드 증거 전무** 항목 발견 (거짓 사실 진술) |
-| **Scope-Creep-Reviewer** | Sonnet | Sonnet | **추측 서술 + 코드 무관** 항목 발견 (향후 요구·임의 작성) |
+4축 검증자는 모두 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 override 한다.
 
-**비용 가드레일**: 1st iter는 모두 Sonnet. 2nd+ iter에서 동일 axis가 동일 finding을 다시 보고하면 Opus 로 escalate. 검증자 출력은 파일(`eval_iter{N}.json`)로만 저장하고 메인 컨텍스트에는 summary count + top 3 CRITICAL/HIGH 만 로드.
+| 축 | 책임 |
+|---|---|
+| **Missing-Detector** | `inventory.json` 의 모든 항목이 최소 1개 요구사항에 매핑되는지 전수 점검 |
+| **Correctness-Auditor** | SRS 항목의 statement·AC가 실제 코드 동작과 일치하는지 검증 |
+| **Hallucination-Hunter** | **단정 서술 + 코드 증거 전무** 항목 발견 (거짓 사실 진술) |
+| **Scope-Creep-Reviewer** | **추측 서술 + 코드 무관** 항목 발견 (향후 요구·임의 작성) |
+
+**반복(iteration) 정책**: 1st iter는 4축을 모두 실행한다. 2nd+ iter에서 동일 axis가 동일 finding을 다시 보고하면 해당 축을 재검증(re-run)하여 확증한다 — 모델 격상이 아니라 **반복 확증**으로 처리한다(검증 모델은 현재 세션 모델 불변). 검증자 출력은 파일(`eval_iter{N}.json`)로만 저장하고 메인 컨텍스트에는 summary count + top 3 CRITICAL/HIGH 만 로드.
 
 ### 8.2 검증자 입력 (§0.2 격리)
 

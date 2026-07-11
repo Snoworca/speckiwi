@@ -1,0 +1,48 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": "r5-final",
+  "date": "2026-07-11",
+  "scope": "git diff HEAD -- skills/ test/skills src/doctor/package-doctor.ts (.agents mirror excluded)",
+  "resolved_findings": [
+    {
+      "id": "QB-204",
+      "title": "etc local-llm-profile.md 위원회 모델 정합",
+      "severity": "MEDIUM",
+      "evidence": "skills/etc/_shared/kiwi/local-llm-profile.md §Default Mode(L26) + §Single-Worker Policy(L30,L36 exception) + §--auto Policy(L54) 가 auto-option.md 위원회 모델(--auto=3 / --auto --max=5 / --max 는 위원회 격상, no-op 아님)과 정합. 구모델 문구('--max is already the default', 'one isolated worker/evaluator at a time', 'never creates a multi-worker decision topology') 전부 제거 — grep 0건. auto-option.md(L8 committee, L41-52 Decision Committee, L96-120 merge ladder)와 상호 일치. Single-Worker Policy 가 verification/evaluation loop 로 명시 스코프되고 --auto 위원회는 예외로 carve-out 됨.",
+      "status": "resolved"
+    },
+    {
+      "id": "FR-FLOW-022-AC2-topology",
+      "title": "FR-FLOW-022 AC-2 운영 토폴로지 테이블 dual-model 패널 제거 완성",
+      "severity": "HIGH",
+      "evidence": "kiwi-srs §10.4 / feasibility §8.4 토폴로지 테이블이 '단일 검증 서브에이전트 / 현재 세션 모델 (--model override)' 로 model-tier free. from-code §8.1 검증자 4종 = 역할표(축|책임), 모델 컬럼 없음. review-fix-loop §1.3 / hot-fix §1.3 모드 매트릭스 = count(×1/×2)만, 모델 tier 0. kiwi-srs §10.3 output-schema enum 의 '<tier>-A|<tier>-B|<tier>-C' 3-slot 패널 서명 제거. 3 변형(claude/codex/etc) 전수 확인. 확장 테스트가 non-vacuous: TOPOLOGY_TARGETS 헤딩(10.4 토폴로지 / 8.4 토폴로지 / 8.1 검증자 4종 / 1.3 모드 매트릭스) 실존 확인, tableAfterHeading 이 실제 테이블 블록을 반환(vacuous empty-string pass 아님), 내용이 실제로 모델-free.",
+      "status": "resolved"
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "QB-206",
+      "title": "claude kiwi-hot-fix §1.3 모드 매트릭스 노트가 §0.10 SSOT + phase-flow 와 정면 모순 (root-cause 사전조사 / 정형 검사 모델)",
+      "severity": "MEDIUM",
+      "location": "skills/claude/kiwi-hot-fix/SKILL.md L126 (§1.3 노트) vs L34 (§0.10 검증 서브에이전트 모델 정책 SSOT) + L3(description) + L167/L169/L170(§2) + L241(§4) + L290(§5) + L315(§5.3.1) + L140/L143(산출물)",
+      "detail": "§1.3 노트(L126): '모든 서브에이전트 역할(Root-cause 사전조사 / 시니어 fixer / 정형 검사 / 까칠 리뷰어)은 현재 세션 모델을 상속' — Root-cause 사전조사와 정형 검사까지 현재 세션 모델로 선언. 그러나 §0.10 SSOT(L34)는 'Sonnet×2 root-cause 사전조사 / Sonnet 정형 검사 / TDD 검증은 모든 모드 공통 (Sonnet 유지)' 로 두 역할을 Sonnet 고정. 나머지 6곳(description, §2 phase-flow L167/L170, §4 L241, §5.3.1 L315, 산출물 L140/L143)도 전부 Sonnet 로 기술. 즉 §1.3 노트만 유일 이상치로, root-cause 사전조사·정형 검사 2개 역할의 default 모델을 §0.10(labeled SSOT)과 상반되게 진술. FR-FLOW-022 의 핵심 붕괴(시니어 fixer + 까칠 리뷰어 → 현재 세션 모델)는 정확하나, §1.3 재작성 시 사전조사/정형검사를 과잉 포함시켜 자기 SSOT 를 위반. 정확한 수정: §1.3 노트를 '시니어 fixer / 까칠 리뷰어 는 현재 세션 모델 상속(--model override); Root-cause 사전조사 / 정형 검사 는 Sonnet 고정(§0.10)' 로 좁혀 §0.10 과 정합시킬 것.",
+      "cross_variant_note": "codex kiwi-hot-fix(L10 추상화 high-reasoning/standard + L57 'verification model → current session model')는 내부 일관, 이 모순 없음. review-fix-loop 는 §0.9 에서 분류기/정형검사도 현재 세션 모델로 일관 붕괴 + Sonnet 고정 역할 잔재 0 → 모순 없음. 따라서 QB-206 은 claude hot-fix 전용, 이번 §1.3 수정이 도입한 신규 tail.",
+      "test_gap": "확장 테스트는 §1.3 '테이블 셀' 의 모델-tier 토큰만 검사(green). §1.3 산문 노트 vs §0.10 산문 SSOT 의 상호모순은 검사 범위 밖 → 테스트가 잡지 못함.",
+      "status": "open"
+    }
+  ],
+  "accepted_as_deferred": ["QB-205"],
+  "qb_205_note": "hot-fix→srs-sync --auto-apply 전파의 cross-variant 분기는 out-of-scope 사전존재 설계결정으로 미변경 확정. 재-finding 화하지 않음.",
+  "summary": {
+    "resolved": 2,
+    "still_open": 0,
+    "new": 1,
+    "by_severity_open": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0 }
+  },
+  "regression": "test/skills 148/148 (8 files passed)",
+  "gate": "FAIL",
+  "clean": false,
+  "overall": "QB-204(위원회 정합)과 FR-FLOW-022 AC-2 운영 토폴로지 테이블(kiwi-srs §10.3/§10.4, feasibility §8.4, from-code §8.1, review-fix-loop/hot-fix §1.3)은 완전 해소되었고 확장 테스트는 non-vacuous 로 실제 검증하며 148/148 green. 그러나 §1.3 재작성이 신규 tail 1건(QB-206, MEDIUM) 도입: claude kiwi-hot-fix §1.3 노트가 root-cause 사전조사·정형 검사를 '현재 세션 모델' 로 과잉 선언해 §0.10 SSOT(Sonnet 고정) + phase-flow 6곳과 정면 모순. codex/etc·review-fix-loop 는 정합. clean 아님 — §1.3 노트를 §0.10 과 정합시키는 수정 필요."
+}

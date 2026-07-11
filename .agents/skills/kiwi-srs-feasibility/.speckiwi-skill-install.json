@@ -1,18 +1,25 @@
 {
   "name": "kiwi-srs-feasibility",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.341Z",
+  "installedAt": "2026-07-10T18:50:46.541Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-srs-feasibility",
   "installedPath": ".agents/skills/kiwi-srs-feasibility",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:67876148e90c40d383aa49a62025bd6048e2bf8c043e23100e63a7799c276a15",
-  "installedChecksum": "sha256:67876148e90c40d383aa49a62025bd6048e2bf8c043e23100e63a7799c276a15",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:4770dac8ec3e5fe9fd2a953110fb68eb3cae18fcc302945d22a2bc92555b3ff2",
+  "installedChecksum": "sha256:4770dac8ec3e5fe9fd2a953110fb68eb3cae18fcc302945d22a2bc92555b3ff2",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/feasibility-policy-schema-v1.md",
+    "_shared/kiwi/pipeline-event.md",
+    "_shared/kiwi/pipeline-v1.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-srs-feasibility --json",
   "noManualEdit": true
 }

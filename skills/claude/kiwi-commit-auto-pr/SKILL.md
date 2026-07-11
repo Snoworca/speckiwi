@@ -47,7 +47,7 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 한 뒤 **Pu
 | `--req=FR-X` | REQ 자동 감지 건너뛰고 명시된 REQ 만 사용 (부모와 동일) |
 | `--task=T-PH001-01` | task 자동 감지 건너뛰고 명시된 task 만 사용 (부모와 동일) |
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer (부모와 동일) |
-| `--mini` | kiwi 시리즈 일관성 위해 추가. 현재 평가자가 Haiku 기본이라 no-op. **향후 의미** — Sonnet 평가자 도입 시 Haiku 로 다운그레이드. `--mini` 가 본 스킬에서 활성화되면 본 SKILL.md 갱신 필요 |
+| `--model <name>` | kiwi 시리즈 일관성 위해 추가. 현재 평가자가 Haiku 기본이라 사실상 no-op. **향후 의미** — 별도 검증 서브에이전트 도입 시 지정 모델 적용. 활성화되면 본 SKILL.md 갱신 필요 |
 | `--auto` | `--auto` SSOT (`_shared/kiwi/auto-option.md` v1.0). **standalone 모드 한정** — child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 가 `--auto` 가드레일 책임을 지며 본 스킬은 NEEDS_USER bubble-up (§14.6) 만 담당. critical_gates 인라인 선언 + 6종 자율 결정 예외 매핑은 §14.9 참조 |
 
 **부모 옵션 흡수·대체** (부모 §11.7 매핑):
@@ -843,8 +843,8 @@ stability: frozen ⚠️ override (reason: "hotfix-CVE-2026-xxxx")
 **critical_gates 외 게이트** (severity `clarification` / `business-decision` 자동 결정 대상): commit 메시지 평가자 A+ 미달 후 강제 진행, branch 명 자동 명명 충돌 회피 hash fallback (§8.3), 기존 PR 본문 보존 vs `--update-pr-body`, `--no-pr-comment` skip 결정 등 — `--auto` 활성 시 §2 서브에이전트 결정 적용.
 
 **호환**:
-- `--auto --max` / `--auto --mini` 합성은 SSOT §2 / §8 그대로 적용
-- `--mini` 와 동시 명시 시 본 스킬은 Haiku no-op (기존 `--mini` 행 동일)
+- `--auto --max` / `--auto --model` 합성은 SSOT §2 / §8 그대로 적용
+- `--model` 와 동시 명시 시 본 스킬은 Haiku no-op (기존 `--model` 행 동일)
 - `--allow-direct` + `--auto` 동시 명시 시 critical_gates `protected-branch-direct-push` 가 우선 → HALT
 
 ---

@@ -1,0 +1,64 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": 3,
+  "scope_verified": [
+    "skills/claude/_shared/kiwi/auto-option.md",
+    "skills/codex/_shared/kiwi/auto-option.md",
+    "skills/etc/_shared/kiwi/auto-option.md",
+    "skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md (실존)",
+    "skills/{claude,codex,etc}/kiwi-step/SKILL.md (실존)",
+    "src/doctor/package-doctor.ts",
+    "test/skills (vitest 142/142)",
+    "grep 전수: merged_decision/committee_votes, --mini/mini-option/--squirrel, 변경이력/Changelog/provenance, SA1/SA2/SA3/중재자"
+  ],
+  "resolved_findings": [
+    {
+      "id": "QB-201",
+      "severity": "low",
+      "title": "claude auto-option §2 모드표 --max 행 ↔ §3 SSOT 사다리 정합",
+      "resolution": "§2 L32 `--auto --max` 행이 '5인 위원회 | --max 는 결정 위원회를 5인으로 격상. 5인이 만장일치가 아니면 다수결로 멈추지 않고 7인으로 격상해 다수결로 결정 (§3)' 로 재작성됨. §3 L150-154 사다리(5인 not-unanimous 시 --max 는 7인 격상, 5-plurality 를 종단으로 삼지 않음)와 정합. §2 L31 --auto 행도 '만장일치 아니면 §3 사다리로 5인 격상' 로 §3 step1→2 와 일치. §4.1.2 종단 규모(비-max 5인/--max 7인) 및 §8 L310 요약도 동일 불변식 유지. codex/etc 는 해당 모드 요약표 부재로 무관.",
+      "evidence": "claude auto-option.md L29-34 (§2 표) vs L143-159 (§3 사다리) vs L207-212 (§4.1.2) — --max 5-plurality 미종단 불변식 3개소 일관"
+    },
+    {
+      "id": "QB-202",
+      "severity": "trivial",
+      "title": "auto_decisions.json 로깅 필드명 3계열 통일(merged_decision)",
+      "resolution": "etc L243 `applied_decision` → `merged_decision` 수정 완료. 3계열 전부 `merged_decision` + `committee_votes` + `merge_method:{rule,committee_size}` 동일 스키마. 구 필드명(subagent_results / worker_results / applied_decision / merge_method:'single') grep 잔여 0.",
+      "evidence": "grep: claude L348 / codex L236 / etc L243 모두 merged_decision. committee_votes 3계열 존재. 구 키 0건."
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "QB-203",
+      "axis": "B",
+      "severity": "medium",
+      "gate_blocking": false,
+      "title": "etc auto-option: 구모델 '--max is already the default' 불변식이 신규 위원회 모델과 정면 모순 + propagation 비대칭",
+      "location": {
+        "file": "skills/etc/_shared/kiwi/auto-option.md",
+        "lines": "L5-6 (헤더), L212 (Propagation 표), L41-45/L100-104/L143 (Decision Committee/Ladder)"
+      },
+      "description": "etc 헤더 L5-6 은 'local-llm-profile.md: --max is already the default' 라고 못박는다. 그러나 같은 문서의 신규 Decision Committee 섹션 L45 는 'Under --auto --max the decision committee is raised to 5 members', Ladder L100-104 는 --auto=3인 / --auto --max=5인, confidence cross-check L143 은 종단 규모를 '--auto 3 members, --max 5 members' 로 명시 — 즉 --max 는 default 가 아니라 3→5 로 committee 를 격상시키는 유의미 플래그다. 'X is already the default' 와 '--max raises to 5' 는 동시에 참일 수 없는 정면 모순(내부 contradiction). 나아가 Propagation 표 L212 는 부모 `--auto --max` → 자식 `--auto` 로 --max 를 드롭하며 근거를 '(--max is already default)' 로 든다. 위원회 모델상 자식은 `--auto`=3인 위원회로 해석되어, 부모가 의도한 5인 rigor 가 조용히 3인으로 강등된다(silent downgrade). claude(§7 L293)·codex(L205)는 `--auto --max` → `--auto --max` 로 완전 전파하므로 etc 만 cross-variant 대칭이 붕괴. 근본원인: 구모델(etc=단일 delegated worker@max profile, --max=no-op)에서 참이던 'already default' 서술이, 위원회 rework 로 --max 가 committee-size(3/5/7)를 바꾸게 되면서 stale/false 가 되었는데 헤더·propagation 만 갱신 누락됨 — QB-003(etc 단일-worker 실패처리 잔재)과 동일 계열의 미완 마이그레이션. etc 헤더는 'multi-worker fanout disabled(순차 평가)' 만 제약할 뿐 5인 순차 committee 자체는 가능하다고 스스로 명시(L43-45)하므로, 물리적 제약을 근거로 한 정당화도 성립하지 않음.",
+      "impact": "doc/SSOT 레벨 결함(코드 파서 없음, 회귀 test 무관). 실사용 영향은 (1) etc 에이전트가 헤더 vs 위원회 섹션 중 어느 쪽을 따르는지 비결정, (2) --auto --max 부모 delegation 시 자식 committee rigor 무언 강등. critical 게이트 HALT 는 불변이라 안전성 우회는 아님 → 영향 bounded.",
+      "suggested_fix": "택1: (a) 헤더 L5-6 의 '--max is already the default' 를 신규 committee 모델에 맞게 정정('etc 는 위원을 순차 평가하되 --auto=3인/--auto --max=5인 규모는 claude/codex 와 동일' 등)하고, propagation L212 를 `--auto --max` → `--auto --max` 로 완전 전파해 대칭 복원. (b) etc 가 로컬-LLM 자원상 자식 committee 를 base(3인)로 캡하는 것이 '의도된 정책' 이라면, propagation 근거 문구를 '(--max is already default)'(false) 대신 '자원 보존 위해 자식 committee 를 base 로 캡' 로 정확히 재서술하고 헤더의 'already default' 표현 삭제. 어느 경우든 '--max is already the default' 문구는 위원회 모델과 양립 불가하므로 제거/정정 필수."
+    }
+  ],
+  "summary": {
+    "resolved": 2,
+    "still_open": 0,
+    "new": 1,
+    "by_severity_open": {
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 0,
+      "trivial": 0
+    }
+  },
+  "regression": "test/skills 142/142",
+  "gate": "PASS",
+  "clean": false,
+  "overall": "직전 2건 재검증: QB-201(claude §2 모드표 --max 행 ↔ §3 사다리) 해소 확인 — §2/§3/§4.1.2/§8 4개소 '--max 는 5-plurality 를 종단으로 삼지 않음' 불변식 일관. QB-202(로깅 필드명) 해소 확인 — 3계열 전부 merged_decision 통일, 구 필드명 grep 잔여 0. 최종 전체 품질 스윕에서 신규 1건 발견: QB-203(MEDIUM) — etc auto-option 헤더 L5-6 '--max is already the default' 가 신규 위원회 모델(--auto=3/--auto --max=5, L45/L100-104/L143)과 정면 모순이고, propagation L212 가 부모 --auto --max 를 자식 --auto(3인)로 조용히 강등하며 claude/codex(완전 전파)와 cross-variant 대칭이 붕괴. QB-003 과 동일 계열의 미완 마이그레이션 잔재로, 헤더·propagation 만 구모델 서술로 남음. 게이트 비차단(CRITICAL=0 HIGH=0, MEDIUM 1) 이나 SSOT 내부 모순이므로 clean=false. 그 외: --mini/mini-option/--squirrel 잔재는 MIGRATION_PLAN.md(마이그레이션 문서)에만 존재하고 SKILL 본문 0건, kiwi-wave-master/kiwi-step 3계열 실존해 package-doctor EXPECTED 참조 유효(false-reference 아님), 변경이력/Changelog 매치는 전부 '없음' 정책 선언(§7 준수)으로 삽입 위반 0, claude 구모델(SA1/SA2/중재자) 잔재 0(중재자는 부정 서술), 회귀 test/skills 142/142 green."
+}

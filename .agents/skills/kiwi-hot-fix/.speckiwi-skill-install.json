@@ -1,18 +1,22 @@
 {
   "name": "kiwi-hot-fix",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.194Z",
+  "installedAt": "2026-07-10T14:50:33.783Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-hot-fix",
   "installedPath": ".agents/skills/kiwi-hot-fix",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:0c7a64e48077ea09216333be172f0951a96155929274220e612b8a3a7991b4cf",
-  "installedChecksum": "sha256:0c7a64e48077ea09216333be172f0951a96155929274220e612b8a3a7991b4cf",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:e3a9e2e8713ea61cadc19d9a6e9501db902ee14a02893365f5bdea16366bd2d7",
+  "installedChecksum": "sha256:e3a9e2e8713ea61cadc19d9a6e9501db902ee14a02893365f5bdea16366bd2d7",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-hot-fix --json",
   "noManualEdit": true
 }

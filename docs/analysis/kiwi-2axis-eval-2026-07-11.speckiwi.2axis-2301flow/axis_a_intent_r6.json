@@ -1,0 +1,109 @@
+{
+  "axis": "A — SRS intent-match (final, r6)",
+  "target": "v2.3.0.1",
+  "scope_reqs": "FR-FLOW-022..032 (11 REQ)",
+  "focus": "FR-FLOW-022 role-model policy: verify kiwi-hot-fix + kiwi-review-fix-loop are self-consistent (§0.10 SSOT vs §1.3 vs frontmatter vs §1.4/§2/§5.x) and aligned with kiwi-coder precedent (정형 검사·까칠 리뷰=현재 세션 모델; root-cause 사전조사·TDD=Sonnet 고정); regression-only sweep of the other 10 REQ",
+  "criteria_confirmed": "정형 검사/까칠 리뷰 = 현재 세션 모델, root-cause 사전조사/TDD = Sonnet 고정 is the correct target state and is NOT an FR-FLOW-022 violation. FR-FLOW-022 replaces the dual-model EVALUATOR PANEL (Opus×1+Sonnet×1), not every cheap fixed-Sonnet pre-investigation role. kiwi-coder is the SSOT precedent (§1.3 line 147: 'TDD 검증 (Sonnet)' coexists in one table with '정형 검사 (현재 세션 모델)' + '까칠 리뷰어 (현재 세션 모델)'; line 153: --model overrides only 정형 검사·까칠 리뷰 verification subagents, 시니어 코더·TDD 검증 unaffected).",
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "full",
+      "notes": "Role-model policy now fully self-consistent and precedent-aligned across BOTH claude skills; r5 findings F-01/F-02/F-03 all RESOLVED. kiwi-hot-fix: §0.10 SSOT (line 34) now reads '정형 검사·까칠 리뷰어 등 검증 서브에이전트는 ... 현재 세션 모델을 상속 ... --model 로 override (시니어 fixer 영향 없음) ... Sonnet×2 root-cause / TDD 검증은 --model 무관 Sonnet 고정' — no longer pins 정형 검사 to Sonnet (F-01 fixed). §1.3 (line 126 prose + line 128 table header 'Root-cause 사전조사 (Sonnet) | 시니어 fixer (현재 세션 모델) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델)') is IDENTICAL in policy to §0.10 — no §0.10↔§1.3 contradiction. frontmatter (line 3) is model-neutral for fixer/formal/harsh ('시니어 fixer + 정형 검사 + 까칠 리뷰어') with correct policy clause and Sonnet×2 root-cause retained (F-02 frontmatter fixed). Body swept: §0.2 '까칠 리뷰어 (현재 세션 모델)'; §1.4 lines 143/144 '(현재 세션 모델)'; §2 lines 169/170 '현재 세션 모델'; §5.1 line 290 '시니어 fixer (현재 세션 모델; --model 영향 없음)'; §5.3.1 line 315 '정형 검사 (현재 세션 모델×1)'; §5.3.2 line 328 '까칠 리뷰 (현재 세션 모델×1)'. Every remaining 'Sonnet' in hot-fix (lines 128/140/167/241/351) is legitimately root-cause 사전조사 (matches precedent's TDD-Sonnet analogue); no stray Opus. kiwi-review-fix-loop: frontmatter (line 3) now model-neutral ('시니어 fixer + 까칠 리뷰어') with correct policy clause '검증(까칠 리뷰어·분류기·정형 검사) ... 현재 세션 모델 ... 시니어 fixer 영향 없음' (F-03 fixed); §0.9 (line 31), §1.3 (line 178 prose + line 180 fully model-neutral table) all consistent; review-fix-loop has no root-cause/TDD role so it is entirely current-session-model + fixer-unaffected, zero fixed-model residue, zero --mini residue. Substantive FR-FLOW-022 intent (single-current-session-model verification/evaluation replacing Opus+Sonnet panels + --mini OPTION removed) is fully implemented. Two LOW non-blocking doc residues remain in hot-fix only (F-R6-01 mini mode-enum, F-R6-02 vestigial 'TDD 검증' prose) — neither is a role-model contradiction, neither reopens the panel, neither re-introduces --mini as an option; they do not lower intent_match from full."
+    },
+    {
+      "req": "FR-FLOW-023",
+      "intent_match": "full",
+      "notes": "Regression-only. Statement/AC unchanged since r5 full-confirmation (SRS text untouched by fix_round5, which edited only SKILL.md). research-doc-driven A/B verify/improve loop with divergence guard; --max 3 verifiers coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-024",
+      "intent_match": "full",
+      "notes": "Regression-only. No-research ambiguity resolution, unbounded qna loop, -qna suppressed under --auto → FR-FLOW-025 committee, 3 requirement-gathering research subagents. Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-025",
+      "intent_match": "full",
+      "notes": "Regression-only. 3→5 escalation, 5-member plurality (non-max) / --max 5→7, deterministic lead-member tiebreak; auto-option.md SSOT states committee uses single current-session model with 'no dual-model evaluator panel' — consistent with FR-FLOW-022. critical_gates HALT preserved. Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-026",
+      "intent_match": "full",
+      "notes": "Regression-only. kiwi-pipeline end-to-end orchestration (srs → conditional feasibility → planner → pm → review-fix-loop; --auto committee gates; --max propagation; research-doc passthrough). Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-027",
+      "intent_match": "full",
+      "notes": "Regression-only. Worktree isolation (--wt) with merge-or-PR completion gate (interactive ask vs --auto PR-only, no direct base-branch merge). Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-028",
+      "intent_match": "full",
+      "notes": "Regression-only. GitHub-issue entry: /kiwi-srs-research first, then /kiwi-srs; -qna suppressed under --auto → committee; continues planner/pm/review. Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-029",
+      "intent_match": "full",
+      "notes": "Regression-only. kiwi-wave-master multi-wave orchestrator (explicit-structure or subagent wave-split, per-wave scoped target via /kiwi-srs, waves.jsonl resumability, per-wave /kiwi-pipeline skip-reauthor, --auto/--max propagation). Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-030",
+      "intent_match": "full",
+      "notes": "Regression-only. Epic-issue entry (extract ordered waves from epic, then identical FR-FLOW-029 flow; OQ-030 resolved with guard fallback to FR-FLOW-029 wave-split when no extractable structure). Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-031",
+      "intent_match": "full",
+      "notes": "Regression-only. kiwi-planner uses v2.3.0 workflow_* MCP tool family as primary read/validate/mutate path (superseding validator.mjs), validator.mjs C01-C25 coverage preserved, raw docs/plans documented degraded fallback. Unchanged since r5. No regression."
+    },
+    {
+      "req": "FR-FLOW-032",
+      "intent_match": "full",
+      "notes": "Regression-only. plan-vs-SRS coverage verification loop: count reconciliation → per-REQ-ID cross-check → 2 sequential subagents 'on the current session model per FR-FLOW-022'; --max adds AC-granularity + independent 3rd refutation subagent + 2-consecutive-clean-rounds termination. kiwi-planner §0.18 + frontmatter single-current-session-model policy consistent with the FR-FLOW-022 cross-reference. Unchanged since r5. No regression."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-R6-01",
+      "req": "FR-FLOW-022",
+      "severity": "low",
+      "title": "Report mode enum still lists removed --mini modes 'mini|max-mini' (cosmetic AC-1 residue, non-blocking)",
+      "location": {
+        "file": "skills/claude/kiwi-hot-fix/SKILL.md",
+        "section": "§7.1 report frontmatter template",
+        "line": 406,
+        "text": "mode: normal|max|mini|max-mini|dry-run"
+      },
+      "description": "FR-FLOW-022 AC-1 removes the --mini cost-reduction option repo-wide. The --mini OPTION and mini-option.md references ARE fully removed from this skill (no --mini flag anywhere; §1.2 lists no --mini; mode_flags at line 222 has no --mini). Only the report's 'mode' YAML enum still enumerates the dead values 'mini' and 'max-mini' — mode values that could only be emitted when --mini existed and are now impossible. This is cosmetic dead documentation, not a live --mini reference: the mini-removal automated test (MINI_TOKEN /--mini/) correctly does not match the bare 'mini' token, and fix_round5 consciously deferred it as harmless/out-of-role-model-scope. Not an intent mismatch of FR-FLOW-022's substance (verification model policy + --mini option removal both satisfied); disclosed here for full transparency in the final pass.",
+      "suggested_fix": "Optional cleanup: change line 406 to 'mode: normal|max|dry-run' to drop the impossible 'mini|max-mini' enum values, matching the removed --mini option. Non-blocking; no code/test change required."
+    },
+    {
+      "id": "F-R6-02",
+      "req": "FR-FLOW-022",
+      "severity": "low",
+      "title": "§0.10/§1.3 name a 'TDD 검증 (Sonnet 고정)' role that kiwi-hot-fix does not instantiate (vestigial precedent prose)",
+      "location": {
+        "file": "skills/claude/kiwi-hot-fix/SKILL.md",
+        "section": "§0.10 SSOT + §1.3 prose vs §5.1 mechanism + §2 phase flow",
+        "line": "34 and 126 (policy) vs 168/288-294 (mechanism)",
+        "text": "§0.10: 'Sonnet×2 root-cause 사전조사 / TDD 검증은 ... Sonnet 고정'; §1.3: 'Root-cause 사전조사·TDD 검증은 Sonnet 고정'; §5.1 line 290: '시니어 fixer (현재 세션 모델 ...) 서브에이전트가 ... 회귀 테스트 작성 ... red 확인'"
+      },
+      "description": "The role-model policy prose in §0.10 and §1.3 carries a 'TDD 검증 = Sonnet 고정' clause copied from the kiwi-coder precedent, but kiwi-hot-fix has no distinct TDD-verification subagent analogous to kiwi-coder's Sonnet×4 (§4.2). In hot-fix the TDD activity (regression-test authoring + red confirmation) is performed by the 시니어 fixer on the current session model (§5.1, Phase 2), and TDD-flow integrity is re-checked only as formal-check axis F4 (§5.3.1, current session model). Thus 'TDD 검증 (Sonnet)' names a role with no corresponding phase/subagent. Because §5.1's activity is test WRITING (not a separate 'TDD 검증' step), this is vestigial/imprecise prose rather than an active §0.10↔§5.1 contradiction — and it does NOT violate FR-FLOW-022 (which permits fixed-Sonnet TDD per the precedent). The §1.3 mode-matrix TABLE (line 128) correctly has NO 'TDD 검증' column, so the table itself is clean; only the surrounding prose over-declares. Low severity, disclosed for final-pass precision.",
+      "suggested_fix": "Optional: either (a) drop 'TDD 검증' from the §0.10/§1.3 Sonnet-fixed clause (keeping only 'Sonnet×2 root-cause 사전조사 = Sonnet 고정'), since hot-fix has no separate TDD-verification subagent; or (b) add one sentence clarifying that hot-fix's TDD is fixer-authored regression tests (current session model) with no dedicated Sonnet TDD-verification pass, unlike kiwi-coder. Non-blocking."
+    }
+  ],
+  "clean_confirmations": [
+    "kiwi-hot-fix §0.10 SSOT (line 34) and §1.3 (line 126 prose + line 128 table) are mutually consistent: 정형 검사·까칠 리뷰어·시니어 fixer = 현재 세션 모델 (fixer unaffected by --model); root-cause 사전조사 = Sonnet 고정. r5 F-01 RESOLVED.",
+    "kiwi-hot-fix frontmatter + §0.2 + §1.4 + §2 + §5.1/§5.3.1/§5.3.2 fully swept to model-neutral role names; every remaining 'Sonnet' (lines 128/140/167/241/351) is legitimately root-cause 사전조사; zero stray 'Opus'. r5 F-02 RESOLVED.",
+    "kiwi-review-fix-loop frontmatter (line 3) model-neutral with correct policy clause; §0.9 (line 31) + §1.3 (line 178 prose + line 180 fully model-neutral table) consistent; no root-cause/TDD role, so entirely current-session-model + fixer-unaffected; zero fixed-model residue; zero --mini residue. r5 F-03 RESOLVED.",
+    "kiwi-coder precedent verified: §1.3 line 147 table has 'TDD 검증 (Sonnet)' coexisting with '정형 검사 (현재 세션 모델)' + '까칠 리뷰어 (현재 세션 모델)'; line 153 restricts --model override to 정형 검사·까칠 리뷰 verification subagents (시니어 코더·TDD 검증 unaffected). hot-fix/review-fix-loop mapping matches this precedent.",
+    "--model semantics identical to precedent in both skills: overrides only the verification subagents (formal-check / harsh-review / classifier), never the senior fixer, and propagates to the delegated /kiwi-srs-sync call (hot-fix §0.10 / §6.2.1 line 375)."
+  ],
+  "summary": {
+    "reqs_full": 11,
+    "reqs_partial": 0,
+    "reqs_mismatch": 0,
+    "findings_total": 2
+  },
+  "verdict": "ALL_MATCH",
+  "overall": "The FR-FLOW-022 role-model policy — the objective of the r3→r5 fix chain — is now FULLY resolved and self-consistent. r5's F-01 (§0.10 pinning 정형 검사 to Sonnet), F-02 (stale Opus/Sonnet names through hot-fix body), and F-03 (review-fix-loop frontmatter head) are all fixed and precedent-aligned with kiwi-coder: 정형 검사·까칠 리뷰어·시니어 fixer inherit the current session model (fixer unaffected by --model), while root-cause 사전조사 (and, per precedent, TDD) stay Sonnet-fixed — which is the correct FR-FLOW-022 state, NOT a violation (FR-FLOW-022 replaces the Opus+Sonnet evaluator PANEL, not cheap fixed-Sonnet pre-investigation). §0.10 and §1.3 no longer contradict each other; review-fix-loop is entirely model-neutral and clean. All 11 REQ are FULL intent match: FR-FLOW-022 substantively (single-current-model verification + --mini OPTION removed), FR-FLOW-023..032 by regression (SRS text unchanged since r5's full-confirmation; only SKILL.md was edited in fix_round5). Verdict ALL_MATCH refers to intent: no role-model or substantive intent mismatch remains. Two LOW non-blocking doc residues are disclosed for optional cleanup, both in kiwi-hot-fix only — F-R6-01 (report mode enum still lists dead 'mini|max-mini' values; the --mini option itself is fully removed and the mini-removal test is clean) and F-R6-02 (vestigial 'TDD 검증 (Sonnet)' prose in §0.10/§1.3 naming a subagent hot-fix does not instantiate; the §1.3 table has no such column). Neither reopens the evaluator panel, re-introduces --mini as an option, nor contradicts the role-model policy, so neither lowers any REQ's intent_match from full. Recommendation: close the role-model fix chain; optionally sweep F-R6-01/F-R6-02 as cosmetic doc hygiene in a non-blocking pass."
+}

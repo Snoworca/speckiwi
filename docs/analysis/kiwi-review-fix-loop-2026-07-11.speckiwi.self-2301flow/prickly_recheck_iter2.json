@@ -1,0 +1,71 @@
+{
+  "round": 3,
+  "reviewer": "prickly-recheck",
+  "input_isolation": "직전 수정자 rationale 미수신. git diff HEAD + 현재 파일 상태 + test/skills 실행(142/142 green)만 근거.",
+  "resolved_findings": [
+    "FND-101",
+    "FND-102",
+    "FND-103"
+  ],
+  "resolved_detail": [
+    {
+      "id": "FND-101",
+      "severity_was": "MEDIUM",
+      "why_resolved": "세 변형 auto-option §10 auto_decisions.json 예시가 모두 위원회 스키마로 갱신되고 mode_flags↔committee_size 정합. claude(L328/L334-342): mode_flags=[--auto,--max] → committee_votes 5인(#1..#5) + merge_method {rule:unanimous, committee_size:5} — §2 표의 '--auto --max=5인 초기 위원회'와 정합(만장일치 5인은 --max 초기 규모이므로 §3 사다리상 도달가능, 내 초기 우려는 오검). codex(L209/L215-221): mode_flags=[--auto] → 3인 + committee_size:3. etc(L210/L216-224): mode_flags=[--auto,--max] → 5인 + committee_size:5. 구값 merge_method 'single'/'merge-worker'(codex)·'single'(etc)·subagent_results SA1/SA2(claude) 전부 소멸."
+    },
+    {
+      "id": "FND-102",
+      "severity_was": "LOW",
+      "why_resolved": "kiwi-coder Phase 2 흐름 (c) 라인이 claude('시니어 코더 구현 (Opus×1 or ×3, --squirrel 시 Sonnet)' → 'Opus×1 or ×3')·codex('high-reasoning×1 or ×3, --squirrel 시 standard' → 'high-reasoning×1 or ×3') 모두 '--model override' 문구를 붙이지 않고 제거됨. --model override 는 (e) 정형 검사·(f) 까칠 리뷰로만 이동('현재 세션 모델×1; --model 로 override'). §0.16·§1.2 표·§1.3 note 모두 '시니어 코더는 --model 영향 없음' 으로 일관. 모순 해소(claude+codex 동일)."
+    },
+    {
+      "id": "FND-103",
+      "severity_was": "LOW",
+      "why_resolved": "kiwi-srs Phase 5 명칭이 세 변형 전부 'Verification' 으로 통일. claude 개요 ASCII 'Phase 5 : Verification' + §10 제목 '## 10. Phase 5 — Verification' + §10.2 '검증 서브에이전트가 독립 검토'. codex/etc 도 ASCII·§10 제목·영문 flow('Phase 5 — Verification', 'single delegated evaluator') 일치. frontmatter 도 '검증'/verification. 개요와 §10 제목의 Evaluation/Verification 분열 소멸. (§10.1 '평가자 입력' 등 '평가자' 역할명 잔존은 사전 존재하는 role 용어이며 phase-명칭 분열이 아님 — 별건 아님.)"
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "FND-201",
+      "axis": "P2",
+      "axis_desc": "cross-variant / 내부 일관성 (위원회 재작성이 Read-Time Interpretation 산문에 미반영)",
+      "severity": "LOW",
+      "title": "codex/etc auto-option Read-Time Interpretation 가 아직 '--auto may use the [single] decision worker' 로 남아 신설 3인 Decision Committee 모델과 모순",
+      "location": {
+        "file": "skills/codex/_shared/kiwi/auto-option.md ; skills/etc/_shared/kiwi/auto-option.md",
+        "line_range": "codex:173 ; etc:176"
+      },
+      "description": "이번 브랜치가 'Decision Worker'(단수) 섹션을 'Decision Committee'(3인, --max 5인, 격상 7인)로 재작성하고 Committee Merge Ladder·§10 예시까지 위원회 모델로 갱신했으나, 같은 파일 하단 'Read-Time Interpretation' 산문은 미갱신. codex L173 '`--auto` may use the decision worker.'(정관사 the → 단일 함의), etc L176 '`--auto` may use the single decision worker.'(명시적 'single')는 §Decision Committee(codex L39/etc L41 '3 members')·Committee Merge Ladder 와 직접 모순 — 같은 파일 내 '--auto = 위원회 3인' vs '--auto = 단일 worker' 상충. claude(한국어 정본)는 위원/위원회 로 일관해 해당 잔재 없음(영어 미러 codex/etc 한정). 참고: 입력격리 문단의 'decision worker'(codex L12/etc L11)와 복수형 'decision workers'(codex L237)는 위원=worker 일반지칭으로 비모순 → 미대상. 게이트 비차단(권위 있는 Decision Committee 섹션이 우선하며 병렬 테스트 kiwi-auto-committee 142/142 green), 그러나 해석 노트가 에이전트를 오도할 수 있는 잔재.",
+      "suggested_fix": "codex L173 / etc L176 문구를 위원회 모델로 통일 — 예: 'otherwise `--auto` convenes the 3-member decision committee (see Decision Committee).' etc 는 로컬-LLM 순차평가 유지를 감안해 'the sequentially-evaluated 3-member committee' 로 표현."
+    },
+    {
+      "id": "FND-202",
+      "axis": "P1",
+      "axis_desc": "SRS 의도 미충족 / cross-variant (FR-FLOW-022 --mini 제거의 --squirrel 별칭 잔재 — 테스트 정규식 사각지대)",
+      "severity": "LOW",
+      "title": "FR-FLOW-022 --mini 제거가 --squirrel 별칭을 남겨, etc reference 2파일의 'squirrel' 모드 enum 이 claude/codex 'model' 과 cross-variant 불일치",
+      "location": {
+        "file": "skills/etc/kiwi-coder/references/extended-workflow.md ; skills/etc/kiwi-srs-sync/references/extended-workflow.md",
+        "line_range": "etc/kiwi-coder:148 ; etc/kiwi-srs-sync:109"
+      },
+      "description": "FR-FLOW-022 요구는 '--mini cost-reduction 옵션 제거'(별칭 --squirrel 포함 취지)이고 claude/codex kiwi-coder 는 worklog mode enum 을 'squirrel'→'model' 로 전환('normal|max|reviewer-off|model|dry-run'). 그러나 etc/kiwi-coder/references/extended-workflow.md L148 은 여전히 '\"mode\": \"normal|max|reviewer-off|squirrel|dry-run\"', etc/kiwi-srs-sync/references/extended-workflow.md L109 은 'mode: normal|max|squirrel|dry-run-only' 로 --mini 의 deprecated 별칭 'squirrel' 잔존. 결과 (1) claude/codex(model) ↔ etc(squirrel) worklog-schema cross-variant drift, (2) etc MIGRATION_PLAN L68 '--mini/--squirrel 을 etc-mode control 에서 제거' 의도 미충족. 미검출 경로: FR-FLOW-022 AC-1 테스트 정규식 MINI_TOKEN=`/--mini\\b|mini-option/` 은 'squirrel' 을 매칭 안 함(false-green 아님 — AC-1 이 '--mini' 리터럴만 규정), 이전 라운드 review_inventory 의 'clean' 주장은 SKILL.md **본문**에만 한정되어 references/extended-workflow.md 는 사각지대. 게이트 비차단(etc 는 --model 미사용·항상 --max 로컬프로파일이라 런타임 영향 미미).",
+      "suggested_fix": "etc/kiwi-coder(L148)·etc/kiwi-srs-sync(L109) mode enum 에서 'squirrel' 토큰 제거(etc 는 --max 기본이라 대체 불요). 원하면 FR-FLOW-022 AC-1 정규식을 `/--mini\\b|--squirrel\\b|mini-option/` 로 확장해 별칭까지 커버."
+    }
+  ],
+  "summary": {
+    "resolved": 3,
+    "still_open": 0,
+    "new": 2,
+    "by_severity_open": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 2
+    }
+  },
+  "gate": "PASS",
+  "gate_reason": "still_open(0) + new(2) 중 CRITICAL=0 AND HIGH=0. LOW×2 만 잔존(모두 영어 미러 문서 산문/enum 잔재, 런타임·게이트 비차단). MEDIUM 이상 0.",
+  "clean": false,
+  "overall": "3라운드 재검증: 직전 3건(FND-101/102/103) 전부 실제 해소 확인 — diff·현재 파일·test/skills 142/142 green 근거. FND-101 §10 로깅 스키마는 세 변형 모두 committee_votes+merge_method{rule,committee_size} 로 갱신되고 mode_flags↔committee_size 정합(claude 5/max·codex 3/auto·etc 5/max). FND-102 kiwi-coder (c) 시니어 코더 라인의 --model override 문구 제거 후 (e)/(f) 검증 SA 로 이동, '시니어 코더 영향 없음' 과 정합. FND-103 Phase 5 명칭 세 변형 Verification 통일. 완전 clean 은 아님 — 위원회 재작성·--mini 제거 리팩터의 잔재 2건(모두 LOW) 신규: (P2) codex/etc auto-option Read-Time Interpretation 산문이 '--auto = single decision worker' 로 남아 3인 위원회와 모순(영어 미러 한정, claude 정본 clean), (P1) FR-FLOW-022 --squirrel 별칭이 etc reference 2파일에 'squirrel' 모드 enum 으로 잔존해 claude/codex 'model' 과 cross-variant 불일치 — 이전 라운드 SKILL.md-한정 스윕과 AC-1 테스트 정규식(--mini 리터럴만) 사각지대. 게이트 PASS, 두 잔재 정리 권고."
+}

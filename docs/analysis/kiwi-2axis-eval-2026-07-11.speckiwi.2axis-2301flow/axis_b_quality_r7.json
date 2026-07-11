@@ -1,0 +1,100 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": "r7-termination-confirm",
+  "date": "2026-07-11",
+  "scope": "git diff HEAD -- skills/ test/skills src/doctor/package-doctor.ts (.agents mirror excluded). Confirm QB-207/QB-208 resolution + final remnant sweep (validator model self-contradiction / cross-variant asymmetry / internal contradiction).",
+  "resolved_findings": [
+    {
+      "id": "QB-207",
+      "title": "claude kiwi-hot-fix §7.1 report 'mode' enum listed dead --mini modes 'mini|max-mini'",
+      "severity": "LOW",
+      "evidence": "RESOLVED by fix_round6. skills/claude/kiwi-hot-fix/SKILL.md §7.1 report frontmatter now reads 'mode: normal|max|dry-run' (git diff line +256). Tree-wide grep for 'mini|max-mini' / 'normal|max|mini' across skills/ (excl .agents) = 0 hits. The dead 'mini'/'max-mini' enum values (only emittable when --mini existed) are gone, now matching §1.3 mode matrix (Normal + --max only) and state.json mode_flags (['--model?','--max?','--auto?','--dry-run?','--no-sync?']). codex/etc kiwi-hot-fix carry no such enum (grep-confirmed unique to claude L406). Cross-axis: was Axis A r6 F-R6-01.",
+      "status": "resolved"
+    },
+    {
+      "id": "QB-208",
+      "title": "kiwi-coder frontmatter (+ §1.4 output labels) pinned 정형 검사=Sonnet / 까칠 리뷰=Opus, self-contradicting the same description's §0.16 현재-세션-모델 policy",
+      "severity": "MEDIUM",
+      "evidence": "RESOLVED by fix_round6. claude kiwi-coder L3 frontmatter flow genericized: 'Sonnet 정형 검사 → Opus 까칠 리뷰' → '정형 검사 → 까칠 리뷰' (git diff line +9), keeping the correct fixed roles 'Opus 시니어 구현'·'Sonnet×4 병렬 TDD 검증'. §1.4 analysis-log labels L178/L179 → '(현재 세션 모델 정형)'/'(현재 세션 모델 까칠)' (diff +51/+52). codex mirror: L3 'standard 정형 검사 → high-reasoning 까칠 리뷰' → '정형 검사 → 까칠 리뷰' (diff +370), L182/L183 → '(현재 세션 모델 정형)'/'(현재 세션 모델 까칠)' (diff +412/+413). Tree-wide grep for stale verifier labels ('Sonnet 정형','Opus 까칠','정형 검사 (Sonnet','까칠 리뷰(어) (Opus','standard 정형','high-reasoning 까칠', codex equivalents) across skills/claude/ + skills/codex/ = 0 hits. etc/kiwi-coder correctly untouched (local-LLM profile terms, no '현재 세션 모델' policy clause → no genericize trigger). Now internally consistent with §0.16 SSOT / §1.3 matrix / §2 (2.e/2.f) / §5.2.",
+      "status": "resolved"
+    },
+    {
+      "id": "F-R6-02",
+      "title": "hot-fix 'TDD 검증 Sonnet 고정' dead reference (hot-fix has no distinct TDD-verification subagent)",
+      "severity": "LOW",
+      "evidence": "RESOLVED by fix_round6. claude kiwi-hot-fix L3 frontmatter / §0.10 (L34) / §1.3 prose (L126) now read 'Root-cause 사전조사 (Sonnet) 불변' only, dropping the copied-from-kiwi-coder 'TDD 검증 Sonnet 고정' clause. Verified: hot-fix Sonnet is now legitimately only the Sonnet×2 root-cause pre-investigation (a real hot-fix role); the §1.3 mode-matrix table keeps a single 'Root-cause 사전조사 (Sonnet)' tier → distinctModelTiers=1 → not an AC-2 topology offender.",
+      "status": "resolved"
+    },
+    {
+      "id": "kiwi-pm-L465",
+      "title": "kiwi-pm cross-reference pinned kiwi-coder harsh reviewer as Opus/high-reasoning (now 현재 세션 모델)",
+      "severity": "LOW",
+      "evidence": "RESOLVED by fix_round6. claude kiwi-pm L465 'Opus 까칠 코드 리뷰어 finding → ...' → '까칠 코드 리뷰어 finding → ...' (git diff line +331). codex kiwi-pm L467 'high-reasoning 까칠 코드 리뷰어 finding → ...' → '까칠 코드 리뷰어 finding → ...' (git-diff verified). etc kiwi-pm correctly untouched ('local-LLM max-profile 까칠 코드 리뷰어' consistent with etc/kiwi-coder local terms).",
+      "status": "resolved"
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "QB-209",
+      "axis": "B",
+      "severity": "MEDIUM",
+      "severity_class": "substantive",
+      "title": "etc local-LLM (single-worker) variants received verbatim claude/codex parallel-fanout / multi-subagent topology wording in the FR-FLOW-023/024/028 additions, contradicting the etc profile's own single-worker SSOT",
+      "location": {
+        "file": "skills/etc/kiwi-srs/SKILL.md",
+        "section": "§5.4 요구사항 수집 리서치 서브에이전트 (FR-FLOW-024 AC-4) + extended-workflow.md §9.6 검증 팬아웃 (FR-FLOW-023) + kiwi-srs-research GITHUB_ISSUE input (FR-FLOW-028)",
+        "line": 352,
+        "text": "kiwi-srs 는 요구사항 수집 리서치 서브에이전트 3개를 병렬 투입한다",
+        "additional_locations": [
+          "skills/etc/kiwi-srs/references/extended-workflow.md:148 '--max, 단일 문서 기준: ... 검증 서브에이전트 3개(3 verification subagents)를 교차 검증에 투입'",
+          "skills/etc/kiwi-srs/references/extended-workflow.md:150 '다중 리서치 문서, --max: (문서 수 × 3)개의 검증 서브에이전트를 병렬로 팬아웃한다'",
+          "skills/etc/kiwi-srs-research/SKILL.md:168 '이슈 본문·연결 정보를 RESEARCH_QUESTION 으로 정규화하여 5-서브에이전트 토폴로지에 투입한다'"
+        ]
+      },
+      "description": "This uncommitted diff adds the FR-FLOW-023/024/028 feature text (research-doc A/B verify loop, requirement-gathering research, github-issue research entry) to all three agent variants. In claude/codex the fanout wording is correct — those variants have NO single-worker constraint (grep: skills/claude|codex/kiwi-srs 'multi-worker fanout 금지|single-worker 토폴로지|한 번에 하나만' = 0). But the etc variant is a local-LLM profile whose hard SSOT forbids exactly this: kiwi-srs §0.20 (L45) '**multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다**' + header L8 'disables multi-worker fanout, uses one delegated worker/evaluator at a time'; kiwi-srs-research §0.5 (L35) '**single-worker 토폴로지 고정**' + L16 'single-worker 고정 토폴로지'. The three added lines were copied verbatim from claude/codex (byte-identical to skills/claude/kiwi-srs L353 / L572 and skills/codex mirror) WITHOUT adapting the topology to the etc single-worker profile, so etc/kiwi-srs now says '리서치 서브에이전트 3개를 병렬 투입' / '(문서 수 × 3)개 ... 병렬로 팬아웃' and etc/kiwi-srs-research says '5-서브에이전트 토폴로지에 투입' — each a direct same-document contradiction of the same skill's §0.20/§0.5 that a reader/agent cannot reconcile, and one with behavioral-misdirection risk (an agent following §5.4/§9.6 literally would spawn 3× parallel workers on a local LLM that the profile exists precisely to prevent). It also violates the etc migration invariant: skills/etc/MIGRATION_PLAN.md L91's verification grep explicitly enumerates '병렬', 'parallel', 'multi-subagent', '5-서브에이전트' as forbidden tokens that must NOT appear in skills/etc — the etc forbidden-token sweep now returns exactly these 3 diff-introduced hits (all other 병렬/fanout mentions in skills/etc are legitimate negations: 'fanout is disabled', 'not in parallel', '문서별로 순차'). Same defect class the fix chain treated as must-fix for stale labels (QB-208), but here a functional topology contradiction, not just a label. Not seen by Axis A r6 or Axis B r6 (both scoped to the model-label hygiene of hot-fix/review-fix-loop/kiwi-coder, not the FR-FLOW-023/024/028 etc-adaptation).",
+      "suggested_fix": "Adapt the three added lines to the etc single-worker profile (same edit pattern the etc migration already applies elsewhere, e.g. extended-workflow.md 'multi-doc 비-max: 문서별로 순차(sequential, per document)'): (a) etc/kiwi-srs §5.4 L352 → '요구사항 수집 리서치 서브에이전트를 순차(sequential)로 투입' (drop '3개를 병렬', or '한 번에 하나씩 순차 위임'); (b) extended-workflow.md §9.6 L148/L150 → replace the '--max 3개 병렬' / '(문서 수 × 3) 병렬 팬아웃' bullets with the etc single-worker equivalent (sequential per-document, one delegated worker at a time, honoring §0.20); (c) etc/kiwi-srs-research L168 → '5-서브에이전트 토폴로지' → 'single-worker 토폴로지' (matching §0.5/L16). Re-run the etc MIGRATION_PLAN L91 forbidden-token grep to confirm 0 hits. Doc-only (natural-language skill; no runtime/test change)."
+    },
+    {
+      "id": "QB-210",
+      "axis": "B",
+      "severity": "LOW",
+      "severity_class": "cosmetic_nit",
+      "title": "etc/kiwi-srs extended-workflow §10.4 topology adopted claude/codex '현재 세션 모델 + --model <name>' terminology/option instead of the etc local-LLM profile terms",
+      "location": {
+        "file": "skills/etc/kiwi-srs/references/extended-workflow.md",
+        "section": "§10.4 토폴로지",
+        "line": 246,
+        "text": "평가·검증은 단일 검증 서브에이전트가 수행하며 기본적으로 현재 세션 모델(current session model)을 상속한다. `--model <name>` ... 로 이 검증 서브에이전트의 모델을 override 한다. | Normal | 단일 검증 서브에이전트 × 1 | 현재 세션 모델 (`--model` override) | | --max | 단일 검증 서브에이전트 + 독립 2차 검증 패스 | 현재 세션 모델 (`--model` override) |"
+      },
+      "description": "The mini-removal replaced the old etc §10.4 'Evaluator A/B/C | local-LLM max-profile | local evaluator' table with the claude/codex SSOT prose '단일 검증 서브에이전트 ... 현재 세션 모델(current session model) ... --model <name> override' (git-diff-introduced L246/L250/L251). Two mismatches vs the fix chain's stated etc treatment (fix_round6: etc keeps local-LLM profile terminology, 'genericize 트리거 미해당'): (1) the '--model <name>' option is referenced but NOT defined anywhere in etc/kiwi-srs (grep: '--model' appears ONLY in this §10.4 block, absent from etc/kiwi-srs §1.2 options — the etc migration removed --mini/--squirrel and defaults to --max with no --model control per MIGRATION_PLAN L68), so §10.4 documents an option the etc variant does not expose; (2) the phrasing '현재 세션 모델' departs from the etc variant's own vocabulary ('local-LLM max-profile' / 'local evaluator', which L13 says already map to the current host/session model), leaving etc/kiwi-srs internally split between §0.20/body (local-LLM terms) and §10.4 (claude/codex terms). Lower severity than QB-209 and NOT a behavioral contradiction: the §10.4 topology COUNT (단일 + 독립 2차 순차 검증 패스) is sequential and thus still consistent with the etc single-worker profile, and '현재 세션 모델' is conceptually defensible via L13. Purely a terminology/option-reference leak, cosmetic; disclosed for completeness, not a gate blocker on its own.",
+      "suggested_fix": "Re-word etc §10.4 in the etc local-LLM vocabulary consistent with the rest of the file — e.g. '평가·검증은 단일 위임 evaluator(local evaluator, 현재 호스트 세션 모델에 매핑)가 수행하며 --max 에서 독립 2차 검증 패스를 순차 추가한다' — and drop the '--model <name>' option reference (etc has no --model control; --max is the etc default per §0.20). Doc-only. Optional; can be folded into the QB-209 etc-adaptation sweep."
+    }
+  ],
+  "accepted_as_deferred": ["QB-205"],
+  "observations_non_finding": [
+    {
+      "ref": "kiwi-srs-research §0.5/§0.17 tier labels (claude/codex) — NOT re-raised",
+      "note": "claude §0.5 'Sonnet×1 (Triage) + Opus×3 + Opus×1' / codex 'standard×1 + high-reasoning×3 + high-reasoning×1' are retained as fixed 5-subagent role-tier shorthand, with §0.17 as the overriding model SSOT ('서브에이전트 모델은 현재 세션 모델을 상속하며 --model override'). Adjudicated intentional in Axis B r6 (observations_non_finding) + fix_round6 (role-tier design, symmetric claude+codex). Re-verified symmetric and internally cross-referenced ('토폴로지 불변'). Not raised — consistent, deliberate, and lower-confidence; raising it would be forcing."
+    },
+    {
+      "ref": "MIGRATION_PLAN.md dangling mini-option.md references (codex L26/L50/L117; etc L56/L68/L91)",
+      "note": "codex/etc MIGRATION_PLAN.md still reference _shared/kiwi/mini-option.md, which this work deleted (all 3 mini-option.md files removed; verified absent). These are historical migration meta-docs, NOT touched by this diff (not in git diff HEAD file list), and describe the 2026-05-19 codex/etc migration accurately for its time. Out of the FR-FLOW-022~032 REQ scope and pre-existing; not raised. (etc L91's forbidden-token grep is itself the invariant QB-209 violates — that reference is correct and useful, not stale.)"
+    },
+    {
+      "ref": "src/doctor/package-doctor.ts +kiwi-wave-master",
+      "note": "The added EXPECTED_KIWI_SKILLS entry 'kiwi-wave-master' is sound: skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md all exist (verified), so EXPECTED_SKILL_ENTRYPOINTS resolves for all 3 agents. Consistent with the kiwi-step precedent. Not a finding."
+    }
+  ],
+  "summary": {
+    "resolved": 4,
+    "new": 2,
+    "substantive": 1,
+    "cosmetic": 1,
+    "out_of_scope": 0
+  },
+  "regression": "test/skills 148/148 (8 files passed; npx vitest run test/skills/, 05:15 run)",
+  "gate": "FAIL",
+  "clean": false,
+  "overall": "The targeted QB-207/QB-208 hygiene is fully successful: hot-fix §7.1 dead 'mini|max-mini' enum removed (QB-207); kiwi-coder frontmatter flow + §1.4 labels genericized to model-neutral verifier roles in both claude and codex (QB-208); F-R6-02 (hot-fix TDD-Sonnet dead ref) and kiwi-pm-L465 (Opus/high-reasoning harsh-reviewer cross-ref) also cleaned. Tree-wide grep for stale verifier labels across skills/claude + skills/codex = 0; no dead --mini/--squirrel/mini-option option remains (only pre-existing historical mentions in MIGRATION_PLAN metadocs); mini-option.md deleted in all 3 agents; 148/148 green. HOWEVER the tree is NOT clean: the final remnant sweep surfaced a genuine cross-variant asymmetry that neither axis inspected before — the FR-FLOW-023/024/028 feature additions were copied verbatim into the etc local-LLM (single-worker) variants without adapting the parallel-fanout / '5-서브에이전트' / 'N개 병렬 투입' / '(문서 수 × 3) 병렬 팬아웃' topology wording, directly contradicting etc's own §0.20/§0.5 single-worker SSOT and violating the etc MIGRATION_PLAN forbidden-token invariant (QB-209, MEDIUM, substantive — same-document unreconcilable contradiction with behavioral-misdirection risk, 3 locations across etc/kiwi-srs §5.4, extended-workflow §9.6, and etc/kiwi-srs-research L168). A lower-severity terminology leak in the same etc file (§10.4 adopting claude/codex '현재 세션 모델 + --model' instead of etc local-LLM vocabulary, referencing an undefined etc --model option) is disclosed as QB-210 (LOW, cosmetic_nit; not a behavioral contradiction — sequential 2-pass topology preserved). Gate FAIL on the open MEDIUM substantive (QB-209) per r5/r6 convention. Recommendation: close the model-label hygiene chain (QB-206/207/208/F-R6-02/pm-L465) as DONE; open one small etc-adaptation sweep to re-word the 3 QB-209 fanout/topology sites (and optionally QB-210 §10.4) into etc single-worker vocabulary, then re-run the etc MIGRATION_PLAN forbidden-token grep to confirm 0 hits. Doc-only; no code/test change."
+}

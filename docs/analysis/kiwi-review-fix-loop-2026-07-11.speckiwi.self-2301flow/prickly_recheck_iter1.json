@@ -1,0 +1,119 @@
+{
+  "round": 2,
+  "reviewer": "prickly-recheck",
+  "input_isolation": "직전 라운드 수정자의 rationale 미수신. git diff HEAD + 현재 파일 상태만 근거.",
+  "resolved_findings": [
+    "FND-001",
+    "FND-002",
+    "FND-003",
+    "FND-004",
+    "FND-005",
+    "FND-006",
+    "FND-007",
+    "FND-008",
+    "FND-009"
+  ],
+  "resolved_detail": [
+    {
+      "id": "FND-001",
+      "why_resolved": "claude auto-option.md §8 이 이제 '`--auto --max` = 5인 위원회 (만장일치 아니면 7인 격상)' 로 갱신됨. §2 표(--auto=3인/--auto --max=5인)·§3 위원회 사다리(3→5→7, tie-break #1)와 일관. 과거 '2 SA' 표기 소멸."
+    },
+    {
+      "id": "FND-002",
+      "why_resolved": "codex+etc kiwi-wave-master 는 이제 전부 `$kiwi-srs`/`$kiwi-pipeline` 표기(`/kiwi-` 0건). claude 변형은 `/kiwi-` 17건·`$kiwi-` 0건으로 내부 일관 — 슬래시(claude) vs `$`(codex/etc) 는 플랫폼별 호출 규칙(의도된 cross-variant 차이). URL/경로 오탐치환 0건 확인."
+    },
+    {
+      "id": "FND-003",
+      "why_resolved": "kiwi-srs frontmatter 가 '유한 Normal 3/Max 7 라운드' → '무제한 qna 루프' 로 변경되어 본문 §5/§5.2('유한 3/7 라운드를 무제한 qna 루프로 대체')와 일치."
+    },
+    {
+      "id": "FND-004",
+      "why_resolved": "kiwi-planner §6.8 도입부에 명시적 조정 문단 추가: '두 절의 검증 패스 수는 측정 대상이 달라 서로 다르다 — §6.1 finding 패스(Normal 1/Max 2), §6.8 커버리지 순차 검증 패스(Normal 2/Max +독립 3차)'. §6.1(1/2)과 §6.8 step3~4(2/+3차)의 서로 다른 목적을 일관되게 설명. 실제 두 검증은 상이(axis finding vs per-REQ coverage)."
+    },
+    {
+      "id": "FND-005",
+      "why_resolved": "kiwi-coder §1.2 --model 행이 '(단일 검증 서브에이전트)' → '(정형 검사·까칠 리뷰 검증 서브에이전트에 적용)' 로 정정 — kiwi-coder 는 검증 SA 가 복수(정형+까칠, --max 시 까칠×2)이므로 '단일' 부정확 해소. kiwi-srs 는 '단일' 유지가 정확(Phase5=단일 검증 SA)."
+    },
+    {
+      "id": "FND-006",
+      "why_resolved": "claude/codex/etc kiwi-pipeline T1 결정표의 `kiwi-pm | TASK_DONE` next_hint 가 세 변형 모두 `kiwi-review-fix-loop --close-reqs` 로 동일. 재진입 표기 `/kiwi-pm`(claude) vs `$kiwi-pm`(codex/etc) 는 플랫폼 규칙차(의도)이며 next_hint 값 자체는 일치."
+    },
+    {
+      "id": "FND-007",
+      "why_resolved": "SUBSKILL 정규식이 `/sub-?skill|하위\\s*스킬|서브\\s*스킬|자식\\s*스킬/i` 로 구체적. AC-5 는 PROPAGATE && SUBSKILL 동시 매칭 창을 요구하며 §7 본문('하위 스킬(sub-skill)'+'전파(propagate)')이 충족. test/skills/kiwi-wave-master-content.test.ts 실행 결과 25/25 green (회귀 없음)."
+    },
+    {
+      "id": "FND-008",
+      "why_resolved": "wave-master §6 이 세 변형 모두 `--cycle --from=feasibility` 로 호출(claude L104/codex L107/etc L108). kiwi-pipeline 이 `--cycle`(§2.5)과 `--from=<stage>`(§2.5.2 skip-authoring)를 모두 제공하며 wave-master 가 consumer 로 명시(R-005). `--cycle` 누락 해소."
+    },
+    {
+      "id": "FND-009",
+      "why_resolved": "kiwi-srs §1.2 에 '`-qna`(단일 대시) ≠ `--qna`(이중 대시)' 명시 bullet 추가 + §5.2 에서 `-qna`=무제한 qna 루프 강제 진입 신규 플래그, `--qna`=v0.11 deprecated alias 로 역할 분리. 대시 개수로 의미가 반대임을 문서화."
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "FND-101",
+      "axis": "P2",
+      "axis_desc": "cross-variant / 내부 스키마 일관성 (위원회 재작성 잔재)",
+      "severity": "MEDIUM",
+      "title": "auto-option §10 auto_decisions.json 로깅 스키마 예시가 위원회 재작성 후 미갱신 — merge_method 구값·2-SA 결과 형태 잔존",
+      "location": {
+        "file": "skills/codex/_shared/kiwi/auto-option.md ; skills/etc/_shared/kiwi/auto-option.md ; skills/claude/_shared/kiwi/auto-option.md",
+        "line_range": "codex:217 ; etc:218 ; claude:334-339"
+      },
+      "description": "§3(claude)/Committee Merge Ladder(codex L80, etc L92) 본문은 merge_method 를 승리 규칙 `unanimous`/`plurality`/`tie-break-lead` 로 기록하도록 규정하나, §10 auto_decisions.json 예시 블록이 이 위원회 모델로 갱신되지 않았다. (1) codex L217 `\"merge_method\": \"single|unanimous|merge-worker\"` 는 위원회 이전 값 `single`(단일 SA)·`merge-worker`(SA3 중재자)를 그대로 나열 — 두 값 모두 위원회 모델에서 폐기됨. (2) etc L218 `\"merge_method\": \"single\"` 역시 폐기값(위원회 투표이므로 `unanimous` 이어야). (3) claude 는 merge_method 값(`unanimous`)은 유효하나 결과 배열이 `subagent_results` 필드에 `SA1`/`SA2` 2개만 담김(L334-337) — `--auto --max`(5인 위원회) 예시인데 2-SA 구조를 유지해 위원 투표 구조(회원 #1..#5)를 반영 못함. 같은 파일 내부에서 규범 본문 ↔ 스키마 예시가 모순되며, 예시를 복사하는 에이전트가 폐기 merge_method 값을 로깅할 위험. 게이트 비차단(로깅 필드).",
+      "suggested_fix": "세 변형 §10 예시의 merge_method 를 `unanimous`(또는 enum 표기 시 `unanimous|plurality|tie-break-lead`)로 통일하고, claude 예시의 `subagent_results`/`SA1`/`SA2` 를 위원회 회원 투표 배열(예: member #1..#N, K=위원회 규모)로 교체. mode_flags 규모와 회원 수를 일치."
+    },
+    {
+      "id": "FND-102",
+      "axis": "P1",
+      "axis_desc": "내부 일관성 (--squirrel→--model 기계적 치환 잔재)",
+      "severity": "LOW",
+      "title": "kiwi-coder Phase 2 흐름 (c) '시니어 코더 … --model 로 override' 가 §0.16/§1.3 '시니어 코더는 영향 없음' 과 모순",
+      "location": {
+        "file": "skills/claude/kiwi-coder/SKILL.md ; skills/codex/kiwi-coder/SKILL.md",
+        "line_range": "claude:369 ; codex:379"
+      },
+      "description": "§0.16(claude L33/codex L43)·§1.3 note(claude L153/codex L157)·§1.2 표는 `--model` 이 '정형 검사·까칠 리뷰 검증 서브에이전트' 에만 적용되고 '시니어 코더는 영향 없음' 임을 명시. 그러나 Phase 2 흐름의 (c) 라인 'ⅠΓ 시니어 코더 구현 (Opus×1 or ×3; --model 로 override)'(codex 는 'high-reasoning×1 or ×3; --model 로 override')는 시니어 코더가 `--model` 로 override 되는 것처럼 읽혀 모순. 과거 '--squirrel 시 Sonnet'(시니어 코더 다운그레이드) 를 기계적으로 '--model 로 override' 로 치환하며 시니어 코더 제외 규칙과 어긋난 잔재. claude+codex 양 변형 동일 발생. (Opus×1 or ×3 표기가 이미 올바른 모델을 명시하므로 저위험이나 내부 모순.)",
+      "suggested_fix": "(c) 라인의 '; --model 로 override' 를 삭제하거나 '(시니어 코더는 --model 영향 없음)' 으로 정정."
+    },
+    {
+      "id": "FND-103",
+      "axis": "P1",
+      "axis_desc": "내부 일관성 (Phase 명칭 부분 개명)",
+      "severity": "LOW",
+      "title": "kiwi-srs Phase 5 명칭 분열 — 개요/frontmatter 'Verification' vs §10 제목 'Evaluation'",
+      "location": {
+        "file": "skills/claude/kiwi-srs/SKILL.md",
+        "line_range": "overview Phase 5 'Verification' vs '## 10. Phase 5 — Evaluation'"
+      },
+      "description": "Phase 개요 라인이 'Phase 5 : Evaluation' → 'Phase 5 : Verification' 으로 개명되고 §10.2 도 '각 평가자가 독립 검토' → '검증 서브에이전트가 독립 검토' 로 바뀌었으나, §10 섹션 제목은 '## 10. Phase 5 — Evaluation' 로 남아 개요·frontmatter('검증')와 명칭 불일치. 사소한 문서 명명 부정합.",
+      "suggested_fix": "§10 제목을 'Phase 5 — Verification' 으로 통일(또는 개요/frontmatter 를 'Evaluation' 으로 되돌려 하나로 통일)."
+    }
+  ],
+  "accepted_as_historical": [
+    "FND-010"
+  ],
+  "accepted_as_historical_detail": [
+    {
+      "id": "FND-010",
+      "why": "codex/etc MIGRATION_PLAN.md 의 mini-option.md·--mini 참조는 2026-05-19 완료된 codex/etc 포팅 마이그레이션의 역사적 기록(예: codex L117 'Completed on 2026-05-19', etc L91 은 --mini/--squirrel 을 금지 패턴으로 검색하는 가드 grep이며 `-g \"!MIGRATION_PLAN.md\"` 로 자기 제외). MIGRATION_PLAN.md 는 라이브 인덱스가 아니라 동결된 이행 스냅샷이므로 accepted-as-historical 타당. 단, 후속 mini-option.md 삭제로 codex MIGRATION_PLAN.md L26/L50 의 'Rewritten in place at mini-option.md' 가 삭제 파일을 가리키게 된 점은 같은 historical 등급의 잔재로 미수정 수용 가능."
+    }
+  ],
+  "summary": {
+    "resolved": 9,
+    "still_open": 0,
+    "new": 3,
+    "by_severity_open": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 1,
+      "LOW": 2
+    }
+  },
+  "gate": "PASS",
+  "gate_reason": "still_open(0) + new(3) 중 CRITICAL=0 AND HIGH=0. MEDIUM×1(FND-101 로깅 스키마 잔재) + LOW×2 만 잔존, 모두 비차단.",
+  "overall": "직전 9건(FND-001~009) 전부 실제 해소 확인 — diff·현재 파일·테스트 실행(wave-master 25/25 green) 근거. FND-002 `$kiwi-` 일괄치환은 URL/경로 오탐 0건이며 claude 슬래시 vs codex/etc `$` 는 의도된 플랫폼 규칙차. FND-004 는 §6.8 조정 문단으로 서로 다른 측정대상을 정합. FND-010 은 동결 마이그레이션 기록으로 accepted-as-historical. 다만 `--mini`→`--model`/위원회 대규모 리팩터 과정에서 잔재 3건 신규: (MEDIUM) codex/etc/claude auto-option §10 로깅 스키마의 merge_method·2-SA 예시가 위원회 본문과 모순, (LOW) kiwi-coder (c)라인 '시니어 코더 --model override' 가 '시니어 코더 영향 없음' 과 모순(claude+codex), (LOW) kiwi-srs Phase 5 Evaluation/Verification 명칭 분열. 게이트 PASS 이나 신규 잔재 정리 권고."
+}

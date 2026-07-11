@@ -1,6 +1,6 @@
 ---
 name: kiwi-commit-auto-pr
-description: "Kiwi Git workflow that commits, pushes, and creates or updates a GitHub Pull Request while preserving SpecKiwi traceability. Use when the user asks for Kiwi commit PR, kiwi PR open, commit and PR, or automatic PR creation with issue/REQ trailers. Extends kiwi-commit-auto-push with protected-branch feature-branch creation, PR body/review quality gates, GitHub CLI checks, and speckiwi MCP evidence/trace links. Supports --auto, --mini, --draft, --update-pr-body, --no-pr-comment, --req, --task, and --issue."
+description: "Kiwi Git workflow that commits, pushes, and creates or updates a GitHub Pull Request while preserving SpecKiwi traceability. Use when the user asks for Kiwi commit PR, kiwi PR open, commit and PR, or automatic PR creation with issue/REQ trailers. Extends kiwi-commit-auto-push with protected-branch feature-branch creation, PR body/review quality gates, GitHub CLI checks, and speckiwi MCP evidence/trace links. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comment, --req, --task, and --issue."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -62,7 +62,7 @@ The following gates always halt for user input when matched:
 | skip all trailers | `--no-trailer` | off |
 | explicit REQ or task | `--req=FR-X`, `--task=T-PH001-01` | auto-detect |
 | auto gates | `--auto` | off |
-| lower cost mode | `--mini` | off |
+| verification model | `--model <name>` | current session model |
 
 ## Workflow
 

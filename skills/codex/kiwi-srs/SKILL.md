@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs
-description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데이터베이스와 교차 분석하여 conflict/update/new-feature/new-scope 4방향 분류 → 구현 가능성 판정 → speckiwi MCP를 SSOT로 SRS 증분 작성·갱신. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + high-reasoning×1+standard×1 평가자(Max는 high-reasoning×2+standard×1) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — SRS 업데이트, 요구사항 추가, kiwi srs 써줘, 기존 SRS에 반영해줘, 새 기능 요구사항 SRS, SRS 충돌 감지, 충돌 SRS 확인, 증분 SRS authoring, 신규 기능 SRS, 요구사항 명세 갱신, speckiwi 요구사항 등록, srs conflict 분석, kiwi srs 작성, incremental srs, add requirement to srs, update existing SRS, new feature spec, kiwi requirement authoring. **기본 QnA 활성** (reviewer dropout, Normal 3/Max 7 라운드, Phase 1 모호성 0건 시 skip). **--auto 로 질문 없이 진행** (현재의 무옵션 동작과 등가). `--qna` 는 v0.11 까지 deprecated alias. --max로 평가자 승격(high-reasoning×2+standard×1, 2연속 MEDIUM-zero 종료). --mini로 비용 절감(모든 high-reasoning→standard override, `../_shared/kiwi/mini-option.md` v1.0 — 토폴로지·게이트 불변). 종료 시 `workflow_pipeline_emit` 으로 이벤트 1줄 기록 (kiwi-pipeline 메타 스킬용)."
+description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데이터베이스와 교차 분석하여 conflict/update/new-feature/new-scope 4방향 분류 → 구현 가능성 판정 → speckiwi MCP를 SSOT로 SRS 증분 작성·갱신. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — SRS 업데이트, 요구사항 추가, kiwi srs 써줘, 기존 SRS에 반영해줘, 새 기능 요구사항 SRS, SRS 충돌 감지, 충돌 SRS 확인, 증분 SRS authoring, 신규 기능 SRS, 요구사항 명세 갱신, speckiwi 요구사항 등록, srs conflict 분석, kiwi srs 작성, incremental srs, add requirement to srs, update existing SRS, new feature spec, kiwi requirement authoring. **기본 QnA 활성** (reviewer dropout, 무제한 qna 루프, Phase 1 모호성 0건 시 skip). **--auto 로 질문 없이 진행** (현재의 무옵션 동작과 등가). `--qna` 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 2연속 MEDIUM-zero 종료). 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변). 종료 시 `workflow_pipeline_emit` 으로 이벤트 1줄 기록 (kiwi-pipeline 메타 스킬용)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs v0.11
@@ -41,7 +41,7 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}|{severity}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11|HIGH")` = `a5c02377715e12f316cec087d202cb76315c734c`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
 | §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + Codex clarification gate. 상세는 §0.G2 결정표 |
-| §0.20 | **`--mini` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 본 문서의 "high-reasoning 시니어 작성자", "high-reasoning×1 평가자", "high-reasoning×2 평가자", "QnA high-reasoning 라운드" 등 high-reasoning 인용은 모두 standard 으로 read-time replace. 토폴로지·심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
+| §0.20 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가자·QnA 라운드 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
 | §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 QnA skip 의미는 유지하되 외부 모듈, scope boundary, combined conflict, MCP 부재, 사실 위조 게이트는 §0.G6 critical_gates[] 로 자동 우회하지 않는다. |
 
 ### §0.G — 핵심 게이트 결정표
@@ -129,13 +129,14 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | "--auto", "자동", "묻지 말고", "질문 없이" | `--auto` | off (질문 활성이 기본) |
 | "--qna", "질문하며 작성" | `--qna` (deprecated alias) | — — 본 인자는 v0.11 까지 QnA 모드 alias 로 동작하고 v0.12 부터 제거. 사용 시 stderr `[DEPRECATED] --qna is now default; use --auto to suppress` |
 | "--max", "정밀 검증" | `--max` | off |
-| "--mini", "mini 모드", "비용 절감", "standard 으로" | `--mini` | off (모든 high-reasoning → standard, `../_shared/kiwi/mini-option.md` v1.0) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 
 **옵션 의미 (v0.11 이후 SSOT)**:
 - `--auto` 와 `--qna` 동시 명시 → ERROR ("두 옵션은 상호 배타. --auto 만 사용하십시오.").
 - `--auto` 부재 (기본) → Phase 1.5 QnA loop 활성 (단, Phase 1 `intent.json.ambiguities` 가 빈 배열이면 자동 skip).
 - `--auto` 명시 → Phase 1.5 QnA loop skip + 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *Codex clarification gate 발동 대신 차단* 으로 동작 (사용자 결정 보류, 자동 우회 아님).
 - `--qna` 명시 → `--auto` 의 역으로 동작 (기본과 등가). stderr 에 DEPRECATED 경고 1줄.
+- **`-qna` (단일 대시) ≠ `--qna` (이중 대시)**: `-qna` 는 모호성이 없어 보여도 무제한 qna 루프를 **강제 진입**시키는 신규 플래그(§5.2)이고, `--qna` 는 v0.11 까지의 deprecated alias(기본 동작)다. 대시 1개 차이로 의미가 정반대이므로 파싱을 **앵커 규칙**으로 고정한다: `-qna`(강제)는 정확히 대시 1개 뒤 `qna` 이고 앞뒤가 토큰 경계일 때만 매칭 — 정규식 `(?<![-\w])-qna\b`. `--qna`(deprecated)는 대시 2개 — `(?<![-\w])--qna\b`. `-qna` 는 `--qna` 의 부분문자열이므로 경계·대시 개수 검사 없는 substring 매칭은 `--qna` 입력을 `-qna` 로 오탐한다; **substring 매칭 금지**, 반드시 정확한 대시 개수 + 토큰 경계로 판별한다. (플래그 이름은 SRS FR-FLOW-024 가 고정하므로 변경하지 않는다.)
 
 ### 1.3 출력
 
@@ -200,7 +201,7 @@ Phase 2   : Classification (standard, SCOPE 제공 + 모호성 없으면 skip)
 Phase 2.5 : Scope gate (new-scope 시 Codex clarification gate)
 Phase 3   : Feasibility (standard)
 Phase 4   : SRS write/update (high-reasoning × 1, 분류별 §9 MCP 시퀀스)
-Phase 5   : Evaluation (high-reasoning×1+standard×1; Max: high-reasoning×2+standard×1)
+Phase 5   : Verification (단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스)
 Phase 6   : Severity gate + loop → Phase 4 또는 Phase 7
 Phase 7   : Finalize (validate_spec + summarize_target + 사용자 보고)
 ```
@@ -320,16 +321,36 @@ reviewer dropout 패턴 (snoworca-srs-qna 로직 차용, 직접 구현 — §0.8
 - Phase 1 `intent.json.ambiguities` 가 빈 배열 → "질문할 모호성 0건. QnA skip." 안내 후 Phase 2 로 진행
 - Phase 1 `intent.json.semantic_equivalences` 가 모든 ambiguity 를 해소했다고 표시 → skip
 
-- Normal: max **3** 라운드
-- Max: max **7** 라운드 (진동 감지 시 사용자 호출)
-
-각 라운드:
+본 QnA 루프는 유한 라운드가 아니라 **무제한 qna 루프**로 운영된다(§5.2). 각 라운드:
 1. standard QnA agent가 Phase 1 출력의 `ambiguities` + 충돌/누락 후보를 질문으로 나열
 2. 사용자 답변 → agent 재평가
 3. `satisfied=true` 면 종료
 4. 동일 질문 2회 → 사용자에게 "잔존 모호성 기록 후 진행할까?" 확인
 
 산출물: `qna_log.json`.
+
+### 5.1 리서치 문서 부재 시 모호성 처리 (FR-FLOW-024 AC-1)
+
+리서치 문서가 **없을** 때(§9.6 A/B 루프의 `--research-doc` 인자·프롬프트 참조 경로가 **미 제공**된 경우), 본 Phase 는 요구사항의 **모호성**(ambiguity)을 자체 탐지한다. 이때 kiwi-srs 는 **합리적인 기본값**이 존재하는 통상적 선택지는 스스로 결정하고, **합리적 기본값이 없는** 진정한 **비표준 모호성**(genuinely non-standard ambiguity)에 대해서**만** 사용자에게 질문한다 — 표준 관행으로 해소되는 사항까지 물어 사용자를 피로하게 만들지 않는다.
+
+사용자가 내린 **결정**(답변·선택) 자체도 새로운 모호성을 낳을 수 있으므로, kiwi-srs 는 그 결정을 다시 **재검사**하여 남은 비표준 모호성이 있으면 **재질문**한다(결정 → 재검사 → 재질문 순환).
+
+### 5.2 무제한 qna 루프 + 막연한 요청 자동 트리거 (FR-FLOW-024 AC-2)
+
+기존의 유한 3/7 라운드 QnA 를 **무제한 qna 루프**(unbounded qna loop)로 대체한다 — 미해결 모호성이 남아 있는 한 라운드 상한 없이 계속 질문한다.
+
+- **막연한 요청 자동 트리거**: 요청이 충분히 **막연**(vague)하여 요구사항을 특정할 수 없으면 — 예컨대 "**게임**(game)을 하나 만들어줘"처럼 범위가 지나치게 넓은 few-shot 예시 — 별도 플래그 없이도 무제한 qna 루프를 **자동 활성**한다.
+- **`-qna` 강제**: 단일 대시 `-qna` 플래그는 모호성이 없어 보여도 무제한 qna 루프를 **강제** 진입시킨다. v0.11 까지의 deprecated `--qna` 별칭과는 별개인 신규 강제 플래그다(판별 앵커 규칙은 §1.2 — 정확히 대시 1개 + 토큰 경계, substring 매칭 금지).
+- **`--auto` 억제 → 위원회 위임**: `--auto` 명시 시 대화형 qna 루프와 `-qna` 강제 진입을 모두 **억제**(suppress)하고, 잔여 모호성 판단을 **FR-FLOW-025** `--auto` 결정 위원회로 **위임**한다(사용자 질문 없이 위원회가 조사 후 결정).
+- **진동/반복 감지 가드**: 무제한 루프라도 동일 미해결 모호성이 반복(§5 각 라운드 step 4 의 "동일 질문 2회")되면 자동 진행하지 않고 사용자에게 "잔존 모호성 기록 후 진행할까?"를 확인한다 — 무제한이되 진동 시 사용자 호출로 보호한다(구 Max 모드의 "진동 감지 시 사용자 호출" 안전장치를 무제한 루프에 유지). 이 가드는 **대화형 루프 전용**이며 `--auto`/`-qna` 위원회 위임 경로(FR-FLOW-025)에는 적용하지 않는다(§5.3 사용자 종료 신호와 함께 대화형 루프의 이중 안전장치).
+
+### 5.3 비-auto 루프 종료 시 자동 결정 (FR-FLOW-024 AC-3)
+
+이 경로는 §5.2 의 `--auto`/`-qna` 위원회 위임과 **구별된다**. `--auto` 가 **없는** 대화형 무제한 qna 루프가 도는 도중, 사용자가 명시적으로 **종료 신호**(end-signal — 예: "이제 그만", "여기서 종료")를 보내 루프를 끝내면, kiwi-srs 는 더 이상 질문하지 않고 **남은 미해결 모호성**(remaining unresolved ambiguities)을 스스로 **자동 결정**(자동으로 결정)한다 — 각 잔여 모호성에 합리적 기본값을 적용해 결정하고 근거를 `qna_log.json` 에 기록한다. (`--auto` 초기 지정 시의 FR-FLOW-025 위원회 위임과 달리, 여기서는 대화 도중 사용자의 종료 신호가 트리거다.)
+
+### 5.4 요구사항 수집 리서치 서브에이전트 (FR-FLOW-024 AC-4)
+
+리서치 문서도 없고 요청도 막연해 자체 모호성 해소만으로 요구사항을 확정하기 어려우면, kiwi-srs 는 **요구사항 수집**(requirement-gathering) 리서치 **서브에이전트 3개**를 병렬 투입한다. 이 세 서브에이전트는 대상 도메인의 **아키텍처**·**알고리즘**·**구현 방안**(implementation plan)을 조사하고, 각자의 조사 결과를 `docs/research/` 아래에 리서치 문서로 **저장**한다. 저장된 리서치 문서를 확보한 뒤 kiwi-srs 는 그대로 **FR-FLOW-023** 검증/개선(A/B) 루프(§9.6)로 진행하여, 수집된 리서치 문서를 프로세스 A 입력으로 삼는다.
 
 ---
 

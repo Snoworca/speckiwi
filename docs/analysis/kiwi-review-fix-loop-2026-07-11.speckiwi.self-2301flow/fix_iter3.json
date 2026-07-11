@@ -1,0 +1,46 @@
+{
+  "iter": 3,
+  "fixes": [
+    {
+      "finding_id": "FND-201",
+      "severity": "LOW",
+      "priority": "P2",
+      "files_changed": [
+        "skills/codex/_shared/kiwi/auto-option.md",
+        "skills/etc/_shared/kiwi/auto-option.md",
+        ".agents/skills/_shared/kiwi/auto-option.md"
+      ],
+      "rationale_full": "codex/etc auto-option.md 의 'Read-Time Interpretation' 산문이 아직 '--auto may use the decision worker.'(codex) / '--auto may use the single decision worker.'(etc) 로 남아, 같은 파일의 'Decision Committee' + 'Committee Merge Ladder' 절이 이미 반영한 3/5/7 사다리 결정 위원회 모델과 모순. claude 정본 auto-option.md 에는 대응 영어 산문이 없고 §6(의사코드 해석 규약)이 게이트 처리를 '§2 서브에이전트 결정'으로 매핑하며 §2 는 '결정 위원회 토폴로지'(단일 거수기 대신 위원회)다 — 즉 claude 는 단일 worker 표현을 쓰지 않는다. 두 파일의 해당 bullet 을 'the decision committee (see Decision Committee and Committee Merge Ladder)' 로 정합해 claude 와 동일 의미(위원회)로 맞췄다. 미러 .agents/skills/_shared/kiwi/auto-option.md 는 codex 파생본이므로 codex 소스 cp 로 함께 갱신. Definition 절의 단수 'decision worker'(line 12) 와 Compatibility Notes 의 복수 'decision workers'(line 238) 는 미변경 — claude §0/§2.1 이 단일 위원을 '서브에이전트'/'결정 서브에이전트'(단수)로 지칭하는 것과 일치하며, 이는 Read-Time Interpretation finding 범위 밖(개별 위원 = 서브에이전트 = worker, 모순 아님). 다른 SKILL.md/reference 의 'decision worker' 일반 용어도 동일 이유 + finding 범위 밖으로 surgical 하게 미변경.",
+      "action": "fixed"
+    },
+    {
+      "finding_id": "FND-202",
+      "severity": "LOW",
+      "priority": "P1",
+      "files_changed": [
+        "skills/etc/kiwi-coder/references/extended-workflow.md",
+        "skills/etc/kiwi-srs-sync/references/extended-workflow.md"
+      ],
+      "rationale_full": "FR-FLOW-022 가 --mini 를 제거했고 --squirrel 은 그 deprecated alias 였다. etc 의 두 reference 파일이 mode enum 에 squirrel 을 남기고 있었다: kiwi-coder/references/extended-workflow.md line 148 ('mode': 'normal|max|reviewer-off|squirrel|dry-run') 와 kiwi-srs-sync/references/extended-workflow.md line 109 (mode: normal|max|squirrel|dry-run-only). codex 대응 파일이 이미 model 을 쓰므로(codex kiwi-coder line 151 = normal|max|reviewer-off|model|dry-run, codex kiwi-srs-sync line 109 = normal|max|model|dry-run-only) squirrel → model 로 정정해 최신 표현과 일치시켰다. claude 의 kiwi-coder/kiwi-srs-sync 는 references/extended-workflow.md 가 없고 SKILL.md 만 존재하므로(확장 워크플로 파일은 codex/etc 전용 구조) codex 가 정본 대응본이다.",
+      "action": "fixed"
+    }
+  ],
+  "squirrel_wide_scan": "grep -n 'squirrel' skills/ (.agents 제외) 결과 총 4건: (1) skills/etc/kiwi-coder/references/extended-workflow.md:148 → FIXED, (2) skills/etc/kiwi-srs-sync/references/extended-workflow.md:109 → FIXED, (3) skills/etc/MIGRATION_PLAN.md:68 및 (4) skills/etc/MIGRATION_PLAN.md:91 → 미변경(역사적 마이그레이션 기록, FND-010 과 동일 판단). codex/claude 소스에는 squirrel 잔재 0건(이미 model 사용). 수정 후 .agents 미러 grep 재확인 결과 squirrel 0건.",
+  "regression": {
+    "test/skills/": "142/142 pass (8 files)",
+    "test/core/skills/install-skill.test.ts": "17/17 pass",
+    "status": "PASS"
+  },
+  "mirror_resynced": [
+    {
+      "mirror": ".agents/skills/_shared/kiwi/auto-option.md",
+      "method": "manual cp from skills/codex/_shared/kiwi/auto-option.md (speckiwi skills install 이 _shared/* 를 복사하지 않는 도구 갭 대응), diff 로 byte-equal 검증(BYTE_EQUAL_OK)",
+      "reason": "FND-201 codex _shared 수정 반영. .agents 미러는 codex 파생본(Codex clarification gate/request_user_input 확인)"
+    },
+    {
+      "mirror": "(install 재실행 불필요)",
+      "method": "none",
+      "reason": "FND-202 수정은 etc 소스에만 적용됨(.agents 는 codex 만 미러링, etc 전용 미러 부재). codex kiwi-coder/kiwi-srs-sync extended-workflow.md 는 이미 model 을 써 codex 파생 미러도 이미 정합(grep 확인: mirror mode enum = model). etc 소스는 .agents 미러 대상 아님."
+    }
+  ]
+}

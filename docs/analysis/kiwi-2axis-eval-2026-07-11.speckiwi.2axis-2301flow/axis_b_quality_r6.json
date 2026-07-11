@@ -1,0 +1,79 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": "r6-final",
+  "date": "2026-07-11",
+  "scope": "git diff HEAD -- skills/ test/skills src/doctor/package-doctor.ts (.agents mirror excluded)",
+  "resolved_findings": [
+    {
+      "id": "QB-206",
+      "title": "claude kiwi-hot-fix §1.3 note vs §0.10 SSOT + phase-flow role-model contradiction",
+      "severity": "MEDIUM",
+      "evidence": "RESOLVED by fix_round5. §1.3 note (L126) now reads '정형 검사·까칠 리뷰어 검증 서브에이전트는 현재 세션 모델을 상속(--model override); 시니어 fixer 는 현재 세션 모델이나 --model 영향 없음; Root-cause 사전조사·TDD 검증은 Sonnet 고정'. This no longer over-declares root-cause/정형검사 as current-session. It is now policy-identical to §0.10 SSOT (L34: 정형 검사·까칠 리뷰어=현재 세션 모델 + --model; 시니어 fixer 영향 없음; Sonnet×2 root-cause / TDD=Sonnet 고정). Cross-checked frontmatter(L3 model-neutral 'fixer + 정형 검사 + 까칠 리뷰어' + policy clause), §0.2(L26 '까칠 리뷰어 (현재 세션 모델)'), §1.3 table(L128 header 'Root-cause 사전조사 (Sonnet) | 시니어 fixer (현재 세션 모델) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델)'), §1.4(L143/144 '(현재 세션 모델)'), §2(L169/170), §5.1(L290 '시니어 fixer (현재 세션 모델; --model 영향 없음)'), §5.3.1(L315), §5.3.2(L328) — all mutually consistent, zero stray Opus, every remaining Sonnet is legitimately root-cause 사전조사. Independently corroborated by Axis A r6 (F-01/F-02/F-03 all RESOLVED, verdict ALL_MATCH).",
+      "status": "resolved"
+    },
+    {
+      "id": "AC-2-test-refinement",
+      "title": "kiwi-mini-removal-content.test.ts AC-2 operational-topology assertion precision",
+      "severity": "HIGH",
+      "evidence": "VERIFIED correct + non-vacuous. distinctModelTiers(table).length >= 2 offender rule (L256) flags ONLY a dual-model panel (>=2 distinct fixed tiers in one table), permitting a lone cheap-fixed Sonnet. hot-fix §1.3 table (Root-cause 사전조사 (Sonnet) + 3 '현재 세션 모델' cells) yields distinctModelTiers=['sonnet']=1 → GREEN (correct: not an offender). tableAfterHeading (L214) captures only the markdown-table block, skipping the §1.3 prose note, so the note's 'Sonnet 고정' words are not scanned. Non-vacuity: MODEL_TIER matches Opus/Sonnet/tier tokens, so an injected dual panel (정형 검사 (Sonnet) | 까칠 리뷰어 (Opus)) = 2 distinct → RED, as fix_round5 verified. TOPOLOGY_TARGETS headings (10.4/8.4/8.1/1.3) resolve to real table blocks (non-empty tableAfterHeading) for the applicable variants → not a vacuous empty-string pass. review-fix-loop §1.3 table (all counts, 0 tiers) → GREEN. AC-2 dual-model-panel discrimination is sound.",
+      "status": "resolved"
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "QB-207",
+      "axis": "B",
+      "severity": "LOW",
+      "title": "claude kiwi-hot-fix §7.1 report 'mode' enum still lists removed --mini modes 'mini|max-mini' (mini-removal tail + cross-variant asymmetry)",
+      "location": {
+        "file": "skills/claude/kiwi-hot-fix/SKILL.md",
+        "section": "§7.1 report.md frontmatter template",
+        "line": 406,
+        "text": "mode: normal|max|mini|max-mini|dry-run"
+      },
+      "description": "The --mini option is fully removed from this skill (no --mini flag; §1.2 lists --model instead; §1.3 mode matrix has only Normal + --max; state.json mode_flags (L222) lists ['--model?','--max?','--auto?','--dry-run?','--no-sync?'] with no --mini). Yet the §7.1 report YAML 'mode' enum still enumerates the now-impossible values 'mini' and 'max-mini' — modes that could only be emitted when --mini existed. This is (a) an internal contradiction with §1.3 (which no longer defines mini/max-mini modes) and state.json mode_flags, and (b) a cross-variant asymmetry: codex/etc kiwi-hot-fix are abstracted and carry no such enum. The mini-removal automated test does not catch it: MINI_TOKEN=/--mini\\b|mini-option/ does not match the bare 'mini' token. This is the ONLY remaining mini-family token across all skills/claude/** files (grep-verified). Pre-existing residue consciously deferred by fix_round5, not introduced by it. Cross-axis corroboration: identical to Axis A r6 F-R6-01 (independently found, LOW/non-blocking).",
+      "suggested_fix": "Change L406 to 'mode: normal|max|dry-run' to drop the impossible 'mini|max-mini' values, matching the removed --mini option and §1.3 mode matrix. Doc-cosmetic; no code/test change required."
+    },
+    {
+      "id": "QB-208",
+      "axis": "B",
+      "severity": "MEDIUM",
+      "title": "kiwi-coder frontmatter (+ §1.4 output labels) still pins now-current-session 정형 검사=Sonnet / 까칠 리뷰=Opus, self-contradicting the same description's §0.16 policy clause",
+      "location": {
+        "file": "skills/claude/kiwi-coder/SKILL.md",
+        "section": "frontmatter description (L3) + §1.4 analysis-log labels (L178/L179)",
+        "line": 3,
+        "text": "L3 flow: '... Opus 시니어 구현 → Sonnet 정형 검사 → Opus 까칠 리뷰 ...' vs L3 policy (same description): '검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속하며 --model 로 override'; L178 'formal_review_iter{N}.json (Sonnet 정형)'; L179 'prickly_review_iter{N}.json (Opus 까칠)'"
+      },
+      "description": "The uncommitted role-model rewrite changed kiwi-coder §0.16 SSOT + §1.3 mode matrix + §2 (2.e/2.f) + §5.2 to '정형 검사·까칠 리뷰 = 현재 세션 모델', but left the frontmatter flow narrative pinning '정형 검사 = Sonnet' and '까칠 리뷰 = Opus'. The SAME description then states the policy clause '검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속' — a direct same-breath self-contradiction on the model of the identical two roles (there is no reading where 정형 검사=Sonnet is correct: even a default Opus session makes it Opus, not Sonnet). §1.4 output labels L178 '(Sonnet 정형)' / L179 '(Opus 까칠)' repeat the stale pin. 'Opus 시니어 구현' (L3), '시니어 코더 (Opus×1)' (L289/L369/L693) are CORRECT — the senior coder stays Opus-fixed per §1.3, unaffected by --model — so only the 정형 검사/까칠 리뷰 tiers are stale. This is the exact F-02/F-03 defect class ('stale Opus/Sonnet names in frontmatter') that fix_round5 treated as must-fix and cleaned in kiwi-hot-fix and kiwi-review-fix-loop, but the same defect persists in kiwi-coder — the declared SSOT precedent. Introduced by this uncommitted work (committed HEAD's frontmatter had a consistent --mini clause; the rewrite replaced the policy clause while preserving the fixed-tier narrative). Not covered by Axis A r6 (whose scope examined hot-fix/review-fix-loop and treated kiwi-coder's §1.3 table as the clean precedent without inspecting its frontmatter narrative). Doc-cosmetic (natural-language skill; no runtime), but a genuine same-document contradiction a reader/agent cannot reconcile.",
+      "suggested_fix": "Genericize the L3 flow to model-neutral role names ('... 시니어 구현 → 정형 검사 → 까칠 리뷰 ...') exactly as hot-fix/review-fix-loop frontmatter were fixed (keeping 'Sonnet×4 병렬 TDD 검증' and 'Opus 시니어 구현', which are correct fixed roles), and drop the tier prefixes from §1.4 L178/L179 → '(정형 검사)' / '(까칠 리뷰)'. Doc-only, no code/test change."
+    }
+  ],
+  "accepted_as_deferred": ["QB-205"],
+  "observations_non_finding": [
+    {
+      "ref": "kiwi-srs-research §0.5 vs §0.17",
+      "note": "§0.5 keeps fixed per-role tier labels ('Sonnet×1 (Triage) + Opus×3 + Opus×1' in claude; 'standard×1 + high-reasoning×3 + high-reasoning×1' in codex) while §0.17 (labeled SSOT) says 'Researchers·Synthesizer 등 서브에이전트는 현재 세션 모델을 상속'. Surface §0.5↔§0.17 tension, BUT (a) it is a research topology, not the FR-FLOW-022 evaluator PANEL, so out of the mini-removal test's target; (b) both claude+codex were edited identically (consistent, not a cross-variant asymmetry), suggesting the §0.5 tier labels were deliberately retained as canonical role/topology notation with §0.17 as the overriding model SSOT. Lower-confidence / possibly-intentional; disclosed, not raised as a gate finding to avoid forcing."
+    },
+    {
+      "ref": "kiwi-pm §? L465",
+      "note": "'Opus 까칠 코드 리뷰어 finding → kiwi-coder Phase 2.h' cross-references kiwi-coder's harsh reviewer as Opus, but that role is now 현재 세션 모델. Stale descriptive cross-reference (kiwi-pm only spawns kiwi-coder, which self-determines its model), LOW/cosmetic; disclosed."
+    },
+    {
+      "ref": "Axis A r6 F-R6-02 concurrence",
+      "note": "Concur with Axis A: hot-fix §0.10/§1.3 prose carries a 'TDD 검증 (Sonnet 고정)' clause copied from the kiwi-coder precedent, but hot-fix instantiates no distinct TDD-verification subagent (its TDD activity is fixer-authored regression tests on the current session model, §5.1). Vestigial/imprecise prose, not an active contradiction (§1.3 table has no TDD column). LOW; Axis A owns it."
+    }
+  ],
+  "summary": {
+    "resolved": 2,
+    "still_open": 0,
+    "new": 2,
+    "by_severity_open": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 1 }
+  },
+  "regression": "test/skills 148/148 (8 files passed; mini-removal 11/11 incl. refined AC-2)",
+  "gate": "FAIL",
+  "clean": false,
+  "overall": "The TARGETED fix is fully successful: QB-206 (hot-fix §1.3 note vs §0.10 SSOT) is RESOLVED and hot-fix §0.10·§1.3·frontmatter·§1.4·§2·§5.x are mutually consistent (정형 검사·까칠 리뷰어·시니어 fixer = 현재 세션 모델, fixer --model-immune; root-cause 사전조사·TDD = Sonnet 고정); kiwi-review-fix-loop is entirely model-neutral and clean; the AC-2 test refinement (distinctModelTiers>=2 dual-panel rule) is correct and NON-VACUOUS (permits the lone Sonnet root-cause/TDD row, catches an injected 2-tier panel, scans only the table block not the prose); 148/148 green. Axis A r6 independently confirms ALL_MATCH. However the tree is NOT fully clean: two doc-cosmetic residues from the broader mini-removal + role-model rewrite remain, neither reopening the evaluator panel nor re-introducing --mini as an option. QB-207 (LOW, = Axis A F-R6-01): hot-fix §7.1 report enum still lists dead 'mini|max-mini' modes. QB-208 (MEDIUM, NEW, not seen by either axis before): kiwi-coder — the declared SSOT precedent — still pins 정형 검사=Sonnet / 까칠 리뷰=Opus in its frontmatter flow (+ §1.4 L178/L179 labels), self-contradicting the same description's 현재-세션-모델 policy clause; this is the exact F-02/F-03 frontmatter defect class the fix chain treated as must-fix in the sibling skills but left unfixed in the precedent. Gate FAIL on the open MEDIUM per the r5 convention. Recommendation: the role-model fix chain for hot-fix/review-fix-loop can be closed as substantively DONE; fold QB-207 + QB-208 (+ Axis A F-R6-01/F-R6-02) into one small non-blocking doc-hygiene sweep to genericize the remaining stale fixed-tier labels in kiwi-coder's frontmatter/output labels and drop the dead hot-fix mode enum values."
+}

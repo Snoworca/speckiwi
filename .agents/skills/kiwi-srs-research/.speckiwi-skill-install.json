@@ -1,18 +1,24 @@
 {
   "name": "kiwi-srs-research",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.391Z",
+  "installedAt": "2026-07-10T14:50:37.729Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-srs-research",
   "installedPath": ".agents/skills/kiwi-srs-research",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:f64d90a6f8a33fbb3c71a12fa8148191bf27f0742e649686dc193630b4021d62",
-  "installedChecksum": "sha256:f64d90a6f8a33fbb3c71a12fa8148191bf27f0742e649686dc193630b4021d62",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:4cb461d7276cd907a6e1485a5bb335b3865032e756798848be317db392bde16e",
+  "installedChecksum": "sha256:4cb461d7276cd907a6e1485a5bb335b3865032e756798848be317db392bde16e",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/pipeline-event.md",
+    "_shared/kiwi/pipeline-v1.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-srs-research --json",
   "noManualEdit": true
 }

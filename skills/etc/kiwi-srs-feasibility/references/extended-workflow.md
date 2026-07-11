@@ -267,10 +267,12 @@ per-REQ judgement + 정책 → per-REQ stability 제안.
 
 ### 8.4 토폴로지
 
-| 모드 | Evaluator A | B | C |
-|---|---|---|---|
-| Normal | local-LLM max-profile | local evaluator | — |
-| --max | local-LLM max-profile | local evaluator | local-LLM max-profile |
+평가·검증은 **단일 검증 서브에이전트**가 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다.
+
+| 모드 | 검증 서브에이전트 | 모델 |
+|---|---|---|
+| Normal | 단일 검증 서브에이전트 × 1 | 현재 세션 모델 (`--model` override) |
+| --max | 단일 검증 서브에이전트 + 독립 2차 검증 패스 | 현재 세션 모델 (`--model` override) |
 
 ---
 

@@ -1,0 +1,127 @@
+{
+  "immediate_fix": [
+    {
+      "id": "FND-001",
+      "severity": "MEDIUM",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": true,
+      "tags": [
+        "bug",
+        "consistency",
+        "cross-variant"
+      ]
+    },
+    {
+      "id": "FND-002",
+      "severity": "MEDIUM",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "consistency",
+        "cross-variant",
+        "convention",
+        "etc-lint"
+      ]
+    },
+    {
+      "id": "FND-003",
+      "severity": "MEDIUM",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "consistency",
+        "doc",
+        "frontmatter",
+        "cross-variant"
+      ]
+    },
+    {
+      "id": "FND-004",
+      "severity": "MEDIUM",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": true,
+      "tags": [
+        "consistency",
+        "completeness",
+        "cross-variant"
+      ]
+    },
+    {
+      "id": "FND-005",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "consistency",
+        "clarity",
+        "cross-variant"
+      ]
+    },
+    {
+      "id": "FND-006",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": true,
+      "tags": [
+        "consistency",
+        "cross-variant",
+        "drift"
+      ]
+    },
+    {
+      "id": "FND-007",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "test",
+        "false-green-risk"
+      ]
+    },
+    {
+      "id": "FND-008",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": true,
+      "tags": [
+        "completeness",
+        "ambiguity",
+        "cross-skill"
+      ]
+    },
+    {
+      "id": "FND-009",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "clarity",
+        "footgun"
+      ]
+    },
+    {
+      "id": "FND-010",
+      "severity": "LOW",
+      "rationale": "user meta-goal: eliminate all findings; MEDIUM=internal contradiction, LOW=legit small improvement",
+      "estimated_complexity": "trivial",
+      "is_behavioral": false,
+      "tags": [
+        "doc",
+        "historical",
+        "out-of-scope"
+      ]
+    }
+  ],
+  "discussion_needed": [],
+  "rejected": [],
+  "note": "--auto: skill default sends LOW->reject, but user goal 개선사항 0까지 반복 requires fixing all legit findings; FND-010 conditional (historical MIGRATION_PLAN — fixer judges live vs narration)"
+}

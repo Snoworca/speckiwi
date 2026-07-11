@@ -187,7 +187,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-022 AC-3"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-mini-removal-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T07:24:17Z",
+          "phase": "red",
+          "failures": "AC-1 (in-scope files still ref --mini + 3 mini-option.md copies exist), AC-2 [claude,codex] no single current-session-model wording, AC-3 [claude,codex] no --model override"
+        },
         "green_evidence": null
       }
     },
@@ -319,7 +325,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-mini-removal-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T08:31:31.913Z",
+          "phase": "green",
+          "result": "5/5 pass; regression test/skills 23/23 pass; 3 mini-option.md deleted; 0 residual --mini in-scope; 80 files scrubbed"
+        }
       }
     },
     {
@@ -420,7 +432,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-025 AC-4"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-auto-committee-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T08:47:22.394Z",
+          "phase": "red",
+          "failures": "12/12 fail; FR-FLOW-025 AC-1..AC-5 committee ladder(3/5/7)+tie-break+escalation wording absent"
+        },
         "green_evidence": null
       }
     },
@@ -532,7 +550,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-auto-committee-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T09:06:31.736Z",
+          "phase": "green",
+          "result": "12/12 pass; auto-option.md edited across claude/codex/etc + mirror; regression test/skills 35/35; NOTE: internal prickly-review incomplete (spend-limit) — flag for 2-axis eval"
+        }
       }
     },
     {
@@ -645,7 +669,13 @@
             "expected_failure_signature": "AssertionError: expected kiwi-srs to encode FR-FLOW-023 AC-5 — --max spawns (document count × 3) verification subagents for multiple documents while the non-max path processes documents per-document sequentially"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-srs-research-loop-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T09:49:47.601Z",
+          "phase": "red",
+          "failures": "15/15 fail; FR-FLOW-023 research verify/improve A/B loop wording absent"
+        },
         "green_evidence": null
       }
     },
@@ -770,7 +800,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-srs-research-loop-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T10:05:38.004Z",
+          "phase": "green",
+          "result": "15/15 pass; regression test/skills 50/50"
+        }
       }
     },
     {
@@ -860,7 +896,13 @@
             "expected_failure_signature": "AssertionError: expected claude & etc kiwi-planner SKILL.md to contain the workflow-tool-policy + degraded-fallback wording (0 workflow_* refs today) — the validator.mjs coverage-preservation grep for the 28 makeCheck rule IDs (C00b, C01-C25, R01, R04) is a separate always-green assertion, not the red driver"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-planner-workflow-tools-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T10:15:16.196Z",
+          "phase": "red",
+          "failures": "8 fail/5 pass; 8=new FR-FLOW-031 workflow_* routing assertions fail, 5=token-contract preservation already-present"
+        },
         "green_evidence": null
       }
     },
@@ -969,7 +1011,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-planner-workflow-tools-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T10:32:24.354Z",
+          "phase": "green",
+          "result": "13/13 pass; token-contract subtest (official workflow tools) pass; regression test/skills 63/63; install-skill mirror-drift deferred to PH-006"
+        }
       }
     },
     {
@@ -1058,7 +1106,13 @@
             "expected_failure_signature": "AssertionError: expected kiwi-planner to encode FR-FLOW-032 AC-3 — on a detected omission, kiwi-planner improves the plan and re-verifies ONLY the not-yet-marked items, iterating until every requirement is marked verification-complete (bounded by the divergence guard)"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-planner-coverage-loop-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T11:08:48Z",
+          "phase": "red",
+          "failures": "9/9 fail; FR-FLOW-032 AC-1 RECONCILE, AC-2 VERIFICATION_COMPLETE, AC-3 NOT_YET_MARKED drivers absent x3 variants"
+        },
         "green_evidence": null
       }
     },
@@ -1158,7 +1212,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-planner-coverage-loop-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T11:24:13.239Z",
+          "phase": "green",
+          "result": "9/9 pass; regression test/skills 72/72"
+        }
       }
     },
     {
@@ -1262,7 +1322,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-024 AC-4"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-srs-research-loop-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T11:35:15.104Z",
+          "phase": "red",
+          "failures": "12 new fail (FR-FLOW-024 AC1-4 x3 variants) appended to shared kiwi-srs test file; FR-FLOW-023 15 still green"
+        },
         "green_evidence": null
       }
     },
@@ -1374,7 +1440,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-srs-research-loop-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T11:49:42.072Z",
+          "phase": "green",
+          "result": "27/27 pass (FR-FLOW-023 15 + FR-FLOW-024 12); regression test/skills 84/84; 0 new failures (3 suite fails pre-existing/PH-006-deferred)"
+        }
       }
     },
     {
@@ -1487,7 +1559,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-026 AC-5"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T12:10:35.472Z",
+          "phase": "red",
+          "failures": "15/15 fail; FR-FLOW-026 kiwi-pipeline end-to-end orchestration core wording absent"
+        },
         "green_evidence": null
       }
     },
@@ -1612,7 +1690,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T12:35:35.289Z",
+          "phase": "green",
+          "result": "15/15 pass; regression test/skills 99/99; kiwi-pipeline 3 variants + pipeline-v1.md contract seeded"
+        }
       }
     },
     {
@@ -1704,7 +1788,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-027 AC-3"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T12:55:19.605Z",
+          "phase": "red",
+          "failures": "9 new fail (FR-FLOW-027 worktree+completion gate x3 variants) appended to shared kiwi-pipeline test; FR-FLOW-026 15 still green"
+        },
         "green_evidence": null
       }
     },
@@ -1804,7 +1894,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T13:04:02.476Z",
+          "phase": "green",
+          "result": "24/24 pass (026 15 + 027 9); regression test/skills 108/108"
+        }
       }
     },
     {
@@ -1897,7 +1993,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-028 AC-3"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T13:28:18.782Z",
+          "phase": "red",
+          "failures": "9 new fail (FR-FLOW-028 github issue entry x3 variants); 024/026/027 24 green"
+        },
         "green_evidence": null
       }
     },
@@ -2000,7 +2102,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-pipeline-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T13:40:31.883Z",
+          "phase": "green",
+          "result": "33/33 pass (026 15 + 027 9 + 028 9); regression test/skills 117/117"
+        }
       }
     },
     {
@@ -2124,7 +2232,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-029 AC-5"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T13:49:31.855Z",
+          "phase": "red",
+          "failures": "16/16 fail; FR-FLOW-029 kiwi-wave-master SKILL.md absent (net-new skill)"
+        },
         "green_evidence": null
       }
     },
@@ -2270,7 +2384,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T14:03:20.521Z",
+          "phase": "green",
+          "result": "16/16 pass; kiwi-wave-master net-new SKILL.md (3 variants) + package-doctor EXPECTED_KIWI_SKILLS registered; regression test/skills 133/133"
+        }
       }
     },
     {
@@ -2362,7 +2482,13 @@
             "expected_failure_signature": "AssertionError: expected SKILL.md content to encode FR-FLOW-030 AC-3"
           }
         ],
-        "red_evidence": null,
+        "red_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit": 1,
+          "ts": "2026-07-10T23:27:31Z",
+          "phase": "red",
+          "failures": "9 new fail (FR-FLOW-030 epic entry AC1-3 x3 variants, OQ-030 guard both branches); FR-FLOW-029 16 green; S2 findings round2 addressed"
+        },
         "green_evidence": null
       }
     },
@@ -2463,7 +2589,13 @@
           }
         ],
         "red_evidence": null,
-        "green_evidence": null
+        "green_evidence": {
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit": 0,
+          "ts": "2026-07-10T14:45:55.497Z",
+          "phase": "green",
+          "result": "25/25 pass (029 16 + 030 9); OQ-030 guard both branches in kiwi-wave-master SKILL.md; regression test/skills 142/142"
+        }
       }
     },
     {

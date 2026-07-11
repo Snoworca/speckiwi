@@ -1,18 +1,23 @@
 {
   "name": "kiwi-commit-auto-push",
   "agent": "codex",
-  "installedAt": "2026-06-29T06:05:44.169Z",
+  "installedAt": "2026-07-10T14:50:33.147Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-commit-auto-push",
   "installedPath": ".agents/skills/kiwi-commit-auto-push",
-  "sourceRevision": "ec9369f80454c112a88d02d1951f16be2b4d8b45",
-  "sourceChecksum": "sha256:558c399468be5b41336ab98fc0bee972c7e97f29dc1d1855655af91f0c3e5520",
-  "installedChecksum": "sha256:558c399468be5b41336ab98fc0bee972c7e97f29dc1d1855655af91f0c3e5520",
+  "sourceRevision": "8ed02c90f1eac396fdbdfdd6967b846853c275e6",
+  "sourceChecksum": "sha256:820c2af91b5f74c29e0aae9e571e7d5992f85f919a1d22a097e9a46daf9b5dae",
+  "installedChecksum": "sha256:820c2af91b5f74c29e0aae9e571e7d5992f85f919a1d22a097e9a46daf9b5dae",
   "sourceFileCount": 3,
   "installedFileCount": 3,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/pipeline-event.md"
+  ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-commit-auto-push --json",
   "noManualEdit": true
 }

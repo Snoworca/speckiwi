@@ -1,0 +1,146 @@
+{
+  "axis": "A — SRS intent match",
+  "evaluator": "independent Axis A evaluator; judged only from SRS statements/AC and actual skill/test text",
+  "date": "2026-07-11",
+  "scope": "FR-FLOW-022..032 (v2.3.0.1), skills variants claude (canonical, deep-read) + codex/etc (identical bilingual content-assertions + spot-checks)",
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "Glob mini-option.md -> No files found (all 3 copies removed incl .agents mirror per test THREE_MINI_OPTION_COPIES); no --mini in any SKILL.md / _shared/kiwi / references (grep: only 2 historical MIGRATION_PLAN.md hits, which are neither skill body nor shared SSOT and are out of the operative clause)"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "skills/claude/kiwi-srs/SKILL.md:37 (§0.20) '단일(single) 검증 서브에이전트 ... 현재 세션 모델(current session model) 상속 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체)'; codex/kiwi-srs/SKILL.md:44 mirror; auto-option.md:116 '이중 모델 평가자 패널을 쓰지 않고 단일 현재 세션 모델'"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "kiwi-srs SKILL.md:37 '--model <name> (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override'; planner §6.8:417 same policy"}
+      ],
+      "notes": "Single-current-model verification subagent + --model override authored across variants; mini-option SSOT deleted. Only residue is historical MIGRATION_PLAN.md mentions (IA-001, LOW, non-blocking)."
+    },
+    {
+      "req": "FR-FLOW-023",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-srs SKILL.md:559 (§9.6) research doc via explicit --research-doc <path> arg (repeatable) OR resolved from user prompt reference"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:563 Process A reports (i) missing req, (ii) incorrectly-authored req, (iii) implementability reusing feasibility-policy-schema-v1 heuristic; flags regression(손상) to existing product features; writes improvements doc to run-scoped temp dir (run-id keyed OS temp); terminates when 0 improvements"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:565 Process B reads improvements doc, applies via Phase 4 MCP mutation, returns control to Process A; :567 divergence guard 5(normal)/8(--max)"},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:571 '--max, 단일 문서 기준: 프로세스 A 는 검증 서브에이전트 3개'"},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md:572 non-max multi-doc = sequential per document (1 subagent/doc); :573 --max = (문서 수 × 3) fan-out"}
+      ],
+      "notes": "A/B loop fully realized. Divergence cap 5/8 is an implementation choice (plan OQ-023) within the SRS 'maximum iterations' intent — not drift."
+    },
+    {
+      "req": "FR-FLOW-024",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-srs SKILL.md:334 (§5.1) no-research-doc ambiguity self-detect; ask ONLY genuinely non-standard ambiguities w/ no reasonable default; :336 user decision re-checked/re-questioned (결정→재검사→재질문)"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:340 (§5.2) unbounded qna replaces bounded 3/7; :342 vague 'game(게임)' auto-trigger; :343 single-dash -qna force (distinct from deprecated --qna); :344 --auto suppresses interactive loop+-qna, delegates remaining to FR-FLOW-025 committee"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:348 (§5.3) non-auto loop: explicit user end-signal -> auto-decision for remaining unresolved ambiguities (distinct from §5.2 --auto committee path)"},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:352 (§5.4) 3 requirement-gathering research subagents (architecture/algorithms/impl-plan) -> save under docs/research/ -> proceed to FR-FLOW-023 A/B loop as Process A input"}
+      ],
+      "notes": "All four ACs encoded. §5.4 conditions the 3-subagent path on 'self-resolution insufficient', a faithful (arguably more precise) realization of the post-auto-decision research step; not drift."
+    },
+    {
+      "req": "FR-FLOW-025",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "auto-option.md §2 tbl + §3.1: --auto convenes 3-member research-performing committee, each isolated subagent investigates + selects most reasonable option; §3.5 critical/business-decision gates STILL halt"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "auto-option.md §2 tbl '--auto --max | 5인 위원회'; §3.2 '5인으로 격상'"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "auto-option.md §3.1-3.2 non-unanimous 3 -> escalate to 5 -> re-decide; 5-member non-max decides by plurality (최다 득표); §3.4 tie broken deterministically by lead member #1 ranking"},
+        {"ac": "AC-4", "satisfied": true, "evidence": "auto-option.md §3.2-3.3 --max: non-unanimous 5 -> escalate to 7 -> plurality without unanimity; §3.4 7-member tie also broken by lead member #1"}
+      ],
+      "notes": "3->5->7 ladder + lead-#1 deterministic tie-break exact across claude/codex/etc. Per Implementation Notes the imprecise 'replacing block-instead-of-ask' phrasing is correctly NOT asserted; critical-halt guardrail preserved."
+    },
+    {
+      "req": "FR-FLOW-026",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md:111 explicit arrow chain 'kiwi-srs → (조건부) kiwi-srs-feasibility → kiwi-planner → kiwi-pm → kiwi-review-fix-loop' (§2.5), not a single next-step"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:117 (§2.5.1) feasibility only when just-authored reqs are draft stability OR implementability unverified; else skip to planner"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:281 (§6.6) --auto: all inter-stage gates auto-decided by auto-option.md committee, runs to end(끝까지); sub-skill NEEDS_USER/FAILED or critical gate still halts"},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:302 (§7.1) --max propagated to every spawned sub-skill (kiwi-srs/feasibility/planner/pm/review-fix-loop)"},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md:306 (§7.2) user research document passed through to /kiwi-srs -> used as FR-FLOW-023 input"}
+      ],
+      "notes": "End-to-end cycle orchestration realized with conditional feasibility, committee gating, propagation, passthrough."
+    },
+    {
+      "req": "FR-FLOW-027",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md:137 (§2.6) --wt or worktree-isolation request creates dedicated git worktree (git worktree add ... -b <cycle-branch>) and runs cycle inside it; base workspace untouched"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:141 non-auto interactive: on successful completion asks (AskUserQuestion 2-choice) merge worktree branch vs open PR; no auto-integration before choice"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:145 --auto: on completion always calls kiwi-commit-auto-pr to open PR; base branch direct-merge prohibited (PR path only)"}
+      ],
+      "notes": "Worktree isolation + merge-or-PR completion gate matches; auto path is PR-only, no base direct-merge."
+    },
+    {
+      "req": "FR-FLOW-028",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-pipeline SKILL.md:155 (§2.7.1) supplied issue# -> first /kiwi-srs-research researches (1) issue resolution + (2) implementation-approach; research-first order enforced (only kiwi-srs-research between issue cue and kiwi-srs start)"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:159 (§2.7.2) research insufficient/ambiguous -> start /kiwi-srs with -qna; under --auto suppress -qna, resolve via FR-FLOW-025 committee"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:163 (§2.7.3) after issue research+authoring continues standard cycle -> kiwi-planner -> kiwi-pm -> kiwi-review-fix-loop"}
+      ],
+      "notes": "GitHub-issue entry research-first flow fully authored in Phase 0 / §2.7."
+    },
+    {
+      "req": "FR-FLOW-029",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-wave-master SKILL.md:73-78 (§3) two-branch heuristic: headers-first (explicit wave structure/document structure) else subagent analyzes overall flow to split 3-8 coherent sub-goals into ordered wave-1..N; doctor: src/doctor/package-doctor.ts:73 EXPECTED_KIWI_SKILLS includes 'kiwi-wave-master'"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:84-86 (§4) per-wave /kiwi-srs registers dedicated wave-{n} target with explicit work scope bounded so feasibility/planning/review do not look beyond that wave"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:94-96 (§5) waves.jsonl append-only; wave marked complete only after its /kiwi-pipeline finishes successfully; cleared session resumes from first incomplete wave; §0.6 idempotent resume"},
+        {"ac": "AC-4", "satisfied": true, "evidence": "SKILL.md:102-106 (§6) per-wave /kiwi-pipeline in registration order, skip-authoring via --cycle --from=feasibility (up-front /kiwi-srs already authored); provider entry confirmed in kiwi-pipeline §2.5.2 (--from=) R-005"},
+        {"ac": "AC-5", "satisfied": true, "evidence": "SKILL.md:116-122 (§7) --auto runs all waves autonomously to end, per-wave pipeline safety gates still apply (§0.4); --max propagated to every wave's kiwi-pipeline + sub-skills"}
+      ],
+      "notes": "Net-new orchestrator authored across all 3 variants + registered in package-doctor; both provider(pipeline)/consumer(wave-master) sides of the skip-authoring entry present."
+    },
+    {
+      "req": "FR-FLOW-030",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-wave-master SKILL.md:134-138 (§8.1) epic-issue entry extracts ordered waves from epic structure / task list / linked sub-issues, instead of analyzing a research/plan document"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:141-146 (§8.2) after extraction proceeds identical to FR-FLOW-029: scoped wave-{n} target, waves.jsonl, per-wave /kiwi-pipeline in order (reused machinery)"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:150-157 (§8.3) only up-front wave-split research skipped; each wave's /kiwi-pipeline still does its own research; OQ-030 guard both branches: (a) structured epic (task-list group / >=2 linked sub-issues) -> skip + decompose from structure; (b) unstructured/free-form/<2 sub-issues -> fallback to FR-FLOW-029 wave-split subagent (no new component)"}
+      ],
+      "notes": "Epic entry mode + OQ-030 structure-detection guard (both structured-skip and unstructured-fallback branches) fully encoded, matching the 2026-07-10 committee resolution recorded in the SRS Implementation Notes."
+    },
+    {
+      "req": "FR-FLOW-031",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-planner SKILL.md:16-20 Official Workflow Tool Policy routes target-9 by category: reading(workflow_plan_status/plan_task/next_plan_task), validating(workflow_doctor/schema_check/diff), mutating(workflow_task_check/uncheck/checklist_set); :22 validator.mjs superseded but C01-C25 coverage preserved"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "All 3 variants carry the policy section referencing workflow_* family; claude variant (previously 0 workflow_* refs) now routes reads + checkbox mutations through the family (also satisfies MIG-FLOW-003)"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:22 raw docs/plans direct access allowed only as degraded fallback (degraded mode) after recording diagnostics/artifact paths/active target/follow-up IDs; install-skill token contract preserved per test"}
+      ],
+      "notes": "workflow_* MCP tool family primary path authored; validator.mjs 28 makeCheck rule IDs preserved (coverage no-regress, always-green guard). authoring via Write/Edit correctly kept as normal (non-degraded) path."
+    },
+    {
+      "req": "FR-FLOW-032",
+      "intent_match": "full",
+      "ac_verdicts": [
+        {"ac": "AC-1", "satisfied": true, "evidence": "kiwi-planner SKILL.md:419-420 (§6.8) loop starts by reconciling(대조) target SRS req count vs plan coverage entry count, then cross-checks each requirement id one-by-one (not aggregate %)"},
+        {"ac": "AC-2", "satisfied": true, "evidence": "SKILL.md:421 2 sequential verifications on current session model (FR-FLOW-022): first passes -> independent second re-confirms -> mark verification-complete only after both; marking persistent (not re-analyzed later); :422 --max independent third refuter must FAIL to refute before marking + AC-granularity"},
+        {"ac": "AC-3", "satisfied": true, "evidence": "SKILL.md:423 omission (uncovered req/AC OR plan task outside SRS scope) -> improve plan -> re-verify only not-yet-marked -> iterate until every req marked, bounded by §0.G5 divergence guard; :424 --max terminates only after two consecutive rounds with zero new omissions"}
+      ],
+      "notes": "Coverage verification loop realized end-to-end: reconcile -> one-by-one -> 2 sequential + persistent marking -> --max 3rd-refuter + AC-granularity -> omission-repair -> --max 2x-zero termination. Explicitly separated from §6.1-6.5 finding evaluation."
+    }
+  ],
+  "findings": [
+    {
+      "id": "IA-001",
+      "req": "FR-FLOW-022",
+      "severity": "LOW",
+      "title": "Historical MIGRATION_PLAN.md files still contain the literal '--mini' string",
+      "location": {"file": "skills/codex/MIGRATION_PLAN.md, skills/etc/MIGRATION_PLAN.md", "line_range": "3 occurrences each"},
+      "description": "AC-1 wording says '--mini ... removed repo-wide'. Two migration-history docs still mention '--mini' while describing the removal. These are NOT skill bodies nor shared SSOT, so the operative AC-1 clause ('No kiwi-* skill body or shared SSOT references --mini') is satisfied, and the content-assertion test deliberately scopes them out (they are not SKILL.md / _shared/kiwi / references). The functional option and all 3 _shared/kiwi/mini-option.md copies are confirmed deleted. Reported for transparency only; does not constitute an intent mismatch.",
+      "suggested_fix": "Optional: scrub the two MIGRATION_PLAN.md '--mini' mentions or annotate them as historical, to make 'removed repo-wide' literally true. Non-blocking."
+    }
+  ],
+  "summary": {
+    "reqs_full": 11,
+    "reqs_partial": 0,
+    "reqs_mismatch": 0,
+    "findings_total": 1,
+    "by_severity": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1}
+  },
+  "verdict": "ALL_MATCH",
+  "overall": "All 11 requirements (FR-FLOW-022..032) are a FULL intent match: every SHALL clause and every AC is actually realized in the skill instruction text such that an agent can execute the described behavior — not merely keyword presence. Deep-read verification was done on the claude canonical bodies (kiwi-srs §0.20/§5.1-5.4/§9.6, kiwi-pipeline §2.5-2.7/§6.6/§7, kiwi-wave-master §3-§8, kiwi-planner Official Workflow Tool Policy/§6.8, _shared/kiwi/auto-option.md §2-§3) and cross-checked to codex/etc via the identical bilingual content-assertion suite plus spot-checks. The specific intent-drift risks flagged in the task are all correctly encoded: FR-FLOW-024 -qna unbounded loop + --auto->committee suppression + end-signal auto-decision + 3-subagent docs/research; FR-FLOW-030 OQ-030 structure guard's BOTH branches (structured research-skip vs unstructured wave-split fallback); FR-FLOW-032 full ladder (reconcile -> one-by-one -> 2 sequential + persistent marking -> --max refuter/AC-granularity -> omission-repair -> 2x-zero termination); FR-FLOW-025 3/5/7 ladder + lead-#1 tie-break. The content-assertion tests are rigorous (net-new anchors + windowed co-occurrence + documented false-green defenses), so they genuinely verify the ACs rather than passing on stray tokens. Only one LOW/informational note (IA-001): two historical MIGRATION_PLAN.md files still mention '--mini', which is outside the operative AC-1 clause and non-blocking. No forced findings."
+}

@@ -40,14 +40,16 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ### 8.1 검증자 4종 (모두 격리 컨텍스트)
 
-| 축 | 모델 (1st iter) | 모델 (escalation) | 책임 |
-|---|---|---|---|
-| **Missing-Detector** | standard | high-reasoning | `inventory.json` 의 모든 항목이 최소 1개 요구사항에 매핑되는지 전수 점검 |
-| **Correctness-Auditor** | standard | high-reasoning | SRS 항목의 statement·AC가 실제 코드 동작과 일치하는지 검증 |
-| **Hallucination-Hunter** | standard | standard | **단정 서술 + 코드 증거 전무** 항목 발견 (거짓 사실 진술) |
-| **Scope-Creep-Reviewer** | standard | standard | **추측 서술 + 코드 무관** 항목 발견 (향후 요구·임의 작성) |
+4축 검증자는 모두 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 override 한다.
 
-**비용 가드레일**: 1st iter는 모두 standard. 2nd+ iter에서 동일 axis가 동일 finding을 다시 보고하면 high-reasoning 로 escalate. 검증자 출력은 파일(`eval_iter{N}.json`)로만 저장하고 메인 컨텍스트에는 summary count + top 3 CRITICAL/HIGH 만 로드.
+| 축 | 책임 |
+|---|---|
+| **Missing-Detector** | `inventory.json` 의 모든 항목이 최소 1개 요구사항에 매핑되는지 전수 점검 |
+| **Correctness-Auditor** | SRS 항목의 statement·AC가 실제 코드 동작과 일치하는지 검증 |
+| **Hallucination-Hunter** | **단정 서술 + 코드 증거 전무** 항목 발견 (거짓 사실 진술) |
+| **Scope-Creep-Reviewer** | **추측 서술 + 코드 무관** 항목 발견 (향후 요구·임의 작성) |
+
+**반복(iteration) 정책**: 1st iter는 4축을 모두 실행한다. 2nd+ iter에서 동일 axis가 동일 finding을 다시 보고하면 해당 축을 재검증(re-run)하여 확증한다 — 모델 격상이 아니라 **반복 확증**으로 처리한다(검증 모델은 현재 세션 모델 불변). 검증자 출력은 파일(`eval_iter{N}.json`)로만 저장하고 메인 컨텍스트에는 summary count + top 3 CRITICAL/HIGH 만 로드.
 
 ### 8.2 검증자 입력 (§0.2 격리)
 

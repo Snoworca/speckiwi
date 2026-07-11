@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + Opus 시니어 fixer + Sonnet 정형 검사 + Opus 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. --mini 로 비용 절감(시니어 fixer + 까칠 리뷰어 Opus→Sonnet, `_shared/kiwi/mini-option.md`). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
+description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; Root-cause 사전조사 Sonnet 불변). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -23,7 +23,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | 키 | 규칙 |
 |---|---|
 | §0.1 | **TDD 의무**. 모든 hot-fix 는 (1) 버그 재현 회귀 테스트 작성 → (2) red 실패 확인 → (3) fix 적용 → (4) green 확인 순서. 우회 금지. speckiwi CLAUDE.md TDD 원칙 계승 (예외 1종: §5.1 `TDD_EXEMPT_REASON` ≥20자 명시 시 회귀 테스트 작성 skip 허용 + P7 정당성 평가 강제) |
-| §0.2 | **까칠 리뷰어 의무**. 코드 수정 발생 시 반드시 Opus 까칠 리뷰어 서브에이전트 (`--mini` 시 Sonnet) 호출 + 개선 루프. kiwi-coder Phase 2.f/2.g 동등 (§5 참조). 리뷰 skip 플래그 없음 — fix-and-forget 절대 금지 |
+| §0.2 | **까칠 리뷰어 의무**. 코드 수정 발생 시 반드시 까칠 리뷰어 서브에이전트 (현재 세션 모델, `--model` 로 override 가능) 호출 + 개선 루프. kiwi-coder Phase 2.f/2.g 동등 (§5 참조). 리뷰 skip 플래그 없음 — fix-and-forget 절대 금지 |
 | §0.3 | **검증자는 별도 서브에이전트** (CLAUDE.md §5). 까칠 리뷰어 / 정형 검사기 / sync 위임 모두 별도 spawn |
 | §0.4 | **검증자 입력 격리**. 시니어 fixer 의 결론·정당화 텍스트 전달 금지. 원본 diff + 버그 증상 + 테스트 결과만 |
 | §0.5 | **/snoworca-\* 호출 절대 금지** (프로젝트 CLAUDE.md §7). 로직만 차용 |
@@ -31,7 +31,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | §0.7 | **외부 모듈 수정 금지**. cwd 외부 path 가 fix diff 에 진입 시 즉시 §0.G2 발동 |
 | §0.8 | **시그니처 금지** (CLAUDE.md §6). 커밋·코드 주석·산출물 어디에도 AI 식별 정보 금지. `Co-Authored-By` 자동 추가 차단 |
 | §0.9 | **MCP mutation 자체 호출 금지 (느슨 결합)**. 본 스킬은 직접 `add_requirement` / `add_trace_link` 등 MCP mutation 을 호출하지 않는다. 모든 SRS 변경은 §6 의 `/kiwi-srs-sync` Skill 호출 위임으로만 수행. 위임 실패 시 사용자 보고 + state.json `pending_sync` 적재. **예외 1종**: 사용자가 `--no-sync` 명시 시 위임 skip 허용 (사용자 책임) |
-| §0.10 | **`--mini` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. `--mini` 활성 시 시니어 fixer / 까칠 리뷰어의 Opus 인용을 Sonnet 으로 read-time replace. Sonnet×2 root-cause 사전조사 / Sonnet 정형 검사 / TDD 검증은 모든 모드 공통 (Sonnet 유지). 위임된 `/kiwi-srs-sync` 호출에도 `--mini` 전파 의무 (mini-option.md §7) |
+| §0.10 | **검증 서브에이전트 모델 정책 SSOT** (kiwi-coder §0.16 정합). 정형 검사·까칠 리뷰어 등 **검증 서브에이전트**는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다 (**시니어 fixer 는 영향 없음** — 현재 세션 모델 유지, kiwi-coder 시니어 코더와 동일). **Sonnet×2 root-cause 사전조사는 모든 모드·`--model` 무관 Sonnet 고정** (cheap pre-investigation). 위임된 `/kiwi-srs-sync` 호출에도 `--model` 전파 의무 |
 | §0.11 | **`.kiwi/` 상태 영속**. 모든 단계 종료마다 `cwd/.kiwi/sessions/{run-id}/state.json` 갱신. 재개 가능 (kiwi-coder §7 패턴 계승, 단순화 버전) |
 | §0.12 | **stability 게이트 우회 허용 (사후 정합화 전제)**. speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료 시 `/kiwi-srs-sync` 위임으로 사후 정합화 의무 (§0.9). `--no-sync` 시 우회 금지 (stability 검사 강제) |
 | §0.13 | **fix 단위 = 단일 의미 변경**. 본 스킬은 1회 실행당 단일 fix 의미 단위만 처리. 다중 이슈는 별도 실행으로 분리. 단일 fix 가 N개 파일에 걸쳐도 무방, 단 N개 파일이 서로 무관한 fix 면 거부 + 분리 권고 (사전조사 단계에서 판정) |
@@ -118,17 +118,17 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | "dry-run", "변경 없이" | `--dry-run` | off |
 | "회귀 skip" | `--skip-regression` | off (회귀 의무) |
 | "리뷰 강도 낮춤" — **불가** | (해당 인자 없음 — 까칠 리뷰는 §0.2 의무) | — |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로" | `--mini` | off (정규명) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "재개" | `--resume` | off |
 
 ### 1.3 모드 매트릭스
 
-| 모드 | Root-cause 사전조사 (Sonnet) | 시니어 fixer | 정형 검사 (Sonnet) | 까칠 리뷰어 | 비용 배수 |
+정형 검사·까칠 리뷰어 **검증 서브에이전트**는 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 그 모델을 override 한다. 시니어 fixer 는 현재 세션 모델이나 `--model` 영향 없음 (kiwi-coder 시니어 코더와 동일). **Root-cause 사전조사는 Sonnet 고정** (모드·`--model` 무관, cheap pre-investigation). `--max` 는 모델이 아니라 **count** 를 격상한다.
+
+| 모드 | Root-cause 사전조사 (Sonnet) | 시니어 fixer (현재 세션 모델) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델) | 비용 배수 |
 |---|---|---|---|---|---|
-| Normal (기본) | × 2 (병렬) | Opus × 1 | × 1 | Opus × 1 | 1.0× (기준) |
-| `--max` | × 2 | Opus × 2 | × 1 | Opus × 2 (2 연속 MEDIUM=0 종료) | 3~4× |
-| `--mini` | × 2 | Sonnet × 1 | × 1 | Sonnet × 1 | 0.4× |
-| `--max --mini` | × 2 | Sonnet × 2 | × 1 | Sonnet × 2 | 0.8× |
+| Normal (기본) | × 2 (병렬) | × 1 | × 1 | × 1 | 1.0× (기준) |
+| `--max` | × 2 | × 2 | × 1 | × 2 (2 연속 MEDIUM=0 종료) | 2× |
 
 까칠 리뷰어는 **모든 모드에서 활성** (§0.2). off 플래그 없음.
 
@@ -140,8 +140,8 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
   - `root_cause.json` — Sonnet×2 사전조사 통합 (root_cause + 영향 범위)
   - `regression_test.json` — 작성된 회귀 테스트 메타 (파일/it/expected_failure_signature)
   - `fix_summary.json` — fixer 의 변경 요약 (file/line/symbol/rationale)
-  - `formal_review_iter{N}.json` — Sonnet 정형 검사 결과
-  - `prickly_review_iter{N}.json` — Opus 까칠 리뷰 결과
+  - `formal_review_iter{N}.json` — 정형 검사 결과 (현재 세션 모델)
+  - `prickly_review_iter{N}.json` — 까칠 리뷰 결과 (현재 세션 모델)
   - `regression_run.jsonl` — 회귀 테스트 실행 로그
   - `sync_delegation.json` — `/kiwi-srs-sync` Skill 호출 결과 요약
   - `rejected_findings.log`
@@ -166,8 +166,8 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 Phase 0 : Bootstrap (preflight, 입력 자동 감지, .kiwi init/resume)
 Phase 1 : Root cause 분석 (Sonnet×2 병렬 사전조사 — symptom analyst + scope analyst)
 Phase 2 : 회귀 테스트 작성 (TDD red 확정)
-Phase 3 : Fix 적용 (Opus 시니어 fixer 서브에이전트)
-Phase 4 : 정형 검사 (Sonnet×1) + 까칠 리뷰 (Opus×1/2) + 개선 루프
+Phase 3 : Fix 적용 (시니어 fixer 서브에이전트 — 현재 세션 모델)
+Phase 4 : 정형 검사 (현재 세션 모델×1) + 까칠 리뷰 (현재 세션 모델×1/2) + 개선 루프
 Phase 5 : 회귀 테스트 실행 (green 확인 + 영향 회귀)
 Phase 6 : kiwi-srs-sync Skill 위임
 Phase 7 : 보고서 + pipeline.jsonl emit
@@ -219,7 +219,7 @@ state.json 초기 스키마:
   "skill": "kiwi-hot-fix",
   "schema_version": "1.0.0",
   "started_at": "ISO-8601",
-  "mode_flags": ["--mini?", "--max?", "--auto?", "--dry-run?", "--no-sync?"],
+  "mode_flags": ["--model?", "--max?", "--auto?", "--dry-run?", "--no-sync?"],
   "input_source": "github-issue|natural-language|git-status",
   "phase": "0|1|...|7",
   "fix_applied": false,
@@ -287,7 +287,7 @@ Normal 비용 ≤ kiwi-coder 단일 task 수준. 사용자 게이트 없이 진�
 
 ### 5.1 Phase 2 — 회귀 테스트 작성
 
-시니어 fixer (Opus, `--mini` 시 Sonnet) 서브에이전트가 다음을 수행:
+시니어 fixer (현재 세션 모델; `--model` 영향 없음 — kiwi-coder 시니어 코더와 동일) 서브에이전트가 다음을 수행:
 
 1. `root_cause.symptom.reproduction_steps` 기반 회귀 테스트 작성
 2. 테스트 파일 경로 결정 — 기존 테스트 디렉토리 규칙 따름
@@ -312,7 +312,7 @@ Normal 비용 ≤ kiwi-coder 단일 task 수준. 사용자 게이트 없이 진�
 
 ### 5.3 Phase 4 — 정형 검사 + 까칠 리뷰 (§0.2 의무)
 
-#### 5.3.1 정형 검사 (Sonnet×1, 4축)
+#### 5.3.1 정형 검사 (현재 세션 모델×1, 4축)
 
 입력: fix diff + 회귀 테스트 + root_cause.json (단 §0.4 격리 — fixer rationale strip)
 축:
@@ -325,7 +325,7 @@ severity: F1 CRITICAL, F2-F4 HIGH.
 
 산출물: `formal_review_iter{N}.json`
 
-#### 5.3.2 까칠 리뷰 (Opus×1, 7축 — kiwi-coder §5.2 차용)
+#### 5.3.2 까칠 리뷰 (현재 세션 모델×1, 7축 — kiwi-coder §5.2 차용)
 
 입력: fix diff + 회귀 테스트 + symptom (단 §0.4 격리 — fixer rationale strip)
 축 (kiwi-coder §5.2 입증된 SSOT):
@@ -368,11 +368,11 @@ severity: P1-P5 CRITICAL, P6 HIGH, P7 HIGH (정보성 가능).
 조건 통과 시 다음을 메인이 수행:
 
 ```
-Skill(skill="kiwi-srs-sync", args="{mini} {auto-apply} --staged 또는 --files={fix 대상 파일 콤마}")
+Skill(skill="kiwi-srs-sync", args="{model} {auto-apply} --staged 또는 --files={fix 대상 파일 콤마}")
 ```
 
 `args` 합성 규칙:
-- `--mini` 활성 → 전파 (mini-option.md §7 의무)
+- `--model <name>` 활성 → 전파 (부모가 지정한 검증 모델을 자식에 명시)
 - `--auto` → `--auto-apply --yes-all` 전파
 - `--dry-run` → `--dry-run-only` 전파
 - fix 대상 파일이 명확 (`fix_summary.json.files`) → `--files=...` 전달, 그 외 `--staged`
@@ -403,7 +403,7 @@ skip 시 `sync_delegation.json.skipped: true` + `reason` 기록.
 ```yaml
 ---
 run_id: ...
-mode: normal|max|mini|max-mini|dry-run
+mode: normal|max|dry-run
 input_source: github-issue|natural-language|git-status
 fix_files: [...]
 regression_pass: true|false
@@ -448,7 +448,7 @@ emit 실패는 best-effort.
 /kiwi-hot-fix ISSUE_URL=https://github.com/owner/repo/issues/42
 /kiwi-hot-fix SCOPE_FILES=src/auth.ts,src/session.ts "토큰 갱신 실패"
 /kiwi-hot-fix --max
-/kiwi-hot-fix --mini
+/kiwi-hot-fix --model claude-sonnet-4-6
 /kiwi-hot-fix --auto
 /kiwi-hot-fix --no-sync
 /kiwi-hot-fix --dry-run

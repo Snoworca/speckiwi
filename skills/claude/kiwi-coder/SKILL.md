@@ -1,6 +1,6 @@
 ---
 name: kiwi-coder
-description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → Sonnet×4 병렬 TDD 검증 → Opus 시니어 구현 → Sonnet 정형 검사 → Opus 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --mini 로 비용 절감(시니어 코더+까칠 리뷰어 Opus→Sonnet, TDD 검증 Sonnet×4 불변. `_shared/kiwi/mini-option.md` v1.0. 기존 --squirrel 은 v0.2 까지 deprecated alias)."
+description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → Sonnet×4 병렬 TDD 검증 → Opus 시니어 구현 → 정형 검사 → 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. 검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 그 모델을 override 한다(TDD 검증 Sonnet×4 불변)."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -30,7 +30,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | §0.13 | **회귀 테스트 의무**. Task 종료마다 (1) 영향받는 test 파일 실행 + (2) 전체 회귀 스위트 실행. `--skip-regression` 플래그 명시 시에만 (2) skip, (1) 은 항상 실행 |
 | §0.14 | **id 정규식 SSOT** (kiwi-planner §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}` (dot 허용 — planner run-id `{YYYY-MM-DD}.{project-slug}.{target-slug}` 호환), `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. 입력 sidecar 가 위반하면 §0.G3 차단 |
 | §0.15 | **plan-step ↔ task 1:1**. sidecar.tasks[] 가 곧 작업 단위. 메인이 임의로 task 분할/병합 금지 — 필요 시 `/kiwi-planner` 재호출 권고 |
-| §0.16 | **`--mini` 옵션 SSOT (v0.2 마이그레이션)**. 본 스킬은 `_shared/kiwi/mini-option.md` v1.0 을 따른다. **정규명은 `--mini`**, 기존 `--squirrel` 은 v0.2 까지 deprecated alias 로 유지 (mini-option.md §10). `--mini` 활성 시 시니어 코더 / 까칠 리뷰어의 Opus 인용을 Sonnet 으로 read-time replace. **TDD 검증 Sonnet×4 (Phase 1.2) 는 모든 모드 공통 유지 (§0.1)** — 모델 불변. 토폴로지·심각도 게이트·회귀 테스트 의무는 불변 |
+| §0.16 | **검증 서브에이전트 모델 정책 SSOT**. 정형 검사·까칠 리뷰 등 검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다 (시니어 코더는 영향 없음). **TDD 검증 Sonnet×4 (Phase 1.2) 는 모든 모드 공통 유지 (§0.1)** — 모델 불변. 심각도 게이트·회귀 테스트 의무는 불변 |
 | §0.17 | **`@req` 태그 부착 (참고용 SSOT)**. 본 §0.17 은 글로벌 CLAUDE.md §2/§3 (Simplicity / Surgical Changes) 의 코멘트 보수성 가이드보다 본 skill 내부에서 **우선**한다. 세부 규약은 §0.17.1~§0.17.7. **본 태그는 순수 참고용** — speckiwi `add_trace_link` 가 SSOT, 태그는 grep 보조. REQ rename/deprecate 시 자동 갱신 의무 없음 (부패 허용). **운영 순서 SSOT** (시니어 코더 단계별): (1) §0.17.1 의무 범위 + §0.17.2 면제 enum 판정 → (2) 면제 시 worklog `req_tag_exempted` append + skip / 의무 시 다음 → (3) §0.17.5 lenient 정규식으로 기존 토큰 set 추출 + 새 토큰 dedupe 검사 → (4) 일치 시 skip / 미일치 시 §0.17.4 위치 결정 → (5) 위치 모호 시 worklog `req_tag_position_ambiguous` + 보류 / 결정 시 §0.17.3 wrapper-tolerant 정규식 형식으로 신규 라인 작성 |
 | §0.17.1 | **의무 범위**. 코딩 Task (type ∈ {code, perf_test, infra}) 의 **구현 단계 (Phase 2.c) 에서 새로 정의되는 클래스/메서드/함수** 에 한해 부착 의무 (가시성 제한 없음 — public/private 무관). 함수 정의 = 명명 함수 (named function/method) + lambda/closure/arrow function (단, §0.17.2 enum (5) 의 private 1라인 lambda 는 면제). 부착 위치 = 정의 직전 라인 또는 docstring 첫 줄. **테스트 파일은 부착 의무 대상에서 제외** — 식별 SSOT: (a) sidecar.tdd.test_cases[].test_file 에 명시된 모든 파일, (b) 경로 정규식 `(^|/)(tests?|__tests__|spec|e2e|integration)(/|$)` 매칭 디렉토리 내 파일, (c) 파일명 정규식 `\.(test|spec)\.[a-zA-Z]+$` 매칭 파일. 통합 테스트 (§8.2 산출물) 도 본 면제에 포함. 테스트의 REQ 매핑은 `test_case.ac_refs` 가 SSOT. 비코딩 Task (type ∈ {doc, file_op, issue, pr, review}) 도 면제 |
 | §0.17.2 | **면제 enum (closed-list, 시니어 재량 없음)**. 아래 8종만 면제: (1) 1라인 getter (`return this.x`), (2) 1라인 setter (`this.x = v`), (3) 언어 자동 생성 메서드 명시 (Java toString/hashCode/equals, JS Object.prototype.*, Python `__repr__`/`__eq__`/`__hash__`/`__init__` 자동 생성, Rust `#[derive(...)]` / procedural attribute macro `#[...]` (예: `#[tokio::main]`, `#[async_trait]`) / function-like macro `macro!(...)` (예: `lazy_static!{}`, `bitflags!{}`) 가 생성한 메서드, Go receiver method 자동 생성), (4) IDE 자동 생성 boilerplate constructor (필드 대입 (다중 가능) + `super(...)` 호출 + null-coalescing default 까지 허용. 비즈니스 로직·검증·side effect 가 1줄이라도 포함되면 부착 의무), (5) private 1라인 lambda/helper (가시성 무관 의무 §0.17.1 에 따라 lambda 도 의무 — 본 enum 항목으로만 면제), (6) 인터페이스/추상메서드 (구현 없음), (7) override 시 부모에 이미 `@req` 가 있고 **부모가 cwd 내부일 때만** (부모가 외부 라이브러리면 enum 7 미적용 = 부착 의무), (8) IDE/언어/매크로가 인간 작성 없이 자동 생성한 메서드 일반 (worklog 사유에 `reason_enum_id=8` + `raw_reason` 부가 **의무**). **결정 알고리즘**: enum (1)~(7) 매칭 패턴이 있으면 우선 분류 (raw_reason 불필요), enum (1)~(7) 어디에도 매칭 안 되는 자동 생성 메서드만 enum (8) 사용 — Rust derive 같이 enum (3) 명시 항목이 있는 경우는 항상 (3). **면제 적용 시 worklog `req_tag_exempted { task_id, member_path, reason_enum_id, raw_reason? (enum=8 필수, 그 외 생략) }` append 의무** (§7.3 enum 19). enum 외 사유로 면제 불가 |
@@ -139,18 +139,18 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | "통합 테스트 자동 동의" | `--auto-integration` | off (사용자 동의 게이트 유지) |
 | "비용 경고 자동 skip" | `--auto-cost-warning` | off |
 | "자동", "auto", "묻지 말고" (메인 게이트 + §8.4 후속) | `--auto` (SSOT: auto-option.md v1.0; 기존 `--yes-all`/`--auto-integration`/`--auto-cost-warning` 3종 자동 활성 안 함 — §0.18) | off |
-| "--mini", "mini 모드", "비용 절감", "sonnet 으로", "다람쥐" | `--mini` | off (정규명, 모든 Opus → Sonnet. `_shared/kiwi/mini-option.md` v1.0) |
-| "--squirrel" (deprecated alias of `--mini`, v0.2 까지 유지) | `--squirrel` → `--mini` 로 alias 처리 | off (사용 시 mini-option.md §10 SSOT 안내 메시지 양식 그대로 출력: `ℹ️  `--squirrel` 은 kiwi 시리즈에서 `--mini` 로 통일되었습니다. 향후 `--mini` 사용 권장.` 출력 후 정상 실행) |
+| "--model <name>", "검증 모델 지정", "다른 모델로 검증" | `--model <name>` | 현재 세션 모델 (정형 검사·까칠 리뷰 검증 서브에이전트에 적용) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
 
 ### 1.3 모드 매트릭스
 
-| 모드 | 시니어 코더 | TDD 검증 (Sonnet) | 정형 검사 (Sonnet) | 까칠 리뷰어 (Opus) | 비용 배수 |
+| 모드 | 시니어 코더 | TDD 검증 (Sonnet) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델) | 비용 배수 |
 |---|---|---|---|---|---|
 | Normal (기본) | Opus × 1 | × 4 (병렬) | × 1 | × 1 | 2.0~2.5× (snoworca-coder Normal 대비) |
 | `--max` | Opus × 3 | × 4 | × 1 | × 2 | 12~15× |
 | `--reviewer-off` | Opus × 1 | × 4 | × 1 | × 0 | 1.6× |
-| `--squirrel` | Sonnet × 1 | × 4 | × 1 | Sonnet × 1 | 0.7× |
+
+`--model <name>` 지정 시 정형 검사·까칠 리뷰 검증 서브에이전트의 모델을 override (기본은 현재 세션 모델; 시니어 코더·TDD 검증은 영향 없음).
 
 TDD 검증 (Sonnet×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1) 의 핵심 검증 채널이므로 모드 변경 영향 없음.
 
@@ -175,8 +175,8 @@ TDD 검증 (Sonnet×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1) �
   ```
 - **분석 로그**: `docs/analysis/kiwi-coder-{run-id}/`
   - `tdd_review_iter{N}.json` (Sonnet×4 결과 통합)
-  - `formal_review_iter{N}.json` (Sonnet 정형)
-  - `prickly_review_iter{N}.json` (Opus 까칠)
+  - `formal_review_iter{N}.json` (현재 세션 모델 정형)
+  - `prickly_review_iter{N}.json` (현재 세션 모델 까칠)
   - `mcp_call_log.jsonl`
   - `regression_run.jsonl`
   - `rejected_findings.log`
@@ -206,8 +206,8 @@ Phase 2 : 구현 (snoworca-coder 차용)
   2.b : Mock 금지 regex 스캔
   2.c : 시니어 코더 구현
   2.d : 계획-코드 일치 게이트 (sidecar.files[], action, dod 정합)
-  2.e : 정형 검사 (Sonnet×1, 4축)
-  2.f : 까칠 리뷰 (Opus×1/2, 7축)
+  2.e : 정형 검사 (현재 세션 모델×1, 4축)
+  2.f : 까칠 리뷰 (현재 세션 모델×1/2, 7축)
   2.g : 개선 루프 (심각도 카운터)
   2.h : 테스트 실행 + green 확인
   2.i : sidecar.tdd.green_evidence 채움 + DoD 검증
@@ -366,7 +366,7 @@ Phase 2 진입 (current_task_id 유지)
   │       ├─ sidecar.tasks[t].depends_on_task[] 모두 state.completed_task_ids[] 에 포함?
   │       └─ 미충족 시 차단 + 사용자 알림 (큐 정렬 버그 가능성)
   ├─ (b) Mock 금지 regex 스캔 (사전 — 시니어 호출 전 코드베이스 현황 파악)
-  ├─ (c) 시니어 코더 구현 (Opus×1 or ×3, --squirrel 시 Sonnet)
+  ├─ (c) 시니어 코더 구현 (Opus×1 or ×3)
   │       └─ 입력: sidecar.tasks[t], 작성된 test 파일, plan.md task 섹션, 관련 REQ
   │       └─ 산출: sidecar.tasks[t].files[] 에 명시된 path 만 편집
   │       └─ **@req 태그 부착** (§0.17 SSOT 7-clause): §0.17.1 의무 범위 (테스트 파일·비코딩 Task 제외) / §0.17.2 면제 enum (closed-list, 현재 8종) + worklog 기록 / §0.17.3 1라인 1 REQ-ID 형식 + line-anchored 정규식 / §0.17.4 append 위치 결정성 / §0.17.5 dedupe 알고리즘 (lenient 정규식으로 토큰 추출 비교) / §0.17.6 포괄 면책 (모든 게이트 점검 제외) / §0.17.7 누락 무차단 — 시니어 코더는 본 7-clause 를 그대로 따른다. **검증/리뷰/회귀 단계 어디에서도 비교 금지** (§0.17.6)
@@ -376,10 +376,10 @@ Phase 2 진입 (current_task_id 유지)
   │       ├─ dod 의 각 항목이 점검 가능한 형태로 코드에 반영
   │       ├─ **`@req` 주석 추가는 본 게이트 평가에서 제외** (§0.17.6) — 태그 추가/append 라인은 sidecar.action 외 변경 판정 시 변경 set 에서 제거 후 비교
   │       └─ 위반 시 CRITICAL + (c) 재호출
-  ├─ (e) 정형 검사 (Sonnet×1)
+  ├─ (e) 정형 검사 (현재 세션 모델×1; --model 로 override)
   │       └─ 검증 축 4개: Mock regex, 타입/빌드, 계획-코드 매핑 재확인, 테스트 커버리지
   │       └─ CRITICAL 발견 시 (g) 직행 (까칠 skip)
-  ├─ (f) 까칠 리뷰 (Opus×1, --max 시 ×2, --reviewer-off 시 skip, --squirrel 시 Sonnet×1)
+  ├─ (f) 까칠 리뷰 (현재 세션 모델×1, --max 시 ×2, --reviewer-off 시 skip; --model 로 override)
   │       └─ 검증 축 7개 (§5.2)
   ├─ (g) 개선 루프 (심각도별 독립 카운터)
   │       ├─ CRITICAL ≤ 3
@@ -410,7 +410,7 @@ Phase 2 진입 (current_task_id 유지)
 | 6 | 에러 처리 | 예외 전파, 사용자 피드백, 로깅 충분성 |
 | 7 | 테스트 품질 | 작성된 test 의 의미성, flaky 위험 (Phase 1 검증과 별개로 구현 후 재확인) |
 
-**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: 정형 검사 (Sonnet×1) 와 까칠 리뷰 (Opus×1/2) 모두 코드 주석의 `@req` 라인에 대해 다음 행위를 금지한다 — (a) 존재 여부 점검, (b) task.req_ids 와 비교, (c) REQ-ID 실재성 검증 (speckiwi 조회), (d) 라인 누락을 finding 으로 발행. 본 태그는 정보용 breadcrumb 이며 어떤 게이트에도 영향 주지 않는다.
+**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: 정형 검사 (현재 세션 모델×1) 와 까칠 리뷰 (현재 세션 모델×1/2) 모두 코드 주석의 `@req` 라인에 대해 다음 행위를 금지한다 — (a) 존재 여부 점검, (b) task.req_ids 와 비교, (c) REQ-ID 실재성 검증 (speckiwi 조회), (d) 라인 누락을 finding 으로 발행. 본 태그는 정보용 breadcrumb 이며 어떤 게이트에도 영향 주지 않는다.
 
 ### 5.3 심각도 정의 (구현 단계)
 
@@ -551,7 +551,7 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
   "plan_path": "docs/plans/2026-05-19.skf.v01.plan.md",
   "sidecar_path": "docs/plans/2026-05-19.skf.v01.sidecar.json",
   "target": "skf-v0.1",
-  "mode": "normal|max|reviewer-off|squirrel|dry-run",
+  "mode": "normal|max|reviewer-off|model|dry-run",
   "flags": ["--max"],
   "spawn_context": "standalone",   // "standalone" | "pm-child" — §3.0 에서 입력 SPAWN_CONTEXT 기반 결정. §8.4 자동 시작 게이트 분기에 사용
   "started_at": "ISO-8601",
@@ -735,7 +735,7 @@ state_ref: ./state.json
 > "본 plan 의 REQ status 가 `implemented` 로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 `verified` 로 닫으려면 `/kiwi-review-fix-loop --close-reqs` 를 호출하십시오."
 
 `AskUserQuestion` 3지선다:
-- `(1) 지금 자동 시작` — 메인 세션에서 `Skill(skill="kiwi-review-fix-loop", args="--close-reqs --auto")` 호출 (본 스킬의 `--mini` / `--max` 활성 시 args 에 전파)
+- `(1) 지금 자동 시작` — 메인 세션에서 `Skill(skill="kiwi-review-fix-loop", args="--close-reqs --auto")` 호출 (본 스킬의 `--model` / `--max` 활성 시 args 에 전파)
 - `(2) 나중에 수동`
 - `(3) skip` — verified 닫지 않음
 
@@ -756,7 +756,7 @@ state_ref: ./state.json
 /kiwi-coder PLAN_PATH=... PHASE_FROM=2 PHASE_TO=3
 /kiwi-coder PLAN_PATH=... --max
 /kiwi-coder PLAN_PATH=... --reviewer-off --skip-regression
-/kiwi-coder PLAN_PATH=... --squirrel
+/kiwi-coder PLAN_PATH=... --model claude-sonnet-4-6
 /kiwi-coder PLAN_PATH=... --resume
 /kiwi-coder PLAN_PATH=... --dry-run
 ```

@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs-sync
-description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석하여 기존 speckiwi SRS 를 사후 동기화하는 reverse-direction 증분 SRS 스킬 v0.1. 핫픽스/탐색적 프로토타입/외부 PR 흡수/레거시 합류 후 SRS 갱신용. git diff 자동 감지(--base/--head/--staged/--since) + 3 standard 사전조사 병렬(intent/mapping/impact) + high-reasoning 시니어 분석가 + high-reasoning×1+standard×1 평가자 + 4방향 분류(conflict/update/new-feature/new-scope) + dry-run 선행 의무 + 사용자 승인 후 MCP mutation. **TDD 의무화 제외** (kiwi-coder 와 반대 방향). 트리거 — kiwi srs sync, 코드 먼저 SRS 나중, SRS 사후 동기화, 핫픽스 SRS 반영, 코드-우선 SRS, reverse SRS sync, code-first srs update, post-hoc srs, srs catch-up, srs back-sync, 타겟 비교, 타겟 X 와 비교, SRS 와 코드 비교, SRS 업데이트, 타겟 SRS 업데이트, 구현된 코드 SRS 반영, 코드와 SRS 동기화. --mini 로 비용 절감(분석가+평가자 high-reasoning→standard, `../_shared/kiwi/mini-option.md` v1.0. 기존 --squirrel 은 v0.2 까지 deprecated alias)."
+description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석하여 기존 speckiwi SRS 를 사후 동기화하는 reverse-direction 증분 SRS 스킬 v0.1. 핫픽스/탐색적 프로토타입/외부 PR 흡수/레거시 합류 후 SRS 갱신용. git diff 자동 감지(--base/--head/--staged/--since) + 3 standard 사전조사 병렬(intent/mapping/impact) + high-reasoning 시니어 분석가 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트 + 4방향 분류(conflict/update/new-feature/new-scope) + dry-run 선행 의무 + 사용자 승인 후 MCP mutation. **TDD 의무화 제외** (kiwi-coder 와 반대 방향). 트리거 — kiwi srs sync, 코드 먼저 SRS 나중, SRS 사후 동기화, 핫픽스 SRS 반영, 코드-우선 SRS, reverse SRS sync, code-first srs update, post-hoc srs, srs catch-up, srs back-sync, 타겟 비교, 타겟 X 와 비교, SRS 와 코드 비교, SRS 업데이트, 타겟 SRS 업데이트, 구현된 코드 SRS 반영, 코드와 SRS 동기화. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs-sync v0.1.2
@@ -37,7 +37,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 Codex clarification gate 단일 호출 분해 |
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
-| §0.15 | **`--mini` 옵션 SSOT (v0.2 마이그레이션)**. 본 스킬은 `../_shared/kiwi/mini-option.md` v1.0 을 따른다. **정규명은 `--mini`**, 기존 `--squirrel` 은 v0.2 까지 deprecated alias 로 유지 (mini-option.md §10). `--mini` 활성 시 시니어 분석가 / 평가자 high-reasoning 축의 high-reasoning 인용을 standard 으로 read-time replace (평가자는 standard×2 토폴로지 적용). 3 standard 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
+| §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 3 standard 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto-apply` / `--yes-all` 은 사용자가 직접 명시했을 때만 dry-run 승인 단계 자체를 skip 하는 직접 적용 옵션이고, 부모 `--auto` 로 암묵 활성화되지 않는다. `--auto` 는 사용자 게이트를 decision worker 로 판단한다. 동시 명시 시 직접 사용자 입력으로 확인된 `--auto-apply` / `--yes-all` 의 직접 적용 의미가 우선이다. |
 
 ### §0.G — 핵심 게이트 결정표
@@ -114,16 +114,16 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | "max 모드", "정밀" | `--max` | off (Normal) |
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
-| "--mini", "mini 모드", "비용 절감", "standard 으로", "다람쥐" | `--mini` | off (정규명, 분석가+평가자 high-reasoning → standard. `../_shared/kiwi/mini-option.md` v1.0) |
-| "--squirrel" (deprecated alias of `--mini`, v0.2 까지 유지) | `--squirrel` → `--mini` 로 alias 처리 | off (사용 시 mini-option.md §10 SSOT 안내 메시지 양식 그대로 출력: `ℹ️  `--squirrel` 은 kiwi 시리즈에서 `--mini` 로 통일되었습니다. 향후 `--mini` 사용 권장.` 출력 후 정상 실행) |
+| "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 
 ### 1.3 모드 매트릭스
 
-| 모드 | 사전조사 (standard) | 시니어 분석가 (high-reasoning) | 평가자 (high-reasoning + standard) | 비용 배수 |
+| 모드 | 사전조사 (standard) | 시니어 분석가 (high-reasoning) | 검증 서브에이전트 (현재 세션 모델) | 비용 배수 |
 |---|---|---|---|---|
-| Normal (기본) | × 3 (병렬) | × 1 | high-reasoning×1 + standard×1 | 1.0× (기준) |
-| `--max` | × 3 | × 1 | high-reasoning×2 + standard×1 (2 연속 MEDIUM=0 종료) | 2.5~3× |
-| `--squirrel` | × 3 | standard × 1 | standard×2 | 0.5× |
+| Normal (기본) | × 3 (병렬) | × 1 | 단일 검증 서브에이전트 | 1.0× (기준) |
+| `--max` | × 3 | × 1 | 단일 + 독립 2차 검증 패스 (2 연속 MEDIUM=0 종료) | 2.5~3× |
+
+`--model <name>` 지정 시 검증 서브에이전트 모델을 override (기본은 현재 세션 모델).
 
 ### 1.4 출력 (산출물)
 
@@ -181,7 +181,7 @@ Phase 0 : Bootstrap (preflight, target 확인, git 환경 확인, REQ 인벤토�
 Phase 1 : Diff 정규화 (git diff → change_units[] 분해, CU-id 발급)
 Phase 2 : 3 standard 사전조사 병렬 (intent / srs-existing-mapping / impact)
 Phase 3 : high-reasoning 시니어 분석가 (4방향 분류 + REQ 매핑 + AC 갱신 제안 + 신규 REQ 초안)
-Phase 4 : high-reasoning×1 + standard×1 평가자 (격리 입력)
+Phase 4 : 단일 현재 세션 모델 검증 서브에이전트 (격리 입력)
 Phase 4.5: 개선 루프 (심각도 카운터)
 Phase 5 : dry-run 산출물 생성 (proposed-mutations.md/.json)
 Phase 6 : 사용자 게이트 (Codex clarification gate 4옵션) — `--auto-apply` 시 skip
@@ -368,13 +368,13 @@ CU 스키마:
 
 ---
 
-## 7. Phase 4 — 평가자 (high-reasoning + standard)
+## 7. Phase 4 — 검증 서브에이전트 (현재 세션 모델)
 
-### 7.1 평가자 구성
+### 7.1 검증 서브에이전트 구성
 
-- Normal: high-reasoning×1 + standard×1 (병렬)
-- Max: high-reasoning×2 + standard×1 (2 연속 MEDIUM=0 → PASS)
-- Squirrel: standard×2
+- Normal: 단일 검증 서브에이전트 (현재 세션 모델 상속)
+- Max: 단일 검증 서브에이전트 + 독립 2차 검증 패스 (2 연속 MEDIUM=0 → PASS)
+- `--model <name>` 지정 시 검증 서브에이전트 모델을 override (기본은 현재 세션 모델)
 
 ### 7.2 평가자 입력 (§0.5 격리)
 

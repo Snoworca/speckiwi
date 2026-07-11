@@ -1,0 +1,106 @@
+{
+  "axis": "A — SRS intent-match (final, r5)",
+  "target": "v2.3.0.1",
+  "scope_reqs": "FR-FLOW-022..032 (11 REQ)",
+  "focus": "FR-FLOW-022 AC-2 dual-model evaluator -> single current-session model; hidden-tail sweep across claude/codex/etc + companion SSOT + references/extended-workflow.md",
+  "per_req": [
+    {
+      "req": "FR-FLOW-022",
+      "intent_match": "partial",
+      "notes": "Core dual-model evaluator PANELS and the named section TABLES are correctly single-current-session model: kiwi-srs §10.3 enum ('verify-pass-1|verify-pass-2') + §10.4 topology table (Normal single x1 / --max single + independent 2nd pass), feasibility §8.4 topology table, from-code §8.1 (4-axis validators inherit current session model) + §10.3/10.4, planner §0.18 + frontmatter, and kiwi-srs §0.20 SSOT — all match AC-2 intent, and frontmatters of kiwi-srs / kiwi-srs-feasibility / kiwi-srs-from-code / kiwi-planner are cleanly single-model. HOWEVER the sweep is incomplete in kiwi-hot-fix (claude) and kiwi-review-fix-loop (claude): see F-01/F-02/F-03. The most serious is kiwi-hot-fix §0.10 (an authoritative model-policy SSOT) still pinning the verification role '정형 검사' (formal-check) + root-cause research + TDD to Sonnet ('Sonnet 유지'), which both contradicts FR-FLOW-022's 'verification ... inherits the current session model' AND self-contradicts the skill's own corrected §1.3. This is a content-level SSOT contradiction, not just stale prose — hence partial, not full."
+    },
+    {
+      "req": "FR-FLOW-023",
+      "intent_match": "full",
+      "notes": "Regression check only (full-confirmed prior rounds). Statement/AC (research-doc-driven A/B verify/improve loop, --max 3 verifiers, per-doc sequential vs doc-count x3) coherent; kiwi-srs frontmatter reflects the single-verifier + independent-2nd-pass model policy consistent with FR-FLOW-022. No regression."
+    },
+    {
+      "req": "FR-FLOW-024",
+      "intent_match": "full",
+      "notes": "Regression check only. Statement/AC (no-research ambiguity resolution, unbounded qna loop, -qna suppressed under --auto -> FR-FLOW-025 committee, 3 requirement-gathering research subagents -> FR-FLOW-023 loop) coherent; kiwi-srs frontmatter now states '무제한 qna 루프' and '--auto 로 질문 없이 진행', matching. No regression."
+    },
+    {
+      "req": "FR-FLOW-025",
+      "intent_match": "full",
+      "notes": "Regression check only. Statement/AC (3->5 escalation, 5-member plurality non-max, --max 5->7 plurality, deterministic lead-member tiebreak) coherent. auto-option.md (claude/codex/etc) SSOT explicitly states the committee uses a single current-session model and 'no dual-model evaluator panel' — consistent with FR-FLOW-022. Implementation Notes guardrail (critical_gates still HALT) preserved. No regression."
+    },
+    {
+      "req": "FR-FLOW-026",
+      "intent_match": "full",
+      "notes": "Regression check only. kiwi-pipeline end-to-end orchestration (srs -> conditional feasibility -> planner -> pm -> review-fix-loop; --auto committee gates; --max propagation; research-doc passthrough). Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-027",
+      "intent_match": "full",
+      "notes": "Regression check only. Worktree isolation (--wt) with merge-or-PR completion gate (interactive ask vs --auto PR-only, no direct base-branch merge). Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-028",
+      "intent_match": "full",
+      "notes": "Regression check only. GitHub-issue entry: /kiwi-srs-research first, then /kiwi-srs; -qna when research insufficient, suppressed under --auto -> FR-FLOW-025 committee; continues planner/pm/review. Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-029",
+      "intent_match": "full",
+      "notes": "Regression check only. kiwi-wave-master multi-wave orchestrator (explicit-structure or subagent wave-split, per-wave scoped target via /kiwi-srs, waves.jsonl resumability, per-wave /kiwi-pipeline skip-reauthor, --auto/--max propagation). Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-030",
+      "intent_match": "full",
+      "notes": "Regression check only. Epic-issue entry (extract ordered waves from epic, then identical FR-FLOW-029 flow, only up-front wave-split skipped). OQ-030 resolved 2026-07-10 with guard fallback to FR-FLOW-029 wave-split when no extractable structure. Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-031",
+      "intent_match": "full",
+      "notes": "Regression check only. kiwi-planner uses v2.3.0 workflow_* MCP tool family as primary read/validate/mutate path (superseding validator.mjs), all variants (claude/codex/etc) compliant, validator.mjs C01-C25 coverage preserved, raw docs/plans as documented degraded fallback. Coherent. No regression."
+    },
+    {
+      "req": "FR-FLOW-032",
+      "intent_match": "full",
+      "notes": "Regression check only. plan-vs-SRS coverage verification loop: count reconciliation -> per-REQ-ID cross-check -> 2 sequential subagents 'on the current session model per FR-FLOW-022' (persistent verification-complete marking); --max adds AC-granularity + independent 3rd refutation subagent + 2-consecutive-clean-rounds termination. kiwi-planner §0.18 + frontmatter single-current-session-model policy is consistent with the FR-FLOW-022 cross-reference. No regression."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "high",
+      "req": "FR-FLOW-022",
+      "file": "skills/claude/kiwi-hot-fix/SKILL.md",
+      "location": "§0.10 (line 34) vs §1.3 (line 178)",
+      "issue": "§0.10 '검증 서브에이전트 모델 정책 SSOT' explicitly pins verification role '정형 검사' (formal-check) + 'Sonnet×2 root-cause 사전조사' + 'TDD 검증' to Sonnet across all modes ('Sonnet 유지'). This directly contradicts (a) FR-FLOW-022 statement/AC-2 'Skill verification ... SHALL ... inherit the current session model', and (b) the same skill's §1.3 mode matrix which states ALL roles (Root-cause 사전조사 / 시니어 fixer / 정형 검사 / 까칠 리뷰어) inherit the current session model. An authoritative SSOT pinning a verification role to a fixed model is a content-level FR-FLOW-022 violation, not cosmetic residue, and is an internal self-contradiction."
+    },
+    {
+      "id": "F-02",
+      "severity": "medium",
+      "req": "FR-FLOW-022",
+      "file": "skills/claude/kiwi-hot-fix/SKILL.md",
+      "location": "frontmatter line 3; §0.2 line 26; §1.4 lines 140/143/144; §2 phase-flow lines 167/169/170; §4 header line 241; §5.3.1 header line 315; §5.4 line 351",
+      "issue": "Pervasive stale hardcoded model names for verification/evaluation and other roles that contradict the corrected §1.3: frontmatter 'Sonnet×2 ... Opus 시니어 fixer + Sonnet 정형 검사 + Opus 까칠 리뷰어'; §0.2 'Opus 까칠 리뷰어'; artifact bullets 'Sonnet×2 사전조사', 'Sonnet 정형 검사 결과', 'Opus 까칠 리뷰'; phase-flow 'Sonnet×2 병렬', 'Opus 시니어 fixer', '정형 검사 (Sonnet×1) + 까칠 리뷰 (Opus×1/2)'; section headers '정형 검사 (Sonnet×1, 4축)' etc. The §1.3 mode-matrix TABLE was swept but the surrounding body was not (hidden tail). Note codex/etc kiwi-hot-fix variants matched none of these (model-neutral, clean)."
+    },
+    {
+      "id": "F-03",
+      "severity": "low",
+      "req": "FR-FLOW-022",
+      "file": "skills/claude/kiwi-review-fix-loop/SKILL.md",
+      "location": "frontmatter description head (line 3)",
+      "issue": "Frontmatter head still advertises fixed models 'Opus 까칠 리뷰어 서브에이전트' and 'Opus 시니어 fixer' for the evaluation/fix roles, while the frontmatter TAIL appends the correction '까칠 리뷰어 + 시니어 fixer 는 현재 세션 모델을 상속' — a self-contradictory description. Unlike kiwi-hot-fix, the review-fix-loop body (§1.3 table + §2 phase-flow) is clean/model-neutral; only the frontmatter head is a residual. Lower severity."
+    }
+  ],
+  "clean_confirmations": [
+    "kiwi-srs §10.3 output-schema enum = 'verify-pass-1|verify-pass-2' (single-model, replaces dual evaluator names); §10.4 topology table single x1 / --max +independent 2nd pass; §0.20 SSOT correct.",
+    "kiwi-srs-feasibility §8.4 topology table correct (single / --max +2nd pass); frontmatter single-model.",
+    "kiwi-srs-from-code §8.1 4-axis validators inherit current session model; §10.3/10.4 have no model residue; frontmatter single-model.",
+    "kiwi-planner §0.18 SSOT + frontmatter single-model (relevant to FR-FLOW-031/032).",
+    "auto-option.md (claude line 116 / codex line 45 / etc line 49) SSOT: committee uses single current-session model, explicitly 'no dual-model evaluator panel' (FR-FLOW-025).",
+    "references/extended-workflow.md (all variants) contain zero Opus/Sonnet evaluator-panel residue.",
+    "codex/etc variants of kiwi-hot-fix and kiwi-review-fix-loop are model-neutral (zero matches for the residual model-name patterns)."
+  ],
+  "summary": {
+    "reqs_full": 10,
+    "reqs_partial": 1,
+    "reqs_mismatch": 0,
+    "findings_total": 3
+  },
+  "verdict": "GAPS_FOUND",
+  "overall": "The named FR-FLOW-022 AC-2 fixes DID land: every dual-model evaluator TABLE / enum in the target sections (kiwi-srs §10.3/10.4, feasibility §8.4, from-code §8.1/10.3/10.4, planner §0.18) and the SRS-family frontmatters are now correct single-current-session-model, and codex/etc + extended-workflow.md are clean. So 'residual dual-model evaluator TABLES = 0' holds narrowly. BUT the final hidden-tail sweep is incomplete on the claude variant: kiwi-hot-fix §0.10 (an authoritative model-policy SSOT) still pins the verification role '정형 검사' (plus root-cause research and TDD) to Sonnet — a content-level contradiction of FR-FLOW-022 that also self-contradicts hot-fix's own §1.3 (F-01); plus pervasive stale Sonnet/Opus model names remain through hot-fix §0.2/§1.4/§2/§4/§5 (F-02) and in the kiwi-review-fix-loop frontmatter head (F-03). FR-FLOW-022 is therefore partial (not full); the other 10 REQ are full with no regression. Recommend: change hot-fix §0.10 so '정형 검사' (and, to match §1.3, root-cause research) inherit the current session model, then sweep the remaining hot-fix body + both frontmatter heads to model-neutral role names."
+}

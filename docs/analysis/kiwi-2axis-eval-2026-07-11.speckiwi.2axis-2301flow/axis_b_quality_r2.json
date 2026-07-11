@@ -1,0 +1,122 @@
+{
+  "axis": "B",
+  "role": "quality-evaluator",
+  "round": 2,
+  "scope_verified": [
+    "skills/claude/_shared/kiwi/auto-option.md",
+    "skills/codex/_shared/kiwi/auto-option.md",
+    "skills/etc/_shared/kiwi/auto-option.md",
+    "skills/{claude,codex,etc}/kiwi-wave-master/SKILL.md",
+    "skills/{claude,codex,etc}/_shared/kiwi/waves-event.md",
+    "skills/{claude,codex,etc}/kiwi-pipeline/SKILL.md",
+    "skills/claude/kiwi-srs/SKILL.md",
+    "skills/claude/kiwi-coder|kiwi-hot-fix|kiwi-commit-auto-*/SKILL.md",
+    "src/doctor/package-doctor.ts",
+    "mini-option.md deletion (3 families)"
+  ],
+  "resolved_findings": [
+    {
+      "id": "QB-001",
+      "title": "위원회 confidence-spread 격상 종단 미정의",
+      "resolution": "auto-option §4.1.2 에 종단 규모 분기 신설. 비종단(--auto 3인/--max 5인)은 3->5 / 5->7 1회 격상 재투표, 종단(비-max 5인/--max 7인)은 재투표 없이 low-confidence 를 critical 격상 HALT. claude/codex/etc 3계열 모두 동일 문구.",
+      "evidence": "claude L204-207, codex L136-143, etc L141-148"
+    },
+    {
+      "id": "QB-002",
+      "title": "-qna/--qna footgun",
+      "resolution": "kiwi-srs §1.2 에 앵커 파싱 규칙 명시: -qna(강제)=`(?<![-\\w])-qna\\b`, --qna(deprecated)=`(?<![-\\w])--qna\\b`, substring 매칭 금지. 대시 개수+토큰 경계로 판별하도록 고정.",
+      "evidence": "skills/claude/kiwi-srs/SKILL.md diff §1.2 (대시 1개 차이 정반대 의미 명문화)"
+    },
+    {
+      "id": "QB-003",
+      "title": "etc auto-option 위원회 실패처리 단일-worker 잔재",
+      "resolution": "etc auto-option Failure handling 표가 member/quorum 어휘로 재작성('matching the claude/codex variants'). single-worker 잔재 제거, 과반 정족수/lead#1 tie-break 실패 처리 포함.",
+      "evidence": "skills/etc/_shared/kiwi/auto-option.md L83-92"
+    },
+    {
+      "id": "QB-004",
+      "title": "--model +0.1 비결정",
+      "resolution": "§4.1.3 에 모델 tier SSOT 도입: `opus > sonnet > haiku`. 지정 tier < 세션 tier 일 때만 +0.1, 같거나 높으면 무조정, tier 판정 불가 시 안전측 +0.1. 3계열 동일.",
+      "evidence": "claude L209-222, codex L145-151, etc L150-156"
+    },
+    {
+      "id": "QB-005",
+      "title": "wave-master waves-event.md 경로 불일치",
+      "resolution": "각 계열 내부 경로 표기 일관 확인. claude=`~/.claude/skills/_shared/kiwi/waves-event.md`(절대 install 경로), codex/etc=`../_shared/kiwi/waves-event.md`(상대). 계열 내 §0.1/§6/§9 전부 동일 규약. package-doctor 에 kiwi-wave-master 3계열 엔트리포인트 검증 추가.",
+      "evidence": "wave-master §0.1/§6/§9 grep(3계열), package-doctor.ts EXPECTED_KIWI_SKILLS +kiwi-wave-master"
+    },
+    {
+      "id": "QB-006",
+      "title": "wave-master 섹션헤더 Phase순서 어긋남",
+      "resolution": "Phase 흐름(§2) 0->1->2->3->4->5 와 섹션헤더 §3=Phase1 / §4=Phase2 / §5=Phase3 / §6=Phase4 단조 정합. Phase 순서 정상.",
+      "evidence": "skills/claude/kiwi-wave-master/SKILL.md L52-63 vs L67/80/90/102 헤더"
+    },
+    {
+      "id": "QB-007",
+      "title": "--wt 미명세",
+      "resolution": "kiwi-pipeline §2.6(+§2.6.1/2/3) 신설로 --wt worktree 격리 사이클 명세: git worktree add 생성, 완료 게이트 merge-or-PR(비-auto)/자동 PR(--auto, base direct-merge 금지). 옵션표 L70 §2.6 참조 resolve. §2.5.3 이 참조하는 §6.6/§7.1/§7.2 3계열 모두 존재(dangling 없음).",
+      "evidence": "claude §2.6 L131-145, §6.6/§7.1/§7.2 존재, codex/etc pipeline 동일 섹션 존재"
+    },
+    {
+      "id": "QB-008",
+      "title": "무제한 qna 진동가드 소실",
+      "resolution": "kiwi-srs §5.2 에 진동/반복 감지 가드 재도입: 무제한 루프라도 동일 미해결 모호성 2회 반복 시 자동 진행 대신 사용자 확인(구 Max '진동 감지 시 사용자 호출' 안전장치 유지). 대화형 루프 전용(--auto/-qna 위원회 위임 경로 제외).",
+      "evidence": "skills/claude/kiwi-srs/SKILL.md §5.2 진동/반복 감지 가드 bullet"
+    },
+    {
+      "id": "QB-009",
+      "title": "confidence-spread claude 전용",
+      "resolution": "codex/etc auto-option 에도 'Committee confidence cross-check' 문단 + tier SSOT 문단 이식. 3계열 confidence-spread(>=0.3) 종단 분기 대칭.",
+      "evidence": "codex L136-151, etc L141-156 (claude 대응 §4.1.2/4.1.3 과 동형)"
+    },
+    {
+      "id": "QB-010",
+      "title": "§8.3 결정이력 스킬삽입",
+      "resolution": "결정이력/provenance 스킬-삽입 문구가 전 skills 트리에서 제거됨(잔여 0). grep 결과 provenance 는 kiwi-srs `re_stated_from` 정상 개념만, '이력' 은 kiwi-pm 'NEEDS_USER 이력' 보고 섹션만 잔존(무관). 관련 §8.3 섹션(wave-master 등) 문장 훼손 없이 정상 판독.",
+      "evidence": "grep provenance/결정이력/decision-history/이력 전수 — 무관 잔존만"
+    }
+  ],
+  "still_open": [],
+  "new_findings": [
+    {
+      "id": "QB-201",
+      "axis": "B",
+      "severity": "low",
+      "title": "claude auto-option §2 모드표 --max 행이 §3 SSOT 사다리와 미세 모순",
+      "location": {
+        "file": "skills/claude/_shared/kiwi/auto-option.md",
+        "lines": "L32 vs L153"
+      },
+      "description": "§2 모드표(L32) `--auto --max` 행은 '만장일치가 아니면 다수결, 그래도 미결이면 7인으로 격상' 이라고 요약 — 5인 다수결이 종단이고 tie('미결')일 때만 7인 격상하는 것처럼 읽힌다. 그러나 §3 사다리(L153, 문서 스스로 L36 에서 SSOT 로 지정)는 '--max 이면 5인이 만장일치가 아닐 때 다수결로 멈추지 않고 7인으로 격상' — 즉 --max 는 5인 다수결을 절대 종단으로 삼지 않는다. 요약표가 SSOT 불변식(--max 는 5-plurality 를 최종 채택하지 않음)을 잘못 시사. codex/etc 는 이 요약표가 없어 해당 없음(claude 전용). 기능 영향: L36 이 §3 을 SSOT 로 못박아 구현자는 §3 을 따르므로 실사용 리스크는 낮음(문서 내부 정합성 결함).",
+      "suggested_fix": "L32 문구를 §3 과 정렬: '--auto --max: 5인 만장일치 아니면 7인으로 격상 후 다수결(5인 다수결 미종단)' 로 수정하거나, 요약표에서 합치 규칙 서술을 제거하고 '§3 참조' 로 단일화."
+    },
+    {
+      "id": "QB-202",
+      "axis": "B",
+      "severity": "trivial",
+      "title": "auto_decisions.json 예시 필드명 계열 간 불일치(applied_decision vs merged_decision)",
+      "location": {
+        "file": "skills/{claude,codex,etc}/_shared/kiwi/auto-option.md",
+        "lines": "claude L263 / codex L236 = merged_decision, etc L243 = applied_decision"
+      },
+      "description": "로깅 예시 JSON 에서 etc 는 `applied_decision`, claude/codex 는 `merged_decision` 키 사용. auto_decisions.json 은 LLM 이 기록하는 로그(코드 파서 없음)이고 예시일 뿐이라 기능 영향 없음. 순수 표기 일관성 결함.",
+      "suggested_fix": "3계열 예시 키를 하나로 통일(merged_decision 권장). 선택 사항."
+    }
+  ],
+  "summary": {
+    "resolved": 10,
+    "still_open": 0,
+    "new": 2,
+    "by_severity_open": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 1,
+      "trivial": 1
+    }
+  },
+  "regression": "test/skills 142/142",
+  "gate": "PASS",
+  "clean": false,
+  "overall": "1R QB-001~010 전 10건 독립 재검증 결과 모두 해소 확인(3계열 auto-option 위원회 모델 대칭, kiwi-srs -qna 앵커/진동가드, wave-master 경로·Phase 정합, kiwi-pipeline --wt 명세+dangling 0, provenance 잔여 0). 회귀 test/skills 142/142 green, CRITICAL=0 HIGH=0 게이트 PASS. 신규는 경미 2건뿐: QB-201(claude §2 표 vs §3 SSOT --max 사다리 요약 미세 모순, LOW, §3 이 SSOT 명시라 실사용 저위험) + QB-202(로깅 예시 필드명 표기 불일치, trivial). 두 건 모두 게이트 비차단. 병합 가능 상태이나 문서 완전 정합을 위해 QB-201 요약표 정렬 권고."
+}

@@ -106,7 +106,7 @@ User clarification gate 4옵션:
 ---
 run_id: ...
 target: ...
-mode: normal|max|squirrel|dry-run-only
+mode: normal|max|model|dry-run-only
 base_ref: main
 head_ref: HEAD
 applied: 12
