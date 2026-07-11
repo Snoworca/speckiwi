@@ -154,9 +154,9 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 
 이슈 번호(issue number)가 감지되면, 본 스킬은 곧바로 저작 단계로 가지 않고 먼저 `kiwi-srs-research` 를 실행하여 (1) 이슈의 해결(resolution) 방향과 (2) 추가로 구현 접근(implementation-approach)을 연구한다. 즉 이슈가 트리거하는 첫 파이프라인 단계는 반드시 `kiwi-srs-research` 이며, 이 연구가 끝난 뒤에야 `kiwi-srs` 로 SRS 저작을 시작한다 (research-first order). 이슈 진입 큐와 `kiwi-srs` 시작 사이에는 오직 `kiwi-srs-research` 만 위치하고, 연구 없이 `kiwi-srs` 를 곧바로 시작하지 않는다.
 
-### 2.7.2 불충분한 연구 시 -qna 에스컬레이션 (AC-2)
+### 2.7.2 불충분한 연구 시 --qna-force 에스컬레이션 (AC-2)
 
-`kiwi-srs-research` 연구만으로 요구사항이 여전히 모호(ambiguous)하거나 불충분(insufficient)하면, 본 스킬은 `kiwi-srs` 를 `-qna` 로 시작하여 남은 미해결(unresolved) 모호성을 사용자와 해소한다. 단 `--auto` 활성 시에는 `-qna` 를 **억제(suppress)**하여 -qna 없이 진행하고, 남은 모호성은 FR-FLOW-025 결정 위원회(decision committee)가 자동 결정한다.
+`kiwi-srs-research` 연구만으로 요구사항이 여전히 모호(ambiguous)하거나 불충분(insufficient)하면, 본 스킬은 `kiwi-srs` 를 `--qna-force` 로 시작하여 남은 미해결(unresolved) 모호성을 사용자와 해소한다. 단 `--auto` 활성 시에는 `--qna-force` 를 **억제(suppress)**하여 --qna-force 없이 진행하고, 남은 모호성은 FR-FLOW-025 결정 위원회(decision committee)가 자동 결정한다.
 
 ### 2.7.3 이슈 흐름의 사이클 계속 (AC-3)
 

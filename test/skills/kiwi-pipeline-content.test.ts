@@ -282,10 +282,10 @@ describe("FR-FLOW-027 — kiwi-pipeline worktree isolation with merge-or-PR comp
 // kiwi-pipeline SKILL.md and therefore FAIL until T-PH004-04 adds a GitHub-issue entry mode to
 // Phase 0 of all three variants: a supplied issue number runs kiwi-srs-research (for the
 // resolution plus additional implementation-approach research) BEFORE kiwi-srs, escalates to
-// `-qna` only when research is insufficient, suppresses `-qna` under --auto in favour of the
+// `--qna-force` only when research is insufficient, suppresses `--qna-force` under --auto in favour of the
 // FR-FLOW-025 committee, then continues through planner/pm/review-fix-loop.
 //
-// kiwi-pipeline has 0 `issue`/`이슈` and 0 `-qna` refs today and mentions kiwi-srs-research ONLY as
+// kiwi-pipeline has 0 `issue`/`이슈` and 0 `--qna-force` refs today and mentions kiwi-srs-research ONLY as
 // a T1 decision-table feasibility follow-up (never tied to a GitHub-issue entry), so these
 // windowed assertions cannot be satisfied by that pre-existing table row. Same raw-text presence +
 // proximity style as the FR-FLOW-026/027 blocks above (language-neutral tokens + bilingual regex);
@@ -300,9 +300,9 @@ const SRS_RESEARCH = /kiwi-srs-research/;
 const RESOLUTION = /resolution|resolv(?:e|ing)|해결|해소/i;
 const IMPL_APPROACH = /implementation[- ]?approach|구현\s*(?:접근|방법|방식|방안)/i;
 
-// AC-2: escalate to -qna on insufficient research; under --auto suppress -qna and use the committee.
-// `-qna` is entirely absent from kiwi-pipeline today (red driver).
-const QNA = /-qna\b/;
+// AC-2: escalate to --qna-force on insufficient research; under --auto suppress --qna-force and use the committee.
+// `--qna-force` is entirely absent from kiwi-pipeline today (red driver).
+const QNA_FORCE = /--qna-force\b/;
 const AMBIGUITY =
   /ambigu|모호|불충분|insufficient|불명확|미해결|unresolved|not\s+enough|충분하지\s*않/i;
 const SUPPRESS =
@@ -340,7 +340,7 @@ describe("FR-FLOW-028 — kiwi-pipeline GitHub issue entry mode with research-fi
         // call), and a bare /kiwi-srs start must follow the research call. SRS_SKILL = /kiwi-srs(?!-)/
         // matches only a bare kiwi-srs start, never the kiwi-srs-research / kiwi-srs-feasibility
         // tokens, so within-clause reversed prose ("issue → run kiwi-srs, research after") is
-        // rejected while the AC-2 -qna kiwi-srs mention (which legitimately follows research) does
+        // rejected while the AC-2 --qna-force kiwi-srs mention (which legitimately follows research) does
         // not break it. (A bare kiwi-srs sitting BEFORE the issue cue is treated as unrelated
         // general-pipeline prose and intentionally not inspected, to avoid false-rejecting a faithful
         // implementation whose surrounding Phase-0 text mentions kiwi-srs.)
@@ -358,23 +358,23 @@ describe("FR-FLOW-028 — kiwi-pipeline GitHub issue entry mode with research-fi
         ).toBe(true);
       });
 
-      it("AC-2: escalates to -qna on insufficient research, but under --auto suppresses -qna and uses the committee", () => {
+      it("AC-2: escalates to --qna-force on insufficient research, but under --auto suppresses --qna-force and uses the committee", () => {
         const body = skillBody(readSkill(variant));
-        // -qna escalation tied to an insufficient/ambiguous-research cue and the kiwi-srs start.
-        const qnaOnAmbiguity = windowsAround(body, QNA, 320).some(
+        // --qna-force escalation tied to an insufficient/ambiguous-research cue and the kiwi-srs start.
+        const qnaOnAmbiguity = windowsAround(body, QNA_FORCE, 320).some(
           (win) => AMBIGUITY.test(win) && SRS_SKILL.test(win),
         );
         expect(
           qnaOnAmbiguity,
-          `FR-FLOW-028 AC-2: ${variant} kiwi-pipeline must start /kiwi-srs with -qna when research alone leaves the requirement ambiguous`,
+          `FR-FLOW-028 AC-2: ${variant} kiwi-pipeline must start /kiwi-srs with --qna-force when research alone leaves the requirement ambiguous`,
         ).toBe(true);
-        // Under --auto, -qna is suppressed and ambiguities are resolved via the FR-FLOW-025 committee.
-        const autoSuppresses = windowsAround(body, QNA, 360).some(
+        // Under --auto, --qna-force is suppressed and ambiguities are resolved via the FR-FLOW-025 committee.
+        const autoSuppresses = windowsAround(body, QNA_FORCE, 360).some(
           (win) => AUTO_FLAG.test(win) && SUPPRESS.test(win) && COMMITTEE.test(win),
         );
         expect(
           autoSuppresses,
-          `FR-FLOW-028 AC-2: ${variant} kiwi-pipeline must, under --auto, suppress -qna and resolve ambiguities via the FR-FLOW-025 decision committee`,
+          `FR-FLOW-028 AC-2: ${variant} kiwi-pipeline must, under --auto, suppress --qna-force and resolve ambiguities via the FR-FLOW-025 decision committee`,
         ).toBe(true);
       });
 

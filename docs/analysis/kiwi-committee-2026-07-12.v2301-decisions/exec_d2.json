@@ -1,0 +1,95 @@
+{
+  "decision": "D2",
+  "summary": "Renamed the forced-QnA flag `-qna` (single-dash, convention-inverted footgun and a substring of the deprecated `--qna` alias) to `--qna-force`, and codified fail-closed exact-token argument parsing across the SRS and the kiwi skills.",
+  "approach": "SRS-first via sanctioned speckiwi CLI mutations (MCP does not expose statement/AC text edits; CLI does) + test-first TDD (red -> green) for the skill content changes.",
+  "srs_edits": [
+    {
+      "id": "FR-FLOW-024",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI edit-requirement",
+      "section": "Requirement statement",
+      "change": "`-qna` -> `--qna-force` (both occurrences: force + suppress); added fail-closed clause: matches exact token `--qna-force` only (never the `--qna` prefix), unrecognized/single-dash variants hard-error (no silent no-op, no inverted action)."
+    },
+    {
+      "id": "FR-FLOW-024",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI edit-ac",
+      "section": "AC-2",
+      "change": "`-qna` -> `--qna-force`; added 'parsed fail-closed as an exact token (never the `--qna` alias it prefixes; unrecognized or single-dash variants hard-error)'."
+    },
+    {
+      "id": "FR-FLOW-024",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI add-change-note",
+      "section": "Change Notes",
+      "change": "2026-07-12 | Renamed forced qna flag `-qna` to `--qna-force` and codified fail-closed exact-token parsing (unrecognized or single-dash variants hard-error). | committee-decision-D2: remove convention-inverted single-dash forced-flag footgun"
+    },
+    {
+      "id": "FR-FLOW-028",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI edit-requirement",
+      "section": "Requirement statement",
+      "change": "`-qna` -> `--qna-force` (invoke + suppress occurrences), aligning with FR-FLOW-024."
+    },
+    {
+      "id": "FR-FLOW-028",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI edit-ac",
+      "section": "AC-2",
+      "change": "`-qna` -> `--qna-force` (start + suppress occurrences)."
+    },
+    {
+      "id": "FR-FLOW-028",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "speckiwi CLI add-change-note",
+      "section": "Change Notes",
+      "change": "2026-07-12 | Renamed forced qna flag `-qna` to `--qna-force` for consistency with FR-FLOW-024. | committee-decision-D2"
+    },
+    {
+      "id": "FR-FLOW-028",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "tool": "direct Edit (tool-gap fallback)",
+      "section": "Rationale (line 2270)",
+      "change": "`-qna` -> `--qna-force` in live prose. Flagged by independent verification as a residual contradicting the change note. No CLI/MCP command edits the Rationale section body (edit-requirement lacks --rationale; update-field only handles table metadata; append-note only appends) -> genuine tool gap. Surgical content-matched single-line patch; re-validated 0/0. Golden-rule failure mode (tool<->manual desync) does not apply: all CLI mutations were already committed, the Rationale prose is not indexed by any derived artifact, and validate re-parses fresh."
+    }
+  ],
+  "skill_files": [
+    "skills/claude/kiwi-srs/SKILL.md",
+    "skills/codex/kiwi-srs/SKILL.md",
+    "skills/etc/kiwi-srs/SKILL.md",
+    "skills/claude/kiwi-pipeline/SKILL.md",
+    "skills/codex/kiwi-pipeline/SKILL.md",
+    "skills/etc/kiwi-pipeline/SKILL.md",
+    ".agents/skills/kiwi-srs/SKILL.md (regenerated mirror)",
+    ".agents/skills/kiwi-pipeline/SKILL.md (regenerated mirror)"
+  ],
+  "skill_changes": {
+    "kiwi-srs": "§1.2 anchor paragraph rewritten for `--qna-force` (force) vs `--qna` (deprecated alias, which it prefixes): exact-token anchors `(?<![-\\w])--qna-force\\b` and `(?<![-\\w])--qna(?![-\\w])`, substring/prefix matching forbidden, and a fail-closed rule (unrecognized flags, single-dash variants `-qna`/`-qna-force`, typos => hard-error, never silent no-op or inverted action). §5.2/§5.3 forced-flag references renamed. Deprecated `--qna` alias kept with its existing non-silent stderr DEPRECATED warning.",
+    "kiwi-pipeline": "§2.7.2 heading + body: `-qna` -> `--qna-force` (all occurrences), keeping the `--auto` suppress-to-FR-FLOW-025-committee path."
+  },
+  "deprecated_alias_preserved": true,
+  "deprecated_alias_non_silent": "Yes — `--qna` remains a deprecated alias emitting stderr `[DEPRECATED] --qna is now default; use --auto to suppress`; unchanged by D2.",
+  "test_tdd": {
+    "test_files": [
+      "test/skills/kiwi-srs-research-loop-content.test.ts (FR-FLOW-024 AC-2)",
+      "test/skills/kiwi-pipeline-content.test.ts (FR-FLOW-028 AC-2)"
+    ],
+    "test_changes": "kiwi-srs test: QNA_FORCE regex `(?<![-\\w])-qna\\b` -> `(?<![-\\w])--qna-force\\b` + messages/comments. pipeline test: const QNA `/-qna\\b/` renamed to QNA_FORCE `/--qna-force\\b/` + all references/messages/comments.",
+    "red": "After updating both tests to expect `--qna-force` (skills still had `-qna`), `npx vitest run` on the two files => 6 failed / 54 passed. Failures were exactly the `--qna-force must force the qna loop` (claude/codex/etc) and `start /kiwi-srs with --qna-force` (claude/codex/etc) assertions. Genuine red anchored on the renamed flag.",
+    "green": "After renaming the flag in all 6 source skill files, `npx vitest run` on the two files => 60 passed / 0 failed."
+  },
+  "fail_closed_added": true,
+  "regression": {
+    "test_skills_plus_install_skill": "165 passed / 0 failed (9 test files)",
+    "install_skill_standalone": "17 passed / 0 failed",
+    "two_target_files": "60 passed / 0 failed"
+  },
+  "mirror_sync": {
+    "command": "node bin/speckiwi skills install codex kiwi-srs; node bin/speckiwi skills install codex kiwi-pipeline",
+    "parity": "diff confirms .agents/skills/{kiwi-srs,kiwi-pipeline}/SKILL.md byte-identical to skills/codex/ sources; only extra file is the expected .speckiwi-skill-install.json metadata.",
+    "shared_manual_cp_needed": false
+  },
+  "validate": "validate_spec (failOnWarning=true) => 0 errors, 0 warnings, before and after every change.",
+  "stray_qna_sweep": "ERE sweep across docs/spec, skills, .agents, test => CLEAN: zero stray active single-dash `-qna`. Legitimately-remaining `-qna` substrings: deprecated `--qna` alias, skill name `snoworca-srs-qna`, `qna_log.json`, `unbounded-qna` concept, fail-closed rejected-variant enumeration examples, and change-note history quotes.",
+  "independent_verification": "Delegated to an independent subagent given only the D2 decision + raw diff (no conclusions). Verdict: PASS after the one MEDIUM finding (FR-FLOW-028 Rationale residual `-qna`) was fixed. Confirmed fail-closed semantics correct (negative lookahead prevents `--qna` substring false-match inside `--qna-force`), deprecated alias intact/non-silent, cross-variant consistent, mirror byte-identical, no scope creep."
+}

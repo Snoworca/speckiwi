@@ -278,7 +278,7 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
 //
 // Every discriminating check is anchored on a NET-NEW token verified ABSENT from
 // all three main SKILL.md today (auto-decision/자동결정 0, requirement-gathering/
-// 요구사항수집 0, genuinely-non-standard 0, single-dash -qna 0, end-signal 0,
+// 요구사항수집 0, genuinely-non-standard 0, --qna-force 0, end-signal 0,
 // unbounded-qna 0, FR-FLOW-025 0). Because windowsAround on an absent anchor
 // returns [], each `.some(...)` is false today -> genuine red, no false-green.
 // The claude main SKILL.md already carries the FR-FLOW-023 intake wording (an
@@ -306,7 +306,7 @@ const GENUINELY_NONSTANDARD =
 const RECHECK_DECISION =
   /re[\s-]*(?:check|examine|examined|evaluat|question|questioned)[^\n]{0,48}(?:decision|answer|choice)|(?:decision|answer|choice)[^\n]{0,48}re[\s-]*(?:check|examine|evaluat|question)|(?:결정|답변|선택)[^\n]{0,24}(?:재검사|재질문|다시\s*질문|재평가)|(?:재검사|재질문|재평가|다시\s*질문)[^\n]{0,24}(?:결정|답변|선택)/i;
 
-// --- AC-2: vague auto-trigger, unbounded qna, -qna force, --auto->committee -----
+// --- AC-2: vague auto-trigger, unbounded qna, --qna-force, --auto->committee -----
 // The unbounded qna loop replaces the prior bounded 3/7-round QnA.
 const UNBOUNDED_QNA =
   /unbounded\s+qna|무(?:한|제한)\s*(?:qna|질문)|qna[^\n]{0,20}(?:unbounded|무한|무제한)|(?:unbounded|무한|무제한)[^\n]{0,20}qna/i;
@@ -315,9 +315,10 @@ const VAGUE = /vague|막연|불충분|모호|under[\s-]*specified/i;
 const AUTO_ACTIVATE =
   /auto[\s-]*(?:activat|trigger|enter|engage)|자동\s*(?:활성|진입|트리거|발동)/i;
 const GAME = /\bgame\b|게임/i;
-// `-qna` single-dash force flag — net-new; excludes the old `--qna` alias,
-// `auto-qna`, and `srs-qna` via a "no dash/word-char before" lookbehind.
-const QNA_FORCE = /(?<![-\w])-qna\b/;
+// `--qna-force` force flag — net-new; matches the exact double-dash token only and
+// must NOT match the old `--qna` alias whose prefix it contains (a naive `--qna\b` would
+// false-match `--qna-force`), enforced by a "no dash/word-char before" lookbehind.
+const QNA_FORCE = /(?<![-\w])--qna-force\b/;
 // Under --auto the interactive loop is suppressed and handed to the FR-FLOW-025 committee.
 const FR_FLOW_025 = /FR-FLOW-025/;
 const AUTO_FLAG = /--auto\b/;
@@ -368,7 +369,7 @@ describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna
       ).toBe(true);
     });
 
-    it(`FR-FLOW-024 red :: AC-2 [${variant}] — vague-request auto-trigger, unbounded qna, -qna force, --auto suppresses to FR-FLOW-025 committee`, () => {
+    it(`FR-FLOW-024 red :: AC-2 [${variant}] — vague-request auto-trigger, unbounded qna, --qna-force, --auto suppresses to FR-FLOW-025 committee`, () => {
       const text = srsSkillText(variant);
 
       // The unbounded qna loop replaces the prior bounded 3/7-round QnA.
@@ -386,10 +387,10 @@ describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna
         `FR-FLOW-024 AC-2: ${variant} a sufficiently vague request (e.g. a game) must auto-activate the qna loop`,
       ).toBe(true);
 
-      // `-qna` (single dash) forces the loop — net-new, distinct from the old `--qna` alias.
+      // `--qna-force` forces the loop — net-new, distinct from the old `--qna` alias it prefixes.
       expect(
         QNA_FORCE.test(text),
-        `FR-FLOW-024 AC-2: ${variant} \`-qna\` must force the qna loop`,
+        `FR-FLOW-024 AC-2: ${variant} \`--qna-force\` must force the qna loop`,
       ).toBe(true);
 
       // Under --auto the interactive loop is suppressed and handed to the FR-FLOW-025 committee.
@@ -402,7 +403,7 @@ describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna
       );
       expect(
         autoSuppress,
-        `FR-FLOW-024 AC-2: ${variant} under --auto the interactive qna loop and \`-qna\` must be suppressed in favor of the FR-FLOW-025 committee`,
+        `FR-FLOW-024 AC-2: ${variant} under --auto the interactive qna loop and \`--qna-force\` must be suppressed in favor of the FR-FLOW-025 committee`,
       ).toBe(true);
     });
 
