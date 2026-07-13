@@ -128,6 +128,100 @@ export async function installSkill(options: SkillInstallOptions): Promise<Result
   }
 }
 
+// FR-NODE-069 — orphaned kiwi-* skill prune. Removes only kiwi-* directories that are speckiwi-managed
+// runtime mirrors (carry .speckiwi-skill-install.json for the matching agent), are absent from the newly
+// resolved source set, are not symlinks (nor contain symlinked entries), and whose on-disk contents match
+// the recorded install checksum. A drifted (locally edited) or user-authored directory is warned, not
+// deleted. Non-kiwi directories are never touched.
+export interface OrphanSkillPruneOptions {
+  destinationRoot: string;
+  agent: SkillAgent;
+  sourceSkillNames: string[];
+  dryRun?: boolean;
+}
+
+export interface OrphanSkillPruneResult {
+  removed: string[];
+  warnings: string[];
+}
+
+export async function pruneOrphanKiwiSkills(options: OrphanSkillPruneOptions): Promise<OrphanSkillPruneResult> {
+  const removed: string[] = [];
+  const warnings: string[] = [];
+  const keep = new Set(options.sourceSkillNames);
+  if (!(await directoryExists(options.destinationRoot))) return { removed, warnings };
+  const entries = await readdir(options.destinationRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.name.startsWith("kiwi-")) continue;
+    if (keep.has(entry.name)) continue;
+    const candidate = path.join(options.destinationRoot, entry.name);
+    try {
+      const stats = await lstat(candidate);
+      if (stats.isSymbolicLink()) {
+        warnings.push(`Skipped ${candidate}: refusing to remove a symlinked skill directory.`);
+        continue;
+      }
+      if (!stats.isDirectory()) continue;
+      const metadata = await readInstallMetadata(candidate);
+      if (!metadata) continue; // user-authored (no speckiwi metadata) — never remove
+      // The metadata must positively identify THIS directory as a speckiwi-managed mirror for this
+      // agent AND this exact name. The directory name is not part of the checksum, so a verbatim copy
+      // of a managed dir to a new name would otherwise pass the checksum gate — guard against deleting it.
+      if (metadata.installMode !== "generated-runtime-mirror" || metadata.agent !== options.agent || metadata.name !== entry.name) continue;
+      const currentChecksum = await destinationDigest(candidate);
+      if (currentChecksum !== metadata.installedChecksum) {
+        warnings.push(`Skipped ${candidate}: on-disk contents differ from the recorded install checksum (local edits).`);
+        continue;
+      }
+      // Only report a directory as removed once the delete has actually succeeded (in dry-run there is
+      // no delete, so record the intended removal). A failing rm falls through to the catch as a warning.
+      if (options.dryRun) {
+        removed.push(candidate);
+      } else {
+        await rm(candidate, { recursive: true, force: true });
+        removed.push(candidate);
+      }
+    } catch (error) {
+      // Any filesystem error (unreadable entry, a symlink nested inside caught by destinationDigest, an
+      // rm failure, or a readdir/lstat race) degrades to a warning — the prune never aborts init.
+      warnings.push(`Skipped ${candidate}: ${(error as Error).message}`);
+    }
+  }
+  return { removed, warnings };
+}
+
+/** Recomputes the install checksum (packageDigest format) over a destination skill directory's files. */
+async function destinationDigest(directory: string): Promise<string> {
+  const relativePaths: string[] = [];
+  async function walk(current: string): Promise<void> {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const absolutePath = path.join(current, entry.name);
+      const stats = await lstat(absolutePath);
+      if (stats.isSymbolicLink()) {
+        throw new SkillInstallError("SKILL_INSTALL_INVALID_SOURCE", `installed skill contains a symlink: ${absolutePath}`);
+      }
+      if (stats.isDirectory()) {
+        await walk(absolutePath);
+        continue;
+      }
+      if (!stats.isFile()) continue;
+      const relativePath = toPosix(path.relative(directory, absolutePath));
+      if (relativePath === INSTALL_METADATA_FILE) continue;
+      relativePaths.push(relativePath);
+    }
+  }
+  await walk(directory);
+  relativePaths.sort((left, right) => left.localeCompare(right));
+  const hash = createHash("sha256");
+  for (const relativePath of relativePaths) {
+    hash.update(relativePath);
+    hash.update("\0");
+    hash.update(createHash("sha256").update(await readFile(path.join(directory, relativePath))).digest("hex"));
+    hash.update("\n");
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
 function normalizeOptions(options: SkillInstallOptions): Required<Pick<SkillInstallOptions, "projectRoot" | "agent" | "selector" | "scope" | "dryRun">> &
   Omit<SkillInstallOptions, "projectRoot" | "agent" | "selector" | "scope" | "dryRun"> {
   assertSupportedAgent(options.agent);

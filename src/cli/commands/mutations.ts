@@ -84,17 +84,30 @@ function parseRequirementIds(value?: string): string[] {
 }
 
 export function registerMutationCommands(command: Command, context: CliContext): void {
-  command.command("init").option("--target <target>").option("--scope <scope>").option("--force").option("--ignore-lock").option("--json").action(async (options) => {
-    const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
-    const result = await initProject(root, {
-      ...(typeof options.target === "string" ? { target: options.target } : {}),
-      ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
-      force: Boolean(options.force),
-      ...(options.ignoreLock ? { ignoreLock: true } : {})
+  command
+    .command("init")
+    .option("--target <target>")
+    .option("--scope <scope>")
+    .option("--force")
+    .option("--no-skills", "skip installing the bundled kiwi skills into the project")
+    .option("--no-mcp", "skip registering the SpecKiwi MCP server in .mcp.json")
+    .option("--dry-run", "preview all init steps without writing to the filesystem")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (options) => {
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
+      const result = await initProject(root, {
+        ...(typeof options.target === "string" ? { target: options.target } : {}),
+        ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
+        force: Boolean(options.force),
+        installSkills: options.skills !== false,
+        registerMcp: options.mcp !== false,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
     });
-    output(context, { json: options.json || command.opts().json }, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
-  });
 
   command
     .command("sync-index")

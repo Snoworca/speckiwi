@@ -17,7 +17,7 @@ import { writeHuman, writeJson } from "../formatters.js";
 const FIXABLE_AGENT_FILES: readonly AgentFileMode[] = ["CLAUDE.md", "AGENTS.md"];
 
 async function fixWorkflowBlocks(rootPath: string): Promise<void> {
-  const output: InitProjectOutput = { created: [], skipped: [], updated: [] };
+  const output: InitProjectOutput = { created: [], skipped: [], updated: [], removed: [] };
   for (const agentFile of FIXABLE_AGENT_FILES) {
     await upsertAgentInstruction(rootPath, agentFile, output);
   }

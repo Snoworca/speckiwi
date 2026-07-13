@@ -14,10 +14,17 @@ import {
   renderEmptyScopeTemplate,
   renderIndexTemplate
 } from "./templates.js";
+import { installSkill, planSkillInstall, pruneOrphanKiwiSkills } from "../skills/install-skill.js";
+import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
+import { registerSpeckiwiMcp } from "./mcp-registration.js";
 
 export type AgentFileMode = "AGENTS.md" | "CLAUDE.md";
 
 const REQUIRED_AGENT_FILES: readonly AgentFileMode[] = ["AGENTS.md", "CLAUDE.md"];
+
+// FR-NODE-068 — init provisions the bundled kiwi skills for the fixed Claude + Codex agent pair,
+// matching init's existing dual AGENTS.md/CLAUDE.md + dual-hook policy.
+const SKILL_PROVISION_AGENTS: readonly SkillAgent[] = ["claude", "codex"];
 
 export interface InitProjectInput {
   product?: string;
@@ -26,12 +33,20 @@ export interface InitProjectInput {
   force?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
+  // FR-NODE-067/068/070 — onboarding steps. These default OFF so the MCP `init_project` tool (which
+  // never sets them) is unaffected; the CLI init path enables them (opt-out via --no-mcp/--no-skills).
+  registerMcp?: boolean;
+  installSkills?: boolean;
+  dryRun?: boolean;
+  /** Test/DI seam — overrides the bundled skills source root used by skill provisioning. */
+  skillSourceBaseDir?: string;
 }
 
 export interface InitProjectOutput {
   created: string[];
   skipped: string[];
   updated: string[];
+  removed: string[];
   warnings?: string[];
 }
 
@@ -127,23 +142,25 @@ async function loadBundledHookRunner(name: string): Promise<string | undefined> 
   }
 }
 
-async function installHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+async function installHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
   // docs/.kiwi scaffold: hook runner directory, trace output directory, and the
   // best-effort runner scripts the installed hooks delegate to.
   const kiwiHooksDir = path.join(root, "docs", ".kiwi", "hooks");
-  await mkdir(kiwiHooksDir, { recursive: true });
-  await mkdir(path.join(root, "docs", ".kiwi", "trace"), { recursive: true });
+  if (!dryRun) {
+    await mkdir(kiwiHooksDir, { recursive: true });
+    await mkdir(path.join(root, "docs", ".kiwi", "trace"), { recursive: true });
+  }
   for (const runner of ["pre-commit.mjs", "trace.mjs"] as const) {
     const bundled = await loadBundledHookRunner(runner);
-    await writeIfMissing(path.join(kiwiHooksDir, runner), bundled ?? "#!/usr/bin/env node\nprocess.exit(0);\n", output, force);
+    await writeIfMissing(path.join(kiwiHooksDir, runner), bundled ?? "#!/usr/bin/env node\nprocess.exit(0);\n", output, force, dryRun);
   }
 
-  await installGitPreCommitHook(root, output, warnings);
-  await installClaudeSettings(root, output, warnings, force);
-  await installCodexHooks(root, output, warnings, force);
+  await installGitPreCommitHook(root, output, warnings, dryRun);
+  await installClaudeSettings(root, output, warnings, force, dryRun);
+  await installCodexHooks(root, output, warnings, force, dryRun);
 }
 
-async function installGitPreCommitHook(root: string, output: InitProjectOutput, warnings: string[]): Promise<void> {
+async function installGitPreCommitHook(root: string, output: InitProjectOutput, warnings: string[], dryRun = false): Promise<void> {
   const gitDir = path.join(root, ".git");
   if (!(await pathExists(gitDir))) {
     warnings.push("No .git directory found; skipped installing the pre-commit hook.");
@@ -157,8 +174,10 @@ async function installGitPreCommitHook(root: string, output: InitProjectOutput, 
     existing = undefined;
   }
   if (existing === undefined) {
-    await mkdir(path.dirname(hookPath), { recursive: true });
-    await writeFile(hookPath, renderGitPreCommitHook(), "utf8");
+    if (!dryRun) {
+      await mkdir(path.dirname(hookPath), { recursive: true });
+      await writeFile(hookPath, renderGitPreCommitHook(), "utf8");
+    }
     output.created.push(hookPath);
     return;
   }
@@ -172,7 +191,7 @@ async function installGitPreCommitHook(root: string, output: InitProjectOutput, 
   );
 }
 
-async function installClaudeSettings(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+async function installClaudeSettings(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
   const claudeDir = path.join(root, ".claude");
   if (await pathExists(path.join(claudeDir, "managed-settings.json"))) {
     warnings.push(
@@ -180,10 +199,10 @@ async function installClaudeSettings(root: string, output: InitProjectOutput, wa
     );
     return;
   }
-  await writeIfMissing(path.join(claudeDir, "settings.json"), renderClaudeSettings(), output, force);
+  await writeIfMissing(path.join(claudeDir, "settings.json"), renderClaudeSettings(), output, force, dryRun);
 }
 
-async function installCodexHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean): Promise<void> {
+async function installCodexHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
   const codexDir = path.join(root, ".codex");
   let managedHooksOnly = false;
   try {
@@ -197,14 +216,14 @@ async function installCodexHooks(root: string, output: InitProjectOutput, warnin
       "Codex enterprise policy allow_managed_hooks_only = true detected in .codex/config.toml; skipped installing .codex/hooks.json."
     );
   } else {
-    await writeIfMissing(path.join(codexDir, "hooks.json"), renderCodexHooks(), output, force);
+    await writeIfMissing(path.join(codexDir, "hooks.json"), renderCodexHooks(), output, force, dryRun);
   }
   // Codex only runs project hooks after the repository is trusted, so this
   // advisory is always surfaced regardless of the managed-hooks policy.
   warnings.push("Codex runs project hooks only after you trust the repository (codex: trust the repo when prompted).");
 }
 
-async function writeIfMissing(filePath: string, content: string, output: InitProjectOutput, force = false): Promise<void> {
+async function writeIfMissing(filePath: string, content: string, output: InitProjectOutput, force = false, dryRun = false): Promise<void> {
   try {
     await readFile(filePath, "utf8");
     if (!force) {
@@ -214,12 +233,14 @@ async function writeIfMissing(filePath: string, content: string, output: InitPro
   } catch {
     // create
   }
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+  if (!dryRun) {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+  }
   output.created.push(filePath);
 }
 
-export async function upsertAgentInstruction(root: string, agentFile: AgentFileMode, output: InitProjectOutput): Promise<void> {
+export async function upsertAgentInstruction(root: string, agentFile: AgentFileMode, output: InitProjectOutput, dryRun = false): Promise<void> {
   const filePath = path.join(root, agentFile);
   const snippet = renderAgentInstructionSnippet();
   let fileExists = true;
@@ -236,7 +257,7 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
     return;
   }
   const next = block ? replaceAgentInstructionBlock(existing, block, snippet) : appendAgentInstructionBlock(existing, snippet);
-  await writeFile(filePath, next, "utf8");
+  if (!dryRun) await writeFile(filePath, next, "utf8");
   (fileExists ? output.updated : output.created).push(filePath);
 }
 
@@ -299,19 +320,101 @@ export async function initProject(root: ProjectRoot, input: InitProjectInput): P
 }
 
 async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
+  const dryRun = Boolean(input.dryRun);
   const warnings: string[] = [];
-  const output: InitProjectOutput = { created: [], skipped: [], updated: [], warnings };
-  await mkdir(path.join(root.root, "docs", "spec"), { recursive: true });
-  await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
-  const scope = parseScopeOption(input.scope);
-  await writeIfMissing(path.join(root.root, "docs", "spec", "00.index.md"), renderIndexTemplate(input), output, input.force);
-  await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force);
-  await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force);
-  await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force);
-  await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force);
-  for (const agentFile of REQUIRED_AGENT_FILES) {
-    await upsertAgentInstruction(root.root, agentFile, output);
+  const output: InitProjectOutput = { created: [], skipped: [], updated: [], removed: [], warnings };
+  if (!dryRun) {
+    await mkdir(path.join(root.root, "docs", "spec"), { recursive: true });
+    await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
   }
-  await installHooks(root.root, output, warnings, Boolean(input.force));
+  const scope = parseScopeOption(input.scope);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "00.index.md"), renderIndexTemplate(input), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force, dryRun);
+  for (const agentFile of REQUIRED_AGENT_FILES) {
+    await upsertAgentInstruction(root.root, agentFile, output, dryRun);
+  }
+  await installHooks(root.root, output, warnings, Boolean(input.force), dryRun);
+  if (input.registerMcp) await registerMcpStep(root.root, output, warnings, dryRun);
+  if (input.installSkills) await provisionSkills(root.root, input, output, warnings, dryRun);
   return mutationOk(output);
+}
+
+// FR-NODE-067 — register the SpecKiwi stdio MCP server into the project (.mcp.json), idempotent.
+async function registerMcpStep(root: string, output: InitProjectOutput, warnings: string[], dryRun: boolean): Promise<void> {
+  let result: Awaited<ReturnType<typeof registerSpeckiwiMcp>>;
+  try {
+    result = await registerSpeckiwiMcp(root, { dryRun });
+  } catch (error) {
+    warnings.push(`mcp registration: ${(error as Error).message}`);
+    return; // MCP registration degrades to a warning; init proceeds.
+  }
+  warnings.push(...result.warnings);
+  switch (result.status) {
+    case "created":
+      output.created.push(result.filePath);
+      break;
+    case "updated":
+      output.updated.push(result.filePath);
+      break;
+    case "skipped":
+      output.skipped.push(result.filePath);
+      break;
+    case "warning":
+      break; // warnings already recorded; no file change
+  }
+}
+
+// FR-NODE-068/069 — provision the bundled kiwi skills for Claude + Codex (project scope), then prune
+// orphaned kiwi-* skill directories. Skill degradation (missing source, conflicts) warns without aborting.
+async function provisionSkills(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean): Promise<void> {
+  for (const agent of SKILL_PROVISION_AGENTS) {
+    const options = {
+      projectRoot: { root },
+      agent,
+      selector: "all",
+      scope: "project" as const,
+      dryRun,
+      ...(input.skillSourceBaseDir ? { sourceBaseDir: input.skillSourceBaseDir } : {})
+    };
+    const provisioned = dryRun ? await planSkillInstall(options) : await installSkill(options);
+    if (!provisioned.ok) {
+      warnings.push(`skills(${agent}): ${provisioned.error.message}`);
+      continue;
+    }
+    foldSkillResults(provisioned.value, output, warnings);
+    try {
+      const prune = await pruneOrphanKiwiSkills({
+        destinationRoot: provisioned.value.destinationRoot,
+        agent,
+        sourceSkillNames: provisioned.value.results.map((result) => result.name),
+        dryRun
+      });
+      output.removed.push(...prune.removed);
+      warnings.push(...prune.warnings);
+    } catch (error) {
+      warnings.push(`skills(${agent}) prune: ${(error as Error).message}`);
+    }
+  }
+}
+
+function foldSkillResults(plan: SkillInstallPlan, output: InitProjectOutput, warnings: string[]): void {
+  for (const result of plan.results) {
+    switch (result.operation) {
+      case "install":
+        output.created.push(result.destination);
+        break;
+      case "update":
+        output.updated.push(result.destination);
+        break;
+      case "skip":
+        output.skipped.push(result.destination);
+        break;
+      case "conflict":
+        warnings.push(`skills(${plan.agent}) ${result.name}: ${result.conflicts.join("; ") || "conflict"}`);
+        break;
+    }
+  }
 }
