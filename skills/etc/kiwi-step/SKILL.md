@@ -19,6 +19,7 @@ Lightweight skill for authoring **step-local requirement drafts** under `docs/sp
 | §0.4 | **MCP-only claim guard.** `claim_step` is an MCP-only tool (no CLI fallback). If the MCP server is unavailable the skill MUST halt immediately — there is no degraded path. |
 | §0.5 | **No signatures / no changelog.** Never leave AI-identifying information in outputs or commits; this skill contains no changelog section. |
 | §0.6 | **ID / heading rules.** Step requirements follow the SRS-MD Authoring Rules (heading / ID regex), identical to body-scope requirements even while still a draft. |
+| §0.7 | `--mini` / `--loops N` accepted as a no-op. This skill has no verify/improve loop, so per `_shared/kiwi/loop-option.md` §5 it accepts them as a documented no-op (orchestration uniformity). |
 
 ---
 

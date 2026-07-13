@@ -39,6 +39,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
 | §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 3 standard 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto-apply` / `--yes-all` 은 사용자가 직접 명시했을 때만 dry-run 승인 단계 자체를 skip 하는 직접 적용 옵션이고, 부모 `--auto` 로 암묵 활성화되지 않는다. `--auto` 는 사용자 게이트를 decision worker 로 판단한다. 동시 명시 시 직접 사용자 입력으로 확인된 `--auto-apply` / `--yes-all` 의 직접 적용 의미가 우선이다. |
+| §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -115,6 +116,8 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 모드 매트릭스
 

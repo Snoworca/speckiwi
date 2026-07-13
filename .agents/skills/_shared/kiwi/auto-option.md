@@ -206,6 +206,8 @@ When a parent Kiwi skill delegates to a child Kiwi skill:
 | `--auto --model <name>` | `--auto --model <name>` |
 | `--auto --max --model <name>` | `--auto --max --model <name>` |
 
+> **Loop round-cap propagation (FR-FLOW-035)**: the child-propagation SSOT for `--mini` / `--loops N` (verify/improve loop round cap) is `_shared/kiwi/loop-option.md` §6. They propagate parent→child exactly like `--auto`, additive to the table above — e.g. `kiwi-pm --loops 5` → `kiwi-coder --loops 5`, `kiwi-pipeline --mini` → every sub-skill `--mini`.
+
 Special propagation:
 
 | Parent | Child | Added flags |

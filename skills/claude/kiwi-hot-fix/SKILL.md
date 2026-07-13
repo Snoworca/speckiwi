@@ -36,6 +36,8 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | §0.12 | **stability 게이트 우회 허용 (사후 정합화 전제)**. speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료 시 `/kiwi-srs-sync` 위임으로 사후 정합화 의무 (§0.9). `--no-sync` 시 우회 금지 (stability 검사 강제) |
 | §0.13 | **fix 단위 = 단일 의미 변경**. 본 스킬은 1회 실행당 단일 fix 의미 단위만 처리. 다중 이슈는 별도 실행으로 분리. 단일 fix 가 N개 파일에 걸쳐도 무방, 단 N개 파일이 서로 무관한 fix 면 거부 + 분리 권고 (사전조사 단계에서 판정) |
 | §0.14 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `--auto` 는 자식 `kiwi-srs-sync` 호출에 **`--auto` 만 전파**하며 `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않는다 — 사용자가 직접 그 플래그를 지정한 경우에만 전파 (SSOT §7.1). `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행과 critical_gates HALT (예: apply-all 비가역 MCP mutation) 를 유지하므로 부모 `--auto` 만으로 사용자 승인 게이트가 우회되지 않는다. 모든 런타임 변형(claude/codex/etc)이 동일한 안전 전파 계약을 따른다. `--auto-apply` / `--yes-all` 와의 의미 분리는 SSOT §11.1 참조. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
+| §0.15 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §6.2 참고 | `--mini`/`--loops N` 는 kiwi-srs-sync 위임에 전파 (loop-option.md §6) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -119,6 +121,8 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | "회귀 skip" | `--skip-regression` | off (회귀 의무) |
 | "리뷰 강도 낮춤" — **불가** | (해당 인자 없음 — 까칠 리뷰는 §0.2 의무) | — |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | "재개" | `--resume` | off |
 
 ### 1.3 모드 매트릭스
@@ -374,6 +378,7 @@ Skill(skill="kiwi-srs-sync", args="{auto} {model} --staged 또는 --files={fix �
 `args` 구성 규칙:
 - `--auto` → `--auto` 만 전파 (`--auto-apply` / `--yes-all` 는 자동으로 추가하지 않으며, 사용자가 직접 그 플래그를 지정한 경우에만 전파). `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행 + critical_gates HALT 를 유지
 - `--model <name>` 활성 → 전파 (부모가 지정한 검증 모델을 자식에 명시)
+- `--mini` / `--loops N` 활성 → 그대로 `kiwi-srs-sync` 위임에 전파 (loop-option.md §6)
 - `--dry-run` → `--dry-run-only` 전파
 - fix 대상 파일이 명확 (`fix_summary.json.files`) → `--files=...` 전달, 그 외 `--staged`
 

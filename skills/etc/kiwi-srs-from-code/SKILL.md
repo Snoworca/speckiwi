@@ -41,6 +41,7 @@ description: "OpenCode/Hermes local-LLM variant for deriving SpecKiwi SRS from s
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 위임 worker가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
 | §0.10 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
+| §0.11 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ---
 
@@ -62,6 +63,8 @@ description: "OpenCode/Hermes local-LLM variant for deriving SpecKiwi SRS from s
 | "최소 N scope", "scope N개부터" | `--scope-min` | 3 |
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
 | "local-LLM max profile", "local-LLM max profile", "local-LLM 안정성 우선", "local evaluator 으로" | `local-LLM max profile` | off (모든 local-LLM max-profile → local evaluator, `../_shared/kiwi/local-llm-profile.md` v1.0) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 User clarification gate 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
 

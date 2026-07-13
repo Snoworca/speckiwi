@@ -41,6 +41,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.13 | **per-REQ 독립 mutation**. target 전체 일괄 트랜잭션 금지 — REQ 단위 독립 호출 + 결과 집계. 부분 실패 허용 |
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
 | §0.15 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
+| §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -142,6 +143,8 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | "비용 보고 생략" | `--no-cost-report` | off (§11.5.3 비용 섹션 생략) |
 | "sync retry 대기 N ms" | `--sync-retry-delay-ms` | 200 (§11.4 단계 a 대기 시간) |
 | "보고 채널 X" | `--report-channel` | `doculight` (§11.5.2 1차 채널; `telegram` / `google-chat` fallback 가능) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 출력
 

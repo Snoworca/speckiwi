@@ -21,6 +21,7 @@ description: "step-local(docs/spec/steps/<name>/) 요구 초안을 authoring 하
 | §0.4 | **MCP 전용 claim 가드**. `claim_step` 은 MCP 전용 도구다(CLI fallback 없음). MCP 서버가 없으면 스킬은 즉시 중단(halt)한다 — 우회 경로가 없다. |
 | §0.5 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지**. 산출물·커밋 어디에도 AI 식별 정보를 남기지 않으며 본 스킬 본문에 변경 이력 섹션을 두지 않는다. |
 | §0.6 | **ID·heading 규칙 준수**. step 요구도 SRS-MD Authoring Rules(heading/ID 정규식)를 따른다. body 로 승격되기 전 초안이라도 형식은 정규 규칙과 동일하다. |
+| §0.7 | `--mini` / `--loops N` 수용(no-op). 본 스킬은 검증-개선 루프가 없어 `_shared/kiwi/loop-option.md` §5 에 따라 문서화된 no-op 으로 수용(오케스트레이터 전파 균일성). |
 
 ---
 

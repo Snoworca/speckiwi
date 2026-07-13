@@ -34,6 +34,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.14 | **정책 파일 미존재 시 §0.G6 기본 매핑**. `.kiwi/feasibility-policy.yaml` → `~/.kiwi/feasibility-policy.yaml` → §0.G6 순으로 fallback |
 | §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·per-REQ 독립 mutation 정책·**본 스킬 특유 게이트 §0.G1~§0.G6 (황금률 / 외부 모듈 / Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변**. 자식 호출 `kiwi-srs-research --mode=subagent` 시 `--model` 자동 전파 — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (kiwi-srs-research §0.G6) |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조. **자식 호출 `kiwi-srs-research` 시 `--auto` 자동 전파 의무** — §5.5.2 Agent 호출 site 에서 채널 1(`description` token) + 채널 2(prompt 본문) 이중 명시 (auto-option.md §7, kiwi-srs-research standalone 모드 한정 적용; subagent 모드는 silent skip). `--auto --model <name>` 합성 전파 시 둘 다 명시 |
+| §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -126,6 +127,8 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "sync retry 대기 N ms" | `--sync-retry-delay-ms` | 200 (§11.4 단계 a 대기 시간) |
 | "보고 채널 X" | `--report-channel` | `doculight` (§11.5.2 1차 채널; `telegram` / `google-chat` fallback 가능) |
 | "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 출력
 

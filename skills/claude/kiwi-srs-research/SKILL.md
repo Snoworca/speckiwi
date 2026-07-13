@@ -38,6 +38,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) Skill/Agent 인자 `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **검증 서브에이전트 모델 정책 SSOT**. Researchers·Synthesizer 등 연구·검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 서브에이전트의 모델을 override 한다. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--model` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--model` 전파 의무 |
 | §0.18 | **`--auto` 옵션 SSOT (standalone 모드 한정 적용)**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.7 (아래) 참조. **subagent 모드 호출 시 silent skip** — subagent 모드는 mutation 0건(§0.7)이므로 사용자 게이트 자체 부재 → `--auto` 인자 수신해도 무동작. **standalone 모드 한정 적용** — research 본문 영속화(`append_section_note`) 게이트 + Synthesizer 무결성 게이트 결정 + 외부 모듈 영향 게이트가 `--auto` 활성 시 §2 서브에이전트 결정으로 위임. **`--mode` 와 `--auto` 는 독립 축** — §0.G6 4채널 우선순위(mode 검출)와 `--auto` 검출(auto-option.md §1 4채널)은 직교하므로 (a) Skill/Agent 인자에 `--mode=standalone --auto` 동시 매칭 가능, (b) `--mode=subagent --auto` 매칭 시 `--auto` 만 silent skip, (c) `--mode` 채널과 `--auto` 채널 우선순위 충돌은 발생 불가 (서로 다른 토큰) |
+| §0.19 | `--mini` / `--loops N` 수용(no-op). 본 스킬은 검증-개선 루프가 없어 `_shared/kiwi/loop-option.md` §5 에 따라 문서화된 no-op 으로 수용(오케스트레이터 전파 균일성) |
 
 ### §0.G — 핵심 게이트 결정표
 

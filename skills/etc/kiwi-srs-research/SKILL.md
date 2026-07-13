@@ -45,6 +45,7 @@ REQ 본문 또는 연구 질문에 대해 **single-worker 고정 토폴로지** 
 | §0.15 | **delegated worker 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) skill invocation or delegated delegated worker message `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "delegated worker mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
+| §0.18 | `--mini` / `--loops N` 수용(no-op). 본 스킬은 검증-개선 루프가 없어 `../_shared/kiwi/loop-option.md` §5 에 따라 문서화된 no-op 으로 수용(오케스트레이터 전파 균일성) |
 
 ### §0.G — 핵심 게이트 결정표
 

@@ -31,6 +31,7 @@ as multi-worker fanout.
 | §0.6 | `--close-reqs` may only move high-confidence impacted requirements from `implemented` to `verified` after evidence is registered per requirement. No bulk finalize, archive, or target-emptying behavior is allowed. |
 | §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Finding classification remains local policy; `--auto` only governs user-decision gates. |
 | §0.8 | Emit pipeline events through `../_shared/kiwi/pipeline-event.md`. |
+| §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
 
 ### `--auto` critical_gates[]
 
@@ -60,6 +61,8 @@ as multi-worker fanout.
 | skip PR response | `--no-respond` | off |
 | close implemented REQs | `--close-reqs` | off |
 | resume | `--resume` | off |
+| mini mode | `--mini` | off (skill default cap) |
+| loop round cap | `--loops N` | off (skill default cap) |
 
 ## Workflow
 

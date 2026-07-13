@@ -30,6 +30,7 @@ Use `kiwi-commit-auto-push` when the user only wants commit + push.
 | §0.6 | If REQ trailers exist and `--no-speckiwi` is absent, SpecKiwi MCP PR trace/evidence mutations are required per REQ. Missing MCP or failed per-REQ evidence returns `FAILED` or `NEEDS_USER`, not `TASK_DONE` with warnings. |
 | §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Child mode returns `NEEDS_USER`/`FAILED` payloads to the parent instead of asking directly. |
 | §0.8 | Emit pipeline events through `../_shared/kiwi/pipeline-event.md` when running standalone. In child mode, let the parent emit the integrated event. |
+| §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass). |
 
 ### `--auto` critical_gates[]
 
@@ -64,6 +65,8 @@ Use `kiwi-commit-auto-push` when the user only wants commit + push.
 | explicit REQ or task | `--req=FR-X`, `--task=T-PH001-01` | auto-detect |
 | auto gates | `--auto` | off |
 | precision | `--max` | default on |
+| "mini mode", "quick mode", "3 rounds" | `--mini` | off (skill default cap) |
+| "loop N times", "N rounds" | `--loops N` | off (skill default cap) |
 
 ## Workflow
 

@@ -1,0 +1,90 @@
+{
+  "axis": "quality",
+  "round": 1,
+  "findings": [
+    {
+      "id": "QB-1",
+      "axis": 2,
+      "severity_class": "cosmetic_nit",
+      "file": "skills/codex/**/SKILL.md, skills/etc/**/SKILL.md",
+      "line_or_section": "loop-option.md SSOT reference rows (§0.x + propagation notes)",
+      "description": "The relative-path prefix to the shared SSOT is mixed: codex uses `../_shared/kiwi/loop-option.md` 14x and `_shared/kiwi/loop-option.md` 17x; etc is 14/17 the same way. This is NOT a newly introduced inconsistency — the pre-existing auto-option.md references in codex/etc are already split 20/20 and 14/14, so the workers merely reproduced the host files' pre-existing mixed convention. claude is internally clean (0 `../`, 19 no-prefix) matching its own auto-option.md (0/24). Since SKILL.md is natural-language, both forms resolve fine for the agent.",
+      "suggested_fix": "Optional: normalize each variant to a single prefix form for the shared refs, but only as a separate hygiene pass (matches existing chaotic pattern; not this change's regression)."
+    },
+    {
+      "id": "QB-2",
+      "axis": 4,
+      "severity_class": "cosmetic_nit",
+      "file": "skills/codex/**/SKILL.md, skills/etc/**/SKILL.md",
+      "line_or_section": "added §0.x option-SSOT rows and natural-language trigger rows",
+      "description": "codex/etc SKILL.md bodies are predominantly Korean prose with inline English glosses (e.g. the recent FR-FLOW-022 §0.20 rows and the existing --auto/--max/--model trigger rows are Korean). The workers added the loop-option §0.x rows and trigger rows in PURE ENGLISH ('This skill follows ... verify/improve loop round cap 3', 'mini mode | --mini | off (skill default cap)'), so an English row now sits amid Korean rows in the same table. Defensible because the codex/etc _shared docs (loop-option.md, auto-option.md) are English and the intended mirror language is English, but it is visually inconsistent with the adjacent Korean rows. claude rows are Korean and correctly match the claude host.",
+      "suggested_fix": "Either (a) accept English as the codex/etc mirror language and progressively translate the legacy Korean rows, or (b) match adjacent rows' Korean for the new rows. Pick one convention and apply consistently; content meaning is fully clear either way."
+    },
+    {
+      "id": "QB-3",
+      "axis": 1,
+      "severity_class": "cosmetic_nit",
+      "file": "all variants, all loop skills",
+      "line_or_section": "§0.x option-SSOT row / option-table rows",
+      "description": "The per-skill rows state `--loops N` = 'round cap N (integer ≥1)' but do not restate the N<1 / non-integer REJECTION-with-error behavior required by FR-FLOW-034 AC-2. That error/HALT behavior lives only in loop-option.md §1 (SSOT), which every row references via 'follows _shared/kiwi/loop-option.md v1.0'. Acceptable delegation to the SSOT, not a factual error — '(integer ≥1)' implies the constraint and the SSOT is authoritative.",
+      "suggested_fix": "No change required; the SSOT reference carries the error semantics. If desired, the loop-option.md is already explicit ('N < 1 or a non-integer is rejected with an error (HALT + usage hint)')."
+    },
+    {
+      "id": "QB-4",
+      "axis": 1,
+      "severity_class": "cosmetic_nit",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "line_or_section": "FR-FLOW-034 AC-5",
+      "description": "AC-5 wording says '_shared/kiwi/loop-option.md exists (claude and codex variants)', omitting the etc variant. The implementation created loop-option.md in claude, codex AND etc, and both the new content test (VARIANTS=[claude,codex,etc]) and FR-FLOW-034 AC-7 ('applies across claude, codex, and etc variants') require etc. So AC-5's text under-specifies relative to AC-7 and the delivered scope; implementation is more complete than AC-5, not less.",
+      "suggested_fix": "Reword AC-5 to '(claude, codex, and etc variants)' to align with AC-7 and the delivered SSOT copies."
+    },
+    {
+      "id": "QB-5",
+      "axis": 6,
+      "severity_class": "cosmetic_nit",
+      "file": "test/skills/kiwi-loop-option-content.test.ts",
+      "line_or_section": "AC-2/3/4/6 content test (line ~98); VARIANTS (line 22)",
+      "description": "Two minor test-strength gaps: (1) `expect(/\\b3\\b/.test(text))` asserts a standalone '3' appears ANYWHERE in loop-option.md rather than tying it to --mini proximity (the comment claims '--mini must map to a 3-round cap' but the assertion does not enforce adjacency). It is very unlikely to false-pass but is weaker than the sibling precedence check which correctly uses windowsAround. (2) VARIANTS excludes '.agents', so the installed mirror's loop rows/loop-option.md are not covered by this content test. The mini-removal absence test DOES scan .agents, so the mirror is partially guarded, but positive presence of the new loop rows in .agents is unverified by any test.",
+      "suggested_fix": "(1) Tie the '3' assertion to a window around --mini (windowsAround(text, MINI, 120).some(w => /\\b3\\b/.test(w))). (2) Optionally add '.agents' as a checked mirror or document that .agents is generated and intentionally out of the content-test scope."
+    },
+    {
+      "id": "QB-6",
+      "axis": 3,
+      "severity_class": "out_of_scope",
+      "file": ".agents/skills/_shared/kiwi/pipeline-event.md",
+      "line_or_section": "line 94: kiwi-pm TASK_DONE next-hint",
+      "description": "This edit changes the kiwi-pm next-hint from `kiwi-commit-auto-push` to `kiwi-review-fix-loop`, which is UNRELATED to the --mini/--loops feature. Verified it is benign: the source copies (skills/claude, skills/codex) ALREADY say `kiwi-review-fix-loop`, so this only re-syncs a stale .agents mirror to the already-updated source. Not a divergence introduction and not a defect, but it is collateral to this feature's diff.",
+      "suggested_fix": "None needed; if strict surgical hygiene is desired, split unrelated mirror re-syncs into a separate commit from the loop-option feature."
+    },
+    {
+      "id": "QB-7",
+      "axis": 3,
+      "severity_class": "out_of_scope",
+      "file": ".agents/skills/_shared/kiwi/feasibility-policy-schema-v1.md, .agents/skills/_shared/kiwi/pipeline-v1.md",
+      "line_or_section": "whole file",
+      "description": "Both files appear in git status as modified but produce no content-level diff (only CRLF/whitespace line-ending drift under the .agents mirror). Unrelated to the loop feature; benign.",
+      "suggested_fix": "None; optionally revert whitespace-only churn to keep the feature diff minimal."
+    },
+    {
+      "id": "QB-8",
+      "axis": 3,
+      "severity_class": "out_of_scope",
+      "file": "skills/claude/kiwi-wave-master/SKILL.md (and codex/etc equivalents)",
+      "line_or_section": "§1.2 options table, --max row",
+      "description": "A pre-existing malformed table row merges two logical rows onto one physical line ('| ...--max... | off || \"N 번째 wave 부터\"... | --resume | 자동 감지 |'). Confirmed present in HEAD, so NOT introduced by this change. The workers correctly inserted the new --mini/--loops rows without touching or further breaking this row (surgical). Flagged only for awareness.",
+      "suggested_fix": "Out of scope for this change; fix the merged --max/--resume row in a separate markdown-hygiene pass."
+    },
+    {
+      "id": "QB-9",
+      "axis": 1,
+      "severity_class": "out_of_scope",
+      "file": "docs/spec/60.workflow-release.srs.md",
+      "line_or_section": "FR-FLOW-034 / FR-FLOW-035 Status field",
+      "description": "Both requirements carry Status=planned while the behavior is fully implemented across 15 skills x variants and both content test files are green (65 tests). This is a status-lifecycle lag rather than a content defect (Stability=evolving so implementation is allowed), and may be intentional if status flips at commit/verify time. Noted for the closing workflow, not a defect in the loop-option content itself.",
+      "suggested_fix": "Advance FR-FLOW-034/035 to implemented with the content-test evidence when the change is committed/closed per the SRS workflow."
+    }
+  ],
+  "substantive_count": 0,
+  "summary": "The loop-option feature is correct, consistent, and surgical. loop-option.md SSOT (claude Korean + codex/etc/.agents English) accurately encodes FR-FLOW-034: --mini=cap 3, --loops N (integer >=1, N<1 rejected), --loops wins order-independently with a WARN, --max orthogonal/compose, cap-reached => report residual findings without bypassing the CRITICAL/HIGH safety gate, and FR-FLOW-035 propagation. Per-skill rows are semantically identical to the SSOT across all 15 skills and 3 (+.agents) variants. Change is purely additive except the required MINI={...args.mini...} -> LOOP_FLAGS={forward --mini/--loops} repurpose in kiwi-pm (FR-FLOW-035 AC-6) - verified no dead MINI= reference survives. No duplicate §0.x row numbers, no broken table column counts, no reflow/deletion of unrelated content, no AI signatures/changelog/Phase markers, and no reintroduced mini-option token. auto-option.md cross-ref (§7) and SRS FR-FLOW-034/035 additions are consistent (00.index counts +2 planned / +2 FR). Both test files pass (65 tests); the mini-removal narrowing is sound (still enforces mini-option.md filename removal + 3 physical copies gone + AC-2/AC-3 single current-session-model + --model). Only cosmetic nits (codex/etc English rows amid Korean host prose; mixed ../_shared path prefix matching pre-existing pattern; AC-5 omits etc; a loose /\\b3\\b/ test assertion) and out-of-scope items (a benign .agents pipeline-event.md mirror re-sync, CRLF-only drift, a pre-existing malformed kiwi-wave-master table row, Status=planned lifecycle lag). No substantive defects.",
+  "clean": true
+}

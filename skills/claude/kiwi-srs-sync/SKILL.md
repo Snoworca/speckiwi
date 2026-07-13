@@ -36,6 +36,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
 | §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 3 Sonnet 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
+| §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -96,6 +97,8 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 모드 매트릭스
 

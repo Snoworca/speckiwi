@@ -24,6 +24,8 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | §0.4 | **--auto 안전 게이트**: 어떤 wave 의 `$kiwi-pipeline` 이 `NEEDS_USER` / `FAILED` 를 반환하거나 critical 게이트에 도달하면, `--auto` 라도 자동 진행을 중단하고 사용자 결정을 받는다. |
 | §0.5 | **wave 경계 불변 원칙**: 일단 `waves.jsonl` 에 확정된 wave 순서·범위는 실행 도중 임의로 재분할하지 않는다. 재분해가 필요하면 처음부터 다시 분해한다. |
 | §0.6 | **멱등 재개**: 이미 완료로 표시된 wave 는 재실행하지 않고 건너뛴다. 진행은 항상 첫 미완료 wave 부터 이어간다. |
+| §0.7 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §7 참고 | `--mini`/`--loops N` 를 per-wave kiwi-srs + kiwi-pipeline 에 전파 (loop-option.md §6) |
 
 ---
 
@@ -43,6 +45,8 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | "자동", "auto", "끝까지 알아서", "묻지 말고" | `--auto` (모든 wave 자율 완주, SSOT: auto-option.md v1.0) | off |
 | "max 모드", "고강도", "최대로" | `--max` (모든 wave 의 하위 스킬로 전파) | off || "N 번째 wave 부터", "이어서" | `--resume` (첫 미완료 wave 부터 재개) | 자동 감지 |
 | "에픽 이슈", "이슈 #123 를 wave 로" | 에픽 이슈 번호 (§8 진입 모드) | (없음) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` (per-wave kiwi-srs/kiwi-pipeline 로 전파 §7.3) | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` (per-wave kiwi-srs/kiwi-pipeline 로 전파 §7.3) | off (스킬 기본 상한) |
 
 ### 1.3 출력
 
@@ -123,6 +127,10 @@ target 을 wave-{n} 으로 지정하여 호출하면 pipeline 은 그 wave 의 �
 `--max` 활성 시 **모든 wave** 의 `$kiwi-pipeline` 과 그 **하위 스킬(sub-skill)** — 각 wave 사이클이 spawn 하는 `kiwi-srs` · `kiwi-srs-feasibility` · `kiwi-planner` · `kiwi-pm` · `kiwi-review-fix-loop` — 에 `--max` 를 그대로 **전파(propagate)** 한다. 하위 스킬의 `--max` 의미는 각자의 SSOT 를 따른다.
 
 `--auto` 와 `--max` 는 함께 쓸 수 있으며(`--auto --max`), 이 경우 모든 wave 를 고강도로 자율 완주하되 per-wave 안전 게이트는 유지한다.
+
+### 7.3 `--mini` / `--loops N` — 하위 스킬 전파
+
+`--mini` 또는 `--loops N` 활성 시 (`../_shared/kiwi/loop-option.md` v1.0 SSOT), **모든 wave** 가 spawn 하는 per-wave `kiwi-srs` 와 `kiwi-pipeline` 에 해당 플래그를 그대로 **전파(propagate)** 한다. 하위 스킬의 라운드 상한 시맨틱은 각자의 `loop-option.md` 참조를 따른다.
 
 ---
 

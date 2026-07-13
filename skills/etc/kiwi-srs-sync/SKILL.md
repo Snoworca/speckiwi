@@ -42,6 +42,7 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 User clarification gate 단일 호출 분해 |
 | §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
+| §0.15 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -117,6 +118,8 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 | "dry-run 만" | `--dry-run-only` | off (사용자 게이트에서 결정) |
 | "외부 path 허용" | `--allow-external` | off |
 | "로컬 LLM", "OpenCode/Hermes", "정밀" | `--max` | default on (`../_shared/kiwi/local-llm-profile.md` v1.0) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 모드 매트릭스
 

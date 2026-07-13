@@ -89,6 +89,7 @@ Propagate:
 |---|---|
 | `--model <name>` | `--model <name>` |
 | `--auto` | `--auto` |
+| `--mini` / `--loops N` | `--mini` / `--loops N` |
 | user explicitly supplied `--auto-apply` or `--yes-all` | propagate the same explicit apply flag after hot-fix review and regression gates pass |
 | `--dry-run` | `--dry-run-only` |
 

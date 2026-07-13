@@ -1,0 +1,77 @@
+{
+  "axis": "srs-intent",
+  "round": 1,
+  "reqs": {
+    "FR-FLOW-034": {
+      "AC-1": {
+        "verdict": "full",
+        "evidence": "All 45 kiwi-* SKILL.md (15 skills x claude/codex/etc) reference _shared/kiwi/loop-option.md; loop skills carry both a §0.x SSOT row and a natural-language option-table row (e.g. claude/kiwi-srs §0.22 + option rows '미니 모드'→--mini / '루프 N회'→--loops N). No-loop skills documented as no-op per loop-option.md §5 (claude/kiwi-step §0.7, kiwi-srs-research §0.19 — exactly the two AC carves out).",
+        "gap": ""
+      },
+      "AC-2": {
+        "verdict": "full",
+        "evidence": "loop-option.md §1 defines --mini=round cap 3, --loops N=cap N (integer N≥1), and 'N < 1 or a non-integer is rejected with an error (HALT + usage hint)'. SKILL §0.x rows restate '--mini=상한 3, --loops N=상한 N(정수 ≥1)'. Semantic (cap values + N<1 error) fully expressed in the referenced SSOT.",
+        "gap": ""
+      },
+      "AC-3": {
+        "verdict": "full",
+        "evidence": "loop-option.md §2 precedence table: '--loops N wins', explicitly 'Order-independent', and 'Emit a non-fatal warning (WARN): \"--mini's 3-round cap was overridden by --loops N\"'. SKILL rows echo '동시 지정 시 --loops 우선(경고)'. Order-independence + non-fatal override warning both present.",
+        "gap": ""
+      },
+      "AC-4": {
+        "verdict": "full",
+        "evidence": "loop-option.md §3: on cap reached before clean gate 'stop looping and report the residual findings — no silent truncation'; 'Do NOT bypass the safety gate: residual CRITICAL/HIGH findings still surface (report + blocked/warn); the round cap only stops infinite escalation; it never hides a CRITICAL'. SKILL rows echo '잔여 finding 보고(안전 게이트 불우회)'.",
+        "gap": ""
+      },
+      "AC-5": {
+        "verdict": "full",
+        "evidence": "loop-option.md present in claude, codex AND etc (AC only required claude+codex). mini-option.md absent repo-wide (find→0). No model-swap (Opus→Sonnet) --mini references. loop-option.md header Note: model selection remains --model only + former model-swap SSOT 'NOT revived'. FR-FLOW-022 test kiwi-mini-removal-content.test.ts narrowed to forbid only 'mini-option' token, keeping --model checks — consistent.",
+        "gap": ""
+      },
+      "AC-6": {
+        "verdict": "full",
+        "evidence": "loop-option.md §4: '--max controls verification strength ... orthogonal to the round cap'; 'compose: --max --loops 5'; 'explicit --loops N also overrides any --max-derived default cap (e.g. kiwi-srs 5→8, kiwi-srs-feasibility 5→15), while --max still governs gate strictness'. SKILL rows echo '--max 와 직교(조합)'.",
+        "gap": ""
+      }
+    },
+    "FR-FLOW-035": {
+      "AC-1": {
+        "verdict": "full",
+        "evidence": "kiwi-pm: claude/codex child-spawn prompt line repurposed to 'LOOP_FLAGS={forward --mini / --loops N round-cap to the kiwi-coder child}' + §0.18/§0.17 note. etc/kiwi-pm §0.17 note 'propagate to the kiwi-coder child spawn (loop-option.md §6)'. Forwarding to kiwi-coder documented in all three variants.",
+        "gap": ""
+      },
+      "AC-2": {
+        "verdict": "full",
+        "evidence": "kiwi-pipeline §7.3 (claude/codex/etc) enumerates propagation to 'every spawned sub-skill' — kiwi-srs, kiwi-srs-feasibility, kiwi-planner, kiwi-pm, kiwi-review-fix-loop — plus §7 note 'every kiwi sub-skill spawned' and option-table rows tagged '전파/propagated to every sub-skill §7.3'.",
+        "gap": ""
+      },
+      "AC-3": {
+        "verdict": "full",
+        "evidence": "kiwi-wave-master §7.3 (claude/codex/etc) 'propagate to the per-wave kiwi-srs and kiwi-pipeline' + §7 note + option rows 'per-wave kiwi-srs/kiwi-pipeline 로 전파 §7.3'.",
+        "gap": ""
+      },
+      "AC-4": {
+        "verdict": "full",
+        "evidence": "kiwi-hot-fix: claude §0.15 + §6.2 note + Sync-Delegation args rule '--mini / --loops N 활성 → kiwi-srs-sync 위임에 전파'; codex/etc §0.10 note 'propagate to the kiwi-srs-sync delegation (loop-option.md §6)'.",
+        "gap": ""
+      },
+      "AC-5": {
+        "verdict": "full",
+        "evidence": "kiwi-coder §8.4 note (claude/codex/etc) '--mini/--loops N propagate to the kiwi-review-fix-loop follow-up (loop-option.md §6)'. claude also updated the §8.4 AskUserQuestion handoff line to forward '--model / --max / --mini / --loops N' into the review-fix-loop args.",
+        "gap": ""
+      },
+      "AC-6": {
+        "verdict": "full",
+        "evidence": "grep 'MINI=' across all kiwi-pm variants → 0 hits. The stale 'MINI={true if args.mini else false}' in claude/codex kiwi-pm is repurposed to 'LOOP_FLAGS={forward --mini / --loops N round-cap...}'. etc/kiwi-pm never had a MINI= line (different spawn structure) and documents forwarding via §0.17 note — no dead reference to the removed flag remains anywhere.",
+        "gap": ""
+      },
+      "AC-7": {
+        "verdict": "full",
+        "evidence": "Propagation table present in loop-option.md §6 (Orchestrator→Sub-skill→Propagation) in all three variants, AND cross-referenced from auto-option.md §7 FR-FLOW-035 note ('child-propagation SSOT ... is loop-option.md §6 ... additive to the table above') in claude/codex/etc. Applies uniformly across variants.",
+        "gap": ""
+      }
+    }
+  },
+  "overall": "ALL_MATCH",
+  "gaps_summary": []
+}

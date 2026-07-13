@@ -33,6 +33,8 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단 |
 | §0.15 | **spawn 모드 단일** — `Agent` 도구만. 자식 모델 = 현재 세션 모델 (또는 `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 override). snoworca-pm 의 `--headless` (claude CLI subprocess) 폐기. `Skill` 도구 직접 호출 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
 | §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 3종 severity enum (`clarification` / `business-decision` / `rollback-confirmation`) 은 §5.1 에서 유지되며, SSOT §4 severity 분기 정책의 정확한 mapping 대상이다 (SSOT §11 마이그레이션 표 참조: 기존 business-decision HALT 중 비가역/외부영향 큰 항목은 본 §0.G7 critical_gates 로 인라인). 본 스킬의 `critical_gates[]` 는 §0.G7 (아래) 참조 |
+| §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.18 참고 | `--mini`/`--loops N` 는 kiwi-coder 자식 spawn 에 전파 (loop-option.md §6) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -123,6 +125,8 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "이전 lock 무시", "강제" | `--force` | false |
 | "lifecycle 무시" (위험) | `--skip-lifecycle-gate` | false |
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 CLI 인자 요약
 
@@ -385,7 +389,7 @@ FUNCTION MAIN(args):
 - TARGET={state.target_slug}           # lifecycle gate 일관성 확인용
 - TASK_FILTER={task.task_id}           # 이번 자식은 이 Task 하나만 실행
 - CODE_PATH={args.code_path}
-- MINI={true if args.mini else false}
+- LOOP_FLAGS={forward --mini / --loops N round-cap to the kiwi-coder child}
 - LIFECYCLE_BLOCKED_REQS={state.lifecycle_gate_state.blocked_req_ids}
 - SPAWN_CONTEXT=pm-child   # 이 자식 호출이 PM 자식임을 식별. coder 가 §8.4 의 자동 시작 게이트를 skip 하기 위한 결정 필드
 - 이전 NEEDS_USER 답변 (재spawn 시):

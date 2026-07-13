@@ -41,6 +41,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) skill invocation or delegated sub-agent message `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **검증 서브에이전트 모델 정책 SSOT**. Researchers·Synthesizer 등 연구·검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 서브에이전트의 모델을 override 한다. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--model` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--model` 전파 의무 |
 | §0.18 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. standalone 모드에서만 적용한다. `--mode=subagent` 에서는 mutation 0건이므로 `--auto` 를 silent skip 한다. |
+| §0.19 | `--mini` / `--loops N` 수용(no-op). 본 스킬은 검증-개선 루프가 없어 `../_shared/kiwi/loop-option.md` §5 에 따라 문서화된 no-op 으로 수용(오케스트레이터 전파 균일성) |
 
 ### §0.G — 핵심 게이트 결정표
 

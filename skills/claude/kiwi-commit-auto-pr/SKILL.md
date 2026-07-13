@@ -49,10 +49,16 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 한 뒤 **Pu
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer (부모와 동일) |
 | `--model <name>` | kiwi 시리즈 일관성 위해 추가. 현재 평가자가 Haiku 기본이라 사실상 no-op. **향후 의미** — 별도 검증 서브에이전트 도입 시 지정 모델 적용. 활성화되면 본 SKILL.md 갱신 필요 |
 | `--auto` | `--auto` SSOT (`_shared/kiwi/auto-option.md` v1.0). **standalone 모드 한정** — child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 가 `--auto` 가드레일 책임을 지며 본 스킬은 NEEDS_USER bubble-up (§14.6) 만 담당. critical_gates 인라인 선언 + 6종 자율 결정 예외 매핑은 §14.9 참조 |
+| `--mini` | 빠른 모드 프리셋 — 검증-개선 루프 라운드 상한 3 (`_shared/kiwi/loop-option.md` 참조, 기본값: off, 스킬 기본 상한) |
+| `--loops N` | 명시적 루프 카운터 — 라운드 상한 N (정수 ≥1). `--mini` 와 동시 지정 시 **`--loops` 우선(경고)** (기본값: off, 스킬 기본 상한) |
 
 **부모 옵션 흡수·대체** (부모 §11.7 매핑):
 - `--no-comment` (부모 — issue 자동 코멘트 비활성): 본 스킬은 issue 코멘트를 발송하지 않으므로 **불계승**. PR 코멘트 비활성은 본 스킬 `--no-pr-comment` 로 별도 정의 (의미 변경).
 - 나머지 부모 옵션은 본 표에 그대로 계승.
+
+### `--mini` / `--loops N` 옵션 SSOT
+
+본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회).
 
 ## 시그니처 완전 차단 정책
 

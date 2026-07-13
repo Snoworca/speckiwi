@@ -32,6 +32,8 @@ change and report that SRS synchronization was intentionally skipped.
 | §0.6 | This skill does not directly mutate SRS. SRS updates happen by delegating to `kiwi-srs-sync` after fix + regression success. |
 | §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. For sync delegation, propagate only `--auto`; do not add `--auto-apply` or `--yes-all` unless the user explicitly supplied those flags. |
 | §0.8 | Use `.kiwi/sessions/{run-id}/` and `docs/analysis/kiwi-hot-fix-{run-id}/` for resumable state and evidence. |
+| §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
+| §0.10 note | `--mini`/`--loops N` propagate to the `kiwi-srs-sync` delegation (see Sync Delegation in `references/extended-workflow.md`; loop-option.md §6) |
 
 ### `--auto` critical_gates[]
 
@@ -56,6 +58,8 @@ change and report that SRS synchronization was intentionally skipped.
 | TDD exception | `TDD_EXEMPT_REASON="..."` | none |
 | skip SRS sync | `--no-sync` | off |
 | precision | `--max` | default on |
+| mini mode, quick mode, 3 rounds | `--mini` | off (skill default cap) |
+| loop N times, N rounds | `--loops N` | off (skill default cap) |
 | auto gates | `--auto` | off |
 | dry run | `--dry-run` | off |
 | skip broader regression | `--skip-regression` | off |

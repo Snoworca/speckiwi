@@ -38,6 +38,8 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.13 | **회귀 테스트는 kiwi-coder §0.13 책임**. PM 은 별도 회귀 호출 안 함. 종합 통합 테스트가 필요하면 사용자에게 별도 안내 |
 | §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단 |
 | §0.15 | **위임 worker 위임 모드 단일** — 사용 가능한 delegated worker/delegation 도구로 자식 `kiwi-coder` 를 실행한다. 자식 모델 = local-LLM max-profile (또는 `local-LLM max profile` 시 kiwi-coder 내부에서 local evaluator override). legacy `--headless` CLI subprocess 폐기. 메인 컨텍스트 직접 skill 재진입 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
+| §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.17 참고 | `--mini`/`--loops N` 는 kiwi-coder 자식 spawn 에 전파 (loop-option.md §6) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -120,6 +122,8 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "로컬 LLM", "OpenCode/Hermes", "정밀" | `--max` | default on |
 | "이전 lock 무시", "강제" | `--force` | false |
 | "lifecycle 무시" (위험) | `--skip-lifecycle-gate` | false |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
 
 ### 1.3 CLI 인자 요약

@@ -53,6 +53,7 @@ plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경�
 | §0.16 | **plan.md heading level SSOT**. `§N` 헤딩 = `## §N ...` (h2). `§3.<phase_id>` = `### §3.<phase_id> ...` (h3). `§3.<phase_id>.<task_id>` = `#### §3.<phase_id>.<task_id> ...` (h4). h5 이하 금지. validator 는 h4 정확 매칭으로 task 카운트 |
 | §0.17 | **TDD 원칙 SSOT**. 전역 AGENTS.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 $kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
 | §0.18 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
+| §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -187,6 +188,8 @@ User clarification gate 4옵션:
 | "--report-channel telegram\|google-chat\|doculight" | `--report-channel` | `doculight` |
 | "--sync-retry-delay-ms N" | `--sync-retry-delay-ms` | 200 |
 | "TDD 엄격", "면제 불허", "TDD 완화", "TDD off" | `--tdd-policy=strict\|relaxed\|disabled` | `relaxed` (§0.17, §0.G7) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 출력
 

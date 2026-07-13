@@ -35,6 +35,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.13 | **PR 응답 코멘트 의무 (PR 모드 + 응답 활성)**. `--no-respond` 부재 + PR 모드 + fix 1건 이상 적용 시 PR 에 응답 코멘트 1개 작성 (수정 완료 항목 + 거절 항목 + 사유). `gh pr comment` 사용. 시그니처 §0.6 적용 |
 | §0.14 | **셀프 모드 우선순위 결정**. 셀프 모드의 리뷰 대상 범위는 다음 순서: (1) 인자 `--files` / `--commits` / `--since` / `--base` `--head` 우선 / (2) 부재 시 `git status` 변경분 (working tree + staged) / (3) 변경분 0건 시 `HEAD~5..HEAD` fallback (사용자 확인 게이트 후) |
 | §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 3분류 매핑 (immediate_fix / discussion_needed / rejected) 및 §0.12 severity 가드레일 표 (CRITICAL/HIGH/MEDIUM → 자동수정, LOW → 자동 거절) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
+| §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -172,6 +173,8 @@ self_scope.source enum 매핑 (§3.1):
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "REQ 닫기", "verified 전이", "검증 완료 표시" | `--close-reqs` | off (셀프 모드 + 회귀 PASS + finding 0건 시에만 활성) |
 | "재개" | `--resume` | off |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 ### 1.3 모드 매트릭스
 

@@ -13,9 +13,17 @@ import { describe, expect, it } from "vitest";
 //
 // A SKILL.md is natural-language agent instruction, not executable code, so behavior is verified
 // by raw-text presence/absence assertions (FR-FLOW-014 kiwi-step precedent), not skill execution.
-// Assertions key on language-neutral technical tokens (`--mini`, `mini-option`, `--model`) plus a
+// Assertions key on language-neutral technical tokens (`mini-option`, `--model`) plus a
 // bilingual (English / Korean) regex for the "current session model" concept, so the Korean
 // canonical (claude) variant and the English mirror (codex) are validated by the same checks.
+//
+// SUPERSEDED-SCOPE NOTE (FR-FLOW-034, 2026-07-12): FR-FLOW-034 re-introduces the `--mini` TOKEN with
+// round-cap semantics (a verify/improve loop cap of 3), superseding FR-FLOW-022 AC-1's blanket
+// prohibition of the `--mini` token. This test is therefore NARROWED: it no longer asserts the
+// `--mini` token is absent. It still enforces the surviving, still-true half of AC-1 — the model-swap
+// `--mini`'s shared SSOT `_shared/kiwi/mini-option.md` is gone repo-wide (filename token `mini-option`
+// absent + all three physical copies removed) — plus AC-2/AC-3 (single current-session-model
+// verification subagent + `--model` override), which the round-cap `--mini` does not touch.
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -105,21 +113,23 @@ function windowsAround(text: string, re: RegExp, radius = 120): string[] {
   return out;
 }
 
-const MINI_TOKEN = /--mini\b|mini-option/;
+// Narrowed by FR-FLOW-034: only the model-swap SSOT filename token is forbidden now; the `--mini`
+// token itself is permitted (re-introduced as the round-cap preset, verified by kiwi-loop-option-content).
+const MINI_OPTION_TOKEN = /mini-option/;
 const CURRENT_SESSION_MODEL = /current[\s-]?session[\s-]?model|현재\s*세션\s*(의\s*)?모델/i;
 const SINGLE_TOKEN = /\bsingle\b|단일|하나의/i;
 const SUBAGENT_TOKEN = /subagent|서브에이전트/i;
 const MODEL_FLAG = /--model\b/;
 
 describe("FR-FLOW-022 — remove --mini, single current-model verification subagent", () => {
-  it("AC-1: --mini/mini-option absent repo-wide and all three mini-option.md copies removed", () => {
+  it("AC-1 (narrowed by FR-FLOW-034): mini-option SSOT absent repo-wide and all three mini-option.md copies removed", () => {
     const offenders: string[] = [];
     for (const f of absenceScopeFiles()) {
-      if (MINI_TOKEN.test(readFileSync(f, "utf8"))) offenders.push(relPosix(f));
+      if (MINI_OPTION_TOKEN.test(readFileSync(f, "utf8"))) offenders.push(relPosix(f));
     }
     expect(
       offenders,
-      `FR-FLOW-022 AC-1: content still references --mini/mini-option in: ${offenders.join(", ")}`,
+      `FR-FLOW-022 AC-1 (narrowed): content still references the removed mini-option SSOT in: ${offenders.join(", ")}`,
     ).toEqual([]);
 
     for (const copy of THREE_MINI_OPTION_COPIES) {

@@ -36,6 +36,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + AskUserQuestion. 상세는 §0.G2 결정표 |
 | §0.20 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가자·QnA 라운드 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
 | §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 `--auto` 시맨틱 (Phase 1.5 QnA loop skip + AskUserQuestion 발동 대신 **차단** — §1.2 4번째 bullet) 은 유지되며, 차단 대상 게이트(외부 모듈 §0.G2 / scope-boundary §0.G4 / combined §0.G5)는 본 §0.G6 critical_gates 에 인라인된다. `--auto` 와 `--qna` 동시 명시 ERROR 시맨틱(§1.2) 도 critical. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
+| §0.22 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -130,6 +131,8 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "--max", "정밀 검증" | `--max` | off |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (단일 검증 서브에이전트) |
 | "리서치 문서 X", "--research-doc <path>", "연구 문서로 SRS 검증" | `--research-doc <path>` (반복 가능; §9.6 A/B 루프 인자) | omit → 단발 패스 |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 **옵션 의미 (v0.11 이후 SSOT)**:
 - `--auto` 와 `--qna` 동시 명시 → ERROR ("두 옵션은 상호 배타. --auto 만 사용하십시오.").

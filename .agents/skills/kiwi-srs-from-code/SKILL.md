@@ -37,6 +37,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
 | §0.10 | **검증 서브에이전트 모델 정책 SSOT**. Phase 3 scope agent / Phase 4 검증자 4축 등 검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다. 4축 토폴로지·심각도 게이트·인벤토리 게이트·`--max-eval-iter` 정책은 불변 |
 | §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. inferred requirement loss, scope splitting, coverage gaps, and MCP absence are critical gates (§1.4). |
+| §0.12 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ---
 
@@ -59,6 +60,8 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | "최대 N scope", "scope N개까지" | `--scope-max` | 8 |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "--auto", "자동", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`) |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
+| "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
 명시 신호가 없으면 Phase 0 종료 시점에 Codex clarification gate 으로 `TARGET` 과 `--max-eval-iter` 만 확정한다 (나머지는 기본값 적용).
 

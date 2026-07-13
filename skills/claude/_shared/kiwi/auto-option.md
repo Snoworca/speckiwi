@@ -294,6 +294,8 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 | `--auto --model <name>` | `--auto --model <name>` |
 | `--auto --max --model <name>` | `--auto --max --model <name>` |
 
+> **루프 라운드 상한 전파 (FR-FLOW-035)**: `--mini` / `--loops N` (검증-개선 루프 라운드 상한) 의 자식 전파 SSOT 는 `_shared/kiwi/loop-option.md §6` 이다. `--auto` 와 동일하게 부모→자식 전파하며 위 표에 additive — 예: `kiwi-pm --loops 5` → `kiwi-coder --loops 5`, `kiwi-pipeline --mini` → 전 하위 스킬 `--mini`.
+
 ### 7.1 자식 전파 시 옵션 처리
 
 자식 스킬로 전파할 때, 부모 `--auto` 는 자식의 안전 게이트(dry-run 선행·사용자 승인)를 우회하는 옵션(`--auto-apply` / `--yes-all` 등)을 자동으로 생성하지 않는다. 아래 전파 규칙을 따른다:

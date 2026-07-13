@@ -23,6 +23,12 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 하고, 관�
 | `--no-issue` | issue 처리 비활성화 (issue trailer / 코멘트 둘 다 skip) |
 | `--no-comment` | trailer 만 부착하고 push 후 코멘트는 skip (GitHub 자동 close 만 사용) |
 | `--auto` | `--auto` SSOT (`_shared/kiwi/auto-option.md` v1.0). **standalone 모드 한정** — child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 가 `--auto` 가드레일 책임을 지며 본 스킬은 NEEDS_USER bubble-up (§11.6) 만 담당. critical_gates 인라인 선언 + 자율 결정 예외 매핑은 §11.10 참조 |
+| `--mini` | 빠른 모드 프리셋 — 검증-개선 루프 라운드 상한 3 (`_shared/kiwi/loop-option.md` 참조, 기본값: off, 스킬 기본 상한) |
+| `--loops N` | 명시적 루프 카운터 — 라운드 상한 N (정수 ≥1). `--mini` 와 동시 지정 시 **`--loops` 우선(경고)** (기본값: off, 스킬 기본 상한) |
+
+### `--mini` / `--loops N` 옵션 SSOT
+
+본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회).
 
 ## 시그니처 완전 차단 정책
 

@@ -38,6 +38,8 @@ description: "OpenCode/Hermes local-LLM variant for reading kiwi pipeline events
 | §0.7 | **사용자 확인 의무**: 추천 후보 ≥2 개 / next_hint = null / 자기 호출 충돌 / schema major mismatch — 모두 `User clarification gate` 단일 호출 분해. |
 | §0.8 | **best-effort emit**: 자기 jsonl emit 실패가 본 작업 (추천 출력) 의 실패로 이어지면 안 됨. emit 실패 시 stderr WARN. |
 | §0.9 | **외부 스킬 실행 모드**: `--auto --run` 시 host 가 skill delegation 을 제공하면 추천 스킬을 한 번에 하나만 호출한다. delegation 이 없으면 사용자에게 다음 Open Agent Skills invocation 문구를 출력한다. |
+| §0.10 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §7 참고 | `--mini`/`--loops N` 를 spawn 하는 모든 kiwi 하위 스킬에 전파 (loop-option.md §6) |
 
 ### §0.AG — `--auto` critical_gates[]
 
@@ -70,6 +72,8 @@ description: "OpenCode/Hermes local-LLM variant for reading kiwi pipeline events
 | "연구 문서로", "리서치 문서 첨부" | 연구 문서 경로 (research document → `$kiwi-srs` passthrough §7.2) | (없음) |
 | "고강도" (프로필 기본 --max) | `--max` (모든 하위 스킬로 전파 §7.1) | on (etc 프로필 기본값) |
 | "워크트리에서", "격리해서", "worktree isolation" | `--wt` (전용 git worktree 격리 사이클 §2.6) | off |
+| "미니 모드", "빠른 모드", "3라운드" | `--mini` (모든 하위 스킬로 전파 §7.3) | off (스킬 기본 상한) |
+| "루프 N회", "N라운드" | `--loops N` (모든 하위 스킬로 전파 §7.3) | off (스킬 기본 상한) |
 
 옵션 매트릭스:
 - `--stats` 단독 → 통계만, 추천·실행 없음
@@ -310,6 +314,10 @@ spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 자기 js
 사용자가 **연구 문서**(research document)를 인자 또는 프롬프트 참조로 제공하면, 사이클 시작 시 본 스킬은 그 문서를 `$kiwi-srs` 로 **전달**(passthrough)하여 SRS 저작의 입력으로 공급한다. `kiwi-srs` 는 이를 FR-FLOW-023 research verify/improve 루프의 입력으로 사용한다.
 
 `--run` 미지정 시 본 Phase skip.
+
+### 7.3 `--mini` / `--loops N` 전파
+
+`--mini` 또는 `--loops N` 으로 본 스킬을 호출하면 (`../_shared/kiwi/loop-option.md` v1.0 SSOT), 사이클이 spawn 하는 **모든 하위 스킬(every spawned sub-skill)** — `kiwi-srs` · `kiwi-srs-feasibility` · `kiwi-planner` · `kiwi-pm` · `kiwi-review-fix-loop` — 에 해당 플래그를 그대로 **전파**(propagate)한다. 하위 스킬의 라운드 상한 시맨틱은 각자의 `loop-option.md` 참조를 따른다.
 
 ---
 
