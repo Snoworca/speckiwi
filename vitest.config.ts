@@ -18,6 +18,12 @@ const validatorThreshold = {
 
 export default defineConfig({
   test: {
+    // Suite-wide hermeticity guards: fail (and name the offending test) if any test
+    // leaks SpecKiwi init/skill artifacts into the repo working tree instead of an
+    // isolated temp root. setupFiles catches it per-test; globalSetup teardown is the
+    // after-suite backstop for out-of-band (e.g. spawned-child) leaks.
+    setupFiles: ["./test/support/hermeticity-guard.ts"],
+    globalSetup: ["./test/support/hermeticity-global.ts"],
     coverage: {
       provider: "v8",
       include: [
