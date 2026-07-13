@@ -162,8 +162,21 @@ async function installHooks(root: string, output: InitProjectOutput, warnings: s
 
 async function installGitPreCommitHook(root: string, output: InitProjectOutput, warnings: string[], dryRun = false): Promise<void> {
   const gitDir = path.join(root, ".git");
-  if (!(await pathExists(gitDir))) {
+  const gitDirStat = await stat(gitDir).catch(() => undefined);
+  if (!gitDirStat) {
     warnings.push("No .git directory found; skipped installing the pre-commit hook.");
+    return;
+  }
+  if (!gitDirStat.isDirectory()) {
+    // In a linked git worktree or a submodule, .git is a `gitdir:` pointer file,
+    // not a directory, so `.git/hooks` cannot be created here — mkdir would throw
+    // ENOTDIR and abort the whole init. Git resolves hooks from the shared common
+    // dir, so the pre-commit hook belongs in the main working tree; skip with a
+    // warning instead of crashing.
+    warnings.push(
+      "Detected a git worktree or submodule (.git is a file, not a directory); skipped installing the pre-commit hook. " +
+        "Run speckiwi init in the main working tree to install the shared pre-commit hook."
+    );
     return;
   }
   const hookPath = path.join(gitDir, "hooks", "pre-commit");

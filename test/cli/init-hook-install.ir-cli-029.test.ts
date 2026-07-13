@@ -38,6 +38,18 @@ async function emptyRepo() {
   return root;
 }
 
+// A linked git worktree (and a submodule) stores its .git as a POINTER FILE
+// (`gitdir: <path>`), not a directory, so .git/hooks cannot be created under it.
+async function worktreeRepo() {
+  const root = await mkdtemp(path.join(tmpdir(), "speckiwi-init-wt-"));
+  await writeFile(
+    path.join(root, ".git"),
+    `gitdir: ${path.join(root, "..", "main-repo", ".git", "worktrees", "wt")}\n`,
+    "utf8"
+  );
+  return root;
+}
+
 async function exists(target: string): Promise<boolean> {
   try {
     await stat(target);
@@ -140,5 +152,32 @@ describe("IR-CLI-047 speckiwi init hook-install extension (CLI surface)", () => 
     const hookBody = await readFile(path.join(root, ".git", "hooks", "pre-commit"), "utf8");
     expect(hookBody).toContain("echo legacy");
     expect(hookBody).not.toContain("docs/.kiwi/hooks/pre-commit.mjs");
+  });
+});
+
+// @req FR-NODE-055 — the git pre-commit hook installer must tolerate a worktree/
+// submodule where .git is a pointer file instead of crashing init with ENOTDIR.
+describe("FR-NODE-055 AC-4 — speckiwi init tolerates a git worktree where .git is a pointer file", () => {
+  it("completes init without an ENOTDIR crash, warns about the worktree, and still scaffolds the SRS", async () => {
+    const root = await worktreeRepo();
+    const streams = io();
+
+    // Before the fix, init walked into mkdir('<root>/.git/hooks') and threw
+    // ENOTDIR because .git is a file; the whole init crashed non-zero.
+    const exitCode = await main(["--root", root, "init", "--no-skills", "--no-mcp", "--json"], streams);
+    expect(exitCode).toBe(0);
+
+    const report = readJson(streams.stdout);
+    expect(report.ok).toBe(true);
+
+    // The SRS scaffold and agent files still materialise (init completed).
+    expect(await exists(path.join(root, "docs", "spec", "00.index.md"))).toBe(true);
+    expect(await exists(path.join(root, "AGENTS.md"))).toBe(true);
+
+    // .git remains the pointer FILE — never clobbered into a directory.
+    expect((await stat(path.join(root, ".git"))).isFile()).toBe(true);
+    // No pre-commit hook was created, and the skip is surfaced as a warning.
+    expect(report.value.created).not.toContain(path.join(root, ".git", "hooks", "pre-commit"));
+    expect(report.value.warnings.some((w) => /worktree|submodule/i.test(w))).toBe(true);
   });
 });
