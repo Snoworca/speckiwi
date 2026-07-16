@@ -149,13 +149,14 @@ export function findSectionBodyRange(
   return { startLine: bodyStart, endLine: bodyEnd };
 }
 
-// FR-NODE-058 — vibe merge contradiction hard-gate. A vibe synthesis/merge flow
-// may only be marked complete once its touched dirty-edge closure is
-// contradiction-verified (empty) or the remaining contradictions are explicitly
-// acknowledged. Being SYNTHESIZED (a step directory exists) is orthogonal to
-// being contradiction-verified, so stepDirectoryExists never, by itself, grants
-// completion. For non-vibe STEP namespace flows the diagnostic stays advisory:
-// the gate is never enforced and never blocks.
+// FR-NODE-058 / FR-NODE-072 — vibe/tdd merge contradiction hard-gate. A vibe or
+// tdd synthesis/merge flow may only be marked complete once its touched
+// dirty-edge closure is contradiction-verified (empty) or the remaining
+// contradictions are explicitly acknowledged. Being SYNTHESIZED (a step
+// directory exists) is orthogonal to being contradiction-verified, so
+// stepDirectoryExists never, by itself, grants completion. For STEP namespace
+// flows that are neither vibe nor tdd the diagnostic stays advisory: the gate
+// is never enforced and never blocks.
 export interface VibeCompletionGateResult {
   allowed: boolean;
   blockedReason?: "dirty-edges-unacknowledged";
@@ -164,12 +165,15 @@ export interface VibeCompletionGateResult {
 
 export function evaluateVibeCompletionGate(input: {
   vibe: boolean;
+  /** FR-NODE-072 — a tdd flow is enforced with vibe parity. */
+  tdd?: boolean;
   stepDirectoryExists: boolean;
   dirtyEdges: DirtyEdge[];
   acknowledged: boolean;
 }): VibeCompletionGateResult {
-  // Advisory-only for non-vibe flows: the hard-gate never governs the decision.
-  if (!input.vibe) {
+  // Advisory-only for flows that are neither vibe nor tdd: the hard-gate never
+  // governs the decision.
+  if (!input.vibe && !input.tdd) {
     return { allowed: true, enforced: false };
   }
   // An edge is a contradiction unless its classification is "clean".

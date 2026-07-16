@@ -7,8 +7,9 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementType } from "../schema.js";
-import type { MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
+import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
@@ -341,6 +342,29 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
     return mutationFail("MUTATION_DENIED", `Step requirement block is empty: ${input.id}`) as MutationResult<AddRequirementOutput>;
   }
 
+  // FR-NODE-074 — evidence gate. A post-hoc SRS promotion without verification
+  // evidence reproduces the traceability-loss failure mode, so a tdd-mode flow
+  // refuses it outright; other modes keep promoting but surface an advisory
+  // warning (enforced-for-mode pattern of the FR-NODE-058 completion gate).
+  let advisories: Diagnostic[] = [];
+  if ((stepRecord.verificationEvidence ?? []).length === 0) {
+    const workMode = await getWorkMode(root);
+    if (workMode.mode === "tdd") {
+      return mutationFail(
+        "EVIDENCE_REQUIRED",
+        `Step requirement ${input.id} has no verification evidence; tdd-mode promotion requires at least one evidence entry`
+      ) as MutationResult<AddRequirementOutput>;
+    }
+    advisories = [
+      {
+        code: "STEP_PROMOTE_NO_EVIDENCE",
+        severity: "warning",
+        message: `Step requirement ${input.id} was promoted without verification evidence`,
+        requirementId: input.id
+      }
+    ];
+  }
+
   const scope = workspace.index.scopes.find((candidate) => candidate.prefix === input.toScope);
   if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${input.toScope}`) as MutationResult<AddRequirementOutput>;
   let filePath: string;
@@ -361,13 +385,16 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
     const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
     if (indexSync && !indexSync.ok) return indexSync as unknown as MutationResult<AddRequirementOutput>;
     return {
-      ...mutationOk<AddRequirementOutput>({
-        requirementId: input.id,
-        filePath: file.relativePath,
-        written: applied.written,
-        targetSource: "explicit",
-        record: stepRecord
-      }),
+      ...mutationOk<AddRequirementOutput>(
+        {
+          requirementId: input.id,
+          filePath: file.relativePath,
+          written: applied.written,
+          targetSource: "explicit",
+          record: stepRecord
+        },
+        advisories
+      ),
       patch: summarizePatch(plan, dryRun),
       mutation: mutationEnvelopeFromPlan("promote_step_requirement", plan, dryRun, applied.written),
       ...(indexSync?.value ? { indexSync: indexSync.value } : {})

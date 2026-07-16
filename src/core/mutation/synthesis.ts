@@ -5,10 +5,11 @@ import { mutationOk } from "./guards.js";
 
 // @req FR-NODE-056
 /**
- * FR-NODE-056 — vibe-to-SRS synthesis engine.
+ * FR-NODE-056 / FR-NODE-073 — vibe/tdd-to-SRS synthesis engine.
  *
- * Merges a task `intent.md`, the per-session trace shards, the step task-name code
- * comments, and the final git diff into step SRS under docs/spec/steps/<TaskName>/.
+ * Merges a task `intent.md`, the tdd-mode SDS `design.md` (when present), the
+ * per-session trace shards, the step task-name code comments, and the final git
+ * diff into step SRS under docs/spec/steps/<TaskName>/.
  * It is idempotent (a no-op when the step SRS already exists), caps diff size, excludes
  * gitignored paths, redacts recognized secret patterns, and merges trace shards in
  * timestamp order while recovering from a torn trailing JSONL line.
@@ -268,6 +269,15 @@ export async function synthesizeStepSrs(
   intent = intentRedacted.text;
   totalRedactions += intentRedacted.count;
 
+  // --- design.md (FR-NODE-073) — the tdd-mode SDS, merged as a Design section when present ---
+  let design: string | undefined;
+  const designPath = path.join(stepDir, "design.md");
+  if (await exists(designPath)) {
+    const designRedacted = redactSecrets(await readFile(designPath, "utf8"));
+    design = designRedacted.text;
+    totalRedactions += designRedacted.count;
+  }
+
   // --- trace shards merged in timestamp order, torn tail discarded (AC-5) ---
   const traceDir = path.join(stepDir, "trace");
   const shardNames = (await readdir(traceDir, { withFileTypes: true }).catch(() => []))
@@ -323,6 +333,9 @@ export async function synthesizeStepSrs(
     "",
     intent.trimEnd(),
     "",
+    // FR-NODE-073: the SDS lands between Intent and Trace; absent design.md keeps
+    // the FR-NODE-056 output shape unchanged.
+    ...(design !== undefined ? ["## Design", "", design.trimEnd(), ""] : []),
     "## Trace",
     "",
     traceLines.length > 0 ? traceLines.join("\n") : "(no trace entries)",

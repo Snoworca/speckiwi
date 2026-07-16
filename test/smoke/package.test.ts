@@ -143,9 +143,9 @@ describe("package runtime contract", () => {
       const rules = await readFile(path.join(projectRoot, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), "utf8");
       expect(rules).toContain("| Document ID | SRS-MD-RULES |");
       expect(await readFile(path.join(skillDestination, "kiwi-pm", "SKILL.md"), "utf8")).toContain("name: kiwi-pm");
-      expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.4");
+      expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
       expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-      expect(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.4");
+      expect(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
       expect(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     } finally {
       await rm(externalCwd, { recursive: true, force: true });

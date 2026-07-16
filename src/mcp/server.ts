@@ -411,8 +411,18 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     supersede: z.string().optional(),
     dryRun: z.boolean().optional()
   },
-  update_step_state: { step: z.string(), status: z.string().optional(), dependsOn: z.string().optional(), dryRun: z.boolean().optional() },
+  update_step_state: { step: z.string(), status: z.string().optional(), dependsOn: z.string().optional(), acknowledged: z.boolean().optional(), dryRun: z.boolean().optional() },
   list_steps: { step: z.string().optional(), target: z.string().optional() },
+  // FR-MCP-053 — step SRS synthesis mutation tool (forwards to the FR-NODE-041/073 core engine).
+  synthesize_step_srs: { task: z.string(), dryRun: z.boolean().optional() },
+  // FR-NODE-080/FR-NODE-081 — SDS stub scaffold and lifecycle-status mutation tools.
+  scaffold_step: { task: z.string(), target: z.string().optional(), dryRun: z.boolean().optional() },
+  set_sds_status: { task: z.string(), status: z.string(), dryRun: z.boolean().optional() },
+  // FR-MCP-052 — work-mode tools (get_work_mode is read-only; set_work_mode is a workspace mutation).
+  get_work_mode: {},
+  set_work_mode: { mode: z.string(), activeTask: z.string().optional(), dryRun: z.boolean().optional() },
+  // FR-MCP-054 — read-only synthesis-presence gate probe (mirrors `speckiwi vibe-gate check`).
+  check_vibe_gate: {},
   // FR-MCP-043 — supersede and promote mutation tools.
   supersede_requirement: {
     oldId: z.string(),
@@ -462,7 +472,9 @@ export function isReadOnlyTool(name: string): boolean {
     "validate_step",
     "list_dirty_edges",
     "list_compat_edges",
-    "list_steps"
+    "list_steps",
+    "get_work_mode",
+    "check_vibe_gate"
   ].includes(name);
 }
 

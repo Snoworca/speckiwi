@@ -1,8 +1,10 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { splitDiagnostics } from "../diagnostic.js";
 import { parseStepState } from "../parser/index-parser.js";
-import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, StepStateEntry, ValidationResult } from "../types.js";
+import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, ProjectRoot, StepStateEntry, ValidationResult } from "../types.js";
 
-// @req FR-PARSE-027 FR-PARSE-028 IR-CLI-046 FR-MCP-040
+// @req FR-PARSE-027 FR-PARSE-028 FR-PARSE-033 IR-CLI-046 FR-MCP-040
 //
 // validateWorkspaceScoped runs a single step-local validation pass over an already
 // parsed workspace. It is the core the CLI `speckiwi step validate <name>` (IR-CLI-046)
@@ -21,9 +23,47 @@ import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, StepStateEntry, V
 
 const STEP_OVERLOAD_THRESHOLD = 7;
 
+// @req FR-PARSE-033 — tdd-mode SDS advisory constants. REQUIRED_SDS_HEADINGS is exported so the
+// FR-NODE-080 scaffold template renders exactly the heading set this validator checks (no drift).
+const SDS_LINE_CAP = 200;
+export const REQUIRED_SDS_HEADINGS = [
+  "Context & Scope",
+  "Goals / Non-goals",
+  "Architecture Decisions",
+  "Interfaces",
+  "Acceptance Contracts",
+  "Test Plan",
+  "Open Questions"
+] as const;
+
+// @req FR-PARSE-033
+/** The step's design.md content as loaded for the SDS advisory pass. */
+export interface SdsDesignInput {
+  present: boolean;
+  lines: readonly string[];
+}
+
+// @req FR-PARSE-033
+/**
+ * Loads docs/spec/steps/<step>/design.md for the SDS advisory pass. design.md is
+ * not part of ParsedWorkspace (discovery only reads .srs.md files and state.md),
+ * so the CLI/MCP surfaces load it here and hand it to validateWorkspaceScoped.
+ */
+export async function loadStepDesign(root: ProjectRoot, stepName: string): Promise<SdsDesignInput> {
+  const designPath = path.join(root.root, "docs", "spec", "steps", stepName, "design.md");
+  try {
+    const text = await readFile(designPath, "utf8");
+    return { present: true, lines: text.split(/\r?\n/) };
+  } catch {
+    return { present: false, lines: [] };
+  }
+}
+
 export interface ScopedValidationOptions {
   /** The step name (docs/spec/steps/<step>/) whose local diagnostics to compute. */
   step: string;
+  /** FR-PARSE-033 — the step's design.md, loaded by the surface; absent when omitted. */
+  design?: SdsDesignInput;
 }
 
 function stepPathSegment(stepName: string): string {
@@ -136,5 +176,57 @@ export function validateWorkspaceScoped(workspace: ParsedWorkspace, options: Sco
     );
   }
 
+  // @req FR-PARSE-033 — SDS advisories, tdd work-mode only. All warning severity:
+  // they inform the step gate without ever flipping it on their own.
+  const mode = workspace.stateFile ? parseStepState(workspace.stateFile.lines).mode : "wait";
+  if (mode === "tdd") {
+    diagnostics.push(...sdsAdvisories(stepName, options.design ?? { present: false, lines: [] }));
+  }
+
   return splitDiagnostics(diagnostics);
+}
+
+// @req FR-PARSE-033
+/** Lines of the section starting at the `##` heading containing `name`, up to the next `##`. */
+function sdsSection(lines: readonly string[], name: string): readonly string[] {
+  const isHeading = (line: string): boolean => /^##\s/.test(line);
+  const start = lines.findIndex((line) => isHeading(line) && line.includes(name));
+  if (start < 0) return [];
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => isHeading(line));
+  return end < 0 ? rest : rest.slice(0, end);
+}
+
+// @req FR-PARSE-033
+/** SDS-W050..W053 advisories over the tdd step's design.md. */
+function sdsAdvisories(stepName: string, design: SdsDesignInput): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const filePath = `docs/spec/steps/${stepName}/design.md`;
+  if (!design.present) {
+    out.push(advisory("SDS-W050", `SDS design.md is absent for tdd step '${stepName}'`, { filePath }));
+    return out;
+  }
+  for (const heading of REQUIRED_SDS_HEADINGS) {
+    if (!design.lines.some((line) => /^##\s/.test(line) && line.includes(heading))) {
+      out.push(advisory("SDS-W051", `SDS design.md is missing the required heading: ${heading}`, { filePath }));
+    }
+  }
+  const collectIds = (lines: readonly string[]): Set<string> => {
+    const ids = new Set<string>();
+    for (const line of lines) {
+      for (const match of line.matchAll(/SDS-AC-\d+/g)) ids.add(match[0]);
+    }
+    return ids;
+  };
+  const declared = collectIds(sdsSection(design.lines, "Acceptance Contracts"));
+  const mapped = collectIds(sdsSection(design.lines, "Test Plan"));
+  for (const id of declared) {
+    if (!mapped.has(id)) {
+      out.push(advisory("SDS-W052", `SDS acceptance contract ${id} has no Test Plan mapping`, { filePath }));
+    }
+  }
+  if (design.lines.length > SDS_LINE_CAP) {
+    out.push(advisory("SDS-W053", `SDS design.md exceeds the ${SDS_LINE_CAP}-line cap: ${design.lines.length} lines`, { filePath }));
+  }
+  return out;
 }

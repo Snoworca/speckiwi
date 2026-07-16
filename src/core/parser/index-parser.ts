@@ -16,11 +16,11 @@ import type {
 import { parseMarkdownTable, parseMarkdownTableResult, parseMetadataRows, splitTableRow } from "./table.js";
 
 const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abandoned"]);
-const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait"]);
+const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait", "tdd"]);
 const STEP_MODE_RE = /^\s*Mode:\s*(.*)$/;
 const STEP_ACTIVE_TASK_RE = /^\s*Active Task:\s*(.*)$/;
 
-// @req FR-PARSE-026 @req FR-PARSE-031
+// @req FR-PARSE-026 @req FR-PARSE-031 @req FR-PARSE-032
 export function parseStepState(lines: readonly string[]): StepStateParseResult {
   const src = lines as string[];
   const result = parseMarkdownTableResult(src, 0, { skipNonTableLeading: true });
@@ -64,7 +64,8 @@ export function parseStepState(lines: readonly string[]): StepStateParseResult {
     if (STEP_MODE_ENUM.has(modeRaw)) mode = modeRaw as StepStateMode;
     else modeInvalid = true;
   }
-  const activeTask = mode === "vibe" ? activeTaskRaw : undefined;
+  // The Active Task line is meaningful for the task-scoped modes (vibe and tdd).
+  const activeTask = mode === "vibe" || mode === "tdd" ? activeTaskRaw : undefined;
 
   return Object.assign(entries, {
     mode,

@@ -1,7 +1,9 @@
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
-import { validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { loadStepDesign, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { getWorkMode } from "../../core/mutation/work-mode.js";
+import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { projectRequirementRecords, searchRequirementRecords } from "../../core/query/discovery.js";
 import { buildReadEnvelope, listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
@@ -221,6 +223,10 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     }
     return resultToMcp(await planRequirementIdCollisionRepair(await projectRoot(deps), parsed));
   }, { readOnlyHint: true });
+  // FR-MCP-052 — get_work_mode mirrors the argument-less `speckiwi mode` read (fail-open to wait).
+  server.registerTool("get_work_mode", async () => mcpSuccess(await getWorkMode(await projectRoot(deps))), { readOnlyHint: true });
+  // FR-MCP-054 — check_vibe_gate mirrors `speckiwi vibe-gate check` (shared core, read-only probe).
+  server.registerTool("check_vibe_gate", async () => mcpSuccess(await evaluateVibeGate(await projectRoot(deps))), { readOnlyHint: true });
   server.registerTool("workflow_workspace_info", async () => workflowWorkspaceInfo(await projectRoot(deps)), { readOnlyHint: true });
   server.registerTool("workflow_artifacts_list", async (input) => workflowArtifacts(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("workflow_latest_artifact", async (input) => workflowArtifacts(await projectRoot(deps), { ...workflowOptions(input), limit: 1 }), { readOnlyHint: true });
@@ -240,11 +246,14 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("workflow_worklog_tail", async (input) => workflowWorklogTail(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("preview_legacy_workflow_migration", async (input) => unsupportedWorkflowMigrationInput(input) ?? workflowMigrationPreview(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("get_next_work_order", async (input) => buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), { readOnlyHint: true });
-  // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories),
-  // scoped to a named step so a body-scope error never leaks into the step diagnostics.
+  // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories,
+  // plus the FR-PARSE-033 SDS-W05x advisories in tdd mode), scoped to a named step so a
+  // body-scope error never leaks into the step diagnostics.
   server.registerTool("validate_step", async (input) => {
     const parsed = await workspace(deps);
-    const result = validateWorkspaceScoped(parsed, { step: String(input.step) });
+    const stepName = String(input.step);
+    const design = await loadStepDesign(await projectRoot(deps), stepName);
+    const result = validateWorkspaceScoped(parsed, { step: stepName, design });
     const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
     return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, result.diagnostics);
   }, { readOnlyHint: true });

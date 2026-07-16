@@ -1,5 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ParsedWorkspace } from "../types.js";
 import { splitDiagnostics } from "../diagnostic.js";
 import {
@@ -169,6 +170,115 @@ function checkRulesDrift(workspace: ParsedWorkspace): DoctorCheck {
   };
 }
 
+// @req FR-NODE-082
+/**
+ * SDS authoring rules installation: the tdd work-mode snippet cites
+ * docs/rule/SDS-MD-Rules-v1.0.0.md, so its absence warns with the init remediation.
+ * Existence-only by design — no index coupling and no version-drift tracking.
+ */
+async function checkSdsRulesPresence(rootPath: string): Promise<DoctorCheck> {
+  const topic = "SDS authoring rules installation";
+  const relPath = "docs/rule/SDS-MD-Rules-v1.0.0.md";
+  const present = await stat(path.join(rootPath, "docs", "rule", "SDS-MD-Rules-v1.0.0.md"))
+    .then((entry) => entry.isFile())
+    .catch(() => false);
+  if (!present) {
+    return {
+      topic,
+      label: "SDS rules installed",
+      state: "warn",
+      message: `${relPath} is missing (the tdd work-mode SDS rules are not installed)`,
+      remediation: "Run `speckiwi init` to install the bundled SDS-MD Authoring Rules document."
+    };
+  }
+  return {
+    topic,
+    label: "SDS rules installed",
+    state: "ok",
+    message: `${relPath} is installed`,
+    remediation: "No action needed; the SDS authoring rules are installed."
+  };
+}
+
+// @req FR-NODE-083
+/** The bundled codex skills source tree shipped inside this package. */
+function bundledCodexSkillsRoot(): string {
+  return fileURLToPath(new URL("../../../skills/codex", import.meta.url));
+}
+
+// @req FR-NODE-083
+/** Skill names in a source tree: every direct subdirectory carrying a SKILL.md. */
+async function listSkillNames(sourceRoot: string): Promise<string[]> {
+  const entries = await readdir(sourceRoot, { withFileTypes: true }).catch(() => []);
+  const names: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const hasSkill = await stat(path.join(sourceRoot, entry.name, "SKILL.md"))
+      .then((skillEntry) => skillEntry.isFile())
+      .catch(() => false);
+    if (hasSkill) names.push(entry.name);
+  }
+  return names.sort();
+}
+
+// @req FR-NODE-083
+/**
+ * Codex skills mirror drift: compares the bundled skills/codex source tree against the workspace
+ * .agents/skills install mirror. The expected set is derived by scanning the source tree (never a
+ * hardcoded list); a workspace without a mirror is ok (not provisioned is not drift). A skill that
+ * is missing from the mirror or whose SKILL.md content diverges from the source warns.
+ */
+async function checkCodexSkillsMirror(rootPath: string, sourceRoot?: string): Promise<DoctorCheck> {
+  const topic = "codex skills mirror drift";
+  const label = "Codex skills mirror";
+  const mirrorRoot = path.join(rootPath, ".agents", "skills");
+  const mirrorExists = await stat(mirrorRoot).then((entry) => entry.isDirectory()).catch(() => false);
+  if (!mirrorExists) {
+    return {
+      topic,
+      label,
+      state: "ok",
+      message: "no .agents/skills mirror is provisioned in this workspace",
+      remediation: "No action needed; provision codex skills with `speckiwi init --install-skills` when wanted."
+    };
+  }
+  const source = sourceRoot ?? bundledCodexSkillsRoot();
+  const expected = await listSkillNames(source);
+  const missing: string[] = [];
+  const diverged: string[] = [];
+  // Line endings are transport noise, not drift — normalize before comparing.
+  const normalizeEol = (text: string): string => text.replace(/\r\n/g, "\n");
+  for (const name of expected) {
+    const mirrorSkill = await readOrUndefined(path.join(mirrorRoot, name, "SKILL.md"));
+    if (mirrorSkill === undefined) {
+      missing.push(name);
+      continue;
+    }
+    const sourceSkill = await readOrUndefined(path.join(source, name, "SKILL.md"));
+    if (sourceSkill !== undefined && normalizeEol(sourceSkill) !== normalizeEol(mirrorSkill)) diverged.push(name);
+  }
+  if (missing.length > 0 || diverged.length > 0) {
+    const parts = [
+      ...(missing.length > 0 ? [`missing from the mirror: ${missing.join(", ")}`] : []),
+      ...(diverged.length > 0 ? [`diverged from the source: ${diverged.join(", ")}`] : [])
+    ];
+    return {
+      topic,
+      label,
+      state: "warn",
+      message: `.agents/skills drifted from the bundled codex skills — ${parts.join("; ")}`,
+      remediation: "Run `speckiwi skills install codex all` to regenerate the mirror, then review the diff."
+    };
+  }
+  return {
+    topic,
+    label,
+    state: "ok",
+    message: `.agents/skills matches the bundled codex skills (${expected.length} skills)`,
+    remediation: "No action needed; the codex skills mirror is in sync."
+  };
+}
+
 // @req IR-CLI-065
 /** Active Target set: the index must declare a non-empty Active Target. */
 function checkActiveTarget(workspace: ParsedWorkspace): DoctorCheck {
@@ -290,13 +400,16 @@ function checkNodeVersion(nodeVersion: string): DoctorCheck {
  */
 export async function diagnoseHealth(
   workspace: ParsedWorkspace,
-  options: { nodeVersion?: string } = {}
+  options: { nodeVersion?: string; codexSkillsSourceRoot?: string } = {}
 ): Promise<DoctorReport> {
   const nodeVersion = options.nodeVersion ?? process.version;
   const checks: DoctorCheck[] = [
     checkSpecPresence(workspace),
     await checkWorkflowCurrency(workspace.root.root),
     checkRulesDrift(workspace),
+    // FR-NODE-082 / FR-NODE-083 — SDS rules installation + codex skills mirror drift.
+    await checkSdsRulesPresence(workspace.root.root),
+    await checkCodexSkillsMirror(workspace.root.root, options.codexSkillsSourceRoot),
     checkActiveTarget(workspace),
     checkScopeTargetConsistency(workspace),
     checkNodeVersion(nodeVersion)

@@ -8,6 +8,7 @@ import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_VERSION,
   loadBundledRulesDocument,
+  loadBundledSdsRulesDocument,
   parseScopeOption,
   renderAgentInstructionSnippet,
   renderAppendixTemplate,
@@ -346,6 +347,8 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
   await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force, dryRun);
   await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force, dryRun);
   await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force, dryRun);
+  // FR-NODE-076 — the tdd work-mode snippet references the SDS rules, so init ships them too.
+  await writeIfMissing(path.join(root.root, "docs", "rule", "SDS-MD-Rules-v1.0.0.md"), await loadBundledSdsRulesDocument(), output, input.force, dryRun);
   for (const agentFile of REQUIRED_AGENT_FILES) {
     await upsertAgentInstruction(root.root, agentFile, output, dryRun);
   }

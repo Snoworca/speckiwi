@@ -183,11 +183,13 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("scopes", undefined, "listScopes"),
   readSpec("summary", "summarize_target", "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
-  readSpec("mode", undefined, "workMode", { args: { value: { type: "string", optional: true } } }),
+  // FR-MCP-052 — the mode node hosts the get_work_mode read tool (the argument-less CLI read).
+  readSpec("mode", "get_work_mode", "workMode", { args: { value: { type: "string", optional: true } } }),
   // Container command with no own handler; hosts the v3 add-compatibility-check MCP tool.
   mutationSpec("vibe-gate", "add_compatibility_check", "req-scoped", "addCompatibilityCheck", [DRY_RUN]),
-  // vibe-gate check: CLI-only gate leaf (duplicate cliName "check" — see links check below).
-  readSpec("check", undefined, "vibeGateCheck"),
+  // vibe-gate check: CLI-only gate leaf (duplicate cliName "check" — see links check below); hosts the
+  // FR-MCP-052 set_work_mode workspace mutation (no dedicated CLI of its own — `mode <value>` is the CLI).
+  mutationSpec("check", "set_work_mode", "workspace", "setWorkMode", [DRY_RUN]),
   readSpec("changed-since", undefined, "changedSince", { args: { date: { type: "string" } } }),
   readSpec("stale", undefined, "staleRequirements"),
   readSpec("history", undefined, "requirementHistory", { args: { id: { type: "string" } } }),
@@ -200,7 +202,38 @@ export const toolSpecs: readonly ToolSpec[] = [
   // the second `validate` node and carries the validate_step MCP tool.
   readSpec("step", "list_steps", "listSteps"),
   readSpec("validate", "validate_step", "validateWorkspaceScoped", { args: { step: { type: "string" } } }),
-  readSpec("release-readiness", undefined, "summarizeReleaseReadiness"),
+  // IR-CLI-073/IR-CLI-074 — dedicated step mutation leaves under the `step` container. They carry the
+  // step MCP tools that used to be hosted on unrelated CLI mutation rows (set-supersede /
+  // scaffold-scope / register-scopes) before the CLI mirrors existed.
+  mutationSpec("synthesize", "synthesize_step_srs", "workspace", "synthesizeStepSrs", [DRY_RUN]),
+  mutationSpec("claim", "claim_step", "workspace", "claimStep", [
+    opt("--touches-scope <scope>", "touchesScope"),
+    opt("--touches-req <id>", "touchesReq", { repeatable: true }),
+    opt("--force", "force"),
+    opt("--supersede <id>", "supersede"),
+    DRY_RUN
+  ]),
+  mutationSpec("update-state", "update_step_state", "workspace", "updateStepState", [
+    opt("--status <status>", "status"),
+    opt("--depends-on <steps>", "dependsOn"),
+    opt("--acknowledged", "acknowledged"),
+    DRY_RUN
+  ]),
+  mutationSpec("promote", "promote_step_requirement", "req-scoped", "promoteStepRequirement", [
+    opt("--from-step <step>", "fromStep"),
+    opt("--to-scope <scope>", "toScope"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
+  // FR-NODE-080/FR-NODE-081 — SDS stub scaffold and lifecycle-status leaves under `step`.
+  mutationSpec("scaffold", "scaffold_step", "workspace", "scaffoldStep", [
+    opt("--target <target>", "target"),
+    DRY_RUN
+  ]),
+  mutationSpec("sds-status", "set_sds_status", "workspace", "setSdsStatus", [DRY_RUN]),
+  // release-readiness: real CLI read; also hosts the FR-MCP-054 check_vibe_gate read tool (its CLI
+  // counterpart is `vibe-gate check`, whose registry row already hosts set_work_mode).
+  readSpec("release-readiness", "check_vibe_gate", "evaluateVibeGate"),
   readSpec("coverage", "list_dirty_edges", "listDirtyEdges"),
   readSpec("rtm", "list_compat_edges", "listCompatEdges"),
 
@@ -378,8 +411,8 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  // set-supersede: real CLI mutation; also hosts the v3 claim_step MCP tool (no dedicated CLI).
-  mutationSpec("set-supersede", "claim_step", "workspace", "setSupersede", [
+  // set-supersede: real CLI mutation (claim_step moved to its dedicated `step claim` leaf, IR-CLI-074).
+  mutationSpec("set-supersede", undefined, "workspace", "setSupersede", [
     opt("--supersedes <id>", "supersedes"),
     opt("--superseded-by <id>", "supersededBy"),
     opt("--sync-trace", "syncTrace"),
@@ -392,13 +425,13 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  // scaffold-scope: real CLI mutation; also hosts the v3 update_step_state MCP tool (no dedicated CLI).
-  mutationSpec("scaffold-scope", "update_step_state", "workspace", "scaffoldScope", [
+  // scaffold-scope: real CLI mutation (update_step_state moved to `step update-state`, IR-CLI-074).
+  mutationSpec("scaffold-scope", undefined, "workspace", "scaffoldScope", [
     opt("--apply", "apply"),
     DRY_RUN
   ]),
-  // register-scopes: real CLI mutation; also hosts the v3 promote_step_requirement MCP tool.
-  mutationSpec("register-scopes", "promote_step_requirement", "req-scoped", "registerScopes", [
+  // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).
+  mutationSpec("register-scopes", undefined, "req-scoped", "registerScopes", [
     opt("--apply", "apply"),
     DRY_RUN
   ]),

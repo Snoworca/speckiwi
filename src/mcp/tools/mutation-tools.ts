@@ -9,6 +9,12 @@ import { addRequirement, promoteStepRequirement } from "../../core/mutation/add-
 import { addCompatibilityCheck, refreshCompatibilityCheck, revokeCompatibilityCheck } from "../../core/mutation/add-compatibility-check.js";
 import { claimStep } from "../../core/mutation/claim-step.js";
 import { updateStepState } from "../../core/mutation/update-step-state.js";
+import { synthesizeStepSrs } from "../../core/mutation/synthesis.js";
+import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
+import { setSdsStatus } from "../../core/mutation/set-sds-status.js";
+import { setWorkMode } from "../../core/mutation/work-mode.js";
+import { mutationFail } from "../../core/mutation/guards.js";
+import type { StepStateMode } from "../../core/types.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
@@ -441,10 +447,55 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         step: String(input.step),
         ...(typeof input.status === "string" ? { status: input.status } : {}),
         ...(typeof input.dependsOn === "string" ? { dependsOn: input.dependsOn } : {}),
+        // FR-NODE-078 — completion-gate override for the merged transition.
+        ...(input.acknowledged === true ? { acknowledged: true } : {}),
         ...(input.dryRun === true ? { dryRun: true } : {})
       })
     )
   );
+  // FR-MCP-053 — synthesize_step_srs forwards to the idempotent core synthesis engine.
+  server.registerTool("synthesize_step_srs", async (input) =>
+    resultToMcp(
+      await synthesizeStepSrs(await root(deps, input), {
+        task: String(input.task),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  // FR-NODE-080 — scaffold_step forwards to the writeIfMissing SDS/intent stub scaffold.
+  server.registerTool("scaffold_step", async (input) =>
+    resultToMcp(
+      await scaffoldStep(await root(deps, input), {
+        task: String(input.task),
+        ...(typeof input.target === "string" ? { target: input.target } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  // FR-NODE-081 — set_sds_status forwards to the forward-only SDS lifecycle mutation.
+  server.registerTool("set_sds_status", async (input) =>
+    resultToMcp(
+      await setSdsStatus(await root(deps, input), {
+        task: String(input.task),
+        status: String(input.status),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    )
+  );
+  // FR-MCP-052 — set_work_mode mirrors `speckiwi mode <value>` (IR-CLI-048/071 enum guard included).
+  server.registerTool("set_work_mode", async (input) => {
+    const mode = String(input.mode);
+    if (!["sdd", "vibe", "wait", "tdd"].includes(mode)) {
+      return resultToMcp(mutationFail("INVALID_MODE", `Invalid mode: ${mode} (expected sdd, vibe, wait, or tdd)`));
+    }
+    return resultToMcp(
+      await setWorkMode(await root(deps, input), {
+        mode: mode as StepStateMode,
+        ...(typeof input.activeTask === "string" ? { activeTask: input.activeTask } : {}),
+        ...(input.dryRun === true ? { dryRun: true } : {})
+      })
+    );
+  });
   server.registerTool("supersede_requirement", async (input) =>
     resultToMcp(
       await supersedeRequirement(await root(deps, input), {

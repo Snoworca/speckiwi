@@ -45,7 +45,7 @@ describe("project init bootstrap", () => {
     expect(appendix).toContain("reportPaths");
     expect(appendix).toContain("SRS-W024");
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(agents).toContain("`Status` tracks implementation and verification progress.");
     expect(agents).toContain("`Stability` tracks requirement maturity and change-control maturity.");
     expect(agents).toContain("`Stability=draft` or `Stability=deprecated`");
@@ -54,7 +54,7 @@ describe("project init bootstrap", () => {
     expect(agents).toContain("record it with MCP `set_target_goal`");
     expect(agents).toContain("minimal SRS-MD patch");
     expect(await readFile(path.join(rootPath, "AGENTS.md"), "utf8")).toContain("<!-- /SpecKiwi SRS 워크플로 -->");
-    expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("This repository uses `docs/spec/` as the required source of truth for requirements.");
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("Current work status workflow:");
@@ -69,9 +69,9 @@ describe("project init bootstrap", () => {
     expect(second.ok).toBe(true);
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
-    expect(agents.match(/# SpecKiwi SRS 워크플로 v1\.4/g)).toHaveLength(1);
+    expect(agents.match(/# SpecKiwi SRS 워크플로 v1\.6/g)).toHaveLength(1);
     expect(agents.match(/<!-- \/SpecKiwi SRS 워크플로 -->/g)).toHaveLength(1);
-    expect(claude.match(/# SpecKiwi SRS 워크플로 v1\.4/g)).toHaveLength(1);
+    expect(claude.match(/# SpecKiwi SRS 워크플로 v1\.6/g)).toHaveLength(1);
     expect(claude.match(/<!-- \/SpecKiwi SRS 워크플로 -->/g)).toHaveLength(1);
   });
 
@@ -111,11 +111,11 @@ describe("project init bootstrap", () => {
     expect(result.ok).toBe(true);
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(agents).not.toContain("# SpecKiwi SRS 워크플로 v1.1");
     expect(agents).not.toContain("Old managed instructions.");
     expect(agents).toContain("# Local Section");
-    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(claude).not.toContain("# SpecKiwi SRS workflow");
     expect(claude).not.toContain("Legacy unversioned instructions.");
   });
@@ -139,10 +139,10 @@ describe("project init bootstrap", () => {
     const agents = await readFile(path.join(rootPath, "AGENTS.md"), "utf8");
     const claude = await readFile(path.join(rootPath, "CLAUDE.md"), "utf8");
     expect(agents).toContain("Keep this prose mention: `# SpecKiwi SRS 워크플로 v0.9`.");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(claude).toContain("# SpecKiwi SRS 워크플로 v0.9");
     expect(claude).toContain("No suffix marker, so this is not a safe managed block.");
-    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(claude).toContain("# SpecKiwi SRS 워크플로 v1.6");
   });
 
   it("does not pair a malformed heading with a later block marker", async () => {
@@ -181,7 +181,7 @@ describe("project init bootstrap", () => {
     expect(agents).toContain("This local section must survive.");
     expect(agents).not.toContain("# SpecKiwi SRS 워크플로 v1.1");
     expect(agents).not.toContain("Old managed block.");
-    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.4");
+    expect(agents).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(agents).toContain("# Tail Section");
     expect(agents).toContain("Keep this too.");
   });

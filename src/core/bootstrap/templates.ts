@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { REQUIRED_SDS_HEADINGS } from "../validator/validate-scoped.js";
 
 export interface InitTemplateInput {
   product?: string;
@@ -11,7 +12,10 @@ export interface AgentInstructionOptions {
   version?: string;
 }
 
-export const AGENT_INSTRUCTION_VERSION = "1.4";
+// @req FR-NODE-075 @req FR-NODE-077 — v1.5 added the tdd work-mode workflow section;
+// v1.6 makes it MCP-first (get_work_mode/set_work_mode), documents mode switching,
+// and cites the installed SDS rules path.
+export const AGENT_INSTRUCTION_VERSION = "1.6";
 export const BUNDLED_RULES_VERSION = "1.0.0";
 
 /**
@@ -263,6 +267,69 @@ export async function loadBundledRulesDocument(): Promise<string> {
   }
 }
 
+// @req FR-NODE-076
+/**
+ * The bundled SDS-MD Authoring Rules the tdd work-mode snippet references. Loaded from the
+ * packaged docs/rule copy with a minimal ENOENT fallback (parity with loadBundledRulesDocument).
+ */
+export async function loadBundledSdsRulesDocument(): Promise<string> {
+  const candidate = fileURLToPath(new URL("../../../docs/rule/SDS-MD-Rules-v1.0.0.md", import.meta.url));
+  try {
+    return await readFile(candidate, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return [
+      "# SDS-MD Authoring Rules v1.0.0",
+      "",
+      "The tdd work-mode SDS lives at `docs/spec/steps/<task>/design.md` with the headings",
+      "Context & Scope, Goals / Non-goals, Architecture Decisions, Interfaces,",
+      "Acceptance Contracts (EARS `SDS-AC-n` statements), Test Plan, and Open Questions,",
+      "capped at 200 lines. See the packaged SpecKiwi documentation for the full rules."
+    ].join("\n");
+  }
+}
+
+// @req FR-NODE-080
+/**
+ * The scaffolded step SDS stub (SDS-MD Rules v1.0.0 §8 template): metadata table with
+ * Status=draft plus the seven required headings, rendered from the validator's
+ * REQUIRED_SDS_HEADINGS so the scaffold and the SDS-W051 advisory can never drift.
+ * Content stays a skeleton — the SDS body is still directly authored.
+ */
+export function renderSdsDesignTemplate(options: { task: string; target?: string; date?: string }): string {
+  const sections: Record<string, string[]> = {
+    "Context & Scope": ["<background and boundary, five lines or fewer>"],
+    "Goals / Non-goals": ["- Goal:", "- Non-goal:"],
+    "Architecture Decisions": ["- **Decision**: <what> / basis: <why> / trade-off: <cost> / rejected: <alternative>"],
+    "Interfaces": ["- `<signature>` — <contract, one line>"],
+    "Acceptance Contracts": ["- SDS-AC-1: WHEN <condition> THE SYSTEM SHALL <observable behavior>."],
+    "Test Plan": ["| SDS-AC | Test file (planned) | Case summary |", "|---|---|---|", "| SDS-AC-1 | test/... | ... |"],
+    "Open Questions": ["- (none)"]
+  };
+  const lines = [
+    `# SDS: ${options.task}`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    "| Document Type | sds |",
+    `| Task | ${options.task} |`,
+    `| Target | ${options.target ?? "-"} |`,
+    "| Status | draft |",
+    `| Date | ${options.date ?? new Date().toISOString().slice(0, 10)} |`,
+    ""
+  ];
+  REQUIRED_SDS_HEADINGS.forEach((heading, index) => {
+    lines.push(`## ${index + 1}. ${heading}`, "", ...(sections[heading] ?? ["- -"]), "");
+  });
+  return lines.join("\n");
+}
+
+// @req FR-NODE-080
+/** The scaffolded step intent stub (what/why; design.md carries the how). */
+export function renderStepIntentTemplate(task: string): string {
+  return [`# Intent: ${task}`, "", "<what this step changes and why, a few lines>", ""].join("\n");
+}
+
 export function renderAgentInstructionSnippet(options: AgentInstructionOptions = {}): string {
   const version = options.version ?? AGENT_INSTRUCTION_VERSION;
   return [
@@ -285,6 +352,14 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "TDD principle:",
     "- Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.",
     "- If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.",
+    "",
+    "Work-mode and the TDD First (tdd) workflow:",
+    "1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.",
+    "2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.",
+    "3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.",
+    "4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.",
+    "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
+    "6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.",
     "",
     "Agents MUST NOT:",
     "- Implement behavior that is not covered by an SRS requirement.",

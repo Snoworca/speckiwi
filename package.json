@@ -38,6 +38,7 @@
     "bin",
     "dist",
     "docs/rule/SRS-MD-Rules-v1.0.0.md",
+    "docs/rule/SDS-MD-Rules-v1.0.0.md",
     "skills/codex",
     "skills/claude",
     "skills/etc"

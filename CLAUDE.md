@@ -14,7 +14,7 @@ The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics
 
 When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
 
-# SpecKiwi SRS 워크플로 v1.4
+# SpecKiwi SRS 워크플로 v1.6
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -33,6 +33,14 @@ Agents MUST stop before implementing a non-discarded requirement with `Stability
 TDD principle:
 - Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.
 - If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.
+
+Work-mode and the TDD First (tdd) workflow:
+1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.
+2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.
+3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
+4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.
+5. In tdd mode the rule "do not implement behavior not covered by an SRS requirement" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.
+6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.

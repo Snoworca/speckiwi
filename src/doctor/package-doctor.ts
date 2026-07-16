@@ -70,6 +70,7 @@ const EXPECTED_KIWI_SKILLS = [
   "kiwi-srs-research",
   "kiwi-srs-sync",
   "kiwi-step",
+  "kiwi-tdd",
   "kiwi-wave-master"
 ];
 

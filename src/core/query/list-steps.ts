@@ -1,5 +1,6 @@
 import { parseStepState } from "../parser/index-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
+import { loadStepDesign } from "../validator/validate-scoped.js";
 import type {
   ListStepsResult,
   ProjectRoot,
@@ -199,14 +200,39 @@ export async function listSteps(root: ProjectRoot, options: ListStepsOptions = {
   // The ordered list follows the Kahn order; any unordered (cyclic) steps are
   // appended in declared order so callers still see every step.
   const orderedNames = cycle ? [...order, ...unordered] : order;
-  const steps: StepListEntry[] = orderedNames.map((name) => {
-    const entry = byName.get(name) as StepStateEntry;
-    return {
-      step: entry.step,
-      status: entry.status,
-      dependsOn: parseCellTokens(entry.dependsOn)
-    };
-  });
+  // @req FR-NODE-079 — surface each step's SDS state (design.md presence + metadata
+  // Status). The per-step design reads are independent, so they run in parallel.
+  const steps: StepListEntry[] = await Promise.all(
+    orderedNames.map(async (name) => {
+      const entry = byName.get(name) as StepStateEntry;
+      const design = await loadStepDesign(root, name);
+      const sdsStatus = design.present ? extractSdsStatus(design.lines) : undefined;
+      return {
+        step: entry.step,
+        status: entry.status,
+        dependsOn: parseCellTokens(entry.dependsOn),
+        sdsPresent: design.present,
+        ...(sdsStatus !== undefined ? { sdsStatus } : {})
+      };
+    })
+  );
 
   return { steps, advisories, cycle };
+}
+
+// @req FR-NODE-079
+/**
+ * The design.md metadata-table Status value: the first `| Status | <value> |` row
+ * before the first `## ` section heading (other tables in the body never leak in).
+ */
+function extractSdsStatus(lines: readonly string[]): string | undefined {
+  for (const line of lines) {
+    if (line.startsWith("## ")) return undefined;
+    const match = /^\|\s*Status\s*\|\s*([^|]*?)\s*\|\s*$/.exec(line);
+    if (match) {
+      const value = (match[1] ?? "").trim();
+      return value === "" ? undefined : value;
+    }
+  }
+  return undefined;
 }

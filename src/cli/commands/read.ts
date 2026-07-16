@@ -1,9 +1,13 @@
-import { stat } from "node:fs/promises";
-import path from "node:path";
 import type { Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { getWorkMode, setWorkMode } from "../../core/mutation/work-mode.js";
+import { claimStep } from "../../core/mutation/claim-step.js";
+import { updateStepState } from "../../core/mutation/update-step-state.js";
+import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
+import { setSdsStatus } from "../../core/mutation/set-sds-status.js";
+import { promoteStepRequirement } from "../../core/mutation/add-requirement.js";
+import { synthesizeStepSrs } from "../../core/mutation/synthesis.js";
 import { getDiagnosticDefinition } from "../../core/diagnostic-registry.js";
 import { mutationFail, mutationOk } from "../../core/mutation/guards.js";
 import { PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
@@ -14,7 +18,8 @@ import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { matchesRequirementFilter } from "../../core/query/filter.js";
 import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementRecords, type RequirementDiscoveryOptions } from "../../core/query/discovery.js";
 import { buildReadEnvelope, resolveTargetSelection, summarizeTarget } from "../../core/query/summary.js";
-import { validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { loadStepDesign, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
@@ -721,11 +726,11 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       renderExplain(context, command, code, Boolean(options.json) || command.opts().json);
     });
 
-  // @req IR-CLI-048 — read or switch the work mode over docs/spec/steps/state.md.
-  const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait"]);
+  // @req IR-CLI-048 @req IR-CLI-071 — read or switch the work mode over docs/spec/steps/state.md.
+  const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait", "tdd"]);
   command
     .command("mode")
-    .argument("[value]", "switch target: sdd, vibe, or wait")
+    .argument("[value]", "switch target: sdd, vibe, wait, or tdd")
     .option("--json", "JSON output")
     .action(async (value, options) => {
       const json = Boolean(options.json) || command.opts().json;
@@ -735,7 +740,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         return;
       }
       if (!validModes.has(value as StepStateMode)) {
-        output(context, { json }, mutationFail("INVALID_MODE", `Invalid mode: ${value} (expected sdd, vibe, or wait)`));
+        output(context, { json }, mutationFail("INVALID_MODE", `Invalid mode: ${value} (expected sdd, vibe, wait, or tdd)`));
         command.setOptionValue("exitCode", 2);
         return;
       }
@@ -744,26 +749,29 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  // @req IR-CLI-049 — CI-wireable vibe gate. Wire as a remote required status check to block
-  // unsynthesized vibe commits where local hooks can be bypassed.
+  // @req IR-CLI-049 @req IR-CLI-072 — CI-wireable work-mode gate. Wire as a remote required status
+  // check to block unsynthesized vibe/tdd commits (and SDS-less tdd commits) where local hooks can
+  // be bypassed.
   const vibeGate = command
     .command("vibe-gate")
-    .description("Vibe-synthesis gate for CI. Wire `vibe-gate check` as a remote required status check to block unsynthesized vibe commits.");
+    .description("Vibe/tdd-synthesis gate for CI. Wire `vibe-gate check` as a remote required status check to block unsynthesized vibe/tdd commits.");
   vibeGate
     .command("check")
-    .description("Exit non-zero when an active vibe task has no synthesized step directory; use as a remote required status check.")
+    .description("Exit non-zero when an active vibe/tdd task has no synthesized step directory, or a tdd task has no design.md; use as a remote required status check.")
     .option("--json", "JSON output")
     .action(async (options) => {
       const json = Boolean(options.json) || command.opts().json;
       const root = await resolveProjectRoot(process.cwd(), command.opts().root);
-      const workMode = await getWorkMode(root);
-      let synthesized = true;
-      if (workMode.mode === "vibe" && typeof workMode.activeTask === "string") {
-        const stepDir = path.join(root.root, "docs", "spec", "steps", workMode.activeTask);
-        synthesized = await isDirectory(stepDir);
-      }
-      output(context, { json }, synthesized ? mutationOk({ mode: workMode.mode, activeTask: workMode.activeTask, blocked: false }) : mutationFail("VIBE_GATE_BLOCKED", `Active vibe task '${workMode.activeTask}' has no synthesized step directory`));
-      if (!synthesized) command.setOptionValue("exitCode", 1);
+      // @req FR-MCP-054 — the gate logic lives in the shared core query (also `check_vibe_gate`).
+      const gate = await evaluateVibeGate(root);
+      output(
+        context,
+        { json },
+        gate.blocked
+          ? mutationFail("VIBE_GATE_BLOCKED", gate.blockedReason ?? "vibe gate blocked")
+          : mutationOk({ mode: gate.mode, activeTask: gate.activeTask, blocked: false })
+      );
+      if (gate.blocked) command.setOptionValue("exitCode", 1);
     });
 
   // @req IR-CLI-062 — cross-requirement timeline: requirements whose most recent Change Notes date
@@ -901,10 +909,134 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .action(async (name, options) => {
       const json = Boolean(options.json) || command.opts().json;
       const workspace = await workspaceFrom(command.opts());
-      const result = validateWorkspaceScoped(workspace, { step: name });
+      // @req FR-PARSE-033 — design.md is outside ParsedWorkspace, so the surface loads it.
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = validateWorkspaceScoped(workspace, { step: name, design: await loadStepDesign(root, name) });
       const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
       output(context, { json }, { ...result, diagnosticsSummary });
       if (result.errors.length > 0) command.setOptionValue("exitCode", 1);
+    });
+
+  // @req IR-CLI-073 — expose the idempotent step SRS synthesis engine (FR-NODE-041/073) on the CLI.
+  step
+    .command("synthesize")
+    .argument("<task>", "step name under docs/spec/steps/<task>/")
+    .option("--dry-run", "evaluate without writing")
+    .option("--json", "JSON output")
+    .action(async (task, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await synthesizeStepSrs(root, { task, ...(options.dryRun === true ? { dryRun: true } : {}) });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-074 — CLI mirrors of the step mutations (claim/update-state/promote) so the tdd
+  // cycle stays reachable when MCP is unavailable (MCP-preferred, CLI fallback).
+  step
+    .command("claim")
+    .argument("<step>", "step name to claim in docs/spec/steps/state.md")
+    .option("--touches-scope <scope>", "scope prefix the step touches")
+    .option("--touches-req <id>", "requirement id the step touches; repeatable", collectOption, [])
+    .option("--force", "override the write-skew soft gate")
+    .option("--supersede <id>", "supersede an existing step claim")
+    .option("--dry-run", "evaluate without writing")
+    .option("--json", "JSON output")
+    .action(async (stepName, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await claimStep(root, {
+        step: stepName,
+        touchesScope: String(options.touchesScope ?? ""),
+        touchesReq: options.touchesReq ?? [],
+        ...(options.force === true ? { force: true } : {}),
+        ...(typeof options.supersede === "string" ? { supersede: options.supersede } : {}),
+        ...(options.dryRun === true ? { dryRun: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  step
+    .command("update-state")
+    .argument("<step>", "step name whose state.md row to update")
+    .option("--status <status>", "active, merging, merged, or abandoned")
+    .option("--depends-on <steps>", "comma-separated DependsOn list")
+    .option("--acknowledged", "acknowledge non-clean closure edges for the merged gate (FR-NODE-078)")
+    .option("--dry-run", "evaluate without writing")
+    .option("--json", "JSON output")
+    .action(async (stepName, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await updateStepState(root, {
+        step: stepName,
+        ...(typeof options.status === "string" ? { status: options.status } : {}),
+        ...(typeof options.dependsOn === "string" ? { dependsOn: options.dependsOn } : {}),
+        ...(options.acknowledged === true ? { acknowledged: true } : {}),
+        ...(options.dryRun === true ? { dryRun: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req FR-NODE-080 — writeIfMissing SDS/intent stub scaffold (content stays directly authored).
+  step
+    .command("scaffold")
+    .argument("<task>", "step name under docs/spec/steps/<task>/")
+    .option("--target <target>", "target stamped into the SDS metadata table")
+    .option("--dry-run", "evaluate without writing")
+    .option("--json", "JSON output")
+    .action(async (task, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await scaffoldStep(root, {
+        task,
+        ...(typeof options.target === "string" ? { target: options.target } : {}),
+        ...(options.dryRun === true ? { dryRun: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req FR-NODE-081 — forward-only SDS lifecycle transition (draft -> agreed -> superseded).
+  step
+    .command("sds-status")
+    .argument("<task>", "step name under docs/spec/steps/<task>/")
+    .argument("<status>", "target SDS status: draft, agreed, or superseded")
+    .option("--dry-run", "evaluate without writing")
+    .option("--json", "JSON output")
+    .action(async (task, status, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await setSdsStatus(root, {
+        task,
+        status,
+        ...(options.dryRun === true ? { dryRun: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  step
+    .command("promote")
+    .argument("<id>", "pre-minted step requirement id to promote into a body scope")
+    .option("--from-step <step>", "origin step name")
+    .option("--to-scope <scope>", "target body scope prefix")
+    .option("--dry-run", "evaluate without writing")
+    .option("--ignore-lock", "bypass the SRS mutation lock")
+    .option("--json", "JSON output")
+    .action(async (id, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const result = await promoteStepRequirement(root, {
+        id,
+        fromStep: String(options.fromStep ?? ""),
+        toScope: String(options.toScope ?? ""),
+        ...(options.dryRun === true ? { dryRun: true } : {}),
+        ...(options.ignoreLock === true ? { ignoreLock: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
   // @req IR-CLI-053 — release-readiness, coverage, and rtm read surfaces over the core release
@@ -958,12 +1090,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 }
 
-// @req IR-CLI-049
-/** Whether a path exists and is a directory. */
-async function isDirectory(target: string): Promise<boolean> {
-  try {
-    return (await stat(target)).isDirectory();
-  } catch {
-    return false;
-  }
+// @req IR-CLI-074 — commander collector for repeatable options (e.g. --touches-req).
+function collectOption(value: string, previous: string[]): string[] {
+  previous.push(value);
+  return previous;
 }

@@ -454,7 +454,7 @@ export interface RequirementFilter {
 
 // ── v3.0.0 step-state infrastructure ──────────────────────────────────
 export type StepStateStatus = "active" | "merging" | "merged" | "abandoned";
-export type StepStateMode = "sdd" | "vibe" | "wait";
+export type StepStateMode = "sdd" | "vibe" | "wait" | "tdd";
 
 export interface StepStateEntry {
   step: string;
@@ -477,6 +477,10 @@ export interface StepListEntry {
   step: string;
   status: string;
   dependsOn: string[];
+  /** FR-NODE-079 — whether docs/spec/steps/<step>/design.md exists. */
+  sdsPresent: boolean;
+  /** FR-NODE-079 — the design.md metadata-table Status value when parseable. */
+  sdsStatus?: string;
 }
 
 export interface StepAdvisory {

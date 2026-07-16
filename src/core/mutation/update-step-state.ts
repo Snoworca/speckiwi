@@ -4,6 +4,9 @@ import { parseWorkspace } from "../parser/workspace-parser.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
+import { getWorkMode } from "./work-mode.js";
+import { evaluateVibeCompletionGate } from "./internal.js";
+import { listDirtyEdges } from "../query/summary.js";
 import type { MutationResult, ProjectRoot, StepStateStatus } from "../types.js";
 
 // @req FR-NODE-043
@@ -20,6 +23,8 @@ export interface UpdateStepStateInput {
   step: string;
   status?: string;
   dependsOn?: string;
+  /** FR-NODE-078 — explicit override for the merged completion gate (vibe/tdd only). */
+  acknowledged?: boolean;
   dryRun?: boolean;
 }
 
@@ -84,6 +89,38 @@ export async function updateStepState(
   const rowLine = table.rowLines[rowIndex] ?? -1;
   if (rowLine < 1) {
     return mutationFail("NOT_FOUND", `Step '${input.step}' not found in docs/spec/steps/state.md`);
+  }
+
+  // @req FR-NODE-078 — the merged transition is completion-gated in vibe/tdd work-modes:
+  // the step's TouchesReq closure must be free of non-clean compatibility edges (or the
+  // caller must explicitly acknowledge them). Other work-modes stay unguarded.
+  if (input.status === "merged") {
+    const workMode = await getWorkMode(root);
+    if (workMode.mode === "vibe" || workMode.mode === "tdd") {
+      const touches = (table.rows[rowIndex]?.TouchesReq ?? "")
+        .split(",")
+        .map((token) => token.trim())
+        .filter((token) => token !== "" && token !== "-");
+      const { edges } = await listDirtyEdges(root);
+      const closureEdges = edges.filter((edge) => touches.includes(edge.self) || touches.includes(edge.peer));
+      const gate = evaluateVibeCompletionGate({
+        vibe: workMode.mode === "vibe",
+        tdd: workMode.mode === "tdd",
+        stepDirectoryExists: true,
+        dirtyEdges: closureEdges,
+        acknowledged: input.acknowledged === true
+      });
+      if (!gate.allowed) {
+        const contradictions = closureEdges
+          .filter((edge) => edge.classification !== "clean")
+          .map((edge) => `${edge.self}~${edge.peer} (${edge.classification})`)
+          .join(", ");
+        return mutationFail(
+          "COMPLETION_GATE_BLOCKED",
+          `Step '${input.step}' cannot be merged: unacknowledged non-clean compatibility edges in its TouchesReq closure — ${contradictions}. Re-check compatibility or retry with acknowledged.`
+        );
+      }
+    }
   }
 
   const original = stateFile.lines[rowLine - 1] ?? "";

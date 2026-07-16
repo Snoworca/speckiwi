@@ -85,7 +85,9 @@ describe("FR-FLOW-014 kiwi-step SKILL.md content", () => {
 
       it("FND-001: authors the step file directly (Write/Edit) and warns against add_requirement", () => {
         const text = readSkill(variant);
-        // direct-authoring instruction present (there is no step-authoring tool).
+        // direct-authoring instruction present. FR-FLOW-038 narrowed this contract: the
+        // scaffold tool (scaffold_step) generates empty stubs only, so the step CONTENT
+        // is still authored directly — the Write/Edit instruction must survive.
         expect(text).toMatch(/Write\/Edit/i);
         // add_requirement is mentioned with a nearby negation/prohibition.
         expect(text).toMatch(/add_requirement/);
