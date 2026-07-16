@@ -172,4 +172,30 @@ describe("FR-NODE-081 — set SDS status lifecycle mutation", () => {
     const appendix = await readFile(path.join(process.cwd(), "docs", "spec", "90.appendix.md"), "utf8");
     expect(appendix).toContain("`set_sds_status`");
   });
+
+  it("FR-NODE-081 AC-6: a padded Status row keeps its cell padding — only the value token changes", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    await mkdir(path.join(root, "docs", "spec", "steps", TASK), { recursive: true });
+    const padded = [
+      "# SDS: fixture design",
+      "",
+      "| Field         | Value              |",
+      "|---------------|--------------------|",
+      "| Document Type | sds                |",
+      "| Status        | draft              |",
+      "",
+      "## 1. Context & Scope",
+      ""
+    ].join("\n");
+    await writeFile(designPath(root, TASK), padded, "utf8");
+
+    const result = await setSdsStatus({ root }, { task: TASK, status: "agreed" });
+
+    expect(result.ok).toBe(true);
+    const after = await readFile(designPath(root, TASK), "utf8");
+    // The alignment padding survives; only the value token is replaced
+    // (no table re-normalization).
+    expect(after).toContain("| Status        | agreed              |");
+    expect(after).not.toContain("| Status | agreed |");
+  });
 });

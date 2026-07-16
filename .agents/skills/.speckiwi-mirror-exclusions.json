@@ -1,0 +1,4 @@
+{
+  "excluded": ["kiwi-step", "kiwi-wave-master"],
+  "reason": "FR-FLOW-029 intentional exclusion: these two paths are hermeticity leak sentinels (test/support/repo-hermeticity.ts) and must stay untracked in this repository's mirror. Committee 2026-07-17 Q7:B — exclusion made first-class instead of weakening the leak guard (A) or normalizing a permanent false warn (C). See FR-NODE-083 AC-5/AC-6."
+}

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { splitDiagnostics } from "../diagnostic.js";
 import { parseStepState } from "../parser/index-parser.js";
+import { isSafeTaskName } from "../step-name.js";
 import type { Diagnostic, DiagnosticLocation, ParsedWorkspace, ProjectRoot, StepStateEntry, ValidationResult } from "../types.js";
 
 // @req FR-PARSE-027 FR-PARSE-028 FR-PARSE-033 IR-CLI-046 FR-MCP-040
@@ -50,6 +51,10 @@ export interface SdsDesignInput {
  * so the CLI/MCP surfaces load it here and hand it to validateWorkspaceScoped.
  */
 export async function loadStepDesign(root: ProjectRoot, stepName: string): Promise<SdsDesignInput> {
+  // AC-5: a non-single-segment step name never resolves a path outside docs/spec/steps.
+  if (!isSafeTaskName(stepName)) {
+    return { present: false, lines: [] };
+  }
   const designPath = path.join(root.root, "docs", "spec", "steps", stepName, "design.md");
   try {
     const text = await readFile(designPath, "utf8");

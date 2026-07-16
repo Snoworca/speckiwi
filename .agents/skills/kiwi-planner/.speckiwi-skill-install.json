@@ -1,15 +1,15 @@
 {
   "name": "kiwi-planner",
   "agent": "codex",
-  "installedAt": "2026-07-16T16:07:21.571Z",
+  "installedAt": "2026-07-16T18:49:21.085Z",
   "installMode": "generated-runtime-mirror",
   "sourceAgent": "codex",
   "sourceRoot": "skills/codex",
   "sourcePath": "skills/codex/kiwi-planner",
   "installedPath": ".agents/skills/kiwi-planner",
-  "sourceRevision": "21e0f5eb4ad6b1be8e9a70a7b0791640efcfc7c6",
-  "sourceChecksum": "sha256:768c8cf2680766d9e34318b29e81d6f410651cb555754b960d05f3ddda300a3d",
-  "installedChecksum": "sha256:768c8cf2680766d9e34318b29e81d6f410651cb555754b960d05f3ddda300a3d",
+  "sourceRevision": "a02fc82580372e63224edd9bf8b1a28490f030c3",
+  "sourceChecksum": "sha256:70a1243a10386f4bfd9fe585deb0a63e671143bec9c7b6c3ba0410372b733f98",
+  "installedChecksum": "sha256:70a1243a10386f4bfd9fe585deb0a63e671143bec9c7b6c3ba0410372b733f98",
   "sourceFileCount": 4,
   "installedFileCount": 4,
   "sharedResourceRoot": ".agents/skills/_shared/kiwi",
@@ -17,7 +17,8 @@
   "sharedResourceReferences": [
     "_shared/kiwi/auto-option.md",
     "_shared/kiwi/loop-option.md",
-    "_shared/kiwi/pipeline-event.md"
+    "_shared/kiwi/pipeline-event.md",
+    "_shared/kiwi/workmode-policy.md"
   ],
   "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-planner --json",
   "noManualEdit": true

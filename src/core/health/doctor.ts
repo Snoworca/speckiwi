@@ -223,10 +223,30 @@ async function listSkillNames(sourceRoot: string): Promise<string[]> {
 
 // @req FR-NODE-083
 /**
+ * AC-5 — a workspace-committed exclusions manifest names skills that are intentionally not
+ * mirrored (e.g. this repo reserves kiwi-step/kiwi-wave-master as hermeticity leak sentinels,
+ * FR-FLOW-029 / committee 2026-07-17 Q7:B). Absent or unparseable manifests fall back to the
+ * full source scan so end-user workspaces keep the complete expectation.
+ */
+async function readMirrorExclusions(mirrorRoot: string): Promise<Set<string>> {
+  const raw = await readOrUndefined(path.join(mirrorRoot, ".speckiwi-mirror-exclusions.json"));
+  if (raw === undefined) return new Set();
+  try {
+    const parsed = JSON.parse(raw) as { excluded?: unknown };
+    if (!Array.isArray(parsed.excluded)) return new Set();
+    return new Set(parsed.excluded.filter((name): name is string => typeof name === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+// @req FR-NODE-083
+/**
  * Codex skills mirror drift: compares the bundled skills/codex source tree against the workspace
  * .agents/skills install mirror. The expected set is derived by scanning the source tree (never a
- * hardcoded list); a workspace without a mirror is ok (not provisioned is not drift). A skill that
- * is missing from the mirror or whose SKILL.md content diverges from the source warns.
+ * hardcoded list) minus the workspace mirror-exclusions manifest (AC-5); a workspace without a
+ * mirror is ok (not provisioned is not drift). A skill that is missing from the mirror or whose
+ * SKILL.md content diverges from the source warns.
  */
 async function checkCodexSkillsMirror(rootPath: string, sourceRoot?: string): Promise<DoctorCheck> {
   const topic = "codex skills mirror drift";
@@ -243,7 +263,8 @@ async function checkCodexSkillsMirror(rootPath: string, sourceRoot?: string): Pr
     };
   }
   const source = sourceRoot ?? bundledCodexSkillsRoot();
-  const expected = await listSkillNames(source);
+  const exclusions = await readMirrorExclusions(mirrorRoot);
+  const expected = (await listSkillNames(source)).filter((name) => !exclusions.has(name));
   const missing: string[] = [];
   const diverged: string[] = [];
   // Line endings are transport noise, not drift — normalize before comparing.
@@ -274,7 +295,7 @@ async function checkCodexSkillsMirror(rootPath: string, sourceRoot?: string): Pr
     topic,
     label,
     state: "ok",
-    message: `.agents/skills matches the bundled codex skills (${expected.length} skills)`,
+    message: `.agents/skills matches the bundled codex skills (${expected.length} skills${exclusions.size > 0 ? `; ${exclusions.size} excluded by manifest` : ""})`,
     remediation: "No action needed; the codex skills mirror is in sync."
   };
 }

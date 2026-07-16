@@ -55,6 +55,7 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 | §0.18 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 불변 |
 | §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. scope ambiguity, deferred coverage, force-proceed, strict TDD block, and external path gates are governed by §0.G9 critical_gates[]. |
 | §0.20 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.21 | **work-mode ↔ `--tdd-policy` 파생 SSOT**. 본 스킬은 `../_shared/kiwi/workmode-policy.md` v1.0 을 따른다. Phase 0(§3.4)에서 work-mode 를 MCP `get_work_mode`(우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(fail-open)로 읽고, `--tdd-policy` 미지정 시 매핑(**tdd → strict**, 그 외 `relaxed`)으로 파생 기본을 적용해 plan.md frontmatter·사이드카 `tdd_policy` 에 기록한다. `disabled` 는 어떤 mode 로부터도 파생되지 않으며 명시 `--tdd-policy=disabled` 플래그로만 설정된다. 명시 `--tdd-policy` 는 파생 기본을 항상 이기며(이길 때 비-치명 WARN), §0.17 게이트·validator 검사는 불변 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -268,6 +269,15 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 | `target_total = 0` | HALT + "target 에 REQ 가 없습니다. $kiwi-srs 로 먼저 작성하십시오." |
 | `filtered = 0` (target_total > 0) | HALT + "필터 결과 0건. REQ_FILTER 또는 --draft-policy 확인 권장." |
 | `filtered ≥ 1` | Phase 1 진행 |
+
+### 3.4 work-mode 파생 `--tdd-policy` 기본 (FR-FLOW-040)
+
+`../_shared/kiwi/workmode-policy.md` v1.0 SSOT 를 따른다. Bootstrap 시:
+
+1. work-mode 를 MCP `get_work_mode`(가용 시 우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(**fail-open**)로 읽는다.
+2. `--tdd-policy` 가 **미지정**이면 매핑으로 파생 기본을 적용한다: **tdd → strict**, 그 외(sdd / wait / vibe) → `relaxed`. `disabled` 는 어떤 mode 로부터도 파생되지 않는다(명시 `--tdd-policy=disabled` 로만 설정).
+3. `--tdd-policy` 가 **명시**되면 그 명시 값이 파생 기본을 **항상 이긴다(wins)**. 명시 값이 파생 기본과 다르면 비-치명 **WARN** 1줄 출력 후 명시 값으로 진행한다.
+4. 확정된 `tdd_policy` 를 plan.md frontmatter 와 사이드카에 기록한다. 이후 §0.17 / §0.G7 / §0.G8 게이트·validator C21~C25 는 이 값으로 동작한다.
 
 ---
 

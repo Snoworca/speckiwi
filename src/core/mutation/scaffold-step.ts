@@ -27,11 +27,10 @@ export interface ScaffoldStepValue {
   written: boolean;
 }
 
-// @req FR-NODE-080
-/** A step/task name is a single path segment: no separators, traversal, or empties. */
-export function isSafeTaskName(task: string): boolean {
-  return task.trim().length > 0 && !/[\\/]/.test(task) && task !== "." && task !== "..";
-}
+// @req FR-NODE-080 — the guard lives in the shared dependency-free module; re-exported
+// so existing importers (set-sds-status) keep their import path.
+import { isSafeTaskName } from "../step-name.js";
+export { isSafeTaskName };
 
 export async function scaffoldStep(root: ProjectRoot, input: ScaffoldStepInput): Promise<MutationResult<ScaffoldStepValue>> {
   if (!isSafeTaskName(input.task)) {

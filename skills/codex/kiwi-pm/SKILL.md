@@ -56,6 +56,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 |---|---|
 | `plan_contract ≠ "1.2.0"` 또는 `schema_version ≠ "1.1.0"` | 거부 + "kiwi-planner --tdd-policy=relaxed\|strict 로 재실행하여 산출물을 생성하십시오" 안내 (kiwi-coder §0.G3 정합) |
 | `tdd_policy = "disabled"` | 거부 + 권고 |
+| 입력 plan 의 `tdd_policy` 가 현재 work-mode 파생 기본과 **모순** (예: work-mode=tdd + plan `relaxed`) | **WARN (non-HALT)** — `../_shared/kiwi/workmode-policy.md` §3 인용, 1줄 경고 후 plan 의 `tdd_policy` 로 진행. 현재 work-mode 는 MCP `get_work_mode` → CLI `speckiwi mode` 로 읽는다. 위 `tdd_policy = "disabled"` 거부 행은 별개이며 불변 |
 | sidecar JSON parse 실패 | 거부 + validator.mjs 재실행 권고 (`node ../kiwi-planner/scripts/validator.mjs ...`) |
 | sidecar.tasks[] 빈 배열 또는 부재 | 거부 — 실행할 Task 없음 |
 | `task_id` / `phase_id` / `run_id` 정규식 위반 (§0.14) | 거부 |

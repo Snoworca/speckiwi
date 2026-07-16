@@ -170,6 +170,24 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 
 ---
 
+## 2.8 work-mode 라우팅 게이트 (tdd step-scoped 라우팅, FR-FLOW-039)
+
+사이클 시작 시(Phase 0), 본 스킬은 §2.5 의 5단계 sdd 체인(`kiwi-srs → … → kiwi-review-fix-loop`)으로 진입하기 전에 먼저 현재 **work-mode** 를 읽어 라우팅을 결정한다. 이 게이트는 §2.5 체인 본문과 독립된 별도 절이며, 체인 자체는 변경하지 않는다.
+
+### 2.8.1 work-mode 조회 (MCP-first, fail-open)
+
+1. MCP `get_work_mode`(가용 시 우선)로 현재 work-mode 를 읽는다.
+2. MCP 부재 시 CLI `speckiwi mode`(fallback)로 읽는다.
+3. 둘 다 부재 시 `wait` 로 간주한다(**fail-open**) — work-mode 를 못 읽는다고 사이클을 막지 않는다.
+
+### 2.8.2 라우팅 결정 (tdd + step-scoped → kiwi-tdd)
+
+- work-mode 가 **`tdd`** 이고 요청 작업이 **step-scoped**(단일 기능 / step 규모)이면, §2.5 의 5단계 sdd 체인 **대신** `kiwi-tdd` 스킬로 **라우팅**한다 (SDS 선행 TDD First 사이클). 이때 사이클 오케스트레이션은 kiwi-tdd 가 담당한다.
+- 그 외 — work-mode 가 tdd 가 아니거나, 작업이 **body-scope** REQ 수정 또는 대규모 아키텍처 변경이면 — §2.5 의 5단계 sdd 체인을 그대로 **유지**한다.
+- 이 경계 원칙은 agent snippet 규칙 6(tdd step 은 step-scoped 작업만; body-scope·대형 아키텍처 변경은 sdd 체인)과 동일하다.
+
+---
+
 ## 3. Phase 0 — 파일 경로 해석
 
 `../_shared/kiwi/pipeline-event.md` §1 의 해석 순서:

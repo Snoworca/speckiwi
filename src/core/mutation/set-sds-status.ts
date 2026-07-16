@@ -82,7 +82,8 @@ export async function setSdsStatus(root: ProjectRoot, input: SetSdsStatusInput):
 
   const written = input.dryRun !== true;
   if (written) {
-    lines[statusLine] = `| Status | ${to} |`;
+    // AC-6: replace only the value token — the original cell padding survives.
+    lines[statusLine] = (lines[statusLine] ?? "").replace(/^(\|\s*Status\s*\|\s*)([^|]*?)(\s*\|\s*)$/, `$1${to}$3`);
     await writeFile(designPath, lines.join(eol), "utf8");
   }
 

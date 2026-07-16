@@ -54,6 +54,7 @@ plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경�
 | §0.17 | **TDD 원칙 SSOT**. 전역 AGENTS.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 $kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
 | §0.18 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
 | §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.20 | **work-mode ↔ `--tdd-policy` 파생 SSOT**. 본 스킬은 `../_shared/kiwi/workmode-policy.md` v1.0 을 따른다. Phase 0(§3.4)에서 work-mode 를 MCP `get_work_mode`(우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(fail-open)로 읽고, `--tdd-policy` 미지정 시 매핑(**tdd → strict**, 그 외 `relaxed`)으로 파생 기본을 적용해 plan.md frontmatter·사이드카 `tdd_policy` 에 기록한다. `disabled` 는 어떤 mode 로부터도 파생되지 않으며 명시 `--tdd-policy=disabled` 플래그로만 설정된다. 명시 `--tdd-policy` 는 파생 기본을 항상 이기며(이길 때 비-치명 WARN), §0.17 게이트·validator 검사는 불변 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -269,6 +270,15 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 | `target_total = 0` | HALT + "target 에 REQ 가 없습니다. $kiwi-srs 로 먼저 작성하십시오." |
 | `filtered = 0` (target_total > 0) | HALT + "필터 결과 0건. REQ_FILTER 또는 --draft-policy 확인 권장." |
 | `filtered ≥ 1` | Phase 1 진행 |
+
+### 3.4 work-mode 파생 `--tdd-policy` 기본 (FR-FLOW-040)
+
+`../_shared/kiwi/workmode-policy.md` v1.0 SSOT 를 따른다. Bootstrap 시:
+
+1. work-mode 를 MCP `get_work_mode`(가용 시 우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(**fail-open**)로 읽는다.
+2. `--tdd-policy` 가 **미지정**이면 매핑으로 파생 기본을 적용한다: **tdd → strict**, 그 외(sdd / wait / vibe) → `relaxed`. `disabled` 는 어떤 mode 로부터도 파생되지 않는다(명시 `--tdd-policy=disabled` 로만 설정).
+3. `--tdd-policy` 가 **명시**되면 그 명시 값이 파생 기본을 **항상 이긴다(wins)**. 명시 값이 파생 기본과 다르면 비-치명 **WARN** 1줄 출력 후 명시 값으로 진행한다.
+4. 확정된 `tdd_policy` 를 plan.md frontmatter 와 사이드카에 기록한다. 이후 §0.17 / §0.G7 / §0.G8 게이트·validator C21~C25 는 이 값으로 동작한다.
 
 ---
 

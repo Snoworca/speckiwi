@@ -1,10 +1,12 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { mkdtemp } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { diagnoseHealth } from "../../../src/core/health/doctor.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
+import { REPO_POLLUTION_SENTINELS } from "../../support/repo-hermeticity.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 // FR-NODE-083 — doctor detects codex skills mirror drift.
@@ -105,5 +107,83 @@ describe("FR-NODE-083 — doctor codex skills mirror drift check", () => {
     await buildMirror(eolRoot, { "kiwi-alpha": "# a\r\nline\r\n" });
     const eol = await mirrorCheck(eolRoot, eolSource);
     expect(eol?.state).toBe("ok");
+  });
+
+  it("FR-NODE-083 default source branch: omitting codexSkillsSourceRoot compares against the bundled skills/codex tree", async () => {
+    // Integration over the default bundledCodexSkillsRoot() branch: a mirror copied
+    // verbatim from the real bundled tree is ok; removing one skill from it warns.
+    const bundled = fileURLToPath(new URL("../../../skills/codex", import.meta.url));
+    const root = await copyFixtureWorkspace("valid-basic");
+    await cp(bundled, path.join(root, ".agents", "skills"), { recursive: true });
+
+    const workspace = await parseWorkspace({ root });
+    const inSync = (await diagnoseHealth(workspace)).checks.find((entry) => /mirror/i.test(entry.label));
+    expect(inSync?.state).toBe("ok");
+
+    const skillDirs = (await readdir(path.join(root, ".agents", "skills"), { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("kiwi-"))
+      .map((entry) => entry.name)
+      .sort();
+    const removed = skillDirs[0] as string;
+    await rm(path.join(root, ".agents", "skills", removed), { recursive: true });
+
+    const drifted = (await diagnoseHealth(workspace)).checks.find((entry) => /mirror/i.test(entry.label));
+    expect(drifted?.state).toBe("warn");
+    expect(drifted?.message).toContain(removed);
+  });
+
+  it("FR-NODE-083 AC-5: a mirror-exclusions manifest subtracts skills from the expected set", async () => {
+    // Excluded skill missing from the mirror → ok (not drift).
+    const root = await copyFixtureWorkspace("valid-basic");
+    const source = await buildSourceTree({ "kiwi-alpha": "# a\n", "kiwi-beta": "# b\n" });
+    await buildMirror(root, { "kiwi-alpha": "# a\n" });
+    await writeFile(
+      path.join(root, ".agents", "skills", ".speckiwi-mirror-exclusions.json"),
+      JSON.stringify({ excluded: ["kiwi-beta"], reason: "fixture" }),
+      "utf8"
+    );
+    const excludedOk = await mirrorCheck(root, source);
+    expect(excludedOk?.state).toBe("ok");
+
+    // A non-excluded missing skill still warns (exclusion never widens).
+    const partialRoot = await copyFixtureWorkspace("valid-basic");
+    const partialSource = await buildSourceTree({ "kiwi-alpha": "# a\n", "kiwi-beta": "# b\n", "kiwi-gamma": "# g\n" });
+    await buildMirror(partialRoot, { "kiwi-alpha": "# a\n" });
+    await writeFile(
+      path.join(partialRoot, ".agents", "skills", ".speckiwi-mirror-exclusions.json"),
+      JSON.stringify({ excluded: ["kiwi-beta"] }),
+      "utf8"
+    );
+    const stillWarn = await mirrorCheck(partialRoot, partialSource);
+    expect(stillWarn?.state).toBe("warn");
+    expect(stillWarn?.message).toContain("kiwi-gamma");
+    expect(stillWarn?.message).not.toContain("kiwi-beta");
+
+    // An unparseable manifest falls back to the full source scan.
+    const badRoot = await copyFixtureWorkspace("valid-basic");
+    const badSource = await buildSourceTree({ "kiwi-alpha": "# a\n", "kiwi-beta": "# b\n" });
+    await buildMirror(badRoot, { "kiwi-alpha": "# a\n" });
+    await writeFile(path.join(badRoot, ".agents", "skills", ".speckiwi-mirror-exclusions.json"), "{ not json", "utf8");
+    const fallback = await mirrorCheck(badRoot, badSource);
+    expect(fallback?.state).toBe("warn");
+    expect(fallback?.message).toContain("kiwi-beta");
+  });
+
+  it("FR-NODE-083 AC-6: the repo steady-state mirror check is ok and the manifest matches the sentinels", async () => {
+    const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
+
+    // The committed manifest excludes exactly the sentinel-reserved skill dirs.
+    const manifestPath = path.join(repoRoot, ".agents", "skills", ".speckiwi-mirror-exclusions.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { excluded: string[] };
+    const sentinelSkills = REPO_POLLUTION_SENTINELS
+      .filter((entry) => entry.startsWith(".agents/skills/"))
+      .map((entry) => path.posix.basename(entry))
+      .sort();
+    expect([...manifest.excluded].sort()).toEqual(sentinelSkills);
+
+    // With the manifest in place the repo's own mirror check reports ok durably.
+    const workspace = await parseWorkspace({ root: repoRoot });
+    const check = (await diagnoseHealth(workspace)).checks.find((entry) => /mirror/i.test(entry.label));
+    expect(check?.state).toBe("ok");
   });
 });

@@ -1031,6 +1031,7 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 | `plan_contract ≠ "1.2.0"` | HALT — kiwi-coder §0.G3 동치 거부 + 재실행 권고 |
 | `schema_version ≠ "1.1.0"` | HALT |
 | `tdd_policy = "disabled"` | HALT — TDD 강제 정책 |
+| 입력 plan 의 `tdd_policy` 가 현재 work-mode 파생 기본과 **모순** (예: work-mode=tdd + plan `relaxed`) | **WARN (non-HALT)** — `_shared/kiwi/workmode-policy.md` §3 인용, 1줄 경고 후 plan 의 `tdd_policy` 로 진행. 현재 work-mode 는 MCP `get_work_mode` → CLI `speckiwi mode` 로 읽는다. 위 `tdd_policy = "disabled"` HALT 행은 별개이며 불변 |
 | sidecar.json parse 실패 | HALT — validator.mjs 재실행 권고 |
 | sidecar.tasks 빈 배열 또는 부재 | HALT — 실행할 Task 없음 |
 | `task_id` / `phase_id` / `run_id` 정규식 위반 (§0.14) | HALT |
