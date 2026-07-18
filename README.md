@@ -10,13 +10,15 @@
 
 # SpecKiwi
 
-SpecKiwi is a local-first workflow tool that treats Markdown SRS documents inside a Git repository as the canonical source of requirements. It gives people and coding agents a single shared view of the same requirements through a **CLI** and a **stdio MCP server**.
+SpecKiwi is a local-first workflow tool that treats Markdown SRS (Software Requirements Specification) documents inside a Git repository as the canonical source of requirements. It gives people and coding agents a single shared view of the same requirements through a **CLI** and a **stdio MCP server**.
 
 **Kiwi skills** are coding-agent skills built on top of SpecKiwi. They connect requirement authoring, feasibility review, implementation planning, TDD-based coding, SRS synchronization, commit, and push into one pipeline.
 
 - Requirements live in `docs/spec/**/*.srs.md` (GitHub-Flavored Markdown). No YAML, no database, no requirements server.
 - The CLI and the MCP server share the same core parser, validator, query, and mutation engine.
 - Everything is a normal Git-tracked file, so requirements are reviewed and versioned like code.
+
+**Key terms.** A **Target** (e.g. `v0.1.0`) groups requirements for a release; the **Active Target** is the one new work defaults to. A **Scope** is a functional area with an ID prefix (`App:APP` → `FR-APP-001`). Each requirement carries two independent lifecycle fields — **Status** (implementation/verification progress) and **Stability** (change-control maturity).
 
 ## Table of Contents
 
@@ -54,7 +56,7 @@ npm install speckiwi@latest
 After a local install, run it with `npx`:
 
 ```sh
-npx speckiwi --version   # -> 2.3.0
+npx speckiwi --version   # -> 2.4.0
 npx speckiwi --help
 ```
 
@@ -96,7 +98,7 @@ The whole operation runs under an SRS mutation lock and is **idempotent** — ex
 | --- | --- | --- |
 | 1 | **SRS scaffold** | `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log center), `docs/spec/90.appendix.md`, and an empty scope document `docs/spec/<NN>.<scope>.srs.md` derived from `--scope`. |
 | 2 | **Step state** | `docs/spec/steps/state.md` with a `Mode: wait` metadata block and an empty step-state table. |
-| 3 | **Authoring rules** | `docs/rule/SRS-MD-Rules-v1.0.0.md` (the bundled SRS-MD authoring rules). |
+| 3 | **Authoring rules** | `docs/rule/SRS-MD-Rules-v1.0.0.md` and `docs/rule/SDS-MD-Rules-v1.0.0.md` (the bundled SRS-MD and SDS-MD authoring rules). |
 | 4 | **Agent instructions** | Inserts/updates the *SpecKiwi SRS workflow* block in both `AGENTS.md` and `CLAUDE.md`. An older version of the block is replaced in place; a current block is left untouched. |
 | 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; a Git `.git/hooks/pre-commit` gate that delegates to the runner; `.claude/settings.json` (PostToolUse trace hook); `.codex/hooks.json` (apply_patch trace hook). Pre-existing hooks are never clobbered — they are left as-is with a warning. |
 | 6 | **MCP registration** | Registers the SpecKiwi stdio MCP server in `.mcp.json` (idempotent; `skipped` if already present). Disable with `--no-mcp`. |
@@ -118,7 +120,8 @@ CLAUDE.md                     # SpecKiwi SRS workflow block
 docs/
 ├─ .kiwi/hooks/               # bundled hook runners + trace output
 ├─ rule/
-│  └─ SRS-MD-Rules-v1.0.0.md
+│  ├─ SRS-MD-Rules-v1.0.0.md
+│  └─ SDS-MD-Rules-v1.0.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
    ├─ 10.app.srs.md           # your first scope document
@@ -216,6 +219,8 @@ The server speaks **stdio** and does **not** accept `--root`. It resolves the pr
 }
 ```
 
+After `init` writes `.mcp.json`, reload or restart your agent so it launches the server. Run `speckiwi mcp` by hand only for debugging — it blocks on stdio and can look like it is hanging.
+
 ### MCP tools
 
 Kiwi skills use MCP tools for all reads and safe SRS mutations. CLI equivalents exist as a fallback for diagnostics and manual operation — they are not the normal mutation path.
@@ -223,11 +228,22 @@ Kiwi skills use MCP tools for all reads and safe SRS mutations. CLI equivalents 
 | Category | Tools |
 | --- | --- |
 | Target & goal | `get_active_target`, `set_active_target`, `set_target_goal`, `summarize_target` |
-| Read | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements` |
+| Read | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status & stability | `update_status`, `update_stability` |
 | Evidence & trace | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| Authoring | `add_requirement`, `append_section_note`, `add_completed_work` |
+| Authoring & editing | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `supersede_requirement` |
+| Work mode | `get_work_mode`, `set_work_mode` |
+| Steps & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
+| Duplicate-ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
 | Workspace | `validate_spec`, `sync_index`, `init_project` |
+
+### Your first run
+
+With the MCP server connected, drive the work in natural language — the Kiwi skills trigger on intent (or invoke one by name, e.g. `/kiwi-srs`). For example, ask your agent:
+
+> *Use kiwi-srs to capture a requirement: a user can reset their password by email.*
+
+`kiwi-srs` allocates a Requirement ID and writes it into `docs/spec/<scope>.srs.md`; from there `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder` carry it to implementation. The pipeline in §7 shows the full flow.
 
 <a id="en-skill-types"></a>
 
@@ -249,6 +265,7 @@ Kiwi skills use MCP tools for all reads and safe SRS mutations. CLI equivalents 
 | `kiwi-review-fix-loop` | Run review/fix/re-review over local changes or PR comments; optionally verify REQs. |
 | `kiwi-pipeline` | Read `kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
 | `kiwi-step` | Author step-local requirement drafts under `docs/spec/steps/<name>/` — claim a step, write only inside it (no body-scope SRS edits), then validate it locally. The lightweight counterpart of `kiwi-srs`. |
+| `kiwi-tdd` | Drive one step through the `tdd` work-mode's TDD First cycle: author the SDS (`design.md`), turn its EARS acceptance contracts into failing tests (red), implement to green, run regression, then synthesize and promote the step requirement with mandatory evidence. |
 | `kiwi-wave-master` | Split a large task (epic/roadmap/long research) into ordered waves, register a dedicated target per wave, and run each wave's pipeline sequentially. Resumable via `kiwi/waves.jsonl`. |
 
 The same skill set ships in agent-specific source trees: **`skills/codex`** (Codex invocation + clarification-gate wording), **`skills/claude`** (Claude skill environment), and **`skills/etc`** (Agent Skills format for OpenCode / Hermes and local-LLM usage; defaults to a single evaluator/sub-agent profile).
@@ -296,7 +313,7 @@ flowchart TD
     P -.-> N
 ```
 
-Task execution is TDD-first:
+Inside `kiwi-coder`, each task runs a TDD loop:
 
 ```mermaid
 flowchart TD
@@ -313,6 +330,8 @@ flowchart TD
     J --> K["Check AC / update status"]
     K --> L["Update .kiwi state and worklog"]
 ```
+
+This is the per-task loop inside `kiwi-coder` on the main pipeline. For **step-scoped** work the `tdd` work-mode runs a parallel **TDD First** cycle via `kiwi-tdd` — SDS → red → green → regression → `promote_step_requirement` — instead of routing through `kiwi-planner` / `kiwi-pm` (see §8, *Work modes and steps*).
 
 <a id="en-commands"></a>
 
@@ -375,11 +394,24 @@ speckiwi links check                         # trace-link integrity (workflow ga
 
 ### Work modes and steps
 
+The work mode is persisted in `docs/spec/steps/state.md`; a fresh project starts in `wait`.
+
+- **`wait`** — default; no Active Task, the SRS-first rules apply.
+- **`sdd`** — spec-driven body work (author/adjust body-scope requirements first, then implement).
+- **`vibe`** — code-first: write code against an Active Task, then synthesize the SRS afterward (`vibe-gate` blocks unsynthesized commits).
+- **`tdd`** — step-scoped **TDD First** cycle via `kiwi-tdd`: author an SDS (Software Design Specification, `design.md`) with EARS-style acceptance contracts, turn them into failing tests (red), implement to green, run regression, then synthesize and promote the step requirement.
+
 ```sh
-speckiwi mode                  # show the current work mode (sdd | vibe | wait)
-speckiwi mode sdd              # set the work mode
-speckiwi step validate <name>  # validate a step-local draft under docs/spec/steps/<name>/
-speckiwi vibe-gate check       # CI gate that blocks unsynthesized vibe commits
+speckiwi mode                                    # show the current work mode (sdd | vibe | wait | tdd)
+speckiwi mode tdd                                # switch mode (sdd, vibe, wait, or tdd)
+speckiwi step claim <name> --touches-scope APP   # claim a step before authoring it
+speckiwi step scaffold <name>                    # create design.md + intent.md stubs
+speckiwi step validate <name>                    # validate a step-local draft under docs/spec/steps/<name>/
+speckiwi step sds-status <name> agreed           # advance the SDS lifecycle (draft -> agreed -> superseded)
+speckiwi step synthesize <name>                  # synthesize the step SRS from design.md
+speckiwi step promote <id> --from-step <name> --to-scope APP   # promote into a body scope (evidence required in tdd)
+speckiwi step update-state <name> --status merged              # transition the step through the completion gate
+speckiwi vibe-gate check                         # CI gate that blocks unsynthesized vibe/tdd commits
 ```
 
 ### Mutations (MCP is the normal path; CLI is for manual operation and diagnostics)
@@ -450,6 +482,7 @@ The npm package distributes:
 bin/
 dist/
 docs/rule/SRS-MD-Rules-v1.0.0.md
+docs/rule/SDS-MD-Rules-v1.0.0.md
 skills/codex/
 skills/claude/
 skills/etc/
@@ -464,6 +497,7 @@ The onboarding, skill-installation, mutation, and workflow behavior documented a
 - `FR-NODE-067` / `FR-NODE-068` / `FR-NODE-069` / `FR-NODE-070` / `IR-CLI-070`: `speckiwi init` MCP registration, Claude/Codex skill provisioning, orphan `kiwi-*` prune, and the unified dry-run/report envelope.
 - `IR-CLI-027` / `FR-NODE-016`: `speckiwi skills install <agent> <skill|all>` CLI and its core service.
 - `FR-FLOW-012`: Kiwi skills require the SpecKiwi MCP for normal operation.
+- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: the `tdd` work-mode, the SDS-MD authoring standard (`design.md`), the `kiwi-tdd` skill, and the `get_work_mode` / `set_work_mode` MCP tools (TDD First mode).
 - `MIG-FLOW-002`: `skills/etc` variant for OpenCode and Hermes.
 - `FR-PARSE-017` / `FR-MCP-017` / `IR-CLI-026`: Stability lifecycle and `update_stability`.
 - `FR-MCP-018`: `append_section_note` mutation.
@@ -477,13 +511,15 @@ The onboarding, skill-installation, mutation, and workflow behavior documented a
 
 # SpecKiwi (한국어)
 
-SpecKiwi는 Git 저장소 안의 Markdown SRS 문서를 요구사항의 **유일한 원본(canonical source)**으로 사용하고, **CLI**와 **stdio MCP 서버**를 통해 사람과 코딩 에이전트가 같은 요구사항 데이터를 함께 다루게 해 주는 local-first workflow 도구입니다.
+SpecKiwi는 Git 저장소 안의 Markdown SRS(Software Requirements Specification) 문서를 요구사항의 **유일한 원본(canonical source)**으로 사용하고, **CLI**와 **stdio MCP 서버**를 통해 사람과 코딩 에이전트가 같은 요구사항 데이터를 함께 다루게 해 주는 local-first workflow 도구입니다.
 
 **Kiwi skills**는 SpecKiwi 위에서 동작하는 코딩 에이전트용 작업 스킬 모음으로, 요구사항 작성 · 구현 가능성 검토 · 계획 수립 · TDD 기반 코딩 · SRS 동기화 · 커밋 · push를 하나의 파이프라인으로 연결합니다.
 
 - 요구사항은 `docs/spec/**/*.srs.md`(GitHub-Flavored Markdown)에 저장됩니다. YAML도, 데이터베이스도, 별도 요구사항 서버도 없습니다.
 - CLI와 MCP 서버는 동일한 core parser · validator · query · mutation 엔진을 공유합니다.
 - 모든 것이 Git으로 추적되는 일반 파일이므로 요구사항을 코드처럼 리뷰하고 버전 관리합니다.
+
+**핵심 용어.** **Target**(예: `v0.1.0`)은 릴리스 단위로 요구사항을 묶고, **Active Target**은 새 작업이 기본으로 향하는 target입니다. **Scope**는 ID 접두사를 가진 기능 영역입니다(`App:APP` → `FR-APP-001`). 각 요구사항은 독립된 두 lifecycle 필드 — **Status**(구현·검증 진행)와 **Stability**(변경 통제 성숙도) — 를 가집니다.
 
 ## 목차
 
@@ -521,7 +557,7 @@ npm install speckiwi@latest
 로컬 설치 후에는 `npx`로 실행합니다.
 
 ```sh
-npx speckiwi --version   # -> 2.3.0
+npx speckiwi --version   # -> 2.4.0
 npx speckiwi --help
 ```
 
@@ -563,7 +599,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 | --- | --- | --- |
 | 1 | **SRS scaffold** | `docs/spec/00.index.md`(Target Map · Scope Map · Completed Work Log의 중심), `docs/spec/90.appendix.md`, 그리고 `--scope`에서 파생된 빈 scope 문서 `docs/spec/<NN>.<scope>.srs.md`. |
 | 2 | **Step state** | `docs/spec/steps/state.md` — `Mode: wait` 메타 블록과 빈 step-state 표. |
-| 3 | **저작 규칙** | `docs/rule/SRS-MD-Rules-v1.0.0.md` (번들된 SRS-MD 저작 규칙). |
+| 3 | **저작 규칙** | `docs/rule/SRS-MD-Rules-v1.0.0.md`와 `docs/rule/SDS-MD-Rules-v1.0.0.md` (번들된 SRS-MD · SDS-MD 저작 규칙). |
 | 4 | **에이전트 지시문** | `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 삽입/갱신. 구 버전 블록은 제자리에서 교체되고, 최신 블록은 그대로 둡니다. |
 | 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; 러너에 위임하는 Git `.git/hooks/pre-commit` 게이트; `.claude/settings.json`(PostToolUse trace hook); `.codex/hooks.json`(apply_patch trace hook). 기존 hook은 절대 덮어쓰지 않고 경고와 함께 유지합니다. |
 | 6 | **MCP 등록** | SpecKiwi stdio MCP 서버를 `.mcp.json`에 등록(멱등; 이미 있으면 `skipped`). `--no-mcp`로 비활성화. |
@@ -585,7 +621,8 @@ CLAUDE.md                     # SpecKiwi SRS workflow 블록
 docs/
 ├─ .kiwi/hooks/               # 번들 hook 러너 + trace 출력
 ├─ rule/
-│  └─ SRS-MD-Rules-v1.0.0.md
+│  ├─ SRS-MD-Rules-v1.0.0.md
+│  └─ SDS-MD-Rules-v1.0.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
    ├─ 10.app.srs.md           # 첫 scope 문서
@@ -683,6 +720,8 @@ speckiwi mcp
 }
 ```
 
+`speckiwi init`이 `.mcp.json`을 쓴 뒤에는 에이전트를 reload/재시작해야 서버가 로드됩니다. `speckiwi mcp`를 손으로 실행하는 것은 디버깅용입니다 — stdio에서 블록되어 멈춘 것처럼 보입니다.
+
 ### MCP 도구
 
 Kiwi skills는 모든 조회와 안전한 SRS mutation을 MCP 도구로 수행합니다. 동일 기능의 CLI는 진단·수동 운영용 fallback이며 정상 mutation 경로가 아닙니다.
@@ -690,11 +729,22 @@ Kiwi skills는 모든 조회와 안전한 SRS mutation을 MCP 도구로 수행�
 | 구분 | 도구 |
 | --- | --- |
 | Target & goal | `get_active_target`, `set_active_target`, `set_target_goal`, `summarize_target` |
-| 조회 | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements` |
+| 조회 | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status & stability | `update_status`, `update_stability` |
 | Evidence & trace | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| 저작 | `add_requirement`, `append_section_note`, `add_completed_work` |
+| 저작·편집 | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `supersede_requirement` |
+| 작업 모드 | `get_work_mode`, `set_work_mode` |
+| Step & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
+| 중복 ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
 | Workspace | `validate_spec`, `sync_index`, `init_project` |
+
+### 첫 실행
+
+MCP 서버가 연결되면 자연어로 작업을 지시합니다 — Kiwi skills는 의도(intent)로 트리거됩니다(또는 `/kiwi-srs`처럼 이름으로 직접 호출). 예를 들어 에이전트에게:
+
+> *kiwi-srs로 요구사항을 등록해줘: 사용자가 이메일로 비밀번호를 재설정할 수 있다.*
+
+`kiwi-srs`가 Requirement ID를 발급해 `docs/spec/<scope>.srs.md`에 기록하고, 이후 `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder`가 구현까지 이어갑니다. 전체 흐름은 §7 파이프라인을 참고하세요.
 
 <a id="ko-skill-types"></a>
 
@@ -716,6 +766,7 @@ Kiwi skills는 모든 조회와 안전한 SRS mutation을 MCP 도구로 수행�
 | `kiwi-review-fix-loop` | 로컬 변경 또는 PR 코멘트를 review/fix/re-review 루프로 정리하고 선택적으로 REQ를 verified 전이합니다. |
 | `kiwi-pipeline` | `kiwi/pipeline.jsonl`을 읽어 다음 Kiwi skill 단계를 추천/자동 진행합니다. |
 | `kiwi-step` | `docs/spec/steps/<name>/` 아래 step-local 요구 초안을 저작 — step을 선점(claim)하고 그 안에만 작성(body-scope SRS 미수정) 후 step 국소 검증. `kiwi-srs`의 경량 대응물. |
+| `kiwi-tdd` | 하나의 step을 `tdd` work-mode의 TDD First 사이클로 진행 — SDS(`design.md`) 저작 → EARS acceptance contract를 실패 테스트(red)로 변환 → green 구현 → 회귀 → step SRS 합성 및 evidence 필수 승격(promote). |
 | `kiwi-wave-master` | 대형 작업(에픽/로드맵/장기 연구)을 순서 있는 wave로 분해하고 wave마다 전용 target을 등록한 뒤 wave별 파이프라인을 순차 실행. `kiwi/waves.jsonl`로 재개 가능. |
 
 같은 skill set은 에이전트별 source tree로 배포됩니다 — **`skills/codex`**(Codex 호출 + clarification gate 용어), **`skills/claude`**(Claude skill 환경), **`skills/etc`**(OpenCode/Hermes 및 local-LLM용 Agent Skills 형식; 기본 단일 evaluator/sub-agent profile).
@@ -756,14 +807,14 @@ flowchart TD
     N --> O["완료"]
     T --> O
 
-    P["kiwi-pipeline: 이벤트 기반 다음 단계 추천/추적"] -.-> B
+    P["kiwi-pipeline: 다음 단계 추천 및 진행 추적"] -.-> B
     P -.-> F
     P -.-> I
     P -.-> J
     P -.-> N
 ```
 
-Task 실행 내부는 TDD를 전제로 합니다.
+kiwi-coder 내부에서 각 Task는 TDD 루프로 진행됩니다.
 
 ```mermaid
 flowchart TD
@@ -780,6 +831,8 @@ flowchart TD
     J --> K["AC check / status update"]
     K --> L[".kiwi 상태와 worklog 갱신"]
 ```
+
+이는 메인 파이프라인의 `kiwi-coder` 내부 per-task 루프입니다. **step 단위** 작업에서는 `tdd` work-mode가 `kiwi-planner` / `kiwi-pm`를 거치지 않고 `kiwi-tdd`로 병렬 **TDD First** 사이클 — SDS → red → green → 회귀 → `promote_step_requirement` — 을 진행합니다(§8 *작업 모드와 step* 참조).
 
 <a id="ko-commands"></a>
 
@@ -842,11 +895,24 @@ speckiwi links check                         # trace-link 무결성(workflow gat
 
 ### 작업 모드와 step
 
+작업 모드는 `docs/spec/steps/state.md`에 저장되며, 새 프로젝트는 `wait`로 시작합니다.
+
+- **`wait`** — 기본값; Active Task 없음, SRS-first 규칙 적용.
+- **`sdd`** — 스펙 주도 body 작업(body-scope 요구사항을 먼저 작성·조정한 뒤 구현).
+- **`vibe`** — code-first: Active Task에 대해 코드를 먼저 쓴 뒤 SRS를 사후 합성(`vibe-gate`가 미합성 커밋 차단).
+- **`tdd`** — `kiwi-tdd`로 진행하는 step 단위 **TDD First** 사이클: SDS(Software Design Specification, `design.md`)를 EARS 형식 acceptance contract로 저작 → 실패 테스트(red)로 변환 → green 구현 → 회귀 → step 요구 합성·승격.
+
 ```sh
-speckiwi mode                  # 현재 작업 모드 표시 (sdd | vibe | wait)
-speckiwi mode sdd              # 작업 모드 설정
-speckiwi step validate <name>  # docs/spec/steps/<name>/ 의 step-local 초안 검증
-speckiwi vibe-gate check       # 미합성 vibe 커밋을 막는 CI 게이트
+speckiwi mode                                    # 현재 작업 모드 표시 (sdd | vibe | wait | tdd)
+speckiwi mode tdd                                # 작업 모드 전환 (sdd, vibe, wait, tdd)
+speckiwi step claim <name> --touches-scope APP   # 저작 전 step 선점(claim)
+speckiwi step scaffold <name>                    # design.md + intent.md 스텁 생성
+speckiwi step validate <name>                    # docs/spec/steps/<name>/ 의 step-local 초안 검증
+speckiwi step sds-status <name> agreed           # SDS 라이프사이클 진행 (draft -> agreed -> superseded)
+speckiwi step synthesize <name>                  # design.md에서 step SRS 합성
+speckiwi step promote <id> --from-step <name> --to-scope APP   # body scope로 승격 (tdd에서는 evidence 필수)
+speckiwi step update-state <name> --status merged              # 완료 게이트를 거쳐 step 전이
+speckiwi vibe-gate check                         # vibe/tdd 미합성 커밋을 막는 CI 게이트
 ```
 
 ### Mutation (MCP가 정상 경로; CLI는 수동 운영·진단용)
@@ -917,6 +983,7 @@ npm 패키지가 배포하는 주요 항목:
 bin/
 dist/
 docs/rule/SRS-MD-Rules-v1.0.0.md
+docs/rule/SDS-MD-Rules-v1.0.0.md
 skills/codex/
 skills/claude/
 skills/etc/
@@ -931,6 +998,7 @@ skills/etc/
 - `FR-NODE-067` / `FR-NODE-068` / `FR-NODE-069` / `FR-NODE-070` / `IR-CLI-070`: `speckiwi init`의 MCP 등록, Claude/Codex skill 설치, orphan `kiwi-*` prune, 통합 dry-run/report envelope.
 - `IR-CLI-027` / `FR-NODE-016`: `speckiwi skills install <agent> <skill|all>` CLI와 core service.
 - `FR-FLOW-012`: Kiwi skills는 정상 작업에 SpecKiwi MCP가 필요합니다.
+- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: `tdd` work-mode, SDS-MD 저작 표준(`design.md`), `kiwi-tdd` skill, `get_work_mode` / `set_work_mode` MCP 도구 (TDD First mode).
 - `MIG-FLOW-002`: OpenCode/Hermes용 `skills/etc` variant.
 - `FR-PARSE-017` / `FR-MCP-017` / `IR-CLI-026`: Stability lifecycle과 `update_stability`.
 - `FR-MCP-018`: `append_section_note` mutation.
