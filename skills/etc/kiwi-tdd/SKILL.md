@@ -24,6 +24,7 @@ Backing requirements: FR-FLOW-037 (SDS standard FR-FLOW-036, gates IR-CLI-072 / 
 | §0.7 | **Boundary (sdd redirect).** Edits to existing body REQs and large / architecture changes are out of scope — redirect them to sdd mode (SRS-first, kiwi-srs / kiwi-planner family). |
 | §0.8 | **No AI signatures anywhere / no changelog section in this skill.** |
 | §0.9 | Accepts `--mini` / `--loops N` per the `_shared/kiwi/loop-option.md` convention. The only internal loop is red→green, so the round cap applies to regression-fix iterations only. |
+| §0.10 | **Code traceability is post-promote and non-gating.** Restore the code Trace Links (`add_trace_link` Code anchor) and `@req` tags only after Phase 6 promote confirms the body REQ ID — never attach at Phase 2/4. The Code anchor is the **authoritative** traceability SSOT and the `@req` breadcrumb is **auxiliary**; both are **non-gating** (a missing or stale one never blocks promote and is **separate** from the FR-NODE-074 EVIDENCE_REQUIRED gate). Reuse the FR-FLOW-020 convention, and cite kiwi-coder §0.17 for tag format/exemption only (no operational-hook import). |
 
 ---
 
@@ -54,7 +55,7 @@ Phase 2 : author the SDS — design.md (mandatory checklist, §3)
 Phase 3 : red — translate SDS-ACs into failing tests, confirm failure, commit tests first
 Phase 4 : green — pass with the smallest change, never weakening tests
 Phase 5 : regression — full impacted tests + `speckiwi vibe-gate check`
-Phase 6 : post-hoc SRS — synthesize → fold SDS-ACs and evidence into the step SRS → promote_step_requirement
+Phase 6 : post-hoc SRS — synthesize → fold SDS-ACs and evidence into the step SRS → promote_step_requirement → restore traceability (add_trace_link code/implements + @req reconcile, post-promote / non-gating, §0.10)
 Phase 7 : update_step_state(merged) + report
 ```
 
@@ -84,7 +85,7 @@ Translate each SDS-AC of SDS §5 into a failing test (at least one case per SDS-
 
 ### 2.5 Phase 4 — green
 
-Make the tests pass with the smallest implementation, without touching the tests. Weakening a test because it is hard to pass is absolutely forbidden (§0.5) — when the contract is wrong, supersede the SDS and restart from red.
+Make the tests pass with the smallest implementation, without touching the tests. Weakening a test because it is hard to pass is absolutely forbidden (§0.5) — when the contract is wrong, supersede the SDS and restart from red. During green, record the newly defined/edited **production file paths as the touched list** (Phase 6's traceability step cites these paths), and leave the FR-FLOW-020 vibe-style active step **task-name** trace tag as a breadcrumb on the code (no canonical REQ-ID yet — reconciled in Phase 6).
 
 ### 2.6 Phase 5 — regression
 
@@ -94,6 +95,10 @@ Run the full impacted existing test set and confirm zero regressions, then pass 
 
 1. Synthesize the step SRS with `speckiwi step synthesize <task>` (MCP `synthesize_step_srs`; idempotent — a no-op when the step SRS already exists), then carry the design.md SDS-ACs over as the requirement block's Acceptance Criteria and record the Phase 3–5 tests as Verification Evidence rows.
 2. Promote into body scope via `promote_step_requirement` (MCP) or `speckiwi step promote <id> --from-step <task> --to-scope <scope>` (CLI fallback). **A block with zero verification evidence is refused with EVIDENCE_REQUIRED in tdd mode** — fill in the evidence and retry (no bypass).
+3. **Traceability restoration (post-promote, non-gating, §0.10)** — apply only after promote confirms the body Requirement ID (never attach at Phase 2/4):
+   - (a) Add the **authoritative Trace Links Code anchor** (traceability SSOT) on the promoted body requirement via `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched production file>)`. One row per file when several were touched.
+   - (b) Reconcile the Phase 4 production code's vibe-style **task-name** trace tag to the final promoted REQ-ID and leave it as the `@req <REQ-ID>` **auxiliary breadcrumb** — following the **FR-FLOW-020** convention, citing **kiwi-coder §0.17** for tag format/exemption only (single-line format, test-file exemption, placement; no operational-hook import).
+   - (c) Both are **non-gating** — a missing or stale code Trace Link or `@req` never blocks promote and is separate from the EVIDENCE_REQUIRED gate (§0.10). Remember the Code anchor is **authoritative** and `@req` is the **auxiliary breadcrumb**.
 
 ### 2.8 Phase 7 — wrap-up
 
@@ -121,3 +126,4 @@ Never run the following through this skill — stop on detection and point the u
 | `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | synthesis/SDS presence gate §2.6 | guide the user |
 | `synthesize_step_srs` (MCP / CLI `speckiwi step synthesize`) | step SRS synthesis §2.7 | curate the step SRS by hand |
 | `promote_step_requirement` (MCP / CLI `speckiwi step promote`) | post-hoc SRS promotion §2.7 | halt when both are unavailable + never promote by hand |
+| `add_trace_link` (MCP) | restore the code anchor on the promoted requirement §2.7 (non-gating) | skill continues — only traceability is missing, promote is never blocked |

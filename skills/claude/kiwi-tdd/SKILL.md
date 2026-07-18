@@ -24,6 +24,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행, kiwi-srs/kiwi-planner 계열)로 리다이렉트한다. |
 | §0.8 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지**. |
 | §0.9 | `--mini` / `--loops N` 수용 — `_shared/kiwi/loop-option.md` 관례. 본 스킬의 자체 검증-개선 루프는 red→green 반복뿐이므로 라운드 캡은 회귀 수정 반복에만 적용된다. |
+| §0.10 | **코드 추적성은 후행(post-promote)·비차단**. 코드 Trace Links(`add_trace_link` Code anchor)·`@req` 태그는 Phase 6 promote가 body REQ ID를 확정한 **뒤에만** 복원한다 — Phase 2/4 부착은 금지한다. Code anchor가 **권위** traceability SSOT, `@req` breadcrumb는 **보조**이며 둘 다 **비차단**이다(누락·stale이 promote를 막지 않고 FR-NODE-074 EVIDENCE_REQUIRED 게이트와 **분리**). FR-FLOW-020 관례를 재사용하고, 태그 형식·면제는 kiwi-coder §0.17만 인용한다(운영 훅 수입 금지). |
 
 ---
 
@@ -54,7 +55,7 @@ Phase 2 : SDS 저작 — design.md (체크리스트 의무, §3)
 Phase 3 : red — SDS-AC를 실패 테스트로 번역, 실패 확인 후 테스트 먼저 커밋
 Phase 4 : green — 테스트 약화 없이 최소 구현으로 통과
 Phase 5 : 회귀 — 영향 범위 테스트 전체 + `speckiwi vibe-gate check`
-Phase 6 : 후행 SRS — synthesize → step SRS에 요구 블록·증거 정리 → promote_step_requirement
+Phase 6 : 후행 SRS — synthesize → 요구 블록·증거 정리 → promote_step_requirement → 추적성 복원(add_trace_link code/implements + @req reconcile, post-promote·비차단, §0.10)
 Phase 7 : update_step_state(merged) + 사용자 보고
 ```
 
@@ -84,7 +85,7 @@ SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소
 
 ### 2.5 Phase 4 — green
 
-테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 SDS supersede 후 red부터 재시작.
+테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 SDS supersede 후 red부터 재시작. green 동안 새로 정의·수정한 **프로덕션 파일 경로를 touched 목록으로 기록**하고(Phase 6 추적성 스텝이 이 경로들을 인용), 코드에는 FR-FLOW-020 vibe식 active step **task-name** trace 태그를 breadcrumb로 남긴다(canonical REQ-ID는 아직 없음 — Phase 6에서 reconcile).
 
 ### 2.6 Phase 5 — 회귀
 
@@ -94,6 +95,10 @@ SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소
 
 1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 design.md의 SDS-AC를 요구 블록의 Acceptance Criteria로 이관하고, Phase 3~5의 테스트를 Verification Evidence 행으로 기록한다.
 2. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
+3. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):
+   - (a) 승격된 body 요구에 `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched 프로덕션 파일>)`를 호출해 **권위 Trace Links Code anchor**(traceability SSOT)를 남긴다. 여러 파일을 만졌으면 파일마다 1행씩.
+   - (b) Phase 4 프로덕션 코드의 vibe식 **task-name** trace 태그를 최종 승격 REQ-ID로 **reconcile(재조정)**해 `@req <REQ-ID>` **보조 breadcrumb**로 남긴다 — **FR-FLOW-020** 관례를 따르되, 태그 형식·면제(단일 라인 형식·테스트 파일 면제·부착 위치)는 **kiwi-coder §0.17**만 인용한다(운영 훅 수입 금지).
+   - (c) 둘 다 **비차단**이다 — code Trace Link나 `@req`의 누락·stale은 promote를 막지 않으며 EVIDENCE_REQUIRED 게이트와 분리된다(§0.10). Code anchor가 **권위**, `@req`는 **보조 breadcrumb**임을 기억한다.
 
 ### 2.8 Phase 7 — 마무리
 
@@ -121,3 +126,4 @@ SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소
 | `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | 합성·SDS 존재 게이트 §2.6 | 사용자 안내 |
 | `synthesize_step_srs` (MCP / CLI `speckiwi step synthesize`) | step SRS 합성 §2.7 | step SRS 직접 정리 |
 | `promote_step_requirement` (MCP / CLI `speckiwi step promote`) | 후행 SRS 승격 §2.7 | 둘 다 부재 시 halt + 수동 승격 금지 안내 |
+| `add_trace_link` (MCP) | 승격 요구에 code anchor 복원 §2.7 (비차단) | 스킬 계속 — 추적성만 누락, promote 미차단 |
