@@ -139,6 +139,7 @@ docs/
 | `--scope "Name:PREFIX"` | Initial scope; creates the scope document and Scope Map row (e.g. `"App:APP"` → `FR-APP-001`). |
 | `--no-mcp` | Skip registering the MCP server in `.mcp.json`. |
 | `--no-skills` | Skip installing the bundled Kiwi skills (and the orphan prune). |
+| `-g, --global` | Also install/update the bundled Kiwi skills into each **present** agent's global skills dir (Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`); an agent whose home directory is absent is skipped with a warning. The project-scope install still runs, and no orphan prune is performed at global scope (the shared home may hold skills from other projects). |
 | `--dry-run` | Preview every step (populates `created`/… ) without writing anything to disk. |
 | `--force` | Overwrite existing scaffolded files instead of skipping them. |
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
@@ -640,6 +641,7 @@ docs/
 | `--scope "Name:PREFIX"` | 초기 scope; scope 문서와 Scope Map 행을 생성 (예: `"App:APP"` → `FR-APP-001`). |
 | `--no-mcp` | `.mcp.json`에 MCP 서버 등록을 건너뜁니다. |
 | `--no-skills` | 번들 Kiwi skills 설치(및 orphan prune)를 건너뜁니다. |
+| `-g, --global` | 번들 Kiwi skills를 **설치된** 각 에이전트의 전역 skills 디렉터리(Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`)에도 설치/갱신합니다. 홈 디렉터리가 없는 에이전트는 경고와 함께 건너뜁니다. 프로젝트 스코프 설치는 그대로 수행하며, 전역에서는 orphan prune을 하지 않습니다(공유 홈에는 다른 프로젝트의 skills가 있을 수 있음). |
 | `--dry-run` | 디스크에 아무것도 쓰지 않고 모든 단계를 미리보기(`created`/… 채워짐). |
 | `--force` | 이미 있는 scaffold 파일을 건너뛰지 않고 덮어씁니다. |
 | `--ignore-lock` | 잔여 SRS mutation lock을 우회합니다. |

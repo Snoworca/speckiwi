@@ -38,9 +38,15 @@ export interface InitProjectInput {
   // never sets them) is unaffected; the CLI init path enables them (opt-out via --no-mcp/--no-skills).
   registerMcp?: boolean;
   installSkills?: boolean;
+  // FR-NODE-084 — when set (CLI --global/-g), init also provisions skills into each present agent's global skills dir.
+  installSkillsGlobal?: boolean;
   dryRun?: boolean;
   /** Test/DI seam — overrides the bundled skills source root used by skill provisioning. */
   skillSourceBaseDir?: string;
+  /** Test/DI seam — overrides the home dir used to resolve global skill destinations (default: process.env HOME/USERPROFILE). */
+  globalHomeDir?: string;
+  /** Test/DI seam — overrides CODEX_HOME for the codex global destination (default: process.env.CODEX_HOME). */
+  globalCodexHome?: string;
 }
 
 export interface InitProjectOutput {
@@ -354,7 +360,11 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
   }
   await installHooks(root.root, output, warnings, Boolean(input.force), dryRun);
   if (input.registerMcp) await registerMcpStep(root.root, output, warnings, dryRun);
-  if (input.installSkills) await provisionSkills(root.root, input, output, warnings, dryRun);
+  if (input.installSkills) {
+    await provisionSkills(root.root, input, output, warnings, dryRun, "project");
+    // FR-NODE-084 — --global adds a global-scope pass, gated per agent by agent-home presence.
+    if (input.installSkillsGlobal) await provisionSkills(root.root, input, output, warnings, dryRun, "global");
+  }
   return mutationOk(output);
 }
 
@@ -383,35 +393,90 @@ async function registerMcpStep(root: string, output: InitProjectOutput, warnings
   }
 }
 
-// FR-NODE-068/069 — provision the bundled kiwi skills for Claude + Codex (project scope), then prune
-// orphaned kiwi-* skill directories. Skill degradation (missing source, conflicts) warns without aborting.
-async function provisionSkills(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean): Promise<void> {
+type SkillProvisionScope = "project" | "global";
+
+interface GlobalSkillContext {
+  homeDir: string;
+  codexHome?: string;
+}
+
+// FR-NODE-084 — resolve the home dir + CODEX_HOME used to locate global skill destinations. Test/DI seams
+// (globalHomeDir/globalCodexHome) override the process env so the global pass is deterministic under test.
+function resolveGlobalSkillContext(input: InitProjectInput): GlobalSkillContext {
+  const homeDir = input.globalHomeDir ?? process.env.HOME ?? process.env.USERPROFILE ?? "";
+  const codexHome = input.globalCodexHome ?? process.env.CODEX_HOME;
+  return codexHome ? { homeDir, codexHome } : { homeDir };
+}
+
+async function directoryExists(dir: string): Promise<boolean> {
+  const info = await stat(dir).catch(() => undefined);
+  return Boolean(info?.isDirectory());
+}
+
+// FR-NODE-084 — an agent is provisioned globally only when its home directory is present: Claude uses
+// `~/.claude`, Codex uses `${CODEX_HOME:-~/.codex}`. An absent home means the agent is not installed.
+async function isAgentHomePresent(agent: SkillAgent, ctx: GlobalSkillContext): Promise<boolean> {
+  if (agent === "claude") return directoryExists(path.join(ctx.homeDir, ".claude"));
+  if (agent === "codex") {
+    const codexHome = ctx.codexHome ? path.resolve(ctx.codexHome) : path.join(ctx.homeDir, ".codex");
+    return directoryExists(codexHome);
+  }
+  return false;
+}
+
+// FR-NODE-068/069/084 — provision the bundled kiwi skills for Claude + Codex at the given scope, then prune
+// orphaned kiwi-* skill directories. The global scope is additionally gated per agent by agent-home presence.
+// Skill degradation (missing source, conflicts, absent agent) warns without aborting.
+async function provisionSkills(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean, scope: SkillProvisionScope): Promise<void> {
+  const label = scope === "global" ? " global" : "";
+  let globalCtx: GlobalSkillContext | undefined;
+  if (scope === "global") {
+    globalCtx = resolveGlobalSkillContext(input);
+    if (!globalCtx.homeDir) {
+      warnings.push("skills global: home directory is unavailable — global skill provisioning skipped");
+      return;
+    }
+  }
   for (const agent of SKILL_PROVISION_AGENTS) {
-    const options = {
-      projectRoot: { root },
-      agent,
-      selector: "all",
-      scope: "project" as const,
-      dryRun,
-      ...(input.skillSourceBaseDir ? { sourceBaseDir: input.skillSourceBaseDir } : {})
-    };
-    const provisioned = dryRun ? await planSkillInstall(options) : await installSkill(options);
-    if (!provisioned.ok) {
-      warnings.push(`skills(${agent}): ${provisioned.error.message}`);
+    if (scope === "global" && globalCtx && !(await isAgentHomePresent(agent, globalCtx))) {
+      warnings.push(`skills(${agent}) global: ${agent} home directory not found — skipped`);
       continue;
     }
-    foldSkillResults(provisioned.value, output, warnings);
     try {
-      const prune = await pruneOrphanKiwiSkills({
-        destinationRoot: provisioned.value.destinationRoot,
+      const options = {
+        projectRoot: { root },
         agent,
-        sourceSkillNames: provisioned.value.results.map((result) => result.name),
-        dryRun
-      });
-      output.removed.push(...prune.removed);
-      warnings.push(...prune.warnings);
+        selector: "all",
+        scope,
+        dryRun,
+        ...(scope === "global" && globalCtx
+          ? { homeDir: globalCtx.homeDir, ...(globalCtx.codexHome ? { env: { CODEX_HOME: globalCtx.codexHome } } : {}) }
+          : {}),
+        ...(input.skillSourceBaseDir ? { sourceBaseDir: input.skillSourceBaseDir } : {})
+      };
+      const provisioned = dryRun ? await planSkillInstall(options) : await installSkill(options);
+      if (!provisioned.ok) {
+        warnings.push(`skills(${agent})${label}: ${provisioned.error.message}`);
+        continue;
+      }
+      foldSkillResults(provisioned.value, output, warnings);
+      // FR-NODE-084 — the orphan kiwi-* prune runs ONLY at project scope. The shared global home may host
+      // skills provisioned by another project or a different speckiwi version; pruning by one project's
+      // source set could delete them. The global pass installs/updates only, never prunes.
+      if (scope === "project") {
+        const prune = await pruneOrphanKiwiSkills({
+          destinationRoot: provisioned.value.destinationRoot,
+          agent,
+          sourceSkillNames: provisioned.value.results.map((result) => result.name),
+          dryRun
+        });
+        output.removed.push(...prune.removed);
+        warnings.push(...prune.warnings);
+      }
     } catch (error) {
-      warnings.push(`skills(${agent}) prune: ${(error as Error).message}`);
+      // The skills step degrades non-fatally: any per-agent failure (Result error or raw throw, e.g. an
+      // fs error against a read-only home) is recorded as a warning and init proceeds.
+      warnings.push(`skills(${agent})${label}: ${(error as Error).message}`);
     }
   }
 }

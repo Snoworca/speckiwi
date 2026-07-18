@@ -91,6 +91,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--force")
     .option("--no-skills", "skip installing the bundled kiwi skills into the project")
     .option("--no-mcp", "skip registering the SpecKiwi MCP server in .mcp.json")
+    .option("-g, --global", "also install/update the bundled kiwi skills into each present agent's global skills directory")
     .option("--dry-run", "preview all init steps without writing to the filesystem")
     .option("--ignore-lock")
     .option("--json")
@@ -101,6 +102,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
         ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
         force: Boolean(options.force),
         installSkills: options.skills !== false,
+        installSkillsGlobal: Boolean(options.global),
         registerMcp: options.mcp !== false,
         ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
