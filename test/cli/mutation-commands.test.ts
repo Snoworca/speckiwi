@@ -5,6 +5,13 @@ import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import {
+  AGENT_INSTRUCTION_HEADING_PREFIX,
+  AGENT_INSTRUCTION_VERSION
+} from "../../src/core/bootstrap/templates.js";
+
+// FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
+const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
 
 function io() {
   return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
@@ -328,9 +335,9 @@ describe("mutation CLI commands", () => {
   it("supports init options and add-requirement dry-run", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     expect(await main(["--root", root, "init", "--target", "v1.0.0", "--scope", "ARCH", "--force"], io())).toBe(0);
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
     expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     expect(
       await main(
@@ -601,8 +608,8 @@ describe("mutation CLI commands", () => {
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("10.payments.srs.md");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| v2.0.0 | release | planned | Initial target |");
-    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
-    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+    expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
+    expect(await readFile(path.join(temp, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
   });
 
   it("rejects removed init agent-file option", async () => {

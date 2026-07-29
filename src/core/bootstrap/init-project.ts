@@ -6,9 +6,12 @@ import { mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
+  AGENT_INSTRUCTION_HEADING_PREFIX,
   AGENT_INSTRUCTION_VERSION,
   BUNDLED_SDS_RULES_FILENAME,
   BUNDLED_SRS_RULES_FILENAME,
+  LEGACY_KOREAN_AGENT_END_MARKER,
+  LEGACY_KOREAN_AGENT_HEADING_PREFIX,
   RULES_DOCUMENT_FILENAME_PATTERN,
   loadBundledRulesDocument,
   loadBundledSdsRulesDocument,
@@ -64,11 +67,24 @@ export interface InitProjectOutput {
 interface AgentInstructionBlock {
   start: number;
   end: number;
+  /** Only set for a block written in the current heading format; a legacy block never reports a version. */
   version?: string;
   hasEndMarker: boolean;
 }
 
-const VERSIONED_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS 워크플로 v(?<version>[0-9]+(?:\.[0-9]+)*)$/gm;
+// @req FR-NODE-086 — the heading patterns are derived from the shipped heading constants, so the
+// renderer and the finder can never disagree about what a managed heading looks like.
+function buildVersionedHeadingPattern(headingPrefix: string): RegExp {
+  const escaped = headingPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // `\r?` so a CRLF agent file — which this repository's own files are — is still recognised;
+  // JS multiline `$` matches only before `\n`.
+  return new RegExp(`^${escaped}(?<version>[0-9]+(?:\\.[0-9]+)*)\\r?$`, "gm");
+}
+
+const VERSIONED_AGENT_HEADING_PATTERN = buildVersionedHeadingPattern(AGENT_INSTRUCTION_HEADING_PREFIX);
+// @req FR-NODE-086 — the Korean heading init injected up to v1.6, matched with the same marker-pair
+// discipline as the current one so a migration can never swallow consumer prose.
+const LEGACY_KOREAN_AGENT_HEADING_PATTERN = buildVersionedHeadingPattern(LEGACY_KOREAN_AGENT_HEADING_PREFIX);
 const LEGACY_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS workflow$/m;
 
 // FND-001 / FR-NODE-050 — scaffold docs/spec/steps/state.md at the reader SSOT
@@ -376,21 +392,14 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
 }
 
 function findAgentInstructionBlock(content: string): AgentInstructionBlock | undefined {
-  for (const versioned of content.matchAll(VERSIONED_AGENT_HEADING_PATTERN)) {
-    if (versioned.index === undefined) continue;
-    const start = versioned.index;
-    const marker = findEndMarker(content, start + versioned[0].length);
-    if (!marker) continue;
-    const nextHeading = findNextTopLevelHeadingStart(content, start + versioned[0].length);
-    if (nextHeading !== undefined && nextHeading < marker.start) continue;
-    const version = versioned.groups?.version;
-    return {
-      start,
-      end: marker.end,
-      ...(version ? { version } : {}),
-      hasEndMarker: true
-    };
-  }
+  const current = findVersionedBlock(content, VERSIONED_AGENT_HEADING_PATTERN, AGENT_INSTRUCTION_END_MARKER);
+  if (current) return current;
+
+  // @req FR-NODE-086 — a repository initialised before v1.7 carries the Korean heading/marker pair.
+  // The version is deliberately dropped: a legacy block is never "already current", so the caller
+  // always replaces it rather than skipping the file.
+  const korean = findVersionedBlock(content, LEGACY_KOREAN_AGENT_HEADING_PATTERN, LEGACY_KOREAN_AGENT_END_MARKER);
+  if (korean) return { start: korean.start, end: korean.end, hasEndMarker: true };
 
   const legacy = LEGACY_AGENT_HEADING_PATTERN.exec(content);
   if (legacy?.index !== undefined) {
@@ -404,10 +413,34 @@ function findAgentInstructionBlock(content: string): AgentInstructionBlock | und
   return undefined;
 }
 
-function findEndMarker(content: string, start: number): { start: number; end: number } | undefined {
-  const markerStart = content.indexOf(AGENT_INSTRUCTION_END_MARKER, start);
+/**
+ * A managed block delimited by a versioned heading and its matching end marker. An intervening
+ * top-level heading disqualifies the pair, so a heading left without its marker is treated as
+ * consumer content instead of being paired with some later block's marker.
+ */
+function findVersionedBlock(content: string, headingPattern: RegExp, endMarker: string): AgentInstructionBlock | undefined {
+  for (const versioned of content.matchAll(headingPattern)) {
+    if (versioned.index === undefined) continue;
+    const start = versioned.index;
+    const marker = findEndMarker(content, start + versioned[0].length, endMarker);
+    if (!marker) continue;
+    const nextHeading = findNextTopLevelHeadingStart(content, start + versioned[0].length);
+    if (nextHeading !== undefined && nextHeading < marker.start) continue;
+    const version = versioned.groups?.version;
+    return {
+      start,
+      end: marker.end,
+      ...(version ? { version } : {}),
+      hasEndMarker: true
+    };
+  }
+  return undefined;
+}
+
+function findEndMarker(content: string, start: number, endMarker: string): { start: number; end: number } | undefined {
+  const markerStart = content.indexOf(endMarker, start);
   if (markerStart === -1) return undefined;
-  return { start: markerStart, end: markerStart + AGENT_INSTRUCTION_END_MARKER.length };
+  return { start: markerStart, end: markerStart + endMarker.length };
 }
 
 function findNextTopLevelHeadingStart(content: string, searchStart: number): number | undefined {

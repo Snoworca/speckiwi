@@ -8,6 +8,13 @@ import { resultToMcp } from "../../src/mcp/errors.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import {
+  AGENT_INSTRUCTION_HEADING_PREFIX,
+  AGENT_INSTRUCTION_VERSION
+} from "../../src/core/bootstrap/templates.js";
+
+// FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
+const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
 
 async function emptyRepo() {
   const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-init-"));
@@ -357,9 +364,9 @@ describe("MCP mutation tools and structured errors", () => {
     expect(await server.callTool("init_project", { target: "v1.0.0", scope: "Payments:PAY" })).toMatchObject({ ok: true });
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| v1.0.0 | release | planned | Initial target |");
-    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+    expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
     expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+    expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
   });
 });

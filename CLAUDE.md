@@ -14,7 +14,7 @@ The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics
 
 When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
 
-# SpecKiwi SRS 워크플로 v1.6
+# SpecKiwi SRS workflow v1.7
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -80,4 +80,4 @@ Merge-time duplicate Requirement ID repair workflow:
 
 The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
 
-<!-- /SpecKiwi SRS 워크플로 -->
+<!-- /SpecKiwi SRS workflow -->

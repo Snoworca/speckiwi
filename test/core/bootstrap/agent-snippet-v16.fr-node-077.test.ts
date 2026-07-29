@@ -14,12 +14,28 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 // switching guidance and the SDS rules reference. RED suite (one case per AC).
 // AC-1..AC-3 fail while AGENT_INSTRUCTION_VERSION is "1.5" and the work-mode
 // section names only the CLI; AC-4 fails while re-init leaves the v1.5 block.
+//
+// FR-NODE-086 AC-4 raised the shipped version past 1.6, so AC-1's pin is stated as a floor plus a
+// constant-derived heading: the version may never fall back below the v1.6 contract, and the heading
+// must always carry whatever version the constant reports.
+
+/** Numeric-component version precedence, so a two-digit minor (1.10) still outranks 1.6. */
+function compareVersions(a: string, b: string): number {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(left.length, right.length); i += 1) {
+    const l = left[i] ?? 0;
+    const r = right[i] ?? 0;
+    if (l !== r) return l < r ? -1 : 1;
+  }
+  return 0;
+}
 
 describe("FR-NODE-077 agent instruction snippet v1.6", () => {
-  it("FR-NODE-077 AC-1: bumps the version to 1.6 in the constant and the heading", () => {
-    expect(AGENT_INSTRUCTION_VERSION).toBe("1.6");
+  it("FR-NODE-077 AC-1: keeps the version at or above 1.6 in the constant and the heading", () => {
+    expect(compareVersions(AGENT_INSTRUCTION_VERSION, "1.6")).toBeGreaterThanOrEqual(0);
     const snippet = renderAgentInstructionSnippet();
-    expect(snippet.startsWith(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.6`)).toBe(true);
+    expect(snippet.startsWith(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`)).toBe(true);
   });
 
   it("FR-NODE-077 AC-2: documents MCP-first read/switch with the CLI fallback and switching semantics", () => {
@@ -68,7 +84,7 @@ describe("FR-NODE-077 agent instruction snippet v1.6", () => {
       const claude = await readFile(path.join(root, "CLAUDE.md"), "utf8");
       const headings = claude.split(AGENT_INSTRUCTION_HEADING_PREFIX).length - 1;
       expect(headings).toBe(1);
-      expect(claude).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.6`);
+      expect(claude).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`);
       expect(claude).not.toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.5`);
     });
   });

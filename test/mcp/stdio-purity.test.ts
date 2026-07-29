@@ -7,6 +7,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import {
+  AGENT_INSTRUCTION_HEADING_PREFIX,
+  AGENT_INSTRUCTION_VERSION
+} from "../../src/core/bootstrap/templates.js";
+
+// FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
+const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
 
 const execFileAsync = promisify(execFile);
 
@@ -132,9 +139,9 @@ describe("real stdio MCP server", () => {
       expect(JSON.parse(text)).toMatchObject({ ok: true, value: { records: [] } });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
       expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
       expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     } finally {
       await client.close();
@@ -161,8 +168,8 @@ describe("real stdio MCP server", () => {
       expect(JSON.parse(text)).toMatchObject({ ok: true });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
+      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
+      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });

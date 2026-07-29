@@ -1,10 +1,10 @@
 # SRS-MD Authoring Rules v1.0.0
 
-부제: **확장 ISO/IEC/IEEE 29148 기반 Git-native Markdown SRS 작성 규칙**
+Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC/IEEE 29148**
 
 ---
 
-## 0. 문서 메타데이터
+## 0. Document Metadata
 
 | Field | Value |
 |---|---|
@@ -13,35 +13,35 @@
 | Version | 1.0.0 |
 | Status | stable |
 | Audience | developers, reviewers, maintainers, AI coding agents |
-| Primary Use | SRS 작성, 검토, 검색, 상태 갱신, 구현 검증 |
+| Primary Use | SRS authoring, review, search, status updates, implementation verification |
 | Source Format | GitHub Flavored Markdown |
 | Canonical Location | `docs/rule/SRS-MD-Rules-v1.0.0.md` |
 | Last Updated | 2026-05-10 |
 
 ---
 
-## 1. 목적
+## 1. Purpose
 
-이 문서는 저장소 안에서 Software Requirements Specification, 이하 SRS, 를 Markdown으로 작성하고 유지하기 위한 규칙을 정의한다.
+This document defines the rules for authoring and maintaining a Software Requirements Specification, hereafter SRS, in Markdown inside a repository.
 
-이 규칙의 목적은 다음과 같다.
+The purposes of these rules are as follows.
 
-1. SRS 문서를 사람이 읽기 쉬운 Markdown으로 유지한다.
-2. 요구사항 블록을 스크립트와 AI coding agent가 안정적으로 찾고 해석할 수 있게 한다.
-3. 기능 스코프, 목표 버전, 상태, 수용 기준, 검증 증거, 관련 문서, 이슈, 변경 근거를 한 요구사항 단위 안에서 관리한다.
-4. 구현 완료와 검증 완료를 구분한다.
-5. Git diff와 code review에 적합한 최소 변경 단위로 요구사항을 관리한다.
-6. 별도의 전역 도구 없이 저장소 내부 문서와 선택적 repo-local script만으로 운영할 수 있게 한다.
+1. Keep SRS documents as Markdown that is easy for humans to read.
+2. Let scripts and AI coding agents locate and interpret requirement blocks reliably.
+3. Manage functional scope, target version, status, acceptance criteria, verification evidence, related documents, issues, and change rationale within a single requirement unit.
+4. Distinguish implementation completion from verification completion.
+5. Manage requirements in the smallest change unit suitable for Git diff and code review.
+6. Make operation possible using only in-repository documents and optional repo-local scripts, without a separate global tool.
 
-이 규칙은 ISO/IEC/IEEE 29148의 요구사항 공학 원칙을 Markdown 운영에 맞게 축약하고 확장한 것이다. 이 문서는 공식 표준의 대체물이 아니라, 소프트웨어 개발 저장소에서 사용할 수 있는 실무형 작성 규약이다.
+These rules condense and extend the requirements engineering principles of ISO/IEC/IEEE 29148 to suit Markdown-based operation. This document is not a replacement for the official standard; it is a practical authoring convention for use in a software development repository.
 
 ---
 
-## 2. 핵심 원칙
+## 2. Core Principles
 
-### 2.1 Markdown 원본 원칙
+### 2.1 Markdown Source-of-Truth Principle
 
-SRS Markdown 문서가 요구사항의 원본이다.
+The SRS Markdown documents are the source of truth for requirements.
 
 ```text
 SRS Markdown = source of truth
@@ -51,55 +51,55 @@ Git history = change history
 Issue / PR / tests / docs = trace and evidence
 ```
 
-요구사항을 관리하기 위해 별도의 데이터베이스, 서버, 전역 CLI, 양방향 변환 체계를 전제로 하지 않는다.
+Managing requirements must not presuppose a separate database, server, global CLI, or bidirectional conversion system.
 
-### 2.2 제한형 Markdown 원칙
+### 2.2 Restricted Markdown Principle
 
-SRS 문서는 자유 형식 Markdown이 아니다. 사람은 자연스럽게 읽을 수 있어야 하지만, 요구사항 블록은 스크립트가 파싱할 수 있는 제한형 Markdown 구조를 따른다.
+An SRS document is not free-form Markdown. It must read naturally for humans, but requirement blocks follow a restricted Markdown structure that scripts can parse.
 
-### 2.3 단일 요구사항 원칙
+### 2.3 Single Requirement Principle
 
-하나의 Requirement Block은 하나의 검증 가능한 요구사항만 표현한다. 여러 동작, 여러 정책, 여러 시스템 경계가 섞이면 요구사항을 분리한다.
+One Requirement Block expresses exactly one verifiable requirement. When multiple behaviors, multiple policies, or multiple system boundaries are mixed together, split the requirement.
 
-### 2.4 구현 상태와 검증 상태 분리 원칙
+### 2.4 Separation of Implementation Status and Verification Status Principle
 
-코드가 작성되었다는 사실과 요구사항이 검증되었다는 사실은 다르다. 이 규칙은 `implemented`와 `verified` 상태를 분리한다.
+The fact that code has been written differs from the fact that a requirement has been verified. These rules separate the `implemented` and `verified` statuses.
 
-### 2.5 최소 변경 원칙
+### 2.5 Minimal Change Principle
 
-SRS를 수정할 때는 관련 Requirement Block만 변경한다. 전체 문서 재작성, 섹션 순서 변경, 대량 formatting 변경은 피한다.
+When modifying an SRS, change only the relevant Requirement Block. Avoid full-document rewrites, section reordering, and bulk formatting changes.
 
-### 2.6 추적 가능성 원칙
+### 2.6 Traceability Principle
 
-요구사항은 가능한 한 GitHub Issue, Pull Request, 테스트, 구현 파일, 연구/분석 문서, 기술 문서, 다른 요구사항과 연결한다.
+As far as possible, link requirements to GitHub Issues, Pull Requests, tests, implementation files, research/analysis documents, technical documents, and other requirements.
 
-### 2.7 검증 증거 우선 원칙
+### 2.7 Verification Evidence First Principle
 
-요구사항을 `verified`로 표시하려면 수용 기준이 충족되었고, 그 사실을 뒷받침하는 증거가 있어야 한다.
+To mark a requirement as `verified`, the acceptance criteria must be satisfied and evidence supporting that fact must exist.
 
 ---
 
-## 3. 용어
+## 3. Terms
 
 | Term | Definition |
 |---|---|
-| SRS | Software Requirements Specification. 시스템 또는 소프트웨어가 만족해야 하는 요구사항 명세. |
-| SRS Index | 전체 SRS 문서 세트를 탐색하기 위한 인덱스 문서. 기본 파일은 `docs/spec/00.index.md`. |
-| Scope SRS | 기능 스코프별 요구사항 문서. 예: `docs/spec/10.auth.srs.md`. |
-| Requirement Block | 하나의 요구사항을 표현하는 Markdown 블록. `### {ID} — {Title}` heading으로 시작한다. |
-| Requirement ID | 요구사항의 전역 고유 식별자. 예: `FR-AUTH-001`. |
-| Scope | 요구사항을 묶는 기능, 모듈, 도메인, 컴포넌트, 패키지 또는 서브시스템 단위. |
-| Target | 요구사항이 목표로 하는 버전, release, milestone, phase, objective. |
-| Status | 요구사항의 구현 및 검증 진행 상태. |
-| Acceptance Criteria | 요구사항 충족 여부를 판정하기 위한 수용 기준. |
-| Verification Evidence | 요구사항이 충족되었음을 뒷받침하는 테스트, PR, 코드, 리뷰, 분석, 데모, 운영 증거. |
-| Trace Links | 요구사항과 이슈, PR, 테스트, 문서, 코드, 다른 요구사항 사이의 관계. |
-| Research / Analysis | 요구사항을 뒷받침하는 조사, 비교, 분석, 실험, 의사결정 근거. |
-| Implementation Notes | 구현자가 알아야 할 설계, 제약, 주의점. 요구사항 자체는 아니다. |
+| SRS | Software Requirements Specification. The specification of requirements that a system or software must satisfy. |
+| SRS Index | The index document for navigating the whole SRS document set. The default file is `docs/spec/00.index.md`. |
+| Scope SRS | The requirements document for each functional scope. Example: `docs/spec/10.auth.srs.md`. |
+| Requirement Block | The Markdown block that expresses one requirement. It starts with a `### {ID} — {Title}` heading. |
+| Requirement ID | The globally unique identifier of a requirement. Example: `FR-AUTH-001`. |
+| Scope | The function, module, domain, component, package, or subsystem unit that groups requirements. |
+| Target | The version, release, milestone, phase, or objective that a requirement targets. |
+| Status | The implementation and verification progress of a requirement. |
+| Acceptance Criteria | The acceptance criteria used to judge whether a requirement is satisfied. |
+| Verification Evidence | The test, PR, code, review, analysis, demo, or operational evidence supporting that a requirement is satisfied. |
+| Trace Links | The relationships between a requirement and issues, PRs, tests, documents, code, and other requirements. |
+| Research / Analysis | The investigation, comparison, analysis, experiment, and decision rationale that support a requirement. |
+| Implementation Notes | The design, constraints, and caveats an implementer needs to know. Not the requirement itself. |
 
 ---
 
-## 4. 권장 저장소 구조
+## 4. Recommended Repository Structure
 
 ```text
 docs/
@@ -137,26 +137,26 @@ scripts/
    └─ extract-requirements.js
 ```
 
-각 경로의 책임은 다음과 같다.
+The responsibility of each path is as follows.
 
 | Path | Responsibility |
 |---|---|
 | `docs/rule/SRS-MD-Rules-v1.0.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
-| `docs/spec/00.index.md` | 전체 SRS 문서 세트의 진입점, target 목록, scope 문서 링크, 요약 |
-| `docs/spec/*.srs.md` | 기능 스코프별 요구사항 원본 |
-| `docs/spec/90.appendix.md` | 공통 용어, enum, 상태 정의, cross-scope map, 보조 규칙 |
-| `docs/analysis/*.md` | 조사, 비교, 분석, 실험 결과, 근거 문서 |
-| `docs/tech/*.md` | 기술 설계, API 설계, 데이터 모델, 운영 정책 |
-| `docs/adr/*.md` | 구조적 의사결정 기록 |
-| `scripts/spec/*.js` | 문서 검증, 검색, 요약, 상태 갱신 보조 스크립트 |
+| `docs/spec/00.index.md` | Entry point for the whole SRS document set, target list, scope document links, summary |
+| `docs/spec/*.srs.md` | Source of truth for requirements per functional scope |
+| `docs/spec/90.appendix.md` | Common terms, enums, status definitions, cross-scope map, supplementary rules |
+| `docs/analysis/*.md` | Investigation, comparison, analysis, experiment results, rationale documents |
+| `docs/tech/*.md` | Technical design, API design, data model, operational policy |
+| `docs/adr/*.md` | Architectural decision records |
+| `scripts/spec/*.js` | Helper scripts for document validation, search, summary, and status updates |
 
 ---
 
-## 5. 파일 명명 규칙
+## 5. File Naming Rules
 
 ### 5.1 SRS Index
 
-인덱스 문서 파일명은 다음을 권장한다.
+The following index document filename is recommended.
 
 ```text
 docs/spec/00.index.md
@@ -164,13 +164,13 @@ docs/spec/00.index.md
 
 ### 5.2 Scope SRS
 
-Scope SRS 파일명은 다음 형식을 따른다.
+Scope SRS filenames follow the following format.
 
 ```text
 docs/spec/{NN}.{scope-slug}.srs.md
 ```
 
-예:
+Example:
 
 ```text
 docs/spec/10.auth.srs.md
@@ -179,64 +179,64 @@ docs/spec/30.llm-provider.srs.md
 docs/spec/40.observability.srs.md
 ```
 
-규칙:
+Rules:
 
-1. `{NN}`은 정렬용 두 자리 숫자다.
-2. `{scope-slug}`는 lowercase kebab-case를 사용한다.
-3. 파일명은 scope의 의미를 드러내야 한다.
-4. 한 파일은 하나의 primary scope를 대표한다.
-5. cross-scope 요구사항은 가장 책임이 큰 scope 문서에 둔다.
+1. `{NN}` is a two-digit number used for ordering.
+2. `{scope-slug}` uses lowercase kebab-case.
+3. The filename must reveal the meaning of the scope.
+4. One file represents one primary scope.
+5. Place a cross-scope requirement in the scope document that carries the greatest responsibility for it.
 
 ---
 
-## 6. Markdown 문법 규칙
+## 6. Markdown Syntax Rules
 
-### 6.1 기준 문법
+### 6.1 Base Syntax
 
-SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한다.
+SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter GFM.
 
-### 6.2 허용 문법
+### 6.2 Allowed Syntax
 
 | Markdown Feature | Allowed | Use |
 |---|---:|---|
-| ATX headings, `#` to `####` | yes | 문서, 섹션, 요구사항 구조 |
+| ATX headings, `#` to `####` | yes | Document, section, and requirement structure |
 | Pipe tables | yes | metadata, evidence, trace links |
 | Task lists | yes | Acceptance Criteria |
-| Bullet lists | yes | 설명, note, analysis links |
-| Ordered lists | yes | 절차 설명 |
-| Fenced code blocks | yes | API 예시, 설정 예시, pseudo-code |
-| Inline code | yes | enum, 파일명, endpoint, identifier |
-| Markdown links | yes | 문서, issue, PR, 외부 자료 링크 |
+| Bullet lists | yes | Descriptions, notes, analysis links |
+| Ordered lists | yes | Procedure descriptions |
+| Fenced code blocks | yes | API examples, configuration examples, pseudo-code |
+| Inline code | yes | Enums, filenames, endpoints, identifiers |
+| Markdown links | yes | Links to documents, issues, PRs, and external material |
 
-### 6.3 제한 또는 금지 문법
+### 6.3 Restricted or Forbidden Syntax
 
 | Markdown Feature | Rule | Reason |
 |---|---|---|
-| YAML front matter | 금지 | 원본 구조가 Markdown 본문 밖으로 분산됨 |
-| Raw HTML | 금지 | 렌더러와 파서 간 결과 차이 증가 |
-| Heading 내부 link | 금지 | Requirement ID와 title 파싱 불안정 |
-| Heading 내부 emoji | 금지 | Requirement ID와 title 파싱 불안정 |
-| Heading 내부 emphasis | 금지 | title 정규화 불안정 |
-| Metadata table cell 줄바꿈 | 금지 | table parser 불안정 |
-| Nested task list | 금지 | Acceptance Criteria 판정 불안정 |
-| Metadata table 안의 복잡한 list | 금지 | 값 추출 불안정 |
-| 동일 requirement 안의 중복 section heading | 금지 | block parser 불안정 |
+| YAML front matter | forbidden | The source structure becomes scattered outside the Markdown body |
+| Raw HTML | forbidden | Increases the divergence between renderer and parser results |
+| Link inside a heading | forbidden | Unstable parsing of Requirement ID and title |
+| Emoji inside a heading | forbidden | Unstable parsing of Requirement ID and title |
+| Emphasis inside a heading | forbidden | Unstable title normalization |
+| Line break inside a metadata table cell | forbidden | Unstable table parser |
+| Nested task list | forbidden | Unstable Acceptance Criteria evaluation |
+| Complex list inside a metadata table | forbidden | Unstable value extraction |
+| Duplicate section heading inside the same requirement | forbidden | Unstable block parser |
 
-### 6.4 공백 규칙
+### 6.4 Blank Line Rules
 
-1. heading 앞에는 빈 줄 하나를 둔다.
-2. table 앞에는 빈 줄 하나를 둔다.
-3. fenced code block 앞뒤에는 빈 줄 하나를 둔다.
-4. Requirement heading 바로 아래에는 metadata table을 둔다.
-5. Requirement Block 사이에는 빈 줄 두 개 이하를 둔다.
+1. Put one blank line before a heading.
+2. Put one blank line before a table.
+3. Put one blank line before and after a fenced code block.
+4. Put the metadata table directly below the Requirement heading.
+5. Put at most two blank lines between Requirement Blocks.
 
 ---
 
-## 7. SRS Index 문서 규칙
+## 7. SRS Index Document Rules
 
-`docs/spec/00.index.md`는 전체 요구사항 문서 세트를 탐색하기 위한 문서다. 이 문서는 요구사항 원문을 길게 포함하지 않는다.
+`docs/spec/00.index.md` is the document for navigating the whole requirements document set. This document must not contain long requirement source text.
 
-### 7.1 필수 구조
+### 7.1 Required Structure
 
 ```md
 # SRS Index
@@ -272,99 +272,99 @@ SRS 문서는 GitHub Flavored Markdown, 이하 GFM, 을 기준으로 작성한�
 ## 10. Reference Documents
 ```
 
-### 7.2 SRS Documents 섹션
+### 7.2 SRS Documents Section
 
 ```md
 ## 2. SRS Documents
 
 | Scope | Document | Prefix | Description |
 |---|---|---|---|
-| Auth | [10.auth.srs.md](./10.auth.srs.md) | AUTH | 인증, 세션, 권한 요구사항 |
-| Payment | [30.payment.srs.md](./30.payment.srs.md) | PAY | 결제, webhook, 정산 요구사항 |
-| Observability | [40.observability.srs.md](./40.observability.srs.md) | OBS | 로그, 메트릭, tracing 요구사항 |
+| Auth | [10.auth.srs.md](./10.auth.srs.md) | AUTH | Authentication, session, and authorization requirements |
+| Payment | [30.payment.srs.md](./30.payment.srs.md) | PAY | Payment, webhook, and settlement requirements |
+| Observability | [40.observability.srs.md](./40.observability.srs.md) | OBS | Logging, metrics, and tracing requirements |
 ```
 
-규칙:
+Rules:
 
-1. 모든 Scope SRS 문서는 이 표에 등록한다.
-2. `Document`는 상대 링크를 사용한다.
-3. `Prefix`는 Requirement ID의 scope segment와 일치해야 한다.
-4. 문서를 삭제하거나 이름을 바꾸면 index를 함께 수정한다.
+1. Register every Scope SRS document in this table.
+2. `Document` uses a relative link.
+3. `Prefix` must match the scope segment of the Requirement ID.
+4. When a document is deleted or renamed, update the index along with it.
 
-### 7.3 Target Map 섹션
+### 7.3 Target Map Section
 
 ```md
 ## 3. Target Map
 
 | Target | Type | Status | Description |
 |---|---|---|---|
-| v0.1 | version | active | 기본 인증 및 사용자 기능 |
-| v0.2 | version | planned | 결제 webhook 및 관측성 개선 |
-| MVP | milestone | planned | 초기 릴리스에 필요한 최소 기능 |
+| v0.1 | version | active | Basic authentication and user features |
+| v0.2 | version | planned | Payment webhook and observability improvements |
+| MVP | milestone | planned | Minimum features required for the initial release |
 ```
 
-Target status 값:
+Target status values:
 
 | Status | Meaning |
 |---|---|
-| `planned` | 아직 진행하지 않음 |
-| `active` | 현재 진행 중 |
-| `frozen` | 범위가 동결됨. 변경하려면 명시적 리뷰 필요 |
-| `completed` | 해당 target의 요구사항이 완료됨 |
-| `released` | release-readiness를 통과한 immutable baseline target |
-| `archived` | 과거 target. 일반적으로 수정하지 않음 |
+| `planned` | Not started yet |
+| `active` | Currently in progress |
+| `frozen` | The scope is frozen. Changing it requires an explicit review |
+| `completed` | The requirements of that target are complete |
+| `released` | An immutable baseline target that passed release-readiness |
+| `archived` | A past target. Normally not modified |
 
-규칙:
+Rules:
 
-1. index metadata table의 `Active Target` row는 항상 존재해야 한다.
-2. `Active Target` 값이 비어 있으면 active target이 선택되지 않은 상태다.
-3. `Active Target` row가 존재하지만 값이 비어 있으면 Target Map fallback을 수행하지 않는다.
-4. `Active Target` 값이 비어 있지 않으면 Target Map의 `Target` 값 중 하나여야 한다.
-5. `Active Target`과 같은 Target Map row의 `Status`는 `active`여야 한다.
-6. 완료되어 release baseline으로 고정된 target은 `released`를 사용할 수 있으며, `completed`는 완료되었지만 release baseline으로 공식화되지 않은 target에 사용한다.
-7. v1.2.0 hardening policy에서는 전체 Target Map에서 `active` status row를 최대 하나만 허용하며, multiple active row는 index consistency diagnostic 대상이다.
+1. The `Active Target` row of the index metadata table must always exist.
+2. An empty `Active Target` value means that no active target is selected.
+3. When the `Active Target` row exists but its value is empty, do not perform a Target Map fallback.
+4. When the `Active Target` value is not empty, it must be one of the `Target` values in the Target Map.
+5. The `Status` of the Target Map row that matches `Active Target` must be `active`.
+6. A target that is complete and fixed as a release baseline may use `released`; `completed` is used for a target that is complete but has not been formalized as a release baseline.
+7. Under the v1.2.0 hardening policy, the whole Target Map allows at most one `active` status row, and multiple active rows are subject to an index consistency diagnostic.
 
-### 7.4 Completed Work Log 섹션
+### 7.4 Completed Work Log Section
 
 ```md
 ## 7. Completed Work Log
 
 | Date | Target | Scope | Requirement IDs | Summary | Report Paths |
 |---|---|---|---|---|---|
-| 2026-05-10 | v1.0.0 | CLI, MCP | IR-CLI-008, FR-MCP-008 | Active Target 조회/갱신 UX를 CLI와 MCP에 연결했다. | docs/reports/v1.0.0.md |
+| 2026-05-10 | v1.0.0 | CLI, MCP | IR-CLI-008, FR-MCP-008 | Connected the Active Target read/update UX to the CLI and MCP. | docs/reports/v1.0.0.md |
 ```
 
-규칙:
+Rules:
 
-1. Completed Work Log는 완료 판정의 source of truth가 아니라 index-level summary다.
-2. 완료 판정은 Requirement Block의 `Status`, Acceptance Criteria, Verification Evidence, Change Notes를 우선한다.
-3. `Date`는 `YYYY-MM-DD` 형식을 사용한다.
-4. `Target`은 비어 있을 수 있으며, 비어 있는 row는 cross-target completed work로 해석한다.
-5. `Scope`와 `Requirement IDs`는 comma-separated 값을 허용한다.
-6. `Report Paths`는 선택 column이다. Parser는 legacy five-column Completed Work Log와 trailing `Report Paths`가 있는 six-column Completed Work Log를 모두 읽어야 한다.
-7. `Report Paths` cell은 comma-separated repository-relative POSIX path list다. Blank cell은 빈 배열로 해석한다.
-8. Report path token은 absolute path, `./` 또는 `../` prefix, `..` segment, URL scheme, backslash, pipe, comma, CR/LF, `#`, trim 후 빈 값을 사용할 수 없다.
-9. Malformed report path는 `SRS-W024` warning으로 보고한다. Report path는 Completed Work Log summary metadata이며 Verification Evidence가 아니다.
-10. table cell에는 pipe 문자 `|`를 넣지 않는다.
+1. The Completed Work Log is an index-level summary, not the source of truth for completion decisions.
+2. Completion decisions give precedence to the Requirement Block `Status`, Acceptance Criteria, Verification Evidence, and Change Notes.
+3. `Date` uses the `YYYY-MM-DD` format.
+4. `Target` may be empty, and an empty row is interpreted as cross-target completed work.
+5. `Scope` and `Requirement IDs` allow comma-separated values.
+6. `Report Paths` is an optional column. The parser must read both the legacy five-column Completed Work Log and the six-column Completed Work Log with a trailing `Report Paths`.
+7. The `Report Paths` cell is a comma-separated list of repository-relative POSIX paths. A blank cell is interpreted as an empty array.
+8. A report path token must not use an absolute path, a `./` or `../` prefix, a `..` segment, a URL scheme, a backslash, a pipe, a comma, CR/LF, `#`, or a value that is empty after trimming.
+9. Report a malformed report path as an `SRS-W024` warning. A report path is Completed Work Log summary metadata and is not Verification Evidence.
+10. Do not put the pipe character `|` in a table cell.
 
-Target type 값:
+Target type values:
 
 | Type | Meaning |
 |---|---|
-| `version` | 제품 또는 소프트웨어 버전 |
-| `release` | 배포 묶음 |
-| `milestone` | 일정 또는 성과 기준 마일스톤 |
-| `phase` | 개발 단계 |
-| `objective` | 특정 목표 |
-| `experiment` | 실험 또는 검증 단계 |
+| `version` | A product or software version |
+| `release` | A deployment bundle |
+| `milestone` | A schedule-based or achievement-based milestone |
+| `phase` | A development phase |
+| `objective` | A specific objective |
+| `experiment` | An experiment or validation stage |
 
 ---
 
-## 8. Scope SRS 문서 규칙
+## 8. Scope SRS Document Rules
 
-Scope SRS는 기능 스코프별 요구사항 원본이다.
+A Scope SRS is the source of truth for the requirements of one functional scope.
 
-### 8.1 필수 구조
+### 8.1 Required Structure
 
 ```md
 # Auth SRS
@@ -394,35 +394,35 @@ Scope SRS는 기능 스코프별 요구사항 원본이다.
 
 ### 8.2 Scope Overview
 
-Scope Overview는 이 문서가 다루는 기능 영역을 설명한다.
+The Scope Overview describes the functional area that this document covers.
 
-작성 예:
+Authoring example:
 
 ```md
 ## 1. Scope Overview
 
-이 문서는 사용자 인증, 로그인 세션, 토큰 갱신, 권한 확인과 관련된 요구사항을 정의한다.
+This document defines the requirements related to user authentication, login sessions, token refresh, and authorization checks.
 ```
 
 ### 8.3 Scope Boundaries
 
-Scope Boundaries는 포함 범위와 제외 범위를 구분한다.
+Scope Boundaries distinguish what is in scope from what is out of scope.
 
 ```md
 ## 2. Scope Boundaries
 
 ### In Scope
 
-- 사용자 로그인
-- 세션 만료 처리
-- refresh token 회전
-- 보호된 API 접근 제어
+- User login
+- Session expiration handling
+- Refresh token rotation
+- Protected API access control
 
 ### Out of Scope
 
-- 관리자 권한 모델
-- 결제 권한 정책
-- 외부 SSO 연동
+- Administrator permission model
+- Payment authorization policy
+- External SSO integration
 ```
 
 ### 8.4 Assumptions and Constraints
@@ -430,41 +430,41 @@ Scope Boundaries는 포함 범위와 제외 범위를 구분한다.
 ```md
 ## 3. Assumptions and Constraints
 
-- 서버는 HTTPS 환경에서 운영된다.
-- access token은 짧은 수명을 가진다.
-- refresh token 저장 방식은 `docs/tech/auth-token-design.md`를 따른다.
+- The server operates in an HTTPS environment.
+- Access tokens have a short lifetime.
+- The refresh token storage method follows `docs/tech/auth-token-design.md`.
 ```
 
 ### 8.5 Requirements
 
-모든 Requirement Block은 `## 4. Requirements` 아래에 둔다.
+Place every Requirement Block under `## 4. Requirements`.
 
 ### 8.6 Cross-scope Dependencies
 
-다른 scope와의 주요 의존성을 문서 단위로 요약한다.
+Summarize the main dependencies on other scopes at the document level.
 
 ```md
 ## 5. Cross-scope Dependencies
 
 | From | To | Relation | Notes |
 |---|---|---|---|
-| AUTH | USER | depends_on | 인증 후 사용자 요약 정보를 조회한다. |
-| AUTH | OBS | requires | 인증 실패와 토큰 오류는 로그로 기록되어야 한다. |
+| AUTH | USER | depends_on | Reads user summary information after authentication. |
+| AUTH | OBS | requires | Authentication failures and token errors must be recorded in logs. |
 ```
 
 ---
 
-## 9. Requirement Block 개요
+## 9. Requirement Block Overview
 
-Requirement Block은 SRS-MD의 최소 관리 단위다.
+The Requirement Block is the smallest management unit of SRS-MD.
 
-블록은 다음 heading으로 시작한다.
+A block starts with the following heading.
 
 ```md
-### FR-AUTH-001 — 세션 만료 시 재로그인 요구
+### FR-AUTH-001 — Require re-login when the session expires
 ```
 
-heading 다음에는 metadata table이 온다.
+The metadata table comes after the heading.
 
 ```md
 | Field | Value |
@@ -474,7 +474,7 @@ heading 다음에는 metadata table이 온다.
 | Status | planned |
 ```
 
-그 다음 고정 section들이 온다.
+The fixed sections come next.
 
 ```md
 #### Requirement
@@ -494,62 +494,62 @@ heading 다음에는 metadata table이 온다.
 #### Change Notes
 ```
 
-### 9.1 Requirement Block의 경계
+### 9.1 Requirement Block Boundaries
 
-Requirement Block은 다음 중 하나를 만날 때 끝난다.
+A Requirement Block ends when it meets one of the following.
 
-1. 다음 `### {RequirementID} — {Title}` heading
-2. 현재 Scope SRS 파일의 끝
+1. The next `### {RequirementID} — {Title}` heading
+2. The end of the current Scope SRS file
 
-따라서 Requirement Block 안에서는 `###` heading을 사용하지 않는다. Requirement Block 내부 섹션은 반드시 `####` heading을 사용한다.
+Therefore, do not use a `###` heading inside a Requirement Block. Sections inside a Requirement Block must use a `####` heading.
 
 ---
 
-## 10. Requirement Heading 규칙
+## 10. Requirement Heading Rules
 
-### 10.1 형식
+### 10.1 Format
 
-요구사항 heading은 반드시 다음 형식을 따른다.
+A requirement heading must follow the following format.
 
 ```md
 ### {RequirementID} — {Title}
 ```
 
-예:
+Example:
 
 ```md
-### FR-AUTH-001 — 세션 만료 시 재로그인 요구
+### FR-AUTH-001 — Require re-login when the session expires
 ```
 
-### 10.2 정규식
+### 10.2 Regular Expression
 
-권장 정규식:
+Recommended regular expression:
 
 ```regex
 ^###\s+([A-Z]{2,5}-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+)$
 ```
 
-### 10.3 heading 규칙
+### 10.3 Heading Rules
 
-1. `###` 세 단계 heading을 사용한다.
-2. ID와 Title 사이에는 em dash `—`를 사용한다.
-3. hyphen `-`, en dash `–`, colon `:`은 사용하지 않는다.
-4. title은 한 줄이어야 한다.
-5. title 안에 link, emoji, emphasis, inline code를 넣지 않는다.
-6. title은 요구사항의 핵심 결과를 표현해야 한다.
-7. title은 80자 이내를 권장한다.
+1. Use a three-level `###` heading.
+2. Use an em dash `—` between the ID and the Title.
+3. Do not use a hyphen `-`, an en dash `–`, or a colon `:`.
+4. The title must be a single line.
+5. Do not put a link, emoji, emphasis, or inline code in the title.
+6. The title must express the core outcome of the requirement.
+7. A title of 80 characters or fewer is recommended.
 
 ---
 
-## 11. Requirement ID 규칙
+## 11. Requirement ID Rules
 
-### 11.1 기본 형식
+### 11.1 Base Format
 
 ```text
 {PREFIX}-{SCOPE}-{NNN}
 ```
 
-예:
+Example:
 
 ```text
 FR-AUTH-001
@@ -559,45 +559,45 @@ PERF-SEARCH-001
 OBS-AGENT-001
 ```
 
-### 11.2 ID 정규식
+### 11.2 ID Regular Expression
 
 ```regex
 ^(FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4}$
 ```
 
-### 11.3 Prefix와 Type 매핑
+### 11.3 Prefix and Type Mapping
 
 | Prefix | Type | Meaning |
 |---|---|---|
-| `FR` | `functional` | 기능 요구사항 |
-| `NFR` | `non_functional` | 일반 비기능 요구사항 |
-| `IR` | `interface` | 외부 API, 내부 API, UI boundary, integration interface |
-| `DR` | `data` | 데이터 모델, 저장, 조회, 정합성, retention |
-| `SEC` | `security` | 인증, 인가, 암호화, 보안 정책 |
+| `FR` | `functional` | Functional requirement |
+| `NFR` | `non_functional` | General non-functional requirement |
+| `IR` | `interface` | External API, internal API, UI boundary, integration interface |
+| `DR` | `data` | Data model, storage, retrieval, consistency, retention |
+| `SEC` | `security` | Authentication, authorization, encryption, security policy |
 | `PERF` | `performance` | latency, throughput, resource usage |
-| `REL` | `reliability` | 장애 복구, 내결함성, 재시도, 가용성 |
+| `REL` | `reliability` | Failure recovery, fault tolerance, retry, availability |
 | `OBS` | `observability` | logging, metrics, tracing, alerting |
-| `OPS` | `operational` | 배포, 운영, 설정, runbook |
-| `MIG` | `migration` | 데이터 또는 시스템 마이그레이션 |
-| `CON` | `constraint` | 기술, 법적, 조직적, 환경적 제약 |
+| `OPS` | `operational` | Deployment, operations, configuration, runbook |
+| `MIG` | `migration` | Data or system migration |
+| `CON` | `constraint` | Technical, legal, organizational, and environmental constraints |
 
-### 11.4 ID 운영 규칙
+### 11.4 ID Operation Rules
 
-1. Requirement ID는 저장소 전체에서 전역 유일해야 한다.
-2. 폐기된 ID를 재사용하지 않는다.
-3. 같은 요구사항의 문구를 수정해도 ID는 유지한다.
-4. 요구사항을 둘로 나누면 새 ID를 만든다.
-5. 여러 요구사항을 병합하면 대표 ID 하나를 유지하고 나머지는 `discarded` 또는 `Superseded By`로 처리한다.
-6. ID의 prefix와 metadata table의 `Type`은 일치해야 한다.
-7. ID의 scope segment는 SRS Index의 Scope Map에 등록된 prefix와 일치해야 한다.
+1. A Requirement ID must be globally unique across the whole repository.
+2. Do not reuse a discarded ID.
+3. Keep the ID even when the wording of the same requirement is modified.
+4. When a requirement is split in two, create a new ID.
+5. When merging multiple requirements, keep one representative ID and handle the rest with `discarded` or `Superseded By`.
+6. The prefix of the ID and the `Type` in the metadata table must match.
+7. The scope segment of the ID must match a prefix registered in the Scope Map of the SRS Index.
 
 ---
 
-## 12. Metadata Table 규칙
+## 12. Metadata Table Rules
 
-### 12.1 기본 형식
+### 12.1 Base Format
 
-Requirement heading 바로 아래에는 metadata table을 둔다.
+Put the metadata table directly below the Requirement heading.
 
 ```md
 | Field | Value |
@@ -609,88 +609,88 @@ Requirement heading 바로 아래에는 metadata table을 둔다.
 | Tags | auth, session, security |
 ```
 
-### 12.2 필수 Field
+### 12.2 Required Fields
 
 | Field | Required | Description |
 |---|---:|---|
-| `Type` | yes | 요구사항 타입. ID prefix와 일치해야 한다. |
-| `Target` | yes | 목표 버전, release, milestone, phase, objective. |
-| `Status` | yes | 요구사항 진행 상태. |
+| `Type` | yes | The requirement type. It must match the ID prefix. |
+| `Target` | yes | The target version, release, milestone, phase, or objective. |
+| `Status` | yes | The progress status of the requirement. |
 
-### 12.3 권장 Field
+### 12.3 Recommended Fields
 
 | Field | Required | Description |
 |---|---:|---|
-| `Priority` | no | 우선순위. |
-| `Tags` | no | 검색과 분류를 위한 comma-separated tag. |
-| `Scope` | no | scope code. 파일의 primary scope와 다르면 명시한다. |
-| `Owner` | no | 담당자, 팀, 역할. |
-| `Risk` | no | 위험도. |
-| `Stability` | no | 요구사항 안정성. |
-| `Verification Method` | no | 검증 방식. |
-| `GitHub Issue` | no | 추적 이슈 URL. |
-| `Related Docs` | no | 관련 분석/기술/결정 문서 링크. |
-| `Source` | no | 요구사항 출처. |
-| `Supersedes` | no | 이 요구사항이 대체하는 요구사항 ID. |
-| `Superseded By` | no | 이 요구사항을 대체하는 요구사항 ID. |
-| `Last Reviewed` | no | 마지막 검토일, `YYYY-MM-DD`. |
+| `Priority` | no | The priority. |
+| `Tags` | no | Comma-separated tags for search and classification. |
+| `Scope` | no | The scope code. State it explicitly when it differs from the primary scope of the file. |
+| `Owner` | no | The owner, team, or role. |
+| `Risk` | no | The risk level. |
+| `Stability` | no | The stability of the requirement. |
+| `Verification Method` | no | The verification method. |
+| `GitHub Issue` | no | The tracking issue URL. |
+| `Related Docs` | no | Links to related analysis, technical, and decision documents. |
+| `Source` | no | The origin of the requirement. |
+| `Supersedes` | no | The ID of the requirement that this requirement supersedes. |
+| `Superseded By` | no | The ID of the requirement that supersedes this requirement. |
+| `Last Reviewed` | no | The last review date, `YYYY-MM-DD`. |
 
-### 12.4 Metadata 값 규칙
+### 12.4 Metadata Value Rules
 
-1. Field 이름은 정확한 영어 key를 사용한다.
-2. Field 값은 한 줄로 작성한다.
-3. table cell 안에 줄바꿈을 넣지 않는다.
-4. 값이 없으면 `-`를 사용한다.
-5. `Tags`는 comma-separated 값으로 작성한다.
-6. `Related Docs`는 Markdown link 목록으로 작성한다.
-7. metadata table 안에서 복잡한 문장을 길게 쓰지 않는다.
-8. metadata table에 없는 세부 설명은 본문 section에 작성한다.
+1. Field names use the exact English key.
+2. Write field values on a single line.
+3. Do not put a line break inside a table cell.
+4. Use `-` when there is no value.
+5. Write `Tags` as comma-separated values.
+6. Write `Related Docs` as a list of Markdown links.
+7. Do not write long, complex sentences inside the metadata table.
+8. Write detailed explanations that do not belong in the metadata table in the body sections.
 
 ---
 
-## 13. Type 규칙
+## 13. Type Rules
 
-허용 Type 값:
+Allowed Type values:
 
 | Type | Meaning |
 |---|---|
-| `functional` | 사용자가 보거나 시스템이 수행하는 기능 동작 |
-| `non_functional` | 특정 품질 속성에 속하지 않는 일반 비기능 요구사항 |
+| `functional` | Functional behavior that a user sees or that the system performs |
+| `non_functional` | A general non-functional requirement that does not belong to a specific quality attribute |
 | `interface` | API, UI, protocol, external system boundary |
-| `data` | 데이터 구조, 저장, 조회, 정합성, retention |
-| `security` | 인증, 인가, 비밀 관리, 보안 통제 |
-| `performance` | 응답 시간, 처리량, 부하, 리소스 사용량 |
-| `reliability` | 장애 복구, 재시도, 가용성, 일관성 유지 |
-| `observability` | 로그, 메트릭, tracing, alerting |
-| `operational` | 배포, 설정, 운영, runbook, admin task |
-| `migration` | 데이터 또는 시스템 전환 |
-| `constraint` | 구현 방식, 기술, 법률, 조직, 환경 제약 |
+| `data` | Data structure, storage, retrieval, consistency, retention |
+| `security` | Authentication, authorization, secret management, security controls |
+| `performance` | Response time, throughput, load, resource usage |
+| `reliability` | Failure recovery, retry, availability, consistency maintenance |
+| `observability` | Logs, metrics, tracing, alerting |
+| `operational` | Deployment, configuration, operations, runbook, admin task |
+| `migration` | Data or system transition |
+| `constraint` | Implementation method, technical, legal, organizational, and environmental constraints |
 
-규칙:
+Rules:
 
-1. Type 값은 소문자 snake_case를 사용한다.
-2. Type은 ID prefix와 일치해야 한다.
-3. 요구사항이 둘 이상의 Type에 걸치면 primary Type을 하나 선택하고 나머지는 `Tags` 또는 `Trace Links`로 보조한다.
-4. 기능 동작과 품질 기준이 함께 있으면 요구사항을 분리한다.
+1. Type values use lowercase snake_case.
+2. The Type must match the ID prefix.
+3. When a requirement spans two or more Types, choose one primary Type and support the rest with `Tags` or `Trace Links`.
+4. When functional behavior and a quality criterion appear together, split the requirement.
 
 ---
 
-## 14. Status 규칙
+## 14. Status Rules
 
-### 14.1 허용 Status 값
+### 14.1 Allowed Status Values
 
 | Status | Meaning |
 |---|---|
-| `planned` | 요구사항이 정의되었으나 구현 전 |
-| `in_progress` | 구현 중 |
-| `blocked` | 구현 또는 검증이 차단됨 |
-| `implemented` | 코드 구현은 완료되었으나 검증 증거가 충분하지 않음 |
-| `verified` | 수용 기준이 충족되고 검증 증거가 연결됨 |
-| `discarded` | 폐기됨. 물리 삭제 대신 사용 권장 |
+| `planned` | The requirement is defined but not yet implemented |
+| `in_progress` | Implementation is in progress |
+| `blocked` | Implementation or verification is blocked |
+| `implemented` | Code implementation is complete but verification evidence is insufficient |
+| `verified` | The acceptance criteria are satisfied and verification evidence is linked |
+| `discarded` | Discarded. Recommended instead of physical deletion |
 
-### 14.2 상태 전이
+### 14.2 Status Transitions
 
-허용되는 일반 전이:
+Allowed normal transitions:
 
 ```text
 planned -> in_progress
@@ -704,53 +704,53 @@ verified -> in_progress
 verified -> discarded
 ```
 
-### 14.3 implemented 조건
+### 14.3 implemented Conditions
 
-`implemented`로 변경하려면 다음 중 하나 이상이 있어야 한다.
+To change to `implemented`, at least one of the following must exist.
 
-1. 관련 Pull Request 링크
-2. 관련 구현 파일 링크 또는 경로
-3. 관련 commit, branch, 또는 코드 위치
-4. 구현자가 남긴 Implementation Notes
+1. A link to the related Pull Request
+2. A link or path to the related implementation file
+3. The related commit, branch, or code location
+4. Implementation Notes left by the implementer
 
-`implemented`는 “검증 완료”를 의미하지 않는다.
+`implemented` does not mean “verification complete”.
 
-### 14.4 verified 조건
+### 14.4 verified Conditions
 
-`verified`로 변경하려면 다음 조건을 모두 만족해야 한다.
+To change to `verified`, all of the following conditions must be satisfied.
 
-1. `#### Acceptance Criteria` 섹션이 존재한다.
-2. Acceptance Criteria가 최소 1개 이상 존재한다.
-3. 모든 Acceptance Criteria가 `- [x]` 상태다.
-4. `#### Verification Evidence` 섹션이 존재한다.
-5. Verification Evidence table에 최소 1개 이상의 evidence row가 있다.
-6. Evidence row의 `Reference` 값이 비어 있지 않다.
-7. 가능하면 각 AC가 evidence의 `Covers` column에서 직접 또는 `all`로 커버된다.
+1. The `#### Acceptance Criteria` section exists.
+2. At least one acceptance criterion exists.
+3. Every acceptance criterion is in the `- [x]` state.
+4. The `#### Verification Evidence` section exists.
+5. The Verification Evidence table has at least one evidence row.
+6. The `Reference` value of the evidence row is not empty.
+7. Where possible, each AC is covered in the `Covers` column of the evidence either directly or by `all`.
 
 ---
 
-## 15. Priority, Risk, Stability 규칙
+## 15. Priority, Risk, and Stability Rules
 
 ### 15.1 Priority
 
 | Priority | Meaning |
 |---|---|
-| `critical` | target 달성을 위해 반드시 필요하며 누락 시 release 불가 |
-| `high` | 핵심 기능 또는 품질에 중요 |
-| `medium` | 일반 요구사항 |
-| `low` | 후순위 요구사항 |
-| `optional` | 선택적 개선 사항 |
+| `critical` | Absolutely required to achieve the target; release is impossible if it is missing |
+| `high` | Important to core functionality or quality |
+| `medium` | A normal requirement |
+| `low` | A lower-priority requirement |
+| `optional` | An optional improvement |
 
 ### 15.2 Risk
 
 | Risk | Meaning |
 |---|---|
-| `low` | 구현과 검증 리스크가 낮음 |
-| `medium` | 일부 불확실성 존재 |
-| `high` | 기술, 일정, 정책, 외부 의존 리스크가 큼 |
-| `critical` | target 또는 시스템 안정성에 중대한 위험 |
+| `low` | Implementation and verification risk is low |
+| `medium` | Some uncertainty exists |
+| `high` | Technical, schedule, policy, or external dependency risk is large |
+| `critical` | A serious risk to the target or to system stability |
 
-`Risk = high` 또는 `Risk = critical`이면 `Research / Analysis` 또는 `Trace Links`에 근거 문서를 연결하는 것을 권장한다.
+When `Risk = high` or `Risk = critical`, linking a rationale document in `Research / Analysis` or `Trace Links` is recommended.
 
 ### 15.3 Stability
 
@@ -758,28 +758,28 @@ Canonical `Stability` values are:
 
 | Stability | Meaning |
 |---|---|
-| `draft` | 아직 구현 계약으로 신뢰하면 안 되는 초안 |
-| `evolving` | 구체화 중이지만 구현 후보로 검토 가능 |
-| `stable` | 구현 가능할 정도로 안정됨 |
-| `frozen` | target 범위에서 동결됨. 변경 시 리뷰 필요 |
-| `deprecated` | 명시 조회는 가능하지만 새 작업 후보에서 제외됨 |
+| `draft` | A draft that must not yet be trusted as an implementation contract |
+| `evolving` | Still being made concrete, but reviewable as an implementation candidate |
+| `stable` | Stable enough to be implemented |
+| `frozen` | Frozen within the target scope. A change requires review |
+| `deprecated` | Can still be looked up explicitly, but excluded from new work candidates |
 
 Legacy compatibility:
 
-- `volatile`은 과거 문서 호환을 위한 legacy value다.
-- 새 Requirement Block은 `volatile`을 생성하지 않아야 한다.
-- validator는 unknown `Stability`를 error로 보고하고, legacy `volatile`은 migration warning으로 보고한다.
-- `verified` 요구사항은 `Stability=draft`일 수 없다.
-- non-discarded `draft` 요구사항이 active 또는 released target에 있으면 stability warning으로 보고한다.
-- agent는 사용자가 명시적으로 override하지 않는 한 non-discarded `draft` 또는 `deprecated` 요구사항 구현을 시작하지 않아야 한다.
+- `volatile` is a legacy value kept for compatibility with older documents.
+- A new Requirement Block must not produce `volatile`.
+- The validator reports an unknown `Stability` as an error, and reports legacy `volatile` as a migration warning.
+- A `verified` requirement must not be `Stability=draft`.
+- When a non-discarded `draft` requirement is in an active or released target, report a stability warning.
+- An agent must not start implementing a non-discarded `draft` or `deprecated` requirement unless the user explicitly overrides that.
 
 ---
 
-## 16. Target 규칙
+## 16. Target Rules
 
-Target은 요구사항이 속한 구현 목표, release, 버전, phase, milestone을 의미한다.
+A Target means the implementation goal, release, version, phase, or milestone that a requirement belongs to.
 
-예:
+Example:
 
 ```text
 MVP
@@ -790,382 +790,382 @@ alpha-1
 phase-1
 ```
 
-규칙:
+Rules:
 
-1. 하나의 요구사항은 기본적으로 하나의 `Target`만 가진다.
-2. 여러 target에 걸치는 요구사항은 가능한 한 분리한다.
-3. 모든 Target 값은 `docs/spec/00.index.md`의 Target Map에 등록한다.
-4. 미등록 Target은 validation warning이다.
-5. `frozen` target에 속한 요구사항을 변경할 때는 변경 이유를 `Change Notes`에 남긴다.
-6. target이 바뀌면 Requirement Block의 `Target` row만 바꾸지 말고, 필요하면 `Rationale` 또는 `Change Notes`도 갱신한다.
+1. By default, one requirement has only one `Target`.
+2. Split a requirement that spans multiple targets as far as possible.
+3. Register every Target value in the Target Map of `docs/spec/00.index.md`.
+4. An unregistered Target is a validation warning.
+5. When changing a requirement that belongs to a `frozen` target, record the reason for the change in `Change Notes`.
+6. When the target changes, do not change only the `Target` row of the Requirement Block; also update `Rationale` or `Change Notes` when needed.
 
 ---
 
-## 17. Tags 규칙
+## 17. Tags Rules
 
-Tags는 검색과 분류를 돕는 보조 속성이다.
+Tags are a supplementary attribute that aids search and classification.
 
-예:
+Example:
 
 ```md
 | Tags | auth, session, security |
 ```
 
-규칙:
+Rules:
 
-1. comma-separated 값을 사용한다.
-2. lowercase kebab-case를 권장한다.
-3. tag 앞뒤 공백은 trim한다.
-4. tag는 상태나 target을 대체하지 않는다.
-5. tag는 5개 이하를 권장한다.
-6. 중복 tag를 사용하지 않는다.
-7. 같은 의미의 tag는 하나로 통일한다. 예: `login`과 `sign-in` 중 하나 선택.
+1. Use comma-separated values.
+2. lowercase kebab-case is recommended.
+3. Trim the whitespace before and after a tag.
+4. A tag does not replace status or target.
+5. Five or fewer tags are recommended.
+6. Do not use duplicate tags.
+7. Unify tags that have the same meaning into one. Example: choose one of `login` and `sign-in`.
 
 ---
 
-## 18. Requirement Section 규칙
+## 18. Requirement Section Rules
 
-### 18.1 고정 section 목록
+### 18.1 Fixed Section List
 
-Requirement Block 내부 section은 다음 heading을 사용한다.
+Sections inside a Requirement Block use the following headings.
 
 | Section | Required | Purpose |
 |---|---:|---|
-| `#### Requirement` | yes | 요구사항 statement |
-| `#### Rationale` | recommended | 요구사항이 필요한 이유 |
-| `#### Acceptance Criteria` | yes | 검증 가능한 수용 기준 |
-| `#### Verification Evidence` | required for `implemented`, `verified` | 구현 또는 검증 증거 |
-| `#### Trace Links` | recommended | 이슈, PR, 코드, 문서, 다른 요구사항 관계 |
-| `#### Research / Analysis` | optional | 조사, 비교, 분석, 실험 근거 |
-| `#### Implementation Notes` | optional | 구현자가 참고할 세부 사항 |
-| `#### Change Notes` | optional | 요구사항 변경 이력 요약 |
+| `#### Requirement` | yes | The requirement statement |
+| `#### Rationale` | recommended | Why the requirement is needed |
+| `#### Acceptance Criteria` | yes | Verifiable acceptance criteria |
+| `#### Verification Evidence` | required for `implemented`, `verified` | Implementation or verification evidence |
+| `#### Trace Links` | recommended | Relationships to issues, PRs, code, documents, and other requirements |
+| `#### Research / Analysis` | optional | Investigation, comparison, analysis, and experiment rationale |
+| `#### Implementation Notes` | optional | Details for the implementer to refer to |
+| `#### Change Notes` | optional | A summary of the requirement change history |
 
-### 18.2 section heading 규칙
+### 18.2 Section Heading Rules
 
-1. section heading은 반드시 `####`를 사용한다.
-2. section heading 이름을 바꾸지 않는다.
-3. 같은 Requirement Block 안에서 같은 section을 중복 작성하지 않는다.
-4. 필수 section이 비어 있으면 validation error 또는 warning이 발생한다.
+1. A section heading must use `####`.
+2. Do not change section heading names.
+3. Do not write the same section twice inside the same Requirement Block.
+4. When a required section is empty, a validation error or warning occurs.
 
 ---
 
-## 19. Requirement Statement 작성 규칙
+## 19. Requirement Statement Authoring Rules
 
-### 19.1 기본 문장 패턴
+### 19.1 Base Sentence Pattern
 
-한국어 문서에서는 다음 패턴을 권장한다.
+When the condition is stated ahead of the behavior, the following pattern is recommended.
 
 ```text
-시스템은 {조건/상황}에서 {행위/결과/제약}을/를 {해야 한다/제공해야 한다/보장해야 한다}.
+The system shall, in {condition/context}, {perform/provide/guarantee} {behavior/result/constraint}.
 ```
 
-영어 문서에서는 다음 패턴을 권장한다.
+When the behavior is stated first and the condition trails it, the following pattern is recommended.
 
 ```text
 The system shall {behavior/result/constraint} when {condition/context}.
 ```
 
-### 19.2 좋은 예
+### 19.2 Good Example
 
 ```md
 #### Requirement
 
-시스템은 access token이 만료된 요청에 대해 HTTP 401 응답을 반환해야 한다.
+The system shall return an HTTP 401 response for a request whose access token has expired.
 ```
 
-좋은 이유:
+Why it is good:
 
-1. 시스템 행위가 명확하다.
-2. 조건이 명확하다.
-3. 기대 결과가 명확하다.
-4. 테스트 가능하다.
+1. The system behavior is clear.
+2. The condition is clear.
+3. The expected result is clear.
+4. It is testable.
 
-### 19.3 나쁜 예
+### 19.3 Bad Example
 
 ```md
 #### Requirement
 
-시스템은 토큰을 적절히 처리해야 한다.
+The system shall handle tokens appropriately.
 ```
 
-나쁜 이유:
+Why it is bad:
 
-1. “적절히”의 의미가 불명확하다.
-2. 어떤 토큰인지 불명확하다.
-3. 어떤 결과를 기대하는지 불명확하다.
-4. 검증 기준을 만들기 어렵다.
+1. The meaning of “appropriately” is unclear.
+2. Which token is meant is unclear.
+3. What result is expected is unclear.
+4. It is hard to build verification criteria.
 
-### 19.4 금지 또는 경고 표현
+### 19.4 Forbidden or Warned Expressions
 
-다음 표현은 가능하면 쓰지 않는다.
+Avoid the following expressions where possible.
 
 | Expression | Reason |
 |---|---|
-| 적절히 | 판단 기준 불명확 |
-| 충분히 | 측정 기준 없음 |
-| 빠르게 | 성능 기준 없음 |
-| 안전하게 | 보안 기준 없음 |
-| 사용자 친화적으로 | UX 기준 없음 |
-| 대부분의 경우 | 조건 범위 불명확 |
-| 가능하면 | 필수 여부 불명확 |
-| 필요하면 | 조건 불명확 |
-| 나중에 | target 불명확 |
-| 일단 | 임시 요구인지 불명확 |
+| appropriately | The judgment criterion is unclear |
+| sufficiently | There is no measurement criterion |
+| quickly | There is no performance criterion |
+| securely | There is no security criterion |
+| user-friendly | There is no UX criterion |
+| in most cases | The range of the condition is unclear |
+| if possible | Whether it is mandatory is unclear |
+| if needed | The condition is unclear |
+| later | The target is unclear |
+| for now | Whether the requirement is temporary is unclear |
 
-이 표현이 필요하면 Acceptance Criteria 또는 Measurement Criteria에서 기준을 구체화한다.
+When such an expression is necessary, make the criterion concrete in the Acceptance Criteria or the Measurement Criteria.
 
 ---
 
-## 20. 좋은 요구사항 품질 기준
+## 20. Quality Criteria for Good Requirements
 
-요구사항은 다음 기준을 만족해야 한다.
+A requirement must satisfy the following criteria.
 
 | Quality | Rule |
 |---|---|
-| Atomic | 하나의 요구사항은 하나의 검증 가능한 요구만 담는다. |
-| Verifiable | 테스트, 분석, 검사, 시연, 리뷰 중 하나 이상으로 확인 가능하다. |
-| Unambiguous | 서로 다른 해석이 나오지 않는다. |
-| Necessary | 실제 시스템 목표, 품질, 제약, 사용자 가치, 운영 필요와 연결된다. |
-| Feasible | 현재 기술, 일정, 환경에서 구현 가능하다. |
-| Bounded | 적용 범위와 제외 범위가 명확하다. |
-| Consistent | 다른 요구사항과 충돌하지 않는다. |
-| Traceable | issue, PR, test, code, docs, 다른 requirement와 연결 가능하다. |
-| Reviewable | reviewer가 변경 범위와 검증 기준을 빠르게 판단할 수 있다. |
-| Maintainable | Git diff에서 최소 변경으로 추적 가능하다. |
+| Atomic | One requirement contains only one verifiable demand. |
+| Verifiable | It can be confirmed by at least one of test, analysis, inspection, demonstration, or review. |
+| Unambiguous | It does not give rise to differing interpretations. |
+| Necessary | It is connected to an actual system goal, quality, constraint, user value, or operational need. |
+| Feasible | It is implementable within the current technology, schedule, and environment. |
+| Bounded | Its scope of application and its exclusions are clear. |
+| Consistent | It does not conflict with other requirements. |
+| Traceable | It can be linked to issues, PRs, tests, code, docs, and other requirements. |
+| Reviewable | A reviewer can quickly judge the change scope and the verification criteria. |
+| Maintainable | It is traceable in a Git diff with minimal changes. |
 
 ---
 
-## 21. Acceptance Criteria 규칙
+## 21. Acceptance Criteria Rules
 
-### 21.1 기본 형식
+### 21.1 Base Format
 
-Acceptance Criteria는 반드시 task list로 작성한다.
+Acceptance Criteria must be written as a task list.
 
 ```md
 #### Acceptance Criteria
 
-- [ ] AC-1: 만료된 access token으로 `GET /api/me`를 호출하면 HTTP 401을 반환한다.
-- [ ] AC-2: 유효한 access token으로 `GET /api/me`를 호출하면 HTTP 200과 사용자 요약 정보를 반환한다.
-- [ ] AC-3: 만료된 token으로 재요청해도 세션이 복구되지 않는다.
+- [ ] AC-1: Calling `GET /api/me` with an expired access token returns HTTP 401.
+- [ ] AC-2: Calling `GET /api/me` with a valid access token returns HTTP 200 and the user summary information.
+- [ ] AC-3: Re-requesting with an expired token does not restore the session.
 ```
 
-### 21.2 AC ID 규칙
+### 21.2 AC ID Rules
 
-1. 각 항목은 `AC-{N}:` 형식을 권장한다.
-2. 번호는 Requirement Block 안에서 1부터 증가한다.
-3. 중간에 항목을 삭제하면 번호를 재정렬해도 된다.
-4. Verification Evidence의 `Covers` column에서 AC ID를 참조할 수 있다.
+1. The `AC-{N}:` format is recommended for each item.
+2. Numbers increase from 1 within a Requirement Block.
+3. When an item in the middle is deleted, renumbering is allowed.
+4. AC IDs may be referenced from the `Covers` column of Verification Evidence.
 
-### 21.3 작성 규칙
+### 21.3 Authoring Rules
 
-1. 최소 1개 이상 작성한다.
-2. 하나의 AC는 하나의 기대 결과만 표현한다.
-3. 가능하면 조건, 입력, 기대 결과를 포함한다.
-4. 비기능 요구사항은 측정 가능한 기준을 포함한다.
-5. `verified` 상태에서는 모든 AC가 `- [x]`여야 한다.
-6. AC를 삭제해서 `verified` 조건을 맞추면 안 된다. 기준이 바뀐 경우 `Change Notes`에 이유를 남긴다.
+1. Write at least one.
+2. One AC expresses only one expected result.
+3. Where possible, include the condition, the input, and the expected result.
+4. A non-functional requirement includes a measurable criterion.
+5. In the `verified` status, every AC must be `- [x]`.
+6. Deleting an AC in order to meet the `verified` conditions is forbidden. When the criterion has changed, record the reason in `Change Notes`.
 
-### 21.4 기능 요구사항 AC 예
+### 21.4 Functional Requirement AC Example
 
 ```md
-- [ ] AC-1: 비로그인 사용자가 보호된 API를 호출하면 HTTP 401을 반환한다.
-- [ ] AC-2: 로그인 사용자가 동일 API를 호출하면 HTTP 200을 반환한다.
-- [ ] AC-3: 401 응답에는 인증 실패 사유를 노출하지 않는다.
+- [ ] AC-1: When a signed-out user calls a protected API, HTTP 401 is returned.
+- [ ] AC-2: When a signed-in user calls the same API, HTTP 200 is returned.
+- [ ] AC-3: The 401 response does not expose the authentication failure reason.
 ```
 
-### 21.5 성능 요구사항 AC 예
+### 21.5 Performance Requirement AC Example
 
 ```md
-- [ ] AC-1: p95 응답 시간이 300ms 이하임을 부하 테스트로 확인한다.
-- [ ] AC-2: 동시 사용자 500명 조건에서 오류율이 1% 이하임을 확인한다.
+- [ ] AC-1: A load test confirms that the p95 response time is 300ms or less.
+- [ ] AC-2: Confirm that the error rate is 1% or less under a condition of 500 concurrent users.
 ```
 
-### 21.6 보안 요구사항 AC 예
+### 21.6 Security Requirement AC Example
 
 ```md
-- [ ] AC-1: refresh token은 평문으로 로그에 기록되지 않는다.
-- [ ] AC-2: refresh token 저장소에는 hash 또는 암호화된 값만 저장된다.
-- [ ] AC-3: token rotation 실패 시 기존 token은 재사용 불가 상태가 된다.
+- [ ] AC-1: Refresh tokens are not recorded in logs in plaintext.
+- [ ] AC-2: Only hashed or encrypted values are stored in the refresh token store.
+- [ ] AC-3: When token rotation fails, the existing token becomes unusable for reuse.
 ```
 
 ---
 
-## 22. Verification Evidence 규칙
+## 22. Verification Evidence Rules
 
-### 22.1 기본 형식
+### 22.1 Base Format
 
 ```md
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 |---|---|---|---|---|
-| VE-1 | Test | `src/test/AuthSessionExpirationTest.java` | AC-1, AC-2 | 세션 만료 API 테스트 |
-| VE-2 | PR | https://github.com/org/repo/pull/456 | all | 구현 및 테스트 PR |
+| VE-1 | Test | `src/test/AuthSessionExpirationTest.java` | AC-1, AC-2 | Session expiration API test |
+| VE-2 | PR | https://github.com/org/repo/pull/456 | all | Implementation and test PR |
 ```
 
 ### 22.2 Evidence Type
 
 | Type | Meaning |
 |---|---|
-| `Test` | 테스트 파일, 테스트 케이스, 테스트 실행 결과 |
-| `PR` | 구현 또는 검증 Pull Request |
-| `Issue` | 요구사항 추적 issue |
-| `Code` | 핵심 구현 파일 또는 코드 위치 |
-| `Review` | 리뷰 결과, 승인, 체크리스트 |
-| `Analysis` | 분석 문서, 실험 결과, benchmark |
-| `Demo` | 데모 영상, 스크린샷, 시연 기록 |
-| `Monitoring` | 운영 로그, 메트릭, alert, dashboard |
-| `Manual` | 수동 검증 기록 |
+| `Test` | A test file, test case, or test execution result |
+| `PR` | An implementation or verification Pull Request |
+| `Issue` | A requirement tracking issue |
+| `Code` | A core implementation file or code location |
+| `Review` | A review result, approval, or checklist |
+| `Analysis` | An analysis document, experiment result, or benchmark |
+| `Demo` | A demo video, screenshot, or demonstration record |
+| `Monitoring` | An operational log, metric, alert, or dashboard |
+| `Manual` | A manual verification record |
 
-### 22.3 Evidence ID 규칙
+### 22.3 Evidence ID Rules
 
-1. Evidence ID는 `VE-{N}` 형식을 권장한다.
-2. 번호는 Requirement Block 안에서 1부터 증가한다.
-3. `Covers`에는 `AC-1`, `AC-2`, `all`, 또는 `-`를 사용한다.
-4. `verified` 상태에서는 `Covers = all` 또는 모든 AC가 evidence에 의해 커버되는 것을 권장한다.
+1. The `VE-{N}` format is recommended for an Evidence ID.
+2. Numbers increase from 1 within a Requirement Block.
+3. Use `AC-1`, `AC-2`, `all`, or `-` in `Covers`.
+4. In the `verified` status, `Covers = all`, or having every AC covered by evidence, is recommended.
 
-### 22.4 Evidence Reference 규칙
+### 22.4 Evidence Reference Rules
 
-1. local file은 inline code path로 작성한다. 예: `` `src/auth/session.ts` ``.
-2. GitHub Issue 또는 PR은 URL로 작성한다.
-3. 문서는 Markdown link로 작성한다.
-4. 존재하지 않는 파일 경로를 작성하지 않는다.
-5. 허위 URL을 작성하지 않는다.
-6. 증거가 아직 없으면 상태를 `verified`로 바꾸지 않는다.
+1. Write a local file as an inline code path. Example: `` `src/auth/session.ts` ``.
+2. Write a GitHub Issue or PR as a URL.
+3. Write a document as a Markdown link.
+4. Do not write a file path that does not exist.
+5. Do not write a false URL.
+6. When evidence does not yet exist, do not change the status to `verified`.
 
 ---
 
-## 23. Trace Links 규칙
+## 23. Trace Links Rules
 
-Trace Links는 요구사항과 외부 산출물 또는 다른 요구사항의 관계를 기록한다.
+Trace Links record the relationship between a requirement and an external artifact or another requirement.
 
-### 23.1 기본 형식
+### 23.1 Base Format
 
 ```md
 #### Trace Links
 
 | Type | Reference | Relation | Notes |
 |---|---|---|---|
-| Issue | https://github.com/org/repo/issues/123 | tracks | 세션 만료 요구사항 추적 |
-| PR | https://github.com/org/repo/pull/456 | implements | 구현 PR |
-| Requirement | IR-FE-ROUTER-001 | depends_on | 프론트엔드 라우팅 처리 의존 |
-| Doc | [세션 정책 분석](../analysis/session-timeout-analysis.md) | informed_by | 정책 결정 근거 |
+| Issue | https://github.com/org/repo/issues/123 | tracks | Tracks the session expiration requirement |
+| PR | https://github.com/org/repo/pull/456 | implements | Implementation PR |
+| Requirement | IR-FE-ROUTER-001 | depends_on | Depends on frontend routing handling |
+| Doc | [Session policy analysis](../analysis/session-timeout-analysis.md) | informed_by | Policy decision rationale |
 ```
 
 ### 23.2 Trace Type
 
 | Type | Meaning |
 |---|---|
-| `Issue` | GitHub Issue, Linear ticket, Jira ticket 등 |
+| `Issue` | A GitHub Issue, Linear ticket, Jira ticket, and the like |
 | `PR` | Pull Request |
 | `Commit` | Git commit |
-| `Code` | source file 또는 코드 위치 |
-| `Test` | test file 또는 test result |
-| `Doc` | 분석 문서, 기술 문서, 운영 문서 |
+| `Code` | A source file or code location |
+| `Test` | A test file or test result |
+| `Doc` | An analysis document, technical document, or operations document |
 | `ADR` | architecture decision record |
-| `Requirement` | 다른 요구사항 ID |
-| `External` | 외부 표준, 외부 문서, vendor 문서 |
+| `Requirement` | Another requirement ID |
+| `External` | An external standard, external document, or vendor document |
 
-### 23.3 Relation 값
+### 23.3 Relation Values
 
 | Relation | Meaning |
 |---|---|
-| `tracks` | issue 또는 ticket이 요구사항을 추적한다. |
-| `implements` | PR, commit, code가 요구사항을 구현한다. |
-| `verifies` | test, review, analysis, demo가 요구사항을 검증한다. |
-| `depends_on` | 이 요구사항이 다른 요구사항에 의존한다. |
-| `blocks` | 이 요구사항이 다른 요구사항을 차단한다. |
-| `conflicts_with` | 다른 요구사항과 충돌한다. |
-| `refines` | 다른 요구사항을 더 구체화한다. |
-| `generalizes` | 다른 요구사항을 더 일반화한다. |
-| `supersedes` | 기존 요구사항을 대체한다. |
-| `superseded_by` | 다른 요구사항에 의해 대체된다. |
-| `informed_by` | 문서, 분석, 외부 근거에서 영향을 받았다. |
-| `related_to` | 일반 관련 관계. |
+| `tracks` | An issue or ticket tracks the requirement. |
+| `implements` | A PR, commit, or code implements the requirement. |
+| `verifies` | A test, review, analysis, or demo verifies the requirement. |
+| `depends_on` | This requirement depends on another requirement. |
+| `blocks` | This requirement blocks another requirement. |
+| `conflicts_with` | It conflicts with another requirement. |
+| `refines` | It makes another requirement more concrete. |
+| `generalizes` | It generalizes another requirement further. |
+| `supersedes` | It supersedes an existing requirement. |
+| `superseded_by` | It is superseded by another requirement. |
+| `informed_by` | It was informed by a document, an analysis, or external rationale. |
+| `related_to` | A general related relationship. |
 
-### 23.4 관계 규칙
+### 23.4 Relationship Rules
 
-1. `Requirement` reference는 실제 존재하는 Requirement ID여야 한다.
-2. 자기 자신을 참조하지 않는다.
-3. `depends_on` 관계가 cycle을 만들면 warning 이상으로 처리한다.
-4. `conflicts_with` 관계는 `Open Questions` 또는 `Change Notes`에 해소 방안을 남긴다.
-5. `supersedes` 또는 `superseded_by`를 사용하면 metadata의 `Supersedes` 또는 `Superseded By`도 갱신하는 것을 권장한다.
+1. A `Requirement` reference must be a Requirement ID that actually exists.
+2. Do not reference itself.
+3. When a `depends_on` relationship forms a cycle, treat it as a warning or higher.
+4. For a `conflicts_with` relationship, record the resolution plan in `Open Questions` or `Change Notes`.
+5. When using `supersedes` or `superseded_by`, also updating `Supersedes` or `Superseded By` in the metadata is recommended.
 
 ---
 
-## 24. Research / Analysis 규칙
+## 24. Research / Analysis Rules
 
-### 24.1 목적
+### 24.1 Purpose
 
-Research / Analysis는 요구사항을 뒷받침하는 조사, 실험, 비교, 기술 분석, 의사결정 근거를 연결한다.
+Research / Analysis links the investigation, experiment, comparison, technical analysis, and decision rationale that support a requirement.
 
-### 24.2 기본 형식
+### 24.2 Base Format
 
 ```md
 #### Research / Analysis
 
-- [세션 만료 정책 분석](../analysis/session-timeout-analysis.md)
-- [JWT와 opaque token 비교](../analysis/token-strategy-comparison.md)
-- [토큰 저장 방식 ADR](../adr/0001-use-session-cookie.md)
+- [Session expiration policy analysis](../analysis/session-timeout-analysis.md)
+- [Comparison of JWT and opaque tokens](../analysis/token-strategy-comparison.md)
+- [ADR on the token storage method](../adr/0001-use-session-cookie.md)
 ```
 
-### 24.3 규칙
+### 24.3 Rules
 
-1. Research / Analysis는 필수는 아니다.
-2. `Risk = high`, `Risk = critical`, 또는 `Stability = draft`이면 작성하는 것을 권장한다.
-3. 외부 시스템, vendor API, 보안 정책, 성능 수치에 의존하면 근거 문서를 연결한다.
-4. 분석 문서의 결론이 바뀌면 연결된 요구사항을 재검토한다.
-5. 연구 내용 자체를 Requirement Statement에 길게 넣지 않는다.
+1. Research / Analysis is not required.
+2. Writing it is recommended when `Risk = high`, `Risk = critical`, or `Stability = draft`.
+3. When it depends on an external system, a vendor API, a security policy, or a performance figure, link the rationale document.
+4. When the conclusion of an analysis document changes, re-review the linked requirements.
+5. Do not put the research content itself at length into the Requirement Statement.
 
 ---
 
-## 25. Implementation Notes 규칙
+## 25. Implementation Notes Rules
 
-Implementation Notes는 구현자가 참고할 세부 사항이다. 이 섹션은 요구사항 자체가 아니다.
+Implementation Notes are the details for the implementer to refer to. This section is not the requirement itself.
 
 ```md
 #### Implementation Notes
 
-- 백엔드 middleware에서 token 만료를 감지한다.
-- 프론트엔드 redirect 처리는 `IR-FE-ROUTER-001`에서 다룬다.
-- 테스트는 만료 token fixture를 사용한다.
+- The backend middleware detects token expiration.
+- Frontend redirect handling is covered by `IR-FE-ROUTER-001`.
+- The test uses an expired token fixture.
 ```
 
-규칙:
+Rules:
 
-1. Requirement Statement에 들어갈 필수 동작을 Implementation Notes에 숨기지 않는다.
-2. 구현 방식이 강제 조건이면 별도 `constraint` requirement로 분리한다.
-3. 구현 상세가 바뀌어도 요구사항의 의미가 바뀌지 않아야 한다.
-4. 구현 note는 과도하게 길어지면 `docs/tech/*.md`로 분리한다.
+1. Do not hide mandatory behavior that belongs in the Requirement Statement inside Implementation Notes.
+2. When the implementation method is a mandatory condition, split it into a separate `constraint` requirement.
+3. The meaning of the requirement must not change even when the implementation details change.
+4. When implementation notes become excessively long, split them into `docs/tech/*.md`.
 
 ---
 
-## 26. Change Notes 규칙
+## 26. Change Notes Rules
 
-Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 상세 변경 이력은 Git이 담당한다.
+Change Notes briefly record the reason for and the impact of a requirement change. Git is responsible for the detailed change history.
 
 ```md
 #### Change Notes
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-05-07 | Target을 `v0.1`에서 `v0.2`로 변경 | refresh token 정책 확정 지연 |
-| 2026-05-10 | AC-3 추가 | 재요청 시 세션 복구 방지 필요 |
+| 2026-05-07 | Changed Target from `v0.1` to `v0.2` | Delay in finalizing the refresh token policy |
+| 2026-05-10 | Added AC-3 | Need to prevent session restoration on re-request |
 ```
 
-규칙:
+Rules:
 
-1. 모든 사소한 문구 수정을 기록할 필요는 없다.
-2. Target, Status, Acceptance Criteria, Requirement Statement의 의미가 바뀌면 기록한다.
-3. `frozen` target의 요구사항을 수정하면 Change Notes를 작성한다.
-4. 변경 이유는 구체적으로 작성한다.
+1. It is not necessary to record every trivial wording fix.
+2. Record it when the meaning of Target, Status, Acceptance Criteria, or Requirement Statement changes.
+3. When a requirement of a `frozen` target is modified, write Change Notes.
+4. Write the reason for the change concretely.
 
 ---
 
-## 27. 완전한 Requirement Block 예시
+## 27. Complete Requirement Block Example
 
 ```md
-### FR-AUTH-001 — 세션 만료 시 재로그인 요구
+### FR-AUTH-001 — Require re-login when the session expires
 
 | Field | Value |
 |---|---|
@@ -1178,64 +1178,64 @@ Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 
 | Stability | stable |
 | Verification Method | test, inspection |
 | GitHub Issue | https://github.com/org/repo/issues/123 |
-| Related Docs | [세션 정책 분석](../analysis/session-timeout-analysis.md), [토큰 설계](../tech/auth-token-design.md) |
+| Related Docs | [Session policy analysis](../analysis/session-timeout-analysis.md), [Token design](../tech/auth-token-design.md) |
 
 #### Requirement
 
-시스템은 access token이 만료된 요청에 대해 HTTP 401 응답을 반환해야 한다.
+The system shall return an HTTP 401 response for a request whose access token has expired.
 
 #### Rationale
 
-만료된 인증 상태로 보호된 API 접근이 계속 허용되면 보안 및 사용자 상태 일관성 문제가 발생한다.
+If access to protected APIs continues to be allowed in an expired authentication state, security and user state consistency problems arise.
 
 #### Acceptance Criteria
 
-- [ ] AC-1: 만료된 access token으로 `GET /api/me`를 호출하면 HTTP 401을 반환한다.
-- [ ] AC-2: HTTP 401 응답은 refresh token 값을 노출하지 않는다.
-- [ ] AC-3: 만료된 access token으로 재요청해도 세션이 복구되지 않는다.
+- [ ] AC-1: Calling `GET /api/me` with an expired access token returns HTTP 401.
+- [ ] AC-2: The HTTP 401 response does not expose the refresh token value.
+- [ ] AC-3: Re-requesting with an expired access token does not restore the session.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 |---|---|---|---|---|
-| VE-1 | Test | `src/test/AuthSessionExpirationTest.java` | AC-1, AC-3 | 세션 만료 API 테스트 |
-| VE-2 | Review | https://github.com/org/repo/pull/456 | AC-2 | 보안 응답 필드 리뷰 |
+| VE-1 | Test | `src/test/AuthSessionExpirationTest.java` | AC-1, AC-3 | Session expiration API test |
+| VE-2 | Review | https://github.com/org/repo/pull/456 | AC-2 | Security response field review |
 
 #### Trace Links
 
 | Type | Reference | Relation | Notes |
 |---|---|---|---|
-| Issue | https://github.com/org/repo/issues/123 | tracks | 세션 만료 요구사항 |
-| PR | https://github.com/org/repo/pull/456 | implements | 구현 PR |
-| Doc | [세션 정책 분석](../analysis/session-timeout-analysis.md) | informed_by | 정책 결정 근거 |
+| Issue | https://github.com/org/repo/issues/123 | tracks | Session expiration requirement |
+| PR | https://github.com/org/repo/pull/456 | implements | Implementation PR |
+| Doc | [Session policy analysis](../analysis/session-timeout-analysis.md) | informed_by | Policy decision rationale |
 
 #### Research / Analysis
 
-- [세션 정책 분석](../analysis/session-timeout-analysis.md)
-- [토큰 설계](../tech/auth-token-design.md)
+- [Session policy analysis](../analysis/session-timeout-analysis.md)
+- [Token design](../tech/auth-token-design.md)
 
 #### Implementation Notes
 
-- 인증 middleware에서 access token 만료를 판단한다.
-- refresh token 재발급 흐름은 별도 요구사항에서 다룬다.
+- The authentication middleware determines access token expiration.
+- The refresh token reissue flow is covered by a separate requirement.
 
 #### Change Notes
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-05-07 | 최초 작성 | 인증 scope v0.1 정의 |
+| 2026-05-07 | Initial authoring | Definition of authentication scope v0.1 |
 ```
 
 ---
 
-## 28. 비기능 요구사항 작성 규칙
+## 28. Non-functional Requirement Authoring Rules
 
-비기능 요구사항은 가능한 한 측정 가능한 기준을 포함한다.
+A non-functional requirement includes a measurable criterion as far as possible.
 
 ### 28.1 Performance
 
 ```md
-### PERF-SEARCH-001 — 검색 응답 시간 기준
+### PERF-SEARCH-001 — Search response time criterion
 
 | Field | Value |
 |---|---|
@@ -1248,22 +1248,22 @@ Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 
 
 #### Requirement
 
-시스템은 10,000개 문서 인덱스에서 일반 검색 요청의 p95 응답 시간을 500ms 이하로 유지해야 한다.
+The system shall keep the p95 response time of a normal search request at 500ms or less on an index of 10,000 documents.
 
 #### Rationale
 
-검색 응답이 느리면 구현자가 요구사항을 탐색하는 흐름이 끊긴다.
+When search responses are slow, the implementer's flow of exploring requirements is broken.
 
 #### Acceptance Criteria
 
-- [ ] AC-1: 10,000개 문서 fixture를 사용한 benchmark에서 p95 응답 시간이 500ms 이하이다.
-- [ ] AC-2: benchmark 결과가 `docs/analysis/search-benchmark.md`에 기록된다.
+- [ ] AC-1: In a benchmark using a 10,000-document fixture, the p95 response time is 500ms or less.
+- [ ] AC-2: The benchmark result is recorded in `docs/analysis/search-benchmark.md`.
 ```
 
 ### 28.2 Security
 
 ```md
-### SEC-AUTH-001 — 인증 토큰 로그 노출 금지
+### SEC-AUTH-001 — Forbid authentication token exposure in logs
 
 | Field | Value |
 |---|---|
@@ -1276,19 +1276,19 @@ Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 
 
 #### Requirement
 
-시스템은 access token과 refresh token 원문을 application log에 기록하지 않아야 한다.
+The system shall not record raw access tokens and refresh tokens in the application log.
 
 #### Acceptance Criteria
 
-- [ ] AC-1: 인증 실패 로그에 token 원문이 포함되지 않는다.
-- [ ] AC-2: debug log에도 token 원문이 포함되지 않는다.
-- [ ] AC-3: 관련 logging test가 존재한다.
+- [ ] AC-1: The authentication failure log does not contain a raw token.
+- [ ] AC-2: The debug log does not contain a raw token either.
+- [ ] AC-3: A related logging test exists.
 ```
 
 ### 28.3 Observability
 
 ```md
-### OBS-AUTH-001 — 인증 실패 메트릭 기록
+### OBS-AUTH-001 — Record authentication failure metrics
 
 | Field | Value |
 |---|---|
@@ -1301,105 +1301,105 @@ Change Notes는 요구사항 변경 이유와 영향을 간단히 기록한다. 
 
 #### Requirement
 
-시스템은 인증 실패 이벤트를 원인별 metric으로 기록해야 한다.
+The system shall record authentication failure events as metrics broken down by cause.
 
 #### Acceptance Criteria
 
-- [ ] AC-1: 만료 token 실패는 `auth_failure_total{reason="expired"}`로 기록된다.
-- [ ] AC-2: 잘못된 서명 실패는 `auth_failure_total{reason="invalid_signature"}`로 기록된다.
-- [ ] AC-3: metric label에는 token 원문 또는 사용자 비밀 정보가 포함되지 않는다.
+- [ ] AC-1: An expired-token failure is recorded as `auth_failure_total{reason="expired"}`.
+- [ ] AC-2: An invalid-signature failure is recorded as `auth_failure_total{reason="invalid_signature"}`.
+- [ ] AC-3: A metric label does not contain a raw token or user secret information.
 ```
 
 ---
 
-## 29. Requirement 분리와 병합 규칙
+## 29. Requirement Splitting and Merging Rules
 
-### 29.1 분리해야 하는 경우
+### 29.1 Cases That Must Be Split
 
-다음 경우에는 요구사항을 분리한다.
+Split the requirement in the following cases.
 
-1. 서로 다른 actor가 관련된다.
-2. 서로 다른 시스템 boundary가 관련된다.
-3. 서로 다른 verification method가 필요하다.
-4. 기능 동작과 성능 기준이 섞여 있다.
-5. 하나의 AC 목록이 너무 길어진다.
-6. 서로 다른 target에 배치되어야 한다.
-7. 한 부분은 구현됐고 다른 부분은 차단된 상태다.
+1. Different actors are involved.
+2. Different system boundaries are involved.
+3. Different verification methods are required.
+4. Functional behavior and a performance criterion are mixed together.
+5. A single AC list becomes too long.
+6. They must be placed in different targets.
+7. One part is implemented while another part is blocked.
 
-### 29.2 병합할 수 있는 경우
+### 29.2 Cases That May Be Merged
 
-다음 경우에는 병합할 수 있다.
+Merging is allowed in the following cases.
 
-1. 두 요구사항이 사실상 동일한 동작을 요구한다.
-2. 서로 분리되어 있어도 검증 기준이 완전히 같다.
-3. 하나가 다른 하나의 단순 반복이다.
-4. 유지하면 중복 구현 또는 충돌을 유발한다.
+1. The two requirements demand effectively the same behavior.
+2. Even though they are separate, their verification criteria are completely identical.
+3. One is a simple repetition of the other.
+4. Keeping them causes duplicate implementation or conflict.
 
-### 29.3 병합 처리
+### 29.3 Merge Handling
 
-대표 요구사항을 유지하고 제거되는 요구사항은 `discarded` 상태로 둔다.
+Keep the representative requirement and leave the removed requirement in the `discarded` status.
 
 ```md
 | Status | discarded |
 | Superseded By | FR-AUTH-001 |
 ```
 
-대표 요구사항의 Trace Links에는 다음을 추가한다.
+Add the following to the Trace Links of the representative requirement.
 
 ```md
-| Requirement | FR-AUTH-009 | supersedes | 중복 요구사항 병합 |
+| Requirement | FR-AUTH-009 | supersedes | Merge of a duplicate requirement |
 ```
 
 ---
 
-## 30. 삭제와 폐기 규칙
+## 30. Deletion and Discard Rules
 
-요구사항 삭제는 기본적으로 물리 삭제가 아니라 `discarded` 상태 변경으로 처리한다.
+By default, handle requirement deletion as a change to the `discarded` status rather than as physical deletion.
 
-물리 삭제가 가능한 경우:
+Cases where physical deletion is allowed:
 
-1. 요구사항이 잘못 추가되었다.
-2. 관련 issue, PR, test, code, evidence가 없다.
-3. 다른 요구사항이 참조하지 않는다.
-4. Git history 외에 별도 추적 가치가 없다.
+1. The requirement was added by mistake.
+2. There is no related issue, PR, test, code, or evidence.
+3. No other requirement references it.
+4. It has no separate tracking value beyond Git history.
 
-그 외에는 다음처럼 폐기한다.
+Otherwise, discard it as follows.
 
 ```md
 | Status | discarded |
 ```
 
-폐기 이유는 `Change Notes`에 남긴다.
+Record the reason for discarding in `Change Notes`.
 
 ```md
 #### Change Notes
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-05-07 | Status를 `discarded`로 변경 | `FR-AUTH-001`에 병합됨 |
+| 2026-05-07 | Changed Status to `discarded` | Merged into `FR-AUTH-001` |
 ```
 
 ---
 
-## 31. 스크립트 파싱 계약
+## 31. Script Parsing Contract
 
-이 섹션은 repo-local script 또는 AI agent가 SRS 문서를 해석할 때 따라야 하는 계약이다.
+This section is the contract that a repo-local script or an AI agent must follow when interpreting SRS documents.
 
-### 31.1 파서가 인식해야 하는 파일
+### 31.1 Files the Parser Must Recognize
 
-기본 glob:
+Default glob:
 
 ```text
 docs/spec/**/*.srs.md
 ```
 
-인덱스 문서:
+Index document:
 
 ```text
 docs/spec/00.index.md
 ```
 
-### 31.2 파서가 추출해야 하는 최소 필드
+### 31.2 Minimum Fields the Parser Must Extract
 
 | Field | Source |
 |---|---|
@@ -1418,34 +1418,34 @@ docs/spec/00.index.md
 | `verificationEvidence` | table under `#### Verification Evidence` |
 | `traceLinks` | table under `#### Trace Links` |
 
-### 31.3 파싱 단계
+### 31.3 Parsing Steps
 
-1. `docs/spec/00.index.md`에서 index metadata, Target Map, Scope Map을 읽는다.
-2. `docs/spec/**/*.srs.md` 파일 목록을 찾는다.
-3. 각 파일에서 Requirement heading을 찾는다.
-4. heading부터 다음 Requirement heading 전까지를 block으로 추출한다.
-5. block의 첫 table을 metadata table로 읽는다.
-6. `####` section heading별 본문을 추출한다.
-7. Acceptance Criteria task list를 읽는다.
-8. Verification Evidence와 Trace Links table을 읽는다.
-9. validation rule을 적용한다.
+1. Read the index metadata, Target Map, and Scope Map from `docs/spec/00.index.md`.
+2. Find the list of `docs/spec/**/*.srs.md` files.
+3. Find the Requirement headings in each file.
+4. Extract the range from a heading up to just before the next Requirement heading as a block.
+5. Read the first table of the block as the metadata table.
+6. Extract the body of each `####` section heading.
+7. Read the Acceptance Criteria task list.
+8. Read the Verification Evidence and Trace Links tables.
+9. Apply the validation rules.
 
-v1.2.0 hardening target에서는 parser가 fenced code block 내부 heading-like text를 무시하고, Requirement Block boundary를 다음 valid requirement heading, 다음 관련 top-level `##` section, 또는 파일 끝으로 제한한다. 같은 Requirement Block 안의 중복 section heading, nested Acceptance Criteria, forbidden heading content, malformed table row도 diagnostic으로 보고되어야 한다.
+In the v1.2.0 hardening target, the parser ignores heading-like text inside fenced code blocks and limits the Requirement Block boundary to the next valid requirement heading, the next relevant top-level `##` section, or the end of the file. Duplicate section headings inside the same Requirement Block, nested Acceptance Criteria, forbidden heading content, and malformed table rows must also be reported as diagnostics.
 
-### 31.4 파서가 하지 말아야 할 일
+### 31.4 What the Parser Must Not Do
 
-1. SRS 문서 전체를 자동 재정렬하지 않는다.
-2. formatting을 임의로 바꾸지 않는다.
-3. section heading 이름을 자동 번역하지 않는다.
-4. Markdown 의미를 추론해서 숨은 상태를 만들지 않는다.
-5. Requirement Statement를 임의로 요약해서 원문을 대체하지 않는다.
-6. 존재하지 않는 링크나 evidence를 생성하지 않는다.
+1. Do not automatically reorder the whole SRS document.
+2. Do not change formatting arbitrarily.
+3. Do not automatically translate section heading names.
+4. Do not infer Markdown meaning to create hidden state.
+5. Do not replace the source text by arbitrarily summarizing the Requirement Statement.
+6. Do not generate links or evidence that do not exist.
 
 ---
 
-## 32. 검증 스크립트 명세
+## 32. Validation Script Specification
 
-Repo-local script는 필수가 아니지만, 저장소에서 제공하면 다음 동작을 권장한다.
+Repo-local scripts are not required, but when a repository provides them, the following behavior is recommended.
 
 ### 32.1 validate-spec
 
@@ -1453,7 +1453,7 @@ Repo-local script는 필수가 아니지만, 저장소에서 제공하면 다음
 node scripts/spec/validate-spec.js
 ```
 
-검증 항목:
+Validation items:
 
 | Code | Severity | Title |
 |---|---|---|
@@ -1548,9 +1548,9 @@ node scripts/spec/validate-spec.js
 | `SRS-W068` | warning | Stale SRS mutation lock recovered |
 | `SRS-W069` | warning | Invalid workflow deleted status |
 
-v1.2.0 hardening target에서는 위 diagnostic code table을 code-level diagnostic registry와 contract-tested 또는 generated relationship으로 맞춘다. Registry entry는 code, severity, title, message template, source rule, since 값을 포함해야 하며, 구현에서 emit하는 모든 diagnostic code는 registry에 등록되어야 한다.
+In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every diagnostic code that the implementation emits must be registered in the registry.
 
-v1.2.0 hardening target에서는 index consistency diagnostic도 확장한다. Duplicate Target Map target, duplicate Scope Map prefix, multiple active target rows, missing scope document file, unregistered `.srs.md` file, Status Summary drift, Requirement Type Summary drift는 diagnostic으로 보고되어야 한다.
+In the v1.2.0 hardening target, index consistency diagnostics are extended as well. A duplicate Target Map target, a duplicate Scope Map prefix, multiple active target rows, a missing scope document file, an unregistered `.srs.md` file, Status Summary drift, and Requirement Type Summary drift must be reported as diagnostics.
 
 ### 32.2 list-by-target
 
@@ -1558,22 +1558,22 @@ v1.2.0 hardening target에서는 index consistency diagnostic도 확장한다. D
 node scripts/spec/list-by-target.js v0.1
 ```
 
-출력 권장:
+Recommended output:
 
 ```text
 Target: v0.1
 
 planned
-- FR-AUTH-001 세션 만료 시 재로그인 요구
+- FR-AUTH-001 Require re-login when the session expires
 
 in_progress
-- SEC-AUTH-001 인증 토큰 로그 노출 금지
+- SEC-AUTH-001 Forbid authentication token exposure in logs
 
 verified
-- OBS-AUTH-001 인증 실패 메트릭 기록
+- OBS-AUTH-001 Record authentication failure metrics
 ```
 
-JSON 출력 권장:
+Recommended JSON output:
 
 ```bash
 node scripts/spec/list-by-target.js v0.1 --json
@@ -1591,13 +1591,13 @@ node scripts/spec/list-by-status.js in_progress
 node scripts/spec/update-status.js FR-AUTH-001 implemented
 ```
 
-규칙:
+Rules:
 
-1. Requirement ID로 block을 찾는다.
-2. metadata table의 `Status` row만 수정한다.
-3. `verified` 전환 시 Acceptance Criteria와 Verification Evidence를 검증한다.
-4. 실패 시 문서를 변경하지 않는다.
-5. 문서 전체 formatting을 바꾸지 않는다.
+1. Find the block by Requirement ID.
+2. Modify only the `Status` row of the metadata table.
+3. On the transition to `verified`, validate the Acceptance Criteria and the Verification Evidence.
+4. On failure, do not change the document.
+5. Do not change the formatting of the whole document.
 
 ### 32.5 summarize-target
 
@@ -1605,15 +1605,15 @@ node scripts/spec/update-status.js FR-AUTH-001 implemented
 node scripts/spec/summarize-target.js v0.1
 ```
 
-출력 항목:
+Output items:
 
-1. target별 total count
-2. status별 count
-3. type별 count
-4. blocked 요구사항 목록
-5. implemented but not verified 목록
-6. verified 목록
-7. missing evidence 목록
+1. Total count per target
+2. Count per status
+3. Count per type
+4. List of blocked requirements
+5. List of implemented but not verified requirements
+6. List of verified requirements
+7. List of requirements with missing evidence
 
 ### 32.6 extract-requirements
 
@@ -1621,79 +1621,79 @@ node scripts/spec/summarize-target.js v0.1
 node scripts/spec/extract-requirements.js --json
 ```
 
-기계 처리용 JSON을 출력한다. 이 출력은 원본이 아니라 파생 결과다.
+Outputs JSON for machine processing. This output is a derived result, not the source of truth.
 
 ---
 
-## 33. AI Coding Agent 작업 규칙
+## 33. AI Coding Agent Work Rules
 
-### 33.1 구현 전
+### 33.1 Before Implementation
 
-AI coding agent는 구현 전에 다음을 수행한다.
+Before implementation, the AI coding agent performs the following.
 
-1. `docs/spec/00.index.md`를 확인한다.
-2. 작업과 관련된 Scope SRS 문서를 찾는다.
-3. 관련 Requirement Block을 읽는다.
-4. `Requirement`, `Rationale`, `Acceptance Criteria`, `Trace Links`, `Implementation Notes`를 확인한다.
-5. 여러 요구사항이 관련되면 target과 status를 기준으로 구현 순서를 정한다.
+1. Check `docs/spec/00.index.md`.
+2. Find the Scope SRS document related to the work.
+3. Read the related Requirement Block.
+4. Check `Requirement`, `Rationale`, `Acceptance Criteria`, `Trace Links`, and `Implementation Notes`.
+5. When multiple requirements are involved, decide the implementation order on the basis of target and status.
 
-### 33.2 구현 중
+### 33.2 During Implementation
 
-1. Acceptance Criteria를 구현 기준으로 사용한다.
-2. 명세에 없는 큰 동작을 추가하지 않는다.
-3. 요구사항이 모호하면 Requirement Block에 `Open Question` 또는 `Change Notes`를 추가하는 방향을 우선 고려한다.
-4. 구현상 발견한 제약이 요구사항 의미를 바꾸면 SRS를 함께 갱신한다.
+1. Use the Acceptance Criteria as the implementation criteria.
+2. Do not add large behavior that is not in the specification.
+3. When a requirement is ambiguous, first consider adding an `Open Question` or `Change Notes` to the Requirement Block.
+4. When a constraint discovered during implementation changes the meaning of the requirement, update the SRS along with it.
 
-### 33.3 구현 후
+### 33.3 After Implementation
 
-1. 관련 test, PR, code path를 Verification Evidence에 추가한다.
-2. 충족된 Acceptance Criteria를 `- [x]`로 갱신한다.
-3. 코드 구현은 되었지만 검증 증거가 부족하면 `implemented`로 둔다.
-4. 모든 AC가 충족되고 evidence가 있으면 `verified`로 변경할 수 있다.
-5. 변경 이유가 중요하면 `Change Notes`에 남긴다.
+1. Add the related test, PR, and code path to the Verification Evidence.
+2. Update satisfied Acceptance Criteria to `- [x]`.
+3. When the code is implemented but verification evidence is insufficient, leave it as `implemented`.
+4. When every AC is satisfied and evidence exists, it may be changed to `verified`.
+5. When the reason for a change is important, record it in `Change Notes`.
 
-### 33.4 금지 행동
+### 33.4 Forbidden Actions
 
-AI coding agent는 다음을 하지 않는다.
+The AI coding agent must not do the following.
 
-1. SRS 문서 전체를 임의로 재작성하지 않는다.
-2. Requirement ID를 재사용하지 않는다.
-3. Acceptance Criteria를 삭제해서 `verified` 조건을 맞추지 않는다.
-4. 허위 issue, PR, test, code path, evidence를 만들지 않는다.
-5. 존재하지 않는 local file link를 작성하지 않는다.
-6. heading, metadata table, section heading 이름을 임의로 바꾸지 않는다.
-7. YAML front matter 또는 raw HTML을 추가하지 않는다.
-8. `done` 같은 비허용 status를 사용하지 않는다.
+1. Do not arbitrarily rewrite the whole SRS document.
+2. Do not reuse a Requirement ID.
+3. Do not delete Acceptance Criteria in order to meet the `verified` conditions.
+4. Do not fabricate issues, PRs, tests, code paths, or evidence.
+5. Do not write a local file link that does not exist.
+6. Do not arbitrarily change heading, metadata table, or section heading names.
+7. Do not add YAML front matter or raw HTML.
+8. Do not use a disallowed status such as `done`.
 
 ---
 
-## 34. Review 규칙
+## 34. Review Rules
 
-SRS 변경을 review할 때 다음을 확인한다.
+Check the following when reviewing an SRS change.
 
 | Check | Question |
 |---|---|
-| ID | ID가 전역 유일한가? |
-| Type | ID prefix와 Type이 일치하는가? |
-| Scope | 올바른 scope 문서에 있는가? |
-| Target | Target Map에 등록된 target인가? |
-| Status | 실제 구현/검증 상태와 일치하는가? |
-| Statement | 단일 요구사항이며 모호하지 않은가? |
-| AC | 검증 가능한 수용 기준인가? |
-| Evidence | status에 맞는 증거가 있는가? |
-| Trace | 관련 issue, PR, test, docs가 연결되었는가? |
-| Diff | 불필요한 대량 formatting 변경이 없는가? |
-| Conflict | 다른 요구사항과 충돌하지 않는가? |
+| ID | Is the ID globally unique? |
+| Type | Do the ID prefix and the Type match? |
+| Scope | Is it in the correct scope document? |
+| Target | Is it a target registered in the Target Map? |
+| Status | Does it match the actual implementation/verification state? |
+| Statement | Is it a single requirement, and is it free of ambiguity? |
+| AC | Are the acceptance criteria verifiable? |
+| Evidence | Is there evidence appropriate to the status? |
+| Trace | Are the related issues, PRs, tests, and docs linked? |
+| Diff | Is it free of unnecessary bulk formatting changes? |
+| Conflict | Is it free of conflicts with other requirements? |
 
 ---
 
-## 35. Baseline과 Release 운영
+## 35. Baseline and Release Operations
 
 ### 35.1 Baseline
 
-Baseline은 특정 시점의 SRS 상태를 의미한다. Git tag 또는 release branch로 관리하는 것을 권장한다.
+A baseline means the state of the SRS at a specific point in time. Managing it with a Git tag or a release branch is recommended.
 
-예:
+Example:
 
 ```bash
 git tag srs-v0.1-baseline
@@ -1701,109 +1701,109 @@ git tag srs-v0.1-baseline
 
 ### 35.2 Target Freeze
 
-Target이 `frozen`이면 다음 규칙을 적용한다.
+When a Target is `frozen`, apply the following rules.
 
-1. 새 요구사항 추가는 review가 필요하다.
-2. Acceptance Criteria 변경은 Change Notes가 필요하다.
-3. Status 변경은 허용하되 evidence 조건을 지켜야 한다.
-4. Target 이동은 reviewer 확인을 권장한다.
+1. Adding a new requirement requires review.
+2. Changing Acceptance Criteria requires Change Notes.
+3. Status changes are allowed, but the evidence conditions must be observed.
+4. Reviewer confirmation is recommended for moving a Target.
 
-### 35.3 Release 확인
+### 35.3 Release Check
 
-특정 target을 release 후보로 판단하려면 다음을 확인한다.
+To judge a specific target as a release candidate, check the following.
 
-1. `blocked` 요구사항이 없는가?
-2. `planned` 또는 `in_progress` 요구사항이 release scope에 남아 있는가?
-3. `implemented` 상태 요구사항 중 검증이 필요한 것이 있는가?
-4. `verified` 요구사항의 evidence가 유효한가?
-5. critical/high priority 요구사항이 모두 처리되었는가?
+1. Are there no `blocked` requirements?
+2. Do any `planned` or `in_progress` requirements remain in the release scope?
+3. Among the `implemented` requirements, is there any that needs verification?
+4. Is the evidence of the `verified` requirements valid?
+5. Have all critical/high priority requirements been handled?
 
 ---
 
 ## 36. Anti-patterns
 
-### 36.1 거대한 요구사항
+### 36.1 Oversized Requirement
 
-나쁜 예:
-
-```md
-### FR-AUTH-001 — 인증 시스템 구현
-```
-
-문제:
-
-1. 너무 넓다.
-2. AC가 과도하게 많아진다.
-3. 일부 구현 완료와 일부 미완료를 구분하기 어렵다.
-
-개선:
+Bad example:
 
 ```md
-### FR-AUTH-001 — 로그인 성공 시 access token 발급
-### FR-AUTH-002 — 세션 만료 시 재로그인 요구
-### FR-AUTH-003 — refresh token 회전 처리
+### FR-AUTH-001 — Implement the authentication system
 ```
 
-### 36.2 측정 불가능한 품질 요구사항
+Problems:
 
-나쁜 예:
+1. It is too broad.
+2. The number of ACs becomes excessive.
+3. It is hard to distinguish the parts that are implemented from the parts that are not.
+
+Improvement:
 
 ```md
-시스템은 빠르게 응답해야 한다.
+### FR-AUTH-001 — Issue an access token on successful login
+### FR-AUTH-002 — Require re-login when the session expires
+### FR-AUTH-003 — Handle refresh token rotation
 ```
 
-개선:
+### 36.2 Unmeasurable Quality Requirement
+
+Bad example:
 
 ```md
-시스템은 10,000개 문서 인덱스에서 일반 검색 요청의 p95 응답 시간을 500ms 이하로 유지해야 한다.
+The system shall respond quickly.
 ```
 
-### 36.3 검증 없는 완료 처리
+Improvement:
 
-나쁜 예:
+```md
+The system shall keep the p95 response time of a normal search request at 500ms or less on an index of 10,000 documents.
+```
+
+### 36.3 Marking Complete Without Verification
+
+Bad example:
 
 ```md
 | Status | verified |
 
 #### Acceptance Criteria
 
-- [ ] AC-1: 로그인 실패 시 HTTP 401을 반환한다.
+- [ ] AC-1: On login failure, HTTP 401 is returned.
 ```
 
-문제:
+Problems:
 
-1. AC가 체크되지 않았다.
-2. evidence가 없다.
-3. verified 조건을 만족하지 않는다.
+1. The AC is not checked.
+2. There is no evidence.
+3. The verified conditions are not satisfied.
 
-### 36.4 구현 note에 요구사항 숨기기
+### 36.4 Hiding a Requirement in Implementation Notes
 
-나쁜 예:
+Bad example:
 
 ```md
 #### Requirement
 
-시스템은 로그인 기능을 제공해야 한다.
+The system shall provide a login feature.
 
 #### Implementation Notes
 
-- 실패 시 401을 반환해야 한다.
-- token은 30분 후 만료되어야 한다.
+- On failure it must return 401.
+- The token must expire after 30 minutes.
 ```
 
-개선:
+Improvement:
 
-1. 401 응답 요구사항을 별도 requirement로 분리한다.
-2. token 만료 정책을 별도 security 또는 functional requirement로 분리한다.
+1. Split the 401 response requirement into a separate requirement.
+2. Split the token expiration policy into a separate security or functional requirement.
 
 ---
 
-## 37. 최소 템플릿
+## 37. Minimal Template
 
-새 요구사항을 추가할 때 다음 템플릿을 사용한다.
+Use the following template when adding a new requirement.
 
 ```md
-### FR-SCOPE-001 — 요구사항 제목
+### FR-SCOPE-001 — Requirement title
 
 | Field | Value |
 |---|---|
@@ -1820,15 +1820,15 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 
 #### Requirement
 
-시스템은 {조건}에서 {기대 동작}을 수행해야 한다.
+The system shall perform {expected behavior} in {condition}.
 
 #### Rationale
 
-이 요구사항이 필요한 이유를 작성한다.
+Write the reason why this requirement is needed.
 
 #### Acceptance Criteria
 
-- [ ] AC-1: {조건}이면 {기대 결과}가 발생한다.
+- [ ] AC-1: When {condition}, {expected result} occurs.
 
 #### Verification Evidence
 
@@ -1856,9 +1856,9 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 
 ---
 
-## 38. 확장 ISO/IEC/IEEE 29148 매핑
+## 38. Extended ISO/IEC/IEEE 29148 Mapping
 
-이 규칙은 요구사항 공학 표준의 실무 목적을 Git-native Markdown에 맞게 다음과 같이 대응시킨다.
+These rules map the practical purposes of the requirements engineering standard onto Git-native Markdown as follows.
 
 | Requirements Engineering Concern | SRS-MD Representation |
 |---|---|
@@ -1880,7 +1880,7 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 
 ## 39. Reference Basis
 
-이 문서는 다음 공개 문서를 참고 기준으로 삼는다.
+This document takes the following public documents as its reference basis.
 
 - ISO/IEC/IEEE 29148:2018, Systems and software engineering — Life cycle processes — Requirements engineering: https://www.iso.org/standard/72089.html
 - IEEE/ISO/IEC 29148-2018 standard page: https://standards.ieee.org/ieee/29148/6937/
@@ -1890,12 +1890,14 @@ Target이 `frozen`이면 다음 규칙을 적용한다.
 
 ---
 
-## 40. AGENTS.md / CLAUDE.md 추가 문장
+## 40. AGENTS.md / CLAUDE.md Additional Statements
 
-아래 managed block을 저장소 루트의 `AGENTS.md`, `CLAUDE.md`, 또는 둘 다에 추가한다. 기존 block의 version이 다르거나 legacy unversioned heading이면 heading부터 suffix marker까지 현재 block으로 교체한다.
+Add the managed block below to `AGENTS.md`, `CLAUDE.md`, or both at the repository root. When the existing block has a different version or a legacy unversioned heading, replace everything from the heading through the suffix marker with the current block.
+
+This block is managed by `speckiwi init`. The copy reproduced below is a reference snapshot, so when it differs from the tool output, the tool output is authoritative.
 
 ```md
-# SpecKiwi SRS 워크플로 v1.3
+# SpecKiwi SRS workflow v1.7
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -1915,11 +1917,20 @@ TDD principle:
 - Agents MUST follow TDD for behavior changes: write or update a failing automated test for the relevant Requirement ID before implementation, make the smallest change to pass, then refactor while keeping tests green.
 - If no meaningful automated test can be written, agents MUST stop before implementation and explain the exception and alternative verification evidence.
 
+Work-mode and the TDD First (tdd) workflow:
+1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.
+2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.
+3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
+4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.
+5. In tdd mode the rule "do not implement behavior not covered by an SRS requirement" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.
+6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.
+
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.
 - Create an alternate requirements source outside `docs/spec/`.
 - Change requirement IDs manually.
 - Mark requirements as verified without evidence.
+- Introduce or invoke bulk-archive / bulk-finalize tooling that flips multiple requirements to `verified` or empties Active Target without per-requirement evidence and stability gate checks.
 
 When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.
 
@@ -1931,13 +1942,32 @@ Current work status workflow:
 5. Check missing verification evidence through `summary` or MCP `summarize_target` before saying work is complete.
 6. Read recent completed work with MCP `list_completed_work`; CLI fallback is `speckiwi completed-work --json`.
 
+Next target authoring workflow:
+1. If the user asks to set the next target, first read the current Active Target and Target Map.
+2. If the target is not registered, use a supported target-registration mutation such as MCP `set_active_target` with creation support, or CLI `speckiwi set-active-target <target> --create` when that option is available.
+3. If the configured MCP/CLI cannot register the target, stop before target-scoped SRS changes and report the tool gap, unless the user explicitly authorizes a minimal SRS-MD patch.
+4. After target assignment, confirm the resolved Active Target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.
+5. When the user provides a target goal, record it with MCP `set_target_goal`, or CLI `speckiwi set-target-goal <target> --goal <text>` if MCP is unavailable.
+6. For later SRS creation, omit the target only when the tool supports Active Target defaulting; otherwise pass the confirmed Active Target explicitly.
+7. If the user provides an explicit different target for a requirement, the explicit target wins over Active Target.
+
+Merge-time duplicate Requirement ID repair workflow:
+1. Run `speckiwi validate --json` or MCP `validate_spec` first. Use repair only when `SRS-E002` duplicate Requirement ID diagnostics exist, or when a named duplicate ID is confirmed in parsed diagnostics.
+2. Resolve normal Git conflict markers before repair. Then run MCP `diagnose_requirement_id_collisions` or CLI `speckiwi repair requirement-id-collisions diagnose --json`.
+3. Select explicit keep and rename occurrences by `filePath`, `headingLine`, and `blockHash`. A duplicate ID alone is never enough to write.
+4. Create a dry-run plan with MCP `plan_requirement_id_collision_repair` or CLI `speckiwi repair requirement-id-collisions plan --duplicate-id <id> --keep <file:line:blockHash> --rename <file:line:blockHash> [--replacement-id <id>|--allocate-next] --write-plan <path> --json`.
+5. Apply only from the explicit plan or equivalent explicit mapping with MCP `apply_requirement_id_collision_repair` or CLI `speckiwi repair requirement-id-collisions apply --plan <path> --json`. `--ignore-lock` is allowed only on apply and bypasses only the SRS mutation lock.
+6. Do not use collision repair for general renumbering, gap filling, ID beautification, bulk archive, bulk finalize, or Status/Stability changes. When two duplicate logical requirements should be merged or discarded, first repair IDs to uniqueness, then use separate guarded SRS mutations for discard, supersedes, Status, Stability, AC, or evidence changes.
+7. When implemented runtime CLI or MCP repair tooling is available, do not hand-edit Requirement IDs. If tooling is unavailable and the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.
+8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json`, and `speckiwi links check --json` or MCP equivalents. Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.
+
 Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
 
-<!-- /SpecKiwi SRS 워크플로 -->
+<!-- /SpecKiwi SRS workflow -->
 ```
 
 ---
 
-## 41. 문서 종료
+## 41. Document End
 
-이 문서는 SRS-MD Authoring Rules v1.0.0의 기준 문서다. 저장소별 상황에 맞는 세부 enum, scope prefix, target naming은 `docs/spec/00.index.md`와 `docs/spec/90.appendix.md`에서 확장할 수 있다. 단, Requirement Block의 heading 형식, metadata table, status 의미, Acceptance Criteria, Verification Evidence, Trace Links 규칙은 호환성을 위해 유지해야 한다.
+This document is the reference document for SRS-MD Authoring Rules v1.0.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.

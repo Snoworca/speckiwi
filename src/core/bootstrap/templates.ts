@@ -12,10 +12,11 @@ export interface AgentInstructionOptions {
   version?: string;
 }
 
-// @req FR-NODE-075 @req FR-NODE-077 — v1.5 added the tdd work-mode workflow section;
+// @req FR-NODE-075 @req FR-NODE-077 @req FR-NODE-086 — v1.5 added the tdd work-mode workflow section;
 // v1.6 makes it MCP-first (get_work_mode/set_work_mode), documents mode switching,
-// and cites the installed SDS rules path.
-export const AGENT_INSTRUCTION_VERSION = "1.6";
+// and cites the installed SDS rules path; v1.7 turns the heading and the end marker English so the
+// whole injected block is one language, which is why the version must be readable as "not v1.6".
+export const AGENT_INSTRUCTION_VERSION = "1.7";
 export const BUNDLED_RULES_VERSION = "1.0.0";
 
 // @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
@@ -100,8 +101,15 @@ export function isCodexVersionBelowApplyPatchFloor(version: string): boolean {
   if (!floor) return true;
   return compareSemver(parsed, floor) < 0;
 }
-export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
-export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
+// @req FR-NODE-086 — the injected block is delimited in English. The heading always carries a version
+// suffix, so it can never collide with the unversioned legacy heading `# SpecKiwi SRS workflow`.
+export const AGENT_INSTRUCTION_HEADING_PREFIX = "# SpecKiwi SRS workflow v";
+export const AGENT_INSTRUCTION_END_MARKER = "<!-- /SpecKiwi SRS workflow -->";
+
+// @req FR-NODE-086 — the heading/marker pair init injected up to v1.6. Kept verbatim so init can find a
+// block written by an earlier version and replace it in place instead of appending a second one.
+export const LEGACY_KOREAN_AGENT_HEADING_PREFIX = "# SpecKiwi SRS 워크플로 v";
+export const LEGACY_KOREAN_AGENT_END_MARKER = "<!-- /SpecKiwi SRS 워크플로 -->";
 
 export function renderIndexTemplate(input: InitTemplateInput = {}): string {
   const product = input.product ?? "SpecKiwi Project";
