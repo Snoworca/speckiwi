@@ -510,6 +510,7 @@ doculight MCP 부재 시:
 
 CLI `speckiwi workflow pipeline-emit --json` 은 MCP 미가용 진단/복구 중에만 사용한다. 직접 `./kiwi/pipeline.jsonl` 에 append 하는 것은 degraded mode 이며, 사용하려면 captured tool diagnostics, affected artifact paths, active target, follow-up requirement or candidate ID 를 보고서와 worklog 에 남긴다.
 
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다 (`pipeline-event.md` §5.4) — 같은 키가 아니면 skip 하지 않는다. `--plan-run-id` 로 계획 run 을 재사용한 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
 - `skill`: `"kiwi-planner"`
 - `status`: plan 확정 + mutation 완료 = `TASK_DONE`; plan freeze (G5 발산) = `NEEDS_USER`; 실패 = `FAILED`; dry-run = `DRY_RUN`
 - `next_hint`: 통상 `"kiwi-pm"` (plan 자동 실행 권장). plan 이 단일 Task 인 경우 `"kiwi-coder"` 직행 가능

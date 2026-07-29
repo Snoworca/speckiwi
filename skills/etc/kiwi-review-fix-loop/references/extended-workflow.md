@@ -76,7 +76,11 @@ Exit criteria:
 
 - CRITICAL=0
 - HIGH=0
-- regression tests pass
+- the preservation scan over the fixer diff found no violation (SKILL.md
+  보존 스캔 section); a detection is CRITICAL and halts through its gate
+- regression has no new failures against the captured baseline (SKILL.md
+  regression baseline section); pre-existing failures are reported, not
+  attributed to this fix
 - the single evaluator returns three consecutive no-actionable-improvement
   rechecks
 

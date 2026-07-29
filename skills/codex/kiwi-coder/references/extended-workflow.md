@@ -38,9 +38,12 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 실행 시간 추정 ≥10분 시 사용자 동의 게이트 (`--yes-all`/`--auto-cost-warning` skip)
 - 결과를 `docs/analysis/kiwi-coder-{run-id}/regression_run.jsonl` 에 append
 
-**6.1.3 회귀 발견 시 처리**:
-- 해당 task 가 만든 변경이 기존 test 를 깬 경우 → CRITICAL + (Phase 2.c) 재진입
-- 2회 연속 동일 파일 회귀 → §0.G4 발동 + state.failed_task_ids[] 등재
+**6.1.3 회귀 발견 시 처리** — 판정 규칙의 SSOT 는 `SKILL.md` §6.1.0 / §6.1.3 이며, 본 절은 그와 다른 판정 규칙을 말하지 않는다. 회귀는 `state.regression_baseline` (SKILL.md §3.5 에서 첫 Task 진입 전 고정) 대비 **델타로 판정**한다:
+- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 Task 가 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
+- 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 Task 의 것으로 **귀속하지 않는다**
+- 기준선에서 fail 이었는데 이번에 pass 한 test 는 회귀가 아니다 (보고만)
+- `state.regression_baseline` 이 null (SKILL.md §3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다
+- 2회 연속 동일 파일 **신규 실패** → §0.G4 발동 + state.failed_task_ids[] 등재
 - 외부 모듈 (cwd 외부) 실패 → WARN 만, 차단 안 함
 
 ### 6.2 MCP mutation 4종 batch
@@ -281,6 +284,8 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
 - `--skip-integration` 부재
 - 사용자 동의 (`--auto-integration`/`--yes-all` skip)
 
+진입 게이트 판정의 SSOT 는 `SKILL.md` §8.1 이다. `state.spawn_context == "pm-child"` (SKILL.md §3.0) 인 경우 본 동의 게이트를 발동하지 않는다 — 단일 Task 자식이 Task 마다 동의를 요구하면 부모의 무인 진행이 Task 수만큼 멈춘다. 자식 컨텍스트에서 통합 테스트 실행 여부는 모든 Task 를 본 부모 `kiwi-pm` 가 결정한다.
+
 skip 시(`--skip-integration` 명시 또는 사용자 거부)에도 **§8.3 최종 보고서는 항상 생성**. 보고서 §8 (통합 테스트 보고서) 섹션은 "skipped: {reason}" 으로 채움.
 
 ### 8.2 플로우 (snoworca-coder §5 차용)
@@ -409,5 +414,6 @@ CLI `speckiwi workflow pipeline-emit --json` 은 MCP 미가용 진단/복구 중
 - `req_ids`: 본 Task 가 영향을 미친 REQ-ID 배열
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-coder-{run-id}/` 또는 `.kiwi/sessions/{run-id}/`
 - `status`: TDD green + 회귀 PASS = `TASK_DONE`; business-decision = `NEEDS_USER`; 회귀 실패 = `FAILED`
+- `gate_id`: `NEEDS_USER` 로 종료한 경우 그 중단을 일으킨 §0.G6 게이트의 id. 부모(`kiwi-pm`)는 이 값을 동명 게이트로 매핑한다 — 이 채널이 없으면 어느 게이트가 멈췄는지가 부모에게 전달되지 않는다
 
 emit 실패는 best-effort.

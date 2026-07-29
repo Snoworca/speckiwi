@@ -55,6 +55,7 @@ plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경�
 | §0.18 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
 | §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.20 | **work-mode ↔ `--tdd-policy` 파생 SSOT**. 본 스킬은 `../_shared/kiwi/workmode-policy.md` v1.0 을 따른다. Phase 0(§3.4)에서 work-mode 를 MCP `get_work_mode`(우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(fail-open)로 읽고, `--tdd-policy` 미지정 시 매핑(**tdd → strict**, 그 외 `relaxed`)으로 파생 기본을 적용해 plan.md frontmatter·사이드카 `tdd_policy` 에 기록한다. `disabled` 는 어떤 mode 로부터도 파생되지 않으며 명시 `--tdd-policy=disabled` 플래그로만 설정된다. 명시 `--tdd-policy` 는 파생 기본을 항상 이기며(이길 때 비-치명 WARN), §0.17 게이트·validator 검사는 불변 |
+| §0.22 | **기존 구조 보존 입력**. 상위 오케스트레이터가 전달한 `existing_modules` 목록의 모듈을 **이동·삭제·시그니처 변경**하는 Task 는 그 사실을 Task `action` 에 **명시**한다 — `files[]` 등재만으로는 편집 허가일 뿐 제거·이동 허가가 아니며 (`kiwi-coder §0.20.4`), action 에 없는 파손은 실행 계층에서 근거 없는 파손으로 판정되어 HALT 한다 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -165,7 +166,7 @@ User clarification gate 4옵션:
 | `force-proceed-after-divergence` | 발산 후 force-proceed 는 사용자 책임 | §0.G5 |
 | `scope-expansion-target-boundary` | target 외 REQ 포함/확장은 범위 변경 | §0.G6 |
 | `strict-tdd-block` | strict TDD 정책 위반은 자동 면제 불가 | §0.G7 |
-| `mcp-unavailable` | active target and requirement reads require `speckiwi mcp`; CLI diagnostics cannot replace normal workflow input | Phase 0 |
+| `mcp-cli-both-unavailable` | active target and requirement reads require `speckiwi mcp`; CLI diagnostics cannot replace normal workflow input | §3.0 |
 
 ---
 
@@ -191,6 +192,7 @@ User clarification gate 4옵션:
 | "TDD 엄격", "면제 불허", "TDD 완화", "TDD off" | `--tdd-policy=strict\|relaxed\|disabled` | `relaxed` (§0.17, §0.G7) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
+| "같은 계획 run 으로", "plan run 재사용" | `--plan-run-id <id>` (run-id 를 새로 도출하지 않고 그 값을 그대로 사용) | off (`{YYYY-MM-DD}.{project}.{target}` 도출) |
 
 ### 1.3 출력
 
@@ -205,7 +207,7 @@ User clarification gate 4옵션:
   - `mcp_call_log.jsonl`
   - `rejected_findings.log` / `preflight.json`
 
-**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자.
+**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자. `--plan-run-id <id>` 가 주어지면 도출하지 않고 그 값을 그대로 쓴다 — 재진입이 같은 계획 run 을 재사용하지 못하면 범위 없는 전면 재실행이 된다.
 
 ### 1.4 dry-run
 
@@ -348,6 +350,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 - target goal · `intent.json` · `code_context.json` · `srs_mapping.json`
 - 작성 규약: §0 전체 + §9 plan.md 스키마 + §10 사이드카 스키마
+- 상위 오케스트레이터가 `existing_modules` 목록을 전달한 경우 그 목록 — §0.22 판정의 입력이며, 시니어 입력에 없으면 §0.22 를 적용할 수 없다
 - 시니어는 **plan.md 와 사이드카 JSON 을 동시에 생성** (Phase>Task 구조 일관성 보장)
 
 ### 5.2 Phase 분해 원칙

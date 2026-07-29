@@ -1,0 +1,5 @@
+[
+  { "id": "FR-FLOW-042", "stability": "evolving", "ac_total": 7, "ac_ids": ["AC-1","AC-2","AC-3","AC-4","AC-5","AC-6","AC-7"] },
+  { "id": "FR-FLOW-043", "stability": "evolving", "ac_total": 7, "ac_ids": ["AC-1","AC-2","AC-3","AC-4","AC-5","AC-6","AC-7"] },
+  { "id": "FR-MCP-055", "stability": "evolving", "ac_total": 4, "ac_ids": ["AC-1","AC-2","AC-3","AC-4"] }
+]

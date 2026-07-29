@@ -41,6 +41,11 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | §0.17.7 | **부착 누락의 처리**. 누락은 본 skill 의 어떤 게이트도 차단하지 않는다. 사후 보완은 별도 정리 Task 로 처리 (본 스킬 책임 외). 누락 발견 시 시니어 코더가 자기 점검으로 worklog `req_tag_missing_observed { task_id, member_path }` 정보성 append 가능 (severity 없음, §7.3 enum 21). 검증자는 본 이벤트 append 도 금지 (§0.17.6) |
 | §0.18 | **`--auto` 옵션 SSOT (신설)**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 신규 `--auto` 는 **§8.4 후속 review-fix-loop 자동 시작 게이트 + 메인 게이트 결정** 에만 적용된다 — `--auto` 활성이 기존 분리 옵션 (`--yes-all` / `--auto-integration` / `--auto-cost-warning`) 을 자동 활성하지 않으며, 3종 옵션은 fine-grained 자유도 보존을 위해 그대로 유지 (§1.2). 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
 | §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.20 | **기존 테스트 불가침**. green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**를 모두 **금지**한다 — 통과하지 않는 테스트는 구현을 고쳐서 닫는다. 테스트를 지우면 그 시점에 회귀 안전망이 사라지고, 이후 라운드는 사라진 계약을 검증하지 못한다. 계약 자체가 바뀌어야 하면 plan/SRS 를 먼저 고쳐 §0.7 을 다시 통과한다. 탐지·차단 = §5.1.(d) + §0.G6 `existing-test-weakened-or-deleted` |
+| §0.20.1 | **기존** 의 판정. 그 Task 의 **기준선 커밋** (`state.regression_baseline.head_sha`) 시점에 이미 존재하던 파일 · 테스트 케이스 · 단언 · 심볼만 "기존"이다 — 같은 Task 안에서 새로 만든 것은 §0.20 의 대상이 아니다. `regression_baseline` 이 null (§3.5 캡처 실패) 이면 그 Task 의 첫 편집 직전 HEAD 를 기준선 커밋으로 쓴다. 시점을 고정하지 않으면 방금 쓴 red 테스트를 고치는 일까지 같은 금지에 걸린다 |
+| §0.20.2 | **public 심볼** 의 판정. 기준선 커밋 시점에 그 모듈의 **export 표면** (언어별 `export` 선언 / `public` 선언 / 패키지 공개 API 목록) 에 있던 이름만 public 이다 — 경로 토큰 휴리스틱 (`api/` · `public/` 등) 으로 대신하지 않는다. 계약 파손은 경로가 아니라 심볼에서 일어난다 (§0.G6 `existing-public-contract-change`) |
+| §0.20.3 | **약화** 의 판정 (closed list — 넷이 전부이며, 넷 중 하나라도 diff 에 있으면 약화다). (1) **단언 삭제**, (2) 단언 술어를 더 느슨한 것으로 교체 (동등 비교 → 존재 확인 등), (3) 케이스의 `skip` / `only` / 주석 처리, (4) **기대값**을 관측값으로 교체. 판정에 시니어 재량 없음 — 목록 밖의 사유로 약화를 면제하지 않는다 |
+| §0.20.4 | **증거 기반 해소**. 기존 파일의 삭제·이동(§0.G6 `existing-file-deleted-or-moved`, 검출 지점 §5.1.(d)) 과 기존 public 심볼의 삭제·시그니처 변경(동 `existing-public-contract-change`) 은, 그 변경을 요구하는 **REQ-ID** 또는 **Task-ID** 가 `sidecar` 에 있고 그 Task 의 `action` 이 이동·삭제·시그니처 변경을 **명시**할 때 `intended-improvement` 로 기록하고 진행한다. 근거를 대지 못한 변경은 `unapproved-damage` 이며 critical 이다 — `sidecar.files[]` 등재는 편집 허가일 뿐 제거 허가가 아니다. **단 §0.20.3 의 약화와 기존 테스트 삭제는 같은 근거로 해소되지 않는다** — 기준을 낮추는 것은 어떤 계획도 승인할 수 없다. 본 판정은 `kiwi-wave-master §5.5.2` 의 보존 계층과 **같은 두 값 enum · 같은 근거 요건**을 쓴다 |
 | §8.4 참고 | `--mini`/`--loops N` 는 kiwi-review-fix-loop follow-up 에 전파 (loop-option.md §6) |
 
 ### §0.G — 핵심 게이트 결정표
@@ -112,6 +117,11 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | `integration-test-user-consent` | 통합 테스트 실행 사용자 동의 (§8.2) — `--auto-integration` 부재 시 사용자 결정 필요 (본 게이트는 `--auto-integration` 명시로 우회 가능 — `--auto` 자동 활성 안 함 §0.18) | §8.2 |
 | `cost-warning-large-task` | 비용 경고 (실행 시간 ≥10분) — `--auto-cost-warning` 부재 시 사용자 결정 (본 게이트도 `--auto-cost-warning` 명시로만 우회 — §0.18) | §3.3 / §6.2 |
 | `followup-review-fix-loop-close-unsafe` | §8.4 후속 review-fix-loop 자동 시작 시 `state.failed_task_ids[]` 비어있지 않거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
+| `existing-test-weakened-or-deleted` | diff 에서 기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화 검출 (§0.20 / §5.1.(d)) | §5.1.(d) |
+| `existing-public-contract-change` | diff 에서 기존 public 심볼의 삭제 또는 시그니처 변경 검출 — **경로와 무관**하게 critical (path 토큰 휴리스틱이 아니다) — 해소 경로는 §0.20.4 | §5.1.(d) |
+| `existing-file-deleted-or-moved` | diff 에서 비-테스트 기존 파일의 삭제·이동 검출 — `sidecar.files[]` 에 등재되어 있다는 사실만으로는 해소되지 않는다 (§0.20 / §5.1.(d)) — 해소 경로는 §0.20.4 | §5.1.(d) |
+| `mcp-cli-both-unavailable` | MCP 도구와 CLI fallback 이 **모두** 실패 (§0.G5) — mutation skip + `pending_mutations[]` 적재는 자동 결정으로 닫지 않는다 | §0.G5 |
+| `lifecycle-gate-deprecated-or-frozen` | deprecated / frozen REQ 구현은 정책상 중단 | Phase 0 |
 
 **기존 분리 옵션 보존 (§0.18 정합)**: `--yes-all` / `--auto-integration` / `--auto-cost-warning` 의 의미는 본 §0.G6 와 독립. 본 SSOT `--auto` 가 활성되어도 3종은 명시 입력 시에만 활성된다 (자동 활성 금지). `--auto` 활성 시 §8.4 후속 review-fix-loop spawn 의 args 에 `--close-reqs --auto` 전파는 §8.4 본문이 SSOT.
 
@@ -136,6 +146,7 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | "max 모드" | `--max` | off (Normal) |
 | "리뷰어 off" | `--reviewer-off` | off (까칠 리뷰어 유지) |
 | "회귀 skip" | `--skip-regression` | off (회귀 의무) |
+| "기준선 받아서", "부모 기준선" | `--regression-baseline <path>` | off (자기 시점 캡처) |
 | "자동 진행" | `--yes-all` | off |
 | "통합 테스트 skip" | `--skip-integration` | off |
 | "통합 테스트 자동 동의" | `--auto-integration` | off (사용자 동의 게이트 유지) |
@@ -145,6 +156,8 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
+
+**부모 체인 pass-through**: `--auto-integration` (§8.1 통합 테스트 동의 게이트) 와 `--auto-cost-warning` (§3.4 / §6.1 비용 경고 게이트) 는 사용자 직접 호출뿐 아니라 `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 체인으로 그대로 전달되어 도달한다 — 중간 스킬은 값을 새로 만들지 않고 받은 것을 넘기기만 한다. 무인 실행에서 이 두 게이트가 사용자를 기다리다 멈추는 것을 막는 유일한 경로가 이 전달이다. 명시 전달이 없으면 두 옵션은 off 이며, `--auto` 는 이 두 옵션과 `--yes-all` 을 자동 활성하지 않는다 (`~/.claude/skills/_shared/kiwi/auto-option.md` 공유 계약).
 
 ### 1.3 모드 매트릭스
 
@@ -198,7 +211,7 @@ TDD 검증 (Sonnet×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1) �
 ## 2. Phase 흐름
 
 ```
-Phase 0 : Bootstrap (preflight, plan/sidecar 로드, .kiwi init/resume, target 확인)
+Phase 0 : Bootstrap (preflight, plan/sidecar 로드, .kiwi init/resume, target 확인, 회귀 기준선 캡처)
 Phase 1 : Task 진입 + TDD 작성·검증
   1.1 : 시니어 코더가 sidecar.tdd.test_cases[] 기반으로 테스트 파일 작성
   1.2 : Sonnet×4 병렬 검증 (4축, §4.2)
@@ -274,6 +287,26 @@ Phase 4 : 모든 Task 완료 후 (선택) 통합 테스트 + 최종 보고서
 - Normal: 1회 안내 (`--auto-cost-warning`/`--yes-all` skip 가능)
 - `--max`: 2단계 경고 + 추정 토큰
 - 거부 시 .kiwi state 보존 후 종료
+
+### 3.5 회귀 기준선 캡처
+
+첫 Task 에 진입하기 전에 전체 회귀 스위트를 1회 실행하고 그 결과를 `state.regression_baseline` 에 고정한다. 이 값이 이후 모든 회귀 판정 (§6.1.3) 의 분모다 — 기준선이 없으면 "이 Task 가 깼다"와 "원래 깨져 있었다"를 구분할 방법이 없다.
+
+```json
+"regression_baseline": {
+  "command": "npm test",
+  "exit_code": 1,
+  "passed": 140, "failed": 2,
+  "failed_test_ids": ["src/a.test.ts > x", "src/b.test.ts > y"],
+  "head_sha": "abc1234",
+  "captured_at": "ISO-8601"
+}
+```
+
+- 재개 시 `regression_baseline` 이 이미 있고 `head_sha` 가 현재 HEAD 와 같으면 재실행하지 않는다 (멱등).
+- 캡처 자체가 실패하면 (스위트 명령 미검출 등) `state.regression_baseline = null` 로 두고 진행한다. 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하되며, 그 사실을 최종 보고서에 명시한다.
+- 기준선 캡처의 `exit_code ≠ 0` 자체는 차단 사유가 아니다 — 사전 실패의 존재를 기록하는 것이 본 절의 목적이다.
+- `--regression-baseline` 으로 부모가 pin 한 기준선을 받으면 그 값이 자기 시점 캡처보다 **우선한다** — 같은 run 의 두 수정 주체가 다른 기준선을 쓰면 앞 wave 가 만든 실패가 다음 계층에서 "원래 있던 실패"로 승격된다.
 
 ---
 
@@ -379,6 +412,13 @@ Phase 2 진입 (current_task_id 유지)
   │       ├─ action 명세에 기술된 시그니처 / 함수가 실제 존재
   │       ├─ dod 의 각 항목이 점검 가능한 형태로 코드에 반영
   │       ├─ **`@req` 주석 추가는 본 게이트 평가에서 제외** (§0.17.6) — 태그 추가/append 라인은 sidecar.action 외 변경 판정 시 변경 set 에서 제거 후 비교
+  │       ├─ diff 에서 기존 테스트 파일 삭제 / 기존 테스트 케이스 제거 / 기존 단언 약화 검출 (§0.20)
+  │       │       └─ 검출 시 CRITICAL + (c) 재호출로 재구현 강제 — 지운 테스트를 복원하고 구현으로 green 을 만든다
+  │       ├─ diff 에서 기존 public 심볼 삭제 / 시그니처 변경 검출 (§0.G6 `existing-public-contract-change`)
+  │       │       └─ 검출 시 CRITICAL + (c) 재호출. 파일 경로와 무관하게 판정 — 계약 파손은 경로가 아니라 심볼에서 일어난다
+  │       ├─ diff 에서 비-테스트 **기존 파일의 삭제·이동** 검출 (§0.G6 `existing-file-deleted-or-moved`)
+  │       │       └─ 검출 시 CRITICAL + (c) 재호출로 재구현 강제 — `sidecar.files[]` 에 등재되어 있다는 사실만으로는 해소되지 않는다. 등재는 그 파일을 편집한다는 허가이지 제거한다는 허가가 아니다
+  │       ├─ **동일 항목 2회째 검출** 시 (c) 재호출로 자기 치유하지 않고 §0.G6 의 대응 gate_id 로 부모에 **버블업**한다 — 1차 검출은 재구현으로 닫되, 같은 항목이 두 번 나오면 치유가 수렴하지 않는 것이므로 사용자 결정으로 올린다
   │       └─ 위반 시 CRITICAL + (c) 재호출
   ├─ (e) 정형 검사 (현재 세션 모델×1; --model 로 override)
   │       └─ 검증 축 4개: Mock regex, 타입/빌드, 계획-코드 매핑 재확인, 테스트 커버리지
@@ -438,6 +478,8 @@ Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**.
 
 ### 6.1 회귀 테스트 (§0.13 의무)
 
+**6.1.0 기준선(baseline) 캡처**: Task 가 **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. run 단위 기준선은 §3.5 에서 `state.regression_baseline` 에 이미 고정되어 있으므로, 그것이 존재하고 `head_sha` 가 현재 HEAD 와 같으면 그 값을 그대로 쓴다. 없거나 HEAD 가 다르면 이 Task 의 첫 편집 전에 캡처한다.
+
 **6.1.1 영향받는 테스트 (항상 실행)**:
 - sidecar.tasks[t].files[] 의 각 파일이 의존되는 test 파일을 정적 추론 (import graph / require / package 동일성)
 - 추론 어려운 경우 fallback: 최근 1주일 내 수정된 모든 test 파일
@@ -447,9 +489,12 @@ Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**.
 - 실행 시간 추정 ≥10분 시 사용자 동의 게이트 (`--yes-all`/`--auto-cost-warning` skip)
 - 결과를 `docs/analysis/kiwi-coder-{run-id}/regression_run.jsonl` 에 append
 
-**6.1.3 회귀 발견 시 처리**:
-- 해당 task 가 만든 변경이 기존 test 를 깬 경우 → CRITICAL + (Phase 2.c) 재진입
-- 2회 연속 동일 파일 회귀 → §0.G4 발동 + state.failed_task_ids[] 등재
+**6.1.3 회귀 발견 시 처리** — 회귀 여부는 기준선 대비 **델타로 판정**한다:
+- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 Task 가 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
+- 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 Task 의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 Task 의 루프가 발산한다
+- 기준선에서 fail 이었는데 이번에 pass 한 test 는 회귀가 아니다 (보고만)
+- `state.regression_baseline` 이 null (§3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다
+- 2회 연속 동일 파일 신규 실패 → §0.G4 발동 + state.failed_task_ids[] 등재
 - 외부 모듈 (cwd 외부) 실패 → WARN 만, 차단 안 함
 
 ### 6.2 MCP mutation 4종 batch
@@ -580,6 +625,15 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
     }
   },
 
+  "regression_baseline": {
+    "command": "npm test",
+    "exit_code": 1,
+    "passed": 140, "failed": 2,
+    "failed_test_ids": ["src/a.test.ts > x", "src/b.test.ts > y"],
+    "head_sha": "abc1234",
+    "captured_at": "ISO-8601"
+  },
+
   "regression_summary": {
     "last_run_at": "ISO-8601",
     "scope": "full|impacted-only|skipped",
@@ -688,6 +742,8 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
 - 모든 task 가 completed_task_ids[] 에 진입
 - `--skip-integration` 부재
 - 사용자 동의 (`--auto-integration`/`--yes-all` skip)
+
+`state.spawn_context == "pm-child"` (§3.0) 인 경우 본 동의 게이트를 발동하지 않는다 — 단일 Task 자식이 Task 마다 동의를 요구하면 부모의 무인 진행이 Task 수만큼 멈춘다. 자식 컨텍스트에서 통합 테스트 실행 여부는 모든 Task 를 본 부모 `kiwi-pm` 가 결정한다.
 
 skip 시(`--skip-integration` 명시 또는 사용자 거부)에도 **§8.3 최종 보고서는 항상 생성**. 보고서 §8 (통합 테스트 보고서) 섹션은 "skipped: {reason}" 으로 채움.
 
@@ -801,5 +857,6 @@ state_ref: ./state.json
 - `req_ids`: 본 Task 가 영향을 미친 REQ-ID 배열
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-coder-{run-id}/` 또는 `.kiwi/sessions/{run-id}/`
 - `status`: TDD green + 회귀 PASS = `TASK_DONE`; business-decision = `NEEDS_USER`; 회귀 실패 = `FAILED`
+- `gate_id`: `NEEDS_USER` 로 종료한 경우 그 중단을 일으킨 §0.G6 게이트의 id. 부모(`kiwi-pm`)는 이 값을 동명 게이트로 매핑한다 — 이 채널이 없으면 어느 게이트가 멈췄는지가 부모에게 전달되지 않는다
 
 emit 실패는 best-effort.

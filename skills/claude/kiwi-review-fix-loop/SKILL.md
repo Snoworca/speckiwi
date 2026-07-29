@@ -36,6 +36,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.14 | **셀프 모드 우선순위 결정**. 셀프 모드의 리뷰 대상 범위는 다음 순서: (1) 인자 `--files` / `--commits` / `--since` / `--base` `--head` 우선 / (2) 부재 시 `git status` 변경분 (working tree + staged) / (3) 변경분 0건 시 `HEAD~5..HEAD` fallback (사용자 확인 게이트 후) |
 | §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 3분류 매핑 (immediate_fix / discussion_needed / rejected) 및 §0.12 severity 가드레일 표 (CRITICAL/HIGH/MEDIUM → 자동수정, LOW → 자동 거절) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
 | §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.17 | **기존 구조 불가침** (kiwi-coder §0.20 정합). fix 로 green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동**을 모두 **금지**한다 — 본 스킬은 kiwi-coder 를 거치지 않는 코드 변경 경로이므로, 여기서 보존 규약이 빠지면 그 우회로가 그대로 열린다. 판정 기준은 kiwi-coder §0.20.1~§0.20.3 를 그대로 따른다. 탐지·차단 = **보존 스캔** 절 (§6) + §0.G8 `existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved` |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -143,6 +144,11 @@ self_scope.source enum 매핑 (§3.1):
 | `improvement-loop-divergence-4opt` | §0.G6 4옵션 게이트 발동 (시니어 fixer 3회 / 까칠 2회 동일 finding / 회귀 2회 연속 동일 fail) | §0.G6 |
 | `mock-detection` | Mock regex 자동 탐지 CRITICAL (§0.4) | §0.4 / §6.2 |
 | `pr-mode-gh-unavailable` | PR 모드 활성 시 `gh` CLI 미설치/미인증 (§0.G1 마지막 행) | §0.G1 |
+| `mcp-cli-both-unavailable` | `--close-reqs` 활성 상태에서 MCP·CLI 양쪽 미가용 — evidence 등록·status 전이를 대체할 경로가 없다 (§6.6.3) | §6.6.3 |
+| `bulk-close-or-finalize` | REQ close 는 REQ 단위 + 증거 등록이 선행 조건 — bulk finalize·archive·target 비우기 시도 (§0.8 / §6.6) | §6.6 |
+| `existing-test-weakened-or-deleted` | fix diff 에서 기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화 검출 (§0.17) | §0.17 / §6.2 |
+| `existing-public-contract-change` | fix diff 에서 기존 public 심볼의 삭제 또는 시그니처 변경 검출 — **경로와 무관**하게 critical (§0.17) | §0.17 / §6.2 |
+| `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | §0.17 / §6.2 |
 
 **finding 분류 매핑 (§0.G5) 와 severity 가드레일 (§0.12) 은 본 critical_gates 와 별개 채널**: discussion_needed/immediate_fix/rejected 의 자동 액션 매핑은 SSOT §4 severity 분기 정책의 적용 대상이며, 본 §0.G8 는 그 매핑이 실패하거나 critical 영역에 진입할 때의 HALT 게이트만 선언한다.
 
@@ -175,6 +181,7 @@ self_scope.source enum 매핑 (§3.1):
 | "재개" | `--resume` | off |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
+| 부모 기준선 | `--regression-baseline <path>` | off (자기 시점 캡처) |
 
 ### 1.3 모드 매트릭스
 
@@ -242,6 +249,7 @@ Phase 8 : 보고서 + (PR 모드) PR 응답 코멘트 + pipeline.jsonl emit
 1. git 환경: `git rev-parse --git-dir` 성공 → PASS
 2. PR 모드 활성 시: `gh --version` + `gh auth status` 성공 → PASS. 실패 시 §0.G1 HALT
 3. 회귀 테스트 실행 환경: 자동 감지 (`package.json` test script / `pytest.ini` / `cargo.toml` / `go.mod` 등). 없으면 `--skip-regression` 자동 활성 + 사용자 보고
+4. 회귀 기준선: `--skip-regression` 미활성 시 §6.0 의 기준선 캡처를 여기서 1회 수행하고 `state.regression_baseline` 에 고정 — Phase 3 이 회귀 테스트를 추가하기 전 시점이어야 한다
 
 기록: `docs/analysis/kiwi-review-fix-loop-{run-id}/preflight.json`
 
@@ -279,6 +287,7 @@ state.json 초기 스키마:
   "finding_queue": [],
   "fix_iter": 0,
   "recheck_iter": 0,
+  "regression_baseline": null,
   "regression_pass": false,
   "pr_responded": false,
   "failed": false
@@ -397,6 +406,16 @@ resume 알고리즘 (`--resume` 활성 시):
 
 ## 6. Phase 3~7 — TDD + Fix + 재검증 + 회귀
 
+### 6.0 회귀 테스트 기준선 캡처 (델타 판정 SSOT)
+
+본 스킬은 kiwi-coder 를 거치지 않는 코드 변경 경로이므로, 회귀 판정도 kiwi-coder §6.1.0 / §6.1.3 과 같은 형태를 쓴다 — 같은 파이프라인 안의 두 수정 주체가 다른 판정을 하면, 한쪽에서 관용되는 사전 실패가 다른 쪽에서 발산 게이트로 올라간다.
+
+- **기준선 캡처**: **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. 캡처 시점은 Phase 3 회귀 테스트 작성 이전 (§3.0 preflight 4번) 이며, 결과는 `state.regression_baseline` 에 고정한다
+- **델타 판정**: 회귀 여부는 기준선 대비 **델타로 판정**한다 — 기준선에서 pass 였는데 이번 실행에서 fail 한 test 만 이 fix 가 만든 **신규 실패**다
+- **기존 실패 귀속 금지**: 기준선에 이미 있던 **기존 실패**는 그대로 **보고하고** 현재 fix 의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 스킬의 개선 루프가 발산한다
+- **캡처 실패 격하**: 캡처 자체가 실패하면 (스위트 명령 미검출 등) `state.json.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며 그 사실을 보고서에 명시한다
+- **부모 기준선 우선**: `--regression-baseline` 으로 상위 오케스트레이터가 pin 한 기준선을 받으면 그 값이 자기 시점 캡처보다 **우선한다** — 값이 주어지면 자체 캡처를 수행하지 않고 전달된 기준선을 `state.regression_baseline` 에 그대로 고정한다. 방금 만들어진 실패를 "기존 실패"로 분류해 `TASK_DONE` 을 반환하는 것이 wave 게이트와 정면으로 어긋나기 때문이다.
+
 ### 6.1 Phase 3 — 회귀 테스트 작성 (TDD 조건부, §0.3)
 
 `immediate_fix` 큐의 각 finding 중 다음 조건 만족 항목에 회귀 테스트 선행 작성:
@@ -442,6 +461,12 @@ Mock 금지 (§0.4) regex 자동 탐지 — 위반 시 CRITICAL → Phase 4 재�
 
 cwd 외부 path 편집 시도 (§0.5 / §0.G4) — 즉시 중단.
 
+### 보존 스캔 (fixer diff, §0.17)
+
+fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동** 중 하나라도 검출되면 **CRITICAL** 로 올리고 §0.G8 의 대응 게이트(`existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved`)로 중단한다. 판정 기준은 `kiwi-coder §0.20.1~§0.20.3`.
+
+스캔은 까칠 리뷰어 **재검증(re-review)보다 먼저** 수행한다 — 뒤에 두면 약화된 테스트가 먼저 clean 판정을 받는다.
+
 ### 6.3 Phase 5 — 까칠 리뷰어 재검증 (서브에이전트, §0.2 격리)
 
 까칠 리뷰어 spawn (Phase 1.s 와 동일 prompt 골격, 단 입력 변경):
@@ -465,7 +490,7 @@ cwd 외부 path 편집 시도 (§0.5 / §0.G4) — 즉시 중단.
 
 1. Phase 3 회귀 테스트 실행 → green 확인. fail 시 Phase 4 개선 루프 편입 (HIGH 카운터)
 2. `--skip-regression` 부재 시 영향 회귀 (변경 파일의 모든 테스트) 실행
-3. 회귀 PASS → Phase 8 진입. fail → §0.G6 (2 연속 동일 fail 시 에스컬레이션)
+3. 판정은 §6.0 의 기준선 델타를 적용한다 — 신규 실패 0건이면 Phase 8 진입. 신규 실패 ≥1 → §0.G6 (2 연속 동일 fail 시 에스컬레이션). 기준선에 이미 있던 실패는 보고만 하고 진입을 막지 않는다
 4. 결과: `regression_run.jsonl`
 
 ### 6.6 Phase 7.5 — REQ verified 일괄 승급 (`--close-reqs` 활성 시)

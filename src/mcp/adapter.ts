@@ -60,7 +60,12 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
       ],
       diagnosticsSummary: { errors: 1, warnings: 0, byCode: { "SRS-E075": 1 } },
       mcpWorkspace: workspaceIdentity,
-      recovery: { tool: "restart_mcp_server", message: "Start SpecKiwi MCP with the intended workspace root instead of passing root per call." }
+      // @req FR-MCP-055: no tool can move an already-running server, so name the operator action
+      // instead of a tool this server does not register.
+      recovery: {
+        message:
+          "The workspace root is resolved only from the MCP server process working directory. Start the SpecKiwi MCP server — or the agent session that owns it — in the intended project directory instead of passing root per call."
+      }
     };
   };
   const attachWorkspace = (value: unknown): unknown => {

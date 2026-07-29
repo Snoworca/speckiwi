@@ -53,9 +53,10 @@ target 활성 REQ 전수를 Phase>Task 구조로 분해해 **plan.md + 사이드
 | §0.16 | **plan.md heading level SSOT**. `§N` 헤딩 = `## §N ...` (h2). `§3.<phase_id>` = `### §3.<phase_id> ...` (h3). `§3.<phase_id>.<task_id>` = `#### §3.<phase_id>.<task_id> ...` (h4). h5 이하 금지. validator 는 h4 정확 매칭으로 task 카운트 |
 | §0.17 | **TDD 원칙 SSOT**. 전역 AGENTS.md TDD 의무를 plan-time 에 강제. `type=code` Task 는 (a) `tdd.applicable=true` + `tdd.phase∈{red,green,refactor}` + `tdd.test_cases≥1` 이거나 (b) `tdd.applicable=false` + `tdd.phase="n/a"` + `tdd.exempt_reason` (≥20자) 둘 중 하나. `tdd.phase="n/a"` 는 `applicable=false` 일 때만 허용. AC 단위 페어 분해 권장 — 동일 `covers_ac` 의 red Task 와 green Task 는 **분리된 별개 Task** 여야 한다 (단일 Task 에서 red+green 동시 수행 금지 — TDD 의 시간적 분리 강제). 동일 AC 페어의 순서는 Task-level `depends_on_task[]` 로 명시. `red_evidence`/`green_evidence` 는 planner 가 `null` slot 만 예약 — 실제 채움은 $kiwi-coder 책임 (§0.13 mutation 권한과 충돌 없음). `--tdd-policy` 가 `disabled` 면 본 §0.17 게이트·평가축·validator 검사 전부 skip. `tdd_policy ≠ disabled` 시 `type=code` Task 의 `tdd` 필드는 **필수** (누락 시 validator C21 ERROR) |
 | §0.18 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·validator.mjs 검사·TDD 강제(§0.17)는 불변 |
-| §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. scope ambiguity, deferred coverage, force-proceed, strict TDD block, and external path gates are governed by §0.G9 critical_gates[]. |
+| §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. scope ambiguity, deferred coverage, force-proceed, strict TDD block, external path, and speckiwi-tool-absence gates are governed by §0.G9 critical_gates[]. |
 | §0.20 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.21 | **work-mode ↔ `--tdd-policy` 파생 SSOT**. 본 스킬은 `../_shared/kiwi/workmode-policy.md` v1.0 을 따른다. Phase 0(§3.4)에서 work-mode 를 MCP `get_work_mode`(우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(fail-open)로 읽고, `--tdd-policy` 미지정 시 매핑(**tdd → strict**, 그 외 `relaxed`)으로 파생 기본을 적용해 plan.md frontmatter·사이드카 `tdd_policy` 에 기록한다. `disabled` 는 어떤 mode 로부터도 파생되지 않으며 명시 `--tdd-policy=disabled` 플래그로만 설정된다. 명시 `--tdd-policy` 는 파생 기본을 항상 이기며(이길 때 비-치명 WARN), §0.17 게이트·validator 검사는 불변 |
+| §0.22 | **기존 구조 보존 입력**. 상위 오케스트레이터가 전달한 `existing_modules` 목록의 모듈을 **이동·삭제·시그니처 변경**하는 Task 는 그 사실을 Task `action` 에 **명시**한다 — `files[]` 등재만으로는 편집 허가일 뿐 제거·이동 허가가 아니며 (`kiwi-coder §0.20.4`), action 에 없는 파손은 실행 계층에서 근거 없는 파손으로 판정되어 HALT 한다 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -166,6 +167,7 @@ Codex clarification gate 4옵션:
 | `force-proceed-after-divergence` | 발산 후 force-proceed 는 사용자 책임 | §0.G5 |
 | `scope-expansion-target-boundary` | target 외 REQ 포함/확장은 범위 변경 | §0.G6 |
 | `strict-tdd-block` | strict TDD 정책 위반은 자동 면제 불가 | §0.G7 |
+| `mcp-cli-both-unavailable` | active target and requirement reads require `speckiwi mcp`; CLI diagnostics cannot replace normal workflow input | §3.0 |
 
 ---
 
@@ -192,6 +194,7 @@ Codex clarification gate 4옵션:
 | "TDD 엄격", "면제 불허", "TDD 완화", "TDD off" | `--tdd-policy=strict\|relaxed\|disabled` | `relaxed` (§0.17, §0.G7) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
+| "같은 계획 run 으로", "plan run 재사용" | `--plan-run-id <id>` (run-id 를 새로 도출하지 않고 그 값을 그대로 사용) | off (`{YYYY-MM-DD}.{project}.{target}` 도출) |
 
 ### 1.3 출력
 
@@ -206,7 +209,7 @@ Codex clarification gate 4옵션:
   - `mcp_call_log.jsonl`
   - `rejected_findings.log` / `preflight.json`
 
-**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자.
+**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자. `--plan-run-id <id>` 가 주어지면 도출하지 않고 그 값을 그대로 쓴다 — 재진입이 같은 계획 run 을 재사용하지 못하면 범위 없는 전면 재실행이 된다.
 
 ### 1.4 dry-run
 
@@ -347,6 +350,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 - target goal · `intent.json` · `code_context.json` · `srs_mapping.json`
 - 작성 규약: §0 전체 + §9 plan.md 스키마 + §10 사이드카 스키마
+- 상위 오케스트레이터가 `existing_modules` 목록을 전달한 경우 그 목록 — §0.22 판정의 입력이며, 시니어 입력에 없으면 §0.22 를 적용할 수 없다
 - 시니어는 **plan.md 와 사이드카 JSON 을 동시에 생성** (Phase>Task 구조 일관성 보장)
 
 ### 5.2 Phase 분해 원칙

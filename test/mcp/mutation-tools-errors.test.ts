@@ -6,6 +6,7 @@ import { diagnostic } from "../../src/core/diagnostic.js";
 import { createTestMcpServer } from "../../src/mcp/adapter.js";
 import { resultToMcp } from "../../src/mcp/errors.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
+import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 async function emptyRepo() {
@@ -360,5 +361,72 @@ describe("MCP mutation tools and structured errors", () => {
     expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("# SpecKiwi SRS 워크플로 v1.6");
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
+  });
+});
+
+// @req FR-MCP-055
+// The per-call workspace-root rejection must hand back guidance the caller can actually act on.
+// `restart_mcp_server` is not a registered tool, and MCP process lifetime belongs to the host, so
+// naming it sends an agent after a recovery it cannot perform. REL-MCP-004 AC-3's fail-closed
+// rejection itself must stay byte-for-byte intact.
+describe("FR-MCP-055 — actionable recovery guidance for a rejected per-call workspace root", () => {
+  it("never names an unregistered tool and keeps the fail-closed rejection unchanged", async () => {
+    const root = await copyFixtureWorkspace("mutation-target");
+    const otherRoot = await copyFixtureWorkspace("duplicate-id");
+    const server = createTestMcpServer({ root });
+    // Register BOTH surfaces: `recovery.tool` may legitimately name a read tool, so the "is it
+    // registered?" set must be the whole server surface, not just the mutation subset.
+    registerReadTools(server, { root });
+    registerMutationTools(server, { root });
+
+    const rejected = (await server.callTool("update_status", {
+      root: otherRoot,
+      id: "FR-ARCH-001",
+      status: "verified"
+    })) as {
+      ok: boolean;
+      error: { code: string; message: string };
+      diagnostics: { code: string; severity: string }[];
+      diagnosticsSummary: { errors: number; byCode: Record<string, number> };
+      mcpWorkspace: { workspaceRoot: string; rootSource: string };
+      recovery?: { tool?: string; message?: string };
+    };
+
+    // AC-3: the rejection stays fail-closed and otherwise unchanged.
+    expect(rejected).toMatchObject({
+      ok: false,
+      error: { code: "MCP_WORKSPACE_ROOT_UNSUPPORTED" },
+      diagnosticsSummary: { errors: 1, byCode: { "SRS-E075": 1 } },
+      mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery" }
+    });
+
+    const recovery = rejected.recovery ?? {};
+    const registered = new Set(Object.keys(server.tools));
+
+    // AC-1: if a tool is named at all, the server must actually register it.
+    expect(recovery.tool ?? "", "recovery must not name the unregistered restart_mcp_server tool").not.toBe(
+      "restart_mcp_server"
+    );
+    if (recovery.tool) {
+      expect(registered.has(recovery.tool), `recovery.tool "${recovery.tool}" must be a registered tool`).toBe(true);
+    }
+
+    // AC-2 / AC-4: the guidance pins the real resolution rule and the real remedy. Asserted on
+    // `recovery.message` ALONE — merging it with `error.message` let the fail-closed rejection text
+    // satisfy the checks, so deleting the whole recovery hint stayed green.
+    expect(typeof recovery.message, "the rejection must carry a recovery.message string").toBe("string");
+    const guidance = recovery.message ?? "";
+    expect(
+      guidance,
+      "recovery.message must say the workspace root comes from the server process working directory"
+    ).toMatch(/working directory|process cwd/i);
+    expect(
+      guidance,
+      "recovery.message must tell the caller to start the server or its session in the intended directory"
+    ).toMatch(/start .*(server|session)/i);
+    expect(guidance, "recovery.message must not point at a restart tool").not.toMatch(/restart_mcp_server/);
+    expect(rejected.error.message, "the rejection message must not point at a restart tool").not.toMatch(
+      /restart_mcp_server/
+    );
   });
 });

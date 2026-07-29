@@ -87,6 +87,7 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | 응답 `yes` | Phase 4 진행; Markdown sync 단계에서 §2 갱신 |
 | 응답 `no` | 사용자 결정 대기; `add_requirement` 호출 금지 |
 | 응답 `new-scope 분리` | classification 갱신 → Phase 2.5 진입 |
+| `--auto` 활성 (질의 경로 없음) | 그 REQ 만 보류 + `deferred_reqs[]` 기록; 나머지 REQ 저작 계속 (§6.4) |
 | boundary 영향을 Open Questions 에만 기록하고 진행 | §0.7 위반 (차단) |
 
 #### §0.G5 — Combined gate (boundary + conflict 동시)
@@ -106,10 +107,12 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | gate_id | reason | location |
 |---|---|---|
 | `external-module-impact` | cwd 외부 path 또는 다른 target/scope 영향 | §0.G2 |
-| `scope-boundary-impact` | scope out-of-scope/constraints 변경 | §0.G4 |
+| `scope-boundary-impact` | scope out-of-scope/constraints 변경 — 차단 단위는 **그 REQ**. `--auto` 에서는 그 REQ 만 보류·기록하고 나머지 저작은 계속하며, 전체 중단은 사용자가 명시적으로 거부한 경우만 (§6.4) | §0.G4 |
 | `combined-boundary-conflict` | boundary 변경과 conflict 분류 동시 발생 | §0.G5 |
-| `mcp-unavailable` | SpecKiwi MCP 부재. CLI diagnostics cannot replace normal SRS read/mutation | Phase 0 |
-| `fact-fabrication-risk` | 코드/요구사항 증거 없는 기능/AC 작성 위험 | §0.4 / §0.15 |
+| `auto-qna-mutual-exclusion` | `--auto` + `--qna` 동시 명시 ERROR (§1.2 옵션 의미) | §1.2 |
+| `implementability-blocked` | Phase 3 feasibility 결과 `implementability=blocked` — Phase 4 진행 불가, 사용자 결정 필요 | §8.2 |
+| `mcp-cli-both-unavailable` | SpecKiwi MCP 부재. CLI diagnostics cannot replace normal SRS read/mutation | §3.0 |
+| `fact-fabrication-risk` | 존재하지 않는 함수/CVE/파일 추가 요구 거절 (§0.9) + 코드/요구사항 텍스트에 증거 없는 기능·AC 작성 (§0.4 / §0.15) — 사실 위조 | §0.9 / §0.4 / §0.15 |
 
 ---
 
@@ -130,13 +133,14 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 | "--auto", "자동", "묻지 말고", "질문 없이" | `--auto` | off (질문 활성이 기본) |
 | "--max", "정밀 검증" | `--max` | default on |
 | "local-LLM max profile", "local-LLM max profile", "local-LLM 안정성 우선", "local evaluator 으로" | `local-LLM max profile` | off (모든 local-LLM max-profile → local evaluator, `../_shared/kiwi/local-llm-profile.md` v1.0) |
+| "제약 문서 X", "--constraints-doc <path>", "선언된 제약 반영" | `--constraints-doc <path>` (선언된 사용자 제약 아티팩트; §9.1 저작 입력에 포함) | omit |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 
 **옵션 의미 (v0.11 이후 SSOT)**:
 - `--auto` 와 `--qna` 동시 명시 → ERROR ("두 옵션은 상호 배타. --auto 만 사용하십시오.").
 - `--auto` 부재 (기본) → Phase 1.5 QnA loop 활성 (단, Phase 1 `intent.json.ambiguities` 가 빈 배열이면 자동 skip).
-- `--auto` 명시 → Phase 1.5 QnA loop skip + 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *User clarification gate 발동 대신 차단* 으로 동작 (사용자 결정 보류, 자동 우회 아님).
+- `--auto` 명시 → Phase 1.5 QnA loop skip + 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *User clarification gate 발동 대신 차단* 으로 동작 (사용자 결정 보류, 자동 우회 아님). scope-boundary 게이트 (§0.G4) 의 차단 단위는 **그 REQ** 이며, 나머지 요구사항의 저작은 계속한다 (§6.4).
 - `--qna` 명시 → `--auto` 의 역으로 동작 (기본과 등가). stderr 에 DEPRECATED 경고 1줄.
 - **`--qna-force` (강제) ≠ `--qna` (deprecated alias)**: `--qna-force` 는 모호성이 없어 보여도 무제한 qna 루프를 **강제 진입**시키는 플래그(§5.2)이고, `--qna` 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED 경고)다. `--qna-force` 는 `--qna` 를 **접두 부분문자열**로 포함하므로 파싱을 **fail-closed 앵커 규칙**으로 고정한다: `--qna-force`(강제)는 정확히 `--qna-force` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna-force\b`. `--qna`(deprecated)는 뒤에 `-force` 가 붙지 않은 정확한 `--qna` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna(?![-\w])` (즉 `--qna-force` 를 `--qna` 로 오탐하지 않는다). **substring/prefix 매칭 금지.** **fail-closed 규약**: 위 두 정규식 중 어느 것과도 정확히 일치하지 않는 토큰 — 미인식 플래그, 단일 대시 변형(`-qna`·`-qna-force` 등), 오탈자 — 은 silent no-op 도 silent 반대 동작도 아닌 **hard-error 로 거부**하고 사용자에게 오류를 보고한 뒤 중단한다(관례 역전으로 인한 무성 오동작 원천 차단). (플래그 이름은 SRS FR-FLOW-024 가 고정하므로 변경하지 않는다.)
 
@@ -249,6 +253,9 @@ dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 3. **CLI `speckiwi targets --json`** — 활성 없으면 등록 목록 확인. 단일 target만 있으면 자동 채택 + 사용자에게 안내 (질의 없음).
 4. **User clarification gate (single)** — 위 모두 실패 시 "어느 target에 등록하시겠습니까?".
 5. 최종 선택한 TARGET이 활성과 다르면 `set_active_target` 호출. `classification.json.target` 에 기록.
+6. **미등록 target 등록** — 선택한 TARGET 이 Target Map 에 없으면 `set_active_target` 을 **생성**(`create`) 옵션과 함께 호출해 등록한 뒤 진행한다. 미등록은 그 자체로 중단 사유가 아니다 — 새 wave·새 릴리스의 첫 저작은 언제나 미등록 target 에서 시작한다.
+
+중단은 **등록 자체가 실패한 경우에만** 한다. 이때 도구가 반환한 오류를 그대로 보고한다 — 등록되지 않은 target 으로 `add_requirement` 를 진행하면 그 REQ 는 어느 Target Map 행에도 걸리지 않는다.
 
 ### 3.2 SRS 컨텍스트 로드
 
@@ -405,6 +412,12 @@ reviewer dropout 패턴 (snoworca-srs-qna 로직 차용, 직접 구현 — §0.8
 
 scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위반 (차단).
 
+`--auto` 에서는 경계와 충돌하는 그 REQ 만 **보류하고 기록한다** — 나머지 요구사항의 저작은 그대로 **계속**한다. 한 REQ 의 경계 충돌로 저작 전체를 버리면 충돌과 무관한 요구까지 같이 밀리고, 다음 실행은 같은 지점에서 다시 막힌다.
+
+전체 중단은 사용자가 명시적으로 **거부**한 경우로 한정한다.
+
+보류한 REQ 는 `classification.json.scope_boundary_impact.deferred_reqs[]` 에 `{ req_ref, section, rationale, reason_class: "scope-boundary-deferred" }` 로 남기고 완료 보고에 그대로 싣는다 — 기록되지 않은 보류는 조용한 누락과 구분되지 않는다.
+
 ### 6.5 Multi-aspect 요구사항 분리
 
 §0.11 적용. 1 사용자 문장이 ≥2 코드 표면을 다루면:
@@ -455,6 +468,16 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
 - `implementability == "blocked"` → **Phase 4 진행 안 함**. 사용자에게 보고 후 결정 요청. `add_requirement` 호출 금지.
 - `product_fit == "out-of-scope"` → 사용자 확인 (속행 여부).
 - 그 외 → Phase 4 진행. REQ tag에 `feasibility:high|medium|low` 첨부.
+
+---
+
+## MCP / CLI fallback — target 등록
+
+정상 경로는 MCP 다. 아래 CLI 셀은 MCP 를 쓸 수 없는 degraded 상태에서 **target 등록만** 복구하기 위한 경로이며, 일반 SRS mutation 을 CLI 로 대체하는 허가가 아니다. 전체 도구 대응표는 `references/extended-workflow.md` §13 — 본 행만 여기에 인라인하는 이유는 미등록 target 등록이 §3.1 의 진입 조건이라 SKILL.md 안에서 해소되어야 하기 때문이다.
+
+| 작업 | MCP | CLI fallback |
+|---|---|---|
+| Target 활성화 | `set_active_target` (미등록이면 `create`) | `speckiwi set-active-target <t> --create` |
 
 ---
 

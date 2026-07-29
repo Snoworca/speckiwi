@@ -127,6 +127,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 | "sync retry 대기 N ms" | `--sync-retry-delay-ms` | 200 (§11.4 단계 a 대기 시간) |
 | "보고 채널 X" | `--report-channel` | `doculight` (§11.5.2 1차 채널; `telegram` / `google-chat` fallback 가능) |
 | "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
+| "이 REQ 만 재평가", "REQ 지정 feasibility" | `--req-filter <REQ-ID[,…]>` (그 REQ 만 평가·`update_stability`; §3.3 필터) | omit (전수) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 
@@ -241,6 +242,7 @@ list_requirements { target: TARGET }
   - `--include-stable` 미지정 시 stable/frozen 제외
   - status ∈ {discarded, draft} 제외
   - `--scope` / `--priority` 옵션 적용
+  - `--req-filter` 지정 시 열거된 REQ-ID 만 남긴다 — **명시 열거**는 `--scope` / `--priority` 필터와 status 기본 제외보다 **우선**한다 (호명된 REQ 가 필터로 조용히 빠지면 "그 REQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 `--include-stable` 을 함께 준다. 열거된 ID 가 target 에 없으면 그 ID 를 사용자에게 보고한다
 - 필터 후 N개 REQ → Phase 1 입력
 
 N=0 분기:

@@ -7,7 +7,10 @@ export interface McpStructuredError {
 }
 
 export interface McpRecoveryHint {
-  tool: string;
+  // Optional: some failures are recovered by an operator action (restart the server in the intended
+  // directory), not by calling another tool. Naming a tool the server does not register would send
+  // the caller after a recovery it cannot perform. @req FR-MCP-055
+  tool?: string;
   message?: string;
 }
 

@@ -456,3 +456,306 @@ describe("FR-FLOW-030 — kiwi-wave-master epic-issue entry mode", () => {
     });
   }
 });
+
+// @req FR-FLOW-042 FR-FLOW-043
+// FR-FLOW-042 — kiwi-wave-master run-root preflight gate.
+// FR-FLOW-043 AC-5/AC-7 — the halt-emit contract that the gate hands to the event journals.
+//
+// RED-phase content assertions. Same raw-text + proximity technique as the FR-FLOW-029/030 blocks
+// above: a SKILL.md is agent instruction, not executable code, so the AC behavior is verified as an
+// authored contract in every packaged variant. Checks key on technical tokens (workspaceRoot,
+// `git rev-parse --show-toplevel`, --auto, --wt, waves.jsonl, pipeline.jsonl, FAILED) plus bilingual
+// regexes, because the claude/codex bodies are Korean and the etc variant is English/Korean-mixed.
+
+const WORKSPACE_ROOT_TOKEN = /workspaceRoot|mcp_workspace_info/;
+const GIT_ROOT_TOKEN = /git rev-parse --show-toplevel/;
+const HALT = /중단|halt|멈춘다|정지/i;
+const CRITICAL = /critical|치명|필수 중단/i;
+const NO_BYPASS = /우회(할 수 없|하지 못|.{0,6}불가)|not bypass|cannot bypass|무관하게 중단/i;
+const NO_MUTATION = /mutation\s*0|0\s*건|어떤 SRS[^\n]*(변경|기록)하지 않|no SRS mutation|zero SRS mutation/i;
+const NO_SPAWN = /spawn 하지 않|자식[^\n]*(호출|spawn)하지 않|no child|spawns? no/i;
+const SINGLE_ROOT_RECOVERY = /git switch|단일 root|single root|브랜치를? 전환/i;
+const NEW_SESSION_RECOVERY = /새 (세션|agent 세션)|new (agent )?session|세션을 새로/i;
+const NO_NEW_REQ_ID = /신규 Requirement ID|new Requirement ID|신규 REQ ID/i;
+const HOST_SPEC_UNEDITABLE = /docs\/spec/;
+const CLI_NOT_FALLBACK = /CLI[^\n]*(폴백|fallback)[^\n]*(아니|않|not)|(폴백|fallback)[^\n]*CLI[^\n]*(아니|않|not)|CLI 를? 폴백으로 쓰지/i;
+const WT_REFUSAL = /--wt/;
+const WAVE_ACCUMULATION = /누적|accumulat/i;
+
+/**
+ * The dedicated run-root preflight section: from its heading down to the next same-or-higher-level
+ * heading (or EOF). Scoping the gate assertions here keeps §2's phase-flow block and §8's epic entry
+ * mode from false-greening checks that must live inside the gate itself. Returns "" when absent.
+ */
+function preflightSection(body: string): string {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => /^#{2,4}\s.*(?:preflight|사전 점검|사전 검사)/i.test(line));
+  if (start === -1) return "";
+  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^#+/);
+    if (m && m[0].length <= level) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+/** The §2 phase-flow fenced block (the one that lists the wave-decomposition phase). */
+function phaseFlowBlock(body: string): string {
+  const fences = body.split("```");
+  for (let i = 1; i < fences.length; i += 2) {
+    if (/Wave 분해|wave decompos/i.test(fences[i])) return fences[i];
+  }
+  return "";
+}
+
+/** The `## 9` pipeline-emit section (heading names emit), down to the next same-or-higher heading. */
+function emitSection(body: string): string {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => /^#{2,4}\s.*emit/i.test(line));
+  if (start === -1) return "";
+  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^#+/);
+    if (m && m[0].length <= level) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+/**
+ * The bullet block that immediately follows the "중단 출력에는 …" lead-in — i.e. the halt OUTPUT
+ * contract itself. Anchoring here stops the neighbouring `--wt` paragraph (which restates the same two
+ * recovery paths) from keeping AC-3 green when a bullet is deleted.
+ */
+function haltOutputBullets(section: string): string {
+  const lines = section.split("\n");
+  const lead = lines.findIndex((line) => /중단 출력에는|halt output/i.test(line));
+  if (lead === -1) return "";
+  const out: string[] = [];
+  for (let i = lead + 1; i < lines.length; i++) {
+    if (/^\s*[-*]\s/.test(lines[i])) {
+      out.push(lines[i]);
+      continue;
+    }
+    if (out.length === 0 && lines[i].trim() === "") continue;
+    break;
+  }
+  return out.join("\n");
+}
+
+/**
+ * The `--wt` delegation-refusal paragraph(s) — every blank-line-delimited block that mentions `--wt`,
+ * with bullet lines dropped. Anchoring AC-7's re-offer check here stops the halt OUTPUT bullet block
+ * (which labels the same two recovery paths a few lines above) from keeping the check green when the
+ * paragraph's own "위의 두 복구 경로(…)를 대신 제시한다" clause is deleted; a +/-700 char window reached
+ * those bullets and survived that mutation. Returns "" when no such paragraph exists.
+ */
+function wtRefusalParagraph(body: string): string {
+  return body
+    .split(/\n[ \t]*\n/)
+    .filter((para) => WT_REFUSAL.test(para))
+    .map((para) =>
+      para
+        .split("\n")
+        .filter((line) => !/^\s*[-*]\s/.test(line))
+        .join("\n"),
+    )
+    .join("\n");
+}
+
+// FR-FLOW-042 AC-1 path-normalization rules. `git rev-parse --show-toplevel` returns `C:/Work/...`
+// while `mcp_workspace_info.workspaceRoot` returns `C:\Work\...` (path.resolve), so a raw string
+// compare halts every Windows run. The gate must spell out how both values are normalized first.
+const NORM_SEPARATOR = /구분자[^\n]*(?:`\/`|슬래시|통일)|separator[^\n]*(?:forward|`\/`)/i;
+const NORM_TRAILING = /후행[^\n]*(?:구분자|슬래시)|trailing\s*(?:slash|separator|구분자)/i;
+const NORM_CASE = /대소문자[^\n]*(?:무시|구분하지)|case-?insensitiv/i;
+const NORM_REALPATH = /realpath|심볼릭\s*링크|symlink/i;
+
+describe("FR-FLOW-042 / FR-FLOW-043 — run-root preflight gate and halt-emit contract", () => {
+  for (const variant of VARIANTS) {
+    describe(`${variant} variant`, () => {
+      it("AC-1: compares the MCP workspace root with the run git root before any wave work", () => {
+        const body = skillBody(readWaveSkill(variant));
+        expect(WORKSPACE_ROOT_TOKEN.test(body), `${variant}: gate must read mcp_workspace_info.workspaceRoot`).toBe(true);
+        expect(GIT_ROOT_TOKEN.test(body), `${variant}: gate must resolve the run git root`).toBe(true);
+        const near = windowsAround(body, WORKSPACE_ROOT_TOKEN, 500);
+        expect(
+          near.some((w) => GIT_ROOT_TOKEN.test(w)),
+          `${variant}: workspaceRoot and git rev-parse --show-toplevel must be compared together`,
+        ).toBe(true);
+        expect(
+          // `Phase 0` is deliberately NOT accepted as a preflight marker: the AC-1/AC-5 phase-flow test
+          // below forbids the preflight step from reusing that label, so allowing it here would admit
+          // exactly the regression its sibling assertion bans.
+          near.some((w) => /preflight|사전 점검|사전 검사/i.test(w)),
+          `${variant}: the comparison must be stated as a preflight, before wave decomposition`,
+        ).toBe(true);
+      });
+
+      it("AC-1: normalizes both paths before comparing them, with a concrete before/after example", () => {
+        const sec = preflightSection(skillBody(readWaveSkill(variant)));
+        expect(sec !== "", `${variant}: the run-root preflight gate must be a discoverable section`).toBe(true);
+        // Without an explicit normalization rule the two producers disagree on Windows
+        // (`C:\Work\...` vs `C:/Work/...`) and the gate halts every legitimate run.
+        expect(NORM_SEPARATOR.test(sec), `${variant}: the gate must normalize path separators to /`).toBe(true);
+        expect(NORM_TRAILING.test(sec), `${variant}: the gate must drop a trailing separator`).toBe(true);
+        expect(
+          NORM_CASE.test(sec),
+          `${variant}: the gate must compare case-insensitively on Windows (drive letter included)`,
+        ).toBe(true);
+        expect(
+          NORM_REALPATH.test(sec),
+          `${variant}: the gate must resolve symlinks via realpath before comparing when possible`,
+        ).toBe(true);
+        // A single line carrying both the backslash and the forward-slash form of a drive path, plus a
+        // normalization word: the required before/after example.
+        expect(
+          sec.split("\n").some((line) => /[A-Za-z]:\\/.test(line) && /[A-Za-z]:\//.test(line) && /정규화|normaliz/i.test(line)),
+          `${variant}: the gate must carry a one-line before/after normalization example`,
+        ).toBe(true);
+      });
+
+      it("AC-1/AC-5: the phase flow lists the preflight as a distinct step ahead of the journal-path phase", () => {
+        const body = skillBody(readWaveSkill(variant));
+        const flow = phaseFlowBlock(body);
+        expect(flow !== "", `${variant}: the skill must keep its phase-flow block`).toBe(true);
+        const preflightLine = flow.split("\n").find((line) => /preflight|사전 점검|사전 검사/i.test(line)) ?? "";
+        expect(preflightLine !== "", `${variant}: the phase-flow block must list the run-root preflight`).toBe(true);
+        // Name collision guard: the existing input/journal-resolution step is already "Phase 0", so the
+        // preflight step must not reuse that label.
+        expect(
+          /Phase\s*0/i.test(preflightLine),
+          `${variant}: the preflight step must not reuse the "Phase 0" label of the input/journal step`,
+        ).toBe(false);
+        expect(
+          flow.indexOf(preflightLine) < flow.indexOf("Phase 0"),
+          `${variant}: the preflight step must precede Phase 0 in the phase-flow block`,
+        ).toBe(true);
+        // FR-FLOW-043 AC-5: a halted run must not pin a journal root, so journal-path resolution and the
+        // resume read must be listed among the things the gate precedes.
+        const sec = preflightSection(body);
+        const precedence = sec.split("\n").find((line) => /먼저|before|선행/i.test(line)) ?? "";
+        expect(
+          /waves\.jsonl/i.test(precedence) && /재개|resume/i.test(precedence),
+          `${variant}: the gate must run before waves.jsonl path resolution and the resume read`,
+        ).toBe(true);
+      });
+
+      it("AC-2: states a critical halt that --auto does not bypass, with no mutation and no child spawn", () => {
+        const body = skillBody(readWaveSkill(variant));
+        const near = windowsAround(body, WORKSPACE_ROOT_TOKEN, 900);
+        expect(near.some((w) => HALT.test(w) && CRITICAL.test(w)), `${variant}: mismatch must be a critical halt`).toBe(true);
+        expect(near.some((w) => /--auto/.test(w) && NO_BYPASS.test(w)), `${variant}: --auto must not bypass the halt`).toBe(true);
+        expect(near.some((w) => NO_MUTATION.test(w)), `${variant}: halt point must state zero SRS mutations`).toBe(true);
+        expect(near.some((w) => NO_SPAWN.test(w)), `${variant}: halt point must state no child skill was spawned`).toBe(true);
+      });
+
+      it("AC-3: names both recovery paths and both caveats in the halt output", () => {
+        // Anchored on the halt-OUTPUT bullet block, not a wide window: the neighbouring `--wt`
+        // paragraph restates both recovery paths, so a window-based check survived deleting a bullet.
+        const bullets = haltOutputBullets(preflightSection(skillBody(readWaveSkill(variant))));
+        expect(bullets !== "", `${variant}: the gate must specify what the halt output contains`).toBe(true);
+        expect(/복구 경로 1|recovery path 1/i.test(bullets), `${variant}: recovery path 1 must be labelled`).toBe(true);
+        expect(/복구 경로 2|recovery path 2/i.test(bullets), `${variant}: recovery path 2 must be labelled`).toBe(true);
+        expect(SINGLE_ROOT_RECOVERY.test(bullets), `${variant}: must offer the single-root branch switch`).toBe(true);
+        expect(NEW_SESSION_RECOVERY.test(bullets), `${variant}: must offer a new session rooted at the worktree`).toBe(true);
+        expect(NO_NEW_REQ_ID.test(bullets), `${variant}: must warn against allocating new Requirement IDs`).toBe(true);
+        expect(
+          HOST_SPEC_UNEDITABLE.test(bullets),
+          `${variant}: must warn that a worktree-rooted session cannot edit the host docs/spec`,
+        ).toBe(true);
+      });
+
+      it("AC-4: covers the epic-issue entry mode with the same gate", () => {
+        // Scoped to the gate section: a +/-1400 window reached §2's own "에픽" prose, so the sentence
+        // extending the gate to the epic entry mode could be deleted with the test still green.
+        const sec = preflightSection(skillBody(readWaveSkill(variant)));
+        expect(sec !== "", `${variant}: the run-root preflight gate must be a discoverable section`).toBe(true);
+        expect(
+          windowsAround(sec, /에픽|epic/i, 80).some((w) => /게이트|gate|preflight/i.test(w)),
+          `${variant}: the preflight gate must state that the epic-issue entry mode is covered by the same gate`,
+        ).toBe(true);
+      });
+
+      it("AC-6: treats a failed workspaceRoot lookup as a mismatch and refuses the CLI as a fallback", () => {
+        const body = skillBody(readWaveSkill(variant));
+        const near = windowsAround(body, WORKSPACE_ROOT_TOKEN, 1200);
+        expect(
+          near.some((w) => /(실패|failure|obtain|조회)/i.test(w) && HALT.test(w)),
+          `${variant}: failing to obtain workspaceRoot must halt exactly like a mismatch`,
+        ).toBe(true);
+        expect(near.some((w) => CLI_NOT_FALLBACK.test(w)), `${variant}: the CLI must be refused as a fallback for this check`).toBe(true);
+      });
+
+      it("AC-7: refuses --wt delegation with its reason and re-offers the recovery paths", () => {
+        const body = skillBody(readWaveSkill(variant));
+        expect(WT_REFUSAL.test(body), `${variant}: the skill must mention --wt to refuse it`).toBe(true);
+        const near = windowsAround(body, WT_REFUSAL, 700);
+        expect(near.some((w) => /거부|refus|위임하지 않|does not delegate/i.test(w)), `${variant}: --wt delegation must be refused`).toBe(true);
+        expect(near.some((w) => WAVE_ACCUMULATION.test(w)), `${variant}: the refusal must cite broken wave accumulation`).toBe(true);
+        // Anchored on the `--wt` paragraph itself, not a +/-700 window: that window reached the halt
+        // OUTPUT bullets, which restate both recovery paths, so deleting the paragraph's own re-offer
+        // clause left this check green.
+        const wtPara = wtRefusalParagraph(body);
+        expect(wtPara !== "", `${variant}: the --wt refusal must live in a discoverable paragraph`).toBe(true);
+        expect(
+          SINGLE_ROOT_RECOVERY.test(wtPara) || NEW_SESSION_RECOVERY.test(wtPara),
+          `${variant}: the refusal must re-offer the same recovery paths`,
+        ).toBe(true);
+      });
+
+      it("FR-FLOW-043 AC-5/AC-7: halted run writes no waves.jsonl but emits one FAILED pipeline event", () => {
+        const body = skillBody(readWaveSkill(variant));
+        const near = windowsAround(body, /waves\.jsonl/, 900);
+        expect(
+          near.some((w) => HALT.test(w) && /(기록하지 않|append 하지 않|추가하지 않|writes nothing|no .*append)/i.test(w)),
+          `${variant}: a halted run must append nothing to waves.jsonl`,
+        ).toBe(true);
+        const pipeNear = windowsAround(body, /pipeline\.jsonl/, 900);
+        expect(
+          pipeNear.some((w) => /FAILED/.test(w) && /next_hint/.test(w)),
+          `${variant}: the halted run must still emit one pipeline.jsonl event with status FAILED and next_hint null`,
+        ).toBe(true);
+        expect(
+          pipeNear.some((w) => GIT_ROOT_TOKEN.test(w) || /run 자신의 git root|its own git root|자신의 git root/i.test(w)),
+          `${variant}: the halt event must resolve from the run's own git root, never the MCP-reported root`,
+        ).toBe(true);
+      });
+
+      it("FR-FLOW-043 AC-7: the halt emit inherits pipeline-event.md §1's resolution order evaluated once from the run's own cwd", () => {
+        const sec = emitSection(skillBody(readWaveSkill(variant)));
+        expect(sec !== "", `${variant}: the skill must keep its pipeline-emit section`).toBe(true);
+        // A single "run's own git root" step is not the contract: when git fails the journal path would
+        // be undefined and the `.pipeline-path` marker rule skipped. Defer to the SSOT resolution order.
+        expect(
+          /pipeline-event\.md[^\n]*§\s*1|§\s*1[^\n]*해석 순서/i.test(sec),
+          `${variant}: the halt emit must defer to pipeline-event.md §1's resolution order`,
+        ).toBe(true);
+        expect(/해석 순서|resolution order/i.test(sec), `${variant}: it must name the resolution order`).toBe(true);
+        expect(
+          /cwd|작업 디렉터리|작업 디렉토리/i.test(sec),
+          `${variant}: the resolution order must be evaluated against the run's own cwd`,
+        ).toBe(true);
+        expect(
+          /1\s*회 평가|한 번(?:만)? 평가|once/i.test(sec),
+          `${variant}: the resolution order must be evaluated exactly once for the halted run`,
+        ).toBe(true);
+        expect(
+          /폴백|fallback/i.test(sec) && /\.pipeline-path|마커|marker/i.test(sec),
+          `${variant}: the halt emit must inherit the fallback chain and the .pipeline-path marker rule`,
+        ).toBe(true);
+        expect(
+          /MCP[^\n]*(?:쓰지 않|사용하지 않|never|not use)/i.test(sec),
+          `${variant}: the halt emit must still refuse the MCP-reported root`,
+        ).toBe(true);
+      });
+    });
+  }
+});

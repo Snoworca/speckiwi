@@ -48,6 +48,7 @@ plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경�
 | §0.19 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §1.5 (아래) 참조 |
 | §0.20 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.21 | **work-mode ↔ `--tdd-policy` 파생 SSOT**. 본 스킬은 `_shared/kiwi/workmode-policy.md` v1.0 을 따른다. Phase 0(§3.4)에서 work-mode 를 MCP `get_work_mode`(우선) → CLI `speckiwi mode`(fallback) → 둘 다 부재 시 `wait`(fail-open)로 읽고, `--tdd-policy` 미지정 시 매핑(**tdd → strict**, 그 외 `relaxed`)으로 파생 기본을 적용해 plan.md frontmatter·사이드카 `tdd_policy` 에 기록한다. `disabled` 는 어떤 mode 로부터도 파생되지 않으며 명시 `--tdd-policy=disabled` 플래그로만 설정된다. 명시 `--tdd-policy` 는 파생 기본을 항상 이기며(이길 때 비-치명 WARN), §0.17 게이트·validator 검사는 불변 |
+| §0.22 | **기존 구조 보존 입력**. 상위 오케스트레이터가 전달한 `existing_modules` 목록의 모듈을 **이동·삭제·시그니처 변경**하는 Task 는 그 사실을 Task `action` 에 **명시**한다 — `files[]` 등재만으로는 편집 허가일 뿐 제거·이동 허가가 아니며 (`kiwi-coder §0.20.4`), action 에 없는 파손은 실행 계층에서 근거 없는 파손으로 판정되어 HALT 한다 |
 
 ### §0.G — 핵심 게이트 결정표
 
@@ -174,6 +175,7 @@ AskUserQuestion 4옵션:
 | "자동", "묻지 말고", "확인 없이", "auto" | `--auto` (SSOT: auto-option.md v1.0) | off (사용자 결정 활성이 기본) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
+| "같은 계획 run 으로", "plan run 재사용" | `--plan-run-id <id>` (run-id 를 새로 도출하지 않고 그 값을 그대로 사용) | off (`{YYYY-MM-DD}.{project}.{target}` 도출) |
 
 ### 1.3 출력
 
@@ -188,7 +190,7 @@ AskUserQuestion 4옵션:
   - `mcp_call_log.jsonl`
   - `rejected_findings.log` / `preflight.json`
 
-**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자.
+**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자. `--plan-run-id <id>` 가 주어지면 도출하지 않고 그 값을 그대로 쓴다 — 재진입이 같은 계획 run 을 재사용하지 못하면 범위 없는 전면 재실행이 된다.
 
 ### 1.4 dry-run
 
@@ -207,11 +209,12 @@ AskUserQuestion 4옵션:
 
 | gate_id | reason | 발생 위치 |
 |---|---|---|
-| `frozen-stable-ac-uncovered` | frozen/stable REQ AC 미커버 시 `accept-as-deferred` 가 frozen REQ AC 유실 위험을 만든다 — 비가역 거버넌스 결정 | §0.G4 |
-| `improvement-loop-force-proceed` | 개선 루프 발산 시 `force-proceed` 는 mutation 전수 실행 + 사용자 책임 표명 필요 | §0.G5 |
-| `scope-boundary-expand-scope` | `task.req_ids` 가 target 외 ID 검출 시 `expand-scope` 는 planner 재실행 + TARGET 변경 — 거버넌스 결정 | §0.G6 |
-| `tdd-policy-strict-block` | `--tdd-policy=strict` 일 때 `block` 결정은 정책 위반 강제 차단이며 사용자 결정 의무 | §0.G7 |
+| `deferred-coverage-frozen-stable` | frozen/stable REQ AC 미커버 시 `accept-as-deferred` 가 frozen REQ AC 유실 위험을 만든다 — 비가역 거버넌스 결정 | §0.G4 |
+| `force-proceed-after-divergence` | 개선 루프 발산 시 `force-proceed` 는 mutation 전수 실행 + 사용자 책임 표명 필요 | §0.G5 |
+| `scope-expansion-target-boundary` | `task.req_ids` 가 target 외 ID 검출 시 `expand-scope` 는 planner 재실행 + TARGET 변경 — 거버넌스 결정 | §0.G6 |
+| `strict-tdd-block` | `--tdd-policy=strict` 일 때 `block` 결정은 정책 위반 강제 차단이며 사용자 결정 의무 | §0.G7 |
 | `external-module-impact` | cwd 외부 path Task `files[]` 진입 — 외부 시스템 비가역 변경 | §0.G2 |
+| `mcp-cli-both-unavailable` | §3.0 판정에서 MCP `get_active_target` 과 CLI `speckiwi --version` 이 모두 실패 — target·요구사항 입력 자체가 없어 계획을 세울 수 없다 | §3.0 |
 
 ---
 
@@ -343,6 +346,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 
 - target goal · `intent.json` · `code_context.json` · `srs_mapping.json`
 - 작성 규약: §0 전체 + §9 plan.md 스키마 + §10 사이드카 스키마
+- 상위 오케스트레이터가 `existing_modules` 목록을 전달한 경우 그 목록 — §0.22 판정의 입력이며, 시니어 입력에 없으면 §0.22 를 적용할 수 없다
 - 시니어는 **plan.md 와 사이드카 JSON 을 동시에 생성** (Phase와 Task 구조 일관성 보장)
 
 ### 5.2 Phase 분해 원칙
@@ -936,6 +940,7 @@ doculight MCP 부재 시:
 
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다 (`pipeline-event.md` §5.4) — 같은 키가 아니면 skip 하지 않는다. `--plan-run-id` 로 계획 run 을 재사용한 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
 - `skill`: `"kiwi-planner"`
 - `status`: plan 확정 + mutation 완료 = `TASK_DONE`; plan freeze (G5 발산) = `NEEDS_USER`; 실패 = `FAILED`; dry-run = `DRY_RUN`
 - `next_hint`: 통상 `"kiwi-pm"` (plan 자동 실행 권장). plan 이 단일 Task 인 경우 `"kiwi-coder"` 직행 가능

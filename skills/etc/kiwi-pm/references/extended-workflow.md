@@ -44,7 +44,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 | 분류 | REQ Stability | 동작 |
 |---|---|---|
 | 진행 가능 | `evolving` / `stable` | OK |
-| 진행 불가 (정상) | `draft` | **차단** + interactive 3지선다 / `--auto` HALT |
+| 진행 불가 (정상) | `draft` | **차단** + interactive 3지선다 / `--auto` 는 해당 REQ 를 trace 하는 Task 만 skip (`SKILL.md` §3.6) |
 | 진행 불가 (정책) | `deprecated` / `frozen` | **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
 | target 비어있음 | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
 
@@ -56,10 +56,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ### 4.3 `--auto` 동작
 
-- `draft` 차단 → 자동 HALT (business-decision 영역, 자동 우회 금지)
-- `deprecated` / `frozen` → 즉시 HALT (정책 위반 / 의도된 제거)
-- target 비어있음 → HALT
-- `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단
+SSOT 는 `SKILL.md` §3.6 이다 — 무인 실행의 중단 지점 결정이므로 core map 에 두고, 본 절은 중복 기재하지 않는다. 요약: `draft` 는 해당 REQ 를 trace 하는 Task 만 skip 하고 잔여로 보고, `deprecated` / `frozen` / target 비어있음은 HALT, `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단.
 
 ### 4.4 MCP 미가용
 
@@ -122,7 +119,14 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 
     # draft 만 남은 경우
     IF args.auto:
-        HALT(f"--auto 모드: draft REQ 차단, kiwi-srs-feasibility 선행 권장: {[r.id for r in blocked]}")
+        # SKILL.md §3.6 — 전면 HALT 가 아니라 대화형 (B) 와 동일한 per-REQ 부분 진행
+        FOR task IN sidecar.tasks:
+            IF ANY(t.req_id IN [r.id FOR r IN blocked] FOR t IN (task.traces OR [])):
+                state.tasks[task.task_id].status = "skipped"
+        worklog.append({event: "lifecycle_skip_per_req", auto: True, req_ids: [r.id FOR r IN blocked]})
+        state.lifecycle_skips = [{req_id: r.id, reason_class: "draft-stability-skip"} FOR r IN blocked]
+        PRINT(f"[auto] draft REQ trace Task skip: {[r.id for r in blocked]} — kiwi-srs-feasibility 선행 권장")
+        SAVE_STATE(state)
     ELSE:
         choice = User clarification gate("draft REQ 차단", options=[
             "A) HALT — kiwi-srs-feasibility 실행 후 재시도 (권장)",
@@ -156,8 +160,10 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 | `rollback-confirmation` | "YES" 자동 승인 | 사용자에게 옵션 제시 |
 
 **예외 (always HALT, 모드 무관)**:
-- §4 lifecycle gate `draft`/`deprecated`/`frozen` 차단
+- §4 lifecycle gate `deprecated`/`frozen` 차단 (`draft` 는 `SKILL.md` §3.6 per-REQ skip 으로 분리 — 예외 아님)
 - 외부 모듈 영향 (kiwi-coder §0.G2)
+- 기존 public 심볼의 삭제 · 시그니처 변경 버블업 (§0.G7 `existing-public-contract-change`) — 경로와 무관
+- 기존 테스트의 **약화·삭제** 버블업 (§0.G7 `existing-test-weakened-or-deleted`) — 회귀 안전망 제거는 위원회 결정 대상이 아니다
 - MCP mutation ≥10건 batch (kiwi-coder §0.8)
 - T-final dryRun 거부 / transition guard 거부 (§0.G6)
 - plan/sidecar SHA256 mismatch on `--resume` (§5.4)
@@ -176,7 +182,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 - **(B) Task 건너뛰기** — `status = "skipped"`
 - **(C) 중단** — `status = "failed"`, `state.last_error` 보존, RETURN
 
-`--auto` 모드 동작: (A) 자동 재시도 1회 → 또 FAILED 면 사용자에게 에스컬레이션 (`--auto` 라도 무한 재시도 금지).
+`--auto` 모드 동작: (A) 자동 재시도 1회 → 또 FAILED 면 사용자에게 에스컬레이션 (`--auto` 라도 무한 재시도 금지). 이 HALT 는 §0.G7 critical_gates `task-failure-escalation` 로 선언되어 있어, 게이트 표만 읽어도 중단 지점을 예측할 수 있다.
 
 ### 5.4 `--resume` 동작
 
@@ -191,6 +197,8 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
    - (B) 중단 (멀티 PM 인스턴스 / 외부 변경 의심)
    - (C) diff 표시 후 재결정 (재귀)
 
+재개 후 이번 실행에서 **상태가 바뀐 Task** 가 0 건이면 §10 의 무동작 재진입 규칙을 적용한다 — 전부 `done` 이라 아무것도 실행하지 않은 재개는 완료가 아니다.
+
 `--auto + SHA mismatch` → business-decision 영역, HALT.
 
 ### 5.5 `--from-task=T-PH001-XX`
@@ -199,6 +207,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 - 이전 Task 가 모두 `done` 상태가 아니면 경고 출력
 - `depends_on` 위반 시 강한 경고 (`User clarification gate` — 사용자가 책임지고 진행)
 - `--auto` 시 의존성 미충족이면 HALT (사용자 결정 필요)
+- 예외는 `SKILL.md` §3.1.1 하나뿐 — 미충족 선행이 **전부 `skipped`** 인 경우에만 자동 결정으로 푼다. 선행이 `failed` / `blocked` / 미실행이면 위 세 줄이 그대로 적용된다
 
 `--from-task` + `--resume` 조합: `--from-task` 가 우선. `--resume` 의 첫 pending Task 탐색을 override.
 
@@ -484,7 +493,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
 4. **SRS mutation 로그** — `state.final_mutations` 시간순. `pending_mutations` 도 별도 명시 (MCP 미가용으로 보류된 항목, 사용자 수동 처리 안내)
 5. **NEEDS_USER 이력** — severity 분포 + 발생 Task / 질문 본문 요약
 6. **`--auto` 자동 해소 항목** (있을 때만)
-7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B/C)
+7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B/C) 또는 `--auto` per-REQ skip 목록. skip 된 REQ 는 `reason_class` (`draft-stability-skip` / `task-failure-skip`) 와 함께 잔여로 열거하며, 잘라내지 않고 **전량** 적는다
 8. **checklist.md 사용 여부** — `생성 / 재사용 / 미사용` + 경로
 
 **Stability drift 경고** (§4 종료 시 비교): `lifecycle_gate_state.stability_snapshot` vs 종료 시점 stability 비교. drift 발견 시 §1 또는 §4 섹션 끝에 경고 박스 추가 (의도된 변경일 수도 있어 차단 안 함, 단 보고서에 명시).
@@ -554,7 +563,8 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 | `update_status` transition guard 거부 (MCP 응답 reject) | catch → `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내. 강제 우회 없음. (`update_status` MCP 에 dryRun 옵션 없음 — 사전 시뮬레이션 불가, 호출 시점에 거부 가능성 catch) |
 | 자식이 `update_status` backward 시도 | kiwi-coder §0.G5 자체 차단. PM 무대응 |
 | `--auto` + business-decision NEEDS_USER | HALT 후 사용자 대화 복귀 |
-| `--auto` + lifecycle gate `draft` | 자동 HALT (§5.1 예외) |
+| `--auto` + lifecycle gate `draft` | 해당 REQ trace Task 만 skip + 잔여 보고 (`SKILL.md` §3.6). `deprecated`/`frozen` 은 종전대로 HALT |
+| `--auto` + 미충족 선행이 전부 `skipped` | `SKILL.md` §3.1.1 자동 결정 (계속 / 함께 skip). 선행이 `failed`/`blocked` 면 종전대로 HALT |
 | plan/sidecar SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
 | `pm.lock` 30분 stale | 자동 해제 + 경고 log |
 | `pm.lock` 다른 host 활성 | 명시적 차단 (`--force` 필요) |
@@ -578,7 +588,7 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 | 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
 | `--auto` severity 가드레일 | **유지** | clarification/business-decision/rollback-confirmation |
 | `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
-| `--max` / `--ultra` / `--no-self-heal` | **제거** | `local-LLM max profile` 만 도입 (kiwi 시리즈 표준) |
+| `--ultra` / `--no-self-heal` | **제거** | `local-LLM max profile` 도입 (kiwi 시리즈 표준). `--max` 는 PM 이 자체 소비하지 않고 kiwi-coder 로 pass-through (`SKILL.md` §3.2) |
 | `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
 | `mode = "headless"/"interactive"` | **단일 모드** | interactive 만 |
 | lifecycle gate (Stability) | **신규** | kiwi-pipeline-v1 §4.2 정합 (§4) |
@@ -669,10 +679,13 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md SIDECAR_PATH=docs/plans/...plan.json
 
 `../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다(`pipeline-event.md` §5.4) — 멱등 skip 은 **같은 키**에만 적용되며, 같은 키가 아니면 skip 하지 않는다. `--resume` 로 같은 plan run 을 다시 도는 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
+
 **자식 emit 흡수 책임**: kiwi-pm 이 자식(`kiwi-coder`) 을 spawn 하는 경우 자식은 자체 emit 하지 않는다 (§7 자식 컨텍스트 SSOT). 본 스킬이 plan 전체 종료 시 1줄로 통합 emit.
 
 - `skill`: `"kiwi-pm"`
 - `status`: 모든 Task 완료 + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 = `NEEDS_USER`; Task FAILED 잔존 = `FAILED`
+  - **무동작 재진입은 완료가 아니다**: 이번 실행에서 **상태가 바뀐 Task** 가 **0 건**이면 `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 실행하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
 - `next_hint`: 통상 `"kiwi-commit-auto-push"` (구현 완료)
 - `req_ids`: T-final 에서 `update_status("implemented")` 호출한 REQ-ID 배열
 - `artifacts.plan_file`: 입력 plan.md 경로

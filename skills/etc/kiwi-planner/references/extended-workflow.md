@@ -508,6 +508,7 @@ doculight MCP 부재 시:
 
 `../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다 (`pipeline-event.md` §5.4) — 같은 키가 아니면 skip 하지 않는다. `--plan-run-id` 로 계획 run 을 재사용한 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
 - `skill`: `"kiwi-planner"`
 - `status`: plan 확정 + mutation 완료 = `TASK_DONE`; plan freeze (G5 발산) = `NEEDS_USER`; 실패 = `FAILED`; dry-run = `DRY_RUN`
 - `next_hint`: 통상 `"kiwi-pm"` (plan 자동 실행 권장). plan 이 단일 Task 인 경우 `"kiwi-coder"` 직행 가능

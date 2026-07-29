@@ -30,9 +30,9 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 | §0.11 | **`.kiwi/sessions/{run_id}/pm-state.json` 영속 의무**. 모든 Task 종료 / NEEDS_USER 버블업 / FAILED / `--resume` 진입 / lifecycle gate 평가 직후 SAVE_STATE. 손상 시 `.bak` 복구 (§7.2) |
 | §0.12 | **MCP 호출 분담 + 시그니처 SSOT** — speckiwi MCP 실제 schema 기준. PM 호출 2종: (a) `update_status(id, status)` — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) `add_completed_work(date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun])` — T-final plan-summary, plan_id/run_id/tasks 같은 임의 필드는 summary 텍스트에 인코딩. read 2종: `get_active_target` / `list_requirements`. 자식 kiwi-coder 4종 mutation: `add_trace_link(id, type, reference, relation)` / `add_verification_evidence(id, type, reference, [covers, notes])` / `update_status(id, status="in_progress")` / `add_completed_work(date, summary, ...)`. doculight MCP: `open_markdown` / `update_markdown` (§6.3) |
 | §0.13 | **회귀 테스트는 kiwi-coder §0.13 책임**. PM 은 별도 회귀 호출 안 함. 종합 통합 테스트가 필요하면 사용자에게 별도 안내 |
-| §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단 |
+| §0.14 | **id 정규식 SSOT** (kiwi-planner / kiwi-coder §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}`, `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. sidecar 가 위반하면 §7.1 차단. 이 정규식은 **사이드카 식별자** 전용이며 **이벤트 emit 키**에는 **적용하지 않는다** — 재진입 emit 키 `{run_id}#r{n}` 는 다른 id 공간이다(`pipeline-event.md` §5.4) |
 | §0.15 | **spawn 모드 단일** — `Agent` 도구만. 자식 모델 = 현재 세션 모델 (또는 `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 override). snoworca-pm 의 `--headless` (claude CLI subprocess) 폐기. `Skill` 도구 직접 호출 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
-| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 3종 severity enum (`clarification` / `business-decision` / `rollback-confirmation`) 은 §5.1 에서 유지되며, SSOT §4 severity 분기 정책의 정확한 mapping 대상이다 (SSOT §11 마이그레이션 표 참조: 기존 business-decision HALT 중 비가역/외부영향 큰 항목은 본 §0.G7 critical_gates 로 인라인). 본 스킬의 `critical_gates[]` 는 §0.G7 (아래) 참조 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 severity enum 은 4종 (`clarification` / `business-decision` / `rollback-confirmation` / `critical`) 이며 §3.5 에 정의되고 §5.1 에서 유지되며, SSOT §4 severity 분기 정책의 정확한 mapping 대상이다. 넷째 값 `critical` 은 자식이 자기 `critical_gates[]` 로 선언한 게이트의 버블업을 표현하며 `--auto` 무관 항상 HALT 다 (§0.G7 자식 선언 승계) (SSOT §11 마이그레이션 표 참조: 기존 business-decision HALT 중 비가역/외부영향 큰 항목은 본 §0.G7 critical_gates 로 인라인). 본 스킬의 `critical_gates[]` 는 §0.G7 (아래) 참조 |
 | §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.18 참고 | `--mini`/`--loops N` 는 kiwi-coder 자식 spawn 에 전파 (loop-option.md §6) |
 
@@ -52,7 +52,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 
 #### §0.G2 — Lifecycle gate (Stability)
 
-§4 의 표를 SSOT 로 참조. 진행 가능 = `evolving` / `stable` 만. `draft` 는 사용자 3지선다, `deprecated` / `frozen` 은 즉시 HALT.
+§4 의 표를 SSOT 로 참조. 진행 가능 = `evolving` / `stable` 만. `draft` 는 interactive 3지선다 / `--auto` 는 해당 REQ trace Task 만 skip (§4.3), `deprecated` / `frozen` 은 즉시 HALT.
 
 #### §0.G3 — NEEDS_USER 누적 상한
 
@@ -84,18 +84,23 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 
 | gate_id | reason | 발생 위치 |
 |---|---|---|
-| `lifecycle-gate-draft` | REQ stability=draft 차단 (§4 lifecycle gate). business-decision 영역, 자동 우회 금지 | §4 / §5.1 예외 |
-| `plan-sidecar-sha-mismatch` | `--resume` 진입 시 plan/sidecar SHA256 mismatch (§5.4) — 외부 변경 의심, business-decision | §5.4 / §0.8 ⑤ |
+| `lifecycle-gate-policy-stop` | REQ stability=`deprecated` / `frozen` 차단 (§4 lifecycle gate) — 정책 위반 / 의도된 제거, 자동 우회 금지. `draft` 는 본 행에 포함되지 않는다 (§4.3 per-REQ skip) | §4 / §5.1 예외 |
+| `task-failure-escalation` | `--auto` 자동 재시도 1회 후에도 FAILED — 사용자 에스컬레이션 (§0.G4 / §5.3). 본 표만 읽고도 중단 지점을 예측할 수 있어야 하므로 본문에만 있던 HALT 를 등재 | §5.3 |
+| `existing-public-contract-change` | 자식 kiwi-coder 가 기존 public 심볼의 삭제 · 시그니처 변경을 버블업 (kiwi-coder 동명 게이트) — **경로와 무관**하게 critical. 아래 `path-heuristic-business-decision` 은 `migration`/`schema`/`auth` 경로 토큰에만 걸리므로 그 밖의 경로에서 깨지는 공개 계약을 잡지 못한다 | §5.1 예외 |
+| `existing-test-weakened-or-deleted` | 자식 kiwi-coder 가 기존 테스트 파일 삭제 · 케이스 제거 · 단언 약화를 버블업 (kiwi-coder 동명 게이트) — 회귀 안전망 자체를 제거하는 가장 비가역적 변경. 본 행이 없으면 `business-decision` 기본 분류로 떨어져 `--auto` 에서 결정 서브에이전트가 승인한다 | §5.1 예외 |
+| `sha-mismatch-on-resume` | `--resume` 진입 시 plan/sidecar SHA256 mismatch (§5.4) — 외부 변경 의심, business-decision | §5.4 / §0.8 ⑤ |
 | `depends-on-violation` | `--from-task` 사용 시 depends_on 미충족 (§5.5) | §5.5 |
 | `t-final-backward-transition` | `update_status` REQ status 역방향 전이 (§0.G5) | §0.G5 |
 | `mcp-cli-both-unavailable` | speckiwi MCP + CLI 모두 부재 (§0.8 ④) — sync 위임 차단 | §0.8 ④ |
 | `auto-skip-lifecycle-gate-combo` | `--auto` + `--skip-lifecycle-gate` 동시 명시 (§1.3 후미) — HALT 강제 | §1.3 |
 | `path-heuristic-business-decision` | task.files[].path 에 `migration` / `schema` / `auth` 토큰 — business-decision 강제 (§3.5 후미 휴리스틱) | §3.5 |
 | `mcp-mutation-batch-large` | MCP mutation ≥10건 batch (kiwi-coder §0.8 인용, §5.1 예외) | §5.1 예외 |
-| `t-final-dryrun-reject` | T-final dryRun 거부 / transition guard 거부 (§0.G6) | §0.G6 |
+| `t-final-dryrun-rejected` | T-final dryRun 거부 / transition guard 거부 (§0.G6) | §0.G6 |
 | `external-module-impact` | 외부 모듈 영향 (kiwi-coder §0.G2 버블업) — §5.1 예외 | §5.1 예외 |
 
-**기존 severity enum 유지**: §3.5 / §5.1 의 `clarification` / `business-decision` / `rollback-confirmation` 3종 enum 은 SSOT `_shared/kiwi/auto-option.md` §4 severity 분기 정책에 매핑됨. `business-decision` 은 **서브에이전트 자동 결정** (confidence ≥ 0.7 채택, 미만이면 critical 격상) — 강제 HALT 가 아님. 본 §0.G7 critical_gates 의 항목은 그 중 SSOT §11 마이그레이션 표에 따라 "비가역/외부영향 큰" 항목만 인라인하여 auto 무관 항상 critical 로 격상한 케이스 (severity enum 자체와 별개 채널).
+**자식 선언 승계 (일반 규칙)**: 자식 스킬이 `NEEDS_USER` payload 의 `gate_id` 로 올린 게이트가 그 **자식 자신의** `critical_gates` 목록에 있으면, 본 표에 동명 행이 **없더라도** severity 로 재분류하지 않고 **무조건 HALT** 한다. 게이트별 수동 전사는 자식이 게이트를 추가할 때마다 누락되며, 누락된 게이트는 `auto-option.md` §4 의 기본 분류에 따라 `business-decision` 으로 떨어져 `--auto` 에서 결정 위원회가 승인한다 — 승계는 표의 동기화가 아니라 규칙으로 성립해야 한다.
+
+**기존 severity enum 유지 + `critical` 추가**: §3.5 / §5.1 의 `clarification` / `business-decision` / `rollback-confirmation` 3종은 그대로 유지되며 SSOT `_shared/kiwi/auto-option.md` §4 severity 분기 정책에 매핑됨. 여기에 넷째 값 `critical` 이 추가되어 (§3.5 표 4행) 자식이 자기 `critical_gates[]` 로 선언한 게이트의 버블업을 표현한다 — §5.1 가드레일 표의 `--auto` 분기 대상은 앞 3종이고, `critical` 은 §5.1 예외 목록과 같은 always HALT 채널이다. `business-decision` 은 **서브에이전트 자동 결정** (confidence ≥ 0.7 채택, 미만이면 critical 격상) — 강제 HALT 가 아님. 본 §0.G7 critical_gates 의 항목은 그 중 SSOT §11 마이그레이션 표에 따라 "비가역/외부영향 큰" 항목만 인라인하여 auto 무관 항상 critical 로 격상한 케이스 (severity enum 자체와 별개 채널).
 
 ---
 
@@ -127,6 +132,9 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
+| "max 모드", "정밀하게" | `--max` | off — PM 자체는 소비하지 않고 kiwi-coder 로 pass-through (§3.2) |
+| "비용 경고 자동 skip" (부모 전달) | `--auto-cost-warning` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
+| "통합 테스트 자동 동의" (부모 전달) | `--auto-integration` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
 
 ### 1.3 CLI 인자 요약
 
@@ -136,6 +144,10 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
          [CODE_PATH=.]                   # 부재 시 cwd
          [--auto]                         # severity 가드레일 활성, business-decision = 서브에이전트 자동 결정 (§5.1)
          [--model <name>]                 # kiwi-coder 자식에 --model 전파 (검증 서브에이전트 모델 지정)
+         [--max]                          # kiwi-coder 자식에 --max 전파 (PM 자체는 소비 안 함, §3.2)
+         [--auto-cost-warning]            # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
+         [--auto-integration]             # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
+         [--regression-baseline <path>]   # 부모가 pin 한 회귀 기준선을 kiwi-coder 로 pass-through
          [--resume]                       # .kiwi/sessions/{run_id}/pm-state.json 이어가기
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
          [--force]                        # stale lock 강제 해제 (주의 경고 후 진행)
@@ -143,7 +155,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
          [--no-doculight]                 # doculight MCP 표시 강제 skip
 ```
 
-**`--auto` 와 `--skip-lifecycle-gate` 동시 사용 금지** — lifecycle gate 차단은 §0.G7 critical_gates `lifecycle-gate-draft` / `auto-skip-lifecycle-gate-combo` 매핑으로 `--auto` 무관 항상 HALT (business-decision 자동 결정의 예외). 두 플래그가 함께 명시되면 HALT + 안내.
+**`--auto` 와 `--skip-lifecycle-gate` 동시 사용 금지** — lifecycle gate 의 정책 차단(`deprecated` / `frozen`)은 §0.G7 critical_gates `lifecycle-gate-policy-stop` / `auto-skip-lifecycle-gate-combo` 매핑으로 `--auto` 무관 항상 HALT (business-decision 자동 결정의 예외). 두 플래그가 함께 명시되면 HALT + 안내.
 
 ### 1.4 산출물
 
@@ -316,7 +328,9 @@ FUNCTION MAIN(args):
     FOR each task IN sidecar.tasks[] (선언 순서):
         IF state.tasks[task.task_id].status IN {done, skipped}: CONTINUE
         IF NOT DEPENDS_ON_SATISFIED(task, state):
-            IF args.auto: HALT(f"depends_on 위반: {task.task_id}")
+            IF UNSATISFIED_PREDECESSORS_ALL_SKIPPED(task, state):
+                RESOLVE_SKIPPED_PREDECESSOR(task, state, args)   # §3.1.1 — 계속 / 함께 skip 자동 결정
+            ELIF args.auto: HALT(f"depends_on 위반: {task.task_id}")
             ELSE: AskUserQuestion("depends_on 위반 — 진행 여부?")
 
         state.tasks[task.task_id].status = "running"
@@ -375,6 +389,14 @@ FUNCTION MAIN(args):
     PRINT_FINAL_SUMMARY(state)
 ```
 
+### 3.1.1 skip 된 선행 Task 의 depends_on 처리
+
+선행 Task 가 **실패가 아니라 skip** 된 경우에는 HALT 로 직행하지 않고, 이 Task 를 계속할지 함께 skip 할지를 **자동 결정**한다 (`--auto` 는 SSOT `auto-option.md` §2 결정 서브에이전트, interactive 는 사용자 2지선다). 근거 — 한 Task 의 skip 이 depends_on 사슬을 타고 wave 를 두 번째로 멈추게 하던 경로를 없앤다.
+
+- 판정 입력: 선행 Task 의 `status` 와 skip 사유 (`lifecycle_skip_per_req` / `task_skipped_after_3_questions` / §0.G4 (B)), 그리고 이 Task 가 선행 산출물에 실제로 의존하는지 여부
+- 결정 결과는 `pm-state.json` (`tasks[].status` + worklog `depends_on_skipped_predecessor`) 과 종료 보고서 잔여에 남긴다. 함께 skip 한 Task 는 선행의 `reason_class` 를 승계한다
+- **완화 범위 한정** — 선행 Task 가 `failed` / `blocked` 인 경우의 depends_on 처리는 §5.5 와 §3.1 의 기존 게이트를 그대로 유지한다. `--from-task` 로 건너뛴 미실행 선행도 종전대로 `depends-on-violation` 게이트 대상이다
+
 ### 3.2 Agent 자식 spawn 프롬프트
 
 `Agent` 도구 호출 시 다음 프롬프트를 자식에게 전달. `subagent_type = "general-purpose"`, `model = "opus"` (또는 `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 override).
@@ -390,6 +412,7 @@ FUNCTION MAIN(args):
 - TASK_FILTER={task.task_id}           # 이번 자식은 이 Task 하나만 실행
 - CODE_PATH={args.code_path}
 - LOOP_FLAGS={forward --mini / --loops N round-cap to the kiwi-coder child}
+- PASS_THROUGH_FLAGS={부모에게서 명시 입력으로 받은 --auto-cost-warning / --auto-integration / --regression-baseline 을 그대로 재현}
 - LIFECYCLE_BLOCKED_REQS={state.lifecycle_gate_state.blocked_req_ids}
 - SPAWN_CONTEXT=pm-child   # 이 자식 호출이 PM 자식임을 식별. coder 가 §8.4 의 자동 시작 게이트를 skip 하기 위한 결정 필드
 - 이전 NEEDS_USER 답변 (재spawn 시):
@@ -403,9 +426,15 @@ FUNCTION MAIN(args):
         args="PLAN_PATH={args.plan_path} SIDECAR_PATH={args.sidecar_path} \
               TASK_FILTER={task.task_id} RUN_ID={state.run_id}\
               {' --auto' if args.auto else ''}\
-              {' --model ' + args.model if args.model else ''}")
+              {' --max' if args.max else ''}\
+              {' --model ' + args.model if args.model else ''}\
+              {LOOP_FLAGS}{PASS_THROUGH_FLAGS}")
 
 **`--auto` 자식 전파**: 본 스킬이 `--auto` 활성 상태에서 `kiwi-coder` 를 spawn 할 때 자식 args 에 `--auto` 명시 전파 (SSOT auto-option.md §7). 단, kiwi-coder 의 `--yes-all` / `--auto-integration` / `--auto-cost-warning` 3종 옵션은 별개이며 자동 활성하지 않음.
+
+**pass-through 전파**: `--max` 와 `--mini` / `--loops N` (loop-option.md §6), 그리고 부모(`/kiwi-pipeline` / `/kiwi-wave-master`)에게서 **명시 입력으로 받은** `--auto-cost-warning` / `--auto-integration` 은 자식 args 에 그대로 전달한다 — `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 사슬에서 중간 홉이 옵션을 떨어뜨리면 kiwi-coder 의 비용 경고 · 통합 테스트 동의 게이트가 무인 실행을 멈춘다. 위 §0.16 원칙은 그대로다 — 본 스킬은 그 3종을 `--auto` 만으로 **스스로 만들어내지 않으며**, 명시 입력을 중계할 뿐이다.
+
+부모가 pin 한 `--regression-baseline <path>` 도 같은 방식으로 자식 args 에 그대로 전달한다 — 중간 홉이 이 값을 떨어뜨리면 kiwi-coder 가 자기 시점 기준선을 다시 캡처해, 앞 Task 가 만든 실패가 "원래 있던 실패"로 분류된다.
 
 스킬 내용을 추측하거나 우회하지 말 것. 반드시 실제로 로드.
 
@@ -440,7 +469,8 @@ sidecar 의 `{task.task_id}` 하나만 처리. 다른 Task 진행 금지. plan.m
   "questions": [
     {{
       "id": "Q-001",
-      "severity": "clarification | business-decision | rollback-confirmation",
+      "severity": "clarification | business-decision | rollback-confirmation | critical",
+      "gate_id": "<자기 §0.G6 게이트 id — severity=critical 시 필수, 그 외 null>",
       "question": "...",
       "context": "<왜 묻는가 + 근거>",
       "options": [
@@ -482,6 +512,9 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 - 개선 루프 발산 (kiwi-coder §0.G4) — 시니어 3회 / 리뷰어 2회 / Sonnet 검증 3회 누적 + 동일 finding 잔존
 - 사용자 결정 의무 (kiwi-coder §0.8) — 외부 모듈 / 통합 테스트 / MCP mutation ≥10건 batch / plan 외 파일 변경
 
+자식(`kiwi-coder`) 이 자기 §0.G6 게이트로 중단한 경우 그 payload 의 `gate_id` 를 그대로 읽어 **동명**의 §0.G7 게이트로 매핑한다 — severity 로 재분류하지 않는다. 재분류하면 always-HALT 로 선언한 두 보존 게이트가 `business-decision` 기본 분류로 되돌아간다.
+§0.G7 에 동명 행이 없는 `gate_id` 는 §0.G7 **자식 선언 승계** 규칙으로 처리한다 — 전사 누락이 곧 자동 승인이 되는 경로를 닫는 잔여 규칙이다.
+
 ### 3.5 severity enum + 판단 휴리스틱
 
 | severity | 의미 | 예시 |
@@ -489,6 +522,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 | `clarification` | 구현 세부의 모호성 해소 | 파일명 camelCase ↔ snake_case, 에러 메시지 문구, 로그 레벨, private 함수 시그니처 |
 | `business-decision` | 외부 관찰 가능 동작 변경 | 기존 API 응답 스키마 변경, UX 문구 수정, 권한 정책 변경, 세션 타임아웃 정책, 마이그레이션 호환성 |
 | `rollback-confirmation` | 실패 후 rollback 실행 승인 | `git reset --hard HEAD~1`, 부분 커밋 폐기, 직전 mutation 되돌리기 |
+| `critical` | 자식이 자기 `critical_gates` 로 선언한 게이트의 버블업 | `existing-public-contract-change` / `existing-test-weakened-or-deleted` / `existing-file-deleted-or-moved` — `--auto` 무관 항상 **HALT** (`auto-option.md` §4 severity 분기 / §0.G7 자식 선언 승계) |
 
 **판단 휴리스틱** (자식이 severity 분류 시 적용):
 
@@ -497,6 +531,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 - 순수 구현 세부 (naming / 로그 레벨 / 내부 private 함수) → clarification
 - 명시적 rollback 키워드 (`git reset` / `revert` / `되돌` / `복구`) → rollback-confirmation
 - task.files[].path 에 `migration` / `schema` / `auth` 경로 토큰 포함 → business-decision 강제 (path 기반 휴리스틱 — kiwi-planner sidecar 의 표준 `files[]` 필드만 참조)
+- 기존 테스트의 **약화·삭제** 버블업은 severity 로 분류하지 않는다 → §0.G7 `existing-test-weakened-or-deleted` 로 always HALT (§5.1) — 회귀 안전망 제거는 결정 서브에이전트의 판단 대상이 아니다
 
 ---
 
@@ -509,7 +544,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 | 분류 | REQ Stability | 동작 |
 |---|---|---|
 | 진행 가능 | `evolving` / `stable` | OK |
-| 진행 불가 (정상) | `draft` | **차단** + interactive 3지선다 / `--auto` HALT |
+| 진행 불가 (정상) | `draft` | **차단** + interactive 3지선다 / `--auto` 는 해당 REQ 를 trace 하는 Task 만 skip (§4.3) |
 | 진행 불가 (정책) | `deprecated` / `frozen` | **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
 | target 비어있음 | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
 
@@ -521,10 +556,13 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 
 ### 4.3 `--auto` 동작
 
-- `draft` 차단 → 자동 HALT (§0.G7 critical_gates `lifecycle-gate-draft` 인라인 — business-decision 자동 결정의 예외)
-- `deprecated` / `frozen` → 즉시 HALT (정책 위반 / 의도된 제거)
+- `draft` 차단 → **해당 REQ 를 trace 하는 Task 만 skip** 하고 나머지 Task 는 계속 진행. skip 목록을 보고한다 (worklog `lifecycle_skip_per_req`, 보고서 §7). 근거 — 종래의 전면 차단은 `--auto` 가 대화형 §4.2 (B) 보다 선택지가 적어지는 역전을 만들었다
+- skip 된 REQ 는 조용히 사라지지 않는다 — `reason_class = "draft-stability-skip"` 로 종료 보고서 §7 과 부모 wave 검증의 `verification.residual` 에 잔여로 표면화한다
+- `deprecated` / `frozen` → 즉시 HALT (정책 위반 / 의도된 제거, §0.G7 `lifecycle-gate-policy-stop`)
 - target 비어있음 → HALT
 - `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단
+
+본 절의 완화는 `draft` 한 종류에 한정한다 — `deprecated` / `frozen` 의 HALT, `--auto` 가 자식의 안전 우회 옵션(`--yes-all` 등)을 자동 생성하지 않는다는 §0.16 원칙, §5.1 의 나머지 예외는 그대로 유지한다.
 
 ### 4.4 MCP 미가용 fallback
 
@@ -592,7 +630,14 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 
     # draft 만 남은 경우
     IF args.auto:
-        HALT(f"--auto 모드: draft REQ 차단, kiwi-srs-feasibility 선행 권장: {[r.id for r in blocked]}")
+        # §4.3 — 전면 HALT 가 아니라 대화형 (B) 와 동일한 per-REQ 부분 진행
+        FOR task IN sidecar.tasks:
+            IF ANY(t.req_id IN [r.id FOR r IN blocked] FOR t IN (task.traces OR [])):
+                state.tasks[task.task_id].status = "skipped"
+        worklog.append({event: "lifecycle_skip_per_req", auto: True, req_ids: [r.id FOR r IN blocked]})
+        state.lifecycle_skips = [{req_id: r.id, reason_class: "draft-stability-skip"} FOR r IN blocked]
+        PRINT(f"[auto] draft REQ trace Task skip: {[r.id for r in blocked]} — kiwi-srs-feasibility 선행 권장")
+        SAVE_STATE(state)
     ELSE:
         choice = AskUserQuestion("draft REQ 차단", options=[
             "A) HALT — kiwi-srs-feasibility 실행 후 재시도 (권장)",
@@ -626,8 +671,10 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 | `rollback-confirmation` | "YES" 자동 승인 | 사용자에게 옵션 제시 |
 
 **예외 (always HALT, 모드 무관)**:
-- §4 lifecycle gate `draft`/`deprecated`/`frozen` 차단
+- §4 lifecycle gate `deprecated`/`frozen` 차단 (`draft` 는 §4.3 per-REQ skip 으로 분리 — 예외 아님)
 - 외부 모듈 영향 (kiwi-coder §0.G2)
+- 기존 public 심볼의 삭제 · 시그니처 변경 버블업 (§0.G7 `existing-public-contract-change`) — 경로와 무관
+- 기존 테스트의 **약화·삭제** 버블업 (§0.G7 `existing-test-weakened-or-deleted`) — 회귀 안전망 제거는 위원회 결정 대상이 아니다
 - MCP mutation ≥10건 batch (kiwi-coder §0.8)
 - T-final dryRun 거부 / transition guard 거부 (§0.G6)
 - plan/sidecar SHA256 mismatch on `--resume` (§5.4)
@@ -646,7 +693,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 - **(B) Task 건너뛰기** — `status = "skipped"`
 - **(C) 중단** — `status = "failed"`, `state.last_error` 보존, RETURN
 
-`--auto` 모드 동작: (A) 자동 재시도 1회 → 또 FAILED 면 사용자에게 에스컬레이션 (`--auto` 라도 무한 재시도 금지).
+`--auto` 모드 동작: (A) 자동 재시도 1회 → 또 FAILED 면 사용자에게 에스컬레이션 (`--auto` 라도 무한 재시도 금지). 이 HALT 는 §0.G7 critical_gates `task-failure-escalation` 로 선언되어 있어, 게이트 표만 읽어도 중단 지점을 예측할 수 있다.
 
 ### 5.4 `--resume` 동작
 
@@ -661,7 +708,9 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
    - (B) 중단 (멀티 PM 인스턴스 / 외부 변경 의심)
    - (C) diff 표시 후 재결정 (재귀)
 
-`--auto + SHA mismatch` → §0.G7 critical_gates `plan-sidecar-sha-mismatch` 인라인 — `--auto` 무관 HALT.
+재개 후 이번 실행에서 **상태가 바뀐 Task** 가 0 건이면 §10 의 무동작 재진입 규칙을 적용한다 — 전부 `done` 이라 아무것도 실행하지 않은 재개는 완료가 아니다.
+
+`--auto + SHA mismatch` → §0.G7 critical_gates `sha-mismatch-on-resume` 인라인 — `--auto` 무관 HALT.
 
 ### 5.5 `--from-task=T-PH001-XX`
 
@@ -669,6 +718,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 - 이전 Task 가 모두 `done` 상태가 아니면 경고 출력
 - `depends_on` 위반 시 강한 경고 (`AskUserQuestion` — 사용자가 책임지고 진행)
 - `--auto` 시 의존성 미충족이면 HALT (사용자 결정 필요)
+- 예외는 §3.1.1 하나뿐 — 미충족 선행이 **전부 `skipped`** 인 경우에만 자동 결정으로 푼다. 선행이 `failed` / `blocked` / 미실행이면 위 세 줄이 그대로 적용된다
 
 `--from-task` + `--resume` 조합: `--from-task` 가 우선. `--resume` 의 첫 pending Task 탐색을 override.
 
@@ -740,7 +790,7 @@ FUNCTION VERIFY_SHA_ON_RESUME(state, plan_path, sidecar_path, args):
         RETURN True
 
     IF args.auto:
-        HALT("plan/sidecar SHA mismatch — §0.G7 critical_gates `plan-sidecar-sha-mismatch` HALT")
+        HALT("plan/sidecar SHA mismatch — §0.G7 critical_gates `sha-mismatch-on-resume` HALT")
 
     choice = AskUserQuestion("plan/sidecar 외부 변경 감지", options=[
         "A) 새 SHA 로 갱신 + 계속 진행 (의도적 plan 수정)",
@@ -963,7 +1013,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
 4. **SRS mutation 로그** — `state.final_mutations` 시간순. `pending_mutations` 도 별도 명시 (MCP 미가용으로 보류된 항목, 사용자 수동 처리 안내)
 5. **NEEDS_USER 이력** — severity 분포 + 발생 Task / 질문 본문 요약
 6. **`--auto` 자동 해소 항목** (있을 때만)
-7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B/C)
+7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B/C) 또는 `--auto` per-REQ skip 목록. skip 된 REQ 는 `reason_class` (`draft-stability-skip` / `task-failure-skip`) 와 함께 잔여로 열거하며, 잘라내지 않고 **전량** 적는다
 8. **checklist.md 사용 여부** — `생성 / 재사용 / 미사용` + 경로
 
 **Stability drift 경고** (§4 종료 시 비교): `lifecycle_gate_state.stability_snapshot` vs 종료 시점 stability 비교. drift 발견 시 §1 또는 §4 섹션 끝에 경고 박스 추가 (의도된 변경일 수도 있어 차단 안 함, 단 보고서에 명시).
@@ -1051,7 +1101,8 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 | `update_status` transition guard 거부 (MCP 응답 reject) | catch → `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내. 강제 우회 없음. (`update_status` MCP 에 dryRun 옵션 없음 — 사전 시뮬레이션 불가, 호출 시점에 거부 가능성 catch) |
 | 자식이 `update_status` backward 시도 | kiwi-coder §0.G5 자체 차단. PM 무대응 |
 | `--auto` + business-decision NEEDS_USER | 서브에이전트 자동 결정 (conf ≥ 0.7 채택, 미만 시 critical 격상 HALT — SSOT auto-option.md §4). §0.G7 critical_gates 매칭 시 즉시 HALT |
-| `--auto` + lifecycle gate `draft` | 자동 HALT (§5.1 예외) |
+| `--auto` + lifecycle gate `draft` | 해당 REQ trace Task 만 skip + 잔여 보고 (§4.3). `deprecated`/`frozen` 은 종전대로 HALT |
+| `--auto` + 미충족 선행이 전부 `skipped` | §3.1.1 자동 결정 (계속 / 함께 skip). 선행이 `failed`/`blocked` 면 종전대로 HALT |
 | plan/sidecar SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
 | `pm.lock` 30분 stale | 자동 해제 + 경고 log |
 | `pm.lock` 다른 host 활성 | 명시적 차단 (`--force` 필요) |
@@ -1072,10 +1123,10 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 | §11.5 Phase와 Task 휴리스틱 | **제거** | 항상 Task |
 | §11.6 비용 추적 (claude CLI usage) | **제거** | Agent 도구는 usage 노출 안 함 — v0.2 후보 |
 | §15 plan.md 체크박스 + §15.8 checklist.md 폴백 | **유지** | 매칭 패턴 그대로 (§6.1) |
-| 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
-| `--auto` severity 가드레일 | **유지** (시맨틱 변경) | enum 3종 유지. business-decision = 서브에이전트 자동 결정 (SSOT auto-option.md §4 / §11 마이그레이션) |
+| 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 는 기존 3종 동일 + `critical` 추가 (§3.5) |
+| `--auto` severity 가드레일 | **유지** (시맨틱 변경) | 기존 enum 3종 유지 + `critical` 추가 (자식 `critical_gates[]` 버블업 — always HALT). business-decision = 서브에이전트 자동 결정 (SSOT auto-option.md §4 / §11 마이그레이션) |
 | `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
-| `--max` / `--ultra` / `--no-self-heal` | **제거** | `--model` 만 도입 (kiwi 시리즈 표준) |
+| `--ultra` / `--no-self-heal` | **제거** | `--model` 도입 (kiwi 시리즈 표준). `--max` 는 PM 이 자체 소비하지 않고 kiwi-coder 로 pass-through (§3.2) |
 | `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
 | `mode = "headless"/"interactive"` | **단일 모드** | interactive 만 |
 | lifecycle gate (Stability) | **신규** | Stability 라이프사이클 게이트 (§4) |
@@ -1166,10 +1217,13 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다(`pipeline-event.md` §5.4) — 멱등 skip 은 **같은 키**에만 적용되며, 같은 키가 아니면 skip 하지 않는다. `--resume` 로 같은 plan run 을 다시 도는 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
+
 **자식 emit 흡수 책임**: kiwi-pm 이 자식(`kiwi-coder`) 을 spawn 하는 경우 자식은 자체 emit 하지 않는다 (§7 자식 컨텍스트 SSOT). 본 스킬이 plan 전체 종료 시 1줄로 통합 emit.
 
 - `skill`: `"kiwi-pm"`
 - `status`: 모든 Task 완료 + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 = `NEEDS_USER`; Task FAILED 잔존 = `FAILED`
+  - **무동작 재진입은 완료가 아니다**: 이번 실행에서 **상태가 바뀐 Task** 가 **0 건**이면 `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 실행하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
 - `next_hint`: 통상 `"kiwi-review-fix-loop"` (`--close-reqs` 검증 권고). commit 은 review-fix-loop 통과 후 `kiwi-review-fix-loop` 의 `next_hint` 로 진행
 - `req_ids`: T-final 에서 `update_status("implemented")` 호출한 REQ-ID 배열
 - `artifacts.plan_file`: 입력 plan.md 경로

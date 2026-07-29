@@ -1,0 +1,1619 @@
+{
+  "schema_version": "1.1.0",
+  "plan_contract": "1.2.0",
+  "run_id": "2026-07-28.speckiwi.v242",
+  "target": "v2.4.2",
+  "plan_version": "0.1.0",
+  "generated_at": "2026-07-28T00:00:00Z",
+  "tool_versions": {
+    "speckiwi": "2.4.1",
+    "kiwi_planner": "0.6.0",
+    "validator": "0.6.0"
+  },
+  "tdd_policy": "relaxed",
+  "md_path": "docs/plans/2026-07-28.speckiwi.v242.plan.md",
+  "md_sha256": "computed-over-body-excluding-md-sha256-line",
+  "phases": [
+    {
+      "id": "PH-001",
+      "title": "이벤트 계약 수리",
+      "goal": "_shared 이벤트 계약 8개 사본의 죽은 폴백을 수리하고 run-start root pin 서술과 skill enum 등재를 반영한다",
+      "depends_on": [],
+      "task_ids": [
+        "T-PH001-01",
+        "T-PH001-02"
+      ]
+    },
+    {
+      "id": "PH-002",
+      "title": "wave-master preflight 게이트",
+      "goal": "kiwi-wave-master 3변종에 run-root preflight critical gate 와 halt-emit 계약을 저작한다",
+      "depends_on": [
+        "PH-001"
+      ],
+      "task_ids": [
+        "T-PH002-01",
+        "T-PH002-02"
+      ]
+    },
+    {
+      "id": "PH-003",
+      "title": "MCP 복구 안내 교정",
+      "goal": "존재하지 않는 restart_mcp_server 안내를 실행 가능한 안내로 교체하고 회귀 테스트로 고정한다",
+      "depends_on": [],
+      "task_ids": [
+        "T-PH003-01",
+        "T-PH003-02"
+      ]
+    },
+    {
+      "id": "PH-004",
+      "title": "회귀 검증 및 릴리스 준비",
+      "goal": "전체 스위트·타입체크·린트·빌드로 회귀 0 을 확인하고 패키지 버전을 범프한다",
+      "depends_on": [
+        "PH-001",
+        "PH-002",
+        "PH-003"
+      ],
+      "task_ids": [
+        "T-PH004-01",
+        "T-PH004-02"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-PH001-01",
+      "phase_id": "PH-001",
+      "title": "이벤트 계약 8개 사본에 대한 실패 콘텐츠 테스트 작성",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-043"
+      ],
+      "files": [
+        {
+          "path": "test/skills/kiwi-event-contract-content.test.ts"
+        }
+      ],
+      "action": "test/skills/kiwi-event-contract-content.test.ts 를 신규 작성한다. 8개 사본에 대해 run-start root pin 서술 존재, POSIX 폴백이 git rev-parse 성공 후에만 <root>/kiwi 를 대입하는 형태, 도달 불가 폴백 형태의 부재를 단언한다. pipeline-event.md 4개 사본의 skill enum 에 kiwi-wave-master 포함을 단언하고 생산자 결정표와 소비자 결정표(kiwi-pipeline SKILL.md 4사본) 어디에도 skill 특화 행이 없음을 단언한다. 이 시점에는 전부 실패해야 한다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+          "expected_exit": 1,
+          "stdout_regex": "FAIL|failed"
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+        "windows": "npx vitest run test/skills/kiwi-event-contract-content.test.ts"
+      },
+      "dod": [
+        "신규 테스트 파일이 존재한다",
+        "8개 사본 전부를 순회한다",
+        "실행 시 red 로 실패한다"
+      ],
+      "rollback": "신규 테스트 파일 삭제",
+      "trace_links": [
+        {
+          "link_id": "TL-001",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-043"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "M",
+      "test_files": [
+        {
+          "path": "test/skills/kiwi-event-contract-content.test.ts"
+        }
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-6"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC1-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "pins the journal root at run start",
+            "kind": "contract",
+            "expected_failure_signature": "run-start|pin"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC2-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "POSIX emit assigns kiwi path only after git succeeds",
+            "kind": "contract",
+            "expected_failure_signature": "rev-parse|fallback"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC3-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "applies to all eight shipped copies",
+            "kind": "contract",
+            "expected_failure_signature": "8|copies"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC4-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "fails on the unreachable fallback form",
+            "kind": "contract",
+            "expected_failure_signature": "unreachable"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC6-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-6"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "kiwi-wave-master is a skill enum member without new table rows",
+            "kind": "contract",
+            "expected_failure_signature": "enum|kiwi-wave-master"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  28 failed | 10 passed (38)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH001-02",
+      "phase_id": "PH-001",
+      "title": "8개 이벤트 계약 사본에 폴백 수리·root pin·enum 등재 적용",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-043"
+      ],
+      "files": [
+        {
+          "path": ".agents/skills/_shared/kiwi/pipeline-event.md",
+          "line_range": "130-132"
+        },
+        {
+          "path": ".agents/skills/_shared/kiwi/pipeline-event.md",
+          "line_range": "66-84"
+        },
+        {
+          "path": ".agents/skills/_shared/kiwi/waves-event.md",
+          "line_range": "76-78"
+        },
+        {
+          "path": "skills/claude/_shared/kiwi/pipeline-event.md",
+          "line_range": "118-120"
+        },
+        {
+          "path": "skills/claude/_shared/kiwi/pipeline-event.md",
+          "line_range": "66-84"
+        },
+        {
+          "path": "skills/claude/_shared/kiwi/waves-event.md",
+          "line_range": "76-78"
+        },
+        {
+          "path": "skills/codex/_shared/kiwi/pipeline-event.md",
+          "line_range": "130-132"
+        },
+        {
+          "path": "skills/codex/_shared/kiwi/pipeline-event.md",
+          "line_range": "66-84"
+        },
+        {
+          "path": "skills/codex/_shared/kiwi/waves-event.md",
+          "line_range": "76-78"
+        },
+        {
+          "path": "skills/etc/_shared/kiwi/pipeline-event.md",
+          "line_range": "130-132"
+        },
+        {
+          "path": "skills/etc/_shared/kiwi/pipeline-event.md",
+          "line_range": "66-84"
+        },
+        {
+          "path": "skills/etc/_shared/kiwi/waves-event.md",
+          "line_range": "76-78"
+        }
+      ],
+      "action": "8개 사본의 POSIX emit 예시를 git rev-parse 성공 분기 뒤에만 <root>/kiwi 를 대입하는 형태로 교체해 cwd·home 폴백이 도달 가능하게 만든다. 경로 해석 절에 run 시작 시 root pin 서술을 추가한다. pipeline-event.md 4개 사본의 skill enum 에 kiwi-wave-master 를 추가한다. PowerShell 예시와 두 결정표는 변경하지 않는다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+          "expected_exit": 0
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+        "windows": "npx vitest run test/skills/kiwi-event-contract-content.test.ts"
+      },
+      "dod": [
+        "T-PH001-01 의 테스트가 green 이다",
+        "8개 사본에 도달 불가 폴백이 남아 있지 않다",
+        "PowerShell 예시와 두 결정표가 무변경이다"
+      ],
+      "rollback": "git checkout -- skills/ .agents/skills/",
+      "trace_links": [
+        {
+          "link_id": "TL-002",
+          "source": {
+            "type": "Task",
+            "id": "T-PH001-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-043"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH001-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-6"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC1-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "pins the journal root at run start",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC2-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "POSIX emit assigns kiwi path only after git succeeds",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC3-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "applies to all eight shipped copies",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC4-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "fails on the unreachable fallback form",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC6-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-6"
+            ],
+            "test_file": "test/skills/kiwi-event-contract-content.test.ts",
+            "test_symbol": "kiwi-wave-master is a skill enum member without new table rows",
+            "kind": "contract"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  28 failed | 10 passed (38)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": {
+          "command": "npx vitest run test/skills/kiwi-event-contract-content.test.ts",
+          "exit_code": 0,
+          "timestamp": "2026-07-28T01:10:00Z"
+        }
+      }
+    },
+    {
+      "id": "T-PH002-01",
+      "phase_id": "PH-002",
+      "title": "wave-master preflight 게이트와 halt-emit 계약에 대한 실패 콘텐츠 테스트 추가",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-042",
+        "FR-FLOW-043"
+      ],
+      "files": [
+        {
+          "path": "test/skills/kiwi-wave-master-content.test.ts",
+          "line_range": "1-458"
+        }
+      ],
+      "action": "기존 3변종 하네스에 FR-FLOW-042 AC-1..AC-7 및 FR-FLOW-043 AC-5/AC-7 단언 블록을 추가한다. halt 시점의 무-mutation·무-spawn 상태와 --wt 거부 근거·복구 경로 재제시도 단언한다. 이 시점에는 전부 실패해야 한다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "expected_exit": 1,
+          "stdout_regex": "FAIL|failed"
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+        "windows": "npx vitest run test/skills/kiwi-wave-master-content.test.ts"
+      },
+      "dod": [
+        "신규 단언이 3변종 전부에 대해 돈다",
+        "red 로 실패한다",
+        "기존 단언은 그대로 통과한다"
+      ],
+      "rollback": "git checkout -- test/skills/kiwi-wave-master-content.test.ts",
+      "trace_links": [
+        {
+          "link_id": "TL-003",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-042"
+          },
+          "relation": "depends_on"
+        },
+        {
+          "link_id": "TL-004",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-043"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "M",
+      "test_files": [
+        {
+          "path": "test/skills/kiwi-wave-master-content.test.ts",
+          "line_range": "1-458"
+        }
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC1-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "compares run root with MCP workspaceRoot before any mutation",
+            "kind": "contract",
+            "expected_failure_signature": "workspaceRoot"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC2-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "mismatch is a critical halt auto does not bypass",
+            "kind": "contract",
+            "expected_failure_signature": "critical|halt"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC3-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halt output names both recovery paths and both caveats",
+            "kind": "contract",
+            "expected_failure_signature": "recovery|worktree"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC4-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "epic-issue entry mode is covered by the same gate",
+            "kind": "contract",
+            "expected_failure_signature": "epic"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC5-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "all three source variants carry the gate contract",
+            "kind": "contract",
+            "expected_failure_signature": "variant"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC6-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-6"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "workspaceRoot lookup failure halts and CLI is not a fallback",
+            "kind": "contract",
+            "expected_failure_signature": "fallback|CLI"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC7-01",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-7"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "refuses delegating worktree isolation to kiwi-pipeline wt",
+            "kind": "contract",
+            "expected_failure_signature": "wt"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC5-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halted run writes no waves.jsonl but emits one FAILED pipeline event",
+            "kind": "contract",
+            "expected_failure_signature": "FAILED|waves"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC7-01",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-7"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halt-emit contract authored in all three variants",
+            "kind": "contract",
+            "expected_failure_signature": "halt"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  21 failed | 25 passed (46)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH002-02",
+      "phase_id": "PH-002",
+      "title": "kiwi-wave-master 3변종에 preflight 게이트 절과 halt-emit 계약 저작",
+      "type": "code",
+      "req_ids": [
+        "FR-FLOW-042",
+        "FR-FLOW-043"
+      ],
+      "files": [
+        {
+          "path": "skills/claude/kiwi-wave-master/SKILL.md",
+          "line_range": "167-169"
+        },
+        {
+          "path": "skills/claude/kiwi-wave-master/SKILL.md",
+          "line_range": "56-67"
+        },
+        {
+          "path": "skills/codex/kiwi-wave-master/SKILL.md",
+          "line_range": "170-172"
+        },
+        {
+          "path": "skills/codex/kiwi-wave-master/SKILL.md",
+          "line_range": "59-70"
+        },
+        {
+          "path": "skills/etc/kiwi-wave-master/SKILL.md",
+          "line_range": "171-173"
+        },
+        {
+          "path": "skills/etc/kiwi-wave-master/SKILL.md",
+          "line_range": "60-71"
+        }
+      ],
+      "action": "각 변종의 Phase 흐름 절 직후에 Phase 0 run-root preflight 전용 하위 절을 신설하고, pipeline emit 절에 halt-emit 조항을 추가한다. 무-mutation·무-spawn 상태와 --wt 거부 근거·복구 경로 재제시를 포함한다. .agents 미러는 의도적 제외이므로 생성하지 않는다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "expected_exit": 0
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+        "windows": "npx vitest run test/skills/kiwi-wave-master-content.test.ts"
+      },
+      "dod": [
+        "T-PH002-01 의 신규 단언이 3변종 전부에서 green 이다",
+        ".agents/skills/kiwi-wave-master/ 가 생성되지 않았다"
+      ],
+      "rollback": "git checkout -- skills/",
+      "trace_links": [
+        {
+          "link_id": "TL-005",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-042"
+          },
+          "relation": "depends_on"
+        },
+        {
+          "link_id": "TL-006",
+          "source": {
+            "type": "Task",
+            "id": "T-PH002-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-043"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "L",
+      "depends_on_task": [
+        "T-PH002-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC1-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "compares run root with MCP workspaceRoot before any mutation",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC2-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "mismatch is a critical halt auto does not bypass",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC3-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halt output names both recovery paths and both caveats",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC4-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "epic-issue entry mode is covered by the same gate",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC5-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "all three source variants carry the gate contract",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC6-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-6"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "workspaceRoot lookup failure halts and CLI is not a fallback",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-042-AC7-02",
+            "req_id": "FR-FLOW-042",
+            "ac_refs": [
+              "AC-7"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "refuses delegating worktree isolation to kiwi-pipeline wt",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC5-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-5"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halted run writes no waves.jsonl but emits one FAILED pipeline event",
+            "kind": "contract"
+          },
+          {
+            "id": "TC-REQ-FR-FLOW-043-AC7-02",
+            "req_id": "FR-FLOW-043",
+            "ac_refs": [
+              "AC-7"
+            ],
+            "test_file": "test/skills/kiwi-wave-master-content.test.ts",
+            "test_symbol": "halt-emit contract authored in all three variants",
+            "kind": "contract"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  21 failed | 25 passed (46)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": {
+          "command": "npx vitest run test/skills/kiwi-wave-master-content.test.ts",
+          "exit_code": 0,
+          "timestamp": "2026-07-28T01:10:00Z"
+        }
+      }
+    },
+    {
+      "id": "T-PH003-01",
+      "phase_id": "PH-003",
+      "title": "MCP 복구 안내에 대한 실패 회귀 테스트 추가",
+      "type": "code",
+      "req_ids": [
+        "FR-MCP-055"
+      ],
+      "files": [
+        {
+          "path": "test/mcp/mutation-tools-errors.test.ts"
+        }
+      ],
+      "action": "per-call root 인자 거부 응답의 recovery 필드를 단언하는 회귀 테스트를 추가한다. 이 시점에는 실패해야 한다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts",
+          "expected_exit": 1,
+          "stdout_regex": "FAIL|failed"
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/mcp/mutation-tools-errors.test.ts",
+        "windows": "npx vitest run test/mcp/mutation-tools-errors.test.ts"
+      },
+      "dod": [
+        "신규 단언이 red 로 실패한다",
+        "기존 단언은 통과한다"
+      ],
+      "rollback": "git checkout -- test/mcp/mutation-tools-errors.test.ts",
+      "trace_links": [
+        {
+          "link_id": "TL-007",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-MCP-055"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "S",
+      "test_files": [
+        {
+          "path": "test/mcp/mutation-tools-errors.test.ts"
+        }
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "red",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-MCP-055-AC1-01",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery tool is not restart_mcp_server",
+            "kind": "unit",
+            "expected_failure_signature": "restart_mcp_server"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC2-01",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery message names server process cwd resolution",
+            "kind": "unit",
+            "expected_failure_signature": "working directory|cwd"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC3-01",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "rejection stays fail-closed and otherwise unchanged",
+            "kind": "unit",
+            "expected_failure_signature": "SRS-E075"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC4-01",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery hint contents are pinned by regression assertion",
+            "kind": "unit",
+            "expected_failure_signature": "recovery"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/mcp/mutation-tools-errors.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  1 failed | 6 passed (7)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH003-02",
+      "phase_id": "PH-003",
+      "title": "adapter 의 recovery 안내를 실행 가능한 안내로 교체",
+      "type": "code",
+      "req_ids": [
+        "FR-MCP-055"
+      ],
+      "files": [
+        {
+          "path": "src/mcp/adapter.ts",
+          "line_range": "45-64"
+        }
+      ],
+      "action": "src/mcp/adapter.ts 의 recovery 힌트에서 존재하지 않는 도구 참조를 제거하고 실행 가능한 안내로 교체한다. fail-closed 거부 동작과 진단 필드는 변경하지 않는다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts",
+          "expected_exit": 0
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts",
+        "windows": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts"
+      },
+      "dod": [
+        "T-PH003-01 이 green 이다",
+        "restart_mcp_server 가 src/ 에서 0건이다",
+        "기존 두 MCP 테스트가 회귀 없이 통과한다"
+      ],
+      "rollback": "git checkout -- src/mcp/adapter.ts",
+      "trace_links": [
+        {
+          "link_id": "TL-008",
+          "source": {
+            "type": "Task",
+            "id": "T-PH003-02"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-MCP-055"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH003-01"
+      ],
+      "covers_ac": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4"
+      ],
+      "tdd": {
+        "applicable": true,
+        "phase": "green",
+        "test_cases": [
+          {
+            "id": "TC-REQ-FR-MCP-055-AC1-02",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-1"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery tool is not restart_mcp_server",
+            "kind": "unit"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC2-02",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-2"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery message names server process cwd resolution",
+            "kind": "unit"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC3-02",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-3"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "rejection stays fail-closed and otherwise unchanged",
+            "kind": "unit"
+          },
+          {
+            "id": "TC-REQ-FR-MCP-055-AC4-02",
+            "req_id": "FR-MCP-055",
+            "ac_refs": [
+              "AC-4"
+            ],
+            "test_file": "test/mcp/mutation-tools-errors.test.ts",
+            "test_symbol": "recovery hint contents are pinned by regression assertion",
+            "kind": "unit"
+          }
+        ],
+        "red_evidence": {
+          "command": "npx vitest run test/mcp/mutation-tools-errors.test.ts",
+          "exit_code": 1,
+          "captured_failure": "Tests  1 failed | 6 passed (7)",
+          "timestamp": "2026-07-28T01:10:00Z"
+        },
+        "green_evidence": {
+          "command": "npx vitest run test/mcp/mutation-tools-errors.test.ts test/mcp/read-tools-resources.test.ts",
+          "exit_code": 0,
+          "timestamp": "2026-07-28T01:10:00Z"
+        }
+      }
+    },
+    {
+      "id": "T-PH004-01",
+      "phase_id": "PH-004",
+      "title": "전체 회귀 스위트·타입체크·린트·빌드 검증",
+      "type": "review",
+      "req_ids": [
+        "FR-FLOW-042",
+        "FR-FLOW-043",
+        "FR-MCP-055"
+      ],
+      "files": [
+        {
+          "path": "package.json"
+        }
+      ],
+      "action": "npm test, npm run typecheck, npm run lint, npm run build 를 순차 실행하여 신규 실패 0 을 확인하고, speckiwi validate --fail-on-warning 으로 SRS 무결성을 재확인한다.",
+      "acceptance_tests": [
+        {
+          "kind": "checklist",
+          "items": [
+            "npm test 신규 실패 0",
+            "npm run typecheck exit 0",
+            "npm run lint exit 0",
+            "npm run build exit 0",
+            "speckiwi validate --fail-on-warning errors 0 warnings 0"
+          ]
+        }
+      ],
+      "verification_cmd": {
+        "posix": "npm test && npm run typecheck && npm run lint && npm run build",
+        "windows": "npm test; if ($?) { npm run typecheck }; if ($?) { npm run lint }; if ($?) { npm run build }"
+      },
+      "dod": [
+        "네 명령 모두 통과한다",
+        "신규 회귀 0 건이 기록된다"
+      ],
+      "rollback": "해당 없음 (검증 전용, 변경 없음)",
+      "trace_links": [
+        {
+          "link_id": "TL-009",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-042"
+          },
+          "relation": "depends_on"
+        },
+        {
+          "link_id": "TL-010",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-FLOW-043"
+          },
+          "relation": "depends_on"
+        },
+        {
+          "link_id": "TL-011",
+          "source": {
+            "type": "Task",
+            "id": "T-PH004-01"
+          },
+          "target": {
+            "type": "Requirement",
+            "reference": "FR-MCP-055"
+          },
+          "relation": "depends_on"
+        }
+      ],
+      "estimated_effort": "M",
+      "depends_on_task": [
+        "T-PH001-02",
+        "T-PH002-02",
+        "T-PH003-02"
+      ],
+      "tdd": {
+        "applicable": false,
+        "exempt_reason": "검증 전용 Task 로 제품 동작을 변경하지 않는다. 실행 대상이 이미 작성된 테스트 스위트 자체이므로 선행 실패 테스트를 따로 작성할 대상이 없다.",
+        "phase": "n/a",
+        "test_cases": [],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    },
+    {
+      "id": "T-PH004-02",
+      "phase_id": "PH-004",
+      "title": "패키지 버전을 2.4.2 로 범프",
+      "type": "file_op",
+      "req_ids": [],
+      "files": [
+        {
+          "path": "package-lock.json"
+        },
+        {
+          "path": "package.json"
+        }
+      ],
+      "action": "사용자 지시에 따라 package.json 의 version 을 2.4.1 에서 2.4.2 로 올리고 package-lock.json 의 대응 필드를 동기화한다.",
+      "acceptance_tests": [
+        {
+          "kind": "shell",
+          "cmd": "node -p \"require('./package.json').version\"",
+          "expected_exit": 0,
+          "stdout_regex": "^2\\.4\\.2$"
+        }
+      ],
+      "verification_cmd": {
+        "posix": "node -p \"require('./package.json').version\"",
+        "windows": "node -p \"require('./package.json').version\""
+      },
+      "dod": [
+        "package.json 의 version 이 2.4.2 이다",
+        "package-lock.json 의 version 이 2.4.2 이다"
+      ],
+      "rollback": "git checkout -- package.json package-lock.json",
+      "trace_links": [],
+      "estimated_effort": "S",
+      "depends_on_task": [
+        "T-PH004-01"
+      ],
+      "tdd": {
+        "applicable": false,
+        "exempt_reason": "버전 문자열 범프는 제품 동작 변경이 아닌 릴리스 메타데이터 작업이며, acceptance_tests 의 shell 단언이 결과를 직접 검증한다.",
+        "phase": "n/a",
+        "test_cases": [],
+        "red_evidence": null,
+        "green_evidence": null
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "req_id": "FR-FLOW-042",
+      "stability": "evolving",
+      "ac_total": 7,
+      "ac_covered": 7,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH002-01",
+        "T-PH002-02",
+        "T-PH004-01"
+      ],
+      "ac_test_map": [
+        {
+          "ac_id": "AC-1",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC1-01",
+            "TC-REQ-FR-FLOW-042-AC1-02"
+          ]
+        },
+        {
+          "ac_id": "AC-2",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC2-01",
+            "TC-REQ-FR-FLOW-042-AC2-02"
+          ]
+        },
+        {
+          "ac_id": "AC-3",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC3-01",
+            "TC-REQ-FR-FLOW-042-AC3-02"
+          ]
+        },
+        {
+          "ac_id": "AC-4",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC4-01",
+            "TC-REQ-FR-FLOW-042-AC4-02"
+          ]
+        },
+        {
+          "ac_id": "AC-5",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC5-01",
+            "TC-REQ-FR-FLOW-042-AC5-02"
+          ]
+        },
+        {
+          "ac_id": "AC-6",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC6-01",
+            "TC-REQ-FR-FLOW-042-AC6-02"
+          ]
+        },
+        {
+          "ac_id": "AC-7",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-042-AC7-01",
+            "TC-REQ-FR-FLOW-042-AC7-02"
+          ]
+        }
+      ]
+    },
+    {
+      "req_id": "FR-FLOW-043",
+      "stability": "evolving",
+      "ac_total": 7,
+      "ac_covered": 7,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH001-01",
+        "T-PH001-02",
+        "T-PH002-01",
+        "T-PH002-02",
+        "T-PH004-01"
+      ],
+      "ac_test_map": [
+        {
+          "ac_id": "AC-1",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC1-01",
+            "TC-REQ-FR-FLOW-043-AC1-02"
+          ]
+        },
+        {
+          "ac_id": "AC-2",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC2-01",
+            "TC-REQ-FR-FLOW-043-AC2-02"
+          ]
+        },
+        {
+          "ac_id": "AC-3",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC3-01",
+            "TC-REQ-FR-FLOW-043-AC3-02"
+          ]
+        },
+        {
+          "ac_id": "AC-4",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC4-01",
+            "TC-REQ-FR-FLOW-043-AC4-02"
+          ]
+        },
+        {
+          "ac_id": "AC-5",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC5-01",
+            "TC-REQ-FR-FLOW-043-AC5-02"
+          ]
+        },
+        {
+          "ac_id": "AC-6",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC6-01",
+            "TC-REQ-FR-FLOW-043-AC6-02"
+          ]
+        },
+        {
+          "ac_id": "AC-7",
+          "test_case_ids": [
+            "TC-REQ-FR-FLOW-043-AC7-01",
+            "TC-REQ-FR-FLOW-043-AC7-02"
+          ]
+        }
+      ]
+    },
+    {
+      "req_id": "FR-MCP-055",
+      "stability": "evolving",
+      "ac_total": 4,
+      "ac_covered": 4,
+      "missing_ac_ids": [],
+      "covered_tasks": [
+        "T-PH003-01",
+        "T-PH003-02",
+        "T-PH004-01"
+      ],
+      "ac_test_map": [
+        {
+          "ac_id": "AC-1",
+          "test_case_ids": [
+            "TC-REQ-FR-MCP-055-AC1-01",
+            "TC-REQ-FR-MCP-055-AC1-02"
+          ]
+        },
+        {
+          "ac_id": "AC-2",
+          "test_case_ids": [
+            "TC-REQ-FR-MCP-055-AC2-01",
+            "TC-REQ-FR-MCP-055-AC2-02"
+          ]
+        },
+        {
+          "ac_id": "AC-3",
+          "test_case_ids": [
+            "TC-REQ-FR-MCP-055-AC3-01",
+            "TC-REQ-FR-MCP-055-AC3-02"
+          ]
+        },
+        {
+          "ac_id": "AC-4",
+          "test_case_ids": [
+            "TC-REQ-FR-MCP-055-AC4-01",
+            "TC-REQ-FR-MCP-055-AC4-02"
+          ]
+        }
+      ]
+    }
+  ],
+  "orphans": [
+    {
+      "task_id": "T-PH004-02",
+      "reason": "패키지 버전 범프는 사용자 직접 지시(\"현재버전에서 +0.0.1 하시오\", 2026-07-28)에 따른 릴리스 메타데이터 작업으로 SRS 요구에 대응하지 않는다. REQ 매핑 없이 유지한다.",
+      "user_decision_id": "user-directive-2026-07-28-version-bump"
+    }
+  ],
+  "unreferenced_reqs": [],
+  "excluded_reqs": [],
+  "deferred_ac": [],
+  "risks": [
+    {
+      "id": "R-001",
+      "severity": "med",
+      "description": ".agents/skills/_shared/** 는 codex 미러 드리프트 검사 대상이 아니어서 미러 2개 사본이 조용히 드리프트할 수 있다",
+      "mitigation": "T-PH001-01 의 콘텐츠 테스트가 미러 2개 사본을 명시적으로 순회하여 유일한 드리프트 가드가 되게 한다",
+      "affected_task_ids": [
+        "T-PH001-01",
+        "T-PH001-02"
+      ]
+    },
+    {
+      "id": "R-002",
+      "severity": "med",
+      "description": "저장소 테스트가 과거 speckiwi init/skill 산출물로 워킹트리를 오염시킨 이력이 있다",
+      "mitigation": "T-PH004-01 실행 후 git status --porcelain 으로 비의도 산출물 유무를 확인하고 발견 시 hermeticity 가드 보고에 기록한다",
+      "affected_task_ids": [
+        "T-PH004-01"
+      ]
+    },
+    {
+      "id": "R-003",
+      "severity": "low",
+      "description": "3변종 SKILL.md 는 플레이스홀더 표기가 서로 달라 동일 문구 복제 시 변종 규약을 깨뜨릴 수 있다",
+      "mitigation": "T-PH002-02 에서 각 변종의 기존 표기 규약을 따르고 T-PH002-01 단언을 표기 비의존 형태로 작성한다",
+      "affected_task_ids": [
+        "T-PH002-01",
+        "T-PH002-02"
+      ]
+    }
+  ],
+  "open_questions": [],
+  "external_module_impact": [],
+  "tdd_decisions": [
+    {
+      "task_id": "T-PH004-01",
+      "decision": "accept-as-exempt",
+      "reason": "검증 전용 Task 로 제품 동작을 변경하지 않는다. 실행 대상이 이미 작성된 테스트 스위트 자체이므로 선행 실패 테스트를 따로 작성할 대상이 없다.",
+      "user_decision_id": "auto-committee-2026-07-28-tdd-01",
+      "decided_at": "2026-07-28T00:00:00Z"
+    },
+    {
+      "task_id": "T-PH004-02",
+      "decision": "accept-as-exempt",
+      "reason": "버전 문자열 범프는 제품 동작 변경이 아닌 릴리스 메타데이터 작업이며, acceptance_tests 의 shell 단언이 결과를 직접 검증한다.",
+      "user_decision_id": "auto-committee-2026-07-28-tdd-02",
+      "decided_at": "2026-07-28T00:00:00Z"
+    }
+  ],
+  "coder_handoff_readiness": [
+    {
+      "phase_id": "PH-001",
+      "ready": true,
+      "blockers": []
+    },
+    {
+      "phase_id": "PH-002",
+      "ready": true,
+      "blockers": []
+    },
+    {
+      "phase_id": "PH-003",
+      "ready": true,
+      "blockers": []
+    },
+    {
+      "phase_id": "PH-004",
+      "ready": true,
+      "blockers": []
+    }
+  ],
+  "mcp_call_log": [
+    {
+      "seq": 1,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-043"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "39500e0bfa083a75cff89b079f290195a4393263",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 2,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH001-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-043"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "ca06e797ddb3e82870de23db691af8446e6876bf",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 3,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-042"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "a6729de1c8ec4aa3ea43fd40b935366173dda680",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 4,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-043"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "de702fed1d19e3db07b212e7ec80d7b0b277ef46",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 5,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-042"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "818fc8b5a2a1c61350c3d908e44734edd21d0fed",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 6,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH002-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-043"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "870f359a3716daea0e47cc9b2f9e24ca94298b3f",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 7,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-MCP-055"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "480870f88dc7b9299d7678b88ed7f93290278bec",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 8,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH003-02"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-MCP-055"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "ec7e1d3447fdc9dde50cab8726cbf678682a27e9",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 9,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-042"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "d1649ddfcd02d8076a405e958b4575191c7cefd3",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 10,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-FLOW-043"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "e2d7eef96c9883bc7098c18f596ecbba3a681ad3",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 11,
+      "call": "add_trace_link",
+      "args": {
+        "source": {
+          "type": "Task",
+          "id": "T-PH004-01"
+        },
+        "target": {
+          "type": "Requirement",
+          "reference": "FR-MCP-055"
+        },
+        "relation": "depends_on"
+      },
+      "args_hash": "9e99f560cbf7110b9e9580d802679f8f6b5cc41e",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 12,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-042",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-28.speckiwi.v242.plan.md#T-PH002-02"
+      },
+      "args_hash": "622cad0efb2d02ea228b0315137c1bc975db58f5",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 13,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-FLOW-043",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-28.speckiwi.v242.plan.md#T-PH001-02"
+      },
+      "args_hash": "b4a6346b35b79360e56864a4786cce0311b569dc",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    },
+    {
+      "seq": 14,
+      "call": "add_verification_evidence",
+      "args": {
+        "id": "FR-MCP-055",
+        "type": "plan",
+        "reference": "docs/plans/2026-07-28.speckiwi.v242.plan.md#T-PH003-02"
+      },
+      "args_hash": "06d2935f0811a44407388681a654bcad0325f586",
+      "response_hash": null,
+      "timestamp": "2026-07-28T00:00:00Z",
+      "ok": true
+    }
+  ]
+}

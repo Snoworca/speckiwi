@@ -43,6 +43,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 신규 REQ 초안 (Phase 2의 proposed_*)
 - 분류별 MCP 시퀀스 (§9.2)
 - §0.G 결정표
+- 선언된 사용자 제약 아티팩트 — `--constraints-doc <path>` 로 받은 경로 (미지정 시 없음). 저작 입력에 없는 제약은 검증에서 잡혀도 반영할 근거가 없다
 
 신규 REQ 기본 status: **`proposed`** (사용자 미승인).
 
@@ -384,10 +385,12 @@ trace links, and completed-work logging require `speckiwi mcp`. CLI commands may
 diagnose installation/version/configuration or help the user restore MCP, but
 they are not normal fallback mutation paths.
 
-| 작업 | MCP | CLI diagnostic only |
+미등록 target 등록만이 이 원칙의 **유일한 예외**다 — MCP 를 쓸 수 없는 degraded 상태에서 `speckiwi set-active-target <t> --create` 로 Target Map 등록을 복구할 수 있다 (SKILL.md "MCP / CLI fallback — target 등록", §3.1 진입 조건). 이 예외는 target 등록 한 가지에만 적용되며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다.
+
+| 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|
 | Active target | `get_active_target` | 설치/버전/설정 확인만 |
-| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| Target 활성화 | `set_active_target` (미등록이면 `create`) | `speckiwi set-active-target <t> --create` (미등록 target 등록 한정 예외) |
 | REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
 | REQ 추가 | `add_requirement` | 설치/버전/설정 확인만 |
 | Status 변경 | `update_status` | 설치/버전/설정 확인만 |

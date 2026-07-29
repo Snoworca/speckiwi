@@ -18,6 +18,8 @@
 
 디렉토리 부재 시 현재 OS에 맞는 디렉토리 생성 명령으로 생성한다.
 
+**Run-root pin**: 위 순서는 run 시작 시 한 번만 평가해 root 를 pin 하고, 그 run 의 이후 emit 마다 재해석하지 않는다 — 실행 도중 cwd 나 git root 가 바뀌어도 한 run 의 저널이 두 저장소로 갈라지지 않게 한다.
+
 ---
 
 ## 2. 이벤트 JSON schema (IR-PIPE-001)
@@ -79,6 +81,7 @@ kiwi-commit-auto-pr
 kiwi-hot-fix
 kiwi-review-fix-loop
 kiwi-pipeline
+kiwi-wave-master
 ```
 
 위 외 값은 invalid (메타 스킬이 WARN + skip).
@@ -127,9 +130,10 @@ Add-Content -LiteralPath (Join-Path $pipeDir "pipeline.jsonl") -Value $event -En
 POSIX shell 예시:
 
 ```bash
-PIPE_DIR=$(git rev-parse --show-toplevel 2>/dev/null)/kiwi
-[ -z "$PIPE_DIR" ] && [ -d "./kiwi" ] && PIPE_DIR="./kiwi"
-[ -z "$PIPE_DIR" ] && PIPE_DIR="$HOME/.kiwi"
+PIPE_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -n "$PIPE_ROOT" ]; then PIPE_DIR="$PIPE_ROOT/kiwi"
+elif [ -d "./kiwi" ]; then PIPE_DIR="./kiwi"
+else PIPE_DIR="$HOME/.kiwi"; fi
 mkdir -p "$PIPE_DIR"
 EVENT=$(cat <<'EOF'
 {"ts":"<ISO-8601>","schema_version":"1.0.0","skill":"kiwi-<name>","run_id":"<rid>","target":"<t>","status":"TASK_DONE","summary":"<one-liner>","next_hint":"kiwi-<next>","artifacts":{"spec_files":[],"plan_file":null,"sidecar_file":null,"analysis_dir":null},"dry_run":false}
@@ -152,7 +156,17 @@ Before appending, read pipeline.jsonl if it exists and skip append when any line
 
 `--dry-run` 또는 `KIWI_DRY_RUN=1` 시 이벤트 필드 `dry_run: true` + `status: "DRY_RUN"` (FR-PIPE-001 AC-3). 실제 mutation 없이 추적 가능.
 
-### 5.4 실패 시
+### 5.4 재진입 멱등 키
+
+부모 오케스트레이터(`kiwi-wave-master`)의 개선 위임이 같은 run 을 다시 돌리는 **재진입** 실행은 emit 키에 회차 접미사를 붙인다: `{run_id}#r{n}` (`n` = 그 run 의 재진입 회차, 1-based).
+
+§5.2 의 멱등 skip 은 **같은 키**에만 적용한다 — bare `run_id` 를 재사용하면 재진입이 skip 되어 체인이 볼 새 `TASK_DONE` 이 생기지 않는다.
+
+본 규약은 `kiwi-pipeline` · `kiwi-planner` · `kiwi-pm` 이 함께 따른다 — 세 스킬 모두 run 을 재사용해 다시 실행될 수 있고, 한 곳만 접미사를 쓰면 나머지가 이벤트를 남기지 못한다.
+
+emit 키는 계획 산출물의 `run_id` 와 **다른 id 공간**이다 — 사이드카 id 정규식 `[a-z0-9.-]{4,40}` 은 emit 키에 **적용하지 않는다**. 그 정규식은 계획 산출물의 식별자를 검사하는 규칙이고, emit 키는 저널의 중복 판정에만 쓰인다.
+
+### 5.5 실패 시
 
 emit 실패가 스킬 본 작업의 실패로 이어지면 안 됨 — emit 은 best-effort. 실패 시 stderr WARN + 본 작업 보고는 정상 출력.
 

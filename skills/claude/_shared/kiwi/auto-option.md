@@ -229,7 +229,7 @@ SA 자기보고 `confidence` 가 무비판 채택되면 critical 격상 트리�
 | §0.X | `--auto` SSOT. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다.
         critical_gates = [
           {gate_id: "external-module-impact", reason: "외부 시스템 비가역 변경"},
-          {gate_id: "lifecycle-gate-draft", reason: "REQ stability=draft 자동 진행 금지"},
+          {gate_id: "lifecycle-gate-policy-stop", reason: "deprecated / frozen REQ 구현 정책 차단"},
           {gate_id: "sha-mismatch-on-resume", reason: "plan/sidecar 무결성 손상"}
         ] |
 ```
@@ -260,7 +260,6 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 - `fork-repo-pr-create` — 외부 fork repo 에 PR 생성
 - `stability-stable-promotion` — REQ stability=stable 승급 (정책 무관 항상 확인)
 - `stability-frozen-violation` — frozen REQ 본문 변경
-- `lifecycle-gate-draft` — REQ stability=draft 인데 구현 진입
 - `sha-mismatch-on-resume` — plan/sidecar SHA256 불일치
 - `depends-on-violation` — depends_on 미충족 REQ 진입
 - `t-final-backward-transition` — 라이프사이클 역방향 전이
@@ -271,6 +270,8 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 - `plan-code-divergence-critical` — 계획-코드 CRITICAL 불일치
 - `self-recursive-spawn` — 자기 스킬 무한 호출 가드
 - `pipeline-event-needs-user-or-failed` — 직전 이벤트 NEEDS_USER/FAILED
+
+`lifecycle-gate-draft` 는 **철회**됐다 — draft 차단은 per-REQ skip 으로 대체되었고(FR-FLOW-053) `kiwi-pm` 을 비롯한 파이프라인 스킬의 canonical 집합에서 제거되었다. 신규 스킬은 이 id 를 채택하지 않는다.
 
 ## 6. 의사코드 해석 규약 (read-time replace)
 

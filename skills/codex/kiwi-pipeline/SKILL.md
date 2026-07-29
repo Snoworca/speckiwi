@@ -34,7 +34,7 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | §0.4 | **--auto 안전 게이트**: 직전 이벤트 `status ∈ {NEEDS_USER, FAILED}` 시 --auto 라도 자동 진행 차단 + 사용자 결정 강제. |
 | §0.5 | **자기 무한 루프 방지**: 본 스킬의 `next_hint` 가 `kiwi-pipeline` 인 경우 자동 진행 불가 (사용자 확인 의무). 직전 직전 이벤트도 `kiwi-pipeline` 이면 ERROR. |
 | §0.6 | **project signature-ban instruction** + **project change-history policy**. 본 스킬 본문에 변경 이력 섹션 없음 — git history 가 SSOT. |
-| §0.7 | **사용자 확인 의무**: 추천 후보 ≥2 개 / next_hint = null / 자기 호출 충돌 / schema major mismatch — 모두 `Codex clarification gate` 단일 호출 분해. |
+| §0.7 | **사용자 확인 의무**: 추천 후보 ≥2 개 / next_hint = null / 자기 호출 충돌 / schema major mismatch — 모두 `Codex clarification gate` 단일 호출 분해. `--cycle` 진입은 "추천 후보 ≥2 개" 항목에서 제외한다 (§6.2). |
 | §0.8 | **best-effort emit**: 자기 jsonl emit 실패가 본 작업 (추천 출력) 의 실패로 이어지면 안 됨. emit 실패 시 stderr WARN. |
 | §0.9 | **외부 스킬 실행 모드**: `--auto --run` 시 추천 스킬을 Codex skill invocation prose로 실행하거나, 가능한 delegation 도구가 있으면 해당 스킬을 별도 작업으로 위임한다. 추가 옵션은 prompt 끝에 인계. |
 | §0.10 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 고유 `--auto --run` semantics 는 유지하되 §0.AG critical_gates[] 는 항상 HALT. |
@@ -47,6 +47,7 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 |---|---|---|
 | `pipeline-event-needs-user-or-failed` | 직전 이벤트가 NEEDS_USER/FAILED 이면 원 작업자의 사용자 결정이 필요 | §6.3 / §6.4 |
 | `self-recursive-spawn` | `kiwi-pipeline` 자기 호출 반복 방지 | §6.5 |
+| `multi-candidate-ambiguous` | 다음 단계 후보 ≥2 개 — 사용자 의도 모호로 자동 결정 금지 (§0.7 / §6.2). **`--cycle` 진입에는 비적용** — 사이클 모드의 다음 단계는 §2.5 체인으로 고정되어 선택 자체가 없으므로 "사용자 의도 모호" 전제가 성립하지 않는다 | §6.2 |
 | `pipeline-start-candidate-ambiguous` | pipeline 미시작 시 시작 후보 선택은 사용자 의도 영역 | §3 |
 | `pipeline-schema-major-mismatch` | major schema mismatch 는 자동 해석 금지 | §4 |
 
@@ -74,12 +75,16 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | "워크트리에서", "격리해서", "worktree isolation" | `--wt` (전용 git worktree 격리 사이클 §2.6) | off |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` (모든 하위 스킬로 전파 §7.3) | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` (모든 하위 스킬로 전파 §7.3) | off (스킬 기본 상한) |
+| "이 REQ 만", "미해소 요구만 다시" | `--req-filter <REQ-ID[,…]>` (재진입 범위 한정 §7) | off (계획 전체) |
+| "같은 계획으로", "plan run 재사용" | `--plan-run-id <id>` (기존 계획 run 재사용 §7) | off (새 run) |
+| "target X 로", "이 target 만" | `--target <target>` (그 사이클의 SRS target 명시 §7) | `get_active_target` |
 
 옵션 매트릭스:
 - `--stats` 단독 → 통계만, 추천·실행 없음
 - `--run` 단독 → 추천 + 사용자 게이트 → 선택 시 spawn
 - `--auto --run` → 추천 후보가 명확하면 즉시 spawn (FAILED/NEEDS_USER 시 차단)
-- `--auto` 단독 (--run 없음) → 추천만 자동 결정 (다지선다 게이트 skip), 실행은 안 함
+- `--auto` 단독 (--run 없음, `--cycle` 미지정) → 추천만 자동 결정 (다지선다 게이트 skip), 실행은 안 함
+- `--cycle` 진입 (`--run` 미지정) → `--run` **암묵 활성** (§2.5) — 사이클 진입은 추천 출력에 그치지 않고 §2.5 체인의 각 단계를 직접 spawn 한다. 위 `--auto` 단독 줄은 `--cycle` 진입에 적용되지 않는다
 
 ### 1.3 출력
 
@@ -117,6 +122,12 @@ Phase 5  : 통계 출력 + 자기 이벤트 emit
 `kiwi-srs → (조건부) kiwi-srs-feasibility → kiwi-planner → kiwi-pm → kiwi-review-fix-loop`
 
 즉 본 스킬은 하나의 다음 단계에서 멈추지 않고 위 다섯 단계를 연결된 사이클로 진행한다.
+
+`--cycle` 은 `--run` 을 **함의한다** — 사이클 모드의 각 단계는 추천 출력이 아니라 실제 spawn 이므로, `--run` 을 함께 적지 않아도 진입 즉시 체인이 실행된다 (§1.2 옵션 매트릭스 · §6.1). 이 함의는 **실행 여부에만** 적용되고 게이트를 낮추지 않는다 — §0.4 안전 게이트, §0.5 자기 무한 루프 방지, §6.6 의 critical gate 즉시 중단은 사이클 진입에서도 그대로 발동한다.
+
+사이클의 **마지막 홉**은 `kiwi-review-fix-loop` 이며 사이클은 거기서 종료한다.
+
+`kiwi-commit-auto-push` 는 사이클이 자동으로 **잇지 않는다** — 커밋·push 는 외부 부작용이고, wave 마다 자동으로 일어나면 되돌릴 수 없다. Table T1(§5.1)의 그 행은 단일 다음-단계 추천에만 적용된다.
 
 ### 2.5.1 조건부 feasibility (AC-2)
 
@@ -185,6 +196,8 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 - work-mode 가 **`tdd`** 이고 요청 작업이 **step-scoped**(단일 기능 / step 규모)이면, §2.5 의 5단계 sdd 체인 **대신** `kiwi-tdd` 스킬로 **라우팅**한다 (SDS 선행 TDD First 사이클). 이때 사이클 오케스트레이션은 kiwi-tdd 가 담당한다.
 - 그 외 — work-mode 가 tdd 가 아니거나, 작업이 **body-scope** REQ 수정 또는 대규모 아키텍처 변경이면 — §2.5 의 5단계 sdd 체인을 그대로 **유지**한다.
 - 이 경계 원칙은 agent snippet 규칙 6(tdd step 은 step-scoped 작업만; body-scope·대형 아키텍처 변경은 sdd 체인)과 동일하다.
+- **`--cycle` / `--from=` 진입은 본 라우팅의 적용 대상이 아니다** — wave 사이클 진입(§2.5.2, `kiwi-wave-master` FR-FLOW-029)은 **body-scope** 작업이므로, work-mode 가 `tdd` 여도 `kiwi-tdd` 로 라우팅하지 않고 §2.5 의 5단계 sdd 체인을 그대로 **유지**한다. 근거 둘: (1) `kiwi-tdd` 는 `critical_gates[]` 를 선언하지 않아 공용 `--auto` 계약(`auto-option.md` §1 안전 디폴트)상 `--auto` 가 비활성이므로 무인 완주가 성립하지 않는다. (2) `kiwi-tdd` 의 산출물은 design.md · step SRS · 승격된 요구 블록뿐이어서 wave 종료 검증이 요구하는 plan · worklog · 리뷰 산출물이 없고, 따라서 증거 번들이 성립하지 않는다.
+- 이 배제는 **본 라우팅 한정**이다 — §0.4 안전 게이트, §0.5 자기 무한 루프 방지, §6.6 의 critical gate 즉시 중단은 `--cycle` / `--from=` 진입에서도 그대로 적용된다.
 
 ---
 
@@ -281,11 +294,13 @@ tail -n "$N" "$PIPE_FILE"
 - `--auto --run` → 즉시 Phase 4 spawn
 - `--auto` (no --run) → 추천만 출력 ("다음 단계: `kiwi-X`. 진행 시 본 스킬 `--auto --run` 또는 직접 `$kiwi-X` 호출.")
 - `--auto` 미지정 → `Codex clarification gate` 2지선다 (진행 / 건너뛰기)
+- `--cycle` 진입 → `--run` 암묵 활성 (§2.5) — 위 `--auto` (no --run) 줄은 `--cycle` 진입에 적용되지 않고, 추천 출력 대신 §2.5 체인의 다음 단계를 그대로 spawn 한다
 
 ### 6.2 후보 2개 이상
 
 - `Codex clarification gate` 다지선다 — 후보 각각 + "건너뛰기" + "다른 스킬 직접 지정"
 - `--auto` 라도 다지선다는 자동 결정 불가 (사용자 의도 모호) — 사용자 게이트 발동 (§0.7)
+- **`--cycle` 진입 제외** — 사이클 모드의 다음 단계는 §2.5 체인으로 고정되어 후보가 갈리지 않으므로 `multi-candidate-ambiguous` 게이트는 발동하지 않는다. 그 밖의 critical gate — §0.4 `NEEDS_USER` / `FAILED` 차단, §0.5 자기 재귀 방지 — 는 사이클 진입에서도 그대로 발동한다 (§0.AG)
 
 ### 6.3 NEEDS_USER 처리
 
@@ -299,7 +314,7 @@ tail -n "$N" "$PIPE_FILE"
 직전 이벤트 `status == FAILED`:
 - `Codex clarification gate` 3지선다: (A) 재시도 / (B) 건너뛰기 (다음 스킬 추천) / (C) 중단
 
-### 6.5 자기 호출 충돌 (§0.5)
+### 6.5 자기 재귀 진입 충돌 (§0.5)
 
 직전 이벤트가 `skill: "kiwi-pipeline"` 인 경우:
 - 직전 직전 이벤트(마지막 2개 이벤트 중 첫 번째)를 기준으로 다시 추론
@@ -322,6 +337,8 @@ Use $kiwi-<chosen> <inherited-or-empty-args>
 추가 인자 인계:
 - `--auto` (kiwi-pipeline) → 자식 스킬에도 전파 (자식의 `--auto` 의미는 자체 SSOT 따름)
 - `--model <name>` (kiwi-pipeline 본 스킬에는 정의 안 됨; 그러나 사용자가 명시한 경우 자식에 전파)
+- `--req-filter` 와 `--plan-run-id` 는 함께 `kiwi-planner` · `kiwi-pm` 에 전달한다 — `kiwi-planner` 가 `--req-filter` 를 자기 `REQ_FILTER` 입력으로 소비해 계획 범위를 좁히고 `--plan-run-id` 를 run-id 도출 대신 사용하며, `kiwi-pm` 은 그 값으로 `PLAN_PATH`(`docs/plans/{plan-run-id}.plan.md`)와 세션(`.kiwi/sessions/{run_id}/`)을 고정해 최신 `generated_at` 자동 추정을 쓰지 않는다. 하나만 흘리면 범위 없는 재진입이 되어 계획 전체를 다시 돈다 (§7.5)
+- `--target` 은 그 사이클이 spawn 하는 SRS 계열 하위 스킬(`kiwi-srs` · `kiwi-srs-feasibility` · `kiwi-planner`)에 각자의 `TARGET` 입력으로 전달한다 — 세 스킬 모두 `TARGET` 미지정 시 `get_active_target` 으로 되돌아가므로, 명시 전달이 없으면 그 사이클이 어느 target 을 대상으로 도는지가 활성 target 의 부수효과에 좌우된다 (§1.2)
 
 spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 `workflow_pipeline_emit` 로 자기 이벤트를 기록하므로 본 스킬이 별도 기록할 필요 없음.
 
@@ -338,6 +355,29 @@ spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 `workflow
 ### 7.3 `--mini` / `--loops N` 전파
 
 `--mini` 또는 `--loops N` 으로 본 스킬을 호출하면 (`../_shared/kiwi/loop-option.md` v1.0 SSOT), 사이클이 spawn 하는 **모든 하위 스킬(every spawned sub-skill)** — `kiwi-srs` · `kiwi-srs-feasibility` · `kiwi-planner` · `kiwi-pm` · `kiwi-review-fix-loop` — 에 해당 플래그를 그대로 **전파**(propagate)한다. 하위 스킬의 라운드 상한 시맨틱은 각자의 `loop-option.md` 참조를 따른다.
+
+### 7.4 pass-through 옵션 전파 (kiwi-wave-master → kiwi-pm → kiwi-coder)
+
+부모 `kiwi-wave-master` 가 넘긴 아래 옵션은 본 스킬이 해석하지 않고 하위 스킬로 그대로 **전달**(pass-through)한다. 본 스킬은 전파 경로의 중간 홉이며, 여기서 누락되면 옵션이 `kiwi-coder` 게이트에 도달하지 못해 무인 실행이 그 게이트에서 멈춘다.
+
+| 옵션 | 도달 대상 | 본 스킬의 전달 경로 |
+|---|---|---|
+| `--auto-cost-warning` | `kiwi-coder` 비용 확인 게이트 | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
+| `--auto-integration` | `kiwi-coder` 통합 테스트 동의 게이트 | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
+| `--force` | `kiwi-pm` 의 stale `pm.lock` 해제 | kiwi-pipeline → `kiwi-pm` (**명시** 입력만) |
+| `--regression-baseline` | `kiwi-coder` / `kiwi-review-fix-loop` 의 회귀 델타 기준선 | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
+
+각 옵션의 시맨틱은 그 도달 대상 스킬(`kiwi-pm` · `kiwi-coder`)의 SSOT 를 따른다 — 본 스킬은 값을 판단하거나 변형하지 않고 그대로 인계한다.
+
+### 7.5 재진입 emit 키 규약
+
+부모 `kiwi-wave-master` 의 개선 위임(§5.5.5)이 같은 wave 로 본 스킬을 다시 호출하는 **재진입** 실행은 자기 emit 키를 새로 만든다.
+
+이 접미사 규약의 SSOT 는 `../_shared/kiwi/pipeline-event.md` **§5.4** 다 — 본 절은 그 규약을 사이클 관점에서 인용할 뿐이며, 자식 스킬은 본 절이 아니라 그 공유 계약을 읽는다.
+
+재진입 실행의 emit **멱등 키**는 `{run_id}#r{n}` 이다(`n` = 그 run 의 재진입 회차, 1-based) — bare `run_id` 를 재사용하면 같은 날 재진입이 멱등 skip 되어 체인이 볼 새 `TASK_DONE` 이 생기지 않는다.
+
+같은 접미사 규약을 `--plan-run-id` 로 계획 run 을 재사용하는 자식(`kiwi-planner` · `kiwi-pm`)의 emit 에도 적용한다 — 그 자식들의 규칙은 "동일 `run_id` 이벤트가 이미 존재하면 skip" 이므로, run 을 재사용한 재진입은 회차 접미사 없이 이벤트를 남기지 못한다.
 
 ---
 

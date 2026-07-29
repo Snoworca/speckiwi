@@ -175,7 +175,6 @@ Recommended catalog:
 - `fork-repo-pr-create`
 - `stability-stable-promotion`
 - `stability-frozen-violation`
-- `lifecycle-gate-draft`
 - `lifecycle-gate-deprecated-or-frozen`
 - `sha-mismatch-on-resume`
 - `depends-on-violation`
@@ -188,6 +187,8 @@ Recommended catalog:
 - `self-recursive-spawn`
 - `pipeline-event-needs-user-or-failed`
 - `bulk-close-or-finalize`
+
+`lifecycle-gate-draft` is **retired** — draft blocking was replaced by per-REQ skip (FR-FLOW-053) and the id was dropped from the canonical gate set of every pipeline skill, starting with `kiwi-pm`. New skills must not adopt it.
 
 ## Read-Time Interpretation
 
