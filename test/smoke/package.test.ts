@@ -6,7 +6,8 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   AGENT_INSTRUCTION_HEADING_PREFIX,
-  AGENT_INSTRUCTION_VERSION
+  AGENT_INSTRUCTION_VERSION,
+  BUNDLED_SRS_RULES_FILENAME
 } from "../../src/core/bootstrap/templates.js";
 
 // FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
@@ -104,7 +105,7 @@ describe("package runtime contract", () => {
     const { stdout } = await runNpm(["pack", "--dry-run", "--json"], { cwd: process.cwd(), timeout: 120000 });
     const [packed] = JSON.parse(stdout) as Array<{ files?: Array<{ path: string }> }>;
     const files = packed?.files?.map((file) => file.path) ?? [];
-    expect(files).toContain("docs/rule/SRS-MD-Rules-v1.0.0.md");
+    expect(files).toContain(`docs/rule/${BUNDLED_SRS_RULES_FILENAME}`);
     expect(files).toContain("skills/codex/kiwi-pm/SKILL.md");
     expect(files).toContain("skills/codex/kiwi-review-fix-loop/SKILL.md");
     expect(files).toContain("skills/claude/kiwi-pm/SKILL.md");
@@ -147,7 +148,7 @@ describe("package runtime contract", () => {
         timeout: 60000
       });
 
-      const rules = await readFile(path.join(projectRoot, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), "utf8");
+      const rules = await readFile(path.join(projectRoot, "docs", "rule", BUNDLED_SRS_RULES_FILENAME), "utf8");
       expect(rules).toContain("| Document ID | SRS-MD-RULES |");
       expect(await readFile(path.join(skillDestination, "kiwi-pm", "SKILL.md"), "utf8")).toContain("name: kiwi-pm");
       expect(await readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);

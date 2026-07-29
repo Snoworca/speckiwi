@@ -39,7 +39,7 @@ Backing requirements: FR-FLOW-037 (SDS standard FR-FLOW-036, gates IR-CLI-072 / 
 
 ### 1.2 Output
 
-- `docs/spec/steps/<task>/design.md` — the SDS (per SDS-MD Authoring Rules v1.0.0)
+- `docs/spec/steps/<task>/design.md` — the SDS (per SDS-MD Authoring Rules v2.5.0)
 - red→green tests + implementation code
 - `docs/spec/steps/<task>/<task>.srs.md` — synthesized step SRS
 - the requirement block promoted into body scope (with evidence)
@@ -69,7 +69,7 @@ Claim the target step via `claim_step` (MCP preferred) or `speckiwi step claim <
 
 ### 2.3 Phase 2 — author the SDS (mandatory checklist)
 
-Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>` (MCP `scaffold_step`; writeIfMissing — it never overwrites, and the stubs are skeletons only: the content is still authored directly), then author `docs/spec/steps/<task>/design.md` per the SDS-MD Authoring Rules v1.0.0. **This checklist is mandatory and cannot be skipped**:
+Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>` (MCP `scaffold_step`; writeIfMissing — it never overwrites, and the stubs are skeletons only: the content is still authored directly), then author `docs/spec/steps/<task>/design.md` per the SDS-MD Authoring Rules v2.5.0. **This checklist is mandatory and cannot be skipped**:
 
 1. **Skip-gate first**: is this a trivial change with no trade-off? Then skip the SDS and record only an EARS stub (one to three SDS-AC statements) in intent.md, then go to Phase 3.
 2. All seven required headings exist: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.

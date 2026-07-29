@@ -30,7 +30,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.2 | **검증자 입력 격리**. 시니어 분석가의 결론 JSON·정당화 전달 금지. 원본 REQ + 코드 + per-REQ 판정 결과 + 필터링된 컨텍스트만 |
 | §0.3 | **코드 증거 우선**. 모든 implementability 판정은 코드 path:line 증거 첨부. 증거 없는 판정은 `evidence_strength: weak` 라벨 |
 | §0.4 | **할루시네이션 금지**. 존재하지 않는 코드/함수 인용 시 §8.2 axis 2 (Evidence existence) CRITICAL. 블로커 근거가 코드와 무관한 추측이면 §8.2 axis 5 (Blocker substantiation) HIGH |
-| §0.5 | **SRS-MD Authoring Rules v1.0.0 준수**. heading / ID 정규식 위반 금지 |
+| §0.5 | **SRS-MD Authoring Rules v2.5.0 준수**. heading / ID 정규식 위반 금지 |
 | §0.6 | **speckiwi MCP 우선 + 황금률**. CLI 직접 호출은 진단/복구 안내에만 허용. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 manual file edit 사용 절대 금지** |
 | §0.7 | **stable/frozen 승급은 항상 사용자 확인**. 정책 파일이 자동 허용으로 설정해도 본 §0.7 우선. User clarification gate 단일 호출 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |

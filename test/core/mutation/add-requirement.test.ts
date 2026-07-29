@@ -22,7 +22,7 @@ describe("add requirement mutation", () => {
       stability: "stable",
       verificationMethod: "test",
       githubIssue: "https://github.com/Snoworca/speckiwi/issues/1",
-      relatedDocs: ["[Rules](../rule/SRS-MD-Rules-v1.0.0.md)"],
+      relatedDocs: ["[Rules](../rule/SRS-MD-Rules-v2.5.0.md)"],
       rationale: "요구사항을 안전하게 확장하기 위해 필요하다.",
       implementationNotes: "CLI와 MCP가 같은 core service를 사용한다.",
       research: "docs/research/00.implementation-research-synthesis.md",

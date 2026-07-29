@@ -121,7 +121,7 @@ speckiwi 보장 사항:
     { "tool": "add_requirement", "args": {...}, "result_id": "FR-TODO-004", "ok": true }
   ],
   "scope_doc_edits": [
-    { "file": "docs/spec/10.todo-core.srs.md", "section": "§4 Requirements", "op": "append" }
+    { "file": "docs/spec/01.todo-core.srs.md", "section": "§4 Requirements", "op": "append" }
   ],
   "validate_spec_result": { "ok": true, "diagnostics": [] },
   "change_notes_diff": "- 2026-05-13 update: FR-TODO-004 supersedes FR-TODO-001 ...",

@@ -1,4 +1,4 @@
-# SRS-MD Authoring Rules v1.0.0
+# SRS-MD Authoring Rules v2.5.0
 
 Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC/IEEE 29148**
 
@@ -15,7 +15,7 @@ Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC
 | Audience | developers, reviewers, maintainers, AI coding agents |
 | Primary Use | SRS authoring, review, search, status updates, implementation verification |
 | Source Format | GitHub Flavored Markdown |
-| Canonical Location | `docs/rule/SRS-MD-Rules-v1.0.0.md` |
+| Canonical Location | `docs/rule/SRS-MD-Rules-v2.5.0.md` |
 | Last Updated | 2026-05-10 |
 
 ---
@@ -85,7 +85,7 @@ To mark a requirement as `verified`, the acceptance criteria must be satisfied a
 |---|---|
 | SRS | Software Requirements Specification. The specification of requirements that a system or software must satisfy. |
 | SRS Index | The index document for navigating the whole SRS document set. The default file is `docs/spec/00.index.md`. |
-| Scope SRS | The requirements document for each functional scope. Example: `docs/spec/10.auth.srs.md`. |
+| Scope SRS | The requirements document for each functional scope. Example: `docs/spec/01.auth.srs.md`. |
 | Requirement Block | The Markdown block that expresses one requirement. It starts with a `### {ID} — {Title}` heading. |
 | Requirement ID | The globally unique identifier of a requirement. Example: `FR-AUTH-001`. |
 | Scope | The function, module, domain, component, package, or subsystem unit that groups requirements. |
@@ -104,14 +104,14 @@ To mark a requirement as `verified`, the acceptance criteria must be satisfied a
 ```text
 docs/
 ├─ rule/
-│  └─ SRS-MD-Rules-v1.0.0.md
+│  └─ SRS-MD-Rules-v2.5.0.md
 │
 ├─ spec/
 │  ├─ 00.index.md
-│  ├─ 10.auth.srs.md
-│  ├─ 20.user.srs.md
-│  ├─ 30.payment.srs.md
-│  ├─ 40.observability.srs.md
+│  ├─ 01.auth.srs.md
+│  ├─ 02.user.srs.md
+│  ├─ 03.payment.srs.md
+│  ├─ 04.observability.srs.md
 │  └─ 90.appendix.md
 │
 ├─ analysis/
@@ -141,7 +141,7 @@ The responsibility of each path is as follows.
 
 | Path | Responsibility |
 |---|---|
-| `docs/rule/SRS-MD-Rules-v1.0.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
+| `docs/rule/SRS-MD-Rules-v2.5.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
 | `docs/spec/00.index.md` | Entry point for the whole SRS document set, target list, scope document links, summary |
 | `docs/spec/*.srs.md` | Source of truth for requirements per functional scope |
 | `docs/spec/90.appendix.md` | Common terms, enums, status definitions, cross-scope map, supplementary rules |
@@ -173,19 +173,23 @@ docs/spec/{NN}.{scope-slug}.srs.md
 Example:
 
 ```text
-docs/spec/10.auth.srs.md
-docs/spec/20.agent-loop.srs.md
-docs/spec/30.llm-provider.srs.md
-docs/spec/40.observability.srs.md
+docs/spec/01.auth.srs.md
+docs/spec/02.agent-loop.srs.md
+docs/spec/03.llm-provider.srs.md
+docs/spec/04.observability.srs.md
 ```
 
 Rules:
 
-1. `{NN}` is a two-digit number used for ordering.
-2. `{scope-slug}` uses lowercase kebab-case.
-3. The filename must reveal the meaning of the scope.
-4. One file represents one primary scope.
-5. Place a cross-scope requirement in the scope document that carries the greatest responsibility for it.
+1. `{NN}` is a zero-padded ordering number, two digits at minimum. A number below ten carries a leading zero, so `01` sorts beside `02` rather than after `10`. A project with more than ninety-nine scope documents continues with three digits.
+2. Allocate the number of a new scope document as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`.
+3. A number in use is never reused, and an existing document is never renumbered. A gap left by a removed document stays a gap, because the ordering position it held may already be cited elsewhere.
+4. Two scope documents must not share a leading number. A document set in which they do is ambiguous to order and is reported as `SRS-W070`.
+5. A project that already numbers its documents by tens (`10`, `20`, `30`) is valid and must not be renumbered. Its next document is the number one above its highest, not the next ten.
+6. `{scope-slug}` uses lowercase kebab-case.
+7. The filename must reveal the meaning of the scope.
+8. One file represents one primary scope.
+9. Place a cross-scope requirement in the scope document that carries the greatest responsibility for it.
 
 ---
 
@@ -216,7 +220,7 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 | Raw HTML | forbidden | Increases the divergence between renderer and parser results |
 | Link inside a heading | forbidden | Unstable parsing of Requirement ID and title |
 | Emoji inside a heading | forbidden | Unstable parsing of Requirement ID and title |
-| Emphasis inside a heading | forbidden | Unstable title normalization |
+| Emphasis inside a heading | forbidden, except the tool-written markers of §30.1 and §30.2 | Unstable title normalization |
 | Line break inside a metadata table cell | forbidden | Unstable table parser |
 | Nested task list | forbidden | Unstable Acceptance Criteria evaluation |
 | Complex list inside a metadata table | forbidden | Unstable value extraction |
@@ -272,6 +276,8 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 ## 10. Reference Documents
 ```
 
+The §7 Completed Work Log heading must be present in the index, but its inline data rows are optional. The rows may live in the separate history file `docs/spec/91.completed-work-log.md`, and the parser merges both sources — see §7.4.
+
 ### 7.2 SRS Documents Section
 
 ```md
@@ -279,9 +285,10 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 
 | Scope | Document | Prefix | Description |
 |---|---|---|---|
-| Auth | [10.auth.srs.md](./10.auth.srs.md) | AUTH | Authentication, session, and authorization requirements |
-| Payment | [30.payment.srs.md](./30.payment.srs.md) | PAY | Payment, webhook, and settlement requirements |
-| Observability | [40.observability.srs.md](./40.observability.srs.md) | OBS | Logging, metrics, and tracing requirements |
+| Auth | [01.auth.srs.md](./01.auth.srs.md) | AUTH | Authentication, session, and authorization requirements |
+| User | [02.user.srs.md](./02.user.srs.md) | USER | Profile and account requirements |
+| Payment | [03.payment.srs.md](./03.payment.srs.md) | PAY | Payment, webhook, and settlement requirements |
+| Observability | [04.observability.srs.md](./04.observability.srs.md) | OBS | Logging, metrics, and tracing requirements |
 ```
 
 Rules:
@@ -346,6 +353,12 @@ Rules:
 8. A report path token must not use an absolute path, a `./` or `../` prefix, a `..` segment, a URL scheme, a backslash, a pipe, a comma, CR/LF, `#`, or a value that is empty after trimming.
 9. Report a malformed report path as an `SRS-W024` warning. A report path is Completed Work Log summary metadata and is not Verification Evidence.
 10. Do not put the pipe character `|` in a table cell.
+11. The Completed Work Log may live inline in `00.index.md` §7, in the separate history file `docs/spec/91.completed-work-log.md`, or in both. The parser reads both sources and merges them into one completed-work list (dual-read).
+12. The history file is a plain `.md` rather than a `.srs.md`, so it is not discovered as a scope or step file. It carries a read-only summary banner above its heading, stating that it is not the source of truth for completion decisions, and it follows the same table grammar as §7 — both the legacy five-column form and the six-column form with a trailing `Report Paths`.
+13. The merge is an append-concatenation: index rows first, then history rows. Sorting and de-duplication happen in the query layer. A row duplicated across both sources — identical `Date`, `Target`, `Requirement IDs`, and `Summary` — is de-duplicated and reported as an `SRS-W025` warning.
+14. A new completed-work row is written only to the history file, bootstrapping the file with its banner when it is absent. Inline index rows continue to be read for backward compatibility but are no longer written. Migrating inline rows into the history file is opt-in and defaults to a dry run.
+15. The history file is an append-only summary. It is per-row and status-independent, and it does not weaken the prohibition on bulk finalization in §30.3.
+16. The §7 Completed Work Log diagnostics (`SRS-W011` through `SRS-W015`, and `SRS-W024`) report the originating file of each entry — the history file or the index — as the diagnostic location.
 
 Target type values:
 
@@ -523,11 +536,13 @@ Example:
 
 ### 10.2 Regular Expression
 
-Recommended regular expression:
+The heading is recognised with the following regular expression. The type prefix is the closed set in §11.2, not an open run of capitals, and the optional trailing group is the marker slot that §30.1 and §30.2 write:
 
 ```regex
-^###\s+([A-Z]{2,5}-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+)$
+^###\s+(~~)?((?:FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+?)(~~)?\s*(?:\[(DISCARDED|DRAFT)(?:[^\]]*)\])?\s*$
 ```
+
+A heading written to a looser pattern — a type prefix outside the closed set, for instance — parses as prose rather than as a requirement, and the requirement it was meant to declare goes unseen.
 
 ### 10.3 Heading Rules
 
@@ -538,6 +553,7 @@ Recommended regular expression:
 5. Do not put a link, emoji, emphasis, or inline code in the title.
 6. The title must express the core outcome of the requirement.
 7. A title of 80 characters or fewer is recommended.
+8. Rule 5 does not reach the heading strikethrough and the `[DISCARDED]` / `[DRAFT — pending decision]` markers of §30.1 and §30.2. Those are written and removed by the status and stability mutations, and a consumer must not add or strip them by hand.
 
 ---
 
@@ -1082,6 +1098,7 @@ Trace Links record the relationship between a requirement and an external artifa
 | `superseded_by` | It is superseded by another requirement. |
 | `informed_by` | It was informed by a document, an analysis, or external rationale. |
 | `related_to` | A general related relationship. |
+| `checked_compatible` | A compatibility cache row recording that two requirements were consistent with each other at a particular content revision. See §23.5. |
 
 ### 23.4 Relationship Rules
 
@@ -1090,6 +1107,16 @@ Trace Links record the relationship between a requirement and an external artifa
 3. When a `depends_on` relationship forms a cycle, treat it as a warning or higher.
 4. For a `conflicts_with` relationship, record the resolution plan in `Open Questions` or `Change Notes`.
 5. When using `supersedes` or `superseded_by`, also updating `Supersedes` or `Superseded By` in the metadata is recommended.
+
+### 23.5 checked_compatible (compatibility cache)
+
+`checked_compatible` is an advisory cache relation recording that two requirements were consistent with each other at a particular content revision, identified by a `semanticSha`. Unlike the other relations it follows the rules below.
+
+1. **Notes token grammar.** The `Notes` cell of the Trace Links row holds `key: value` items separated by `; ` (a semicolon and a space), and a key uses lowercase letters and hyphens only. The recognised keys are `fpv` (the formula version, for example `fpv1`), `self` (this requirement's semanticSha), `peer` (the other requirement's semanticSha), and `checked-at` (the time or marker of the check). The value character set is restricted to alphanumerics, hyphen, colon, and dot; arbitrary text is not accepted. The general cell-safety rule that rejects `|`, CR, and LF is not sufficient on its own, so a dedicated tokeniser enforces the character set.
+
+2. **semanticSha normalisation contract (`fpv1`).** The `self` and `peer` pins are normalised content hashes of a requirement. Normalisation converts CRLF to LF, strips trailing whitespace from each line, collapses each run of whitespace to one space, and trims the ends. The hash input is the normalised requirement statement, the Acceptance Criteria text excluding their checked state, the scope, and the metadata excluding `Status` and `Stability`. Status and stability are deliberately excluded, so a lifecycle transition alone does not invalidate a pin — and neither does it re-validate one. Trace Links, Verification Evidence, and Change Notes are excluded too, so recording a check does not by itself invalidate the pin it records.
+
+3. **Validation treatment.** A `checked_compatible` row is validated for referential existence only: the referenced Requirement ID must exist. Liveness — whether a pin has gone stale against the current content, and the status or stability of either endpoint — is not enforced and never blocks a release gate. A stale or missing pin surfaces as advisory data through the compatibility edge listing rather than as a validation error. Create, refresh, and revoke these rows with the dedicated compatibility mutations rather than by editing the table.
 
 ---
 
@@ -1379,6 +1406,118 @@ Record the reason for discarding in `Change Notes`.
 | 2026-05-07 | Changed Status to `discarded` | Merged into `FR-AUTH-001` |
 ```
 
+### 30.1 Discarded Marker
+
+When an `update_status` mutation moves a requirement to `Status=discarded`, the following marker is applied automatically to that Requirement Block's heading. The author never has to attach the marker with a separate `Edit`: one mutation call completes as one line patch, which preserves the Markdown-as-source principle in §2.1.
+
+Base transformation:
+
+```text
+### REQ-ID — Title
+  →  ### ~~REQ-ID — Title~~ [DISCARDED]
+```
+
+When a single `supersedes` trace link exists:
+
+```text
+### ~~REQ-ID — Title~~ [DISCARDED → see REQ-Y]
+```
+
+When several `supersedes` trace links exist, the count of the remaining ones is written as `+N`:
+
+```text
+### ~~REQ-ID — Title~~ [DISCARDED → see REQ-Y +2]
+```
+
+`REQ-Y` is the requirement that supersedes this one, and `N` is the number of further requirements that also supersede it. The successor is found by looking for rows that point **at** this requirement, not by reading this requirement's own table:
+
+- Scan every requirement in the repository for a `Trace Links` row matching `Type=Requirement`, `Relation=supersedes`, `Reference=<this requirement's ID>`.
+- Order the matches by source file path and then by line.
+- The **owning** requirement of the first match — the one whose block the row sits in — fills the `see` slot.
+- The number of remaining matches is `N`.
+
+This is the direction §29.3 already asks you to author: the row lives on the requirement that supersedes, not on the one being superseded. A `supersedes` row placed in the discarded requirement's own table names no successor and leaves the marker bare.
+
+On revival — a transition to any other status — the mutation removes both the strikethrough (`~~`) and the `[DISCARDED ...]` marker, restoring the original `### REQ-ID — Title` form.
+
+Because the marker is part of the heading the tool writes, the heading emphasis restriction in §6.3 and §10.3 does not apply to it. A consumer must not strip a tool-written marker by hand: doing so breaks the coupling between the heading and the `Status` row that the mutation maintains.
+
+### 30.2 Draft Marker
+
+When an `update_stability` mutation moves a requirement to `Stability=draft`, the following marker is applied automatically. Unlike the discarded marker, no strikethrough is applied.
+
+Base transformation:
+
+```text
+### REQ-ID — Title
+  →  ### REQ-ID — Title [DRAFT — pending decision]
+```
+
+When a single `conflicts_with` trace link exists:
+
+```text
+### REQ-ID — Title [DRAFT — pending decision, see REQ-Y]
+```
+
+When several `conflicts_with` trace links exist:
+
+```text
+### REQ-ID — Title [DRAFT — pending decision, see REQ-Y +1]
+```
+
+The `see` slot and the `+N` count follow the same four steps as §30.1, matching `Relation=conflicts_with` rows that point at this requirement.
+
+When the stability leaves draft, the mutation removes the `[DRAFT ...]` marker, restoring the original `### REQ-ID — Title` form.
+
+### 30.3 Tool Compliance
+
+The mutation, parser, validator, and renderer must recognise and produce the §30.1 and §30.2 notation together. An `update_status` call applies the following as a single line-patch transaction:
+
+1. Toggle the marker on the heading line.
+2. Update the `Status` row of the metadata table.
+3. Append a row to the `Change Notes` table, when the call supplies a change note.
+
+The three changes are applied on one snapshot with a temp-file-and-rename atomic write, so a partially applied result is not possible.
+
+**One mutation targets one requirement.** A mutation tool takes a single Requirement ID per call. Do not introduce or expose a bulk-archive or bulk-finalize tool that flips the `Status` or `Stability` of several requirements at once, or that empties the Active Target in one call. Such a tool becomes a route around the per-requirement evidence and stability gates. Express an operational scenario such as a release cleanup as repeated per-requirement calls, reporting through a dry run first.
+
+**Mutation tool kinds.** The policy is expressed as a classification rather than as a negotiated exception list. Every mutation tool declares exactly one of three kinds in its schema metadata:
+
+- `req-scoped` — atomically changes one Requirement Block. An `id` is required and an array is rejected. Examples: `update_status`, `update_stability`, `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link`, `append_section_note`.
+- `log-append` — appends a row to an aggregate table. A legitimate array input such as `requirementIds` is allowed, because it carries no status or stability change. Example: `add_completed_work`.
+- `workspace` — updates workspace or target scoped metadata and takes no `id`. Examples: `set_active_target`, `set_target_goal`, `init_project`, and `add_requirement`, which creates a new requirement rather than mutating a single existing one.
+
+A tool classified `req-scoped` rejects an array `id` at schema validation. A new mutation tool must declare one of the three kinds.
+
+### 30.4 Non-standard Markers
+
+An existing SRS may carry notation that differs from §30.1 and §30.2 — `[OBSOLETE]`, `[deprecated]`, an empty strikethrough, and the like. The parser reports an unknown-marker warning for such notation and does not attempt to match it as one of the standard markers.
+
+Within the title portion of a heading (`### REQ-ID — Title`), the `[...]` tokens are read as follows:
+
+- Allowed: the `[<REQ-ID>]` form, for example `[FR-AUTH-002]`, used as a dependency citation or cross reference.
+- Reported: every other `[...]` token, for example `[TBD]`, `[NOTE]`, or `[OBSOLETE]`.
+
+Converting non-standard markers to the standard form is the job of a separate migration tool rather than of the parser, so that a parser run never rewrites a consumer's heading.
+
+### 30.5 Governing Rules Version
+
+Which rules version governs an SRS package is determined by the version token in the file name that the `Rules` row of its metadata table links to. Front matter is not used, which preserves the Markdown-as-source principle in §2.1.
+
+The `Rules` row appears in the metadata table of `docs/spec/00.index.md`, and a package may additionally carry one in `docs/spec/90.appendix.md`. The file name is matched with:
+
+```text
+SRS-MD-Rules-v(\d+\.\d+\.\d+)\.md
+```
+
+Recognition rules for the row:
+
+- Key spelling: `| Rules | ... |` is canonical; `| rules | ... |` is accepted after case normalisation.
+- Surrounding padding: cells are trimmed by the Markdown table parser before the expression is applied.
+- Link body: both a relative path (`../rule/...`) and a repository-root path (`./docs/rule/...`) are accepted.
+
+The markers in §30.1 and §30.2 are part of every rules version from `1.1.0` onward, so a package whose `Rules` row names this document governs by them. `speckiwi init` keeps the row aligned with the rules document it installs, so the row and the installed document do not drift apart.
+
 ---
 
 ## 31. Script Parsing Contract
@@ -1547,6 +1686,7 @@ Validation items:
 | `SRS-W067` | warning | SRS mutation lock bypassed |
 | `SRS-W068` | warning | Stale SRS mutation lock recovered |
 | `SRS-W069` | warning | Invalid workflow deleted status |
+| `SRS-W070` | warning | Scope documents share a leading number |
 
 In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every diagnostic code that the implementation emits must be registered in the registry.
 
@@ -1897,7 +2037,7 @@ Add the managed block below to `AGENTS.md`, `CLAUDE.md`, or both at the reposito
 This block is managed by `speckiwi init`. The copy reproduced below is a reference snapshot, so when it differs from the tool output, the tool output is authoritative.
 
 ```md
-# SpecKiwi SRS workflow v1.7
+# SpecKiwi SRS workflow v1.9
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -1920,10 +2060,16 @@ TDD principle:
 Work-mode and the TDD First (tdd) workflow:
 1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.
 2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.
-3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
+3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v2.5.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
 4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.
 5. In tdd mode the rule "do not implement behavior not covered by an SRS requirement" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.
 6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.
+
+Scope SRS document naming:
+1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.5.0.md` §5.2.
+2. Allocate `{NN}` as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`, the next `02`. Do not number by tens.
+3. Never reuse a number another scope document holds, and never renumber an existing document.
+4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.
@@ -1961,7 +2107,7 @@ Merge-time duplicate Requirement ID repair workflow:
 7. When implemented runtime CLI or MCP repair tooling is available, do not hand-edit Requirement IDs. If tooling is unavailable and the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.
 8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json`, and `speckiwi links check --json` or MCP equivalents. Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.
 
-Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
+The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.
 
 <!-- /SpecKiwi SRS workflow -->
 ```
@@ -1970,4 +2116,4 @@ Completed Work Log is a read-only summary for agents. Requirement Block status, 
 
 ## 41. Document End
 
-This document is the reference document for SRS-MD Authoring Rules v1.0.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.
+This document is the reference document for SRS-MD Authoring Rules v2.5.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.

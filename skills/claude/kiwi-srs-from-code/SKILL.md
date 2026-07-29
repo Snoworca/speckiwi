@@ -7,7 +7,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 
 코드베이스를 역분석하여 **speckiwi MCP 도구**로 scope별 SRS Markdown 문서를 자동 생성하는 스킬.
 
-본체 `snoworca-srs-from-code`와 달리 단일 md/jsonl 직접 관리 대신 **speckiwi가 정의한 SRS-MD Authoring Rules v1.0.0**과 **speckiwi MCP 도구**를 사용하여 scope별 다중 `docs/spec/{NN}.{slug}.srs.md` 문서를 작성한다.
+본체 `snoworca-srs-from-code`와 달리 단일 md/jsonl 직접 관리 대신 **speckiwi가 정의한 SRS-MD Authoring Rules v2.5.0**과 **speckiwi MCP 도구**를 사용하여 scope별 다중 `docs/spec/{NN}.{slug}.srs.md` 문서를 작성한다.
 
 ---
 
@@ -21,7 +21,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.2 | **검증자 입력 격리**. 작성자(Phase 3 scope agent) 결론 JSON·정당화 전달 금지. 원본 코드 + 생성된 SRS 파일 + 필터링된 `scope_assignments_view.json` 만 전달 |
 | §0.3 | **코드 증거 우선**. 모든 요구사항은 `add_requirement` 호출 시 `trace` 배열에 source 첨부 필수. raw Edit으로 사후 보강 금지 (단, NFR/PERF/REL 예외 §6.1) |
 | §0.4 | **할루시네이션·임의 요구사항 금지**. 코드에 존재 증거 없는 기능 작성 금지. 추정 항목은 `Stability=draft` + Rationale `[INFERRED:high\|med\|low]` 명시 |
-| §0.5 | **SRS-MD Authoring Rules v1.0.0 절대 준수**. `docs/rule/SRS-MD-Rules-v1.0.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
+| §0.5 | **SRS-MD Authoring Rules v2.5.0 절대 준수**. `docs/rule/SRS-MD-Rules-v2.5.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
 | §0.6 | **speckiwi MCP 도구 우선**. CLI 직접 호출은 MCP 부재 시에만 사용. status 변경은 항상 `update_status` MCP(또는 CLI `update-status`). raw Edit 금지 |
 | §0.7 | **scope 분할은 반드시 사용자 확인**. AskUserQuestion 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
@@ -172,7 +172,7 @@ scope 개수 권장: 3~8개 (`--scope-min`/`--scope-max`).
   "name": "Parser and Validation",
   "slug": "parser-validation",
   "prefix": "PARSE",
-  "ordering": 20,
+  "ordering": 2,
   "primary_dirs": ["src/core/parser/", "src/core/validation/"],
   "primary_files_glob": ["src/core/{parser,validation}/**/*.ts"],
   "rationale": "AST 파서와 검증기가 한 도메인을 형성",
@@ -214,10 +214,10 @@ prefix 규칙:
       "name": "Parser and Validation",
       "slug": "parser-validation",
       "prefix": "PARSE",
-      "ordering": 20,
+      "ordering": 2,
       "agent_id": "scope-agent-1",
       "primary_files_glob": [...],
-      "document": "docs/spec/20.parser-validation.srs.md",
+      "document": "docs/spec/02.parser-validation.srs.md",
       "inventory_share": {...}
     }
   ]
@@ -240,13 +240,15 @@ prefix 규칙:
 
 각 scope 마다:
 - §2 SRS Documents 표 행 추가: `| {name} | [{document}]({path}) | {prefix} | {rationale} |`
-- §4 Scope Map 표 행 추가: `| {name} | {prefix} | [{document}]({path}) | {ordering} |`
+- §4 Scope Map 표 행 추가: `| {name} | [{document}]({path}) | {prefix} | {rationale} |` — §2 와 동일한 `| Scope | Document | Prefix | Description |` 열 순서다. 파서는 열 이름으로 읽으므로 순서를 바꾸면 Document 셀에 prefix 가 들어가 SRS-E025 가 발생한다.
 
 ### 6.2 빈 scope SRS 파일 Write
 
+**문서 번호 배정 (SRS-MD-Rules §5.2)**: `{NN}` 은 두 자리 정렬 번호이며 **이미 존재하는 최고 번호 + 1** 이다. 프로젝트의 첫 scope 문서는 `01`, 그 다음은 `02` 로 이어진다. 10·20·30 같은 10 단위 배정 금지, 사용 중인 번호 재사용 금지, 기존 문서 재번호 금지. 여러 scope 를 한 번에 만들 때 **모두 같은 번호를 쓰지 않도록** scope 마다 번호를 1 씩 증가시킨다. 가능하면 직접 Write 대신 `speckiwi scaffold-scope <name>:<PREFIX> --apply` 로 번호 배정과 인덱스 등록을 위임한다.
+
 각 scope 마다 `docs/spec/{NN}.{slug}.srs.md` 를 다음 템플릿으로 Write:
 
-**참고**: SRS-MD-Rules v1.0.0 §8.1 의 필수 필드는 `Document Type` / `Scope` / `Scope Name` / `Version` / `Last Updated` 5종. 아래 템플릿의 `Product` · `Product Version` · `Rules` 는 speckiwi 자체 spec 8개 문서에서 사용되는 **확장 필드(권장)** 이며 외부 코드베이스에서는 선택 사항. 외부 프로젝트의 SRS-MD 호환성을 엄격히 유지하려면 확장 3행을 생략 가능.
+**참고**: SRS-MD-Rules v2.5.0 §8.1 의 필수 필드는 `Document Type` / `Scope` / `Scope Name` / `Version` / `Last Updated` 5종. 아래 템플릿의 `Product` · `Product Version` · `Rules` 는 speckiwi 자체 spec 8개 문서에서 사용되는 **확장 필드(권장)** 이며 외부 코드베이스에서는 선택 사항. 외부 프로젝트의 SRS-MD 호환성을 엄격히 유지하려면 확장 3행을 생략 가능.
 
 ```markdown
 # {Name} SRS
@@ -260,7 +262,7 @@ prefix 규칙:
 | Last Updated | {YYYY-MM-DD} |
 | Product | {project_slug} <!-- 확장(선택) --> |
 | Product Version | {version} <!-- 확장(선택) --> |
-| Rules | SRS-MD Authoring Rules v1.0.0 (`docs/rule/SRS-MD-Rules-v1.0.0.md`) <!-- 확장(선택) --> |
+| Rules | SRS-MD Authoring Rules v2.5.0 (`docs/rule/SRS-MD-Rules-v2.5.0.md`) <!-- 확장(선택) --> |
 
 ## 1. Scope Overview
 
@@ -315,7 +317,7 @@ scope: {name} / prefix: {prefix} / target: {target}
 범위 파일: {primary_files_glob}
 인벤토리 share: {inventory_share}
 existing_ids (재실행 시 중복 방지용): [...]
-산출물: docs/spec/{ordering}.{slug}.srs.md (Phase 2.5 에서 사전 생성됨)
+산출물: docs/spec/{document_number}.{slug}.srs.md — {document_number} 는 두 자리 (01, 02, …) (Phase 2.5 에서 사전 생성됨)
 
 작업:
 1. 범위 파일을 Read/Grep 으로 전수 분석

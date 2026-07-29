@@ -353,7 +353,7 @@ describe("MCP mutation tools and structured errors", () => {
       ok: true,
       diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W067" })])
     });
-    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain("10.payments.srs.md");
+    await expect(readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain("01.payments.srs.md");
   });
 
   it("init_project always creates or updates both agent files", async () => {

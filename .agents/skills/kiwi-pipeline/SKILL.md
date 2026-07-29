@@ -438,7 +438,7 @@ run_id = `pipeline-{YYYYMMDDHHMMSS}` (`pipeline-` prefix + UTC 압축 시각). �
 **직전 단계**: `kiwi-srs` (TASK_DONE)
 - run_id: 2026-05-19.skillfactory.add-auth
 - 요약: 신규 FR-AUTH-003 등록
-- 산출물: docs/spec/10.auth.srs.md
+- 산출물: docs/spec/01.auth.srs.md
 
 **다음 추천**: `kiwi-srs-feasibility`
 - 근거: Table T1 (srs → feasibility)

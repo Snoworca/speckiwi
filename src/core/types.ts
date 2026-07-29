@@ -549,6 +549,7 @@ export interface ScaffoldScopeInput {
   name: string;
   prefix: string;
   apply?: boolean;
+  ignoreLock?: boolean;
 }
 export interface ScaffoldScopeOutput {
   dryRun: boolean;

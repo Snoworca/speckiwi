@@ -813,6 +813,15 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-NODE-031",
     since: "v2.3.0",
     remediation: "Replace the invalid DELETED status with a supported workflow status value."
+  },
+  {
+    code: "SRS-W070",
+    severity: "warning",
+    title: "Scope documents share a leading number",
+    messageTemplate: "Scope SRS documents share the leading number {number}: {documents}",
+    sourceRule: "FR-PARSE-034",
+    since: "v2.5.0",
+    remediation: "Repairing a collision is the one case where a scope document is renamed: give all but one of the colliding documents an unused number above the highest in use, and update the Scope Map and SRS Documents rows that name them."
   }
 ];
 

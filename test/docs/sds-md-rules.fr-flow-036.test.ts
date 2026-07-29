@@ -2,10 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { BUNDLED_RULES_VERSION, BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
 
-// FR-FLOW-036 — SDS-MD Authoring Rules v1.0.0 and design.md template. RED suite
+// FR-FLOW-036 — SDS-MD Authoring Rules v2.5.0 and design.md template. RED suite
 // (content test, one case per AC). The suite fails on ENOENT until
-// docs/rule/SDS-MD-Rules-v1.0.0.md ships with the required structure.
+// docs/rule/SDS-MD-Rules-v2.5.0.md ships with the required structure.
 //
 // Contract under test (docs/spec/60.workflow-release.srs.md FR-FLOW-036):
 //   - AC-1: the seven required headings, the metadata table fields, and the
@@ -16,7 +17,7 @@ import { describe, expect, it } from "vitest";
 //           all seven required headings.
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const RULES_PATH = path.join(REPO_ROOT, "docs", "rule", "SDS-MD-Rules-v1.0.0.md");
+const RULES_PATH = path.join(REPO_ROOT, "docs", "rule", "SDS-MD-Rules-v2.5.0.md");
 
 const REQUIRED_HEADINGS = [
   "Context & Scope",
@@ -32,7 +33,7 @@ async function rules(): Promise<string> {
   return readFile(RULES_PATH, "utf8");
 }
 
-describe("FR-FLOW-036 SDS-MD Authoring Rules v1.0.0", () => {
+describe("FR-FLOW-036 SDS-MD Authoring Rules v2.5.0", () => {
   it("FR-FLOW-036 AC-1: defines the required headings, metadata fields, and EARS SDS-AC format", async () => {
     const content = await rules();
     for (const heading of REQUIRED_HEADINGS) {
@@ -74,8 +75,8 @@ describe("FR-FLOW-036 SDS-MD Authoring Rules v1.0.0", () => {
     // The repository index still references the SRS-MD Authoring Rules; the SDS
     // rules ship as an independent new file beside them.
     const index = await readFile(path.join(REPO_ROOT, "docs", "spec", "00.index.md"), "utf8");
-    expect(index).toContain("SRS-MD Authoring Rules v3.0.0");
-    expect(index).toContain("../rule/SRS-MD-Rules-v3.0.0.md");
+    expect(index).toContain(`SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}`);
+    expect(index).toContain(`../rule/${BUNDLED_SRS_RULES_FILENAME}`);
   });
 
   it("FR-FLOW-036 AC-3: embeds a copyable design.md template with all required headings", async () => {

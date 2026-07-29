@@ -30,7 +30,7 @@ import { main } from "../../src/cli/index.js";
 //   - AC-4: speckiwi scaffold-scope --json emits the mutation result envelope.
 //
 // Fixture: the Scope Map registers only the ARCH document, so a fresh scope (Payments / PAY) does not
-// collide and the core can scaffold it as the next decade document (20.payments.srs.md).
+// collide and the core can scaffold it as the next document number above 10 (11.payments.srs.md).
 
 const SPEC_DIR_PARTS = ["docs", "spec"] as const;
 
@@ -216,8 +216,8 @@ describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
     const streams = io();
 
     // --apply turns the default dry-run into a real scaffold: one command creates the file and
-    // registers it. The next decade above ARCH's 10. document is 20., so the new file is
-    // 20.payments.srs.md (scaffoldScope.nextScopeDocument, FR-NODE-065).
+    // registers it. One above ARCH's 10. document is 11., so the new file is
+    // 11.payments.srs.md (scaffoldScope.nextScopeDocument, FR-NODE-065).
     const exitCode = await main(
       ["--root", workspaceRoot, "scaffold-scope", "Payments:PAY", "--apply"],
       streams
@@ -226,15 +226,15 @@ describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
 
     // The brand-new scope srs.md file now exists on disk.
     const after = await specFileNames();
-    expect(after).toContain("20.payments.srs.md");
-    const created = await readFile(path.join(await specDir(), "20.payments.srs.md"), "utf8");
+    expect(after).toContain("11.payments.srs.md");
+    const created = await readFile(path.join(await specDir(), "11.payments.srs.md"), "utf8");
     expect(created).toContain("| Scope | PAY |");
     expect(created).toContain("| Scope Name | Payments |");
 
     // The index registers the new document in BOTH the §2 SRS Documents and §4 Scope Map sections.
     const index = await indexContents();
-    expect(index).toContain("[20.payments.srs.md](./20.payments.srs.md)");
-    expect(index).toMatch(/\|\s*Payments\s*\|\s*\[?20\.payments\.srs\.md[^\n]*\|\s*PAY\s*\|/);
+    expect(index).toContain("[11.payments.srs.md](./11.payments.srs.md)");
+    expect(index).toMatch(/\|\s*Payments\s*\|\s*\[?11\.payments\.srs\.md[^\n]*\|\s*PAY\s*\|/);
     const payRows = index.split("\n").filter((line) => /\|\s*Payments\s*\|/.test(line));
     expect(payRows.length).toBe(2);
   });
@@ -251,7 +251,7 @@ describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
     );
     expect(exitCode).toBe(0);
 
-    const created = await readFile(path.join(await specDir(), "20.billing.srs.md"), "utf8");
+    const created = await readFile(path.join(await specDir(), "11.billing.srs.md"), "utf8");
     // The new scope document carries the explicit BILL prefix, not the inferred BILLING.
     expect(created).toContain("| Scope | BILL |");
     expect(created).not.toContain("| Scope | BILLING |");
@@ -281,13 +281,13 @@ describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
 
     // A human-readable preview of the would-be scope is printed.
     const output = read(streams.stdout);
-    expect(output).toContain("20.payments.srs.md");
+    expect(output).toContain("11.payments.srs.md");
     expect(output).toContain("PAY");
 
     // No file is created and the index is byte-identical: nothing was written.
     expect(await specFileNames()).toEqual(beforeFiles);
     expect(await indexContents()).toBe(beforeIndex);
-    expect(await indexContents()).not.toContain("20.payments.srs.md");
+    expect(await indexContents()).not.toContain("11.payments.srs.md");
   });
 
   it("IR-CLI-068 AC-4: scaffold-scope --json emits the mutation result envelope", async () => {
@@ -319,12 +319,12 @@ describe("IR-CLI-068 speckiwi scaffold-scope command", () => {
     expect(Array.isArray(parsed.diagnostics)).toBe(true);
     // No --apply -> dryRun is true and nothing is written.
     expect(parsed.value.dryRun).toBe(true);
-    expect(parsed.value.document).toBe("20.payments.srs.md");
+    expect(parsed.value.document).toBe("11.payments.srs.md");
     expect(parsed.value.filePreview).toContain("| Scope | PAY |");
     expect(parsed.value.srsDocumentsRow).toContain("PAY");
     expect(parsed.value.scopeMapRow).toContain("PAY");
 
     // The envelope's dryRun claim is truthful: the document was not created.
-    expect(await specFileNames()).not.toContain("20.payments.srs.md");
+    expect(await specFileNames()).not.toContain("11.payments.srs.md");
   });
 });

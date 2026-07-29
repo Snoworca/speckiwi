@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -7,7 +8,6 @@ import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
-  AGENT_INSTRUCTION_VERSION,
   BUNDLED_SDS_RULES_FILENAME,
   BUNDLED_SRS_RULES_FILENAME,
   LEGACY_KOREAN_AGENT_END_MARKER,
@@ -16,6 +16,8 @@ import {
   loadBundledRulesDocument,
   loadBundledSdsRulesDocument,
   parseScopeOption,
+  scopeDocumentName,
+  type ScopeTemplateInfo,
   renderAgentInstructionSnippet,
   renderAppendixTemplate,
   renderEmptyScopeTemplate,
@@ -382,7 +384,15 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
     fileExists = false;
   }
   const block = findAgentInstructionBlock(existing);
-  if (block?.version === AGENT_INSTRUCTION_VERSION && block.hasEndMarker) {
+  // @req FR-NODE-089 AC-1/AC-2 — the skip condition is the block content, not its version. A block
+  // whose body drifted keeps its heading and so its version, and a version-only comparison would
+  // leave that drift in place forever. Line endings are transport, not content: comparing them
+  // would rewrite every CRLF checkout on every init.
+  const normalizeEol = (text: string): string => text.split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10));
+  if (
+    block?.hasEndMarker === true &&
+    normalizeEol(existing.slice(block.start, block.end)) === normalizeEol(snippet.trimEnd())
+  ) {
     output.skipped.push(filePath);
     return;
   }
@@ -462,6 +472,52 @@ function replaceAgentInstructionBlock(existing: string, block: AgentInstructionB
   return [before, snippet, after].filter(Boolean).join("\n\n") + "\n";
 }
 
+/**
+ * @req FR-NODE-088 AC-5 — the scope SRS documents that sit directly in docs/spec, ordered by their
+ * leading number and carrying the scope identity each document declares for itself. Step documents
+ * live under docs/spec/steps/<name>/ and are not scope documents, so reading only the directory
+ * entries keeps them out. A missing docs/spec reads as an empty project.
+ */
+async function listScopeDocuments(rootPath: string): Promise<ScopeTemplateInfo[]> {
+  const specDir = path.join(rootPath, "docs", "spec");
+  let entries: Dirent[];
+  try {
+    entries = await readdir(specDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const names = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".srs.md"))
+    .map((entry) => entry.name)
+    .sort((left, right) => {
+      const leftNumber = Number.parseInt(/^(\d+)\./.exec(left)?.[1] ?? "", 10);
+      const rightNumber = Number.parseInt(/^(\d+)\./.exec(right)?.[1] ?? "", 10);
+      if (Number.isNaN(leftNumber) && Number.isNaN(rightNumber)) return left.localeCompare(right);
+      if (Number.isNaN(leftNumber)) return 1;
+      if (Number.isNaN(rightNumber)) return -1;
+      if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+      return left.localeCompare(right);
+    });
+
+  const scopes: ScopeTemplateInfo[] = [];
+  for (const name of names) {
+    const body = await readFile(path.join(specDir, name), "utf8").catch(() => "");
+    // Two-column metadata rows only. A permissive `(.+?)` would also match the four-column table
+    // header `| Scope | Document | Prefix | Description |` and capture the rest of the header as the
+    // prefix, which would then be written into the index as if it were the scope's identity.
+    const prefix = /^\|\s*Scope\s*\|\s*([^|]+?)\s*\|\s*$/m.exec(body)?.[1] ?? "";
+    const scopeName = /^\|\s*Scope Name\s*\|\s*([^|]+?)\s*\|\s*$/m.exec(body)?.[1] ?? "";
+    // A document that does not declare its own identity is registered under its file name, which is
+    // at least true, rather than under an identity borrowed from somewhere else.
+    scopes.push({
+      name: scopeName || prefix || name.replace(/\.srs\.md$/, ""),
+      prefix: prefix || scopeName || name.replace(/\.srs\.md$/, ""),
+      document: name
+    });
+  }
+  return scopes;
+}
+
 export async function initProject(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
   return withSrsMutationLock(root, { operation: "init_project", ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => initProjectUnlocked(root, input));
 }
@@ -475,10 +531,40 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
     await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
   }
   const scope = parseScopeOption(input.scope);
+  // FR-NODE-088 AC-1/AC-5 — the default scope document is scaffolded only for a project that has no
+  // scope document at all, and it is numbered by allocation rather than by a fixed name. The tool's
+  // own sidecars (90.appendix.md, 91.completed-work-log.md) sit in a reserved high band and do not
+  // drive allocation, so a project's first scope document is 01.
+  const existingScopeDocuments = await listScopeDocuments(root.root);
+  const scopeDocument = existingScopeDocuments.length === 0 ? scopeDocumentName(scope.slug, 1) : undefined;
   const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
-  await writeIfMissing(indexPath, renderIndexTemplate(input), output, input.force, dryRun);
+  // An index written for a project that already holds scope documents registers each of them under
+  // its own name and prefix, read from the document itself. Pointing the default scope row at one of
+  // them would bind that document to the default identity, and a requirement filed under the default
+  // prefix would then be written into the wrong document with validation still clean.
+  await writeIfMissing(
+    indexPath,
+    renderIndexTemplate(scopeDocument ? { ...input, scopeDocument } : { ...input, scopes: existingScopeDocuments }),
+    output,
+    input.force,
+    dryRun
+  );
   await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force, dryRun);
-  await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force, dryRun);
+  if (scopeDocument !== undefined) {
+    await writeIfMissing(
+      path.join(root.root, "docs", "spec", scopeDocument),
+      renderEmptyScopeTemplate({ name: scope.name, prefix: scope.prefix }),
+      output,
+      input.force,
+      dryRun
+    );
+  } else if (typeof input.scope === "string" && input.scope.trim() !== "") {
+    // An explicit --scope on a project that already has scope documents used to be silently dropped:
+    // no file, no row, no diagnostic, exit 0. Say so instead, and name the command that does the job.
+    warnings.push(
+      `scope "${scope.name}": the project already has scope documents, so init added none — use \`speckiwi scaffold-scope ${scope.name}:${scope.prefix} --apply\` to add and register one.`
+    );
+  }
   await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force, dryRun);
   // FR-NODE-085 — the rules documents are tool-owned, so they are refreshed and pruned on every init,
   // while the author-owned index/scope/appendix/step-state files above stay untouched once they exist.

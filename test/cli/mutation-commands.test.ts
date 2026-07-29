@@ -578,7 +578,7 @@ describe("mutation CLI commands", () => {
       ok: true,
       diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W067" })])
     });
-    await expect(readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain("10.payments.srs.md");
+    await expect(readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).resolves.toContain("01.payments.srs.md");
   });
 
   it("documents completed-work report options in CLI help", async () => {
@@ -605,7 +605,7 @@ describe("mutation CLI commands", () => {
   it("passes init scope to generated files on empty repositories", async () => {
     const temp = await mkdtemp(path.join(tmpdir(), "speckiwi-cli-init-"));
     expect(await main(["--root", temp, "init", "--target", "v2.0.0", "--scope", "Payments:PAY"], io())).toBe(0);
-    expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("10.payments.srs.md");
+    expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("01.payments.srs.md");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
     expect(await readFile(path.join(temp, "docs", "spec", "00.index.md"), "utf8")).toContain("| v2.0.0 | release | planned | Initial target |");
     expect(await readFile(path.join(temp, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);

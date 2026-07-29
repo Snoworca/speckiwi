@@ -6,6 +6,17 @@ export interface InitTemplateInput {
   product?: string;
   target?: string;
   scope?: string;
+  /**
+   * @req FR-NODE-088 AC-4 — the scope document the index rows name. The caller allocates it against
+   * the documents already on disk; the template never invents a number of its own.
+   */
+  scopeDocument?: string;
+  /**
+   * The scopes the index registers, each under its own name and prefix. The caller supplies this for
+   * a project that already holds scope documents, so the index describes the documents that are
+   * actually there instead of binding one of them to the default scope identity.
+   */
+  scopes?: readonly ScopeTemplateInfo[];
 }
 
 export interface AgentInstructionOptions {
@@ -16,12 +27,19 @@ export interface AgentInstructionOptions {
 // v1.6 makes it MCP-first (get_work_mode/set_work_mode), documents mode switching,
 // and cites the installed SDS rules path; v1.7 turns the heading and the end marker English so the
 // whole injected block is one language, which is why the version must be readable as "not v1.6".
-export const AGENT_INSTRUCTION_VERSION = "1.7";
-export const BUNDLED_RULES_VERSION = "1.0.0";
+// @req FR-NODE-089 — v1.8 folds the Completed Work Log history-file sentence into the shipped block
+// and moves the SDS rules citation onto the 2.5.0 document. From this version the skip condition is
+// the block's content rather than its version, so drift inside a block no longer survives an init.
+export const AGENT_INSTRUCTION_VERSION = "1.9";
+// @req FR-NODE-087 — 2.5.0 is the first bundled version whose document covers every syntax the
+// runtime writes: the `checked_compatible` relation and its Notes grammar (§23.5) and the
+// [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5). Both documents move together so a consumer
+// never has to reason about two rules versions at once.
+export const BUNDLED_RULES_VERSION = "2.5.0";
 
 // @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
 // from one constant per rules document, so raising a version cannot leave a filename or a pointer behind.
-export const BUNDLED_SDS_RULES_VERSION = "1.0.0";
+export const BUNDLED_SDS_RULES_VERSION = "2.5.0";
 export const BUNDLED_SRS_RULES_FILENAME = `SRS-MD-Rules-v${BUNDLED_RULES_VERSION}.md`;
 export const BUNDLED_SDS_RULES_FILENAME = `SDS-MD-Rules-v${BUNDLED_SDS_RULES_VERSION}.md`;
 
@@ -115,6 +133,15 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
   const product = input.product ?? "SpecKiwi Project";
   const target = input.target?.trim();
   const scope = parseScopeOption(input.scope);
+  // FR-NODE-088 AC-4 — the caller supplies the document it allocated; a fresh index describes a
+  // project whose first scope document is 01. When the caller instead supplies the scopes already on
+  // disk, each is registered under its own name and prefix — binding one of them to the default
+  // scope identity would file requirements for that prefix into the wrong document.
+  const registered: readonly ScopeTemplateInfo[] =
+    input.scopes ?? [{ ...scope, document: input.scopeDocument ?? scopeDocumentName(scope.slug, 1) }];
+  const scopeRows = registered.map(
+    (entry) => `| ${entry.name} | [${entry.document}](./${entry.document}) | ${entry.prefix} | ${entry.name} |`
+  );
   const targetRows = target ? [`| ${target} | release | planned | Initial target |`] : [];
   const lines = [
     `# ${product} SRS Index`,
@@ -136,7 +163,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "| Scope | Document | Prefix | Description |",
     "|---|---|---|---|",
-    `| ${scope.name} | [${scope.document}](./${scope.document}) | ${scope.prefix} | ${scope.name} |`,
+    ...scopeRows,
     "",
     "## 3. Target Map",
     "",
@@ -148,7 +175,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "| Scope | Document | Prefix | Description |",
     "|---|---|---|---|",
-    `| ${scope.name} | [${scope.document}](./${scope.document}) | ${scope.prefix} | ${scope.name} |`,
+    ...scopeRows,
     "",
     "## 5. Status Summary",
     "",
@@ -227,8 +254,18 @@ export interface ScopeTemplateInfo {
   document: string;
 }
 
-export function parseScopeOption(value?: string): ScopeTemplateInfo {
-  if (!value) return { name: "Product Architecture", prefix: "ARCH", document: "10.product-architecture.srs.md" };
+/**
+ * A parsed `--scope` option. It carries no document number: the number belongs to the project's
+ * document set, not to the scope's identity, so allocating it is the caller's job (FR-NODE-088 AC-4).
+ */
+export interface ScopeOption {
+  name: string;
+  prefix: string;
+  slug: string;
+}
+
+export function parseScopeOption(value?: string): ScopeOption {
+  if (!value) return { name: "Product Architecture", prefix: "ARCH", slug: "product-architecture" };
   const [namePart, prefixPart] = value.includes(":") ? value.split(":", 2) : [value, value];
   const name = (namePart ?? "Product Architecture").trim() || "Product Architecture";
   const prefix = (prefixPart ?? name)
@@ -240,10 +277,49 @@ export function parseScopeOption(value?: string): ScopeTemplateInfo {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || prefix.toLowerCase();
-  return { name, prefix, document: `10.${slug}.srs.md` };
+  return { name, prefix, slug };
 }
 
-export function renderEmptyScopeTemplate(scope: ScopeTemplateInfo = parseScopeOption()): string {
+/**
+ * @req FR-NODE-088 AC-1/AC-2/AC-6 — the ordering number for the next scope document: one above the
+ * highest number already present, and 1 when the project holds no scope document. Taking the
+ * highest rather than the lowest free number means a gap left by a removed document is never
+ * refilled, so an ordering position a reader has already anchored on is never reused.
+ */
+/**
+ * @req FR-NODE-088 AC-6 — a scope document sits directly in docs/spec. Anything under a further
+ * directory — a step document in docs/spec/steps/, or a consumer's own grouping folder — holds no
+ * position in the scope ordering, so it neither consumes a number nor collides for one.
+ */
+export function isScopeDocumentPath(relativePath: string): boolean {
+  return /^docs\/spec\/[^/]+\.srs\.md$/.test(relativePath.replace(/\\/g, "/"));
+}
+
+/** Files directly in docs/spec that hold an ordering position without being scope documents. */
+export const RESERVED_SPEC_SIDECARS: readonly string[] = ["90.appendix.md", "91.completed-work-log.md"];
+
+export function nextScopeDocumentNumber(existingFileNames: readonly string[]): number {
+  let highest = 0;
+  for (const fileName of existingFileNames) {
+    const bare = fileName.slice(fileName.lastIndexOf("/") + 1);
+    const match = /^(\d+)\./.exec(bare);
+    if (!match) continue;
+    const value = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isFinite(value) && value > highest) highest = value;
+  }
+  return highest + 1;
+}
+
+/**
+ * @req FR-NODE-088 AC-3 — the scope document file name for a slug and an ordering number. The
+ * number is rendered as at least two digits, so `1` reads as `01` and sorts beside `02` rather
+ * than after `10`.
+ */
+export function scopeDocumentName(slug: string, documentNumber: number): string {
+  return `${String(documentNumber).padStart(2, "0")}.${slug}.srs.md`;
+}
+
+export function renderEmptyScopeTemplate(scope: Omit<ScopeTemplateInfo, "document"> = parseScopeOption()): string {
   return [
     `# ${scope.name}`,
     "",
@@ -386,6 +462,15 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
     "6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.",
     "",
+    // @req FR-NODE-088 — without this the block is the whole instruction set for an agent that runs no
+    // kiwi-* skill, and it carried no allocation rule at all. An agent then picks a number by copying
+    // whatever it saw, which is how a document set ends up with every file numbered 10.
+    "Scope SRS document naming:",
+    `1. A scope SRS document is named \`docs/spec/{NN}.{scope-slug}.srs.md\`, where \`{NN}\` is a two-digit ordering number. The full rules are in \`docs/rule/${BUNDLED_SRS_RULES_FILENAME}\` §5.2.`,
+    "2. Allocate `{NN}` as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`, the next `02`. Do not number by tens.",
+    "3. Never reuse a number another scope document holds, and never renumber an existing document.",
+    "4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.",
+    "",
     "Agents MUST NOT:",
     "- Implement behavior that is not covered by an SRS requirement.",
     "- Create an alternate requirements source outside `docs/spec/`.",
@@ -422,7 +507,7 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "7. When implemented runtime CLI or MCP repair tooling is available, do not hand-edit Requirement IDs. If tooling is unavailable and the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.",
     "8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json`, and `speckiwi links check --json` or MCP equivalents. Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.",
     "",
-    "Completed Work Log is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
+    "The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
     "",
     AGENT_INSTRUCTION_END_MARKER
   ].join("\n");

@@ -1,6 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseScopeOption, renderEmptyScopeTemplate, type ScopeTemplateInfo } from "../bootstrap/templates.js";
+import {
+  isScopeDocumentPath,
+  nextScopeDocumentNumber,
+  parseScopeOption,
+  renderEmptyScopeTemplate,
+  scopeDocumentName,
+  type ScopeTemplateInfo
+} from "../bootstrap/templates.js";
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
@@ -14,30 +21,9 @@ import type {
 
 export type { ScaffoldScopeInput, ScaffoldScopeOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 // @req FR-NODE-065
-
-/**
- * FR-NODE-065 — derive the numbered file name for a new scope document. Scans the discovered
- * .srs.md documents for their leading numeric prefix and returns the next decade above the
- * highest one (10 when none exist), so a fresh scope never reuses an existing document number.
- * The slug comes from the template info, mirroring the init scaffold's naming.
- * @req FR-NODE-065
- */
-function nextScopeDocument(existing: readonly string[], slugDocument: string): string {
-  let maxDecade = 0;
-  for (const relativePath of existing) {
-    const fileName = relativePath.slice(relativePath.lastIndexOf("/") + 1);
-    const match = /^(\d+)\./.exec(fileName);
-    if (!match) continue;
-    const value = Number.parseInt(match[1] ?? "0", 10);
-    if (Number.isFinite(value) && value > maxDecade) maxDecade = value;
-  }
-  const nextNumber = Math.floor(maxDecade / 10) * 10 + 10;
-  // slugDocument is `10.<slug>.srs.md` from parseScopeOption; swap its leading number.
-  const slug = slugDocument.replace(/^\d+\./, "");
-  return `${nextNumber}.${slug}`;
-}
 
 /**
  * FR-NODE-065 — render an index row for the new scope. Both the §2 SRS Documents and the §4
@@ -86,6 +72,18 @@ export async function scaffoldScope(
   root: ProjectRoot,
   input: ScaffoldScopeInput
 ): Promise<MutationResult<ScaffoldScopeOutput>> {
+  // @req FR-NODE-088 AC-6 — allocation reads the existing documents and then writes a new one, so
+  // without the SRS mutation lock two concurrent calls both read the same highest number and both
+  // claim it. The number the requirement says can never collide is exactly what collides.
+  return withSrsMutationLock(root, { operation: "scaffold_scope", ignoreLock: input.ignoreLock }, () =>
+    scaffoldScopeUnlocked(root, input)
+  );
+}
+
+async function scaffoldScopeUnlocked(
+  root: ProjectRoot,
+  input: ScaffoldScopeInput
+): Promise<MutationResult<ScaffoldScopeOutput>> {
   const dryRun = input.apply !== true;
   const workspace = await parseWorkspace(root);
   const indexFile: TextFile | undefined = workspace.files[0];
@@ -103,8 +101,13 @@ export async function scaffoldScope(
     return mutationFail("MUTATION_DENIED", `Scope name "${scope.name}" or prefix "${scope.prefix}" already registered`);
   }
 
-  const existingDocuments = workspace.files.map((file) => file.relativePath).filter((rel) => rel.endsWith(".srs.md"));
-  const document = nextScopeDocument(existingDocuments, scope.document);
+  // FR-NODE-088 AC-2/AC-6 — one above the highest number already on disk, so the new document never
+  // claims a number an existing document uses and never skips ahead by a decade.
+  // Only scope documents drive allocation. The tool's own sidecars sit in a reserved high band
+  // (90.appendix.md, 91.completed-work-log.md); counting them would push a project's second scope
+  // document to 92. A consumer sidecar that does collide is reported by SRS-W070 instead.
+  const existingDocuments = workspace.files.map((file) => file.relativePath).filter(isScopeDocumentPath);
+  const document = scopeDocumentName(scope.slug, nextScopeDocumentNumber(existingDocuments));
   const documentScope: ScopeTemplateInfo = { name: scope.name, prefix: scope.prefix, document };
   const filePreview = renderEmptyScopeTemplate(documentScope);
   const srsDocumentsRow = renderScopeRow(documentScope, document);
@@ -120,7 +123,10 @@ export async function scaffoldScope(
   }
 
   const newDocumentPath = path.join(path.dirname(indexFile.path), document);
-  await writeFile(newDocumentPath, `${filePreview}${indexFile.newline}`, "utf8");
+  // The template is joined with LF; write it in the workspace's own line ending so the new document
+  // does not arrive with a body that disagrees with every file beside it.
+  const body = filePreview.split("\n").join(indexFile.newline);
+  await writeFile(newDocumentPath, `${body}${indexFile.newline}`, "utf8");
 
   // Both rows insert into the same index file. The patch planner applies operations in
   // descending line order, so the two insertions do not shift each other's target line.

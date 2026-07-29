@@ -96,10 +96,10 @@ The whole operation runs under an SRS mutation lock and is **idempotent** — ex
 
 | # | Step | Result |
 | --- | --- | --- |
-| 1 | **SRS scaffold** | `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log center), `docs/spec/90.appendix.md`, and an empty scope document `docs/spec/<NN>.<scope>.srs.md` derived from `--scope`. |
+| 1 | **SRS scaffold** | `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log center), `docs/spec/90.appendix.md`, and, only when the project has no scope document yet, an empty scope document `docs/spec/01.<scope>.srs.md` derived from `--scope`. A project that already has scope documents gets none, and its documents are registered under their own scope names. |
 | 2 | **Step state** | `docs/spec/steps/state.md` with a `Mode: wait` metadata block and an empty step-state table. |
-| 3 | **Authoring rules** | `docs/rule/SRS-MD-Rules-v1.0.0.md` and `docs/rule/SDS-MD-Rules-v1.0.0.md` (the bundled SRS-MD and SDS-MD authoring rules). |
-| 4 | **Agent instructions** | Inserts/updates the *SpecKiwi SRS workflow* block in both `AGENTS.md` and `CLAUDE.md`. An older version of the block is replaced in place; a current block is left untouched. |
+| 3 | **Authoring rules** | `docs/rule/SRS-MD-Rules-v2.5.0.md` and `docs/rule/SDS-MD-Rules-v2.5.0.md` (the bundled SRS-MD and SDS-MD authoring rules). |
+| 4 | **Agent instructions** | Inserts/updates the *SpecKiwi SRS workflow* block in both `AGENTS.md` and `CLAUDE.md`. A block whose content differs from the shipped text is replaced in place, whatever version it declares; a block that already matches is left untouched. |
 | 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; a Git `.git/hooks/pre-commit` gate that delegates to the runner; `.claude/settings.json` (PostToolUse trace hook); `.codex/hooks.json` (apply_patch trace hook). Pre-existing hooks are never clobbered — they are left as-is with a warning. |
 | 6 | **MCP registration** | Registers the SpecKiwi stdio MCP server in `.mcp.json` (idempotent; `skipped` if already present). Disable with `--no-mcp`. |
 | 7 | **Skill provisioning** | Installs the bundled Kiwi skills for **Claude** (`.claude/skills`) and **Codex** (`.agents/skills`), then prunes orphaned `kiwi-*` skill directories that SpecKiwi previously managed. Disable with `--no-skills`. |
@@ -120,11 +120,11 @@ CLAUDE.md                     # SpecKiwi SRS workflow block
 docs/
 ├─ .kiwi/hooks/               # bundled hook runners + trace output
 ├─ rule/
-│  ├─ SRS-MD-Rules-v1.0.0.md
-│  └─ SDS-MD-Rules-v1.0.0.md
+│  ├─ SRS-MD-Rules-v2.5.0.md
+│  └─ SDS-MD-Rules-v2.5.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
-   ├─ 10.app.srs.md           # your first scope document
+   ├─ 01.app.srs.md           # your first scope document
    ├─ 90.appendix.md
    └─ steps/state.md
 ```
@@ -136,12 +136,12 @@ docs/
 | Option | Description |
 | --- | --- |
 | `--target <target>` | Initial Active Target to register (e.g. `v0.1.0`). |
-| `--scope "Name:PREFIX"` | Initial scope; creates the scope document and Scope Map row (e.g. `"App:APP"` → `FR-APP-001`). |
+| `--scope "Name:PREFIX"` | Initial scope, used only when the project has no scope document yet (e.g. `"App:APP"` → `FR-APP-001`). To add a scope to a project that already has documents, use `speckiwi scaffold-scope`, which allocates the next document number and registers both index rows. |
 | `--no-mcp` | Skip registering the MCP server in `.mcp.json`. |
 | `--no-skills` | Skip installing the bundled Kiwi skills (and the orphan prune). |
 | `-g, --global` | Also install/update the bundled Kiwi skills into each **present** agent's global skills dir (Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`); an agent whose home directory is absent is skipped with a warning. The project-scope install still runs, and no orphan prune is performed at global scope (the shared home may hold skills from other projects). |
 | `--dry-run` | Preview every step (populates `created`/… ) without writing anything to disk. |
-| `--force` | Overwrite existing scaffolded files instead of skipping them. |
+| `--force` | Overwrite existing scaffolded files instead of skipping them. It rewrites `00.index.md`, so authored Target Map and Scope Map rows are lost; the bundled rules documents are refreshed without it. |
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
 | `--json` | Emit the result envelope as JSON. |
 
@@ -482,8 +482,8 @@ The npm package distributes:
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v1.0.0.md
-docs/rule/SDS-MD-Rules-v1.0.0.md
+docs/rule/SRS-MD-Rules-v2.5.0.md
+docs/rule/SDS-MD-Rules-v2.5.0.md
 skills/codex/
 skills/claude/
 skills/etc/
@@ -598,9 +598,9 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 | # | 단계 | 결과 |
 | --- | --- | --- |
-| 1 | **SRS scaffold** | `docs/spec/00.index.md`(Target Map · Scope Map · Completed Work Log의 중심), `docs/spec/90.appendix.md`, 그리고 `--scope`에서 파생된 빈 scope 문서 `docs/spec/<NN>.<scope>.srs.md`. |
+| 1 | **SRS scaffold** | `docs/spec/00.index.md`(Target Map · Scope Map · Completed Work Log의 중심), `docs/spec/90.appendix.md`, 그리고 프로젝트에 scope 문서가 하나도 없을 때에 한해 `--scope`에서 파생된 빈 scope 문서 `docs/spec/01.<scope>.srs.md`. 이미 scope 문서가 있으면 새로 만들지 않고 기존 문서를 각자의 scope 이름으로 등록한다. |
 | 2 | **Step state** | `docs/spec/steps/state.md` — `Mode: wait` 메타 블록과 빈 step-state 표. |
-| 3 | **저작 규칙** | `docs/rule/SRS-MD-Rules-v1.0.0.md`와 `docs/rule/SDS-MD-Rules-v1.0.0.md` (번들된 SRS-MD · SDS-MD 저작 규칙). |
+| 3 | **저작 규칙** | `docs/rule/SRS-MD-Rules-v2.5.0.md`와 `docs/rule/SDS-MD-Rules-v2.5.0.md` (번들된 SRS-MD · SDS-MD 저작 규칙). |
 | 4 | **에이전트 지시문** | `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 삽입/갱신. 구 버전 블록은 제자리에서 교체되고, 최신 블록은 그대로 둡니다. |
 | 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; 러너에 위임하는 Git `.git/hooks/pre-commit` 게이트; `.claude/settings.json`(PostToolUse trace hook); `.codex/hooks.json`(apply_patch trace hook). 기존 hook은 절대 덮어쓰지 않고 경고와 함께 유지합니다. |
 | 6 | **MCP 등록** | SpecKiwi stdio MCP 서버를 `.mcp.json`에 등록(멱등; 이미 있으면 `skipped`). `--no-mcp`로 비활성화. |
@@ -622,11 +622,11 @@ CLAUDE.md                     # SpecKiwi SRS workflow 블록
 docs/
 ├─ .kiwi/hooks/               # 번들 hook 러너 + trace 출력
 ├─ rule/
-│  ├─ SRS-MD-Rules-v1.0.0.md
-│  └─ SDS-MD-Rules-v1.0.0.md
+│  ├─ SRS-MD-Rules-v2.5.0.md
+│  └─ SDS-MD-Rules-v2.5.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
-   ├─ 10.app.srs.md           # 첫 scope 문서
+   ├─ 01.app.srs.md           # 첫 scope 문서
    ├─ 90.appendix.md
    └─ steps/state.md
 ```
@@ -638,7 +638,7 @@ docs/
 | 옵션 | 설명 |
 | --- | --- |
 | `--target <target>` | 등록할 초기 Active Target (예: `v0.1.0`). |
-| `--scope "Name:PREFIX"` | 초기 scope; scope 문서와 Scope Map 행을 생성 (예: `"App:APP"` → `FR-APP-001`). |
+| `--scope "Name:PREFIX"` | 초기 scope. 프로젝트에 scope 문서가 없을 때만 사용된다 (예: `"App:APP"` → `FR-APP-001`). 이미 문서가 있는 프로젝트에 scope 를 추가하려면 `speckiwi scaffold-scope` 를 쓴다 — 다음 문서 번호를 배정하고 인덱스 두 행을 함께 등록한다. |
 | `--no-mcp` | `.mcp.json`에 MCP 서버 등록을 건너뜁니다. |
 | `--no-skills` | 번들 Kiwi skills 설치(및 orphan prune)를 건너뜁니다. |
 | `-g, --global` | 번들 Kiwi skills를 **설치된** 각 에이전트의 전역 skills 디렉터리(Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`)에도 설치/갱신합니다. 홈 디렉터리가 없는 에이전트는 경고와 함께 건너뜁니다. 프로젝트 스코프 설치는 그대로 수행하며, 전역에서는 orphan prune을 하지 않습니다(공유 홈에는 다른 프로젝트의 skills가 있을 수 있음). |
@@ -984,8 +984,8 @@ npm 패키지가 배포하는 주요 항목:
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v1.0.0.md
-docs/rule/SDS-MD-Rules-v1.0.0.md
+docs/rule/SRS-MD-Rules-v2.5.0.md
+docs/rule/SDS-MD-Rules-v2.5.0.md
 skills/codex/
 skills/claude/
 skills/etc/

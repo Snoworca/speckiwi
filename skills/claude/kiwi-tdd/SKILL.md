@@ -39,7 +39,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 
 ### 1.2 출력
 
-- `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v1.0.0 준수)
+- `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v2.5.0 준수)
 - red→green 테스트 + 구현 코드
 - `docs/spec/steps/<task>/<task>.srs.md` — 합성된 step SRS
 - body scope로 승격된 요구 블록(증거 포함)
@@ -69,7 +69,7 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 ### 2.3 Phase 2 — SDS 저작 (체크리스트 의무)
 
-`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v1.0.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
+`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.5.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
 
 1. **skip-gate 판정 먼저**: trade-off 없는 자명한(trivial) 변경인가? 그렇다면 SDS를 생략(skip)하고 intent.md에 EARS 스텁(SDS-AC 1~3문장)만 기록 후 Phase 3으로.
 2. 필수 헤딩 7개 존재: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.

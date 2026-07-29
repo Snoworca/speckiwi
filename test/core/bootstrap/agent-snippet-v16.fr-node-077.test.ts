@@ -52,7 +52,7 @@ describe("FR-NODE-077 agent instruction snippet v1.6", () => {
 
   it("FR-NODE-077 AC-3: references the installed SDS rules path and keeps the v1.5 tdd content", () => {
     const snippet = renderAgentInstructionSnippet();
-    expect(snippet).toContain("docs/rule/SDS-MD-Rules-v1.0.0.md");
+    expect(snippet).toContain("docs/rule/SDS-MD-Rules-v2.5.0.md");
     // v1.5 tdd content retained: cycle, gates, sdd fallback, boundary rule.
     expect(snippet).toContain("design.md");
     expect(snippet).toContain("EARS");

@@ -592,7 +592,7 @@ async function copyPackageTo(sourcePackage: SkillPackage, destination: string, i
 }
 
 async function syncSharedMirror(sourceRoot: string, destinationRoot: string): Promise<void> {
-  const desired = await collectDesiredSharedResources(destinationRoot);
+  const desired = await collectDesiredSharedResources(sourceRoot, destinationRoot);
   if (desired.size === 0) return;
   const sharedSourceRoot = path.join(sourceRoot, "_shared", "kiwi");
   const sharedMirrorRoot = path.join(destinationRoot, "_shared", "kiwi");
@@ -610,7 +610,7 @@ async function syncSharedMirror(sourceRoot: string, destinationRoot: string): Pr
   await pruneSharedMirror(sharedMirrorRoot, desired);
 }
 
-async function collectDesiredSharedResources(destinationRoot: string): Promise<Set<string>> {
+async function collectDesiredSharedResources(sourceRoot: string, destinationRoot: string): Promise<Set<string>> {
   const desired = new Set<string>();
   const entries = await readdir(destinationRoot, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
@@ -619,7 +619,33 @@ async function collectDesiredSharedResources(destinationRoot: string): Promise<S
     if (!await pathExists(path.join(skillDir, "SKILL.md"))) continue;
     await collectSkillSharedReferences(destinationRoot, skillDir, desired);
   }
+  // @req FR-NODE-090 — a skill the workspace excludes from the mirror is never in the destination,
+  // so its references are read from the source tree instead. Without this the prune deletes the
+  // contracts an excluded skill depends on, and it deletes them on every install.
+  for (const name of await readMirrorExclusions(destinationRoot)) {
+    if (!SKILL_NAME_PATTERN.test(name)) continue;
+    const skillDir = path.join(sourceRoot, name);
+    if (!await pathExists(path.join(skillDir, "SKILL.md"))) continue;
+    await collectSkillSharedReferences(sourceRoot, skillDir, desired);
+  }
   return desired;
+}
+
+/**
+ * @req FR-NODE-090 — the workspace-committed manifest naming skills that are intentionally not
+ * mirrored. An absent or unparseable manifest yields an empty set, so a workspace that never
+ * excluded anything prunes exactly as it did before.
+ */
+async function readMirrorExclusions(destinationRoot: string): Promise<Set<string>> {
+  const raw = await readFile(path.join(destinationRoot, ".speckiwi-mirror-exclusions.json"), "utf8").catch(() => undefined);
+  if (raw === undefined) return new Set();
+  try {
+    const parsed = JSON.parse(raw) as { excluded?: unknown };
+    if (!Array.isArray(parsed.excluded)) return new Set();
+    return new Set(parsed.excluded.filter((name): name is string => typeof name === "string"));
+  } catch {
+    return new Set();
+  }
 }
 
 async function collectSkillSharedReferences(destinationRoot: string, skillDir: string, desired: Set<string>): Promise<void> {

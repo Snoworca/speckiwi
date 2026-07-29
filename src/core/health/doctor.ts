@@ -197,7 +197,7 @@ async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck>
 // @req FR-NODE-082
 /**
  * SDS authoring rules installation: the tdd work-mode snippet cites
- * docs/rule/SDS-MD-Rules-v1.0.0.md, so its absence warns with the init remediation.
+ * docs/rule/SDS-MD-Rules-v2.5.0.md, so its absence warns with the init remediation.
  * Existence-only by design — no index coupling and no version-drift tracking.
  */
 async function checkSdsRulesPresence(rootPath: string): Promise<DoctorCheck> {

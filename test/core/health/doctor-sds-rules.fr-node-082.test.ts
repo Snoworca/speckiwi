@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { diagnoseHealth } from "../../../src/core/health/doctor.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
-import { renderIndexTemplate } from "../../../src/core/bootstrap/templates.js";
+import { BUNDLED_SDS_RULES_FILENAME, renderIndexTemplate } from "../../../src/core/bootstrap/templates.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 // FR-NODE-082 — health doctor checks SDS authoring rules installation.
@@ -14,11 +14,11 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // document is missing from the workspace).
 //
 // Contract under test (docs/spec/50.nodejs-implementation.srs.md FR-NODE-082):
-//   - AC-1: missing docs/rule/SDS-MD-Rules-v1.0.0.md → warn with an init remediation.
+//   - AC-1: the bundled SDS rules document missing from docs/rule → warn with an init remediation.
 //   - AC-2: present → ok.
 //   - AC-3: existence-only — the index template gains no SDS rules row.
 
-const SDS_RULES_REL = path.join("docs", "rule", "SDS-MD-Rules-v1.0.0.md");
+const SDS_RULES_REL = path.join("docs", "rule", BUNDLED_SDS_RULES_FILENAME);
 
 async function healthChecks(root: string) {
   const workspace = await parseWorkspace({ root });

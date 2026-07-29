@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { diagnostic, splitDiagnostics, summarizeDiagnostics } from "../../src/core/diagnostic.js";
+import { BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
 import { DIAGNOSTIC_DEFINITIONS, getDiagnosticDefinition } from "../../src/core/diagnostic-registry.js";
 
 async function collectTypeScriptFiles(dir: string): Promise<string[]> {
@@ -47,7 +48,7 @@ describe("diagnostic registry", () => {
   });
 
   it("keeps the rules document diagnostic table aligned to the registry", async () => {
-    const rules = await readFile("docs/rule/SRS-MD-Rules-v1.0.0.md", "utf8");
+    const rules = await readFile(`docs/rule/${BUNDLED_SRS_RULES_FILENAME}`, "utf8");
     const rows = parseRulesDocDiagnosticRows(rules).sort((a, b) => a.code.localeCompare(b.code));
     const registry = DIAGNOSTIC_DEFINITIONS.map(({ code, severity, title }) => ({ code, severity, title })).sort((a, b) => a.code.localeCompare(b.code));
     expect(rows).toEqual(registry);

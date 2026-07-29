@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { initProject } from "../../../src/core/bootstrap/init-project.js";
-import { BUNDLED_RULES_VERSION, renderIndexTemplate } from "../../../src/core/bootstrap/templates.js";
+import { BUNDLED_RULES_VERSION, BUNDLED_SDS_RULES_FILENAME, renderIndexTemplate } from "../../../src/core/bootstrap/templates.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 
 // FR-NODE-085 — init refreshes the bundled rules documents by default, without the force flag.
@@ -24,7 +24,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 
 const RULES_DIR = ["docs", "rule"] as const;
 const SRS_RULES_NAME = `SRS-MD-Rules-v${BUNDLED_RULES_VERSION}.md`;
-const SDS_RULES_NAME = "SDS-MD-Rules-v1.0.0.md";
+const SDS_RULES_NAME = BUNDLED_SDS_RULES_FILENAME;
 
 async function emptyRepo(): Promise<string> {
   const root = await mkdtemp(path.join(tmpdir(), "speckiwi-init-rules-"));

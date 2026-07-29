@@ -193,7 +193,12 @@ describe("FR-NODE-086 AC-2 — the translation preserves the normative content t
     const rules = await readInstalledSrsRules(rootPath);
 
     // The two regexes the parsing contract is stated in, plus the two shape templates above them.
-    expect(rules).toContain("^###\\s+([A-Z]{2,5}-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\\s+—\\s+(.+)$");
+    // FR-NODE-087 replaced the heading expression's open `[A-Z]{2,5}` prefix run with the closed
+    // type set the runtime actually matches and gave it the marker slot §30.1/§30.2 write, so the
+    // document now states the grammar a consumer's heading is really read by.
+    expect(rules).toContain(
+      "^###\\s+(~~)?((?:FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\\s+—\\s+(.+?)(~~)?\\s*(?:\\[(DISCARDED|DRAFT)(?:[^\\]]*)\\])?\\s*$"
+    );
     expect(rules).toContain("^(FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4}$");
     expect(rules).toContain("### {RequirementID} — {Title}");
     expect(rules).toContain("{PREFIX}-{SCOPE}-{NNN}");

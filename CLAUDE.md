@@ -4,7 +4,7 @@ This repository stores requirements as Markdown SRS documents under `docs/spec/`
 
 Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback when MCP is unavailable. Never bypass SRS-MD rules, create an alternate requirements source of truth, or edit generated JSON as canonical requirements.
 
-For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v3.0.0.md](docs/rule/SRS-MD-Rules-v3.0.0.md).
+For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v2.5.0.md](docs/rule/SRS-MD-Rules-v2.5.0.md).
 
 ## Current Project Target
 
@@ -14,7 +14,7 @@ The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics
 
 When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
 
-# SpecKiwi SRS workflow v1.7
+# SpecKiwi SRS workflow v1.9
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
@@ -37,10 +37,16 @@ TDD principle:
 Work-mode and the TDD First (tdd) workflow:
 1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.
 2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.
-3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
+3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v2.5.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.
 4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.
 5. In tdd mode the rule "do not implement behavior not covered by an SRS requirement" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.
 6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.
+
+Scope SRS document naming:
+1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.5.0.md` §5.2.
+2. Allocate `{NN}` as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`, the next `02`. Do not number by tens.
+3. Never reuse a number another scope document holds, and never renumber an existing document.
+4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.
 
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement.

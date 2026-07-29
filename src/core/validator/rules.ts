@@ -26,6 +26,33 @@ function splitCsv(value: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * @req FR-PARSE-034 — group scope documents by the ordering number their file name leads with.
+ * The number is compared by value, so `01.` and `1.` are one position rather than two, and the
+ * returned file names are the bare names a reader sees in docs/spec. Documents with no leading
+ * number carry no ordering position and are left out.
+ */
+function scopeDocumentsByLeadingNumber(relativePaths: Iterable<string>): Map<number, string[]> {
+  const byNumber = new Map<number, string[]>();
+  for (const relativePath of relativePaths) {
+    // Only files that sit directly in docs/spec hold an ordering position, so two files with the same
+    // name in different directories are not a collision (FR-NODE-088 AC-6). The caller decides which
+    // of those files to consider; filtering to .srs.md here would silently drop the numbered sidecars
+    // it deliberately passes in.
+    if (!/^docs\/spec\/[^/]+$/.test(relativePath.replace(/\\/g, "/"))) continue;
+    const fileName = relativePath.slice(relativePath.lastIndexOf("/") + 1);
+    const match = /^(\d+)\./.exec(fileName);
+    if (!match) continue;
+    const value = Number.parseInt(match[1] ?? "", 10);
+    if (!Number.isFinite(value)) continue;
+    const bucket = byNumber.get(value);
+    if (bucket) bucket.push(fileName);
+    else byNumber.set(value, [fileName]);
+  }
+  for (const documents of byNumber.values()) documents.sort();
+  return byNumber;
+}
+
 export function normalizeScopeDocument(document: string): string {
   const withoutAnchor = document.trim().replace(/#.*$/, "").replace(/\\/g, "/");
   if (!withoutAnchor) return "";
@@ -355,6 +382,26 @@ export function registerDefaultRules(): void {
       if (!registeredScopeDocuments.has(filePath)) {
         diagnostics.push(diagnostic("SRS-W018", "warning", `Scope SRS document is not registered in Scope Map: ${filePath}`, indexLocation));
       }
+    }
+
+    // FR-PARSE-034 — two scope documents on one leading number make the ordering ambiguous and are
+    // the observable symptom of an allocation that stopped allocating. Reported once per colliding
+    // number, as a warning, so a project already in that state can still validate while it is repaired.
+    // Scope documents only. A numbered sidecar in docs/spec — a consumer's own glossary, or the
+    // legacy 05.completed-work.md — also occupies an ordering position, but discovery reads a fixed
+    // sidecar set rather than the directory, so the validator cannot see an arbitrary one. Widening
+    // this needs the parser to record the directory listing; until then the check does not claim it.
+    for (const [number, documents] of scopeDocumentsByLeadingNumber(discoveredScopeDocuments)) {
+      if (documents.length < 2) continue;
+      diagnostics.push(
+        diagnostic(
+          "SRS-W070",
+          "warning",
+          `Scope SRS documents share the leading number ${number}: ${documents.join(", ")}`,
+          indexLocation,
+          { number, documents }
+        )
+      );
     }
 
     if (workspace.index.statusSummary) {

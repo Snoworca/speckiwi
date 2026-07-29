@@ -1,4 +1,4 @@
-# SDS-MD Authoring Rules v1.0.0
+# SDS-MD Authoring Rules v2.5.0
 
 | Field | Value |
 |---|---|

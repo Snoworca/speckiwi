@@ -45,24 +45,22 @@ function statusChangeLabel(status: RequirementStatus): string {
 }
 
 /**
- * SRS-MD-Rules v1.1.0 §30.1 — `discarded` 전이 시 heading 에 마커 자동 적용,
- * 그 외 Status 로 전이 시 기존 [DISCARDED] / [DRAFT] 마커 자동 제거 (부활).
+ * SRS-MD-Rules §30.1 / §30.2 — a transition to `discarded` applies the strikethrough plus
+ * [DISCARDED] heading marker, with the successor slot derived from the rows that point AT this
+ * requirement. A transition to any other status removes a [DISCARDED] marker (revival).
  *
- * §30.2 Draft 마커는 Status enum 이 아닌 Stability field 와 연결되어야 자연스러우나,
- * speckiwi 현재 `update_stability` mutation 미제공 — 본 PR-B 의 update-status 트리거 범위 밖.
- * §30.2 Draft 마커 적용은 future PR (updateStability 또는 update_stability 신설 후).
- * 단 본 update-status 가 부활 (discarded → 그 외) 처리 시 기존 [DRAFT] 마커 가 잔존하면
- * 함께 제거하여 fail-safe (수기 [DRAFT] 정리도 포함).
- *
- * 본 단계 (C2b-β) 는 successor (`→ see Y +N`) 미반영 — successor 추출/적용은
- * 후속 단계 (trace-search + marker inner sub-parser) 에서 추가.
+ * A status transition says nothing about stability, so a requirement whose Stability is still
+ * draft keeps its [DRAFT — pending decision] marker. Rewriting the heading bare would delete it,
+ * and §30.2 offers no way back: update_stability writes that marker only on a transition INTO
+ * draft, so the heading and the Stability row would disagree permanently.
  */
 function buildHeadingMarkerOp(
   file: { lines: readonly string[] },
   headingLine: number,
   nextStatus: RequirementStatus,
   records: readonly RequirementRecord[],
-  targetId: string
+  targetId: string,
+  currentStability: string | undefined
 ): PatchOperation | undefined {
   const original = file.lines[headingLine - 1];
   if (original === undefined) return undefined;
@@ -81,6 +79,15 @@ function buildHeadingMarkerOp(
       marker: "DISCARDED",
       ...(successorSlot ?? {})
     });
+  } else if (currentStability === "draft") {
+    // A status transition says nothing about stability. Rewriting the heading bare here would delete
+    // the [DRAFT — pending decision] marker of a requirement that is still draft, leaving the marker
+    // and the Stability row disagreeing — and §30.2 gives no way to get the marker back, because
+    // update_stability only writes it on a transition INTO draft.
+    const successorSlot = deriveSuccessorSlot(
+      findIncomingTraceRows(records, { type: "Requirement", relation: "conflicts_with", reference: targetId })
+    );
+    replacement = renderHeadingLine({ id, title, marker: "DRAFT", ...(successorSlot ?? {}) });
   } else {
     replacement = renderHeadingLine({ id, title });
   }
@@ -144,7 +151,8 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     loaded.record.headingLine,
     input.status,
     loaded.records,
-    input.id
+    input.id,
+    loaded.record.stability
   );
   if (headingOp) operations.push(headingOp);
   operations.push({ type: "replaceLine", line: statusLine, original, replacement: `| Status | ${input.status} |` });

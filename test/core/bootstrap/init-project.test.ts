@@ -7,6 +7,8 @@ import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
   AGENT_INSTRUCTION_VERSION,
+  BUNDLED_RULES_VERSION,
+  BUNDLED_SRS_RULES_FILENAME,
   LEGACY_KOREAN_AGENT_END_MARKER,
   LEGACY_KOREAN_AGENT_HEADING_PREFIX
 } from "../../../src/core/bootstrap/templates.js";
@@ -43,8 +45,8 @@ describe("project init bootstrap", () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.value.created).toContain(path.join(rootPath, "AGENTS.md"));
     expect(result.value.created).toContain(path.join(rootPath, "CLAUDE.md"));
-    const rules = await readFile(path.join(rootPath, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), "utf8");
-    expect(rules).toContain("SRS-MD Authoring Rules v1.0.0");
+    const rules = await readFile(path.join(rootPath, "docs", "rule", BUNDLED_SRS_RULES_FILENAME), "utf8");
+    expect(rules).toContain(`SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}`);
     expect(rules).toContain("| Document ID | SRS-MD-RULES |");
     const index = await readFile(path.join(rootPath, "docs", "spec", "00.index.md"), "utf8");
     expect(index).toContain("Target Map");
@@ -213,8 +215,10 @@ describe("project init bootstrap", () => {
     expect(index).toContain("| Active Target |  |");
     expect(index).toContain("| v2.0.0 | release | planned | Initial target |");
     expect(index).toContain("| Date | Target | Scope | Requirement IDs | Summary |");
-    expect(index).toContain("| Payments | [10.payments.srs.md](./10.payments.srs.md) | PAY | Payments |");
-    const scope = await readFile(path.join(rootPath, "docs", "spec", "10.payments.srs.md"), "utf8");
+    // FR-NODE-088 AC-1 — the first scope document of a project is numbered 01, and the index row
+    // names the document that was actually written.
+    expect(index).toContain("| Payments | [01.payments.srs.md](./01.payments.srs.md) | PAY | Payments |");
+    const scope = await readFile(path.join(rootPath, "docs", "spec", "01.payments.srs.md"), "utf8");
     expect(scope).toContain("| Scope | PAY |");
   });
 });

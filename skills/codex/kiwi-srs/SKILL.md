@@ -435,12 +435,10 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
 1. Codex clarification gate 분해 (단일 호출):
    - Q1: "새 scope 이름은? (제안: {proposed_scope})"
    - Q2: "prefix는? (제안: {proposed_prefix})"
-   - Q3: "ordering NN? (인덱스 분석 후 제안)"
    - Q4 (§0.10 위반 시): type prefix 충돌 → 대안 선택
-2. Use an approved SpecKiwi MCP bootstrap path to create `docs/spec/{NN}.{slug}.srs.md` from the kiwi-srs-from-code §6.2 template.
-3. Use an approved SpecKiwi MCP bootstrap path to update `docs/spec/00.index.md` §2 SRS Documents + §4 Scope Map; if no supported MCP bootstrap tool exists, halt with remediation guidance instead of treating CLI or raw Markdown edits as normal operation.
-4. `set_active_target(TARGET)` — 활성이 다를 때
-5. `validate_spec` — 구조 검증
+2. `speckiwi scaffold-scope {name}:{PREFIX} --apply` — 문서 번호를 배정(이미 존재하는 최고 번호 + 1, 프로젝트의 첫 문서는 `01`)하고 파일 생성과 §2 SRS Documents·§4 Scope Map 등록을 한 번에 수행한다. **번호를 직접 고르지 않는다.** scope 생성은 현재 MCP 도구가 없으므로 이 CLI 명령이 정상 경로다.
+3. `set_active_target(TARGET)` — 활성이 다를 때
+4. `validate_spec` — 구조 검증
 
 ---
 

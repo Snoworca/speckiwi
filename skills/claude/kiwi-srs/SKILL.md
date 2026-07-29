@@ -433,12 +433,10 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
 1. AskUserQuestion 분해 (단일 호출):
    - Q1: "새 scope 이름은? (제안: {proposed_scope})"
    - Q2: "prefix는? (제안: {proposed_prefix})"
-   - Q3: "ordering NN? (인덱스 분석 후 제안)"
    - Q4 (§0.10 위반 시): type prefix 충돌 → 대안 선택
-2. Write `docs/spec/{NN}.{slug}.srs.md` — kiwi-srs-from-code §6.2 템플릿
-3. Edit `docs/spec/00.index.md` §2 SRS Documents + §4 Scope Map
-4. `set_active_target(TARGET)` — 활성이 다를 때
-5. `validate_spec` — 구조 검증
+2. `speckiwi scaffold-scope {name}:{PREFIX} --apply` — 문서 번호를 배정(기존 최고 번호 + 1, 첫 문서는 `01`)하고 파일 생성과 §2 SRS Documents·§4 Scope Map 등록을 한 번에 수행한다. 번호를 직접 고르지 않는다.
+3. `set_active_target(TARGET)` — 활성이 다를 때
+4. `validate_spec` — 구조 검증
 
 ---
 
@@ -559,7 +557,7 @@ speckiwi 보장 사항:
     { "tool": "add_requirement", "args": {...}, "result_id": "FR-TODO-004", "ok": true }
   ],
   "scope_doc_edits": [
-    { "file": "docs/spec/10.todo-core.srs.md", "section": "§4 Requirements", "op": "append" }
+    { "file": "docs/spec/01.todo-core.srs.md", "section": "§4 Requirements", "op": "append" }
   ],
   "validate_spec_result": { "ok": true, "diagnostics": [] },
   "change_notes_diff": "- 2026-05-13 update: FR-TODO-004 supersedes FR-TODO-001 ...",
