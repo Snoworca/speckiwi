@@ -38,14 +38,18 @@ describe("FR-NODE-076 init installs the bundled SDS-MD rules document", () => {
     expect(rules).toContain("design.md");
   });
 
-  it("FR-NODE-076 AC-2: writeIfMissing keeps a pre-existing file, and dryRun writes nothing", async () => {
-    // Pre-existing file is never overwritten.
+  it("FR-NODE-076 AC-2: a pre-existing file is refreshed to the bundled content, and dryRun writes nothing", async () => {
+    // FR-NODE-085 AC-1 supersedes the original "never overwrite a pre-existing file" clause of this
+    // AC: the rules documents are tool-owned, so a plain init restores the bundled content over a
+    // locally modified copy. What survives from FR-NODE-076 AC-2 is the dryRun half below.
     const custom = "# My local SDS rules\n";
     await mkdir(path.join(root, "docs", "rule"), { recursive: true });
     await writeFile(path.join(root, SDS_RULES_REL), custom, "utf8");
     const result = await initProject(await resolveProjectRoot(root), {});
     expect(result.ok).toBe(true);
-    expect(await readFile(path.join(root, SDS_RULES_REL), "utf8")).toBe(custom);
+    const refreshed = await readFile(path.join(root, SDS_RULES_REL), "utf8");
+    expect(refreshed).not.toBe(custom);
+    expect(refreshed).toContain("SDS-MD Authoring Rules v1.0.0");
 
     // dryRun on an empty repo writes nothing.
     const dryRoot = await mkdtemp(path.join(tmpdir(), "speckiwi-fr-node-076-dry-"));

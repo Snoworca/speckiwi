@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
@@ -7,12 +7,16 @@ import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_VERSION,
+  BUNDLED_SDS_RULES_FILENAME,
+  BUNDLED_SRS_RULES_FILENAME,
+  RULES_DOCUMENT_FILENAME_PATTERN,
   loadBundledRulesDocument,
   loadBundledSdsRulesDocument,
   parseScopeOption,
   renderAgentInstructionSnippet,
   renderAppendixTemplate,
   renderEmptyScopeTemplate,
+  renderIndexRulesRow,
   renderIndexTemplate
 } from "./templates.js";
 import { installSkill, planSkillInstall, pruneOrphanKiwiSkills } from "../skills/install-skill.js";
@@ -244,8 +248,10 @@ async function installCodexHooks(root: string, output: InitProjectOutput, warnin
 }
 
 async function writeIfMissing(filePath: string, content: string, output: InitProjectOutput, force = false, dryRun = false): Promise<void> {
+  let existed = false;
   try {
     await readFile(filePath, "utf8");
+    existed = true;
     if (!force) {
       output.skipped.push(filePath);
       return;
@@ -257,7 +263,95 @@ async function writeIfMissing(filePath: string, content: string, output: InitPro
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
   }
-  output.created.push(filePath);
+  // A forced rewrite of an existing file is an update, not a creation (FR-NODE-085 AC-1 reporting contract).
+  (existed ? output.updated : output.created).push(filePath);
+}
+
+// @req FR-NODE-085
+/**
+ * The authoring rules documents are tool-owned, unlike the index and the scope SRS documents. A plain
+ * init therefore replaces them with the bundled content whenever they differ (AC-1) and prunes the
+ * stale versioned rules files they supersede (AC-2), without the destructive force flag.
+ */
+async function refreshRulesDocuments(root: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+  const rulesDir = path.join(root, "docs", "rule");
+  const bundled: ReadonlyArray<readonly [string, string]> = [
+    [BUNDLED_SRS_RULES_FILENAME, await loadBundledRulesDocument()],
+    // FR-NODE-076 — the tdd work-mode snippet references the SDS rules, so init ships them too.
+    [BUNDLED_SDS_RULES_FILENAME, await loadBundledSdsRulesDocument()]
+  ];
+  for (const [name, content] of bundled) {
+    await writeOwnedDocument(path.join(rulesDir, name), content, output, dryRun);
+  }
+  await pruneStaleRulesDocuments(rulesDir, new Set(bundled.map(([name]) => name)), output, dryRun);
+}
+
+// @req FR-NODE-085
+/** Writes a tool-owned document, reporting it as created, updated, or skipped when already identical. */
+async function writeOwnedDocument(filePath: string, content: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+  const desired = content.endsWith("\n") ? content : `${content}\n`;
+  let existing: string | undefined;
+  try {
+    existing = await readFile(filePath, "utf8");
+  } catch {
+    existing = undefined;
+  }
+  if (existing === desired) {
+    output.skipped.push(filePath);
+    return;
+  }
+  if (!dryRun) {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, desired, "utf8");
+  }
+  (existing === undefined ? output.created : output.updated).push(filePath);
+}
+
+// @req FR-NODE-085
+/**
+ * Removes rules files carrying a version other than the bundled one (AC-2), so a consumer is never
+ * left holding two rules documents that disagree. The match is an anchored exact filename, so a
+ * consumer's own documents in docs/rule survive (AC-3).
+ */
+async function pruneStaleRulesDocuments(rulesDir: string, keep: ReadonlySet<string>, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+  const entries = await readdir(rulesDir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isFile() || keep.has(entry.name) || !RULES_DOCUMENT_FILENAME_PATTERN.test(entry.name)) continue;
+    const stalePath = path.join(rulesDir, entry.name);
+    if (!dryRun) await rm(stalePath, { force: true });
+    output.removed.push(stalePath);
+  }
+}
+
+// @req FR-NODE-085
+/**
+ * Raises a stale rules pointer in the index metadata to the bundled version (AC-5). The edit is
+ * surgical — only the Rules row is replaced — so authored index content survives (AC-4).
+ */
+async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+  let existing: string | undefined;
+  try {
+    existing = await readFile(indexPath, "utf8");
+  } catch {
+    return; // No index to point anywhere; the scaffold step already reported that.
+  }
+  const desiredRow = renderIndexRulesRow();
+  let changed = false;
+  const next = existing
+    .split("\n")
+    .map((line) => {
+      if (!line.startsWith("| Rules |") || line.includes(BUNDLED_SRS_RULES_FILENAME)) return line;
+      changed = true;
+      return desiredRow;
+    })
+    .join("\n");
+  if (!changed) return;
+  if (!dryRun) await writeFile(indexPath, next, "utf8");
+  // The scaffold step above reported the existing index as skipped; the pointer refresh supersedes
+  // that verdict, so the report never claims the same file was both skipped and updated.
+  const skippedAt = output.skipped.indexOf(indexPath);
+  if (skippedAt !== -1) output.skipped.splice(skippedAt, 1);
+  output.updated.push(indexPath);
 }
 
 export async function upsertAgentInstruction(root: string, agentFile: AgentFileMode, output: InitProjectOutput, dryRun = false): Promise<void> {
@@ -348,13 +442,15 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
     await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
   }
   const scope = parseScopeOption(input.scope);
-  await writeIfMissing(path.join(root.root, "docs", "spec", "00.index.md"), renderIndexTemplate(input), output, input.force, dryRun);
+  const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
+  await writeIfMissing(indexPath, renderIndexTemplate(input), output, input.force, dryRun);
   await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force, dryRun);
   await writeIfMissing(path.join(root.root, "docs", "spec", scope.document), renderEmptyScopeTemplate(scope), output, input.force, dryRun);
   await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force, dryRun);
-  await writeIfMissing(path.join(root.root, "docs", "rule", "SRS-MD-Rules-v1.0.0.md"), await loadBundledRulesDocument(), output, input.force, dryRun);
-  // FR-NODE-076 — the tdd work-mode snippet references the SDS rules, so init ships them too.
-  await writeIfMissing(path.join(root.root, "docs", "rule", "SDS-MD-Rules-v1.0.0.md"), await loadBundledSdsRulesDocument(), output, input.force, dryRun);
+  // FR-NODE-085 — the rules documents are tool-owned, so they are refreshed and pruned on every init,
+  // while the author-owned index/scope/appendix/step-state files above stay untouched once they exist.
+  await refreshRulesDocuments(root.root, output, dryRun);
+  await refreshIndexRulesPointer(indexPath, output, dryRun);
   for (const agentFile of REQUIRED_AGENT_FILES) {
     await upsertAgentInstruction(root.root, agentFile, output, dryRun);
   }

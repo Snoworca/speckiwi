@@ -7,7 +7,9 @@ import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
   AGENT_INSTRUCTION_VERSION,
-  BUNDLED_RULES_VERSION
+  BUNDLED_RULES_VERSION,
+  BUNDLED_SDS_RULES_FILENAME,
+  BUNDLED_SRS_RULES_FILENAME
 } from "../bootstrap/templates.js";
 
 // @req IR-CLI-065
@@ -133,39 +135,61 @@ async function checkWorkflowCurrency(root: string): Promise<DoctorCheck> {
   };
 }
 
-// @req IR-CLI-065
+// @req IR-CLI-065 @req FR-NODE-085
 /**
  * Bundled-versus-installed rules version drift: compares this package's bundled SRS-MD rules version
- * against the version the workspace index's Rules link advertises. A mismatch warns; a match is ok;
- * an index that declares no rules version warns (cannot confirm currency).
+ * against the version the workspace index's Rules link advertises, and confirms the bundled-version
+ * rules document exists on disk (FR-NODE-085 AC-8) rather than trusting the index pointer alone.
+ * A missing document, a mismatch, or an index that declares no rules version warns; otherwise ok.
+ *
+ * Every remediation names a plain `speckiwi init`, never the force flag (AC-7): init owns the rules
+ * documents and refreshes them in place, while the force flag would overwrite the requirements index
+ * and the scope SRS documents from templates.
  */
-function checkRulesDrift(workspace: ParsedWorkspace): DoctorCheck {
+async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck> {
   const topic = "bundled versus installed rules version drift";
+  const label = "Rules version drift";
+  const relPath = `docs/rule/${BUNDLED_SRS_RULES_FILENAME}`;
+  const remediation = `Run \`speckiwi init\` to refresh the bundled rules document at ${relPath}; it leaves the requirements index and the scope SRS documents untouched.`;
   const rulesMeta = workspace.index.metadata.Rules ?? workspace.index.metadata.rules;
   const installed = typeof rulesMeta === "string" ? extractVersion(rulesMeta) : undefined;
+  const present = await stat(path.join(workspace.root.root, "docs", "rule", BUNDLED_SRS_RULES_FILENAME))
+    .then((entry) => entry.isFile())
+    .catch(() => false);
+  if (!present) {
+    return {
+      topic,
+      label,
+      state: "warn",
+      message: `${relPath} is missing (the bundled rules document is not installed)`,
+      remediation
+    };
+  }
   if (installed === undefined) {
     return {
       topic,
-      label: "Rules version drift",
+      label,
       state: "warn",
       message: `cannot determine the installed rules version; bundled is v${BUNDLED_RULES_VERSION}`,
-      remediation: "Add a Rules row to docs/spec/00.index.md, or run `speckiwi init` to install the bundled rules document."
+      // init refreshes a stale Rules row but never inserts a missing one into the author-owned index,
+      // so this remediation asks for the row rather than promising a command that would not add it.
+      remediation: `Add a Rules row to docs/spec/00.index.md pointing at ${relPath}.`
     };
   }
   if (installed !== BUNDLED_RULES_VERSION) {
     return {
       topic,
-      label: "Rules version drift",
+      label,
       state: "warn",
       message: `installed rules v${installed} differs from bundled rules v${BUNDLED_RULES_VERSION}`,
-      remediation: `Update the docs/rule rules document to v${BUNDLED_RULES_VERSION} (run \`speckiwi init --force\` to refresh the bundled rules).`
+      remediation
     };
   }
   return {
     topic,
-    label: "Rules version drift",
+    label,
     state: "ok",
-    message: `installed rules v${installed} matches bundled rules v${BUNDLED_RULES_VERSION}`,
+    message: `installed rules v${installed} matches bundled rules v${BUNDLED_RULES_VERSION} (${relPath})`,
     remediation: "No action needed; the installed rules document matches the bundled version."
   };
 }
@@ -178,8 +202,8 @@ function checkRulesDrift(workspace: ParsedWorkspace): DoctorCheck {
  */
 async function checkSdsRulesPresence(rootPath: string): Promise<DoctorCheck> {
   const topic = "SDS authoring rules installation";
-  const relPath = "docs/rule/SDS-MD-Rules-v1.0.0.md";
-  const present = await stat(path.join(rootPath, "docs", "rule", "SDS-MD-Rules-v1.0.0.md"))
+  const relPath = `docs/rule/${BUNDLED_SDS_RULES_FILENAME}`;
+  const present = await stat(path.join(rootPath, "docs", "rule", BUNDLED_SDS_RULES_FILENAME))
     .then((entry) => entry.isFile())
     .catch(() => false);
   if (!present) {
@@ -427,7 +451,7 @@ export async function diagnoseHealth(
   const checks: DoctorCheck[] = [
     checkSpecPresence(workspace),
     await checkWorkflowCurrency(workspace.root.root),
-    checkRulesDrift(workspace),
+    await checkRulesDrift(workspace),
     // FR-NODE-082 / FR-NODE-083 — SDS rules installation + codex skills mirror drift.
     await checkSdsRulesPresence(workspace.root.root),
     await checkCodexSkillsMirror(workspace.root.root, options.codexSkillsSourceRoot),

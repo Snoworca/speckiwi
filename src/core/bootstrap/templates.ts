@@ -18,6 +18,23 @@ export interface AgentInstructionOptions {
 export const AGENT_INSTRUCTION_VERSION = "1.6";
 export const BUNDLED_RULES_VERSION = "1.0.0";
 
+// @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
+// from one constant per rules document, so raising a version cannot leave a filename or a pointer behind.
+export const BUNDLED_SDS_RULES_VERSION = "1.0.0";
+export const BUNDLED_SRS_RULES_FILENAME = `SRS-MD-Rules-v${BUNDLED_RULES_VERSION}.md`;
+export const BUNDLED_SDS_RULES_FILENAME = `SDS-MD-Rules-v${BUNDLED_SDS_RULES_VERSION}.md`;
+
+/**
+ * @req FR-NODE-085 AC-2/AC-3 — the tool's own rules-file naming pattern, anchored to the whole file
+ * name so a plain init prunes only the documents it owns and never a consumer's own document.
+ */
+export const RULES_DOCUMENT_FILENAME_PATTERN = /^(?:SRS|SDS)-MD-Rules-v\d+\.\d+\.\d+\.md$/;
+
+/** The index metadata row that points at the bundled SRS-MD rules document. */
+export function renderIndexRulesRow(): string {
+  return `| Rules | [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](../rule/${BUNDLED_SRS_RULES_FILENAME}) |`;
+}
+
 /**
  * The Codex CLI version at (and above) which the `apply_patch` PostToolUse hook is supported.
  * A detected version below this floor cannot be trusted to honor the apply_patch hook, so the
@@ -101,7 +118,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "| Product Version | 1.0.0 |",
     "| Active Target |  |",
     "| Status | draft |",
-    "| Rules | [SRS-MD Authoring Rules v1.0.0](../rule/SRS-MD-Rules-v1.0.0.md) |",
+    renderIndexRulesRow(),
     "",
     "## 1. Purpose",
     "",
@@ -158,7 +175,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "## 10. Reference Documents",
     "",
-    "- [SRS-MD Authoring Rules v1.0.0](../rule/SRS-MD-Rules-v1.0.0.md)",
+    `- [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](../rule/${BUNDLED_SRS_RULES_FILENAME})`,
     "",
     "## 11. Change Notes",
     "",
@@ -252,13 +269,13 @@ export function renderEmptyScopeTemplate(scope: ScopeTemplateInfo = parseScopeOp
 }
 
 export async function loadBundledRulesDocument(): Promise<string> {
-  const candidate = fileURLToPath(new URL("../../../docs/rule/SRS-MD-Rules-v1.0.0.md", import.meta.url));
+  const candidate = fileURLToPath(new URL(`../../../docs/rule/${BUNDLED_SRS_RULES_FILENAME}`, import.meta.url));
   try {
     return await readFile(candidate, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return [
-      "# SRS-MD Authoring Rules v1.0.0",
+      `# SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}`,
       "",
       "## Agent Instruction Snippet",
       "",
@@ -273,13 +290,13 @@ export async function loadBundledRulesDocument(): Promise<string> {
  * packaged docs/rule copy with a minimal ENOENT fallback (parity with loadBundledRulesDocument).
  */
 export async function loadBundledSdsRulesDocument(): Promise<string> {
-  const candidate = fileURLToPath(new URL("../../../docs/rule/SDS-MD-Rules-v1.0.0.md", import.meta.url));
+  const candidate = fileURLToPath(new URL(`../../../docs/rule/${BUNDLED_SDS_RULES_FILENAME}`, import.meta.url));
   try {
     return await readFile(candidate, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return [
-      "# SDS-MD Authoring Rules v1.0.0",
+      `# SDS-MD Authoring Rules v${BUNDLED_SDS_RULES_VERSION}`,
       "",
       "The tdd work-mode SDS lives at `docs/spec/steps/<task>/design.md` with the headings",
       "Context & Scope, Goals / Non-goals, Architecture Decisions, Interfaces,",
@@ -356,7 +373,7 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "Work-mode and the TDD First (tdd) workflow:",
     "1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.",
     "2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.",
-    "3. When the mode is `tdd`, step-scoped work follows the TDD First cycle: author the step SDS at `docs/spec/steps/<task>/design.md` per the installed SDS-MD Authoring Rules (`docs/rule/SDS-MD-Rules-v1.0.0.md`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.",
+    `3. When the mode is \`tdd\`, step-scoped work follows the TDD First cycle: author the step SDS at \`docs/spec/steps/<task>/design.md\` per the installed SDS-MD Authoring Rules (\`docs/rule/${BUNDLED_SDS_RULES_FILENAME}\`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.`,
     "4. tdd gates (all mandatory): do not write tests before the step's SDS exists; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.",
     "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
     "6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.",
