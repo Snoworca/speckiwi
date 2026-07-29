@@ -53,19 +53,33 @@ describe("FR-FLOW-013 rules registration of checked_compatible", () => {
     }
   });
 
-  it("no shipped skill points at a rules document that init prunes", async () => {
-    // skills/ ships in the npm package, and a plain init removes every rules file whose version is
-    // not the bundled one, so a skill naming an older document sends the agent to a missing file.
-    const variants = ["claude", "codex", "etc"] as const;
-    const skills = ["kiwi-srs", "kiwi-srs-from-code", "kiwi-pipeline"] as const;
-    for (const variant of variants) {
-      for (const skill of skills) {
-        const relPath = `skills/${variant}/${skill}/SKILL.md`;
-        const superseded = [...(await read(relPath)).matchAll(/(SRS-MD-Rules-v\d+\.\d+\.\d+\.md)/g)]
-          .map((match) => match[1])
-          .filter((name) => name !== BUNDLED_SRS_RULES_FILENAME);
-        expect(superseded, relPath).toEqual([]);
+  it("no packaged file names a rules version the tool does not ship", async () => {
+    // skills/ and docs/rule/ both ship in the npm package, and a plain init removes every rules file
+    // whose version is not the bundled one, so any surviving mention of an older version sends the
+    // reader to a document that is not there. Both the file-path form (`SRS-MD-Rules-v1.0.0.md`) and
+    // the prose form (`SRS-MD Authoring Rules v3.0.0`) count: a skill's rule table cites the latter.
+    const { readdir } = await import("node:fs/promises");
+    const files: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const full = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(full);
+        else if (entry.name.endsWith(".md")) files.push(full);
       }
+    };
+    await walk("skills");
+    await walk("docs/rule");
+    expect(files.length).toBeGreaterThan(20);
+
+    const bundledVersion = BUNDLED_SRS_RULES_FILENAME.replace(/^SRS-MD-Rules-v|\.md$/g, "");
+    const offenders: string[] = [];
+    for (const relPath of files) {
+      const text = await read(relPath);
+      const cited = new Set(
+        [...text.matchAll(/(?:SRS|SDS)-MD(?:-Rules-v| Authoring Rules v)(\d+\.\d+\.\d+)/g)].map((match) => match[1]!)
+      );
+      for (const version of cited) if (version !== bundledVersion) offenders.push(`${relPath}: v${version}`);
     }
+    expect(offenders).toEqual([]);
   });
 });
