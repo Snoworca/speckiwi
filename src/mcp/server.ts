@@ -192,6 +192,15 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     contextProfile: z.enum(["default", "compact"]).optional()
   },
   sync_index: { expectedSha256: z.string().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
+  // FR-MCP-056 — scope creation and registration over MCP.
+  scaffold_scope: {
+    name: z.string(),
+    prefix: z.string(),
+    apply: z.boolean().optional(),
+    dryRun: z.boolean().optional(),
+    ignoreLock: z.boolean().optional()
+  },
+  register_scopes: { apply: z.boolean().optional(), dryRun: z.boolean().optional() },
   update_status: { id: z.string(), status: z.string(), reason: z.string().max(500).optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   update_stability: {
     id: z.string(),

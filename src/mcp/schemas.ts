@@ -435,7 +435,9 @@ export const toolSpecs: readonly ToolSpec[] = [
     IGNORE_LOCK
   ]),
   // scaffold-scope: real CLI mutation (update_step_state moved to `step update-state`, IR-CLI-074).
-  mutationSpec("scaffold-scope", undefined, "workspace", "scaffoldScope", [
+  // FR-MCP-056 — exposed over MCP so an MCP-only agent can create a scope through a sanctioned
+  // mutation instead of hand-writing the document and both index rows.
+  mutationSpec("scaffold-scope", "scaffold_scope", "workspace", "scaffoldScope", [
     opt("--apply", "apply"),
     DRY_RUN,
     // IR-CLI-078 — the mutation takes the SRS lock since v2.5.0, so it needs the bypass every
@@ -443,7 +445,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     IGNORE_LOCK
   ]),
   // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).
-  mutationSpec("register-scopes", undefined, "req-scoped", "registerScopes", [
+  mutationSpec("register-scopes", "register_scopes", "workspace", "registerScopes", [
     opt("--apply", "apply"),
     DRY_RUN
   ]),

@@ -28,7 +28,11 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   workflow_worklog_emit: "workspace",
   workflow_repair_record: "workspace",
   workflow_logical_delete: "workspace",
-  apply_requirement_id_collision_repair: "workspace"
+  apply_requirement_id_collision_repair: "workspace",
+  // FR-MCP-056 — scope creation and registration. Both act on the workspace index rather than on one
+  // requirement id, so neither is req-scoped.
+  scaffold_scope: "workspace",
+  register_scopes: "workspace"
 };
 
 describe("FR-ARCH-005 — mutation tool kind classification", () => {

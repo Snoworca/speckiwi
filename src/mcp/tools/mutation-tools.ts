@@ -20,6 +20,8 @@ import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
+import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
+import { registerScopes } from "../../core/mutation/register-scopes.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
@@ -99,6 +101,28 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       await syncIndexRollups(await root(deps, input), {
         ...(typeof input.expectedSha256 === "string" ? { expectedSha256: input.expectedSha256 } : {}),
         ...mutationOptions(input)
+      })
+    ),
+    { kind: "workspace" }
+  );
+  // FR-MCP-056 — scope creation and registration. `apply` and `dryRun` combine exactly as the CLI
+  // combines them, so an explicit dry run supersedes apply rather than racing it.
+  server.registerTool("scaffold_scope", async (input) =>
+    resultToMcp(
+      await scaffoldScope(await root(deps, input), {
+        name: String(input.name ?? ""),
+        prefix: String(input.prefix ?? ""),
+        apply: input.apply === true && input.dryRun !== true,
+        ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+      })
+    ),
+    { kind: "workspace" }
+  );
+  server.registerTool("register_scopes", async (input) =>
+    resultToMcp(
+      await registerScopes(await root(deps, input), {
+        apply: input.apply === true,
+        ...(input.dryRun === true ? { dryRun: true } : {})
       })
     ),
     { kind: "workspace" }

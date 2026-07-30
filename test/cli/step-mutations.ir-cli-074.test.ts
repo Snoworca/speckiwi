@@ -219,10 +219,17 @@ describe("IR-CLI-074 — step claim/update-state/promote CLI mirrors", () => {
     expect(byCli.get("update-state")?.mcpName).toBe("update_step_state");
     expect(byCli.get("promote")?.mcpName).toBe("promote_step_requirement");
 
-    // The former host rows are CLI-only again.
+    // No former host row hosts a step tool any longer. The original AC-4 also required all three to
+    // stay CLI-only; FR-MCP-056 supersedes that clause for the two scope rows, which now declare their
+    // own semantically matching tools. What must remain true is that none of them hosts a STEP tool.
+    const stepTools = new Set(["claim_step", "update_step_state", "promote_step_requirement"]);
+    for (const cliName of ["set-supersede", "scaffold-scope", "register-scopes"]) {
+      const hosted = byCli.get(cliName)?.mcpName;
+      expect(hosted === undefined || !stepTools.has(hosted), `${cliName} must not host a step tool`).toBe(true);
+    }
     expect(byCli.get("set-supersede")?.mcpName).toBeUndefined();
-    expect(byCli.get("scaffold-scope")?.mcpName).toBeUndefined();
-    expect(byCli.get("register-scopes")?.mcpName).toBeUndefined();
+    expect(byCli.get("scaffold-scope")?.mcpName).toBe("scaffold_scope");
+    expect(byCli.get("register-scopes")?.mcpName).toBe("register_scopes");
 
     expect(() => assertZeroDriftToolSurface()).not.toThrow();
   });
