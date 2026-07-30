@@ -392,7 +392,7 @@ export async function loadBundledSdsRulesDocument(): Promise<string> {
 
 // @req FR-NODE-080
 /**
- * The scaffolded step SDS stub (SDS-MD Rules v1.0.0 §8 template): metadata table with
+ * The scaffolded step SDS stub (the bundled SDS-MD Authoring Rules §8 template): metadata table with
  * Status=draft plus the seven required headings, rendered from the validator's
  * REQUIRED_SDS_HEADINGS so the scaffold and the SDS-W051 advisory can never drift.
  * Content stays a skeleton — the SDS body is still directly authored.

@@ -1491,14 +1491,14 @@ A tool classified `req-scoped` rejects an array `id` at schema validation. A new
 
 ### 30.4 Non-standard Markers
 
-An existing SRS may carry notation that differs from §30.1 and §30.2 — `[OBSOLETE]`, `[deprecated]`, an empty strikethrough, and the like. The parser reports an unknown-marker warning for such notation and does not attempt to match it as one of the standard markers.
+An existing SRS may carry notation that differs from §30.1 and §30.2 — `[OBSOLETE]`, `[deprecated]`, an empty strikethrough, and the like. Only `DISCARDED` and `DRAFT` are recognised as markers; any other `[...]` token is read as part of the requirement title, so the heading still parses and the requirement is still found.
 
-Within the title portion of a heading (`### REQ-ID — Title`), the `[...]` tokens are read as follows:
+Within the title portion of a heading (`### REQ-ID — Title`):
 
-- Allowed: the `[<REQ-ID>]` form, for example `[FR-AUTH-002]`, used as a dependency citation or cross reference.
-- Reported: every other `[...]` token, for example `[TBD]`, `[NOTE]`, or `[OBSOLETE]`.
+- The `[<REQ-ID>]` form, for example `[FR-AUTH-002]`, is a dependency citation or cross reference and is fine to keep.
+- Any other `[...]` token, for example `[TBD]`, `[NOTE]`, or `[OBSOLETE]`, carries no meaning to the tool. It is not a status signal, and no mutation will ever add, change, or remove it. Do not use one where §30.1 or §30.2 already defines a marker: a requirement marked `[OBSOLETE]` by hand is not discarded, and every query and gate will treat it as live.
 
-Converting non-standard markers to the standard form is the job of a separate migration tool rather than of the parser, so that a parser run never rewrites a consumer's heading.
+Validation does not report a non-standard marker. Nothing in the tool converts one to the standard form either — that is deliberate, so a parse or a validate run never rewrites a consumer's heading. Use `update_status` and `update_stability` to reach the standard markers.
 
 ### 30.5 Governing Rules Version
 

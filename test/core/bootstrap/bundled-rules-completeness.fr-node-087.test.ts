@@ -60,19 +60,26 @@ describe("FR-NODE-087 AC-2 — the checked_compatible Notes grammar is specified
   });
 
   it("states the semanticSha normalisation the runtime hashes", async () => {
-    const text = await bundledRules();
-    expect(text).toContain("semanticSha");
-    // The normalisation is what makes two independently computed pins comparable, so the document
-    // has to state it rather than merely name the field.
-    expect(text.toLowerCase()).toContain("normaliz");
+    // Scoped to §23.5. "normalization" also appears in §6.3 about heading titles, so an unscoped
+    // assertion passed even with this entire contract deleted.
+    const section = sectionText(await bundledRules(), /^###\s+23\.5\s/, /^##\s+24\./);
+    expect(section).not.toBe("");
+    expect(section).toContain("semanticSha");
+    // The four operations the runtime applies before hashing (src/core/mutation/records.ts).
+    for (const step of ["CRLF", "trailing whitespace", "collapses", "trims"]) {
+      expect(section, step).toContain(step);
+    }
   });
 });
 
 describe("FR-NODE-087 AC-3 — the discarded heading marker is specified", () => {
   it("shows the strikethrough plus [DISCARDED] heading the mutation writes", async () => {
-    const text = await bundledRules();
-    expect(text).toContain("[DISCARDED]");
-    expect(text).toContain("~~");
+    // Scoped to §30.1. Both tokens also appear in §10.3's marker exemption, so an unscoped
+    // assertion survived rewriting the base transformation this AC exists to pin.
+    const section = sectionText(await bundledRules(), /^###\s+30\.1\s/, /^###\s+30\.2\s/);
+    expect(section).not.toBe("");
+    expect(section).toContain("### ~~REQ-ID — Title~~ [DISCARDED]");
+    expect(section).toContain("[DISCARDED → see REQ-Y]");
   });
 
   it("states that the marker is removed when the requirement leaves the discarded status", async () => {
@@ -86,8 +93,10 @@ describe("FR-NODE-087 AC-3 — the discarded heading marker is specified", () =>
 
 describe("FR-NODE-087 AC-4 — the draft heading marker is specified", () => {
   it("shows the [DRAFT — pending decision] heading the mutation writes", async () => {
-    const text = await bundledRules();
-    expect(text).toContain("[DRAFT — pending decision]");
+    const section = sectionText(await bundledRules(), /^###\s+30\.2\s/, /^###\s+30\.3\s/);
+    expect(section).not.toBe("");
+    expect(section).toContain("### REQ-ID — Title [DRAFT — pending decision]");
+    expect(section).toContain("[DRAFT — pending decision, see REQ-Y]");
   });
 
   it("states that the draft marker carries no strikethrough and is removed on leaving draft", async () => {
@@ -116,11 +125,19 @@ describe("FR-NODE-087 AC-5 — the single-requirement mutation rule is stated", 
 });
 
 describe("FR-NODE-087 AC-6 — marker policy and version identification are stated", () => {
-  it("states the non-standard heading marker policy", async () => {
-    const text = await bundledRules();
-    const section = sectionText(text, /^###\s+30\.4\s/, /^###\s+30\.5\s/);
+  it("states the non-standard marker policy without claiming enforcement the runtime lacks", async () => {
+    const section = sectionText(await bundledRules(), /^###\s+30\.4\s/, /^###\s+30\.5\s/);
     expect(section).not.toBe("");
-    expect(section.toLowerCase()).toContain("marker");
+    // What is true: only these two tokens are markers, anything else is title text, and no tool
+    // converts one. Asserting the substring "marker" alone let the whole policy be deleted.
+    expect(section).toContain("DISCARDED");
+    expect(section).toContain("DRAFT");
+    expect(section).toContain("part of the requirement title");
+    expect(section).toContain("Validation does not report a non-standard marker");
+    // What must NOT be claimed: no diagnostic code and no bracket sub-parser exists for these
+    // tokens, so a sentence saying the tool warns about one is an enforcement it does not perform.
+    expect(section).not.toMatch(/unknown-marker warning/);
+    expect(section).not.toMatch(/^- Reported:/m);
   });
 
   it("states how the governing rules version is identified", async () => {
