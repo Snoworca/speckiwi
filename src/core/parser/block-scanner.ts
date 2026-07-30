@@ -105,7 +105,26 @@ export function scanRequirementBlocks(lines: string[], filePath = ""): { blocks:
       return;
     }
 
-    if (!inRequirementsSection) return;
+    if (!inRequirementsSection) {
+      // @req FR-PARSE-035 — a well-formed block here is invisible to every query, mutation and
+      // validation rule. Reporting it does not change that; it just stops the invisibility being
+      // silent, which is how an author ends up filing work against an id the tool does not have.
+      if (line.startsWith("### ")) {
+        const stranded = parseRequirementHeading(line);
+        if (stranded) {
+          diagnostics.push(
+            diagnostic(
+              "SRS-W071",
+              "warning",
+              `Requirement heading ${stranded.id} is outside a Requirements section and is not parsed as a requirement`,
+              { filePath, line: lineNumber },
+              { id: stranded.id }
+            )
+          );
+        }
+      }
+      return;
+    }
 
     if (line.startsWith("### ")) {
       const heading = parseRequirementHeading(line);

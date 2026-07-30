@@ -1,3 +1,4 @@
+import { renderHeadingLine } from "../parser/heading-render.js";
 import { TYPE_PREFIX, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
 
 export const DEFAULT_REQUIREMENT_STABILITY = "draft";
@@ -33,6 +34,10 @@ function linesOrDash(value?: string): string[] {
 
 export function renderRequirementBlock(input: RenderRequirementInput): string[] {
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
+  // @req FR-NODE-094 — the marker states the stability, not how the requirement arrived at it.
+  // Rendering a bare heading here while update_stability renders the marker for the same value made
+  // the marker a provenance signal, which is the opposite of the job §30.2 gives it.
+  const stability = input.stability ?? DEFAULT_REQUIREMENT_STABILITY;
   const metadata = [
     ["Type", input.type],
     ["Target", input.target],
@@ -40,7 +45,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
     ["Priority", input.priority ?? "medium"],
     ["Tags", (input.tags ?? []).join(", ") || "-"],
     ["Risk", input.risk ?? "medium"],
-    ["Stability", input.stability ?? DEFAULT_REQUIREMENT_STABILITY],
+    ["Stability", stability],
     ["Verification Method", input.verificationMethod ?? "test"],
     ["GitHub Issue", input.githubIssue ?? "-"],
     ["Related Docs", (input.relatedDocs ?? []).join(", ") || "-"]
@@ -56,7 +61,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
     (row) => `| ${row.type ?? "Requirement"} | ${row.reference ?? ""} | ${row.relation ?? "related_to"} | ${row.notes ?? "-"} |`
   );
   return [
-    `### ${input.id} — ${input.title}`,
+    renderHeadingLine({ id: input.id, title: input.title, ...(stability === "draft" ? { marker: "DRAFT" as const } : {}) }),
     "",
     "| Field | Value |",
     "| --- | --- |",

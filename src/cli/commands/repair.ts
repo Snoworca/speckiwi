@@ -11,6 +11,7 @@ import {
   type RequirementIdCollisionRepairPlanInput,
   type RequirementOccurrenceIdentity
 } from "../../core/mutation/repair-requirement-id.js";
+import { repairRulesReferences } from "../../core/mutation/repair-rules-references.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
@@ -71,6 +72,28 @@ function inputFromOptions(options: Record<string, unknown>, command: Command): R
 export function registerRepairCommands(command: Command, context: CliContext): void {
   const repair = command.command("repair");
   const collisions = repair.command("requirement-id-collisions");
+
+  // @req IR-CLI-079 — a dangling `Related Docs` link to a renamed rules document. It lives here
+  // rather than in `upgrade`, which excludes docs/spec by contract, or in edit_requirement_fields,
+  // which refuses verified requirements. CLI-only: it writes inside requirement blocks.
+  const rulesReferences = repair.command("rules-references");
+  for (const [leaf, apply] of [
+    ["diagnose", false],
+    ["apply", true]
+  ] as const) {
+    rulesReferences
+      .command(leaf)
+      .option("--ignore-lock")
+      .option("--json")
+      .action(async (options) => {
+        const result = await repairRulesReferences(await resolveProjectRoot(process.cwd(), command.opts().root), {
+          ...(apply ? { apply: true } : {}),
+          ...(options.ignoreLock ? { ignoreLock: true } : {})
+        });
+        output(context, { json: options.json || command.opts().json }, result);
+        if (!result.ok) command.setOptionValue("exitCode", 5);
+      });
+  }
 
   collisions.command("diagnose").option("--json").action(async (options) => {
     const result = await diagnoseRequirementIdCollisions(await resolveProjectRoot(process.cwd(), command.opts().root));

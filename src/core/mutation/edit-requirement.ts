@@ -36,6 +36,13 @@ export interface ReplaceAcceptanceCriteriaInput {
 
 export type RequirementTableSection = "verification_evidence" | "trace_links";
 
+// @req FR-NODE-093 — the columns a row update may set, per section. An evidence row's id is absent
+// deliberately: the renderer always writes the existing id, so accepting `id` would silently drop it.
+const SETTABLE_ROW_COLUMNS: Record<RequirementTableSection, readonly string[]> = {
+  verification_evidence: ["type", "reference", "covers", "notes"],
+  trace_links: ["type", "reference", "relation", "notes"]
+};
+
 export interface RequirementTableRowOperation {
   kind: "update" | "delete";
   rowId?: string;
@@ -266,8 +273,16 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     if (rowOperation.values !== undefined && (typeof rowOperation.values !== "object" || rowOperation.values === null || Array.isArray(rowOperation.values))) {
       return mutationFail("USAGE", "operation values must be an object");
     }
+    // @req FR-NODE-093 — an unrecognised key must fail rather than be ignored. The row is rebuilt as
+    // `values.covers ?? fallback.covers`, so a key the builder never reads yields a replacement
+    // identical to the original and still reports ok/written: a governance edit the caller believes
+    // happened and did not. The capitalised header spelling (`Covers`) is the likely mistake.
+    const settable = SETTABLE_ROW_COLUMNS[input.section];
     for (const [field, value] of Object.entries(rowOperation.values ?? {})) {
       if (typeof value !== "string") return mutationFail("USAGE", `${field} value must be a string`);
+      if (!settable.includes(field)) {
+        return mutationFail("USAGE", `unknown ${input.section} column '${field}'; settable columns are ${settable.join(", ")}`);
+      }
     }
     const rowIndex =
       rowOperation.rowIndex ??

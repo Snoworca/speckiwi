@@ -822,6 +822,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-PARSE-034",
     since: "v2.5.0",
     remediation: "Repairing a collision is the one case where a scope document is renamed: give all but one of the colliding documents an unused number above the highest in use, and update the Scope Map and SRS Documents rows that name them."
+  },
+  {
+    code: "SRS-W071",
+    severity: "warning",
+    title: "Requirement heading outside a Requirements section",
+    messageTemplate: "Requirement heading {id} is outside a Requirements section and is not parsed as a requirement",
+    sourceRule: "FR-PARSE-035",
+    since: "v2.5.1",
+    remediation:
+      "Move the block into the document's Requirements section so it is parsed, or rename the heading so it is not requirement-shaped when the block is illustrative."
   }
 ];
 

@@ -452,6 +452,8 @@ Scope Boundaries distinguish what is in scope from what is out of scope.
 
 Place every Requirement Block under `## 4. Requirements`.
 
+The parser reads Requirement Block headings only inside a section whose title names requirements. A well-formed block placed in any other section is not parsed as a requirement: its id cannot be listed, shown or mutated. Such a heading is reported as `SRS-W071` — a warning rather than an error, because an illustrative heading elsewhere in a document is legitimate. Move the block into the Requirements section, or rename the heading so it is not requirement-shaped.
+
 ### 8.6 Cross-scope Dependencies
 
 Summarize the main dependencies on other scopes at the document level.
@@ -1444,7 +1446,9 @@ Because the marker is part of the heading the tool writes, the heading emphasis 
 
 ### 30.2 Draft Marker
 
-When an `update_stability` mutation moves a requirement to `Stability=draft`, the following marker is applied automatically. Unlike the discarded marker, no strikethrough is applied.
+Any requirement at `Stability=draft` carries this marker, whether it reached draft by an `update_stability` mutation or was created that way. The marker states the stability, not how the requirement arrived at it. Unlike the discarded marker, no strikethrough is applied.
+
+When `add_requirement` omits `stability` the tool applies `draft`, so a requirement created without an explicit stability is written with this marker and is subject to the draft gates in §14 and §30.2.
 
 Base transformation:
 
@@ -1687,6 +1691,7 @@ Validation items:
 | `SRS-W068` | warning | Stale SRS mutation lock recovered |
 | `SRS-W069` | warning | Invalid workflow deleted status |
 | `SRS-W070` | warning | Scope documents share a leading number |
+| `SRS-W071` | warning | Requirement heading outside a Requirements section |
 
 In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every diagnostic code that the implementation emits must be registered in the registry.
 
