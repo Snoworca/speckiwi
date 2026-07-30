@@ -137,8 +137,13 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
   // project whose first scope document is 01. When the caller instead supplies the scopes already on
   // disk, each is registered under its own name and prefix — binding one of them to the default
   // scope identity would file requirements for that prefix into the wrong document.
+  // FR-NODE-097 — the fallback allocates against an empty set rather than naming a number. It reads
+  // the same either way, but a literal here is how a call site stops going through the allocator, and
+  // that is exactly the defect this requirement was written to remove from init.
   const registered: readonly ScopeTemplateInfo[] =
-    input.scopes ?? [{ ...scope, document: input.scopeDocument ?? scopeDocumentName(scope.slug, 1) }];
+    input.scopes ?? [
+      { ...scope, document: input.scopeDocument ?? scopeDocumentName(scope.slug, nextScopeDocumentNumber([])) }
+    ];
   const scopeRows = registered.map(
     (entry) => `| ${entry.name} | [${entry.document}](./${entry.document}) | ${entry.prefix} | ${entry.name} |`
   );

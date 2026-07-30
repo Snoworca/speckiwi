@@ -16,6 +16,7 @@ import {
   loadBundledRulesDocument,
   loadBundledSdsRulesDocument,
   parseScopeOption,
+  nextScopeDocumentNumber,
   scopeDocumentName,
   type ScopeTemplateInfo,
   renderAgentInstructionSnippet,
@@ -489,6 +490,21 @@ function replaceAgentInstructionBlock(existing: string, block: AgentInstructionB
  * live under docs/spec/steps/<name>/ and are not scope documents, so reading only the directory
  * entries keeps them out. A missing docs/spec reads as an empty project.
  */
+// @req FR-NODE-097
+/**
+ * Every Markdown document directly in docs/spec, as bare file names. Allocation needs the whole
+ * directory, not only the scope documents: a consumer's own numbered document occupies an ordering
+ * position just as a scope document does, and this runs before the index exists so the parsed
+ * workspace is not available to read it from.
+ */
+async function listSpecDocuments(rootPath: string): Promise<string[]> {
+  const entries = await readdir(path.join(rootPath, "docs", "spec"), { withFileTypes: true }).catch(() => []);
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => entry.name)
+    .sort();
+}
+
 async function listScopeDocuments(rootPath: string): Promise<ScopeTemplateInfo[]> {
   const specDir = path.join(rootPath, "docs", "spec");
   let entries: Dirent[];
@@ -546,8 +562,16 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
   // scope document at all, and it is numbered by allocation rather than by a fixed name. The tool's
   // own sidecars (90.appendix.md, 91.completed-work-log.md) sit in a reserved high band and do not
   // drive allocation, so a project's first scope document is 01.
+  // FR-NODE-097 — that number goes through the same allocator scaffold-scope uses, against every
+  // document in docs/spec rather than the scope documents alone. Hardcoding 1 gave a project that
+  // carries its own 01.glossary.md a colliding 01.<slug>.srs.md, which the validator then reported as
+  // SRS-W072 — the tool's own scaffold producing what its own validation warns about. A project with
+  // no numbered document of its own still receives 01, because a sidecar never raises the candidate.
   const existingScopeDocuments = await listScopeDocuments(root.root);
-  const scopeDocument = existingScopeDocuments.length === 0 ? scopeDocumentName(scope.slug, 1) : undefined;
+  const scopeDocument =
+    existingScopeDocuments.length === 0
+      ? scopeDocumentName(scope.slug, nextScopeDocumentNumber([], await listSpecDocuments(root.root)))
+      : undefined;
   const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
   // An index written for a project that already holds scope documents registers each of them under
   // its own name and prefix, read from the document itself. Pointing the default scope row at one of

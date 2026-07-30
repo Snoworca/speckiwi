@@ -24,6 +24,10 @@ export default defineConfig({
     // after-suite backstop for out-of-band (e.g. spawned-child) leaks.
     setupFiles: ["./test/support/hermeticity-guard.ts"],
     globalSetup: ["./test/support/hermeticity-global.ts"],
+    // A subagent git worktree under .claude/worktrees carries a full copy of this suite. Without this
+    // exclusion a run picks up those copies, so another agent's in-flight probe is reported as a
+    // failure in this checkout — measured on 2026-07-30, and it makes a full run unreadable.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.claude/worktrees/**"],
     coverage: {
       provider: "v8",
       include: [

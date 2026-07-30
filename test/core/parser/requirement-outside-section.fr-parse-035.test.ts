@@ -40,7 +40,12 @@ describe("FR-PARSE-035 AC-1 — the invisible block is reported", () => {
     expect(warning, "a requirement heading outside a Requirements section must be reported").toBeDefined();
     expect(warning!.severity).toBe("warning");
     expect(warning!.filePath?.replace(/\\/g, "/")).toBe("docs/spec/10.product-architecture.srs.md");
-    expect(warning!.line).toBeGreaterThan(1);
+    // The reported line must be the stranded heading's own line. `toBeGreaterThan(1)` passed with the
+    // line hardcoded to 2, which an audit demonstrated — so the assertion reads the file back and
+    // confirms the cited line really holds that heading.
+    const document = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
+    const lines = document.split(/\r?\n/);
+    expect(lines[warning!.line! - 1]).toBe("### FR-ARCH-900 — Stranded requirement");
     expect(JSON.stringify(warning)).toContain("FR-ARCH-900");
   });
 });

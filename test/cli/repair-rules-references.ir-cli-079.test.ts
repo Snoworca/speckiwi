@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
 import { toolSpecs } from "../../src/mcp/schemas.js";
-import { toolSchemas } from "../../src/mcp/server.js";
+import { createMcpServer, toolSchemas } from "../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 // IR-CLI-079 — `speckiwi repair rules-references diagnose|apply`.
@@ -122,8 +122,12 @@ describe("IR-CLI-079 AC-3 — the repair subtree carries no MCP tool", () => {
     expect(toolSpecs.some((spec) => spec.cliName === "rules-references")).toBe(false);
     expect(toolSpecs.some((spec) => spec.coreFn === "repairRulesReferences")).toBe(false);
 
-    // And nothing on the live MCP surface drives it. Checking the instantiated server rather than the
-    // registry matters: a registry that merely omits the name proves nothing about the server.
+    // And nothing on the live MCP surface drives it. `toolSchemas` is a static object literal, so
+    // checking it alone proves nothing about what the server registers — an audit registered a tool
+    // named `repair_rules_references` on the live server and this test still passed. The instantiated
+    // server is what has to be enumerated.
+    const handle = createMcpServer({ root: await workspaceWithDanglingReference() });
+    expect(Object.keys(handle.tools).filter((name) => /rules.?reference/i.test(name))).toEqual([]);
     expect(Object.keys(toolSchemas).filter((name) => /rules.?reference/i.test(name))).toEqual([]);
 
     // The command really is reachable, so the absence above is a policy choice and not a missing wire.

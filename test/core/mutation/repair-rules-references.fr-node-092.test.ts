@@ -202,3 +202,71 @@ describe("FR-NODE-092 AC-8 — after an apply the link checker is clean", () => 
     expect(brokenAfter.filter((entry) => /-MD-Rules-v/.test(entry.reference))).toEqual([]);
   });
 });
+
+/**
+ * A workspace with TWO affected requirements, which is what the real repository case looked like: five
+ * verified requirements shared one stale reference. The single-requirement fixtures above cannot tell a
+ * loop that repairs every finding from one that repairs the first — an audit demonstrated that
+ * `findings.slice(0, 1)` left every other case in this file green.
+ */
+async function workspaceWithTwoDanglingReferences(): Promise<string> {
+  const root = await workspaceWithDanglingReference();
+  const specPath = path.join(root, SPEC_FILE);
+  const text = await readFile(specPath, "utf8");
+  const first = requirementBlock(text, "FR-ARCH-001").join("\n");
+  const second = first
+    .replace("### FR-ARCH-001 ", "### FR-ARCH-002 ")
+    .replace("Fixture requirement", "Second fixture requirement")
+    .replace("| Requirement | FR-ARCH-001 | self |", "| Requirement | FR-ARCH-002 | self |");
+  await writeFile(specPath, `${text.trimEnd()}\n\n${second}\n`, "utf8");
+  return root;
+}
+
+describe("FR-NODE-092 — every affected requirement is repaired, not only the first", () => {
+  it("reports a finding for each affected requirement", async () => {
+    const rootPath = await workspaceWithTwoDanglingReferences();
+
+    const planned = await repair(rootPath);
+
+    const ids = planned.findings.map((finding) => finding.requirementId).sort();
+    expect(ids).toEqual(["FR-ARCH-001", "FR-ARCH-002"]);
+  });
+
+  it("rewrites the reference in every affected requirement on apply", async () => {
+    const rootPath = await workspaceWithTwoDanglingReferences();
+
+    await repair(rootPath, { apply: true });
+
+    const text = await readFile(path.join(rootPath, SPEC_FILE), "utf8");
+    expect(text).not.toContain("SRS-MD-Rules-v1.0.0.md");
+    for (const id of ["FR-ARCH-001", "FR-ARCH-002"]) {
+      const block = requirementBlock(text, id).join("\n");
+      expect(block, `${id} must cite the bundled document`).toContain(BUNDLED_SRS_RULES_FILENAME);
+    }
+  });
+
+  it("appends a Change Note to every repaired requirement", async () => {
+    // The per-requirement re-read exists because inserting a note shifts the lines below it, so a plan
+    // computed against a stale snapshot would patch the wrong rows in the second requirement.
+    const rootPath = await workspaceWithTwoDanglingReferences();
+
+    await repair(rootPath, { apply: true });
+
+    const text = await readFile(path.join(rootPath, SPEC_FILE), "utf8");
+    for (const id of ["FR-ARCH-001", "FR-ARCH-002"]) {
+      const block = requirementBlock(text, id).join("\n");
+      expect(block, `${id} must carry the audit trail`).toMatch(/Related Docs/);
+    }
+    // And the metadata row of the second requirement is intact rather than corrupted by a line shift.
+    expect(requirementBlock(text, "FR-ARCH-002").join("\n")).toContain("| Type | functional |");
+  });
+
+  it("leaves the link checker clean for both requirements", async () => {
+    const rootPath = await workspaceWithTwoDanglingReferences();
+
+    await repair(rootPath, { apply: true });
+
+    const broken = (await checkLinks(await parseWorkspace({ root: rootPath }))).broken;
+    expect(broken.filter((entry) => /-MD-Rules-v/.test(entry.reference))).toEqual([]);
+  });
+});

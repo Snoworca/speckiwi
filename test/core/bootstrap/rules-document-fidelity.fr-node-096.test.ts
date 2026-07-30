@@ -46,10 +46,16 @@ describe("FR-NODE-096 AC-1 — the status transitions are stated as an unenforce
     const transitions = section(text, "### 14.2");
     const implementedConditions = section(text, "### 14.3");
 
-    expect(transitions).toContain("No tool call refuses a transition");
+    expect(transitions).toContain("The list itself is not a gate");
+    // What the section must now name is the write-time refusal, because that is what actually happens.
+    expect(transitions).toContain("fails with `MUTATION_DENIED` unless the requirement already has");
+    expect(transitions).toContain("confirmDiscardVerified");
     expect(transitions).toContain("`SRS-E010`");
     expect(transitions).toContain("`SRS-E033`");
+    // The step-promotion gate applies only in tdd mode; stating it unqualified was a defect.
+    expect(transitions).toContain("when the work-mode is `tdd`");
     expect(implementedConditions).toContain("No tool call refuses a transition to `implemented`");
+    expect(implementedConditions).toContain("no write-time gate at all");
   });
 
   it("still lists the transitions, so the convention is not lost with the correction", async () => {

@@ -734,6 +734,29 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     remediation:
       "Move the block into the document's Requirements section so it is parsed, or rename the heading so it is not requirement-shaped when the block is illustrative."
   },
+  // @req FR-NODE-095 — step validation emits these two in the SRS namespace. They were absent from the
+  // registry, so `speckiwi explain SRS-W044` reported an unknown code for a code a user can see in
+  // output. Registering them does not move them into validate-spec; they are still produced by step
+  // validation's advisory helper.
+  {
+    code: "SRS-W044",
+    severity: "warning",
+    title: "Step requirement shadows a body requirement id",
+    messageTemplate: "Step requirement shadows body requirement id: {requirementId}",
+    sourceRule: "FR-PARSE-028",
+    since: "v2.3.0",
+    remediation:
+      "Give the step requirement its own id, or promote it so the body requirement is the only holder of that id."
+  },
+  {
+    code: "SRS-W045",
+    severity: "warning",
+    title: "Step carries too many requirements",
+    messageTemplate: "Step '{step}' carries too many requirements: {count}",
+    sourceRule: "FR-PARSE-028",
+    since: "v2.3.0",
+    remediation: "Split the step so each one carries a reviewable number of requirements."
+  },
   {
     code: "SRS-W072",
     severity: "warning",

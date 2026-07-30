@@ -284,6 +284,10 @@ function bundledCodexSkillsRoot(): string {
   return fileURLToPath(new URL("../../../skills/codex", import.meta.url));
 }
 
+function bundledClaudeSkillsRoot(): string {
+  return fileURLToPath(new URL("../../../skills/claude", import.meta.url));
+}
+
 // @req FR-NODE-083
 /** Skill names in a source tree: every direct subdirectory carrying a SKILL.md. */
 async function listSkillNames(sourceRoot: string): Promise<string[]> {
@@ -375,6 +379,155 @@ async function checkCodexSkillsMirror(rootPath: string, sourceRoot?: string): Pr
     state: "ok",
     message: `.agents/skills matches the bundled codex skills (${expected.length} skills${exclusions.size > 0 ? `; ${exclusions.size} excluded by manifest` : ""})`,
     remediation: "No action needed; the codex skills mirror is in sync."
+  };
+}
+
+// @req IR-CLI-080
+/**
+ * An installed skill destination: where a copy lives, which bundled tree it came from, and how a
+ * reader refreshes it. The codex project mirror is deliberately absent — checkCodexSkillsMirror owns
+ * that one, and reporting it twice would double-count one drift.
+ */
+interface InstalledSkillLocation {
+  label: string;
+  destinationRoot: string;
+  sourceRoot: string;
+  refresh: string;
+}
+
+// @req IR-CLI-080
+/** Line endings are transport noise, not drift. */
+function normalizeEol(text: string): string {
+  return text.replace(/\r\n/g, "\n");
+}
+
+// @req IR-CLI-080
+/** Every file under a skill source's `_shared/kiwi`, as names relative to that directory. */
+async function listSharedContractNames(sourceRoot: string): Promise<string[]> {
+  const sharedRoot = path.join(sourceRoot, "_shared", "kiwi");
+  const entries = await readdir(sharedRoot, { withFileTypes: true }).catch(() => []);
+  return entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+}
+
+// @req IR-CLI-080
+/**
+ * IR-CLI-080 — drift between the bundled skills and the copies an agent actually loads.
+ *
+ * The motivating measurement: every other check reported ok while the globally installed
+ * kiwi-wave-master was 404 lines behind the bundled one, missing the run-root preflight gate a
+ * verified requirement had shipped. An agent reads the installed copy, so that is what has to be
+ * compared.
+ *
+ * The home directory is injected rather than read from the environment. A project's doctor reporting
+ * on the developer's own home would be both non-deterministic and none of its business; the caller
+ * that wants the real home passes it.
+ *
+ * A destination that does not exist is not drift. Most projects install for one agent, or none.
+ */
+async function checkInstalledSkillDrift(
+  rootPath: string,
+  options: { homeDir?: string; claudeSourceRoot?: string; codexSourceRoot?: string }
+): Promise<DoctorCheck> {
+  const topic = "installed skill drift";
+  const label = "Installed skill drift";
+  const claudeSource = options.claudeSourceRoot ?? bundledClaudeSkillsRoot();
+  const codexSource = options.codexSourceRoot ?? bundledCodexSkillsRoot();
+  const homeDir = options.homeDir;
+
+  const candidates: InstalledSkillLocation[] = [
+    {
+      label: "project .claude/skills",
+      destinationRoot: path.join(rootPath, ".claude", "skills"),
+      sourceRoot: claudeSource,
+      refresh: "`speckiwi init`"
+    },
+    ...(homeDir
+      ? [
+          {
+            label: "global .claude/skills",
+            destinationRoot: path.join(homeDir, ".claude", "skills"),
+            sourceRoot: claudeSource,
+            refresh: "`speckiwi init --global`"
+          },
+          {
+            label: "global codex skills",
+            destinationRoot: path.join(homeDir, ".codex", "skills"),
+            sourceRoot: codexSource,
+            refresh: "`speckiwi init --global`"
+          }
+        ]
+      : [])
+  ];
+
+  const present: InstalledSkillLocation[] = [];
+  for (const candidate of candidates) {
+    if (await stat(candidate.destinationRoot).then((entry) => entry.isDirectory()).catch(() => false)) {
+      present.push(candidate);
+    }
+  }
+  if (present.length === 0) {
+    return {
+      topic,
+      label,
+      state: "ok",
+      message: "no installed skill location is provisioned for this project or agent home",
+      remediation: "No action needed; install the bundled kiwi skills with `speckiwi init` when wanted."
+    };
+  }
+
+  const findings: string[] = [];
+  const refreshes = new Set<string>();
+  for (const location of present) {
+    const missing: string[] = [];
+    const diverged: string[] = [];
+    // An installed skill's entrypoint is always SKILL.md; the claude source spells it skill.md.
+    for (const name of await listSkillNames(location.sourceRoot)) {
+      const installed = await readOrUndefined(path.join(location.destinationRoot, name, "SKILL.md"));
+      if (installed === undefined) {
+        missing.push(name);
+        continue;
+      }
+      const source =
+        (await readOrUndefined(path.join(location.sourceRoot, name, "SKILL.md"))) ??
+        (await readOrUndefined(path.join(location.sourceRoot, name, "skill.md")));
+      if (source !== undefined && normalizeEol(source) !== normalizeEol(installed)) diverged.push(name);
+    }
+    // A stale shared contract changes every skill that cites it, without changing any skill body.
+    for (const name of await listSharedContractNames(location.sourceRoot)) {
+      const relative = `_shared/kiwi/${name}`;
+      const installed = await readOrUndefined(path.join(location.destinationRoot, "_shared", "kiwi", name));
+      if (installed === undefined) {
+        missing.push(relative);
+        continue;
+      }
+      const source = await readOrUndefined(path.join(location.sourceRoot, "_shared", "kiwi", name));
+      if (source !== undefined && normalizeEol(source) !== normalizeEol(installed)) diverged.push(relative);
+    }
+    if (missing.length === 0 && diverged.length === 0) continue;
+    const parts = [
+      ...(missing.length > 0 ? [`missing: ${missing.join(", ")}`] : []),
+      ...(diverged.length > 0 ? [`diverged: ${diverged.join(", ")}`] : [])
+    ];
+    findings.push(`${location.label} — ${parts.join("; ")}`);
+    refreshes.add(location.refresh);
+  }
+
+  const scope = `${present.length} installed location${present.length === 1 ? "" : "s"}`;
+  if (findings.length > 0) {
+    return {
+      topic,
+      label,
+      state: "warn",
+      message: `installed skills drifted from the bundled source (${scope} compared) — ${findings.join(" | ")}`,
+      remediation: `Run ${[...refreshes].join(" and ")} to reinstall the drifted skills, then review the diff.`
+    };
+  }
+  return {
+    topic,
+    label,
+    state: "ok",
+    message: `every installed skill matches the bundled source (${scope} compared)`,
+    remediation: "No action needed; the installed skills are in sync with the bundled source."
   };
 }
 
@@ -499,7 +652,13 @@ function checkNodeVersion(nodeVersion: string): DoctorCheck {
  */
 export async function diagnoseHealth(
   workspace: ParsedWorkspace,
-  options: { nodeVersion?: string; codexSkillsSourceRoot?: string } = {}
+  options: {
+    nodeVersion?: string;
+    codexSkillsSourceRoot?: string;
+    claudeSkillsSourceRoot?: string;
+    /** IR-CLI-080 — the home whose global skill installs are compared. Absent means global is skipped. */
+    installedSkillsHomeDir?: string;
+  } = {}
 ): Promise<DoctorReport> {
   const nodeVersion = options.nodeVersion ?? process.version;
   const checks: DoctorCheck[] = [
@@ -511,6 +670,13 @@ export async function diagnoseHealth(
     // FR-NODE-082 / FR-NODE-083 — SDS rules installation + codex skills mirror drift.
     await checkSdsRulesPresence(workspace.root.root),
     await checkCodexSkillsMirror(workspace.root.root, options.codexSkillsSourceRoot),
+    // IR-CLI-080 — the mirror check above covers the project's codex mirror; this one covers the copies
+    // an agent loads, which is where a shipped fix can be silently absent.
+    await checkInstalledSkillDrift(workspace.root.root, {
+      ...(options.installedSkillsHomeDir ? { homeDir: options.installedSkillsHomeDir } : {}),
+      ...(options.claudeSkillsSourceRoot ? { claudeSourceRoot: options.claudeSkillsSourceRoot } : {}),
+      ...(options.codexSkillsSourceRoot ? { codexSourceRoot: options.codexSkillsSourceRoot } : {})
+    }),
     checkActiveTarget(workspace),
     checkScopeTargetConsistency(workspace),
     checkNodeVersion(nodeVersion)

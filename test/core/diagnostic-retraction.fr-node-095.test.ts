@@ -7,11 +7,15 @@ import { DIAGNOSTIC_DEFINITIONS } from "../../src/core/diagnostic-registry.js";
 // bundled rules document. A registered-and-listed code the runtime cannot produce reads as an
 // enforced check, which is worse than an absent feature.
 //
-// The reasons live on the requirement, not in the document. No consumer ever saw these codes in
-// output — the table was their only appearance — so a shipped document that explains them would be
-// archaeology, and naming them would collide with the existing contract (FR-NODE-086 AC-2,
-// FR-NODE-087 AC-9) that the document cites no code the registry lacks. That contract is what keeps
-// this retraction honest, so it is left intact rather than exempted.
+// The reasons live on the requirement, not in the document: naming a retracted code there would
+// collide with the existing contract (FR-NODE-086 AC-2, FR-NODE-087 AC-9) that the document cites no
+// code the registry lacks, and that contract is what keeps this retraction honest, so it is left
+// intact rather than exempted. Retracting a code does change one observable: `explain <code>` used to
+// render any registry definition and now reports the retracted ones unknown.
+//
+// The same requirement fixes the mirror-image defect the audit found: SRS-W044 and SRS-W045 are
+// emitted by step validation and were absent from the registry, so `explain` reported unknown for a
+// code a user can see in output.
 
 const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.5.0.md");
 
@@ -63,12 +67,55 @@ describe("FR-NODE-095 AC-1/AC-2 — the eleven codes are gone from both surfaces
   });
 });
 
-describe("FR-NODE-095 AC-3 — the table says what it contains and where the rest goes", () => {
+describe("FR-NODE-095 AC-3 — the two emitted step codes are registered and explainable", () => {
+  const STEP_CODES = ["SRS-W044", "SRS-W045"] as const;
+
+  it("registers each with warning severity and a non-empty remediation", () => {
+    for (const code of STEP_CODES) {
+      const definition = DIAGNOSTIC_DEFINITIONS.find((candidate) => candidate.code === code);
+      expect(definition, `${code} must be registered`).toBeDefined();
+      expect(definition?.severity).toBe("warning");
+      expect(definition?.remediation.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("lists each in the validation table", async () => {
+    const rows = validationTableRows(await rulesText());
+    for (const code of STEP_CODES) {
+      expect(rows.some((row) => row.includes(`\`${code}\``)), `${code} must have a table row`).toBe(true);
+    }
+  });
+
+  it("keeps the registered message aligned with what the step validator actually emits", async () => {
+    // The registry is only useful if it describes the real finding, so the emission site is the source
+    // of truth for the wording rather than the other way round.
+    const emitter = await readFile(path.join("src", "core", "validator", "validate-scoped.ts"), "utf8");
+    expect(emitter).toContain('advisory("SRS-W044", `Step requirement shadows body requirement id:');
+    expect(emitter).toContain("advisory(\"SRS-W045\", `Step '${stepName}' carries too many requirements:");
+
+    const shadow = DIAGNOSTIC_DEFINITIONS.find((candidate) => candidate.code === "SRS-W044");
+    const overload = DIAGNOSTIC_DEFINITIONS.find((candidate) => candidate.code === "SRS-W045");
+    expect(shadow?.messageTemplate).toContain("Step requirement shadows body requirement id");
+    expect(overload?.messageTemplate).toContain("carries too many requirements");
+  });
+});
+
+describe("FR-NODE-095 AC-4 — the table says what it contains and where the rest goes", () => {
   it("states that the table lists every emittable code and only those", async () => {
     const text = await rulesText();
     const validation = text.slice(text.indexOf("### 32.1 validate-spec"));
 
-    expect(validation).toContain("lists every code the implementation can emit, and only those");
+    expect(validation).toContain("lists every code `validate-spec` can emit, and only those");
+    // The exclusivity claim was falsified by step validation's own advisory namespace, which is
+    // constructed outside the registry on purpose. The section has to name it as a second surface.
+    expect(validation).toContain("Step validation reports step-scoped advisories");
+    for (const code of ["SRS-W044", "SRS-W045", "STEP_DIRECT_CONFLICT", "SDS-W050", "STEP_PROMOTE_NO_EVIDENCE"]) {
+      expect(validation, `the section names ${code}`).toContain(code);
+    }
+    // The registered pair and the unregistered rest must be distinguished, or a reader cannot tell
+    // which codes `explain` will resolve.
+    expect(validation).toContain("Two of them are `SRS-` codes and so are registered");
+    expect(validation).toContain("The rest live in namespaces this table does not cover");
   });
 
   it("names the typed release-readiness fields as the findings reported outside the table", async () => {
@@ -81,7 +128,7 @@ describe("FR-NODE-095 AC-3 — the table says what it contains and where the res
   });
 });
 
-describe("FR-NODE-095 AC-4 — the two guidance sections say they are not validated", () => {
+describe("FR-NODE-095 AC-5 — the two guidance sections say they are not validated", () => {
   it("states that the discouraged-expression list is applied by a reviewer and reports no diagnostic", async () => {
     const text = await rulesText();
     const start = text.indexOf("### 19.4 Forbidden or Warned Expressions");
@@ -99,7 +146,7 @@ describe("FR-NODE-095 AC-4 — the two guidance sections say they are not valida
   });
 });
 
-describe("FR-NODE-095 AC-6 — the surviving codes are untouched", () => {
+describe("FR-NODE-095 AC-7 — the surviving codes are untouched", () => {
   it("keeps every still-live code in the registry", () => {
     const registered = new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code));
     for (const code of STILL_LIVE) {

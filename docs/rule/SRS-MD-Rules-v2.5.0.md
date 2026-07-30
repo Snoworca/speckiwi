@@ -279,7 +279,7 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 
 The §7 Completed Work Log heading must be present in the index, but its inline data rows are optional. The rows may live in the separate history file `docs/spec/91.completed-work-log.md`, and the parser merges both sources — see §7.4.
 
-The `Rules` metadata row is required: it is what §30.5 reads to determine which rules version governs the package. `speckiwi init` writes it for a new project, `speckiwi upgrade` inserts it into an existing index that has none, and `speckiwi doctor` reports its absence.
+The `Rules` metadata row is required: it is what §30.5 reads to determine which rules version governs the package. `speckiwi init` writes it for a new project, `speckiwi upgrade` inserts it into an existing index that has none, and `speckiwi doctor` reports its absence — though a project that is also missing the rules document itself gets that report first, so fix the missing document and re-run before reading the row's state.
 
 ### 7.2 SRS Documents Section
 
@@ -712,7 +712,15 @@ Rules:
 
 ### 14.2 Status Transitions
 
-The transitions below are an authoring convention, not a gate. No tool call refuses a transition that this list omits: `update_status` writes whatever status it is given, so `planned -> verified` succeeds. What the tool does enforce is the shape of the requirement once it claims a status — `SRS-E010` reports a `verified` requirement with an unchecked acceptance criterion or no evidence, `SRS-E033` reports one whose `Stability` is still `draft`, and step promotion refuses a step requirement that carries no verification evidence. Treat this list as what a reviewer checks.
+The transitions below are an authoring convention. The list itself is not a gate: `update_status` does not consult it, so a transition it omits is not refused for being absent from it. What the tool refuses is a *shape*, and it refuses at the write:
+
+- `update_status` to `verified` fails with `MUTATION_DENIED` unless the requirement already has at least one acceptance criterion, every criterion checked, and at least one non-empty Verification Evidence reference. So `planned -> verified` succeeds only for a requirement that is already in verified shape; on an unchecked one it is refused, not merely reported afterwards.
+- `update_status` to `discarded` fails with `MUTATION_DENIED` for a protected requirement until the call passes `confirmDiscardVerified`.
+- `update_status` to `implemented` is not gated: none of the §14.3 conditions is checked at the write.
+- Validation reports the same shape after the fact for a document edited by hand: `SRS-E010` for a `verified` requirement with an unchecked criterion or no evidence, `SRS-E033` for one whose `Stability` is still `draft`.
+- Step promotion refuses a step requirement with no verification evidence when the work-mode is `tdd`; outside `tdd` it promotes and attaches an advisory instead.
+
+Treat the list as what a reviewer checks, and the five rules above as what a call will actually do.
 
 Conventional transitions:
 
@@ -739,7 +747,7 @@ To change to `implemented`, at least one of the following must exist.
 
 `implemented` does not mean “verification complete”.
 
-No tool call refuses a transition to `implemented` that carries none of the four. Like §14.2 this is a reviewer's checklist; the tool's own gate applies at `verified`.
+No tool call refuses a transition to `implemented` that carries none of the four. Unlike the `verified` and `discarded` transitions in §14.2, this one has no write-time gate at all — it is a reviewer's checklist only.
 
 ### 14.4 verified Conditions
 
@@ -1673,6 +1681,8 @@ Validation items:
 | `SRS-W025` | warning | Completed Work Log duplicate across index and history |
 | `SRS-W040` | warning | Target Goal block conflict between index and appendix |
 | `SRS-W041` | warning | Completed Work Log duplicate source |
+| `SRS-W044` | warning | Step requirement shadows a body requirement id |
+| `SRS-W045` | warning | Step carries too many requirements |
 | `SRS-W050` | warning | Workflow artifact parse warning |
 | `SRS-W051` | warning | Workflow artifact companion missing |
 | `SRS-W052` | warning | Invalid workflow JSONL line |
@@ -1697,9 +1707,14 @@ Validation items:
 | `SRS-W071` | warning | Requirement heading outside a Requirements section |
 | `SRS-W072` | warning | Numbered document shares a leading number with a scope document |
 
-This table lists every code the implementation can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check. Release readiness is the one place where findings are reported outside this table: an empty release target arrives as a blocking reason, and coverage gaps, missing evidence references, command evidence policy violations and broken trace links arrive as the typed `acCoverageGaps`, `missingEvidenceReferences`, `commandEvidencePolicyViolations` and `brokenTraceLinks` fields of its result, which is also what its `ready` flag is computed from.
+This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 
-In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every diagnostic code that the implementation emits must be registered in the registry.
+Two surfaces report findings that this table does not cover, and neither is a gap in it:
+
+- Release readiness returns its findings as typed result fields rather than as codes. An empty release target arrives as a blocking reason, and coverage gaps, missing evidence references, command evidence policy violations and broken trace links arrive as `acCoverageGaps`, `missingEvidenceReferences`, `commandEvidencePolicyViolations` and `brokenTraceLinks`, which is also what its `ready` flag is computed from.
+- Step validation reports step-scoped advisories, which `validate-spec` never produces. Two of them are `SRS-` codes and so are registered and listed in the table above — `SRS-W044` for a step requirement that shadows a body requirement id, and `SRS-W045` for a step carrying too many requirements — even though the row belongs to step validation rather than to `validate-spec`. The rest live in namespaces this table does not cover: `STEP_DIRECT_CONFLICT` for two active steps on one requirement, `SDS-W050` through `SDS-W053` for step design advisories, and `STEP_PROMOTE_NO_EVIDENCE` when a step is promoted without evidence outside `tdd` mode.
+
+In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every code in the `SRS-` namespace that any surface emits must be registered, which is why step validation's two `SRS-` advisories appear above. The `SDS-` and `STEP_` namespaces are outside this contract and are not required to be registered.
 
 In the v1.2.0 hardening target, index consistency diagnostics are extended as well. A duplicate Target Map target, a duplicate Scope Map prefix, multiple active target rows, a missing scope document file, an unregistered `.srs.md` file, Status Summary drift, and Requirement Type Summary drift must be reported as diagnostics.
 
