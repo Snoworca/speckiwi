@@ -24,6 +24,7 @@ import {
   renderIndexRulesRow,
   renderIndexTemplate
 } from "./templates.js";
+import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
 import { installSkill, planSkillInstall, pruneOrphanKiwiSkills } from "../skills/install-skill.js";
 import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
 import { registerSpeckiwiMcp } from "./mcp-registration.js";
@@ -354,13 +355,23 @@ async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOu
     return; // No index to point anywhere; the scaffold step already reported that.
   }
   const desiredRow = renderIndexRulesRow();
+  const lines = existing.split("\n");
+  // The row is located by position as well as by shape. Shape alone is not enough: a two-cell
+  // `| Rules | ... |` row is also what an author's glossary entry looks like, and replacing one
+  // destroys it silently — measured, with validation still clean afterwards. Anchoring to the
+  // `| Field | Value |` metadata table is what makes "the metadata Rules row" a well-defined target.
+  const range = findMetadataTableRange(lines);
+  if (range === undefined) return;
   let changed = false;
-  const next = existing
-    .split("\n")
-    .map((line) => {
-      if (!line.startsWith("| Rules |") || line.includes(BUNDLED_SRS_RULES_FILENAME)) return line;
+  const next = lines
+    .map((line, index) => {
+      if (index < range.first || index > range.last) return line;
+      if (!isRulesMetadataRow(line) || line.includes(BUNDLED_SRS_RULES_FILENAME)) return line;
       changed = true;
-      return desiredRow;
+      // The split is on "\n" alone, so a CRLF line carries its CR as trailing content. Returning the
+      // row without it would leave that one line LF-terminated in an otherwise CRLF file — a refresh
+      // that silently produces mixed endings.
+      return line.endsWith("\r") ? `${desiredRow}\r` : desiredRow;
     })
     .join("\n");
   if (!changed) return;

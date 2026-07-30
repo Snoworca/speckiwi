@@ -244,6 +244,15 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--force", "force"),
     IGNORE_LOCK
   ]),
+  // IR-CLI-076 — upgrade is CLI-only on purpose: init_project is exposed over MCP because it touches
+  // only tool-owned artifacts, and that reasoning does not extend to a command that rewrites author
+  // files. No agent drives this migration unattended.
+  mutationSpec("upgrade", undefined, "workspace", "upgradeProject", [
+    opt("--apply", "apply"),
+    opt("--no-skills", "skills"),
+    opt("--no-mcp", "mcp"),
+    IGNORE_LOCK
+  ]),
   mutationSpec("sync-index", "sync_index", "workspace", "syncIndexRollups", [
     opt("--expected-sha256 <sha>", "expectedSha256"),
     DRY_RUN,
@@ -428,7 +437,10 @@ export const toolSpecs: readonly ToolSpec[] = [
   // scaffold-scope: real CLI mutation (update_step_state moved to `step update-state`, IR-CLI-074).
   mutationSpec("scaffold-scope", undefined, "workspace", "scaffoldScope", [
     opt("--apply", "apply"),
-    DRY_RUN
+    DRY_RUN,
+    // IR-CLI-078 — the mutation takes the SRS lock since v2.5.0, so it needs the bypass every
+    // comparable mutation exposes.
+    IGNORE_LOCK
   ]),
   // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).
   mutationSpec("register-scopes", undefined, "req-scoped", "registerScopes", [

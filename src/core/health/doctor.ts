@@ -11,6 +11,7 @@ import {
   BUNDLED_SDS_RULES_FILENAME,
   BUNDLED_SRS_RULES_FILENAME
 } from "../bootstrap/templates.js";
+import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
 
 // @req IR-CLI-065
 // IR-CLI-065 — `speckiwi doctor` consolidated environment health diagnosis.
@@ -191,6 +192,59 @@ async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck>
     state: "ok",
     message: `installed rules v${installed} matches bundled rules v${BUNDLED_RULES_VERSION} (${relPath})`,
     remediation: "No action needed; the installed rules document matches the bundled version."
+  };
+}
+
+// @req IR-CLI-077
+/**
+ * A rules reference with nothing behind it: an agent instruction file citing a rules document that is
+ * not installed under `docs/rule`. The drift check above cannot see this — it reads only the index
+ * Rules row — and this is the defect this repository shipped and hand-fixed twice, in CLAUDE.md,
+ * AGENTS.md and three skills left pointing at a document a release had pruned.
+ *
+ * The verdict is presence on disk, so this check reports the current state and nothing more. A citation
+ * of a non-bundled document that is still installed does not warn here; the version mismatch is what
+ * `checkRulesDrift` above reports. Note that the two states are not both stable: init prunes every
+ * non-bundled rules document, and this check warns from that point on.
+ *
+ * Scope is the managed agent instruction files. Requirement bodies are out of scope for this check
+ * because `speckiwi links check` already reports a broken reference in one, with a diagnosis suited to
+ * governance content; reporting it here too would give one defect two verdicts.
+ */
+async function checkRulesReferencePresence(rootPath: string): Promise<DoctorCheck> {
+  const topic = "rules document reference presence";
+  const label = "Rules reference presence";
+  const dangling: string[] = [];
+  let bundledMissing = false;
+  for (const match of await scanAgentFileRulesReferences(rootPath)) {
+    const present = await stat(path.join(rootPath, "docs", "rule", match.document))
+      .then((entry) => entry.isFile())
+      .catch(() => false);
+    if (present) continue;
+    dangling.push(`${match.location} -> ${match.document}`);
+    if (match.document === BUNDLED_SRS_RULES_FILENAME || match.document === BUNDLED_SDS_RULES_FILENAME) bundledMissing = true;
+  }
+  if (dangling.length === 0) {
+    return {
+      topic,
+      label,
+      state: "ok",
+      message: "every rules document referenced by an agent instruction file is installed",
+      remediation: "No action needed; every rules reference resolves to an installed document."
+    };
+  }
+  return {
+    topic,
+    label,
+    state: "warn",
+    message: `agent instruction files reference rules documents that are not installed: ${dangling.join(", ")}`,
+    // Which command clears this depends on which document is missing. When it is a bundled one the
+    // reference is already correct and the document simply is not installed, so `upgrade` would rewrite
+    // nothing — init is what fixes it. Naming `upgrade` there would describe an action the tool does
+    // not take.
+    remediation: bundledMissing
+      ? `Run \`speckiwi init\` to install the bundled rules documents at docs/rule/${BUNDLED_SRS_RULES_FILENAME} and docs/rule/${BUNDLED_SDS_RULES_FILENAME}.`
+      : "Run `speckiwi upgrade` to see the planned repairs, then `speckiwi upgrade --apply` to rewrite each reference to the bundled rules document."
   };
 }
 
@@ -452,6 +506,8 @@ export async function diagnoseHealth(
     checkSpecPresence(workspace),
     await checkWorkflowCurrency(workspace.root.root),
     await checkRulesDrift(workspace),
+    // IR-CLI-077 — a reference the drift check cannot see, because it reads only the index pointer.
+    await checkRulesReferencePresence(workspace.root.root),
     // FR-NODE-082 / FR-NODE-083 — SDS rules installation + codex skills mirror drift.
     await checkSdsRulesPresence(workspace.root.root),
     await checkCodexSkillsMirror(workspace.root.root, options.codexSkillsSourceRoot),

@@ -1,6 +1,7 @@
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
+import { upgradeProject } from "../../core/bootstrap/upgrade-project.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
@@ -105,6 +106,29 @@ export function registerMutationCommands(command: Command, context: CliContext):
         installSkillsGlobal: Boolean(options.global),
         registerMcp: options.mcp !== false,
         ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-076 — the migration init deliberately does not perform. Dry-run by default: the
+  // operator reads the plan and approves it, in the shape `repair requirement-id-collisions` set.
+  command
+    .command("upgrade")
+    .option("--apply", "perform the plan (default: print the plan and write nothing)")
+    .option("--no-skills", "skip refreshing the bundled kiwi skills")
+    .option("--no-mcp", "skip refreshing the SpecKiwi MCP registration in .mcp.json")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (options) => {
+      // `rootFrom`, not init's `cwd ?? cwd` form: an explicit root skips discovery entirely, so that
+      // form would treat any subdirectory as the project and scaffold a second project inside it.
+      // Scaffolding in cwd is init's intended semantic; a migration must find the existing project.
+      const result = await upgradeProject(await rootFrom(command.opts()), {
+        apply: Boolean(options.apply),
+        installSkills: options.skills !== false,
+        registerMcp: options.mcp !== false,
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
@@ -670,6 +694,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<name>", "scope name or name:PREFIX")
     .option("--apply", "create the scope file and register the index rows")
     .option("--dry-run")
+    .option("--ignore-lock")
     .option("--json")
     .action(async (name, options) => {
       const separator = name.indexOf(":");
@@ -678,7 +703,10 @@ export function registerMutationCommands(command: Command, context: CliContext):
       const result = await scaffoldScope(await rootFrom(command.opts()), {
         name: scopeName,
         prefix,
-        apply: Boolean(options.apply) && options.dryRun !== true
+        apply: Boolean(options.apply) && options.dryRun !== true,
+        // @req IR-CLI-078 — the mutation reads ignoreLock but nothing supplied it, so a held lock left
+        // this one mutation with no way through where it previously took no lock at all.
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
