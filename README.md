@@ -358,7 +358,7 @@ speckiwi show FR-APP-001 --markdown           # a single requirement
 speckiwi search "login timeout"               # full-text search
 speckiwi scopes                               # registered scopes
 speckiwi completed-work --target v0.1.0 --order latest
-speckiwi doctor                               # workspace/agent-file/rules-drift diagnostics
+speckiwi doctor                               # workspace/agent-file/rules-drift/rules-reference diagnostics
 ```
 
 ### Maintain the index
@@ -367,6 +367,38 @@ speckiwi doctor                               # workspace/agent-file/rules-drift
 speckiwi sync-index            # recompute the §5/§6 rollup summaries in 00.index.md
 speckiwi sync-index --dry-run
 ```
+
+<a id="en-upgrade"></a>
+
+### Bring an older project up to date
+
+`speckiwi init` refreshes everything the tool owns — the rules documents, the agent workflow block, the skills, the index `Rules` row when there is one. By contract it never edits author-owned content, so two things survive it in a project set up by an older version:
+
+- a link or a sentence still naming a rules document this release no longer ships, and
+- an index whose metadata table has no `Rules` row at all (the refresh only ever *replaces* an existing row).
+
+`speckiwi upgrade` closes both. It **prints a plan and writes nothing** unless you pass `--apply`:
+
+```sh
+speckiwi upgrade                  # print the plan; the workspace is untouched
+speckiwi upgrade --apply          # perform it
+speckiwi upgrade --apply --json   # the standard mutation result envelope
+```
+
+Each repaired reference is reported as `file:line`, in both spellings — the path form (`SRS-MD-Rules-v1.0.0.md`) and the prose form (`SRS-MD Authoring Rules v1.0.0`).
+
+What it deliberately does **not** do, and says so in its own report: it never renumbers a scope document, never edits a requirement body under `docs/spec/` (that is a governance mutation, not a migration), and never overwrites an existing hook. A dangling mention anywhere else under `docs/` is **reported, not rewritten** — a note recording which rules version a project used to follow is a record, not a defect.
+
+`speckiwi doctor` reports the same dangling references under **Rules reference presence**, so you find out even if you never run `upgrade`. The command is CLI-only: no MCP tool exposes it, because it rewrites author-owned files.
+
+| Option | Description |
+| --- | --- |
+| `--apply` | Perform the plan. Without it, nothing is written. |
+| `--no-skills` / `--no-mcp` | Skip the corresponding `init` step during the refresh. |
+| `--ignore-lock` | Bypass a stale SRS mutation lock. |
+| `--json` | Emit the result envelope as JSON. |
+
+**Exit codes:** `0` success · `5` failure (e.g. a held mutation lock — nothing is written).
 
 ### Resolve duplicate Requirement IDs after a merge
 
@@ -860,7 +892,7 @@ speckiwi show FR-APP-001 --markdown           # 단일 요구사항
 speckiwi search "login timeout"               # 전문 검색
 speckiwi scopes                               # 등록된 scope
 speckiwi completed-work --target v0.1.0 --order latest
-speckiwi doctor                               # workspace/에이전트 파일/규칙 드리프트 진단
+speckiwi doctor                               # workspace/에이전트 파일/규칙 드리프트/규칙 참조 진단
 ```
 
 ### 인덱스 유지보수
@@ -869,6 +901,38 @@ speckiwi doctor                               # workspace/에이전트 파일/�
 speckiwi sync-index            # 00.index.md의 §5/§6 롤업 요약 재계산
 speckiwi sync-index --dry-run
 ```
+
+<a id="ko-upgrade"></a>
+
+### 구버전 프로젝트를 최신 상태로 올리기
+
+`speckiwi init` 은 도구가 소유한 것 — 규칙 문서, 에이전트 워크플로 블록, 스킬, 이미 존재하는 인덱스 `Rules` 행 — 을 모두 갱신합니다. 다만 작성자 소유 내용은 계약상 절대 수정하지 않으므로, 구버전으로 만든 프로젝트에는 두 가지가 남습니다.
+
+- 이번 릴리스가 더 이상 배포하지 않는 규칙 문서를 여전히 가리키는 링크 또는 문장,
+- `Rules` 행이 아예 없는 인덱스 메타데이터 표 (갱신은 **기존 행 교체**만 합니다).
+
+`speckiwi upgrade` 가 둘 다 해소합니다. `--apply` 를 주지 않으면 **계획만 출력하고 아무것도 쓰지 않습니다**.
+
+```sh
+speckiwi upgrade                  # 계획 출력, 워크스페이스 무변경
+speckiwi upgrade --apply          # 실제 수행
+speckiwi upgrade --apply --json   # 표준 mutation 결과 envelope
+```
+
+수정된 참조는 각각 `file:line` 로 보고되며, 두 표기 모두 대상입니다 — 경로 형태(`SRS-MD-Rules-v1.0.0.md`)와 산문 형태(`SRS-MD Authoring Rules v1.0.0`).
+
+의도적으로 **하지 않는 것**(보고서 본문에도 명시됩니다): scope 문서 번호를 다시 매기지 않고, `docs/spec/` 아래 요구사항 본문을 수정하지 않으며(그것은 마이그레이션이 아니라 거버넌스 mutation 입니다), 기존 hook 을 덮어쓰지 않습니다. `docs/` 아래 그 밖의 위치에서 발견된 끊어진 언급은 **수정하지 않고 보고만** 합니다 — 과거에 어떤 규칙 버전을 따랐는지 적어둔 기록은 결함이 아니기 때문입니다.
+
+`speckiwi doctor` 도 같은 끊어진 참조를 **Rules reference presence** 로 보고하므로 `upgrade` 를 쓰지 않아도 발견됩니다. 이 명령은 CLI 전용이며 MCP 도구로 노출되지 않습니다 — 작성자 소유 파일을 수정하기 때문입니다.
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--apply` | 계획을 실제로 수행. 없으면 아무것도 쓰지 않음. |
+| `--no-skills` / `--no-mcp` | 갱신 단계에서 해당 `init` 단계를 건너뜀. |
+| `--ignore-lock` | stale SRS mutation lock 우회. |
+| `--json` | 결과 envelope 을 JSON 으로 출력. |
+
+**Exit code:** `0` 성공 · `5` 실패 (예: lock 점유 — 아무것도 쓰이지 않음).
 
 ### 병합 후 중복 Requirement ID 해소
 
