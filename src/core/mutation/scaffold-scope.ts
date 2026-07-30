@@ -103,11 +103,14 @@ async function scaffoldScopeUnlocked(
 
   // FR-NODE-088 AC-2/AC-6 — one above the highest number already on disk, so the new document never
   // claims a number an existing document uses and never skips ahead by a decade.
-  // Only scope documents drive allocation. The tool's own sidecars sit in a reserved high band
-  // (90.appendix.md, 91.completed-work-log.md); counting them would push a project's second scope
-  // document to 92. A consumer sidecar that does collide is reported by SRS-W070 instead.
+  // FR-NODE-097 — only scope documents raise the starting candidate, but every document in docs/spec
+  // can push it forward. Counting the sidecars as the highest would send a project's second scope
+  // document to 92; landing on one of their numbers would produce a document SRS-W072 reports.
   const existingDocuments = workspace.files.map((file) => file.relativePath).filter(isScopeDocumentPath);
-  const document = scopeDocumentName(scope.slug, nextScopeDocumentNumber(existingDocuments));
+  const document = scopeDocumentName(
+    scope.slug,
+    nextScopeDocumentNumber(existingDocuments, workspace.specDocuments ?? existingDocuments)
+  );
   const documentScope: ScopeTemplateInfo = { name: scope.name, prefix: scope.prefix, document };
   const filePreview = renderEmptyScopeTemplate(documentScope);
   const srsDocumentsRow = renderScopeRow(documentScope, document);

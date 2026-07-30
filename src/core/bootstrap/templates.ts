@@ -298,16 +298,40 @@ export function isScopeDocumentPath(relativePath: string): boolean {
 /** Files directly in docs/spec that hold an ordering position without being scope documents. */
 export const RESERVED_SPEC_SIDECARS: readonly string[] = ["90.appendix.md", "91.completed-work-log.md"];
 
-export function nextScopeDocumentNumber(existingFileNames: readonly string[]): number {
-  let highest = 0;
-  for (const fileName of existingFileNames) {
+function leadingNumbers(fileNames: readonly string[]): Set<number> {
+  const numbers = new Set<number>();
+  for (const fileName of fileNames) {
     const bare = fileName.slice(fileName.lastIndexOf("/") + 1);
     const match = /^(\d+)\./.exec(bare);
     if (!match) continue;
     const value = Number.parseInt(match[1] ?? "", 10);
-    if (Number.isFinite(value) && value > highest) highest = value;
+    if (Number.isFinite(value)) numbers.add(value);
   }
-  return highest + 1;
+  return numbers;
+}
+
+/**
+ * @req FR-NODE-097 — one above the highest scope document, then advanced past any number another
+ * document already holds.
+ *
+ * `occupiedFileNames` is every document in docs/spec, not only the scope documents, and it never
+ * raises the starting candidate. That asymmetry is the point: treating `90.appendix.md` as the highest
+ * number would push a project whose only scope document is `01` to `92`, which is what the numbering
+ * decision exists to prevent, while landing on a number a sidecar holds produces a document the
+ * validator immediately reports as `SRS-W072`.
+ */
+export function nextScopeDocumentNumber(
+  existingFileNames: readonly string[],
+  occupiedFileNames: readonly string[] = existingFileNames
+): number {
+  let highest = 0;
+  for (const value of leadingNumbers(existingFileNames)) {
+    if (value > highest) highest = value;
+  }
+  const occupied = leadingNumbers(occupiedFileNames);
+  let candidate = highest + 1;
+  while (occupied.has(candidate)) candidate += 1;
+  return candidate;
 }
 
 /**

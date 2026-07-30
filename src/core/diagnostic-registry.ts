@@ -77,15 +77,6 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     remediation: "Add an Acceptance Criteria section with at least one checkable criterion to the requirement."
   },
   {
-    code: "SRS-E009",
-    severity: "error",
-    title: "Verified requirement has unchecked acceptance criteria",
-    messageTemplate: "Verified requirement has unchecked acceptance criteria: {requirementId}",
-    sourceRule: "FR-PARSE-009",
-    since: "v1.0.0",
-    remediation: "Check every acceptance criterion or move the requirement out of verified status until it passes."
-  },
-  {
     code: "SRS-E010",
     severity: "error",
     title: "Verified requirement lacks checked AC or evidence",
@@ -230,60 +221,6 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     remediation: "Create the missing scope document file, or update the Scope Map path to an existing file."
   },
   {
-    code: "SRS-E026",
-    severity: "error",
-    title: "Release target is empty",
-    messageTemplate: "Release readiness target is empty",
-    sourceRule: "FR-FLOW-007",
-    since: "v1.2.0",
-    remediation: "Add requirements to the release target, or select a target that has requirements."
-  },
-  {
-    code: "SRS-E027",
-    severity: "error",
-    title: "Acceptance Criteria coverage gap",
-    messageTemplate: "Requirement has uncovered acceptance criteria: {requirementId}",
-    sourceRule: "FR-FLOW-008",
-    since: "v1.2.0",
-    remediation: "Add verification evidence covering every acceptance criterion of the requirement."
-  },
-  {
-    code: "SRS-E028",
-    severity: "error",
-    title: "Evidence reference missing",
-    messageTemplate: "Evidence reference does not exist: {reference}",
-    sourceRule: "FR-FLOW-008",
-    since: "v1.2.0",
-    remediation: "Point the evidence reference at an existing artifact, or remove the dangling reference."
-  },
-  {
-    code: "SRS-E029",
-    severity: "error",
-    title: "Evidence URL invalid",
-    messageTemplate: "Evidence URL is invalid: {reference}",
-    sourceRule: "FR-FLOW-008",
-    since: "v1.2.0",
-    remediation: "Fix the evidence URL to a well-formed absolute URL."
-  },
-  {
-    code: "SRS-E030",
-    severity: "error",
-    title: "Command evidence violates policy",
-    messageTemplate: "Command evidence violates release policy: {reference}",
-    sourceRule: "FR-FLOW-008",
-    since: "v1.2.0",
-    remediation: "Replace the command evidence with an allowed evidence form permitted by the release policy."
-  },
-  {
-    code: "SRS-E031",
-    severity: "error",
-    title: "Trace link target is broken",
-    messageTemplate: "Trace link target is broken: {reference}",
-    sourceRule: "FR-FLOW-008",
-    since: "v1.2.0",
-    remediation: "Repair the trace link to point at an existing target, or remove the broken link."
-  },
-  {
     code: "SRS-E032",
     severity: "error",
     title: "Stale mutation snapshot",
@@ -336,33 +273,6 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-PARSE-009",
     since: "v1.0.0",
     remediation: "Use a well-formed GitHub issue URL (https://github.com/<owner>/<repo>/issues/<n>)."
-  },
-  {
-    code: "SRS-W005",
-    severity: "warning",
-    title: "Heading dash is not an em dash",
-    messageTemplate: "Requirement heading dash is not an em dash: {requirementId}",
-    sourceRule: "FR-PARSE-002",
-    since: "v1.0.0",
-    remediation: "Replace the hyphen in the requirement heading with an em dash (—)."
-  },
-  {
-    code: "SRS-W006",
-    severity: "warning",
-    title: "Discouraged wording used",
-    messageTemplate: "Discouraged wording used: {phrase}",
-    sourceRule: "FR-PARSE-009",
-    since: "v1.0.0",
-    remediation: "Rephrase using precise, testable wording instead of the discouraged phrase."
-  },
-  {
-    code: "SRS-W007",
-    severity: "warning",
-    title: "Too many tags",
-    messageTemplate: "Too many tags for {requirementId}",
-    sourceRule: "FR-PARSE-009",
-    since: "v1.0.0",
-    remediation: "Reduce the number of tags to the allowed maximum."
   },
   {
     code: "SRS-W008",
@@ -480,15 +390,6 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-PARSE-014",
     since: "v1.2.0",
     remediation: "Regenerate the Requirement Type Summary so its counts match the requirement blocks."
-  },
-  {
-    code: "SRS-W021",
-    severity: "warning",
-    title: "Release readiness warning",
-    messageTemplate: "Release readiness warning: {message}",
-    sourceRule: "FR-FLOW-007",
-    since: "v1.2.0",
-    remediation: "Review the release readiness warning and resolve the underlying gap before release."
   },
   {
     code: "SRS-W022",
@@ -832,6 +733,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v2.5.1",
     remediation:
       "Move the block into the document's Requirements section so it is parsed, or rename the heading so it is not requirement-shaped when the block is illustrative."
+  },
+  {
+    code: "SRS-W072",
+    severity: "warning",
+    title: "Numbered document shares a leading number with a scope document",
+    messageTemplate: "{document} shares the leading number {number} with the scope document {scopeDocument}",
+    sourceRule: "FR-PARSE-037",
+    since: "v2.5.1",
+    remediation:
+      "Rename the non-scope document to an unused number, since the scope document's number is the ordering key its Scope Map row names."
   }
 ];
 

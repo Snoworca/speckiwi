@@ -98,6 +98,12 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
   });
   if (!initResult.ok || !initResult.value) {
     // The refresh failure is the whole command's failure, reported verbatim rather than re-worded.
+    // No input reaches this: initProject returns only a success result, and the lock it would otherwise
+    // fail on is skipped above because this command already holds it. The check stays because
+    // MutationResult is a union — it is a type obligation, not a live path, and adding a seam to drive
+    // it would put test-only indirection in the command. A genuine filesystem failure escapes as a
+    // rejection and is reported at the CLI boundary instead; both facts are pinned by
+    // test/core/bootstrap/upgrade-refresh-failure.fr-node-091.test.ts.
     return {
       ok: false,
       error: initResult.error ?? { code: "UPGRADE_REFRESH_FAILED", message: "the init refresh returned no result" },

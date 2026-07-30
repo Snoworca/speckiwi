@@ -384,14 +384,34 @@ export function registerDefaultRules(): void {
       }
     }
 
+    // FR-PARSE-037 — a numbered document that is not a scope SRS document occupies the same ordering
+    // position, so sharing a number with a scope document is the same ambiguity. It is a separate code
+    // from SRS-W070 because the repair differs: the non-scope document is renamed, while a scope
+    // document's number is named by its Scope Map row. The listing comes from the parsed workspace
+    // rather than from `files`, which holds only the fixed set the parser reads.
+    const scopeNumbers = scopeDocumentsByLeadingNumber(discoveredScopeDocuments);
+    for (const [number, documents] of scopeDocumentsByLeadingNumber(
+      (workspace.specDocuments ?? []).filter((filePath) => !filePath.endsWith(".srs.md"))
+    )) {
+      const scopeDocuments = scopeNumbers.get(number);
+      if (!scopeDocuments || scopeDocuments.length === 0) continue;
+      for (const document of documents) {
+        diagnostics.push(
+          diagnostic(
+            "SRS-W072",
+            "warning",
+            `${document} shares the leading number ${number} with the scope document ${scopeDocuments.join(", ")}`,
+            location(`docs/spec/${document}`),
+            { number, document, scopeDocuments }
+          )
+        );
+      }
+    }
+
     // FR-PARSE-034 — two scope documents on one leading number make the ordering ambiguous and are
     // the observable symptom of an allocation that stopped allocating. Reported once per colliding
     // number, as a warning, so a project already in that state can still validate while it is repaired.
-    // Scope documents only. A numbered sidecar in docs/spec — a consumer's own glossary, or the
-    // legacy 05.completed-work.md — also occupies an ordering position, but discovery reads a fixed
-    // sidecar set rather than the directory, so the validator cannot see an arbitrary one. Widening
-    // this needs the parser to record the directory listing; until then the check does not claim it.
-    for (const [number, documents] of scopeDocumentsByLeadingNumber(discoveredScopeDocuments)) {
+    for (const [number, documents] of scopeNumbers) {
       if (documents.length < 2) continue;
       diagnostics.push(
         diagnostic(
@@ -515,6 +535,12 @@ export function registerDefaultRules(): void {
       }
       if (record.scope && !scopes.has(record.scope)) {
         diagnostics.push(diagnostic("SRS-E015", "error", `Scope prefix is not registered: ${record.scope}`, { filePath: record.filePath, line: record.headingLine }));
+      }
+      // FR-PARSE-036 — the Rationale section answers why the requirement exists, which is the one
+      // thing a later reader cannot reconstruct from the statement. Reported at the heading line,
+      // because the absent section has no line of its own.
+      if (record.sectionLines?.Rationale === undefined) {
+        diagnostics.push(diagnostic("SRS-W001", "warning", `Rationale section missing for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
       }
       if ((record.risk === "high" || record.risk === "critical") && !record.markdown?.includes("#### Research / Analysis")) {
         diagnostics.push(diagnostic("SRS-W008", "warning", `High risk requirement lacks Research / Analysis: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));

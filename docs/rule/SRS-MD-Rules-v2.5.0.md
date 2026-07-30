@@ -250,6 +250,7 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 | Document Type | srs_index |
 | Version | 1.0.0 |
 | Active Target |  |
+| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/SRS-MD-Rules-v2.5.0.md) |
 | Last Updated | YYYY-MM-DD |
 
 ## 1. Purpose
@@ -277,6 +278,8 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 ```
 
 The §7 Completed Work Log heading must be present in the index, but its inline data rows are optional. The rows may live in the separate history file `docs/spec/91.completed-work-log.md`, and the parser merges both sources — see §7.4.
+
+The `Rules` metadata row is required: it is what §30.5 reads to determine which rules version governs the package. `speckiwi init` writes it for a new project, `speckiwi upgrade` inserts it into an existing index that has none, and `speckiwi doctor` reports its absence.
 
 ### 7.2 SRS Documents Section
 
@@ -356,7 +359,8 @@ Rules:
 11. The Completed Work Log may live inline in `00.index.md` §7, in the separate history file `docs/spec/91.completed-work-log.md`, or in both. The parser reads both sources and merges them into one completed-work list (dual-read).
 12. The history file is a plain `.md` rather than a `.srs.md`, so it is not discovered as a scope or step file. It carries a read-only summary banner above its heading, stating that it is not the source of truth for completion decisions, and it follows the same table grammar as §7 — both the legacy five-column form and the six-column form with a trailing `Report Paths`.
 13. The merge is an append-concatenation: index rows first, then history rows. Sorting and de-duplication happen in the query layer. A row duplicated across both sources — identical `Date`, `Target`, `Requirement IDs`, and `Summary` — is de-duplicated and reported as an `SRS-W025` warning.
-14. A new completed-work row is written only to the history file, bootstrapping the file with its banner when it is absent. Inline index rows continue to be read for backward compatibility but are no longer written. Migrating inline rows into the history file is opt-in and defaults to a dry run.
+14. A new completed-work row is written to the history file, bootstrapping the file with its banner when it is absent. Inline index rows continue to be read for backward compatibility but are no longer written. Migrating inline rows into the history file is opt-in and defaults to a dry run.
+14a. One file outranks the history file. When a project already carries the legacy external log `docs/spec/05.completed-work.md`, the appended row goes there, in preference to `docs/spec/91.completed-work-log.md`, and the history file is not bootstrapped. The legacy file is read either way, so a project that has both ends up appending to the legacy one; remove it, once its rows are migrated, to move writes to the history file.
 15. The history file is an append-only summary. It is per-row and status-independent, and it does not weaken the prohibition on bulk finalization in §30.3.
 16. The §7 Completed Work Log diagnostics (`SRS-W011` through `SRS-W015`, and `SRS-W024`) report the originating file of each entry — the history file or the index — as the diagnostic location.
 
@@ -708,7 +712,9 @@ Rules:
 
 ### 14.2 Status Transitions
 
-Allowed normal transitions:
+The transitions below are an authoring convention, not a gate. No tool call refuses a transition that this list omits: `update_status` writes whatever status it is given, so `planned -> verified` succeeds. What the tool does enforce is the shape of the requirement once it claims a status — `SRS-E010` reports a `verified` requirement with an unchecked acceptance criterion or no evidence, `SRS-E033` reports one whose `Stability` is still `draft`, and step promotion refuses a step requirement that carries no verification evidence. Treat this list as what a reviewer checks.
+
+Conventional transitions:
 
 ```text
 planned -> in_progress
@@ -732,6 +738,8 @@ To change to `implemented`, at least one of the following must exist.
 4. Implementation Notes left by the implementer
 
 `implemented` does not mean “verification complete”.
+
+No tool call refuses a transition to `implemented` that carries none of the four. Like §14.2 this is a reviewer's checklist; the tool's own gate applies at `verified`.
 
 ### 14.4 verified Conditions
 
@@ -835,7 +843,7 @@ Rules:
 2. lowercase kebab-case is recommended.
 3. Trim the whitespace before and after a tag.
 4. A tag does not replace status or target.
-5. Five or fewer tags are recommended.
+5. Five or fewer tags are recommended. This is a recommendation a reviewer applies; validation reports no diagnostic for exceeding it, and a requirement that already carries more is not a defect to repair — granular edits are refused on a verified requirement, so trimming its tags would mean demoting it.
 6. Do not use duplicate tags.
 7. Unify tags that have the same meaning into one. Example: choose one of `login` and `sign-in`.
 
@@ -931,6 +939,8 @@ Avoid the following expressions where possible.
 | for now | Whether the requirement is temporary is unclear |
 
 When such an expression is necessary, make the criterion concrete in the Acceptance Criteria or the Measurement Criteria.
+
+This list is applied by a reviewer, not by validation, and no diagnostic reports a match. Every one of these words has an ordinary use that is not a weasel: "merge later" names a sequence, "a sufficiently vague request" names a trigger condition. What makes an occurrence a defect is that the sentence leaves the criterion undecided, which is a judgment a matcher cannot make.
 
 ---
 
@@ -1481,7 +1491,7 @@ The mutation, parser, validator, and renderer must recognise and produce the §3
 2. Update the `Status` row of the metadata table.
 3. Append a row to the `Change Notes` table, when the call supplies a change note.
 
-The three changes are applied on one snapshot with a temp-file-and-rename atomic write, so a partially applied result is not possible.
+Those three changes all live in the requirement's own file, and they are applied on one snapshot with a temp-file-and-rename atomic write, so that file cannot be left partially updated. The index rollup is not part of that transaction: refreshing the Status Summary and Requirement Type Summary in `00.index.md` is a separate follow-up write to a different file, and it can fail after the requirement file has already been written. A call that reports a failed rollup has changed the requirement; re-run `sync_index` rather than re-running the status change.
 
 **One mutation targets one requirement.** A mutation tool takes a single Requirement ID per call. Do not introduce or expose a bulk-archive or bulk-finalize tool that flips the `Status` or `Stability` of several requirements at once, or that empties the Active Target in one call. Such a tool becomes a route around the per-requirement evidence and stability gates. Express an operational scenario such as a release cleanup as repeated per-requirement calls, reporting through a dry run first.
 
@@ -1492,6 +1502,8 @@ The three changes are applied on one snapshot with a temp-file-and-rename atomic
 - `workspace` — updates workspace or target scoped metadata and takes no `id`. Examples: `set_active_target`, `set_target_goal`, `init_project`, and `add_requirement`, which creates a new requirement rather than mutating a single existing one.
 
 A tool classified `req-scoped` rejects an array `id` at schema validation. A new mutation tool must declare one of the three kinds.
+
+**The compatibility-check exception.** `add_compatibility_check`, `refresh_compatibility_check` and `revoke_compatibility_check` are classified `req-scoped` but act on a requirement pair rather than on one requirement, so they take `aReqId` and `bReqId` instead of `id`. The `req-scoped` rule that an `id` is required and an array is rejected does not reach them; what carries over is the part that matters — one call names one edge, and neither tool accepts a list of edges.
 
 ### 30.4 Non-standard Markers
 
@@ -1521,6 +1533,8 @@ Recognition rules for the row:
 - Link body: both a relative path (`../rule/...`) and a repository-root path (`./docs/rule/...`) are accepted.
 
 The markers in §30.1 and §30.2 are part of every rules version from `1.1.0` onward, so a package whose `Rules` row names this document governs by them. `speckiwi init` keeps the row aligned with the rules document it installs, so the row and the installed document do not drift apart.
+
+The version token is read for exactly that alignment. No runtime behaviour selects rules by that version: a release bundles exactly one rules version, `init` writes the row that names it, `upgrade` repairs a row that names a document the release no longer ships, and `doctor` reports a row that has drifted. So the token tells a reader and a reviewer which version governs; it does not switch a parser or a validator between two rule sets.
 
 ---
 
@@ -1608,7 +1622,6 @@ Validation items:
 | `SRS-E006` | error | Invalid requirement priority |
 | `SRS-E007` | error | Invalid requirement risk |
 | `SRS-E008` | error | Acceptance Criteria section missing |
-| `SRS-E009` | error | Verified requirement has unchecked acceptance criteria |
 | `SRS-E010` | error | Verified requirement lacks checked AC or evidence |
 | `SRS-E011` | error | Invalid requirement stability |
 | `SRS-E012` | error | Trace requirement reference missing |
@@ -1625,12 +1638,6 @@ Validation items:
 | `SRS-E023` | error | Duplicate Scope Map prefix |
 | `SRS-E024` | error | Multiple active targets |
 | `SRS-E025` | error | Scope document file missing |
-| `SRS-E026` | error | Release target is empty |
-| `SRS-E027` | error | Acceptance Criteria coverage gap |
-| `SRS-E028` | error | Evidence reference missing |
-| `SRS-E029` | error | Evidence URL invalid |
-| `SRS-E030` | error | Command evidence violates policy |
-| `SRS-E031` | error | Trace link target is broken |
 | `SRS-E032` | error | Stale mutation snapshot |
 | `SRS-E033` | error | Verified draft requirement |
 | `SRS-E050` | error | Workflow artifact path escapes workspace |
@@ -1647,9 +1654,6 @@ Validation items:
 | `SRS-W002` | warning | Target is not registered |
 | `SRS-W003` | warning | Related Docs local link missing |
 | `SRS-W004` | warning | GitHub Issue URL format invalid |
-| `SRS-W005` | warning | Heading dash is not an em dash |
-| `SRS-W006` | warning | Discouraged wording used |
-| `SRS-W007` | warning | Too many tags |
 | `SRS-W008` | warning | High risk requirement lacks Research / Analysis |
 | `SRS-W009` | warning | Frozen target changed without Change Notes |
 | `SRS-W010` | warning | Active Target row is not active |
@@ -1663,7 +1667,6 @@ Validation items:
 | `SRS-W018` | warning | Unregistered scope SRS document |
 | `SRS-W019` | warning | Status Summary drift |
 | `SRS-W020` | warning | Requirement Type Summary drift |
-| `SRS-W021` | warning | Release readiness warning |
 | `SRS-W022` | warning | Legacy volatile stability |
 | `SRS-W023` | warning | Draft requirement in active or released target |
 | `SRS-W024` | warning | Malformed Completed Work Log report path |
@@ -1692,6 +1695,9 @@ Validation items:
 | `SRS-W069` | warning | Invalid workflow deleted status |
 | `SRS-W070` | warning | Scope documents share a leading number |
 | `SRS-W071` | warning | Requirement heading outside a Requirements section |
+| `SRS-W072` | warning | Numbered document shares a leading number with a scope document |
+
+This table lists every code the implementation can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check. Release readiness is the one place where findings are reported outside this table: an empty release target arrives as a blocking reason, and coverage gaps, missing evidence references, command evidence policy violations and broken trace links arrive as the typed `acCoverageGaps`, `missingEvidenceReferences`, `commandEvidencePolicyViolations` and `brokenTraceLinks` fields of its result, which is also what its `ready` flag is computed from.
 
 In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every diagnostic code that the implementation emits must be registered in the registry.
 

@@ -12,6 +12,12 @@ export interface SrsFileSet {
   completedWork?: TextFile;
   completedWorkLog?: TextFile;
   appendix?: TextFile;
+  /**
+   * FR-PARSE-037 — the Markdown documents that sit directly in docs/spec, as workspace-relative
+   * POSIX paths. The rest of this set is resolved by known name; this is the directory as it is, so a
+   * document nobody named is still visible.
+   */
+  specDocuments: string[];
 }
 
 // A .srs.md file is an origin-isolated step file only when it lives under a
@@ -81,10 +87,22 @@ export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
   const completedWorkLog = (await access(completedWorkLogPath).then(() => true).catch(() => false))
     ? await readUtf8File(completedWorkLogPath, root.root)
     : undefined;
+  // FR-PARSE-037 — only the top level of docs/spec holds an ordering position, so a document in a
+  // subdirectory is not listed: two files with the same leading number in different directories are
+  // not a collision.
+  const specDirPosix = `${toPosixPath(specDir)}/`;
+  const specDocuments = all
+    .map((file) => toPosixPath(file))
+    .filter((file) => file.startsWith(specDirPosix) && !file.slice(specDirPosix.length).includes("/"))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => `docs/spec/${file.slice(specDirPosix.length)}`)
+    .sort();
+
   return {
     index,
     scopeFiles,
     stepFiles,
+    specDocuments,
     ...(stateFile ? { stateFile } : {}),
     ...(completedWork ? { completedWork } : {}),
     ...(completedWorkLog ? { completedWorkLog } : {}),

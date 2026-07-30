@@ -275,6 +275,13 @@ export interface ParsedWorkspace {
   diagnostics: Diagnostic[];
   stateFile?: TextFile;
   stepRecords?: RequirementRecord[];
+  /**
+   * FR-PARSE-037 — every Markdown document directly under docs/spec, as workspace-relative POSIX
+   * paths. `files` carries only the documents the parser reads, which is a fixed set: the index, the
+   * scope documents and three known sidecars. A consumer's own numbered document is in neither, so a
+   * rule that needs to know which ordering numbers are occupied cannot work from `files`.
+   */
+  specDocuments?: string[];
 }
 
 export interface ValidationResult {
