@@ -37,7 +37,11 @@ export function registerDoctorCommand(command: Command, context: CliContext): vo
       // IR-CLI-080 — the core check never reads the environment, so the CLI is what supplies the real
       // home. Without this the global comparison would silently never run.
       const homeDir = process.env.HOME ?? process.env.USERPROFILE;
-      const health = await diagnoseHealth(workspace, homeDir ? { installedSkillsHomeDir: homeDir } : {});
+      const codexHome = process.env.CODEX_HOME;
+      const health = await diagnoseHealth(workspace, {
+        ...(homeDir ? { installedSkillsHomeDir: homeDir } : {}),
+        ...(codexHome ? { installedSkillsCodexHome: codexHome } : {})
+      });
       const merged = { ...report, health: health.checks };
 
       if (options.json || command.opts().json) writeJson(context.io, merged);

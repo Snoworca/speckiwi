@@ -426,7 +426,7 @@ async function listSharedContractNames(sourceRoot: string): Promise<string[]> {
  */
 async function checkInstalledSkillDrift(
   rootPath: string,
-  options: { homeDir?: string; claudeSourceRoot?: string; codexSourceRoot?: string }
+  options: { homeDir?: string; codexHome?: string; claudeSourceRoot?: string; codexSourceRoot?: string }
 ): Promise<DoctorCheck> {
   const topic = "installed skill drift";
   const label = "Installed skill drift";
@@ -451,7 +451,13 @@ async function checkInstalledSkillDrift(
           },
           {
             label: "global codex skills",
-            destinationRoot: path.join(homeDir, ".codex", "skills"),
+            // The install resolves `${CODEX_HOME}/skills` when that variable is set, so comparing
+            // `~/.codex/skills` unconditionally would report on a directory nobody installs into. An
+            // audit measured exactly that: a stale install under CODEX_HOME read as "nothing is
+            // provisioned", which is the blind spot this check exists to remove.
+            destinationRoot: options.codexHome
+              ? path.join(path.resolve(options.codexHome), "skills")
+              : path.join(homeDir, ".codex", "skills"),
             sourceRoot: codexSource,
             refresh: "`speckiwi init --global`"
           }
@@ -480,16 +486,16 @@ async function checkInstalledSkillDrift(
   for (const location of present) {
     const missing: string[] = [];
     const diverged: string[] = [];
-    // An installed skill's entrypoint is always SKILL.md; the claude source spells it skill.md.
+    // Both the source and the installed entrypoint are SKILL.md. A lowercase fallback here would be
+    // dead code: listSkillNames discovers a skill by stat-ing SKILL.md, so a directory holding only
+    // skill.md is never listed in the first place.
     for (const name of await listSkillNames(location.sourceRoot)) {
       const installed = await readOrUndefined(path.join(location.destinationRoot, name, "SKILL.md"));
       if (installed === undefined) {
         missing.push(name);
         continue;
       }
-      const source =
-        (await readOrUndefined(path.join(location.sourceRoot, name, "SKILL.md"))) ??
-        (await readOrUndefined(path.join(location.sourceRoot, name, "skill.md")));
+      const source = await readOrUndefined(path.join(location.sourceRoot, name, "SKILL.md"));
       if (source !== undefined && normalizeEol(source) !== normalizeEol(installed)) diverged.push(name);
     }
     // A stale shared contract changes every skill that cites it, without changing any skill body.
@@ -658,6 +664,8 @@ export async function diagnoseHealth(
     claudeSkillsSourceRoot?: string;
     /** IR-CLI-080 — the home whose global skill installs are compared. Absent means global is skipped. */
     installedSkillsHomeDir?: string;
+    /** IR-CLI-080 — CODEX_HOME, which moves the codex global destination away from `~/.codex`. */
+    installedSkillsCodexHome?: string;
   } = {}
 ): Promise<DoctorReport> {
   const nodeVersion = options.nodeVersion ?? process.version;
@@ -674,6 +682,7 @@ export async function diagnoseHealth(
     // an agent loads, which is where a shipped fix can be silently absent.
     await checkInstalledSkillDrift(workspace.root.root, {
       ...(options.installedSkillsHomeDir ? { homeDir: options.installedSkillsHomeDir } : {}),
+      ...(options.installedSkillsCodexHome ? { codexHome: options.installedSkillsCodexHome } : {}),
       ...(options.claudeSkillsSourceRoot ? { claudeSourceRoot: options.claudeSkillsSourceRoot } : {}),
       ...(options.codexSkillsSourceRoot ? { codexSourceRoot: options.codexSkillsSourceRoot } : {})
     }),

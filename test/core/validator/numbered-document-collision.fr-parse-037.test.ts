@@ -164,3 +164,30 @@ describe("FR-PARSE-037 AC-5 — the listing is load-bearing, not filtered back o
     expect(validateWorkspace(withoutListing).diagnostics.filter((entry) => entry.code === CODE)).toHaveLength(0);
   });
 });
+
+describe("FR-PARSE-037 AC-4 — the number is compared by value, not by spelling", () => {
+  it("reports an unpadded number against a padded scope document", async () => {
+    const rootPath = await copyFixtureWorkspace("valid-basic");
+    const { rm } = await import("node:fs/promises");
+    await rm(specPath(rootPath, "10.product-architecture.srs.md"));
+    await writeFile(specPath(rootPath, "01.one.srs.md"), emptyScopeDocument("One", "ONE"), "utf8");
+    await writeFile(specPath(rootPath, "1.notes.md"), "# Notes\n", "utf8");
+
+    const found = (await diagnosticsFor(rootPath)).filter((entry) => entry.code === CODE);
+
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message).toContain("1.notes.md");
+    expect(found[0]?.message).toContain("01.one.srs.md");
+  });
+
+  it("reports an over-padded number against the scope document holding the same value", async () => {
+    const rootPath = await copyFixtureWorkspace("valid-basic");
+    await writeFile(specPath(rootPath, "010.notes.md"), "# Notes\n", "utf8");
+
+    const found = (await diagnosticsFor(rootPath)).filter((entry) => entry.code === CODE);
+
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message).toContain("010.notes.md");
+    expect(found[0]?.message).toContain("10.product-architecture.srs.md");
+  });
+});
