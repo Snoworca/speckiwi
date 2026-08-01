@@ -25,6 +25,25 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | §0.8 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지**. |
 | §0.9 | `--mini` / `--loops N` 수용 — `_shared/kiwi/loop-option.md` 관례. 본 스킬의 자체 검증-개선 루프는 red→green 반복뿐이므로 라운드 캡은 회귀 수정 반복에만 적용된다. |
 | §0.10 | **코드 추적성은 후행(post-promote)·비차단**. 코드 Trace Links(`add_trace_link` Code anchor)·`@req` 태그는 Phase 6 promote가 body REQ ID를 확정한 **뒤에만** 복원한다 — Phase 2/4 부착은 금지한다. Code anchor가 **권위** traceability SSOT, `@req` breadcrumb는 **보조**이며 둘 다 **비차단**이다(누락·stale이 promote를 막지 않고 FR-NODE-074 EVIDENCE_REQUIRED 게이트와 **분리**). FR-FLOW-020 관례를 재사용하고, 태그 형식·면제는 kiwi-coder §0.17만 인용한다(운영 훅 수입 금지). |
+| §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §0.AG (아래) 참조 — 표를 선언했으므로 공용 안전 기본값(`auto-option.md` §1) 에 따른 `--auto` **비활성**은 더 이상 적용되지 않는다. |
+
+### §0.AG — `--auto` critical_gates[] 선언
+
+본 스킬의 `--auto` 활성 시 사용자 강제 HALT 게이트 (SSOT `auto-option.md` §5 인터페이스 준수). 아래 게이트는 `--auto` **무관 항상** 사용자 결정이 필요하며, 자동 결정 서브에이전트로 우회할 수 없다:
+
+| gate_id | reason | 발생 위치 |
+|---|---|---|
+| `step-claim-write-skew` | `claim_step` 이 write-skew(동일 REQ 를 건드리는 다른 step 의 선점)로 거부 — 두 step 이 같은 요구를 저작하는 것을 자동 승인할 수 없다 | Phase 1 (§2.2) |
+| `promote-evidence-required` | `promote_step_requirement` 가 검증 증거 0건으로 `EVIDENCE_REQUIRED` 거부 (§0.6) — 증거 없는 승격은 우회 대상이 아니라 채워야 할 결함이다 | Phase 6 (§2.7) |
+| `step-completion-gate-blocked` | `update_step_state(merged)` 가 `COMPLETION_GATE_BLOCKED` 로 거부 (FR-NODE-078) — 비-clean 호환 엣지를 `acknowledged` 로 명시 승인하는 것은 비가역 판단이다 | Phase 7 (§2.8) |
+
+표를 선언하기 전까지 본 스킬은 `auto-option.md` §1 의 **안전 기본값**에 따라 `--auto` 가 **비활성**이었다 — 실패가 아니라 조용한 무시였으므로, 무인 실행이 자기 게이트 앞에서 멈춰도 그것이 정지인지 정상 중단인지 구분되지 않았다. 아래 두 문단이 그 구분을 만든다.
+
+**`--auto` 가 해결할 수 없는 것**: 위 3개 게이트. 선언 여부와 무관하게 항상 HALT 하며, 결정 위원회로 넘기지 않는다.
+
+**`--auto` 가 해결할 수 있는 것**: `sds-architecture-decision-approval` — §2.3 체크리스트 6 의 Architecture Decisions 사용자 승인은 severity `business-decision` 이므로 `--auto` 에서 결정 위원회의 **자동 결정** 대상이다 (confidence < 0.7 이면 critical 로 격상). critical 로 선언하지 않는 이유: 실질 결정이 있는 모든 SDS 가 무인 실행에서 죽는 정지점이 되기 때문이다.
+
+**나머지 두 상호작용 지점**은 올바르게 dispatch 된 실행에서는 발동하지 않으므로 표에 넣지 않는다 — Phase 0 모드 halt (§2.1) 는 mode ≠ `tdd` 일 때만, task 이름 질의 (§1.1) 는 `<task>` 가 없을 때만 발동하는데, 라우팅된 dispatch 는 둘 다 사전에 해소한다.
 
 ---
 

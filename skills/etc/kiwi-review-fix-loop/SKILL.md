@@ -68,6 +68,7 @@ as multi-worker fanout.
 | mini mode | `--mini` | off (skill default cap) |
 | loop round cap | `--loops N` | off (skill default cap) |
 | 부모 기준선 | `--regression-baseline <path>` | off (자기 시점 캡처) |
+| suppress pipeline event | `--no-pipeline-emit` (takes no argument — suppresses the `kiwi/pipeline.jsonl` append) | off (emit as usual) |
 
 ## Workflow
 
@@ -125,6 +126,17 @@ For each eligible REQ:
 1. Add verification evidence with `type="test"` and a concrete test/report path.
 2. Then call `update_status` to `verified`.
 3. Log each call and result.
+
+
+### Orchestration delegation — `--no-pipeline-emit`
+
+- **`--no-pipeline-emit`** takes no argument. When present, this skill does not append its
+  `kiwi/pipeline.jsonl` emit. Without the flag the existing emit behaviour is unchanged.
+- The orchestrator's executor passes `--no-pipeline-emit` on **every unit** run. Omitting it makes
+  the unit write a **false pipeline record**: the journal would show one `kiwi-review-fix-loop` run
+  completing where in fact one unit of one stage of one wave completed, and a parent may not record
+  on a child's behalf to correct it.
+- `kiwi-pipeline` does not gain `--no-pipeline-emit` — no orchestrated unit invokes it.
 
 ## Extended References
 

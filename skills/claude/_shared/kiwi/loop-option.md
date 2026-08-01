@@ -52,6 +52,7 @@ kiwi-* 스킬의 **검증-개선 루프(verify → improve → re-verify) 라운
 | kiwi-wave-master | per-wave kiwi-srs + kiwi-pipeline | `--mini`/`--loops N` → per-wave |
 | kiwi-hot-fix | kiwi-srs-sync | `--mini`/`--loops N` → 위임 |
 | kiwi-coder | kiwi-review-fix-loop | `--mini`/`--loops N` → follow-up |
+| kiwi-orchestrator | 위임 rung 의 라우팅된 자식 — step rung 은 `kiwi-tdd`, plan rung 은 `kiwi-pm`; orchestrated rung 은 per-wave `kiwi-srs` + `kiwi-planner` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → 라우팅된 자식 · per-wave 전파, 그리고 오케스트레이터 자신의 D / W / H / P / F 루프 상한 **5개**. per-lane 루프는 다음 target 으로 **이연**되어 이 목록에 없다 — 돌지 않는 루프의 상한을 적는 것은 뒤에 아무것도 없는 계약을 고정하는 일이다 |
 
 ## 7. 자연어 매핑
 

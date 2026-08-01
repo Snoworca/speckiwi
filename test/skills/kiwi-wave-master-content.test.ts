@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { readResolvedSkill } from "../support/resolved-skill.js";
 
 // @req FR-FLOW-029
 // FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator with per-wave targets and resumable progress.
@@ -23,13 +24,11 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const VARIANTS = ["claude", "codex", "etc"] as const;
 
 /** kiwi-wave-master is net-new; return "" when the SKILL.md does not exist so content assertions
- * fail as AssertionErrors (red driver) instead of throwing ENOENT. */
+ * fail as AssertionErrors (red driver) instead of throwing ENOENT.
+ * @req FR-FLOW-110 — resolved through the shared reader, so rules extracted into `_shared/kiwi/`
+ * modules the §0 table references are still in scope for every assertion below. */
 function readWaveSkill(variant: string): string {
-  try {
-    return readFileSync(path.join(REPO_ROOT, "skills", variant, "kiwi-wave-master", "SKILL.md"), "utf8");
-  } catch {
-    return "";
-  }
+  return readResolvedSkill(variant, "kiwi-wave-master");
 }
 
 /** The provider kiwi-pipeline SKILL.md already exists (FR-FLOW-026 / T-PH003-04); read it directly

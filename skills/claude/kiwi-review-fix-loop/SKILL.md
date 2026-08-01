@@ -182,6 +182,7 @@ self_scope.source enum 매핑 (§3.1):
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | 부모 기준선 | `--regression-baseline <path>` | off (자기 시점 캡처) |
+| "파이프라인 이벤트 억제" (오케스트레이터 전달) | `--no-pipeline-emit` (인자 없음 — `kiwi/pipeline.jsonl` append 를 수행하지 않는다, §7.3) | off (emit 수행) |
 
 ### 1.3 모드 매트릭스
 
@@ -633,6 +634,13 @@ Regression tests: PASS (N tests)
 - `next_hint`: 통상 `"kiwi-commit-auto-push"` (PR 모드는 PR 푸시 이미 됨 — `null` 권장), discussion_needed 잔존 시 `null`
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-review-fix-loop-{run-id}/`
 - `notes`: "mode=self|pr / findings=N / fixed=A / rejected=C / recheck_iter=M" 권장
+
+
+**오케스트레이션 위임 — `--no-pipeline-emit`**
+
+- **`--no-pipeline-emit`** — **인자를 받지 않는다**. 명시하면 본 절의 `kiwi/pipeline.jsonl` append 를 수행하지 않는다. 플래그가 **없으면** 기존 emit 동작이 그대로다.
+- 오케스트레이터의 실행기는 **매 unit** 실행마다 `--no-pipeline-emit` 을 넘긴다. 빠뜨리면 그 unit 이 **거짓 파이프라인 기록**을 남긴다 — 저널에는 `kiwi-review-fix-loop` run 하나가 완료한 것으로 보이지만 실제로는 한 wave · 한 stage 의 unit 하나가 끝났을 뿐이고, 그 기록을 부모가 자식 대신 정정하는 것은 허용되지 않는다.
+- `kiwi-pipeline` 은 `--no-pipeline-emit` 을 **갖지 않는다** — 오케스트레이션된 unit 이 `kiwi-pipeline` 을 호출하지 않기 때문이다.
 
 ---
 

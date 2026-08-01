@@ -8,6 +8,9 @@ kiwi/.pipeline-path
 kiwi/.status.json
 kiwi/.srs.lock
 kiwi/.srs.lock.guard
+# Orchestrator machine state: `git clean -fd` may remove it and `git add -A` must never stage it.
+kiwi/waves.jsonl
+kiwi/orchestrator/
 
 # Build output (regenerated via `npm run build` / `prepack`)
 dist/

@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
 
 // Round-2 evaluation findings — docs/analysis/wave-fit-eval/round2-findings.md.
 // Each test carries the finding id (R2-C1 … R2-L4) instead of a requirement tag; the SRS ids are
@@ -25,15 +23,12 @@ import { describe, expect, it } from "vitest";
 //   - compare positions for ordering rules;
 //   - prefer negative assertions and set comparisons over token-presence checks.
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VARIANTS = ["claude", "codex", "etc"] as const;
 
+/** @req FR-FLOW-110 — resolved through the shared reader: SKILL.md plus the bodies of the
+ * `_shared/kiwi/` modules its §0 table references, appended in table order. */
 function readSkill(variant: string, skill: string): string {
-  try {
-    return readFileSync(path.join(REPO_ROOT, "skills", variant, skill, "SKILL.md"), "utf8");
-  } catch {
-    return "";
-  }
+  return readResolvedSkill(variant, skill);
 }
 
 const readWave = (v: string) => readSkill(v, "kiwi-wave-master");
@@ -65,6 +60,18 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   return lines.slice(start, end).join("\n");
 }
 
+
+/**
+ * @req FR-FLOW-110 — a section whose rules moved into a `_shared/kiwi/` module is scoped to the
+ * skill's own section PLUS that module's appended region. Two bounded regions, never the whole body.
+ */
+function withModule(body: string, headingRe: RegExp, moduleName: string): string {
+  return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
+}
+
+const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
+const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
+
 /** The single line containing the first match of `re`. "" when absent. */
 function lineWith(text: string, re: RegExp): string {
   return text.split("\n").find((l) => re.test(l)) ?? "";
@@ -95,7 +102,9 @@ function gateSection(body: string): string {
 
 /** The end-of-wave cross-verification section (§5.5). */
 function verifySection(body: string): string {
-  return sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i);
+  // @req FR-FLOW-110 — the skill's own §5.5 plus the verify-loop.md engine region its §0 table
+  // references. Two bounded regions, not the whole body: §2.1 and §7 stay out of scope.
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
 }
 
 /** The declared gate ids of a skill, read from the FIRST cell of each gate-table row. */
@@ -296,7 +305,7 @@ describe("R2-C2 — an unapproved damage row blocks the passing verdict", () => 
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("adds the preservation condition to the Normal PASS row itself", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.4/);
+        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         expect(exit, `${variant}: the termination-condition section must exist`).not.toBe("");
         const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
         expect(normalRow, `${variant}: the Normal PASS row must exist`).not.toBe("");
@@ -336,7 +345,7 @@ describe("R2-C3 — design items are materialised as the design-layer denominato
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("materialises design_items with per-item coordinates at baseline time", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         expect(baseline, `${variant}: the design-baseline section must exist`).not.toBe("");
         expect(
           /`design_items`/.test(baseline),
@@ -352,7 +361,7 @@ describe("R2-C3 — design items are materialised as the design-layer denominato
       });
 
       it("defines the counting unit so a verifier cannot widen items to reach unmapped=0", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const unit = lineWith(baseline, /1\s*항목/);
         expect(unit, `${variant}: the item-counting unit must be defined`).not.toBe("");
         expect(
@@ -367,7 +376,7 @@ describe("R2-C3 — design items are materialised as the design-layer denominato
       });
 
       it("fixes design_layer.expected to the recorded item count instead of verifier judgement", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         expect(stance, `${variant}: the verifier-stance section must exist`).not.toBe("");
         const rule = lineWith(stance, /`design_layer\.expected`/);
         expect(rule, `${variant}: the design denominator must be pinned to the recorded items`).not.toBe("");
@@ -383,7 +392,7 @@ describe("R2-C3 — design items are materialised as the design-layer denominato
       });
 
       it("uses design_items — not top-level sections — as the coverage-gate denominator", () => {
-        const gate = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.2/);
+        const gate = sectionUnder(skillBody(readWave(variant)), COVERAGE_SECTION);
         expect(gate, `${variant}: the decomposition coverage gate must exist`).not.toBe("");
         const rule = lineWith(gate, /대조 단위/);
         expect(rule, `${variant}: the coverage gate must state its comparison unit`).not.toBe("");
@@ -595,7 +604,7 @@ describe("R2-H4 — final-pass findings have a repair route", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("unifies the requirement-level halt with the carry-forward-first rule", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         expect(cross, `${variant}: the carry-forward section must exist`).not.toBe("");
         const rule = lineWith(cross, /요구사항을 바꿔야/);
         expect(rule, `${variant}: the requirement-level rule must exist`).not.toBe("");
@@ -672,7 +681,7 @@ describe("R2-H5 — wave regression is judged against a pinned baseline", () => 
       });
 
       it("passes on new failures only, and degrades to exit_code=0 only when capture failed", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.4/);
+        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
         expect(
           /신규 실패 0\s*건/.test(normalRow),
@@ -743,7 +752,7 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("collects carried_into residuals when a wave is entered", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         expect(target, `${variant}: the target-registration section must exist`).not.toBe("");
         const rule = lineWith(target, /`carried_into`/);
         expect(rule, `${variant}: entering a wave must read the residuals carried into it`).not.toBe("");
@@ -768,7 +777,7 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
       });
 
       it("gives an appended carry-forward wave a substitute design denominator", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /이월/);
         expect(rule, `${variant}: an appended carry-forward wave must have a stated denominator`).not.toBe("");
         expect(
@@ -787,7 +796,7 @@ describe("R2-H8 — the design excerpt is materialised and handed to authoring",
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("materialises a per-wave markdown excerpt beside the coordinate map", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /design-baseline\/wave-\{n\}\.md/);
         expect(rule, `${variant}: the per-wave design excerpt must be materialised`).not.toBe("");
         expect(
@@ -797,7 +806,7 @@ describe("R2-H8 — the design excerpt is materialised and handed to authoring",
       });
 
       it("passes the excerpt — not the coordinate JSON — as the research document", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         const rule = lineWith(target, /`excerpt_path`/);
         expect(rule, `${variant}: the authoring call must receive the excerpt`).not.toBe("");
         expect(
@@ -821,7 +830,7 @@ describe("R2-H9 — a wave-verify crash does not re-author the SRS", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("keys the skip on any srs_authored=true event of that wave", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         const rule = lineWith(target, /`srs_authored`/);
         expect(rule, `${variant}: the authoring-skip rule must exist`).not.toBe("");
         expect(
@@ -836,7 +845,7 @@ describe("R2-H9 — a wave-verify crash does not re-author the SRS", () => {
       });
 
       it("limits the unmarked-line reading to the srs-authoring phase", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         const rule = lineWith(target, /표식 없는 줄/);
         expect(rule, `${variant}: the unmarked-line rule must exist`).not.toBe("");
         // Merely naming the phase in the same sentence is what the current text already does; the
@@ -862,7 +871,7 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("collects constraints in Phase 1 and always writes the artifact", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /`constraints_path`/);
         expect(rule, `${variant}: the constraint artifact rule must exist`).not.toBe("");
         expect(
@@ -877,7 +886,7 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
       });
 
       it("declares a constraint layer with a roll-up consequence", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`constraint_layer`/);
         expect(rule, `${variant}: the constraint layer must be declared alongside the other denominators`).not.toBe(
           ""
@@ -901,7 +910,7 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
       });
 
       it("passes the constraint artifact to authoring as well as to verification", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         expect(
           /`constraints_path`/.test(target),
           `${variant}: the authoring call must receive the constraint artifact; otherwise a verified violation has no basis to be fixed`
@@ -934,7 +943,7 @@ describe("R2-M1 — the wave diff window is journalled", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("records base and head SHAs and resolves the window from the journal", () => {
-        const bundle = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.1/);
+        const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         expect(bundle, `${variant}: the evidence-bundle section must exist`).not.toBe("");
         const rule = lineWith(bundle, /`diff_window`/);
         expect(rule, `${variant}: the diff window must be resolved from a recorded field`).not.toBe("");
@@ -1043,7 +1052,7 @@ describe("R2-M3 — kiwi-review-fix-loop carries the preservation contract", () 
       });
 
       it("cites kiwi-coder §0.20 rather than the tdd route the wave cycle excludes", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const rule = lineWith(routing, /테스트를 약화하거나 삭제/);
         expect(rule, `${variant}: the fixer prohibition must exist`).not.toBe("");
         expect(
@@ -1092,7 +1101,7 @@ describe("R2-M4 — a re-entered wave keeps its whole evidence window", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("widens the window to every recorded pipeline run of that wave", () => {
-        const bundle = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.1/);
+        const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         const rule = lineWith(bundle, /`pipeline_run_ids`/);
         expect(rule, `${variant}: the evidence window must be keyed on the full run list`).not.toBe("");
         expect(
@@ -1116,7 +1125,7 @@ describe("R2-M5 — the round denominator is frozen at round entry", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("freezes the denominator and records the frozen counts", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`frozen_denominator`/);
         expect(rule, `${variant}: the frozen denominator must be recorded`).not.toBe("");
         for (const key of ["round", "req_ac", "design_items", "preservation"]) {
@@ -1128,7 +1137,7 @@ describe("R2-M5 — the round denominator is frozen at round entry", () => {
       });
 
       it("says a mid-round increase does not invalidate the round", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /라운드 도중/);
         expect(rule, `${variant}: the mid-round growth rule must exist`).not.toBe("");
         expect(
@@ -1155,7 +1164,7 @@ describe("R2-M6 — an unreachable pass is detected instead of burned through", 
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("halts as fail-cap when the remaining rounds cannot satisfy the streak", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.4/);
+        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         const rule = lineWith(exit, /남은 라운드/);
         expect(rule, `${variant}: the resume-near-cap case must be handled`).not.toBe("");
         expect(
@@ -1321,7 +1330,7 @@ describe("R2-M13 — the recorded existing modules are consumed", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("puts existing_modules into the evidence bundle", () => {
-        const bundle = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.1/);
+        const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         const cells = rowCells(bundle, /`existing_modules`/);
         expect(
           cells.length > 2,
@@ -1330,7 +1339,7 @@ describe("R2-M13 — the recorded existing modules are consumed", () => {
       });
 
       it("binds it to verifier 2's cross-wave regression judgement", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`existing_modules`/);
         expect(rule, `${variant}: verifier 2 must be told to use the recorded module list`).not.toBe("");
         expect(
@@ -1349,7 +1358,7 @@ describe("R2-M16 — an intended-improvement verdict must cite its authority", (
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("requires a REQ or Task citation for intended-improvement", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`intended-improvement` 는/);
         expect(rule, `${variant}: the improvement verdict must have a decision rule`).not.toBe("");
         expect(
@@ -1360,7 +1369,7 @@ describe("R2-M16 — an intended-improvement verdict must cite its authority", (
       });
 
       it("defaults an uncited row to unapproved-damage", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /근거를 대지 못한|근거가 없는/);
         expect(rule, `${variant}: the default for an uncited row must be stated`).not.toBe("");
         expect(
@@ -1370,7 +1379,7 @@ describe("R2-M16 — an intended-improvement verdict must cite its authority", (
       });
 
       it("records the citation on the preservation row", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         expect(
           /`evidence`/.test(stance),
           `${variant}: the citation must be a recorded row key, not narrative`

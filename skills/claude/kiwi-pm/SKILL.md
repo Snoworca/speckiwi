@@ -130,6 +130,11 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "이전 lock 무시", "강제" | `--force` | false |
 | "lifecycle 무시" (위험) | `--skip-lifecycle-gate` | false |
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
+| "handoff 로", "이 unit 만" (오케스트레이터 전달) | `--handoff <path>` (실행 집합 + 임차, §1.5) | off (plan 전체 실행) |
+| "레인 세션", "세션 분리" (오케스트레이터 전달) | `--session-suffix <lane>` (세션 디렉터리 재배치, §1.5) | off (평면 배치) |
+| "T-final 승급 생략" (오케스트레이터 전달) | `--no-final` (T-final 요구 승급 skip, §1.5) | off |
+| "파이프라인 이벤트 억제" (오케스트레이터 전달) | `--no-pipeline-emit` (인자 없음 — `kiwi/pipeline.jsonl` append 를 수행하지 않는다, §1.5) | off (emit 수행) |
+| "unit 산출물 commit" (오케스트레이터 전달) | `--commit-lane-work` (인자 없음 — handoff 의 `write_set` 만 stage, §1.5) | off (자동 commit 없음 — `--commit-lane-work` 가 유일한 예외, §1.5) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | "max 모드", "정밀하게" | `--max` | off — PM 자체는 소비하지 않고 kiwi-coder 로 pass-through (§3.2) |
@@ -152,6 +157,11 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
          [--force]                        # stale lock 강제 해제 (주의 경고 후 진행)
          [--skip-lifecycle-gate]          # §4 게이트 우회 (사용자 책임, --auto 와 함께 사용 불가)
+         [--handoff <path>]               # 실행 집합 + 임차. task_ids[] 만 정확히 실행 (§1.5). --from-task 와 동시 사용 거절
+         [--session-suffix <lane>]        # 세션 디렉터리를 .kiwi/sessions/{plan_run_id}/lanes/{lane}/ 로 재배치 (§1.5)
+         [--no-final]                     # T-final 요구 승급 skip (§1.5)
+         [--no-pipeline-emit]             # 인자 없음 — kiwi/pipeline.jsonl append 를 수행하지 않는다 (§1.5)
+         [--commit-lane-work]             # 인자 없음 — handoff 의 write_set 만 stage 해 Task 당 commit 1개 (§1.5)
          [--no-doculight]                 # doculight MCP 표시 강제 skip
 ```
 
@@ -171,6 +181,45 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | speckiwi REQ status `implemented` 승급 | T-final mutation | PM (조건부) |
 | speckiwi `add_completed_work(plan-summary)` | T-final mutation | PM |
 | doculight viewer 표시 | T-final 보고서 작성 직후 | PM (가용 시) |
+
+### 1.5 오케스트레이션 위임 플래그 (`--handoff` / `--session-suffix` / `--no-final` / `--no-pipeline-emit` / `--commit-lane-work`)
+
+상위 오케스트레이터(`kiwi-orchestrator`)가 하나의 plan 을 **여러 실행 단위(unit)** 로 쪼개 순차 실행할 때 쓰는 5개 플래그. 단독 실행에는 어느 것도 필요 없고, 명시하지 않으면 본 스킬의 기존 동작이 그대로 유지된다.
+
+#### `--handoff <path>` — **실행 집합(execution set)과 임차(lease)**
+
+`--handoff` 는 실행 집합과 임차를 공급할 뿐 **Task 본문은 공급하지 않는다** — handoff 는 plan 이 아니며, Task 본문도 `tdd` 블록도 `acceptance_tests` 도 `dod` 도 `rollback` 도 싣지 않는다. 본 스킬이 handoff 에서 읽는 것은 front matter 뿐이다.
+
+- **실행 집합**: front matter 의 `task_ids[]` 에 있는 Task 를 **정확히** 그것만, sidecar **선언 순서**로 실행한다. plan 의 다른 Task 는 실행하지 않는다. 각 Task 의 본문은 종전대로 `sidecar_path` 에서 읽는다.
+- **`write_set`**: `--commit-lane-work` 가 stage 할 commit **pathspec** 이다 (아래).
+- **`req_ids[]` / `acceptance[]`**: **읽기 전용** 컨텍스트로, §3.2 kiwi-coder **spawn 프롬프트**에 그대로 실어 보낸다. 어떤 **실행 결정**(어느 Task 를 도는지 · 순서 · 게이트 발동)도 이 두 값으로 내리지 않는다.
+- **`depends_on_task`**: 의존 판정은 **실행 집합 안에서만** 한다. `task_ids[]` 밖의 선행은 **충족된 것으로** 취급하고 `depends-on-violation` 게이트(§0.G1 / §3.1.1)를 발동하지 않는다 — 구성상 그 선행은 이미 앞 stage 에서 병합되었거나 같은 unit 안에 있다. 실행 **집합 안**의 의존 위반은 종전대로 **게이트**다.
+- **`--from-task` 와 동시 사용 거절**: `--handoff` 와 `--from-task` 가 함께 오면 HALT + 안내. `--from-task` 는 *시작점* 선택자인데 `task_ids[]` 는 충돌 그래프의 연결 성분이라 일반적으로 **비-연속(non-contiguous)** 이며, 시작점 하나로는 표현되지 않는다.
+- **이 정의가 필요한 이유**: 한 plan 위에서 **두 unit** 이 각각 plan 의 **모든** Task 를 실행하면 둘 다 같은 파일을 쓰고 둘 다 `lane-lease-breach` 를 밟는다. handoff 가 실행 집합을 고정하는 것이 그 경로를 닫는 유일한 장치다.
+
+#### `--session-suffix <lane>` — 세션 디렉터리 재배치
+
+세션 디렉터리 **전체**를 `.kiwi/sessions/{plan_run_id}/lanes/{lane}/` 로 옮긴다 — §2.1 의 `pm-state.json` · `pm.lock` · `worklog.jsonl` · `state.json` · `reports/` 다섯 산출물이 **모두** 그 아래로 간다. 일부만 옮기면 공유된 파일 하나가 남고, 그 하나가 곧 race 다.
+
+§3.2 spawn 프롬프트의 **`RUN_ID`** 줄도 같은 재배치를 따른다 — `kiwi-coder` 가 자기 `.kiwi/` 경로를 그 줄에서 도출하므로, 이 줄이 따라가지 않으면 자식이 평면 경로에 쓴다. 이렇게 해서 §2.1 의 "sequential spawn 이라 race 없음" 전제는 **약화되는 것이 아니라 해소**된다 — unit 마다 자기 파일을 갖는다.
+
+#### `--no-final` — T-final 승급 skip
+
+§6.2 T-final 의 **요구 승급을 건너뛴다**(체크박스 갱신과 보고서 작성은 그대로). 근거: 한 요구는 여러 unit 에 걸치므로, 한 unit 의 Task 부분집합을 `all_done` **분모**로 삼으면 부분 증거로 승급하게 된다.
+
+#### `--no-pipeline-emit` — 자식 파이프라인 기록 억제
+
+- **`--no-pipeline-emit`** — **인자를 받지 않는다**. 명시하면 §10 의 `kiwi/pipeline.jsonl` append 를 수행하지 않는다. 플래그가 **없으면** 기존 emit 동작이 그대로다.
+- 오케스트레이터의 실행기는 **매 unit** 실행마다 `--no-pipeline-emit` 을 넘긴다. 빠뜨리면 그 unit 이 **거짓 파이프라인 기록**을 남긴다 — 저널에는 `kiwi-pm` run 하나가 완료한 것으로 보이지만 실제로는 한 wave · 한 stage 의 unit 하나가 끝났을 뿐이고, 그 기록을 부모가 자식 대신 정정하는 것은 허용되지 않는다.
+- `kiwi-pipeline` 은 `--no-pipeline-emit` 을 **갖지 않는다** — 오케스트레이션된 unit 이 `kiwi-pipeline` 을 호출하지 않기 때문이다.
+
+#### `--commit-lane-work` — unit 산출물 commit
+
+- **`--commit-lane-work`** — **인자를 받지 않는다**. 같은 호출이 이미 넘긴 `--handoff` 의 `write_set` 을 그대로 stage 한다.
+- **Task 당 commit 1개**를 만든다. stage 대상은 `write_set` 에서 뽑은 **명시 pathspec** 이며, **작업 트리 전체를 stage 하지 않는다**(`git add -A` 금지) — unit 밖의 미커밋 변경과 오케스트레이터 자신의 상태 파일까지 딸려 들어간다.
+- run 좌표(`Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane` · `Orch-Task`)는 git **trailer** 로 싣는다. commit **제목**에는 run 좌표를 **넣지 않는다** — 제목의 단계·진행 표식은 CLAUDE.md §6 이 금지한다.
+- **pathspec 파일은 쓰지 않는다**: 오케스트레이터 자신의 상태 디렉터리(`kiwi/orchestrator/`) 아래 경로는 git-ignore 대상이라 격리된 워크스페이스에는 아예 존재하지 않는다. pathspec 은 같은 호출이 이미 갖고 있는 handoff 에서 와야 한다.
+- **플래그를 생략하면** 본 스킬은 **아무것도 commit 하지 않는다**. 그 unit 의 산출물은 **미커밋** 작업 트리로 남고, **다음 unit** 의 실행이 그것을 밟는다. §6.1 의 "PM 은 자동 commit 하지 않는다" 는 이 플래그를 명시하지 않은 경우의 규칙이며, `--commit-lane-work` 가 그 유일한 예외다.
 
 ---
 
@@ -407,7 +456,7 @@ FUNCTION MAIN(args):
 ## INPUTS
 - PLAN_PATH={args.plan_path}
 - SIDECAR_PATH={args.sidecar_path}
-- RUN_ID={state.run_id}                # .kiwi/sessions/{run_id}/ 영속화에 사용
+- RUN_ID={state.run_id}                # .kiwi/sessions/{run_id}/ 영속화에 사용. --session-suffix 지정 시 .kiwi/sessions/{run_id}/lanes/{lane}/ (§1.5)
 - TARGET={state.target_slug}           # lifecycle gate 일관성 확인용
 - TASK_FILTER={task.task_id}           # 이번 자식은 이 Task 하나만 실행
 - CODE_PATH={args.code_path}
@@ -474,8 +523,12 @@ sidecar 의 `{task.task_id}` 하나만 처리. 다른 Task 진행 금지. plan.m
       "question": "...",
       "context": "<왜 묻는가 + 근거>",
       "options": [
-        {{ "key": "A", "label": "...", "consequence": "..." }},
-        {{ "key": "B", "label": "...", "consequence": "..." }}
+        // "recommended": opt-in 구조화 boolean. 생략 가능하며 생략 시 false — 필드가 없는 옵션은 권장이 아니다.
+        // true 인 옵션은 `--auto` 가 위원회 없이 즉시 채택한다 (`_shared/kiwi/auto-option.md` §3 0단계).
+        // 산문으로 적힌 권장 표기는 이 필드가 아니며 기계적 의미가 없다.
+        // 어떤 옵션이 왜 권장되는지를 기술하는 필드는 두지 않는다 — 권장 동기를 심사하는 게이트는 본 버전의 범위 밖이다.
+        {{ "key": "A", "label": "...", "consequence": "...", "recommended": false }},
+        {{ "key": "B", "label": "...", "consequence": "...", "recommended": false }}
       ],
       "default_if_auto": "A | null"  // clarification 권장. business-decision 은 null (부모 PM 이 서브에이전트로 결정 — SSOT auto-option.md §4)
     }}
@@ -860,9 +913,11 @@ Task `status = "done"` 마다 PM 이 plan.md 의 해당 라인을 `- [ ]` → `-
 
 `--resume` 시 checklist.md 가 존재하고 sidecar.tasks 와 일치하면 재사용. TASK 추가/삭제 감지 시 경고 + 재생성 (interactive 확인 / `--auto` 자동).
 
-git 관리는 사용자 책임. PM 은 자동 commit 하지 않음.
+git 관리는 사용자 책임. PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 **유일한 예외**다 (§1.5).
 
 ### 6.2 T-final SRS Status 마무리
+
+`--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (§1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 Task 부분집합이 되기 때문이다. 체크박스 갱신(§6.1)과 보고서 작성(§6.3)은 그대로 수행한다.
 
 **문제**: kiwi-coder 는 Task 단위로 `update_status(in_progress)` 만 호출. 한 REQ 가 여러 Task 로 trace 될 때 multi-Task REQ 의 `implemented` 승급 판단 불가 (자식 시야 한계). PM 이 모든 Task 완료 후 일괄 마무리.
 
@@ -1230,5 +1285,7 @@ T-final mutation + 보고서 작성 + doculight 표시 완료 직후, 사용자�
 - `artifacts.sidecar_file`: 입력 sidecar.json 경로
 - `artifacts.analysis_dir`: `.kiwi/sessions/{run-id}/`
 - `notes`: Task 통계 ("total:8 done:7 skipped:1 failed:0") + plan-summary entry id 권장
+
+`--no-pipeline-emit` 이 명시되면 본 절의 append 를 **수행하지 않는다** (§1.5) — 오케스트레이션된 unit 이 자기 이름으로 남기는 기록은 run 을 잘못 기술하기 때문이다.
 
 emit 실패는 best-effort.

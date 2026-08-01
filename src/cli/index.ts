@@ -2,6 +2,7 @@ import { attachInheritedOptionsHelp, buildCommand } from "./command.js";
 import { registerReadCommands } from "./commands/read.js";
 import { registerMutationCommands } from "./commands/mutations.js";
 import { registerMcpCommand } from "./commands/mcp.js";
+import { registerOrchestrateCommands } from "./commands/orchestrate.js";
 import { registerSkillCommands } from "./commands/skills.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
@@ -47,6 +48,8 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   registerSkillCommands(command, { io });
   registerDoctorCommand(command, { io });
   registerRepairCommands(command, { io });
+  // @req IR-CLI-082 — the orchestrate namespace, registered exactly as `workflow` is.
+  registerOrchestrateCommands(command, { io });
   attachInheritedOptionsHelp(command);
   if (tryRenderHelpJson(argv, io, command)) return 0;
   try {

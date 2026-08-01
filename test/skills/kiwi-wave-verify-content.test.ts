@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
 
 // @req FR-FLOW-044
 // @req FR-FLOW-045
@@ -22,12 +23,10 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VARIANTS = ["claude", "codex", "etc"] as const;
 
+/** @req FR-FLOW-110 — resolved through the shared reader (SKILL.md + the `_shared/kiwi/` modules its
+ * §0 table references, appended in table order), so an extracted rule stays in scope. */
 function readWaveSkill(variant: string): string {
-  try {
-    return readFileSync(path.join(REPO_ROOT, "skills", variant, "kiwi-wave-master", "SKILL.md"), "utf8");
-  } catch {
-    return "";
-  }
+  return readResolvedSkill(variant, "kiwi-wave-master");
 }
 
 /** Body with the YAML frontmatter stripped, so the `description` field cannot false-green a check. */
@@ -63,9 +62,14 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   return lines.slice(start, end).join("\n");
 }
 
-/** The end-of-wave cross-verification section. */
+/**
+ * The end-of-wave cross-verification section: the skill's own §5.5 plus the `verify-loop.md` engine
+ * region it references from §0 (FR-FLOW-106). Two bounded regions, not the whole body — the §2.1
+ * preflight and §7 propagation sections that restate the same tokens stay out of scope, which is the
+ * property this helper exists for.
+ */
 function verifySection(body: string): string {
-  return sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i);
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
 }
 
 /** The critical_gates declaration section. */

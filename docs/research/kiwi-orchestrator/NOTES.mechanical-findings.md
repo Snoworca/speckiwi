@@ -67,6 +67,51 @@ Two of the three make a declared enum member dead — `phase-dependency` outrigh
 `M-02` — and `tdd-pair-split` is a declared `critical_gates[]` row (§13). A gate whose predicate can
 never fire reads, from the table, exactly like one that never fires because nothing is wrong.
 
+## M-04 — four defects the implementation found in the design's own text — MEDIUM
+
+Found on 2026-08-01 by the agents building against these sections. Each was reproduced, not reasoned
+about.
+
+**`non-code-write-set-refused` is unsatisfiable on real data.** §5.3 lists it as a blocking outcome.
+Measured against the pinned sidecars it fires for **11 tasks in `2026-06-17.speckiwi.v3-0-0` alone**,
+because `req-shared` forces same-lane so a requirement's promotion is atomic, and `kiwi-planner` emits
+seven non-code task types. It is also incompatible with `E7` AC-3, which requires a *plan* over those
+same fixtures. Repaired at the source rather than by deleting the gate: an epilogue-bound task is
+never a node of the component graph, so no lane assignment has to be undone. One consequence, stated
+because it is not obvious — an edge *through* an epilogue task no longer joins the two lanes on either
+side.
+
+**`^\d+\s*단계\b` can never match `## 1단계`.** `09` §3.2 S7 gives it as one of three accepted
+ordering-marker forms. In JavaScript `\b` after a non-word character does not match at that position,
+so the marker the rule exists to accept is the one it rejects. Implemented as `(?!\w)`.
+
+**D4 records the wrong `observed` value.** `09` §3.6's code block writes `p.orderedSections` for all
+three of D4's disjuncts, so a removal caused by `taskListGroups` or `linkedSubIssues` is recorded as
+*"D4 observed 0"* — and that value reaches `route.lock.json` and the gate's committee evidence table.
+`E47`'s AC-3 requires the value it fired on, so the requirement is right and the design's code block is
+wrong.
+
+**`[INFERRED:` has nowhere to live.** §5.1 requires an inferred write set to be refusable, but the
+sidecar schema is `{path, line_range?}`, so the label could only sit inside `path` — where it defeats
+both `write-set-overlap` and grounding, since a label-bearing string matches no real path. Split into
+a separate `TaskFileEntry.inferred` field, which takes the catalogue to **eight** fields; see `M-02`
+and `M-03` for the other three the same table has grown.
+
+## M-05 — `waves-event.md` §3's transition table has no enforcement requirement — LOW, and it is a gap not a defect
+
+Raised on 2026-08-01 by the agent building `waves-validate.ts`, which declined to implement it rather
+than shipping behaviour no requirement covers.
+
+`waves-event.md` §3 states the transitions `pending → in_progress → complete ↘ failed`. The authored
+set enforces the *consequences* of that table — `E3`'s completion gate refuses a `complete` with no
+preceding passing wave-verify record, `E4`'s run predicate refuses a non-passing `final-verify`
+written as `complete` — but **no requirement covers per-transition legality**, so a `complete`
+following a `failed` is not refused. `E2`'s denominator is §2.3's round invariants, not §3's table.
+
+Whether that matters is a real question and not one an implementer may answer by writing the check:
+`00.charter.md:297` forbids behaviour with no requirement behind it. If the rule is wanted it needs a
+requirement first.
+
 ## Verified clean
 
 Run 2026-07-31 16:40 against `05.orchestrator-design.md` at 7,912 lines:

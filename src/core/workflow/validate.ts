@@ -3,6 +3,11 @@ import { diagnostic } from "../diagnostic.js";
 import { summarizeDiagnostics } from "../diagnostic.js";
 import { resolveInsideRoot } from "../fs/safe-path.js";
 import type { Diagnostic, DiagnosticsSummary, ProjectRoot } from "../types.js";
+// @req FR-NODE-149 — the sidecar parse lives in one place. `task-catalog.ts` extends this module's
+// former local `normalizeTasks` with the fields the lane-plan conflict classifier reads; keeping a
+// second copy here would be two sidecar parsers that drift independently. The extension is additive,
+// so every field this module reads is unchanged.
+import { normalizeTasks, type SidecarPhase, type SidecarTask } from "../orchestrator/task-catalog.js";
 import { resolveWorkflowArtifacts, type ResolveWorkflowArtifactOptions, type WorkflowArtifactCandidate, type WorkflowArtifactKind } from "./artifacts.js";
 import { parseWorkflowJsonl, type WorkflowJsonlParseResult } from "./jsonl.js";
 
@@ -38,21 +43,11 @@ export interface WorkflowValidationResult {
   worklog?: { total: number; invalidLines: WorkflowJsonlParseResult["invalidLines"] };
 }
 
-interface SidecarTask {
-  id?: string;
-  task_id?: string;
-  phase_id?: string;
-  title?: string;
-  depends_on_task?: string[];
-  req_ids?: string[];
-  traces?: Array<{ req_id?: string; reqId?: string; reference?: string }>;
-  status?: string;
-}
-
 interface SidecarPlan {
   run_id?: string;
   target?: string;
   tasks?: SidecarTask[];
+  phases?: SidecarPhase[];
 }
 
 interface PmStateTask {
@@ -121,54 +116,8 @@ async function sidecarForPlan(root: ProjectRoot, plan: WorkflowArtifactCandidate
   return { sidecar: artifact ? await parseJson<SidecarPlan>(artifact, diagnostics) : null, artifact };
 }
 
-function taskId(task: SidecarTask): string {
-  return String(task.id ?? task.task_id ?? "");
-}
-
-function legacyReqIds(task: SidecarTask): string[] {
-  const ids = new Set<string>();
-  for (const trace of task.traces ?? []) {
-    const value = trace.req_id ?? trace.reqId ?? trace.reference;
-    if (typeof value === "string" && value.length > 0) ids.add(value);
-  }
-  return [...ids];
-}
-
-function pmStatuses(state: PmState | null): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const task of state?.tasks ?? []) {
-    if (typeof task.task_id === "string" && typeof task.status === "string") map.set(task.task_id, task.status);
-  }
-  return map;
-}
-
 function doneLike(status: string | undefined): boolean {
   return status === "done" || status === "skipped";
-}
-
-function normalizeTasks(tasks: SidecarTask[], state: PmState | null, diagnostics: Diagnostic[], sidecarPath?: string): WorkflowTaskCatalogEntry[] {
-  const statuses = pmStatuses(state);
-  return tasks.map((task) => {
-    const id = taskId(task);
-    const legacyIds = legacyReqIds(task);
-    if (legacyIds.length > 0) {
-      diagnostics.push(diagnostic("SRS-W061", "warning", `Workflow legacy trace field: ${id}`, sidecarPath ? { filePath: sidecarPath } : {}, { taskId: id, legacyReqIds: legacyIds }));
-    }
-    const explicitReqIds = Array.isArray(task.req_ids) ? task.req_ids.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
-    const reqIds = explicitReqIds.length > 0 ? explicitReqIds : legacyIds;
-    if (reqIds.length === 0) {
-      diagnostics.push(diagnostic("SRS-W064", "warning", "Workflow task missing req_ids", sidecarPath ? { filePath: sidecarPath } : {}, { taskId: id }));
-    }
-    return {
-      id,
-      ...(typeof task.phase_id === "string" ? { phase_id: task.phase_id } : {}),
-      ...(typeof task.title === "string" ? { title: task.title } : {}),
-      depends_on_task: Array.isArray(task.depends_on_task) ? task.depends_on_task.filter((item): item is string => typeof item === "string") : [],
-      req_ids: reqIds,
-      legacyReqIds: legacyIds,
-      status: statuses.get(id) ?? task.status ?? "pending"
-    };
-  });
 }
 
 function dependencyIssues(tasks: WorkflowTaskCatalogEntry[]): Array<{ taskId: string; issue: string; path?: string[] }> {
@@ -196,7 +145,10 @@ function dependencyIssues(tasks: WorkflowTaskCatalogEntry[]): Array<{ taskId: st
   return issues;
 }
 
-function selectNextTask(tasks: WorkflowTaskCatalogEntry[]): { nextTask: WorkflowTaskCatalogEntry | null; blockedBy: string[]; blockedTask?: WorkflowTaskCatalogEntry } {
+// @req FR-NODE-148 — exported so the lane plan's `serialized` output can be produced by this
+// selector rather than by a second implementation of its ordering, and so the differential test can
+// use it as an oracle. Behaviour unchanged.
+export function selectNextTask(tasks: WorkflowTaskCatalogEntry[]): { nextTask: WorkflowTaskCatalogEntry | null; blockedBy: string[]; blockedTask?: WorkflowTaskCatalogEntry } {
   for (const task of tasks) {
     if (doneLike(task.status)) continue;
     const blockedBy = task.depends_on_task.filter((dep) => {
@@ -328,7 +280,7 @@ export async function validateWorkflowArtifacts(root: ProjectRoot, options: Work
   const runId = sidecar.run_id ?? plan.runId ?? options.runId;
   const pm = runId ? await optionalJson<PmState>(root, `.kiwi/sessions/${runId}/pm-state.json`, "pm-state", diagnostics) : { value: null, artifact: null };
   const coder = runId ? await optionalJson<CoderState>(root, `.kiwi/sessions/${runId}/state.json`, "coder-state", diagnostics) : { value: null, artifact: null };
-  const taskCatalog = normalizeTasks(sidecar.tasks ?? [], pm.value, diagnostics, sidecarArtifact.relativePath);
+  const taskCatalog = normalizeTasks(sidecar.tasks ?? [], pm.value, diagnostics, sidecarArtifact.relativePath, sidecar.phases ?? []);
   const issues = dependencyIssues(taskCatalog);
   for (const issue of issues) {
     diagnostics.push(diagnostic("SRS-W057", "warning", "Workflow task dependency issue", { filePath: sidecarArtifact.relativePath }, issue));

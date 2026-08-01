@@ -1,6 +1,7 @@
 import { type Command } from "commander";
-import { fail } from "../../core/result.js";
+import { fail, ok } from "../../core/result.js";
 import { installSkill } from "../../core/skills/install-skill.js";
+import { mirrorSkills } from "../../core/skills/mirror-skills.js";
 import { SKILL_AGENTS, type SkillAgent, type SkillInstallScope } from "../../core/skills/types.js";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import type { CliContext } from "../command.js";
@@ -69,8 +70,47 @@ function registerInstallAction(parent: Command, context: CliContext, alias: "ins
     });
 }
 
+/**
+ * @req FR-NODE-105 — the sanctioned writer for `.agents/skills/**` (05 §9.5), and neither `init` nor
+ * `skills install`, so `00.charter.md:303-304`'s prohibition is untouched.
+ *
+ * The mode is required and the two modes are mutually exclusive. `--write` is the destructive branch,
+ * so a bare `speckiwi skills mirror` fails immediately rather than regenerating the tree; defaulting
+ * to `--check` would be safe today but would leave `--write` reachable by a dropped flag the day the
+ * default changed. An explicit mode keeps regeneration an act of intent.
+ */
+function registerMirrorAction(parent: Command, context: CliContext): Command {
+  return parent
+    .command("mirror")
+    .description("Regenerate or verify .agents/skills/** against skills/codex/**")
+    .option("--check", "report divergence without writing any file")
+    .option("--write", "regenerate the mirror from skills/codex")
+    .option("--json", "write JSON to stdout")
+    .action(async (options: { check?: boolean; write?: boolean; json?: boolean }, command: Command) => {
+      if (options.check && options.write) {
+        writeUsageFailure(context, command, options, "SKILLS_MIRROR_MODE_CONFLICT", "--check and --write cannot be used together");
+        return;
+      }
+      if (!options.check && !options.write) {
+        writeUsageFailure(context, command, options, "SKILLS_MIRROR_MODE_REQUIRED", "one of --check or --write is required");
+        return;
+      }
+      const rootOption = command.parent?.parent?.opts().root;
+      const root = await resolveProjectRoot(process.cwd(), typeof rootOption === "string" ? rootOption : undefined);
+      const result = await mirrorSkills({ projectRoot: root.root, mode: options.write ? "write" : "check" });
+      const json = wantsJson(command, options);
+      if (result.ok) {
+        output(context, { json }, ok(result));
+        return;
+      }
+      output(context, { json }, fail("SKILLS_MIRROR_DIVERGENT", `${result.divergences.length} mirrored path(s) diverge from skills/codex; run \`speckiwi skills mirror --write\``));
+      command.parent?.parent?.setOptionValue("exitCode", 5);
+    });
+}
+
 export function registerSkillCommands(command: Command, context: CliContext): void {
   const skills = command.command("skills").description("Install repository-managed Kiwi skills for coding agents");
   registerInstallAction(skills, context, "install");
   registerInstallAction(skills, context, "add");
+  registerMirrorAction(skills, context);
 }

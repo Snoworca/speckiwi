@@ -193,7 +193,11 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 - work-mode 가 **`tdd`** 이고 요청 작업이 **step-scoped**(단일 기능 / step 규모)이면, §2.5 의 5단계 sdd 체인 **대신** `kiwi-tdd` 스킬로 **라우팅**한다 (SDS 선행 TDD First 사이클). 이때 사이클 오케스트레이션은 kiwi-tdd 가 담당한다.
 - 그 외 — work-mode 가 tdd 가 아니거나, 작업이 **body-scope** REQ 수정 또는 대규모 아키텍처 변경이면 — §2.5 의 5단계 sdd 체인을 그대로 **유지**한다.
 - 이 경계 원칙은 agent snippet 규칙 6(tdd step 은 step-scoped 작업만; body-scope·대형 아키텍처 변경은 sdd 체인)과 동일하다.
-- **`--cycle` / `--from=` 진입은 본 라우팅의 적용 대상이 아니다** — wave 사이클 진입(§2.5.2, `kiwi-wave-master` FR-FLOW-029)은 **body-scope** 작업이므로, work-mode 가 `tdd` 여도 `kiwi-tdd` 로 라우팅하지 않고 §2.5 의 5단계 sdd 체인을 그대로 **유지**한다. 근거 둘: (1) `kiwi-tdd` 는 `critical_gates[]` 를 선언하지 않아 공용 `--auto` 계약(`auto-option.md` §1 안전 디폴트)상 `--auto` 가 비활성이므로 무인 완주가 성립하지 않는다. (2) `kiwi-tdd` 의 산출물은 design.md · step SRS · 승격된 요구 블록뿐이어서 wave 종료 검증이 요구하는 plan · worklog · 리뷰 산출물이 없고, 따라서 증거 번들이 성립하지 않는다.
+- **`--cycle` / `--from=` 진입은 본 라우팅의 적용 대상이 아니다** — wave 사이클 진입(§2.5.2, `kiwi-wave-master` FR-FLOW-029)은 **body-scope** 작업이므로, work-mode 가 `tdd` 여도 `kiwi-tdd` 로 라우팅하지 않고 §2.5 의 5단계 sdd 체인을 그대로 **유지**한다. 근거 둘: (1) `kiwi-tdd` 는 `critical_gates[]` 를 선언하지만(`kiwi-tdd` §0.AG) 그 표의 3개 게이트는 `--auto` 무관 항상 HALT 이므로, wave 사이클이 요구하는 무인 완주가 성립하지 않는다. (2) `kiwi-tdd` 의 산출물은 design.md · step SRS · 승격된 요구 블록뿐이어서 wave 종료 검증이 요구하는 plan · worklog · 리뷰 산출물이 없고, 따라서 증거 번들이 성립하지 않는다.
+- **`kiwi-orchestrator` run 이 route 를 freeze 한 경우** — 그 run 의 `docs/research/{work}/routing/route.lock.json` 이 §2.8 의 **step-scoped 연언지(conjunct)를 충족**하며, 본 절은 그 판정을 **재판정하지 않는다**. 세 가지를 함께 기록한다:
+  - §2.8 이 선언만 하고 정의하지 않는 step-scoped 판정의 실제 정의는 라우팅 분류기의 **disqualifier**(실격 조건) 집합이다 — 그 정의는 step rung 을 **좁히기만 하고 넓히지 않는다**. 따라서 lock 을 받아들이는 것은 본 절의 범위를 넓히는 일이 아니다.
+  - 이 조항은 오늘 **실제로 실행되지 않는다**: 바로 위 줄대로 `--cycle` / `--from=` 진입은 본 라우팅의 적용 대상이 아니고, `kiwi-orchestrator` 는 각 단계를 **개별**로 호출하므로 §2.8 이 오케스트레이터 run 안에서 도는 경로가 없다. 그럼에도 적어 두는 이유는, 위 배제가 나중에 바뀔 때 서로 다른 판정을 내리는 **두 라우터**가 한 run 안에 조용히 생기는 것을 막기 위해서다.
+  - 본 조항은 오케스트레이터 run **밖의** §2.8 동작을 바꾸지 않는다 — work-mode 연언지(§2.8.1)와 step-scoped 가 아닌 작업의 sdd 체인 유지 규칙은 그대로다.
 - 이 배제는 **본 라우팅 한정**이다 — §0.4 안전 게이트, §0.5 자기 무한 루프 방지, §6.6 의 critical gate 즉시 중단은 `--cycle` / `--from=` 진입에서도 그대로 적용된다.
 
 ---

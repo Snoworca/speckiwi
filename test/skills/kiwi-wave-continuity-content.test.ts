@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
 
 // @req FR-FLOW-047
 // @req FR-FLOW-048
@@ -34,15 +32,12 @@ import { describe, expect, it } from "vitest";
 //   - assert quantifiers and polarity literally ("모든", "2기" vs "2기 이상", "금지" vs "지양");
 //   - compare positions for ordering rules rather than trusting list markers.
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VARIANTS = ["claude", "codex", "etc"] as const;
 
+/** @req FR-FLOW-110 — resolved through the shared reader: SKILL.md plus the bodies of the
+ * `_shared/kiwi/` modules its §0 table references, appended in table order. */
 function readSkill(variant: string, skill: string): string {
-  try {
-    return readFileSync(path.join(REPO_ROOT, "skills", variant, skill, "SKILL.md"), "utf8");
-  } catch {
-    return "";
-  }
+  return readResolvedSkill(variant, skill);
 }
 
 const readWave = (v: string) => readSkill(v, "kiwi-wave-master");
@@ -72,6 +67,21 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   }
   return lines.slice(start, end).join("\n");
 }
+
+
+/**
+ * @req FR-FLOW-110 — a section whose rules moved into a `_shared/kiwi/` module is scoped to the
+ * skill's own section PLUS that module's appended region. Two bounded regions, never the whole body.
+ */
+function withModule(body: string, headingRe: RegExp, moduleName: string): string {
+  return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
+}
+
+/** The `verify-loop.md` stance section (moved from kiwi-wave-master §5.5.2). */
+/** The `wave-decomposition.md` sections (moved from kiwi-wave-master §3, §3.1, §3.2). */
+const SPLIT_SECTION = /^#{2,4}\s.*\[wave-decomposition\.md\].*Wave 분해/;
+const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
+const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
 
 /** Line index of the first heading matching `re`, or -1. */
 function headingLine(body: string, re: RegExp): number {
@@ -120,7 +130,20 @@ function gateSection(body: string): string {
 
 /** The end-of-wave cross-verification section (§5.5). */
 function verifySection(body: string): string {
-  return sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i);
+  // @req FR-FLOW-110 — the skill's own §5.5 plus the verify-loop.md engine region its §0 table
+  // references. Two bounded regions, not the whole body: §2.1 and §7 stay out of scope.
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
+}
+
+
+/**
+ * @req FR-FLOW-110 — the two-verifier rules are split by the extraction: kiwi-wave-master keeps its
+ * four denominator layers under §5.5.2 and verify-loop.md carries the layer-independent discipline
+ * (the verdict enum, the row-count invalidation, the freeze rules). Both regions, nothing else.
+ */
+function stanceScope(body: string): string {
+  const s = verifySection(body);
+  return `${sectionUnder(s, /^#{3,4}\s.*두 검증자/)}\n${sectionUnder(s, /^#{2,4}\s.*\[verify-loop\.md\].*두 검증자/)}`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -163,7 +186,7 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
 
       it("AC-2: materialises a per-wave design baseline pinned to a source range", () => {
         const body = skillBody(readWave(variant));
-        const baseline = sectionUnder(body, /^#{3}\s.*설계 기준선/);
+        const baseline = sectionUnder(body, BASELINE_SECTION);
         expect(baseline, `${variant}: a design-baseline sub-section must exist under §3`).not.toBe("");
         for (const field of ["source_file", "heading_path", "line_start", "line_end"]) {
           expect(baseline.includes(field), `${variant}: the baseline mapping must record ${field}`).toBe(true);
@@ -186,7 +209,7 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
 
       it("AC-3: blocks target registration while a top-level section is unassigned", () => {
         const body = skillBody(readWave(variant));
-        const coverage = sectionUnder(body, /^#{3}\s.*커버리지/);
+        const coverage = sectionUnder(body, COVERAGE_SECTION);
         expect(coverage, `${variant}: a decomposition-coverage sub-section must exist`).not.toBe("");
         // Quantifier: "주요 최상위 섹션" turns a coverage proof into a sample.
         expect(
@@ -213,7 +236,9 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
           `${variant}: the out-of-scope escape hatch must be a recorded field, not narrative`,
         ).toBe(true);
         // Position: the gate is worthless if it is authored after the registration phase.
-        const coverageAt = headingLine(body, /커버리지/);
+        // The gate lives in wave-decomposition.md (FR-FLOW-107); the skill's own decomposition section
+        // is what must precede the registration phase.
+        const coverageAt = headingLine(body, /Wave 분해/);
         const registerAt = headingLine(body, /Wave 별 target 등록/);
         expect(coverageAt, `${variant}: the coverage section must exist`).toBeGreaterThan(-1);
         expect(registerAt, `${variant}: the target-registration section must exist`).toBeGreaterThan(-1);
@@ -233,7 +258,7 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
       });
 
       it("AC-4: hands the wave-split subagent the existing module and dependency structure", () => {
-        const decompose = sectionUnder(skillBody(readWave(variant)), /^##\s.*Wave 분해/);
+        const decompose = sectionUnder(skillBody(readWave(variant)), SPLIT_SECTION);
         expect(decompose, `${variant}: the wave-decomposition section must exist`).not.toBe("");
         expect(
           /기존 모듈/.test(decompose) && /의존/.test(decompose) && /서브에이전트/.test(decompose),
@@ -269,7 +294,7 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
       });
 
       it("AC-6: resolves the baseline artifact from waves.jsonl alone", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^#{3}\s.*설계 기준선/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         expect(
           /`waves\.jsonl` 만으로 해소한다/.test(baseline),
           `${variant}: the baseline artifact must be resolvable from waves.jsonl alone`,
@@ -313,8 +338,7 @@ describe("FR-FLOW-048 — verification denominator covers design baseline and co
       });
 
       it("AC-2: enumerates every design item as a verifier-1 row with a mapped requirement id", () => {
-        const section = verifySection(skillBody(readWave(variant)));
-        const stance = sectionUnder(section, /^#{3,4}\s.*두 검증자/);
+        const stance = stanceScope(skillBody(readWave(variant)));
         expect(stance, `${variant}: the two-verifier sub-section must exist`).not.toBe("");
         expect(
           /\*\*모든\*\* 설계 항목을 행으로 열거/.test(stance),
@@ -332,7 +356,7 @@ describe("FR-FLOW-048 — verification denominator covers design baseline and co
       });
 
       it("AC-3: forbids ALL_MATCH while any design item is unmapped", () => {
-        const stance = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*두 검증자/);
+        const stance = stanceScope(skillBody(readWave(variant)));
         const rule = lineWith(stance, /미매핑 설계 항목/);
         expect(rule, `${variant}: an unmapped-design-item rule must exist`).not.toBe("");
         // Quantifier: "미매핑 항목이 다수 있으면" would let a single unmapped item roll up clean.
@@ -370,7 +394,7 @@ describe("FR-FLOW-048 — verification denominator covers design baseline and co
       });
 
       it("AC-5: gives verifier 2 a mechanically derived preservation denominator", () => {
-        const stance = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*두 검증자/);
+        const stance = stanceScope(skillBody(readWave(variant)));
         const rule = lineWith(stance, /검증자 2 의 \*\*분모\*\*/);
         expect(rule, `${variant}: verifier 2 must have its own stated denominator`).not.toBe("");
         expect(
@@ -403,7 +427,7 @@ describe("FR-FLOW-048 — verification denominator covers design baseline and co
       });
 
       it("AC-6: invalidates a round whose row count misses the fixed denominator, for both verifiers", () => {
-        const stance = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*두 검증자/);
+        const stance = stanceScope(skillBody(readWave(variant)));
         const rule = lineWith(stance, /행 수가/);
         expect(rule, `${variant}: a row-count reconciliation rule must exist`).not.toBe("");
         expect(
@@ -541,7 +565,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("AC-1: passes the design baseline to kiwi-srs as a research document path", () => {
-        const register = sectionUnder(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/);
+        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         expect(register, `${variant}: the target-registration section must exist`).not.toBe("");
         const rule = lineWith(register, /리서치 문서/);
         expect(rule, `${variant}: the kiwi-srs invocation must state the research-document argument`).not.toBe("");
@@ -558,7 +582,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
       });
 
       it("AC-2: uses the same artifact path recorded on waves.jsonl", () => {
-        const register = sectionUnder(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/);
+        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         expect(
           /`waves\.jsonl` 에 기록한 것과 \*\*같은\*\* 경로/.test(register),
           `${variant}: the authoring input and the evidence bundle must not diverge on the baseline path`,
@@ -567,7 +591,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
 
       it("AC-3: routes a design-present / SRS-absent finding to incremental authoring re-entry", () => {
         const section = verifySection(skillBody(readWave(variant)));
-        const routing = sectionUnder(section, /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(section, /^#{2,4}\s.*개선 위임/);
         expect(routing, `${variant}: the remediation routing sub-section must exist`).not.toBe("");
         const row = rowCells(routing, /설계 기준선에는 있으나/);
         expect(row.length, `${variant}: the routing table must have a design-present / SRS-absent row`).toBeGreaterThan(2);
@@ -583,7 +607,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
       });
 
       it("AC-4: keeps the design-gap row distinct from the unclosable-in-code row", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const designRow = tableRows(routing, /설계 기준선에는 있으나/);
         const residualRow = tableRows(routing, /코드로 닫을 수 없는/);
         expect(designRow.length, `${variant}: the design-gap row must exist`).toBe(1);
@@ -601,7 +625,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
       });
 
       it("AC-5: keeps the cross-wave halt in force for the remediation path", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         expect(
           /증분 저작이[^\n]*(?:이전|완료된) wave[^\n]*`wave-verify-cross-wave-fix-required`/.test(routing),
           `${variant}: incremental authoring touching a completed wave target must still hit the cross-wave halt`,
@@ -609,7 +633,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
       });
 
       it("AC-6: permits automatic remediation of a design-layer gap under --auto", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const rule = lineWith(routing, /설계 계층 갭의 자동 처리/);
         expect(rule, `${variant}: the auto-remediation permission must be stated`).not.toBe("");
         expect(
@@ -659,7 +683,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
       });
 
       it("AC-3: kiwi-wave-master calls creation-enabled registration the normal path", () => {
-        const register = sectionUnder(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/);
+        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         const rule = lineWith(register, /\*\*정상 경로\*\*/);
         expect(rule, `${variant}: registration of an unregistered wave target must be called the normal path`).not.toBe(
           "",
@@ -672,7 +696,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
 
       it("AC-5: skips registration and authoring for a wave marked srs_authored on ANY event", () => {
         const body = skillBody(readWave(variant));
-        const register = sectionUnder(body, /^##\s.*Wave 별 target 등록/);
+        const register = withModule(body, /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         const rule = lineWith(register, /`srs_authored`/);
         expect(rule, `${variant}: the authoring-finished mark must drive a skip`).not.toBe("");
         // The normative skip sentence is isolated from the rest of the line. The line also carries a
@@ -871,7 +895,7 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
       });
 
       it("AC-2: routes requirements left at draft through the remediation table", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const row = rowCells(routing, /draft 로 남은/);
         expect(row.length, `${variant}: the routing table must have a left-at-draft row`).toBeGreaterThan(2);
         expect(
@@ -1078,7 +1102,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("AC-1: decides cross-wave status by a mechanical rule over the file set", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         expect(cross, `${variant}: a cross-wave sub-section must exist`).not.toBe("");
         const rule = lineWith(cross, /파일 집합/);
         expect(rule, `${variant}: the cross-wave decision rule must key on the file set`).not.toBe("");
@@ -1102,7 +1126,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
       });
 
       it("AC-2: keeps a requirement-level change a halt", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /요구사항을 바꿔야/);
         expect(rule, `${variant}: a requirement-level cross-wave change must have its own rule`).not.toBe("");
         expect(
@@ -1113,7 +1137,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
       });
 
       it("AC-3: carries a code-level finding forward and records it with a cross-wave marker", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /코드를 바꿔야/);
         expect(rule, `${variant}: a code-level cross-wave finding must have its own rule`).not.toBe("");
         expect(
@@ -1131,7 +1155,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
       });
 
       it("AC-4: never modifies or reverses the earlier wave's complete event", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /`complete` 이벤트를/);
         expect(rule, `${variant}: the append-only guarantee must be restated for carry-forward`).not.toBe("");
         expect(
@@ -1142,7 +1166,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
       });
 
       it("AC-5: reserves the halt for the case where no carry-forward path exists", () => {
-        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*교차 wave/);
+        const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /양쪽 carry-forward 경로/);
         expect(rule, `${variant}: the halt must be scoped against the carry-forward paths`).not.toBe("");
         expect(
@@ -1156,7 +1180,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
       });
 
       it("AC-6: gives a verification-driven pipeline re-entry an explicit scope", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*개선 위임/);
+        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         // The review delegation row already carries --base/--commits; the re-entry row must reach
         // the same specificity or a re-entry silently re-runs the whole plan.
         const row = rowCells(routing, /재진입/);

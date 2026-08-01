@@ -51,7 +51,7 @@ For the local-LLM profile, "all evaluator delegated workers report no improvemen
 
 ## `--auto` Policy
 
-When a Kiwi skill supports `--auto`, read `auto-option.md` at the first user-decision gate and follow its committee model. `--auto` convenes a 3-member decision committee and `--auto --max` a 5-member committee, escalating per `auto-option.md` §2/§3; `--max` raises the committee and is not a no-op — identical to the claude/codex variants, and the etc `--max` default does not force the committee to 5.
+When a Kiwi skill supports `--auto`, read `auto-option.md` at the first user-decision gate and follow its committee model. `--auto` convenes a 3-member decision committee and `--auto --max` a 5-member committee, deciding by simple majority per `auto-option.md`; `--max` raises the committee and is not a no-op — identical to the claude/codex variants, and the etc `--max` default does not force the committee to 5.
 
 Because multi-worker fanout is disabled, the committee members are evaluated sequentially (one delegated worker at a time), but the committee size, voting, and merge logic from `auto-option.md` are preserved. This decision committee is a scoped exception to the `## Single-Worker Policy`, which governs only the verification/evaluation loop.
 

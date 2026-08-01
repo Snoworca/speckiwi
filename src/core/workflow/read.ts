@@ -6,6 +6,8 @@ import type { Diagnostic, DiagnosticsSummary, ProjectRoot } from "../types.js";
 import { resolveWorkflowArtifacts, type WorkflowArtifactCandidate, type WorkflowArtifactKind } from "./artifacts.js";
 import { parseWorkflowJsonl, type WorkflowJsonlEntry } from "./jsonl.js";
 import { validateWorkflowArtifacts, type WorkflowValidationResult } from "./validate.js";
+import { parseWavesJournal } from "../orchestrator/waves-journal.js";
+import { validateWavesJournal } from "../orchestrator/waves-validate.js";
 
 export interface WorkflowArtifactRef {
   relativePath: string;
@@ -364,6 +366,24 @@ export async function workflowMigrationPreview(root: ProjectRoot, options: Workf
   );
 }
 
+/**
+ * The run journal's own diagnostics, offered here as a convenience surface only.
+ *
+ * @req FR-NODE-127 AC-5 — enforcement lives at `orchestrate journal append` and `orchestrate
+ * resume`; the doctor is on-demand, so calling it is a choice and it is not the enforcement path.
+ * Scoped to a named run and skipped when no journal exists, so no existing caller's diagnostics
+ * change.
+ */
+async function wavesJournalDiagnostics(root: ProjectRoot, runId: string | undefined): Promise<Diagnostic[]> {
+  if (!runId) return [];
+  try {
+    const view = await parseWavesJournal(root, { runId, engine: "kiwi-orchestrator" });
+    return view.lines.length === 0 ? [] : validateWavesJournal(view);
+  } catch {
+    return [];
+  }
+}
+
 export async function workflowDoctor(root: ProjectRoot, options: WorkflowReadOptions = {}) {
   const validation = await validateWorkflowArtifacts(root, {
     ...(options.path ? { path: options.path } : {}),
@@ -373,6 +393,7 @@ export async function workflowDoctor(root: ProjectRoot, options: WorkflowReadOpt
   });
   const outcomeCodes = outcomeCodesFromValidation(validation);
   const artifacts = validationArtifacts(validation);
+  const journalDiagnostics = await wavesJournalDiagnostics(root, options.runId);
   return envelope(
     root.root,
     {
@@ -388,7 +409,7 @@ export async function workflowDoctor(root: ProjectRoot, options: WorkflowReadOpt
         dependencyIssues: validation.dependencyIssues
       }
     },
-    validation.diagnostics,
+    [...validation.diagnostics, ...journalDiagnostics],
     artifacts
   );
 }

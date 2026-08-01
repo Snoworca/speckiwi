@@ -340,9 +340,11 @@ Task `status = "done"` 마다 PM 이 plan.md 의 해당 라인을 `- [ ]` → `-
 
 `--resume` 시 checklist.md 가 존재하고 sidecar.tasks 와 일치하면 재사용. TASK 추가/삭제 감지 시 경고 + 재생성 (interactive 확인 / `--auto` 자동).
 
-git 관리는 사용자 책임. PM 은 자동 commit 하지 않음.
+git 관리는 사용자 책임. PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 **유일한 예외**다 (SKILL.md §1.5).
 
 ### 6.2 T-final SRS Status 마무리
+
+`--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (SKILL.md §1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 Task 부분집합이 되기 때문이다. 체크박스 갱신(§6.1)과 보고서 작성(§6.3)은 그대로 수행한다.
 
 **문제**: kiwi-coder 는 Task 단위로 `update_status(in_progress)` 만 호출. 한 REQ 가 여러 Task 로 trace 될 때 multi-Task REQ 의 `implemented` 승급 판단 불가 (자식 시야 한계). PM 이 모든 Task 완료 후 일괄 마무리.
 
@@ -692,5 +694,7 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md SIDECAR_PATH=docs/plans/...plan.json
 - `artifacts.sidecar_file`: 입력 sidecar.json 경로
 - `artifacts.analysis_dir`: `.kiwi/sessions/{run-id}/`
 - `notes`: Task 통계 ("total:8 done:7 skipped:1 failed:0") + plan-summary entry id 권장
+
+`--no-pipeline-emit` 이 명시되면 본 절의 append 를 **수행하지 않는다** (SKILL.md §1.5) — 오케스트레이션된 unit 이 자기 이름으로 남기는 기록은 run 을 **거짓으로 기술**하기 때문이다: 저널에는 `kiwi-pm` run 하나가 완료한 것으로 보이지만 실제로는 한 wave · 한 stage 의 unit 하나가 끝났을 뿐이다.
 
 emit 실패는 best-effort.

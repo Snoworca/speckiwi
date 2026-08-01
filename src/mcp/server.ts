@@ -15,6 +15,7 @@ import { getServerMetadata, type PackageInfo } from "./metadata.js";
 import { registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
+import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
 export interface McpServerOptions {
@@ -38,6 +39,31 @@ const reportPathSchema = z
   .min(1)
   .regex(REPORT_PATH_TOKEN_REGEX, { message: "invalid report path" })
   .describe("repository-relative POSIX report path; no absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, or #");
+
+/**
+ * The `orchestrate_*` input schemas, derived from the CLI bindings so a tool cannot declare a field
+ * the command does not accept. A `selector` becomes a closed enum over the leaves the row admits.
+ * @req IR-MCP-003
+ */
+function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> {
+  const out: Record<string, Record<string, z.ZodTypeAny>> = {};
+  for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
+    const shape: Record<string, z.ZodTypeAny> = {};
+    if (binding.selector) {
+      shape[binding.selector.dest] = z.enum(binding.selector.values as [string, ...string[]]).optional();
+    }
+    for (const option of binding.options) {
+      const base =
+        option.encoding === "boolean" ? z.boolean()
+          : option.encoding === "array" ? z.array(z.string())
+            : option.encoding === "json" ? z.union([z.string(), z.record(z.string(), z.unknown())])
+              : z.string();
+      shape[option.dest] = option.required ? base : base.optional();
+    }
+    out[binding.tool] = shape;
+  }
+  return out;
+}
 
 export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   mcp_workspace_info: {},
@@ -445,10 +471,16 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     dryRun: z.boolean().optional()
   },
-  promote_step_requirement: { id: z.string(), fromStep: z.string(), toScope: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() }
+  promote_step_requirement: { id: z.string(), fromStep: z.string(), toScope: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
+  ...orchestrateToolSchemas()
 };
 
+const ORCHESTRATE_READ_TOOLS: readonly string[] = ORCHESTRATE_TOOL_BINDINGS
+  .filter((binding) => binding.kind === "read")
+  .map((binding) => binding.tool);
+
 export function isReadOnlyTool(name: string): boolean {
+  if (ORCHESTRATE_READ_TOOLS.includes(name)) return true;
   return [
     "list_requirements",
     "mcp_workspace_info",

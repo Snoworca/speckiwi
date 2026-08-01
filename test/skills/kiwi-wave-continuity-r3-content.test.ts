@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
 
 // Round-3 evaluation findings — docs/analysis/wave-fit-eval/round3-findings.md.
 // Each test carries the finding id (R3-H1 … R3-L2) instead of a requirement tag; the SRS ids are
@@ -31,12 +32,10 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VARIANTS = ["claude", "codex", "etc"] as const;
 
+/** @req FR-FLOW-110 — resolved through the shared reader: SKILL.md plus the bodies of the
+ * `_shared/kiwi/` modules its §0 table references, appended in table order. */
 function readSkill(variant: string, skill: string): string {
-  try {
-    return readFileSync(path.join(REPO_ROOT, "skills", variant, skill, "SKILL.md"), "utf8");
-  } catch {
-    return "";
-  }
+  return readResolvedSkill(variant, skill);
 }
 
 const readWave = (v: string) => readSkill(v, "kiwi-wave-master");
@@ -88,6 +87,18 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   }
   return lines.slice(start, end).join("\n");
 }
+
+
+/**
+ * @req FR-FLOW-110 — a section whose rules moved into a `_shared/kiwi/` module is scoped to the
+ * skill's own section PLUS that module's appended region. Two bounded regions, never the whole body.
+ */
+function withModule(body: string, headingRe: RegExp, moduleName: string): string {
+  return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
+}
+
+const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
+const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
 
 /** The single line containing the first match of `re`. "" when absent. */
 function lineWith(text: string, re: RegExp): string {
@@ -250,7 +261,7 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
       });
 
       it("makes the wave layer cite the same rule so the two verdicts cannot diverge", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         expect(stance, `${variant}: the verifier-stance section must exist`).not.toBe("");
         const rule = lineWith(stance, /kiwi-coder\s*§0\.20\.4/);
         expect(
@@ -490,7 +501,7 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("classifies each exclusion with a closed vocabulary", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         expect(baseline, `${variant}: the design-baseline section must exist`).not.toBe("");
         const rule = lineWith(baseline, /`exclusion_class`/);
         expect(rule, `${variant}: an exclusion must carry a classification, not only free-text reason`).not.toBe("");
@@ -517,7 +528,7 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
           /§3\.2/.test(cells[3]),
           `${variant}: the gate's origin cell must point at §3.2, where the coverage gate reads the exclusions`
         ).toBe(true);
-        const gate = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.2/);
+        const gate = sectionUnder(skillBody(readWave(variant)), COVERAGE_SECTION);
         const rule = lineWith(gate, /`out-of-scope-user-consent`/);
         expect(rule, `${variant}: §3.2 must name the gate so the halt has an origin`).not.toBe("");
         expect(
@@ -553,7 +564,7 @@ describe("R3-H7 — declared user constraints are collected into the artifact", 
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("names the sources a constraint is extracted from", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /제약을 (?:추출|수집)/);
         expect(rule, `${variant}: the collection step must exist; the judging side is already complete`).not.toBe("");
         for (const source of ["사용자 프롬프트", "대화 로그", "`--constraint`"]) {
@@ -566,7 +577,7 @@ describe("R3-H7 — declared user constraints are collected into the artifact", 
       });
 
       it("fixes the extraction unit the way design_items are fixed", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /제약 문장 1건/);
         expect(rule, `${variant}: the constraint counting unit must be defined`).not.toBe("");
         expect(
@@ -601,7 +612,7 @@ describe("R3-H8 — the constraint denominator is externally fixed and frozen", 
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("pins constraint_layer.expected to the recorded artifact", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`constraint_layer\.expected`/);
         expect(rule, `${variant}: the constraint denominator must be pinned like the other three`).not.toBe("");
         expect(
@@ -616,7 +627,7 @@ describe("R3-H8 — the constraint denominator is externally fixed and frozen", 
       });
 
       it("adds constraints to the frozen denominator so the row-count rule reaches it", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`frozen_denominator`/);
         expect(rule, `${variant}: the frozen denominator must be recorded`).not.toBe("");
         // The four existing keys must survive the addition.
@@ -721,7 +732,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 
       // R3-M17: the two readings of a MEDIUM residual must be split into an explicit branch.
       it("branches the Normal early exit away from the user-decision path", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.4/);
+        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         expect(exit, `${variant}: the termination-condition section must exist`).not.toBe("");
         const rule = lineWith(exit, /Normal 조기 종료/);
         expect(rule, `${variant}: the two readings of a MEDIUM residual must be separated`).not.toBe("");
@@ -745,8 +756,10 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 
 // =============================================================================================
 // R3-M1 — the SSOT version pin is stale, so the skill cites a contract without the fields it uses.
+// Bumped to v1.4.0 with FR-FLOW-104 (S1), which added `oscillation` and `budget-exhausted` to the
+// closed `reason_class` vocabulary — values kiwi-wave-master's verify loop now writes.
 // =============================================================================================
-describe("R3-M1 — kiwi-wave-master pins waves-event v1.3.0", () => {
+describe("R3-M1 — kiwi-wave-master pins waves-event v1.4.0", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("cites the version that actually defines the fields it writes", () => {
@@ -755,11 +768,11 @@ describe("R3-M1 — kiwi-wave-master pins waves-event v1.3.0", () => {
         const row = tableRows(common, /waves-event\.md/)[0] ?? "";
         expect(row, `${variant}: the event-SSOT row must exist`).not.toBe("");
         expect(
-          /v1\.3\.0/.test(row),
-          `${variant}: the pin must name v1.3.0 — every field this skill writes is v1.3.0-new`
+          /v1\.4\.0/.test(row),
+          `${variant}: the pin must name v1.4.0 — the reason_class values this skill writes are v1.4.0-new`
         ).toBe(true);
         expect(
-          /v1\.2\.0|v1\.1\.0|v1\.0\.0/.test(row),
+          /v1\.3\.0|v1\.2\.0|v1\.1\.0|v1\.0\.0/.test(row),
           `${variant}: a stale version must not remain beside the new one`
         ).toBe(false);
       });
@@ -769,11 +782,11 @@ describe("R3-M1 — kiwi-wave-master pins waves-event v1.3.0", () => {
         const heading = lineWith(body, /^###\s*5\.5\.6/);
         expect(heading, `${variant}: the recording section must exist`).not.toBe("");
         expect(
-          /1\.3\.0/.test(heading),
+          /1\.4\.0/.test(heading),
           `${variant}: the heading names the contract version the recorded object conforms to`
         ).toBe(true);
         expect(
-          /1\.2\.0|1\.1\.0/.test(heading),
+          /1\.3\.0|1\.2\.0|1\.1\.0/.test(heading),
           `${variant}: the stale version must not survive in the heading`
         ).toBe(false);
       });
@@ -798,7 +811,7 @@ describe("R3-M2 — kiwi-srs can receive the constraint artifact", () => {
       });
 
       it("makes kiwi-wave-master hand it over by that argument", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         expect(target, `${variant}: the target-registration section must exist`).not.toBe("");
         const rule = lineWith(target, /`--constraints-doc`/);
         expect(rule, `${variant}: §4 must name the argument it passes the artifact by`).not.toBe("");
@@ -841,7 +854,7 @@ describe("R3-M4 — integration items are materialised like design items", () =>
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("fixes integration_items at baseline time with the same coordinates", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /`integration_items`/);
         expect(rule, `${variant}: the cross-wave integration items must be materialised, not improvised`).not.toBe("");
         for (const key of ["id", "heading_path", "line_start", "line_end", "statement"]) {
@@ -877,7 +890,7 @@ describe("R3-M5 — a carry-forward wave gets a real design baseline", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("converts each carried finding into exactly one design item", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /이월 finding 목록/);
         expect(rule, `${variant}: the carry-forward substitute denominator must exist`).not.toBe("");
         expect(
@@ -888,7 +901,7 @@ describe("R3-M5 — a carry-forward wave gets a real design baseline", () => {
       });
 
       it("materialises the excerpt for that wave too", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), /^###\s*3\.1/);
+        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /이월 finding 목록/);
         expect(
           /`excerpt_path`/.test(rule),
@@ -987,7 +1000,7 @@ describe("R3-M8 — feasibility accepts a requirement filter", () => {
       });
 
       it("makes the delegation row name that argument", () => {
-        const routing = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.5/);
+        const routing = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.5/);
         expect(routing, `${variant}: the delegation section must exist`).not.toBe("");
         const row = tableRows(routing, /kiwi-srs-feasibility/)[0] ?? "";
         expect(row, `${variant}: the draft-REQ routing row must exist`).not.toBe("");
@@ -1098,7 +1111,7 @@ describe("R3-M12 — weakening is a denominator class and is never an intended i
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("adds weakening as its own class of verifier 2's denominator", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /단언 약화/);
         expect(rule, `${variant}: weakening must appear in the mechanically derived denominator`).not.toBe("");
         expect(
@@ -1112,7 +1125,7 @@ describe("R3-M12 — weakening is a denominator class and is never an intended i
       });
 
       it("forbids resolving a weakening as intended-improvement", () => {
-        const stance = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /약화는[^\n]*`unapproved-damage`|`unapproved-damage`[^\n]*약화는/);
         expect(rule, `${variant}: the weakening verdict must be fixed`).not.toBe("");
         expect(
@@ -1202,7 +1215,7 @@ describe("R3-M14 — the recorded existing modules reach authoring and planning"
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("hands existing_modules to the authoring call", () => {
-        const target = sectionUnder(skillBody(readWave(variant)), /^##\s*4\./);
+        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         const rule = lineWith(target, /`existing_modules`/);
         expect(rule, `${variant}: §4 must pass the module list, not only record it in §3.1`).not.toBe("");
         expect(
@@ -1319,7 +1332,7 @@ describe("R3-L1 — the streak requirement is a number", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("pins Normal and --max streak counts in the termination section", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.4/);
+        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         const rule = lineWith(exit, /스트릭 요구치는/);
         expect(rule, `${variant}: the unreachable-pass predicate cannot be evaluated without a number`).not.toBe("");
         expect(

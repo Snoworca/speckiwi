@@ -82,6 +82,8 @@ kiwi-hot-fix
 kiwi-review-fix-loop
 kiwi-pipeline
 kiwi-wave-master
+kiwi-orchestrator
+kiwi-tdd
 ```
 
 위 외 값은 invalid (메타 스킬이 WARN + skip).
@@ -103,6 +105,9 @@ kiwi-wave-master
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
 | kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
+| kiwi-tdd | TASK_DONE | `kiwi-review-fix-loop` (step 승격 후 셀프 리뷰 게이트) |
+| kiwi-wave-master | TASK_DONE | `null` (종료) |
+| kiwi-orchestrator | TASK_DONE | `null` (종료) — run 은 **자기 통합 브랜치** 위에서 검증까지 마치고 끝난다. base 브랜치로의 commit·push 와 PR 생성은 **의도적으로** 자동 연결하지 않는다 |
 | any | NEEDS_USER | `null` |
 | any | FAILED | `null` |
 | any | DRY_RUN | (직전 동일 skill 의 실제 실행) |
@@ -157,6 +162,15 @@ emit 키는 계획 산출물의 `run_id` 와 **다른 id 공간**이다 — 사�
 ### 5.5 실패 시
 
 emit 실패가 스킬 본 작업의 실패로 이어지면 안 됨 — emit 은 best-effort. 실패 시 stderr WARN + 본 작업 보고는 정상 출력.
+
+
+### 5.6 kiwi-orchestrator emit 경로 (v1.4.0 등록)
+
+`kiwi-orchestrator` 는 §5.1 의 손으로 짠 append 블록을 쓰지 않고 **MCP `workflow_pipeline_emit` 도구**로 emit 한다 — 같은 append 로직을 스킬 본문에 한 번 더 복제하지 않기 위해서다. 다른 모든 스킬은 §5.1 을 그대로 쓴다.
+
+MCP 서버가 부재하면 §5.1 의 shell **fallback** 을 그대로 쓴다. emit 은 §5.5 대로 **best-effort** 이므로, 도구 부재가 run 의 실패가 되어서는 안 된다.
+
+**run 수준(run-level) 이벤트의 emit 키**: bare `{run_id}` 를 쓰고, 재개된 run 은 §5.4 의 `{run_id}#r{n}` 형태를 쓴다. 다른 어떤 emit 키도 이 키와 **충돌하지 않는다** — 하위 unit·lane 은 자기 emit 을 `--no-pipeline-emit` 으로 억제하거나 접미사가 붙은 별도 키를 쓰기 때문이다.
 
 ---
 

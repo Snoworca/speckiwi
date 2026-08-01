@@ -1,7 +1,9 @@
 import type { RequirementFilter, RequirementRecord } from "../types.js";
 
 // @req FR-PARSE-019
-function normalizeFilterReference(value: string): string {
+// Exported for FR-NODE-112: the routing probe's anchored-requirement set stands in for a
+// `list_requirements({traceReference})` call, so it must normalize a path exactly as this filter does.
+export function normalizeFilterReference(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed.replace(/#.*$/, "");

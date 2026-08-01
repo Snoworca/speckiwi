@@ -6,19 +6,31 @@ import { summarizeDiagnostics } from "../diagnostic.js";
 import { resolveInsideRoot, toPosixPath } from "../fs/safe-path.js";
 import type { Diagnostic, DiagnosticsSummary, ProjectRoot } from "../types.js";
 
-export type WorkflowArtifactKind =
-  | "plan"
-  | "sidecar"
-  | "validator"
-  | "analysis"
-  | "pipeline"
-  | "pm-state"
-  | "coder-state"
-  | "task-state"
-  | "worklog"
-  | "lock"
-  | "legacy"
-  | "unknown";
+/**
+ * The closed artifact-kind vocabulary, declared once so the set is inspectable at runtime.
+ *
+ * @req FR-NODE-126 — `waves`, `resume-card` and `handoff` are the orchestrator's three artifacts;
+ * `lane-manifest` is deliberately absent because the lane manifest is a phase-2 artifact (05 §3.1).
+ */
+export const WORKFLOW_ARTIFACT_KINDS = [
+  "plan",
+  "sidecar",
+  "validator",
+  "analysis",
+  "pipeline",
+  "pm-state",
+  "coder-state",
+  "task-state",
+  "worklog",
+  "lock",
+  "waves",
+  "resume-card",
+  "handoff",
+  "legacy",
+  "unknown"
+] as const;
+
+export type WorkflowArtifactKind = (typeof WORKFLOW_ARTIFACT_KINDS)[number];
 
 export interface WorkflowArtifactCandidate {
   relativePath: string;
@@ -70,8 +82,18 @@ function posixRelative(root: string, filePath: string): string {
   return toPosixPath(path.relative(root, filePath));
 }
 
+// @req FR-NODE-126 — a lane handoff document, at the run contract's fixed convention
+// `waves/wave-{n}/lanes/lane-{k}.md` (05 §11.2), wherever the work root places it.
+const HANDOFF_DOCUMENT_PATTERN = /(?:^|\/)waves\/wave-\d+\/lanes\/lane-[^/]+\.md$/;
+// @req FR-NODE-126 — the resume card, at `kiwi/orchestrator/{run_id}/resume-card.json` (05 §3.2).
+const RESUME_CARD_PATTERN = /^kiwi\/orchestrator\/[^/]+\/resume-card\.json$/;
+
 function inferKind(relativePath: string): WorkflowArtifactKind {
-  const name = path.posix.basename(toPosixPath(relativePath));
+  const posix = toPosixPath(relativePath);
+  const name = path.posix.basename(posix);
+  if (posix === "kiwi/waves.jsonl") return "waves";
+  if (RESUME_CARD_PATTERN.test(posix)) return "resume-card";
+  if (HANDOFF_DOCUMENT_PATTERN.test(posix)) return "handoff";
   if (name.endsWith(".plan.md")) return "plan";
   if (name.endsWith(".sidecar.json") || name.endsWith(".plan.json")) return "sidecar";
   if (name.endsWith(".validator.json")) return "validator";
@@ -195,11 +217,32 @@ interface CandidateScoringInput {
   parseErrors: string[];
 }
 
+/** The canonical session-state basenames a `{run_id}` session directory may hold. */
+const CANONICAL_SESSION_FILES = ["worklog.jsonl", "pm-state.json", "state.json"] as const;
+
+/**
+ * Whether a path is one of {@link CANONICAL_SESSION_FILES} for `runId`, under either the plain
+ * session directory or the lane-suffixed one.
+ *
+ * @req FR-NODE-126 — `kiwi-pm --session-suffix w{n}s{s}l{k}` relocates the session directory under
+ * `lanes/{lane}/`, and 05 §5.14's executor re-enters with `--resume` only when the suffixed
+ * `pm-state.json` resolves. Scoring the suffixed path lower than the unsuffixed one would let an
+ * unrelated candidate outrank it, and the re-entry would start a new session that re-executes the
+ * unit's completed Tasks.
+ */
+function isCanonicalSessionPath(relativePath: string, runId: string): boolean {
+  const prefix = `.kiwi/sessions/${runId}/`;
+  const posix = toPosixPath(relativePath);
+  if (!posix.startsWith(prefix)) return false;
+  const rest = posix.slice(prefix.length);
+  const lane = /^lanes\/[^/]+\/(.+)$/.exec(rest);
+  const tail = lane?.[1] ?? rest;
+  return (CANONICAL_SESSION_FILES as readonly string[]).includes(tail);
+}
+
 function canonicalPathBonus(candidate: CandidateScoringInput, options: ResolveWorkflowArtifactOptions): number {
   if (candidate.kind === "pipeline" && candidate.relativePath === "kiwi/pipeline.jsonl") return 30;
-  if (options.runId && candidate.relativePath === `.kiwi/sessions/${options.runId}/worklog.jsonl`) return 30;
-  if (options.runId && candidate.relativePath === `.kiwi/sessions/${options.runId}/pm-state.json`) return 30;
-  if (options.runId && candidate.relativePath === `.kiwi/sessions/${options.runId}/state.json`) return 30;
+  if (options.runId && isCanonicalSessionPath(candidate.relativePath, options.runId)) return 30;
   return 0;
 }
 

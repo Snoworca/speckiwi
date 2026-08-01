@@ -146,6 +146,72 @@ describe("FR-NODE-090 AC-3 — a destination without a usable manifest prunes as
   });
 });
 
+// @req FR-FLOW-110 — design §9.4 / §10.5 step 6'.
+//
+// The extraction creates a combination this file did not cover: a `_shared/kiwi/` module referenced
+// by BOTH a mirrored skill and a mirror-excluded one. `verify-loop.md`, `wave-decomposition.md` and
+// `wave-srs-registration.md` are all in that position — `kiwi-wave-master` is mirror-excluded and
+// `kiwi-orchestrator` is mirrored normally. AC-1 above covers excluded-only and AC-2 covers
+// referenced-by-nobody; neither exercises a resource claimed from both sides at once, which is where
+// a reference set built as "installed refs" MINUS "excluded refs" would delete a live contract.
+describe("FR-NODE-090 AC-1 — a contract referenced from both sides survives", () => {
+  /**
+   * `shared-both.md` is referenced by the installed `kiwi-pm` AND by the excluded
+   * `kiwi-wave-master`; `waves-event.md` stays excluded-only as the control.
+   */
+  async function bothScenario(root: string): Promise<{ both: string; excludedOnly: string }> {
+    await writeSkill(root, "kiwi-pm", ["auto-option.md", "shared-both.md"]);
+    await writeSkill(root, "kiwi-wave-master", ["waves-event.md", "shared-both.md"]);
+    await writeSharedResource(root, "auto-option.md");
+    await writeSharedResource(root, "waves-event.md");
+    await writeSharedResource(root, "shared-both.md");
+    const both = await seedMirrorResource(root, "shared-both.md");
+    const excludedOnly = await seedMirrorResource(root, "waves-event.md");
+    return { both, excludedOnly };
+  }
+
+  it("keeps a resource both a mirrored and a mirror-excluded skill reference", async () => {
+    const root = await tempRoot();
+    const { both, excludedOnly } = await bothScenario(root);
+    await writeExclusions(root, JSON.stringify({ excluded: ["kiwi-wave-master"] }));
+
+    const installed = await installSkill(options(root, "kiwi-pm"));
+    expect(installed.ok).toBe(true);
+    if (!installed.ok) throw new Error(installed.error.message);
+
+    expect(await exists(both), "a doubly-referenced shared contract must survive the prune").toBe(true);
+    expect(await exists(excludedOnly), "the excluded-only control must still survive too").toBe(true);
+  });
+
+  it("keeps it when the mirror-excluded skill is the one being installed", async () => {
+    const root = await tempRoot();
+    const { both } = await bothScenario(root);
+    await writeExclusions(root, JSON.stringify({ excluded: ["kiwi-wave-master"] }));
+
+    // Installing the excluded skill itself: its own body never lands in the mirror, so the shared
+    // contract's only surviving claim is the one the installed-elsewhere skill makes.
+    const installed = await installSkill(options(root, "kiwi-wave-master"));
+    expect(installed.ok).toBe(true);
+    if (!installed.ok) throw new Error(installed.error.message);
+
+    expect(await exists(both), "installing the excluded skill must not orphan its shared contract").toBe(true);
+  });
+
+  it("still prunes an unreferenced resource while a doubly-referenced one is present", async () => {
+    const root = await tempRoot();
+    const { both } = await bothScenario(root);
+    const orphan = await seedMirrorResource(root, "nobody-references-this.md");
+    await writeExclusions(root, JSON.stringify({ excluded: ["kiwi-wave-master"] }));
+
+    const installed = await installSkill(options(root, "kiwi-pm"));
+    expect(installed.ok).toBe(true);
+
+    // Retention must come from the references, not from the prune giving up once it sees a claim.
+    expect(await exists(both), "the doubly-referenced contract stays").toBe(true);
+    expect(await exists(orphan), "the genuinely unreferenced contract still goes").toBe(false);
+  });
+});
+
 describe("FR-NODE-090 AC-4 — a manifest naming an absent skill is harmless", () => {
   it("installs successfully and prunes the unreferenced contract", async () => {
     const root = await tempRoot();

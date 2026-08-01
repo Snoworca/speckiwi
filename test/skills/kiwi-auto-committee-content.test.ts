@@ -1,192 +1,142 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import {
+  AUTO_FLAG,
+  AUTO_OPTION_COPIES,
+  COMMITTEE,
+  CRITICAL,
+  FIVE,
+  HALT,
+  IMMEDIATELY,
+  MAX_FLAG,
+  RESEARCH,
+  RUNG,
+  SELECT,
+  SEVEN,
+  SIMPLE_MAJORITY,
+  THREE,
+  UNANIMOUS,
+  autoOptionText,
+  tiedTogether,
+  windowsAround
+} from "../support/auto-option-copies.js";
+
 // @req FR-FLOW-025
-// FR-FLOW-025 — `--auto` decision committee sizing and unanimity escalation.
+// FR-FLOW-025 — `--auto` decision committee sizing and simple-majority decision, as amended for
+// `2.6.0-phase1-kiwi-orchestrator`.
 //
-// RED-phase content assertions (T-PH001-03). These assert the FINAL desired state of the shared
-// `_shared/kiwi/auto-option.md` SSOT and therefore FAIL until T-PH001-04 rewrites the topology and
-// merge rules in all three variants (claude KO, codex/etc EN) to a research-performing decision
-// committee with the 3->5->7 unanimity-escalation ladder and lead-member (#1) deterministic
-// tie-break.
+// AC-1 and AC-2 survive the amendment byte-identical and their assertions are carried forward
+// unchanged. AC-3 and AC-4 are REPLACED: the unanimity requirement and the 3->5 / 5->7 escalation
+// ladders are removed, and both committee sizes decide by simple majority.
 //
-// An auto-option.md is natural-language agent instruction, not executable code, so behavior is
-// verified by raw-text presence + indexOf/window proximity assertions (FR-FLOW-014 kiwi-step
-// precedent), not skill execution. Assertions key on bilingual (English / Korean) technical tokens
-// so the Korean canonical (claude) variant and the English mirrors (codex, etc) are validated by
-// the same checks.
+// This file is FR-FLOW-025's `VE-2`, and before the amendment its AC-3 / AC-4 cases asserted the
+// removed mechanism — the 3->5 escalation, the 5-member plurality, the 5->7 escalation and the
+// lead-member tie-break. That is why the rewrite is the amendment's red driver rather than a
+// clean-up after it.
 //
-// The primary red drivers are tokens that are ABSENT from all three variants today — the committee
-// concept itself (`committee` / `위원회`), unanimity (`unanimous` / `만장일치`), the tie-break notion
-// (`tie` / `동점`), and a 7-member escalation near the committee. Pre-existing near-miss tokens
-// (claude already says "다수결 (3중 2)" and "격상", and "0.5"/"0.7" contain bare digits) are
-// neutralized by scoping every specific assertion to a window around the (absent) committee /
-// unanimity / tie anchors, so a stray pre-existing token cannot satisfy an assertion.
+// An `auto-option.md` is natural-language agent instruction, not executable code, so behaviour is
+// verified by raw-text presence and window-proximity assertions rather than by skill execution.
+// Assertions key on bilingual tokens so the Korean canonical (`claude`) and the three English
+// renderings (`codex`, `etc`, `.agents`) are validated by the same checks.
 //
-// Per FR-FLOW-025 Implementation Notes, the imprecise "replacing the prior block-instead-of-ask"
-// phrasing is NOT asserted (prior --auto semantics vary per skill); instead AC-1 asserts the new
-// committee wording plus the guardrail that critical / business-decision gates STILL halt.
+// Rung ABSENCE is asserted as a structural claim over the whole file — "no window pairs an
+// escalation verb with two committee sizes" — never as `not.toContain` over one spelling of one
+// sentence, which a wrapped line or a synonym would satisfy vacuously. Every absence claim below
+// sits beside the positive assertion of what replaced it.
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+describe("FR-FLOW-025 — --auto decision committee sizing and simple-majority decision", () => {
+  for (const copy of AUTO_OPTION_COPIES) {
+    it(`AC-1 [${copy.id}]: --auto convenes a 3-member research-performing committee, critical gates still halt`, () => {
+      const text = autoOptionText(copy.relPath);
 
-// T-PH001-04 rewrites the committee ladder in all three variant auto-option.md files.
-const VARIANTS = ["claude", "codex", "etc"] as const;
-
-function autoOptionText(variant: string): string {
-  return readFileSync(
-    path.join(REPO_ROOT, "skills", variant, "_shared", "kiwi", "auto-option.md"),
-    "utf8",
-  );
-}
-
-/** Text windows of +/- `radius` chars around every match of `re` within a single `text`. */
-function windowsAround(text: string, re: RegExp, radius = 300): string[] {
-  const g = new RegExp(re.source, re.flags.replace("g", "") + "g");
-  const out: string[] = [];
-  for (let m = g.exec(text); m; m = g.exec(text)) {
-    out.push(text.slice(Math.max(0, m.index - radius), m.index + m[0].length + radius));
-    if (g.lastIndex === m.index) g.lastIndex++;
-  }
-  return out;
-}
-
-// --- Bilingual token vocabulary (EN mirrors + KO canonical) ------------------------------------
-const COMMITTEE = /committee|위원회/i; // absent today in every variant -> anchor red driver
-const RESEARCH = /research|investigat|리서치|조사|연구/i;
-const SELECT = /select|choose|adopt|most[\s-]*reasonable|선택|채택|가장\s*합리/i;
-const AUTO_FLAG = /--auto\b/;
-const MAX_FLAG = /--max\b/;
-// Member counts match only when adjacent to a member/counter word, so an unrelated decimal
-// ("confidence >= 0.5") or section number ("§5") cannot satisfy a committee-size assertion.
-const THREE = /\b3[\s-]*(?:members?|인|명|위원)|three[\s-]*members?|셋|세\s*(?:명|위원)/i;
-const FIVE = /\b5[\s-]*(?:members?|인|명|위원)|five[\s-]*members?|다섯/i;
-const SEVEN = /\b7[\s-]*(?:members?|인|명|위원)|seven[\s-]*members?|일곱/i;
-// `unanimous` already appears once as a JSON `merge_method` enum value in claude/codex, so it is
-// NOT globally absent; the escalation checks stay red by requiring it to co-occur with the (absent)
-// escalation-to-5 wording inside one window.
-const UNANIMOUS = /unanim|만장일치|전원\s*일치/i;
-const ESCALATE = /escalat|격상|증원|확대|상향/i;
-const PLURALITY = /plurality|most[\s-]*votes|다수결|최다\s*(?:득표|표)/i;
-const TIE = /\btie(?:s|[-\s]?break(?:er)?)?\b|동점|동률/i; // absent today -> tie-break red driver
-const LEAD =
-  /lead(?:ing)?\b|선임|수석|위원장|first\s+(?:committee\s+)?member|member\s+#?\s*1\b|#\s*1\b|1\s*번|1\s*순위|ranking|랭킹/i;
-const HALT = /\bhalt\b|중단|정지|멈춤/i;
-const CRITICAL = /critical/i;
-
-describe("FR-FLOW-025 — --auto decision committee sizing and unanimity escalation", () => {
-  for (const variant of VARIANTS) {
-    it(`AC-1 [${variant}]: --auto convenes a 3-member research-performing committee, critical/business gates still halt`, () => {
-      const text = autoOptionText(variant);
-
-      // The committee concept must exist at all — this is the primary AC-1 red driver (no variant
-      // mentions a decision committee today; they describe 1 worker for --auto).
       expect(
         COMMITTEE.test(text),
-        `FR-FLOW-025 AC-1: ${variant} auto-option.md must describe a --auto decision committee (committee / 위원회)`,
+        `FR-FLOW-025 AC-1: ${copy.id} must describe a --auto decision committee (committee / 위원회)`
       ).toBe(true);
 
-      // Discriminating co-occurrence: a window around a committee mention must tie --auto + a
-      // 3-member sizing + research investigation + the select-the-most-reasonable-option decision,
-      // so GREEN cannot pass by naming an unrelated "committee", nor by describing research without
-      // the selection step, nor without the 3-member sizing.
-      const tied = windowsAround(text, COMMITTEE).some(
-        (w) => AUTO_FLAG.test(w) && THREE.test(w) && RESEARCH.test(w) && SELECT.test(w),
-      );
+      // A window around a committee mention must tie --auto + 3-member sizing + research + the
+      // select-the-most-reasonable-option step, so an unrelated "committee", or research with no
+      // selection step, cannot satisfy it.
       expect(
-        tied,
-        `FR-FLOW-025 AC-1: ${variant} auto-option.md must state that --auto convenes a 3-member research-performing committee that selects the most reasonable option`,
+        tiedTogether(text, COMMITTEE, [AUTO_FLAG, THREE, RESEARCH, SELECT]),
+        `FR-FLOW-025 AC-1: ${copy.id} must state that --auto convenes a 3-member research-performing committee that selects the most reasonable option`
       ).toBe(true);
 
-      // Guardrail: critical gates STILL halt under --auto even with the committee (per FR-FLOW-025
-      // Implementation Notes review guardrail). Scoped to a window around a `halt` token requiring
-      // `critical`, so the check verifies still-halt semantics rather than mere keyword presence
-      // anywhere in the file. (business-decision gates auto-decide UNLESS listed in critical_gates,
-      // so only the unconditional critical-halt is asserted here.)
-      const criticalHalts = windowsAround(text, HALT, 150).some((w) => CRITICAL.test(w));
+      // Guardrail: critical gates STILL halt under --auto (FR-FLOW-025 Implementation Notes).
       expect(
-        criticalHalts,
-        `FR-FLOW-025 AC-1: ${variant} auto-option.md must keep critical gates halting for the user under --auto`,
+        windowsAround(text, HALT, 150).some((w) => CRITICAL.test(w)),
+        `FR-FLOW-025 AC-1: ${copy.id} must keep critical gates halting for the user under --auto`
       ).toBe(true);
     });
 
-    it(`AC-2 [${variant}]: --max raises the committee to 5 members`, () => {
-      const text = autoOptionText(variant);
+    it(`AC-2 [${copy.id}]: --max raises the committee to 5 members`, () => {
+      const text = autoOptionText(copy.relPath);
 
-      const tied = windowsAround(text, COMMITTEE).some((w) => MAX_FLAG.test(w) && FIVE.test(w));
       expect(
-        tied,
-        `FR-FLOW-025 AC-2: ${variant} auto-option.md must state that --max raises the decision committee to 5 members`,
+        tiedTogether(text, COMMITTEE, [MAX_FLAG, FIVE]),
+        `FR-FLOW-025 AC-2: ${copy.id} must state that --max raises the decision committee to 5 members`
       ).toBe(true);
     });
 
-    it(`AC-3 [${variant}]: non-unanimous 3->5 escalation, 5-member plurality, lead-member tie-break`, () => {
-      const text = autoOptionText(variant);
+    it(`AC-3 [${copy.id}]: the 3-member committee decides by simple majority and adopts immediately`, () => {
+      const text = autoOptionText(copy.relPath);
 
-      // Non-unanimous 3-member committee escalates to 5 and re-decides. Anchored on `unanimous`
-      // (absent today) so it is genuinely red and cannot be satisfied by claude's pre-existing
-      // "격상" wording alone.
-      const escalates = windowsAround(text, UNANIMOUS, 400).some(
-        (w) => ESCALATE.test(w) && THREE.test(w) && FIVE.test(w),
-      );
+      // Positive: the 3-member committee's decision rule is a simple majority, adopted immediately.
       expect(
-        escalates,
-        `FR-FLOW-025 AC-3: ${variant} auto-option.md must state a non-unanimous 3-member committee escalates to 5 and re-decides`,
+        tiedTogether(text, THREE, [SIMPLE_MAJORITY, IMMEDIATELY], 420),
+        `FR-FLOW-025 AC-3: ${copy.id} must state that the 3-member committee decides by simple majority and adopts that option immediately`
       ).toBe(true);
 
-      // Non-unanimous 5-member (non-max) committee decides by plurality. Scoped to a 5-member
-      // committee window so claude's pre-existing "다수결 (3중 2)" (a 3-worker arbitration, no
-      // committee, no 5) cannot satisfy it.
-      const plurality5 = windowsAround(text, PLURALITY, 300).some(
-        (w) => FIVE.test(w) && COMMITTEE.test(w),
-      );
+      // The option holding strictly more than half of the votes cast — the definition is stated, so
+      // "majority" is not left to the reader to interpret as "most votes among three options".
       expect(
-        plurality5,
-        `FR-FLOW-025 AC-3: ${variant} auto-option.md must state a non-unanimous 5-member committee decides by plurality (most votes)`,
-      ).toBe(true);
-
-      // Any tie is broken deterministically by the lead committee member (#1) ranking. Anchored on
-      // `tie` / 동점 (absent today).
-      const tieBreak = windowsAround(text, TIE, 300).some((w) => LEAD.test(w));
-      expect(
-        tieBreak,
-        `FR-FLOW-025 AC-3: ${variant} auto-option.md must break a committee tie deterministically by the lead committee member (#1) ranking`,
+        /(strictly\s+)?more\s+than\s+half|과반(수)?\s*(초과|를\s*넘)|절반\s*(을\s*)?(초과|넘)/i.test(text),
+        `FR-FLOW-025 AC-3: ${copy.id} must define simple majority as strictly more than half of the votes cast`
       ).toBe(true);
     });
 
-    it(`AC-4 [${variant}]: under --max a non-unanimous 5-member committee escalates to 7 plurality with tie-break`, () => {
-      const text = autoOptionText(variant);
+    it(`AC-3 [${copy.id}]: no 3-to-5 enlargement rung survives`, () => {
+      const text = autoOptionText(copy.relPath);
 
-      // Under --max, a non-unanimous 5-member committee escalates to 7. Anchored on the committee
-      // window requiring --max + a 7-member sizing + escalation from 5 (all absent today). Radius
-      // widened to 500 to tolerate the doc's occasionally long Korean sentences for this 4-way
-      // co-occurrence.
-      const escalates7 = windowsAround(text, COMMITTEE, 500).some(
-        (w) => MAX_FLAG.test(w) && SEVEN.test(w) && ESCALATE.test(w) && FIVE.test(w),
+      // Structural absence: no escalation verb anywhere sits within one window of both a 3-member
+      // and a 5-member sizing. Before the amendment every copy satisfied this, which is what makes
+      // the assertion able to fail rather than vacuous.
+      const enlargements = windowsAround(text, RUNG, 260).filter(
+        (w) => THREE.test(w) && FIVE.test(w)
       );
       expect(
-        escalates7,
-        `FR-FLOW-025 AC-4: ${variant} auto-option.md must state that under --max a non-unanimous 5-member committee escalates to 7 members`,
+        enlargements,
+        `FR-FLOW-025 AC-3: ${copy.id} must contain no 3-to-5 committee-enlargement rung`
+      ).toEqual([]);
+
+      // Paired positive: a non-unanimous result is decided, not escalated.
+      expect(
+        tiedTogether(text, UNANIMOUS, [SIMPLE_MAJORITY], 420),
+        `FR-FLOW-025 AC-3: ${copy.id} must state that a committee decides by simple majority without requiring unanimity`
+      ).toBe(true);
+    });
+
+    it(`AC-4 [${copy.id}]: under --max the 5-member committee decides by simple majority, with no 5-to-7 rung`, () => {
+      const text = autoOptionText(copy.relPath);
+
+      expect(
+        tiedTogether(text, FIVE, [SIMPLE_MAJORITY], 420),
+        `FR-FLOW-025 AC-4: ${copy.id} must state that the 5-member committee decides by simple majority without requiring unanimity`
       ).toBe(true);
 
-      // The 7-member committee decides by plurality, without requiring unanimity.
-      const plurality7 = windowsAround(text, COMMITTEE, 500).some(
-        (w) => SEVEN.test(w) && PLURALITY.test(w),
-      );
+      // No 7-member committee exists anywhere in the contract, at any sizing or in any example.
       expect(
-        plurality7,
-        `FR-FLOW-025 AC-4: ${variant} auto-option.md must state the 7-member committee decides by plurality (most votes) without requiring unanimity`,
-      ).toBe(true);
+        windowsAround(text, SEVEN, 0),
+        `FR-FLOW-025 AC-4: ${copy.id} must contain no 7-member committee`
+      ).toEqual([]);
 
-      // AC-4 restates the deterministic lead-member tie-break for the 7-member committee. Anchored
-      // on a 7-member sizing window (absent today) requiring TIE + LEAD, so GREEN cannot pass
-      // without stating the lead-member (#1) ranking tie-break applies at the 7-member level.
-      const tieBreak7 = windowsAround(text, SEVEN, 500).some((w) => TIE.test(w) && LEAD.test(w));
+      // ... and no enlargement rung of any size remains, so the ladder cannot survive under a
+      // different pair of numbers than the two AC-3 names.
+      const enlargements = windowsAround(text, RUNG, 260).filter((w) => COMMITTEE.test(w));
       expect(
-        tieBreak7,
-        `FR-FLOW-025 AC-4: ${variant} auto-option.md must break a 7-member committee tie deterministically by the lead committee member (#1) ranking`,
-      ).toBe(true);
+        enlargements,
+        `FR-FLOW-025 AC-4: ${copy.id} must contain no committee-enlargement rung at any size`
+      ).toEqual([]);
     });
   }
 });

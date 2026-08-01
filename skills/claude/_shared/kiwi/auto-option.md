@@ -24,16 +24,16 @@
 
 ## 2. 결정 위원회 토폴로지
 
-`--auto` 가 활성화되면 단일 거수기 작업자 대신 **리서치 수행 결정 위원회 3인**을 소집한다. 3인 위원 각각은 격리된 서브에이전트로서 게이트 컨텍스트를 독립적으로 조사(research)하고 가장 합리적인 옵션을 선택·채택하도록 1표를 던진다. 위원은 `--model <name>` 로 위원회 모델을 덮어쓰지 않는 한 **현재 세션 모델**을 상속한다.
+게이트 옵션 중 하나가 구조화 마커 `recommended: true` 를 달고 있으면 위원회를 소집하지 않는다 (§3 0단계 fast path). 그 외에 `--auto` 가 활성화되면 단일 거수기 작업자 대신 **리서치 수행 결정 위원회 3인**을 소집한다. 3인 위원 각각은 격리된 서브에이전트로서 게이트 컨텍스트를 독립적으로 조사(research)하고 가장 합리적인 옵션을 선택·채택하도록 1표를 던진다. 위원회는 **단순 과반(simple majority)** — 던져진 표의 **절반을 초과**하는 표를 얻은 옵션 — 으로 결정하고 그 옵션을 **즉시** 채택한다. 만장일치는 요구하지 않는다. 위원은 `--model <name>` 로 위원회 모델을 덮어쓰지 않는 한 **현재 세션 모델**을 상속한다.
 
 | 모드 조합 | 위원회 규모 | 합치 규칙 |
 |---|---|---|
-| `--auto` | 3인 위원회 | 만장일치일 때 결정. 만장일치가 아니면 §3 사다리로 5인 격상 |
-| `--auto --max` | 5인 위원회 | `--max` 는 결정 위원회를 5인으로 격상. 5인이 만장일치가 아니면 다수결로 멈추지 않고 7인으로 격상해 다수결로 결정 (§3) |
+| `--auto` | 3인 위원회 | 3인 단순 과반(2표 이상)으로 결정하고 즉시 채택. 만장일치 불요 |
+| `--auto --max` | 5인 위원회 | `--max` 는 결정 위원회를 5인 규모로 소집한다. 5인 단순 과반(3표 이상)으로 결정하고 즉시 채택. 만장일치 불요 |
 | `--auto --model <name>` | 3인 위원회 | 전 위원 모델을 지정 모델로 고정 |
 | `--auto --max --model <name>` | 5인 위원회 | 위 5인 규칙 + 전 위원 지정 모델 |
 
-위원회 사다리·합치·동점 tie-break SSOT 는 §3.
+위원회 우회(fast path)·합치·과반 미형성 처리 SSOT 는 §3.
 
 ### 2.1 서브에이전트 입력 (편향 없음)
 
@@ -63,7 +63,7 @@
 
 ### 2.3 위원 spawn 표준 의사코드
 
-본 모듈을 따르는 스킬이 위원회를 소집할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지). K = 위원회 규모(`--auto`=3, `--auto --max`=5, 격상 시 5→7). K 명의 위원은 **단일 메시지에서 K회 동시 호출**(병렬·격리 보장)하며 모든 위원의 prompt 는 완전히 동일하다. description 만 "위원 #1 … 위원 #K" 로 구분하고 **위원 #1 을 선임 위원(§3 동점 tie-breaker)** 으로 고정한다.
+본 모듈을 따르는 스킬이 위원회를 소집할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지). K = 위원회 규모(`--auto`=3, `--auto --max`=5). K 명의 위원은 **단일 메시지에서 K회 동시 호출**(병렬·격리 보장)하며 모든 위원의 prompt 는 완전히 동일하다. description 만 "위원 #1 … 위원 #K" 로 구분한다. 번호는 식별용일 뿐이며 어떤 위원도 다른 위원보다 큰 표결권을 갖지 않는다.
 
 #### 위원 1인 호출 (모든 위원 동일 형식)
 
@@ -102,10 +102,6 @@ Agent(
 )
 ```
 
-#### 위원회 격상 (3→5, 5→7)
-
-위원회가 만장일치가 아니면 §3 사다리에 따라 격상한다. 격상은 기존 위원의 표를 유지한 채 새 위원 2인을 추가로 spawn 해 재투표하는 방식이며, 별도의 중재자 SA 를 두지 않는다 (중재 대신 위원 증원 + 다수결). description 만 "위원 #4" / "위원 #5" (5→7 격상 시 "위원 #6" / "위원 #7") 로 이어 붙이고, 추가 위원의 prompt 는 기존 위원과 완전히 동일하다.
-
 #### 2.3.1 위원 model 결정 (FN-003)
 
 | 모드 조합 | `model` 파라미터 값 |
@@ -126,6 +122,8 @@ SA 가 반환한 `decision` 값을 메인 세션이 본문 분기에 매핑하�
 3. **`default_if_auto` 가 정의된 게이트** → `decision == default_if_auto` 이면 해당 default 분기 실행. 다르면 매핑 우선순위 1로 fallback.
 4. **위 3종 모두 매핑 실패** → critical 격상, 사용자 HALT (안전 디폴트).
 
+본 표는 위원회가 낸 `decision` 을 본문 분기에 **매핑**하는 규칙이다. 애초에 위원회를 소집할지 여부(우회 우선순위 `recommended` > `default_if_auto` > 위원회) 는 §3 이 정한다.
+
 #### 2.4.2 본문 분기 라벨 규약
 
 스킬은 AskUserQuestion / NEEDS_USER 호출 site 마다 다음 형식의 라벨을 의사코드 주석으로 보유 가능 (필수 아님, 모호한 경우만):
@@ -140,32 +138,31 @@ AskUserQuestion(...)
 
 본 라벨은 §2.4.1 매핑 우선순위 1 의 lookup 키. 라벨 없으면 LLM 이 본문 컨텍스트로 추론.
 
-## 3. 위원회 합치 사다리 (만장일치 → 격상 → 다수결 → 동점 tie-break)
+## 3. 결정 규칙 (fast path → 단순 과반 → 과반 미형성 시 critical)
 
-`--auto` 결정 위원회는 다음 사다리로 최종 결정을 만든다. 위원은 §2.3 표준 의사코드로 병렬·격리 spawn 하며, 격상은 기존 위원의 표를 유지한 채 위원 2인을 추가해 재투표한다.
+`--auto` 게이트는 아래 0~3 단계 순서로 결정한다. 두 우회(bypass) 의 우선순위는 **`recommended` > `default_if_auto` > 위원회** 다 — 한 옵션이 두 마커를 **모두** 달고 있으면 `recommended` 분기로 해소되고, 게이트의 어느 옵션도 `recommended` 도 `default_if_auto` 도 **없으면** 위원회로 내려간다. 위원은 §2.3 표준 의사코드로 병렬·격리 spawn 한다.
 
-1. **`--auto` (3인 위원회)**: 3인 위원이 각자 조사(research) 후 투표한다.
-   - 만장일치(unanimous) → 그 결정 채택, `side_effects` 합집합 기록.
-   - 만장일치가 아니면 → 2) 로 격상.
-2. **5인으로 격상**: 위원 2인을 추가해 5인 위원회로 재결정한다.
-   - 만장일치 → 채택.
-   - 만장일치가 아니면 → 다수결(plurality, 최다 득표)로 결정. 5인 위원회는 만장일치를 요구하지 않는다.
-   - `--max` 이면 5인이 만장일치가 아닐 때 다수결로 멈추지 않고 3) 으로 격상.
-3. **7인으로 격상 (`--max` 전용)**: 위원 2인을 추가해 7인 위원회로 만들고 다수결(plurality, 최다 득표)로 결정한다. 7인 위원회도 만장일치를 요구하지 않는다.
-4. **동점 tie-break (전 규모 공통)**: 어떤 규모의 위원회든 표가 동점(tie)이면 **선임 위원(#1, 1순위)의 랭킹**으로 결정론적으로 깬다. 선임 위원(#1)이 고정 tie-breaker 다. 7인 위원회의 동점도 선임 위원(#1)의 랭킹으로 동일하게 깬다.
-5. **critical / business-decision 가드**: critical 게이트와 `critical_gates[]` 에 등록된 business-decision 은 `--auto` 여부와 무관하게 여전히 사용자에게 중단(halt)된다 — 위원회는 critical 중단을 절대 덮어쓰지 않는다.
-6. 결정 + 합치 과정 전체를 `docs/analysis/{run-id}/auto_decisions.json` 에 적재(§10). `merge_method` 는 승리 규칙(`unanimous` / `plurality` / `tie-break-lead`)과 최종 위원회 규모를 기록.
+0. **`recommended` fast path (0표 채택)**: 게이트 옵션 중 하나가 구조화 마커 `recommended: true` 를 달고 있으면 `--auto` 는 그 옵션을 **즉시** 채택한다. 위원회를 **소집하지 않고**, 위원을 한 명도 **spawn 하지 않는다**. 표를 세지 않으므로 confidence 비교도 없다.
+   - 마커는 `kiwi-pm` 의 NEEDS_USER 옵션 스키마에 `key` / `label` / `consequence` 와 나란히 선언된 **구조화 boolean 필드**이며, opt-in — 필드가 없는 옵션은 권장이 아니다.
+   - 본문에 적힌 산문 `(권장)` 라벨은 **기계적 의미가 없으며** 권장으로 **파싱하지 않는다**. (기존 `kiwi-pm` 의 `(권장)` 라벨 3개 중 2개는 HALT 옵션에 붙어 있다 — 산문 스캔은 권장 HALT 를 자동 채택하게 된다.)
+   - 본 계약은 **어떤 옵션이 왜 권장되는지 판단하지 않는다** — 권장 사유를 기술하는 필드도, 그것을 심사하는 기준도 두지 않는다.
+1. **`default_if_auto` fast path (0표 채택)**: `recommended` 옵션이 없고 게이트에 `default_if_auto` 가 선언돼 있으면 그 default 를 채택한다. 역시 위원회를 소집하지 않는다.
+2. **위원회 단순 과반**: 위 두 우회가 모두 없으면 §2 규모의 위원회(`--auto` 3인 / `--auto --max` 5인)를 소집하고 **단순 과반** — 던져진 표의 **절반을 초과**하는 표를 얻은 옵션 — 으로 결정해 그 옵션을 **즉시** 채택한다(`side_effects` 합집합 기록). 만장일치는 요구하지 않는다 — 3인 위원회의 2-1 은 그 자리에서 결정된다. 위원회 규모는 §2 표가 정한 값으로 고정이며 결정 과정에서 달라지지 않는다. 표는 한 번만 받는다.
+3. **과반 미형성 → critical HALT**: 어떤 옵션도 절반을 초과하지 못하면 게이트를 `critical` 로 격상하고 사용자에게 HALT 한다. 3인 위원회의 1-1-1, `--auto --max` 5인 위원회의 동점(tie) 이 여기에 해당한다 — 동점은 과반 미형성의 한 형태이며 동일하게 처리한다. 위원회 규모는 그대로 두고, 표를 한 번 더 받지 않으며, 특정 위원이 단독으로 결과를 정하지 않는다.
+4. **critical / business-decision 가드**: critical 게이트와 `critical_gates[]` 에 등록된 business-decision 은 `--auto` 여부와 무관하게 여전히 사용자에게 중단(halt)된다 — 위원회도 fast path 도 critical 중단을 절대 덮어쓰지 않는다.
+5. 결정 + 합치 과정 전체를 `docs/analysis/{run-id}/auto_decisions.json` 에 적재(§10). `merge_method.rule` 어휘는 `majority` / `recommended-fastpath` / `default-if-auto` 3종이 전부이며, `unanimous` 는 규칙이 아니라 투표 결과(outcome) 로만 기록한다.
 
-**금지**: 위원회가 만장일치도 최다 득표도 아닌 임의 결정을 채택(사다리 위반) — 즉시 HALT.
+**금지**: 위원회 단순 과반도 아니고 선언된 `recommended: true` / `default_if_auto` 우회도 아닌 임의 결정을 채택 — 즉시 HALT. 0표 fast path 채택은 선언된 우회이므로 본 금지에 걸리지 않는다.
 
 ### 3.1 위원 실패 fallback (FN-004)
 
 | 실패 시나리오 | 처리 |
 |---|---|
-| 위원 timeout / 빈 응답 | 해당 위원 1회 재spawn. 재실패 시 그 위원을 제외하고 과반 정족수 충족되면 진행, 미충족 시 critical HALT |
+| 위원 timeout / 빈 응답 | 해당 위원 1회 재spawn. 재실패 시 정족수(quorum) 손상으로 보아 **무조건 `critical` 격상 + 사용자 HALT** — 그 위원을 제외하고 진행하지 않는다 |
 | 위원 응답 JSON 파싱 실패 / `decision` 필드 없음 | 해당 위원 1회 재spawn (동일 prompt). 재실패 시 위와 동일 처리 |
 | 위원 과반 이상 실패 | critical HALT (안전 디폴트) |
-| 선임 위원(#1) 실패로 동점 tie-break 불가 | 선임 위원 1회 재spawn. 재실패 시 critical HALT (임의 tie-break 금지) |
+
+3인 위원회에서 1인이 빠지면 남은 2인의 1-1 에는 과반이 없고, 그 상태를 진행시키면 사실상 단독 결정이 된다. 그래서 정족수 손상은 §3 3단계의 과반 미형성과 같은 처리를 받는다.
 
 ### 3.2 decision 정규화 (FN-005)
 
@@ -202,14 +199,22 @@ SA 자기보고 `confidence` 가 무비판 채택되면 critical 격상 트리�
 | `risk_assessment == "high"` 이고 `confidence > 0.7` | ×0.6 (high-risk 고확신 의심) |
 | `side_effects[]` 가 빈 배열인데 mutation 게이트 (MCP write/git push 등) | ×0.7 |
 
-조정된 confidence 가 임계값 미만이면 critical 격상.
+위 조정은 **각 위원의 confidence 에 개별 적용**한다.
 
-#### 4.1.2 위원 confidence 교차 검증
+**결정을 지배하는 confidence (governing confidence)**: 위 조정을 각 위원에게 적용한 **뒤**, 채택된 옵션에 투표한 위원들(승리 블록, winning bloc) 중 **최소값**을 취한다. 만장일치면 승리 블록이 곧 위원회 전체다. 분할 투표(2-1 등)에서 이 값은 승리 블록의 **평균**도, **전 위원**의 최소·평균도, 선임 위원의 값도 아니다 — 반대(dissent) 한 위원의 confidence 는 값이 무엇이든 이 비교에 들어가지 않는다. 오직 이 한 값이 현재 임계값(§4 `clarification` 0.5 / `business-decision` 0.7, §4.1.3 해당 시 각 +0.1) 미만일 때만 `critical` 로 격상한다.
 
-위원회 내 최고·최저 confidence 차이 ≥ 0.3 → 신뢰성 부족. 대응은 현재 위원회가 §3 사다리의 **종단 규모**(비-max 5인 / --max 7인)에 도달했는지에 따라 갈린다:
+예 (`business-decision`, 임계값 0.7):
 
-- **비종단 규모** (`--auto` 3인, 또는 `--max` 5인): 만장일치여도 §3 사다리로 다음 규모(3→5, 5→7)로 1회 격상하여 재투표 (decision 일치 여부와 무관). 비-max 3인의 "다음 규모" 는 5인이며, 7인은 --max 전용이므로 비-max 는 5인이 종단이다.
-- **종단 규모** (비-max 5인 / --max 7인): 더 격상할 위원회가 없으므로 재투표하지 않고, confidence 신뢰성 저하를 critical 로 격상해 HALT — 사용자 결정을 받는다 (§4.1.1 "임계값 미만이면 critical 격상" 과 동일 안전 정책). 종단 규모에서 임의 진행 금지.
+| 표결 | 승리 블록의 조정 confidence | governing | 결과 |
+|---|---|---|---|
+| 2-1 | 0.9, 0.6 | 0.6 | 0.7 미만 → `critical` 격상 + HALT |
+| 2-1 | 0.9, 0.75 | 0.75 | 0.7 이상 → 채택 (반대 위원의 값은 비교에 미포함) |
+
+#### 4.1.2 위원 confidence 교차 검증 (§4.1.1 임계값 기제에 흡수)
+
+위원회 내 최고·최저 confidence 차이(spread) ≥ 0.3 은 §10 결정 감사(audit) 행에 `confidence_spread` 로 **기록**하되, 그 자체로는 **아무것도 구동하지 않는다**. spread 는 표결에도 위원회 구성에도 어떤 영향을 주지 않으며, **자체 confidence 보정도 하지 않는다** (별도 하향 계수를 두지 않는다 — §4.1.1 의 네 계수 외에 보정 상수를 신설하지 않는다).
+
+spread 가 큰 상태의 잔여 효과는 §4.1.1 의 위원별 보정과 위 governing confidence(승리 블록 최소값) 규칙이 흡수하며, `critical` 격상은 그 한 값과 임계값의 **단 한 번의 비교**로만 발생한다. 따라서 만장일치 위원회가 spread ≥ 0.3 을 보고했더라도 governing confidence 가 임계값 이상이면 그 결정을 **채택하고 HALT 하지 않는다**.
 
 #### 4.1.3 안전 임계 (`--model` tier 판정)
 
@@ -280,7 +285,8 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 - "AskUserQuestion 호출" → "§2 서브에이전트 결정 + decision 적용"
 - "NEEDS_USER bubble-up" → "severity 평가 → critical 이면 bubble-up, 아니면 §2 서브에이전트 결정"
 - "사용자 확인 의무" → "critical_gates[] 매칭 시 HALT, 아니면 §2 서브에이전트 결정"
-- "default_if_auto: <X>" → 해당 default 값을 `severity=clarification` confidence=1.0 결정으로 채택 (서브에이전트 우회 가능 — fast path)
+- "options[].recommended: true" → 해당 옵션을 즉시 채택 (위원회 미소집 — 최상위 fast path, §3 0단계). 산문 `(권장)` 라벨은 여기에 해당하지 않는다
+- "default_if_auto: <X>" → 해당 default 값을 `severity=clarification` confidence=1.0 결정으로 채택 (서브에이전트 우회 가능 — fast path). `recommended` 옵션이 있으면 그쪽이 우선한다
 
 **사본을 만들지 않는다**. 스킬 본문은 그대로 두고 §0 참조 + `critical_gates[]` 인라인만으로 충분.
 
@@ -310,7 +316,7 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 
 ## 8. 호환 / 자연어 매칭
 
-- `--max` 와 공존 가능 — `--auto --max` = 5인 위원회 (만장일치 아니면 7인 격상, §2/§3)
+- `--max` 와 공존 가능 — `--auto --max` = 5인 위원회 (단순 과반 결정, §2/§3)
 - `--model <name>` 와 공존 가능 — `--auto --model <name>` = 결정 서브에이전트 모델 지정
 - `--dry-run` 과 공존 가능 — dry-run 게이트는 `--auto` 영향 없음 (사용자 검토 필수)
 - `--no-auto` 부정 플래그 없음 — 옵션 미지정이 곧 사용자 결정 활성
@@ -328,10 +334,13 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 
 ## 10. 분석 로그 / 산출물
 
-`--auto` 활성 시 각 게이트 결정을 다음 형식으로 적재:
+`--auto` 활성 시 **모든 채택**을 `docs/analysis/{skill-run-id}/auto_decisions.json` 에 적재한다 — 0표 우회 2종(`recommended` / `default_if_auto`) 도 포함한다. 심의를 전혀 거치지 않은 결정이 증거를 전혀 남기지 않는 상태를 막기 위해서다.
 
-```
-docs/analysis/{skill-run-id}/auto_decisions.json
+`merge_method.rule` 어휘는 **`majority` / `recommended-fastpath` / `default-if-auto` 3종이 전부**다. 이 셋 외의 값은 쓰지 않는다. `unanimous` 는 규칙이 아니라 `vote_outcome` (투표 결과) 로만 기록한다. `critical` 로 격상돼 HALT 한 게이트는 채택이 아니므로 `critical_halts[]` 에 기록한다.
+
+0표 우회는 `committee_size: 0` + 마커 선언 위치(`marked_by`) 를 싣고 `committee_votes` 는 **빈 배열**로 둔다 — 빈 배열은 "위원이 없었다" 는 주장이고, 필드 부재는 침묵이다.
+
+```json
 {
   "run_id": "...",
   "skill": "kiwi-pm",
@@ -342,19 +351,57 @@ docs/analysis/{skill-run-id}/auto_decisions.json
       "severity": "clarification",
       "options": ["proceed", "block"],
       "committee_votes": [
-        {"member": "#1", "decision": "proceed", "rationale": [...], "confidence": 0.85},
-        {"member": "#2", "decision": "proceed", "rationale": [...], "confidence": 0.78},
-        {"member": "#3", "decision": "proceed", "rationale": [...], "confidence": 0.81},
-        {"member": "#4", "decision": "proceed", "rationale": [...], "confidence": 0.74},
-        {"member": "#5", "decision": "proceed", "rationale": [...], "confidence": 0.80}
+        {"member": "#1", "decision": "proceed", "rationale": ["...", "...", "..."], "confidence": 0.85},
+        {"member": "#2", "decision": "proceed", "rationale": ["...", "...", "..."], "confidence": 0.78},
+        {"member": "#3", "decision": "proceed", "rationale": ["...", "...", "..."], "confidence": 0.81}
       ],
       "merged_decision": "proceed",
-      "merge_method": {"rule": "unanimous", "committee_size": 5},
+      "vote_outcome": "unanimous",
+      "confidence_spread": 0.07,
+      "governing_confidence": 0.78,
+      "merge_method": {"rule": "majority", "committee_size": 3},
       "applied_at": "2026-05-26T14:30:00Z"
+    },
+    {
+      "gate_id": "srs-sync-apply-selected",
+      "severity": "business-decision",
+      "options": ["apply-all", "apply-selected", "dry-run-only", "abandon"],
+      "committee_votes": [
+        {"member": "#1", "decision": "apply-selected", "rationale": ["...", "...", "..."], "confidence": 0.90},
+        {"member": "#2", "decision": "apply-selected", "rationale": ["...", "...", "..."], "confidence": 0.88},
+        {"member": "#3", "decision": "apply-selected", "rationale": ["...", "...", "..."], "confidence": 0.75},
+        {"member": "#4", "decision": "dry-run-only", "rationale": ["...", "...", "..."], "confidence": 0.62},
+        {"member": "#5", "decision": "apply-selected", "rationale": ["...", "...", "..."], "confidence": 0.81}
+      ],
+      "merged_decision": "apply-selected",
+      "vote_outcome": "split",
+      "confidence_spread": 0.28,
+      "governing_confidence": 0.75,
+      "merge_method": {"rule": "majority", "committee_size": 5},
+      "applied_at": "2026-05-26T14:31:00Z"
+    },
+    {
+      "gate_id": "route-proposal",
+      "severity": "business-decision",
+      "options": ["stay-and-orchestrate", "hand-off"],
+      "committee_votes": [],
+      "merged_decision": "stay-and-orchestrate",
+      "merge_method": {"rule": "recommended-fastpath", "committee_size": 0, "marked_by": "kiwi-orchestrator §0.G1 route-proposal"},
+      "applied_at": "2026-05-26T14:32:00Z"
+    },
+    {
+      "gate_id": "frozen-note-skip",
+      "severity": "clarification",
+      "options": ["skip", "attach"],
+      "committee_votes": [],
+      "merged_decision": "skip",
+      "merge_method": {"rule": "default-if-auto", "committee_size": 0, "marked_by": "kiwi-srs-sync §0.G4 default_if_auto"},
+      "applied_at": "2026-05-26T14:33:00Z"
     }
   ],
   "critical_halts": [
-    {"gate_id": "external-module-impact", "halted_at": "..."}
+    {"gate_id": "external-module-impact", "halted_at": "..."},
+    {"gate_id": "plan-scope-choice", "halted_at": "...", "reason": "no majority (1-1-1)"}
   ]
 }
 ```

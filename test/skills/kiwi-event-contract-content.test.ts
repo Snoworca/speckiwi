@@ -108,16 +108,43 @@ describe("FR-FLOW-043 — run-root pinned wave and pipeline event journals", () 
   });
 
   // AC-6: no skill-specific decision-table row may override the mandatory `any x FAILED` gate.
-  it.each([...PIPELINE_COPIES, ...CONSUMER_TABLES])(
-    "%s adds no kiwi-wave-master row to a decision table",
-    (copy) => {
-      const text = read(copy);
+  //
+  // The consumer's own restatement of T1 (`kiwi-pipeline/SKILL.md` §5.1) still carries the absolute
+  // form: FR-FLOW-111 registers rows in `pipeline-event.md` §4 only, so a row appearing here would
+  // be a drift between the SSOT and its restatement rather than a registration.
+  it.each(CONSUMER_TABLES)("%s adds no kiwi-wave-master row to a decision table", (copy) => {
+    const text = read(copy);
+    expect(
+      text,
+      `${copy} must not add a skill-specific decision row that overrides the any x FAILED gate`
+    ).not.toMatch(/^\|\s*kiwi-wave-master\s*\|/m);
+  });
+
+  // DO NOT "RESTORE" THE BLANKET BAN HERE. Two requirements meet at this assertion:
+  //
+  //   FR-FLOW-043 AC-6 originally banned ANY `kiwi-wave-master` row in a decision table.
+  //   FR-FLOW-111 AC-3 requires the missing `kiwi-wave-master | TASK_DONE | null` row — the skill
+  //   has sat in `pipeline-event.md`'s enum with no routing hint since it shipped.
+  //
+  // They are not both satisfiable as written, so the ban is replaced by the PROPERTY it was
+  // protecting, which its own comment names: no skill-specific row may override the mandatory
+  // `any x FAILED` / `any x NEEDS_USER` gates. A TASK_DONE-keyed row cannot shadow those, so
+  // FR-FLOW-111 lands without weakening FR-FLOW-043. Reverting to `not.toMatch(/^\|\s*kiwi-wave-master/)`
+  // re-breaks FR-FLOW-111 AC-3 while protecting nothing the assertions below do not already protect.
+  // The consumer's restatement of T1 keeps the absolute form — see the test directly above.
+  it.each(PIPELINE_COPIES)("%s lets no kiwi-wave-master row override the any-status gates", (copy) => {
+    const text = read(copy);
+    for (const status of ["NEEDS_USER", "FAILED"]) {
       expect(
         text,
-        `${copy} must not add a skill-specific decision row that overrides the any x FAILED gate`
-      ).not.toMatch(/^\|\s*kiwi-wave-master\s*\|/m);
+        `${copy} must not add a kiwi-wave-master ${status} row that overrides the any x ${status} gate`
+      ).not.toMatch(new RegExp(`^\\|\\s*kiwi-wave-master\\s*\\|\\s*${status}\\s*\\|`, "m"));
+      expect(
+        text,
+        `${copy} the mandatory any x ${status} row must survive`
+      ).toMatch(new RegExp(`^\\|\\s*any\\s*\\|\\s*${status}\\s*\\|\\s*\`null\``, "m"));
     }
-  );
+  });
 });
 
 // @req FR-FLOW-046
@@ -151,16 +178,16 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
     );
   });
 
-  it.each(WAVES_COPIES)("%s declares schema version 1.3.0", (copy) => {
+  it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
     const text = read(copy);
     expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.3\.0/m
+      /^#\s*kiwi waves event v1\.4\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.3\.0"/
+      /"schema_version"\s*:\s*"1\.4\.0"/
     );
-    expect(text, `${copy} must not leave a stale pre-1.3.0 schema_version example behind`).not.toMatch(
-      /"schema_version"\s*:\s*"1\.(?:0|1|2)\.0"/
+    expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
+      /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
     );
   });
 
@@ -195,9 +222,11 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
     // Split on the h3 sub-headings, not on `## `: the `## 2` chunk contains the REQUIRED table too,
     // so promoting `phase` into the required table stayed green — and a new required field is a
     // breaking change, exactly what the 1.1.0-vs-2.0.0 decision turns on.
-    const subs = text.split(/^### /m);
-    const optional = subs.find((s) => /선택 필드|optional field/i.test(s)) ?? "";
-    const required = subs.find((s) => /필수 필드|required field/i.test(s)) ?? "";
+    // `text.split(/^### /m)` returns the pre-heading preamble as element 0, so any prose above §2.1
+    // that mentions "선택 필드" was selected instead of the table — a locator that silently reads
+    // the wrong chunk. Use the bounded section() helper every later block in this file already uses.
+    const optional = section(text, /^###\s.*선택 필드/);
+    const required = section(text, /^###\s.*필수 필드/);
     expect(optional, `${copy} must have an optional-fields section`).not.toBe("");
     expect(required, `${copy} must have a required-fields section`).not.toBe("");
     for (const field of ["phase", "verification"]) {
@@ -211,14 +240,14 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
     }
     // §2.3 is the LAST h3, so an unbounded chunk swallowed §3/§4/§5 including the emit example —
     // renaming ALL_MATCH and deleting the whole `rounds` row both stayed green off that example.
-    // Cut the chunk at the next h2.
-    const verification = (subs.find((s) => /`verification` object/i.test(s)) ?? "").split(/^## /m)[0];
+    // section() stops at the next same-or-higher heading, which is the same boundary the old
+    // `.split(/^## /m)[0]` was reaching for.
+    const verification = section(text, /^###\s.*`verification` object/);
     expect(verification, `${copy} must document the verification object`).not.toBe("");
     expect(
-      /^## /m.test(subs.find((s) => /`verification` object/i.test(s)) ?? "") ||
-        verification.length < (subs.find((s) => /`verification` object/i.test(s)) ?? "").length + 1,
+      /^## /m.test(verification),
       `${copy} the verification sub-section must be bounded before the next top-level section`
-    ).toBe(true);
+    ).toBe(false);
     // Field rows carry the exact roll-up token names the skill writes; a rename desyncs the two.
     expect(/`ALL_MATCH`|"ALL_MATCH"|ALL_MATCH/.test(verification), `${copy} axis_a must roll up as ALL_MATCH`).toBe(
       true
@@ -643,16 +672,16 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
   // The optional fields added below are field additions, which the file's own SemVer rule makes a
   // minor bump. The FR-FLOW-047 block above pins 1.2.0; see the round-2 contract §0 for the exact
   // retarget that belongs with the implementation.
-  it.each(WAVES_COPIES)("%s declares schema version 1.3.0", (copy) => {
+  it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
     const text = read(copy);
     expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.3\.0/m
+      /^#\s*kiwi waves event v1\.4\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.3\.0"/
+      /"schema_version"\s*:\s*"1\.4\.0"/
     );
-    expect(text, `${copy} must not leave a stale pre-1.3.0 schema_version example behind`).not.toMatch(
-      /"schema_version"\s*:\s*"1\.(?:0|1|2)\.0"/
+    expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
+      /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
     );
   });
 

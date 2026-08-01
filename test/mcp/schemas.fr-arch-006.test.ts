@@ -37,6 +37,9 @@ import { isReadOnlyTool, toolSchemas } from "../../src/mcp/server.js";
 import { buildCommand } from "../../src/cli/command.js";
 import { registerReadCommands } from "../../src/cli/commands/read.js";
 import { registerMutationCommands } from "../../src/cli/commands/mutations.js";
+// @req IR-CLI-082 — the orchestrate namespace is a third registrar; the walk must include it or the
+// registry's orchestrate rows would read as surprise extras.
+import { registerOrchestrateCommands } from "../../src/cli/commands/orchestrate.js";
 
 // Load-bearing counts derived FROM the registry rather than hard-pinned, so adding a new
 // command (e.g. IR-CLI-046 `step validate`) does not re-break the count assertions. The
@@ -89,6 +92,7 @@ function collectCliCommandNames(): string[] {
   const command = buildCommand({ io });
   registerReadCommands(command, { io });
   registerMutationCommands(command, { io });
+  registerOrchestrateCommands(command, { io });
   const names: string[] = [];
   const walk = (cmd: { commands: Array<{ name(): string; commands: unknown[] }> }): void => {
     for (const sub of cmd.commands) {

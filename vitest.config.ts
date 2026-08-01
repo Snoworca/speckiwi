@@ -33,6 +33,7 @@ export default defineConfig({
       include: [
         "src/cli/**/*.ts",
         "src/core/mutation/**/*.ts",
+        "src/core/orchestrator/**/*.ts",
         "src/core/parser/**/*.ts",
         "src/core/validator/**/*.ts",
         "src/core/workflow/**/*.ts",
@@ -44,6 +45,9 @@ export default defineConfig({
         "src/core/mutation/**/*.ts": {
           functions: 90
         },
+        // @req FR-NODE-106 — the orchestrator tree is the largest new executable surface, and it
+        // shares the workflow tree's threshold object rather than a copy so raising one raises both.
+        "src/core/orchestrator/**/*.ts": parserWorkflowThreshold,
         "src/core/parser/**/*.ts": parserWorkflowThreshold,
         "src/core/validator/**/*.ts": validatorThreshold,
         "src/core/workflow/**/*.ts": parserWorkflowThreshold

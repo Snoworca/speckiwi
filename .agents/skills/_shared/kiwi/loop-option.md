@@ -70,6 +70,7 @@ to. Same additive pattern as the `auto-option.md §7` child-propagation table.
 | kiwi-wave-master | per-wave kiwi-srs + kiwi-pipeline | `--mini`/`--loops N` → per wave |
 | kiwi-hot-fix | kiwi-srs-sync | `--mini`/`--loops N` → delegation |
 | kiwi-coder | kiwi-review-fix-loop | `--mini`/`--loops N` → follow-up |
+| kiwi-orchestrator | the routed child on a delegated rung — `kiwi-tdd` on the step rung, `kiwi-pm` on the plan rung; on the orchestrated rung the per-wave set `kiwi-srs` + `kiwi-planner` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → the routed child, per wave, and additionally the orchestrator's own D / W / H / P / F loop caps — **5개** (five). The per-lane loop is **이연**(deferred) to the next target and is absent from this list: naming a cap for a loop that does not run pins a contract with nothing behind it |
 
 ## 7. Natural-language mapping
 

@@ -40,6 +40,15 @@ export interface WorkflowJsonlParseOptions {
   supportedSchemaVersions?: string[];
   maxCorrectionDepth?: number;
   includeDeleted?: boolean;
+  /**
+   * "skill-run" (default) keys events as `${skill}|${run_id}`, diagnoses duplicate keys and resolves
+   * CORRECTION chains. "none" is for append-only journals where many lines per run are the contract:
+   * no duplicate diagnostics, no correction resolution.
+   *
+   * @req FR-NODE-125 — `kiwi/waves.jsonl` carries no `skill` and many lines per `run_id`, so under
+   * the default every append after the first line of a run is denied by the halt policy.
+   */
+  eventKeying?: "skill-run" | "none";
 }
 
 export interface WorkflowJsonlParseResult {
@@ -124,12 +133,24 @@ function isLogicalDelete(entry: WorkflowJsonlEntry): boolean {
   return entry.event.status === "CORRECTION" && typeof operation === "object" && operation !== null && (operation as { kind?: unknown }).kind === "logical_delete";
 }
 
-function computeCorrections(relativePath: string, entries: WorkflowJsonlEntry[], maxDepth: number, diagnostics: Diagnostic[], includeDeleted: boolean): WorkflowJsonlEntry[] {
+function computeCorrections(
+  relativePath: string,
+  entries: WorkflowJsonlEntry[],
+  maxDepth: number,
+  diagnostics: Diagnostic[],
+  includeDeleted: boolean,
+  eventKeying: "skill-run" | "none"
+): WorkflowJsonlEntry[] {
   const byRunId = new Map<string, WorkflowJsonlEntry>();
   for (const entry of entries) {
     if (typeof entry.event.run_id === "string") byRunId.set(entry.event.run_id, entry);
     if (entry.event.status === "DELETED") diagnostics.push(invalidDeletedStatusDiagnostic(relativePath, entry));
   }
+
+  // @req FR-NODE-125 — an append-only journal has no correction chain to resolve; every line stands,
+  // including one whose `status` happens to read CORRECTION. The DELETED scan above is a data-shape
+  // check rather than correction resolution, so it runs under both keyings.
+  if (eventKeying === "none") return entries;
 
   for (const entry of entries) {
     if (entry.event.status !== "CORRECTION") continue;
@@ -194,6 +215,7 @@ export async function parseWorkflowJsonl(root: ProjectRoot, relativePath: string
   const existing = await readExisting(absolutePath);
   const supported = options.supportedSchemaVersions ?? DEFAULT_SCHEMA_VERSIONS;
   const maxDepth = options.maxCorrectionDepth ?? 5;
+  const eventKeying = options.eventKeying ?? "skill-run";
   const diagnostics: Diagnostic[] = [];
   const invalidLines: WorkflowJsonlInvalidLine[] = [];
   const entries: WorkflowJsonlEntry[] = [];
@@ -214,7 +236,7 @@ export async function parseWorkflowJsonl(root: ProjectRoot, relativePath: string
       const entry: WorkflowJsonlEntry = { line, byteOffset, raw, event: parsed, eventKey: eventKey(parsed) };
       entries.push(entry);
       if (!supported.includes(String(parsed.schema_version ?? ""))) diagnostics.push(unsupportedSchemaDiagnostic(relativePath, entry));
-      if (seenKeys.has(entry.eventKey)) {
+      if (eventKeying === "skill-run" && seenKeys.has(entry.eventKey)) {
         duplicateKeys.add(entry.eventKey);
         diagnostics.push(duplicateEventDiagnostic(relativePath, entry));
       }
@@ -232,7 +254,7 @@ export async function parseWorkflowJsonl(root: ProjectRoot, relativePath: string
   if (!hasTrailingLf) {
     diagnostics.push(diagnostic("SRS-W056", "warning", "Workflow JSONL file is missing trailing LF", { filePath: relativePath }, { byteOffset: Buffer.byteLength(existing.text) }));
   }
-  const latestEntries = computeCorrections(relativePath, entries, maxDepth, diagnostics, options.includeDeleted ?? false);
+  const latestEntries = computeCorrections(relativePath, entries, maxDepth, diagnostics, options.includeDeleted ?? false, eventKeying);
   void duplicateKeys;
   return {
     relativePath,

@@ -25,6 +25,31 @@ Backing requirements: FR-FLOW-037 (SDS standard FR-FLOW-036, gates IR-CLI-072 / 
 | §0.8 | **No AI signatures anywhere / no changelog section in this skill.** |
 | §0.9 | Accepts `--mini` / `--loops N` per the `_shared/kiwi/loop-option.md` convention. The only internal loop is red→green, so the round cap applies to regression-fix iterations only. |
 | §0.10 | **Code traceability is post-promote and non-gating.** Restore the code Trace Links (`add_trace_link` Code anchor) and `@req` tags only after Phase 6 promote confirms the body REQ ID — never attach at Phase 2/4. The Code anchor is the **authoritative** traceability SSOT and the `@req` breadcrumb is **auxiliary**; both are **non-gating** (a missing or stale one never blocks promote and is **separate** from the FR-NODE-074 EVIDENCE_REQUIRED gate). Reuse the FR-FLOW-020 convention, and cite kiwi-coder §0.17 for tag format/exemption only (no operational-hook import). |
+| §0.11 | **`--auto` option SSOT.** This skill follows `../_shared/kiwi/auto-option.md` v1.0. Its `critical_gates[]` are declared in §0.AG below — with the table declared, the shared safe default (`auto-option.md` §1) that leaves `--auto` **inactive** for this skill no longer applies. |
+
+### §0.AG — `--auto` critical_gates[] declaration
+
+Gates that force a user decision when `--auto` is active (SSOT: the `auto-option.md` §5 interface).
+Each one halts **regardless of** `--auto` and cannot be routed to the decision committee:
+
+| gate_id | reason | location |
+|---|---|---|
+| `step-claim-write-skew` | `claim_step` rejects on write skew — another step already holds a REQ this step touches, and two steps authoring one requirement is not auto-approvable | Phase 1 (§2.2) |
+| `promote-evidence-required` | `promote_step_requirement` refuses with `EVIDENCE_REQUIRED` on zero verification evidence (§0.6) — a promotion with no evidence is a defect to fill, not a gate to bypass | Phase 6 (§2.7) |
+| `step-completion-gate-blocked` | `update_step_state(merged)` refuses with `COMPLETION_GATE_BLOCKED` (FR-NODE-078) — acknowledging a non-clean compatibility edge is an irreversible judgement | Phase 7 (§2.8) |
+
+Until this table was declared, `auto-option.md` §1's **safe default** left `--auto` **inactive** for
+this skill — a silent ignore rather than a failure, so an unattended run stopping at one of its own
+gates was indistinguishable from a normal halt. The two paragraphs below draw that distinction.
+
+**What `--auto` cannot resolve**: the three gates above. They halt regardless of `--auto` and are
+never handed to the decision committee.
+
+**What `--auto` can resolve**: `sds-architecture-decision-approval` — the Architecture-Decisions user approval of §2.3 checklist item 6 carries severity `business-decision`, so under `--auto` the decision committee resolves it automatically (escalated to critical below confidence 0.7). It is deliberately not critical: making it so would turn every SDS carrying a substantive decision into an unattended dead stop.
+
+**The other two interaction points are omitted** because they cannot fire on a correctly dispatched
+run — the Phase 0 mode halt (§2.1) fires only when the mode is not `tdd`, and the missing-task-name
+query (§1.1) fires only when `<task>` is absent, and a routed dispatch discharges both in advance.
 
 ---
 

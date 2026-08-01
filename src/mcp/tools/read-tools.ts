@@ -41,6 +41,7 @@ import {
   type RequirementOccurrenceIdentity
 } from "../../core/mutation/repair-requirement-id.js";
 import { resultToMcp } from "../errors.js";
+import { ORCHESTRATE_TOOL_BINDINGS, orchestrateArgv, type OrchestrateToolBinding } from "../../cli/commands/orchestrate.js";
 
 async function workspace(deps: McpDependencies) {
   const root = await resolveProjectRoot(process.cwd(), deps.root);
@@ -133,7 +134,48 @@ function repairPlanInput(input: Record<string, unknown>): RequirementIdCollision
   };
 }
 
+
+// @req IR-MCP-003 — the `orchestrate_*` family. Each tool re-encodes its input as the argv of the
+// CLI leaf it mirrors and runs the CLI, so there is exactly one implementation of every verb and the
+// two surfaces cannot diverge. The CLI's exit code is carried through: 2 is a gate refusal, 1 an
+// operational error, 0 success (FR-NODE-137), and the payload is the CLI's own envelope.
+export async function callOrchestrateTool(
+  binding: OrchestrateToolBinding,
+  input: Record<string, unknown>,
+  deps: McpDependencies
+): Promise<unknown> {
+  const { main } = await import("../../cli/index.js");
+  const chunks: string[] = [];
+  const sink = () => ({ write: (text: string) => { chunks.push(text); return true; } }) as unknown as NodeJS.WriteStream;
+  let argv: string[];
+  try {
+    argv = orchestrateArgv(binding, input, deps.root);
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+  const exitCode = await main(argv, { stdout: sink(), stderr: sink() });
+  const text = chunks.join("");
+  try {
+    return { ...(JSON.parse(text) as Record<string, unknown>), exitCode };
+  } catch {
+    return { ok: false, error: text.trim().length > 0 ? text.trim() : `orchestrate ${binding.path.join(" ")} produced no output`, exitCode };
+  }
+}
+
+/** Registers every `orchestrate_*` binding of the given kind onto the server. */
+export function registerOrchestrateTools(server: McpServerHandle, deps: McpDependencies, kind: "read" | "mutation"): void {
+  for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
+    if (binding.kind !== kind) continue;
+    server.registerTool(
+      binding.tool,
+      async (input) => callOrchestrateTool(binding, input, deps),
+      kind === "read" ? { readOnlyHint: true } : { kind: "workspace" }
+    );
+  }
+}
+
 export function registerReadTools(server: McpServerHandle, deps: McpDependencies): void {
+  registerOrchestrateTools(server, deps, "read");
   server.registerTool("mcp_workspace_info", async () => {
     const parsed = await workspace(deps);
     const diagnostics = readDiagnostics(parsed);

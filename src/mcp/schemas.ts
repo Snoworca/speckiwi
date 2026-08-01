@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { isReadOnlyTool, toolSchemas } from "./server.js";
+import {
+  ORCHESTRATE_TOOL_BINDINGS,
+  ORCHESTRATE_CONTAINER_PATHS,
+  ORCHESTRATE_LEAF_PATHS,
+  orchestrateVerbKind
+} from "../cli/commands/orchestrate.js";
 
 // @req FR-ARCH-006 / REL-ARCH-002
 // FR-ARCH-006 — ToolSpec command metadata registry as the single source of truth (SSOT) for every
@@ -137,6 +143,41 @@ function mutationSpec(
 // pipeline / links / work-order / vibe-gate / step) first, then a few leaf/alias CLI nodes. Only the
 // mcpName ⇔ toolSchemas set-equality and the per-mcpName kind are load-bearing for those; the cliName is
 // just the host node the tool is attached to so the registry can enumerate a single flat command set.
+
+
+/**
+ * The `orchestrate` namespace's registry slice, projected from the CLI vocabulary rather than
+ * retyped: every container node and every leaf of the built tree gets one spec, and the twenty-five
+ * `orchestrate_*` tools attach to the leaf each mirrors. Retyping forty-seven rows by hand is exactly
+ * the drift this registry exists to prevent. @req IR-CLI-082 / IR-MCP-003
+ */
+function orchestrateSpecs(): ToolSpec[] {
+  const toolByLeaf = new Map<string, (typeof ORCHESTRATE_TOOL_BINDINGS)[number]>();
+  for (const binding of ORCHESTRATE_TOOL_BINDINGS) toolByLeaf.set(binding.path.join(" "), binding);
+
+  const specs: ToolSpec[] = [];
+  for (const container of ORCHESTRATE_CONTAINER_PATHS) {
+    // Container commands carry no own handler; they exist so the registry enumerates the whole tree.
+    specs.push(readSpec(container[container.length - 1] as string, undefined, `orchestrate:${container.join(" ")}`));
+  }
+  for (const leaf of ORCHESTRATE_LEAF_PATHS) {
+    const name = leaf[leaf.length - 1] as string;
+    const binding = toolByLeaf.get(leaf.join(" "));
+    const coreFn = `orchestrate:${leaf.join(" ")}`;
+    const options = (binding?.options ?? []).map((option) =>
+      opt(option.encoding === "boolean" ? option.flag : `${option.flag} <value>`, option.dest, {
+        encoding: option.encoding === "array" ? "string" : option.encoding === "json" ? "json" : option.encoding,
+        repeatable: option.encoding === "array"
+      })
+    );
+    if (orchestrateVerbKind(leaf) === "mutation") {
+      specs.push(mutationSpec(name, binding?.tool, "workspace", coreFn, options));
+    } else {
+      specs.push(readSpec(name, binding?.tool, coreFn, { options }));
+    }
+  }
+  return specs;
+}
 
 export const toolSpecs: readonly ToolSpec[] = [
   // ---- read commands (registerReadCommands) ----
@@ -464,7 +505,10 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("repair-record", "workflow_repair_record", "workspace", "workflowRepairRecord"),
   mutationSpec("logical-delete", "workflow_logical_delete", "workspace", "workflowLogicalDelete"),
   // Container command with no own handler; hosts the collision-repair "apply" tool (CLI in repair.ts).
-  mutationSpec("work-order", "apply_requirement_id_collision_repair", "workspace", "applyRequirementIdCollisionRepair")
+  mutationSpec("work-order", "apply_requirement_id_collision_repair", "workspace", "applyRequirementIdCollisionRepair"),
+
+  // ---- orchestrate namespace (registerOrchestrateCommands) ----
+  ...orchestrateSpecs()
 ];
 
 // --- derived views (projected from the registry) ---------------------------------------------------

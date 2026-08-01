@@ -28,6 +28,7 @@ import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApp
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import type { McpDependencies, McpServerHandle } from "../adapter.js";
 import { mcpFailure, resultToMcp } from "../errors.js";
+import { registerOrchestrateTools } from "./read-tools.js";
 
 async function root(deps: McpDependencies, input: Record<string, unknown>) {
   void input;
@@ -96,6 +97,7 @@ function repairApplyInput(input: Record<string, unknown>): RequirementIdCollisio
 }
 
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
+  registerOrchestrateTools(server, deps, "mutation");
   server.registerTool("sync_index", async (input) =>
     resultToMcp(
       await syncIndexRollups(await root(deps, input), {

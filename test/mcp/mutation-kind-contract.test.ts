@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { assertMutationKind, createTestMcpServer, type MutationToolKind } from "../../src/mcp/adapter.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
+import { ORCHESTRATE_TOOL_BINDINGS } from "../../src/cli/commands/orchestrate.js";
 import { isReadOnlyTool, toolSchemas } from "../../src/mcp/server.js";
 
 const EXPECTED_KINDS: Record<string, MutationToolKind> = {
@@ -32,7 +33,14 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   // FR-MCP-056 — scope creation and registration. Both act on the workspace index rather than on one
   // requirement id, so neither is req-scoped.
   scaffold_scope: "workspace",
-  register_scopes: "workspace"
+  register_scopes: "workspace",
+  // @req IR-MCP-003 — every `orchestrate_*` mutation acts on run artifacts (the journal, the resume
+  // card, a lock, the issue ledger), never on one requirement id, so all of them are workspace-kind.
+  ...Object.fromEntries(
+    ORCHESTRATE_TOOL_BINDINGS
+      .filter((binding) => binding.kind === "mutation")
+      .map((binding) => [binding.tool, "workspace" as MutationToolKind])
+  )
 };
 
 describe("FR-ARCH-005 — mutation tool kind classification", () => {

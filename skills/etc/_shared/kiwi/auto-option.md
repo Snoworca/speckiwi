@@ -40,16 +40,18 @@ Record active flags in the skill preflight or analysis log, for example
 
 ## Decision Committee
 
-When `--auto` is active, convene a research-performing decision committee of 3 members that
-investigates the gate context (research) and votes for the most reasonable option to adopt
-(select), instead of a single rubber-stamp worker. Because etc runs the local-LLM profile
-with multi-worker fanout disabled, the 3 committee members are evaluated sequentially (one
-delegated worker at a time), not in parallel. Under `--auto --max` the decision committee is
-raised to 5 members. Committee members run on the current session model unless `--model
-<name>` overrides the committee model (no dual-model evaluator panel). Member #1 is the lead
-committee member and the deterministic tie-breaker (see the committee merge ladder). If
-delegation is unavailable, apply only explicit low-risk `default_if_auto` values; otherwise
-halt instead of guessing.
+When a gate option carries the structured marker `recommended: true`, no committee is convened at
+all — see the decision rule below. Otherwise, when `--auto` is active, convene a research-performing
+decision committee of 3 members that investigates the gate context (research) and votes for the most
+reasonable option to adopt (select), instead of a single rubber-stamp worker. Because etc runs the
+local-LLM profile with multi-worker fanout disabled, the 3 committee members are evaluated
+sequentially (one delegated worker at a time), not in parallel. Under `--auto --max` the decision
+committee is raised to 5 members. The committee decides by **simple majority** — the option holding
+strictly more than half of the votes cast — and adopts that option immediately; unanimity is not
+required. Committee members run on the current session model unless `--model <name>` overrides the
+committee model (no dual-model evaluator panel). Members are numbered for identification only; no
+member's vote outweighs another's. If delegation is unavailable, apply only explicit low-risk
+`default_if_auto` values; otherwise halt instead of guessing.
 
 Each committee member receives the same worker input and returns the same JSON vote.
 
@@ -86,38 +88,55 @@ Failure handling (committee/member/quorum semantics, matching the claude/codex v
 
 | Failure | Action |
 |---|---|
-| Member timeout, empty response, invalid JSON, or missing `decision` | Retry that member once; if still invalid, drop it and proceed only if a majority quorum remains, otherwise halt. |
+| Member timeout, empty response, invalid JSON, or missing `decision` | Retry that member once; if it still fails, the quorum is degraded: escalate to `critical` and halt, unconditionally. Do not drop the member and continue. |
 | A majority of members fail | Halt for user input. |
-| A member returns free text instead of an option ID | Treat as a failed member (retry once, then drop if a majority quorum remains). |
+| A member returns free text instead of an option ID | Treat as a failed member (retry once, then the degraded-quorum rule above applies). |
 | Decision contradicts a `critical_gates[]` match | Halt. |
 
-Lead member (#1) failure that blocks a tie-break is handled in the committee merge ladder step 5 (retry once, then halt; never break a tie arbitrarily).
+With 3 members and one dropped, the remaining two have no majority in a 1-1, and continuing from
+there is single-agent decision-making. A degraded quorum therefore gets the same treatment as the
+no-majority result in the decision rule below.
 
-## Committee Merge Ladder (unanimous -> escalate -> plurality -> tie-break)
+## Decision Rule (recommended fast path -> default_if_auto -> simple majority)
 
 Because etc disables multi-worker fanout, evaluate the committee members sequentially (one
-delegated worker at a time) and then apply this ladder. Escalation keeps the existing votes
-and adds two more members, then re-decides.
+delegated worker at a time) and then apply this rule. Resolve a `--auto` gate in this order. The two
+bypasses rank `recommended` > `default_if_auto` > committee: an option carrying **both** markers
+resolves through the `recommended` branch, and a gate whose options carry **neither** marker reaches
+the committee.
 
-1. `--auto` (3-member committee): each of the 3 members researches the gate and votes.
-   - If the 3-member committee is unanimous, apply that decision.
-   - If the 3-member committee is not unanimous, escalate to a 5-member committee and
-     re-decide.
-2. 5-member committee: after adding two members, re-decide.
-   - If unanimous, apply it.
-   - If not unanimous, the 5-member committee decides by plurality (most votes); unanimity is
-     not required at 5 members.
-   - Under `--max`, if the 5-member committee is not unanimous, escalate to a 7-member
-     committee instead of stopping at plurality.
-3. 7-member committee (`--max` only): after adding two members, the 7-member committee
-   decides by plurality (most votes) without requiring unanimity.
-4. Tie-break (all sizes): any committee tie is broken deterministically by the lead committee
-   member (#1) ranking; member #1 is the fixed tie-breaker. The 7-member committee also breaks
-   any tie by the lead member (#1) ranking.
-5. Critical gates and business decisions listed in `critical_gates[]` still halt for the user
-   under `--auto`; the committee never overrides a critical halt. If the lead member (#1) fails
-   so a tie cannot be broken, retry member #1 once, then halt rather than break the tie
-   arbitrarily.
+0. **`recommended` fast path (zero votes).** If a gate option carries the structured marker
+   `recommended: true`, `--auto` adopts that option immediately. No committee is convened and no
+   committee member is spawned. No votes are counted, so no confidence comparison is made.
+   - The marker is a structured boolean field declared on `kiwi-pm`'s `NEEDS_USER` option schema
+     beside `key`, `label` and `consequence`. It is opt-in: an option without the field is not
+     recommended.
+   - A prose `(권장)` label in skill text carries **no machine meaning** and is **never parsed** as a
+     recommendation. Two of the three such labels in `kiwi-pm` annotate a HALT option, so a prose
+     scan would auto-adopt a recommended HALT.
+   - This contract does not judge **why an option is recommended** — it declares no field describing
+     the motive and no criterion for weighing it.
+1. **`default_if_auto` fast path (zero votes).** With no `recommended` option, a gate that declares
+   `default_if_auto` adopts that default. No committee is convened.
+2. **Committee simple majority.** With neither bypass present, convene the committee at its declared
+   size (3 for `--auto`, 5 for `--auto --max`) and adopt the option holding strictly more than half
+   of the votes cast, immediately. Unanimity is not required — a 2-1 among 3 members decides on the
+   spot. The committee size is fixed by the sizing rule above and does not change during the
+   decision; the vote is taken once.
+3. **No majority -> `critical` and halt.** If no option holds more than half of the votes — a 1-1-1
+   among 3 members under `--auto`, or a tie among 5 members under `--auto --max` — escalate the gate
+   to `critical` and halt for the user. A tie is one form of no majority and is handled the same
+   way. The committee size stays as it is, the vote is not taken again, and no single member settles
+   the outcome alone.
+4. Critical gates and business decisions listed in `critical_gates[]` still halt for the user under
+   `--auto`; neither the committee nor a fast path ever overrides a critical halt.
+5. Record the decision in `docs/analysis/{run-id}/auto_decisions.json` (see Logging). The
+   `merge_method.rule` vocabulary is exactly `majority`, `recommended-fastpath` and
+   `default-if-auto`; `unanimous` is recorded as a vote outcome, never as a rule.
+
+**Prohibited**: adopting a decision that is neither a committee simple majority nor a declared
+`recommended: true` / `default_if_auto` bypass — halt immediately. A zero-vote fast-path adoption is
+a declared bypass and is not caught by this prohibition.
 
 ## Severity Policy
 
@@ -140,14 +159,33 @@ Adjust confidence before applying:
 | `risk_assessment=high` and confidence > 0.7 | multiply by 0.6 |
 | Mutation, push, PR, status, or stability gate with empty `side_effects[]` | multiply by 0.7 |
 
-Committee confidence cross-check: if the spread between the highest and lowest member
-confidence is >= 0.3, the vote is unreliable. If the committee is below its terminal size
-(`--auto` 3 members, or `--max` 5 members), escalate one rung on the merge ladder (3->5, 5->7)
-and re-vote once even when unanimous (the non-max ladder terminates at 5 members because 7
-members is `--max` only). If the committee is already at its terminal size (non-max 5 members,
-or `--max` 7 members), do not re-vote; escalate the low-confidence agreement to critical and
-halt for the user (same safety policy as the confidence adjustments above), never proceeding
-arbitrarily.
+These adjustments apply to **each member's** confidence individually.
+
+**Governing confidence.** After the per-member adjustments are applied, take the **minimum** among
+the members who voted for the adopted option — the winning bloc. When the vote is unanimous the
+winning bloc is the whole committee. Under a split vote (2-1 and so on) this value is not the mean
+of the winning bloc, not the minimum or mean across all members, and not the lead member's
+confidence: a dissenting member's confidence, whatever its value, does not enter the comparison.
+Only this one value is compared against the threshold in force (`clarification` 0.5,
+`business-decision` 0.7, each raised by the +0.1 lower-tier model adjustment below when it applies),
+and only a result under that threshold escalates the gate to `critical`.
+
+Worked cases for a `business-decision` gate at the 0.7 threshold:
+
+| Vote | Adjusted confidence in the winning bloc | Governing | Outcome |
+|---|---|---|---|
+| 2-1 | 0.9, 0.6 | 0.6 | under 0.7 -> escalate to `critical` and halt |
+| 2-1 | 0.9, 0.75 | 0.75 | at or above 0.7 -> adopt (the dissenter's value is excluded) |
+
+Committee confidence cross-check, folded into the threshold mechanism above: a spread of 0.3 or more
+between the highest and lowest member confidence is **recorded** in the decision audit row as
+`confidence_spread` and **drives nothing** on its own. The spread affects neither the vote nor the
+committee's composition, and it **supplies no confidence adjustment of its own** — no de-rating
+factor is defined for it beyond the four per-member factors above. What residual effect a wide
+spread has is carried by those per-member adjustments and by the governing-confidence rule, and
+`critical` escalation comes from that single threshold comparison. A unanimous committee reporting a
+spread of 0.3 or more therefore adopts its decision and does not halt, as long as its governing
+confidence stays at or above the threshold.
 
 When `--auto --model <name>` overrides the committee model, increase the confidence thresholds
 by 0.1 only when the named model is a lower tier than the current session model. Model tier
@@ -195,12 +233,14 @@ Recommended catalog:
 For a skill that references this file:
 
 - "User clarification gate" means `critical_gates[]` matches halt; otherwise
-  `--auto` may use the decision committee (see Decision Committee and Committee
-  Merge Ladder).
+  `--auto` may use the decision committee (see Decision Committee and Decision
+  Rule).
 - `NEEDS_USER` payloads are decision gates. In child mode, return the payload to
   the parent only when the gate is critical or delegation is unavailable.
+- An option marked `recommended: true` is adopted immediately with no committee — the top-ranked
+  fast path (Decision Rule step 0). A prose `(권장)` label is not this marker.
 - `default_if_auto` may be applied directly only for low-risk clarification
-  gates with confidence 1.0.
+  gates with confidence 1.0. A `recommended` option outranks it.
 - Normal SRS reads, mutations, status/stability changes, evidence, trace links,
   and completed-work logging still require `speckiwi mcp`; CLI may only help
   diagnose or remediate MCP setup.
@@ -228,7 +268,17 @@ Special propagation:
 
 ## Logging
 
-Append or write `docs/analysis/{skill-run-id}/auto_decisions.json`:
+Append or write `docs/analysis/{skill-run-id}/auto_decisions.json`, recording **every adoption**,
+including the two zero-vote bypasses — otherwise the decisions that received no deliberation would
+be the ones leaving no evidence.
+
+The `merge_method.rule` vocabulary is exactly `majority`, `recommended-fastpath` and
+`default-if-auto`; no other value is written. `unanimous` is recorded as a `vote_outcome`, never as
+a rule. A gate escalated to `critical` is not an adoption and belongs in `critical_halts[]`.
+
+A zero-vote bypass carries `committee_size: 0` and `marked_by` (the gate declaration site), with
+`committee_votes` as an **empty array** — an empty array is a claim that there were no members, an
+absent field is silence.
 
 ```json
 {
@@ -243,16 +293,55 @@ Append or write `docs/analysis/{skill-run-id}/auto_decisions.json`:
       "committee_votes": [
         {"member": "#1", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.82},
         {"member": "#2", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.79},
-        {"member": "#3", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.80},
-        {"member": "#4", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.77},
-        {"member": "#5", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.81}
+        {"member": "#3", "decision": "a", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.80}
       ],
       "merged_decision": "a",
-      "merge_method": {"rule": "unanimous", "committee_size": 5},
+      "vote_outcome": "unanimous",
+      "confidence_spread": 0.03,
+      "governing_confidence": 0.79,
+      "merge_method": {"rule": "majority", "committee_size": 3},
+      "applied_at": "ISO-8601"
+    },
+    {
+      "gate_id": "srs-sync-apply-selected",
+      "severity": "business-decision",
+      "options": ["apply-all", "apply-selected", "dry-run-only", "abandon"],
+      "committee_votes": [
+        {"member": "#1", "decision": "apply-selected", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.90},
+        {"member": "#2", "decision": "apply-selected", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.88},
+        {"member": "#3", "decision": "apply-selected", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.75},
+        {"member": "#4", "decision": "dry-run-only", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.62},
+        {"member": "#5", "decision": "apply-selected", "rationale": ["reason 1", "reason 2", "reason 3"], "confidence": 0.81}
+      ],
+      "merged_decision": "apply-selected",
+      "vote_outcome": "split",
+      "confidence_spread": 0.28,
+      "governing_confidence": 0.75,
+      "merge_method": {"rule": "majority", "committee_size": 5},
+      "applied_at": "ISO-8601"
+    },
+    {
+      "gate_id": "route-proposal",
+      "severity": "business-decision",
+      "options": ["stay-and-orchestrate", "hand-off"],
+      "committee_votes": [],
+      "merged_decision": "stay-and-orchestrate",
+      "merge_method": {"rule": "recommended-fastpath", "committee_size": 0, "marked_by": "kiwi-orchestrator route-proposal gate"},
+      "applied_at": "ISO-8601"
+    },
+    {
+      "gate_id": "frozen-note-skip",
+      "severity": "clarification",
+      "options": ["skip", "attach"],
+      "committee_votes": [],
+      "merged_decision": "skip",
+      "merge_method": {"rule": "default-if-auto", "committee_size": 0, "marked_by": "kiwi-srs-sync frozen-note gate"},
       "applied_at": "ISO-8601"
     }
   ],
-  "critical_halts": []
+  "critical_halts": [
+    {"gate_id": "plan-scope-choice", "halted_at": "ISO-8601", "reason": "no majority (1-1-1)"}
+  ]
 }
 ```
 

@@ -55,11 +55,18 @@ export interface PackageDoctorOptions {
   packageRoot?: string;
 }
 
-const EXPECTED_KIWI_SKILLS = [
+/**
+ * The bundled kiwi skills, in the order they ship. Exported so the requirement's own test measures
+ * the real expectation set rather than a copy of it. @req FR-NODE-130
+ */
+export const EXPECTED_KIWI_SKILLS = [
   "kiwi-coder",
   "kiwi-commit-auto-pr",
   "kiwi-commit-auto-push",
   "kiwi-hot-fix",
+  // @req FR-NODE-130 — 05 §14 registration 4: absent from this list, the orchestrator skill would
+  // ship missing from a variant with no check firing.
+  "kiwi-orchestrator",
   "kiwi-pipeline",
   "kiwi-planner",
   "kiwi-pm",
@@ -74,7 +81,7 @@ const EXPECTED_KIWI_SKILLS = [
   "kiwi-wave-master"
 ];
 
-const EXPECTED_SKILL_ENTRYPOINTS = ["codex", "claude", "etc"].flatMap((agent) => EXPECTED_KIWI_SKILLS.map((skill) => `skills/${agent}/${skill}/SKILL.md`));
+export const EXPECTED_SKILL_ENTRYPOINTS = ["codex", "claude", "etc"].flatMap((agent) => EXPECTED_KIWI_SKILLS.map((skill) => `skills/${agent}/${skill}/SKILL.md`));
 
 function defaultPackageRoot(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
