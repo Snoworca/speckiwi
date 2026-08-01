@@ -14,7 +14,6 @@ import {
   PROOF_KINDS,
   RESUME_CARD_MAX_BYTES,
   isPhase1Verb,
-  isVerb,
   type CardPrecondition,
   type Engine,
   type ProofKind,
