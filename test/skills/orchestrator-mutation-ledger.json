@@ -1,0 +1,1508 @@
+[
+  {
+    "variant": "claude",
+    "rule_id": "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL",
+    "owning_requirement": "unowned",
+    "sentence": "§0.2 — calling any /snoworca-* skill is absolutely forbidden; only the kiwi-* series is invoked through the Skill tool",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**/snoworca-\\* 호출 절대 금지**",
+      "replace": "**/snoworca-\\* 호출**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "절대",
+        "snippet": "호출 절대 금지"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "호출 절대 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-SECTION-ZERO-NO-COMMIT-SIGNATURE",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §6: no signature of any kind in a commit message",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**CLAUDE.md §6 시그니처 금지**",
+      "replace": "**CLAUDE.md §6 시그니처**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§6 시그니처 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-SECTION-ZERO-NO-CHANGELOG-IN-BODY",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §7: no change-history section in the skill body",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**§7 변경 이력 금지**",
+      "replace": "**§7 변경 이력**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§7 변경 이력 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
+    "owning_requirement": "FR-FLOW-088",
+    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**`--wt` 를 절대 전달하지 않고**",
+      "replace": "**`--wt` 를 전달하고**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "carrier": "절대",
+        "snippet": "를 절대 전달하지 않고"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RESUME-NEVER-RECONSTRUCTS-FROM-CONVERSATION",
+    "owning_requirement": "FR-FLOW-075",
+    "sentence": "§1 — a resumed session never reconstructs run state from conversation; the resume tool's signature cannot take conversation state and the procedure forbids it",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재개 세션은 대화에서 run 상태를 복원하지 않는다",
+      "replace": "재개 세션은 대화에서 run 상태를 복원한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것",
+        "carrier": "금지",
+        "snippet": "절차상으로도 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-PROHIBITED-ACTIONS-CLOSED-LIST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — the run contract's list of prohibited actions is closed",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**금지 행동의 닫힌 목록**",
+      "replace": "**금지 행동의 주요 목록 일부**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "금지 행동의 닫힌 목록"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-REDECOMPOSITION",
+    "owning_requirement": "FR-FLOW-102",
+    "sentence": "§1.1 — re-decomposing the frozen partition is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재분해 금지;",
+      "replace": "재분해 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "재분해 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-REQ-ID-ALLOCATION-OUTSIDE-3B",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§1.1 — allocating a Requirement ID outside Phase 3.b is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "Requirement ID 할당 금지;",
+      "replace": "Requirement ID 할당 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "Requirement ID 할당 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "완료된 단위 편집 금지;",
+      "replace": "완료된 단위 편집 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "완료된 단위 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — weakening or deleting a test is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "테스트 약화·삭제 금지;",
+      "replace": "테스트 약화·삭제 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "테스트 약화·삭제 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — writing outside the lease is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "lease 밖 쓰기 금지;",
+      "replace": "lease 밖 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "lease 밖 쓰기 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-HAND-APPEND-TO-JOURNAL",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§1.1 — appending to kiwi/waves.jsonl by hand is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "직접 append 금지;",
+      "replace": "직접 append 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "직접 append 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-BULK-STAGING",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — `git add -A` and `git commit -a` are absolutely prohibited; every commit stages an explicit pathspec",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 와 `git commit -a` 절대 금지 — ",
+      "replace": " 와 `git commit -a` 허용 — "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "절대",
+        "snippet": "절대 금지 — 모든 커밋은"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "절대 금지 — 모든 커밋은"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-MERGE-INTO-BASE",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — merging integration_branch into base_branch is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 로 병합 금지, ",
+      "replace": " 로 병합 허용, "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "로 병합 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-PULL-REQUEST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — opening a pull request is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "PR 생성 금지**;",
+      "replace": "PR 생성 허용**;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "PR 생성 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-COMMIT-IDENTITY-BY-TRAILER-NOT-SUBJECT",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§2.1 — commits are identified by git trailer and never by subject text, because putting a stage marker in a commit subject is permanently prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**커밋 식별은 git trailer 로 하고 subject 텍스트로 하지 않는다.**",
+      "replace": "**커밋 식별은 git trailer 로 하고 subject 텍스트로도 한다.**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 2. 저널 쓰기 규율 > 2.1 세 recovery class 와 중단 복구",
+        "carrier": "금지",
+        "snippet": "상시 금지 사항이고"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-COMMITTEE-INPUT-CARRIES-FACTS-NEVER-THE-PROPOSAL",
+    "owning_requirement": "FR-FLOW-103",
+    "sentence": "§4.6 — committee input carries facts only and never the main session's tentative proposal",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**잠정 제안을 절대 운반하지 않는다**",
+      "replace": "**잠정 제안도 운반한다**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.6 게이트와 ballot",
+        "carrier": "절대",
+        "snippet": "잠정 제안을 절대 운반하지 않는다"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-UNLANDED-TASK-FORBIDS-ALL-MATCH",
+    "owning_requirement": "FR-FLOW-084",
+    "sentence": "§12.1 — one task that was planned but never landed forbids the ALL_MATCH roll-up",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "를 금지한다**.",
+      "replace": "를 허용한다**."
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 12. Phase 3.l — loop P > 12.1 증거 번들과 다섯 동결 분모",
+        "carrier": "금지",
+        "snippet": "를 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-ORCHESTRATOR-NEVER-MERGES-NEVER-OPENS-PR",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§15 — the orchestrator never merges the integration branch into the base branch and never opens a pull request",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "base 브랜치로 결코 병합하지 않고 pull request 를 결코 열지 않는다",
+      "replace": "base 브랜치로 병합하고 pull request 를 연다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 15. 통합 브랜치·커밋·중단",
+        "carrier": "금지",
+        "snippet": "금지 행동 닫힌 목록 양쪽에 있다"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
+    "owning_requirement": "FR-FLOW-099",
+    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**절대 행 수**이며 비율이 아니다",
+      "replace": "**절대 행 수**이며 비율이다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
+        "carrier": "절대",
+        "snippet": "**절대 행 수**이며 비율이 아니다"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§2 — `intent` is appended before the verb and `result` after it",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "`intent` 는 동사 **앞**에, `result` 는 동사 **뒤**에 붙는다",
+      "replace": "`intent` 는 동사 **뒤**에, `result` 는 동사 **앞**에 붙는다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-INTAKE-THREE-INVESTIGATORS-IN-PARALLEL",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — the investigation runs three investigators in parallel",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자 3 기를 병렬로** 실행한다",
+      "replace": "조사자를 하나 이상 실행한다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-INTAKE-EVERY-UNCLOSED-GAP-GOES-TO-USER-QNA",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — every gap the investigators cannot close is put to the user as QnA",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자가 닫지 못한 갭은 전부 사용자에게 QnA** 로 낸다",
+      "replace": "조사자가 닫지 못한 갭은 필요하면 사용자에게 QnA 로 낸다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-DESIGN-FREEZE-BEFORE-IMPLEMENT",
+    "owning_requirement": "FR-FLOW-078",
+    "sentence": "§6.1 — the order is freeze then implement, and not the reverse",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "순서는 **동결 다음 구현**이며 그 반대가 아니다",
+      "replace": "순서는 **구현 다음 동결**이며 그 반대가 아니다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-WAVE-DESIGN-3A-BEFORE-SRS-REGISTRATION-3B",
+    "owning_requirement": "FR-FLOW-080",
+    "sentence": "§8 — 3.a precedes 3.b, and 3.b consumes the wave design as its research document",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "**3.a 가 3.b 앞이고**",
+      "replace": "**3.b 가 3.a 앞이고**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-LOOP-D-DENOMINATOR-NEVER-COMPUTED-BY-A-VERIFIER",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's three denominator sets are computed externally before round 1, frozen at round entry, and never computed by a verifier",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**검증자가 계산하지 않는다**",
+      "replace": "**검증자가 계산한다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-LOOP-D-PASS-REQUIRES-ALL-FIVE-CONJUNCTS",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D passes only when all five conjuncts hold",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**PASS 는 다섯 연언이 모두 성립할 때다**",
+      "replace": "**PASS 는 다섯 연언 중 일부가 성립할 때다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-LOOP-D-NO-EDIT-APPLIED-IN-THE-PASSING-ROUND",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's fifth conjunct: no edit was applied in that round",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
+      "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "그것이 **열 개**다",
+      "replace": "그것이 **여러 개**다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
+      "replace": "동결 분모: lane 의 `write_set`."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**어떤 편집도 적용하지 않는다**",
+      "replace": "**어떤 편집도 적용한다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL",
+    "owning_requirement": "unowned",
+    "sentence": "§0.2 — calling any /snoworca-* skill is absolutely forbidden; only the kiwi-* series is invoked through the Skill tool",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**/snoworca-\\* 호출 절대 금지**",
+      "replace": "**/snoworca-\\* 호출**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "절대",
+        "snippet": "호출 절대 금지"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "호출 절대 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-SECTION-ZERO-NO-COMMIT-SIGNATURE",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §6: no signature of any kind in a commit message",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**CLAUDE.md §6 시그니처 금지**",
+      "replace": "**CLAUDE.md §6 시그니처**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§6 시그니처 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-SECTION-ZERO-NO-CHANGELOG-IN-BODY",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §7: no change-history section in the skill body",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**§7 변경 이력 금지**",
+      "replace": "**§7 변경 이력**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§7 변경 이력 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
+    "owning_requirement": "FR-FLOW-088",
+    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**`--wt` 를 절대 전달하지 않고**",
+      "replace": "**`--wt` 를 전달하고**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "carrier": "절대",
+        "snippet": "를 절대 전달하지 않고"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RESUME-NEVER-RECONSTRUCTS-FROM-CONVERSATION",
+    "owning_requirement": "FR-FLOW-075",
+    "sentence": "§1 — a resumed session never reconstructs run state from conversation; the resume tool's signature cannot take conversation state and the procedure forbids it",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재개 세션은 대화에서 run 상태를 복원하지 않는다",
+      "replace": "재개 세션은 대화에서 run 상태를 복원한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것",
+        "carrier": "금지",
+        "snippet": "절차상으로도 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-PROHIBITED-ACTIONS-CLOSED-LIST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — the run contract's list of prohibited actions is closed",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**금지 행동의 닫힌 목록**",
+      "replace": "**금지 행동의 주요 목록 일부**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "금지 행동의 닫힌 목록"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-REDECOMPOSITION",
+    "owning_requirement": "FR-FLOW-102",
+    "sentence": "§1.1 — re-decomposing the frozen partition is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재분해 금지;",
+      "replace": "재분해 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "재분해 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-REQ-ID-ALLOCATION-OUTSIDE-3B",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§1.1 — allocating a Requirement ID outside Phase 3.b is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "Requirement ID 할당 금지;",
+      "replace": "Requirement ID 할당 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "Requirement ID 할당 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "완료된 단위 편집 금지;",
+      "replace": "완료된 단위 편집 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "완료된 단위 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — weakening or deleting a test is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "테스트 약화·삭제 금지;",
+      "replace": "테스트 약화·삭제 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "테스트 약화·삭제 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — writing outside the lease is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "lease 밖 쓰기 금지;",
+      "replace": "lease 밖 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "lease 밖 쓰기 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-HAND-APPEND-TO-JOURNAL",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§1.1 — appending to kiwi/waves.jsonl by hand is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "직접 append 금지;",
+      "replace": "직접 append 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "직접 append 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-BULK-STAGING",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — `git add -A` and `git commit -a` are absolutely prohibited; every commit stages an explicit pathspec",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 와 `git commit -a` 절대 금지 — ",
+      "replace": " 와 `git commit -a` 허용 — "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "절대",
+        "snippet": "절대 금지 — 모든 커밋은"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "절대 금지 — 모든 커밋은"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-MERGE-INTO-BASE",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — merging integration_branch into base_branch is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 로 병합 금지, ",
+      "replace": " 로 병합 허용, "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "로 병합 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-PULL-REQUEST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — opening a pull request is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "PR 생성 금지**;",
+      "replace": "PR 생성 허용**;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "PR 생성 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-COMMIT-IDENTITY-BY-TRAILER-NOT-SUBJECT",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§2.1 — commits are identified by git trailer and never by subject text, because putting a stage marker in a commit subject is permanently prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**커밋 식별은 git trailer 로 하고 subject 텍스트로 하지 않는다.**",
+      "replace": "**커밋 식별은 git trailer 로 하고 subject 텍스트로도 한다.**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 2. 저널 쓰기 규율 > 2.1 세 recovery class 와 중단 복구",
+        "carrier": "금지",
+        "snippet": "상시 금지 사항이고"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-COMMITTEE-INPUT-CARRIES-FACTS-NEVER-THE-PROPOSAL",
+    "owning_requirement": "FR-FLOW-103",
+    "sentence": "§4.6 — committee input carries facts only and never the main session's tentative proposal",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**잠정 제안을 절대 운반하지 않는다**",
+      "replace": "**잠정 제안도 운반한다**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.6 게이트와 ballot",
+        "carrier": "절대",
+        "snippet": "잠정 제안을 절대 운반하지 않는다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-UNLANDED-TASK-FORBIDS-ALL-MATCH",
+    "owning_requirement": "FR-FLOW-084",
+    "sentence": "§12.1 — one task that was planned but never landed forbids the ALL_MATCH roll-up",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "를 금지한다**.",
+      "replace": "를 허용한다**."
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 12. Phase 3.l — loop P > 12.1 증거 번들과 다섯 동결 분모",
+        "carrier": "금지",
+        "snippet": "를 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-ORCHESTRATOR-NEVER-MERGES-NEVER-OPENS-PR",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§15 — the orchestrator never merges the integration branch into the base branch and never opens a pull request",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "base 브랜치로 결코 병합하지 않고 pull request 를 결코 열지 않는다",
+      "replace": "base 브랜치로 병합하고 pull request 를 연다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 15. 통합 브랜치·커밋·중단",
+        "carrier": "금지",
+        "snippet": "금지 행동 닫힌 목록 양쪽에 있다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
+    "owning_requirement": "FR-FLOW-099",
+    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**절대 행 수**이며 비율이 아니다",
+      "replace": "**절대 행 수**이며 비율이다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
+        "carrier": "절대",
+        "snippet": "**절대 행 수**이며 비율이 아니다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§2 — `intent` is appended before the verb and `result` after it",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "`intent` 는 동사 **앞**에, `result` 는 동사 **뒤**에 붙는다",
+      "replace": "`intent` 는 동사 **뒤**에, `result` 는 동사 **앞**에 붙는다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-INTAKE-THREE-INVESTIGATORS-IN-PARALLEL",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — the investigation runs three investigators in parallel",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자 3 기를 병렬로** 실행한다",
+      "replace": "조사자를 하나 이상 실행한다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-INTAKE-EVERY-UNCLOSED-GAP-GOES-TO-USER-QNA",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — every gap the investigators cannot close is put to the user as QnA",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자가 닫지 못한 갭은 전부 사용자에게 QnA** 로 낸다",
+      "replace": "조사자가 닫지 못한 갭은 필요하면 사용자에게 QnA 로 낸다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-DESIGN-FREEZE-BEFORE-IMPLEMENT",
+    "owning_requirement": "FR-FLOW-078",
+    "sentence": "§6.1 — the order is freeze then implement, and not the reverse",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "순서는 **동결 다음 구현**이며 그 반대가 아니다",
+      "replace": "순서는 **구현 다음 동결**이며 그 반대가 아니다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-WAVE-DESIGN-3A-BEFORE-SRS-REGISTRATION-3B",
+    "owning_requirement": "FR-FLOW-080",
+    "sentence": "§8 — 3.a precedes 3.b, and 3.b consumes the wave design as its research document",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "**3.a 가 3.b 앞이고**",
+      "replace": "**3.b 가 3.a 앞이고**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-LOOP-D-DENOMINATOR-NEVER-COMPUTED-BY-A-VERIFIER",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's three denominator sets are computed externally before round 1, frozen at round entry, and never computed by a verifier",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**검증자가 계산하지 않는다**",
+      "replace": "**검증자가 계산한다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-LOOP-D-PASS-REQUIRES-ALL-FIVE-CONJUNCTS",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D passes only when all five conjuncts hold",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**PASS 는 다섯 연언이 모두 성립할 때다**",
+      "replace": "**PASS 는 다섯 연언 중 일부가 성립할 때다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-LOOP-D-NO-EDIT-APPLIED-IN-THE-PASSING-ROUND",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's fifth conjunct: no edit was applied in that round",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
+      "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "그것이 **열 개**다",
+      "replace": "그것이 **여러 개**다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
+      "replace": "동결 분모: lane 의 `write_set`."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**어떤 편집도 적용하지 않는다**",
+      "replace": "**어떤 편집도 적용한다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL",
+    "owning_requirement": "unowned",
+    "sentence": "§0.2 — calling any /snoworca-* skill is absolutely forbidden; only the kiwi-* series is invoked through the Skill tool",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**/snoworca-\\* 호출 절대 금지**",
+      "replace": "**/snoworca-\\* 호출**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "절대",
+        "snippet": "호출 절대 금지"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "호출 절대 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-SECTION-ZERO-NO-COMMIT-SIGNATURE",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §6: no signature of any kind in a commit message",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**CLAUDE.md §6 시그니처 금지**",
+      "replace": "**CLAUDE.md §6 시그니처**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§6 시그니처 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-SECTION-ZERO-NO-CHANGELOG-IN-BODY",
+    "owning_requirement": "unowned",
+    "sentence": "§0.3 — CLAUDE.md §7: no change-history section in the skill body",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**§7 변경 이력 금지**",
+      "replace": "**§7 변경 이력**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0. 공통 규약 (SSOT)",
+        "carrier": "금지",
+        "snippet": "§7 변경 이력 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
+    "owning_requirement": "FR-FLOW-088",
+    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**`--wt` 를 절대 전달하지 않고**",
+      "replace": "**`--wt` 를 전달하고**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "carrier": "절대",
+        "snippet": "를 절대 전달하지 않고"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RESUME-NEVER-RECONSTRUCTS-FROM-CONVERSATION",
+    "owning_requirement": "FR-FLOW-075",
+    "sentence": "§1 — a resumed session never reconstructs run state from conversation; the resume tool's signature cannot take conversation state and the procedure forbids it",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재개 세션은 대화에서 run 상태를 복원하지 않는다",
+      "replace": "재개 세션은 대화에서 run 상태를 복원한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것",
+        "carrier": "금지",
+        "snippet": "절차상으로도 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-PROHIBITED-ACTIONS-CLOSED-LIST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — the run contract's list of prohibited actions is closed",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**금지 행동의 닫힌 목록**",
+      "replace": "**금지 행동의 주요 목록 일부**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "금지 행동의 닫힌 목록"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-REDECOMPOSITION",
+    "owning_requirement": "FR-FLOW-102",
+    "sentence": "§1.1 — re-decomposing the frozen partition is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "재분해 금지;",
+      "replace": "재분해 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "재분해 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-REQ-ID-ALLOCATION-OUTSIDE-3B",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§1.1 — allocating a Requirement ID outside Phase 3.b is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "Requirement ID 할당 금지;",
+      "replace": "Requirement ID 할당 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "Requirement ID 할당 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "완료된 단위 편집 금지;",
+      "replace": "완료된 단위 편집 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "완료된 단위 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — weakening or deleting a test is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "테스트 약화·삭제 금지;",
+      "replace": "테스트 약화·삭제 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "테스트 약화·삭제 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
+    "owning_requirement": "unowned",
+    "sentence": "§1.1 — writing outside the lease is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "lease 밖 쓰기 금지;",
+      "replace": "lease 밖 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "lease 밖 쓰기 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-HAND-APPEND-TO-JOURNAL",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§1.1 — appending to kiwi/waves.jsonl by hand is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "직접 append 금지;",
+      "replace": "직접 append 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "직접 append 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-BULK-STAGING",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — `git add -A` and `git commit -a` are absolutely prohibited; every commit stages an explicit pathspec",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 와 `git commit -a` 절대 금지 — ",
+      "replace": " 와 `git commit -a` 허용 — "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "절대",
+        "snippet": "절대 금지 — 모든 커밋은"
+      },
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "절대 금지 — 모든 커밋은"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-MERGE-INTO-BASE",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — merging integration_branch into base_branch is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": " 로 병합 금지, ",
+      "replace": " 로 병합 허용, "
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "로 병합 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-PULL-REQUEST",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§1.1 — opening a pull request is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "PR 생성 금지**;",
+      "replace": "PR 생성 허용**;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "PR 생성 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-COMMIT-IDENTITY-BY-TRAILER-NOT-SUBJECT",
+    "owning_requirement": "FR-FLOW-087",
+    "sentence": "§2.1 — commits are identified by git trailer and never by subject text, because putting a stage marker in a commit subject is permanently prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**커밋 식별은 git trailer 로 하고 subject 텍스트로 하지 않는다.**",
+      "replace": "**커밋 식별은 git trailer 로 하고 subject 텍스트로도 한다.**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 2. 저널 쓰기 규율 > 2.1 세 recovery class 와 중단 복구",
+        "carrier": "금지",
+        "snippet": "상시 금지 사항이고"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-COMMITTEE-INPUT-CARRIES-FACTS-NEVER-THE-PROPOSAL",
+    "owning_requirement": "FR-FLOW-103",
+    "sentence": "§4.6 — committee input carries facts only and never the main session's tentative proposal",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**잠정 제안을 절대 운반하지 않는다**",
+      "replace": "**잠정 제안도 운반한다**"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.6 게이트와 ballot",
+        "carrier": "절대",
+        "snippet": "잠정 제안을 절대 운반하지 않는다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-UNLANDED-TASK-FORBIDS-ALL-MATCH",
+    "owning_requirement": "FR-FLOW-084",
+    "sentence": "§12.1 — one task that was planned but never landed forbids the ALL_MATCH roll-up",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "를 금지한다**.",
+      "replace": "를 허용한다**."
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 12. Phase 3.l — loop P > 12.1 증거 번들과 다섯 동결 분모",
+        "carrier": "금지",
+        "snippet": "를 금지한다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-ORCHESTRATOR-NEVER-MERGES-NEVER-OPENS-PR",
+    "owning_requirement": "FR-FLOW-093",
+    "sentence": "§15 — the orchestrator never merges the integration branch into the base branch and never opens a pull request",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "base 브랜치로 결코 병합하지 않고 pull request 를 결코 열지 않는다",
+      "replace": "base 브랜치로 병합하고 pull request 를 연다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 15. 통합 브랜치·커밋·중단",
+        "carrier": "금지",
+        "snippet": "금지 행동 닫힌 목록 양쪽에 있다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
+    "owning_requirement": "FR-FLOW-099",
+    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**절대 행 수**이며 비율이 아니다",
+      "replace": "**절대 행 수**이며 비율이다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
+        "carrier": "절대",
+        "snippet": "**절대 행 수**이며 비율이 아니다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
+    "owning_requirement": "FR-FLOW-076",
+    "sentence": "§2 — `intent` is appended before the verb and `result` after it",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "`intent` 는 동사 **앞**에, `result` 는 동사 **뒤**에 붙는다",
+      "replace": "`intent` 는 동사 **뒤**에, `result` 는 동사 **앞**에 붙는다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-INTAKE-THREE-INVESTIGATORS-IN-PARALLEL",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — the investigation runs three investigators in parallel",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자 3 기를 병렬로** 실행한다",
+      "replace": "조사자를 하나 이상 실행한다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-INTAKE-EVERY-UNCLOSED-GAP-GOES-TO-USER-QNA",
+    "owning_requirement": "FR-FLOW-077",
+    "sentence": "§5.1 — every gap the investigators cannot close is put to the user as QnA",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**조사자가 닫지 못한 갭은 전부 사용자에게 QnA** 로 낸다",
+      "replace": "조사자가 닫지 못한 갭은 필요하면 사용자에게 QnA 로 낸다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-DESIGN-FREEZE-BEFORE-IMPLEMENT",
+    "owning_requirement": "FR-FLOW-078",
+    "sentence": "§6.1 — the order is freeze then implement, and not the reverse",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "순서는 **동결 다음 구현**이며 그 반대가 아니다",
+      "replace": "순서는 **구현 다음 동결**이며 그 반대가 아니다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-WAVE-DESIGN-3A-BEFORE-SRS-REGISTRATION-3B",
+    "owning_requirement": "FR-FLOW-080",
+    "sentence": "§8 — 3.a precedes 3.b, and 3.b consumes the wave design as its research document",
+    "mutation_class": "swapped ordering pair",
+    "mutation": {
+      "find": "**3.a 가 3.b 앞이고**",
+      "replace": "**3.b 가 3.a 앞이고**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-LOOP-D-DENOMINATOR-NEVER-COMPUTED-BY-A-VERIFIER",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's three denominator sets are computed externally before round 1, frozen at round entry, and never computed by a verifier",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**검증자가 계산하지 않는다**",
+      "replace": "**검증자가 계산한다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-LOOP-D-PASS-REQUIRES-ALL-FIVE-CONJUNCTS",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D passes only when all five conjuncts hold",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "**PASS 는 다섯 연언이 모두 성립할 때다**",
+      "replace": "**PASS 는 다섯 연언 중 일부가 성립할 때다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-LOOP-D-NO-EDIT-APPLIED-IN-THE-PASSING-ROUND",
+    "owning_requirement": "FR-FLOW-079",
+    "sentence": "§6.2 — loop D's fifth conjunct: no edit was applied in that round",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
+      "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "그것이 **열 개**다",
+      "replace": "그것이 **여러 개**다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
+    "mutation_class": "weakened quantifier",
+    "mutation": {
+      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
+      "replace": "동결 분모: lane 의 `write_set`."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
+    "owning_requirement": "FR-FLOW-081",
+    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "**어떤 편집도 적용하지 않는다**",
+      "replace": "**어떤 편집도 적용한다**"
+    },
+    "carriers": []
+  }
+]
