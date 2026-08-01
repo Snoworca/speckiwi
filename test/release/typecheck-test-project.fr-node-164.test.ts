@@ -67,10 +67,12 @@ function resolvedOptions(): Record<string, unknown> {
 /**
  * Runs the declared script's own command text, with the `node_modules/.bin` entry npm prepends.
  *
- * The text is what is executed, so a script neutered with `|| exit 0` or `--noCheck` fails here while
- * passing any assertion that only reads it. `npm run` itself is not spawned: on Windows a `.cmd`
- * shim cannot be spawned without a shell, and passing arguments through a shell is the concatenation
- * hazard Node deprecated.
+ * The text is what is executed, so a script neutered with a trailing short-circuit exit fails here
+ * while passing any assertion that only reads it. `--noCheck` does NOT fail here — measured, it
+ * produces no output and exits 0 — which is why the AC-2 test above pins the command exactly.
+ *
+ * `npm run` itself is not spawned: on Windows a `.cmd` shim cannot be spawned without a shell, and
+ * passing arguments through a shell is the concatenation hazard Node deprecated.
  */
 function runDeclaredScript(): CheckOutcome {
   const scripts = (readJsonc("package.json").scripts ?? {}) as Record<string, string>;
@@ -145,8 +147,11 @@ describe("FR-NODE-164 AC-2 — the script exists and the repository is clean und
     const scripts = (readJsonc("package.json").scripts ?? {}) as Record<string, string>;
     const script = scripts["typecheck:test"];
     expect(script, "package.json must declare typecheck:test").toBeTypeOf("string");
-    expect(script).toContain("tsc");
-    expect(script).toContain(PROJECT_FILE);
+    // Exact, not substring. `--noCheck` appended to the command produces no output and exits 0, so a
+    // neutered script passes the run below — measured. Only pinning the whole command catches it.
+    expect(script?.trim(), "the script must be exactly the project run, with nothing appended").toBe(
+      `tsc -p ${PROJECT_FILE}`
+    );
   });
 
   it("reports zero diagnostics when the declared script itself is run", { timeout: 240_000 }, () => {
@@ -216,9 +221,16 @@ describe("FR-NODE-164 AC-5 — nothing is suppressed", () => {
         .filter((row) => row.line.includes("@ts-expect-error"))
     );
 
-    // Each one must name what it expects on the same line, so a reader can check the claim.
-    const unexplained = suppressions.filter((row) => row.line.replace(/.*@ts-expect-error/, "").trim().length < 20);
-    expect(unexplained.map((row) => `${row.entry}:${row.number}`)).toEqual([]);
+    // The covered set carries no directive today, and this assertion says exactly that rather than
+    // dressing the emptiness up as a check. A length-of-comment test was the first attempt and was
+    // worse than nothing: it passed any suppression carrying twenty characters of prose, which is not
+    // the criterion. This one fails the moment a directive appears, which is when a human has to
+    // decide whether the compile error really IS the assertion.
+    expect(
+      suppressions.map((row) => `${row.entry}:${row.number}`),
+      "a @ts-expect-error may live in a covered source only where the compile error IS the assertion — " +
+        "review each one and, if it stays, record here which error it expects"
+    ).toEqual([]);
   });
 
   it("the project file turns no strictness option off", () => {
