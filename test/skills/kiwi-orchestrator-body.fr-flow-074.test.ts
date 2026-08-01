@@ -143,8 +143,9 @@ describe("FR-FLOW-074 — the kiwi-orchestrator skill ships in three variants", 
   });
 
   it("the body does not itself trip the unmarked-normative-prose detector it ships", () => {
-    // src/core/orchestrator/prose-gate.ts is what `orchestrate freeze design` runs. A skill body that
-    // fails its own detector would teach the reader a rule the tool rejects.
+    // src/core/orchestrator/prose-gate.ts is the detector this repository ships. A skill body that
+    // fails it would teach the reader a rule the tool rejects. Note the detector has no caller in
+    // `src/` — this assertion is over the shipped kernel, not over a wired gate.
     for (const variant of VARIANTS) {
       const findings = scanProse(variant.body).findings;
       expect(findings.map((finding) => `${finding.rule}@${finding.lines[0]}`), `${variant.id}: prose gate findings`).toEqual([]);

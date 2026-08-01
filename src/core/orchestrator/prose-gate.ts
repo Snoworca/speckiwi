@@ -1,4 +1,13 @@
-// @req FR-NODE-121 — the two mechanical prose detectors behind `orchestrate freeze design`.
+// @req FR-NODE-121 — the two mechanical prose detectors 05 §3.3 specifies.
+//
+// **Not wired.** `scanProse` has no caller anywhere in `src/`. Earlier revisions of this comment,
+// of `countNormativeTokens`'s doc block below, and of a test comment in
+// `test/skills/kiwi-orchestrator-body.fr-flow-074.test.ts` all named `orchestrate freeze design` as
+// the caller; measured, that verb never calls either detector. Do not restore that claim without a
+// call site. Wiring it is a decision and not a fix: the gate has two declared evaluation points of
+// different kinds — the Phase 1.e freeze and the Phase 3.a loop-W round — so `freeze design` alone
+// covers at most half, and 9 of 13 real design documents currently raise a finding, all of them
+// false positives in three structural classes.
 //
 // 05 §3.3 makes `unmarked-normative-prose` a critical gate rather than a warning, because the miss is
 // silent and the count is load-bearing: an under-counted design-item set shrinks every frozen
@@ -111,8 +120,8 @@ export function maskExcludedConstructs(text: string): string[] {
  *
  * @req FR-NODE-121 AC-3 — token counting replaces revision 2's *"exactly one normative sentence"*,
  * which needed a sentence splitter: a judgment call over abbreviations, code spans and list
- * punctuation feeding a critical gate. `orchestrate freeze design` uses this to hold §3.3 rule 3's
- * exactly-one-occurrence rule over an item row.
+ * punctuation feeding a critical gate. It is the kernel for §3.3 rule 3's exactly-one-occurrence
+ * rule over an item row — no verb calls it yet; see the file header.
  */
 export function countNormativeTokens(text: string): number {
   const mustNot = (text.match(/\bMUST NOT\b/g) ?? []).length;
