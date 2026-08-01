@@ -507,9 +507,11 @@ export const VIOLATION_RULES: readonly WavesRule[] = [
   },
   {
     code: "denominator-mismatch",
-    rule: "an enumerated count differing from frozen_denominator invalidates the round",
+    rule: "an UNDECLARED enumerated count differing from frozen_denominator invalidates the round",
     source: "waves-event.md §2.3",
-    sourceBullets: ["열거한 **행 수**가 `frozen_denominator`"],
+    // The second anchor is the `invalid_round` bullet: the rule is drawn from it too, because that
+    // bullet is what says a declared void round is not refused. @req FR-NODE-170 AC-1
+    sourceBullets: ["열거한 **행 수**가 `frozen_denominator`", "`invalid_round` 은 그 라운드가 **무효**임을"],
     enforcement: "diagnostic",
     producer: "journal"
   },

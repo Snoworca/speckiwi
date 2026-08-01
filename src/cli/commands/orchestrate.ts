@@ -24,7 +24,7 @@ import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
 import { acquire, readHolder, release, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
 import { planStageCoupling, type ParsedHandoff } from "../../core/orchestrator/substrate.js";
 import { normalizeTasks, type SidecarPhase, type SidecarTask, type TaskCatalogEntry } from "../../core/orchestrator/task-catalog.js";
-import { evaluateRound } from "../../core/orchestrator/verification-gate.js";
+import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
 import { parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
 
@@ -1156,18 +1156,38 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   addMutationOptions(round.command("record"))
     .option("--run-id <id>", "the run the round belongs to")
     .option("--payload <json>", "the round, inline")
+    // @req FR-NODE-169 AC-7 — required, not optional. A round record is verdict-bearing and
+    // `waves-event.md:96` requires one externally recomputable proof on such a line, but
+    // `checkJournalOnlyProofs` skips a proofless line entirely, so omitting it violates the contract
+    // silently. The verb reads no filesystem, so the caller supplies it.
+    .requiredOption("--proof <json>", "one externally recomputable proof for the round, inline")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .action(async (options) => {
       await mutate(options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const payload = parseInlineJson(options.payload, "--payload");
-        const outcome = evaluateRound(payload as never);
+        const payload = parseInlineJson(options.payload, "--payload") as unknown as Round;
+        const proof = parseInlineJson(options.proof, "--proof");
+        const outcome = evaluateRound(payload);
+        // @req FR-NODE-169 AC-1, AC-2 — `null` covers both an out-of-vocabulary scope and one
+        // belonging to a loop other than the round declares; neither describes a round that ran.
+        const line = projectRound(payload, outcome);
+        if (!line) {
+          return refuse("invalid-run-scope-option", [{ scope: payload.scope, loop: payload.loop }]);
+        }
         const appended = await appendWavesLine(
           root,
           options.journal as string,
           runId,
-          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "verify-design", event: "result", wave: payload.wave ?? "all", round: payload.roundIndex, verification: { verdict: outcome.verdict } },
+          {
+            schema_version: "1.4.0",
+            run_id: runId,
+            engine: "kiwi-orchestrator",
+            event: "result",
+            ts: new Date().toISOString(),
+            proof,
+            ...line
+          },
           options.dryRun === true
         );
         if (appended.diagnostics.some((entry) => entry.severity === "error")) {

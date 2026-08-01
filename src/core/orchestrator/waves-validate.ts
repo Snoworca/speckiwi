@@ -207,8 +207,14 @@ function checkRoundInvariants(event: WavesEvent, diagnostics: WavesDiagnostic[])
     }
   }
 
+  // @req FR-NODE-170 — a line that declares its round void is not refused for the mismatch that
+  // made it void; that record is the only honest one there is. Scoping to terminal verdicts instead
+  // was rejected: the verdict map sends both `invalid` and `fail-residual` to `in-progress`, so a
+  // terminal-only exemption exempts every non-terminating round line and the journal can no longer
+  // tell a void round from a running one — the exact fact the exemption exists to preserve.
+  const declaredVoid = verification.invalid_round === true;
   const frozen = record(verification.frozen_denominator);
-  if (frozen) {
+  if (frozen && !declaredVoid) {
     // The round's declared denominators against the denominators frozen at round entry. The
     // enumerated *arrays* are checked by `truncated-residual` below, which is a different failure.
     const declared: Array<[string, number | null, number | null]> = [

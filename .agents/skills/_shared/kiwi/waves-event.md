@@ -122,6 +122,7 @@
 - 제약이 선언되지 않은 run 도 **빈 배열** 아티팩트를 쓰고 `constraints_path` 를 기록한다 — 빈 배열은 반증 가능한 주장이고 필드 부재는 침묵이다.
 - `residual` 은 **전량**이어야 하며 잘라내지 않는다 — 상위 N 건만 남기면 "전부 커버했다"로 읽힌다. 미해소 건이 정말로 없으면 빈 배열을 명시한다(빈 배열은 반증 가능한 주장이고, 필드 부재는 침묵이다).
 - `reason_class` ∈ `draft-stability-skip` / `task-failure-skip` / `scope-boundary-deferred` / `srs-level-unclosable` / `design-gap` / `cross-wave-carry-forward` / `oscillation` / `budget-exhausted` — 하위 스킬이 skip 하거나 보류한 REQ 가 왜 남았는지를 자유 텍스트가 아니라 분류로 남긴다. 뒤의 두 값은 v1.4.0 신설이며, 각각 라운드가 진동해 수렴하지 못한 경우와 `--subagent-budget` / `--run-budget` 상한이 소진된 경우를 가리킨다.
+- `invalid_round` 은 그 라운드가 **무효**임을 선언한다 — 열거 개수가 `frozen_denominator` 와 어긋나 라운드 자체가 성립하지 않은 경우다. 선언된 무효 라운드는 `denominator-mismatch` 로 거절하지 않는다: 그것이 무효 라운드의 유일한 정직한 기록이기 때문이다. 선언하지 않은 불일치는 종전대로 거절한다 (v1.4.0 신설)
 - `cross_wave` 가 `true` 인 항목은 이전 wave 가 만든 산출물을 건드리는 finding 이며, `carried_into` 에 그것을 이월한 wave id 를 적는다.
 - **미매핑 설계 항목**이 `design_layer.unmapped` 에 **1건이라도** 있으면 `axis_a.roll_up` 을 `ALL_MATCH` 로 기록할 수 없다 — REQ·AC 계층이 완결하더라도 마찬가지다.
 - `preservation_layer.rows` 에 `verdict` 가 `unapproved-damage` 인 행이 **1건이라도** 있으면 `verdict` 를 `pass` 로 기록하지 않는다 — 파손을 정직하게 기록한 것이 통과를 막지 못하면 그 계층은 기록 전용이다.
