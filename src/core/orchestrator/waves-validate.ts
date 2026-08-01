@@ -491,9 +491,16 @@ export function computeRunProgress(view: WavesJournalView): RunProgress {
   const firstIncompleteWave = waves.find((wave) => waveStatuses.get(wave) !== COMPLETION_STATUS) ?? null;
   const allWavesComplete = waves.length > 0 && firstIncompleteWave === null;
 
+  // @req FR-NODE-161 — the sibling of FR-NODE-159, and the half that repair left open. A loop-F round
+  // record carries `phase: "final-verify"` and a passing verdict while asserting only that a verb ran,
+  // so filtering on the phase alone let a program counter discharge the run's final verification —
+  // measured: `needsFinalVerify` true → false and `runComplete` false → true on a run whose run-scope
+  // line was never written. Same discriminator as FR-NODE-159, for the same reason: `kiwi-wave-master`
+  // writes no `event` field, so no already-recorded line reads differently.
   let latestFinalVerify: WavesEvent | null = null;
   for (const event of view.lines) {
-    if (event.phase === "final-verify") latestFinalVerify = event;
+    const isProgramCounter = typeof event.event === "string" && event.event.length > 0;
+    if (event.phase === "final-verify" && !isProgramCounter) latestFinalVerify = event;
   }
 
   const conjunctApplies = runIsAtLeast(view, "1.2.0");
