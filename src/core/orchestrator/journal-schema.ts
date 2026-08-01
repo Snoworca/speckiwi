@@ -112,6 +112,36 @@ export const VERB_RECOVERY_CLASS = {
 export type VerbName = keyof typeof VERB_RECOVERY_CLASS;
 export const VERBS = Object.keys(VERB_RECOVERY_CLASS) as VerbName[];
 
+/**
+ * @req FR-NODE-163 - the nine verbs the shipped skill states are NOT in the phase-1 enum: the six
+ * lane verbs, which `execute-unit` replaces, plus the three that belong to
+ * `2.6.0-phase2-parallel-lanes`. They keep their recovery class here because the vocabulary is the
+ * journal's and spans both phases; what is phase-scoped is which of them a resume will accept.
+ */
+export const DEFERRED_VERBS = [
+  "probe-isolation",
+  "dispatch-lane",
+  "collect-lane",
+  "verify-lane",
+  "remediate-lane",
+  "release-lane",
+  "integrate-lane",
+  "run-serial-epilogue",
+  "replay-deferred-mutations"
+] as const satisfies readonly VerbName[];
+
+/**
+ * The phase-1 enum, derived rather than restated. The skill body carries one `§V.<verb>` section per
+ * member (FR-FLOW-074 AC-2), and a test asserts this set equal to that one in all three variants, so
+ * the document is the definition and the constant cannot quietly drift from it.
+ */
+export const PHASE_1_VERBS = VERBS.filter((verb) => !(DEFERRED_VERBS as readonly string[]).includes(verb));
+
+/** Membership in the phase-1 enum. `isVerb` stays the union, which the journal reader still needs. */
+export function isPhase1Verb(value: string): value is VerbName {
+  return isVerb(value) && !(DEFERRED_VERBS as readonly string[]).includes(value);
+}
+
 export function isVerb(value: string): value is VerbName {
   return Object.prototype.hasOwnProperty.call(VERB_RECOVERY_CLASS, value);
 }

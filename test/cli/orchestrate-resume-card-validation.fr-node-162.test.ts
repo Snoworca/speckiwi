@@ -134,6 +134,15 @@ describe("FR-NODE-162 — the card is validated on the path that reads it", () =
     expect(JSON.stringify(result.payload.violations)).toContain("unknown-verb");
   });
 
+  it("FR-NODE-163 AC-1: a card naming a DEFERRED phase-2 verb is refused on the resume path", async () => {
+    // The shipped body states the six lane verbs and the three phase-2 verbs are outside the phase-1
+    // enum and that a verb outside it halts a resume. Checking the union let all nine resume clean.
+    const result = await resume(card({ next_action: { verb: "dispatch-lane", args: {}, preconditions: [] } } as Partial<ResumeCard>));
+    expect(result.exit).toBe(2);
+    expect(result.payload.gate).toBe("resume-card-missing-or-invalid");
+    expect(JSON.stringify(result.payload.violations)).toContain("unknown-verb");
+  });
+
   it("AC-2: a card over the declared byte cap is refused, which the gate table names and nothing enforced", async () => {
     // The cap is on the serialised card, so the padding has to live in a field the card declares.
     const fat = card({ open: Array.from({ length: 400 }, (_, index) => ({ key: `padding-${index}-${"x".repeat(40)}` })) } as Partial<ResumeCard>);
