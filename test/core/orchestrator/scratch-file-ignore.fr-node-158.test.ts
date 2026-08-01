@@ -57,22 +57,29 @@ describe("FR-NODE-158 — scratch files are ignored wherever a patch can write o
     ];
     // `docs/spec/steps/` is a real patch site — a step SRS lives there — but this repository has no
     // steps yet, so the directory has to be made and taken away again rather than assumed.
+    const control = path.join(REPO_ROOT, "not-a-scratch-file.fr-node-158.tmpcheck");
     const stepsDir = path.join(REPO_ROOT, "docs/spec/steps");
     const stepsDirExisted = existsSync(stepsDir);
     try {
       if (!stepsDirExisted) mkdirSync(stepsDir, { recursive: true });
       for (const site of sites) writeFileSync(site, "scratch", "utf8");
+      // The control. Without it the assertions below pass just as well against a `git status` that
+      // reports nothing at all — and a first version of this case guarded that by requiring the
+      // working tree to be dirty, which made the test pass or fail on whether someone happened to
+      // have uncommitted work. The control is created by the test, so it holds on a clean tree.
+      writeFileSync(control, "visible", "utf8");
       const status = git(["status", "--porcelain"]);
       const staged = git(["add", "-A", "--dry-run"]);
+      expect(status.includes("not-a-scratch-file.fr-node-158.tmpcheck"), "the control must be reported, or the assertions below are vacuous").toBe(true);
+      expect(staged.includes("not-a-scratch-file.fr-node-158.tmpcheck"), "the control must be stageable, or the add check is vacuous").toBe(true);
       for (const site of sites) {
         const relative = path.relative(REPO_ROOT, site).replace(/\\/g, "/");
         expect(status.includes(relative), `git status reported ${relative}`).toBe(false);
         expect(staged.includes(relative), `git add -A would stage ${relative}`).toBe(false);
       }
-      // Not vacuous: this session's own edits must still be visible, or the check proves nothing.
-      expect(status.trim().length, "a wholly empty status would make the assertions above vacuous").toBeGreaterThan(0);
     } finally {
       for (const site of sites) rmSync(site, { force: true });
+      rmSync(control, { force: true });
       if (!stepsDirExisted) rmSync(stepsDir, { force: true, recursive: true });
     }
   });

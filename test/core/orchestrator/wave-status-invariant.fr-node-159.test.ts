@@ -28,7 +28,7 @@ async function progress(lines: Record<string, unknown>[]): Promise<ReturnType<ty
   mkdirSync(path.join(root, "kiwi"), { recursive: true });
   writeFileSync(path.join(root, "kiwi/waves.jsonl"), lines.map((line) => JSON.stringify(line)).join("\n") + "\n", "utf8");
   const view: WavesJournalView = await parseWavesJournal(
-    { root, source: "explicit" },
+    { root },
     { runId: RUN, engine: "kiwi-orchestrator", relativePath: "kiwi/waves.jsonl" }
   );
   return computeRunProgress(view);
