@@ -22,3 +22,7 @@ Thumbs.db
 # Local runtime/session state and tool caches
 .kiwi/
 .serena/
+
+# Atomic-write scratch files left beside an SRS document when a mutation races another
+# writer. Committed twice by `git add -A` before this entry existed.
+docs/spec/.speckiwi-*.tmp

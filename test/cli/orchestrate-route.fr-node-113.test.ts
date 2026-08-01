@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -130,7 +130,9 @@ function facts(routeObserved: { probeDigest: string; lockDigest: string } | null
   return JSON.stringify({
     gitFacts: { branches: [], worktrees: [], heartbeats: [], integrationHead: "9a01f3c", hostStatusPaths: [] },
     driftInputs: {
-      lockDigests: { design: undefined, waves: undefined, lanes: "", handoff: {}, issues: "", postmortem: "" },
+      // No `design` or `waves` entry, matching a card that has frozen neither: a run reaches the
+      // routing gate at 1.c′ before design authoring, so digest 1 must be carried by the route alone.
+      lockDigests: { lanes: "", handoff: {}, issues: "", postmortem: "" },
       recordedLaneInputs: recorded,
       recomputedLaneInputDigests: {
         sidecarDigest: recorded.sidecarDigest,
@@ -181,6 +183,18 @@ describe("FR-NODE-113 AC-4 — orchestrate route freeze records the lock in the 
     // through the two verbs rather than through the validator alone.
     const rewritten = await run(root, ["card", "write", "--run-id", RUN_ID, "--payload", JSON.stringify(after)]);
     expect(rewritten.exit).toBe(0);
+  });
+
+  it("records the route at 1.c-prime, before the run has journalled anything", async () => {
+    const root = await seedRoot();
+    // The routing gate precedes design authoring, so a freeze normally runs against a run with no
+    // journal at all. The card update must not require one.
+    await rm(path.join(root, "kiwi/waves.jsonl"));
+
+    const frozen = await run(root, ["route", "freeze"]);
+
+    expect(frozen.exit).toBe(0);
+    expect((await readCardFile(root)).frozen.route).toMatchObject({ rung: "R-STEP" });
   });
 
   it("leaves no route in the card and reports none when --dry-run is passed", async () => {
