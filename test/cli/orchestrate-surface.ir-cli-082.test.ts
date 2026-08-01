@@ -193,7 +193,7 @@ describe("IR-CLI-082 AC-5 — --json everywhere, --dry-run and an envelope on ev
     const root = await tempRoot();
     const pipes = io();
     const exit = await main(
-      ["--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", verb: "author-design", kind: "intent", wave: "wave-1" }), "--dry-run", "--json"],
+      ["--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", verb: "author-design", event: "intent", wave: "wave-1" }), "--dry-run", "--json"],
       pipes
     );
     const payload = JSON.parse(drain(pipes.stdout)) as Record<string, unknown>;

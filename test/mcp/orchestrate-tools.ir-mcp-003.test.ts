@@ -143,14 +143,14 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
 
     const accepted = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", kind: "intent", wave: "wave-1" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" }
     })) as Record<string, unknown>;
     expect(accepted.applied).toBe(true);
     expect(accepted.exitCode).toBe(0);
 
     const refused = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", kind: "result", wave: "wave-1", status: "complete" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" }
     })) as Record<string, unknown>;
     expect(refused.applied).toBe(false);
     expect(typeof refused.gate).toBe("string");
@@ -166,7 +166,7 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
     const dryAccepted = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
       dryRun: true,
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", kind: "intent", wave: "wave-1" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" }
     })) as Record<string, unknown>;
     expect(dryAccepted.dryRun).toBe(true);
     expect(dryAccepted.exitCode).toBe(0);
@@ -175,7 +175,7 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
     const dryRefused = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
       dryRun: true,
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", kind: "result", wave: "wave-1", status: "complete" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" }
     })) as Record<string, unknown>;
     expect(dryRefused.applied).toBe(false);
     expect(typeof dryRefused.gate).toBe("string");

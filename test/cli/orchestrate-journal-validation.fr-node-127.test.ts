@@ -45,7 +45,7 @@ const INVALIDATING_LINE = {
   run_id: "run-a",
   engine: "kiwi-orchestrator",
   verb: "emit-and-finish",
-  kind: "result",
+  event: "result",
   wave: "wave-1",
   status: "complete"
 };
@@ -55,7 +55,7 @@ const VALID_LINE = {
   run_id: "run-a",
   engine: "kiwi-orchestrator",
   verb: "author-design",
-  kind: "intent",
+  event: "intent",
   wave: "wave-1"
 };
 

@@ -69,7 +69,7 @@ function invalidLine(runId: string): string {
     run_id: runId,
     engine: "kiwi-orchestrator",
     verb: "emit-and-finish",
-    kind: "result",
+    event: "result",
     wave: "wave-1",
     status: "complete",
     writer: "speckiwi-orchestrate/test"
@@ -190,7 +190,7 @@ describe("FR-NODE-137 AC-5 — a refused mutation exits 2 with applied:false and
 
     const refused = await run([
       "--root", root, "orchestrate", "journal", "append", "--run-id", "run-a",
-      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", kind: "result", wave: "wave-1", status: "complete" })
+      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" })
     ]);
 
     expect(refused.exit).toBe(2);
@@ -208,7 +208,7 @@ describe("FR-NODE-137 AC-6 — --dry-run produces the same exit codes and writes
 
     const refused = await run([
       "--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--dry-run",
-      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", kind: "result", wave: "wave-1", status: "complete" })
+      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" })
     ]);
 
     expect(refused.exit).toBe(2);
@@ -224,7 +224,7 @@ describe("FR-NODE-137 AC-6 — --dry-run produces the same exit codes and writes
 
     const accepted = await run([
       "--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--dry-run",
-      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", kind: "intent", wave: "wave-1" })
+      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" })
     ]);
 
     expect(accepted.exit, JSON.stringify(accepted.payload)).toBe(0);

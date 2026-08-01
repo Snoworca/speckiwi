@@ -33,7 +33,7 @@ function line(options: Line): Record<string, unknown> {
     run_id: options.runId ?? "run-a",
     engine: "kiwi-orchestrator",
     verb: "author-design",
-    kind: "intent",
+    event: "intent",
     wave: "wave-1",
     ...(options.writer ? { writer: options.writer } : {})
   };
