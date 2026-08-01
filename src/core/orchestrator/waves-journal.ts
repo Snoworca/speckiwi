@@ -36,6 +36,20 @@ export function engineOf(event: WavesEvent): Engine {
   return event.engine === "kiwi-orchestrator" ? "kiwi-orchestrator" : DEFAULT_ENGINE;
 }
 
+/**
+ * A verification-round record: a line reporting where a verify loop has got to, not what the run is.
+ *
+ * The discriminator is `round` and not `status`, because a round record cannot be written
+ * status-free — `status` is the one required field the validator enforces, so a line carrying a
+ * `verification` object is refused without it. Nor can it be shape: the contract's own §5 emit
+ * example writes the per-round wave-verify line with `status: "in_progress"`, a full `verification`
+ * object and `phase: "wave-verify"`, which is field-for-field a loop-P round record. The line has to
+ * say what it is. @req FR-NODE-168
+ */
+export function isRoundRecord(event: WavesEvent): boolean {
+  return typeof event.round === "number";
+}
+
 /** The `byVerb` index key. Absent components collapse to an empty segment rather than being dropped. */
 export function verbKey(event: WavesEvent): string {
   const stage = typeof event.stage === "number" ? String(event.stage) : "";
@@ -86,8 +100,11 @@ export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJo
     // discipline writes a result line per verb - so excluding `event` skipped the completion itself
     // and the wave fell back to its previous status. Measured. `status` is the property that matters
     // and the one waves-event.md 2.3 names as the only positive completion signal.
+    // @req FR-NODE-168 — and a round record is excluded even when it does assert one. That footing
+    // used to be free: a round record asserted no status, so `assertsStatus` covered it. It cannot
+    // be written status-free any more, so the exclusion is now explicit.
     const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
-    if (wave !== null && assertsStatus) latestPerWave.set(wave, event);
+    if (wave !== null && assertsStatus && !isRoundRecord(event)) latestPerWave.set(wave, event);
 
     const version = typeof event.schema_version === "string" ? event.schema_version : "";
     if (version.length > 0 && !schemaVersions.includes(version)) schemaVersions.push(version);

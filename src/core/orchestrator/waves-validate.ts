@@ -10,7 +10,7 @@
 // applied per line would refuse the very first write of every verb.
 import type { Diagnostic, DiagnosticSeverity } from "../types.js";
 import { GATE_IDS } from "./auto-gate.js";
-import type { WavesJournalView } from "./waves-journal.js";
+import { isRoundRecord, type WavesJournalView } from "./waves-journal.js";
 import {
   COMPLETION_STATUS,
   EVENT_STATUSES,
@@ -522,10 +522,14 @@ export function computeRunProgress(view: WavesJournalView): RunProgress {
   // measured: `needsFinalVerify` true → false and `runComplete` false → true on a run whose run-scope
   // line was never written. Same discriminator as FR-NODE-159, for the same reason: `kiwi-wave-master`
   // writes no `event` field, so no already-recorded line reads differently.
+  //
+  // @req FR-NODE-168 — the `assertsStatus` half stopped discriminating once a round record had to
+  // carry a status, so a loop-F round record is now excluded by name. Both readers call the one
+  // predicate, which is what keeps them from disagreeing about what a round record is.
   let latestFinalVerify: WavesEvent | null = null;
   for (const event of view.lines) {
     const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
-    if (event.phase === "final-verify" && assertsStatus) latestFinalVerify = event;
+    if (event.phase === "final-verify" && assertsStatus && !isRoundRecord(event)) latestFinalVerify = event;
   }
 
   const conjunctApplies = runIsAtLeast(view, "1.2.0");

@@ -339,6 +339,8 @@ export interface WavesEvent {
   proof?: JournalProof | JournalProof[];
   /** The gate that ended the run, on an `abort-run` line. Closed over `GateId`. @req FR-NODE-167 */
   abort_gate?: string;
+  /** The 1-based round index, and the mark that makes a line a round record. @req FR-NODE-168 */
+  round?: number;
   verification?: Record<string, unknown>;
   design_baseline?: Record<string, unknown>;
   lane_plan?: Record<string, unknown>;
@@ -392,7 +394,10 @@ export const WAVES_EVENT_FIELDS = {
     // @req FR-NODE-167 — the abort line's own field. `reason_class` was written here verbatim from
     // `--reason`, colliding with the name `verification.residual[]` owns over a different closed
     // vocabulary, and enforced nowhere because it was declared nowhere.
-    "abort_gate"
+    "abort_gate",
+    // @req FR-NODE-168 — the round index, and the field both run-state readers key on to tell a
+    // round record from a compliant status assertion. Written today and declared nowhere.
+    "round"
   ]
 } as const;
 
