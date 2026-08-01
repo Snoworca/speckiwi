@@ -849,7 +849,7 @@ verdict 는 **기록된 서브에이전트 판단이고, 도구는 산출된 후
 | **`missing-task`** | 설계는 맞고 계획이 불완전하다 | `--req-filter` 와 `--plan-run-id` 를 함께 준 pipeline 재진입, **다음 wave 전에 해소** |
 | **`design-gap`** | 설계가 덜 규정되었다 | 설계 항목을 **새 아티팩트**로 덧붙이고 증분 `$kiwi-srs`, 계획부터 재진입. 새 `00.design.lock.json` 을 쓰고 `invariant_digest` 가 정당하게 바뀐다 |
 | **`new-wave-required`** | 자기 wave 가 필요하다 | wave 를 추가한다. **run 당 3개 상한**, 초과는 `wave-append-cap-exhausted` |
-| **`design-contradiction`** | 설계 항목이 **거짓**이다 | `design-contradiction-at-wave-boundary`. 중단하고, 모순되는 두 `[D-nnn]` id 를 **증거와 함께 지명**하고, `abort-run` 으로 run 을 끝낸다 |
+| **`design-contradiction`** | 설계 항목이 **거짓**이다 | `design-contradiction-at-wave-boundary`. 중단하고, 모순되는 두 `[D-nnn]` id 를 **증거와 함께 지명**하고, `abort-run` 으로 run 을 끝낸다. **위원회가 결정할 수 없다** — 위원회는 설계의 어느 쪽 절반을 버릴지에 투표하게 되기 때문이다 |
 | **`out-of-run`** | 어느 wave 에도 속하지 않는다 | 닫힌 어휘의 `exclusion_class` 와 함께 기록 |
 
 ### 13.3 `P-WAVE-ISSUES-CLOSED`

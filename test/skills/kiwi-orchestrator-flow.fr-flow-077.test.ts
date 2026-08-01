@@ -584,6 +584,21 @@ describe("FR-FLOW-084 — loop P over five denominators with a single-witness un
       expect(body).toMatch(/worklog `TASK_DONE` 은 `checked` 의 연언으로 인정하지 않는다/);
     }
   });
+
+  it("AC-8 — the bundle swaps the lane-manifest row for the commit range and the analysis bundle", () => {
+    // The phase-1 substitution is the whole point of this row: there are no lane manifests, so the
+    // wave's trailer-keyed commit range plus each unit's own /kiwi-pm analysis bundle stand in for
+    // them, while lanes.lock.json and the handoffs survive unchanged.
+    for (const variant of VARIANTS) {
+      const body = section(variant.body, /^###\s*12\.1\b/m);
+      expect(
+        tiedTogether(body, /커밋 범위/, [/Orch-Lane/, /Orch-Task/, /frozen\.integration_branch/, /docs\/analysis\/kiwi-pm-…/], 500),
+        `${variant.id}: the commit range must be keyed by both trailers and paired with the analysis bundle`
+      ).toBe(true);
+      expect(body, `${variant.id}: lanes.lock.json stays a bundle row`).toContain("lanes.lock.json");
+      expect(body, `${variant.id}: every handoff stays a bundle row`).toMatch(/모든 handoff/);
+    }
+  });
 });
 
 describe("FR-FLOW-085 / FR-FLOW-095 — the wave-boundary issue protocol", () => {
@@ -640,6 +655,12 @@ describe("FR-FLOW-085 / FR-FLOW-095 — the wave-boundary issue protocol", () =>
       }
       const classes = section(variant.body, /^###\s*13\.2\b/m);
       expect(tiedTogether(classes, /design-contradiction-at-wave-boundary/, [/\[D-nnn\]/, /증거와 함께 지명/, /abort-run/], 400)).toBe(true);
+      // The route is not committee-decidable: a committee would be voting on which half of the
+      // design to discard, which is not a question a majority can answer.
+      expect(
+        tiedTogether(classes, /위원회가 결정할 수 없다/, [/design-contradiction/, /설계의 어느 쪽 절반을 버릴지/], 400),
+        `${variant.id}: the not-committee-decidable clause must sit with its reason`
+      ).toBe(true);
       expect(tiedTogether(classes, /new-wave-required/, [/run 당 3개 상한/, /wave-append-cap-exhausted/], 300)).toBe(true);
       const precondition = section(variant.body, /^###\s*13\.3\b/m);
       expect(tiedTogether(precondition, /기록된 한계/, [/형식/, /옳음/, /다음 wave 의 loop P/, /out-of-run/], 500)).toBe(true);
