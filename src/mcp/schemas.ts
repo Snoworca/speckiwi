@@ -305,6 +305,10 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
+  // IR-CLI-081 — CLI-only on the precedent `upgrade` set. `set_active_target` is exposed over MCP
+  // because moving the active target is ordinary agent work; recording a target as released is a
+  // release decision, and no agent makes that unattended.
+  mutationSpec("set-target-status", undefined, "workspace", "setTargetStatus", [DRY_RUN, IGNORE_LOCK]),
   mutationSpec("set-target-goal", "set_target_goal", "workspace", "setTargetGoal", [
     opt("--goal <text>", "goal"),
     DRY_RUN,

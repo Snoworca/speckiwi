@@ -84,7 +84,7 @@ describe("REL-FLOW-002 tool signature parity", () => {
     for (const flag of ["--create", "--type <type>", "--description <text>", "--dry-run", "--json"]) {
       expect(setActiveTargetHelp).toContain(flag);
     }
-    expect(appendix).toContain("speckiwi set-active-target <Target> [--create] [--type <version|release|milestone>] [--description <text>] [--dry-run] [--json]");
+    expect(appendix).toContain("speckiwi set-active-target <Target> [--create] [--type <version|release|milestone|phase|objective|experiment>] [--description <text>] [--dry-run] [--json]");
     expect(agents).toContain("speckiwi set-active-target <target> --create");
     expect(claude).toContain("speckiwi set-active-target <target> --create");
 

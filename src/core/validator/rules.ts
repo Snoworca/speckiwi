@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { diagnostic } from "../diagnostic.js";
 import { parseReportPathCell } from "../completed-work/report-paths.js";
+import { TARGET_STATUS_ACTIVE, TARGET_STATUS_RELEASED } from "../target-types.js";
 import {
   PREFIX_TYPE,
   LEGACY_STABILITY_LEVELS,
@@ -253,7 +254,7 @@ function isLegacyStabilityValue(value: string): boolean {
 }
 
 function targetIsActiveOrReleased(status: string): boolean {
-  return status === "active" || status === "released";
+  return status === TARGET_STATUS_ACTIVE || status === TARGET_STATUS_RELEASED;
 }
 
 export function isRequirementInActiveOrReleasedTarget(workspace: ParsedWorkspace, record: RequirementRecord): boolean {

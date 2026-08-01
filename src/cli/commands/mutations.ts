@@ -1,5 +1,6 @@
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
+import { TARGET_STATUSES_SENTENCE, TARGET_TYPES_SENTENCE } from "../../core/target-types.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { upgradeProject } from "../../core/bootstrap/upgrade-project.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
@@ -11,6 +12,7 @@ import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
+import { setTargetStatus } from "../../core/mutation/set-target-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
@@ -287,7 +289,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("set-active-target")
     .argument("<target>")
     .option("--create", "register the target in Target Map when missing")
-    .option("--type <type>", "target type when --create is used: version, release, or milestone")
+    .option("--type <type>", `target type when --create is used: ${TARGET_TYPES_SENTENCE}`)
     .option("--description <text>", "target description when --create is used")
     .option("--dry-run")
     .option("--ignore-lock")
@@ -300,6 +302,26 @@ export function registerMutationCommands(command: Command, context: CliContext):
         ...(typeof options.description === "string" ? { description: options.description } : {}),
         dryRun: Boolean(options.dryRun),
         ignoreLock: Boolean(options.ignoreLock)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-081 — CLI-only, on the precedent `upgrade` set: marking a target released is a
+  // release decision, author-owned rather than agent-owned.
+  command
+    .command("set-target-status")
+    .argument("<target>")
+    .argument("<status>", `target status: ${TARGET_STATUSES_SENTENCE}`)
+    .option("--dry-run")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (target: string, status: string, options) => {
+      const result = await setTargetStatus(await rootFrom(command.opts()), {
+        target,
+        status,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

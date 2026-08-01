@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { TARGET_TYPES } from "../core/target-types.js";
 import { initProject } from "../core/bootstrap/init-project.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import type { ProjectRoot } from "../core/types.js";
@@ -249,7 +250,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   set_active_target: {
     target: z.string(),
     create: z.boolean().optional(),
-    type: z.enum(["version", "release", "milestone"]).optional(),
+    type: z.enum(TARGET_TYPES).optional(),
     description: z.string().optional(),
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
