@@ -15,7 +15,7 @@ import {
   type VerbName,
   type WavesEvent
 } from "./journal-schema.js";
-import { readLaneDisposition } from "./lane-state.js";
+import { hasMergeWitness, readLaneDisposition, type OrchTrailerCommit } from "./lane-state.js";
 import { computeInvariantDigest, type ResumeCard } from "./resume-card.js";
 // @req FR-NODE-113 — 09 §9.5 step 3's drift check, and deliberately not the classifier: the rung is
 // read on resume, never re-judged, and a module that cannot reach the classifier cannot re-judge it
@@ -34,6 +34,14 @@ export interface GitFacts {
   heartbeats: Array<{ lane: string; mtimeMs: number }>;
   integrationHead: string;
   hostStatusPaths: string[];
+  /**
+   * @req FR-NODE-160 — the commits reachable from the integration branch, with their `Orch-*`
+   * trailers. This is the merge witness a phase-1 run actually leaves: the unit commits onto the
+   * integration branch and creates no lane branch, so a lane-branch ancestry proof is structurally
+   * always false here and a landed unit read as never dispatched. The caller supplies these for the
+   * same reason it supplies every other fact in this bundle — the tool never invents them.
+   */
+  integrationCommits?: readonly OrchTrailerCommit[];
 }
 
 export interface RecordedLaneInputs {
@@ -196,7 +204,14 @@ function classifyLanes(
     const read = readLaneDisposition(view.lines, { wave, stage, lane });
     const disposition = read.ok && read.disposition !== null;
     const branch = branchFor(gitFacts, lane);
-    const merged = branch?.ancestorOfIntegration === true;
+    // @req FR-NODE-160 — the witness a phase-1 run leaves is a trailered commit on the integration
+    // branch, not a lane branch: the unit commits onto integration and creates no branch of its own,
+    // so `ancestorOfIntegration` was always false here and a landed unit fell through to
+    // `not-dispatched` with `execute-unit` next and nothing blocking. The lane-branch form is kept
+    // because phase 2 does create one; either witness is a landing.
+    const merged =
+      branch?.ancestorOfIntegration === true ||
+      hasMergeWitness(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
     const integrated = events.some((event) => event.verb === "integrate-lane" && event.event === "result");
     const live = liveness(gitFacts, lane, hasUnmatchedExternalIntent);
 
