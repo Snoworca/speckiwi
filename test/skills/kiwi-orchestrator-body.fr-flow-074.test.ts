@@ -306,8 +306,8 @@ describe("FR-FLOW-088 — isolation stated in the skill's own section zero", () 
 
   it("AC-2 — every isolation profile named in the phase-1 text is the literal none-serial", () => {
     for (const variant of VARIANTS) {
-      expect(variant.body, `${variant.id}: branch-serial-lane is not a phase-1 profile`).not.toContain("branch-serial-lane");
-      expect(variant.body, `${variant.id}: patch-lane is not a phase-1 profile`).not.toContain("patch-lane");
+      expect(/\bbranch-serial-lane\b/.test(variant.body), `${variant.id}: branch-serial-lane is not a phase-1 profile`).toBe(false);
+      expect(/\bpatch-lane\b/.test(variant.body), `${variant.id}: patch-lane is not a phase-1 profile`).toBe(false);
       for (const window of variant.body.matchAll(/isolation_profile/g)) {
         const near = variant.body.slice(Math.max(0, window.index - 200), window.index + 200);
         expect(near, `${variant.id}: every isolation_profile mention must name none-serial`).toContain("none-serial");
@@ -350,7 +350,7 @@ describe("FR-FLOW-093 — integration branch, committed run artifacts, and the a
   it("AC-1 — the branch is named, created or adopted at 0.b, and recorded in frozen", () => {
     for (const variant of VARIANTS) {
       expect(variant.body).toContain("kiwi/orch/{run_id}/integration");
-      expect(tiedTogether(variant.body, /kiwi\/orch\{?.?run_id.?\}?\/integration/, [/--base-branch/, /frozen/], 600), `${variant.id}: base-branch and frozen must be tied to the branch name`).toBe(true);
+      expect(tiedTogether(variant.body, /kiwi\/orch\/\{run_id\}\/integration/, [/--base-branch/, /frozen/], 600), `${variant.id}: base-branch and frozen must be tied to the branch name`).toBe(true);
       const row = criticalGateRows(variant.body).find((candidate) => candidate.gateId === "integration-branch-unavailable");
       expect(row?.location, `${variant.id}: integration-branch-unavailable at 0.b`).toMatch(/0\.b/);
     }

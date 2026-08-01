@@ -32,7 +32,7 @@ const PLACEHOLDER_FORMS = [
   "<sha>",
   "<id>",
   "<payload>",
-  "<manifest...>",
+  "<manifest…>",
   "<v>",
   "<t>",
   "N",

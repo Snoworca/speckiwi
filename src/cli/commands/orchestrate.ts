@@ -459,6 +459,10 @@ async function collectLineCounts(root: string, existingPaths: readonly string[])
  * and the module's own release performs the token check and closes the kernel fence. Unlinking the
  * sentinel directly would skip both, which within one process leaves the fence held and makes the
  * next acquire refuse a lock nobody holds.
+ *
+ * **This belongs in `src/core/orchestrator/run-lock.ts` as a release-by-path entry point**, beside
+ * `acquire` / `renew` / `release`: the sentinel's format is that module's business, and reading its
+ * token from outside couples this file to a shape it does not own.
  */
 async function releaseRunLock(commonDir: string): Promise<{ owner: string | null }> {
   const lockPath = runLockPath(commonDir);
@@ -494,6 +498,10 @@ interface JournalAppendOutcome {
  * The candidate is materialised beside the journal and parsed with the same parser a reader uses,
  * so validation runs over a real view rather than a reconstructed one. A refusal unlinks the
  * candidate, which leaves the journal byte-identical. There is no flag that skips this.
+ *
+ * **This belongs in `src/core/orchestrator/waves-journal.ts` as `appendWavesEvent`**, which 05 §10.6
+ * names as the kernel behind `orchestrate journal append`. That module exports only the parse today,
+ * so the write lives here; the stamp, the validate-then-rename and the refusal path move with it.
  * @req FR-NODE-127
  */
 async function appendWavesLine(
@@ -926,7 +934,11 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--stage <s>", "the stage under inspection")
     // @req FR-NODE-136 AC-7 — 3.f-prime-prime is bounded at one re-partition pass per stage. The
     // caller states which pass this is; the tool never infers it, having no memory between calls.
-    .option("--repartition-pass <n>", "how many re-partition passes this stage has already had", "0")
+    .option(
+      "--repartition-pass <n>",
+      "re-partition passes this stage has already had; 0 (the default) reports couplings and asks for one pass, 1 or more raises stage-coupling-unresolved",
+      "0"
+    )
     .action(async (options) => {
       await read(orchestrate, options, async () => {
         const handoffs = (await readJsonFile(path.resolve(runRoot(command), options.handoffs as string), "--handoffs")) as ParsedHandoff[];

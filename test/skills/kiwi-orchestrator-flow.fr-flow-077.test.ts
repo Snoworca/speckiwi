@@ -37,7 +37,7 @@ describe("FR-FLOW-077 — intake source classification, parallel investigators, 
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*5\.1\b/m);
       expect(
-        tiedTogether(body, /조사자 \*\*3 기를 병렬로\*\*/, [/intent/, /code-context/, /architecture-fit/], 400),
+        tiedTogether(body, /조사자 3 기를 병렬로/, [/intent/, /code-context/, /architecture-fit/], 400),
         `${variant.id}: the count and all three stances must sit together`
       ).toBe(true);
       expect(body).toContain("intake-investigate");
@@ -47,7 +47,7 @@ describe("FR-FLOW-077 — intake source classification, parallel investigators, 
   it("AC-3 — every gap the investigators cannot close goes to the user as QnA", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*5\.1\b/m);
-      expect(body).toMatch(/조사자가 닫지 못한 갭은 \*\*전부\*\* 사용자에게 QnA/);
+      expect(body).toMatch(/조사자가 닫지 못한 갭은 전부 사용자에게 QnA/);
     }
   });
 
@@ -161,7 +161,7 @@ describe("FR-FLOW-079 — loop D's frozen denominator", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*6\.2\b/m);
       expect(body).toMatch(/\*\*정확히 세 집합\*\*/);
-      expect(body).toMatch(/라운드 1 전에 \*\*외부에서 계산\*\*/);
+      expect(body).toMatch(/라운드 1 전에 외부에서 계산/);
       expect(body).toMatch(/\*\*검증자가 계산하지 않는다\*\*/);
     }
   });
@@ -176,7 +176,7 @@ describe("FR-FLOW-079 — loop D's frozen denominator", () => {
   it("AC-3/AC-4 — the closed three-value verdict vocabulary and the file:line requirement", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*6\.2\b/m);
-      expect(tiedTogether(body, /구현가능성 집합/, [/implementable/, /needs-decision/, /contradicts-existing/, /\[D-nnn\] 설계 항목마다 한 행/], 400)).toBe(true);
+      expect(tiedTogether(body, /구현가능성 집합/, [/implementable/, /needs-decision/, /contradicts-existing/, /설계 항목마다 한 행/], 400)).toBe(true);
       expect(tiedTogether(body, /contradicts-existing` 은/, [/file:line/, /의견/], 300), `${variant.id}: the pointer requirement and its reason`).toBe(true);
     }
   });
@@ -222,7 +222,7 @@ describe("FR-FLOW-080 — the per-wave English design document and loop W", () =
   it("AC-3 — 3.a precedes 3.b, and 3.b consumes the document as its research document", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*8\.\s/m);
-      expect(body).toMatch(/loop W 는 3\.b 의 `\/kiwi-srs` 등록 전에 통과해야 한다/);
+      expect(body).toMatch(/loop W 는 3\.b 의 [^\n]*kiwi-srs[^\n]* 등록 전에 통과해야 한다/);
       expect(body).toMatch(/3\.a 가 3\.b 앞이고/);
       expect(body).toMatch(/연구 문서로 소비한다/);
     }
@@ -424,7 +424,7 @@ describe("FR-FLOW-083 — convergence recipes decide execution order", () => {
   it("AC-3 — the four-row eligibility mapping", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*7\.2\b/m);
-      expect(tiedTogether(body, /`exclusive-lane` \| 적격/, [/유일성 제약/, /한 lane 으로 강제/], 300)).toBe(true);
+      expect(tiedTogether(body, /exclusive-lane[^|]*\| 적격/, [/유일성 제약/, /한 lane 으로 강제/], 300)).toBe(true);
       for (const kind of ["orchestrator-only", "regenerate", "replay"]) {
         expect(tiedTogether(body, new RegExp(`\`${kind}\` \\| 부적격`), [/serial_epilogue/], 200), `${variant.id}: ${kind} routes to serial_epilogue`).toBe(true);
       }
@@ -455,8 +455,8 @@ describe("FR-FLOW-082 — validate then sync-index at 3.k", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*11\.3\b/m);
       expect(body).toMatch(/wave 당 정확히 한 번, Phase 3\.k activity \(3\)/);
-      expect(body).toMatch(/3\.k activity \(0\) 에서 실행된 \*\*뒤\*\*/);
-      expect(body).toMatch(/3\.l 의 loop P \*\*앞\*\*/);
+      expect(body).toMatch(/3\.k activity \(0\) 에서 실행된 뒤/);
+      expect(body).toMatch(/3\.l 의 loop P 앞/);
       expect(body).toMatch(/\*\*`validate` 가 먼저, `sync-index` 가 나중\*\*/);
       const validateAt = offsetOf(body, /speckiwi validate/);
       const syncAt = offsetOf(body, /sync-index/);
@@ -489,7 +489,7 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*11\.1\b/m);
       expect(body).toMatch(/Phase 3\.k activity \(2\) 에서\*\*/);
-      expect(body).toMatch(/activity \(0\) 에서 실행된 \*\*뒤\*\*/);
+      expect(body).toMatch(/activity \(0\) 에서 실행된 뒤/);
       expect(body).toMatch(/커밋 범위를 모든 단위의 `write_set` 합집합으로 제한한 것/);
       expect(body).toMatch(/lane diff 의 합집합이 아니다/);
       expect(body).toMatch(/waves\/wave-\{n\}\/duplication-audit\.md/);

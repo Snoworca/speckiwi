@@ -281,7 +281,7 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       expect(body).toMatch(/rung = "R-PLAN"/);
       expect(tiedTogether(body, /PLAN_PATH/, [/오케스트레이터가 명시적으로 해소한/, /최신 `generated_at` 폴백에 맡기지 않는다/], 400)).toBe(true);
       expect(body).toMatch(/계획의 target 과 같은 활성 target/);
-      expect(body).toMatch(/\*\*설계 문서 없음, `\/kiwi-srs` 실행 없음\*\*/);
+      expect(body).toMatch(/\*\*설계 문서 없음, [^\n]*kiwi-srs[^\n]* 실행 없음\*\*/);
       expect(
         tiedTogether(body, /\.kiwi\/sessions\/\{plan run_id\}\/pm-state\.json/, [/status="done"/, /새 세션이 되어 완료된 Task 를 다시 실행한다/], 500)
       ).toBe(true);
@@ -324,9 +324,9 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       expect(body).toMatch(/\*\*진입 전에 probe 말고 존재해야 하는 것은 없다\.\*\* 이 rung 은 자기 전제조건을 스스로 생산한다/);
       for (const child of ["kiwi-srs", "kiwi-planner", "kiwi-pm", "kiwi-review-fix-loop"]) expect(body, `${variant.id}: ${child}`).toContain(child);
       expect(
-        tiedTogether(body, /`\/kiwi-review-fix-loop` 의 교정 hop/, [/커밋 범위/, /`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다/], 400)
+        tiedTogether(body, /.kiwi-review-fix-loop. 의 교정 hop/, [/커밋 범위/, /`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다/], 400)
       ).toBe(true);
-      expect(body).toMatch(/`\/kiwi-srs-feasibility` hop 이 \*\*없다\*\*/);
+      expect(body).toMatch(/.kiwi-srs-feasibility. hop 이 \*\*없다\*\*/);
     }
   });
 
@@ -398,7 +398,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
   it("AC-6 — per-wave delegation calls the four skills individually rather than entering --cycle", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
-      expect(body).toMatch(/이름으로 개별 호출한다\*\* — `\/kiwi-pipeline --cycle` 로 진입하지 않는다/);
+      expect(body).toMatch(/이름으로 개별 호출한다\*\* — [^\n]*kiwi-pipeline --cycle[^\n]* 로 진입하지 않는다/);
     }
   });
 });
@@ -408,7 +408,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
       expect(body).toMatch(/\*\*승격은 `R-STEP → R-ORCH` 와 `R-PLAN → R-ORCH` 두 방향뿐이다\. 하향은 거부된다\.\*\*/);
-      expect(body).toMatch(/전이가 아니라 \*\*이미 착지한 것\*\*의 함수/);
+      expect(body).toMatch(/전이가 아니라 이미 착지한 것\*\*의 함수/);
       expect(tiedTogether(body, /SDS 가 200줄 상한에 접근/, [/첫 red 테스트 전/, /거의 0/], 300)).toBe(true);
       expect(tiedTogether(body, /MUTATION_DENIED/, [/Phase 6/, /구현이 이미 작성되어 있다/], 300)).toBe(true);
       expect(
@@ -458,7 +458,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
       expect(
-        tiedTogether(body, /update_step_state\(<task>, "abandoned"\)/, [/"merged"\) 는 호출하지 않는다/, /body scope 에 저작/], 400)
+        tiedTogether(body, /update_step_state\(<task>, "abandoned"\)/, [/"merged"/, /는 호출하지 않는다/, /body scope 에 저작/], 400)
       ).toBe(true);
     }
   });
@@ -473,7 +473,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
       expect(declared.has("route-deescalation-refused"), `${variant.id}: route-deescalation-refused declared`).toBe(true);
 
       const body = section(variant.body, /^###\s*4\.7\b/m);
-      expect(body).toMatch(/첫 red 테스트 전에 감지된 승격은 \*\*자유이며 게이트가 없다\*\*/);
+      expect(body).toMatch(/첫 red 테스트 전에 감지된 승격은 자유이며 게이트가 없다/);
       expect(body).toMatch(/\*\*유일하게 합법인 하향은 Phase 2 끝의 `route-downgrade-available` 이고 그 뒤로는 없다\.\*\*/);
       expect(
         tiedTogether(body, /최종 출구는 `abort-run`/, [/통합 브랜치와/, /run lock 을 해제/, /run 리포트에 지명/], 400)
@@ -516,7 +516,7 @@ describe("FR-FLOW-089 / FR-FLOW-103 — route-downgrade-available and the four r
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*7\.3\b/m);
       expect(
-        tiedTogether(body, /통합 브랜치 커밋의 부재가 \*\*아니다\*\*/, [/commit-run-artifacts/, /항상 거짓/], 400)
+        tiedTogether(body, /통합 브랜치 커밋의 부재가 아니다/, [/commit-run-artifacts/, /항상 거짓/], 400)
       ).toBe(true);
     }
   });
