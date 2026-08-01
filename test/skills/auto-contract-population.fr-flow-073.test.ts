@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTO_OPTION_COPIES,
   COMMITTEE,
+  GOVERNING_MINIMUM,
   MINIMUM,
   RUNG,
   SPREAD,
@@ -109,7 +110,8 @@ describe("FR-FLOW-073 — committee-decided gate population bounded by the two c
 
       // Condition 1 — the minimum within the winning bloc under a split vote.
       expect(
-        tiedTogether(text, WINNING_BLOC, [MINIMUM], 420),
+        GOVERNING_MINIMUM.test(text) &&
+          tiedTogether(text, WINNING_BLOC, [MINIMUM, /split|2-1|분할/i], 480),
         `FR-FLOW-073 AC-3: ${copy.id} must carry the minimum-within-the-winning-bloc rule for a split vote`
       ).toBe(true);
 

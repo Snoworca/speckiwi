@@ -226,4 +226,28 @@ describe("FR-NODE-150 computeResumeState", () => {
     expect(lane?.klass).toBe("lane-quarantined");
     expect(lane?.nextVerb).toBeNull();
   });
+
+  // @req FR-NODE-107 — `lane-quarantined` is `D(k)` present with a kind from the CLOSED enum
+  // (`demoted` | `quarantined` | `coupling-reset` | `refuted`), not `lane_disposition` merely being
+  // present. Classifying on presence alone lets a mistyped kind read as terminal, and a resumed
+  // session then treats a lane as settled on the strength of a value nothing recognised — settling
+  // work is the direction that loses it. `lane-state.ts`'s `readLaneDisposition` owns the validated
+  // read and refuses with `lane-disposition-kind-invalid`.
+  it("does not settle a lane whose disposition kind is outside the closed enum", async () => {
+    const view = await journalView([
+      waveVerify(V14),
+      result("execute-unit", {
+        stage: 1,
+        lane: "lane-1",
+        lane_disposition: { kind: "abandoned", reason: "not a member of the closed enum" }
+      })
+    ]);
+
+    const state = computeResumeState(view, minimalCard(), emptyGitFacts(), emptyDriftInputs());
+    const lane = state.classification.find((entry) => entry.lane === "lane-1");
+
+    expect(lane?.klass).not.toBe("lane-quarantined");
+    expect(lane?.klass).toBe("not-dispatched");
+    expect(lane?.nextVerb).toBe("execute-unit");
+  });
 });

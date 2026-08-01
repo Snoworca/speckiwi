@@ -15,6 +15,7 @@ import {
   type VerbName,
   type WavesEvent
 } from "./journal-schema.js";
+import { readLaneDisposition } from "./lane-state.js";
 import { computeInvariantDigest, type ResumeCard } from "./resume-card.js";
 import type { WavesJournalView } from "./waves-journal.js";
 
@@ -170,7 +171,13 @@ function classifyLanes(
 
   return [...lanes].sort().map((lane) => {
     const events = view.lines.filter((event) => event.lane === lane && event.wave === `wave-${wave}`);
-    const disposition = events.some((event) => event.event === "result" && event.lane_disposition !== undefined);
+    // @req FR-NODE-107 — `D(k)` is a disposition whose `kind` is in the closed enum, not the mere
+    // presence of a `lane_disposition` object. Classifying on presence let a mistyped kind read as
+    // terminal, so a resumed session settled a lane on a value nothing recognised — and settling is
+    // the direction that loses work. `readLaneDisposition` refuses an out-of-enum kind, and a refusal
+    // is not a settlement: the lane falls through to the classes below.
+    const read = readLaneDisposition(view.lines, { wave, stage, lane });
+    const disposition = read.ok && read.disposition !== null;
     const branch = branchFor(gitFacts, lane);
     const merged = branch?.ancestorOfIntegration === true;
     const integrated = events.some((event) => event.verb === "integrate-lane" && event.event === "result");

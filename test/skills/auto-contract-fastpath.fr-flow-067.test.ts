@@ -1,3 +1,5 @@
+import { globSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +14,7 @@ import {
   NO_MACHINE_MEANING,
   PROSE_RECOMMENDATION_LABEL,
   RECOMMENDED_MARKER,
+  REPO_ROOT,
   TIE_BREAK,
   autoOptionText,
   readRepoFile,
@@ -251,5 +254,29 @@ describe("FR-FLOW-067 — recommended-marked gate option adopted with no committ
       windowsAround(text, PROSE_RECOMMENDATION_LABEL, 120).filter((w) => /HALT/.test(w)).length,
       "FR-FLOW-067 AC-4: two of the three (권장) labels are expected to annotate a HALT option"
     ).toBe(2);
+  });
+
+  it("AC-4: no gate option in the pre-existing bundled suite carries recommended: true", () => {
+    // Stated positively rather than left true by omission: the fast path ships with ZERO members,
+    // and the day someone marks an option this test says so rather than staying silent.
+    //
+    // `kiwi-orchestrator` is excluded by name, not overlooked: its routing gates declare the marker
+    // deliberately and are the fast path's first intended consumer. Every other bundled skill is in
+    // scope, so a marker appearing anywhere else is caught.
+    const scanned = globSync("{skills/*,.agents/skills}/kiwi-*/SKILL.md", { cwd: REPO_ROOT }).filter(
+      (relPath) => !relPath.includes("kiwi-orchestrator")
+    );
+    // An empty glob would make the census below pass while checking nothing.
+    expect(
+      scanned.length,
+      "FR-FLOW-067 AC-4: the census must actually reach the bundled skills"
+    ).toBeGreaterThan(40);
+
+    const marked = scanned.filter((relPath) => RECOMMENDED_MARKER.test(readRepoFile(relPath)));
+
+    expect(
+      marked,
+      "FR-FLOW-067 AC-4: no pre-existing bundled skill may carry recommended: true, so the fast path starts with no member"
+    ).toEqual([]);
   });
 });

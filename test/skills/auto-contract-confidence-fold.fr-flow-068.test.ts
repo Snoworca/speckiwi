@@ -4,6 +4,7 @@ import {
   AUTO_OPTION_COPIES,
   COMMITTEE,
   CRITICAL,
+  GOVERNING_MINIMUM,
   MINIMUM,
   RUNG,
   SPREAD,
@@ -84,10 +85,16 @@ describe("FR-FLOW-068 — confidence-spread cross-check folded into the confiden
       ).toBe(true);
 
       // The governing confidence: the minimum within the winning bloc, after the per-member
-      // adjustments; the whole committee when the vote is unanimous.
+      // adjustments; the whole committee when the vote is unanimous. The first assertion is
+      // sentence-scoped because a proximity window here is satisfied by the rule's own exclusion
+      // list even when the rule has been changed to a mean.
+      expect(
+        GOVERNING_MINIMUM.test(text),
+        `FR-FLOW-068 AC-2: ${copy.id} must state that the governing confidence is the minimum taken within the winning bloc`
+      ).toBe(true);
       expect(
         tiedTogether(text, WINNING_BLOC, [MINIMUM, UNANIMOUS, COMMITTEE], 480),
-        `FR-FLOW-068 AC-2: ${copy.id} must state that the governing confidence is the minimum within the winning bloc, the whole committee when the vote is unanimous`
+        `FR-FLOW-068 AC-2: ${copy.id} must state that the winning bloc is the whole committee when the vote is unanimous`
       ).toBe(true);
 
       // Escalation to critical fires only when that one value falls below the threshold in force.

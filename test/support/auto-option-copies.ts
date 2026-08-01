@@ -152,3 +152,15 @@ export const SPREAD = /spread|교차\s*검증|최고[·\s]*최저|highest\s+and\
 export const WINNING_BLOC =
   /winning\s+bloc|승리\s*(?:블록|진영|다수)|채택된?\s*옵션에?\s*투표한/i;
 export const MINIMUM = /minimum|lowest|최소|가장\s*낮은/i;
+
+/**
+ * The governing-confidence rule itself: the value TAKEN is the minimum, within the winning bloc.
+ *
+ * A window assertion pairing `minimum` with `winning bloc` is satisfied by the criterion's own
+ * exclusion list — "not the mean of the winning bloc, not the minimum across all members" — and so
+ * survives a mutation that changes the operative sentence from minimum to mean. A mutation probe
+ * caught exactly that, which is why this pattern requires the two tokens inside one sentence with
+ * the verb that adopts the value, and refuses to cross a sentence boundary.
+ */
+export const GOVERNING_MINIMUM =
+  /(?:take|takes|is|use|uses)\s+the\s+\*{0,2}minimum\*{0,2}[^.]{0,140}?winning\s+bloc|승리\s*블록[^.]{0,80}?최소값|최소값[^.]{0,80}?승리\s*블록/i;

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTO_OPTION_COPIES,
   CRITICAL,
+  GOVERNING_MINIMUM,
   MINIMUM,
   WINNING_BLOC,
   autoOptionText,
@@ -33,9 +34,17 @@ describe("FR-FLOW-069 — governing confidence under a split vote is the minimum
         `FR-FLOW-069 AC-1: ${copy.id} must name the winning bloc`
       ).toBe(true);
 
+      // The operative rule, inside one sentence. A proximity window would be satisfied by the
+      // exclusion list below ("not the minimum across all members") even after the rule itself was
+      // changed to a mean — a mutation probe demonstrated exactly that.
+      expect(
+        GOVERNING_MINIMUM.test(text),
+        `FR-FLOW-069 AC-1: ${copy.id} must state that the governing confidence is the minimum taken within the winning bloc`
+      ).toBe(true);
+
       expect(
         tiedTogether(text, WINNING_BLOC, [MINIMUM, /split|non-?unanimous|2-1|분할|비만장일치/i], 480),
-        `FR-FLOW-069 AC-1: ${copy.id} must state that under a split vote the governing confidence is the minimum within the winning bloc`
+        `FR-FLOW-069 AC-1: ${copy.id} must tie that rule to the split-vote case`
       ).toBe(true);
 
       // Order matters: the adjustments are applied first, then the minimum is taken.
