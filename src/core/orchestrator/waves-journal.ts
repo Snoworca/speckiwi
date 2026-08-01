@@ -7,7 +7,7 @@
 // rather than a second implementation.
 import { parseWorkflowJsonl } from "../workflow/jsonl.js";
 import type { Diagnostic, ProjectRoot } from "../types.js";
-import { DEFAULT_ENGINE, WAVES_SCHEMA_VERSIONS, waveNumber, type Engine, type WavesEvent } from "./journal-schema.js";
+import { DEFAULT_ENGINE, EVENT_STATUSES, WAVES_SCHEMA_VERSIONS, waveNumber, type Engine, type WavesEvent } from "./journal-schema.js";
 
 /** The journal's repo-relative path (waves-event.md §1's run-root pin resolves the root, not this). */
 export const WAVES_JOURNAL_PATH = "kiwi/waves.jsonl";
@@ -80,8 +80,14 @@ export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJo
     // only v1.4.0 program-counter lines carry — `kiwi-wave-master` writes none, so every line either
     // engine has already recorded reads exactly as it did before.
     const wave = waveNumber(event.wave);
-    const isProgramCounter = typeof event.event === "string" && event.event.length > 0;
-    if (wave !== null && !isProgramCounter) latestPerWave.set(wave, event);
+    // @req FR-NODE-159 - a line becomes the wave's latest status only if it ASSERTS one. The first
+    // repair keyed on `event` and was wrong: a compliant wave completion may itself be a verb result
+    // line - FR-NODE-152 requires a verdict-bearing line to carry an external proof, and the write
+    // discipline writes a result line per verb - so excluding `event` skipped the completion itself
+    // and the wave fell back to its previous status. Measured. `status` is the property that matters
+    // and the one waves-event.md 2.3 names as the only positive completion signal.
+    const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
+    if (wave !== null && assertsStatus) latestPerWave.set(wave, event);
 
     const version = typeof event.schema_version === "string" ? event.schema_version : "";
     if (version.length > 0 && !schemaVersions.includes(version)) schemaVersions.push(version);

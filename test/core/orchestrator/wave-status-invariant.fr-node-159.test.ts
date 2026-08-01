@@ -71,16 +71,31 @@ describe("FR-NODE-159 — a program-counter line leaves the computed wave status
     expect(after.firstIncompleteWave, "a finished wave must not become the first incomplete one").toBe(before.firstIncompleteWave);
   });
 
-  it("AC-2: the same holds when the verb line carries a status of its own", async () => {
-    const before = await progress(MIXED);
+  it("AC-2: a line that DOES assert a status is honoured, because a compliant completion may be one", async () => {
+    // The first repair keyed on `event` and excluded every verb line. That was wrong: FR-NODE-152
+    // requires a verdict-bearing line to carry an external proof and the write discipline writes a
+    // result line per verb, so a compliant wave completion can itself be a verb result. Excluding it
+    // skipped the completion and the wave fell back to its previous status. Measured, then reversed.
     const after = await progress([...MIXED, verbLine("wave-1", { status: "in_progress" })]);
-    expect([...after.waveStatuses]).toEqual([...before.waveStatuses]);
-    expect(after.firstIncompleteWave).toBe(before.firstIncompleteWave);
+    expect([...after.waveStatuses], "an explicit status assertion must be taken at its word").toEqual([
+      [1, "in_progress"],
+      [2, "in_progress"]
+    ]);
+  });
+
+  it("AC-4: a wave completion written as a verb result still completes the wave", async () => {
+    const completion = { ...BASE, wave: "wave-2", order: 2, target: "wave-2", verb: "emit-and-finish", event: "result", status: "complete", summary: "done", verification: { verdict: "pass" }, proof: { kind: "git-trailer", ref: "abc123" } };
+    const after = await progress([...MIXED, completion]);
+    expect([...after.waveStatuses]).toEqual([
+      [1, "complete"],
+      [2, "complete"]
+    ]);
+    expect(after.firstIncompleteWave).toBeNull();
   });
 
   it("AC-3: no verb line changes whether a final verification is still owed", async () => {
     const before = await progress(MIXED);
-    for (const line of [verbLine("wave-1"), verbLine("wave-2"), verbLine("wave-1", { status: "in_progress" }), verbLine("wave-2", { status: "complete" })]) {
+    for (const line of [verbLine("wave-1"), verbLine("wave-2")]) {
       const after = await progress([...MIXED, line]);
       expect(after.needsFinalVerify, `${JSON.stringify(line.wave)} ${JSON.stringify(line.status)}`).toBe(before.needsFinalVerify);
     }

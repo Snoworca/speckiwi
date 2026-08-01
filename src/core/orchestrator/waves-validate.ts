@@ -499,8 +499,8 @@ export function computeRunProgress(view: WavesJournalView): RunProgress {
   // writes no `event` field, so no already-recorded line reads differently.
   let latestFinalVerify: WavesEvent | null = null;
   for (const event of view.lines) {
-    const isProgramCounter = typeof event.event === "string" && event.event.length > 0;
-    if (event.phase === "final-verify" && !isProgramCounter) latestFinalVerify = event;
+    const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
+    if (event.phase === "final-verify" && assertsStatus) latestFinalVerify = event;
   }
 
   const conjunctApplies = runIsAtLeast(view, "1.2.0");
