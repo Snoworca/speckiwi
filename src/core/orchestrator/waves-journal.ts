@@ -72,8 +72,16 @@ export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJo
       else byVerb.set(key, [event]);
     }
 
+    // @req FR-NODE-159 — a program-counter line records that a verb ran; it asserts nothing about the
+    // wave's state, so it must not become the wave's latest status. Letting it corrupts the run in
+    // both directions, measured: a statusless verb line removed its wave from the map entirely, so a
+    // resumed run skipped an unfinished wave and went to final verification; stamping the line
+    // `in_progress` instead reopened a wave that had completed. The discriminator is `event`, which
+    // only v1.4.0 program-counter lines carry — `kiwi-wave-master` writes none, so every line either
+    // engine has already recorded reads exactly as it did before.
     const wave = waveNumber(event.wave);
-    if (wave !== null) latestPerWave.set(wave, event);
+    const isProgramCounter = typeof event.event === "string" && event.event.length > 0;
+    if (wave !== null && !isProgramCounter) latestPerWave.set(wave, event);
 
     const version = typeof event.schema_version === "string" ? event.schema_version : "";
     if (version.length > 0 && !schemaVersions.includes(version)) schemaVersions.push(version);

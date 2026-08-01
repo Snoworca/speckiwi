@@ -23,6 +23,10 @@ Thumbs.db
 .kiwi/
 .serena/
 
-# Atomic-write scratch files left beside an SRS document when a mutation races another
-# writer. Committed twice by `git add -A` before this entry existed.
-docs/spec/.speckiwi-*.tmp
+# Atomic-write scratch files. `apply-patch.ts` writes `.speckiwi-<uuid>.tmp` beside the file it
+# patches, so the directory follows the document — `docs/spec/` for a scope SRS but
+# `docs/spec/steps/<task>/` for a step one — and `merge-journal.ts` writes two further shapes at the
+# repository root. Keyed to the filename rather than to one directory: the first version of this
+# entry named `docs/spec/` alone, which left every other site staged by `git add -A`. @req FR-NODE-158
+.speckiwi-*.tmp
+.speckiwi-merge-journal.json.*.tmp
