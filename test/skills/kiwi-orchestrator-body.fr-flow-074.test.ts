@@ -152,6 +152,84 @@ describe("FR-FLOW-074 — the kiwi-orchestrator skill ships in three variants", 
   });
 });
 
+describe("D1 extraction — the orchestrator is the referrer that keeps the shared modules installed", () => {
+  // `installSharedResources` copies only the `_shared/kiwi/` files some installed skill references and
+  // deletes the rest (`pruneSharedMirror`). `run-ledger.md` is referenced by no other skill, so if this
+  // §0 row is ever dropped the module is pruned out of the mirror on the next install and every rule it
+  // carries — the resume-card schema, the verb enum, the recovery classes — disappears with it.
+  const COLLECTOR = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+
+  const EXTRACTED = ["verify-loop.md", "wave-decomposition.md", "wave-srs-registration.md", "run-ledger.md"];
+
+  /** The renderings whose reference form the installer's collector matches. */
+  const RELATIVE_RENDERINGS = ["skills/codex/kiwi-orchestrator/SKILL.md", "skills/etc/kiwi-orchestrator/SKILL.md", ORCHESTRATOR_MIRROR];
+
+  function collectedModules(relPath: string): Set<string> {
+    const out = new Set<string>();
+    for (const match of readVariant(relPath).matchAll(COLLECTOR)) {
+      const reference = match[1]?.replace(/[),.;:'"`]+$/g, "");
+      if (reference) out.add(reference.split("/").pop() as string);
+    }
+    return out;
+  }
+
+  it("the replicated collector pattern still matches the one install-skill.ts uses", () => {
+    // A copied regex that drifts from its source proves nothing, so the source is asserted to still
+    // carry it. If install-skill.ts changes the pattern, this fails rather than passing stale.
+    const installer = readFileSync(path.join(REPO_ROOT, "src/core/skills/install-skill.ts"), "utf8");
+    expect(installer, "install-skill.ts must still use the replicated reference pattern").toContain(COLLECTOR.source);
+  });
+
+  it("every `../`-form rendering keeps all four extracted modules alive through the prune", () => {
+    for (const relPath of RELATIVE_RENDERINGS) {
+      const kept = collectedModules(relPath);
+      expect([...EXTRACTED].filter((module) => !kept.has(module)), `${relPath} would let these be pruned`).toEqual([]);
+    }
+  });
+
+  it("the claude rendering names all four in §0 at the version each module declares", () => {
+    // The claude tree writes `~/.claude/skills/_shared/…`, which the collector deliberately does not
+    // match, so the prune never runs against it — but the §0 reference must still be there and current.
+    const zero = section(stripFrontmatter(readVariant("skills/claude/kiwi-orchestrator/SKILL.md")), /^##\s*0\.\s/m);
+    for (const module of EXTRACTED) {
+      const declared = /^#\s+.*?\b(v\d+\.\d+\.\d+)/m.exec(readVariant(`skills/claude/_shared/kiwi/${module}`))?.[1];
+      expect(declared, `${module} must declare a version in its own header`).toBeDefined();
+      expect(zero, `§0 must reference ${module}`).toContain(`_shared/kiwi/${module}`);
+      expect(
+        new RegExp(`_shared/kiwi/${module.replace(".", "\\.")}\`? ${declared}`).test(zero),
+        `§0 must cite ${module} at ${declared}, the version the module itself declares`
+      ).toBe(true);
+    }
+  });
+});
+
+describe("gate ids are declared once — no table row shadows the §0.G lookup", () => {
+  // The release parity extractor scrapes gate ids out of table rows across the whole body, and a text
+  // assertion that resolves a gate by its first occurrence lands on whichever row comes first. So the
+  // first table row carrying a bare gate id must be the authoritative one.
+  it("every gate-shaped table row's first occurrence is in §0.G or §0.S", () => {
+    for (const variant of VARIANTS) {
+      const lines = variant.body.split("\n");
+      const owningSection = (index: number): string => {
+        for (let i = index; i >= 0; i -= 1) {
+          const heading = /^#{2,4}\s+(\S+)/.exec(lines[i] ?? "");
+          if (heading) return heading[1] as string;
+        }
+        return "(preamble)";
+      };
+
+      const declared = [...criticalGateRows(variant.body).map((row) => row.gateId), ...gateSeverityRows(variant.body).map((row) => row.gateId)];
+      const offenders: string[] = [];
+      for (const gateId of declared) {
+        const firstRow = lines.findIndex((line) => new RegExp(`^\\|\\s*\\**\`${gateId}\`\\**\\s*\\|`).test(line.trim()));
+        const owner = owningSection(firstRow);
+        if (!["0.G", "0.S"].includes(owner)) offenders.push(`${gateId} first appears as a row in §${owner}`);
+      }
+      expect(offenders, `${variant.id}: a non-authoritative row must not precede the declaration`).toEqual([]);
+    }
+  });
+});
+
 describe("FR-FLOW-075 — the resume procedure is the first operative content", () => {
   it("AC-1 — the numbered procedure precedes every phase and verb section in each variant", () => {
     for (const variant of VARIANTS) {
@@ -202,6 +280,24 @@ describe("FR-FLOW-075 — the resume procedure is the first operative content", 
   it("AC-5 — a resumed session never reconstructs run state from conversation", () => {
     for (const variant of VARIANTS) {
       expect(/재개 세션은 대화에서 run 상태를 복원하지 않는다/.test(variant.body), `${variant.id}: the never-from-conversation rule must be a normative sentence`).toBe(true);
+    }
+  });
+
+  it("AC-2 — both preflight roots are supplied, and neither is described as defaulting", () => {
+    // `orchestrate preflight` declares both as requiredOption, and P.1 compares one against the other:
+    // if the skill told a resumed session either root could be left to the tool, the two sides of the
+    // comparison would come from one source and the mismatch P.1 exists to catch could never fire.
+    const cli = readFileSync(path.join(REPO_ROOT, "src/cli/commands/orchestrate.ts"), "utf8");
+    expect(cli, "--git-root must still be a requiredOption for this rule to hold").toContain('.requiredOption("--git-root <path>"');
+    expect(cli, "--mcp-root must still be a requiredOption for this rule to hold").toContain('.requiredOption("--mcp-root <path>"');
+
+    for (const variant of VARIANTS) {
+      const body = section(variant.body, /^##\s*1\.\s.*재개/m);
+      expect(body).toMatch(/`--mcp-root` 와 `--git-root` 는 \*\*둘 다 필수이며 어느 쪽도 기본값을 갖지 않는다\*\*/);
+      expect(/기본값|defaults to/.test(body.replace(/어느 쪽도 기본값을 갖지 않는다/, "")), `${variant.id}: no root may be described as defaulting`).toBe(false);
+      // Step 2 is one command: the `--git-root` continuation line must follow `--mcp-root` directly.
+      const step2 = /^2\. speckiwi orchestrate preflight[^\n]*\n([^\n]*)$/m.exec(body);
+      expect(step2?.[1], `${variant.id}: the preflight invocation must not be split by prose`).toMatch(/^\s*--git-root/);
     }
   });
 

@@ -426,7 +426,7 @@ describe("FR-FLOW-083 — convergence recipes decide execution order", () => {
       const body = section(variant.body, /^###\s*7\.2\b/m);
       expect(tiedTogether(body, /exclusive-lane[^|]*\| 적격/, [/유일성 제약/, /한 lane 으로 강제/], 300)).toBe(true);
       for (const kind of ["orchestrator-only", "regenerate", "replay"]) {
-        expect(tiedTogether(body, new RegExp(`\`${kind}\` \\| 부적격`), [/serial_epilogue/], 200), `${variant.id}: ${kind} routes to serial_epilogue`).toBe(true);
+        expect(tiedTogether(body, new RegExp(`${kind}[^|]*\\| 부적격`), [/serial_epilogue/], 200), `${variant.id}: ${kind} routes to serial_epilogue`).toBe(true);
       }
     }
   });
@@ -458,8 +458,11 @@ describe("FR-FLOW-082 — validate then sync-index at 3.k", () => {
       expect(body).toMatch(/3\.k activity \(0\) 에서 실행된 뒤/);
       expect(body).toMatch(/3\.l 의 loop P 앞/);
       expect(body).toMatch(/\*\*`validate` 가 먼저, `sync-index` 가 나중\*\*/);
-      const validateAt = offsetOf(body, /speckiwi validate/);
-      const syncAt = offsetOf(body, /sync-index/);
+      // Scoped past the section heading, which names both commands as its own title.
+      const prose = body.slice(body.indexOf("\n"));
+      const validateAt = offsetOf(prose, /speckiwi validate/);
+      const syncAt = offsetOf(prose, /sync-index/);
+      expect(validateAt, `${variant.id}: validate is named before sync-index`).toBeGreaterThan(-1);
       expect(validateAt, `${variant.id}: validate is named before sync-index`).toBeLessThan(syncAt);
     }
   });

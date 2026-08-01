@@ -1,11 +1,11 @@
 ---
 name: kiwi-orchestrator
-description: "OpenCode/Hermes local-LLM variant of the design-first orchestrator. Takes a thin intent, a research document, or a GitHub issue and drives one resumable run through intake, routing, design freeze, wave decomposition, a published parallelisability analysis, English handoffs, serial execution on its own integration branch, post-execution verification, and requirement promotion. Judges scale and scope itself and routes to R-STEP ($kiwi-tdd), R-PLAN ($kiwi-pm), or R-ORCH (the shared wave engine). Progress is persisted in ./kiwi/waves.jsonl and a resume card, so a compacted session resumes. Requires working speckiwi mcp when SRS state is touched. Defaults to --max and never fans out to multiple workers. Triggers: kiwi orchestrator, orchestrate run, design-to-implementation run, large task orchestration. Options: --auto (auto-decide user gates, safety gates still apply), --max, --mini / --loops N, --work, --base-branch, --lanes N."
+description: "OpenCode/Hermes local-LLM variant of the design-first orchestrator. Takes a thin intent, a research document, or a GitHub issue and drives one resumable run through intake, routing, design freeze, wave decomposition, a published parallelisability analysis, English handoffs, serial execution on its own integration branch, post-execution verification, and requirement promotion. Judges scale and scope itself and routes to R-STEP ($kiwi-tdd), R-PLAN ($kiwi-pm), or R-ORCH (the shared wave engine). Progress is persisted in ./kiwi/waves.jsonl and a resume card, so a compacted session resumes. Requires a working MCP connection when SRS state is touched. Defaults to --max and never fans out to multiple workers. Triggers: kiwi orchestrator, orchestrate run, design-to-implementation run, large task orchestration. Options: --auto (auto-decide user gates, safety gates still apply), --max, --mini / --loops N, --work, --base-branch, --lanes N."
 ---
 
 # kiwi-orchestrator v0.1
 
-> etc local-LLM profile: read ../_shared/kiwi/local-llm-profile.md before executing. It requires working speckiwi mcp, treats --max as the default, disables multi-worker fanout, uses one delegated worker/evaluator at a time, and advances only after three consecutive no-improvement evaluations.
+> etc local-LLM profile: read ../_shared/kiwi/local-llm-profile.md before executing. It requires a working MCP connection, treats --max as the default, disables multi-worker fanout, uses one delegated worker/evaluator at a time, and advances only after three consecutive no-improvement evaluations.
 
 **etc override:** If any legacy section below appears to allow CLI mutation fallback or direct normal SRS Markdown mutation, the shared etc local-LLM profile wins: normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only.
 
@@ -133,7 +133,8 @@ description: "OpenCode/Hermes local-LLM variant of the design-first orchestrator
 
 ```
 1. docs/research/{work}/00.run-contract.md
-2. speckiwi orchestrate preflight --mcp-root <mcp_workspace_info.workspaceRoot>
+2. speckiwi orchestrate preflight --mcp-root <path>
+   (<path> is mcp_workspace_info's workspaceRoot; --git-root defaults to the git toplevel)
                                   --git-root <git rev-parse --show-toplevel> --json
 3. speckiwi orchestrate resume --json
 4. blocking 이면: next_action.verb 만 수행한다.

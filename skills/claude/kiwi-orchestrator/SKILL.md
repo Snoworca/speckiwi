@@ -129,7 +129,8 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 
 ```
 1. docs/research/{work}/00.run-contract.md
-2. speckiwi orchestrate preflight --mcp-root <mcp_workspace_info.workspaceRoot>
+2. speckiwi orchestrate preflight --mcp-root <path>
+   (<path> is mcp_workspace_info's workspaceRoot; --git-root defaults to the git toplevel)
                                   --git-root <git rev-parse --show-toplevel> --json
 3. speckiwi orchestrate resume --json
 4. blocking 이면: next_action.verb 만 수행한다.
