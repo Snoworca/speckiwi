@@ -486,3 +486,23 @@ describe("FR-NODE-147 AC-3 the four recipe kinds reach their declared assignment
     expect(lanedPlan.serialEpilogue).toEqual(["T-ONLY-NEXT"]);
   });
 });
+
+// The vocabulary this module owns is registered on `journal-schema.ts` by import, not by
+// restatement. `journal-schema.ts`'s own comment on `REASON_CLASSES` records why: that one was
+// restated, drifted to six values against the shipped contract's eight, and the two the
+// orchestrator's own stops write were being diagnosed as invalid. `CONFLICT_REASONS` and
+// `RECIPE_KINDS` were the two left restated, and both had drifted the same way — the copy carried
+// ten reasons against eleven here, and the recipe order, which `resolveRecipeKind` ranks on, was
+// different. Identity by `toBe`, because `toEqual` accepts a restated literal and that is the
+// failure being closed.
+describe("FR-NODE-147 — the conflict vocabularies are registered by import, not restated", () => {
+  it("journal-schema registers this module's CONFLICT_REASONS array itself", async () => {
+    const journalSchema = await import("../../../src/core/orchestrator/journal-schema.js");
+    expect(journalSchema.CONFLICT_REASONS).toBe(CONFLICT_REASONS);
+  });
+
+  it("journal-schema registers this module's RECIPE_KINDS array itself, order included", async () => {
+    const journalSchema = await import("../../../src/core/orchestrator/journal-schema.js");
+    expect(journalSchema.RECIPE_KINDS).toBe(RECIPE_KINDS);
+  });
+});

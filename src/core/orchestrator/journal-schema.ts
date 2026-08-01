@@ -135,24 +135,21 @@ export type ProofKind = (typeof PROOF_KINDS)[number];
 export const EXTERNAL_PROOF_KINDS = ["git-ancestor", "git-ref", "git-trailer", "digest", "mcp-state"] as const;
 export type ExternalProofKind = (typeof EXTERNAL_PROOF_KINDS)[number];
 
-/** 05 §5.2. */
-export const CONFLICT_REASONS = [
-  "task-dependency",
-  "phase-dependency",
-  "write-set-overlap",
-  "tdd-pair",
-  "req-shared",
-  "convergence-point",
-  "module-barrier",
-  "unknown-write-set",
-  "srs-write",
-  "non-code-write-set"
-] as const;
-export type ConflictReason = (typeof CONFLICT_REASONS)[number];
-
-/** 05 §5.2's convergence-point recipe kinds. */
-export const RECIPE_KINDS = ["exclusive-lane", "orchestrator-only", "regenerate", "replay"] as const;
-export type RecipeKind = (typeof RECIPE_KINDS)[number];
+/**
+ * 05 §5.2 — re-exported from `conflict.ts`, which owns both vocabularies because `analyzeConflicts`
+ * is what produces a reason and `resolveRecipeKind` is what ranks a kind.
+ *
+ * Both were restated here and both had drifted, which makes them the third and fourth instance of
+ * the failure the `REASON_CLASSES` comment below documents. The copy carried **ten** reasons against
+ * the owner's eleven — `learned-coupling`, a live member of `SAME_LANE_REASONS`, was missing — and
+ * `RECIPE_KINDS` was set-equal but in a **different order**, which is not cosmetic: `resolveRecipeKind`
+ * picks the most restrictive kind by `RECIPE_KINDS.indexOf`, so the order is the ranking.
+ *
+ * Neither copy had a consumer under `src/` — `lane-plan.ts` imports both from `conflict.ts` — so the
+ * drift was latent rather than live. What it would have reached is `FR-NODE-129`'s parity harness,
+ * which imports them from here: the check that exists to catch drift was wired to the drifted side.
+ */
+export { CONFLICT_REASONS, RECIPE_KINDS, type ConflictReason, type RecipeKind } from "./conflict.js";
 
 /** waves-event.md §2.4 — the closed reason a top-level section is out of every wave's scope. */
 export const EXCLUSION_CLASSES = ["already-implemented", "superseded", "external-ownership", "user-excluded", "non-normative"] as const;
