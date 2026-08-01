@@ -303,9 +303,10 @@ describe("FR-NODE-122 gate-id parity", () => {
     for (const gateId of [...INHERITED_FROM_WAVE_MASTER, ...NEVER_AUTO_GRANTED, ...ADOPTED_FROM_AUTO_OPTION]) {
       expect(GATE_IDS as readonly string[]).toContain(gateId);
     }
-    // 39 orchestrator-owned phase-1 rows + 4 routing gates + 13 inherited + 2 never-auto-granted + 3 adopted.
-    expect(GATE_IDS).toHaveLength(61);
-    expect(new Set(GATE_IDS).size).toBe(61);
+    // 39 orchestrator-owned phase-1 rows + 4 routing gates + 13 inherited + 2 never-auto-granted
+    // + 3 adopted + 2 emitted by a phase-1 kernel but absent from §13's table (@req FR-NODE-166).
+    expect(GATE_IDS).toHaveLength(63);
+    expect(new Set(GATE_IDS).size).toBe(63);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {

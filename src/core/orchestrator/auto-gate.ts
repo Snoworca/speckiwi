@@ -94,7 +94,20 @@ export const GATE_IDS = [
   // — Adopted as-is from `auto-option.md:254-274` (§13) —
   "external-module-impact",
   "mcp-cli-both-unavailable",
-  "self-recursive-spawn"
+  "self-recursive-spawn",
+
+  // — Emitted by a phase-1 kernel but absent from §13's table (@req FR-NODE-166) —
+  //
+  //   Both reach exit 2 from a live CLI path — `handoff-pin-untrusted` from `pinning.ts` at
+  //   `orchestrate freeze <target>`, `lane-plan-incomplete` from `lane-plan.ts` at
+  //   `orchestrate schedule plan` — and both were outside this union until `refuse()` stopped
+  //   accepting a bare string. They stay out of every variant's `critical_gates[]`, which leaves
+  //   their `--auto` classification at `business-decision` exactly as it already was: that
+  //   classification is keyed on the skill tables, not on this union, so admission here changes no
+  //   `--auto` behaviour. Declaring them is a separate decision, and taking it means adding a §13
+  //   row across three variants plus the `.agents` mirror.
+  "handoff-pin-untrusted",
+  "lane-plan-incomplete"
 ] as const;
 
 export type GateId = (typeof GATE_IDS)[number];

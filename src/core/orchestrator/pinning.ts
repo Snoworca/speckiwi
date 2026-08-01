@@ -64,7 +64,12 @@ export interface PinHandoffInput {
 export type GitRunner = (cwd: string, args: readonly string[], maxBuffer: number) => Promise<Buffer>;
 
 export class HandoffPinError extends Error {
-  /** §13's critical gate for a handoff whose pin cannot be established or re-proved. */
+  /**
+   * The gate for a handoff whose pin cannot be established or re-proved.
+   *
+   * Not a §13 row: measured, §13's table does not list it, and no shipped variant declares it in
+   * `critical_gates[]`. It is a `GATE_IDS` member so `refuse()` can carry it. @req FR-NODE-166
+   */
   readonly gate = "handoff-pin-untrusted";
 
   constructor(message: string, options?: { cause?: unknown }) {

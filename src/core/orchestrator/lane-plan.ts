@@ -79,7 +79,9 @@ export interface LanePlan {
  * source instead: an epilogue-bound task is never a node of the component graph, so no assignment
  * has to be undone. @req FR-NODE-146
  */
-export type LanePlanErrorCode = "schedule-cycle" | "lane-plan-incomplete";
+export const LANE_PLAN_ERROR_CODES = ["schedule-cycle", "lane-plan-incomplete"] as const;
+
+export type LanePlanErrorCode = (typeof LANE_PLAN_ERROR_CODES)[number];
 
 /** A blocking outcome of `orchestrate schedule plan`, raised as an error rather than a warning. */
 export class LanePlanError extends Error {

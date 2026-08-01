@@ -292,8 +292,19 @@ interface GateRefusal {
   readonly violations: readonly unknown[];
 }
 
-/** Refuses with a named gate. Read verbs exit 2 with it; mutation verbs exit 2 and write nothing. */
-function refuse(gate: GateId | string, violations: readonly unknown[] = []): GateRefusal {
+/** Narrows a runtime string to `GateId`. @req FR-NODE-166 AC-5 */
+function isGateId(value: string): value is GateId {
+  return (GATE_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * Refuses with a named gate. Read verbs exit 2 with it; mutation verbs exit 2 and write nothing.
+ *
+ * The parameter is `GateId` and not `GateId | string`: the widening made the union advisory at every
+ * call site, and the emitted vocabulary was then checked only dynamically, only for the four verbs
+ * one test drives. @req FR-NODE-166 AC-1
+ */
+function refuse(gate: GateId, violations: readonly unknown[] = []): GateRefusal {
   return { refusedGate: gate, violations };
 }
 
@@ -1099,8 +1110,12 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           // Three of the six `HandoffViolationCode` values are themselves §13 gates; the other three
           // are layer findings whose gate is the umbrella `handoff-verify-failed`. The reported gate
           // is always a `GateId` member, so a caller can branch on it. @req FR-NODE-137 AC-1
+          // `.includes()` on a widened `readonly string[]` does not narrow, so the collapse needs a
+          // type predicate rather than a bare membership test. Admitting the other three codes to
+          // `GATE_IDS` would close the same compile error by stopping the collapse, which is the one
+          // thing AC-1 above forbids. @req FR-NODE-166 AC-5
           const first = validation.violations[0]?.code;
-          const gate = first !== undefined && (GATE_IDS as readonly string[]).includes(first) ? first : "handoff-verify-failed";
+          const gate = first !== undefined && isGateId(first) ? first : "handoff-verify-failed";
           return refuse(gate, validation.violations);
         }
         // @req FR-NODE-165 — as at `schedule plan` above: a refused append is reported, not swallowed,
