@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { AUTO_GATE_ACTIONS, decideAutoGate, type AutoGateInput } from "../../../src/core/orchestrator/auto-gate.js";
 import { planDuplicationAudit, type LaneDiff } from "../../../src/core/orchestrator/duplication-audit.js";
@@ -310,5 +313,40 @@ describe("FR-NODE-108 AC-5 — computeResumeState takes four arguments and touch
     const first = computeResumeState(journalView, resumeCard, gitFacts, driftInputs);
     const second = computeResumeState(journalView, resumeCard, gitFacts, driftInputs);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+  });
+});
+
+describe("FR-NODE-108 AC-2 — the type-level claim, and the thing that carries it", () => {
+  // AC-2 is a claim about the type graph, and types are erased at runtime: measured, removing
+  // `action: string` from `TaskCatalogEntry` leaves every case above at 11 passed while
+  // `typecheck:test` fails at :49 and :62 with TS2353. So the carrier is the typecheck project,
+  // not this file's assertions — and the carrier only reaches this file because
+  // `tsconfig.test.json` globs it in. Nothing asserted that membership, so moving this file to
+  // `test/core/` would have removed the protection with no test noticing. This is that assertion.
+  it("is inside the typecheck project that carries the criterion", () => {
+    const project = JSON.parse(readFileSync(path.join(process.cwd(), "tsconfig.test.json"), "utf8")) as {
+      include?: string[];
+    };
+    const include = project.include ?? [];
+    expect(include.length, "the project must declare what it covers").toBeGreaterThan(0);
+
+    const self = path.relative(process.cwd(), fileURLToPath(import.meta.url)).split(path.sep).join("/");
+
+    // Two glob shapes appear in the project. A third would silently match nothing here, so the
+    // shapes themselves are asserted rather than assumed.
+    const covers = (glob: string): boolean => {
+      const recursive = /^(.*)\/\*\*\/\*\.ts$/.exec(glob);
+      if (recursive) return self.startsWith(`${recursive[1] as string}/`) && self.endsWith(".ts");
+      const flat = /^(.*)\/([^/*]*)\*\.ts$/.exec(glob);
+      if (flat) {
+        const rest = self.startsWith(`${flat[1] as string}/${flat[2] as string}`)
+          ? self.slice((flat[1] as string).length + 1)
+          : null;
+        return rest !== null && !rest.includes("/") && self.endsWith(".ts");
+      }
+      throw new Error(`unrecognised include glob shape: ${glob}`);
+    };
+
+    expect(include.some(covers), `${self} is not covered by ${JSON.stringify(include)}`).toBe(true);
   });
 });
