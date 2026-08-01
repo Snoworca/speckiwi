@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // @req FR-NODE-164 — the orchestrator test sources are type-checked at the repository's own strictness.
 //
@@ -40,14 +40,60 @@ interface CheckOutcome {
 /** The compiler is invoked directly rather than through a shell, so no argument is ever concatenated. */
 const TSC = path.join(REPO_ROOT, "node_modules", "typescript", "bin", "tsc");
 
-function runProject(): CheckOutcome {
+function runProject(extraArgs: string[] = []): CheckOutcome {
   try {
-    const output = execFileSync(process.execPath, [TSC, "-p", PROJECT_FILE], { cwd: REPO_ROOT, encoding: "utf8" });
+    const output = execFileSync(process.execPath, [TSC, "-p", PROJECT_FILE, ...extraArgs], { cwd: REPO_ROOT, encoding: "utf8" });
     return { exitCode: 0, output };
   } catch (error) {
     const failure = error as { status?: number; stdout?: string; stderr?: string };
     return { exitCode: failure.status ?? 1, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
   }
+}
+
+/**
+ * The compiler's own resolved view of the project, not the project file's literal text.
+ *
+ * The first revision read the ROOT config and asserted key PRESENCE there, which meant the comparison
+ * loop ran zero times and a strictness option turned off in the root passed 7/7. An independent
+ * verifier measured that with `exactOptionalPropertyTypes: false`. `--showConfig` is what the compiler
+ * actually uses, so an option relaxed anywhere in the extends chain shows up here.
+ */
+function resolvedOptions(): Record<string, unknown> {
+  const shown = runProject(["--showConfig"]);
+  const parsed = JSON.parse(shown.output) as { compilerOptions?: Record<string, unknown> };
+  return parsed.compilerOptions ?? {};
+}
+
+/**
+ * Runs the declared script's own command text, with the `node_modules/.bin` entry npm prepends.
+ *
+ * The text is what is executed, so a script neutered with `|| exit 0` or `--noCheck` fails here while
+ * passing any assertion that only reads it. `npm run` itself is not spawned: on Windows a `.cmd`
+ * shim cannot be spawned without a shell, and passing arguments through a shell is the concatenation
+ * hazard Node deprecated.
+ */
+function runDeclaredScript(): CheckOutcome {
+  const scripts = (readJsonc("package.json").scripts ?? {}) as Record<string, string>;
+  const script = scripts["typecheck:test"] ?? "";
+  const bin = path.join(REPO_ROOT, "node_modules", ".bin");
+  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}` };
+  try {
+    return { exitCode: 0, output: execSync(script, { cwd: REPO_ROOT, encoding: "utf8", env }) };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { exitCode: failure.status ?? 1, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+}
+
+/** The repository files the compiler actually loads — the program, not the index. */
+function coveredFiles(): string[] {
+  const listed = runProject(["--listFiles"]);
+  return listed.output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && line.endsWith(".ts"))
+    .map((line) => path.relative(REPO_ROOT, line).split(path.sep).join("/"))
+    .filter((relative) => !relative.startsWith("..") && !relative.startsWith("node_modules/"));
 }
 
 function diagnosticLines(output: string): string[] {
@@ -58,6 +104,12 @@ function readJsonc(relativePath: string): Record<string, unknown> {
   const text = readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
   return JSON.parse(text.replace(/^\s*\/\/.*$/gm, "")) as Record<string, unknown>;
 }
+
+// A probe left behind by a hard kill errors by construction, so every later `typecheck:test` would
+// fail and the gate would block itself. Removed before anything reads the tree, not only after.
+beforeAll(() => {
+  rmSync(PROBE, { force: true });
+});
 
 afterAll(() => {
   rmSync(PROBE, { force: true });
@@ -77,20 +129,13 @@ describe("FR-NODE-164 AC-1 — the project file exists and relaxes nothing", () 
     expect(include).toContain("test/cli/orchestrate*.ts");
   });
 
-  it("leaves every strictness option the root config sets in force", () => {
-    const root = readJsonc("tsconfig.json").compilerOptions as Record<string, unknown>;
-    const project = (readJsonc(PROJECT_FILE).compilerOptions ?? {}) as Record<string, unknown>;
-
-    // Read from the root rather than listed here, so a strictness option added to the root config in
-    // future is covered by this assertion on the day it is added.
-    const strictness = Object.keys(root).filter((key) => key === "strict" || key.startsWith("no") || key.startsWith("exact"));
-    expect(strictness).toContain("strict");
-    expect(strictness).toContain("noUncheckedIndexedAccess");
-    expect(strictness).toContain("exactOptionalPropertyTypes");
-
-    for (const key of strictness) {
-      if (!(key in project)) continue;
-      expect(project[key], `${PROJECT_FILE} must not relax ${key}`).toEqual(root[key]);
+  it("leaves every strictness option the criterion names in force, as the compiler resolves them", { timeout: 120_000 }, () => {
+    // Asserted against the RESOLVED options, so relaxing one in the root config — or anywhere else in
+    // the extends chain — fails here. Asserting key presence in the root instead let
+    // `exactOptionalPropertyTypes: false` pass 7/7, measured by an independent verifier.
+    const resolved = resolvedOptions();
+    for (const key of ["strict", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes"]) {
+      expect(resolved[key], `${key} must be in force under ${PROJECT_FILE}, resolved to ${JSON.stringify(resolved[key])}`).toBe(true);
     }
   });
 });
@@ -104,9 +149,9 @@ describe("FR-NODE-164 AC-2 — the script exists and the repository is clean und
     expect(script).toContain(PROJECT_FILE);
   });
 
-  it("reports zero diagnostics over the repository", { timeout: 180_000 }, () => {
+  it("reports zero diagnostics when the declared script itself is run", { timeout: 240_000 }, () => {
     expect(existsSync(PROBE), "the probe must not be present for the baseline run").toBe(false);
-    const outcome = runProject();
+    const outcome = runDeclaredScript();
     expect(diagnosticLines(outcome.output), diagnosticLines(outcome.output).slice(0, 40).join("\n")).toEqual([]);
     expect(outcome.exitCode).toBe(0);
   });
@@ -149,19 +194,31 @@ describe("FR-NODE-164 AC-3 and AC-4 — the check is non-vacuous, measured under
 });
 
 describe("FR-NODE-164 AC-5 — nothing is suppressed", () => {
-  it("no covered source carries a @ts-ignore", () => {
-    const covered = execFileSync("git", ["ls-files", "test/core/orchestrator", "test/cli"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8"
-    })
-      .split(/\r?\n/)
-      .filter((entry) => entry.endsWith(".ts"))
-      .filter((entry) => entry.startsWith("test/core/orchestrator/") || /^test\/cli\/orchestrate[^/]*\.ts$/.test(entry));
-
+  it("no source the compiler loads carries a @ts-ignore", { timeout: 120_000 }, () => {
+    // Enumerated from the PROGRAM, not from `git ls-files`. The two sets differ: the include globs
+    // match untracked files and pull in transitive imports outside the globs, so a tracked-file
+    // listing leaves both classes unchecked. A verifier found a live instance of each.
+    const covered = coveredFiles();
     expect(covered.length, "the covered file list must not be empty, or this assertion is vacuous").toBeGreaterThan(50);
+    expect(covered, "the enumeration must reach the test tree").toContain("test/support/at.ts");
 
     const offenders = covered.filter((entry) => readFileSync(path.join(REPO_ROOT, entry), "utf8").includes("@ts-ignore"));
     expect(offenders).toEqual([]);
+  });
+
+  it("every @ts-expect-error the compiler loads is one where the error is the assertion", { timeout: 120_000 }, () => {
+    // An unused directive is TS2578, so a stale one already fails AC-2's run. What is asserted here is
+    // the other direction: a directive may not sit on a line that is merely inconvenient to type.
+    const suppressions = coveredFiles().flatMap((entry) =>
+      readFileSync(path.join(REPO_ROOT, entry), "utf8")
+        .split(/\r?\n/)
+        .map((line, index) => ({ entry, line: line.trim(), number: index + 1 }))
+        .filter((row) => row.line.includes("@ts-expect-error"))
+    );
+
+    // Each one must name what it expects on the same line, so a reader can check the claim.
+    const unexplained = suppressions.filter((row) => row.line.replace(/.*@ts-expect-error/, "").trim().length < 20);
+    expect(unexplained.map((row) => `${row.entry}:${row.number}`)).toEqual([]);
   });
 
   it("the project file turns no strictness option off", () => {

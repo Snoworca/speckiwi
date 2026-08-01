@@ -30,3 +30,6 @@ Thumbs.db
 # entry named `docs/spec/` alone, which left every other site staged by `git add -A`. @req FR-NODE-158
 .speckiwi-*.tmp
 .speckiwi-merge-journal.json.*.tmp
+
+# A leaked FR-NODE-164 typecheck probe errors by construction; never commit one.
+test/core/orchestrator/__fr-node-164-probe.ts
