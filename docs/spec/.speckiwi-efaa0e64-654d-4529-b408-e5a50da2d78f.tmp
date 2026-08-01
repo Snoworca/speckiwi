@@ -7841,7 +7841,7 @@ Each of the six pure orchestrator kernel functions `evaluateRound`, `computeLane
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -7860,20 +7860,19 @@ The `serial-unit-failed` gate SHALL refuse a unit on any of three disjuncts eval
 
 #### Acceptance Criteria
 
-- [x] AC-1: A unit whose `verification_cmd` exits non-zero, is re-run once against the same handoff, and exits non-zero again, refuses with `serial-unit-failed`.
-- [x] AC-2: The one-retry recovery is scoped to the `verification_cmd` disjunct only: the commitless-and-undeclared disjunct and the `NEEDS_USER` / `FAILED` disjunct each refuse with no retry.
-- [x] AC-3: A unit with no commit on the integration branch carrying its `Orch-Lane` and `Orch-Task` trailers, and with no `intentionally_empty` entry in its `/kiwi-pm` run's `docs/analysis/` bundle, refuses.
-- [x] AC-4: The same commitless unit does not refuse when its `docs/analysis/` bundle declares, per task id, an `intentionally_empty` entry carrying the task id and a `reason` of at least 20 characters, and both witnesses hold: the task's `verification_cmd` exits zero, and no path in the task's `write_set` differs between the unit's base and head on the integration branch.
-- [x] AC-5: An `intentionally_empty` entry that fails either witness is not a legal declaration: the task is treated as unlanded and the gate refuses as though no declaration had been made.
-- [x] AC-6: A unit whose `/kiwi-pm` returned `NEEDS_USER` or `FAILED` refuses.
-- [x] AC-7: The unchanged-write-set witness is recomputed from the tree by the orchestrator and is not read from any value the unit reported.
-- [x] AC-8: A task covered by a legal `intentionally_empty` declaration stays in the wave verification's expected set and enters its checked set, so the denominator is unchanged.
+- [ ] AC-1: A unit whose `verification_cmd` exits non-zero, is re-run once against the same handoff, and exits non-zero again, refuses with `serial-unit-failed`.
+- [ ] AC-2: The one-retry recovery is scoped to the `verification_cmd` disjunct only: the commitless-and-undeclared disjunct and the `NEEDS_USER` / `FAILED` disjunct each refuse with no retry.
+- [ ] AC-3: A unit with no commit on the integration branch carrying its `Orch-Lane` and `Orch-Task` trailers, and with no `intentionally_empty` entry in its `/kiwi-pm` run's `docs/analysis/` bundle, refuses.
+- [ ] AC-4: The same commitless unit does not refuse when its `docs/analysis/` bundle declares, per task id, an `intentionally_empty` entry carrying the task id and a `reason` of at least 20 characters, and both witnesses hold: the task's `verification_cmd` exits zero, and no path in the task's `write_set` differs between the unit's base and head on the integration branch.
+- [ ] AC-5: An `intentionally_empty` entry that fails either witness is not a legal declaration: the task is treated as unlanded and the gate refuses as though no declaration had been made.
+- [ ] AC-6: A unit whose `/kiwi-pm` returned `NEEDS_USER` or `FAILED` refuses.
+- [ ] AC-7: The unchanged-write-set witness is recomputed from the tree by the orchestrator and is not read from any value the unit reported.
+- [ ] AC-8: A task covered by a legal `intentionally_empty` declaration stays in the wave verification's expected set and enters its checked set, so the denominator is unchanged.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/unit-gate.fr-node-119.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8 | 21 passed / 0 failed, measured 2026-08-01 on this file alone. :33-46 pins the disjunct vocabulary to exactly three in the stated order and passes a clean unit, so every refusal below is discriminating. AC-1 :47-74 a verification_cmd that exits non-zero, is re-run once against the same handoff and exits non-zero again refuses with serial-unit-failed. AC-2 :75-84 scopes the one-retry recovery to the verification_cmd disjunct: the NEEDS_USER and FAILED disjunct refuses with no retry (:75), iterating both values, and the commitless-and-undeclared disjunct likewise. AC-3 :85-113 a unit with no commit on the integration branch carrying its Orch-Lane and Orch-Task trailers and no intentionally_empty entry in its analysis bundle refuses. AC-4 :114-190 the same commitless unit does not refuse when the bundle declares a per-task intentionally_empty entry carrying the task id and a reason of at least 20 characters AND both witnesses hold. AC-5 an entry failing either witness is not a legal declaration and the gate refuses as though none had been made. AC-6 :75-79 is the same parametrized case as AC-2's second half, asserting refusal with disjunct pm-needs-user-or-failed for both NEEDS_USER and FAILED. AC-7 the unchanged-write-set witness is recomputed by the gate from the tree rather than read from any value the unit reported, which is what stops a unit self-certifying an empty landing. AC-8 :191 a task covered by a legal declaration stays in the wave verification's expected set and enters its checked set, so the denominator is unchanged. |
 
 #### Trace Links
 
@@ -7893,8 +7892,6 @@ The `serial-unit-failed` gate SHALL refuse a unit on any of three disjuncts eval
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | serial-unit-failed predicate is evaluable from the tree |
-| 2026-08-01 | Status -> verified | all eight criteria evidenced, 21 tests, 0 failures |
 
 ### FR-NODE-120 — partition-review-unrecorded predicate is evaluable from the journal
 
@@ -7902,7 +7899,7 @@ The `serial-unit-failed` gate SHALL refuse a unit on any of three disjuncts eval
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -7921,19 +7918,18 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 
 #### Acceptance Criteria
 
-- [x] AC-1: A wave with no `review-partition` result line refuses.
-- [x] AC-2: A wave whose `review-partition` result line carries a `partition_review.lane_plan_digest` differing from the `lane_plan.digest` frozen at 3.e-prime refuses.
-- [x] AC-3: A wave whose `partition_review.verdict` is `revise` or `abort` refuses, and `verdict` is validated against the closed three-value vocabulary `pass | revise | abort`.
-- [x] AC-4: A wave whose `review-partition` result line carries a matching `lane_plan_digest` and `verdict: "pass"` passes.
-- [x] AC-5: A wave whose 3.f-double-prime coupling check re-froze `lanes.lock.json` into a new `lane_plan.digest` still passes on a verdict recorded against the 3.e-prime freeze, because the comparison reads that freeze and not the current `frozen.lane_lock` pointer.
-- [x] AC-6: A verdict recorded against a `lane_plan.digest` that a 3.e-prime re-plan superseded never satisfies the gate.
-- [x] AC-7: `review-partition` is a member of the closed verb enum and the `partition_review` object `{doc_path, digest, lane_plan_digest, reviewer, verdict}` is a member of the journal schema's field set, so a journal append writes the line without an out-of-enum rejection and the gate reads it back.
+- [ ] AC-1: A wave with no `review-partition` result line refuses.
+- [ ] AC-2: A wave whose `review-partition` result line carries a `partition_review.lane_plan_digest` differing from the `lane_plan.digest` frozen at 3.e-prime refuses.
+- [ ] AC-3: A wave whose `partition_review.verdict` is `revise` or `abort` refuses, and `verdict` is validated against the closed three-value vocabulary `pass | revise | abort`.
+- [ ] AC-4: A wave whose `review-partition` result line carries a matching `lane_plan_digest` and `verdict: "pass"` passes.
+- [ ] AC-5: A wave whose 3.f-double-prime coupling check re-froze `lanes.lock.json` into a new `lane_plan.digest` still passes on a verdict recorded against the 3.e-prime freeze, because the comparison reads that freeze and not the current `frozen.lane_lock` pointer.
+- [ ] AC-6: A verdict recorded against a `lane_plan.digest` that a 3.e-prime re-plan superseded never satisfies the gate.
+- [ ] AC-7: `review-partition` is a member of the closed verb enum and the `partition_review` object `{doc_path, digest, lane_plan_digest, reviewer, verdict}` is a member of the journal schema's field set, so a journal append writes the line without an out-of-enum rejection and the gate reads it back.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/unit-gate.fr-node-120.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | 16 passed / 0 failed, measured 2026-08-01 on this file alone. AC-4 :49-56 is placed first as the passing control: a wave whose review-partition result line carries a matching lane_plan_digest and verdict pass passes, so every refusal below is discriminating rather than a gate that always refuses. AC-1 :57-80 a wave with no review-partition result line refuses. AC-2 :81-122 a result line whose partition_review.lane_plan_digest differs from the lane_plan.digest frozen at 3.e-prime refuses. AC-5 in the same block: a wave whose 3.f-double-prime coupling check re-froze lanes.lock.json into a new digest still passes on a verdict recorded against the 3.e-prime freeze, because the comparison reads that freeze and not the current frozen.lane_lock pointer — the case that distinguishes reading the freeze from reading the pointer. AC-6 also there: a verdict recorded against a digest that a 3.e-prime re-plan superseded never satisfies the gate. AC-3 :123-144 a verdict of revise or abort refuses, and verdict is validated against the closed three-value vocabulary so an out-of-enum value is rejected rather than read as passing. AC-7 :145 asserts review-partition is a member of the closed verb enum and the partition_review object's five fields are members of the journal schema's field set, by appending the line and reading it back without an out-of-enum rejection. |
 
 #### Trace Links
 
@@ -7953,8 +7949,6 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | partition-review-unrecorded predicate is evaluable from the journal |
-| 2026-08-01 | Status -> verified | all seven criteria evidenced, 16 tests, 0 failures |
 
 ### FR-NODE-121 — Prose gate's normative and hedge detectors are mechanical in both directions
 
@@ -7962,7 +7956,7 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -7981,21 +7975,20 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 
 #### Acceptance Criteria
 
-- [x] AC-1: A paragraph carrying a normative token under a lowest-level heading, outside a `[D-nnn]` or `[I-nnn]` item row, raises an `unmarked-normative-prose` finding whose recorded lines are the exact source lines of that paragraph.
-- [x] AC-2: A document in which every normative token sits inside a `[D-nnn]` or `[I-nnn]` item row raises no `unmarked-normative-prose` finding.
-- [x] AC-3: A `MUST NOT` counts as one normative-token occurrence and not two, so an item row whose only normative token is a `MUST NOT` satisfies the exactly-one-occurrence rule.
-- [x] AC-4: The lowest-level heading definition does not privilege third-level headings: a fourth-level heading with no deeper heading before the next heading of the same or shallower level is a lowest-level heading and its content is scanned, while a third-level heading that does have a deeper heading before that point is not.
-- [x] AC-5: Blockquote content and fenced-code content are excluded from both the item scan and the gate scan: a normative token inside a blockquote or inside a fenced code block raises no finding.
-- [x] AC-6: The normative token set is English-only: a Korean modal carrier in the scanned document raises no `unmarked-normative-prose` finding.
-- [x] AC-7: The hedge detector fires on a token drawn from the declared exported vocabulary constant and names that token in the finding, and raises no `hedge` finding for a document containing none of them, with the test importing the constant rather than restating the list.
-- [x] AC-8: The hedge vocabulary is an exported constant in the module's own source rather than a JSON asset or a test-tree file, so it reaches a consumer install through the ordinary build.
-- [x] AC-9: `scanProse` takes exactly one argument, the document text, and has one mode.
+- [ ] AC-1: A paragraph carrying a normative token under a lowest-level heading, outside a `[D-nnn]` or `[I-nnn]` item row, raises an `unmarked-normative-prose` finding whose recorded lines are the exact source lines of that paragraph.
+- [ ] AC-2: A document in which every normative token sits inside a `[D-nnn]` or `[I-nnn]` item row raises no `unmarked-normative-prose` finding.
+- [ ] AC-3: A `MUST NOT` counts as one normative-token occurrence and not two, so an item row whose only normative token is a `MUST NOT` satisfies the exactly-one-occurrence rule.
+- [ ] AC-4: The lowest-level heading definition does not privilege third-level headings: a fourth-level heading with no deeper heading before the next heading of the same or shallower level is a lowest-level heading and its content is scanned, while a third-level heading that does have a deeper heading before that point is not.
+- [ ] AC-5: Blockquote content and fenced-code content are excluded from both the item scan and the gate scan: a normative token inside a blockquote or inside a fenced code block raises no finding.
+- [ ] AC-6: The normative token set is English-only: a Korean modal carrier in the scanned document raises no `unmarked-normative-prose` finding.
+- [ ] AC-7: The hedge detector fires on a token drawn from the declared exported vocabulary constant and names that token in the finding, and raises no `hedge` finding for a document containing none of them, with the test importing the constant rather than restating the list.
+- [ ] AC-8: The hedge vocabulary is an exported constant in the module's own source rather than a JSON asset or a test-tree file, so it reaches a consumer install through the ordinary build.
+- [ ] AC-9: `scanProse` takes exactly one argument, the document text, and has one mode.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/prose-gate.fr-node-121.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 | 38 passed / 0 failed, measured 2026-08-01 on this file alone. One describe block per criterion, with :21-26 pinning the closed rule vocabulary first. AC-1 :27-47 a paragraph carrying a normative token under a lowest-level heading and outside a bracketed decision or issue item row raises unmarked-normative-prose whose recorded lines are the EXACT source lines of that paragraph, so the finding is locatable rather than merely present. AC-2 :48-65 a document in which every normative token sits inside an item row raises nothing — the both-directions half that stops the detector firing on conformant prose. AC-3 :66-85 a negated modal counts as one normative-token occurrence and not two, so an item row whose only token is that form satisfies the exactly-one-occurrence rule. AC-4 :86-108 the lowest-level heading definition does not privilege third-level headings: a fourth-level heading with no deeper heading before the next heading of the same or shallower level is scanned, while a third-level heading that does have a deeper one is not. AC-5 :109-131 blockquote and fenced-code content are excluded from BOTH the item scan and the gate scan. AC-6 :132-142 the normative token set is English-only, so a Korean modal carrier raises no finding. AC-7 :143-162 the hedge detector fires on a token drawn from the exported vocabulary constant and names that token in the finding, and raises nothing for a document containing none; the test imports HEDGE_TOKENS rather than restating the list. AC-8 :163-177 asserts the constant is declared in the module's own source as an exported const and that every token appears there (:165-167), and that the module loads no asset at runtime — no JSON reference, no readFile, no require — so it reaches a consumer install through the ordinary build rather than through a shipped asset. AC-9 :178 asserts scanProse declares exactly one parameter and returns identical findings on two calls over the same text. |
 
 #### Trace Links
 
@@ -8015,8 +8008,6 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | prose gate normative and hedge detectors are mechanical in both directions |
-| 2026-08-01 | Status -> verified | all nine criteria evidenced, 38 tests, 0 failures |
 
 ### FR-NODE-122 — Gate-id parity between bundled skill variants and the exported GateId union
 
@@ -8024,7 +8015,7 @@ The `partition-review-unrecorded` gate SHALL refuse a wave that carries no `revi
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8043,18 +8034,17 @@ Every gate id declared in a bundled `kiwi-orchestrator` SKILL.md variant — whe
 
 #### Acceptance Criteria
 
-- [x] AC-1: The harness extracts every gate id from each bundled variant's three-column `critical_gates[]` table and from each variant's declared gate-severity rows.
-- [x] AC-2: Every extracted gate id is asserted to be a member of the exported `GateId` union.
-- [x] AC-3: The assertion is set inclusion and not set equality: a `GateId` member that no variant declares does not fail the test, because `critical_gates[]` is a halt list rather than a gate census and the phase-2 rows of the gate table are undeclared in the phase-1 skill.
-- [x] AC-4: One negative fixture — a variant body declaring a gate id absent from the `GateId` union — is asserted red, so the class is observed failing at least once.
-- [x] AC-5: The four routing gates that carry declared severities but are deliberately outside `critical_gates[]` — `route-proposal`, `route-step-requires-mode-switch`, `tdd-route-unattended` and `route-downgrade-available` — are extracted from the gate-severity rows and asserted in the union on the same footing as a critical gate.
-- [x] AC-6: The assertion extends the existing release parity harness rather than adding a second parity harness.
+- [ ] AC-1: The harness extracts every gate id from each bundled variant's three-column `critical_gates[]` table and from each variant's declared gate-severity rows.
+- [ ] AC-2: Every extracted gate id is asserted to be a member of the exported `GateId` union.
+- [ ] AC-3: The assertion is set inclusion and not set equality: a `GateId` member that no variant declares does not fail the test, because `critical_gates[]` is a halt list rather than a gate census and the phase-2 rows of the gate table are undeclared in the phase-1 skill.
+- [ ] AC-4: One negative fixture — a variant body declaring a gate id absent from the `GateId` union — is asserted red, so the class is observed failing at least once.
+- [ ] AC-5: The four routing gates that carry declared severities but are deliberately outside `critical_gates[]` — `route-proposal`, `route-step-requires-mode-switch`, `tdd-route-unattended` and `route-downgrade-available` — are extracted from the gate-severity rows and asserted in the union on the same footing as a critical gate.
+- [ ] AC-6: The assertion extends the existing release parity harness rather than adding a second parity harness.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/release/tool-signature-parity.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 | 11 passed / 0 failed for the whole file, measured 2026-08-01 on this file alone; the FR-NODE-122 describe at :301-360 is 6 of those 11 and the pre-existing REL-FLOW-002 describe is the other 5. AC-1 :311 asserts the extractor pulls gate ids from a variant's three-column critical_gates table and from its declared gate-severity rows, exercised against a fixture variant. AC-2 :302 and :319 assert every extracted gate id across the real bundled variants is a member of the exported GateId union, and that the union covers every group the design section requires the skill to declare. AC-3 :334 asserts the relation is set INCLUSION and not set equality, so a GateId member no variant declares does not fail — correct because critical_gates is a halt list rather than a gate census and the phase-2 rows are undeclared in the phase-1 skill. AC-4 :345 is the negative fixture: a variant body declaring a gate id absent from the union is asserted red, so the class has been observed failing. AC-5 :354 extracts the four routing gates that carry declared severities but sit deliberately outside critical_gates and asserts them in the union on the same footing as a critical gate, with :358 pinning that exactly four such severity rows are found. AC-6 holds by construction and is confirmed by the commit record: this assertion block was added INTO the pre-existing release parity harness rather than as a second harness — git log over the file shows it created in a3c4e0d and extended by f7c2ab4 and then a8bb354, which is the commit that added the FR-NODE-122 block at :175-360. |
 
 #### Trace Links
 
@@ -8074,8 +8064,6 @@ Every gate id declared in a bundled `kiwi-orchestrator` SKILL.md variant — whe
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | gate-id parity between bundled skill variants and the exported GateId union |
-| 2026-08-01 | Status -> verified | all six criteria evidenced, 6 gate-id cases in an 11-test file, 0 failures |
 
 ### FR-NODE-123 — Wave issue ledger predicates for resolvable resolution proof, closed deferral reason and wave close
 
@@ -8083,7 +8071,7 @@ Every gate id declared in a bundled `kiwi-orchestrator` SKILL.md variant — whe
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8102,20 +8090,18 @@ The system SHALL provide a wave-issue ledger module exposing exactly five predic
 
 #### Acceptance Criteria
 
-- [x] AC-1: The issue-ledger module exports exactly five predicates — `openIssue`, `planIssue`, `resolveIssue`, `deferIssue`, `closeWave` — and every one returns an object of the shape `{ok, violations[]}`.
-- [x] AC-2: `resolveIssue` returns `ok: false` when the resolution reference names a path absent from the injected `existingPaths`, a `file:line` beyond the injected `lineCounts` entry for that path, a test id absent from `testIds`, or a commit sha absent from `commitShas`; the same call with the reference present in the corresponding member returns `ok: true`.
-- [x] AC-3: A syntactically well-formed forty-hex commit sha that is not a member of the injected `commitShas` is refused, so the predicate is not satisfiable by the reference's shape alone.
-- [x] AC-4: `deferIssue` returns `ok: false` when the deferral reason is not a member of the closed `reason_class` vocabulary and `ok: true` for a member of it.
-- [x] AC-5: `openIssue` accepts exactly the six issue classifications `local-defect`, `missing-task`, `design-gap`, `new-wave-required`, `design-contradiction` and `out-of-run`, and refuses any other value.
-- [x] AC-6: `closeWave` returns `ok: false` naming `P-WAVE-ISSUES-CLOSED` for each of four independent fixtures — an issue with no terminal classification, a `local-defect` with no resolution proof, a `design-gap` naming no new design lock digest, and an `out-of-run` with no recorded user decision — and returns `ok: true` for a ledger in which all four conditions hold.
-- [x] AC-7: `out-of-run` requires a recorded user decision even when the run is executing under `--auto`: a fixture with `--auto` set and no recorded decision still refuses.
+- [ ] AC-1: The issue-ledger module exports exactly five predicates — `openIssue`, `planIssue`, `resolveIssue`, `deferIssue`, `closeWave` — and every one returns an object of the shape `{ok, violations[]}`.
+- [ ] AC-2: `resolveIssue` returns `ok: false` when the resolution reference names a path absent from the injected `existingPaths`, a `file:line` beyond the injected `lineCounts` entry for that path, a test id absent from `testIds`, or a commit sha absent from `commitShas`; the same call with the reference present in the corresponding member returns `ok: true`.
+- [ ] AC-3: A syntactically well-formed forty-hex commit sha that is not a member of the injected `commitShas` is refused, so the predicate is not satisfiable by the reference's shape alone.
+- [ ] AC-4: `deferIssue` returns `ok: false` when the deferral reason is not a member of the closed `reason_class` vocabulary and `ok: true` for a member of it.
+- [ ] AC-5: `openIssue` accepts exactly the six issue classifications `local-defect`, `missing-task`, `design-gap`, `new-wave-required`, `design-contradiction` and `out-of-run`, and refuses any other value.
+- [ ] AC-6: `closeWave` returns `ok: false` naming `P-WAVE-ISSUES-CLOSED` for each of four independent fixtures — an issue with no terminal classification, a `local-defect` with no resolution proof, a `design-gap` naming no new design lock digest, and an `out-of-run` with no recorded user decision — and returns `ok: true` for a ledger in which all four conditions hold.
+- [ ] AC-7: `out-of-run` requires a recorded user decision even when the run is executing under `--auto`: a fixture with `--auto` set and no recorded decision still refuses.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/issue-ledger.fr-node-123.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | 40 passed / 0 failed, measured 2026-08-01 on this file alone. One describe block per criterion. AC-1 :57-75 the module exports exactly five predicates — openIssue, planIssue, resolveIssue, deferIssue and closeWave — and every one returns the ok-and-violations shape. AC-2 :76-103 resolveIssue returns false for each of the four reference classes the criterion names: a path absent from the injected existingPaths, a file-and-line beyond the injected lineCounts entry for that path, a test id absent from testIds and a commit sha absent from commitShas, with the matching positive call returning true in each case, so the refusals are discriminating. AC-3 :104-111 a syntactically well-formed forty-hex sha that is not a member of the injected commitShas is refused, which is the assertion that stops the predicate being satisfiable by the reference's shape alone. AC-4 :112-138 deferIssue refuses a reason outside the closed reason_class vocabulary and accepts a member. AC-5 :139-156 openIssue accepts exactly the six classifications local-defect, missing-task, design-gap, new-wave-required, design-contradiction and out-of-run, and refuses any other value. AC-6 :157-206 closeWave returns false naming P-WAVE-ISSUES-CLOSED for each of the four independent fixtures — an issue with no terminal classification, a local-defect with no resolution proof, a design-gap naming no new design lock digest, and an out-of-run with no recorded user decision — and returns true for a ledger in which all four conditions hold. AC-7 :207 out-of-run requires a recorded user decision even under --auto: a fixture with auto set and no recorded decision still refuses, so the automation flag cannot launder a decision the user never made. |
-| VE-2 | inspection | src/cli/commands/orchestrate.ts issue and wave verbs, read 2026-08-01 | AC-2 | SCOPE NOTE on how far AC-2's guarantee reaches in the shipped command, recorded so it is not mistaken for a stronger claim than it is. AC-2 is fully asserted at the kernel level: resolveIssue refuses a reference absent from the injected existingPaths, lineCounts, testIds or commitShas. Two facts about the wiring qualify what that buys end to end. First, the good news and unusual for this target: issue-ledger.ts is fully wired — all five predicates are reached from real command actions, with resolveIssue called at orchestrate.ts:1195 and closeWave at :1246. Second, the boundary: both verbs obtain the resolution set by reading a caller-supplied JSON file named by --resolution and casting it to ResolutionSet (:1194 and :1245), a fact the source itself states at :1193, that the set is impurely collected here and handed to the pure predicate. So the predicate is exactly as trustworthy as that file: a caller who lists a commit sha in --resolution gets resolvability for it without the sha being proven to exist in the repository. No acceptance criterion of this requirement asserts otherwise — AC-2 is written against the INJECTED sets by design, and the injection point is deliberately outside the pure kernel — so this is a recorded limit of scope and NOT an unmet criterion or a defect. |
 
 #### Trace Links
 
@@ -8135,10 +8121,6 @@ The system SHALL provide a wave-issue ledger module exposing exactly five predic
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | wave issue ledger predicates land |
-| 2026-08-01 | Status -> verified | all seven criteria evidenced, 40 tests, 0 failures |
-| 2026-08-01 | Status -> implemented | reopening to record the wiring and the trust boundary of the injected resolution set |
-| 2026-08-01 | Status -> verified | all seven criteria evidenced, 40 tests, 0 failures; injected-set trust boundary recorded as a scope note |
 
 ### FR-NODE-124 — decideAutoGate recommended fast path, simple majority and halt on an unresolved tie
 
@@ -8146,7 +8128,7 @@ The system SHALL provide a wave-issue ledger module exposing exactly five predic
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8165,21 +8147,20 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 
 #### Acceptance Criteria
 
-- [x] AC-1: `AutoGateInput` declares exactly the seven fields `gateId`, `critical`, `options`, `mode`, `votes`, `quorum` and `tieRung`, so a fixture is constructible from the type declaration alone without reading the implementation.
-- [x] AC-2: `AutoGateAction` is a closed five-value union — `adopt-recommended`, `adopt-default-if-auto`, `adopt-majority`, `escalate-critical`, `add-two-and-revote` — and is covered by the contract-parity assertion over `journal-schema.ts`'s closed-enum list.
-- [x] AC-3: A gate one of whose options carries `recommended: true` returns `action: "adopt-recommended"` with `memberCount: 0` and `rule: "recommended-fastpath"`, and no committee is formed.
-- [x] AC-4: Precedence is asserted in all three combinations: with both a `recommended` and a `defaultIfAuto` option the result is `adopt-recommended`; with only `defaultIfAuto` it is `adopt-default-if-auto` with `memberCount: 0` and `rule: "default-if-auto"`; with neither it is committee-decided.
-- [x] AC-5: A 2-1 vote under `mode: "auto"` returns `adopt-majority` with `memberCount: 3` and `rule: "majority"`, and a 3-2 vote under `mode: "auto-max"` returns `adopt-majority` with `memberCount: 5` and `rule: "majority"`.
-- [x] AC-6: With `tieRung: false` a vote carrying no majority returns `escalate-critical`, and separately a `quorum` whose `present` is below its `expected` returns `escalate-critical`; neither result re-spawns a member, re-votes, or settles the outcome by one member's ranking.
-- [x] AC-7: A gate whose `critical` is true returns `escalate-critical` even when an option carries `recommended: true` and even when the votes carry a majority.
-- [x] AC-8: A speed-motivated recommendation and a completeness-motivated recommendation produce identical results, and `AutoGateInput` carries no field in which the motivation for a recommendation can be expressed.
-- [x] AC-9: Every shipped construction of the function passes `tieRung: false`, asserted by a test over the call sites.
+- [ ] AC-1: `AutoGateInput` declares exactly the seven fields `gateId`, `critical`, `options`, `mode`, `votes`, `quorum` and `tieRung`, so a fixture is constructible from the type declaration alone without reading the implementation.
+- [ ] AC-2: `AutoGateAction` is a closed five-value union — `adopt-recommended`, `adopt-default-if-auto`, `adopt-majority`, `escalate-critical`, `add-two-and-revote` — and is covered by the contract-parity assertion over `journal-schema.ts`'s closed-enum list.
+- [ ] AC-3: A gate one of whose options carries `recommended: true` returns `action: "adopt-recommended"` with `memberCount: 0` and `rule: "recommended-fastpath"`, and no committee is formed.
+- [ ] AC-4: Precedence is asserted in all three combinations: with both a `recommended` and a `defaultIfAuto` option the result is `adopt-recommended`; with only `defaultIfAuto` it is `adopt-default-if-auto` with `memberCount: 0` and `rule: "default-if-auto"`; with neither it is committee-decided.
+- [ ] AC-5: A 2-1 vote under `mode: "auto"` returns `adopt-majority` with `memberCount: 3` and `rule: "majority"`, and a 3-2 vote under `mode: "auto-max"` returns `adopt-majority` with `memberCount: 5` and `rule: "majority"`.
+- [ ] AC-6: With `tieRung: false` a vote carrying no majority returns `escalate-critical`, and separately a `quorum` whose `present` is below its `expected` returns `escalate-critical`; neither result re-spawns a member, re-votes, or settles the outcome by one member's ranking.
+- [ ] AC-7: A gate whose `critical` is true returns `escalate-critical` even when an option carries `recommended: true` and even when the votes carry a majority.
+- [ ] AC-8: A speed-motivated recommendation and a completeness-motivated recommendation produce identical results, and `AutoGateInput` carries no field in which the motivation for a recommendation can be expressed.
+- [ ] AC-9: Every shipped construction of the function passes `tieRung: false`, asserted by a test over the call sites.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/auto-gate.fr-node-124.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 | Measured TWICE, because the file changed under promotion. First measurement 2026-08-01: 20 passed / 0 failed. Re-measured 2026-08-01 after a concurrent fix landed: 29 passed / 0 failed, on this file alone. One describe block per criterion. AC-1 :53 AutoGateInput declares exactly the seven named fields. AC-2 :75 AutoGateAction is a closed five-value union covered by the contract-parity assertion over journal-schema.ts closed-enum list. AC-3 :99 a recommended option returns adopt-recommended with memberCount 0 and rule recommended-fastpath, no committee formed. AC-4 :116 precedence asserted in all three combinations. AC-5 :151 a 2-1 vote under auto gives memberCount 3 and a 3-2 under auto-max gives 5, both adopt-majority. AC-6 :180 with tieRung false a tie and a degraded quorum each return escalate-critical, with neither re-spawning, re-voting nor settling by one ranking. AC-7 :232 a critical gate halts regardless of a recommended option and of a majority. AC-8 :249 speed-motivated and completeness-motivated recommendations are identical and no field can express motivation. AC-9 :263-298 REQUIRES CARE and was independently re-checked, because an earlier audit reported this assertion as vacuous. That report was accurate for the state it measured: the shipped call site was then decideAutoGate(input as never), the cast suppressing the very type error that would have said tieRung was never constructed, so the corpus scan found zero literals. Both halves are now repaired in the tree I measured. I re-ran the harness scan independently over the same corpus and got 157 files scanned with exactly ONE construction, src/cli/commands/orchestrate.ts yielding false — the same 157-file corpus the earlier audit reported, so the difference is the fix and not a different scan. autoGateInputFromPayload at orchestrate.ts:465 constructs tieRung false explicitly and :423 REFUSES a payload attempting to enable it; the call site at :1308 now passes that validated value with no cast and npx tsc --noEmit exits 0. The assertion itself is guarded against the vacuity that was reported: :274 asserts the literal list is non-empty and :275 uses set-equality, which an empty scan cannot satisfy, :285 pins the one call site that reaches the kernel so an unrelated module growing the literal cannot re-satisfy the corpus form, and :290 proves the scanner would report a true construction. CAVEAT: the repair was in the working tree and NOT yet committed when I measured, so a revert would make AC-9 vacuous again. |
 
 #### Trace Links
 
@@ -8199,10 +8180,6 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | decideAutoGate fast path, majority and halt-on-tie land |
-| 2026-08-01 | Status -> verified | all nine criteria evidenced, 20 tests, 0 failures |
-| 2026-08-01 | Status -> implemented | reopening to re-measure AC-9 after a concurrent fix replaced the cast at the shipped call site |
-| 2026-08-01 | Status -> verified | AC-9 re-checked independently: scan finds exactly one construction at the pinned call site, cast removed, tsc clean, 29 tests pass |
 
 ### FR-NODE-125 — Workflow JSONL reader eventKeying option for append-only journals
 
@@ -8210,7 +8187,7 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -8229,18 +8206,16 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 
 #### Acceptance Criteria
 
-- [x] AC-1: `WorkflowJsonlParseOptions.eventKeying` accepts exactly `"skill-run"` and `"none"` and defaults to `"skill-run"` when omitted.
-- [x] AC-2: A fixture with two lines sharing one `${skill}|${run_id}` key yields the `SRS-W053` duplicate-key diagnostic with the option omitted and yields no such diagnostic under `eventKeying: "none"`.
-- [x] AC-3: A fixture carrying a correction chain has the chain resolved under the default and left unresolved under `eventKeying: "none"`, with the superseded line present in the parsed output.
-- [x] AC-4: Every existing caller passes no `eventKeying` option and the existing jsonl and validator test corpus produces identical results before and after the change.
-- [x] AC-5: A `waves.jsonl` reader passing `{eventKeying: "none", supportedSchemaVersions: ["1.0.0","1.1.0","1.2.0","1.3.0","1.4.0"]}` parses a journal carrying many lines under one `run_id` with no duplicate-key diagnostic, and a subsequent append under the default halt policy succeeds.
+- [ ] AC-1: `WorkflowJsonlParseOptions.eventKeying` accepts exactly `"skill-run"` and `"none"` and defaults to `"skill-run"` when omitted.
+- [ ] AC-2: A fixture with two lines sharing one `${skill}|${run_id}` key yields the `SRS-W053` duplicate-key diagnostic with the option omitted and yields no such diagnostic under `eventKeying: "none"`.
+- [ ] AC-3: A fixture carrying a correction chain has the chain resolved under the default and left unresolved under `eventKeying: "none"`, with the superseded line present in the parsed output.
+- [ ] AC-4: Every existing caller passes no `eventKeying` option and the existing jsonl and validator test corpus produces identical results before and after the change.
+- [ ] AC-5: A `waves.jsonl` reader passing `{eventKeying: "none", supportedSchemaVersions: ["1.0.0","1.1.0","1.2.0","1.3.0","1.4.0"]}` parses a journal carrying many lines under one `run_id` with no duplicate-key diagnostic, and a subsequent append under the default halt policy succeeds.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/jsonl-event-keying.fr-node-125.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5 | 6 passed / 0 failed, measured 2026-08-01 on this file alone. Every case is named for the criterion it discharges. AC-1 :30 the option accepts skill-run and none and defaults to skill-run when omitted. AC-2 :40 a fixture with two lines sharing one skill-and-run-id key yields the SRS-W053 duplicate-key diagnostic with the option omitted and yields no such diagnostic under eventKeying none. AC-3 :50 a correction chain is resolved under the default and left unresolved under eventKeying none, with the superseded line asserted present in the parsed output (:59) and its correctedBy asserted undefined (:60), so 'unresolved' means the chain is not collapsed rather than the line being dropped. AC-4 :63 asserts the first conjunct mechanically: a git grep for eventKeying across the three trees that consumed the reader before this change — workflow, mutation and mcp — excluding the file that declares the option, must return no hit, so no pre-existing caller passes it. AC-5 :79 a waves.jsonl reader passing eventKeying none with the five supported schema versions parses a 30-line journal under one run_id with no duplicate-key diagnostic and a subsequent append under the default halt policy succeeds, and :110 adds the control that the same append is REFUSED under the default keying, which is what makes the option load-bearing rather than decorative. |
-| VE-2 | test | test/core/workflow/jsonl.test.ts, test/core/workflow/validator.test.ts | AC-4 | 2 files / 12 passed / 0 failed, measured 2026-08-01 on these two files alone. This discharges AC-4's second conjunct, that the existing jsonl and validator test corpus produces identical results before and after the change. The corpus is unchanged by the change: git log over both files names a3c4e0d as their last touching commit, which precedes a8bb354, the commit that introduced the eventKeying option. Because the expectations were not adjusted to accommodate the option and the suite passes, the corpus produces the same results after the change as before it. The first conjunct is asserted mechanically in the requirement's own test file; see VE-1. |
 
 #### Trace Links
 
@@ -8260,8 +8235,6 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | workflow JSONL reader gains the eventKeying option for append-only journals |
-| 2026-08-01 | Status -> verified | all five criteria evidenced across 3 test files, 18 tests, 0 failures |
 
 ### FR-NODE-126 — Workflow artifact kinds for waves, resume card and handoff over the lane-suffixed session layout
 
@@ -8269,7 +8242,7 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -8288,17 +8261,16 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 
 #### Acceptance Criteria
 
-- [x] AC-1: `WorkflowArtifactKind` gains exactly three members — `waves`, `resume-card` and `handoff` — and does not gain `lane-manifest`.
-- [x] AC-2: The resolver returns kind `waves` for a `kiwi/waves.jsonl` path, `resume-card` for a `kiwi/orchestrator/{run_id}/resume-card.json` path, and `handoff` for a handoff document path.
-- [x] AC-3: Run-id derivation over `.kiwi/sessions/{plan_run_id}/lanes/w{n}s{s}l{k}/pm-state.json` yields `{plan_run_id}` — never the literal segment `lanes` and never the lane id.
-- [x] AC-4: A path under `.kiwi/sessions/{plan_run_id}/lanes/{lane}/` receives the same canonical-path bonus as the equivalent path under `.kiwi/sessions/{plan_run_id}/`, asserted by comparing the two scores for one fixture pair.
-- [x] AC-5: A suffixed `pm-state.json` written for one lane is resolvable for its `plan_run_id` while a second lane's suffixed file under the same `plan_run_id` resolves independently, so two lanes' session state is not conflated.
+- [ ] AC-1: `WorkflowArtifactKind` gains exactly three members — `waves`, `resume-card` and `handoff` — and does not gain `lane-manifest`.
+- [ ] AC-2: The resolver returns kind `waves` for a `kiwi/waves.jsonl` path, `resume-card` for a `kiwi/orchestrator/{run_id}/resume-card.json` path, and `handoff` for a handoff document path.
+- [ ] AC-3: Run-id derivation over `.kiwi/sessions/{plan_run_id}/lanes/w{n}s{s}l{k}/pm-state.json` yields `{plan_run_id}` — never the literal segment `lanes` and never the lane id.
+- [ ] AC-4: A path under `.kiwi/sessions/{plan_run_id}/lanes/{lane}/` receives the same canonical-path bonus as the equivalent path under `.kiwi/sessions/{plan_run_id}/`, asserted by comparing the two scores for one fixture pair.
+- [ ] AC-5: A suffixed `pm-state.json` written for one lane is resolvable for its `plan_run_id` while a second lane's suffixed file under the same `plan_run_id` resolves independently, so two lanes' session state is not conflated.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/workflow/artifacts-orchestrator-kinds.fr-node-126.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5 | 5 passed / 0 failed, measured 2026-08-01 on this file alone. One describe block per criterion. AC-1 :51-63 the kind vocabulary gains exactly the three members waves, resume-card and handoff, and the assertion additionally pins that it does NOT gain lane-manifest, which is the phase-2 member the criterion explicitly excludes. AC-2 :64-76 the resolver returns waves for a kiwi/waves.jsonl path, resume-card for a run-scoped resume-card.json path, and handoff for a handoff document path. AC-3 :77-90 run-id derivation over the lane-suffixed session layout yields the plan_run_id and is asserted never to yield the literal lanes segment and never the lane id, which are the two wrong answers the path shape invites. AC-4 :91-106 compares the two scores for one fixture pair and asserts a path under the lanes subtree earns the SAME canonical-path bonus as the equivalent path directly under the plan run id, so the lane layout is not penalised. AC-5 :107 two lanes' suffixed pm-state.json files under one plan_run_id resolve independently while both carry that plan_run_id, so two lanes' session state is not conflated. |
 
 #### Trace Links
 
@@ -8318,8 +8290,6 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | workflow artifact kinds for waves, resume card and handoff land |
-| 2026-08-01 | Status -> verified | all five criteria evidenced, 5 tests, 0 failures |
 
 ### FR-NODE-127 — Journal validation runs unconditionally on every journal append and every resume
 
@@ -8327,7 +8297,7 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8346,17 +8316,16 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 
 #### Acceptance Criteria
 
-- [x] AC-1: An append payload that would make the resulting journal invalid is refused: the command reports the diagnostic and the journal file is byte-identical before and after the attempt.
-- [x] AC-2: An append payload that leaves the journal valid is written, and the validation ran — the command reports an empty diagnostic set rather than skipping the check.
-- [x] AC-3: `orchestrate resume` over an invalid journal refuses and computes no resume state.
-- [x] AC-4: No invocation form of `orchestrate journal append` or `orchestrate resume` skips validation: there is no flag, option or mode that disables it, asserted over the walked command tree.
-- [x] AC-5: `workflow_doctor` reports the same diagnostics on demand for a historical journal, and no pre-commit hook code path invokes `validateWavesJournal`.
+- [ ] AC-1: An append payload that would make the resulting journal invalid is refused: the command reports the diagnostic and the journal file is byte-identical before and after the attempt.
+- [ ] AC-2: An append payload that leaves the journal valid is written, and the validation ran — the command reports an empty diagnostic set rather than skipping the check.
+- [ ] AC-3: `orchestrate resume` over an invalid journal refuses and computes no resume state.
+- [ ] AC-4: No invocation form of `orchestrate journal append` or `orchestrate resume` skips validation: there is no flag, option or mode that disables it, asserted over the walked command tree.
+- [ ] AC-5: `workflow_doctor` reports the same diagnostics on demand for a historical journal, and no pre-commit hook code path invokes `validateWavesJournal`.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/cli/orchestrate-journal-validation.fr-node-127.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5 | 7 passed / 0 failed, measured 2026-08-01 on this file alone. One describe block per criterion. AC-1 :75-90 an append payload that would make the resulting journal invalid is refused, the command reports the diagnostic, and the journal file is asserted BYTE-IDENTICAL before and after the attempt, so the refusal leaves no partial write. AC-2 :91-110 a valid append is written and the command reports an EMPTY diagnostic set rather than omitting the field, which is what distinguishes 'validated and clean' from 'skipped', with :106 asserting the file holds exactly one line so the write happened once. AC-3 :111-125 orchestrate resume over an invalid journal returns the refusal without a resume payload, so no resume state is computed. AC-4 :126-142 walks the registered command tree for journal append and resume and asserts neither registers any flag, option or mode that disables the check — an assertion over the walked tree rather than over a hand-listed set of invocations, so a newly added bypass flag would fail it. AC-5 :143-171 workflow_doctor reports the same diagnostics on demand for a historical journal (:144), leaves the doctor untouched when no run is named (:153), and :162 asserts validateWavesJournal is invoked from no pre-commit hook code path, keeping the check on the command and out of the hook. |
 
 #### Trace Links
 
@@ -8376,8 +8345,6 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | journal validation runs unconditionally on append and resume |
-| 2026-08-01 | Status -> verified | all five criteria evidenced, 7 tests, 0 failures |
 
 ### FR-NODE-128 — Skill command-citation parity against the real command tree with a measured invocation floor
 
@@ -8385,7 +8352,7 @@ The system SHALL provide a pure `decideAutoGate(input: AutoGateInput) -> {action
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8404,17 +8371,16 @@ The release parity harness SHALL extract every `speckiwi orchestrate` invocation
 
 #### Acceptance Criteria
 
-- [x] AC-1: Extraction runs over all three bundled variants — `skills/claude`, `skills/codex`, `skills/etc` — and each variant's extracted invocation count is compared against that variant's own count of `speckiwi ` occurrences measured from the same body at test time, with no numeric literal in the assertion.
-- [x] AC-2: A non-empty skill body from which zero invocations are extracted fails the test.
-- [x] AC-3: Every extracted verb and every extracted flag resolves against the walked command tree; a negative fixture whose body cites a verb absent from the tree fails, and that failure is observed before the real SKILL.md body is authored.
-- [x] AC-4: The placeholder table declares thirteen forms — `<path>`, `<path to routing/route-gate.json>`, `<sha>`, `<id>`, `<payload>`, `<manifest…>`, `<v>`, `<t>`, `N`, `S`, `L`, `{run_id}` and the literal alternation form `a|b|c` — and a citation carrying a token outside that set fails rather than being normalised.
-- [x] AC-5: The harness calls `buildCommand` and `outputHelp()` and does not call `program.parse()`; no command action handler executes during the test and the repository's hermeticity guards stay green.
+- [ ] AC-1: Extraction runs over all three bundled variants — `skills/claude`, `skills/codex`, `skills/etc` — and each variant's extracted invocation count is compared against that variant's own count of `speckiwi ` occurrences measured from the same body at test time, with no numeric literal in the assertion.
+- [ ] AC-2: A non-empty skill body from which zero invocations are extracted fails the test.
+- [ ] AC-3: Every extracted verb and every extracted flag resolves against the walked command tree; a negative fixture whose body cites a verb absent from the tree fails, and that failure is observed before the real SKILL.md body is authored.
+- [ ] AC-4: The placeholder table declares thirteen forms — `<path>`, `<path to routing/route-gate.json>`, `<sha>`, `<id>`, `<payload>`, `<manifest…>`, `<v>`, `<t>`, `N`, `S`, `L`, `{run_id}` and the literal alternation form `a|b|c` — and a citation carrying a token outside that set fails rather than being normalised.
+- [ ] AC-5: The harness calls `buildCommand` and `outputHelp()` and does not call `program.parse()`; no command action handler executes during the test and the repository's hermeticity guards stay green.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/release/skill-citation-parity.fr-node-128.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5 | 6 passed / 0 failed, measured 2026-08-01 on this file alone. AC-1 :198-213 runs extraction over all three bundled variants and compares each variant's extracted invocation count against that variant's OWN count of speckiwi occurrences measured from the same body at test time; the assertion carries no numeric literal, so the floor moves with the body rather than needing maintenance. AC-2 :214 a non-empty skill body from which zero invocations are extracted fails the test, which is the guard that stops AC-1 passing vacuously on a broken extractor. AC-3 :223-254 rejects a fabricated verb and a fabricated flag while accepting a real citation (:224), then resolves every citation of every bundled variant against the walked command tree (:242). The criterion's further requirement that the negative fixture be observed failing BEFORE the real SKILL.md body was authored is borne out by the commit record: this test file entered in a8bb354, while the three kiwi-orchestrator SKILL.md bodies first appear in cdc25dc, a later commit — the suite was red for the missing body in between. AC-4 :255-267 declares the thirteen placeholder forms and asserts a citation carrying a token outside that set FAILS rather than being normalised. AC-5 :268 resolves every citation through buildCommand and outputHelp() while parse and parseAsync are booby-trapped, so the test fails if any code path parses; no action handler executes and the repository hermeticity guards stay green. |
 
 #### Trace Links
 
@@ -8434,8 +8400,6 @@ The release parity harness SHALL extract every `speckiwi orchestrate` invocation
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | skill command-citation parity against the real command tree lands |
-| 2026-08-01 | Status -> verified | all five criteria evidenced, 6 tests, 0 failures |
 
 ### FR-NODE-129 — waves-event.md field tables and bullet invariants set-equal to the journal schema across four copies
 
@@ -8443,7 +8407,7 @@ The release parity harness SHALL extract every `speckiwi orchestrate` invocation
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | implemented |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -8462,19 +8426,17 @@ The parity harness SHALL parse both the field tables and the bullet-form invaria
 
 #### Acceptance Criteria
 
-- [x] AC-1: Field-table parity is asserted as set-equality in both directions: a field present in a `waves-event.md` copy and absent from `journal-schema.ts` fails, and a schema field absent from a copy fails.
-- [x] AC-2: The bullet-form invariants are parsed as a set and their count is derived from the document at run time; no bullet count literal appears in the assertion.
-- [x] AC-3: All four copies are asserted — the three skill variants and the `.agents` mirror — and a fixture in which a field or a bullet lands in three copies but not the fourth fails.
+- [ ] AC-1: Field-table parity is asserted as set-equality in both directions: a field present in a `waves-event.md` copy and absent from `journal-schema.ts` fails, and a schema field absent from a copy fails.
+- [ ] AC-2: The bullet-form invariants are parsed as a set and their count is derived from the document at run time; no bullet count literal appears in the assertion.
+- [ ] AC-3: All four copies are asserted — the three skill variants and the `.agents` mirror — and a fixture in which a field or a bullet lands in three copies but not the fourth fails.
 - [ ] AC-4: Enum parity covers the twelve closed enums `status`, `phase`, `verb`, `recovery_class`, `proof_kind`, `conflict_reason`, `recipe_kind`, `exclusion_class`, `reason_class`, `issue_class`, `manifest_status` and `AutoGateAction`.
-- [x] AC-5: `GateId` is not asserted by this set-equality check, because §4.2's v1.4.0 field table carries no `gate` field; gate-id parity is a separate set-inclusion assertion.
-- [x] AC-6: A negative fixture adding one bullet to a single copy fails, so the bullet half of the check is observed red.
+- [ ] AC-5: `GateId` is not asserted by this set-equality check, because §4.2's v1.4.0 field table carries no `gate` field; gate-id parity is a separate set-inclusion assertion.
+- [ ] AC-6: A negative fixture adding one bullet to a single copy fails, so the bullet half of the check is observed red.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | test | test/core/orchestrator/waves-event-parity.fr-node-129.test.ts | AC-1, AC-2, AC-3, AC-5, AC-6 | 41 passed / 0 failed, measured 2026-08-01 on this file alone. AC-1 :165-196 asserts field-table parity as set-equality in BOTH directions, per copy, against the required and optional field sets, with two negative fixtures: a field present in the document and absent from the schema fails (:182), and a schema field removed from the document fails (:188). AC-2 :197-227 measures the bullet set from each document at run time and asserts it non-empty, resolves every rule anchor to exactly one bullet, and asserts no bullet is left unclaimed by a rule or by the declared non-sources; no bullet count literal appears in the assertion. AC-3 :158-164 asserts exactly four copies are read and every one is non-empty, and :246 is the negative fixture in which a bullet landing in three copies but not the fourth fails; :296 makes the same four-copy demand of the enum declarations. AC-5 :318-322 asserts GateId is absent from the twelve-enum census and that its value set is not among the censused values, keeping gate-id parity a separate set-inclusion assertion. AC-6 :228 adds one bullet to a single copy and asserts the harness goes red, so the bullet half has been observed failing. The four copies read are the three skill variants under skills/claude, skills/codex and skills/etc plus the .agents mirror. |
-| VE-2 | inspection | skills/{claude,codex,etc}/_shared/kiwi/waves-event.md and .agents/skills/_shared/kiwi/waves-event.md, measured with the harness's own parseEnumValues | AC-4 | AC-4 IS ONLY PARTIALLY COVERED and is therefore left UNTICKED. The criterion asks for enum parity across twelve named closed enums. The harness names all twelve at :127-140, and :257-275 asserts the census is exactly twelve with each entry distinct and bound to a live journal-schema.ts constant rather than a restated literal — but note precisely what that assertion checks: it checks the TypeScript array literal in the test, NOT any document. The per-copy comparison at :281 filters the census to those enums the document actually declares values for. I measured that set on 2026-08-01 by running the harness own longestValueRun and parseEnumValues over all four copies: exactly 5 of 12 are declared, identically in every copy — status, phase, proof_kind, exclusion_class and reason_class. The other seven are compared against the schema in NO copy. They fail to be declared for two different reasons, which matters for how each is closed: verb does appear in the document but defers its values to the skill body rather than listing them, so it parses to an empty value run; recovery_class, conflict_reason, recipe_kind, issue_class, manifest_status and AutoGateAction have zero occurrences in the document at all. What IS asserted for all seven is only that the set of declared enums is identical across the four copies (:296), so a value landing in three copies but not the fourth fails. Closing AC-4 requires declaring the remaining seven in waves-event.md, and for verb specifically it requires inlining the values rather than deferring them. The harness needs no change: the census is measurement-driven and will pick them up automatically. |
 
 #### Trace Links
 
@@ -8494,7 +8456,6 @@ The parity harness SHALL parse both the field tables and the bullet-form invaria
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | waves-event.md field-table and bullet parity across four copies; AC-4 enum parity reaches only 5 of the 12 enums |
 
 ### FR-NODE-130 — package-doctor requires the orchestrator skill in all three variants
 

@@ -6,7 +6,7 @@ import { Command } from "commander";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 import type { ProjectRoot } from "../../core/types.js";
-import { decideAutoGate, GATE_IDS, type GateId } from "../../core/orchestrator/auto-gate.js";
+import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
 import { groundFiles, isGroundingRefusal, type DeclaredEntry } from "../../core/orchestrator/grounding.js";
 import { validateHandoff } from "../../core/orchestrator/handoff.js";
@@ -16,10 +16,10 @@ import { freezeLock, serializeLock } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
 import { normaliseRoot } from "../../core/orchestrator/preflight.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
-import { readCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
+import { computeInvariantDigest, readCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { computeRoute } from "../../core/orchestrator/route.js";
-import { freezeRoute, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
+import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
 import { acquire, readHolder, release, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
 import { planStageCoupling, type ParsedHandoff } from "../../core/orchestrator/substrate.js";
@@ -406,6 +406,65 @@ function parseInlineJson(value: unknown, label: string): Record<string, unknown>
   return parsed as Record<string, unknown>;
 }
 
+/**
+ * `auto-gate decide`'s `--payload`, validated into the kernel's declared shape.
+ *
+ * The rung is **refused, not ignored**. A7 is DECLINED 5-0 (`08` §2), so no rung is implemented
+ * behind the parameter and this is the one shipped construction — it passes `false` and reads
+ * nothing from the payload. Ignoring a caller's `true` would leave that caller believing a rung ran
+ * and reading the resulting `escalate-critical` as the rung's own answer; refusing says the rung
+ * does not exist, which is the same treatment a gate id outside the closed vocabulary gets below.
+ * A reversal deletes the refusal and reads the field, which stays additive. @req FR-NODE-124 AC-9
+ *
+ * Every other field is checked rather than cast: `critical` in particular is required, because
+ * defaulting it would silently drop the halt a `critical_gates[]` member exists to force.
+ */
+export function autoGateInputFromPayload(payload: Record<string, unknown>): AutoGateInput {
+  if (payload.tieRung !== undefined && payload.tieRung !== false) {
+    throw new OperationalError("--payload cannot enable the tie rung: it is declined (08 §2) and no rung is implemented behind the parameter");
+  }
+
+  const gateId = payload.gateId;
+  if (typeof gateId !== "string") throw new OperationalError("--payload.gateId must be a string");
+  if (!(GATE_IDS as readonly string[]).includes(gateId)) {
+    throw new OperationalError(`gate '${gateId}' is outside the closed GateId vocabulary`);
+  }
+
+  const critical = payload.critical;
+  if (typeof critical !== "boolean") throw new OperationalError("--payload.critical must be a boolean");
+
+  const mode = payload.mode;
+  if (mode !== "auto" && mode !== "auto-max") throw new OperationalError("--payload.mode must be 'auto' or 'auto-max'");
+
+  if (!Array.isArray(payload.options)) throw new OperationalError("--payload.options must be an array");
+  const options = payload.options.map((entry, index) => {
+    const option = entry as Record<string, unknown> | null;
+    if (typeof option?.id !== "string" || typeof option.recommended !== "boolean" || typeof option.defaultIfAuto !== "boolean") {
+      throw new OperationalError(`--payload.options[${index}] must carry a string id and boolean recommended and defaultIfAuto`);
+    }
+    return { id: option.id, recommended: option.recommended, defaultIfAuto: option.defaultIfAuto };
+  });
+
+  let votes: AutoGateInput["votes"] = null;
+  if (payload.votes !== undefined && payload.votes !== null) {
+    if (!Array.isArray(payload.votes)) throw new OperationalError("--payload.votes must be an array or null");
+    votes = payload.votes.map((entry, index) => {
+      const vote = entry as Record<string, unknown> | null;
+      if (typeof vote?.member !== "string" || typeof vote.optionId !== "string" || typeof vote.confidence !== "number") {
+        throw new OperationalError(`--payload.votes[${index}] must carry a string member, a string optionId and a numeric confidence`);
+      }
+      return { member: vote.member, optionId: vote.optionId, confidence: vote.confidence };
+    });
+  }
+
+  const quorum = payload.quorum as Record<string, unknown> | null | undefined;
+  if (typeof quorum?.expected !== "number" || typeof quorum.present !== "number") {
+    throw new OperationalError("--payload.quorum must carry numeric expected and present counts");
+  }
+
+  return { gateId, critical, options, mode, votes, quorum: { expected: quorum.expected, present: quorum.present }, tieRung: false };
+}
+
 function requireOption(value: unknown, flag: string): string {
   if (typeof value !== "string" || value.length === 0) throw new OperationalError(`${flag} is required`);
   return value;
@@ -544,6 +603,38 @@ async function readJournalView(root: ProjectRoot, runId: string, relativePath: s
   }
 }
 
+/**
+ * The card bytes a `freeze-route` must leave behind, or `null` when there are none to write.
+ *
+ * `null` covers the two cases that are not defects: a run that has not written its first card yet —
+ * the route is frozen at 1.c′ and the card may follow — and a redo whose card already carries this
+ * exact entry, which must not touch the file at all or `noop` would be true of the lock and false of
+ * the run. Everything else is a refusal, and the caller writes nothing at all on one, so a card that
+ * fails validation cannot leave a lock on disk that no card names.
+ * @req FR-NODE-113 AC-4
+ */
+async function planRouteCardUpdate(
+  root: string,
+  options: Record<string, unknown>,
+  lock: RouteLock
+): Promise<{ relativePath: string; text: string } | GateRefusal | null> {
+  const relativePath = (options.card as string | undefined) ?? resumeCardPath(lock.run_id);
+  const existing = await readFile(path.resolve(root, relativePath), "utf8").catch(() => null);
+  if (existing === null) return null;
+
+  const parsed = readCard(existing);
+  if (!parsed.ok) return refuse("resume-card-missing-or-invalid", parsed.violations);
+  const frozen = { ...parsed.card.frozen, route: frozenRouteEntry(options.out as string, lock) };
+  // `invariant_digest` is recomputed here rather than left to the next `card write`: the digest is
+  // what makes a post-freeze byte change surface as drift, and a card whose frozen block moved
+  // without it is a card the resume path refuses.
+  const next: ResumeCard = { ...parsed.card, frozen, invariant_digest: computeInvariantDigest(frozen) };
+  const view = await readJournalView({ root }, lock.run_id, options.journal as string);
+  const written = writeCard(next, view);
+  if (!written.ok) return refuse("resume-card-missing-or-invalid", written.violations);
+  return written.text === existing ? null : { relativePath, text: written.text };
+}
+
 // --- registration ----------------------------------------------------------------------------------
 
 /** Options every verb carries. `--json` is mandatory on every row (05 §10.6). */
@@ -603,7 +694,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         }
         const state = computeResumeState(view, parsed.card, facts.gitFacts, facts.driftInputs);
         if (state.blocking !== null) return refuse(state.blocking, state.drift.digests.filter((entry) => entry.gate !== null));
-        return { resume: state };
+        // @req FR-NODE-113 AC-5 — 09 §9.5 step 2: the rung is READ off the card. `computeRoute` is
+        // reachable from this file, so the read is written out here rather than left implicit — a
+        // resumed session has no conversation and no investigators, and several probe fields are not
+        // reproducible across a compaction, so a recomputation could legally switch ladders mid-run.
+        // Reported only past the drift gate above: a refused resume dispatches nothing.
+        const route = parsed.card.frozen?.route;
+        return { resume: state, rung: route === undefined ? null : resumeRung(route) };
       });
     });
 
@@ -656,6 +753,8 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--probe <path>", "the frozen probe document", "routing/probe.json")
     .option("--gate <path>", "the gate-resolution record", "routing/route-gate.json")
     .option("--out <path>", "where the route lock is written", "routing/route.lock.json")
+    .option("--card <path>", "the resume card the frozen route joins")
+    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .option("--auto", "the run is unattended")
     .action(async (options) => {
       await mutate(options, async () => {
@@ -671,8 +770,17 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         const existing = await readFile(path.resolve(root, options.out as string), "utf8").catch(() => null);
         // Content-addressed: a redo whose digest matches is a no-op, not a rewrite (05 §4.4).
         const unchanged = existing !== null && routeLockDigest(JSON.parse(existing) as RouteLock) === digest;
-        if (!unchanged && options.dryRun !== true) await writeUnderRoot(root, options.out as string, serializeRouteLock(lock));
-        return { lock, digest, noop: unchanged, out: options.out };
+        // @req FR-NODE-113 AC-4 — the freeze is not finished when the lock lands: `frozen.route` is
+        // what pulls the lock's digest into `invariant_digest` (09 §9.3), and a lock no card names is
+        // a decision of record nothing on the resume path can find. Computed before either write, so
+        // a card that fails validation leaves the lock untouched too.
+        const update = await planRouteCardUpdate(root, options, lock);
+        if (isRefusal(update)) return update;
+        if (options.dryRun !== true) {
+          if (!unchanged) await writeUnderRoot(root, options.out as string, serializeRouteLock(lock));
+          if (update !== null) await writeUnderRoot(root, update.relativePath, update.text);
+        }
+        return { lock, digest, noop: unchanged, out: options.out, card: update?.relativePath ?? null };
       });
     });
 
@@ -738,7 +846,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           root,
           options.journal as string,
           runId,
-          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", kind: "result", wave: "all", reason_class: options.reason },
+          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", reason_class: options.reason },
           options.dryRun === true
         );
         if (!outcome.written && options.dryRun !== true) return refuse("run-invariant-drift", outcome.diagnostics);
@@ -887,7 +995,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             projectRoot(command),
             options.journal as string,
             options.runId,
-            { schema_version: "1.4.0", run_id: options.runId, engine: "kiwi-orchestrator", verb: "freeze-lane-plan", kind: "intent", wave: "all", strict_grounding: true },
+            { schema_version: "1.4.0", run_id: options.runId, engine: "kiwi-orchestrator", verb: "freeze-lane-plan", event: "intent", wave: "all", strict_grounding: true },
             options.dryRun === true
           );
         }
@@ -992,7 +1100,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
               run_id: options.runId,
               engine: "kiwi-orchestrator",
               verb: "verify-handoff",
-              kind: "result",
+              event: "result",
               wave: "all",
               lane: (lane as { laneId?: string }).laneId ?? null,
               untested_allowance: validation.counts.untestedAllowance ?? 0
@@ -1021,7 +1129,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           root,
           options.journal as string,
           runId,
-          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "verify-design", kind: "result", wave: payload.wave ?? "all", round: payload.roundIndex, verification: { verdict: outcome.verdict } },
+          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "verify-design", event: "result", wave: payload.wave ?? "all", round: payload.roundIndex, verification: { verdict: outcome.verdict } },
           options.dryRun === true
         );
         if (appended.diagnostics.some((entry) => entry.severity === "error")) {
@@ -1195,11 +1303,9 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .requiredOption("--payload <json>", "the gate input, inline")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
-        const input = parseInlineJson(options.payload, "--payload");
-        if (typeof input.gate === "string" && !(GATE_IDS as readonly string[]).includes(input.gate)) {
-          throw new OperationalError(`gate '${input.gate}' is outside the closed GateId vocabulary`);
-        }
-        return { decision: decideAutoGate(input as never) };
+        // The payload is validated into `AutoGateInput` rather than cast: `as never` silenced the
+        // very error that would have said `tieRung` was never constructed here. @req FR-NODE-124
+        return { decision: decideAutoGate(autoGateInputFromPayload(parseInlineJson(options.payload, "--payload"))) };
       });
     });
 }

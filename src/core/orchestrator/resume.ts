@@ -17,6 +17,10 @@ import {
 } from "./journal-schema.js";
 import { readLaneDisposition } from "./lane-state.js";
 import { computeInvariantDigest, type ResumeCard } from "./resume-card.js";
+// @req FR-NODE-113 — 09 §9.5 step 3's drift check, and deliberately not the classifier: the rung is
+// read on resume, never re-judged, and a module that cannot reach the classifier cannot re-judge it
+// even by accident.
+import { checkRouteDrift } from "./route-lock.js";
 import type { WavesJournalView } from "./waves-journal.js";
 
 export interface GitFacts {
@@ -68,6 +72,14 @@ export interface DriftInputs {
   freshIntentDigests: Record<string, string>;
   /** Digest 4's comparand, keyed by lane. */
   handoffProseDigests: Record<string, string>;
+  /**
+   * @req FR-NODE-113 AC-6 — `routing/probe.json` and `routing/route.lock.json` as they digest on disk
+   * NOW, which is 09 §9.5 step 3's comparand. It rides here rather than being derived because both
+   * values are file reads, and this module performs none. Absent for a run whose route is not frozen
+   * yet; a card carrying `frozen.route` and observations carrying nothing is not an assertion that the
+   * route still matches, so digest 1 stays silent on the route in that case.
+   */
+  routeObserved?: { probeDigest: string; lockDigest: string };
 }
 
 export interface LaneClass {
@@ -95,6 +107,11 @@ export interface DriftReport {
   }>;
 }
 
+/**
+ * @req FR-NODE-150 AC-6 — a CLOSED four-field record. The executed rung is deliberately not a fifth:
+ * `frozen.route.rung` is read straight off the card by whoever holds it (09 §9.5 step 2), and routing
+ * it through a derivation here would make a read look like a computation.
+ */
 export interface ResumeState {
   classification: LaneClass[];
   nextAction: NextAction;
@@ -223,12 +240,24 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
   const recomputed = computeInvariantDigest(card.frozen);
   const lockMoved =
     driftInputs.lockDigests.design !== card.frozen?.design_lock || driftInputs.lockDigests.waves !== card.frozen?.waves_lock;
-  const invariantMatches = card.invariant_digest === recomputed && !lockMoved;
+  const digestHolds = card.invariant_digest === recomputed && !lockMoved;
+  // @req FR-NODE-113 AC-6 — 09 §9.5 step 3 joins digest 1 rather than adding a fifth: a route whose
+  // probe or lock no longer digests as recorded is the same fact digest 1 already reports, namely that
+  // the frozen block no longer describes this run, and it carries the same `run-invariant-drift` gate.
+  // The digest over `frozen` cannot catch it on its own — `probe.json` and `route.lock.json` are files
+  // OUTSIDE the card, and the card's own copy of their digests recomputes happily against itself.
+  const route = card.frozen?.route;
+  const routeDrift = route !== undefined && driftInputs.routeObserved !== undefined ? checkRouteDrift(route, driftInputs.routeObserved) : null;
+  const invariantMatches = digestHolds && routeDrift === null;
   digests.push({
     index: 1,
     outcome: invariantMatches ? "match" : "drift",
     gate: invariantMatches ? null : "run-invariant-drift",
-    detail: invariantMatches ? "invariant_digest recomputes over the frozen block" : "invariant_digest disagrees with the lock the card names"
+    detail: !digestHolds
+      ? "invariant_digest disagrees with the lock the card names"
+      : routeDrift !== null
+        ? `frozen.route ${routeDrift.field} recorded ${routeDrift.recorded}, observed ${routeDrift.observed}`
+        : "invariant_digest recomputes over the frozen block"
   });
 
   // Digest 2 compares each intent line's recorded `inputs_digest` against the inputs as they are now.

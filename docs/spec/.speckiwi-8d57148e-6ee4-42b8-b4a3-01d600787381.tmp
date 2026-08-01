@@ -6409,7 +6409,7 @@ A handoff document SHALL NOT carry a `base_sha` front-matter field and SHALL be 
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | implemented |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -6460,7 +6460,6 @@ The wave-boundary issue triage at Phase 3.m SHALL take as its input the residual
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
 | 2026-08-01 | Status -> implemented | §13.1 names loops D, W, H and P as the phase-1 residual sources, records the pass-with-residual path that makes the union non-vacuous, defers loop L to phase 2, and subjects an entering residual to the closed six-value classification and P-WAVE-ISSUES-CLOSED. |
-| 2026-08-01 | Status -> verified | All five criteria checked against named assertions in the flow suite plus the runtime-lag note. |
 
 ### FR-FLOW-096 — kiwi-orchestrator route classification at Phase 1.c-prime from a frozen route probe
 
@@ -6468,7 +6467,7 @@ The wave-boundary issue triage at Phase 3.m SHALL take as its input the residual
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -6487,20 +6486,18 @@ Charter `00.charter.md:69-73` requires the orchestrator to judge scale and scope
 
 #### Acceptance Criteria
 
-- [x] AC-1: All three bundled variants place Phase 1.c′ between 1.c and 1.d in the phase flow, naming the two artifacts it writes before the gate (`routing/probe.json` via verb `probe-route`, and the English prose file `routing/00.routing.md`) and the one it writes after the gate (`routing/route.lock.json` via verb `freeze-route`).
-- [x] AC-2: The skill body enumerates the probe's thirteen fields — S1, S2, S3, S3c, S4, S5, S6, S7, S8, S9, S10, S11 and S12 — each with a named producer and a named tool call, and states that every field records `producer`, `call`, `value` and `read_at`.
-- [x] AC-3: The body states that no predicate may read a value absent from `probe.json`.
-- [x] AC-4: The body states what has not happened at 1.c′: no `add_requirement`, `update_status` or `update_stability` call, no target registered, no plan authored, and no routing artifact committed — the run's first SRS mutation is Phase 3.b.
-- [x] AC-5: The body states what has happened at 1.c′: the run root is pinned (P.1), the regression baseline is captured and pinned (P.4), the run lock is held on the git common dir (P.5), the integration branch `kiwi/orch/{run_id}/integration` is created or adopted (0.b) with two `commit-run-artifacts` commits already on it, and the work-mode has been read and not written (P.3).
-- [x] AC-6: The body states that the probe's magnitude fields drive no threshold: `S5.files` is recorded for the gate's evidence table and the user-facing prose only, `existing_srs_context.json.similarity_score` is recorded and drives no threshold, `S9.summary` counts requirements already in the target rather than incoming work, and the wave splitter is not called at 1.c′.
-- [x] AC-7: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids running `speckiwi init`, `speckiwi skills install` or `speckiwi upgrade --apply` against this repository, so no reinstall is available here.
+- [ ] AC-1: All three bundled variants place Phase 1.c′ between 1.c and 1.d in the phase flow, naming the two artifacts it writes before the gate (`routing/probe.json` via verb `probe-route`, and the English prose file `routing/00.routing.md`) and the one it writes after the gate (`routing/route.lock.json` via verb `freeze-route`).
+- [ ] AC-2: The skill body enumerates the probe's thirteen fields — S1, S2, S3, S3c, S4, S5, S6, S7, S8, S9, S10, S11 and S12 — each with a named producer and a named tool call, and states that every field records `producer`, `call`, `value` and `read_at`.
+- [ ] AC-3: The body states that no predicate may read a value absent from `probe.json`.
+- [ ] AC-4: The body states what has not happened at 1.c′: no `add_requirement`, `update_status` or `update_stability` call, no target registered, no plan authored, and no routing artifact committed — the run's first SRS mutation is Phase 3.b.
+- [ ] AC-5: The body states what has happened at 1.c′: the run root is pinned (P.1), the regression baseline is captured and pinned (P.4), the run lock is held on the git common dir (P.5), the integration branch `kiwi/orch/{run_id}/integration` is created or adopted (0.b) with two `commit-run-artifacts` commits already on it, and the work-mode has been read and not written (P.3).
+- [ ] AC-6: The body states that the probe's magnitude fields drive no threshold: `S5.files` is recorded for the gate's evidence table and the user-facing prose only, `existing_srs_context.json.similarity_score` is recorded and drives no threshold, `S9.summary` counts requirements already in the target rather than incoming work, and the wave splitter is not called at 1.c′.
+- [ ] AC-7: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids running `speckiwi init`, `speckiwi skills install` or `speckiwi upgrade --apply` against this repository, so no reinstall is available here.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 | 51 passed in this file. AC-1's position is proved by offset ordering inside the phase-flow section — 1.c, then 1.c-prime, then 1.d — rather than by all three merely being present. AC-2 counts the probe table's S-rows and requires exactly 13, then asserts each id individually, so a table that drops or duplicates a field fails on the count rather than passing on the presence of the rest. AC-6 is the negative half that keeps the amended magnitude ruling honest: S5.files, similarity_score and S9.summary must each be stated as driving no threshold, and the wave splitter must be stated as not called at 1.c-prime. |
-| VE-2 | Manual | ~/.claude/skills/ | AC-7 | Runtime-lag note, observed 2026-08-01. This criterion states the true condition directly: ~/.claude/skills/ carries no kiwi-orchestrator/SKILL.md. Confirmed by listing the installed tree — the directory does not exist, so there is no stale copy to name, and the installed tree holds none of this text. The change lands in bundled text under skills/{claude,codex,etc}/kiwi-orchestrator/SKILL.md plus the .agents mirror. 00.charter.md:303-304 forbids speckiwi init, skills install and upgrade --apply against this repository, so no reinstall is available here. |
 
 #### Trace Links
 
@@ -6520,8 +6517,6 @@ Charter `00.charter.md:69-73` requires the orchestrator to judge scale and scope
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §3's phase flow places 1.c-prime between 1.c and 1.d with its three routing artifacts; §4.1 states what has and has not happened at that point; §4.2 enumerates the thirteen probe fields with producers and the no-value-outside-probe.json rule. |
-| 2026-08-01 | Status -> verified | All seven criteria checked against named assertions in the routing suite plus the runtime-lag note. |
 
 ### FR-FLOW-097 — Disqualifier-first routing with a fixed selection order and a traceable decision of record
 
@@ -6529,7 +6524,7 @@ Charter `00.charter.md:69-73` requires the orchestrator to judge scale and scope
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -6548,21 +6543,19 @@ The disqualifier-first shape is the property the whole routing design is built t
 
 #### Acceptance Criteria
 
-- [x] AC-1: The body names the eight disqualifiers D1 through D8 with, for each, its predicate over named probe fields, the rung or rungs it removes, and its threshold in a stated unit; the body states that each removes rungs and none selects one.
-- [x] AC-2: The selection order is stated as the fixed sequence `R-PLAN → R-STEP → R-ORCH` with the first survivor winning, and the body states that no predicate removes `R-ORCH`, so the ladder always terminates at exactly one rung.
-- [x] AC-3: The body states that the classifier contains no tie-breaking rule because ties cannot arise inside it, and that the only place a tie can arise is the presentation gate's ballot.
-- [x] AC-4: The body states that D8's map from an unreadable probe field to the rung it protects is total: `S3`, `S3c`, `S4`, `S5`, `S7`, `S8` and `S12` remove `R-STEP`; `S2`, `S9` and `S10` remove `R-PLAN`; `S1` and `S6` remove nothing; and `R-ORCH` is never removed.
-- [x] AC-5: `route.lock.json` records `rung`, `proposed_rung`, `overridden_by`, `alternative`, `decisive` and a `removed[]` array whose rows carry `{rung, by, observed}`, plus the probe path and probe digest.
-- [x] AC-6: The body states that on either override branch — user or committee — the lock records the alternative as `rung`, the classifier's selection as `proposed_rung`, `overridden_by` as `"user"` or `"committee"`, and the ballot's resolution row, and that `computeRoute` is not re-run after an override.
-- [x] AC-7: The body states that the ballot is closed over the classifier's own outputs — the selected rung plus `decision.alternative`, or the selected rung plus `abort` when `alternative` is `null` — so an override changes which computed survivor executes and can never introduce a rung the classifier did not produce.
-- [x] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The body names the eight disqualifiers D1 through D8 with, for each, its predicate over named probe fields, the rung or rungs it removes, and its threshold in a stated unit; the body states that each removes rungs and none selects one.
+- [ ] AC-2: The selection order is stated as the fixed sequence `R-PLAN → R-STEP → R-ORCH` with the first survivor winning, and the body states that no predicate removes `R-ORCH`, so the ladder always terminates at exactly one rung.
+- [ ] AC-3: The body states that the classifier contains no tie-breaking rule because ties cannot arise inside it, and that the only place a tie can arise is the presentation gate's ballot.
+- [ ] AC-4: The body states that D8's map from an unreadable probe field to the rung it protects is total: `S3`, `S3c`, `S4`, `S5`, `S7`, `S8` and `S12` remove `R-STEP`; `S2`, `S9` and `S10` remove `R-PLAN`; `S1` and `S6` remove nothing; and `R-ORCH` is never removed.
+- [ ] AC-5: `route.lock.json` records `rung`, `proposed_rung`, `overridden_by`, `alternative`, `decisive` and a `removed[]` array whose rows carry `{rung, by, observed}`, plus the probe path and probe digest.
+- [ ] AC-6: The body states that on either override branch — user or committee — the lock records the alternative as `rung`, the classifier's selection as `proposed_rung`, `overridden_by` as `"user"` or `"committee"`, and the ballot's resolution row, and that `computeRoute` is not re-run after an override.
+- [ ] AC-7: The body states that the ballot is closed over the classifier's own outputs — the selected rung plus `decision.alternative`, or the selected rung plus `abort` when `alternative` is `null` — so an override changes which computed survivor executes and can never introduce a rung the classifier did not produce.
+- [ ] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | 51 passed in this file. AC-4's totality is asserted as one window containing all four clauses of the map, so a body that lists the R-STEP protectors and omits the nothing-removed pair fails — that pair is what makes the map total rather than partial, and a partial map leaves the GATED_BY loop undefined for two field ids. AC-6 and AC-7 are asserted together with the no-re-run rule, which is the property that stops an override from re-entering the classifier and agreeing with itself. |
-| VE-2 | Manual | ~/.claude/skills/ | AC-8 | Runtime-lag note, observed 2026-08-01. ~/.claude/skills/ carries no kiwi-orchestrator/SKILL.md — the directory does not exist, so there is no stale copy to name and the installed tree holds none of this text. The change lands in bundled text under skills/{claude,codex,etc}/kiwi-orchestrator/SKILL.md plus the .agents mirror. 00.charter.md:303-304 forbids a reinstall against this repository. |
 
 #### Trace Links
 
@@ -6582,8 +6575,6 @@ The disqualifier-first shape is the property the whole routing design is built t
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §4.3 names D1 through D8 with predicates and removed rungs, states the removes-not-selects rule, the fixed selection order with R-ORCH never removed, the absence of a tie-break inside the classifier, D8's total map and the lock's recorded fields; §4.6 carries the override branches and the closed ballot. |
-| 2026-08-01 | Status -> verified | All eight criteria checked against named assertions in the routing suite plus the runtime-lag note. |
 
 ### FR-FLOW-098 — Work-mode never removes the step rung and both mode-related routing gates are user decisions
 
@@ -6591,7 +6582,7 @@ The disqualifier-first shape is the property the whole routing design is built t
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -6610,21 +6601,19 @@ The `kiwi-orchestrator` skill body SHALL state that the persisted work-mode neve
 
 #### Acceptance Criteria
 
-- [x] AC-1: The body states that work-mode is not a disqualifier and records the ground: the routing judgment is the orchestrator's own, the default mode is `wait`, and `wait` is also the fail-open value.
-- [x] AC-2: The body enumerates the four classifier/mode cases and their recorded outcomes: `R-STEP` with mode `tdd` dispatches `/kiwi-tdd`; a rung other than `R-STEP` because D1 through D4 removed the step rung with mode `tdd` routes on and records one non-fatal WARN naming the mode and the rung; `R-STEP` surviving but `R-PLAN` winning on the fixed order with mode `tdd` routes `R-PLAN` and records one non-fatal WARN naming the mode, the rung and the overridden routing clause; and `R-STEP` with a mode other than `tdd` raises `route-step-requires-mode-switch`.
-- [x] AC-3: `route-step-requires-mode-switch` is declared `business-decision`, is absent from `critical_gates[]`, and carries three options each with a consequence line, with the `recommended` marker on `stay-and-orchestrate` only; the body states that `switch-and-step` writes the persisted project-wide work-mode to `docs/spec/steps/state.md` and that `abort` mutates no requirement, target, plan or work-mode.
-- [x] AC-4: The body states that when `S1.source` is `default-wait` the `recommended` marker on `route-step-requires-mode-switch` is withheld entirely, so an unread mode setting can never buy the zero-deliberation path in either direction, and that with three options a 1-1-1 committee split has no majority and halts.
-- [x] AC-5: `tdd-route-unattended` is declared `business-decision`, is evaluated after `route-step-requires-mode-switch`, and fires only when the rung is still `R-STEP` after that gate resolved and that gate did not resolve to `switch-and-step`; its two options are `proceed-step` and `orchestrate-instead`, with `recommended: true` on `orchestrate-instead`.
-- [x] AC-6: The body states that the orchestrator never calls `set_work_mode` on its own authority and that the only path that writes the mode is a human or committee selection of `switch-and-step` at the gate.
-- [x] AC-7: The body states that `tdd_policy` keeps flowing on every rung: mode `tdd` still derives `tdd_policy = strict` in every child Task even when the work routes to `R-ORCH`, so the mode is not neutralised and only its routing clause is.
-- [x] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-pipeline/SKILL.md` §2.8 and `~/.claude/skills/_shared/kiwi/workmode-policy.md`, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The body states that work-mode is not a disqualifier and records the ground: the routing judgment is the orchestrator's own, the default mode is `wait`, and `wait` is also the fail-open value.
+- [ ] AC-2: The body enumerates the four classifier/mode cases and their recorded outcomes: `R-STEP` with mode `tdd` dispatches `/kiwi-tdd`; a rung other than `R-STEP` because D1 through D4 removed the step rung with mode `tdd` routes on and records one non-fatal WARN naming the mode and the rung; `R-STEP` surviving but `R-PLAN` winning on the fixed order with mode `tdd` routes `R-PLAN` and records one non-fatal WARN naming the mode, the rung and the overridden routing clause; and `R-STEP` with a mode other than `tdd` raises `route-step-requires-mode-switch`.
+- [ ] AC-3: `route-step-requires-mode-switch` is declared `business-decision`, is absent from `critical_gates[]`, and carries three options each with a consequence line, with the `recommended` marker on `stay-and-orchestrate` only; the body states that `switch-and-step` writes the persisted project-wide work-mode to `docs/spec/steps/state.md` and that `abort` mutates no requirement, target, plan or work-mode.
+- [ ] AC-4: The body states that when `S1.source` is `default-wait` the `recommended` marker on `route-step-requires-mode-switch` is withheld entirely, so an unread mode setting can never buy the zero-deliberation path in either direction, and that with three options a 1-1-1 committee split has no majority and halts.
+- [ ] AC-5: `tdd-route-unattended` is declared `business-decision`, is evaluated after `route-step-requires-mode-switch`, and fires only when the rung is still `R-STEP` after that gate resolved and that gate did not resolve to `switch-and-step`; its two options are `proceed-step` and `orchestrate-instead`, with `recommended: true` on `orchestrate-instead`.
+- [ ] AC-6: The body states that the orchestrator never calls `set_work_mode` on its own authority and that the only path that writes the mode is a human or committee selection of `switch-and-step` at the gate.
+- [ ] AC-7: The body states that `tdd_policy` keeps flowing on every rung: mode `tdd` still derives `tdd_policy = strict` in every child Task even when the work routes to `R-ORCH`, so the mode is not neutralised and only its routing clause is.
+- [ ] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-pipeline/SKILL.md` §2.8 and `~/.claude/skills/_shared/kiwi/workmode-policy.md`, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | 51 passed in this file. AC-2 counts the four case rows in §4.4's table and requires exactly four, then asserts both WARN shapes individually, so collapsing the conformance case and the override case into one row fails. AC-3 asserts the marker sits on stay-and-orchestrate ONLY and that the gate is absent from critical_gates[]. AC-5 asserts the evaluation order and the negative precondition — tdd-route-unattended must not fire when the earlier gate resolved to switch-and-step, which is what stops the design re-asking a question the user already answered. |
-| VE-2 | Manual | ~/.claude/skills/kiwi-pipeline/SKILL.md | AC-8 | Runtime-lag note, measured 2026-08-01, and for this row the criterion's "still holds the old text" phrasing is accurate. Both named installed files exist: ~/.claude/skills/kiwi-pipeline/SKILL.md and ~/.claude/skills/_shared/kiwi/workmode-policy.md. Neither carries the new routing text — grep for route-step-requires-mode-switch returns 0 occurrences in each — so both still hold the pre-change contract. And ~/.claude/skills/kiwi-orchestrator/SKILL.md is not present at all. 00.charter.md:303-304 forbids speckiwi init, skills install and upgrade --apply against this repository, so no reinstall is available to close either gap. |
 
 #### Trace Links
 
@@ -6646,8 +6635,6 @@ The `kiwi-orchestrator` skill body SHALL state that the persisted work-mode neve
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §4.4 states that work-mode is not a disqualifier with its ground, enumerates the four classifier/mode cases, declares both mode-related gates as business-decision with their options and markers, and keeps tdd_policy flowing on every rung. |
-| 2026-08-01 | Status -> verified | All eight criteria checked. AC-8's two installed paths were measured rather than assumed: both exist and neither carries the new routing text. |
 
 ### FR-FLOW-099 — Per-rung route table with preconditions, invocation form, flag propagation and post-return obligation
 
@@ -6655,7 +6642,7 @@ The `kiwi-orchestrator` skill body SHALL state that the persisted work-mode neve
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -6674,25 +6661,23 @@ Two of the three rungs are delegations that end the orchestrator's run, so the c
 
 #### Acceptance Criteria
 
-- [x] AC-1: The `R-STEP` row states its preconditions: a frozen `routing/probe.json` and `routing/route.lock.json` with `rung = "R-STEP"`; a kebab `<task>` name of at most 40 characters derived deterministically from the intake summary; the work-overview paragraph already written at 1.c as `docs/research/{work}/01.intake.md`; `S1.mode == "tdd"`; and no design document, because 1.d has not run and must not since `kiwi-tdd` authors its own SDS.
-- [x] AC-2: The `R-STEP` row states the invocation as `Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })`, and states the flag set: `--mini`/`--loops N` propagate, `--model` propagates when the user specified it, `--auto` is passed for uniformity and is silently ignored by the child so the orchestrator must not read its lack of effect as an error, and `--max` and the four pass-throughs `--auto-integration`, `--auto-cost-warning`, `--force` and `--regression-baseline` are not propagated.
-- [x] AC-3: The `R-STEP` row states three post-return outcomes: on promotion, record `outcome: "delegated-complete"` on the `dispatch-route` result line, release the P.5 run lock, leave the integration branch in place and name it in the run report, run `validate` then `sync-index` then `validate --fail-on-warning` with `post-merge-index-drift` (critical) firing on surviving drift, emit one `pipeline.jsonl` event with `next_hint: null` and a summary naming the rung and the step, then halt; on a halt at one of `kiwi-tdd`'s own gates, report verbatim and stop without re-routing; on a boundary redirect, escalate through E1.
-- [x] AC-4: The `R-PLAN` row states its preconditions: a frozen lock with `rung = "R-PLAN"`; `PLAN_PATH` resolved explicitly by the orchestrator from the probe's plan field and never left to `kiwi-pm`'s newest-`generated_at` fallback; the active target confirmed non-empty and equal to the plan's target; and no design document and no `/kiwi-srs` run.
-- [x] AC-5: The `R-PLAN` row states the `kiwi-pm` invocation form with `PLAN_PATH`, and states that `--resume` is passed exactly when `.kiwi/sessions/{plan run_id}/pm-state.json` exists, because that file and not the task catalogue statuses is what makes `kiwi-pm` skip `status="done"` Tasks and without it the run is a new session that re-executes completed Tasks.
-- [x] AC-6: The `R-PLAN` row states the second hop `Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs …" })` on `TASK_DONE` as the orchestrator's own declared policy rather than an inherited obligation, with the ground that without `--close-reqs` no requirement reaches `verified` and the run has no closure.
-- [x] AC-7: The `R-PLAN` flag set states that `--auto` is propagated explicitly, that `--max`, `--model` and `--mini`/`--loops N` propagate, and that `--auto-cost-warning`, `--auto-integration` and `--force` flow only when the user specified them while `--regression-baseline` always carries the orchestrator's own P.4 pin.
-- [x] AC-8: The `R-PLAN` close-out states that `plan-coverage-unclosed` is critical and fires on any member of the plan's open-Task `req_ids` set that is neither `verified` nor named by a `coverage_residual[]` row, on any member that is `verified` while an acceptance criterion of it is uncovered by evidence and no residual row names it with a reason and an owner, and, regardless of every row's reason and owner, when the residual row count exceeds `max(--allow-plan-residual, ceil(|req_ids| / 4))`; residual rows are `{req_id, reason, owner}` on the `R-PLAN` `dispatch-route` result line in `kiwi/waves.jsonl` with `reason` at least 20 characters.
-- [x] AC-9: The `R-PLAN` row states that `kiwi-review-fix-loop --close-reqs` skips and reports a `stability=draft` or non-`implemented` requirement without gating on it, so its `TASK_DONE` is not evidence that the requirement set closed, and that the close-out is followed by `validate`, `sync-index` and `validate --fail-on-warning` with `post-merge-index-drift` (critical) before the single closing event.
-- [x] AC-10: The `R-ORCH` row states that nothing beyond the probe must exist before entering because the rung produces its own prerequisites, and states the per-wave delegation by name to `/kiwi-srs`, `/kiwi-planner` and `/kiwi-pm`, with the `/kiwi-review-fix-loop` remediation hop run over the wave's commit range on the integration branch and carrying neither `--commit-lane-work` nor `--close-reqs`.
-- [x] AC-11: The body states two inherited safety rules on the delegated rungs: a child returning `NEEDS_USER` or `FAILED` halts the parent even under `--auto`, and a gate a child bubbles from its own `critical_gates[]` halts unconditionally even with no same-named row in the orchestrator's table.
-- [x] AC-12: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-tdd/SKILL.md`, `~/.claude/skills/kiwi-pm/SKILL.md` and `~/.claude/skills/kiwi-review-fix-loop/SKILL.md`, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The `R-STEP` row states its preconditions: a frozen `routing/probe.json` and `routing/route.lock.json` with `rung = "R-STEP"`; a kebab `<task>` name of at most 40 characters derived deterministically from the intake summary; the work-overview paragraph already written at 1.c as `docs/research/{work}/01.intake.md`; `S1.mode == "tdd"`; and no design document, because 1.d has not run and must not since `kiwi-tdd` authors its own SDS.
+- [ ] AC-2: The `R-STEP` row states the invocation as `Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })`, and states the flag set: `--mini`/`--loops N` propagate, `--model` propagates when the user specified it, `--auto` is passed for uniformity and is silently ignored by the child so the orchestrator must not read its lack of effect as an error, and `--max` and the four pass-throughs `--auto-integration`, `--auto-cost-warning`, `--force` and `--regression-baseline` are not propagated.
+- [ ] AC-3: The `R-STEP` row states three post-return outcomes: on promotion, record `outcome: "delegated-complete"` on the `dispatch-route` result line, release the P.5 run lock, leave the integration branch in place and name it in the run report, run `validate` then `sync-index` then `validate --fail-on-warning` with `post-merge-index-drift` (critical) firing on surviving drift, emit one `pipeline.jsonl` event with `next_hint: null` and a summary naming the rung and the step, then halt; on a halt at one of `kiwi-tdd`'s own gates, report verbatim and stop without re-routing; on a boundary redirect, escalate through E1.
+- [ ] AC-4: The `R-PLAN` row states its preconditions: a frozen lock with `rung = "R-PLAN"`; `PLAN_PATH` resolved explicitly by the orchestrator from the probe's plan field and never left to `kiwi-pm`'s newest-`generated_at` fallback; the active target confirmed non-empty and equal to the plan's target; and no design document and no `/kiwi-srs` run.
+- [ ] AC-5: The `R-PLAN` row states the `kiwi-pm` invocation form with `PLAN_PATH`, and states that `--resume` is passed exactly when `.kiwi/sessions/{plan run_id}/pm-state.json` exists, because that file and not the task catalogue statuses is what makes `kiwi-pm` skip `status="done"` Tasks and without it the run is a new session that re-executes completed Tasks.
+- [ ] AC-6: The `R-PLAN` row states the second hop `Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs …" })` on `TASK_DONE` as the orchestrator's own declared policy rather than an inherited obligation, with the ground that without `--close-reqs` no requirement reaches `verified` and the run has no closure.
+- [ ] AC-7: The `R-PLAN` flag set states that `--auto` is propagated explicitly, that `--max`, `--model` and `--mini`/`--loops N` propagate, and that `--auto-cost-warning`, `--auto-integration` and `--force` flow only when the user specified them while `--regression-baseline` always carries the orchestrator's own P.4 pin.
+- [ ] AC-8: The `R-PLAN` close-out states that `plan-coverage-unclosed` is critical and fires on any member of the plan's open-Task `req_ids` set that is neither `verified` nor named by a `coverage_residual[]` row, on any member that is `verified` while an acceptance criterion of it is uncovered by evidence and no residual row names it with a reason and an owner, and, regardless of every row's reason and owner, when the residual row count exceeds `max(--allow-plan-residual, ceil(|req_ids| / 4))`; residual rows are `{req_id, reason, owner}` on the `R-PLAN` `dispatch-route` result line in `kiwi/waves.jsonl` with `reason` at least 20 characters.
+- [ ] AC-9: The `R-PLAN` row states that `kiwi-review-fix-loop --close-reqs` skips and reports a `stability=draft` or non-`implemented` requirement without gating on it, so its `TASK_DONE` is not evidence that the requirement set closed, and that the close-out is followed by `validate`, `sync-index` and `validate --fail-on-warning` with `post-merge-index-drift` (critical) before the single closing event.
+- [ ] AC-10: The `R-ORCH` row states that nothing beyond the probe must exist before entering because the rung produces its own prerequisites, and states the per-wave delegation by name to `/kiwi-srs`, `/kiwi-planner` and `/kiwi-pm`, with the `/kiwi-review-fix-loop` remediation hop run over the wave's commit range on the integration branch and carrying neither `--commit-lane-work` nor `--close-reqs`.
+- [ ] AC-11: The body states two inherited safety rules on the delegated rungs: a child returning `NEEDS_USER` or `FAILED` halts the parent even under `--auto`, and a gate a child bubbles from its own `critical_gates[]` halts unconditionally even with no same-named row in the orchestrator's table.
+- [ ] AC-12: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-tdd/SKILL.md`, `~/.claude/skills/kiwi-pm/SKILL.md` and `~/.claude/skills/kiwi-review-fix-loop/SKILL.md`, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11 | 51 passed in this file. AC-2's invocation form is asserted as an exact string rather than by parts, so a flag added or dropped fails. AC-5 asserts the --resume condition together with its reason — the pm-state file and not the task-catalogue statuses is what makes kiwi-pm skip done Tasks — because the condition without the reason invites the wrong fallback. AC-8's three disjuncts are asserted individually including the residual cap expression and the 20-character reason floor. AC-10 asserts the remediation hop carries NEITHER --commit-lane-work NOR --close-reqs, both of which are phase-2 or 3.n concerns. |
-| VE-2 | Manual | ~/.claude/skills/kiwi-pm/SKILL.md | AC-12 | Runtime-lag note, measured 2026-08-01. All three installed paths this criterion names exist — ~/.claude/skills/kiwi-tdd/SKILL.md, ~/.claude/skills/kiwi-pm/SKILL.md and ~/.claude/skills/kiwi-review-fix-loop/SKILL.md — and none carries the new routing text: a grep for dispatch-route and R-ORCH returns 0 occurrences in each, so all three still hold the pre-change contract. ~/.claude/skills/kiwi-orchestrator/SKILL.md is not present at all. 00.charter.md:303-304 forbids a reinstall against this repository, so no reinstall is available to close either gap. |
 
 #### Trace Links
 
@@ -6712,8 +6697,6 @@ Two of the three rungs are delegations that end the orchestrator's run, so the c
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §4.5.1 through §4.5.3 carry the three rung rows with preconditions, exact invocation forms, flag propagation sets and post-return obligations, including the R-PLAN plan-coverage close-out with its three disjuncts and the two inherited safety rules. |
-| 2026-08-01 | Status -> verified | All twelve criteria checked. AC-12's three installed paths were measured: all exist and none carries the new routing text. |
 
 ### FR-FLOW-100 — R-ORCH drives the shared wave engine directly and declares the wave-semantic critical gates
 
@@ -6721,7 +6704,7 @@ Two of the three rungs are delegations that end the orchestrator's run, so the c
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -6740,20 +6723,18 @@ After the D1 extraction the engine lives in shared modules whose artifact root i
 
 #### Acceptance Criteria
 
-- [x] AC-1: The body states that `R-ORCH` is not a skill invocation: the orchestrator continues its own flow calling into `_shared/kiwi/wave-decomposition.md`, `_shared/kiwi/verify-loop.md` and `_shared/kiwi/run-ledger.md`, passing `docs/research/{work}/` as the artifact root where `kiwi-wave-master` passes `docs/analysis/kiwi-wave-master-{run_id}/`.
-- [x] AC-2: The body carries the rule that `kiwi-orchestrator` never invokes `kiwi-wave-master`, together with its four grounds: the sibling is the duplicated path after the extraction, its input contract does not fit a design the orchestrator authored and froze, its run-scoped journal-root and regression-baseline pins collide with the orchestrator's own P.4 pin, and a nested run writes lines under a second `run_id` and a second engine into one journal for one logical run.
-- [x] AC-3: The body states that an explicit user request naming `kiwi-wave-master` is not intercepted, is not classified, and starts no run — the orchestrator reports that the request names a sibling skill and stops.
-- [x] AC-4: The orchestrator's own `critical_gates[]` table declares all thirteen wave-semantic gates in all three variants: `wave-verify-residual-critical`, `wave-verify-fail-residual`, `wave-verify-cross-wave-fix-required`, `final-verify-residual-critical`, `wave-decomposition-coverage-gap`, `out-of-scope-user-consent`, `wave-append-cap-exhausted`, `decomposition-input-missing`, `child-srs-needs-user-or-failed`, `child-pipeline-needs-user-or-failed`, `unsafe-option-refused`, `wt-delegation-refused` and `invalid-loop-option`.
-- [x] AC-5: The body records why those gates are declared rather than inherited — `_shared` modules are not children, nothing bubbles a `gate_id`, gate declaration is per-skill by construction, and a gate with no declared severity falls to `business-decision` so a committee approves it under `--auto` — so a later session does not delete them as redundant.
-- [x] AC-6: The body states that per-wave delegation calls `/kiwi-srs`, `/kiwi-planner`, `/kiwi-pm` and `/kiwi-review-fix-loop` individually rather than entering `/kiwi-pipeline --cycle`, and that there is no `/kiwi-srs-feasibility` hop on this rung.
-- [x] AC-7: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-wave-master/SKILL.md`, which still inlines the engine, and `~/.claude/skills/_shared/kiwi/`, which holds none of the new modules, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The body states that `R-ORCH` is not a skill invocation: the orchestrator continues its own flow calling into `_shared/kiwi/wave-decomposition.md`, `_shared/kiwi/verify-loop.md` and `_shared/kiwi/run-ledger.md`, passing `docs/research/{work}/` as the artifact root where `kiwi-wave-master` passes `docs/analysis/kiwi-wave-master-{run_id}/`.
+- [ ] AC-2: The body carries the rule that `kiwi-orchestrator` never invokes `kiwi-wave-master`, together with its four grounds: the sibling is the duplicated path after the extraction, its input contract does not fit a design the orchestrator authored and froze, its run-scoped journal-root and regression-baseline pins collide with the orchestrator's own P.4 pin, and a nested run writes lines under a second `run_id` and a second engine into one journal for one logical run.
+- [ ] AC-3: The body states that an explicit user request naming `kiwi-wave-master` is not intercepted, is not classified, and starts no run — the orchestrator reports that the request names a sibling skill and stops.
+- [ ] AC-4: The orchestrator's own `critical_gates[]` table declares all thirteen wave-semantic gates in all three variants: `wave-verify-residual-critical`, `wave-verify-fail-residual`, `wave-verify-cross-wave-fix-required`, `final-verify-residual-critical`, `wave-decomposition-coverage-gap`, `out-of-scope-user-consent`, `wave-append-cap-exhausted`, `decomposition-input-missing`, `child-srs-needs-user-or-failed`, `child-pipeline-needs-user-or-failed`, `unsafe-option-refused`, `wt-delegation-refused` and `invalid-loop-option`.
+- [ ] AC-5: The body records why those gates are declared rather than inherited — `_shared` modules are not children, nothing bubbles a `gate_id`, gate declaration is per-skill by construction, and a gate with no declared severity falls to `business-decision` so a committee approves it under `--auto` — so a later session does not delete them as redundant.
+- [ ] AC-6: The body states that per-wave delegation calls `/kiwi-srs`, `/kiwi-planner`, `/kiwi-pm` and `/kiwi-review-fix-loop` individually rather than entering `/kiwi-pipeline --cycle`, and that there is no `/kiwi-srs-feasibility` hop on this rung.
+- [ ] AC-7: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-wave-master/SKILL.md`, which still inlines the engine, and `~/.claude/skills/_shared/kiwi/`, which holds none of the new modules, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 | 51 passed in this file. AC-4 is asserted against the shared WAVE_SEMANTIC_GATE_IDS list of thirteen, each required present in every variant's three-column critical_gates[] table — so declaring twelve fails on the missing one rather than passing on the twelve. AC-5's four grounds are asserted individually, which is what stops a later session deleting the rows as redundant: the reason they are declared rather than inherited is recorded next to them. A deleted-row probe on this table (removing route-escalation-after-landed-state from codex only) went red at the cross-variant parity assertion, so the table is genuinely guarded. |
-| VE-2 | Manual | ~/.claude/skills/kiwi-wave-master/SKILL.md | AC-7 | Runtime-lag note, measured 2026-08-01, stating what was observed rather than repeating the criterion's characterisation. ~/.claude/skills/kiwi-wave-master/SKILL.md exists at 169 lines and carries ZERO references to _shared/kiwi/verify-loop, so the installed copy predates the extraction and does not reach the shared engine. ~/.claude/skills/_shared/kiwi/ holds only the seven pre-extraction modules and none of verify-loop.md, wave-decomposition.md, wave-srs-registration.md or run-ledger.md. ~/.claude/skills/kiwi-orchestrator/SKILL.md is not present at all. 00.charter.md:303-304 forbids a reinstall against this repository. |
 
 #### Trace Links
 
@@ -6775,8 +6756,6 @@ After the D1 extraction the engine lives in shared modules whose artifact root i
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §4.5.3 states that R-ORCH is not a skill invocation, names the three shared modules and the artifact-root parameter, carries the never-invoke rule with its four grounds and the un-intercepted sibling request, and records why the thirteen wave-semantic gates are declared rather than inherited. |
-| 2026-08-01 | Status -> verified | All seven criteria checked. AC-7's installed paths were measured: kiwi-wave-master is installed at 169 lines with zero references to the extracted engine, and none of the four new shared modules is installed. |
 
 ### FR-FLOW-101 — One-way route escalation with sealed carry, landed-state gating and a read-never-recomputed rung on resume
 
@@ -6784,7 +6763,7 @@ After the D1 extraction the engine lives in shared modules whose artifact root i
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | high |
@@ -6803,23 +6782,21 @@ The journals do not permit de-escalation — `complete` is append-only with no r
 
 #### Acceptance Criteria
 
-- [x] AC-1: The body names E1's two triggers with the moment each is observable and its cost — the SDS approaching the 200-line cap, observable at the child's Phase 2 before the first red test at near-zero cost, and an existing body-requirement edit detected or `promote_step_requirement` returning `MUTATION_DENIED`, observable at the child's Phase 6 after the implementation is already written — and names `EVIDENCE_REQUIRED` on promote and `COMPLETION_GATE_BLOCKED` on merge as explicitly not triggers, because those are defects in the run and escalating on a quality failure lets a stuck run climb until it runs out of rungs.
-- [x] AC-2: The body names E2's three triggers: three accumulated `NEEDS_USER` on one Task whose resolution is that the Task needs requirements that do not exist; a `FAILED` return naming missing prior work; and the child's lifecycle gate stopping on an empty active target, which is a classifier defect because D7 should have caught it at intake; and it states that the `deprecated`/`frozen` branch is deliberately not a trigger because it is unreachable on the only sidecar shape the plan predicate admits.
-- [x] AC-3: Every escalation writes `routing/misroute-{n}.json` naming the probe id, the trigger, the predicate that should have fired and the value it would have needed; on E1's second trigger and on E2's empty-target trigger it additionally names the file whose anchor should have hit and the observed anchor coverage.
-- [x] AC-4: The carry manifests are stated per trigger: the step's `design.md` and `intent.md` become research inputs to 1.d and then per-wave `--research-doc` arguments; on the post-green trigger the merged tests and implementation stay on the integration branch and are sealed in the `R-ORCH` design baseline as `out_of_scope` with `exclusion_class = "already-implemented"`; the body states that green implementation is never re-planned as a Task because every code Task runs through a mandatory red confirmation that carried green code would fail.
-- [x] AC-5: The body states that the `already-implemented` seal fires `out-of-scope-user-consent` even under `--auto`, so no escalation that discards work from a denominator is silent.
-- [x] AC-6: The body states the lease hygiene on escalation from `R-STEP`: the orchestrator calls `update_step_state(<task>, "abandoned")` and does not call `update_step_state(<task>, "merged")`, because the step's requirement will be authored at body scope by `/kiwi-srs` instead.
-- [x] AC-7: `route-escalation-after-landed-state` is declared in `critical_gates[]` and fires when the escalation follows either a commit on the integration branch or an SRS mutation that moved a requirement's `status` or its `stability`; an escalation detected before the first red test is stated as free and ungated.
-- [x] AC-8: `route-deescalation-refused` is declared in `critical_gates[]` and fires on any attempt to move down a rung after Phase 3.b; the body states that the sole legal downgrade is `route-downgrade-available` at the end of Phase 2 and nowhere later, and that the terminal exit is `abort-run`, which leaves the integration branch and everything already written under `docs/research/{work}/` in place, releases the run lock, and names that state in the run report.
-- [x] AC-9: The body states that on resume the rung is read from `frozen.route.rung` and never recomputed, that a `frozen.route.probe_digest` mismatch against `probe.json` raises the critical gate `run-invariant-drift`, and that `computeRoute` runs exactly once per run because a resumed session has no conversation and no investigators.
-- [x] AC-10: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The body names E1's two triggers with the moment each is observable and its cost — the SDS approaching the 200-line cap, observable at the child's Phase 2 before the first red test at near-zero cost, and an existing body-requirement edit detected or `promote_step_requirement` returning `MUTATION_DENIED`, observable at the child's Phase 6 after the implementation is already written — and names `EVIDENCE_REQUIRED` on promote and `COMPLETION_GATE_BLOCKED` on merge as explicitly not triggers, because those are defects in the run and escalating on a quality failure lets a stuck run climb until it runs out of rungs.
+- [ ] AC-2: The body names E2's three triggers: three accumulated `NEEDS_USER` on one Task whose resolution is that the Task needs requirements that do not exist; a `FAILED` return naming missing prior work; and the child's lifecycle gate stopping on an empty active target, which is a classifier defect because D7 should have caught it at intake; and it states that the `deprecated`/`frozen` branch is deliberately not a trigger because it is unreachable on the only sidecar shape the plan predicate admits.
+- [ ] AC-3: Every escalation writes `routing/misroute-{n}.json` naming the probe id, the trigger, the predicate that should have fired and the value it would have needed; on E1's second trigger and on E2's empty-target trigger it additionally names the file whose anchor should have hit and the observed anchor coverage.
+- [ ] AC-4: The carry manifests are stated per trigger: the step's `design.md` and `intent.md` become research inputs to 1.d and then per-wave `--research-doc` arguments; on the post-green trigger the merged tests and implementation stay on the integration branch and are sealed in the `R-ORCH` design baseline as `out_of_scope` with `exclusion_class = "already-implemented"`; the body states that green implementation is never re-planned as a Task because every code Task runs through a mandatory red confirmation that carried green code would fail.
+- [ ] AC-5: The body states that the `already-implemented` seal fires `out-of-scope-user-consent` even under `--auto`, so no escalation that discards work from a denominator is silent.
+- [ ] AC-6: The body states the lease hygiene on escalation from `R-STEP`: the orchestrator calls `update_step_state(<task>, "abandoned")` and does not call `update_step_state(<task>, "merged")`, because the step's requirement will be authored at body scope by `/kiwi-srs` instead.
+- [ ] AC-7: `route-escalation-after-landed-state` is declared in `critical_gates[]` and fires when the escalation follows either a commit on the integration branch or an SRS mutation that moved a requirement's `status` or its `stability`; an escalation detected before the first red test is stated as free and ungated.
+- [ ] AC-8: `route-deescalation-refused` is declared in `critical_gates[]` and fires on any attempt to move down a rung after Phase 3.b; the body states that the sole legal downgrade is `route-downgrade-available` at the end of Phase 2 and nowhere later, and that the terminal exit is `abort-run`, which leaves the integration branch and everything already written under `docs/research/{work}/` in place, releases the run lock, and names that state in the run report.
+- [ ] AC-9: The body states that on resume the rung is read from `frozen.route.rung` and never recomputed, that a `frozen.route.probe_digest` mismatch against `probe.json` raises the critical gate `run-invariant-drift`, and that `computeRoute` runs exactly once per run because a resumed session has no conversation and no investigators.
+- [ ] AC-10: The verification evidence for this requirement records an explicit runtime-lag note naming the installed path that does not yet hold this text — `~/.claude/skills/` carries no `kiwi-orchestrator/SKILL.md` — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 | 51 passed in this file. AC-1's two non-triggers are asserted alongside the reason, because naming EVIDENCE_REQUIRED and COMPLETION_GATE_BLOCKED as triggers is the failure mode this criterion exists to prevent — a stuck run climbing rungs on a quality failure. AC-6 asserts both the abandoned call AND the explicit non-call of merged, since calling both would leave the step claimed. AC-7's gate row is asserted to name status AND stability in its reason cell: the stability clause is what catches a post-feasibility escalation, which a status-only condition would classify as free. |
-| VE-2 | Manual | ~/.claude/skills/ | AC-10 | Runtime-lag note, observed 2026-08-01. ~/.claude/skills/ carries no kiwi-orchestrator/SKILL.md — the directory does not exist, so there is no stale copy to name and the installed tree holds none of this text. The change lands in bundled text under skills/{claude,codex,etc}/kiwi-orchestrator/SKILL.md plus the .agents mirror. 00.charter.md:303-304 forbids a reinstall against this repository. |
 
 #### Trace Links
 
@@ -6839,8 +6816,6 @@ The journals do not permit de-escalation — `complete` is append-only with no r
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §4.7 states one-way escalation with E1's two triggers and E2's three, the non-triggers, the misroute record, the carry manifests with the already-implemented seal and its consent gate, the lease hygiene, both critical gates and the read-never-recompute resume rule. |
-| 2026-08-01 | Status -> verified | All ten criteria checked against named assertions in the routing suite plus the runtime-lag note. |
 
 ### FR-FLOW-102 — Serial host-root execution of the frozen partition with the parallelisability analysis still produced
 
@@ -6848,7 +6823,7 @@ The journals do not permit de-escalation — `complete` is append-only with no r
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -6867,21 +6842,19 @@ The scope decision for this target keeps the partition analysis and drops concur
 
 #### Acceptance Criteria
 
-- [x] AC-1: The body carries the executor invocation in all three variants — `/kiwi-pm --handoff docs/research/{work}/waves/wave-{n}/lanes/lane-{k}.md --session-suffix w{n}s{s}l{k} --no-final --no-pipeline-emit --commit-lane-work` with the optional `[--resume] [--auto] [--max] [--model <name>] [--mini|--loops N] [--regression-baseline <the P.4 pin>]` — run at the host root on `frozen.integration_branch`, one at a time.
-- [x] AC-2: The body states the six differences from a concurrent dispatch with a reason for each: no worktree and no unit branch; no `--defer-srs-mutation`, so `kiwi-coder`'s four mandatory MCP mutations execute at the host root against the run's own target; no claim audit, because the commit range on the integration branch is the record and is derived rather than reported; `--commit-lane-work` is still required; commits keep the five `Orch-*` trailers `Orch-Run`, `Orch-Wave`, `Orch-Stage`, `Orch-Lane` and `Orch-Task` and carry no subject marker; and the non-code and SRS-write scheduling edges change a unit's position rather than its executor, landing such tasks in the serial epilogue executed order-last at 3.k.
-- [x] AC-3: `serial-unit-failed` is declared in `critical_gates[]` with its three disjuncts: a unit whose `verification_cmd` exited non-zero after one retry against the same handoff, a unit that produced no commit and declared no `intentionally_empty` reason in its `/kiwi-pm` run's own `docs/analysis/` bundle, or a unit whose `/kiwi-pm` returned `NEEDS_USER` or `FAILED`.
-- [x] AC-4: The intentionally-empty disposition is stated as per task in the unit's `docs/analysis/kiwi-pm-…` bundle, carrying the task id and a reason of at least 20 characters, admissible only when that task's `verification_cmd` exits zero and no path in the task's `write_set` differs between the unit's base and head on the integration branch; the task stays in `expected` and enters `checked` rather than being removed from the denominator, and for promotion it counts as landed with test-kind evidence only and no commit-kind reference.
-- [x] AC-5: The body states that `validate` followed by `sync-index` runs at 3.k, after the last unit of the last stage and before the post-merge verification loop, with `post-merge-index-drift` (critical) unchanged, and records that this target performs no merge so charter C4's obligation attaches to the point at which SRS-affecting work has landed.
-- [x] AC-6: The body states that the partition is frozen at 3.e′, published, and reviewed per wave, with `partition-review-unrecorded` (critical) refusing a wave that has no `review-partition` result line whose recorded lane-plan digest equals the digest frozen at 3.e′ and whose verdict is `pass`, and it states plainly that this target delivers no wall-clock speedup.
-- [x] AC-7: The body states the resume contract for the executor: the verb is `execute-unit` with recovery class externally-visible, recovery reads the `Orch-Task` trailers on the integration branch together with `workflow_plan_status` and re-enters `/kiwi-pm` only for Tasks carrying neither a trailer nor a checked box, and `--resume` is passed when `.kiwi/sessions/{plan_run_id}/lanes/w{n}s{s}l{k}/pm-state.json` exists.
-- [x] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-pm/SKILL.md`, which carries none of the five flags, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: The body carries the executor invocation in all three variants — `/kiwi-pm --handoff docs/research/{work}/waves/wave-{n}/lanes/lane-{k}.md --session-suffix w{n}s{s}l{k} --no-final --no-pipeline-emit --commit-lane-work` with the optional `[--resume] [--auto] [--max] [--model <name>] [--mini|--loops N] [--regression-baseline <the P.4 pin>]` — run at the host root on `frozen.integration_branch`, one at a time.
+- [ ] AC-2: The body states the six differences from a concurrent dispatch with a reason for each: no worktree and no unit branch; no `--defer-srs-mutation`, so `kiwi-coder`'s four mandatory MCP mutations execute at the host root against the run's own target; no claim audit, because the commit range on the integration branch is the record and is derived rather than reported; `--commit-lane-work` is still required; commits keep the five `Orch-*` trailers `Orch-Run`, `Orch-Wave`, `Orch-Stage`, `Orch-Lane` and `Orch-Task` and carry no subject marker; and the non-code and SRS-write scheduling edges change a unit's position rather than its executor, landing such tasks in the serial epilogue executed order-last at 3.k.
+- [ ] AC-3: `serial-unit-failed` is declared in `critical_gates[]` with its three disjuncts: a unit whose `verification_cmd` exited non-zero after one retry against the same handoff, a unit that produced no commit and declared no `intentionally_empty` reason in its `/kiwi-pm` run's own `docs/analysis/` bundle, or a unit whose `/kiwi-pm` returned `NEEDS_USER` or `FAILED`.
+- [ ] AC-4: The intentionally-empty disposition is stated as per task in the unit's `docs/analysis/kiwi-pm-…` bundle, carrying the task id and a reason of at least 20 characters, admissible only when that task's `verification_cmd` exits zero and no path in the task's `write_set` differs between the unit's base and head on the integration branch; the task stays in `expected` and enters `checked` rather than being removed from the denominator, and for promotion it counts as landed with test-kind evidence only and no commit-kind reference.
+- [ ] AC-5: The body states that `validate` followed by `sync-index` runs at 3.k, after the last unit of the last stage and before the post-merge verification loop, with `post-merge-index-drift` (critical) unchanged, and records that this target performs no merge so charter C4's obligation attaches to the point at which SRS-affecting work has landed.
+- [ ] AC-6: The body states that the partition is frozen at 3.e′, published, and reviewed per wave, with `partition-review-unrecorded` (critical) refusing a wave that has no `review-partition` result line whose recorded lane-plan digest equals the digest frozen at 3.e′ and whose verdict is `pass`, and it states plainly that this target delivers no wall-clock speedup.
+- [ ] AC-7: The body states the resume contract for the executor: the verb is `execute-unit` with recovery class externally-visible, recovery reads the `Orch-Task` trailers on the integration branch together with `workflow_plan_status` and re-enters `/kiwi-pm` only for Tasks carrying neither a trailer nor a checked box, and `--resume` is passed when `.kiwi/sessions/{plan_run_id}/lanes/w{n}s{s}l{k}/pm-state.json` exists.
+- [ ] AC-8: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/kiwi-pm/SKILL.md`, which carries none of the five flags, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-flow.fr-flow-077.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7 | 68 passed in this file. AC-1 asserts each of the five mandatory flags and each optional flag individually plus the walk order, so dropping --commit-lane-work — which would leave the wave's output uncommitted for the next unit to trip over — fails on its own assertion rather than being absorbed by a looser match. AC-4's two admissibility conjuncts are asserted together with the sentence that the unchanged-write-set half is recomputed by the orchestrator rather than asserted by the unit, which is what stops the escape being a self-report. AC-6 asserts the no-wall-clock-speedup sentence plainly, since that is the claim keeping the target honest. |
-| VE-2 | Manual | ~/.claude/skills/kiwi-pm/SKILL.md | AC-8 | Runtime-lag note, measured 2026-08-01. ~/.claude/skills/kiwi-pm/SKILL.md exists and carries none of the new orchestrator routing or executor text — a grep for dispatch-route and R-ORCH returns 0 occurrences — so the installed copy still holds the pre-change contract without the five executor flags. ~/.claude/skills/kiwi-orchestrator/SKILL.md is not present at all. 00.charter.md:303-304 forbids a reinstall against this repository, so no reinstall is available to close either gap. |
 
 #### Trace Links
 
@@ -6902,8 +6875,6 @@ The scope decision for this target keeps the partition analysis and drops concur
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
-| 2026-08-01 | Status -> implemented | §10 carries the executor invocation with its five mandatory flags, the six differences with reasons, serial-unit-failed's three disjuncts, the intentionally-empty disposition, the 3.k validate/sync-index attachment, the 3.e-prime partition review and the execute-unit resume contract. |
-| 2026-08-01 | Status -> verified | All eight criteria checked against named assertions in the flow suite plus the runtime-lag note. |
 
 ### FR-FLOW-103 — Four business-decision routing gates declared in the skill body and kept out of critical_gates
 
@@ -6911,7 +6882,7 @@ The scope decision for this target keeps the partition analysis and drops concur
 | --- | --- |
 | Type | functional |
 | Target | 2.6.0-phase1-kiwi-orchestrator |
-| Status | verified |
+| Status | planned |
 | Priority | high |
 | Tags | - |
 | Risk | medium |
@@ -6930,24 +6901,21 @@ The `kiwi-orchestrator` skill body SHALL declare the four `business-decision` ro
 
 #### Acceptance Criteria
 
-- [x] AC-1: All four gate ids appear in the skill body of all three variants with severity `business-decision` and with the condition under which each fires: `route-proposal` on every run at 1.c′; `route-step-requires-mode-switch` when the rung is `R-STEP` and the mode is not `tdd`; `tdd-route-unattended` when the rung is still `R-STEP`, `--auto` is active, and `route-step-requires-mode-switch` did not resolve to `switch-and-step`; and `route-downgrade-available` at the end of Phase 2.
-- [x] AC-2: None of the four appears in the `critical_gates[]` table in any variant, while the three critical routing gates `route-probe-unreadable`, `route-escalation-after-landed-state` and `route-deescalation-refused` do appear there with a reason and a location.
-- [x] AC-3: The body records why `route-proposal` is not critical: it fires on every run, `critical_gates[]` membership means halt regardless of `--auto`, and the committee never overrides a critical halt — so promoting it would stall every unattended run at its first decision.
-- [x] AC-4: The body records that declaring the severity is what pins the confidence threshold of at least 0.7 and puts the confidence de-rating in play, rather than relying on the shared contract's undeclared-gate default that would classify the gate `business-decision` anyway.
-- [x] AC-5: `route-proposal`'s ballot is stated as the selected rung plus `decision.alternative`, or the selected rung plus `abort` when `alternative` is `null`; with two options and three members a tie is arithmetically impossible, and the residual halt is a degraded quorum, which escalates to critical and halts.
-- [x] AC-6: The body states the five clauses under which `route-proposal` carries `recommended: true` — the unreadable field list is empty; `decisive` is non-`null` and either has margin at least 1 in its own unit or is a boolean corroborated by another predicate that also fired; the ambiguity count is zero after 1.c's QnA; when the rung is `R-STEP` the mode source is not `default-wait`; and when the rung is `R-STEP` cleared by measurement the anchor coverage is at least 0.2 — and states that `withheld_because[]` names the clause that failed.
-- [x] AC-7: The body states that committee input carries the probe table and the removal table and never the main session's tentative proposal, that the user-facing prose file is what the user reads while the committee reads evidence, and that a fast-pathed decision writes an audit row carrying `{"rule": "recommended-fastpath", "committee_size": 0, "marked_by": …}` to the run's decision audit log.
-- [x] AC-8: `route-downgrade-available` fires only at the end of Phase 2 and only when all three conditions hold: the decomposition returned exactly one wave; no disqualifier removed `R-STEP` at 1.c′; and no SRS mutation on this run has moved a requirement's `status` or `stability`. The wave's `design_items` count appears in the gate's evidence table and in no predicate.
-- [x] AC-9: `route-downgrade-available` offers `continue-orchestrated`, carrying the `recommended` marker, and `downgrade-to-step`; the body states that selecting `downgrade-to-step` when the mode is not `tdd` re-raises `route-step-requires-mode-switch` and only `switch-and-step` proceeds, that `freeze-route` writes a new `route.lock.json` under the verb `downgrade-route` whose digest re-enters `invariant_digest`, and that the design document and the decomposition stay on disk as sunk artifacts named in the run report and are not passed to the child.
-- [x] AC-10: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/_shared/kiwi/auto-option.md`, which still carries the pre-amendment contract, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
+- [ ] AC-1: All four gate ids appear in the skill body of all three variants with severity `business-decision` and with the condition under which each fires: `route-proposal` on every run at 1.c′; `route-step-requires-mode-switch` when the rung is `R-STEP` and the mode is not `tdd`; `tdd-route-unattended` when the rung is still `R-STEP`, `--auto` is active, and `route-step-requires-mode-switch` did not resolve to `switch-and-step`; and `route-downgrade-available` at the end of Phase 2.
+- [ ] AC-2: None of the four appears in the `critical_gates[]` table in any variant, while the three critical routing gates `route-probe-unreadable`, `route-escalation-after-landed-state` and `route-deescalation-refused` do appear there with a reason and a location.
+- [ ] AC-3: The body records why `route-proposal` is not critical: it fires on every run, `critical_gates[]` membership means halt regardless of `--auto`, and the committee never overrides a critical halt — so promoting it would stall every unattended run at its first decision.
+- [ ] AC-4: The body records that declaring the severity is what pins the confidence threshold of at least 0.7 and puts the confidence de-rating in play, rather than relying on the shared contract's undeclared-gate default that would classify the gate `business-decision` anyway.
+- [ ] AC-5: `route-proposal`'s ballot is stated as the selected rung plus `decision.alternative`, or the selected rung plus `abort` when `alternative` is `null`; with two options and three members a tie is arithmetically impossible, and the residual halt is a degraded quorum, which escalates to critical and halts.
+- [ ] AC-6: The body states the five clauses under which `route-proposal` carries `recommended: true` — the unreadable field list is empty; `decisive` is non-`null` and either has margin at least 1 in its own unit or is a boolean corroborated by another predicate that also fired; the ambiguity count is zero after 1.c's QnA; when the rung is `R-STEP` the mode source is not `default-wait`; and when the rung is `R-STEP` cleared by measurement the anchor coverage is at least 0.2 — and states that `withheld_because[]` names the clause that failed.
+- [ ] AC-7: The body states that committee input carries the probe table and the removal table and never the main session's tentative proposal, that the user-facing prose file is what the user reads while the committee reads evidence, and that a fast-pathed decision writes an audit row carrying `{"rule": "recommended-fastpath", "committee_size": 0, "marked_by": …}` to the run's decision audit log.
+- [ ] AC-8: `route-downgrade-available` fires only at the end of Phase 2 and only when all three conditions hold: the decomposition returned exactly one wave; no disqualifier removed `R-STEP` at 1.c′; and no SRS mutation on this run has moved a requirement's `status` or `stability`. The wave's `design_items` count appears in the gate's evidence table and in no predicate.
+- [ ] AC-9: `route-downgrade-available` offers `continue-orchestrated`, carrying the `recommended` marker, and `downgrade-to-step`; the body states that selecting `downgrade-to-step` when the mode is not `tdd` re-raises `route-step-requires-mode-switch` and only `switch-and-step` proceeds, that `freeze-route` writes a new `route.lock.json` under the verb `downgrade-route` whose digest re-enters `invariant_digest`, and that the design document and the decomposition stay on disk as sunk artifacts named in the run report and are not passed to the child.
+- [ ] AC-10: The verification evidence for this requirement records an explicit runtime-lag note naming the installed paths that still hold the old text — `~/.claude/skills/_shared/kiwi/auto-option.md`, which still carries the pre-amendment contract, with no `~/.claude/skills/kiwi-orchestrator/SKILL.md` present at all — because `00.charter.md:303-304` forbids a reinstall against this repository.
 
 #### Verification Evidence
 
 | Evidence ID | Type | Reference | Covers | Notes |
 | --- | --- | --- | --- | --- |
-| VE-1 | Test | test/skills/kiwi-orchestrator-routing.fr-flow-096.test.ts | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 | 51/51 pass on 2026-08-01. "103 AC-1" asserts gateSeverityRows equals the four routing gate ids and matches each firing condition; "103 AC-2" asserts the three critical routing gates carry a non-empty reason and location in critical_gates[]; "103 AC-3/AC-4" ties the not-critical ground to unattended runs halting at their first decision and the 0.7 threshold to the undeclared-gate default; "103 AC-5/AC-6/AC-7" asserts the ballot disjuncts, exactly five recommended clauses, withheld_because[] and the fastpath audit row. "089 AC-1" asserts §7.3's exactly three numbered conditions and that design_items drives no predicate (103 AC-8); "089 AC-3/AC-4" and "089 AC-5/AC-6" assert the two options with the structured marker, the mode-switch re-raise, the downgrade-route verb, invariant_digest and the sunk artifacts not passed to kiwi-tdd (103 AC-9). |
-| VE-2 | Test | test/skills/kiwi-orchestrator-body.fr-flow-074.test.ts | AC-1, AC-2 | 47/47 pass on 2026-08-01. The cross-cutting case "all four business-decision routing gates carry a severity row and none is in the table" asserts the severity rows equal exactly ROUTING_GATE_IDS, that every one carries severity business-decision, and that none of the four appears in critical_gates[] in any of the three variants — the negative half of AC-2 that the routing suite does not assert. |
-| VE-3 | Manual | ~/.claude/skills/_shared/kiwi/auto-option.md | AC-10 | Runtime-lag note, measured 2026-08-01, not assumed. The installed module is 387 lines and still the pre-amendment contract: `recommended: true` occurs 0 times, `route-proposal` 0 times and `route-downgrade-available` 0 times, so none of the four routing gates reaches a running session yet. `~/.claude/skills/kiwi-orchestrator/SKILL.md` does not exist at all — there is no installed copy to be stale. The lag stands because 00.charter.md:303-304 forbids running init / skills install / upgrade --apply against this repository; it closes on the next release install, not by an action available here. |
 
 #### Trace Links
 
@@ -6970,8 +6938,6 @@ The `kiwi-orchestrator` skill body SHALL declare the four `business-decision` ro
 | --- | --- | --- |
 | 2026-08-01 | Created | add-requirement |
 | 2026-08-01 | AC-8 restated over three conditions | Follows the FR-FLOW-089 amendment; the two rows state the same gate and must not disagree. |
-| 2026-08-01 | Status -> implemented | §0.S declares the four routing gates with severity and firing condition, §0.G keeps all four out of critical_gates[] while carrying the three critical routing gates, §4.6 states the ballot and the five recommended clauses, and §7.3 states route-downgrade-available's three conditions and two options. |
-| 2026-08-01 | Status -> verified | All ten criteria checked: nine against named assertions across the routing and body suites, AC-10 against the measured installed tree. |
 
 ### FR-FLOW-104 — waves-event.md v1.4.0 additive field set across all four shipped copies
 

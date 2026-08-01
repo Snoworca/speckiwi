@@ -18,6 +18,7 @@ import {
   type ProofKind,
   type VerbName
 } from "./journal-schema.js";
+import type { FrozenRoute } from "./route-lock.js";
 import type { WavesJournalView } from "./waves-journal.js";
 
 export interface CardProof {
@@ -50,6 +51,13 @@ export interface FrozenBlock {
   integration_branch: string;
   /** Only the CURRENT wave's entry is retained; a completed wave's lock is reachable from its proof. */
   lane_lock: Record<string, string>;
+  /**
+   * @req FR-NODE-113 — the frozen route (09 §9.3). DECLARED rather than left to the index signature
+   * below: the whole point of the field is that `computeInvariantDigest` covers it and that the resume
+   * path reads `route.rung` instead of reclassifying, and neither obligation is expressible against
+   * `unknown`. Optional because a run is frozen in stages — the card exists before `freeze-route` runs.
+   */
+  route?: FrozenRoute;
   [key: string]: unknown;
 }
 

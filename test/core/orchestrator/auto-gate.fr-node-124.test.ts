@@ -6,9 +6,12 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
+import { main } from "../../../src/cli/index.js";
 import * as journalSchema from "../../../src/core/orchestrator/journal-schema.js";
 import { decideAutoGate, AUTO_GATE_ACTIONS, type AutoGateInput } from "../../../src/core/orchestrator/auto-gate.js";
+import { autoGateInputFromPayload } from "../../../src/cli/commands/orchestrate.js";
 
 const SRC_ROOT = "src";
 
@@ -268,7 +271,19 @@ describe("FR-NODE-124 AC-9 — every shipped construction passes tieRung: false"
       if (file.endsWith(`orchestrator${path.sep}auto-gate.ts`)) continue;
       literals.push(...tieRungConstructions(source));
     }
-    expect(literals.every((literal) => literal === "false")).toBe(true);
+
+    // A scan that finds nothing is a broken scan, not a clean result: `[].every(...)` is `true`, and
+    // this assertion shipped in that shape over a call site that constructed no `tieRung` at all.
+    // The set form cannot be satisfied by an empty scan — `[]` is not `["false"]`.
+    expect(literals.length).toBeGreaterThan(0);
+    expect([...new Set(literals)]).toEqual(["false"]);
+  });
+
+  it("constructs it at the one call site that reaches the kernel, not merely somewhere in src", async () => {
+    // Pinning the file keeps the scan honest the other way round: an unrelated module growing a
+    // `tieRung: false` would re-satisfy the corpus assertion while the CLI went back to casting.
+    const source = await readFile(path.join("src", "cli", "commands", "orchestrate.ts"), "utf8");
+    expect(tieRungConstructions(source)).toEqual(["false"]);
   });
 
   it("would find a true construction if one existed, so the scan is not vacuous", () => {
@@ -278,5 +293,72 @@ describe("FR-NODE-124 AC-9 — every shipped construction passes tieRung: false"
 
   it("declares the parameter as a boolean the caller must supply", () => {
     expect(input().tieRung).toBe(false);
+  });
+});
+
+describe("FR-NODE-124 AC-9 — the CLI payload cannot smuggle a tie rung past the construction", () => {
+  function payload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      gateId: "route-proposal",
+      critical: false,
+      options: [{ id: "A", recommended: false, defaultIfAuto: false }],
+      mode: "auto",
+      votes: [{ member: "m1", optionId: "A", confidence: 0.8 }],
+      quorum: { expected: 3, present: 3 },
+      ...overrides
+    };
+  }
+
+  it("constructs false from a payload that says nothing about the rung", () => {
+    expect(autoGateInputFromPayload(payload()).tieRung).toBe(false);
+  });
+
+  it("accepts an explicit false, which agrees with the shipped construction", () => {
+    expect(autoGateInputFromPayload(payload({ tieRung: false })).tieRung).toBe(false);
+  });
+
+  it("refuses a payload that asks for the rung rather than honouring or silently dropping it", () => {
+    expect(() => autoGateInputFromPayload(payload({ tieRung: true }))).toThrow(/tie rung/i);
+  });
+
+  it("refuses any non-false tieRung, so a truthy string cannot pass either", () => {
+    expect(() => autoGateInputFromPayload(payload({ tieRung: "yes" }))).toThrow(/tie rung/i);
+  });
+
+  it("still refuses a gate id outside the closed vocabulary", () => {
+    expect(() => autoGateInputFromPayload(payload({ gateId: "not-a-gate" }))).toThrow(/vocabulary/);
+  });
+
+  it("refuses a payload whose critical flag is absent, rather than defaulting the halt away", () => {
+    const { critical, ...withoutCritical } = payload();
+    expect(critical).toBe(false);
+    expect(() => autoGateInputFromPayload(withoutCritical)).toThrow(/critical/);
+  });
+
+  it("produces an input the kernel accepts, with all seven fields", () => {
+    const built = autoGateInputFromPayload(payload());
+    expect(Object.keys(built).sort()).toEqual(["critical", "gateId", "mode", "options", "quorum", "tieRung", "votes"]);
+    expect(AUTO_GATE_ACTIONS).toContain(decideAutoGate(built).action);
+  });
+
+  it("refuses through the registered verb, so the construction is on the path the kernel reaches", async () => {
+    // The source scan above pins the text; only this pins the wiring. A call site reverted to
+    // `decideAutoGate(input as never)` leaves `autoGateInputFromPayload` in the file, so the scan
+    // stays green while the payload flows to the kernel unvalidated — which is the shipped defect.
+    const decide = async (body: Record<string, unknown>): Promise<{ exit: number; payload: Record<string, unknown> }> => {
+      const stdout = new PassThrough();
+      const io = { stdout: stdout as unknown as NodeJS.WriteStream, stderr: new PassThrough() as unknown as NodeJS.WriteStream };
+      const exit = await main(["orchestrate", "auto-gate", "decide", "--json", "--payload", JSON.stringify(body)], io);
+      return { exit, payload: JSON.parse(stdout.read()?.toString() ?? "{}") as Record<string, unknown> };
+    };
+
+    const refused = await decide(payload({ tieRung: true }));
+    expect(refused.exit).toBe(1);
+    expect(refused.payload.ok).toBe(false);
+    expect(refused.payload.error).toMatch(/tie rung/i);
+
+    const accepted = await decide(payload());
+    expect(accepted.exit).toBe(0);
+    expect((accepted.payload.decision as { action: string }).action).toBe("adopt-majority");
   });
 });

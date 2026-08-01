@@ -229,11 +229,50 @@ describe("FR-NODE-110 AC-3 — every disqualifier has a firing and a non-firing 
   it("D7 fires on blocked stability and records the blocked ids", () => {
     const decision = computeRoute(baseProbe({ blockedStability: ["FR-NODE-007"] }), AUTO);
 
-    expect(decision.removed).toContainEqual({ rung: "R-PLAN", by: "D7", observed: ["FR-NODE-007"] });
+    expect(decision.removed).toContainEqual({
+      rung: "R-PLAN",
+      by: "D7",
+      observed: { active_target: "v2.6.0", blocked_stability: ["FR-NODE-007"], fired: ["blocked_stability"] }
+    });
   });
 
   it("D7 fires on an empty active target", () => {
     expect(firedBy(baseProbe({ activeTarget: "" }))).toContain("D7");
+  });
+
+  // AC-3 requires `observed` to record the value the predicate fired on. D7 is a disjunction over two
+  // grounds with different consequences (09 §3.3 D7) — an empty active target is a guaranteed child
+  // halt at `kiwi-pm`'s lifecycle gate, a blocked requirement is the routing-side guard D7 is the sole
+  // enforcement point for — and recording `blockedStability` on both branches wrote *"D7 observed []"*
+  // into the lock and into the committee's evidence table for the empty target, which is the one value
+  // it did not fire on. D4 carries the same shape above for the same reason.
+  it("D7 records the empty active target as the value it fired on", () => {
+    const decision = computeRoute(baseProbe({ activeTarget: "" }), AUTO);
+    const entry = decision.removed.find((row) => row.by === "D7");
+
+    expect(entry).toMatchObject({ rung: "R-PLAN", by: "D7" });
+    expect(entry?.observed).toEqual({ active_target: "", blocked_stability: [], fired: ["active_target"] });
+  });
+
+  it("D7 records an unregistered active target the same way", () => {
+    const decision = computeRoute(baseProbe({ activeTarget: null }), AUTO);
+
+    expect(decision.removed.find((row) => row.by === "D7")?.observed).toEqual({
+      active_target: null,
+      blocked_stability: [],
+      fired: ["active_target"]
+    });
+  });
+
+  it("D7 names both grounds when both fired, and still appends exactly one entry", () => {
+    const decision = computeRoute(baseProbe({ activeTarget: "", blockedStability: ["FR-NODE-007", "FR-NODE-008"] }), AUTO);
+
+    expect(decision.removed.filter((row) => row.by === "D7")).toHaveLength(1);
+    expect(decision.removed.find((row) => row.by === "D7")?.observed).toEqual({
+      active_target: "",
+      blocked_stability: ["FR-NODE-007", "FR-NODE-008"],
+      fired: ["active_target", "blocked_stability"]
+    });
   });
 
   it("D7 does not fire on a registered target with no blocked requirement", () => {

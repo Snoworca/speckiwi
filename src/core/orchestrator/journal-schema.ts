@@ -358,7 +358,8 @@ export const WAVES_EVENT_FIELDS = {
     "postmortem",
     "coverage_residual",
     "card_digest",
-    "proof"
+    "proof",
+    "strict_grounding"
   ]
 } as const;
 

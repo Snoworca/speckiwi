@@ -194,6 +194,25 @@ function stagedInput(probe: RouteProbe): { ordered_sections: number; linked_sub_
 }
 
 /**
+ * 09 §3.3 D7's two disjuncts, and which of them fired.
+ *
+ * The design's §3.6 code block records `p.blockedStability` whichever disjunct fired, so a removal
+ * caused by an empty active target is written into the lock and into the gate's committee evidence
+ * table as *"D7 observed []"* — the one value it did not fire on. FR-NODE-110 AC-3 requires `observed`
+ * to record the value the predicate fired on, so the requirement is followed here and the design's
+ * code block is not, exactly as for D4 above. The two grounds are not interchangeable: an empty
+ * `activeTarget` is a guaranteed child halt at `kiwi-pm`'s lifecycle gate, while a blocked
+ * requirement is the routing-side guard D7 is the sole enforcement point for, so a shape that could
+ * record only one of them would hide the more severe ground whenever both fired.
+ */
+function lifecycleBlock(probe: RouteProbe): { active_target: string | null; blocked_stability: string[]; fired: string[] } {
+  const fired: string[] = [];
+  if (!probe.activeTarget) fired.push("active_target");
+  if (probe.blockedStability.length > 0) fired.push("blocked_stability");
+  return { active_target: probe.activeTarget, blocked_stability: probe.blockedStability, fired };
+}
+
+/**
  * @req FR-NODE-114 — 09 §8.2. Margin, per predicate, in its own unit. A count predicate observed exactly
  * at its threshold has margin 0 and does not satisfy clause 2's numeric branch. The boolean and
  * set-non-empty predicates carry no numeric margin at all and take the corroboration branch instead,
@@ -285,7 +304,8 @@ export function computeRoute(probe: RouteProbe, opts: RouteOptions): RouteDecisi
   if (!probe.planContractOk) kill("R-PLAN", "D5", probe.planRejectReason);
   const diff = coverageDiff(probe);
   if (probe.planOpenTasks === 0 || !coversThisWork(diff)) kill("R-PLAN", "D6", diff);
-  if (!probe.activeTarget || probe.blockedStability.length > 0) kill("R-PLAN", "D7", probe.blockedStability);
+  const lifecycle = lifecycleBlock(probe);
+  if (lifecycle.fired.length > 0) kill("R-PLAN", "D7", lifecycle);
   for (const field of probe.unreadable) for (const rung of gatedRungsFor(field)) kill(rung, "D8", field);
 
   const dead = new Set(removed.map((entry) => entry.rung));

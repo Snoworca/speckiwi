@@ -81,6 +81,7 @@
 | `lane_disposition` | object | `{ kind, reason, at }` — lane 이 병합 없이 run 을 떠날 때의 **종국 처분**. `kind` 는 `demoted` / `quarantined` / `coupling-reset` / `refuted` 의 **닫힌 4값 enum** 이다. 이 필드가 없으면 강등·반증된 lane 이 재개 시 병합 가능으로 읽혀 run 이 버린 작업을 다시 병합한다 (v1.4.0 신설) |
 | `card_digest` | string | 이 줄 직후에 쓴 재개 카드의 sha256 (v1.4.0 신설) |
 | `proof` | object \| object[] | `{ kind, ref? }` — 그 줄이 싣는 주장을 뒷받침하는 **증명**. §4.3 write discipline 의 `result` 줄에 싣는다. `kind` 는 아래에 선언한 `proof_kind` 값 중 하나이고, `ref` 는 그 종류가 재계산에 쓰는 인자(브랜치·sha·경로·digest)다. 증명이 여럿이면 배열로 싣는다 (v1.4.0 신설) |
+| `strict_grounding` | bool | `--strict-grounding` 이 적용된 채로 그 verb 를 실행했다는 기록. `freeze-lane-plan` **intent** 줄에 싣는다 — 판정을 조인 옵션은 판정 자체의 일부이므로, 저널 밖에만 있으면 재개하는 쪽이 그 run 이 어느 기준으로 경로를 거절했는지 알 수 없다 (v1.4.0 신설) |
 
 `pipeline_run_id` 는 `complete` 와 `phase=wave-verify` 이벤트에서는 사실상 필수다 — 그 wave 의 `pipeline.jsonl` 창을 여는 유일한 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 pipeline 사이클이 아직 없으므로 생략한다.
 

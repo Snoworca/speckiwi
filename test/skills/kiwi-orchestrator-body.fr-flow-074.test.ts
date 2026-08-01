@@ -377,12 +377,41 @@ describe("FR-FLOW-086 AC-4 — verification-oscillation is declared by the orche
     }
   });
 
-  it("AC-5 — the engine module carries the rule denominator-agnostically for every loop", () => {
+  it("AC-1 — the engine states both triggers, not just the finding_id one", () => {
+    // A loop that terminates only on a re-opened finding still burns its cap on a hunk that is
+    // reverted and re-applied, which is the same contested-finding shape by a different route.
+    for (const agent of ["claude", "codex", "etc"]) {
+      const engine = readVariant(`skills/${agent}/_shared/kiwi/verify-loop.md`);
+      expect(engine.length, `${agent}: verify-loop.md must exist`).toBeGreaterThan(0);
+      expect(
+        tiedTogether(engine, /finding_id/, [/2 라운드 이상/, /닫혔다가 다시 열리/, /hunk 가 되돌려졌다가 다시 적용/], 500),
+        `${agent}: both triggers must sit in one rule`
+      ).toBe(true);
+    }
+  });
+
+  it("AC-3 — the engine records BOTH outcome values, verdict and reason_class", () => {
+    for (const agent of ["claude", "codex", "etc"]) {
+      const engine = readVariant(`skills/${agent}/_shared/kiwi/verify-loop.md`);
+      expect(
+        tiedTogether(engine, /즉시 종료한다/, [/`verdict` 를 `fail-residual`/, /`reason_class` 를 `"oscillation"`/, /verification-oscillation/], 400),
+        `${agent}: terminating must write verdict AND reason_class, not one of the two`
+      ).toBe(true);
+    }
+  });
+
+  it("AC-5 — the rule lives in the shared engine and the body states its D/W/H/P/F reach", () => {
     for (const agent of ["claude", "codex", "etc"]) {
       const engine = readVariant(`skills/${agent}/_shared/kiwi/verify-loop.md`);
       expect(engine, `${agent}: verify-loop.md must carry the oscillation rule`).toContain("verification-oscillation");
-      expect(engine).toContain("fail-residual");
-      expect(engine).toContain("oscillation");
+    }
+    // Denominator-agnostic means every caller inherits it: the orchestrator body says so by naming
+    // all five phase-1 loops rather than attaching the rule to one of them.
+    for (const variant of VARIANTS) {
+      expect(
+        tiedTogether(variant.body, /엔진에 있으므로/, [/D·W·H·P·F/, /모든 루프에 도달한다/], 300),
+        `${variant.id}: the reach must be stated, not implied`
+      ).toBe(true);
     }
   });
 });
