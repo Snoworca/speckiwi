@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { canonicalJson } from "./canonical-json.js";
 import type { LanePlanInput } from "./lane-plan.js";
 
 /**
@@ -169,23 +170,6 @@ const REQUIRED_BODY_FIELDS: Record<FreezeLockKind, readonly string[]> = {
 
 function isFreezeLockKind(value: string): value is FreezeLockKind {
   return (FREEZE_LOCK_KINDS as readonly string[]).includes(value);
-}
-
-/**
- * Deterministic JSON: object keys sorted, arrays in order, no whitespace. Two callers that build the
- * same body with different key insertion orders must digest to the same bytes, because a lock is
- * compared byte-for-byte by §4.7 digest 3.
- */
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const members = Object.keys(record)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`);
-    return `{${members.join(",")}}`;
-  }
-  return JSON.stringify(value) ?? "null";
 }
 
 function sha256Hex(text: string): string {

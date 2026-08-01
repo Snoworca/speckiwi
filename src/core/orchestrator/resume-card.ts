@@ -8,6 +8,7 @@
 // touches the filesystem — `writeCard` returns the bytes and the path, and the CLI performs the write,
 // so a card that fails validation has no serialisation for anything to write.
 import { createHash } from "node:crypto";
+import { canonicalJson } from "./canonical-json.js";
 import {
   CARD_PRECONDITIONS,
   PROOF_KINDS,
@@ -94,18 +95,6 @@ export interface CardValidation {
 
 export type ReadCardResult = { ok: true; card: ResumeCard } | { ok: false; violations: CardViolation[] };
 export type WriteCardResult = { ok: true; text: string; relativePath: string } | { ok: false; violations: CardViolation[] };
-
-/** Key-sorted, whitespace-free JSON, so the digest depends on the values and never on key order. */
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (typeof value === "object" && value !== null) {
-    const entries = Object.keys(value as Record<string, unknown>)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`);
-    return `{${entries.join(",")}}`;
-  }
-  return JSON.stringify(value) ?? "null";
-}
 
 /**
  * The digest over the whole `frozen` block. The isolation profile, the integration branch, the base
