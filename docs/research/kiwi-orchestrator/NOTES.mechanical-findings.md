@@ -49,6 +49,24 @@ computable without `tdd`**, so a catalogue built from `E10`'s five-field line ca
 `tdd-pair-split` is a declared `critical_gates[]` row (§13). The six-field form was implemented; the
 requirement text needs widening to match.
 
+## M-03 — three declared inputs are one member short of what their own consumers need — MEDIUM
+
+Found on 2026-08-01 during implementation, by the agent building `lane-plan.ts`. Each is the same
+shape as `M-02`'s `E10`: a declared input set that a **named consumer in the same design** cannot be
+computed from. They are recorded together because the pattern is what matters — the design declares
+signatures in §10.1 and behaviours in §5, and three times the signature is narrower than the
+behaviour.
+
+| Site | Declared | What a consumer needs | Consequence if built as declared |
+|---|---|---|---|
+| §5.2 `constraints` | `{code_roots, test_roots}` | `existing_paths` too | `write-set-overlap`'s prefix-directory clause has no input. Implemented as `{codeRoots, testRoots, existingPaths}`; arity stays five, so `E8`'s AC-1 is unaffected |
+| the task catalogue | five fields (`E10`), six with `tdd` (§5.1) | `phaseDependsOn` as well | `phase-dependency` is **unreachable**, and `E8` AC-2 requires every `conflict_reason` member to be reachable. Implemented as seven |
+| §10.1 `testFiles: string[]` | `string[]` | `{path, lineRange?}` | The sidecar schema is `test_files?: Array<{path, line_range?}>` (`kiwi-planner/SKILL.md:757`), and `IR-CLI-084` AC-4 requires the **line-range** rule to apply to test-file entries — unsatisfiable against a bare string. The sidecar schema wins over the design's restatement of it |
+
+Two of the three make a declared enum member dead — `phase-dependency` outright, `tdd-pair` per
+`M-02` — and `tdd-pair-split` is a declared `critical_gates[]` row (§13). A gate whose predicate can
+never fire reads, from the table, exactly like one that never fires because nothing is wrong.
+
 ## Verified clean
 
 Run 2026-07-31 16:40 against `05.orchestrator-design.md` at 7,912 lines:
