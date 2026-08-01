@@ -16,7 +16,7 @@ import { freezeLock, serializeLock } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
 import { normaliseRoot } from "../../core/orchestrator/preflight.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
-import { computeInvariantDigest, readCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
+import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { computeRoute } from "../../core/orchestrator/route.js";
 import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
@@ -683,6 +683,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         if (cardText === null) return refuse("resume-card-missing-or-invalid", [{ code: "card-unreadable", path: cardPath }]);
         const parsed = readCard(cardText);
         if (!parsed.ok) return refuse("resume-card-missing-or-invalid", parsed.violations);
+        // @req FR-NODE-162 - validate the card we READ, against the journal as it stands now.
+        // `readCard` only parses; `validateCard`'s ten violations were enforced by `writeCard` alone,
+        // so nine of them passed here, including the byte cap this gate names and the closed-verb
+        // check the skill body promises. Three of the ten compare the card against the journal, and
+        // the journal grows after the card is written, so write-time validation cannot cover them.
+        const cardValidation = validateCard(parsed.card, view);
+        if (!cardValidation.ok) return refuse("resume-card-missing-or-invalid", cardValidation.violations.map((code) => ({ code })));
         const facts = options.facts
           ? ((await readJsonFile(path.resolve(root.root, options.facts as string), "--facts")) as {
               gitFacts?: GitFacts;
