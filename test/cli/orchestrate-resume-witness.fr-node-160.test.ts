@@ -16,11 +16,11 @@ import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../s
 const RUN_ID = "run-a";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): Record<string, unknown> {
-  return JSON.parse((stream as unknown as PassThrough).read()?.toString() ?? "{}") as Record<string, unknown>;
+function drain(stream: PassThrough): Record<string, unknown> {
+  return JSON.parse(stream.read()?.toString() ?? "{}") as Record<string, unknown>;
 }
 
 async function write(root: string, relativePath: string, text: string): Promise<void> {
@@ -115,7 +115,7 @@ function factsBundle(integrationCommits: unknown[]): string {
   });
 }
 
-async function resume(integrationCommits: unknown[]): Promise<Record<string, unknown>> {
+async function resume(integrationCommits: unknown[]): Promise<{ exit: number; payload: Record<string, unknown> }> {
   const root = await mkdtemp(path.join(tmpdir(), "orchestrate-resume-witness-"));
   await write(root, "kiwi/waves.jsonl", JOURNAL.map((line) => JSON.stringify(line)).join("\n") + "\n");
   await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(card(), null, 2)}\n`);

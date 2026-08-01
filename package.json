@@ -49,6 +49,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json",
     "lint": "eslint src test --ext .ts --max-warnings=0",
     "test": "vitest run --hookTimeout 30000 --testTimeout 30000 --no-file-parallelism",
     "test:coverage": "vitest run --coverage --hookTimeout 60000 --testTimeout 60000 --no-file-parallelism",

@@ -47,7 +47,7 @@ async function collectSourceFiles(dir: string): Promise<string[]> {
 
 /** Every `tieRung` construction in a body of source, with the literal it was given. */
 function tieRungConstructions(source: string): string[] {
-  return [...source.matchAll(/tieRung\s*:\s*([A-Za-z0-9_.]+)/g)].map((match) => match[1]);
+  return [...source.matchAll(/tieRung\s*:\s*([A-Za-z0-9_.]+)/g)].flatMap((match) => (match[1] === undefined ? [] : [match[1]]));
 }
 
 describe("FR-NODE-124 AC-1 — AutoGateInput declares exactly seven fields", () => {

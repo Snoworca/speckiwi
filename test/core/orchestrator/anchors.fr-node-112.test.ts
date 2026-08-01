@@ -68,8 +68,11 @@ describe("FR-NODE-112 AC-2 — no match, and a union that counts each id once", 
 describe("FR-NODE-112 AC-3 — coverage counts only Code-typed trace rows", () => {
   it("yields 0 when every trace row carries another type", () => {
     const records = [
-      record("FR-NODE-001", { traceLinks: [{ type: "Requirement", reference: "FR-NODE-002", relation: "depends_on" }] }),
-      record("FR-NODE-002", { traceLinks: [{ type: "Task", reference: "T-PH001-01", relation: "depends_on" }] })
+      // No `relation` here: the kernel's declared input is `{type, reference}` because `type` is the
+      // only member it reads, and a fixture carrying a third field claims a shape the declaration does
+      // not have. Real trace rows do carry a relation, and they satisfy this narrower input unchanged.
+      record("FR-NODE-001", { traceLinks: [{ type: "Requirement", reference: "FR-NODE-002" }] }),
+      record("FR-NODE-002", { traceLinks: [{ type: "Task", reference: "T-PH001-01" }] })
     ];
 
     expect(computeAnchorCoverage(records)).toBe(0);
@@ -77,7 +80,7 @@ describe("FR-NODE-112 AC-3 — coverage counts only Code-typed trace rows", () =
 
   it("counts the Code-typed row in a mixed trace list", () => {
     const records = [
-      record("FR-NODE-001", { traceLinks: [{ type: "Task", reference: "T-PH001-01", relation: "depends_on" }, { type: "Code", reference: "src/a.ts", relation: "implements" }] }),
+      record("FR-NODE-001", { traceLinks: [{ type: "Task", reference: "T-PH001-01" }, { type: "Code", reference: "src/a.ts" }] }),
       record("FR-NODE-002")
     ];
 

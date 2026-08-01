@@ -7,6 +7,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { countNormativeTokens, scanProse, HEDGE_TOKENS, NORMATIVE_TOKENS, PROSE_RULES, type ProseFinding } from "../../../src/core/orchestrator/prose-gate.js";
+import { at } from "../../support/at.js";
 
 const MODULE_SOURCE = "src/core/orchestrator/prose-gate.ts";
 
@@ -41,7 +42,7 @@ describe("FR-NODE-121 AC-1 — an unmarked normative paragraph names its exact s
   it("raises one finding on the unmarked paragraph", () => {
     const findings = unmarked(document);
     expect(findings).toHaveLength(1);
-    expect(findings[0].lines).toEqual([9, 10]);
+    expect(at(findings, 0).lines).toEqual([9, 10]);
   });
 });
 

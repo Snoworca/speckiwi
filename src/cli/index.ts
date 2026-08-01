@@ -9,9 +9,16 @@ import { registerRepairCommands } from "./commands/repair.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "./errors.js";
 import { expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
+/**
+ * The two sinks the CLI writes to. Declared as `WritableStream` rather than `WriteStream` because
+ * `write` is the only member anything here calls: the narrower type additionally promises a tty's
+ * `columns`, `rows` and `fd`, which nothing reads and which no in-process caller can honestly supply.
+ * Over-declaring it forced every test double through a double cast and made the compiler's complaint
+ * about a mismatch the tests' problem rather than this declaration's.
+ */
 export interface CliIo {
-  stdout: NodeJS.WriteStream;
-  stderr: NodeJS.WriteStream;
+  stdout: NodeJS.WritableStream;
+  stderr: NodeJS.WritableStream;
 }
 
 function jsonMode(argv: string[], command: ReturnType<typeof buildCommand>): boolean {

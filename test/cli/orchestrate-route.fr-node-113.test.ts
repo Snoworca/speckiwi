@@ -20,11 +20,11 @@ const LOCK_OUT = "routing/route.lock.json";
 const PROBE_DIGEST = "sha256:6a1f2c8bd6a1f2c8bd6a1f2c8bd6a1f2c8bd6a1f2c8bd6a1f2c8bd6a1f2c8bd6";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): Record<string, unknown> {
-  const text = (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): Record<string, unknown> {
+  const text = stream.read()?.toString() ?? "";
   return JSON.parse(text) as Record<string, unknown>;
 }
 

@@ -15,6 +15,7 @@ import {
   type DuplicationGateContext,
   type LaneDiff
 } from "../../../src/core/orchestrator/duplication-audit.js";
+import { at } from "../../support/at.js";
 
 const MODULE_SOURCE = "src/core/orchestrator/duplication-audit.ts";
 
@@ -35,10 +36,10 @@ describe("FR-NODE-135 AC-1 — two lanes sharing a normalized hash produce one r
     );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0].lanes).toEqual(["lane-1", "lane-2"]);
-    expect(rows[0].paths).toEqual(["src/core/orchestrator/a.ts", "src/core/orchestrator/b.ts"]);
-    expect(rows[0].verdict).toBeNull();
-    expect(rows[0].resolutionTaskId).toBeNull();
+    expect(at(rows, 0).lanes).toEqual(["lane-1", "lane-2"]);
+    expect(at(rows, 0).paths).toEqual(["src/core/orchestrator/a.ts", "src/core/orchestrator/b.ts"]);
+    expect(at(rows, 0).verdict).toBeNull();
+    expect(at(rows, 0).resolutionTaskId).toBeNull();
   });
 });
 
@@ -53,8 +54,8 @@ describe("FR-NODE-135 AC-2 — two lanes sharing a normalized declaration name p
     );
 
     expect(rows).toHaveLength(1);
-    expect(rows[0].symbolOrBlock).toBe("normalisepath");
-    expect(rows[0].lanes).toEqual(["lane-1", "lane-2"]);
+    expect(at(rows, 0).symbolOrBlock).toBe("normalisepath");
+    expect(at(rows, 0).lanes).toEqual(["lane-1", "lane-2"]);
   });
 });
 

@@ -22,6 +22,7 @@ import {
   type LedgerResult,
   type ResolutionSet
 } from "../../../src/core/orchestrator/issue-ledger.js";
+import { at } from "../../support/at.js";
 
 const MODULE_SOURCE = "src/core/orchestrator/issue-ledger.ts";
 
@@ -92,12 +93,12 @@ describe("FR-NODE-123 AC-2 — a resolution reference is resolved against the in
 
   it("refuses a test id absent from testIds and accepts one present", () => {
     expect(resolveIssue(ledger, "I-001", { kind: "test-id", ref: "test/core/orchestrator/lane-plan.test.ts::a case nobody wrote" }, resolution()).ok).toBe(false);
-    expect(resolveIssue(ledger, "I-001", { kind: "test-id", ref: resolution().testIds[0] }, resolution()).ok).toBe(true);
+    expect(resolveIssue(ledger, "I-001", { kind: "test-id", ref: at(resolution().testIds, 0) }, resolution()).ok).toBe(true);
   });
 
   it("refuses a commit sha absent from commitShas and accepts one present", () => {
     expect(resolveIssue(ledger, "I-001", { kind: "commit-sha", ref: "1111111111111111111111111111111111111111" }, resolution()).ok).toBe(false);
-    expect(resolveIssue(ledger, "I-001", { kind: "commit-sha", ref: resolution().commitShas[0] }, resolution()).ok).toBe(true);
+    expect(resolveIssue(ledger, "I-001", { kind: "commit-sha", ref: at(resolution().commitShas, 0) }, resolution()).ok).toBe(true);
   });
 });
 

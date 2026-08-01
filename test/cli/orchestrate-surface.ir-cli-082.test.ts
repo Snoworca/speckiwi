@@ -19,11 +19,11 @@ import {
 // @req IR-CLI-082 — the `speckiwi orchestrate` phase-1 verb surface.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** The built `orchestrate` command, from the real registrar rather than a rebuilt fixture tree. */

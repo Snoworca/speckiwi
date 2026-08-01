@@ -5,10 +5,11 @@ import { normalizeTasks, type SidecarPhase, type SidecarTask } from "../../../sr
 /** The seven fields `WorkflowTaskCatalogEntry` has carried since before this extension. */
 const EXISTING_FIELDS = ["id", "phase_id", "title", "depends_on_task", "req_ids", "legacyReqIds", "status"] as const;
 
-function existingView(entry: Record<string, unknown>): Record<string, unknown> {
+function existingView(entry: object): Record<string, unknown> {
+  const record: Record<string, unknown> = { ...entry };
   const view: Record<string, unknown> = {};
   for (const key of EXISTING_FIELDS) {
-    if (key in entry) view[key] = entry[key];
+    if (key in record) view[key] = record[key];
   }
   return view;
 }

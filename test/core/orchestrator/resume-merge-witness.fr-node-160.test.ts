@@ -28,7 +28,7 @@ const LINES: Record<string, unknown>[] = [
 
 /** What a landed phase-1 unit leaves: a trailered commit on the integration branch, no lane branch. */
 const LANDED: readonly OrchTrailerCommit[] = [
-  { sha: "aaaa111", trailers: { "Orch-Run": RUN, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1", "Orch-Task": "T-PH001-01" } }
+  { commit: "aaaa111", trailers: { "Orch-Run": RUN, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1", "Orch-Task": "T-PH001-01" } }
 ];
 
 const roots: string[] = [];

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { appendWorkflowJsonl, parseWorkflowJsonl } from "../../../src/core/workflow/jsonl.js";
 import { WAVES_SCHEMA_VERSIONS } from "../../../src/core/orchestrator/journal-schema.js";
+import { at } from "../../support/at.js";
 
 // FR-NODE-125 — the workflow JSONL reader's `eventKeying` option, whose "none" value suppresses
 // duplicate-key diagnostics and correction resolution for append-only journals.
@@ -117,7 +118,7 @@ describe("FR-NODE-125 workflow JSONL eventKeying", () => {
     }));
     const root = await rootWith("kiwi/waves.jsonl", wavesLines);
 
-    const refused = await appendWorkflowJsonl(root, "kiwi/waves.jsonl", wavesLines[0] as object, {
+    const refused = await appendWorkflowJsonl(root, "kiwi/waves.jsonl", at(wavesLines, 0), {
       supportedSchemaVersions: [...WAVES_SCHEMA_VERSIONS]
     });
 

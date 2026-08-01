@@ -4,6 +4,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
+import type { VerbName } from "../../src/core/orchestrator/journal-schema.js";
 import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../src/core/orchestrator/resume-card.js";
 
 // @req FR-NODE-162 — a resumed session validates the card it READS.
@@ -18,11 +19,11 @@ import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../s
 const RUN_ID = "run-a";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): Record<string, unknown> {
-  return JSON.parse((stream as unknown as PassThrough).read()?.toString() ?? "{}") as Record<string, unknown>;
+function drain(stream: PassThrough): Record<string, unknown> {
+  return JSON.parse(stream.read()?.toString() ?? "{}") as Record<string, unknown>;
 }
 
 async function write(root: string, relativePath: string, text: string): Promise<void> {
@@ -128,7 +129,9 @@ describe("FR-NODE-162 — the card is validated on the path that reads it", () =
   });
 
   it("AC-3: a card naming a verb outside the closed enum is refused", async () => {
-    const result = await resume(card({ next_action: { verb: "totally-made-up", args: {}, preconditions: [] } } as Partial<ResumeCard>));
+    // The cast is on the verb alone, and it is the assertion: this string is deliberately outside the
+    // enum, and narrowing it here rather than casting the whole card keeps every other field checked.
+    const result = await resume(card({ next_action: { verb: "totally-made-up" as VerbName, args: {}, preconditions: [] } }));
     expect(result.exit).toBe(2);
     expect(result.payload.gate).toBe("resume-card-missing-or-invalid");
     expect(JSON.stringify(result.payload.violations)).toContain("unknown-verb");

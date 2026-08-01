@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { validateHandoff, type HandoffCatalogTask, type HandoffRoot, type HandoffValidation } from "../../../src/core/orchestrator/handoff.js";
 import { defaultCatalog, defaultHandoff, defaultLane, defaultRoot, defaultSections, handoffWith, renderBody, MODULE_PATH, TEST_PATH, READ_A, READ_B, PLAN_PATH, SIDECAR_PATH } from "./handoff-fixtures.js";
+import { at } from "../../support/at.js";
 
 const EXTRA_TEST = "test/core/orchestrator/lane-plan.extra.test.ts";
 
@@ -86,7 +87,7 @@ describe("FR-NODE-157 AC-4 — requirement ids and acceptance criterion ids reso
 describe("FR-NODE-157 AC-5 — the handoff-level command covers both test-file sets", () => {
   it("refuses a command omitting a per-task verification command's test file", () => {
     const catalog = defaultCatalog();
-    catalog[0].verification_cmd = { posix: `npx vitest run --reporter=json ${EXTRA_TEST}`, windows: `npx vitest run --reporter=json ${EXTRA_TEST}` };
+    at(catalog, 0).verification_cmd = { posix: `npx vitest run --reporter=json ${EXTRA_TEST}`, windows: `npx vitest run --reporter=json ${EXTRA_TEST}` };
 
     expect(codes(validate(defaultHandoff(), { catalog }))).toContain("handoff-unresolvable-reference");
   });
@@ -113,7 +114,7 @@ describe("FR-NODE-157 AC-5 — the handoff-level command covers both test-file s
     const write_set = ["write_set:", `  - "${MODULE_PATH}"`, `  - "${TEST_PATH}"`, `  - "${EXTRA_TEST}"`].join("\n");
     const lane = { ...defaultLane(), writeSet: [MODULE_PATH, TEST_PATH, EXTRA_TEST] };
     const catalog = defaultCatalog();
-    catalog[0].verification_cmd = { posix: `npx vitest run --reporter=json ${EXTRA_TEST}`, windows: `npx vitest run --reporter=json ${EXTRA_TEST}` };
+    at(catalog, 0).verification_cmd = { posix: `npx vitest run --reporter=json ${EXTRA_TEST}`, windows: `npx vitest run --reporter=json ${EXTRA_TEST}` };
 
     const text = handoffWith({ acceptance, write_set, verification_cmd: ["verification_cmd:", `  posix: "${command}"`, `  windows: "${command}"`].join("\n") });
     expect(validate(text, { lane, catalog }).violations).toEqual([]);

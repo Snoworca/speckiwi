@@ -997,14 +997,20 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         // detector, and it runs BEFORE the planner is called.
         const grounding = groundFiles(declared, existingPaths, lineCounts, options.strictGrounding === true);
         const ungrounded = grounding.filter((entry) => isGroundingRefusal(entry.verdict));
+        // @req FR-NODE-165 — the outcome is read, not discarded. A refused append leaves the journal
+        // byte-identical, so returning a plan here would report the option use as recorded against a
+        // journal that never received it.
+        let journalWritten = false;
         if (options.strictGrounding === true && typeof options.runId === "string" && options.runId.length > 0) {
-          await appendWavesLine(
+          const outcome = await appendWavesLine(
             projectRoot(command),
             options.journal as string,
             options.runId,
             { schema_version: "1.4.0", run_id: options.runId, engine: "kiwi-orchestrator", verb: "freeze-lane-plan", event: "intent", wave: "all", strict_grounding: true },
             options.dryRun === true
           );
+          if (!outcome.written && options.dryRun !== true) return refuse("run-invariant-drift", outcome.diagnostics);
+          journalWritten = outcome.written;
         }
         if (ungrounded.length > 0) return refuse("files-not-grounded", ungrounded);
         const input: LanePlanInput = {
@@ -1024,7 +1030,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         try {
           const plan = computeLanePlan(input);
           if (options.dryRun !== true) await writeUnderRoot(root, options.out as string, `${JSON.stringify(plan, null, 2)}\n`);
-          return { plan, grounding, out: options.out };
+          return { plan, grounding, out: options.out, journalWritten };
         } catch (error) {
           if (error instanceof LanePlanError) return refuse(error.code, [{ message: error.message }]);
           throw error;
@@ -1097,8 +1103,11 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           const gate = first !== undefined && (GATE_IDS as readonly string[]).includes(first) ? first : "handoff-verify-failed";
           return refuse(gate, validation.violations);
         }
+        // @req FR-NODE-165 — as at `schedule plan` above: a refused append is reported, not swallowed,
+        // so `counts` is never returned alongside a claim that the allowance was recorded.
+        let journalWritten = false;
         if (typeof options.runId === "string" && options.runId.length > 0) {
-          await appendWavesLine(
+          const outcome = await appendWavesLine(
             projectRoot(command),
             options.journal as string,
             options.runId,
@@ -1114,8 +1123,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             },
             false
           );
+          if (!outcome.written) return refuse("run-invariant-drift", outcome.diagnostics);
+          journalWritten = outcome.written;
         }
-        return { counts: validation.counts };
+        return { counts: validation.counts, journalWritten };
       });
     });
 

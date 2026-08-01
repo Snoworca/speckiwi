@@ -27,6 +27,7 @@ import {
   TEST_PATH,
   HEARTBEAT_PATH
 } from "./handoff-fixtures.js";
+import { at } from "../../support/at.js";
 
 function codes(result: HandoffValidation): string[] {
   return result.violations.map((violation) => violation.code);
@@ -47,7 +48,7 @@ describe("FR-NODE-154 — the fixture the whole file varies is itself accepted",
 describe("FR-NODE-154 AC-1 — the expected field count is thirteen times the declared task count", () => {
   it("refuses a checked count below expected and reports expected as 13 x 2", () => {
     const catalog = defaultCatalog();
-    delete (catalog[0] as Record<string, unknown>).dod;
+    delete (at(catalog, 0) as Partial<HandoffCatalogTask>).dod;
     const result = validate(defaultHandoff(), { catalog });
 
     expect(result.ok).toBe(false);
@@ -60,7 +61,7 @@ describe("FR-NODE-154 AC-1 — the expected field count is thirteen times the de
   it("computes expected from the declared task count rather than from a constant", () => {
     const third: HandoffCatalogTask = { ...defaultCatalog()[0], id: "T-PH003-06" };
     const catalog = [...defaultCatalog(), third];
-    delete (catalog[2] as Record<string, unknown>).rollback;
+    delete (at(catalog, 2) as Partial<HandoffCatalogTask>).rollback;
     const text = handoffWith({ task_ids: 'task_ids: ["T-PH003-04", "T-PH003-05", "T-PH003-06"]' });
     const lane = { ...defaultLane(), taskIds: ["T-PH003-04", "T-PH003-05", "T-PH003-06"] };
 
@@ -78,7 +79,7 @@ describe("FR-NODE-154 AC-1 — the expected field count is thirteen times the de
 describe("FR-NODE-154 AC-2 — each of the thirteen fields is individually detected", () => {
   it.each(HANDOFF_TASK_FIELDS.map((field) => [field]))("refuses a handoff whose catalog omits %s", (field) => {
     const catalog = defaultCatalog();
-    delete (catalog[0] as Record<string, unknown>)[field];
+    delete (at(catalog, 0) as Partial<HandoffCatalogTask>)[field];
     const result = validate(defaultHandoff(), { catalog });
 
     expect(codes(result)).toContain("handoff-task-field-count");
@@ -124,7 +125,7 @@ describe("FR-NODE-154 AC-4 — ten body headings, present and in order", () => {
 
   it("refuses all ten headings in a different order", () => {
     const order = [...BODY_HEADINGS];
-    [order[1], order[2]] = [order[2], order[1]];
+    [order[1], order[2]] = [at(order, 2), at(order, 1)];
     expect(codes(validate(handoffWith({}, renderBody(defaultSections(), order))))).toContain("handoff-schema-invalid");
   });
 
@@ -240,7 +241,7 @@ describe("FR-NODE-154 AC-9 — a base-sha front-matter field is refused outright
 describe("FR-NODE-154 AC-10 — the layer selection follows the handoff kind", () => {
   const brokenCatalog = (): HandoffCatalogTask[] => {
     const catalog = defaultCatalog();
-    delete (catalog[0] as Record<string, unknown>).dod;
+    delete (at(catalog, 0) as Partial<HandoffCatalogTask>).dod;
     return catalog;
   };
 
