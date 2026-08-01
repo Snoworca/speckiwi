@@ -133,7 +133,6 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 ```
 1. docs/research/{work}/00.run-contract.md
 2. speckiwi orchestrate preflight --mcp-root <path>
-   (<path> is mcp_workspace_info's workspaceRoot; --git-root defaults to the git toplevel)
                                   --git-root <git rev-parse --show-toplevel> --json
 3. speckiwi orchestrate resume --json
 4. blocking 이면: next_action.verb 만 수행한다.
@@ -145,6 +144,8 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 1 단계에서 `{work}` 가 없으면 2 단계로 가서 **재개 카드의 `work_root` 를 읽는다** — 경로를 추측하지 않는다.
 
 2 단계가 3 단계보다 먼저인 이유: **run-root 검사가 저널 경로 해소보다 먼저** 일어나야 한다. 불일치한 root 에서 저널을 해소하면 run 이 잘못된 저장소에 고정된다.
+
+2 단계의 두 값은 세션이 스스로 읽어서 넘긴다 — `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 `git rev-parse --show-toplevel` 의 출력이다. `--mcp-root` 와 `--git-root` 는 **둘 다 필수이며 어느 쪽도 기본값을 갖지 않는다**: P.1 은 한쪽을 다른 쪽과 대조하는 검사이므로, 한쪽을 도구가 스스로 채우게 두면 대조의 두 변이 한 출처에서 나오고 P.1 이 잡으려는 불일치는 영원히 발화하지 못한다.
 
 4 단계에서 결과가 blocking 이면 세션은 `next_action.verb` 만 수행하고 **그 밖의 어떤 것도 하지 않는다**. blocking 이 아니면 `§V.<next_action.verb>` 를 읽되 **그 섹션만** 읽고, 그 섹션이 지명한 아티팩트만 읽는다.
 
