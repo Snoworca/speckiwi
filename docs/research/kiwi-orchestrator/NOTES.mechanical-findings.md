@@ -29,6 +29,26 @@ The fix is to prefix by revision — `R4-A-01` or similar — and repoint any ci
 before renaming: an unqualified `RA-03` elsewhere in the set is currently ambiguous and must be
 resolved to whichever row was meant.
 
+## M-02 — §15.1's summary lines carry two stale counts the §22.16 audit corrected everywhere else — MEDIUM
+
+Found on 2026-08-01 while authoring §15 into `docs/spec/`, by two independent drafters who each hit
+their own row and reported it without seeing the other's.
+
+| Row | Its summary line says | The defining section says | Authored as |
+|---|---|---|---|
+| `E6` | `computeLanePlan` is deterministic over its **eight** declared inputs — then lists nine | §5.3's `input` record has **nine** fields, and §22.16 AJ-02/03/04/16 corrected eight→nine in §4.7, §5.3 and §P2 6 | nine |
+| `E10` | the catalogue additionally carries **five** fields | §5.1 names **six**, adding `tdd`, and §10.1's `TaskCatalogEntry` carries `tdd` and `dependsOnTask` | six |
+
+The `E6` line is a straightforward miss: the count audit reached every defining section and did not
+reach the §15.1 table, and `§10.5 step 1′` still repeats the stale phrase. **`E38`'s "eight" is a
+different and correct number** — `lanes.lock.json` records eight *fields* pinning nine *inputs*, because
+`sidecar_digest` covers both `catalog` and `existing_modules`. Do not propagate nine into `E38`.
+
+`E10` is the one with a consequence rather than an inconsistency: **`E8`'s `tdd-pair` edge is not
+computable without `tdd`**, so a catalogue built from `E10`'s five-field line cannot satisfy `E8`, and
+`tdd-pair-split` is a declared `critical_gates[]` row (§13). The six-field form was implemented; the
+requirement text needs widening to match.
+
 ## Verified clean
 
 Run 2026-07-31 16:40 against `05.orchestrator-design.md` at 7,912 lines:
