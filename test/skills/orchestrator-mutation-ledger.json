@@ -151,7 +151,7 @@
   {
     "variant": "claude",
     "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — editing a completed unit is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -169,7 +169,7 @@
   {
     "variant": "claude",
     "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — weakening or deleting a test is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -187,7 +187,7 @@
   {
     "variant": "claude",
     "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — writing outside the lease is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -653,7 +653,7 @@
   {
     "variant": "codex",
     "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — editing a completed unit is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -671,7 +671,7 @@
   {
     "variant": "codex",
     "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — weakening or deleting a test is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -689,7 +689,7 @@
   {
     "variant": "codex",
     "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — writing outside the lease is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -1155,7 +1155,7 @@
   {
     "variant": "etc",
     "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — editing a completed unit is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -1173,7 +1173,7 @@
   {
     "variant": "etc",
     "rule_id": "R-RUN-CONTRACT-NO-TEST-WEAKENING",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — weakening or deleting a test is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
@@ -1191,7 +1191,7 @@
   {
     "variant": "etc",
     "rule_id": "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE",
-    "owning_requirement": "unowned",
+    "owning_requirement": "FR-FLOW-118",
     "sentence": "§1.1 — writing outside the lease is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {

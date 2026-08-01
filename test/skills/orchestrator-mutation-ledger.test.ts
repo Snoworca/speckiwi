@@ -120,9 +120,13 @@ describe("05 §10.3 — the ledger is not vacuous", () => {
     for (const row of LEDGER) expect(VARIANTS as readonly string[]).toContain(row.variant);
   });
 
-  // `unowned` is a permitted value and a deliberate one: six of these rules are normative sentences
-  // the shipped skill states with no requirement behind them. Spelling it out keeps that visible
-  // instead of letting a typo in a requirement id read as an attribution.
+  // `unowned` is a permitted value and a deliberate one. It now covers exactly three rules — the
+  // `/snoworca-*` call ban, the commit-signature ban and the changelog-in-body ban — and those are
+  // not a governance gap: their source is the project's `CLAUDE.md`, and
+  // `docs/spec/60.workflow-release.srs.md:2663` states outright that *"snoworca-* is a separate
+  // forbidden suite (project CLAUDE.md), out of scope"*. A rule with a stated non-SRS source is
+  // owned, just not here. Spelling the value out keeps that visible instead of letting a typo in a
+  // requirement id read as an attribution.
   it("attributes every row either to a requirement id or to the literal `unowned`", () => {
     for (const row of LEDGER) {
       expect(row.owning_requirement, `${row.variant}/${row.rule_id}`).toMatch(/^((FR|IR|NFR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z]+-\d+|unowned)$/);
