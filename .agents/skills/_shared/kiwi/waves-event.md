@@ -82,6 +82,7 @@
 | `card_digest` | string | 이 줄 직후에 쓴 재개 카드의 sha256 (v1.4.0 신설) |
 | `proof` | object \| object[] | `{ kind, ref? }` — 그 줄이 싣는 주장을 뒷받침하는 **증명**. §4.3 write discipline 의 `result` 줄에 싣는다. `kind` 는 아래에 선언한 `proof_kind` 값 중 하나이고, `ref` 는 그 종류가 재계산에 쓰는 인자(브랜치·sha·경로·digest)다. 증명이 여럿이면 배열로 싣는다 (v1.4.0 신설) |
 | `strict_grounding` | bool | `--strict-grounding` 이 적용된 채로 그 verb 를 실행했다는 기록. `freeze-lane-plan` **intent** 줄에 싣는다 — 판정을 조인 옵션은 판정 자체의 일부이므로, 저널 밖에만 있으면 재개하는 쪽이 그 run 이 어느 기준으로 경로를 거절했는지 알 수 없다 (v1.4.0 신설) |
+| `abort_gate` | string (enum) | `abort-run` 줄이 run 을 끝낸 게이트를 지명한다. 값은 `GateId` 어휘의 원소다. 중첩 `verification.residual[]` 의 `reason_class` 와 이름을 공유하지 않는 별개 어휘이며, 최신 줄에서 어휘 밖 값은 `abort-gate-outside-vocabulary` 오류이고 그 이전 줄에서는 경고다 (v1.4.0 신설) |
 
 `pipeline_run_id` 는 `complete` 와 `phase=wave-verify` 이벤트에서는 사실상 필수다 — 그 wave 의 `pipeline.jsonl` 창을 여는 유일한 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 pipeline 사이클이 아직 없으므로 생략한다.
 

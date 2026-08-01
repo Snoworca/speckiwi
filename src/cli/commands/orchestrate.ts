@@ -852,7 +852,9 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   });
 
   addMutationOptions(run.command("abort"))
-    .requiredOption("--reason <id>", "why the run is being abandoned")
+    // @req IR-CLI-085 AC-5 — the help names the vocabulary. Described as free text, the option took
+    // a `reason_class` member for a gate id, and a fixture had already made that mistake.
+    .requiredOption("--reason <gate-id>", "the gate that ended the run; a GateId member, not free text")
     .option("--run-id <id>", "the run being abandoned")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .action(async (options) => {
@@ -864,7 +866,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           root,
           options.journal as string,
           runId,
-          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", reason_class: options.reason },
+          // @req FR-NODE-167 — `abort_gate`, never `reason_class`: that name belongs to
+          // `verification.residual[]` over a different closed vocabulary, and at top level it was
+          // both undeclared and unenforced.
+          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", abort_gate: options.reason },
           options.dryRun === true
         );
         if (!outcome.written && options.dryRun !== true) return refuse("run-invariant-drift", outcome.diagnostics);

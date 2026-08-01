@@ -106,8 +106,11 @@ describe("FR-NODE-131 AC-5 / AC-6 (command half) — run abort releases, run sta
     expect(held.exit).toBe(0);
     expect((held.payload.holder as { owner?: string } | null)?.owner).toBe("fr-node-131-test");
 
+    // `--reason` is a `GateId` member, not a `reason_class` one. This fixture passed
+    // `budget-exhausted` — a residual reason class — until IR-CLI-085 closed the option's
+    // vocabulary. AC-5 asserts only that the abort releases the lock, which is unchanged.
     const aborted = await run([
-      "--root", root, "orchestrate", "run", "abort", "--reason", "budget-exhausted", "--run-id", "run-a"
+      "--root", root, "orchestrate", "run", "abort", "--reason", "design-contradiction-at-wave-boundary", "--run-id", "run-a"
     ]);
     expect(aborted.exit, JSON.stringify(aborted.payload)).toBe(0);
 

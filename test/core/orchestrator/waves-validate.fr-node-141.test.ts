@@ -224,6 +224,13 @@ const CASES: Record<string, RuleCase> = {
   "journal-only-verdict": {
     kind: "journal",
     violating: mutate(1, { proof: { kind: "journal", ref: "waves.jsonl#L1" } })
+  },
+  // The newest line, so the diagnostic is the error form. The rule is verb-agnostic — any line
+  // carrying the field is checked — which is why mutating the final-verify line is a valid
+  // composite. @req FR-NODE-167
+  "abort-gate-outside-vocabulary": {
+    kind: "journal",
+    violating: mutate(2, { abort_gate: "made-up-gate" })
   }
 };
 

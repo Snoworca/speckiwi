@@ -9,6 +9,7 @@
 // v1.4.0 lane-terminality rule fires only on a wave `complete` or a `final-verify` line. Either one
 // applied per line would refuse the very first write of every verb.
 import type { Diagnostic, DiagnosticSeverity } from "../types.js";
+import { GATE_IDS } from "./auto-gate.js";
 import type { WavesJournalView } from "./waves-journal.js";
 import {
   COMPLETION_STATUS,
@@ -450,9 +451,33 @@ function checkJournalOnlyProofs(view: WavesJournalView, diagnostics: WavesDiagno
 // The public surface
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * `abort_gate` names the gate that ended the run and is closed over `GateId`. @req FR-NODE-167
+ *
+ * The severity is positional, and that is the whole point. `appendWavesLine` validates the entire
+ * resulting journal and refuses on any error, so an error over history would refuse every append
+ * into a run holding one non-conforming line — `run abort` included, which would leave the run lock
+ * held with nothing able to release it. During an append the newest line IS the candidate, so error
+ * there and warning everywhere else refuses the write being attempted and nothing else.
+ */
+function checkAbortGate(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
+  const newest = view.lines[view.lines.length - 1];
+  for (const event of view.lines) {
+    const gate = text(event.abort_gate ?? null);
+    if (gate === null || (GATE_IDS as readonly string[]).includes(gate)) continue;
+    const severity: DiagnosticSeverity = event === newest ? "error" : "warning";
+    diagnostics.push(
+      diagnosticFor("abort-gate-outside-vocabulary", severity, "an abort_gate is outside the GateId vocabulary", event, {
+        abort_gate: gate
+      })
+    );
+  }
+}
+
 export function validateWavesJournal(view: WavesJournalView): WavesDiagnostic[] {
   const diagnostics: WavesDiagnostic[] = [];
   for (const event of view.lines) checkRoundInvariants(event, diagnostics);
+  checkAbortGate(view, diagnostics);
   checkCompletionGate(view, diagnostics);
   checkFinalVerify(view, diagnostics);
   checkExclusionClasses(view, diagnostics);

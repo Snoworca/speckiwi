@@ -337,6 +337,8 @@ export interface WavesEvent {
   lane?: string;
   phase?: string;
   proof?: JournalProof | JournalProof[];
+  /** The gate that ended the run, on an `abort-run` line. Closed over `GateId`. @req FR-NODE-167 */
+  abort_gate?: string;
   verification?: Record<string, unknown>;
   design_baseline?: Record<string, unknown>;
   lane_plan?: Record<string, unknown>;
@@ -386,7 +388,11 @@ export const WAVES_EVENT_FIELDS = {
     "coverage_residual",
     "card_digest",
     "proof",
-    "strict_grounding"
+    "strict_grounding",
+    // @req FR-NODE-167 — the abort line's own field. `reason_class` was written here verbatim from
+    // `--reason`, colliding with the name `verification.residual[]` owns over a different closed
+    // vocabulary, and enforced nowhere because it was declared nowhere.
+    "abort_gate"
   ]
 } as const;
 
@@ -424,7 +430,8 @@ export const JOURNAL_RULE_CODES = [
   "journal-version-downgrade",
   "lane-not-terminal",
   "integrated-lane-without-merge-sha",
-  "journal-only-verdict"
+  "journal-only-verdict",
+  "abort-gate-outside-vocabulary"
 ] as const;
 export type JournalRuleCode = (typeof JOURNAL_RULE_CODES)[number];
 
@@ -610,6 +617,15 @@ export const JOURNAL_RULES: readonly WavesRule[] = [
     code: "journal-only-verdict",
     rule: "a verdict-bearing line carrying proofs needs one externally recomputable kind",
     source: "05 §4.5",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    // No `sourceBullets`: the field is declared in §2.2's table, and the anchor set the parity test
+    // resolves is the §2.3 bullet list. `exclusion-class-outside-vocabulary` is the same shape.
+    code: "abort-gate-outside-vocabulary",
+    rule: "an abort_gate outside the GateId vocabulary — error on the newest line, warning on history",
+    source: "waves-event.md §2.2",
     enforcement: "diagnostic",
     producer: "journal"
   }
