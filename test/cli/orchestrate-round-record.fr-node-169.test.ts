@@ -3,9 +3,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
+import { buildCommand } from "../../src/cli/command.js";
+import { registerOrchestrateCommands } from "../../src/cli/commands/orchestrate.js";
 import { main } from "../../src/cli/index.js";
-import { EXTERNAL_PROOF_KINDS, WAVE_PHASES } from "../../src/core/orchestrator/journal-schema.js";
+import { EXTERNAL_PROOF_KINDS, VERBS, WAVE_PHASES } from "../../src/core/orchestrator/journal-schema.js";
 import type { Round } from "../../src/core/orchestrator/verification-gate.js";
+import { parseWavesJournal } from "../../src/core/orchestrator/waves-journal.js";
+import { computeRunProgress } from "../../src/core/orchestrator/waves-validate.js";
 
 // @req FR-NODE-169 — `orchestrate round record` writes a line that describes the round it was given.
 // @req FR-NODE-170 AC-5 — and declares the round void on exactly the rounds the kernel voided.
@@ -143,6 +147,9 @@ describe("FR-NODE-169 AC-3 / AC-4 / AC-5 — phase, verb and the wave triple are
     expect(verbs.size, "one verb per loop").toBe(6);
     expect(phases.size, "one phase per loop").toBe(6);
     for (const phase of phases) expect(WAVE_PHASES as readonly string[]).toContain(phase as string);
+    // AC-4's second clause. `phase` was checked against its enum and `verb` was not, so the six verbs
+    // were pinned only by the literals duplicated in this file's own table.
+    for (const verb of verbs) expect(VERBS as readonly string[], "verb outside the closed enum").toContain(verb as string);
   });
 });
 
@@ -183,6 +190,12 @@ describe("FR-NODE-169 AC-6 — the line carries what the contract and the reader
     const all = await lines(root);
     expect(all).toHaveLength(3);
     expect(all[1]?.status, "the completion must still be on disk").toBe("complete");
+
+    // "still on disk" is true of any append-only writer, so it cannot fail. The criterion is about
+    // what a READER makes of the journal afterwards, so ask the reader.
+    const view = await parseWavesJournal({ root }, { runId: "run-a", engine: "kiwi-orchestrator" });
+    const progress = computeRunProgress(view);
+    expect([...progress.waveStatuses], "the round record must not reopen the completed wave").toEqual([[1, "complete"]]);
   });
 });
 
@@ -194,6 +207,34 @@ describe("FR-NODE-169 AC-7 — the line carries an externally recomputable proof
     expect(EXTERNAL_PROOF_KINDS as readonly string[]).toContain(proof?.kind ?? "");
   });
 
+  it("refuses the call when --proof is omitted entirely", async () => {
+    // The requiredness itself was unasserted, so relaxing `requiredOption` to `option` left the file
+    // green — and that same requiredness is what made the MCP binding omission fatal (IR-MCP-004).
+    // Asserted structurally as well as behaviourally. A bare `not.toBe(0)` does not carry this:
+    // relaxing `requiredOption` to `option` still fails, just further downstream and with a
+    // different exit, so the weaker form stays green — measured.
+    const sink = { write: () => true } as unknown as NodeJS.WriteStream;
+    const context = { io: { stdout: sink, stderr: sink } };
+    const command = buildCommand(context);
+    registerOrchestrateCommands(command, context);
+    const leaf = command.commands
+      .find((entry) => entry.name() === "orchestrate")
+      ?.commands.find((entry) => entry.name() === "round")
+      ?.commands.find((entry) => entry.name() === "record");
+    const proofOption = leaf?.options.find((option) => option.long === "--proof");
+    expect(proofOption, "--proof is declared on the leaf").toBeDefined();
+    expect((proofOption as { mandatory?: boolean } | undefined)?.mandatory, "--proof is mandatory").toBe(true);
+
+    const root = await tempRoot();
+    const pipes = io();
+    const exit = await main(
+      ["--root", root, "orchestrate", "round", "record", "--run-id", "run-a", "--payload", JSON.stringify(round()), "--json"],
+      pipes
+    );
+    expect(exit, "a round record without a proof is a usage error, not a run").toBe(2);
+    expect(await readFile(path.join(root, "kiwi/waves.jsonl"), "utf8"), "and nothing is written").toBe("");
+  });
+
   it("is refused by the existing journal-only-verdict rule on a journal-only kind", async () => {
     const refused = await record(round(), { proof: { kind: "journal", ref: "waves.jsonl#L1" } });
     expect(refused.exit, JSON.stringify(refused.payload)).toBe(2);
@@ -203,24 +244,34 @@ describe("FR-NODE-169 AC-7 — the line carries an externally recomputable proof
 
 describe("FR-NODE-169 AC-8 — verification is an explicit snake_case projection", () => {
   it("carries the mapped verdict, rounds, cap, residual and axis_b.open in snake_case", async () => {
+    // Every count below is DISTINCT on purpose. The fixture this replaces set `roundIndex` and
+    // `frozenDenominator` both to 2, so swapping the two sources of `frozen_denominator` stayed
+    // green, and it left three of the four severity buckets at 0, so cycling the three labels stayed
+    // green too. Distinct values are what make the projection's shape observable.
     const result = await record(
       round({
-        roundIndex: 2,
+        roundIndex: 3,
         cap: 4,
+        frozenDenominator: 7,
         rows: [
           { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-          { id: "R-2", verdict: "mismatch", severity: "LOW" }
+          { id: "R-2", verdict: "mismatch", severity: "CRITICAL" },
+          { id: "R-3", verdict: "mismatch", severity: "HIGH" },
+          { id: "R-4", verdict: "mismatch", severity: "HIGH" },
+          { id: "R-5", verdict: "mismatch", severity: "LOW" },
+          { id: "R-6", verdict: "mismatch", severity: "LOW" },
+          { id: "R-7", verdict: "mismatch", severity: "LOW" }
         ],
         residual: [{ id: "F-1", reasonClass: "design-gap" }]
       })
     );
     const verification = (await written(result.root)).verification as Record<string, unknown>;
 
-    expect(verification.rounds).toBe(2);
+    expect(verification.rounds).toBe(3);
     expect(verification.cap).toBe(4);
     expect(verification.residual).toEqual([{ id: "F-1", reason_class: "design-gap" }]);
-    expect((verification.axis_b as { open?: unknown }).open).toEqual({ critical: 0, high: 0, medium: 0, low: 1 });
-    expect(verification.frozen_denominator).toEqual({ round: 2, req_ac: 2 });
+    expect((verification.axis_b as { open?: unknown }).open).toEqual({ critical: 1, high: 2, medium: 0, low: 3 });
+    expect(verification.frozen_denominator).toEqual({ round: 3, req_ac: 7 });
     // The camelCase keys of `Round` must not survive into the projection: the validator reads
     // snake_case, and a whole-object dump validates vacuously.
     for (const key of ["frozenDenominator", "roundIndex", "streakBefore", "fixAppliedThisRound", "rows"]) {
@@ -285,6 +336,68 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
     );
     const verification = (await written(result.root)).verification as Record<string, unknown>;
     expect(verification.verdict).toBe("fail-cap");
+  });
+
+  it("omits the key on EVERY non-invalid verdict, not just on pass", async () => {
+    // The quantifier was carried only by the `pass` arm, so widening the writer's condition to
+    // `invalid || fail-cap` left the whole suite green — a round the kernel did not void could be
+    // declared void, which is the laundering channel AC-5 exists to close.
+    const arms: Array<{ label: string; round: Round }> = [
+      { label: "pass", round: round({ mode: "normal", streakBefore: 0, roundIndex: 1 }) },
+      {
+        label: "pass-with-residual",
+        round: round({
+          rows: [
+            { id: "R-1", verdict: "pass", severity: "MEDIUM" },
+            { id: "R-2", verdict: "mismatch", severity: "MEDIUM" }
+          ],
+          residual: [{ id: "F-1", reasonClass: "design-gap" }]
+        })
+      },
+      {
+        label: "fail-residual",
+        round: round({
+          mode: "max",
+          rows: [
+            { id: "R-1", verdict: "pass", severity: "MEDIUM" },
+            { id: "R-2", verdict: "mismatch", severity: "CRITICAL" }
+          ],
+          residual: [{ id: "F-1", reasonClass: "design-gap" }]
+        })
+      },
+      {
+        // The arm that matters most: a GENUINE fail-cap, which the kernel reached by exhausting the
+        // cap rather than by voiding the round. Without it, widening the writer's condition to
+        // `invalid || fail-cap` is undetectable — measured, that mutation survived until this arm
+        // existed.
+        label: "fail-cap",
+        round: round({
+          mode: "normal",
+          cap: 1,
+          roundIndex: 1,
+          rows: [
+            { id: "R-1", verdict: "mismatch", severity: "HIGH" },
+            { id: "R-2", verdict: "pass", severity: "LOW" }
+          ],
+          residual: [{ id: "R-1", reasonClass: "design-gap" }]
+        })
+      }
+    ];
+
+    const seen = new Set<string>();
+    for (const arm of arms) {
+      const result = await record(arm.round);
+      expect(result.exit, `${arm.label}: ${JSON.stringify(result.payload)}`).toBe(0);
+      const verification = (await written(result.root)).verification as Record<string, unknown>;
+      seen.add(String(verification.verdict));
+      expect(
+        Object.keys(verification),
+        `${arm.label} is not void, so it must not carry the declaration`
+      ).not.toContain("invalid_round");
+    }
+    // Non-vacuity: the arms must really have produced different verdicts, or this is one case
+    // repeated three times.
+    expect(seen.size, `the arms collapsed onto one verdict: ${[...seen].join(", ")}`).toBeGreaterThan(1);
   });
 
   it("splits invalid on unreachable: fail-cap when unreachable, in-progress when not", async () => {
