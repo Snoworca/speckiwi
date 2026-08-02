@@ -6,8 +6,10 @@
 // the caller; measured, that verb never calls either detector. Do not restore that claim without a
 // call site. Wiring it is a decision and not a fix: the gate has two declared evaluation points of
 // different kinds — the Phase 1.e freeze and the Phase 3.a loop-W round — so `freeze design` alone
-// covers at most half, and 9 of 13 real design documents currently raise a finding, all of them
-// false positives in three structural classes.
+// covers at most half. Measured over the thirteen documents: 9 raise some finding, 21 findings in
+// all — 7 `unmarked-normative-prose`, which are the false positives in three structural classes, and
+// 14 `hedge`, which are hedge words used as hedges and so true positives. An earlier revision of this
+// comment called all of them false positives; only the 7 are.
 //
 // 05 §3.3 makes `unmarked-normative-prose` a critical gate rather than a warning, because the miss is
 // silent and the count is load-bearing: an under-counted design-item set shrinks every frozen
@@ -177,6 +179,35 @@ function unitsIn(lines: string[], start: number, end: number): Array<{ text: str
 }
 
 /**
+ * Whether a line uses `token` as a hedge. @req FR-NODE-171 AC-3, AC-7, AC-8
+ *
+ * The boundary is ASCII letters, and only ASCII letters. Two wider choices were tried, and both
+ * silence real usage.
+ *
+ * `\b`, which `countNormativeTokens` uses, is defined over `[A-Za-z0-9_]` and does not hold at a
+ * Hangul edge, so it silences all six Hangul tokens outright — measured, and it would have taken six
+ * of `FR-NODE-121`'s cases red on a `verified` requirement.
+ *
+ * A `\p{L}\p{N}` lookaround, which this function used next, silences less but still silences. Korean
+ * writes no space before a particle, so `대충` appears as `대충은`, `대충이`, `대충대충`; measured under
+ * that lookaround, all 48 token-particle forms stopped firing, and so did `maybe라는` and `roughly한`.
+ * A boundary over every Unicode letter cannot tell a foreign-script particle from a longer word.
+ *
+ * ASCII letters are exactly the neighbours that mean embedding — `thoroughly` for `roughly`,
+ * `Maybelline` for `maybe`, which is what `includes()` could not refuse. A digit, punctuation or a
+ * character of another script is a neighbour and not a longer word, so none of them blocks.
+ *
+ * One rule, not two. A first draft branched on whether the token was ASCII and matched a non-ASCII
+ * token by containment; measured, no test could tell the two branches apart, because the boundary
+ * this rule draws already admits every Hangul particle.
+ */
+function hedgeMatcher(token: string): (line: string) => boolean {
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(?<![A-Za-z])${escaped}(?![A-Za-z])`, "i");
+  return (line) => pattern.test(line);
+}
+
+/**
  * @req FR-NODE-121 — `scanProse` has one argument and one mode. A `strict` switch was declared once
  * and never given a meaning; the natural guess — widening the token set — is the divergence §3.3
  * rule 3 spends a paragraph forbidding, so the parameter is deliberately absent.
@@ -185,26 +216,13 @@ function unitsIn(lines: string[], start: number, end: number): Array<{ text: str
  * and the hedge scan over the same exclusion set. `script-block` is a member of the closed rule
  * vocabulary and no phase-1 detector emits it.
  */
-/**
- * A hedge token, matched on a word boundary rather than by containment. @req FR-NODE-171
- *
- * Not `\b`, which `countNormativeTokens` uses: `\b` is defined over `[A-Za-z0-9_]`, and six of the
- * eighteen tokens are Hangul, so a `\b` matcher silences a third of the vocabulary — measured, all
- * six stop firing. The `\p{L}\p{N}` lookarounds keep every token and still refuse a token embedded
- * in a longer word, which is what `includes()` could not do: `"thoroughly"` matched `roughly`.
- */
-function hedgeMatcher(token: string): RegExp {
-  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu");
-}
-
 export function scanProse(text: string): ProseScan {
   const lines = maskExcludedConstructs(text);
   const findings: ProseFinding[] = [];
 
   for (const token of HEDGE_TOKENS) {
-    const needle = hedgeMatcher(token);
-    const hits = lines.map((line, index) => (needle.test(line) ? index + 1 : 0)).filter((line) => line > 0);
+    const matches = hedgeMatcher(token);
+    const hits = lines.map((line, index) => (matches(line) ? index + 1 : 0)).filter((line) => line > 0);
     if (hits.length > 0) findings.push({ rule: "hedge", lines: hits, token });
   }
 
