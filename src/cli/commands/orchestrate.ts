@@ -210,7 +210,10 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_coupling_check", path: ["coupling", "check"], kind: "read", options: [o("--handoffs", "handoffs", "string", true), o("--wave", "wave"), o("--stage", "stage")] },
   { tool: "orchestrate_schedule_show", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
   { tool: "orchestrate_handoff_validate", path: ["handoff", "validate"], kind: "read", options: [o("--lane", "lane", "string", true), o("--path", "path", "string", true), o("--catalog", "catalog", "string", true), o("--base", "base", "string", true)] },
-  { tool: "orchestrate_round_record", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
+  // @req IR-MCP-004 AC-1 — `--proof` is mandatory on the leaf, so it has to be declared here too:
+  // `orchestrateArgv` emits a flag only for a declared option, and the input schema is derived from
+  // this same list, so an omission leaves the tool uncallable in every case rather than degraded.
+  { tool: "orchestrate_round_record", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_open", path: ["issue", "open"], kind: "mutation", options: [LEDGER_OPTION, o("--payload", "payload", "json"), DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_plan", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--class", "class", "string", true), DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_resolve", path: ["issue", "resolve"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--proof", "proof", "json", true), o("--resolution", "resolution", "string", true), DRY_RUN_OPTION] },
