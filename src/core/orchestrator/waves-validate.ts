@@ -469,12 +469,17 @@ function checkJournalOnlyProofs(view: WavesJournalView, diagnostics: WavesDiagno
 function checkAbortGate(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
   const newest = view.lines[view.lines.length - 1];
   for (const event of view.lines) {
-    const gate = text(event.abort_gate ?? null);
-    if (gate === null || (GATE_IDS as readonly string[]).includes(gate)) continue;
+    // Absent is legal; present-but-not-a-string is not. Reading the field through `text()` alone
+    // conflated the two, because `text()` returns null for a number, a boolean or an object — so a
+    // numeric `abort_gate` was as far outside `GateId` as a wrong string and raised nothing.
+    const raw = event.abort_gate;
+    if (raw === undefined || raw === null) continue;
+    const gate = text(raw);
+    if (gate !== null && (GATE_IDS as readonly string[]).includes(gate)) continue;
     const severity: DiagnosticSeverity = event === newest ? "error" : "warning";
     diagnostics.push(
       diagnosticFor("abort-gate-outside-vocabulary", severity, "an abort_gate is outside the GateId vocabulary", event, {
-        abort_gate: gate
+        abort_gate: gate ?? raw
       })
     );
   }

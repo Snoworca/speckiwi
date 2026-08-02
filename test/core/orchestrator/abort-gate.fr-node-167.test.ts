@@ -104,6 +104,18 @@ describe("FR-NODE-167 AC-4 — the value space is GateId", () => {
     expect(GATE_IDS as readonly string[]).not.toContain(ILLEGAL);
     expect((await diagnose([line({ abort_gate: ILLEGAL })])).map((entry) => entry.code)).toEqual([CODE]);
   });
+
+  it("raises the code for a value that is not a string at all", async () => {
+    // The criterion is unconditional, and a number is as far outside `GateId` as a wrong string is.
+    // The guard read the field through a string coercion that returns null for anything else, so a
+    // numeric, boolean or object `abort_gate` was accepted in silence.
+    for (const value of [42, true, { gate: LEGAL }, [LEGAL]]) {
+      expect(
+        (await diagnose([line({ abort_gate: value })])).map((entry) => entry.code),
+        `abort_gate ${JSON.stringify(value)} is outside the vocabulary`
+      ).toEqual([CODE]);
+    }
+  });
 });
 
 describe("FR-NODE-167 AC-5 — error on the newest line, warning on history", () => {

@@ -122,6 +122,48 @@ describe("IR-CLI-085 AC-2 / AC-3 / AC-4 — a non-GateId reason is refused and c
   });
 });
 
+describe("FR-NODE-167 AC-5 — a run holding a bad line can still be aborted", () => {
+  it("appends and releases the lock over a journal whose earlier line offends", async () => {
+    const root = await lockedRoot();
+    // The failure mode the severity split exists to prevent, and the one nothing exercised: a line
+    // written by hand — waves-event.md §5 has agents append with `echo >>`, bypassing validation —
+    // carries a reason_class value in `abort_gate`. If the rule were error over history, the whole
+    // journal would fail validation, every append would refuse, and `run abort` could never release
+    // the lock. Nothing else in the suite performs an append at all.
+    const stale = JSON.stringify({
+      ts: "2026-08-01T00:00:00Z",
+      schema_version: "1.4.0",
+      run_id: "run-a",
+      engine: "kiwi-orchestrator",
+      writer: "speckiwi-orchestrate/test",
+      verb: "abort-run",
+      event: "result",
+      wave: "all",
+      order: 0,
+      target: "run",
+      status: "failed",
+      summary: "hand-written abort",
+      abort_gate: ILLEGAL
+    });
+    await write(root, "kiwi/waves.jsonl", `${stale}\n`);
+    expect(GATE_IDS as readonly string[]).not.toContain(ILLEGAL);
+
+    const before = await readFile(journalPath(root), "utf8");
+    const aborted = await run(["--root", root, "orchestrate", "run", "abort", "--reason", LEGAL, "--run-id", "run-a"]);
+    expect(aborted.exit, JSON.stringify(aborted.payload)).toBe(0);
+
+    const after = await readFile(journalPath(root), "utf8");
+    expect(after.length, "the abort must actually have been appended").toBeGreaterThan(before.length);
+    const written = JSON.parse(after.trim().split("\n").at(-1) ?? "{}") as Record<string, unknown>;
+    expect(written.abort_gate).toBe(LEGAL);
+
+    // And the lock is released, which is the consequence that matters: a run that cannot abort is a
+    // run whose lock nothing can free.
+    const status = await run(["--root", root, "orchestrate", "run", "status"]);
+    expect((status.payload as { holder?: unknown }).holder, "the lock must be released").toBeNull();
+  });
+});
+
 describe("IR-CLI-085 AC-5 — the option help names the vocabulary", () => {
   it("does not describe --reason as free text alone", () => {
     const sink = { write: () => true } as unknown as NodeJS.WriteStream;

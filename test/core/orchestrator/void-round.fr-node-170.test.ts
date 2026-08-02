@@ -54,10 +54,14 @@ function mismatched(extra: Record<string, unknown> = {}): Record<string, unknown
   };
 }
 
-async function codes(verification: Record<string, unknown>): Promise<string[]> {
+async function diagnostics(verification: Record<string, unknown>) {
   const root = await journalRoot([line(verification)]);
   const view = await parseWavesJournal(root, { runId: "run-a", engine: "kiwi-orchestrator" });
-  return validateWavesJournal(view).map((entry) => entry.code);
+  return validateWavesJournal(view);
+}
+
+async function codes(verification: Record<string, unknown>): Promise<string[]> {
+  return (await diagnostics(verification)).map((entry) => entry.code);
 }
 
 function section23(body: string): string[] {
@@ -88,6 +92,15 @@ describe("FR-NODE-170 AC-1 — the declaration is a §2.3 bullet, claimed by the
 describe("FR-NODE-170 AC-2 / AC-3 — the rule is narrowed, not disabled", () => {
   it("still refuses an UNDECLARED mismatch", async () => {
     expect(await codes(mismatched())).toContain(CODE);
+  });
+
+  it("refuses it at error severity, which is what makes the append refuse", async () => {
+    // `codes()` projects `.code` only, so severity was uncarried: demoting this rule to a warning
+    // left the whole suite green while `appendWavesLine` — which refuses only on an error — would
+    // have started writing the undeclared mismatch straight through.
+    const found = (await diagnostics(mismatched())).filter((entry) => entry.code === CODE);
+    expect(found, "exactly one denominator-mismatch for one offending line").toHaveLength(1);
+    expect(found[0]?.severity).toBe("error");
   });
 
   it("does not refuse a mismatch the line declares void", async () => {
