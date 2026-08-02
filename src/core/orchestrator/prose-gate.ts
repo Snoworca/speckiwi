@@ -185,13 +185,26 @@ function unitsIn(lines: string[], start: number, end: number): Array<{ text: str
  * and the hedge scan over the same exclusion set. `script-block` is a member of the closed rule
  * vocabulary and no phase-1 detector emits it.
  */
+/**
+ * A hedge token, matched on a word boundary rather than by containment. @req FR-NODE-171
+ *
+ * Not `\b`, which `countNormativeTokens` uses: `\b` is defined over `[A-Za-z0-9_]`, and six of the
+ * eighteen tokens are Hangul, so a `\b` matcher silences a third of the vocabulary — measured, all
+ * six stop firing. The `\p{L}\p{N}` lookarounds keep every token and still refuse a token embedded
+ * in a longer word, which is what `includes()` could not do: `"thoroughly"` matched `roughly`.
+ */
+function hedgeMatcher(token: string): RegExp {
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu");
+}
+
 export function scanProse(text: string): ProseScan {
   const lines = maskExcludedConstructs(text);
   const findings: ProseFinding[] = [];
 
   for (const token of HEDGE_TOKENS) {
-    const needle = token.toLowerCase();
-    const hits = lines.map((line, index) => (line.toLowerCase().includes(needle) ? index + 1 : 0)).filter((line) => line > 0);
+    const needle = hedgeMatcher(token);
+    const hits = lines.map((line, index) => (needle.test(line) ? index + 1 : 0)).filter((line) => line > 0);
     if (hits.length > 0) findings.push({ rule: "hedge", lines: hits, token });
   }
 
