@@ -397,7 +397,11 @@ export const WAVES_EVENT_FIELDS = {
     "abort_gate",
     // @req FR-NODE-168 — the round index, and the field both run-state readers key on to tell a
     // round record from a compliant status assertion. Written today and declared nowhere.
-    "round"
+    "round",
+    // @req FR-NODE-172 — written by `handoff validate` since FR-NODE-155 AC-3 required the allowance
+    // journalled, and declared in neither half until now. It was the last such field at any typed
+    // call site; `reason_class` shows what an undeclared one costs.
+    "untested_allowance"
   ]
 } as const;
 
