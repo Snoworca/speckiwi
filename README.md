@@ -56,7 +56,7 @@ npm install speckiwi@latest
 After a local install, run it with `npx`:
 
 ```sh
-npx speckiwi --version   # -> 2.4.0
+npx speckiwi --version   # -> 2.6.0
 npx speckiwi --help
 ```
 
@@ -590,7 +590,7 @@ npm install speckiwi@latest
 로컬 설치 후에는 `npx`로 실행합니다.
 
 ```sh
-npx speckiwi --version   # -> 2.4.0
+npx speckiwi --version   # -> 2.6.0
 npx speckiwi --help
 ```
 
