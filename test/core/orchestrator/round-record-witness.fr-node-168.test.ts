@@ -2,8 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { WAVES_EVENT_FIELDS } from "../../../src/core/orchestrator/journal-schema.js";
+import { computeResumeState } from "../../../src/core/orchestrator/resume.js";
 import { isRoundRecord, parseWavesJournal } from "../../../src/core/orchestrator/waves-journal.js";
 import { computeRunProgress } from "../../../src/core/orchestrator/waves-validate.js";
+import { emptyDriftInputs, emptyGitFacts, minimalCard } from "./resume-fixtures.js";
 import { journalRoot, type Json } from "./waves-fixtures.js";
 
 // @req FR-NODE-168 — a round record says what it is, and neither run-state reader mistakes it.
@@ -156,8 +158,58 @@ describe("FR-NODE-168 AC-4 / AC-5 — every other line reads exactly as before",
   });
 });
 
-describe("FR-NODE-168 AC-6 — one predicate, two call sites", () => {
-  it("exports isRoundRecord and both readers use it", async () => {
+/** The loop-F line `projectRound` emits: a real verb, `wave: "all"`, and no `stage` or `lane`. */
+function loopFRoundRecord(): Json {
+  return {
+    ...BASE,
+    wave: "all",
+    order: 0,
+    target: "run",
+    phase: "final-verify",
+    verb: "final-verify",
+    event: "result",
+    status: "in_progress",
+    round: 1,
+    verification: { verdict: "in-progress", rounds: 1 }
+  } as unknown as Json;
+}
+
+/** A run mid-`final-verify`: an intent with no matching result, which §4.3 calls interrupted. */
+function interruptedFinalVerify(): Json[] {
+  return [
+    waveLine(1, "complete", { verification: { verdict: "pass" } }),
+    { ...BASE, wave: "all", order: 0, target: "run", verb: "final-verify", event: "intent" } as unknown as Json
+  ];
+}
+
+async function resumeOver(lines: Json[]) {
+  const root = await journalRoot(lines);
+  const view = await parseWavesJournal(root, { runId: "run-a", engine: "kiwi-orchestrator" });
+  return { view, state: computeResumeState(view, minimalCard(), emptyGitFacts(), emptyDriftInputs()) };
+}
+
+describe("FR-NODE-168 AC-7 — a round record is not a program-counter event", () => {
+  it("does not mask an interrupted verb that shares its (verb, wave, stage, lane) key", async () => {
+    // `verbKey` joins [verb, wave, stage, lane]; a round record carries neither stage nor lane, and
+    // every verb it projects is a real one, so the collision is by construction rather than by luck.
+    const key = "final-verify|all||";
+
+    // The baseline is pinned first. Without it, "still interrupted" would also be satisfied by a run
+    // that had nothing to interrupt — the degenerate reading that let AC-5 survive its first probe.
+    const before = await resumeOver(interruptedFinalVerify());
+    expect(before.state.nextAction.verb, "baseline: the verb must really be interrupted").toBe("final-verify");
+    expect(before.view.byVerb.get(key)).toHaveLength(1);
+
+    const after = await resumeOver([...interruptedFinalVerify(), loopFRoundRecord()]);
+    expect(after.state.nextAction.verb, "a round record must not discharge an interrupted verb").toBe("final-verify");
+    const bucket = after.view.byVerb.get(key) ?? [];
+    expect(bucket, "the round record must not enter the program-counter index").toHaveLength(1);
+    expect(bucket.some((event) => isRoundRecord(event))).toBe(false);
+  });
+});
+
+describe("FR-NODE-168 AC-6 — one predicate, three call sites", () => {
+  it("exports isRoundRecord and every reader uses it", async () => {
     expect(isRoundRecord({ journalLine: 1, round: 2 })).toBe(true);
     expect(isRoundRecord({ journalLine: 1 })).toBe(false);
     // A non-numeric `round` is not a round record: the field is the index, not a flag.
@@ -169,8 +221,10 @@ describe("FR-NODE-168 AC-6 — one predicate, two call sites", () => {
       const body = await readFile(path.join(process.cwd(), source), "utf8");
       calls += (body.match(/isRoundRecord\(/g) ?? []).length;
     }
-    // One definition site plus two call sites; a third reader copying the test instead of importing
-    // the predicate would move this number.
-    expect(calls, "isRoundRecord must be defined once and called exactly twice").toBe(3);
+    // One definition site plus three call sites — the wave-status reader, the final-verification
+    // reader and the program-counter index. A reader copying the check instead of importing the
+    // predicate would move this number, which is how the third reader stayed broken: the census
+    // asserted two and so recorded the omission as compliance.
+    expect(calls, "isRoundRecord must be defined once and called exactly three times").toBe(4);
   });
 });

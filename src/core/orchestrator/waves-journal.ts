@@ -79,7 +79,12 @@ export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJo
   const latestPerWave = new Map<number, WavesEvent>();
   const schemaVersions: string[] = [];
   for (const event of lines) {
-    if (typeof event.verb === "string" && event.verb.length > 0) {
+    // @req FR-NODE-168 AC-7 — the program-counter index takes program-counter events only. A round
+    // record names a real verb (`final-verify`, `post-merge-verify`, …) and carries no `stage` and
+    // no `lane`, so `verbKey` puts it in that verb's own bucket; written as a `result`, it then
+    // became the bucket's last line and `firstInterruptedVerb` read an unmatched `intent` as
+    // finished. A resumed run would have skipped the verb it was interrupted in the middle of.
+    if (typeof event.verb === "string" && event.verb.length > 0 && !isRoundRecord(event)) {
       const key = verbKey(event);
       const bucket = byVerb.get(key);
       if (bucket) bucket.push(event);
