@@ -227,7 +227,10 @@ describe("FR-NODE-108 AC-1 — declared arity, per kernel", () => {
   });
 });
 
-describe("FR-NODE-108 AC-2 — every field of each input type is reachable from an exported declaration", () => {
+// Not AC-2's carrier, and titled so it cannot be mistaken for it: these cases assert the runtime
+// SHAPE of fixtures built from the declarations. The criterion is a claim about the type graph, and
+// types are erased at runtime, so what carries it is the typecheck project — see the block below.
+describe("FR-NODE-108 AC-2 supporting shape — fixtures built from the declarations are complete", () => {
   it("reaches LanePlanInput through TaskCatalogEntry, ConvergencePoint, Lane and Stage", () => {
     // `catalog`, `registry` and `priorPostmortems` are annotated above with their exported element
     // types, so this file would not compile if any of the three were unexported or incomplete.

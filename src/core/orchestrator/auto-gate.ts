@@ -19,8 +19,13 @@
  * must be **in** this union — so an id the skill is required to declare and this union omits fails
  * the harness on correct text.
  *
- * Deliberately **not** registered in `journal-schema.ts`'s closed-enum list: that list is asserted
- * set-equal to `waves-event.md`'s field tables, and the v1.4.0 table carries no `gate` field.
+ * Deliberately **not** registered in `journal-schema.ts`'s closed-enum list. The stated reason used
+ * to be that the v1.4.0 table carries no `gate` field; that is no longer true — `FR-NODE-167` added
+ * `abort_gate`, whose declared value space IS this union. The reason that still holds is narrower:
+ * the enum census is a parity check between a TypeScript constant and a §2.2 *type* cell, and
+ * `abort_gate`'s cell names the vocabulary in prose rather than enumerating it. So `abort_gate` is
+ * today the one §2.2 enum field with no parity assertion binding it to its union, which is a gap
+ * rather than a decision. Do not restate the old reason.
  */
 export const GATE_IDS = [
   // — Orchestrator-owned, §13's rows marked phase 1 —
