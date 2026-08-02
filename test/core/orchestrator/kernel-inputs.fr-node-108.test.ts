@@ -322,7 +322,7 @@ describe("FR-NODE-108 AC-5 — computeResumeState takes four arguments and touch
 describe("FR-NODE-108 AC-2 — the type-level claim, and the thing that carries it", () => {
   // AC-2 is a claim about the type graph, and types are erased at runtime: measured, removing
   // `action: string` from `TaskCatalogEntry` leaves every case above at 11 passed while
-  // `typecheck:test` fails at :49 and :62 with TS2353. So the carrier is the typecheck project,
+  // `typecheck:test` fails at the two `action:` lines with TS2353. So the carrier is the project,
   // not this file's assertions — and the carrier only reaches this file because
   // `tsconfig.test.json` globs it in. Nothing asserted that membership, so moving this file to
   // `test/core/` would have removed the protection with no test noticing. This is that assertion.

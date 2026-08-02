@@ -29,6 +29,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The orchestrator test sources are a separate project. Until this step existed it ran only as
+      # a side effect of one vitest file shelling out to the compiler, so skipping or renaming that
+      # file would have removed FR-NODE-108 AC-2's carrier with nothing red.
+      - name: Typecheck tests
+        run: npm run typecheck:test
+
       - name: Lint
         run: npm run lint
 

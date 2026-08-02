@@ -6,10 +6,14 @@
 // the caller; measured, that verb never calls either detector. Do not restore that claim without a
 // call site. Wiring it is a decision and not a fix: the gate has two declared evaluation points of
 // different kinds — the Phase 1.e freeze and the Phase 3.a loop-W round — so `freeze design` alone
-// covers at most half. Measured over the thirteen documents: 9 raise some finding, 21 findings in
-// all — 7 `unmarked-normative-prose`, which are the false positives in three structural classes, and
-// 14 `hedge`, which are hedge words used as hedges and so true positives. An earlier revision of this
-// comment called all of them false positives; only the 7 are.
+// covers at most half. Measured over the thirteen documents: 9 raise some finding, 21 finding
+// objects in all — 7 `unmarked-normative-prose` across 4 documents, which are the false positives in
+// three structural classes, and 14 `hedge`. Do not describe the hedge findings as all true
+// positives: of their 36 line hits, 8 are the coined identifier `possibly-live`/`possibly-running`
+// and 6 are quoted mentions of another document's wording — the same use-versus-mention class — so
+// 22 of 36 hedge in the document's own voice, and one finding object is false positive entire. Two
+// earlier revisions of this sentence were both wrong, first calling every finding a false positive
+// and then calling every hedge finding a true one.
 //
 // 05 §3.3 makes `unmarked-normative-prose` a critical gate rather than a warning, because the miss is
 // silent and the count is load-bearing: an under-counted design-item set shrinks every frozen
