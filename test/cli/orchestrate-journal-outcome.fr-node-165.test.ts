@@ -142,12 +142,27 @@ describe("FR-NODE-165 AC-1 — schedule plan refuses when its own journal line c
 
 describe("FR-NODE-165 AC-2 — a dry run is not a failed write", () => {
   it("does not refuse under --dry-run, and leaves the journal untouched", async () => {
-    const root = await planRoot("");
+    // The baseline is POISON rather than "": over an empty journal the untouched assertion compared
+    // "" with "" and also held if the file had been emptied or deleted, so it could not fail.
+    const root = await planRoot(POISON);
     const before = await journal(root);
+    expect(before, "the baseline must be non-empty for 'untouched' to mean anything").toBe(POISON);
+
     const result = await run(planArgv(root, ["--dry-run"]));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
     expect(await journal(root), "a dry run must write nothing").toBe(before);
+  });
+
+  it("reports the dry run as not written rather than claiming a write", async () => {
+    // The clause "the dry run is reported as such" had no assertion at all: setting journalWritten
+    // unconditionally true left every case in this file green, so the verb could report a write it
+    // had not performed.
+    const root = await planRoot("");
+    const result = await run(planArgv(root, ["--dry-run", "--strict-grounding", "--run-id", "run-a"]));
+
+    expect(result.exit, JSON.stringify(result.payload)).toBe(0);
+    expect(result.payload.journalWritten, "a dry run wrote nothing, and must say so").toBe(false);
   });
 });
 
@@ -217,6 +232,18 @@ describe("FR-NODE-165 AC-6 — no call site discards the append outcome", () => 
       .filter((entry) => CALL.test(entry.line) && !/\bfunction\b/.test(entry.line));
 
     expect(sites.length, "the census found no call sites, so it proves nothing").toBeGreaterThan(0);
+
+    // The criterion's own parity clause, which was stated and never written. The line-scoped census
+    // above drops any line carrying the word `function`, so a call split across lines — or one on a
+    // line that also mentions `function` — is skipped in silence, which is precisely the omission
+    // the clause exists to catch. Count the identifier independently and reconcile.
+    const mentions = (source.match(/\bappendWavesLine\s*\(/g) ?? []).length;
+    const declarations = (source.match(/\bfunction\s+appendWavesLine\s*\(/g) ?? []).length;
+    expect(declarations, "appendWavesLine is declared exactly once in this module").toBe(1);
+    expect(
+      sites.length,
+      `the census saw ${sites.length} call sites but the identifier occurs ${mentions} times, ${declarations} of them a declaration`
+    ).toBe(mentions - declarations);
 
     const discarded = sites.filter((entry) => {
       const prefix = (CALL.exec(entry.line)?.groups?.prefix ?? "").replace(/\bawait\s*$/, "").trimEnd();
