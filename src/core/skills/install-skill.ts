@@ -650,7 +650,17 @@ async function readMirrorExclusions(destinationRoot: string): Promise<Set<string
 
 async function collectSkillSharedReferences(destinationRoot: string, skillDir: string, desired: Set<string>): Promise<void> {
   const sharedMirrorRoot = path.resolve(destinationRoot, "_shared", "kiwi");
-  const pattern = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  // @req FR-NODE-066 AC-1 — a reference names a file in the shared mirror, and whatever precedes
+  // `_shared/kiwi/` is a spelling choice rather than part of the address. Matching `(\.\./)+` only
+  // made the whole mechanism a no-op for one agent: measured across `skills/**`, the claude tree
+  // spells the relative form ZERO times and uses `~/.claude/skills/_shared/kiwi/…` (42) or the bare
+  // form (58), so its reference union came out empty, `syncSharedMirror` returned before copying,
+  // and every claude install shipped skills pointing at contracts that were never written.
+  //
+  // Deliberately not applied to `collectSharedResourceReferences`: that one throws when a reference
+  // has no target, so broadening it would turn a prose mention of a retired contract into a hard
+  // install failure, and AC-4 requires the install metadata behaviour to stay as it is.
+  const pattern = /_shared\/kiwi\/([A-Za-z0-9._/-]+)/g;
   async function walk(directory: string): Promise<void> {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const absolutePath = path.join(directory, entry.name);
@@ -661,11 +671,14 @@ async function collectSkillSharedReferences(destinationRoot: string, skillDir: s
       if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".md")) continue;
       const text = await readFile(absolutePath, "utf8");
       for (const match of text.matchAll(pattern)) {
-        const reference = match[1]?.replace(/[),.;:'"`]+$/g, "");
-        if (!reference) continue;
-        const resolved = path.resolve(path.dirname(absolutePath), reference);
+        const tail = match[1]?.replace(/[),.;:'"`]+$/g, "");
+        if (!tail) continue;
+        // Resolved against the mirror root rather than against the citing file, so the depth of the
+        // file doing the citing stops mattering. The escape guard is unchanged in effect:
+        // `_shared/kiwi/../../outside.md` still resolves above the mirror and is skipped.
+        const resolved = path.resolve(sharedMirrorRoot, tail);
         const relativePath = path.relative(sharedMirrorRoot, resolved);
-        if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) continue;
+        if (relativePath === "" || relativePath.startsWith("..") || path.isAbsolute(relativePath)) continue;
         desired.add(toPosix(relativePath));
       }
     }
