@@ -154,7 +154,10 @@ describe("FR-NODE-066 — the shared mirror follows the reference, not one spell
     expect(await mirrorFiles(dest)).toEqual(["unrelated.md"]);
   });
 
-  it("AC-4: a reference that climbs out of the mirror is not copied", async () => {
+  it("AC-4: a reference that climbs out of the mirror is refused, not resolved", async () => {
+    // Broadening the metadata collector to the same spellings brought this case under its escape
+    // guard, so a malformed path in a shipped skill now refuses the install instead of being
+    // silently skipped by the mirror collector. Refusing is the safer half of the pair.
     const root = await tempRoot();
     const dest = path.join(root, "dest");
     await writeSkill(root, "claude", "kiwi-pm", "Escape `_shared/kiwi/../../../outside.md` must not resolve.");
@@ -162,8 +165,36 @@ describe("FR-NODE-066 — the shared mirror follows the reference, not one spell
     await writeFile(path.join(root, "skills", "outside.md"), "outside\n", "utf8");
 
     const result = await installSkill(options(root, { dest }));
-    expect(result.ok, result.ok ? "" : result.error.message).toBe(true);
+    expect(result.ok, "an escaping reference was accepted").toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain("escapes shared root");
     expect(await mirrorFiles(dest)).not.toContain("outside.md");
+  });
+
+  it("AC-6: a contract a shipped skill depends on is cited by path, so prune cannot take it", async () => {
+    // Enabling the collector enabled prune with it, and prune is the destructive half. A skill that
+    // names a contract in prose without citing its path declares a dependency no machine can see:
+    // the contract falls out of the union and the next install deletes it. Measured live — restoring
+    // the mirror then reinstalling one skill removed `feasibility-policy-schema-v1.md`, which
+    // `kiwi-srs` says it reuses the heuristics of.
+    const repoRoot = path.resolve(__dirname, "../../..");
+    for (const variant of ["claude", "codex", "etc"] as const) {
+      const sharedDir = path.join(repoRoot, "skills", variant, "_shared", "kiwi");
+      const contracts = (await readdir(sharedDir)).filter((name) => name.endsWith(".md"));
+      const skillDirs = (await readdir(path.join(repoRoot, "skills", variant), { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+        .map((entry) => entry.name);
+
+      const bodies = await Promise.all(
+        skillDirs.map((name) => readFile(path.join(repoRoot, "skills", variant, name, "SKILL.md"), "utf8").catch(() => ""))
+      );
+      const corpus = bodies.join("\n");
+
+      const namedButUncited = contracts.filter(
+        (contract) => corpus.includes(contract.replace(/\.md$/, "")) && !corpus.includes(`_shared/kiwi/${contract}`)
+      );
+      expect(namedButUncited, `${variant}: contracts depended on by name that prune would delete`).toEqual([]);
+    }
   });
 
   it("AC-5: every shared contract the shipped skills reference arrives, for every agent", async () => {

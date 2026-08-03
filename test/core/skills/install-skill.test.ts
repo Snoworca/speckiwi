@@ -383,7 +383,10 @@ describe("skill install core", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.error.message);
     expect(result.value.results[0]).toMatchObject({ operation: "conflict", changed: false });
-    expect(result.value.results[0]?.conflicts).toContain("custom destination lacks SpecKiwi install metadata for same-identity update");
+    // @req FR-NODE-173 AC-1 — the guard now runs in every scope, not custom alone, and the message
+    // names the destination and the way out. Asserted by shape rather than by the old exact string.
+    expect(result.value.results[0]?.conflicts.join(" ")).toContain("holds no SpecKiwi install metadata");
+    expect(result.value.results[0]?.conflicts.join(" ")).toContain(destinationRoot);
   });
 
   it("does not install any selected skill when all expansion contains a conflict", async () => {

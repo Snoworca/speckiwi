@@ -384,7 +384,15 @@ async function classifyExistingDestination(destination: string, sourcePackage: S
   }
   const destinationPackage = await readDestinationPackage(destination);
   if (!destinationPackage) {
-    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination does not contain a valid skill entrypoint"], validationFindings: [] };
+    // @req FR-NODE-173 AC-5 — a run interrupted mid-install leaves exactly this state, and the old
+    // message named neither the directory nor a way out, so the destination failed forever.
+    return {
+      operation: "conflict",
+      changed: false,
+      removedFiles: 0,
+      conflicts: [`destination does not contain a valid skill entrypoint: ${destination} — remove that directory to reinstall`],
+      validationFindings: []
+    };
   }
   if (path.basename(destination) !== sourcePackage.name || destinationPackage.name !== identity.name) {
     return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination skill identity does not match source skill"], validationFindings: [] };
@@ -394,8 +402,20 @@ async function classifyExistingDestination(destination: string, sourcePackage: S
     if (metadata.name !== identity.name || metadata.agent !== identity.agent || (metadata.category ?? "") !== (identity.category ?? "")) {
       return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination install metadata identity does not match source skill"], validationFindings: [] };
     }
-  } else if (scope === "custom") {
-    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["custom destination lacks SpecKiwi install metadata for same-identity update"], validationFindings: [] };
+  } else {
+    // @req FR-NODE-173 AC-1 — this guard used to run for `custom` alone, so the two scopes that
+    // write into a user's real agent directories skipped it. Measured consequence: a hand-authored
+    // skill directory holding SKILL.md and notes.md was replaced with the bundled body and notes.md
+    // was deleted, with the call returning ok. The staged backup is dropped on success, so nothing
+    // survives to restore from. A directory SpecKiwi did not install is never ours to overwrite,
+    // whatever scope asked.
+    return {
+      operation: "conflict",
+      changed: false,
+      removedFiles: 0,
+      conflicts: [`destination holds no SpecKiwi install metadata, so it was not installed by SpecKiwi: ${destination} — remove that directory if it should be replaced`],
+      validationFindings: []
+    };
   }
   const comparison = await comparePackageToDestination(sourcePackage, destination);
   if (comparison.identical && metadata) {
@@ -497,14 +517,20 @@ async function validateReferencedResources(root: string, files: SkillPackageFile
 async function collectSharedResourceReferences(sourceRoot: string, files: SkillPackageFile[]): Promise<string[]> {
   const references = new Set<string>();
   const sharedRoot = path.join(sourceRoot, "_shared", "kiwi");
-  const pattern = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  // @req FR-NODE-173 AC-4 — the same spelling blindness the mirror collector had: matching `(\.\./)+`
+  // left `sharedResourceReferences` empty on every claude install while those skills cite contracts
+  // by name, so the metadata said a skill depends on nothing. The rule this makes enforceable is
+  // simple: write `_shared/kiwi/<name>.md` in a skill body and that contract must exist. Scanning is
+  // limited to the skill's own package files, so a retired name mentioned in a repository-level
+  // migration note is out of scope and cannot fail an install.
+  const pattern = /_shared\/kiwi\/([A-Za-z0-9._/-]+)/g;
   for (const file of files) {
     if (!file.sourceRelativePath.toLowerCase().endsWith(".md")) continue;
     const text = await readFile(file.absolutePath, "utf8");
     for (const match of text.matchAll(pattern)) {
       const reference = match[1]?.replace(/[),.;:'"`]+$/g, "");
       if (!reference) continue;
-      const target = path.resolve(path.dirname(file.absolutePath), reference);
+      const target = path.resolve(sharedRoot, reference);
       const relativeToShared = path.relative(sharedRoot, target);
       if (relativeToShared.startsWith("..") || path.isAbsolute(relativeToShared)) {
         throw new SkillInstallError("SKILL_INSTALL_INVALID_SOURCE", `shared Kiwi resource reference escapes shared root: ${reference}`);
@@ -523,16 +549,19 @@ async function comparePackageToDestination(sourcePackage: SkillPackage, destinat
   const sourceFiles = new Map(sourcePackage.files.map((file) => [file.destinationRelativePath, file]));
   const destinationFiles = await listDestinationFiles(destination);
   destinationFiles.delete(INSTALL_METADATA_FILE);
-  if (destinationFiles.size !== sourceFiles.size) {
-    return { identical: false, staleFiles: [...destinationFiles.keys()].filter((file) => !sourceFiles.has(file)).length };
-  }
+  // @req FR-NODE-173 AC-3 — the stale set is whatever the destination holds and the source does not,
+  // and that is true in every branch. Computing it only when the counts differ let a plan report
+  // `filesRemoved: 0` and then delete: a destination holding `extra/b.md` against a source holding
+  // `extra/a.md` has equal counts and one doomed file.
+  const staleFiles = [...destinationFiles.keys()].filter((file) => !sourceFiles.has(file)).length;
+  if (destinationFiles.size !== sourceFiles.size) return { identical: false, staleFiles };
   for (const [relativePath, sourceFile] of sourceFiles) {
     const destinationFile = destinationFiles.get(relativePath);
-    if (!destinationFile) return { identical: false, staleFiles: 0 };
+    if (!destinationFile) return { identical: false, staleFiles };
     const [left, right] = await Promise.all([readFile(sourceFile.absolutePath), readFile(destinationFile)]);
-    if (!left.equals(right)) return { identical: false, staleFiles: 0 };
+    if (!left.equals(right)) return { identical: false, staleFiles };
   }
-  return { identical: true, staleFiles: 0 };
+  return { identical: true, staleFiles };
 }
 
 async function listDestinationFiles(root: string): Promise<Map<string, string>> {
