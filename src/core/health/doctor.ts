@@ -290,6 +290,31 @@ function bundledClaudeSkillsRoot(): string {
 
 // @req FR-NODE-083
 /** Skill names in a source tree: every direct subdirectory carrying a SKILL.md. */
+/**
+ * Every file a bundled skill ships, relative to its own directory.
+ *
+ * @req FR-NODE-173 AC-6 — the drift check compares what a skill ships, not only its entrypoint, so a
+ * stale non-entrypoint file is reported instead of passing as current.
+ */
+async function listSkillPackageFiles(skillDir: string): Promise<string[]> {
+  const files: string[] = [];
+  async function walk(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true }).catch(() => [])) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolute);
+        continue;
+      }
+      // The install metadata describes the destination and has no source counterpart.
+      if (entry.isFile() && entry.name !== ".speckiwi-skill-install.json") {
+        files.push(path.relative(skillDir, absolute).split(path.sep).join("/"));
+      }
+    }
+  }
+  await walk(skillDir);
+  return files;
+}
+
 async function listSkillNames(sourceRoot: string): Promise<string[]> {
   const entries = await readdir(sourceRoot, { withFileTypes: true }).catch(() => []);
   const names: string[] = [];
@@ -489,14 +514,29 @@ async function checkInstalledSkillDrift(
     // Both the source and the installed entrypoint are SKILL.md. A lowercase fallback here would be
     // dead code: listSkillNames discovers a skill by stat-ing SKILL.md, so a directory holding only
     // skill.md is never listed in the first place.
+    //
+    // @req FR-NODE-173 AC-6 — the comparison used to stop at SKILL.md, so a stale `validator.mjs` or
+    // a stale `references/extended-workflow.md` reported `ok` while the installed skill ran old code.
+    // Twenty-eight non-entrypoint files ship across the bundled skills. A skill is drifted when any
+    // file it ships differs, and the entrypoint is only the first of them.
     for (const name of await listSkillNames(location.sourceRoot)) {
-      const installed = await readOrUndefined(path.join(location.destinationRoot, name, "SKILL.md"));
-      if (installed === undefined) {
+      const installedEntry = await readOrUndefined(path.join(location.destinationRoot, name, "SKILL.md"));
+      if (installedEntry === undefined) {
         missing.push(name);
         continue;
       }
-      const source = await readOrUndefined(path.join(location.sourceRoot, name, "SKILL.md"));
-      if (source !== undefined && normalizeEol(source) !== normalizeEol(installed)) diverged.push(name);
+      const sourceFiles = await listSkillPackageFiles(path.join(location.sourceRoot, name));
+      let drifted = false;
+      for (const relative of sourceFiles) {
+        const source = await readOrUndefined(path.join(location.sourceRoot, name, relative));
+        if (source === undefined) continue;
+        const installed = await readOrUndefined(path.join(location.destinationRoot, name, relative));
+        if (installed === undefined || normalizeEol(source) !== normalizeEol(installed)) {
+          drifted = true;
+          break;
+        }
+      }
+      if (drifted) diverged.push(name);
     }
     // A stale shared contract changes every skill that cites it, without changing any skill body.
     for (const name of await listSharedContractNames(location.sourceRoot)) {

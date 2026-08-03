@@ -36,7 +36,7 @@ describe("skills CLI commands", () => {
         sourceRoot: path.join(root, "skills", "etc"),
         destinationRoot: path.join(root, ".opencode", "skills"),
         requiresMcp: true,
-        mcpPreflight: { status: "not_checked" },
+        mcpPreflight: { status: "missing" },
         results: [{ name: "kiwi-pm", operation: "install", changed: true }]
       }
     });

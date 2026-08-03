@@ -97,7 +97,9 @@ describe("skill install core", () => {
     expect(result.value.sourceRoot).toBe(path.join(root, "skills", "etc"));
     expect(result.value.destinationRoot).toBe(path.join(root, ".opencode", "skills"));
     expect(result.value.requiresMcp).toBe(true);
-    expect(result.value.mcpPreflight.status).toBe("not_checked");
+    // @req IR-CLI-086 AC-3 — the status is computed now, not a constant: this fixture root has no
+    // .mcp.json, so the SpecKiwi server is not registered.
+    expect(result.value.mcpPreflight.status).toBe("missing");
     expect(result.value.results).toMatchObject([{ name: "kiwi-pm", operation: "install", changed: true }]);
   });
 

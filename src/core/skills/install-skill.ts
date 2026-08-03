@@ -80,7 +80,7 @@ export async function planSkillInstall(options: SkillInstallOptions): Promise<Re
       sourceRoot,
       destinationRoot,
       requiresMcp: true,
-      mcpPreflight: defaultMcpPreflight(),
+      mcpPreflight: await resolveMcpPreflight(normalized.projectRoot?.root),
       dryRun: Boolean(normalized.dryRun),
       results
     });
@@ -93,7 +93,9 @@ export async function planSkillInstall(options: SkillInstallOptions): Promise<Re
 export async function installSkill(options: SkillInstallOptions): Promise<Result<SkillInstallPlan>> {
   const planned = await planSkillInstall(options);
   if (!planned.ok) return planned;
-  if (planned.value.dryRun) return planned;
+  // @req IR-CLI-086 AC-2 — the gate ran after the dry-run returned, so a plan the real run refuses
+  // came back ok at exit 0 and a caller gating on it concluded the install was safe. A dry-run that
+  // reports success for a run that cannot proceed is worse than no dry-run.
   const conflicts = planned.value.results.filter((result) => result.operation === "conflict");
   if (conflicts.length > 0) {
     return fail(
@@ -108,6 +110,7 @@ export async function installSkill(options: SkillInstallOptions): Promise<Result
       )
     );
   }
+  if (planned.value.dryRun) return planned;
 
   const executedResults: SkillInstallItemResult[] = [];
   try {
@@ -341,7 +344,7 @@ async function planOne(sourcePackage: SkillPackage, options: SkillInstallOptions
     destination: file.destinationRelativePath,
     ...(file.sourceRelativePath !== file.destinationRelativePath ? { normalized: true } : {})
   }));
-  const existing = await classifyExistingDestination(destination, sourcePackage, identity, options.scope ?? "project");
+  const existing = await classifyExistingDestination(destination, sourcePackage, identity);
   return {
     name: sourcePackage.name,
     identity,
@@ -366,7 +369,7 @@ function buildIdentity(name: string, agent: SkillAgent, sourceRoot: string, opti
   return identity;
 }
 
-async function classifyExistingDestination(destination: string, sourcePackage: SkillPackage, identity: SkillIdentity, scope: SkillInstallScope): Promise<{
+async function classifyExistingDestination(destination: string, sourcePackage: SkillPackage, identity: SkillIdentity): Promise<{
   operation: "install" | "update" | "skip" | "conflict";
   changed: boolean;
   removedFiles: number;
@@ -977,9 +980,24 @@ function toPosix(value: string): string {
   return value.split(path.sep).join("/");
 }
 
-function defaultMcpPreflight(): McpPreflight {
-  return {
-    status: "not_checked",
-    remediation: "Run speckiwi mcp and ensure the coding agent is connected before normal Kiwi skill workflows."
-  };
+/**
+ * @req IR-CLI-086 AC-3 — this used to return `not_checked` unconditionally, with no other writer, so
+ * two of the three declared statuses were unreachable while `IR-CLI-027` AC-7 and `FR-NODE-016` AC-5
+ * enumerate all three as though a check runs. The cheap check that makes them reachable is the one
+ * `init` already performs: whether the project's `.mcp.json` registers the SpecKiwi server. That is
+ * registration rather than liveness, which is why `not_checked` survives — an unreadable or absent
+ * project root is not evidence either way.
+ */
+async function resolveMcpPreflight(projectRoot: string | undefined): Promise<McpPreflight> {
+  const remediation = "Run speckiwi mcp and ensure the coding agent is connected before normal Kiwi skill workflows.";
+  if (!projectRoot) return { status: "not_checked", remediation };
+  const raw = await readFile(path.join(projectRoot, ".mcp.json"), "utf8").catch(() => undefined);
+  if (raw === undefined) return { status: "missing", remediation };
+  try {
+    const parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> };
+    const registered = Boolean(parsed.mcpServers && Object.prototype.hasOwnProperty.call(parsed.mcpServers, "speckiwi"));
+    return { status: registered ? "satisfied" : "missing", remediation };
+  } catch {
+    return { status: "not_checked", remediation };
+  }
 }

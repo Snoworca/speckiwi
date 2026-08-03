@@ -29,9 +29,9 @@ function registerInstallAction(parent: Command, context: CliContext, alias: "ins
   return parent
     .command(alias)
     .argument("<agent>", `target coding agent: ${SKILL_AGENTS.join(" | ")}`)
-    .argument("[skill]", "required skill name or all")
+    .argument("<skill>", "skill name, or all")
     .option("-g, --global", "install into the user-level skill directory")
-    .option("--dest <dir>", "custom destination root; each skill is installed under <dir>/<skill>")
+    .option("--dest <dir>", "custom destination root, resolved against the project root when relative; each skill is installed under <dir>/<skill>")
     .option("--category <name>", "Hermes global category (default: kiwi)")
     .option("--dry-run", "plan without copying files")
     .option("--json", "write JSON to stdout")
@@ -58,6 +58,10 @@ function registerInstallAction(parent: Command, context: CliContext, alias: "ins
       const root = await resolveProjectRoot(process.cwd(), typeof rootOption === "string" ? rootOption : undefined);
       const result = await installSkill({
         projectRoot: root,
+        // @req IR-CLI-086 AC-1 — without this the service resolved the codex global root from the
+        // home directory while `init --global` and `doctor` both read CODEX_HOME, so the three entry
+        // points disagreed about where a global install lands.
+        env: process.env,
         agent,
         selector,
         scope,

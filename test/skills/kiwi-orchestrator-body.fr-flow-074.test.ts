@@ -158,12 +158,17 @@ describe("D1 extraction — the orchestrator is the referrer that keeps the shar
   // deletes the rest (`pruneSharedMirror`). `run-ledger.md` is referenced by no other skill, so if this
   // §0 row is ever dropped the module is pruned out of the mirror on the next install and every rule it
   // carries — the resume-card schema, the verb enum, the recovery classes — disappears with it.
-  const COLLECTOR = /(?:^|[\s('"`])((?:\.\.\/)+_shared\/kiwi\/[A-Za-z0-9._/-]+)/g;
+  const COLLECTOR = /_shared\/kiwi\/([A-Za-z0-9._/-]+)/g;
 
   const EXTRACTED = ["verify-loop.md", "wave-decomposition.md", "wave-srs-registration.md", "run-ledger.md"];
 
-  /** The renderings whose reference form the installer's collector matches. */
-  const RELATIVE_RENDERINGS = ["skills/codex/kiwi-orchestrator/SKILL.md", "skills/etc/kiwi-orchestrator/SKILL.md", ORCHESTRATOR_MIRROR];
+  /**
+   * Every shipped rendering. @req FR-NODE-066 AC-1 — this list used to exclude the claude variant
+   * because the collector matched the relative spelling alone, and that variant never uses it. The
+   * collector now reads the reference rather than one spelling of it, so the exclusion is gone and
+   * the claude rendering is held to the same requirement as the others.
+   */
+  const RELATIVE_RENDERINGS = ["skills/claude/kiwi-orchestrator/SKILL.md", "skills/codex/kiwi-orchestrator/SKILL.md", "skills/etc/kiwi-orchestrator/SKILL.md", ORCHESTRATOR_MIRROR];
 
   function collectedModules(relPath: string): Set<string> {
     const out = new Set<string>();
