@@ -251,6 +251,8 @@ When a parent Kiwi skill delegates to a child Kiwi skill:
 
 > **Loop round-cap propagation (FR-FLOW-035)**: the child-propagation SSOT for `--mini` / `--loops N` (verify/improve loop round cap) is `_shared/kiwi/loop-option.md` §6. They propagate parent→child exactly like `--auto`, additive to the table above — e.g. `kiwi-pm --loops 5` → `kiwi-coder --loops 5`, `kiwi-pipeline --mini` → every sub-skill `--mini`.
 
+> **One named flag may imply a set (FR-FLOW-119)**: a parent never synthesises a child's gate-bypassing options by itself. A single flag the user named explicitly is not that case — `kiwi-wave-master`'s `--drive`, declared to turn on `--auto-integration` and `--auto-cost-warning`, is still explicit user input, so the rule below does not bar it. What the rule bars is a parent inventing those flags with no user input at all.
+
 Special propagation:
 
 | Parent | Child | Added flags |

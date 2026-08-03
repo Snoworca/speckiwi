@@ -366,6 +366,7 @@ spawn 결과는 사용자 메시지로 직접 출력. 자식 스킬도 `workflow
 
 | 옵션 | 도달 대상 | 본 스킬의 전달 경로 |
 |---|---|---|
+| `--drive` | 부모 `kiwi-wave-master` 의 무인 완주 모드 (FR-FLOW-119) | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
 | `--auto-cost-warning` | `kiwi-coder` 비용 확인 게이트 | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
 | `--auto-integration` | `kiwi-coder` 통합 테스트 동의 게이트 | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |
 | `--force` | `kiwi-pm` 의 stale `pm.lock` 해제 | kiwi-pipeline → `kiwi-pm` (**명시** 입력만) |

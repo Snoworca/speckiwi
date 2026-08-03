@@ -1,6 +1,6 @@
 ---
 name: kiwi-wave-master
-description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로드맵·장기 연구 결과)을 순서 있는 wave 로 분해하고, wave 마다 전용 target 을 /kiwi-srs 로 등록한 뒤 wave 별 /kiwi-pipeline 을 순차 실행하는 멀티-웨이브 오케스트레이터 v0.1. ./kiwi/waves.jsonl 로 진행을 추적하여 재개 가능(첫 미완료 wave 부터). 트리거 — kiwi wave master, 웨이브 오케스트레이션, 멀티 웨이브, 대형 작업 분해, wave 별 파이프라인, 에픽 실행, 여러 단계로 나눠서 진행. 옵션 — --auto (모든 wave 를 끝까지 자율 완주, 안전 게이트 유지), --max (모든 wave 의 하위 스킬로 전파)."
+description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로드맵·장기 연구 결과)을 순서 있는 wave 로 분해하고, wave 마다 전용 target 을 /kiwi-srs 로 등록한 뒤 wave 별 /kiwi-pipeline 을 순차 실행하는 멀티-웨이브 오케스트레이터 v0.1. ./kiwi/waves.jsonl 로 진행을 추적하여 재개 가능(첫 미완료 wave 부터). 트리거 — kiwi wave master, 웨이브 오케스트레이션, 멀티 웨이브, 대형 작업 분해, wave 별 파이프라인, 에픽 실행, 여러 단계로 나눠서 진행. 옵션 — --auto (모든 wave 를 끝까지 자율 완주, 안전 게이트 유지), --max (모든 wave 의 하위 스킬로 전파), --drive (무인 완주 + 경계 있는 자가 복구, §7.5)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-wave-master v0.1
@@ -48,8 +48,8 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | `unsafe-option-refused` | `--skip-regression` / `--reviewer-off` 요청 — 회귀와 리뷰를 끄면 wave 누적 위에서 결함 피해가 복리로 커진다 | §2.1 |
 | `child-srs-needs-user-or-failed` | 직접 호출한 `/kiwi-srs` 가 `NEEDS_USER` / `FAILED` 를 반환하거나 자체 critical 게이트에 도달 — 사이클은 kiwi-srs 를 spawn 하지 않으므로 pipeline 게이트가 덮지 못한다 | §4 / §5.5.5 |
 | `decomposition-input-missing` | 분해할 대상 문서·설계 문서·에픽 이슈가 모두 부재 — 입력을 위원회가 창작할 수 없다 | §1.1 |
-| `integration-test-user-consent` | 자식 kiwi-coder 통합 테스트 동의 게이트 — `--auto-integration` 이 **명시**되지 않으면 `--auto` 라도 여기서 멈춘다 | §7.1 / §7.4 |
-| `cost-warning-large-task` | 자식 kiwi-coder 비용 경고(실행 시간 ≥10분) — `--auto-cost-warning` 이 **명시**되지 않으면 `--auto` 라도 여기서 멈춘다 | §7.1 / §7.4 |
+| `integration-test-user-consent` | 자식 kiwi-coder 통합 테스트 동의 게이트 — `--auto-integration` 이나 `--drive` 가 **명시**되지 않으면 `--auto` 라도 여기서 멈춘다 | §7.1 / §7.4 / §7.5 |
+| `cost-warning-large-task` | 자식 kiwi-coder 비용 경고(실행 시간 ≥10분) — `--auto-cost-warning` 이나 `--drive` 가 **명시**되지 않으면 `--auto` 라도 여기서 멈춘다 | §7.1 / §7.4 / §7.5 |
 | `wave-verify-fail-residual` | 웨이브 종료 상호검증이 상한 전에 미해소 finding 을 남기고 끝남(`verdict="fail-residual"`) — 그 wave 는 `complete` 를 append 할 수 없어 위원회에는 저널 규칙을 만족하는 선택지가 없다 | §5.5 |
 | `out-of-scope-user-consent` | 설계 항목을 `out_of_scope` 로 배제 — 배제된 항목은 모든 계층의 분모에서 빠지므로 `--auto` 라도 사용자 확인을 받는다 | §3.2 |
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 — 무인 실행의 종료를 보장하는 유일한 경계 | §5.6 |
@@ -84,6 +84,7 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | "이 run 이어서", "run id 지정" | `--run-id <id>` (재개할 run 명시 §6) | 자동 감지(가장 최근 미완료 run) |
 | "통합 테스트 자동 동의" | `--auto-integration` (자식 kiwi-coder 게이트까지 pass-through §7.4) | off |
 | "비용 경고 자동 skip" | `--auto-cost-warning` (자식 kiwi-coder 게이트까지 pass-through §7.4) | off |
+| "무인 완주", "스스로 판단해서 진행", "drive" | `--drive` (무인 완주 + 경계 있는 자가 복구 §7.5) | off |
 | "제약", "이건 지켜줘", "금지 사항" | `--constraint <text>` (반복 가능; 선언 제약을 §3.1 아티팩트에 수집) | (없음) |
 | "락 강제 해제", "force" | `--force` (kiwi-pm stale `pm.lock` 해제까지 pass-through §7.4, **명시** 입력만) | off |
 
@@ -378,16 +379,60 @@ per-wave 자식 스킬로의 `--auto` 자동 전파는 `~/.claude/skills/_shared
 
 ### 7.4 pass-through 옵션 (자식 게이트 도달)
 
-아래 옵션은 본 스킬이 소비하지 않고 자식 체인으로 그대로 흘려보낸다 — 중간 스킬이 하나라도 떨어뜨리면 무인 실행이 마지막 홉에서 멈춘다. 세 옵션 모두 사용자가 **명시**한 입력일 때만 흐른다.
+아래 옵션은 본 스킬이 소비하지 않고 자식 체인으로 그대로 흘려보낸다 — 중간 스킬이 하나라도 떨어뜨리면 무인 실행이 마지막 홉에서 멈춘다. `--auto-cost-warning` · `--auto-integration` · `--force` 세 옵션은 사용자가 **명시**한 입력일 때만 흐른다. `--regression-baseline` 은 §2.1 이 pin 한 값이므로 예외이고, `--drive` 는 본 스킬이 소비하면서 **동시에** 흘려보낸다는 점에서 예외다 (§7.5).
 
 자식이 `pm.lock` 으로 막혀 실패해도 본 스킬은 `--force` 를 **자동으로 부여하지 않는다** — 다른 PM 인스턴스가 살아 있는 경우와 구분되지 않으므로 §0.G `child-pipeline-needs-user-or-failed` 로 중단하고 사용자 결정을 받는다.
 
 | 옵션 | 도달 대상 | 전파 경로 |
 |---|---|---|
+| `--drive` | 무인 완주 모드 전체 — 자식 게이트 3종을 함께 연다 | kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder |
 | `--auto-cost-warning` | kiwi-coder 비용 확인 게이트 | kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder |
 | `--auto-integration` | kiwi-coder 통합 테스트 동의 게이트 | kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder |
 | `--force` | kiwi-pm 의 stale `pm.lock` 해제 | kiwi-wave-master → kiwi-pipeline → kiwi-pm (**명시** 입력만) |
 | `--regression-baseline` | kiwi-coder / kiwi-review-fix-loop 의 회귀 델타 판정 | kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder (§2.1 이 pin 한 값) |
+
+---
+
+### 7.5 `--drive` — 무인 완주와 경계 있는 자가 복구 (FR-FLOW-119)
+
+`--drive` 는 `--auto` · `--auto-integration` · `--auto-cost-warning` 셋을 함께 켠다 — 세 플래그를 따로 적을 필요가 없다. 그 위에 **자가 복구 권한**을 더한다: 진행을 막는 결함을 사용자 승인 없이 고치고 재시도한다.
+
+자가 복구는 아래 네 조건을 **모두** 만족할 때만 승인된다. 하나라도 어긋나면 고치지 않고 **중단**한다 — 넷은 선언이 아니라 연언이다.
+
+1. **되돌릴 수 있을 것 (reversible)** — git 이 추적하는 변경이고 되돌리기가 가능하다.
+2. **run root 안일 것** — §2.1 이 pin 한 실행 루트 바깥은 손대지 않는다.
+3. **기존 공개 계약과 기존 테스트를 바꾸지 않을 것** — 기존 시그니처·기존 테스트·기존 단언은 그대로 둔다.
+4. **진단이 독립적으로 재현됐을 것 (independent)** — 원인이 본 실행과 무관한 별도 검사로 재현되어야 한다. 추정으로 고치지 않는다.
+
+#### 7.5.1 `--drive` 가 열지 않는 게이트 (닫힌 목록)
+
+아래 게이트는 `--drive` 로도 열리지 않는다. 위원회가 어떤 confidence 를 보고하든 마찬가지다.
+
+| 게이트 | 열면 무슨 일이 생기나 |
+|---|---|
+| `external-module-impact` | 실행 루트 바깥을 바꾼다 — 되돌릴 책임이 이 run 밖에 있다 |
+| `existing-test-weakened-or-deleted` | 테스트를 약화시켜 green 을 만드는 길이 열린다 |
+| `existing-public-contract-change` | 기존 소비자를 조용히 깨뜨린다 |
+| `existing-file-deleted-or-moved` | 삭제는 자가 복구가 아니다 |
+| `mock-detection` | 구현 대신 mock 으로 통과한다 |
+| `tdd-bypass-attempt` | 테스트 선행을 건너뛴다 |
+| `out-of-scope-user-consent` | 설계 항목이 모든 계층의 분모에서 빠진다 — 범위가 조용히 줄어든다 |
+| `unsafe-option-refused` | 회귀와 리뷰가 꺼진 채 wave 가 누적된다 |
+| `wave-append-cap-exhausted` | 무인 실행의 종료를 보장하는 유일한 경계가 사라진다 |
+
+이 목록을 여는 것은 목표를 향해 가는 것이 아니라 **목표를 낮추는 것**이다. 테스트를 약화시키거나 설계 항목을 배제하면 실행은 끝까지 가고 게이트는 통과하지만 실제로 한 일은 줄어든다. 무인 실행에서 가장 위험한 실패는 실패가 아니라 성공처럼 보이는 축소이며, 그것은 아무도 보지 않는 시간에 일어난다.
+
+#### 7.5.2 잔여 검증 게이트도 닫힌 채로 둔다
+
+`wave-verify-residual-critical` · `final-verify-residual-critical` · `wave-verify-fail-residual` 은 `--drive` 에서도 중단이다. 이 셋에 닿았다는 것은 자동 수정 루프가 **이미 실패했다**는 뜻이고, 그 상태로 다음 wave 를 쌓으면 결함이 남은 wave 수에 비례해 커진다.
+
+#### 7.5.3 결정과 중단은 저널에서 읽을 수 있어야 한다
+
+`--drive` 로 중단할 때는 그 게이트의 id 를 `waves.jsonl` 의 `abort_gate` 필드에 **지명**한다. 단 `abort_gate` 의 값 공간은 오케스트레이터 게이트 어휘(`GateId`)이므로, 자식 스킬이 소유한 게이트 — `existing-test-weakened-or-deleted` · `existing-public-contract-change` · `existing-file-deleted-or-moved` · `mock-detection` · `tdd-bypass-attempt` — 는 자기 이름으로 적지 않고 `child-pipeline-needs-user-or-failed` 로 버블업해 적는다. 자식 게이트 이름을 그대로 쓰면 `abort-gate-outside-vocabulary` 오류가 난다.
+
+자동으로 해소한 게이트는 그 게이트를 지명하는 `decision` 객체를 1건 기록한다 (`{ question, options, decision, rule, committee_size, confidence, origin }`).
+
+산문으로만 "critical 게이트에서 중단했다"고 적으면 다음 세션이 어떤 게이트였는지 알 수 없다. 무인으로 밤새 돌린 뒤 아침에 읽을 수 없는 기록은 없는 기록과 같다.
 
 ---
 

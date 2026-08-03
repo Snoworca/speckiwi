@@ -157,6 +157,8 @@ description: "OpenCode/Hermes local-LLM variant for executing kiwi-planner tasks
 | "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
 
+**`--drive` (FR-FLOW-119)**: 부모 `kiwi-wave-master` 가 `--drive` 로 시작한 무인 실행에서는 `--drive` 가 `--auto-integration` 과 `--auto-cost-warning` 을 함께 켠 것으로 본다 — `integration-test-user-consent` 와 `cost-warning-large-task` 두 게이트는 열린다. 그 밖의 어떤 게이트도 `--drive` 로 열리지 않으며, 특히 `existing-test-weakened-or-deleted` · `existing-public-contract-change` · `existing-file-deleted-or-moved` · `mock-detection` · `tdd-bypass-attempt` 는 `--drive` 에서도 사용자 결정이다.
+
 **부모 체인 pass-through**: `--auto-integration` (§8.1 통합 테스트 동의 게이트) 와 `--auto-cost-warning` (§3.4 / §6.1 비용 경고 게이트) 는 사용자 직접 호출뿐 아니라 `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 체인으로 그대로 전달되어 도달한다 — 중간 스킬은 값을 새로 만들지 않고 받은 것을 넘기기만 한다. 무인 실행에서 이 두 게이트가 사용자를 기다리다 멈추는 것을 막는 유일한 경로가 이 전달이다. 명시 전달이 없으면 두 옵션은 off 이며, `--auto` 는 이 두 옵션과 `--yes-all` 을 자동 활성하지 않는다 (`../_shared/kiwi/auto-option.md` 공유 계약).
 
 ### 1.3 모드 매트릭스

@@ -140,6 +140,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "max 모드", "정밀하게" | `--max` | off — PM 자체는 소비하지 않고 kiwi-coder 로 pass-through (§3.2) |
 | "비용 경고 자동 skip" (부모 전달) | `--auto-cost-warning` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
 | "통합 테스트 자동 동의" (부모 전달) | `--auto-integration` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
+| "무인 완주" (부모 전달) | `--drive` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2, FR-FLOW-119) |
 
 ### 1.3 CLI 인자 요약
 
@@ -152,6 +153,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
          [--max]                          # kiwi-coder 자식에 --max 전파 (PM 자체는 소비 안 함, §3.2)
          [--auto-cost-warning]            # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
          [--auto-integration]             # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
+         [--drive]                        # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2, FR-FLOW-119)
          [--regression-baseline <path>]   # 부모가 pin 한 회귀 기준선을 kiwi-coder 로 pass-through
          [--resume]                       # .kiwi/sessions/{run_id}/pm-state.json 이어가기
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
@@ -461,7 +463,7 @@ FUNCTION MAIN(args):
 - TASK_FILTER={task.task_id}           # 이번 자식은 이 Task 하나만 실행
 - CODE_PATH={args.code_path}
 - LOOP_FLAGS={forward --mini / --loops N round-cap to the kiwi-coder child}
-- PASS_THROUGH_FLAGS={부모에게서 명시 입력으로 받은 --auto-cost-warning / --auto-integration / --regression-baseline 을 그대로 재현}
+- PASS_THROUGH_FLAGS={부모에게서 명시 입력으로 받은 --auto-cost-warning / --auto-integration / --regression-baseline / --drive 를 그대로 재현}
 - LIFECYCLE_BLOCKED_REQS={state.lifecycle_gate_state.blocked_req_ids}
 - SPAWN_CONTEXT=pm-child   # 이 자식 호출이 PM 자식임을 식별. coder 가 §8.4 의 자동 시작 게이트를 skip 하기 위한 결정 필드
 - 이전 NEEDS_USER 답변 (재spawn 시):
@@ -481,7 +483,7 @@ FUNCTION MAIN(args):
 
 **`--auto` 자식 전파**: 본 스킬이 `--auto` 활성 상태에서 `kiwi-coder` 를 spawn 할 때 자식 args 에 `--auto` 명시 전파 (SSOT auto-option.md §7). 단, kiwi-coder 의 `--yes-all` / `--auto-integration` / `--auto-cost-warning` 3종 옵션은 별개이며 자동 활성하지 않음.
 
-**pass-through 전파**: `--max` 와 `--mini` / `--loops N` (loop-option.md §6), 그리고 부모(`/kiwi-pipeline` / `/kiwi-wave-master`)에게서 **명시 입력으로 받은** `--auto-cost-warning` / `--auto-integration` 은 자식 args 에 그대로 전달한다 — `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 사슬에서 중간 홉이 옵션을 떨어뜨리면 kiwi-coder 의 비용 경고 · 통합 테스트 동의 게이트가 무인 실행을 멈춘다. 위 §0.16 원칙은 그대로다 — 본 스킬은 그 3종을 `--auto` 만으로 **스스로 만들어내지 않으며**, 명시 입력을 중계할 뿐이다.
+**pass-through 전파**: `--max` 와 `--mini` / `--loops N` (loop-option.md §6), 그리고 부모(`/kiwi-pipeline` / `/kiwi-wave-master`)에게서 **명시 입력으로 받은** `--auto-cost-warning` / `--auto-integration` / `--drive` 는 자식 args 에 그대로 전달한다 — `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 사슬에서 중간 홉이 옵션을 떨어뜨리면 kiwi-coder 의 비용 경고 · 통합 테스트 동의 게이트가 무인 실행을 멈춘다. 위 §0.16 원칙은 그대로다 — 본 스킬은 그 3종을 `--auto` 만으로 **스스로 만들어내지 않으며**, 명시 입력을 중계할 뿐이다.
 
 부모가 pin 한 `--regression-baseline <path>` 도 같은 방식으로 자식 args 에 그대로 전달한다 — 중간 홉이 이 값을 떨어뜨리면 kiwi-coder 가 자기 시점 기준선을 다시 캡처해, 앞 Task 가 만든 실패가 "원래 있던 실패"로 분류된다.
 

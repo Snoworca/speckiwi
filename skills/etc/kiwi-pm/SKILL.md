@@ -135,6 +135,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "루프 N회", "N라운드" | `--loops N` | off (스킬 기본 상한) |
 | "비용 경고 자동 skip" (부모 전달) | `--auto-cost-warning` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
 | "통합 테스트 자동 동의" (부모 전달) | `--auto-integration` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2) |
+| "무인 완주" (부모 전달) | `--drive` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2, FR-FLOW-119) |
 | "doculight 끄고" | `--no-doculight` | doculight 자동 표시 |
 | "handoff 로", "이 unit 만" (오케스트레이터 전달) | `--handoff <path>` (실행 집합 + 임차, §1.5) | off (plan 전체 실행) |
 | "레인 세션", "세션 분리" (오케스트레이터 전달) | `--session-suffix <lane>` (세션 디렉터리 재배치, §1.5) | off (평면 배치) |
@@ -153,6 +154,7 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md
          #   --max 는 kiwi-coder 자식 args 에도 그대로 전달된다 (§3.2)
          [--auto-cost-warning]            # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
          [--auto-integration]             # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2)
+         [--drive]                        # 명시 입력 시에만 kiwi-coder 로 pass-through (§3.2, FR-FLOW-119)
          [--regression-baseline <path>]   # 부모가 pin 한 회귀 기준선을 kiwi-coder 로 pass-through
          [--resume]                       # .kiwi/sessions/{run_id}/pm-state.json 이어가기
          [--from-task=T-PH001-XX]         # 특정 Task 부터 (디버깅 / 부분 재실행)
@@ -463,7 +465,7 @@ FUNCTION MAIN(args):
 - CODE_PATH={args.code_path}
 - ETC_PROFILE=default-max-single-worker
 - LOOP_FLAGS={forward --mini / --loops N round-cap to the kiwi-coder child}
-- PASS_THROUGH_FLAGS={부모에게서 명시 입력으로 받은 --auto-cost-warning / --auto-integration / --regression-baseline 을 그대로 재현}
+- PASS_THROUGH_FLAGS={부모에게서 명시 입력으로 받은 --auto-cost-warning / --auto-integration / --regression-baseline / --drive 를 그대로 재현}
 - LIFECYCLE_BLOCKED_REQS={state.lifecycle_gate_state.blocked_req_ids}
 - 이전 NEEDS_USER 답변 (재spawn 시):
 {user_answers OR "없음"}
@@ -479,7 +481,7 @@ Use $kiwi-coder with PLAN_PATH={args.plan_path} SIDECAR_PATH={args.sidecar_path}
 
 스킬 내용을 추측하거나 우회하지 말 것. 가능한 경우 실제 `kiwi-coder` skill body를 로드하고, 스킬 로딩 기능이 없으면 해당 skill folder의 `SKILL.md`를 직접 읽어 따른다.
 
-**pass-through 전파**: `--max` (etc local-LLM profile 기본 on) 와 `--mini` / `--loops N` (loop-option.md §6), 그리고 부모(`$kiwi-pipeline` / `$kiwi-wave-master`)에게서 **명시 입력으로 받은** `--auto-cost-warning` / `--auto-integration` 은 자식 args 에 그대로 전달한다 — `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 사슬에서 중간 홉이 옵션을 떨어뜨리면 kiwi-coder 의 비용 경고 · 통합 테스트 동의 게이트가 무인 실행을 멈춘다. 본 스킬은 그 3종을 `--auto` 만으로 **스스로 만들어내지 않으며**, 명시 입력을 중계할 뿐이다.
+**pass-through 전파**: `--max` (etc local-LLM profile 기본 on) 와 `--mini` / `--loops N` (loop-option.md §6), 그리고 부모(`$kiwi-pipeline` / `$kiwi-wave-master`)에게서 **명시 입력으로 받은** `--auto-cost-warning` / `--auto-integration` / `--drive` 는 자식 args 에 그대로 전달한다 — `kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder` 사슬에서 중간 홉이 옵션을 떨어뜨리면 kiwi-coder 의 비용 경고 · 통합 테스트 동의 게이트가 무인 실행을 멈춘다. 본 스킬은 그 3종을 `--auto` 만으로 **스스로 만들어내지 않으며**, 명시 입력을 중계할 뿐이다.
 
 부모가 pin 한 `--regression-baseline <path>` 도 같은 방식으로 자식 args 에 그대로 전달한다 — 중간 홉이 이 값을 떨어뜨리면 kiwi-coder 가 자기 시점 기준선을 다시 캡처해, 앞 Task 가 만든 실패가 "원래 있던 실패"로 분류된다.
 

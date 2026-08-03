@@ -935,7 +935,7 @@ run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `c
 
 ## 16. 옵션
 
-`kiwi-wave-master` 에서 그대로 상속: `--auto` · `--max` · `--mini` / `--loops N` · `--model <name>` · `--resume` · `--run-id` · `--constraint`(반복 가능). pass-through 중 `--auto-integration` · `--auto-cost-warning` · `--force` 는 **사용자가 지정했을 때에만** 흐른다. `--regression-baseline` 은 예외로, 사용자가 주었든 아니든 오케스트레이터 자신의 run 전역 P.4 pin 을 운반한다. (etc 프로파일은 `--max` 를 기본으로 둔다.)
+`kiwi-wave-master` 에서 그대로 상속: `--auto` · `--max` · `--mini` / `--loops N` · `--model <name>` · `--resume` · `--run-id` · `--constraint`(반복 가능). `--drive` (FR-FLOW-119) 는 **상속하지 않는다** — 본 스킬은 자체 게이트 표와 자체 `--auto` 계약을 쓰므로, wave-master 의 함의 집합을 물려받으면 이 표에 없는 게이트를 연 것으로 읽힌다. pass-through 중 `--auto-integration` · `--auto-cost-warning` · `--force` 는 **사용자가 지정했을 때에만** 흐른다. `--regression-baseline` 은 예외로, 사용자가 주었든 아니든 오케스트레이터 자신의 run 전역 P.4 pin 을 운반한다. (etc 프로파일은 `--max` 를 기본으로 둔다.)
 
 | 옵션 | 뜻 |
 |---|---|
