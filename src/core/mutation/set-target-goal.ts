@@ -5,6 +5,7 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
+import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -78,6 +79,21 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
   if (!goal) return mutationFail("USAGE", "goal is required (whitespace-only rejected)");
   if (goal.length > MAX_GOAL_LENGTH) return mutationFail("USAGE", `goal exceeds ${MAX_GOAL_LENGTH} UTF-16 code units`);
   if (CONTROL_CHAR_RE.test(goal)) return mutationFail("USAGE", "goal contains forbidden control characters (only TAB/LF/CR allowed)");
+  // LF is permitted above, so the goal reaches `00.index.md` able to start a line. Measured: a goal
+  // carrying `## 4. Scope Map` and a forged table replaced the live Scope Map, taking the index's
+  // registered scopes from ARCH to XXX. The control-character rule cannot see that; this can.
+  const opensBoundary = assertOpensNoBlockBoundary<SetTargetGoalOutput>("goal", goal);
+  if (opensBoundary) return opensBoundary;
+  // The goal renders as `**Goal:** <goal>` on ONE line, so a newline puts the remainder at column
+  // zero: measured, a goal of "Ship it.\n| Alpha | Beta |\n| --- | --- |\n| forged | row |" wrote a
+  // table into the index while the heading guard above passed it, because a table row is not a
+  // heading and not a fence.
+  //
+  // The fix is in the renderer, not in a refusal. `20.parser-validation.srs.md:1209` AC-6 states that
+  // goal text ACCEPTS CR/LF/TAB — a ticked criterion — so refusing a newline here would make that
+  // criterion false. Accepting the newline and folding it into a space keeps both: the mutation layer
+  // takes the value, and nothing the caller wrote reaches column zero.
+  const rendered = goal.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
   const file: TextFile = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
   const targetHeadingIdx = file.lines.findIndex((line) => /^##\s+\d+\.\s+Target Map$/.test(line.trim()));
@@ -93,7 +109,7 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
   if (existingBlock?.goalLine) {
     const original = file.lines[existingBlock.goalLine - 1];
     if (original === undefined) return mutationFail("MUTATION_DENIED", "Goal line outside file");
-    const replacement = `**Goal:** ${goal}`;
+    const replacement = `**Goal:** ${rendered}`;
     if (original !== replacement) {
       operations.push({ type: "replaceLine", line: existingBlock.goalLine, original, replacement });
     }
@@ -101,7 +117,7 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
     operations.push({
       type: "insertLines",
       line: existingBlock.headingLine + 1,
-      lines: ["", `**Goal:** ${goal}`]
+      lines: ["", `**Goal:** ${rendered}`]
     });
   } else {
     const tableEnd = findTargetMapEnd(file.lines);
@@ -109,7 +125,7 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
     operations.push({
       type: "insertLines",
       line: tableEnd,
-      lines: ["", `### Target: ${target}`, "", `**Goal:** ${goal}`, ""]
+      lines: ["", `### Target: ${target}`, "", `**Goal:** ${rendered}`, ""]
     });
   }
 

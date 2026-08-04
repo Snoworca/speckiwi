@@ -20,7 +20,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 
 | 키 | 규칙 |
 |---|---|
-| §0.1 | **서브에이전트 강제 (메인 직접 작업 금지)**. 코드 리뷰는 까칠 리뷰어 서브에이전트만 수행 (kiwi-coder Phase 2.f 7축 차용). 코드 수정은 시니어 fixer 서브에이전트만 수행. 메인은 오케스트레이션 + 사용자 게이트 + 산출물 통합 외 어떤 코드 판단·수정도 직접 하지 않는다. 본 §0.1 위반은 본 스킬 설계의 근본 우회 — 발견 즉시 메인이 self-abort + 사용자 보고 |
+| §0.1 | **서브에이전트 강제 (메인 직접 작업 금지)**. 코드 리뷰는 까칠 리뷰어 서브에이전트만 수행 (kiwi-coder Phase 2.f 8축 차용). 코드 수정은 시니어 fixer 서브에이전트만 수행. 메인은 오케스트레이션 + 사용자 게이트 + 산출물 통합 외 어떤 코드 판단·수정도 직접 하지 않는다. 본 §0.1 위반은 본 스킬 설계의 근본 우회 — 발견 즉시 메인이 self-abort + 사용자 보고 |
 | §0.2 | **검증자 입력 격리** (CLAUDE.md §5). 까칠 리뷰어 재검증 라운드에 시니어 fixer 의 결론·정당화 텍스트 전달 금지. 원본 diff + 직전 finding + 적용된 fix 의 파일/라인 메타데이터만 |
 | §0.3 | **TDD 의무 (조건부)**. Finding 이 `is_behavioral=true` 또는 `tags ∈ {bug, regression, security, performance}` 인 항목은 회귀 테스트 선행 작성 (상세 트리거 §6.1 참조). "style_only" / "naming" / "doc_only" finding 은 TDD 면제 (회귀 가능성 없음). 시니어 fixer 가 면제 판정 시 worklog `tdd_exempted { finding_id, reason_enum }` |
 | §0.4 | **Mock 금지** (regex 자동 탐지). CRITICAL severity. kiwi-coder §0.6 계승 |
@@ -307,7 +307,7 @@ resume 알고리즘 (`--resume` 활성 시):
 
 ### 4.1.s 셀프 모드 — 까칠 리뷰어 (서브에이전트)
 
-까칠 리뷰어 spawn (kiwi-coder §5.2 7축 차용):
+까칠 리뷰어 spawn (kiwi-coder §5.2 8축 차용):
 
 입력:
 - `mode_decision.json.self_scope` 의 git diff 본문
@@ -321,7 +321,7 @@ resume 알고리즘 (`--resume` 활성 시):
   "findings": [
     {
       "id": "FND-001",
-      "axis": "P1|P2|P3|P4|P5|P6|P7",
+      "axis": "P1|P2|P3|P4|P5|P6|P7|P8",
       "severity": "CRITICAL|HIGH|MEDIUM|LOW",
       "title": "한 줄 요약",
       "location": { "file": "src/x.ts", "line_range": "45-67" },

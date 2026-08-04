@@ -102,8 +102,11 @@ describe("FR-NODE-019 granular requirement editing services", () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     await replaceAcceptanceCriteria(root, { id: "FR-ARCH-001", items: [{ text: "checked", checked: true }] });
-    await addVerificationEvidence(root, { id: "FR-ARCH-001", type: "test", reference: "verified.test.ts", covers: "all", notes: "-" });
-    await updateStatus(root, { id: "FR-ARCH-001", status: "verified" });
+    // FR-NODE-174: the reference must resolve under the fixture root, or the requirement never
+    // reaches `verified` and this case silently stops testing the verified-edit guard.
+    await addVerificationEvidence(root, { id: "FR-ARCH-001", type: "test", reference: "docs/spec/10.product-architecture.srs.md", covers: "all", notes: "-" });
+    const promoted = await updateStatus(root, { id: "FR-ARCH-001", status: "verified" });
+    expect(promoted.ok, promoted.ok ? "" : promoted.error.message).toBe(true);
 
     await expect(updateRequirementFields(root, { id: "FR-ARCH-001", title: "Denied" })).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
     await expect(replaceAcceptanceCriteria(root, { id: "FR-ARCH-001", items: [{ text: "Denied" }] })).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });

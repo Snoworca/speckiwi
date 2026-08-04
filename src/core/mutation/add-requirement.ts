@@ -12,10 +12,12 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
+import { assertOpensNoBlockBoundary, assertPromotableBlock, assertSingleLine } from "./block-prose.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
 import { syncIndexRollups } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target"> {
   type: RequirementType;
@@ -43,6 +45,40 @@ export function generateNextRequirementId(workspace: ParsedWorkspace, type: Requ
     .filter((value): value is string => Boolean(value))
     .map((value) => Number.parseInt(value, 10));
   return `${prefix}-${scopePrefix}-${String((Math.max(0, ...used) || 0) + 1).padStart(3, "0")}`;
+}
+
+/**
+ * @req FR-NODE-174 AC-7 — the prose fields render verbatim, so a Markdown heading in one of them
+ * opens a section or a whole requirement block the caller never declared. Rejected for every status,
+ * not only `verified`: the sharper bypass created at `planned` precisely so the verified gate would
+ * not run, and smuggled the verified row inside the statement.
+ */
+function assertProseOpensNoSection(input: ResolvedAddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
+  const fields: Array<[string, string | undefined]> = [
+    ["statement", input.statement],
+    ["rationale", input.rationale],
+    ["research", input.research],
+    ["implementationNotes", input.implementationNotes]
+  ];
+  for (const [name, value] of fields) {
+    const opensSection = assertOpensNoBlockBoundary<AddRequirementOutput>(name, value);
+    if (opensSection) return opensSection;
+  }
+  // Each criterion renders as `- [ ] AC-N: ${text}`, so only its FIRST line stays inside the bullet.
+  // `replace_acceptance_criteria` writes the same field through the same renderer and has refused
+  // this since the guard existed; this route never got the rule. Measured: one criterion ending in an
+  // unclosed fence deleted two requirements and turned `ready` false into true with zero validation
+  // errors. Third instance in this requirement of one field having two writers and one rule.
+  for (const [index, criterion] of input.acceptanceCriteria.entries()) {
+    const opensBoundary = assertOpensNoBlockBoundary<AddRequirementOutput>(`acceptanceCriteria[${index}]`, criterion);
+    if (opensBoundary) return opensBoundary;
+  }
+  // `title` is the fifth caller-supplied string on this call and was the only one left open. It is
+  // written into `### ID — <title>`, so a newline in it puts the remainder at column zero; measured,
+  // that landed a body `| Status | verified |` row whose evidence pointed outside the checkout, and
+  // `assertEditable` then refused every granular repair. `supersede_requirement` reaches this same
+  // call with its own title, so guarding here closes both.
+  return assertSingleLine<AddRequirementOutput>("title", input.title);
 }
 
 function canBeVerified(input: AddRequirementInput): boolean {
@@ -234,7 +270,36 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
   const resolvedInput: ResolvedAddRequirementInput = { ...input, target: resolvedTarget };
   const stabilityFailure = assertKnownStabilityInput(input);
   if (stabilityFailure) return stabilityFailure;
+  // FR-NODE-174 AC-7 — renderRequirementBlock writes these fields verbatim into the block, so a
+  // heading inside one of them opens a section the caller never declared. Measured: a statement
+  // carrying `#### Verification Evidence` replaced the table the gate had just judged, and a
+  // statement carrying a whole `### FR-…` block landed a verified row from a creation whose own
+  // status was `planned`, so the gate's condition was false and it never ran. Every route that can
+  // write a verified Status row has to be one the gate sees; a prose field that can open a block is
+  // not one of those routes, it is a way around all of them.
+  const headingInProse = assertProseOpensNoSection(resolvedInput);
+  if (headingInProse) return headingInProse;
   if (!canBeVerified(resolvedInput)) return mutationFail("MUTATION_DENIED", "verified requires all checked AC and evidence");
+  // FR-NODE-174 AC-7 — the transition gate is worthless if a row can be minted at `verified` in one
+  // call instead of two. Creation applies the same resolver, so both routes refuse the same evidence.
+  if (resolvedInput.status === "verified") {
+    // The defaults MUST match renderRequirementBlock's, or the gate judges a row the document never
+    // contains. Measured: with `type` omitted the gate saw `""` (not path-like) while the document
+    // got `test` (path-like), so `Manual QA on staging` landed at `verified` and release readiness
+    // then reported it unresolvable — on a row that can no longer be edited.
+    const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, {
+      id: "",
+      verificationEvidence: (resolvedInput.evidence ?? []).map((row, index) => ({
+        id: String(row.id ?? `VE-${index + 1}`),
+        type: String(row.type ?? "test"),
+        reference: String(row.reference ?? ""),
+        covers: String(row.covers ?? "all"),
+        notes: String(row.notes ?? "-"),
+        line: 0
+      }))
+    } as unknown as RequirementRecord);
+    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved));
+  }
   const unsafeCell = assertSafeAddRequirementTableCells(resolvedInput);
   if (unsafeCell) return unsafeCell;
 
@@ -365,6 +430,19 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
     ];
   }
 
+  // FR-NODE-174 AC-7 — promotion is the third writer of a body Status row, and it writes the block
+  // verbatim. A step block already reading `verified` therefore lands verified with no reference
+  // resolution at all, which is the same walk-around the creation path had. Only the `verified` case
+  // is gated: any other status is free to land and can be promoted through the guarded transition.
+  // Compared case-insensitively so a block reading `Verified` cannot dodge the gate on spelling; the
+  // parser does not normalise Status, and an exact match let that through.
+  if (String(stepRecord.status ?? "").trim().toLowerCase() === "verified") {
+    const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, stepRecord);
+    if (unresolved.length > 0) {
+      return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved)) as MutationResult<AddRequirementOutput>;
+    }
+  }
+
   const scope = workspace.index.scopes.find((candidate) => candidate.prefix === input.toScope);
   if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${input.toScope}`) as MutationResult<AddRequirementOutput>;
   let filePath: string;
@@ -373,6 +451,9 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   } catch (error) {
     return mutationFail("MUTATION_DENIED", (error as Error).message) as MutationResult<AddRequirementOutput>;
   }
+
+  const promotable = assertPromotableBlock<AddRequirementOutput>("the step requirement block", stepRecord.markdown);
+  if (promotable) return promotable;
 
   const file = findWorkspaceFile(workspace, root, filePath) ?? (await readUtf8File(filePath, root.root));
   const block = stepRecord.markdown.split(/\r?\n/);

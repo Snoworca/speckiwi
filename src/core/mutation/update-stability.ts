@@ -5,6 +5,7 @@ import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { classifyStabilityTransition, type StabilityTransitionWarning } from "./stability-transition.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
@@ -109,6 +110,10 @@ async function updateStabilityUnlocked(
     if (CONTROL_CHAR_RE.test(input.reason)) {
       return mutationFail("USAGE", "reason contains forbidden control characters (only TAB/LF/CR allowed)");
     }
+    // FR-NODE-174 AC-9 — the reason is interpolated into a Change Notes row inside the block, so a
+    // newline in it reaches column zero and a heading there opens a requirement the gate never sees.
+    const unsafeReason = assertOpensNoBlockBoundary<UpdateStabilityOutput>("reason", input.reason);
+    if (unsafeReason) return unsafeReason;
   }
   if (input.stability === "frozen" && (input.reason === undefined || input.reason.length === 0)) {
     return mutationFail("USAGE", "frozen transition requires reason");

@@ -100,7 +100,7 @@ describe("MCP mutation tools and structured errors", () => {
       await server.callTool("add_verification_evidence", {
         id: "FR-ARCH-001",
         type: "test",
-        reference: "test/mcp/mutation-tools-errors.test.ts",
+        reference: "docs/spec/00.index.md",
         covers: "AC-1",
         notes: "mcp evidence note",
         dryRun: true
@@ -142,7 +142,7 @@ describe("MCP mutation tools and structured errors", () => {
       await server.callTool("add_verification_evidence", {
         id: "FR-ARCH-001",
         type: "test",
-        reference: "test/mcp/mutation-tools-errors.test.ts",
+        reference: "docs/spec/00.index.md",
         covers: "AC-1",
         notes: "mcp evidence note"
       })
@@ -159,7 +159,7 @@ describe("MCP mutation tools and structured errors", () => {
 
     const afterWrites = await readFile(scopePath, "utf8");
     expect(afterWrites).toContain("| VE-");
-    expect(afterWrites).toContain("| test/mcp/mutation-tools-errors.test.ts | AC-1 | mcp evidence note |");
+    expect(afterWrites).toContain("| docs/spec/00.index.md | AC-1 | mcp evidence note |");
     expect(afterWrites).toContain("| Requirement | FR-ARCH-001 | self | mcp trace note |");
 
     expect(await server.callTool("add_completed_work", { date: "2026-05-10", requirementIds: ["FR-ARCH-001"], summary: "MCP incomplete denied." })).toMatchObject({
@@ -177,7 +177,7 @@ describe("MCP mutation tools and structured errors", () => {
     registerMutationTools(server, { root });
 
     expect(await server.callTool("check_acceptance_criteria", { id: "FR-ARCH-001", acIds: ["all"], checked: true })).toMatchObject({ ok: true });
-    expect(await server.callTool("add_verification_evidence", { id: "FR-ARCH-001", type: "test", reference: "test/mcp/mutation-tools-errors.test.ts", covers: "all" })).toMatchObject({ ok: true });
+    expect(await server.callTool("add_verification_evidence", { id: "FR-ARCH-001", type: "test", reference: "docs/spec/00.index.md", covers: "all" })).toMatchObject({ ok: true });
     expect(await server.callTool("set_active_target", { target: "v1.1.0" })).toMatchObject({ ok: true, value: { activeTarget: "v1.1.0" } });
     expect(await server.callTool("add_completed_work", { date: "2026-05-10", requirementIds: ["FR-ARCH-001"], summary: "MCP incomplete denied." })).toMatchObject({
       ok: false,

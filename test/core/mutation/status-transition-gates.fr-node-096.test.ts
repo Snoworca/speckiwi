@@ -44,7 +44,9 @@ describe("FR-NODE-096 AC-1 — the verified transition is refused at the write",
     const { addVerificationEvidence } = await import("../../../src/core/mutation/add-evidence.js");
     expect((await setAcceptanceCriteriaChecked(projectRoot, { id: "FR-ARCH-001", acIds: ["AC-1", "AC-2"], checked: true })).ok).toBe(true);
     expect(
-      (await addVerificationEvidence(projectRoot, { id: "FR-ARCH-001", type: "test", reference: "test/example.test.ts" })).ok
+      // FR-NODE-174: the reference must resolve under the fixture root, or the transition is refused
+      // for a second reason and this case would stop testing the shape gate it is about.
+      (await addVerificationEvidence(projectRoot, { id: "FR-ARCH-001", type: "test", reference: "docs/spec/90.appendix.md" })).ok
     ).toBe(true);
 
     const result = await updateStatus(projectRoot, { id: "FR-ARCH-001", status: "verified" });

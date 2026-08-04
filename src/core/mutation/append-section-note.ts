@@ -2,6 +2,7 @@ import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { resolveSectionHeading, type AllowedSection } from "../rules/section-allowlist.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
+import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import {
@@ -75,6 +76,11 @@ async function appendSectionNoteUnlocked(
   }
   const heading = sectionResult.heading as "Rationale" | "Research / Analysis" | "Implementation Notes";
   const mode: AppendSectionMode = input.mode ?? "append";
+
+  // FR-NODE-174 AC-9 — the text lands in the block verbatim in both modes; `append` only prefixes the
+  // FIRST line with the bullet, so every later line reaches column zero exactly as `replace` does.
+  const opensSection = assertOpensNoBlockBoundary<AppendSectionNoteOutput>("text", input.text);
+  if (opensSection) return opensSection;
 
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);

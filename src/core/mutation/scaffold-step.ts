@@ -2,6 +2,7 @@ import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { renderSdsDesignTemplate, renderStepIntentTemplate } from "../bootstrap/templates.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { assertSafeMarkdownTableCell } from "./table-cell.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
 
 // @req FR-NODE-080
@@ -38,6 +39,15 @@ export async function scaffoldStep(root: ProjectRoot, input: ScaffoldStepInput):
   }
   const stepDir = path.join(root.root, "docs", "spec", "steps", input.task);
   const dryRun = input.dryRun === true;
+  // `target` is interpolated into a table cell of the generated `design.md`, which
+  // `synthesize_step_srs` later splices verbatim into the step SRS and `promote_step_requirement`
+  // copies into a body document. Measured through all three hops: a target carrying a newline and a
+  // forged `### FR-… | Status | verified |` block landed a verified requirement in the body with
+  // zero validation errors. A target names one release; one line, no pipes.
+  if (input.target !== undefined) {
+    const targetCell = assertSafeMarkdownTableCell<ScaffoldStepValue>("target", input.target);
+    if (targetCell) return targetCell;
+  }
   const stubs: Array<{ relPath: string; content: string }> = [
     {
       relPath: path.join("docs", "spec", "steps", input.task, "design.md"),

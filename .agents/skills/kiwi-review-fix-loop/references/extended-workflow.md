@@ -44,7 +44,7 @@ Normalize findings to:
 ```json
 {
   "id": "FND-001",
-  "axis": "intent|security|edge|concurrency|refactor|error-handling|test-quality",
+  "axis": "intent|security|edge|concurrency|refactor|error-handling|test-quality|comment-claim",
   "severity": "CRITICAL|HIGH|MEDIUM|LOW",
   "title": "short",
   "location": { "file": "src/x.ts", "line_range": "45-67" },

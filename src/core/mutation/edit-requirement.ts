@@ -2,6 +2,7 @@ import { diagnostic } from "../diagnostic.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, type RequirementRecord, type TextFile } from "../types.js";
+import { assertOpensNoBlockBoundary, assertSingleLine } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
@@ -101,8 +102,10 @@ function assertText(label: string, value: string): MutationResult | undefined {
 function assertLineText(label: string, value: string): MutationResult | undefined {
   const invalid = assertText(label, value);
   if (invalid) return invalid;
-  if (/[\r\n]/.test(value)) return mutationFail("USAGE", `${label} cannot contain newline characters`);
-  return undefined;
+  // The newline rule used to live here as its own copy. `add_requirement` writes the same heading
+  // line from the same kind of value and did not have it, which is how a title carrying a forged
+  // `verified` block reached the file — the rule was right, and only one of the two writers held it.
+  return assertSingleLine(label, value);
 }
 
 function sectionContentRange(file: TextFile, record: RequirementRecord, heading: string): { startLine: number; endLine: number } | undefined {
@@ -189,6 +192,8 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
   if (input.statement !== undefined) {
     const invalid = assertText("statement", input.statement);
     if (invalid) return invalid as MutationResult<GranularRequirementEditOutput>;
+    const opensSection = assertOpensNoBlockBoundary<GranularRequirementEditOutput>("statement", input.statement);
+    if (opensSection) return opensSection;
   }
 
   const operations: PatchOperation[] = [];
@@ -227,6 +232,8 @@ async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: Repla
   for (const item of input.items) {
     const invalid = assertText("acceptance criterion", item.text);
     if (invalid) return invalid as MutationResult<GranularRequirementEditOutput>;
+    const opensSection = assertOpensNoBlockBoundary<GranularRequirementEditOutput>("acceptance criterion", item.text);
+    if (opensSection) return opensSection;
   }
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);

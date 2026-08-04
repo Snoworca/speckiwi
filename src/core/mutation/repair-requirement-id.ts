@@ -6,6 +6,7 @@ import { createPatchPlan, type PatchOperation, type PatchPlan } from "../patch/p
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
 import type { Diagnostic, MutationEnvelope, MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import { assertSingleLine } from "./block-prose.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withMutationEnvelope } from "./envelope.js";
 import { withSrsMutationLock } from "./srs-lock.js";
@@ -173,6 +174,13 @@ function resolveReplacementId(workspace: ParsedWorkspace, input: RequirementIdCo
 
 function validateReferenceEdits(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput): MutationResult | undefined {
   for (const edit of input.referenceEdits ?? []) {
+    // The write is `line.replace(from, to)` and the only other check is that the line contains
+    // `from`. A `to` carrying a newline therefore writes whatever follows it at column zero of a
+    // spec file: measured landing `| Status | verified |` plus an unclosed fence through a repair
+    // that is supposed to renumber an identifier, with no acceptance-criterion, evidence or
+    // stability gate anywhere in its path. A reference edit replaces text inside one line.
+    const oneLine = assertSingleLine<RequirementIdCollisionRepairOutput>(`referenceEdits[${edit.filePath}:${edit.line}].to`, edit.to);
+    if (oneLine) return oneLine;
     const file = findFile(workspace, edit.filePath);
     const line = file?.lines[edit.line - 1];
     if (!file || line === undefined || !line.includes(edit.from)) {

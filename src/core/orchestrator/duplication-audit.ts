@@ -82,7 +82,17 @@ function candidate(key: string, contributions: Array<{ laneId: string; path: str
  * nothing else is a candidate. `writeSets` restricts the input to the union of every lane's declared
  * write set, which is the input §7.9 (b) names for both phases.
  */
-export function planDuplicationAudit(laneDiffs: LaneDiff[], writeSets: Record<string, string[]>): AuditRow[] {
+/**
+ * @req FR-NODE-108 AC-1 — the paths each task declares it will write, by task id.
+ *
+ * This was written inline as `Record<string, string[]>`. Structurally that is the same type; for the
+ * property the requirement is about it is not the same thing at all, because a fixture author cannot
+ * import an inline annotation. AC-1 asks for a named exported type for every kernel argument, and
+ * this was the one argument of the six kernels that had none.
+ */
+export type TaskWriteSets = Record<string, string[]>;
+
+export function planDuplicationAudit(laneDiffs: LaneDiff[], writeSets: TaskWriteSets): AuditRow[] {
   const byHash = new Map<string, Array<{ laneId: string; path: string }>>();
   const byDeclName = new Map<string, Array<{ laneId: string; path: string }>>();
 

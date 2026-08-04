@@ -205,7 +205,9 @@ describe("mutation CLI commands", () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const cases = [
       ["--root", root, "check-ac", "FR-ARCH-001", "--all"],
-      ["--root", root, "add-evidence", "FR-ARCH-001", "--type", "test", "--reference", "test/cli/mutation-commands.test.ts", "--covers", "all"],
+      // FR-NODE-174: the reference is resolved against the fixture workspace, not this repository, so
+      // citing this test file would name nothing and the verified transition would be refused.
+      ["--root", root, "add-evidence", "FR-ARCH-001", "--type", "test", "--reference", "docs/spec/00.index.md", "--covers", "all"],
       ["--root", root, "add-trace", "FR-ARCH-001", "--type", "Requirement", "--reference", "FR-ARCH-001", "--relation", "self"],
       ["--root", root, "set-active-target", "v1.1.0"],
       ["--root", root, "update-status", "FR-ARCH-001", "verified"],

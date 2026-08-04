@@ -147,7 +147,8 @@ describe("update_stability end-to-end (v2.2.1 §5.2)", () => {
       const evidence = await addVerificationEvidence(root, {
         id: "FR-ARCH-001",
         type: "test",
-        reference: "test/integration/update-stability-e2e.test.ts",
+        // FR-NODE-174: resolved against the fixture workspace, so it must name a file that is there.
+        reference: "docs/spec/00.index.md",
         covers: "all",
         notes: "e2e fixture"
       });

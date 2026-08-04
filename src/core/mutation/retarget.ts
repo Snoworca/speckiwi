@@ -15,6 +15,7 @@ import type {
 
 export type { RetargetInput, RetargetItemPlan, RetargetOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
 
 function todayIso(): string {
@@ -55,6 +56,11 @@ export async function retarget(
 ): Promise<MutationResult<RetargetOutput>> {
   const toTarget = input.toTarget.trim();
   if (!toTarget) return mutationFail("USAGE", "toTarget is required");
+  // FR-NODE-174 AC-9 — the reason lands in a Change Notes row inside the block, so a newline in it
+  // reaches column zero and a heading there opens a requirement no gate inspects. Checked once here
+  // rather than per item, so a malformed reason cannot be rescued by the loop skipping an id.
+  const unsafeReason = assertOpensNoBlockBoundary<RetargetOutput>("reason", input.reason ?? "");
+  if (unsafeReason) return unsafeReason;
 
   const dryRun = input.dryRun ?? true;
   const excluded = new Set(input.exclude ?? []);

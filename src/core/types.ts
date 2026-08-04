@@ -325,6 +325,12 @@ export interface AcCoverageGap {
   missingAcIds: string[];
 }
 
+export interface AcceptedResidueEntry {
+  requirementId: string;
+  criterion: string;
+  reason: string;
+}
+
 export interface EvidenceReferenceIssue {
   requirementId: string;
   evidenceId?: string;
@@ -348,6 +354,14 @@ export interface ReleaseReadinessSummary {
   blocked: string[];
   plannedOrInProgress: string[];
   implementedNotVerified: string[];
+  /**
+   * @req FR-NODE-175 — the requirements this release was explicitly accepted without, each naming the
+   * criterion left undischarged. Reported separately from `implementedNotVerified` so a reader can
+   * tell what was decided from what is still blocking.
+   */
+  acceptedResidue: AcceptedResidueEntry[];
+  /** @req FR-NODE-175 — residue rows that excuse nothing: stale, unresolvable, or reasonless. */
+  residueProblems: string[];
   draftRequirements: string[];
   deprecatedRequirements: string[];
   stabilityBlockers: string[];

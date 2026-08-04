@@ -20,6 +20,7 @@ import type {
 } from "../types.js";
 
 export type { ScaffoldScopeInput, ScaffoldScopeOutput } from "../types.js";
+import { assertSingleLine } from "./block-prose.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -85,6 +86,11 @@ async function scaffoldScopeUnlocked(
   input: ScaffoldScopeInput
 ): Promise<MutationResult<ScaffoldScopeOutput>> {
   const dryRun = input.apply !== true;
+  // The name is interpolated into `# ${name}` and into two index table rows, so a newline in it
+  // lands document structure at column zero. Measured: a name carrying a `### FR-ZZZ-001` block with
+  // `| Status | verified |` minted the same forged record twice, once per interpolation site.
+  const nameOnOneLine = assertSingleLine<ScaffoldScopeOutput>("scope name", input.name);
+  if (nameOnOneLine) return nameOnOneLine;
   const workspace = await parseWorkspace(root);
   const indexFile: TextFile | undefined = workspace.files[0];
   if (!indexFile) return mutationFail("NOT_FOUND", "00.index.md not found");

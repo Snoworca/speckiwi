@@ -5,12 +5,14 @@ import { isRequirementStatus } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
 import type { RequirementRecord } from "../types.js";
 import { syncIndexRollups } from "./sync-index.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.3 — `reason` 제공 시 Change Notes row 가 동일 atomic transaction 으로 append.
@@ -39,6 +41,7 @@ const MAX_REASON_LENGTH = 500;
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
 
 function statusChangeLabel(status: RequirementStatus): string {
   return `Status -> ${status}`;
@@ -108,6 +111,8 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     if (CONTROL_CHAR_RE.test(input.reason)) {
       return mutationFail("USAGE", "reason contains forbidden control characters (only TAB/LF/CR allowed)");
     }
+    const unsafeReason = assertOpensNoBlockBoundary("reason", input.reason);
+    if (unsafeReason) return unsafeReason;
   }
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
@@ -140,6 +145,14 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     )
   ) {
     return mutationFail("MUTATION_DENIED", "Cannot mark verified without checked AC and evidence");
+  }
+  // FR-NODE-174 — a non-empty string is not a reference. The condition above accepted any text, so a
+  // path naming nothing, or naming something outside the checkout, reached `verified` — after which
+  // granular edits are refused and the row cannot be repaired. Release readiness already computed
+  // this; consulting the same rule here moves the discovery from release time to the write.
+  if (input.status === "verified") {
+    const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, nextRecord);
+    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved));
   }
   const statusLine = findMetadataLine(loaded.file, loaded.record, "Status");
   if (!statusLine) return mutationFail("MUTATION_DENIED", "Status metadata row not found");

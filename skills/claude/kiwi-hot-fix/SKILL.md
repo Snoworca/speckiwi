@@ -329,10 +329,10 @@ severity: F1 CRITICAL, F2-F4 HIGH.
 
 산출물: `formal_review_iter{N}.json`
 
-#### 5.3.2 까칠 리뷰 (현재 세션 모델×1, 7축 — kiwi-coder §5.2 차용)
+#### 5.3.2 까칠 리뷰 (현재 세션 모델×1, 7축 — hot-fix 고유 축)
 
 입력: fix diff + 회귀 테스트 + symptom (단 §0.4 격리 — fixer rationale strip)
-축 (kiwi-coder §5.2 입증된 SSOT):
+축 (hot-fix 고유 축 — kiwi-coder §5.2 와 주제가 다르므로 그 표를 차용하지 않는다):
 - P1: root-cause 정합성 — fix 가 실제 root cause 를 해결하는가 (band-aid 금지)
 - P2: 회귀 위험 — 영향 범위 / side effect 평가
 - P3: 보안 — 입력 검증 누락 / 인증·인가 우회
