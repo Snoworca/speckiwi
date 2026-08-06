@@ -14,7 +14,7 @@ import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
 import { setSdsStatus } from "../../core/mutation/set-sds-status.js";
 import { setWorkMode } from "../../core/mutation/work-mode.js";
 import { mutationFail } from "../../core/mutation/guards.js";
-import type { StepStateMode } from "../../core/types.js";
+import type { RequirementType, StepStateMode } from "../../core/types.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
@@ -532,6 +532,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         statement: String(input.statement ?? ""),
         acceptanceCriteria: stringArray(input.acceptanceCriteria),
         confirmDiscardVerified: true,
+        // @req FR-NODE-176 — the agent's type, so the MCP and CLI surfaces mint the same successor.
+        ...(typeof input.type === "string" ? { type: input.type as RequirementType } : {}),
         ...(typeof input.successorId === "string" ? { successorId: input.successorId } : {}),
         ...(typeof input.reason === "string" ? { reason: input.reason } : {}),
         ...(input.dryRun === true ? { dryRun: true } : {})

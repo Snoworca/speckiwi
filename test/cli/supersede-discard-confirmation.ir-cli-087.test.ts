@@ -11,8 +11,16 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // or `frozen`, or that carries evidence at `implemented`, unless the caller says so
 // (`confirmDiscardVerified`, FR-NODE-035). The guard exists to force a decision, not to prevent one.
 //
-// The CLI passed the literal `true` and declared no option, so the same supersede was guarded through
-// MCP and unguarded through the CLI. The fixture these cases use has `| Stability | stable |`, which
+// The CLI passed the literal `true` and declared no option, so the guard was unreachable from that
+// surface: there was no way to ask for the guarded behaviour.
+//
+// CORRECTION 2026-08-06: this comment used to say the same supersede "was guarded through MCP and
+// unguarded through the CLI". That is false. `src/mcp/tools/mutation-tools.ts:534` hardcodes
+// `confirmDiscardVerified: true` as well and the MCP schema declares no such argument, so an agent
+// cannot express the choice either. Both surfaces bypassed the guard. Nothing asserted below changes
+// — every case here is scoped to the CLI — but the reason written above it was wrong.
+//
+// The fixture these cases use has `| Stability | stable |`, which
 // means the existing IR-CLI-059 suite has been driving the protected path all along and passing on
 // the constant — and that file's own comment says the command "passes the core self-reference,
 // reverse-duplicate, and verified-regression guards", which was true of two of the three.

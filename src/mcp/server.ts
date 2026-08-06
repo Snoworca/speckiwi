@@ -467,6 +467,9 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     title: z.string(),
     statement: z.string(),
     acceptanceCriteria: z.array(z.string()),
+    // FR-NODE-176 — the successor's type decides its ID prefix; optional so an existing caller that
+    // sends none keeps minting the `functional` successor it always did.
+    type: z.string().optional(),
     successorId: z.string().optional(),
     reason: z.string().optional(),
     dryRun: z.boolean().optional()

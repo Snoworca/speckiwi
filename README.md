@@ -377,13 +377,15 @@ speckiwi sync-index --dry-run
 - a link or a sentence still naming a rules document this release no longer ships, and
 - an index whose metadata table has no `Rules` row at all (the refresh only ever *replaces* an existing row).
 
-`speckiwi upgrade` closes both. It **prints a plan and writes nothing** unless you pass `--apply`:
+`speckiwi upgrade` closes both. It **performs the migration**, like the `init` it delegates to; pass `--dry-run` to read the plan first:
 
 ```sh
-speckiwi upgrade                  # print the plan; the workspace is untouched
-speckiwi upgrade --apply          # perform it
-speckiwi upgrade --apply --json   # the standard mutation result envelope
+speckiwi upgrade                  # perform it
+speckiwi upgrade --dry-run        # print the plan; the workspace is untouched
+speckiwi upgrade --json           # the standard mutation result envelope
 ```
+
+`--apply` is still accepted and asks for the same performed run, so a script written before this default flipped keeps working. Passing `--apply` and `--dry-run` together is refused rather than resolved by precedence.
 
 Each repaired reference is reported as `file:line`, in both spellings — the path form (`SRS-MD-Rules-v1.0.0.md`) and the prose form (`SRS-MD Authoring Rules v1.0.0`).
 
@@ -393,12 +395,13 @@ What it deliberately does **not** do, and says so in its own report: it never re
 
 | Option | Description |
 | --- | --- |
-| `--apply` | Perform the plan. Without it, nothing is written. |
+| `--dry-run` | Print the plan and write nothing. |
+| `--apply` | Perform the plan. This is the default; the flag is accepted for callers that predate it. |
 | `--no-skills` / `--no-mcp` | Skip the corresponding `init` step during the refresh. |
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
 | `--json` | Emit the result envelope as JSON. |
 
-**Exit codes:** `0` success · `5` failure (e.g. a held mutation lock — nothing is written).
+**Exit codes:** `0` success · `5` failure (e.g. a held mutation lock, or `--apply` and `--dry-run` together — nothing is written).
 
 ### Resolve duplicate Requirement IDs after a merge
 
@@ -911,13 +914,15 @@ speckiwi sync-index --dry-run
 - 이번 릴리스가 더 이상 배포하지 않는 규칙 문서를 여전히 가리키는 링크 또는 문장,
 - `Rules` 행이 아예 없는 인덱스 메타데이터 표 (갱신은 **기존 행 교체**만 합니다).
 
-`speckiwi upgrade` 가 둘 다 해소합니다. `--apply` 를 주지 않으면 **계획만 출력하고 아무것도 쓰지 않습니다**.
+`speckiwi upgrade` 가 둘 다 해소합니다. 위임 대상인 `init` 과 마찬가지로 **실제로 수행**하며, 먼저 계획만 보려면 `--dry-run` 을 줍니다.
 
 ```sh
-speckiwi upgrade                  # 계획 출력, 워크스페이스 무변경
-speckiwi upgrade --apply          # 실제 수행
-speckiwi upgrade --apply --json   # 표준 mutation 결과 envelope
+speckiwi upgrade                  # 실제 수행
+speckiwi upgrade --dry-run        # 계획 출력, 워크스페이스 무변경
+speckiwi upgrade --json           # 표준 mutation 결과 envelope
 ```
+
+`--apply` 도 계속 받아들이며 같은 수행 실행을 요청합니다 — 기본값이 뒤집히기 전에 작성된 스크립트가 그대로 동작합니다. `--apply` 와 `--dry-run` 을 함께 주면 우선순위로 해석하지 않고 거부합니다.
 
 수정된 참조는 각각 `file:line` 로 보고되며, 두 표기 모두 대상입니다 — 경로 형태(`SRS-MD-Rules-v1.0.0.md`)와 산문 형태(`SRS-MD Authoring Rules v1.0.0`).
 
@@ -927,12 +932,13 @@ speckiwi upgrade --apply --json   # 표준 mutation 결과 envelope
 
 | 옵션 | 설명 |
 | --- | --- |
-| `--apply` | 계획을 실제로 수행. 없으면 아무것도 쓰지 않음. |
+| `--dry-run` | 계획만 출력하고 아무것도 쓰지 않음. |
+| `--apply` | 계획을 실제로 수행. 기본 동작이며, 이전 계약으로 작성된 호출자를 위해 계속 받아들임. |
 | `--no-skills` / `--no-mcp` | 갱신 단계에서 해당 `init` 단계를 건너뜀. |
 | `--ignore-lock` | stale SRS mutation lock 우회. |
 | `--json` | 결과 envelope 을 JSON 으로 출력. |
 
-**Exit code:** `0` 성공 · `5` 실패 (예: lock 점유 — 아무것도 쓰이지 않음).
+**Exit code:** `0` 성공 · `5` 실패 (예: lock 점유, 또는 `--apply` 와 `--dry-run` 동시 지정 — 아무것도 쓰이지 않음).
 
 ### 병합 후 중복 Requirement ID 해소
 

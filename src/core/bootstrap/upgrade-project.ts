@@ -19,7 +19,8 @@ import { bundledVersionFor, rewriteRulesReferences, scanRulesReferences } from "
 //   2. An index with no `| Rules |` row never gets one: the pointer refresh only ever *replaces* a row,
 //      so `doctor` warns forever and its own remediation admits it.
 //
-// So this is an explicit migration that plans by default and writes only when asked.
+// So this is an explicit migration that writes only when its caller asks. The default belongs to the
+// caller, not here: since IR-CLI-088 the CLI asks for the performed run unless given `--dry-run`.
 
 const INDEX_RELATIVE_PATH = "docs/spec/00.index.md";
 
@@ -34,7 +35,10 @@ const BOUNDARIES: readonly string[] = [
 ];
 
 export interface UpgradeProjectInput {
-  /** Perform the plan. Absent or false prints the plan and writes nothing. */
+  /**
+   * Perform the plan. Absent or false plans and writes nothing. This is the operation's own default,
+   * not the CLI's: `speckiwi upgrade` passes true unless `--dry-run` is given (IR-CLI-088).
+   */
   apply?: boolean;
   ignoreLock?: boolean;
   /** Delegated to init; both default on, matching a plain `speckiwi init`. */

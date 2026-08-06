@@ -289,6 +289,9 @@ export const toolSpecs: readonly ToolSpec[] = [
   // only tool-owned artifacts, and that reasoning does not extend to a command that rewrites author
   // files. No agent drives this migration unattended.
   mutationSpec("upgrade", undefined, "workspace", "upgradeProject", [
+    // IR-CLI-088 — the command performs by default; `--dry-run` selects the plan. `--apply` stays
+    // declared because callers written against IR-CLI-076 still pass it.
+    DRY_RUN,
     opt("--apply", "apply"),
     opt("--no-skills", "skills"),
     opt("--no-mcp", "mcp"),

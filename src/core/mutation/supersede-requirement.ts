@@ -1,4 +1,4 @@
-import type { MutationResult, ProjectRoot, RequirementRecord } from "../types.js";
+import type { MutationResult, ProjectRoot, RequirementRecord, RequirementType } from "../types.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { addRequirement, type AddRequirementInput } from "./add-requirement.js";
 import { updateStatus } from "./update-status.js";
@@ -36,6 +36,12 @@ export interface SupersedeRequirementInput {
   title: string;
   statement: string;
   acceptanceCriteria: string[];
+  /**
+   * The successor's requirement type, which decides its ID prefix. Defaults to `functional`.
+   * @req FR-NODE-176 — this was hardcoded, so superseding an `interface` requirement minted an
+   * `FR-` successor. A requirement ID is never renumbered, so the wrong prefix is permanent.
+   */
+  type?: RequirementType;
   reason?: string;
   confirmDiscardVerified?: boolean;
   dryRun?: boolean;
@@ -180,7 +186,8 @@ export async function supersedeRequirement(
   // T1 — add_requirement minting the successor with a `supersedes oldId` trace row.
   if (!resuming) {
     const addInput: AddRequirementInput = {
-      type: "functional",
+      // @req FR-NODE-176 — the caller's type, defaulting to the previous constant.
+      type: input.type ?? "functional",
       scope: input.scope,
       target: input.target,
       title: input.title,

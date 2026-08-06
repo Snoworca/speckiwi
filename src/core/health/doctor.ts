@@ -244,7 +244,10 @@ async function checkRulesReferencePresence(rootPath: string): Promise<DoctorChec
     // not take.
     remediation: bundledMissing
       ? `Run \`speckiwi init\` to install the bundled rules documents at docs/rule/${BUNDLED_SRS_RULES_FILENAME} and docs/rule/${BUNDLED_SDS_RULES_FILENAME}.`
-      : "Run `speckiwi upgrade` to see the planned repairs, then `speckiwi upgrade --apply` to rewrite each reference to the bundled rules document."
+      : // @req IR-CLI-088 AC-10 — this read `speckiwi upgrade` for the preview step. Since the
+        // default flipped, that command performs the migration, so the remediation was telling the
+        // operator to write while calling it a look.
+        "Run `speckiwi upgrade --dry-run` to read the planned repairs, then `speckiwi upgrade` to rewrite each reference to the bundled rules document."
   };
 }
 

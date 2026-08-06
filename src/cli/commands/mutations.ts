@@ -3,6 +3,7 @@ import { resolveProjectRoot } from "../../core/project-root.js";
 import { TARGET_STATUSES_SENTENCE, TARGET_TYPES_SENTENCE } from "../../core/target-types.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { upgradeProject } from "../../core/bootstrap/upgrade-project.js";
+import { mutationFail } from "../../core/mutation/guards.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
@@ -114,21 +115,35 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  // @req IR-CLI-076 — the migration init deliberately does not perform. Dry-run by default: the
-  // operator reads the plan and approves it, in the shape `repair requirement-id-collisions` set.
+  // @req IR-CLI-088 — the migration init deliberately does not perform. It performs by default and
+  // `--dry-run` prints the plan, matching `init`, the sibling this command delegates to. Under the
+  // superseded IR-CLI-076 the bare command planned, and a plan naming every repair reads enough like
+  // a performed run that an operator concludes the migration happened when nothing was written.
   command
     .command("upgrade")
-    .option("--apply", "perform the plan (default: print the plan and write nothing)")
+    .option("--dry-run", "print the plan and write nothing")
+    .option("--apply", "perform the plan; the default, accepted so callers written against IR-CLI-076 keep working")
     .option("--no-skills", "skip refreshing the bundled kiwi skills")
     .option("--no-mcp", "skip refreshing the SpecKiwi MCP registration in .mcp.json")
     .option("--ignore-lock")
     .option("--json")
     .action(async (options) => {
+      // Refused rather than settled by precedence: whichever way it resolved, half the callers would
+      // get the run they did not ask for, and one of those two mistakes writes to the workspace.
+      if (options.dryRun === true && options.apply === true) {
+        output(
+          context,
+          { json: options.json || command.opts().json },
+          mutationFail("USAGE", "--apply and --dry-run ask for opposite runs; pass at most one of them")
+        );
+        command.setOptionValue("exitCode", 5);
+        return;
+      }
       // `rootFrom`, not init's `cwd ?? cwd` form: an explicit root skips discovery entirely, so that
       // form would treat any subdirectory as the project and scaffold a second project inside it.
       // Scaffolding in cwd is init's intended semantic; a migration must find the existing project.
       const result = await upgradeProject(await rootFrom(command.opts()), {
-        apply: Boolean(options.apply),
+        apply: options.dryRun !== true,
         installSkills: options.skills !== false,
         registerMcp: options.mcp !== false,
         ...(options.ignoreLock ? { ignoreLock: true } : {})
@@ -664,6 +679,9 @@ export function registerMutationCommands(command: Command, context: CliContext):
         // made the verified-regression guard unreachable from the CLI: the same supersede was guarded
         // through MCP and unguarded here, and there was no flag to ask for the guarded behaviour.
         confirmDiscardVerified: options.confirmDiscardVerified === true,
+        // @req FR-NODE-176 — `--type` was declared by this command and by the ToolSpec registry and
+        // then dropped here, so every CLI supersede minted a `functional` successor whatever it said.
+        ...(typeof options.type === "string" ? { type: options.type as RequirementType } : {}),
         ...(typeof options.successor === "string" ? { successorId: options.successor } : {}),
         ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
         dryRun: options.dryRun === true || options.apply !== true
