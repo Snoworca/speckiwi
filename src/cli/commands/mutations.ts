@@ -649,6 +649,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--apply")
     .option("--dry-run")
     .option("--ignore-lock")
+    .option("--confirm-discard-verified", "override the verified-regression guard when discarding the old requirement")
     .option("--json")
     .action(async (options) => {
       const acceptanceCriteria = collect(options.ac);
@@ -659,7 +660,10 @@ export function registerMutationCommands(command: Command, context: CliContext):
         title: options.newTitle,
         statement: options.newStatement,
         acceptanceCriteria: acceptanceCriteria.length > 0 ? acceptanceCriteria : [`Successor of ${options.old}.`],
-        confirmDiscardVerified: true,
+        // @req IR-CLI-087 — the caller's choice, not a constant. This was the literal `true`, which
+        // made the verified-regression guard unreachable from the CLI: the same supersede was guarded
+        // through MCP and unguarded here, and there was no flag to ask for the guarded behaviour.
+        confirmDiscardVerified: options.confirmDiscardVerified === true,
         ...(typeof options.successor === "string" ? { successorId: options.successor } : {}),
         ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
         dryRun: options.dryRun === true || options.apply !== true

@@ -125,6 +125,11 @@ describe("IR-CLI-059 — supersede command creates a successor and discards the 
         "--type",
         TYPE,
         "--apply",
+        // IR-CLI-087: the fixture is `| Stability | stable |`, so this has always been the PROTECTED
+        // discard path — it passed because the command hardcoded `confirmDiscardVerified: true` and
+        // decided for the caller. The command now passes the caller's choice through, so these cases
+        // say what they were always doing. No assertion changed; only who makes the decision.
+        "--confirm-discard-verified",
         "--json"
       ],
       run
@@ -174,6 +179,11 @@ describe("IR-CLI-059 — supersede command creates a successor and discards the 
         "--type",
         TYPE,
         "--dry-run",
+        // IR-CLI-087: the fixture is `| Stability | stable |`, so this has always been the PROTECTED
+        // discard path — it passed because the command hardcoded `confirmDiscardVerified: true` and
+        // decided for the caller. The command now passes the caller's choice through, so these cases
+        // say what they were always doing. No assertion changed; only who makes the decision.
+        "--confirm-discard-verified",
         "--json"
       ],
       run
@@ -262,6 +272,11 @@ describe("IR-CLI-059 — supersede command creates a successor and discards the 
         "--type",
         TYPE,
         "--apply",
+        // IR-CLI-087: the fixture is `| Stability | stable |`, so this has always been the PROTECTED
+        // discard path — it passed because the command hardcoded `confirmDiscardVerified: true` and
+        // decided for the caller. The command now passes the caller's choice through, so these cases
+        // say what they were always doing. No assertion changed; only who makes the decision.
+        "--confirm-discard-verified",
         "--json"
       ],
       run
