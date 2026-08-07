@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { appendFile, mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
+import { watch } from "node:fs";
+import { appendFile, mkdir, mkdtemp, readdir, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -108,7 +109,7 @@ function durableOverlay(identity: TargetIdentity, overrides: Record<string, unkn
     skill: "speckiwi",
     event: "record_reclassification",
     run_id: `record-reclassification-${journalKey.slice(0, 16)}`,
-    ts: "2026-08-07T00:01:00.000Z",
+    ts: "1970-01-01T00:00:00.000Z",
     recordClass: "meta",
     effectiveRecordClass: "audit_note",
     operation: {
@@ -196,6 +197,10 @@ async function incidentFixture(lineTerminator = "\n", prefixLines: Record<string
   const before = `${lines.join(lineTerminator)}${lineTerminator}`;
   await write(root, PIPELINE_PATH, before);
   return { root, raw, before, identity: identityFor(before, raw) };
+}
+
+async function workspaceTree(root: string): Promise<string[]> {
+  return (await readdir(root, { recursive: true })).map((entry) => entry.replace(/\\/g, "/")).sort();
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -345,6 +350,19 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     expect(parsed.entries[0]).not.toHaveProperty("effectiveRecordClass", "audit_note");
   });
 
+  it("AC-1/9 parser rejects a different otherwise-valid ISO timestamp", async () => {
+    const { root, before, identity } = await incidentFixture();
+    const overlay = durableOverlay(identity, { ts: "2026-08-07T00:01:00.000Z" });
+    await write(root, PIPELINE_PATH, `${before}${JSON.stringify(overlay)}\n`);
+
+    const parsed = await jsonlModule.parseWorkflowJsonl({ root }, PIPELINE_PATH);
+
+    expect(parsed.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "SRS-W054", filePath: PIPELINE_PATH, line: identity.line })
+    );
+    expect(parsed.entries[0]).not.toHaveProperty("effectiveRecordClass", "audit_note");
+  });
+
   it("AC-2 uses the official resolver and rejects a path-kind mismatch without writing", async () => {
     const root = await tempRoot();
     const relativePath = ".kiwi/sessions/run-a/worklog.jsonl";
@@ -475,6 +493,27 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
       overlaySha256: sha256(overlayBytes)
     });
     expect(await read(root, PIPELINE_PATH)).toBe(before);
+  });
+
+  it("AC-4 dry-run creates no transient lock, guard, quarantine, or sentinel artifact", async () => {
+    const { root, identity } = await incidentFixture();
+    const beforeTree = await workspaceTree(root);
+    const observedEvents: string[] = [];
+    // Stage B adds a direct acquire spy once the non-public artifact-lock module exists.
+    // Until then, the final tree is decisive and watcher events are supplemental evidence.
+    const watcher = watch(root, { recursive: true }, (_eventType, filename) => {
+      if (filename) observedEvents.push(String(filename).replace(/\\/g, "/"));
+    });
+
+    try {
+      const preview = await applyReclassification(root, reclassificationInput(identity));
+      expect(preview).toMatchObject({ ok: true, value: { written: false } });
+    } finally {
+      watcher.close();
+    }
+
+    expect(await workspaceTree(root)).toEqual(beforeTree);
+    expect(observedEvents.filter((entry) => /lock|guard|quarantine|sentinel/i.test(entry))).toEqual([]);
   });
 
   it("AC-4 rejects a tampered token and a token reused with changed bound input", async () => {
@@ -631,6 +670,27 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     expect(replay.value?.completedOperations.some((operation: string) => /confirm/i.test(operation))).toBe(true);
   });
 
+  it("AC-5 validates a missing or tampered repairToken before durable exact replay", async () => {
+    const { root, identity } = await incidentFixture();
+    const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
+    const validInput = reclassificationInput(identity, { dryRun: false, repairToken: previewValue.repairToken });
+    expect(resultValue(await applyReclassification(root, validInput)).written).toBe(true);
+    const durableBytes = await read(root, PIPELINE_PATH);
+    const missingToken = { ...validInput };
+    delete missingToken.repairToken;
+
+    for (const input of [missingToken, { ...validInput, repairToken: `${previewValue.repairToken}-tampered` }]) {
+      const rejected = await applyReclassification(root, input);
+      expect(rejected).toMatchObject({ ok: false, mutation: { written: false } });
+      expect(JSON.stringify(rejected)).toMatch(/repairToken/i);
+      expect(await read(root, PIPELINE_PATH)).toBe(durableBytes);
+    }
+
+    const replay = await applyReclassification(root, validInput);
+    expect(replay).toMatchObject({ ok: true, value: { written: false, journalState: "confirmed" } });
+    expect(await read(root, PIPELINE_PATH)).toBe(durableBytes);
+  });
+
   it("AC-5 reports an appended heartbeat after preview as a stale patch without changing durable bytes", async () => {
     const { root, identity } = await incidentFixture();
     const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
@@ -741,7 +801,13 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
         mutation: {
           written: false,
           journalState: "failed",
-          pendingRepair: expect.objectContaining({ kind: "record_reclassification", durablePostAppend: true })
+          pendingRepair: expect.objectContaining({
+            kind: "record_reclassification_confirmation",
+            artifact: expect.objectContaining({ relativePath: PIPELINE_PATH, postAppendSha256: expect.any(String) }),
+            targetRecord: expect.any(Object),
+            overlayEventKey: expect.any(String),
+            retry: { action: "retry_same_record_reclassification", mode: "confirm_only" }
+          })
         }
       });
       expect(result.mutation?.completedOperations.some((operation: string) => /write/i.test(operation))).toBe(true);

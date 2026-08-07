@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
+import { watch } from "node:fs";
+import { mkdir, readFile, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 
@@ -9,6 +10,7 @@ import { main } from "../../src/cli/index.js";
 import { createTestMcpServer } from "../../src/mcp/adapter.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
+import * as jsonlModule from "../../src/core/workflow/jsonl.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 type JsonObject = Record<string, unknown>;
@@ -39,7 +41,7 @@ interface Workspace {
   worklog: RecordTarget;
 }
 
-const sha256 = (value: string): string =>
+const sha256 = (value: string | Buffer): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 
 async function invoke(root: string, args: string[]): Promise<Omit<CliResult, "body">> {
@@ -58,6 +60,40 @@ async function invokeJson(root: string, args: string[]): Promise<CliResult> {
   const result = await invoke(root, [...args, "--json"]);
   const body = JSON.parse(result.stdout) as JsonObject;
   return { ...result, body };
+}
+
+async function observeArtifactEvents<T>(root: string, action: () => Promise<T>): Promise<{
+  events: string[];
+  result: T;
+}> {
+  const events: string[] = [];
+  const watcher = watch(root, { recursive: true }, (_eventType, filename) => {
+    if (filename !== null) events.push(filename.toString().replaceAll("\\", "/"));
+  });
+  try {
+    const result = await action();
+    await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    return { events, result };
+  } finally {
+    watcher.close();
+  }
+}
+
+async function workspaceTreeSnapshot(root: string): Promise<Array<{
+  kind: "directory" | "file";
+  path: string;
+  sha256?: string;
+}>> {
+  const relativePaths = (await readdir(root, { recursive: true }))
+    .map((entry) => entry.replaceAll("\\", "/"))
+    .sort();
+  return Promise.all(relativePaths.map(async (relativePath) => {
+    const absolutePath = path.join(root, relativePath);
+    const metadata = await stat(absolutePath);
+    return metadata.isFile()
+      ? { kind: "file" as const, path: relativePath, sha256: sha256(await readFile(absolutePath)) }
+      : { kind: "directory" as const, path: relativePath };
+  }));
 }
 
 function correctionRecord(runId: string): JsonObject {
@@ -499,6 +535,78 @@ async function previewAndApply(root: string, target: RecordTarget): Promise<CliR
   ]);
 }
 
+async function replaceOverlayTimestamp(root: string, relativePath: string, timestamp: string): Promise<void> {
+  const absolutePath = path.join(root, relativePath);
+  const text = await readFile(absolutePath, "utf8");
+  const markerIndex = text.indexOf('"event":"record_reclassification"');
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  const lineStart = text.lastIndexOf("\n", markerIndex) + 1;
+  const lineEnd = text.indexOf("\n", markerIndex);
+  expect(lineEnd).toBeGreaterThan(markerIndex);
+  const overlay = JSON.parse(text.slice(lineStart, lineEnd)) as JsonObject;
+  overlay.ts = timestamp;
+  await writeFile(
+    absolutePath,
+    `${text.slice(0, lineStart)}${JSON.stringify(overlay)}${text.slice(lineEnd)}`,
+    "utf8",
+  );
+}
+
+function expectPostAppendFailure(
+  body: JsonObject,
+  kind: "record_reclassification_confirmation" | "record_reclassification_lock_cleanup",
+  relativePath: string,
+): void {
+  const expectedCompleted = kind === "record_reclassification_confirmation"
+    ? ["write:workflow_record_reclassification"]
+    : ["write:workflow_record_reclassification", "confirm:workflow_record_reclassification"];
+  const expectedPending = kind === "record_reclassification_confirmation"
+    ? ["confirm:workflow_record_reclassification"]
+    : ["cleanup:workflow_record_reclassification"];
+  expect(body).toMatchObject({
+    diagnostics: [expect.objectContaining({ code: expect.any(String), severity: expect.any(String) })],
+    diagnosticsSummary: expect.any(Object),
+    error: {
+      code: "MUTATION_DENIED",
+    },
+    mutation: {
+      completedOperations: expectedCompleted,
+      journalState: "failed",
+      pendingOperations: expectedPending,
+      pendingRepair: {
+        artifact: {
+          postAppendSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+          relativePath,
+        },
+        kind,
+        overlayEventKey: expect.any(String),
+        targetRecord: expect.any(Object),
+        retry: {
+          action: "retry_same_record_reclassification",
+          mode: kind === "record_reclassification_confirmation" ? "confirm_only" : "cleanup_then_replay",
+        },
+      },
+      written: false,
+    },
+    ok: false,
+  });
+  if (kind === "record_reclassification_lock_cleanup") {
+    expect(body).toMatchObject({
+      mutation: {
+        pendingRepair: {
+          cleanupDiagnostic: expect.objectContaining({ code: expect.any(String), severity: expect.any(String) }),
+          lock: {
+            ownerIdentitySha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+            relativePath: expect.any(String),
+          },
+        },
+      },
+    });
+  }
+  const nestedDiagnostics = (body.error as JsonObject).diagnostics;
+  if (nestedDiagnostics !== undefined) expect(nestedDiagnostics).toStrictEqual(body.diagnostics);
+}
+
 describe("IR-CLI-089 workflow record reclassification", () => {
   it("exposes the typed option surface without accepting an arbitrary event payload", async () => {
     const workspace = await createWorkspace();
@@ -783,6 +891,86 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       .split("\n")
       .map((line) => JSON.parse(line) as JsonObject);
     expect(lines.filter((entry) => entry.event === "record_reclassification")).toHaveLength(1);
+  });
+
+  // @req IR-CLI-089 AC-2/6; FR-MCP-057 AC-2/6; FR-NODE-177 AC-4/11
+  it("keeps CLI and MCP dry-runs artifact-free, including transient lock events", async () => {
+    const cliWorkspace = await createWorkspace();
+    const cliTreeBefore = await workspaceTreeSnapshot(cliWorkspace.root);
+    const cliObservation = await observeArtifactEvents(cliWorkspace.root, () =>
+      invokeJson(cliWorkspace.root, [...reclassifyArgs(cliWorkspace.pipeline), "--dry-run"]),
+    );
+    expect(cliObservation.result.code).toBe(0);
+    expect(cliObservation.events).toStrictEqual([]);
+    expect(await workspaceTreeSnapshot(cliWorkspace.root)).toStrictEqual(cliTreeBefore);
+
+    const mcpWorkspace = await createWorkspace();
+    const mcpTreeBefore = await workspaceTreeSnapshot(mcpWorkspace.root);
+    const server = mutationServer(mcpWorkspace.root);
+    const mcpObservation = await observeArtifactEvents(mcpWorkspace.root, () =>
+      server.callTool(
+        "workflow_record_reclassification",
+        mcpInput(mcpWorkspace.pipeline, { dryRun: true }),
+      ),
+    );
+    expect(mcpObservation.result).toMatchObject({ ok: true, mutation: { written: false } });
+    expect(mcpObservation.events).toStrictEqual([]);
+    expect(await workspaceTreeSnapshot(mcpWorkspace.root)).toStrictEqual(mcpTreeBefore);
+    expectSuccessParity(cliObservation.result.body, mcpObservation.result, mcpWorkspace.root);
+  });
+
+  // @req IR-CLI-089 AC-4/6; FR-MCP-057 AC-4/6; FR-NODE-177 AC-5/11
+  it("validates missing and tampered tokens before an otherwise exact CLI or MCP replay", async () => {
+    const cliWorkspace = await createWorkspace();
+    const cliPreview = await invokeJson(cliWorkspace.root, [
+      ...reclassifyArgs(cliWorkspace.pipeline),
+      "--dry-run",
+    ]);
+    const cliToken = valueOf(cliPreview.body).repairToken as string;
+    expect((await invokeJson(cliWorkspace.root, [
+      ...reclassifyArgs(cliWorkspace.pipeline),
+      "--repair-token",
+      cliToken,
+    ])).code).toBe(0);
+    const cliDurable = await readFile(path.join(cliWorkspace.root, cliWorkspace.pipeline.path), "utf8");
+    const cliTreeAfterApply = await workspaceTreeSnapshot(cliWorkspace.root);
+    const cliMissing = await invokeJson(cliWorkspace.root, reclassifyArgs(cliWorkspace.pipeline));
+    const cliTampered = await invokeJson(cliWorkspace.root, [
+      ...reclassifyArgs(cliWorkspace.pipeline),
+      "--repair-token",
+      `${cliToken}-tampered`,
+    ]);
+    expect(cliMissing.code).not.toBe(0);
+    expect(cliTampered.code).not.toBe(0);
+    expect(cliTampered.body).toMatchObject({ ok: false, mutation: { written: false } });
+    expect(await readFile(path.join(cliWorkspace.root, cliWorkspace.pipeline.path), "utf8")).toBe(cliDurable);
+    expect(await workspaceTreeSnapshot(cliWorkspace.root)).toStrictEqual(cliTreeAfterApply);
+
+    const mcpWorkspace = await createWorkspace();
+    const server = mutationServer(mcpWorkspace.root);
+    const mcpPreview = await server.callTool(
+      "workflow_record_reclassification",
+      mcpInput(mcpWorkspace.pipeline, { dryRun: true }),
+    ) as { value: { repairToken: string } };
+    const mcpApplyInput = mcpInput(mcpWorkspace.pipeline, {
+      dryRun: false,
+      repairToken: mcpPreview.value.repairToken,
+    });
+    expect(await server.callTool("workflow_record_reclassification", mcpApplyInput)).toMatchObject({ ok: true });
+    const mcpDurable = await readFile(path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path), "utf8");
+    const mcpTreeAfterApply = await workspaceTreeSnapshot(mcpWorkspace.root);
+    const { repairToken: _repairToken, ...mcpMissingInput } = mcpApplyInput;
+    void _repairToken;
+    const mcpMissing = await server.callTool("workflow_record_reclassification", mcpMissingInput);
+    const mcpTampered = await server.callTool("workflow_record_reclassification", {
+      ...mcpApplyInput,
+      repairToken: `${mcpPreview.value.repairToken}-tampered`,
+    });
+    expect(mcpMissing).toMatchObject({ ok: false });
+    expect(mcpTampered).toMatchObject({ ok: false, mutation: { written: false } });
+    expect(await readFile(path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path), "utf8")).toBe(mcpDurable);
+    expect(await workspaceTreeSnapshot(mcpWorkspace.root)).toStrictEqual(mcpTreeAfterApply);
+    expectFailureParity(cliTampered.body, mcpTampered, mcpWorkspace.root);
   });
 
   it("returns structured nonzero exits for stale, identity, and path-kind failures", async () => {
@@ -1329,6 +1517,198 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     expect(result.code).not.toBe(0);
     expect(result.body).toMatchObject({ ok: false });
     expect(await readFile(path.join(workspace.root, genericPath), "utf8")).toBe(before);
+  });
+
+  // @req IR-CLI-089 AC-4/6; FR-MCP-057 AC-4/6; FR-NODE-177 AC-6/11
+  it("preserves the exact confirmation-pending envelope and diagnostics through CLI and MCP", async () => {
+    const cliWorkspace = await createWorkspace();
+    const cliPreview = await invokeJson(cliWorkspace.root, [
+      ...reclassifyArgs(cliWorkspace.pipeline),
+      "--dry-run",
+    ]);
+    const cliToken = valueOf(cliPreview.body).repairToken as string;
+
+    const mcpWorkspace = await createWorkspace();
+    const server = mutationServer(mcpWorkspace.root);
+    const mcpPreview = await server.callTool(
+      "workflow_record_reclassification",
+      mcpInput(mcpWorkspace.pipeline, { dryRun: true }),
+    ) as { value: { repairToken: string } };
+
+    const realParse = jsonlModule.parseWorkflowJsonl;
+    const parseSpy = vi.spyOn(jsonlModule, "parseWorkflowJsonl").mockImplementation(async (...args) => {
+      const parsed = await realParse(...args);
+      if (!parsed.entries.some((entry) => entry.event.event === "record_reclassification")) return parsed;
+      return {
+        ...parsed,
+        diagnostics: [
+          ...parsed.diagnostics,
+          {
+            code: "SRS-W052",
+            filePath: parsed.relativePath,
+            message: "Injected authoritative record reclassification read-back failure",
+            severity: "warning" as const,
+          },
+        ],
+      };
+    });
+    try {
+      const cli = await invokeJson(cliWorkspace.root, [
+        ...reclassifyArgs(cliWorkspace.pipeline),
+        "--repair-token",
+        cliToken,
+      ]);
+      const mcp = await server.callTool(
+        "workflow_record_reclassification",
+        mcpInput(mcpWorkspace.pipeline, {
+          dryRun: false,
+          repairToken: mcpPreview.value.repairToken,
+        }),
+      );
+
+      expect(cli.code).not.toBe(0);
+      expectPostAppendFailure(cli.body, "record_reclassification_confirmation", cliWorkspace.pipeline.path);
+      expectPostAppendFailure(mcp as JsonObject, "record_reclassification_confirmation", mcpWorkspace.pipeline.path);
+      expectFailureParity(cli.body, mcp, mcpWorkspace.root);
+      expect(await readFile(path.join(cliWorkspace.root, cliWorkspace.pipeline.path), "utf8"))
+        .toContain('"event":"record_reclassification"');
+      expect(await readFile(path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path), "utf8"))
+        .toContain('"event":"record_reclassification"');
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  // @req FR-MCP-057 AC-4/6; FR-NODE-177 AC-6/11
+  it("serializes the exact cleanup-pending core envelope through MCP without field loss", async () => {
+    const workspace = await createWorkspace();
+    const treeBefore = await workspaceTreeSnapshot(workspace.root);
+    const cleanupDiagnostic = {
+      code: "SRS-E071",
+      details: { operation: "owner-verified-release", retryable: true },
+      filePath: workspace.pipeline.path,
+      message: "Owner-verified record reclassification lock cleanup failed",
+      severity: "error" as const,
+    };
+    const pendingRepair = {
+      artifact: {
+        postAppendSha256: "d".repeat(64),
+        relativePath: workspace.pipeline.path,
+      },
+      cleanupDiagnostic,
+      kind: "record_reclassification_lock_cleanup",
+      lock: {
+        ownerIdentitySha256: "e".repeat(64),
+        relativePath: `${workspace.pipeline.path}.record-reclassification.lock`,
+      },
+      overlayEventKey: "speckiwi|record-reclassification-deadbeefdeadbeef",
+      retry: {
+        action: "retry_same_record_reclassification",
+        mode: "cleanup_then_replay",
+      },
+      targetRecord: { ...workspace.pipeline },
+    };
+    const completedOperations = [
+      "write:workflow_record_reclassification",
+      "confirm:workflow_record_reclassification",
+    ];
+    const pendingOperations = ["cleanup:workflow_record_reclassification"];
+    const mutation = {
+      artifact: {
+        kind: "pipeline",
+        relativePath: workspace.pipeline.path,
+        sha256: "d".repeat(64),
+      },
+      completedOperations,
+      diagnosticDelta: { added: [cleanupDiagnostic], preserved: [], removed: [] },
+      dryRun: false,
+      filePath: workspace.pipeline.path,
+      idempotencyKey: "cleanup-idempotency",
+      journalKey: "cleanup-journal",
+      journalState: "failed",
+      kind: "workflow_record_reclassification",
+      operations: [{ lineCount: 1, lines: ["{\"event\":\"record_reclassification\"}"], type: "appendLines" }],
+      pendingOperations,
+      pendingRepair,
+      preview: ["append 1 line"],
+      staleGuards: [],
+      targetRecord: { ...workspace.pipeline },
+      written: false,
+    };
+    const syntheticCoreResult = {
+      diagnostics: [cleanupDiagnostic],
+      diagnosticsSummary: { byCode: { "SRS-E071": 1 }, errors: 1, warnings: 0 },
+      error: {
+        code: "MUTATION_DENIED",
+        diagnostics: [cleanupDiagnostic],
+        message: cleanupDiagnostic.message,
+      },
+      mutation,
+      ok: false as const,
+    };
+
+    vi.resetModules();
+    const applyWorkflowMutation = vi.fn(async () => syntheticCoreResult);
+    vi.doMock("../../src/core/workflow/mutation.js", () => ({ applyWorkflowMutation }));
+    try {
+      const { registerMutationTools: registerFreshMutationTools } = await import(
+        "../../src/mcp/tools/mutation-tools.js"
+      );
+      const server = createTestMcpServer({ root: workspace.root });
+      registerFreshMutationTools(server, { root: workspace.root });
+      const result = await server.callTool(
+        "workflow_record_reclassification",
+        mcpInput(workspace.pipeline, { dryRun: false, repairToken: "opaque-cleanup-token" }),
+      ) as JsonObject;
+
+      expect(applyWorkflowMutation).toHaveBeenCalledTimes(1);
+      expectPostAppendFailure(result, "record_reclassification_lock_cleanup", workspace.pipeline.path);
+      expect(result.mutation).toStrictEqual(mutation);
+      expect(result.diagnostics).toStrictEqual([cleanupDiagnostic]);
+      expect(result.error).toMatchObject({ code: "MUTATION_DENIED", message: cleanupDiagnostic.message });
+      expect(await workspaceTreeSnapshot(workspace.root)).toStrictEqual(treeBefore);
+    } finally {
+      vi.doUnmock("../../src/core/workflow/mutation.js");
+      vi.resetModules();
+    }
+
+    // CLI cleanup-fault integration remains Stage B: it needs the artifact-lock module's narrow
+    // release-failure seam. A global node:fs mock would couple this contract to paths and unrelated I/O.
+  });
+
+  // @req IR-CLI-089 AC-4/6; FR-MCP-057 AC-4/6; FR-NODE-177 AC-1/11
+  it("makes CLI and MCP readers reject a different otherwise-valid ISO overlay timestamp", async () => {
+    const workspace = await createWorkspace();
+    const applied = await previewAndApply(workspace.root, workspace.pipeline);
+    expect(applied.code).toBe(0);
+    await replaceOverlayTimestamp(
+      workspace.root,
+      workspace.pipeline.path,
+      "2026-08-07T00:00:00.000Z",
+    );
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-07T06:07:08.901Z"));
+    try {
+      const cliTail = await invokeJson(workspace.root, ["workflow", "pipeline-tail"]);
+      const server = mutationServer(workspace.root);
+      const mcpTail = await server.callTool("workflow_pipeline_tail", {});
+
+      expect(cliTail.code).toBe(0);
+      expectSuccessParity(cliTail.body, mcpTail, workspace.root);
+      expect(cliTail.body).toMatchObject({
+        diagnostics: [
+          expect.objectContaining({
+            code: "SRS-W054",
+            details: expect.objectContaining({ reason: "missing correction target" }),
+            filePath: workspace.pipeline.path,
+            line: workspace.pipeline.line,
+          }),
+        ],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("converges named and derived readers while tail views retain original and overlay records", async () => {

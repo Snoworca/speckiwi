@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -72,15 +72,25 @@ async function incident(): Promise<Incident> {
     target: "v1.0.0",
     ts: "2026-08-07T00:00:00.000Z",
   });
-  const before = `${raw}\n`;
+  const ordinary = JSON.stringify({
+    completion_claimed: false,
+    event: "task_started",
+    run_id: "ordinary-target",
+    schema_version: "1.0.0",
+    skill: "kiwi-planner",
+    status: "RUNNING",
+    target: "v1.0.0",
+    ts: "2026-08-06T23:59:59.000Z",
+  });
+  const before = `${ordinary}\n${raw}\n`;
   await mkdir(path.join(root, "kiwi"), { recursive: true });
   await writeFile(path.join(root, PIPELINE_PATH), before, "utf8");
   return {
     before,
     identity: {
-      byteOffset: 0,
+      byteOffset: Buffer.byteLength(`${ordinary}\n`, "utf8"),
       eventKey: "kiwi-planner|cross-process-target",
-      line: 1,
+      line: 2,
       preimagePrefixSha256: sha256(before),
       rawSha256: sha256(raw),
       recordType: "pipeline",
@@ -129,6 +139,7 @@ function startWorker(
   barrierDirectory: string,
   workerId: string,
   input: WorkflowMutationInput,
+  options: { pauseOnOverlay?: boolean } = {},
 ): Worker {
   const child = spawn(
     process.execPath,
@@ -137,6 +148,7 @@ function startWorker(
       "run",
       THIS_TEST,
       "--no-file-parallelism",
+      "--testTimeout=30000",
       "-t",
       "cross-process child worker",
     ],
@@ -149,6 +161,9 @@ function startWorker(
         SPECKIWI_CHILD_ID: workerId,
         SPECKIWI_CHILD_INPUT: JSON.stringify(input),
         SPECKIWI_CHILD_ROOT: root,
+        ...(options.pauseOnOverlay
+          ? { SPECKIWI_CHILD_PAUSE_ON_OVERLAY: "1" }
+          : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -169,6 +184,11 @@ function startWorker(
   };
 }
 
+async function assertNoLockResidue(root: string): Promise<void> {
+  const entries = await readdir(path.join(root, "kiwi"));
+  expect(entries).toEqual(["pipeline.jsonl"]);
+}
+
 async function runContenders(
   fixture: Incident,
   inputs: [WorkflowMutationInput, WorkflowMutationInput],
@@ -180,10 +200,10 @@ async function runContenders(
   ) as [Worker, Worker];
   try {
     await Promise.all([
-      waitForFile(path.join(barrierDirectory, "guard-0.ready")),
-      waitForFile(path.join(barrierDirectory, "guard-1.ready")),
+      waitForFile(path.join(barrierDirectory, "process-0.ready")),
+      waitForFile(path.join(barrierDirectory, "process-1.ready")),
     ]);
-    await writeFile(path.join(barrierDirectory, "append.release"), "release\n", "utf8");
+    await writeFile(path.join(barrierDirectory, "start.release"), "release\n", "utf8");
     const completions = await Promise.all(workers.map((worker) => worker.completion));
     for (const completion of completions) {
       expect(completion.code, `${completion.stdout}\n${completion.stderr}`).toBe(0);
@@ -217,17 +237,21 @@ if (process.env[CHILD_MARKER] === "1") {
     const workerId = process.env.SPECKIWI_CHILD_ID!;
     const input = JSON.parse(process.env.SPECKIWI_CHILD_INPUT!) as WorkflowMutationInput;
     const realParse = jsonlModule.parseWorkflowJsonl;
-    let parseCount = 0;
+    const pauseOnOverlay = process.env.SPECKIWI_CHILD_PAUSE_ON_OVERLAY === "1";
+    let overlayBarrierSignaled = false;
     const parseSpy = vi.spyOn(jsonlModule, "parseWorkflowJsonl").mockImplementation(async (...args) => {
       const parsed = await realParse(...args);
-      parseCount += 1;
-      if (parseCount === 1) {
-        await writeFile(path.join(barrierDirectory, `guard-${workerId}.ready`), "ready\n", "utf8");
-        await waitForFile(path.join(barrierDirectory, "append.release"));
+      const containsOverlay = parsed.entries.some((entry) => entry.event.event === "record_reclassification");
+      if (!overlayBarrierSignaled && pauseOnOverlay && containsOverlay) {
+        overlayBarrierSignaled = true;
+        await writeFile(path.join(barrierDirectory, `overlay-${workerId}.ready`), "ready\n", "utf8");
+        await waitForFile(path.join(barrierDirectory, `overlay-${workerId}.release`));
       }
       return parsed;
     });
     try {
+      await writeFile(path.join(barrierDirectory, `process-${workerId}.ready`), "ready\n", "utf8");
+      await waitForFile(path.join(barrierDirectory, "start.release"));
       const result = await applyWorkflowMutation({ root }, input);
       await writeFile(
         path.join(barrierDirectory, `result-${workerId}.json`),
@@ -240,7 +264,7 @@ if (process.env[CHILD_MARKER] === "1") {
   });
 } else {
   // @req FR-NODE-177 AC-7/11
-  describe("FR-NODE-177 cross-process record reclassification lock", () => {
+  describe("FR-NODE-177 cross-process record reclassification lock", { timeout: 30_000 }, () => {
     it.each([1, 2, 3])(
       "serializes identical first applies into one writer and one replay (iteration %s)",
       async (iteration) => {
@@ -254,6 +278,7 @@ if (process.env[CHILD_MARKER] === "1") {
           true,
         ]);
         expect(await durableOverlays(fixture.root)).toHaveLength(1);
+        await assertNoLockResidue(fixture.root);
       },
     );
 
@@ -279,7 +304,51 @@ if (process.env[CHILD_MARKER] === "1") {
           ok: false,
         });
         expect(await durableOverlays(fixture.root)).toHaveLength(1);
+        await assertNoLockResidue(fixture.root);
       },
     );
+
+    it("replays exactly once after a holder crashes after append but before confirmation", async () => {
+      const fixture = await incident();
+      const input = await tokenizedInput(fixture, "crash after append");
+      const barrierDirectory = path.join(fixture.root, ".cross-process-barrier");
+      await mkdir(barrierDirectory, { recursive: true });
+      const worker = startWorker(
+        fixture.root,
+        barrierDirectory,
+        "crash-after",
+        input,
+        { pauseOnOverlay: true },
+      );
+      try {
+        await waitForFile(path.join(barrierDirectory, "process-crash-after.ready"));
+        await writeFile(path.join(barrierDirectory, "start.release"), "release\n", "utf8");
+        await waitForFile(path.join(barrierDirectory, "overlay-crash-after.ready"));
+        expect(await durableOverlays(fixture.root)).toHaveLength(1);
+      } finally {
+        if (worker.child.exitCode === null) worker.child.kill();
+        await worker.completion;
+      }
+
+      const retry = await applyWorkflowMutation({ root: fixture.root }, input);
+      expect(retry).toMatchObject({
+        ok: true,
+        value: { journalState: "confirmed", pendingRepair: null, written: false },
+      });
+      expect(await durableOverlays(fixture.root)).toHaveLength(1);
+      await assertNoLockResidue(fixture.root);
+    });
+
+    it("leaves no lock residue after an ordinary pre-append failure", async () => {
+      const fixture = await incident();
+      const input = await tokenizedInput(fixture, "ordinary stale failure");
+      const result = await applyWorkflowMutation(
+        { root: fixture.root },
+        { ...input, expectedSha256: "0".repeat(64) },
+      );
+      expect(result).toMatchObject({ mutation: { written: false }, ok: false });
+      expect(await durableOverlays(fixture.root)).toHaveLength(0);
+      await assertNoLockResidue(fixture.root);
+    });
   });
 }
