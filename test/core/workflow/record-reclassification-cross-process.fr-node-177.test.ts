@@ -8,6 +8,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import * as jsonlModule from "../../../src/core/workflow/jsonl.js";
 import {
+  acquireArtifactLock,
+  releaseArtifactLock,
+  resolveArtifactLockIdentity,
+} from "../../../src/core/workflow/artifact-lock.js";
+import {
   applyWorkflowMutation,
   type WorkflowMutationInput,
 } from "../../../src/core/workflow/mutation.js";
@@ -100,6 +105,13 @@ async function incident(): Promise<Incident> {
   };
 }
 
+async function cleanWriterIncident(): Promise<Incident> {
+  const fixture = await incident();
+  const before = `${fixture.before.split(/\r?\n/, 1)[0]}\n`;
+  await writeFile(path.join(fixture.root, PIPELINE_PATH), before, "utf8");
+  return { ...fixture, before };
+}
+
 function inputFor(fixture: Incident, reason: string): WorkflowMutationInput {
   return {
     kind: "workflow_record_reclassification",
@@ -139,7 +151,7 @@ function startWorker(
   barrierDirectory: string,
   workerId: string,
   input: WorkflowMutationInput,
-  options: { pauseOnOverlay?: boolean } = {},
+  options: { action?: "apply" | "hold-lock"; pauseOnOverlay?: boolean } = {},
 ): Worker {
   const child = spawn(
     process.execPath,
@@ -161,6 +173,7 @@ function startWorker(
         SPECKIWI_CHILD_ID: workerId,
         SPECKIWI_CHILD_INPUT: JSON.stringify(input),
         SPECKIWI_CHILD_ROOT: root,
+        SPECKIWI_CHILD_ACTION: options.action ?? "apply",
         ...(options.pauseOnOverlay
           ? { SPECKIWI_CHILD_PAUSE_ON_OVERLAY: "1" }
           : {}),
@@ -184,9 +197,56 @@ function startWorker(
   };
 }
 
+function genericInput(
+  fixture: Incident,
+  kind: "pipeline_event_append" | "workflow_repair_record" | "workflow_logical_delete",
+): WorkflowMutationInput {
+  if (kind === "workflow_logical_delete") {
+    return {
+      kind,
+      owner: "kiwi-pm",
+      reason: "remove the ordinary fixture",
+      runId: `generic-${kind}`,
+      taskId: "T-CROSS-PROCESS",
+      reqId: "FR-NODE-177",
+      jsonlPath: PIPELINE_PATH,
+      recordId: "ordinary-target",
+      recordType: "pipeline_event",
+      expectedSha256: sha256(fixture.before),
+      dryRun: false,
+    };
+  }
+  return {
+    kind,
+    owner: "kiwi-pm",
+    reason: "generic writer serialization probe",
+    runId: `generic-${kind}`,
+    taskId: "T-CROSS-PROCESS",
+    reqId: "FR-NODE-177",
+    jsonlPath: PIPELINE_PATH,
+    expectedSha256: sha256(fixture.before),
+    dryRun: false,
+    event: {
+      event: kind === "workflow_repair_record" ? "repair_record" : "generic_pipeline_event",
+      run_id: `generic-${kind}`,
+      schema_version: "1.0.0",
+      skill: "kiwi-pm",
+      status: "RUNNING",
+      ts: "2026-08-07T00:00:01.000Z",
+    },
+  };
+}
+
 async function assertNoLockResidue(root: string): Promise<void> {
-  const entries = await readdir(path.join(root, "kiwi"));
-  expect(entries).toEqual(["pipeline.jsonl"]);
+  const identity = await resolveArtifactLockIdentity(path.join(root, PIPELINE_PATH));
+  const directory = path.dirname(identity.lockPath);
+  const lockName = path.basename(identity.lockPath);
+  const entries = await readdir(directory);
+  expect(entries.filter((entry) =>
+    entry === lockName ||
+    entry === `${lockName}.acquire` ||
+    entry.startsWith(`${lockName}.stale-`),
+  )).toEqual([]);
 }
 
 async function runContenders(
@@ -236,6 +296,21 @@ if (process.env[CHILD_MARKER] === "1") {
     const barrierDirectory = process.env.SPECKIWI_CHILD_BARRIER!;
     const workerId = process.env.SPECKIWI_CHILD_ID!;
     const input = JSON.parse(process.env.SPECKIWI_CHILD_INPUT!) as WorkflowMutationInput;
+    if (process.env.SPECKIWI_CHILD_ACTION === "hold-lock") {
+      const acquired = await acquireArtifactLock({
+        artifactPath: path.join(root, PIPELINE_PATH),
+        owner: `cross-process-holder-${workerId}`,
+      });
+      expect(acquired).toMatchObject({ ok: true });
+      if (!acquired.ok) return;
+      try {
+        await writeFile(path.join(barrierDirectory, `lock-${workerId}.ready`), "ready\n", "utf8");
+        await waitForFile(path.join(barrierDirectory, `lock-${workerId}.release`));
+      } finally {
+        await releaseArtifactLock(acquired.capability);
+      }
+      return;
+    }
     const realParse = jsonlModule.parseWorkflowJsonl;
     const pauseOnOverlay = process.env.SPECKIWI_CHILD_PAUSE_ON_OVERLAY === "1";
     let overlayBarrierSignaled = false;
@@ -307,6 +382,96 @@ if (process.env[CHILD_MARKER] === "1") {
         await assertNoLockResidue(fixture.root);
       },
     );
+
+    it.each([
+      "pipeline_event_append",
+      "workflow_repair_record",
+      "workflow_logical_delete",
+      "workflow_record_reclassification",
+    ] as const)("keeps the journal unchanged while a direct artifact-lock holder fences the %s writer", async (kind) => {
+      const fixture = kind === "workflow_record_reclassification"
+        ? await incident()
+        : await cleanWriterIncident();
+      const input = kind === "workflow_record_reclassification"
+        ? await tokenizedInput(fixture, "direct holder serialization")
+        : genericInput(fixture, kind);
+      const barrierDirectory = path.join(fixture.root, ".cross-process-barrier");
+      await mkdir(barrierDirectory, { recursive: true });
+      const holder = startWorker(
+        fixture.root,
+        barrierDirectory,
+        `direct-${kind}`,
+        input,
+        { action: "hold-lock" },
+      );
+      await waitForFile(path.join(barrierDirectory, `lock-direct-${kind}.ready`));
+
+      const attempt = applyWorkflowMutation({ root: fixture.root }, input);
+      try {
+        await delay(250);
+        expect(await readFile(path.join(fixture.root, PIPELINE_PATH), "utf8")).toBe(fixture.before);
+      } finally {
+        await writeFile(path.join(barrierDirectory, `lock-direct-${kind}.release`), "release\n", "utf8");
+        const completion = await holder.completion;
+        expect(completion.code, `${completion.stdout}\n${completion.stderr}`).toBe(0);
+      }
+
+      const first = await attempt;
+      if (!first.ok) {
+        expect(first).toMatchObject({ mutation: { written: false } });
+        await expect(applyWorkflowMutation({ root: fixture.root }, input)).resolves.toMatchObject({
+          ok: true,
+          value: { written: true },
+        });
+      } else {
+        expect(first.value).toMatchObject({ written: true });
+      }
+      const preexistingLineCount = fixture.before.trimEnd().split(/\r?\n/).length;
+      expect((await readFile(path.join(fixture.root, PIPELINE_PATH), "utf8")).trimEnd().split(/\r?\n/)).toHaveLength(preexistingLineCount + 1);
+      if (kind === "workflow_record_reclassification") {
+        const overlays = await durableOverlays(fixture.root);
+        expect(overlays).toHaveLength(1);
+        expect(overlays[0]).toMatchObject({
+          event: "record_reclassification",
+          operation: {
+            kind: "record_reclassification",
+            source_line: fixture.identity.line,
+            source_path: PIPELINE_PATH,
+          },
+          owner: input.owner,
+          reason: input.reason,
+        });
+      }
+      await assertNoLockResidue(fixture.root);
+    });
+
+    it("recovers a direct artifact-lock owner that crashes before append and writes one overlay", async () => {
+      const fixture = await incident();
+      const input = await tokenizedInput(fixture, "direct holder crash before append");
+      const barrierDirectory = path.join(fixture.root, ".cross-process-barrier");
+      await mkdir(barrierDirectory, { recursive: true });
+      const holder = startWorker(
+        fixture.root,
+        barrierDirectory,
+        "crash-before",
+        input,
+        { action: "hold-lock" },
+      );
+      try {
+        await waitForFile(path.join(barrierDirectory, "lock-crash-before.ready"));
+        expect(await durableOverlays(fixture.root)).toHaveLength(0);
+      } finally {
+        if (holder.child.exitCode === null) holder.child.kill();
+        await holder.completion;
+      }
+
+      await expect(applyWorkflowMutation({ root: fixture.root }, input)).resolves.toMatchObject({
+        ok: true,
+        value: { written: true },
+      });
+      expect(await durableOverlays(fixture.root)).toHaveLength(1);
+      await assertNoLockResidue(fixture.root);
+    });
 
     it("replays exactly once after a holder crashes after append but before confirmation", async () => {
       const fixture = await incident();

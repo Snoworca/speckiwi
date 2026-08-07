@@ -4,6 +4,7 @@ import { appendFile, mkdir, mkdtemp, readdir, readFile, utimes, writeFile } from
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import * as artifactLockModule from "../../../src/core/workflow/artifact-lock.js";
 import * as jsonlModule from "../../../src/core/workflow/jsonl.js";
 import {
   applyWorkflowMutation,
@@ -201,6 +202,16 @@ async function incidentFixture(lineTerminator = "\n", prefixLines: Record<string
 
 async function workspaceTree(root: string): Promise<string[]> {
   return (await readdir(root, { recursive: true })).map((entry) => entry.replace(/\\/g, "/")).sort();
+}
+
+async function artifactLockResidue(root: string, lockPath: string): Promise<string[]> {
+  const relativeLockPath = path.relative(root, lockPath).replace(/\\/g, "/");
+  return (await workspaceTree(root)).filter(
+    (entry) =>
+      entry === relativeLockPath ||
+      entry === `${relativeLockPath}.acquire` ||
+      entry.startsWith(`${relativeLockPath}.stale-`)
+  );
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
@@ -499,8 +510,8 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     const { root, identity } = await incidentFixture();
     const beforeTree = await workspaceTree(root);
     const observedEvents: string[] = [];
-    // Stage B adds a direct acquire spy once the non-public artifact-lock module exists.
-    // Until then, the final tree is decisive and watcher events are supplemental evidence.
+    const acquireSpy = vi.spyOn(artifactLockModule, "acquireArtifactLock");
+    // The module seam is decisive; tree and watcher evidence additionally catch unknown artifacts.
     const watcher = watch(root, { recursive: true }, (_eventType, filename) => {
       if (filename) observedEvents.push(String(filename).replace(/\\/g, "/"));
     });
@@ -508,8 +519,10 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     try {
       const preview = await applyReclassification(root, reclassificationInput(identity));
       expect(preview).toMatchObject({ ok: true, value: { written: false } });
+      expect(acquireSpy).not.toHaveBeenCalled();
     } finally {
       watcher.close();
+      acquireSpy.mockRestore();
     }
 
     expect(await workspaceTree(root)).toEqual(beforeTree);
@@ -795,26 +808,103 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
         root,
         reclassificationInput(identity, { dryRun: false, repairToken: previewValue.repairToken })
       );
+      const durableBytes = await read(root, PIPELINE_PATH);
+      const previewPendingRepair = objectValue(previewValue.pendingRepair);
 
       expect(result).toMatchObject({
         ok: false,
         mutation: {
           written: false,
-          journalState: "failed",
-          pendingRepair: expect.objectContaining({
-            kind: "record_reclassification_confirmation",
-            artifact: expect.objectContaining({ relativePath: PIPELINE_PATH, postAppendSha256: expect.any(String) }),
-            targetRecord: expect.any(Object),
-            overlayEventKey: expect.any(String),
-            retry: { action: "retry_same_record_reclassification", mode: "confirm_only" }
-          })
+          journalState: "failed"
         }
+      });
+      expect(result.mutation?.pendingRepair).toEqual({
+        kind: "record_reclassification_confirmation",
+        artifact: { relativePath: PIPELINE_PATH, postAppendSha256: sha256(durableBytes) },
+        targetRecord: identity,
+        overlayEventKey: previewPendingRepair.overlayEventKey,
+        retry: { action: "retry_same_record_reclassification", mode: "confirm_only" }
       });
       expect(result.mutation?.completedOperations.some((operation: string) => /write/i.test(operation))).toBe(true);
       expect(result.mutation?.pendingOperations.some((operation: string) => /confirm/i.test(operation))).toBe(true);
-      expect(await read(root, PIPELINE_PATH)).toContain('"event":"record_reclassification"');
+      expect(durableBytes).toContain('"event":"record_reclassification"');
     } finally {
       parseSpy.mockRestore();
+    }
+  });
+
+  it("AC-6 retains a failed owner cleanup capability and consumes it before exact replay", async () => {
+    const { root, identity } = await incidentFixture();
+    const expectedLockIdentity = await artifactLockModule.resolveArtifactLockIdentity(path.join(root, PIPELINE_PATH));
+    const expectedRelativeLockPath = path.relative(root, expectedLockIdentity.lockPath).replace(/\\/g, "/");
+    const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
+    const input = reclassificationInput(identity, { dryRun: false, repairToken: previewValue.repairToken });
+    const realRelease = artifactLockModule.releaseArtifactLock;
+    let retainedCapability: Parameters<typeof artifactLockModule.releaseArtifactLock>[0] | undefined;
+    const cleanupDiagnostic = {
+      code: "EACCES",
+      message: "Injected owner-verified artifact lock cleanup failure"
+    };
+    const releaseSpy = vi.spyOn(artifactLockModule, "releaseArtifactLock").mockImplementationOnce(async (capability) => {
+      retainedCapability = capability;
+      return { ok: false, reason: "cleanup_failed", cleanupDiagnostic };
+    });
+    const retrySpy = vi.spyOn(artifactLockModule, "retryRetainedArtifactLockCleanup").mockImplementation(async (canonicalPath) => {
+      expect(retainedCapability).toBeDefined();
+      expect(canonicalPath).toBe(retainedCapability!.canonicalPath);
+      const result = await realRelease(retainedCapability!);
+      if (result.ok && result.released) retainedCapability = undefined;
+      return result;
+    });
+
+    try {
+      const failedCleanup = await applyReclassification(root, input);
+      const durableBytes = await read(root, PIPELINE_PATH);
+      expect(releaseSpy).toHaveBeenCalledTimes(1);
+      expect(retainedCapability).toMatchObject({
+        ...expectedLockIdentity,
+        ownerIdentitySha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        token: expect.any(String)
+      });
+      expect(failedCleanup).toMatchObject({
+        ok: false,
+        mutation: {
+          written: false,
+          journalState: "failed",
+          completedOperations: expect.arrayContaining([
+            expect.stringMatching(/write/i),
+            expect.stringMatching(/confirm/i)
+          ]),
+          pendingOperations: [expect.stringMatching(/cleanup/i)]
+        }
+      });
+      expect(failedCleanup.mutation?.pendingRepair).toEqual({
+        kind: "record_reclassification_lock_cleanup",
+        artifact: { relativePath: PIPELINE_PATH, postAppendSha256: sha256(durableBytes) },
+        lock: {
+          relativePath: expectedRelativeLockPath,
+          ownerIdentitySha256: retainedCapability!.ownerIdentitySha256
+        },
+        cleanupDiagnostic,
+        retry: { action: "retry_same_record_reclassification", mode: "cleanup_then_replay" }
+      });
+
+      const replay = await applyReclassification(root, input);
+
+      expect(retrySpy).toHaveBeenCalledTimes(1);
+      expect(retainedCapability).toBeUndefined();
+      expect(replay).toMatchObject({
+        ok: true,
+        value: { written: false, journalState: "confirmed", pendingRepair: null },
+        mutation: { written: false, operations: [] }
+      });
+      const parsed = await jsonlModule.parseWorkflowJsonl({ root }, PIPELINE_PATH);
+      expect(parsed.entries.filter((entry) => entry.event.event === "record_reclassification")).toHaveLength(1);
+      expect(await artifactLockResidue(root, expectedLockIdentity.lockPath)).toEqual([]);
+    } finally {
+      releaseSpy.mockRestore();
+      retrySpy.mockRestore();
+      if (retainedCapability) await realRelease(retainedCapability);
     }
   });
 
