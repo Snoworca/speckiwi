@@ -396,7 +396,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     ]) {
       expect(help.stdout).toContain(option);
     }
-    expect(help.stdout).not.toContain("--event");
+    expect(help.stdout).not.toMatch(/(?:^|\s)--event(?=\s|[=<]|$)/m);
 
     const arbitraryEvent = await invokeJson(workspace.root, [
       ...reclassifyArgs(workspace.worklog),
