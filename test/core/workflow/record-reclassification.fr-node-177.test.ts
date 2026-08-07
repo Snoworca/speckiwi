@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -590,6 +590,32 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
       mutation: { written: false, operations: [] }
     });
     expect(replay.value?.completedOperations.some((operation: string) => /confirm/i.test(operation))).toBe(true);
+  });
+
+  it("AC-5 reports an appended heartbeat after preview as a stale patch without changing durable bytes", async () => {
+    const { root, identity } = await incidentFixture();
+    const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
+    const heartbeat = JSON.stringify({
+      schema_version: "1.0.0",
+      skill: "kiwi-pm",
+      run_id: "heartbeat-after-record-reclassification-preview",
+      status: "TASK_DONE"
+    });
+    await appendFile(path.join(root, PIPELINE_PATH), `${heartbeat}\n`, "utf8");
+    const afterHeartbeat = await read(root, PIPELINE_PATH);
+
+    const result = await applyReclassification(
+      root,
+      reclassificationInput(identity, { dryRun: false, repairToken: previewValue.repairToken })
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "STALE_PATCH" },
+      mutation: { written: false, journalState: "failed" }
+    });
+    expect(result.diagnostics.map((item) => item.code)).toEqual(["SRS-E032"]);
+    expect(await read(root, PIPELINE_PATH)).toBe(afterHeartbeat);
   });
 
   it("AC-5 rejects duplicate target identity before producing a repair token", async () => {

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, utimes, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 
@@ -294,6 +294,150 @@ function expectCompleteEnvelope(body: JsonObject, written: boolean): void {
   expect(body).toHaveProperty("mutation.diagnosticDelta");
 }
 
+function mcpSemantic(result: unknown, expectedRoot: string): JsonObject {
+  const body = structuredClone(result) as JsonObject;
+  expect(body.mcpWorkspace).toStrictEqual({
+    indexPath: "docs/spec/00.index.md",
+    packageVersion: expect.any(String),
+    rootSource: "server-cwd-discovery",
+    workspaceRoot: expectedRoot,
+  });
+  delete body.mcpWorkspace;
+  return body;
+}
+
+function canonicalFailure(bodyValue: unknown, mcp: boolean, expectedRoot?: string): JsonObject {
+  const body = structuredClone(bodyValue) as JsonObject;
+  if (mcp) {
+    expect(expectedRoot).toEqual(expect.any(String));
+    expect(body.mcpWorkspace).toStrictEqual({
+      indexPath: "docs/spec/00.index.md",
+      packageVersion: expect.any(String),
+      rootSource: "server-cwd-discovery",
+      workspaceRoot: expectedRoot,
+    });
+  }
+  delete body.mcpWorkspace;
+  const error = body.error as JsonObject;
+  const nestedDiagnostics = error.diagnostics;
+  const nestedStaleGuard = error.staleGuard;
+  const topLevelStaleGuard = body.staleGuard;
+  const effectiveStaleGuard = nestedStaleGuard ?? topLevelStaleGuard;
+  if (mcp && effectiveStaleGuard !== undefined) {
+    expect(body.recovery).toStrictEqual({
+      message: String((effectiveStaleGuard as JsonObject).retry ?? "Retry the mutation."),
+      tool: "retry_mutation",
+    });
+  } else if (mcp) {
+    expect(body.recovery).toBeUndefined();
+  }
+  delete body.recovery;
+  if (nestedDiagnostics !== undefined) {
+    expect(nestedDiagnostics).toStrictEqual(body.diagnostics);
+  }
+  delete error.diagnostics;
+  delete error.staleGuard;
+  delete body.staleGuard;
+  body.error = error;
+  body.canonicalFailureContext = {
+    diagnostics: body.diagnostics,
+    staleGuard: effectiveStaleGuard ?? null,
+  };
+  return body;
+}
+
+function expectSuccessParity(cli: JsonObject, mcp: unknown, expectedRoot: string): void {
+  expect(cli).toStrictEqual(mcpSemantic(mcp, expectedRoot));
+}
+
+function expectFailureParity(cli: JsonObject, mcp: unknown, expectedRoot: string): void {
+  expect(canonicalFailure(cli, false)).toStrictEqual(canonicalFailure(mcp, true, expectedRoot));
+}
+
+function semanticOutcome(body: JsonObject, mcp: boolean, expectedRoot?: string): JsonObject {
+  return body.ok === true
+    ? (mcp ? mcpSemantic(body, expectedRoot!) : structuredClone(body))
+    : canonicalFailure(body, mcp, expectedRoot);
+}
+
+function sortOutcomes(values: JsonObject[], mcp: boolean, expectedRoot?: string): JsonObject[] {
+  return values
+    .map((value) => semanticOutcome(value, mcp, expectedRoot))
+    .sort((left, right) => {
+      const leftWritten = (left.value as JsonObject | undefined)?.written === true ? 1 : 0;
+      const rightWritten = (right.value as JsonObject | undefined)?.written === true ? 1 : 0;
+      if (leftWritten !== rightWritten) return leftWritten - rightWritten;
+      return JSON.stringify(left).localeCompare(JSON.stringify(right));
+    });
+}
+
+function concurrentOutcomeClass(body: JsonObject): "loser" | "writer" {
+  if (body.ok === true && (body.value as JsonObject).written === true) return "writer";
+  expect(body).toMatchObject({
+    mutation: { written: false },
+    ok: false,
+  });
+  const error = body.error as JsonObject;
+  const diagnostics = body.diagnostics as JsonObject[];
+  if (error.code === "STALE_PATCH") {
+    expect(diagnostics.map((item) => item.code)).toStrictEqual(["SRS-E032"]);
+    expect(body.diagnosticsSummary).toStrictEqual({
+      byCode: { "SRS-E032": 1 },
+      errors: 1,
+      warnings: 0,
+    });
+    expect(error.message).toMatch(/stale/i);
+    return "loser";
+  }
+  if (error.diagnostics !== undefined) {
+    expect(error.diagnostics).toStrictEqual(diagnostics);
+  }
+  const errorContract = { ...error };
+  delete errorContract.diagnostics;
+  expect(errorContract).toStrictEqual({
+    code: "MUTATION_DENIED",
+    message: "Conflicting non-identical record reclassification overlay",
+  });
+  expect(diagnostics).toStrictEqual([
+    {
+      code: "SRS-E071",
+      details: {
+        line: expect.any(Number),
+        path: expect.any(String),
+      },
+      message: "Conflicting non-identical record reclassification overlay",
+      severity: "error",
+    },
+  ]);
+  expect(JSON.stringify(diagnostics)).not.toMatch(/identity|repairToken|token/i);
+  return "loser";
+}
+
+function expectWinnerMatchesDurable(winner: JsonObject, durable: string): void {
+  const operation = ((winner.operations as JsonObject[])[0]!.lines as string[])[0]!;
+  const returnedOverlay = JSON.parse(operation) as JsonObject;
+  const durableOverlay = durable
+    .trimEnd()
+    .split(/\r?\n/)
+    .map((line) => JSON.parse(line) as JsonObject)
+    .find((entry) => entry.event === "record_reclassification")!;
+  expect(durableOverlay).toStrictEqual(returnedOverlay);
+  expect(durableOverlay.journal_key).toBe(winner.journalKey);
+  expect(durableOverlay.reason).toEqual(expect.any(String));
+  expect((durableOverlay.reason as string).length).toBeGreaterThan(0);
+  const target = winner.targetRecord as JsonObject;
+  expect(durableOverlay.operation).toMatchObject({
+    byte_offset: target.byteOffset,
+    event_key: target.eventKey,
+    preimage_prefix_sha256: target.preimagePrefixSha256,
+    raw_sha256: target.rawSha256,
+    record_type: target.recordType,
+    source_line: target.line,
+    source_path: target.path,
+    target_run_id: target.targetRunId,
+  });
+}
+
 function mcpInput(
   target: RecordTarget,
   overrides: Partial<{
@@ -353,20 +497,6 @@ async function previewAndApply(root: string, target: RecordTarget): Promise<CliR
     "--repair-token",
     previewValue.repairToken as string,
   ]);
-}
-
-async function mcpPreviewAndApply(
-  server: ReturnType<typeof mutationServer>,
-  target: RecordTarget,
-): Promise<unknown> {
-  const preview = (await server.callTool(
-    "workflow_record_reclassification",
-    mcpInput(target),
-  )) as { value: { repairToken: string } };
-  return server.callTool(
-    "workflow_record_reclassification",
-    mcpInput(target, { dryRun: false, repairToken: preview.value.repairToken }),
-  );
 }
 
 describe("IR-CLI-089 workflow record reclassification", () => {
@@ -497,7 +627,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
 
       expect(cliPreview.code).toBe(0);
       expectCompleteEnvelope(cliPreview.body, false);
-      expect(cliPreview.body).toStrictEqual(mcpPreview);
+      expectSuccessParity(cliPreview.body, mcpPreview, mcpWorkspace.root);
       expect(cliPreview.body).toMatchObject({
         mutation: {
           idempotencyKey: expect.any(String),
@@ -509,10 +639,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
             preimagePrefixSha256: cliWorkspace.pipeline.preimagePrefixSha256,
             rawSha256: cliWorkspace.pipeline.rawSha256,
             recordType: cliWorkspace.pipeline.recordType,
-            reqId: adapterFields.reqId,
-            runId: adapterFields.runId,
             targetRunId: cliWorkspace.pipeline.targetRunId,
-            taskId: adapterFields.taskId,
           },
         },
         value: {
@@ -525,10 +652,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
             preimagePrefixSha256: cliWorkspace.pipeline.preimagePrefixSha256,
             rawSha256: cliWorkspace.pipeline.rawSha256,
             recordType: cliWorkspace.pipeline.recordType,
-            reqId: adapterFields.reqId,
-            runId: adapterFields.runId,
             targetRunId: cliWorkspace.pipeline.targetRunId,
-            taskId: adapterFields.taskId,
           },
         },
       });
@@ -572,13 +696,13 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       const mcpApply = await mcpServer.callTool("workflow_record_reclassification", mcpApplyInput);
       expect(cliApply.code).toBe(0);
       expectCompleteEnvelope(cliApply.body, true);
-      expect(cliApply.body).toStrictEqual(mcpApply);
+      expectSuccessParity(cliApply.body, mcpApply, mcpWorkspace.root);
 
       const cliReplay = await invokeJson(cliWorkspace.root, cliApplyArgs);
       const mcpReplay = await mcpServer.callTool("workflow_record_reclassification", mcpApplyInput);
       expect(cliReplay.code).toBe(0);
       expectCompleteEnvelope(cliReplay.body, false);
-      expect(cliReplay.body).toStrictEqual(mcpReplay);
+      expectSuccessParity(cliReplay.body, mcpReplay, mcpWorkspace.root);
     } finally {
       vi.useRealTimers();
     }
@@ -736,6 +860,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       await writeFile(absolutePath, ambiguousContents, "utf8");
       await utimes(absolutePath, fixedMtime, fixedMtime);
     }
+    await rm(path.join(ambiguousWorkspace.root, ambiguousWorkspace.pipeline.path));
     const noPathArgs = reclassifyArgs(ambiguousWorkspace.pipeline);
     const pathOption = noPathArgs.indexOf("--path");
     noPathArgs.splice(pathOption, 2);
@@ -790,9 +915,9 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-07T02:03:04.567Z"));
     try {
-      const compareFailure = (cli: CliResult, mcp: unknown): void => {
+      const compareFailure = (cli: CliResult, mcp: unknown, expectedRoot: string): void => {
         expect(cli.code).not.toBe(0);
-        expect(cli.body).toStrictEqual(mcp);
+        expectFailureParity(cli.body, mcp, expectedRoot);
         expect(cli.body).toMatchObject({ mutation: { written: false }, ok: false });
       };
 
@@ -826,6 +951,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           "workflow_record_reclassification",
           mcpInput(malformedTarget(malformedMcp)),
         ),
+        malformedMcp.root,
       );
 
       const kindCli = await createWorkspace();
@@ -839,6 +965,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           "workflow_record_reclassification",
           mcpInput({ ...kindMcp.pipeline, recordType: "worklog" }),
         ),
+        kindMcp.root,
       );
 
       const staleCli = await createWorkspace();
@@ -873,6 +1000,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
             repairToken: staleMcpPreview.value.repairToken,
           }),
         ),
+        staleMcp.root,
       );
 
       const ambiguousCli = await createWorkspace();
@@ -892,6 +1020,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
             new Date("2026-08-07T00:00:00.000Z"),
           );
         }
+        await rm(path.join(workspace.root, workspace.pipeline.path));
       }
       const ambiguousCliArgs = reclassifyArgs(ambiguousCli.pipeline);
       ambiguousCliArgs.splice(ambiguousCliArgs.indexOf("--path"), 2);
@@ -903,6 +1032,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           "workflow_record_reclassification",
           ambiguousMcpInput,
         ),
+        ambiguousMcp.root,
       );
 
       const unrelatedCli = await createWorkspace();
@@ -930,6 +1060,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           "workflow_record_reclassification",
           mcpInput(unrelatedTargets[1] as RecordTarget),
         ),
+        unrelatedMcp.root,
       );
 
       const conflictCli = await createWorkspace();
@@ -980,6 +1111,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
             repairToken: mcpRightPreview.value.repairToken,
           }),
         ),
+        conflictMcp.root,
       );
 
       const genericCli = await createWorkspace();
@@ -1013,6 +1145,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           path: genericPath,
           runId: "generic-run",
         }),
+        genericMcp.root,
       );
     } finally {
       vi.useRealTimers();
@@ -1052,10 +1185,20 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         identicalMcpServer.callTool("workflow_record_reclassification", identicalMcpInput),
       ]);
       expect(identicalCliResults.map((result) => result.code)).toEqual([0, 0]);
-      expect(identicalCliResults.map((result) => result.body)).toStrictEqual(identicalMcpResults);
+      expect(sortOutcomes(identicalCliResults.map((result) => result.body), false)).toStrictEqual(
+        sortOutcomes(identicalMcpResults as JsonObject[], true, identicalMcp.root),
+      );
       expect(
         identicalCliResults.map((result) => (result.body.value as JsonObject).written).sort(),
       ).toEqual([false, true]);
+      const identicalCliWinner = identicalCliResults.find(
+        (result) => (result.body.value as JsonObject).written === true,
+      )!.body.value as JsonObject;
+      const identicalMcpWinner = (identicalMcpResults as JsonObject[]).find(
+        (result) => (result.value as JsonObject).written === true,
+      )!.value as JsonObject;
+      expect(identicalCliWinner.targetRecord).toStrictEqual(identicalMcpWinner.targetRecord);
+      expect(identicalCliWinner.journalKey).toBe(identicalMcpWinner.journalKey);
       const identicalLines = (
         await readFile(path.join(identicalCli.root, identicalCli.worklog.path), "utf8")
       )
@@ -1063,6 +1206,13 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         .split("\n")
         .map((line) => JSON.parse(line) as JsonObject);
       expect(identicalLines.filter((entry) => entry.event === "record_reclassification")).toHaveLength(1);
+      const identicalMcpLines = (
+        await readFile(path.join(identicalMcp.root, identicalMcp.worklog.path), "utf8")
+      )
+        .trimEnd()
+        .split("\n")
+        .map((line) => JSON.parse(line) as JsonObject);
+      expect(identicalMcpLines.filter((entry) => entry.event === "record_reclassification")).toHaveLength(1);
 
       const conflictingCli = await createWorkspace();
       const conflictingMcp = await createWorkspace();
@@ -1119,17 +1269,19 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           }),
         ),
       ]);
-      expect(conflictingCliResults.map((result) => result.body)).toStrictEqual(conflictingMcpResults);
       expect(
-        conflictingCliResults.filter(
-          (result) => result.code === 0 && (result.body.value as JsonObject | undefined)?.written === true,
-        ),
-      ).toHaveLength(1);
-      expect(
-        conflictingCliResults.filter(
-          (result) => result.code !== 0 || (result.body.value as JsonObject | undefined)?.written === false,
-        ),
-      ).toHaveLength(1);
+        conflictingCliResults.map((result) => concurrentOutcomeClass(result.body)).sort(),
+      ).toEqual(["loser", "writer"]);
+      const conflictingMcpSemantics = (conflictingMcpResults as JsonObject[]).map((result) =>
+        semanticOutcome(result, true, conflictingMcp.root),
+      );
+      expect(conflictingMcpSemantics.map(concurrentOutcomeClass).sort()).toEqual(["loser", "writer"]);
+      const conflictingCliWinner = conflictingCliResults.find(
+        (result) => (result.body.value as JsonObject | undefined)?.written === true,
+      )!.body.value as JsonObject;
+      const conflictingMcpWinner = conflictingMcpSemantics.find(
+        (result) => (result.value as JsonObject | undefined)?.written === true,
+      )!.value as JsonObject;
       const conflictingText = await readFile(
         path.join(conflictingCli.root, conflictingCli.pipeline.path),
         "utf8",
@@ -1141,6 +1293,19 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           .map((line) => JSON.parse(line) as JsonObject)
           .filter((entry) => entry.event === "record_reclassification"),
       ).toHaveLength(1);
+      const conflictingMcpText = await readFile(
+        path.join(conflictingMcp.root, conflictingMcp.pipeline.path),
+        "utf8",
+      );
+      expect(
+        conflictingMcpText
+          .trimEnd()
+          .split(/\r?\n/)
+          .map((line) => JSON.parse(line) as JsonObject)
+          .filter((entry) => entry.event === "record_reclassification"),
+      ).toHaveLength(1);
+      expectWinnerMatchesDurable(conflictingCliWinner, conflictingText);
+      expectWinnerMatchesDurable(conflictingMcpWinner, conflictingMcpText);
     } finally {
       vi.useRealTimers();
     }
@@ -1228,13 +1393,10 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-07T04:05:06.789Z"));
     try {
-      const cliWorkspace = await createWorkspace();
-      const mcpWorkspace = await createWorkspace();
-      const server = mutationServer(mcpWorkspace.root);
-      await previewAndApply(cliWorkspace.root, cliWorkspace.pipeline);
-      await previewAndApply(cliWorkspace.root, cliWorkspace.worklog);
-      await mcpPreviewAndApply(server, mcpWorkspace.pipeline);
-      await mcpPreviewAndApply(server, mcpWorkspace.worklog);
+      const workspace = await createWorkspace();
+      const server = mutationServer(workspace.root);
+      await previewAndApply(workspace.root, workspace.pipeline);
+      await previewAndApply(workspace.root, workspace.worklog);
 
       const cases: Array<{
         cli: string[];
@@ -1242,23 +1404,23 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         tool: string;
       }> = [
         {
-          cli: ["workflow", "next-task", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "next-task", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "workflow_next_plan_task",
         },
         {
-          cli: ["workflow", "doctor", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "doctor", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "workflow_doctor",
         },
         {
-          cli: ["workflow", "diff", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "diff", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "workflow_diff",
         },
         {
-          cli: ["workflow", "schema-check", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "schema-check", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "workflow_schema_check",
         },
         { cli: ["workflow", "pipeline-status"], input: {}, tool: "workflow_pipeline_status" },
@@ -1279,22 +1441,29 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           tool: "workflow_session_status",
         },
         {
-          cli: ["workflow", "resume-hint", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "resume-hint", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "workflow_resume_hint",
         },
         {
-          cli: ["workflow", "work-order", "next", "--path", cliWorkspace.planPath],
-          input: { path: mcpWorkspace.planPath },
+          cli: ["workflow", "work-order", "next", "--path", workspace.planPath],
+          input: { path: workspace.planPath },
           tool: "get_next_work_order",
         },
       ];
 
       for (const parityCase of cases) {
-        const cli = await invokeJson(cliWorkspace.root, parityCase.cli);
+        const cli = await invokeJson(workspace.root, parityCase.cli);
         const mcp = await server.callTool(parityCase.tool, parityCase.input);
         expect(cli.code, parityCase.cli.join(" ")).toBe(0);
-        expect(cli.body, parityCase.cli.join(" ")).toStrictEqual(mcp);
+        if (parityCase.tool === "get_next_work_order") {
+          const semantic = mcpSemantic(mcp, workspace.root);
+          expect(semantic.ok).toBe(true);
+          delete semantic.ok;
+          expect(cli.body).toStrictEqual(semantic);
+        } else {
+          expectSuccessParity(cli.body, mcp, workspace.root);
+        }
       }
     } finally {
       vi.useRealTimers();
