@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ParsedWorkspace } from "../types.js";
 import { splitDiagnostics } from "../diagnostic.js";
+import { gitToplevelOf, realpathProbe } from "../root-facts.js";
+import { normaliseRoot } from "../orchestrator/preflight.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
@@ -18,7 +20,8 @@ import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
 //
 // The doctor reports one diagnosis check per health topic the SRS enumerates: docs spec presence and
 // parseability, agent workflow block version currency, bundled-versus-installed rules version drift,
-// Active Target set, scope and target consistency, and Node version. Every check carries a closed
+// project root versus git top level (FR-NODE-179), Active Target set, scope and target consistency,
+// and Node version. Every check carries a closed
 // {ok, warn, fail} state plus a non-empty remediation hint (AC-1). The report is rendered as a plain
 // data object so the CLI can serialize it for --json (AC-2). The diagnosis is pure read — it never
 // writes a file (AC-3); the optional repair is the CLI's --fix path, which re-runs the idempotent init
@@ -580,6 +583,78 @@ async function checkInstalledSkillDrift(
   };
 }
 
+/**
+ * Whether the project root is the top level of the repository containing it.
+ *
+ * @req FR-NODE-179 — `SRS root == git top level` is an invariant the whole tool assumes and nothing
+ * states: README says the root is the Git repository, `upgrade` calls sub-directory scaffolding a
+ * mistake, and the index puts multi-root hosting out of scope. The only enforcement anywhere is the
+ * orchestrator preflight, which most projects never run, so a root one level down keeps looking
+ * correct while the pre-commit hook, the pipeline journal the skills pin, and the skill destinations
+ * follow a different directory.
+ *
+ * No repository is `ok`, not `warn`: a workspace under no version control is supported, and this
+ * check has nothing to say about it. Reporting that as a finding would train readers to ignore it.
+ * A host where git cannot be consulted at all is `ok` for the same reason, but carries git's own
+ * message — "could not look" and "looked and found nothing" are different answers (AC-7).
+ *
+ * The resolver arrives from `diagnoseHealth`'s options for the reason the realpath probe is a
+ * parameter: the answer needs a subprocess, and a fixture cannot otherwise reach the branch where
+ * that subprocess fails. It is not exported — every other check in this module is reached through
+ * `diagnoseHealth`, and this one keeps that shape.
+ */
+async function checkProjectRootIsGitToplevel(
+  rootPath: string,
+  resolve: (target: string) => Promise<string | undefined> = gitToplevelOf
+): Promise<DoctorCheck> {
+  const topic = "project root is the git top level";
+  const label = "Root vs git top level";
+  let toplevel: string | undefined;
+  try {
+    toplevel = await resolve(rootPath);
+  } catch (error) {
+    return {
+      topic,
+      label,
+      state: "ok",
+      message: `git could not be consulted for ${rootPath}, so this check makes no claim: ${(error as Error).message}`,
+      remediation: "No action needed here; install or unblock git if you want this layout checked."
+    };
+  }
+
+  if (toplevel === undefined) {
+    return {
+      topic,
+      label,
+      state: "ok",
+      message: `no git repository contains ${rootPath}; this check makes no claim about the layout`,
+      remediation: "No action needed; a workspace outside version control has no top level to differ from."
+    };
+  }
+
+  // @req FR-NODE-179 AC-6 — the orchestrator's own four-rule comparison, realpath included. An
+  // earlier version compared `path.resolve().toLowerCase()`, which resolves no symlink and so warned
+  // that a junctioned or symlinked root was a different directory from the top level it actually is.
+  if (!normaliseRoot(toplevel, rootPath, realpathProbe).match) {
+    return {
+      topic,
+      label,
+      state: "warn",
+      message: `the project root ${path.resolve(rootPath)} is not the top level of its repository ${path.resolve(toplevel)}`,
+      remediation:
+        "Run speckiwi from the git top level, or move docs/spec there. Until then three things follow the top level and not this root: the pre-commit hook init installs, the kiwi/ pipeline journal the agent skills pin, and the .claude/.codex skill install destinations — each will be written or read somewhere other than where this root expects."
+    };
+  }
+
+  return {
+    topic,
+    label,
+    state: "ok",
+    message: `the project root is the top level of its repository (${path.resolve(toplevel)})`,
+    remediation: "No action needed; the project root and the git top level are the same directory."
+  };
+}
+
 // @req IR-CLI-065
 /** Active Target set: the index must declare a non-empty Active Target. */
 function checkActiveTarget(workspace: ParsedWorkspace): DoctorCheck {
@@ -709,6 +784,8 @@ export async function diagnoseHealth(
     installedSkillsHomeDir?: string;
     /** IR-CLI-080 — CODEX_HOME, which moves the codex global destination away from `~/.codex`. */
     installedSkillsCodexHome?: string;
+    /** FR-NODE-179 AC-7 — the git top-level resolver, so a fixture can drive the cannot-look branch. */
+    gitToplevelResolver?: (target: string) => Promise<string | undefined>;
   } = {}
 ): Promise<DoctorReport> {
   const nodeVersion = options.nodeVersion ?? process.version;
@@ -729,6 +806,9 @@ export async function diagnoseHealth(
       ...(options.claudeSkillsSourceRoot ? { claudeSourceRoot: options.claudeSkillsSourceRoot } : {}),
       ...(options.codexSkillsSourceRoot ? { codexSourceRoot: options.codexSkillsSourceRoot } : {})
     }),
+    // FR-NODE-179 — the unwritten `SRS root == git top level` invariant, checked where a project
+    // reads about what is wrong with it rather than only in the orchestrator gate.
+    await checkProjectRootIsGitToplevel(workspace.root.root, options.gitToplevelResolver),
     checkActiveTarget(workspace),
     checkScopeTargetConsistency(workspace),
     checkNodeVersion(nodeVersion)

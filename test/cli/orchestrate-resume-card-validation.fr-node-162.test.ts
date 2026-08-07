@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import type { VerbName } from "../../src/core/orchestrator/journal-schema.js";
 import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../src/core/orchestrator/resume-card.js";
+import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req FR-NODE-162 — a resumed session validates the card it READS.
 //
@@ -115,7 +116,7 @@ function facts(): string {
 async function resume(cardValue: ResumeCard, journal: Record<string, unknown>[] = JOURNAL): Promise<{ exit: number; payload: Record<string, unknown> }> {
   const root = await mkdtemp(path.join(tmpdir(), "resume-card-validation-"));
   await write(root, "kiwi/waves.jsonl", journal.map((line) => JSON.stringify(line)).join("\n") + "\n");
-  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(cardValue, null, 2)}\n`);
+  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(await pinResumeRunRoot(cardValue, root), null, 2)}\n`);
   await write(root, "facts.json", facts());
   const pipes = io();
   const exit = await main(["--root", root, "orchestrate", "resume", "--run-id", RUN_ID, "--facts", "facts.json", "--json"], pipes);

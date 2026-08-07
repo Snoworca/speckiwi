@@ -1,7 +1,9 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
+import { promisify } from "node:util";
 import type { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
@@ -76,6 +78,13 @@ function longFlags(cmd: Command): string[] {
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "speckiwi-orchestrate-surface-"));
+}
+
+/** A throwaway git repository — a root the preflight can corroborate (FR-NODE-178). */
+async function gitRepository(): Promise<string> {
+  const root = await realpath(await tempRoot());
+  await promisify(execFile)("git", ["init", "--quiet"], { cwd: root });
+  return root;
 }
 
 /** A `routing/probe.json` document every declared producer field of which is readable (09 §3.6). */
@@ -214,8 +223,12 @@ describe("IR-CLI-082 AC-6 — preflight takes both roots as arguments", () => {
   });
 
   it("compares the two passed values, reading neither from the process working directory", async () => {
-    const one = await tempRoot();
-    const other = await tempRoot();
+    // Both fixtures are real repositories since FR-NODE-178: the preflight now corroborates the
+    // passed `--git-root` against the repository that path names, so a bare temp directory refuses
+    // on that condition and would no longer exercise the claim this case exists to make. The claim
+    // itself is unchanged — the arguments alone decide, and cwd is neither of them.
+    const one = await gitRepository();
+    const other = await gitRepository();
 
     // cwd is this repository, which is neither of the two roots; the mismatch must still be found,
     // and passing the same value twice must still match — both are decided by the arguments alone.

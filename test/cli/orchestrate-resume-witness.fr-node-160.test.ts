@@ -5,6 +5,7 @@ import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../src/core/orchestrator/resume-card.js";
+import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req FR-NODE-160 AC-2 — the witness is supplied by the CALLER.
 //
@@ -118,7 +119,7 @@ function factsBundle(integrationCommits: unknown[]): string {
 async function resume(integrationCommits: unknown[]): Promise<{ exit: number; payload: Record<string, unknown> }> {
   const root = await mkdtemp(path.join(tmpdir(), "orchestrate-resume-witness-"));
   await write(root, "kiwi/waves.jsonl", JOURNAL.map((line) => JSON.stringify(line)).join("\n") + "\n");
-  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(card(), null, 2)}\n`);
+  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(await pinResumeRunRoot(card(), root), null, 2)}\n`);
   await write(root, "facts.json", factsBundle(integrationCommits));
   const pipes = io();
   const exit = await main(["--root", root, "orchestrate", "resume", "--run-id", RUN_ID, "--facts", "facts.json", "--json"], pipes);

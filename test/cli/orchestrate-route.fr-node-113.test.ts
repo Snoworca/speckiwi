@@ -8,6 +8,7 @@ import { computeInvariantDigest, resumeCardPath, type ResumeCard } from "../../s
 import { computeRoute } from "../../src/core/orchestrator/route.js";
 import { parseRouteProbe } from "../../src/core/orchestrator/route-probe.js";
 import { probeDocument } from "../support/route-probe-document.js";
+import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req FR-NODE-113 AC-1, AC-4, AC-5, AC-6 — the freeze and the resume, as SESSION behaviour.
 //
@@ -101,7 +102,7 @@ async function seedRoot(): Promise<string> {
   await write(root, "routing/probe.json", `${JSON.stringify(stepProbeDocument(), null, 2)}\n`);
   await write(root, "routing/route-gate.json", `${JSON.stringify(gateRecord(), null, 2)}\n`);
   await write(root, "kiwi/waves.jsonl", "");
-  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(baseCard(), null, 2)}\n`);
+  await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(await pinResumeRunRoot(baseCard(), root), null, 2)}\n`);
   return root;
 }
 
@@ -230,7 +231,7 @@ describe("FR-NODE-113 AC-1 — a redo whose digest matches is a no-op", () => {
     const root = await seedRoot();
     await run(root, ["route", "freeze"]);
     // The card is rolled back to its pre-freeze state; the lock on disk is untouched and matches.
-    await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(baseCard(), null, 2)}\n`);
+    await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(await pinResumeRunRoot(baseCard(), root), null, 2)}\n`);
 
     const redo = await run(root, ["route", "freeze"]);
 

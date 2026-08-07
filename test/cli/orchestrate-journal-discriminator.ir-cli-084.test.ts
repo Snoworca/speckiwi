@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { EVENT_KINDS, WAVES_EVENT_FIELDS } from "../../src/core/orchestrator/journal-schema.js";
 import { emptyDriftInputs, emptyGitFacts, minimalCard } from "../core/orchestrator/resume-fixtures.js";
+import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req IR-CLI-084 AC-6 — "use of the option is recorded in the run journal". A line is *recorded*
 // only if the journal's own readers can interpret it, so the assertions below run the reader rather
@@ -102,7 +103,7 @@ describe("IR-CLI-084 AC-6 — the recorded line is one the journal's readers can
     const { root, exit } = await planUnderStrictGrounding();
     expect(exit, "--strict-grounding refuses the absent path, after journalling").toBe(2);
 
-    await write(root, "card.json", JSON.stringify(minimalCard()));
+    await write(root, "card.json", JSON.stringify(await pinResumeRunRoot(minimalCard(), root)));
     await write(root, "facts.json", JSON.stringify({ gitFacts: emptyGitFacts(), driftInputs: emptyDriftInputs() }));
 
     const resumed = await run([

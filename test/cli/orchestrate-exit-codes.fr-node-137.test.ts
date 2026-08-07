@@ -7,6 +7,7 @@ import { main } from "../../src/cli/index.js";
 import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { minimalCard, emptyDriftInputs, emptyGitFacts } from "../core/orchestrator/resume-fixtures.js";
 import { defaultCatalog, defaultHandoff, defaultLane, defaultRoot } from "../core/orchestrator/handoff-fixtures.js";
+import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req FR-NODE-137 — one exit-code table for the whole `orchestrate` namespace:
 // 2 on gate refusal, 1 on an operational error, 0 on success, in both normal and --dry-run modes.
@@ -118,7 +119,7 @@ describe("FR-NODE-137 AC-1 / AC-2 — the four gate verbs exit 2 on refusal and 
   it("`resume` refuses with a GateId and succeeds with an empty violation list", async () => {
     const refusedRoot = await tempRoot();
     await seedRun(refusedRoot, "run-a", [invalidLine("run-a")]);
-    await write(refusedRoot, "card.json", JSON.stringify(minimalCard()));
+    await write(refusedRoot, "card.json", JSON.stringify(await pinResumeRunRoot(minimalCard(), refusedRoot)));
     await write(refusedRoot, "facts.json", JSON.stringify({ gitFacts: emptyGitFacts(), driftInputs: emptyDriftInputs() }));
     const refused = await run(["--root", refusedRoot, "orchestrate", "resume", "--run-id", "run-a", "--card", "card.json", "--facts", "facts.json"]);
     expect(refused.exit).toBe(2);
@@ -126,7 +127,7 @@ describe("FR-NODE-137 AC-1 / AC-2 — the four gate verbs exit 2 on refusal and 
 
     const okRoot = await tempRoot();
     await seedRun(okRoot, "run-a", []);
-    await write(okRoot, "card.json", JSON.stringify(minimalCard()));
+    await write(okRoot, "card.json", JSON.stringify(await pinResumeRunRoot(minimalCard(), okRoot)));
     await write(okRoot, "facts.json", JSON.stringify({ gitFacts: emptyGitFacts(), driftInputs: emptyDriftInputs() }));
     const passed = await run(["--root", okRoot, "orchestrate", "resume", "--run-id", "run-a", "--card", "card.json", "--facts", "facts.json"]);
     expect(passed.exit, JSON.stringify(passed.payload)).toBe(0);

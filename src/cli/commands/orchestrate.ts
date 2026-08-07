@@ -1,4 +1,3 @@
-import { realpathSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -14,7 +13,8 @@ import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRo
 import { computeLanePlan, LanePlanError, type LanePlanInput } from "../../core/orchestrator/lane-plan.js";
 import { freezeLock, serializeLock } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
-import { normaliseRoot } from "../../core/orchestrator/preflight.js";
+import { normaliseRoot, preflightRunRoot } from "../../core/orchestrator/preflight.js";
+import { gitToplevelOf, realpathProbe } from "../../core/root-facts.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
 import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
@@ -704,6 +704,28 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         // the journal grows after the card is written, so write-time validation cannot cover them.
         const cardValidation = validateCard(parsed.card, view);
         if (!cardValidation.ok) return refuse("resume-card-missing-or-invalid", cardValidation.violations.map((code) => ({ code })));
+        // @req FR-NODE-180 — the card has always carried the run's two roots and the invariant digest
+        // has always covered them, but nothing compared them to the world: the digest proves the card
+        // did not change, not that this session is in the repository the run was pinned to. The
+        // preflight guards the start of a run; a resume had no equivalent, and a resumed session has
+        // no conversation to contradict it. Neither side is derived from the other — the pinned side
+        // was written in an earlier session, the observed side is measured from the root being
+        // resumed — so this comparison is not the vacuous one the preflight arguments exist to avoid.
+        const pinnedToplevel = parsed.card.frozen?.run_root?.git_toplevel;
+        // @req FR-NODE-180 AC-7 — a missing pin refuses rather than skipping the check. Skipping was
+        // the same forgery this requirement's sibling was written against: `validateCard` never
+        // mentions `run_root` and `computeInvariantDigest` hashes whatever `frozen` holds, so a card
+        // with the field deleted and the digest recomputed is self-consistent, passes validation, and
+        // would have resumed anywhere at all. Every card `writeCard` produces carries the field.
+        if (typeof pinnedToplevel !== "string" || pinnedToplevel.length === 0) {
+          return refuse("run-invariant-drift", [{ code: "run-root-unpinned", resumedRoot: root.root }]);
+        }
+        const observed = await gitToplevelOf(root.root);
+        if (observed === undefined || !normaliseRoot(pinnedToplevel, observed, realpathProbe).match) {
+          return refuse("run-invariant-drift", [
+            { code: "run-root-moved", pinned: pinnedToplevel, observed: observed ?? null, resumedRoot: root.root }
+          ]);
+        }
         const facts = options.facts
           ? ((await readJsonFile(path.resolve(root.root, options.facts as string), "--facts")) as {
               gitFacts?: GitFacts;
@@ -733,16 +755,23 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .requiredOption("--git-root <path>", "the root `git rev-parse --show-toplevel` reports")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
-        const probe = (target: string): string => {
-          try {
-            return realpathSync(target);
-          } catch {
-            return target;
-          }
-        };
-        const comparison = normaliseRoot(options.mcpRoot as string, options.gitRoot as string, probe);
-        if (!comparison.match) return refuse("run-root-preflight-mismatch", [comparison]);
-        return { comparison };
+        // @req FR-NODE-178 — resolved before the pure verdict rather than inside it: the answer needs
+        // a subprocess, and the comparison module holds no facility to run one, which is the same
+        // reason `realpath` arrives injected.
+        const toplevel = await gitToplevelOf(options.gitRoot as string);
+        const verdict = preflightRunRoot(options.mcpRoot as string, options.gitRoot as string, {
+          realpath: realpathProbe,
+          gitToplevel: () => toplevel
+        });
+        // @req IR-CLI-090 — the reason travels inside the violation. The gate vocabulary is a closed
+        // union with a parity assertion over it, so three conditions share one gate id and are told
+        // apart by a field; widening the union would cost more than the diagnosis is worth.
+        if (!verdict.ok) {
+          return refuse("run-root-preflight-mismatch", [
+            { reason: verdict.reason, gitToplevel: verdict.gitToplevel, ...verdict.comparison }
+          ]);
+        }
+        return { comparison: verdict.comparison, gitToplevel: verdict.gitToplevel };
       });
     });
 
