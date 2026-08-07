@@ -190,6 +190,9 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
     }
 
     for (const invalid of [
+      { ...request, runId: "   " },
+      { ...request, path: "   " },
+      { ...request, owner: "   " },
       { ...request, reason: "   " },
       { ...request, recordType: "legacy" },
       { ...request, recordType: "unknown" }
@@ -219,18 +222,18 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
     const server = createTestMcpServer({ root });
     registerFreshMutationTools(server, { root });
     const forwarded = {
-      runId: "forward-run",
-      path: PIPELINE_PATH,
+      runId: "  forward-run  ",
+      path: `  ${PIPELINE_PATH}  `,
       recordType: "pipeline",
       line: 7,
       byteOffset: 123,
-      rawSha256: "raw-sha",
+      rawSha256: "a".repeat(64),
       eventKey: "skill|target",
       targetRunId: "target",
-      preimagePrefixSha256: "prefix-sha",
-      expectedSha256: "journal-sha",
-      owner: "kiwi-srs",
-      reason: "forward every field",
+      preimagePrefixSha256: "b".repeat(64),
+      expectedSha256: "c".repeat(64),
+      owner: "  kiwi-srs  ",
+      reason: "  forward every field  ",
       taskId: "T-001",
       reqId: "FR-NODE-177",
       idempotencyKey: "idempotency",
@@ -239,7 +242,8 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
     };
 
     try {
-      await server.callTool(TOOL, forwarded);
+      const parsed = z.object(toolSchemas[TOOL]).strict().parse(forwarded);
+      await server.callTool(TOOL, parsed);
       expect(applyWorkflowMutation).toHaveBeenCalledTimes(1);
       expect(applyWorkflowMutation.mock.calls[0]?.[1]).toEqual({
         kind: "workflow_record_reclassification",
@@ -497,7 +501,16 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
       "get_next_work_order"
     ]) {
       const result = await server.callTool(reader, reader === "get_next_work_order" ? { pipelinePath: PIPELINE_PATH } : { path: PIPELINE_PATH, includeDeleted: true });
-      expect(result, `${reader} should succeed`).toMatchObject({ ok: true, diagnostics: expect.any(Array), diagnosticsSummary: expect.any(Object) });
+      if (reader === "get_next_work_order") {
+        expect(result, `${reader} should preserve its established direct work-order response`).toMatchObject({
+          action: expect.any(String),
+          nextAction: expect.any(Object),
+          diagnostics: expect.any(Array),
+          diagnosticsSummary: expect.any(Object)
+        });
+      } else {
+        expect(result, `${reader} should succeed`).toMatchObject({ ok: true, diagnostics: expect.any(Array), diagnosticsSummary: expect.any(Object) });
+      }
       expect(JSON.stringify(result), `${reader} should remove only the targeted missing-correction diagnostic`).not.toContain("SRS-W054");
     }
 

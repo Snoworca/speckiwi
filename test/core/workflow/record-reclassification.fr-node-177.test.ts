@@ -306,6 +306,45 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     expect(parsed.entries[0]).not.toHaveProperty("effectiveRecordClass", "audit_note");
   });
 
+  it.each([
+    ["a non-derived run_id", "run_id", "record-reclassification-wrong"],
+    ["a missing ts", "ts", undefined],
+    ["a non-ISO ts", "ts", "not-an-iso-timestamp"],
+    ["a blank workflow_run_id", "workflow_run_id", "   "],
+    ["a non-string task_id", "task_id", 7],
+    ["a blank task_id", "task_id", "   "],
+    ["a non-string req_id", "req_id", { invalid: true }],
+    ["a blank req_id", "req_id", "   "]
+  ] as const)("AC-1/9 parser rejects an overlay with %s", async (_case, field, value) => {
+    const { root, before, identity } = await incidentFixture();
+    const overlay = durableOverlay(identity);
+    if (value === undefined) delete overlay[field];
+    else overlay[field] = value;
+    await write(root, PIPELINE_PATH, `${before}${JSON.stringify(overlay)}\n`);
+
+    const parsed = await jsonlModule.parseWorkflowJsonl({ root }, PIPELINE_PATH);
+
+    expect(parsed.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "SRS-W054", filePath: PIPELINE_PATH, line: identity.line })
+    );
+    expect(parsed.latestEntries).toEqual([]);
+    expect(parsed.entries[0]).not.toHaveProperty("effectiveRecordClass", "audit_note");
+  });
+
+  it("AC-5/7/9 parser rejects duplicate otherwise-valid overlays for one target", async () => {
+    const { root, before, identity } = await incidentFixture();
+    const overlay = JSON.stringify(durableOverlay(identity));
+    await write(root, PIPELINE_PATH, `${before}${overlay}\n${overlay}\n`);
+
+    const parsed = await jsonlModule.parseWorkflowJsonl({ root }, PIPELINE_PATH);
+
+    expect(parsed.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "SRS-W054", filePath: PIPELINE_PATH, line: identity.line })
+    );
+    expect(parsed.latestEntries).toEqual([]);
+    expect(parsed.entries[0]).not.toHaveProperty("effectiveRecordClass", "audit_note");
+  });
+
   it("AC-2 uses the official resolver and rejects a path-kind mismatch without writing", async () => {
     const root = await tempRoot();
     const relativePath = ".kiwi/sessions/run-a/worklog.jsonl";
@@ -616,6 +655,29 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     });
     expect(result.diagnostics.map((item) => item.code)).toEqual(["SRS-E032"]);
     expect(await read(root, PIPELINE_PATH)).toBe(afterHeartbeat);
+  });
+
+  it("AC-5 rejects a historical boundary preimage paired with the current expectedSha during preview", async () => {
+    const { root, identity } = await incidentFixture();
+    const heartbeat = `${JSON.stringify({
+      schema_version: "1.0.0",
+      skill: "kiwi-pm",
+      run_id: "heartbeat-before-current-cas-reclassification",
+      status: "TASK_DONE"
+    })}\n`;
+    await appendFile(path.join(root, PIPELINE_PATH), heartbeat, "utf8");
+    const currentBytes = await read(root, PIPELINE_PATH);
+    const currentSha256 = sha256(currentBytes);
+
+    const preview = await applyReclassification(
+      root,
+      reclassificationInput(identity, { expectedSha256: currentSha256 })
+    );
+
+    expect(preview).toMatchObject({ ok: false, mutation: { written: false, operations: [] } });
+    expect(preview.diagnostics.map((item) => item.code)).toEqual(["SRS-E072"]);
+    expect(preview.value).toBeUndefined();
+    expect(await read(root, PIPELINE_PATH)).toBe(currentBytes);
   });
 
   it("AC-5 rejects duplicate target identity before producing a repair token", async () => {
