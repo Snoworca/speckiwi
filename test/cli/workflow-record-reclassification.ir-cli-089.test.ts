@@ -1458,8 +1458,14 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         expect(cli.code, parityCase.cli.join(" ")).toBe(0);
         if (parityCase.tool === "get_next_work_order") {
           const semantic = mcpSemantic(mcp, workspace.root);
-          expect(semantic.ok).toBe(true);
-          delete semantic.ok;
+          expect(semantic.ok).toBeUndefined();
+          expect(semantic).toMatchObject({
+            action: expect.any(String),
+            diagnostics: expect.any(Array),
+            diagnosticsSummary: expect.any(Object),
+            nextAction: expect.any(Object),
+          });
+          expect(JSON.stringify(semantic)).not.toContain("SRS-W054");
           expect(cli.body).toStrictEqual(semantic);
         } else {
           expectSuccessParity(cli.body, mcp, workspace.root);
