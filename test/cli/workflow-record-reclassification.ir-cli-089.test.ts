@@ -400,6 +400,32 @@ function expectFailureParity(cli: JsonObject, mcp: unknown, expectedRoot: string
   expect(canonicalFailure(cli, false)).toStrictEqual(canonicalFailure(mcp, true, expectedRoot));
 }
 
+function expectCleanupFailureLockPath(bodyValue: unknown, expectedLockPath: string): void {
+  const body = bodyValue as JsonObject;
+  const diagnostics = body.diagnostics as JsonObject[];
+  const nestedDiagnostics = ((body.error as JsonObject).diagnostics ?? []) as JsonObject[];
+  for (const diagnostic of [...diagnostics, ...nestedDiagnostics]) {
+    const cleanupDiagnostic = ((diagnostic.details as JsonObject).cleanupDiagnostic as JsonObject);
+    expect(diagnostic.code).toBe("SRS-E075");
+    expect(cleanupDiagnostic.lockPath).toBe(expectedLockPath);
+  }
+  const pendingRepair = ((body.mutation as JsonObject).pendingRepair as JsonObject);
+  expect(((pendingRepair.cleanupDiagnostic as JsonObject).lockPath)).toBe(expectedLockPath);
+}
+
+function normalizeCleanupFailureLockPath(bodyValue: unknown): JsonObject {
+  const body = structuredClone(bodyValue) as JsonObject;
+  const diagnostics = body.diagnostics as JsonObject[];
+  const nestedDiagnostics = ((body.error as JsonObject).diagnostics ?? []) as JsonObject[];
+  for (const diagnostic of [...diagnostics, ...nestedDiagnostics]) {
+    const cleanupDiagnostic = ((diagnostic.details as JsonObject).cleanupDiagnostic as JsonObject);
+    cleanupDiagnostic.lockPath = "<artifact-lock-path>";
+  }
+  const pendingRepair = ((body.mutation as JsonObject).pendingRepair as JsonObject);
+  (pendingRepair.cleanupDiagnostic as JsonObject).lockPath = "<artifact-lock-path>";
+  return body;
+}
+
 function semanticOutcome(body: JsonObject, mcp: boolean, expectedRoot?: string): JsonObject {
   return body.ok === true
     ? (mcp ? mcpSemantic(body, expectedRoot!) : structuredClone(body))
@@ -615,7 +641,11 @@ function expectPostAppendFailure(
     expect(body).toMatchObject({
       mutation: {
         pendingRepair: {
-          cleanupDiagnostic: expect.objectContaining({ code: expect.any(String), severity: expect.any(String) }),
+          cleanupDiagnostic: {
+            code: expect.any(String),
+            lockPath: expect.any(String),
+            message: expect.any(String),
+          },
           lock: {
             ownerIdentitySha256: expect.stringMatching(/^[a-f0-9]{64}$/),
             relativePath: expect.any(String),
@@ -629,6 +659,11 @@ function expectPostAppendFailure(
       "kind",
       "lock",
       "retry",
+    ]);
+    expect(Object.keys(pendingRepair.cleanupDiagnostic as JsonObject).sort()).toStrictEqual([
+      "code",
+      "lockPath",
+      "message",
     ]);
   }
   const nestedDiagnostics = (body.error as JsonObject).diagnostics;
@@ -1619,8 +1654,16 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     const workspace = await createWorkspace();
     const treeBefore = await workspaceTreeSnapshot(workspace.root);
     const cleanupDiagnostic = {
-      code: "SRS-E071",
-      details: { operation: "owner-verified-release", retryable: true },
+      code: "EISDIR",
+      lockPath: path.join(workspace.root, `${workspace.pipeline.path}.record-reclassification.lock`),
+      message: "EISDIR: illegal operation on a directory, read",
+    };
+    const topLevelDiagnostic = {
+      code: "SRS-E075",
+      details: {
+        cleanupDiagnostic,
+        ownerIdentitySha256: "e".repeat(64),
+      },
       filePath: workspace.pipeline.path,
       message: "Owner-verified record reclassification lock cleanup failed",
       severity: "error" as const,
@@ -1653,7 +1696,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         sha256: "d".repeat(64),
       },
       completedOperations,
-      diagnosticDelta: { added: [cleanupDiagnostic], preserved: [], removed: [] },
+      diagnosticDelta: { added: [topLevelDiagnostic], preserved: [], removed: [] },
       dryRun: false,
       filePath: workspace.pipeline.path,
       idempotencyKey: "cleanup-idempotency",
@@ -1669,12 +1712,12 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       written: false,
     };
     const syntheticCoreResult = {
-      diagnostics: [cleanupDiagnostic],
-      diagnosticsSummary: { byCode: { "SRS-E071": 1 }, errors: 1, warnings: 0 },
+      diagnostics: [topLevelDiagnostic],
+      diagnosticsSummary: { byCode: { "SRS-E075": 1 }, errors: 1, warnings: 0 },
       error: {
         code: "MUTATION_DENIED",
-        diagnostics: [cleanupDiagnostic],
-        message: cleanupDiagnostic.message,
+        diagnostics: [topLevelDiagnostic],
+        message: topLevelDiagnostic.message,
       },
       mutation,
       ok: false as const,
@@ -1697,8 +1740,8 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       expect(applyWorkflowMutation).toHaveBeenCalledTimes(1);
       expectPostAppendFailure(result, "record_reclassification_lock_cleanup", workspace.pipeline.path);
       expect(result.mutation).toStrictEqual(mutation);
-      expect(result.diagnostics).toStrictEqual([cleanupDiagnostic]);
-      expect(result.error).toMatchObject({ code: "MUTATION_DENIED", message: cleanupDiagnostic.message });
+      expect(result.diagnostics).toStrictEqual([topLevelDiagnostic]);
+      expect(result.error).toMatchObject({ code: "MUTATION_DENIED", message: topLevelDiagnostic.message });
       expect(await workspaceTreeSnapshot(workspace.root)).toStrictEqual(treeBefore);
     } finally {
       vi.doUnmock("../../src/core/workflow/mutation.js");
@@ -1756,15 +1799,23 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       expect(cliFirst.code).not.toBe(0);
       expectPostAppendFailure(cliFirst.body, "record_reclassification_lock_cleanup", cliWorkspace.pipeline.path);
       expectPostAppendFailure(mcpFirst as JsonObject, "record_reclassification_lock_cleanup", mcpWorkspace.pipeline.path);
-      expectFailureParity(cliFirst.body, mcpFirst, mcpWorkspace.root);
+      const cliLockIdentity = await artifactLockModule.resolveArtifactLockIdentity(
+        path.join(cliWorkspace.root, cliWorkspace.pipeline.path),
+      );
+      const mcpLockIdentity = await artifactLockModule.resolveArtifactLockIdentity(
+        path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path),
+      );
+      expectCleanupFailureLockPath(cliFirst.body, cliLockIdentity.lockPath);
+      expectCleanupFailureLockPath(mcpFirst, mcpLockIdentity.lockPath);
+      expectFailureParity(
+        normalizeCleanupFailureLockPath(cliFirst.body),
+        normalizeCleanupFailureLockPath(mcpFirst),
+        mcpWorkspace.root,
+      );
       expect(await artifactLockResidue(path.join(cliWorkspace.root, cliWorkspace.pipeline.path)))
-        .toStrictEqual([path.basename((await artifactLockModule.resolveArtifactLockIdentity(
-          path.join(cliWorkspace.root, cliWorkspace.pipeline.path),
-        )).lockPath)]);
+        .toStrictEqual([path.basename(cliLockIdentity.lockPath)]);
       expect(await artifactLockResidue(path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path)))
-        .toStrictEqual([path.basename((await artifactLockModule.resolveArtifactLockIdentity(
-          path.join(mcpWorkspace.root, mcpWorkspace.pipeline.path),
-        )).lockPath)]);
+        .toStrictEqual([path.basename(mcpLockIdentity.lockPath)]);
 
       const cliSecond = await invokeJson(cliWorkspace.root, cliApplyArgs);
       const mcpSecond = await server.callTool("workflow_record_reclassification", mcpApplyInput);
