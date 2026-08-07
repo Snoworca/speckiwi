@@ -340,6 +340,50 @@ if (process.env[CHILD_MARKER] === "1") {
 } else {
   // @req FR-NODE-177 AC-7/11
   describe("FR-NODE-177 cross-process record reclassification lock", { timeout: 30_000 }, () => {
+    it("waits beyond the former bounded-spin window and confirms the live winner as an exact no-write replay", async () => {
+      const fixture = await incident();
+      const input = await tokenizedInput(fixture, "long-lived winner exact replay");
+      const barrierDirectory = path.join(fixture.root, ".long-live-winner-barrier");
+      await mkdir(barrierDirectory, { recursive: true });
+      const winner = startWorker(fixture.root, barrierDirectory, "winner", input, { pauseOnOverlay: true });
+      let loser: Worker | undefined;
+
+      try {
+        await waitForFile(path.join(barrierDirectory, "process-winner.ready"));
+        await writeFile(path.join(barrierDirectory, "start.release"), "release\n", "utf8");
+        await waitForFile(path.join(barrierDirectory, "overlay-winner.ready"));
+
+        loser = startWorker(fixture.root, barrierDirectory, "loser", input);
+        await waitForFile(path.join(barrierDirectory, "process-loser.ready"));
+        let loserCompletedBeforeWinnerRelease = false;
+        void loser.completion.then(() => { loserCompletedBeforeWinnerRelease = true; });
+
+        await delay(10_000);
+        const observedEarlyCompletion = loserCompletedBeforeWinnerRelease;
+        await writeFile(path.join(barrierDirectory, "overlay-winner.release"), "release\n", "utf8");
+
+        const [winnerCompletion, loserCompletion] = await Promise.all([winner.completion, loser.completion]);
+        expect(winnerCompletion.code, `${winnerCompletion.stdout}\n${winnerCompletion.stderr}`).toBe(0);
+        expect(loserCompletion.code, `${loserCompletion.stdout}\n${loserCompletion.stderr}`).toBe(0);
+        expect(observedEarlyCompletion, "the same-token loser must remain pending while the live winner owns the lock").toBe(false);
+
+        const winnerResult = JSON.parse(await readFile(path.join(barrierDirectory, "result-winner.json"), "utf8")) as JsonObject;
+        const loserResult = JSON.parse(await readFile(path.join(barrierDirectory, "result-loser.json"), "utf8")) as JsonObject;
+        expect(winnerResult).toMatchObject({ ok: true, value: { written: true, journalState: "confirmed" } });
+        expect(loserResult).toMatchObject({
+          ok: true,
+          value: { written: false, journalState: "confirmed", pendingRepair: null },
+          mutation: { written: false, operations: [] }
+        });
+        expect(await durableOverlays(fixture.root)).toHaveLength(1);
+        await assertNoLockResidue(fixture.root);
+      } finally {
+        await writeFile(path.join(barrierDirectory, "overlay-winner.release"), "release\n", "utf8");
+        if (winner.child.exitCode === null) winner.child.kill();
+        if (loser?.child.exitCode === null) loser.child.kill();
+      }
+    });
+
     it.each([1, 2, 3])(
       "serializes identical first applies into one writer and one replay (iteration %s)",
       async (iteration) => {

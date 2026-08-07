@@ -908,6 +908,85 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     }
   });
 
+  it.each([
+    ["missing repairToken", (valid: ReclassificationInput) => {
+      const changed = { ...valid };
+      delete changed.repairToken;
+      return changed;
+    }],
+    ["tampered repairToken", (valid: ReclassificationInput) => ({ ...valid, repairToken: `${valid.repairToken}-tampered` })],
+    ["different reclassification request", (valid: ReclassificationInput) => ({ ...valid, reason: `${valid.reason} changed` })]
+  ] as const)("AC-6 does not consume retained cleanup authority for a %s", async (_case, wrongInput) => {
+    const { root, identity } = await incidentFixture();
+    const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
+    const validInput = reclassificationInput(identity, { dryRun: false, repairToken: String(previewValue.repairToken) });
+    const realRelease = artifactLockModule.releaseArtifactLock;
+    let retainedCapability: Parameters<typeof artifactLockModule.releaseArtifactLock>[0] | undefined;
+    const releaseSpy = vi.spyOn(artifactLockModule, "releaseArtifactLock").mockImplementationOnce(async (capability) => {
+      retainedCapability = capability;
+      return {
+        ok: false,
+        reason: "cleanup_failed",
+        cleanupDiagnostic: { code: "EACCES", message: "Injected retained cleanup authority" }
+      };
+    });
+    const retrySpy = vi.spyOn(artifactLockModule, "retryRetainedArtifactLockCleanup").mockImplementation(async () => {
+      expect(retainedCapability).toBeDefined();
+      const cleanup = await realRelease(retainedCapability!);
+      if (cleanup.ok && cleanup.released) retainedCapability = undefined;
+      return cleanup;
+    });
+
+    try {
+      await applyReclassification(root, validInput);
+      expect(retainedCapability).toBeDefined();
+
+      const rejected = await applyReclassification(root, wrongInput(validInput));
+
+      expect(rejected).toMatchObject({ ok: false, mutation: { written: false } });
+      expect(retrySpy, "an unrelated or invalid retry must not touch the retained registry").not.toHaveBeenCalled();
+      expect(retainedCapability, "the valid owner capability must remain available").toBeDefined();
+
+      const replay = await applyReclassification(root, validInput);
+      expect(retrySpy).toHaveBeenCalledTimes(1);
+      expect(retainedCapability).toBeUndefined();
+      expect(replay).toMatchObject({ ok: true, value: { written: false, journalState: "confirmed" } });
+    } finally {
+      releaseSpy.mockRestore();
+      retrySpy.mockRestore();
+      if (retainedCapability) await realRelease(retainedCapability);
+    }
+  });
+
+  it.each(["EACCES", "EIO"] as const)("AC-7 preserves a traceable %s artifact-lock acquisition failure", async (code) => {
+    const { root, identity } = await incidentFixture();
+    const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
+    const error = Object.assign(new Error(`Injected ${code} artifact-lock acquisition failure`), { code });
+    const acquireSpy = vi.spyOn(artifactLockModule, "acquireArtifactLock").mockRejectedValueOnce(error);
+
+    try {
+      const result = await applyReclassification(
+        root,
+        reclassificationInput(identity, { dryRun: false, repairToken: String(previewValue.repairToken) })
+      );
+      expect(result).toMatchObject({ ok: false, mutation: { written: false } });
+      expect(result.diagnostics).toEqual([{
+        code: "SRS-E075",
+        severity: "error",
+        message: "Workflow artifact lock acquisition failed",
+        filePath: PIPELINE_PATH,
+        details: {
+          operation: "acquire",
+          code,
+          message: error.message
+        }
+      }]);
+      expect(JSON.stringify(result)).not.toMatch(/lock is held|holderOwnerIdentitySha256/i);
+    } finally {
+      acquireSpy.mockRestore();
+    }
+  });
+
   it("AC-7 serializes identical concurrent applies into one writer and one confirmed replay", async () => {
     const { root, identity } = await incidentFixture();
     const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
