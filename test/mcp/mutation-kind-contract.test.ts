@@ -28,6 +28,7 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   workflow_pipeline_emit: "workspace",
   workflow_worklog_emit: "workspace",
   workflow_repair_record: "workspace",
+  workflow_record_reclassification: "workspace",
   workflow_logical_delete: "workspace",
   apply_requirement_id_collision_repair: "workspace",
   // FR-MCP-056 — scope creation and registration. Both act on the workspace index rather than on one
