@@ -1,0 +1,27 @@
+{
+  "iter": 5,
+  "verdict": "No findings",
+  "provenance": {
+    "workspaceRoot": "C:/Work/git/_Snoworca/speckiwi",
+    "packageVersion": "2.7.0",
+    "gitHead": "e2e10e094547f4cdfef6949ef8e010335516a77a",
+    "gitTree": "269923202ec99f9fe77d611788e144151e043f78",
+    "capturedAt": "2026-08-07T14:11:10.4061714+09:00",
+    "srsFileSha256": ["94bbceda4738a9f931cce779562118c4f08882ada4cd31390c958478b401a8bb", "84e70b55b2d223399ca8dfe9c563fa3cecf154933997df25e4fd472a7db138ad", "207538a17ce6603325684745f7f1b2cac444922173c9c20b834280b6549d1c2b", "5581935bf248f42f53df49cded43429154684b5f2b02f61f0d9560da8162b0b2"]
+  },
+  "evaluators": [{"task": "/root/speckiwi_repair_intent", "role": "intent-and-SRS-integrity"}, {"task": "/root/speckiwi_repair_code", "role": "implementation-feasibility-and-regression"}],
+  "findings": [],
+  "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0},
+  "checks": {
+    "classification": "PASS",
+    "conflict": "PASS",
+    "trace": "PASS",
+    "acceptance_criteria": "PASS",
+    "scope": "PASS",
+    "delta": "PASS",
+    "feasibility": "PASS",
+    "mcp_srsmd": "PASS for this delta from a fresh cwd-local SpecKiwi 2.7.0 MCP validate_spec call: errors 0, warnings 1 (pre-existing SRS-W015 IR-CLI-076)",
+    "internal_coherence": "PASS",
+    "golden_rule": "PASS"
+  }
+}

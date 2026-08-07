@@ -1,0 +1,12 @@
+{
+  "summary": "Provide an official append-only recovery for a parseable targetless CORRECTION that actually records an audit-only SRS relation change.",
+  "invariants": [
+    "preserve the original journal bytes",
+    "do not invent corrects_run_id",
+    "do not use logical deletion",
+    "resolve only the exact SRS-W054 missing-target record",
+    "require authoritative post-append reader convergence"
+  ],
+  "external_module": "C:/Work/git/_Snoworca/speckiwi",
+  "external_module_approved": true
+}

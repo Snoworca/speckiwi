@@ -1,0 +1,7 @@
+{
+  "classification": "new-feature",
+  "target": "2.7.0-verification-integrity",
+  "new_requirements": ["FR-NODE-177", "IR-CLI-089", "FR-MCP-057"],
+  "affected_existing_reqs": ["FR-NODE-021", "FR-NODE-028", "FR-NODE-030", "FR-NODE-031", "REL-NODE-003", "IR-CLI-042", "IR-CLI-043", "FR-MCP-037", "FR-MCP-038"],
+  "reason": "The existing verified contracts provide JSONL, mutation, deletion, CLI, and MCP foundations but no truthful recovery for an audit record mislabeled as a targetless correction."
+}

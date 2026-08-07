@@ -1,0 +1,17 @@
+{
+  "implementability": "high",
+  "product_fit": "high",
+  "code_evidence": [
+    "src/core/workflow/jsonl.ts",
+    "src/core/workflow/mutation.ts",
+    "src/core/workflow/artifacts.ts",
+    "src/core/workflow/read.ts",
+    "src/core/workflow/validate.ts",
+    "src/core/workflow/work-order.ts",
+    "src/cli/commands/read.ts",
+    "src/mcp/server.ts",
+    "src/mcp/tools/mutation-tools.ts",
+    "src/mcp/schemas.ts"
+  ],
+  "blocked_alternatives": ["fabricated corrects_run_id", "physical rewrite", "logical deletion", "generic best-effort W054 bypass"]
+}

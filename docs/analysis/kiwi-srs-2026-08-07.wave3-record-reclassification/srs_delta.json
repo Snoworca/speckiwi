@@ -1,0 +1,30 @@
+{
+  "classification": "new-feature",
+  "mode": "live",
+  "provenance": {
+    "workspaceRoot": "C:/Work/git/_Snoworca/speckiwi",
+    "mcpLaunch": "fresh cwd-local speckiwi mcp stdio",
+    "packageVersion": "2.7.0",
+    "gitHead": "e2e10e094547f4cdfef6949ef8e010335516a77a",
+    "gitTree": "269923202ec99f9fe77d611788e144151e043f78",
+    "capturedAt": "2026-08-07T14:11:10.4061714+09:00",
+    "fileSha256": {
+      "docs/spec/00.index.md": "94bbceda4738a9f931cce779562118c4f08882ada4cd31390c958478b401a8bb",
+      "docs/spec/30.cli-interface.srs.md": "84e70b55b2d223399ca8dfe9c563fa3cecf154933997df25e4fd472a7db138ad",
+      "docs/spec/40.mcp-stdio-interface.srs.md": "207538a17ce6603325684745f7f1b2cac444922173c9c20b834280b6549d1c2b",
+      "docs/spec/50.nodejs-implementation.srs.md": "5581935bf248f42f53df49cded43429154684b5f2b02f61f0d9560da8162b0b2"
+    }
+  },
+  "new_requirement_ids": ["FR-NODE-177", "IR-CLI-089", "FR-MCP-057"],
+  "scope_doc_edits": [
+    {"file": "docs/spec/50.nodejs-implementation.srs.md", "section": "Requirements", "op": "append"},
+    {"file": "docs/spec/30.cli-interface.srs.md", "section": "Requirements", "op": "append"},
+    {"file": "docs/spec/40.mcp-stdio-interface.srs.md", "section": "Requirements", "op": "append"}
+  ],
+  "generated_index_edit": {"file": "docs/spec/00.index.md", "op": "sync generated status and type rollups"},
+  "final_status": "planned",
+  "final_stability": "evolving",
+  "validate_spec": {"tool": "validate_spec", "args": {"strict": true, "failOnWarning": false}, "workspaceRoot": "C:/Work/git/_Snoworca/speckiwi", "packageVersion": "2.7.0", "errors": 0, "warnings": 1, "unrelated_warning": "SRS-W015 IR-CLI-076"},
+  "pipeline_event": {"written": false, "reason": "Official workflow_pipeline_emit dry-run halted on two pre-existing SRS-W055 diagnostics; read-back matched zero events and no raw append fallback was used."},
+  "golden_rule": "All Requirement-block mutations used the canonical cwd-local SpecKiwi MCP; no SRS Markdown was manually patched."
+}

@@ -1,0 +1,10 @@
+{
+  "rounds": [
+    {"round": 1, "result": "findings", "evaluators": [{"task": "/root/speckiwi_repair_intent", "summary": {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 4, "LOW": 0}}, {"task": "/root/speckiwi_repair_code", "summary": {"CRITICAL": 0, "HIGH": 4, "MEDIUM": 3, "LOW": 0}}], "themes": ["pendingRepair consumption", "artifact authorization", "concurrent first apply", "durable overlay provenance"]},
+    {"round": 2, "result": "findings", "evaluators": [{"task": "/root/speckiwi_repair_intent", "summary": {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 4, "LOW": 0}}, {"task": "/root/speckiwi_repair_code", "summary": {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 0, "LOW": 0}}], "themes": ["valid trace relation", "exact code range", "authoritative post-append read-back", "non-string correction target"]},
+    {"round": 3, "result": "findings", "evaluators": [{"task": "/root/speckiwi_repair_intent", "summary": {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 2, "LOW": 0}}, {"task": "/root/speckiwi_repair_code", "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}}], "themes": ["idempotency semantics", "pipeline-compact parity", "reader trace ranges"]},
+    {"round": 4, "result": "findings", "evaluators": [{"task": "/root/speckiwi_repair_intent", "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}}, {"task": "/root/speckiwi_repair_code", "summary": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 0}}], "themes": ["derived reader census", "whitespace-only correction target"]},
+    {"round": 5, "result": "no_findings", "evaluators": [{"task": "/root/speckiwi_repair_intent", "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}}, {"task": "/root/speckiwi_repair_code", "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}}], "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}}
+  ],
+  "captureNote": "Rounds 1-4 are retrospective captures of in-session independent subagent outputs; their transient pre-fix file fingerprints were not preserved. Round 5 is bound to the provenance in eval_iter5.json."
+}
