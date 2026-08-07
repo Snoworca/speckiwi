@@ -177,6 +177,44 @@ if (process.env[CHILD_MARKER] === "1") {
       await expectNoResidue(identity);
     });
 
+    it("recovers one winner from an old torn acquisition guard and removes the guard", async () => {
+      const module = await loadArtifactLock();
+      const { artifactPath } = await fixture();
+      const identity = await module.resolveArtifactLockIdentity(artifactPath);
+      const guardPath = `${identity.lockPath}.acquire`;
+      await writeFile(guardPath, "{\"torn-acquire-guard\"", "utf8");
+      const old = new Date("2000-01-01T00:00:00.000Z");
+      await utimes(guardPath, old, old);
+
+      const attempts = await Promise.all([
+        module.acquireArtifactLock({ artifactPath, owner: "guard-recovery-a" }),
+        module.acquireArtifactLock({ artifactPath, owner: "guard-recovery-b" })
+      ]);
+      const winners = attempts.filter((attempt): attempt is Extract<AcquireResult, { ok: true }> => attempt.ok);
+      expect(winners).toHaveLength(1);
+      expect(attempts.filter((attempt) => !attempt.ok)).toEqual([
+        expect.objectContaining({ ok: false, reason: "held" })
+      ]);
+      await expect(module.releaseArtifactLock(winners[0]!.capability)).resolves.toEqual({ ok: true, released: true });
+      await expectNoResidue(identity);
+    });
+
+    it("cleans an old orphan quarantine through the canonical artifact-lock lifecycle", async () => {
+      const module = await loadArtifactLock();
+      const { artifactPath } = await fixture();
+      const identity = await module.resolveArtifactLockIdentity(artifactPath);
+      const quarantinePath = `${identity.lockPath}.stale-orphan-fixture`;
+      await writeFile(quarantinePath, "orphan quarantine\n", "utf8");
+      const old = new Date("2000-01-01T00:00:00.000Z");
+      await utimes(quarantinePath, old, old);
+
+      const acquired = await module.acquireArtifactLock({ artifactPath, owner: "quarantine-recovery" });
+      expect(acquired).toMatchObject({ ok: true });
+      if (!acquired.ok) return;
+      await expect(module.releaseArtifactLock(acquired.capability)).resolves.toEqual({ ok: true, released: true });
+      await expectNoResidue(identity);
+    });
+
     it("exposes a same-process retained-cleanup retry without treating a digest as authority", async () => {
       const module = await loadArtifactLock();
       const { artifactPath } = await fixture();
