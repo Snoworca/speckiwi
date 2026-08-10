@@ -31,9 +31,13 @@ Thumbs.db
 # state — and `.kiwi/` above matched them only because the runtime directory shares the name.
 # While they were ignored they were also absent from the npm tarball, so every consumer got the
 # `process.exit(0)` fallback instead of a working governance hook. @req FR-NODE-183
-!docs/.kiwi/
-docs/.kiwi/*
-!docs/.kiwi/hooks/
+# `**/` and not a root-anchored path: the runners exist at the repo root AND inside
+# `test/fixtures/workspaces/*/docs/.kiwi/hooks/`, which the hook tests copy into a temp project and
+# execute. A root-anchored rule left the fixture copies ignored, so those tests still failed on a
+# clean checkout with `cannot find module …/docs/.kiwi/hooks/pre-commit.mjs`.
+!**/docs/.kiwi/
+**/docs/.kiwi/*
+!**/docs/.kiwi/hooks/
 .serena/
 
 # Atomic-write scratch files. `apply-patch.ts` writes `.speckiwi-<uuid>.tmp` beside the file it
