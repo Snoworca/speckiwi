@@ -11,6 +11,11 @@ kiwi/.srs.lock.guard
 # Orchestrator machine state: `git clean -fd` may remove it and `git add -A` must never stage it.
 kiwi/waves.jsonl
 kiwi/orchestrator/
+# The agent runtime creates an isolated Profile A lane checkout here. Tracked rather than left to
+# `.git/info/exclude`, which is local and unshared and so absent on a fresh clone or a CI runner.
+# `**/` matches the reach of the exclude line it replaces: a root-anchored `.claude/worktrees/` would
+# leave a nested one staged by `git add -A` on a fresh clone. @req FR-NODE-181
+**/.claude/worktrees/
 
 # Build output (regenerated via `npm run build` / `prepack`)
 dist/
