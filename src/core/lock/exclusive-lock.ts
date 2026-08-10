@@ -151,13 +151,35 @@ function serialize(record: SentinelRecord): string {
   return `${JSON.stringify(record)}\n`;
 }
 
+/**
+ * Publish a sentinel atomically: either the file exists with durable contents, or not at all.
+ *
+ * `wx` creates the file before anything is written, so every failure after that point — including a
+ * `close()` that throws AFTER a successful write and sync — leaves a live sentinel on disk that no
+ * caller owns. For a mutual-exclusion sentinel that is the worst residue there is: the next acquirer
+ * sees a file, honours it, and the lock is wedged until the grace period expires. The caller cannot
+ * roll it back either, because a failed publish hands it no capability to release.
+ *
+ * So the rollback belongs here, at the only place that knows this call created the file.
+ * @req FR-NODE-177
+ */
 async function publishExclusive(filePath: string, contents: string): Promise<void> {
   const handle = await open(filePath, "wx");
+  let closed = false;
   try {
     await handle.writeFile(contents, { encoding: "utf8" });
     await handle.sync();
-  } finally {
+    // Closed inside `try` so a close failure counts as a publish failure, rather than something a
+    // `finally` raises after the caller has already been told publication succeeded.
     await handle.close();
+    closed = true;
+  } catch (error) {
+    if (!closed) await handle.close().catch(() => undefined);
+    // Best-effort: the goal is not to guarantee removal, it is to leave no sentinel behind wherever
+    // removal is possible. A failure here cannot be reported without masking the original publish
+    // error, which is the one the caller must see.
+    await rm(filePath, { force: true }).catch(() => undefined);
+    throw error;
   }
 }
 
@@ -390,7 +412,14 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
           const held: AcquireExclusiveLockResult = observed.record
             ? { ok: false, reason: "held", holder: holderFrom(observed.record) }
             : { ok: false, reason: "held" };
-          await releaseGuard();
+          // The answer is already decided and correct: a live successor holds the lock. Releasing
+          // our own recovery guard is housekeeping that happens AFTER that decision, so a fault in
+          // it must not replace an accurate `held` — carrying the holder a caller needs in order to
+          // report or wait on it — with an exception the caller cannot act on. The guard left
+          // behind is reclaimable: a later acquire clears it through
+          // `clearReclaimableAcquisitionGuard`, so that residue is bounded and self-healing, which
+          // a lost holder identity is not. @req FR-NODE-177
+          await releaseGuard().catch(() => undefined);
           releaseGuard = null;
           return held;
         }
@@ -435,7 +464,22 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
         lockPath,
         token,
         cleanupTasks,
-        async () => clearExpiredOrphanQuarantines(lockPath)
+        async () => clearExpiredOrphanQuarantines(lockPath),
+        // STRICT on the first attempt, BEST-EFFORT on the retry, and the difference is deliberate.
+        //
+        // Strict first keeps the fault visible to `retainFailedCleanupWhileOwned`, which is what
+        // validates that we still own the sentinel before deferring — the check that stops a
+        // rollback from deleting a successor's sentinel. Swallowing there removes that signal, and
+        // the successor-protection case goes red; measured.
+        //
+        // Best-effort on the retry because the retry runs at RELEASE. An orphan quarantine belongs
+        // to some earlier crashed writer, not to this capability, so a permission or I/O fault on
+        // it says nothing about whether this lock may be dropped. Failing the release would strand
+        // a lock the caller has finished with for as long as an unrelated condition persists. The
+        // orphan simply stays, and a later acquire sweeps it again. @req FR-NODE-177
+        async () => {
+          await clearExpiredOrphanQuarantines(lockPath).catch(() => undefined);
+        }
       );
       if (releaseGuard) {
         const guardCleanup = releaseGuard;

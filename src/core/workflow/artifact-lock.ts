@@ -28,7 +28,12 @@ export type AcquireArtifactLockResult =
   | {
     readonly ok: false;
     readonly reason: "held";
-    readonly holder?: { readonly ownerIdentitySha256?: string };
+    // `owner` travels with the identity hash. The hash answers "is this me?", which is enough to
+    // decide whether to retry, but not enough to TELL anyone who is holding the lock — and a caller
+    // that must surface a wait or a refusal has to name the holder. `run-lock.ts` already reads
+    // `holder.owner` off the exclusive-lock result for exactly that; narrowing it away here left
+    // the artifact-lock callers unable to do the same. @req FR-NODE-177
+    readonly holder?: { readonly owner?: string; readonly ownerIdentitySha256?: string };
   };
 
 export type ReleaseArtifactLockResult = ReleaseExclusiveLockResult;
@@ -60,7 +65,7 @@ export async function acquireArtifactLock(input: {
   });
   if (!result.ok) {
     return result.holder
-      ? { ok: false, reason: "held", holder: { ownerIdentitySha256: result.holder.ownerIdentitySha256 } }
+      ? { ok: false, reason: "held", holder: { owner: result.holder.owner, ownerIdentitySha256: result.holder.ownerIdentitySha256 } }
       : { ok: false, reason: "held" };
   }
   capabilities.set(result.capability.token, result.capability);
