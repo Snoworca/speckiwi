@@ -506,6 +506,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("pipeline-emit", "workflow_pipeline_emit", "workspace", "workflowPipelineEmit"),
   mutationSpec("worklog-emit", "workflow_worklog_emit", "workspace", "workflowWorklogEmit"),
   mutationSpec("repair-record", "workflow_repair_record", "workspace", "workflowRepairRecord"),
+  mutationSpec("reclassify-record", "workflow_record_reclassification", "workspace", "workflowRecordReclassification"),
   mutationSpec("logical-delete", "workflow_logical_delete", "workspace", "workflowLogicalDelete"),
   // Container command with no own handler; hosts the collision-repair "apply" tool (CLI in repair.ts).
   mutationSpec("work-order", "apply_requirement_id_collision_repair", "workspace", "applyRequirementIdCollisionRepair"),

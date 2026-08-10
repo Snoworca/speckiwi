@@ -135,6 +135,18 @@ function cursor<T>(items: T[], limit?: number, offset = 0): { sliced: T[]; curso
   };
 }
 
+function visibleWorkflowTail(
+  parsed: Awaited<ReturnType<typeof parseWorkflowJsonl>> | null,
+  includeDeleted: boolean
+): WorkflowJsonlEntry[] {
+  if (!parsed) return [];
+  if (includeDeleted) return parsed.tail;
+  const active = new Set(parsed.latestEntries);
+  return parsed.tail.filter((entry) =>
+    active.has(entry) || entry.effectiveRecordClass === "audit_note" || entry.event.event === "record_reclassification"
+  );
+}
+
 function validationArtifacts(validation: WorkflowValidationResult): WorkflowArtifactRef[] {
   return validation.artifacts.map((item) => ({
     relativePath: item.relativePath,
@@ -584,7 +596,7 @@ export async function workflowPipelineTail(root: ProjectRoot, options: WorkflowR
   const status = await workflowPipelineStatus(root, options);
   const artifact = status.artifacts[0];
   const parsed = artifact ? await parseWorkflowJsonl(root, artifact.relativePath, { ...(options.includeDeleted ? { includeDeleted: true } : {}) }) : null;
-  const tail = parsed?.latestEntries ?? [];
+  const tail = visibleWorkflowTail(parsed, options.includeDeleted ?? false);
   const { sliced, cursor: cursorValue } = cursor(tail, options.limit ?? 20, options.offset);
   return envelope(status.meta.workspaceRoot, { events: sliced }, status.diagnostics, status.artifacts, cursorValue);
 }
@@ -616,7 +628,7 @@ export async function workflowWorklogTail(root: ProjectRoot, options: WorkflowRe
   diagnostics.push(...resolved.diagnostics);
   const parsed = resolved.selected ? await parseWorkflowJsonl(root, resolved.selected.relativePath, { ...(options.includeDeleted ? { includeDeleted: true } : {}) }) : null;
   if (parsed) diagnostics.push(...parsed.diagnostics);
-  const tail = parsed?.latestEntries ?? [];
+  const tail = visibleWorkflowTail(parsed, options.includeDeleted ?? false);
   const { sliced, cursor: cursorValue } = cursor(tail, options.limit ?? 20, options.offset);
   const artifacts = resolved.selected ? [await artifactRef(resolved.selected, false)] : [];
   return envelope(resolved.workspaceRoot, { events: sliced }, diagnostics, artifacts, cursorValue);

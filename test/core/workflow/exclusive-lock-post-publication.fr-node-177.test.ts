@@ -21,6 +21,10 @@ function ioError(operation: string): NodeJS.ErrnoException {
   return Object.assign(new Error(`injected ${operation} failure`), { code: "EIO" });
 }
 
+function fsError(operation: string, code: "EACCES" | "EIO"): NodeJS.ErrnoException {
+  return Object.assign(new Error(`injected ${operation} failure`), { code });
+}
+
 async function fixture(): Promise<{ artifactPath: string; root: string }> {
   const root = await mkdtemp(path.join(tmpdir(), "speckiwi-lock-post-publish-"));
   const artifactPath = path.join(root, "kiwi", "pipeline.jsonl");
@@ -152,6 +156,200 @@ afterEach(() => {
 
 // @req FR-NODE-177 AC-6/7/11
 describe("FR-NODE-177 exclusive-lock post-publication rollback", () => {
+  it.each(["initial-publish", "recovery-republish"] as const)(
+    "does not retain a live main sentinel or fence when %s close fails after write and sync",
+    async (family) => {
+      const { artifactPath } = await fixture();
+      const base = await actualModule();
+      const identity = await base.resolveArtifactLockIdentity(artifactPath);
+      if (family === "recovery-republish") await deadSentinel(identity.lockPath);
+      const evidence = { wrote: false, synced: false, closeHit: false };
+      const module = await faultedModule((actual) => ({
+        open: (async (
+          file: Parameters<FsPromises["open"]>[0],
+          flags: Parameters<FsPromises["open"]>[1],
+          mode?: Parameters<FsPromises["open"]>[2]
+        ) => {
+          const handle = await actual.open(file, flags, mode);
+          if (path.resolve(String(file)) !== path.resolve(identity.lockPath)) return handle;
+          return new Proxy(handle, {
+            get(target, property) {
+              if (property === "writeFile") {
+                return async (...args: Parameters<typeof target.writeFile>) => {
+                  const result = await target.writeFile(...args);
+                  evidence.wrote = true;
+                  return result;
+                };
+              }
+              if (property === "sync") {
+                return async () => {
+                  await target.sync();
+                  evidence.synced = true;
+                };
+              }
+              if (property === "close") {
+                return async () => {
+                  await target.close();
+                  evidence.closeHit = true;
+                  throw ioError("published sentinel close");
+                };
+              }
+              const value = Reflect.get(target, property, target) as unknown;
+              return typeof value === "function" ? value.bind(target) : value;
+            }
+          });
+        }) as FsPromises["open"]
+      }));
+
+      let acquisition: Awaited<ReturnType<typeof module.acquireArtifactLock>> | undefined;
+      try {
+        acquisition = await module.acquireArtifactLock({ artifactPath, owner: `close-fault-${family}` });
+      } catch {
+        // The contract is the observable rollback, not whether the API reports it by exception.
+      }
+      expect(evidence).toEqual({ wrote: true, synced: true, closeHit: true });
+      expect(acquisition?.ok).not.toBe(true);
+      await assertRetryableAfterRejectedAcquire(artifactPath, identity.lockPath);
+      await assertNoIdentityResidueThenCleanup(identity.lockPath);
+    }
+  );
+
+  it.each([
+    ["readdir", "EACCES"],
+    ["readdir", "EIO"],
+    ["stat", "EACCES"],
+    ["stat", "EIO"],
+    ["rm", "EACCES"],
+    ["rm", "EIO"]
+  ] as const)(
+    "treats persistent unrelated orphan %s %s as best-effort across release and reacquire",
+    async (operation, code) => {
+      const { artifactPath } = await fixture();
+      const base = await actualModule();
+      const identity = await base.resolveArtifactLockIdentity(artifactPath);
+      const quarantine = `${identity.lockPath}.stale-unrelated-orphan`;
+      await writeFile(quarantine, "orphan\n", "utf8");
+      await utimes(quarantine, new Date("2000-01-01T00:00:00.000Z"), new Date("2000-01-01T00:00:00.000Z"));
+      const directory = path.dirname(identity.lockPath);
+      const evidence = { enabled: true, hits: 0 };
+      const module = await faultedModule((actual) => ({
+        ...(operation === "readdir" ? {
+          readdir: (async (target, options) => {
+            if (evidence.enabled && path.resolve(String(target)) === path.resolve(directory)) {
+              evidence.hits += 1;
+              throw fsError("orphan readdir", code);
+            }
+            return actual.readdir(target, options as never);
+          }) as FsPromises["readdir"]
+        } : {}),
+        ...(operation === "stat" ? {
+          stat: (async (target, options) => {
+            if (evidence.enabled && path.resolve(String(target)) === path.resolve(quarantine)) {
+              evidence.hits += 1;
+              throw fsError("orphan stat", code);
+            }
+            return actual.stat(target, options as never);
+          }) as FsPromises["stat"]
+        } : {}),
+        ...(operation === "rm" ? {
+          rm: (async (target, options) => {
+            if (evidence.enabled && path.resolve(String(target)) === path.resolve(quarantine)) {
+              evidence.hits += 1;
+              throw fsError("orphan rm", code);
+            }
+            return actual.rm(target, options);
+          }) as FsPromises["rm"]
+        } : {})
+      }));
+      let firstCapability: Parameters<typeof module.releaseArtifactLock>[0] | undefined;
+      let retryCapability: Parameters<typeof module.releaseArtifactLock>[0] | undefined;
+      try {
+        const first = await module.acquireArtifactLock({ artifactPath, owner: `persistent-${operation}-${code}` });
+        expect(first).toMatchObject({ ok: true });
+        if (!first.ok) return;
+        firstCapability = first.capability;
+        expect.soft(await module.releaseArtifactLock(first.capability)).toEqual({ ok: true, released: true });
+
+        const retry = await module.acquireArtifactLock({ artifactPath, owner: `persistent-retry-${operation}-${code}` });
+        expect.soft(retry).toMatchObject({ ok: true });
+        if (retry.ok) {
+          retryCapability = retry.capability;
+          expect.soft(await module.releaseArtifactLock(retry.capability)).toEqual({ ok: true, released: true });
+        }
+        expect.soft(evidence.hits).toBeGreaterThanOrEqual(2);
+        expect.soft(await identityResidue(identity.lockPath)).toEqual([path.basename(quarantine)]);
+      } finally {
+        evidence.enabled = false;
+        if (retryCapability) await module.releaseArtifactLock(retryCapability);
+        if (firstCapability) await module.releaseArtifactLock(firstCapability);
+        await cleanupIdentity(identity.lockPath);
+      }
+    }
+  );
+
+  it.each(["read", "rm"] as const)(
+    "preserves a structured live-successor held result when recovery-guard release %s fails",
+    async (operation) => {
+      const { artifactPath } = await fixture();
+      const base = await actualModule();
+      const identity = await base.resolveArtifactLockIdentity(artifactPath);
+      await deadSentinel(identity.lockPath);
+      const guardPath = `${identity.lockPath}.acquire`;
+      const successor = {
+        version: 1,
+        token: "live-successor-held-token",
+        pid: process.pid,
+        host: hostname(),
+        owner: "live-successor-held-owner",
+        acquired_at: new Date().toISOString()
+      };
+      let mainReads = 0;
+      const evidence = { enabled: true, hit: false };
+      const module = await faultedModule((actual) => ({
+        readFile: (async (file, ...args: Parameters<FsPromises["readFile"]> extends [unknown, ...infer R] ? R : never) => {
+          if (path.resolve(String(file)) === path.resolve(identity.lockPath)) {
+            mainReads += 1;
+            if (mainReads === 2) await actual.writeFile(identity.lockPath, `${JSON.stringify(successor)}\n`, "utf8");
+          }
+          if (operation === "read" && evidence.enabled && mainReads >= 2 &&
+              path.resolve(String(file)) === path.resolve(guardPath)) {
+            evidence.hit = true;
+            throw ioError("held guard release read");
+          }
+          return actual.readFile(file, ...args as never);
+        }) as FsPromises["readFile"],
+        ...(operation === "rm" ? {
+          rm: (async (target, options) => {
+            if (evidence.enabled && mainReads >= 2 && path.resolve(String(target)) === path.resolve(guardPath)) {
+              evidence.hit = true;
+              throw ioError("held guard release rm");
+            }
+            return actual.rm(target, options);
+          }) as FsPromises["rm"]
+        } : {})
+      }));
+
+      let result: Awaited<ReturnType<typeof module.acquireArtifactLock>> | undefined;
+      try {
+        result = await module.acquireArtifactLock({ artifactPath, owner: `held-release-${operation}` });
+      } catch {
+        // A cleanup exception must not replace the already-decided structured held outcome.
+      }
+      try {
+        expect(evidence.hit).toBe(true);
+        expect(result).toMatchObject({
+          ok: false,
+          reason: "held",
+          holder: { owner: successor.owner }
+        });
+        expect(JSON.parse(await readFileActual(identity.lockPath))).toMatchObject({ token: successor.token });
+      } finally {
+        evidence.enabled = false;
+        await cleanupIdentity(identity.lockPath);
+      }
+    }
+  );
+
   it.each(["read", "rename", "rm"] as const)(
     "rolls back the main sentinel when reclaimable acquisition-guard %s fails",
     async (operation) => {

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { hostname } from "node:os";
 import path from "node:path";
@@ -24,6 +24,7 @@ interface KernelFence {
 interface ActiveCapability {
   readonly capability: ExclusiveLockCapability;
   readonly fence: KernelFence;
+  readonly cleanupTasks: Array<() => Promise<void>>;
   operationTail: Promise<void>;
   sentinelRemoved: boolean;
 }
@@ -172,6 +173,106 @@ async function readSentinel(lockPath: string): Promise<{ record: SentinelRecord 
   return { record, ageMs: Math.max(0, Date.now() - metadata.mtimeMs) };
 }
 
+async function removeOwnedSentinel(lockPath: string, token: string): Promise<void> {
+  let current: unknown;
+  try {
+    current = JSON.parse(await readFile(lockPath, "utf8")) as unknown;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+  if (validRecord(current) && current.token === token) await rm(lockPath);
+}
+
+async function clearReclaimableAcquisitionGuard(
+  lockPath: string,
+  ownerToken: string
+): Promise<{ ok: true } | { ok: false; holder: ExclusiveLockHolder | null }> {
+  const guardPath = `${lockPath}.acquire`;
+  let observed: { record: SentinelRecord | null; ageMs: number };
+  try {
+    observed = await readSentinel(guardPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { ok: true };
+    throw error;
+  }
+  if (!isReclaimable(observed.record, observed.ageMs)) {
+    return { ok: false, holder: observed.record ? holderFrom(observed.record) : null };
+  }
+
+  // The caller already owns the main sentinel. Every contender checks that sentinel before
+  // attempting an acquisition guard, so no successor guard can appear while this rename runs.
+  // Moving the observed name, rather than compare-then-unlinking it, also leaves an old owner
+  // unable to delete a later guard through an ABA race.
+  const quarantine = `${guardPath}.stale-${ownerToken}`;
+  try {
+    await rename(guardPath, quarantine);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return { ok: true };
+  }
+  await rm(quarantine, { force: true });
+  return { ok: true };
+}
+
+async function clearExpiredOrphanQuarantines(lockPath: string): Promise<void> {
+  const directory = path.dirname(lockPath);
+  const prefix = `${path.basename(lockPath)}.stale-`;
+  const now = Date.now();
+  for (const entry of await readdir(directory)) {
+    if (!entry.startsWith(prefix)) continue;
+    const candidate = path.join(directory, entry);
+    let ageMs: number;
+    try {
+      ageMs = Math.max(0, now - (await stat(candidate)).mtimeMs);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    if (ageMs >= TORN_SENTINEL_GRACE_MS) await rm(candidate, { force: true });
+  }
+}
+
+async function sentinelHasToken(lockPath: string, token: string): Promise<boolean> {
+  let current: unknown;
+  try {
+    current = JSON.parse(await readFile(lockPath, "utf8")) as unknown;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+  return validRecord(current) && current.token === token;
+}
+
+async function retryAcquisitionGuardCleanup(lockPath: string, token: string): Promise<void> {
+  await rm(`${lockPath}.acquire.stale-${token}`, { force: true });
+  const result = await clearReclaimableAcquisitionGuard(lockPath, token);
+  if (!result.ok) {
+    throw Object.assign(new Error("The acquisition guard is still held"), { code: "ELOCKHELD" });
+  }
+}
+
+async function retainFailedCleanupWhileOwned(
+  lockPath: string,
+  token: string,
+  cleanupTasks: Array<() => Promise<void>>,
+  operation: () => Promise<void>,
+  retry = operation
+): Promise<void> {
+  try {
+    await operation();
+  } catch (error) {
+    let owned = false;
+    try {
+      owned = await sentinelHasToken(lockPath, token);
+    } catch {
+      // Preserve the cleanup failure that triggered ownership validation.
+    }
+    if (!owned) throw error;
+    cleanupTasks.push(retry);
+  }
+}
+
 function isReclaimable(record: SentinelRecord | null, ageMs: number): boolean {
   if (!record) return ageMs >= TORN_SENTINEL_GRACE_MS;
   if (record.host === hostname()) return !processIsAlive(record.pid);
@@ -260,29 +361,86 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
       owner_identity_sha256: ownerIdentity(owner),
       acquired_at: new Date().toISOString()
     };
-    const guard = await acquireRecoveryGuard(lockPath, record);
-    if (!guard.ok) return guard.holder
-      ? { ok: false, reason: "held", holder: guard.holder }
-      : { ok: false, reason: "held" };
-
+    const cleanupTasks: Array<() => Promise<void>> = [];
+    let releaseGuard: (() => Promise<void>) | null = null;
+    let published = false;
     try {
       try {
         await publishExclusive(lockPath, serialize(record));
+        published = true;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        const observed = await readSentinel(lockPath);
+        let observed = await readSentinel(lockPath);
         if (!isReclaimable(observed.record, observed.ageMs)) {
           return observed.record
             ? { ok: false, reason: "held", holder: holderFrom(observed.record) }
             : { ok: false, reason: "held" };
         }
+
+        const guard = await acquireRecoveryGuard(lockPath, record);
+        if (!guard.ok) return guard.holder
+          ? { ok: false, reason: "held", holder: guard.holder }
+          : { ok: false, reason: "held" };
+        releaseGuard = guard.release;
+
+        // The sentinel may have changed before this contender won the recovery guard.
+        // Re-read it under the guard and never quarantine a live successor.
+        observed = await readSentinel(lockPath);
+        if (!isReclaimable(observed.record, observed.ageMs)) {
+          const held: AcquireExclusiveLockResult = observed.record
+            ? { ok: false, reason: "held", holder: holderFrom(observed.record) }
+            : { ok: false, reason: "held" };
+          await releaseGuard();
+          releaseGuard = null;
+          return held;
+        }
         const quarantine = `${lockPath}.stale-${token}`;
         await rename(lockPath, quarantine);
         try {
           await publishExclusive(lockPath, serialize(record));
-        } finally {
-          await rm(quarantine, { force: true });
+          published = true;
+        } catch (error) {
+          await rm(quarantine, { force: true }).catch(() => undefined);
+          throw error;
         }
+        await retainFailedCleanupWhileOwned(
+          lockPath,
+          token,
+          cleanupTasks,
+          async () => rm(quarantine, { force: true })
+        );
+      }
+
+      if (!releaseGuard) {
+        let guardCleanup: Awaited<ReturnType<typeof clearReclaimableAcquisitionGuard>> | undefined;
+        try {
+          guardCleanup = await clearReclaimableAcquisitionGuard(lockPath, token);
+        } catch (error) {
+          await retainFailedCleanupWhileOwned(
+            lockPath,
+            token,
+            cleanupTasks,
+            async () => { throw error; },
+            async () => retryAcquisitionGuardCleanup(lockPath, token)
+          );
+        }
+        if (guardCleanup && !guardCleanup.ok) {
+          await removeOwnedSentinel(lockPath, token);
+          return guardCleanup.holder
+            ? { ok: false, reason: "held", holder: guardCleanup.holder }
+            : { ok: false, reason: "held" };
+        }
+      }
+      await retainFailedCleanupWhileOwned(
+        lockPath,
+        token,
+        cleanupTasks,
+        async () => clearExpiredOrphanQuarantines(lockPath)
+      );
+      if (releaseGuard) {
+        const guardCleanup = releaseGuard;
+        await retainFailedCleanupWhileOwned(lockPath, token, cleanupTasks, guardCleanup);
+        releaseGuard = null;
       }
 
       const capability = Object.freeze({
@@ -294,13 +452,16 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
       activeCapabilities.set(token, {
         capability,
         fence,
+        cleanupTasks,
         operationTail: Promise.resolve(),
         sentinelRemoved: false
       });
       acquired = true;
       return { ok: true, capability };
-    } finally {
-      await guard.release();
+    } catch (error) {
+      if (releaseGuard) await releaseGuard().catch(() => undefined);
+      if (published) await removeOwnedSentinel(lockPath, token).catch(() => undefined);
+      throw error;
     }
   } finally {
     if (!acquired) await fence.close().catch(() => undefined);
@@ -331,6 +492,12 @@ export async function releaseExclusiveLock(
       return { ok: true, released: false, reason: "not_owner" };
     }
     try {
+      while (active.cleanupTasks.length > 0) {
+        const cleanupTask = active.cleanupTasks[0];
+        if (!cleanupTask) break;
+        await cleanupTask();
+        active.cleanupTasks.shift();
+      }
       if (!active.sentinelRemoved) {
         let current: unknown;
         try {

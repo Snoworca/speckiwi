@@ -456,6 +456,8 @@ export interface MutationEnvelope {
   pendingRepair?: unknown;
   targetRecord?: unknown;
   staleGuards?: MutationStaleGuard[];
+  artifact?: unknown;
+  diagnosticDelta?: unknown;
 }
 
 export interface RequirementFilter {
@@ -579,4 +581,3 @@ export interface ScaffoldScopeOutput {
   srsDocumentsRow: string;
   scopeMapRow: string;
 }
-

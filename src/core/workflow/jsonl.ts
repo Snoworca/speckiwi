@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile } from "node:fs/promises";
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { summarizeDiagnostics } from "../diagnostic.js";
@@ -7,6 +7,7 @@ import { resolveInsideRoot } from "../fs/safe-path.js";
 import type { Diagnostic, DiagnosticsSummary, MutationEnvelope, MutationResult, ProjectRoot } from "../types.js";
 import { mutationFail, mutationOk } from "../mutation/guards.js";
 import { withMutationEnvelope } from "../mutation/envelope.js";
+import { workflowRecordReclassificationProvenance } from "./identity.js";
 
 export interface WorkflowJsonlEvent {
   schema_version?: string;
@@ -27,6 +28,9 @@ export interface WorkflowJsonlEntry {
   correctedBy?: string[];
   deletedBy?: string[];
   logicalDeleteTarget?: string;
+  recordClass?: string;
+  effectiveRecordClass?: string;
+  reclassifiedBy?: string;
 }
 
 export interface WorkflowJsonlInvalidLine {
@@ -94,6 +98,119 @@ function sha256Text(text: string): string {
   return createHash("sha256").update(text).digest("hex");
 }
 
+function sha256Bytes(value: string | Buffer): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function jsonObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function artifactRecordType(relativePath: string): "pipeline" | "worklog" | null {
+  const name = path.posix.basename(relativePath.replace(/\\/g, "/"));
+  if (name === "pipeline.jsonl") return "pipeline";
+  if (name === "worklog.jsonl") return "worklog";
+  return null;
+}
+
+function applyRecordReclassifications(relativePath: string, text: string, entries: WorkflowJsonlEntry[]): Set<WorkflowJsonlEntry> {
+  const excluded = new Set<WorkflowJsonlEntry>();
+  const recordType = artifactRecordType(relativePath);
+  const validOverlays: Array<{ overlay: WorkflowJsonlEntry; target: WorkflowJsonlEntry }> = [];
+  const overlayClaimsByLine = new Map<number, number>();
+  for (const entry of entries) {
+    if (entry.event.event !== "record_reclassification") continue;
+    const operation = jsonObject(entry.event.operation);
+    if (!operation || operation.kind !== "record_reclassification" || operation.source_path !== relativePath || typeof operation.source_line !== "number") continue;
+    overlayClaimsByLine.set(operation.source_line, (overlayClaimsByLine.get(operation.source_line) ?? 0) + 1);
+  }
+  for (const overlay of entries) {
+    if (overlay.event.event !== "record_reclassification") continue;
+    excluded.add(overlay);
+    const operation = jsonObject(overlay.event.operation);
+    if (!operation || recordType === null) continue;
+    const owner = overlay.event.owner;
+    const reason = overlay.event.reason;
+    const workflowRunId = overlay.event.workflow_run_id;
+    const taskId = overlay.event.task_id;
+    const reqId = overlay.event.req_id;
+    if (
+      overlay.event.schema_version !== "1.0.0" ||
+      overlay.event.skill !== "speckiwi" ||
+      overlay.event.recordClass !== "meta" ||
+      overlay.event.effectiveRecordClass !== "audit_note" ||
+      overlay.event.status !== undefined ||
+      overlay.event.corrects_run_id !== undefined ||
+      operation.kind !== "record_reclassification" ||
+      operation.record_type !== recordType ||
+      operation.source_path !== relativePath ||
+      typeof owner !== "string" ||
+      owner.length === 0 ||
+      typeof reason !== "string" ||
+      reason.length === 0 ||
+      operation.owner !== owner ||
+      operation.reason !== reason ||
+      typeof workflowRunId !== "string" ||
+      workflowRunId.trim().length === 0 ||
+      overlay.event.ts !== "1970-01-01T00:00:00.000Z" ||
+      (taskId !== undefined && (typeof taskId !== "string" || taskId.trim().length === 0)) ||
+      (reqId !== undefined && (typeof reqId !== "string" || reqId.trim().length === 0))
+    ) continue;
+
+    const target = entries.find((entry) => entry.line === operation.source_line && entry !== overlay);
+    if (!target || target.event.status !== "CORRECTION") continue;
+    const targetValue = target.event.corrects_run_id;
+    if (typeof targetValue === "string" && targetValue.trim().length > 0) continue;
+    const targetRawHash = sha256Bytes(Buffer.from(target.raw, "utf8"));
+    const textBytes = Buffer.from(text, "utf8");
+    const prefixHash = sha256Bytes(textBytes.subarray(0, overlay.byteOffset));
+    const unterminatedPrefixHash = overlay.byteOffset > 0 && textBytes[overlay.byteOffset - 1] === 0x0a
+      ? sha256Bytes(textBytes.subarray(0, overlay.byteOffset - 1))
+      : null;
+    if (
+      operation.byte_offset !== target.byteOffset ||
+      operation.raw_sha256 !== targetRawHash ||
+      operation.event_key !== target.eventKey ||
+      operation.target_run_id !== target.event.run_id ||
+      operation.preimage_prefix_sha256 !== prefixHash && operation.preimage_prefix_sha256 !== unterminatedPrefixHash
+    ) continue;
+    const identity = {
+      path: relativePath,
+      recordType,
+      line: target.line,
+      byteOffset: target.byteOffset,
+      rawSha256: targetRawHash,
+      eventKey: target.eventKey,
+      targetRunId: String(target.event.run_id),
+      preimagePrefixSha256: String(operation.preimage_prefix_sha256)
+    };
+    const provenance = workflowRecordReclassificationProvenance({
+      runId: workflowRunId,
+      ...(typeof taskId === "string" && taskId.length > 0 ? { taskId } : {}),
+      ...(typeof reqId === "string" && reqId.length > 0 ? { reqId } : {}),
+      args: { ...identity, effectiveRecordClass: "audit_note", owner, reason }
+    });
+    if (
+      overlay.event.run_id !== provenance.overlayRunId ||
+      overlay.event.journal_key !== provenance.journalKey ||
+      overlay.event.idempotency_key !== provenance.idempotencyKey
+    ) continue;
+    validOverlays.push({ overlay, target });
+  }
+  const countsByTarget = new Map<WorkflowJsonlEntry, number>();
+  for (const candidate of validOverlays) {
+    countsByTarget.set(candidate.target, (countsByTarget.get(candidate.target) ?? 0) + 1);
+  }
+  for (const candidate of validOverlays) {
+    if (countsByTarget.get(candidate.target) !== 1 || overlayClaimsByLine.get(candidate.target.line) !== 1) continue;
+    candidate.target.recordClass = "meta";
+    candidate.target.effectiveRecordClass = "audit_note";
+    candidate.target.reclassifiedBy = candidate.overlay.eventKey;
+    excluded.add(candidate.target);
+  }
+  return excluded;
+}
+
 async function readExisting(absolutePath: string): Promise<{ text: string; exists: boolean }> {
   try {
     return { text: await readFile(absolutePath, "utf8"), exists: true };
@@ -139,10 +256,12 @@ function computeCorrections(
   maxDepth: number,
   diagnostics: Diagnostic[],
   includeDeleted: boolean,
-  eventKeying: "skill-run" | "none"
+  eventKeying: "skill-run" | "none",
+  excluded: Set<WorkflowJsonlEntry> = new Set()
 ): WorkflowJsonlEntry[] {
   const byRunId = new Map<string, WorkflowJsonlEntry>();
   for (const entry of entries) {
+    if (excluded.has(entry)) continue;
     if (typeof entry.event.run_id === "string") byRunId.set(entry.event.run_id, entry);
     if (entry.event.status === "DELETED") diagnostics.push(invalidDeletedStatusDiagnostic(relativePath, entry));
   }
@@ -153,6 +272,7 @@ function computeCorrections(
   if (eventKeying === "none") return entries;
 
   for (const entry of entries) {
+    if (excluded.has(entry)) continue;
     if (entry.event.status !== "CORRECTION") continue;
     const targetRunId = entry.event.corrects_run_id;
     if (typeof targetRunId !== "string" || targetRunId.length === 0) {
@@ -181,6 +301,7 @@ function computeCorrections(
   }
 
   for (const entry of entries) {
+    if (excluded.has(entry)) continue;
     const seen = new Set<string>();
     let current: WorkflowJsonlEntry | undefined = entry;
     let depth = 0;
@@ -200,8 +321,9 @@ function computeCorrections(
     }
   }
 
-  if (includeDeleted) return entries.filter((entry) => !entry.correctedBy || entry.correctedBy.length === 0);
+  if (includeDeleted) return entries.filter((entry) => !excluded.has(entry) && (!entry.correctedBy || entry.correctedBy.length === 0));
   return entries.filter((entry) => {
+    if (excluded.has(entry)) return false;
     if (entry.correctedBy && entry.correctedBy.length > 0) return false;
     if (entry.deletedBy && entry.deletedBy.length > 0) return false;
     if (entry.event.status === "CORRECTION") return false;
@@ -225,10 +347,11 @@ export async function parseWorkflowJsonl(root: ProjectRoot, relativePath: string
   const lines = existing.text.length > 0 ? existing.text.split(/\n/) : [];
   const parseLines = existing.text.endsWith("\n") ? lines.slice(0, -1) : lines;
   for (let index = 0; index < parseLines.length; index += 1) {
-    const raw = parseLines[index] ?? "";
+    const rawWithCr = parseLines[index] ?? "";
+    const raw = rawWithCr.endsWith("\r") ? rawWithCr.slice(0, -1) : rawWithCr;
     const line = index + 1;
     if (raw.trim().length === 0) {
-      byteOffset += Buffer.byteLength(raw) + 1;
+      byteOffset += Buffer.byteLength(rawWithCr) + 1;
       continue;
     }
     try {
@@ -247,14 +370,15 @@ export async function parseWorkflowJsonl(root: ProjectRoot, relativePath: string
         diagnostic("SRS-W052", "warning", "Invalid workflow JSONL line", { filePath: relativePath, line }, { byteOffset, excerpt: rawExcerpt(raw), message: (error as Error).message })
       );
     }
-    byteOffset += Buffer.byteLength(raw) + 1;
+    byteOffset += Buffer.byteLength(rawWithCr) + 1;
   }
 
   const hasTrailingLf = existing.text.length === 0 || existing.text.endsWith("\n");
   if (!hasTrailingLf) {
     diagnostics.push(diagnostic("SRS-W056", "warning", "Workflow JSONL file is missing trailing LF", { filePath: relativePath }, { byteOffset: Buffer.byteLength(existing.text) }));
   }
-  const latestEntries = computeCorrections(relativePath, entries, maxDepth, diagnostics, options.includeDeleted ?? false, eventKeying);
+  const excluded = eventKeying === "skill-run" ? applyRecordReclassifications(relativePath, existing.text, entries) : new Set<WorkflowJsonlEntry>();
+  const latestEntries = computeCorrections(relativePath, entries, maxDepth, diagnostics, options.includeDeleted ?? false, eventKeying, excluded);
   void duplicateKeys;
   return {
     relativePath,
@@ -313,8 +437,13 @@ export async function appendWorkflowJsonl(
   if (!dryRun) {
     await mkdir(path.dirname(absolutePath), { recursive: true });
     const prefix = parsed.hasTrailingLf ? "" : "\n";
-    const existing = await readExisting(absolutePath);
-    await writeFile(absolutePath, `${existing.text}${prefix}${line}\n`, "utf8");
+    const handle = await open(absolutePath, "a");
+    try {
+      await handle.writeFile(`${prefix}${line}\n`, { encoding: "utf8" });
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
   }
   return withMutationEnvelope(
     mutationOk({ relativePath, written: !dryRun, eventKey: eventKey(event) }, diagnostics),

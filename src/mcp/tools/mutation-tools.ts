@@ -64,6 +64,77 @@ function workflowJsonEvent(input: Record<string, unknown>): Record<string, unkno
   return typeof input.event === "object" && input.event !== null && !Array.isArray(input.event) ? (input.event as Record<string, unknown>) : {};
 }
 
+function workflowRecordReclassificationInput(input: Record<string, unknown>): WorkflowMutationInput | null {
+  const recordType = input.recordType;
+  const valid =
+    input.event === undefined &&
+    typeof input.runId === "string" && input.runId.trim().length > 0 &&
+    (input.path === undefined || (typeof input.path === "string" && input.path.trim().length > 0)) &&
+    (recordType === "pipeline" || recordType === "worklog") &&
+    typeof input.line === "number" && Number.isInteger(input.line) && input.line > 0 &&
+    typeof input.byteOffset === "number" && Number.isInteger(input.byteOffset) && input.byteOffset >= 0 &&
+    typeof input.rawSha256 === "string" && input.rawSha256.length > 0 &&
+    typeof input.eventKey === "string" && input.eventKey.length > 0 &&
+    typeof input.targetRunId === "string" && input.targetRunId.length > 0 &&
+    typeof input.preimagePrefixSha256 === "string" && input.preimagePrefixSha256.length > 0 &&
+    typeof input.expectedSha256 === "string" && input.expectedSha256.length > 0 &&
+    typeof input.owner === "string" && input.owner.trim().length > 0 &&
+    typeof input.reason === "string" && input.reason.trim().length > 0 &&
+    (input.taskId === undefined || (typeof input.taskId === "string" && input.taskId.length > 0)) &&
+    (input.reqId === undefined || (typeof input.reqId === "string" && input.reqId.length > 0)) &&
+    (input.idempotencyKey === undefined || (typeof input.idempotencyKey === "string" && input.idempotencyKey.length > 0)) &&
+    (input.repairToken === undefined || (typeof input.repairToken === "string" && input.repairToken.length > 0)) &&
+    typeof input.dryRun === "boolean" &&
+    (input.dryRun || (typeof input.repairToken === "string" && input.repairToken.length > 0));
+  if (!valid) return null;
+  return {
+    kind: "workflow_record_reclassification",
+    runId: input.runId as string,
+    ...(typeof input.path === "string" ? { jsonlPath: input.path } : {}),
+    recordType: recordType as "pipeline" | "worklog",
+    line: input.line as number,
+    byteOffset: input.byteOffset as number,
+    rawSha256: input.rawSha256 as string,
+    eventKey: input.eventKey as string,
+    targetRunId: input.targetRunId as string,
+    preimagePrefixSha256: input.preimagePrefixSha256 as string,
+    expectedSha256: input.expectedSha256 as string,
+    owner: input.owner as string,
+    reason: input.reason as string,
+    ...(typeof input.taskId === "string" ? { taskId: input.taskId } : {}),
+    ...(typeof input.reqId === "string" ? { reqId: input.reqId } : {}),
+    ...(typeof input.idempotencyKey === "string" ? { idempotencyKey: input.idempotencyKey } : {}),
+    ...(typeof input.repairToken === "string" ? { repairToken: input.repairToken } : {}),
+    dryRun: input.dryRun as boolean
+  };
+}
+
+function workflowRecordReclassificationUsageFailure(input: Record<string, unknown>): unknown {
+  return mcpFailure(
+    "USAGE",
+    "workflow_record_reclassification requires typed target identity, expectedSha256, owner, reason, dryRun, and repairToken when dryRun is false",
+    {
+      recovery: { tool: "workflow_record_reclassification", message: "Run a complete dry-run first, then apply its repairToken without changing the typed request." },
+      metadata: {
+        mutation: {
+          kind: "workflow_record_reclassification",
+          filePath: typeof input.path === "string" ? input.path : "-",
+          dryRun: input.dryRun === true,
+          written: false,
+          operations: [],
+          preview: [],
+          journalState: "failed",
+          completedOperations: [],
+          pendingOperations: [],
+          pendingRepair: null,
+          targetRecord: {},
+          staleGuards: []
+        }
+      }
+    }
+  );
+}
+
 function occurrenceInput(value: unknown): RequirementOccurrenceIdentity | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const record = value as Partial<RequirementOccurrenceIdentity>;
@@ -396,6 +467,15 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         event: workflowJsonEvent(input)
       })
     ),
+    { kind: "workspace" }
+  );
+  server.registerTool(
+    "workflow_record_reclassification",
+    async (input) => {
+      const parsed = workflowRecordReclassificationInput(input);
+      if (!parsed) return workflowRecordReclassificationUsageFailure(input);
+      return resultToMcp(await applyWorkflowMutation(await root(deps, input), parsed));
+    },
     { kind: "workspace" }
   );
   server.registerTool("workflow_logical_delete", async (input) =>

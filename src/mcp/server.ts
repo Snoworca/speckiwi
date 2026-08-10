@@ -406,6 +406,25 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     idempotencyKey: z.string().optional(),
     dryRun: z.boolean().optional()
   },
+  workflow_record_reclassification: {
+    runId: z.string().refine((value) => value.trim().length > 0, { message: "runId must not be blank" }),
+    path: z.string().refine((value) => value.trim().length > 0, { message: "path must not be blank" }).optional(),
+    recordType: z.enum(["pipeline", "worklog"]),
+    line: z.number().int().positive(),
+    byteOffset: z.number().int().nonnegative(),
+    rawSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+    eventKey: z.string().min(1),
+    targetRunId: z.string().min(1),
+    preimagePrefixSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+    expectedSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+    owner: z.string().refine((value) => value.trim().length > 0, { message: "owner must not be blank" }),
+    reason: z.string().refine((value) => value.trim().length > 0, { message: "reason must not be blank" }),
+    taskId: z.string().min(1).optional(),
+    reqId: z.string().min(1).optional(),
+    idempotencyKey: z.string().min(1).optional(),
+    repairToken: z.string().min(1).optional(),
+    dryRun: z.boolean()
+  },
   workflow_logical_delete: {
     runId: z.string(),
     path: z.string().optional(),

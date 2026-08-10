@@ -665,6 +665,60 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       event: parseJsonObjectOption(options.event, "event", workflow)
     });
   });
+  const reclassifyRecord = workflow
+    .command("reclassify-record")
+    .requiredOption("--run-id <runId>")
+    .option("--path <path>")
+    .requiredOption("--record-type <type>", "pipeline or worklog")
+    .requiredOption("--line <line>", "one-based source line")
+    .requiredOption("--byte-offset <offset>", "zero-based UTF-8 byte offset")
+    .requiredOption("--raw-sha256 <sha>")
+    .requiredOption("--event-key <key>")
+    .requiredOption("--target-run-id <runId>")
+    .requiredOption("--preimage-prefix-sha256 <sha>")
+    .requiredOption("--expected-sha256 <sha>")
+    .requiredOption("--owner <owner>")
+    .requiredOption("--reason <text>")
+    .option("--task-id <taskId>")
+    .option("--req-id <reqId>")
+    .option("--idempotency-key <key>")
+    .option("--dry-run")
+    .option("--repair-token <token>")
+    .option("--json", "JSON output");
+  reclassifyRecord.action(async (options) => {
+    const recordType = requireStringOption(options, "recordType", reclassifyRecord);
+    if (recordType !== "pipeline" && recordType !== "worklog") {
+      reclassifyRecord.error("record-type must be pipeline or worklog", { exitCode: 2 });
+    }
+    const reason = requireStringOption(options, "reason", reclassifyRecord);
+    if (reason.trim().length === 0) {
+      reclassifyRecord.error("reason must not be blank", { exitCode: 2 });
+    }
+    const repairToken = typeof options.repairToken === "string" ? options.repairToken : undefined;
+    if (options.dryRun !== true && (repairToken === undefined || repairToken.trim().length === 0)) {
+      reclassifyRecord.error("repair-token is required unless --dry-run is set", { exitCode: 2 });
+    }
+    const line = parsePositiveInteger(options.line, "line", reclassifyRecord);
+    if (line === undefined) reclassifyRecord.error("line is required", { exitCode: 2 });
+    const byteOffset = parseNonNegativeInteger(options.byteOffset, "byte-offset", reclassifyRecord);
+    if (byteOffset === undefined) reclassifyRecord.error("byte-offset is required", { exitCode: 2 });
+    const jsonlPath = typeof options.path === "string" ? options.path : undefined;
+    await workflowMutationOutput(
+      options,
+      {
+        ...workflowMutationBase("workflow_record_reclassification", options, reclassifyRecord),
+        ...(jsonlPath !== undefined ? { jsonlPath } : {}),
+        recordType,
+        line: line!,
+        byteOffset: byteOffset!,
+        rawSha256: requireStringOption(options, "rawSha256", reclassifyRecord),
+        eventKey: requireStringOption(options, "eventKey", reclassifyRecord),
+        targetRunId: requireStringOption(options, "targetRunId", reclassifyRecord),
+        preimagePrefixSha256: requireStringOption(options, "preimagePrefixSha256", reclassifyRecord),
+        ...(repairToken !== undefined ? { repairToken } : {})
+      }
+    );
+  });
   addWorkflowMutationOptions(workflow.command("logical-delete").requiredOption("--record-type <type>").requiredOption("--record-id <id>")).action(async (options) => {
     requireStringOption(options, "reason", workflow);
     await workflowMutationOutput(options, {
