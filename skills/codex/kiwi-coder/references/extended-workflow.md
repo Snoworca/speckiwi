@@ -115,6 +115,20 @@ sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
 
 `--dry-run` 시 mutation 4종 모두 호출 skip + `mcp_call_log[]` 에 `dry_run: true` 만 기록. `add_completed_work` 는 schema 가 `dryRun` 옵션을 직접 지원하므로 호출 자체는 시도하고 `dryRun:true` 인자 전달 (실 적용 없음). 다른 3종 (`add_trace_link` / `add_verification_evidence` / `update_status`) 은 dryRun 옵션이 없으므로 호출 자체를 skip.
 
+#### `--defer-srs-mutation <path>` — 호출하지 않고 큐에 기록 (FR-FLOW-121)
+
+이 플래그가 있으면 위 mutation 4종을 **호출하지 않고** 인자가 가리킨 큐 파일에 **기록만 한다**. 기록 형식은 이미 쓰는 `mcp_call_log[]` entry 그대로이고 `args_hash` 멱등 dedupe 도 그대로다 — 새 형식을 만들지 않는다.
+
+**기록은 skip 이 아니다.** 네 mutation 은 그대로 회계되며, 오케스트레이터가 host root 에서 **재생(replay)** 한다. 건너뛰면 traceability 가 끊기고, 레인 안에서 호출하면 차터 C1 이 깨진다 — 레인의 MCP 쓰기는 자기 워크트리가 아니라 host root 에 착지하기 때문이다. 이 플래그가 그 둘 사이의 유일한 경로다.
+
+도달 경로는 `kiwi-pm` 의 spawn 프롬프트 하나뿐이다 (`kiwi-pm --defer-srs-mutation <path>` 가 그대로 전달한다). 직접 호출은 지원 경로가 아니다.
+
+**적용하는 소비자는 아직 없다.** 큐를 읽어 재생 계획을 세우는 쪽(`speckiwi orchestrate replay plan`)은 이 타깃에서 착지했지만, 그 계획을 host root 에서 실제 호출로 **적용하는 쪽은 아직 저장소에 없다** — 그래서 큐를 **수확해 적용하는 오케스트레이터 run 밖에서 이 플래그를 쓰면 네 mutation 은 그대로 소실된다**. 수확 경로가 없는 맥락에서는 쓰지 않는다.
+
+**`--dry-run` 과 상호 배타다.** 둘을 함께 주면 거부하고 사유를 기록한다. dry-run 은 `dry_run: true` entry 만 남기는데 그 entry 를 host 에서 실제 호출로 재생할지가 정의돼 있지 않다 — 정의되지 않은 것을 조용히 한쪽으로 고르는 대신 거부한다.
+
+큐 경로는 **인자로 받는다 — 기본값을 만들지 않는다.** 레인마다 다른 파일이어야 하고, 기본값은 두 레인을 한 큐에 몰아넣는다.
+
 ### 6.3 .kiwi 상태 갱신
 
 ```

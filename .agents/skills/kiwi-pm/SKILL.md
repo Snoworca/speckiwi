@@ -150,6 +150,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | "T-final 승급 생략" (오케스트레이터 전달) | `--no-final` (T-final 요구 승급 skip, §1.5) | off |
 | "파이프라인 이벤트 억제" (오케스트레이터 전달) | `--no-pipeline-emit` (인자 없음 — `kiwi/pipeline.jsonl` append 를 수행하지 않는다, §1.5) | off (emit 수행) |
 | "unit 산출물 commit" (오케스트레이터 전달) | `--commit-lane-work` (인자 없음 — handoff 의 `write_set` 만 stage, §1.5) | off (자동 commit 없음 — `--commit-lane-work` 가 유일한 예외, §1.5) |
+| "mutation 이연" (오케스트레이터 전달) | `--defer-srs-mutation <path>` (kiwi-coder spawn 프롬프트로 그대로 전달, §1.5) | off (coder 가 즉시 호출) |
 
 ### 1.3 CLI 인자 요약
 
@@ -173,6 +174,7 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md
          [--no-final]                     # T-final 요구 승급 skip (§1.5)
          [--no-pipeline-emit]             # 인자 없음 — kiwi/pipeline.jsonl append 를 수행하지 않는다 (§1.5)
          [--commit-lane-work]             # 인자 없음 — handoff 의 write_set 만 stage 해 Task 당 commit 1개 (§1.5)
+         [--defer-srs-mutation <path>]    # kiwi-coder spawn 프롬프트로 그대로 전달 (§1.5)
          [--no-doculight]                 # doculight MCP 표시 강제 skip
 ```
 
@@ -193,9 +195,9 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md
 | speckiwi `add_completed_work(plan-summary)` | T-final mutation | PM |
 | doculight viewer 표시 | T-final 보고서 작성 직후 | PM (가용 시) |
 
-### 1.5 오케스트레이션 위임 플래그 (`--handoff` / `--session-suffix` / `--no-final` / `--no-pipeline-emit` / `--commit-lane-work`)
+### 1.5 오케스트레이션 위임 플래그 (`--handoff` / `--session-suffix` / `--no-final` / `--no-pipeline-emit` / `--commit-lane-work` / `--defer-srs-mutation`)
 
-상위 오케스트레이터(`kiwi-orchestrator`)가 하나의 plan 을 **여러 실행 단위(unit)** 로 쪼개 순차 실행할 때 쓰는 5개 플래그. 단독 실행에는 어느 것도 필요 없고, 명시하지 않으면 본 스킬의 기존 동작이 그대로 유지된다.
+상위 오케스트레이터(`kiwi-orchestrator`)가 하나의 plan 을 **여러 실행 단위(unit)** 로 쪼개 순차 실행할 때 쓰는 6개 플래그. 단독 실행에는 어느 것도 필요 없고, 명시하지 않으면 본 스킬의 기존 동작이 그대로 유지된다.
 
 #### `--handoff <path>` — **실행 집합(execution set)과 임차(lease)**
 
@@ -233,6 +235,12 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md
 - **플래그를 생략하면** 본 스킬은 **아무것도 commit 하지 않는다**. 그 unit 의 산출물은 **미커밋** 작업 트리로 남고, **다음 unit** 의 실행이 그것을 밟는다. §6.1 의 "PM 은 자동 commit 하지 않는다" 는 이 플래그를 명시하지 않은 경우의 규칙이며, `--commit-lane-work` 가 그 유일한 예외다.
 
 ---
+
+#### `--defer-srs-mutation <path>` — kiwi-coder 로 그대로 전달 (FR-FLOW-121)
+
+`kiwi-pm` 은 이 플래그를 해석하지 않고, 자신이 spawn 하는 `kiwi-coder` 의 프롬프트에 **그대로 전달**한다. 큐 파일을 열지도, 읽지도, 쓰지도 않는다.
+
+전달이 없으면 플래그는 도달하지 않는다 — `kiwi-pm` 이 spawn 을 소유하므로 `kiwi-coder` 만 아는 플래그에는 호출자가 없다. 반대로 `kiwi-coder` 가 읽지 않으면 전달된 값은 버려진다. 두 절반은 따로 랜딩하면 무력하다.
 
 ## 2. 상태 관리
 

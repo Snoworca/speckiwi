@@ -164,6 +164,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
+| "mutation 이연", "큐에만 기록" (오케스트레이터 전달) | `--defer-srs-mutation <path>` | off (§6.2 mutation 즉시 호출) |
 
 **`--drive` (FR-FLOW-119)**: 부모 `kiwi-wave-master` 가 `--drive` 로 시작한 무인 실행에서는 `--drive` 가 `--auto-integration` 과 `--auto-cost-warning` 을 함께 켠 것으로 본다 — `integration-test-user-consent` 와 `cost-warning-large-task` 두 게이트는 열린다. 그 밖의 어떤 게이트도 `--drive` 로 열리지 않으며, 특히 `existing-test-weakened-or-deleted` · `existing-public-contract-change` · `existing-file-deleted-or-moved` · `mock-detection` · `tdd-bypass-attempt` 는 `--drive` 에서도 사용자 결정이다.
 
