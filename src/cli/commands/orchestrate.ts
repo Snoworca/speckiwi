@@ -7,6 +7,7 @@ import { writeHuman, writeJson } from "../formatters.js";
 import type { ProjectRoot } from "../../core/types.js";
 import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
+import { replayDeferredMutations, type DeferredMutation, type ReplayIndex } from "../../core/orchestrator/replay.js";
 import { groundFiles, isGroundingRefusal, type DeclaredEntry } from "../../core/orchestrator/grounding.js";
 import { validateHandoff } from "../../core/orchestrator/handoff.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
@@ -73,9 +74,13 @@ export const ORCHESTRATE_PHASE1_VERB_ROWS = [
 ] as const;
 
 /**
- * The five rows deferred to `2.6.0-phase2-parallel-lanes`. Each takes a lane workspace or a lane
- * manifest as its subject, and phase 1 creates neither. Declared so the absence is asserted rather
- * than assumed. @req IR-CLI-082
+ * The five rows 05 §10.6 assigns to `2.6.0-phase2-parallel-lanes`. Each takes a lane workspace, a
+ * lane manifest or a harvested lane queue as its subject, and phase 1 creates none of those.
+ *
+ * This is **phase membership**, which is a fixed fact about the design, not registration state — a
+ * row stays here after it ships. What changes as phase 2 lands is
+ * {@link ORCHESTRATE_DEFERRED_VERB_ROWS}. Keeping the two apart is what lets the phase-1 boundary
+ * assertions stay meaningful while the surface grows. @req IR-CLI-082
  */
 export const ORCHESTRATE_PHASE2_VERB_ROWS = [
   "lane audit",
@@ -84,6 +89,22 @@ export const ORCHESTRATE_PHASE2_VERB_ROWS = [
   "lane status",
   "replay plan"
 ] as const;
+
+/**
+ * The phase-2 rows that are **not yet registered**. Declared so the absence is asserted rather than
+ * assumed; it shrinks as phase 2 lands and is empty when phase 2 is complete. @req IR-CLI-091
+ */
+export const ORCHESTRATE_DEFERRED_VERB_ROWS = ["lane audit", "lane harvest", "lane release", "lane status"] as const;
+
+/**
+ * Every row the CLI actually registers: the phase-1 surface plus each phase-2 row already landed.
+ * Derived rather than restated, so a row cannot be registered without leaving the deferred list.
+ * @req IR-CLI-091
+ */
+export const ORCHESTRATE_REGISTERED_VERB_ROWS: readonly string[] = [
+  ...ORCHESTRATE_PHASE1_VERB_ROWS,
+  ...ORCHESTRATE_PHASE2_VERB_ROWS.filter((row) => !(ORCHESTRATE_DEFERRED_VERB_ROWS as readonly string[]).includes(row))
+];
 
 /** The six freeze targets of 05 §3.3a. @req IR-CLI-082 */
 export const FREEZE_TARGETS = ["design", "waves", "lanes", "handoff", "issues", "postmortem"] as const;
@@ -124,15 +145,18 @@ function parseRow(row: string): ParsedRow {
   return { row, prefix: segments.slice(0, -1), alternatives: last.split("|") };
 }
 
-const PARSED_PHASE1_ROWS: readonly ParsedRow[] = ORCHESTRATE_PHASE1_VERB_ROWS.map(parseRow);
+const PARSED_REGISTERED_ROWS: readonly ParsedRow[] = ORCHESTRATE_REGISTERED_VERB_ROWS.map(parseRow);
 
 /**
- * The phase-1 verb row a walked command path belongs to, or `null` when it belongs to none — which
- * is how a leaf outside the declared surface is detected rather than silently accepted.
- * @req IR-CLI-082
+ * The registered verb row a walked command path belongs to, or `null` when it belongs to none —
+ * which is how a leaf outside the declared surface is detected rather than silently accepted.
+ *
+ * The set it matches against is {@link ORCHESTRATE_REGISTERED_VERB_ROWS}, not the phase-1 rows
+ * alone: a landed phase-2 row is registered, so a path that folds into one is inside the surface.
+ * @req IR-CLI-082 / IR-CLI-091
  */
 export function orchestrateVerbRow(segments: readonly string[]): string | null {
-  for (const parsed of PARSED_PHASE1_ROWS) {
+  for (const parsed of PARSED_REGISTERED_ROWS) {
     if (segments.length !== parsed.prefix.length + 1) continue;
     if (!parsed.prefix.every((segment, index) => segments[index] === segment)) continue;
     if (parsed.alternatives.includes(segments[segments.length - 1] as string)) return parsed.row;
@@ -222,7 +246,11 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_wave_close", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
   { tool: "orchestrate_duplication_plan", path: ["duplication", "plan"], kind: "read", options: [o("--diffs", "diffs", "string", true), o("--write-sets", "writeSets", "string", true), o("--wave", "wave")] },
   { tool: "orchestrate_validate", path: ["validate"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--strict", "strict", "boolean")] },
-  { tool: "orchestrate_auto_gate", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] }
+  { tool: "orchestrate_auto_gate", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] },
+  // @req IR-CLI-091 — the first phase-2 row to register. Both options are declared because the MCP
+  // input schema is derived from this list: an omission here leaves the field uncallable over MCP
+  // while the CLI accepts it, which is how `orchestrate_round_record` once shipped uncallable.
+  { tool: "orchestrate_replay_plan", path: ["replay", "plan"], kind: "read", options: [o("--queue", "queue", "string", true), o("--index", "index")] }
 ];
 
 /**
@@ -404,6 +432,86 @@ async function readJsonFile(absolutePath: string, label: string): Promise<unknow
   } catch (error) {
     throw new OperationalError(`${label} is not valid JSON at ${absolutePath}: ${(error as Error).message}`, { cause: error });
   }
+}
+
+/**
+ * A JSONL file as one parsed value per non-blank line.
+ *
+ * A malformed line is an error and never a skip. The queue this reads is the only record that a
+ * lane's SRS mutations happened at all, so dropping an unreadable line would report a complete plan
+ * over an incomplete one — the traceability break deferring the mutations exists to prevent.
+ * @req IR-CLI-091 AC-4
+ */
+async function readJsonLinesFile(absolutePath: string, label: string): Promise<Array<{ value: unknown; line: number }>> {
+  let text: string;
+  try {
+    text = await readFile(absolutePath, "utf8");
+  } catch (error) {
+    throw new OperationalError(`${label} is unreadable at ${absolutePath}: ${(error as Error).message}`, { cause: error });
+  }
+  const values: Array<{ value: unknown; line: number }> = [];
+  for (const [offset, line] of text.split("\n").entries()) {
+    if (line.trim() === "") continue;
+    try {
+      values.push({ value: JSON.parse(line) as unknown, line: offset + 1 });
+    } catch (error) {
+      throw new OperationalError(`${label} line ${offset + 1} is not valid JSON at ${absolutePath}: ${(error as Error).message}`, {
+        cause: error
+      });
+    }
+  }
+  return values;
+}
+
+/**
+ * The persisted replay index, validated into the planner's input type rather than cast onto it.
+ *
+ * `new Set("abc")` is a set of three CHARACTERS. A string where a hash array belongs would not throw
+ * — it would dedupe against nonsense and then persist that nonsense back as the index, so every
+ * later run keys against it too.
+ *
+ * The result is null-prototype for the same reason `replayDeferredMutations` builds its output that
+ * way: `index["__proto__"] = [...]` on an ordinary object sets the prototype and stores nothing, so
+ * a mutation the index recorded as applied would be replayed again. @req IR-CLI-091 AC-4
+ */
+function replayIndexFromJson(value: unknown, label: string, absolutePath: string): ReplayIndex {
+  const reject = (detail: string): never => {
+    throw new OperationalError(`${label} is not a replay index at ${absolutePath}: ${detail}`);
+  };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return reject("expected a JSON object");
+  const index = Object.create(null) as ReplayIndex;
+  for (const [tool, hashes] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(hashes) || hashes.some((hash) => typeof hash !== "string")) {
+      return reject(`\`${tool}\` must map to an array of hash strings`);
+    }
+    index[tool] = hashes as string[];
+  }
+  return index;
+}
+
+/**
+ * The harvested queue, validated into the planner's input type rather than cast onto it.
+ *
+ * `JSON.parse` accepts `5`, `"x"` and `[]`, and an entry missing `tool` plans a call whose tool is
+ * `undefined` — measured: it produced an `"undefined"` key in `indexAfter` and still reported
+ * success. The queue is written by a skill rather than by this code, so a line that is valid JSON of
+ * the wrong shape is the realistic corruption, and a replay that silently drops or mis-keys a lane's
+ * mutation is the exact traceability break deferring those mutations exists to prevent.
+ * @req IR-CLI-091 AC-4
+ */
+function deferredMutationsFromQueue(entries: Array<{ value: unknown; line: number }>, label: string, absolutePath: string): DeferredMutation[] {
+  return entries.map(({ value, line }) => {
+    const reject = (detail: string): never => {
+      throw new OperationalError(`${label} line ${line} is not a deferred mutation at ${absolutePath}: ${detail}`);
+    };
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return reject("expected a JSON object");
+    const record = value as Record<string, unknown>;
+    if (typeof record.tool !== "string" || record.tool === "") return reject("`tool` must be a non-empty string");
+    // `args` is `unknown` to the kernel, but it must be PRESENT: a missing one hashes as `undefined`
+    // and would collide with every other entry that also omitted it.
+    if (!("args" in record)) return reject("`args` is missing");
+    return { tool: record.tool, args: record.args };
+  });
 }
 
 function parseInlineJson(value: unknown, label: string): Record<string, unknown> {
@@ -1352,6 +1460,30 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         const diffs = (await readJsonFile(path.resolve(root, options.diffs as string), "--diffs")) as never;
         const writeSets = (await readJsonFile(path.resolve(root, options.writeSets as string), "--write-sets")) as Record<string, string[]>;
         return { rows: planDuplicationAudit(diffs, writeSets) };
+      });
+    });
+
+  // ---- replay ---------------------------------------------------------------------------------------------------
+  const replay = orchestrate.command("replay").description("the deferred SRS-mutation replay at the host root");
+
+  addCommonOptions(replay.command("plan"))
+    .requiredOption("--queue <path>", "a harvested lane's deferred-mutations.jsonl")
+    .option("--index <path>", "the persisted replay-index.json of what has already been applied")
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        const root = runRoot(command);
+        const queuePath = path.resolve(root, options.queue as string);
+        const queue = deferredMutationsFromQueue(await readJsonLinesFile(queuePath, "--queue"), "--queue", queuePath);
+        // Absent means nothing has been applied yet, which is the first wave's true state. Defaulting
+        // to an empty index is not a fallback for an unreadable file: a path that was GIVEN and
+        // cannot be read still fails, because that is a lost record of what already ran.
+        let index: ReplayIndex = {};
+        if (options.index !== undefined) {
+          const indexPath = path.resolve(root, options.index as string);
+          index = replayIndexFromJson(await readJsonFile(indexPath, "--index"), "--index", indexPath);
+        }
+        const plan = replayDeferredMutations(queue, index);
+        return { calls: plan.calls, indexAfter: plan.indexAfter };
       });
     });
 

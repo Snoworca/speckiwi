@@ -10,9 +10,11 @@ import { main } from "../../src/cli/index.js";
 import { buildCommand } from "../../src/cli/command.js";
 import {
   FREEZE_TARGETS,
+  ORCHESTRATE_DEFERRED_VERB_ROWS,
   ORCHESTRATE_MUTATION_VERB_ROWS,
   ORCHESTRATE_PHASE1_VERB_ROWS,
   ORCHESTRATE_PHASE2_VERB_ROWS,
+  ORCHESTRATE_REGISTERED_VERB_ROWS,
   orchestrateVerbKind,
   orchestrateVerbRow,
   registerOrchestrateCommands
@@ -105,26 +107,32 @@ const READABLE_PROBE_DOCUMENT = {
   }
 };
 
-describe("IR-CLI-082 AC-1 — exactly the twenty-one phase-1 verb rows", () => {
-  it("declares twenty-one rows and folds every registered leaf into one of them", () => {
+describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
+  it("declares twenty-one phase-1 rows and folds every registered leaf into a registered row", () => {
+    // The count literal stays a literal. It is the tripwire that forces an author who changes the
+    // surface to come here and say so, and phase 1's own row count is a historical fact that does
+    // not move when a phase-2 row lands — that lands in ORCHESTRATE_REGISTERED_VERB_ROWS instead.
     expect(ORCHESTRATE_PHASE1_VERB_ROWS).toHaveLength(21);
 
     const leaves = orchestrateLeafPaths();
     expect(leaves.length, "the namespace must register leaves").toBeGreaterThan(0);
 
     const unfolded = leaves.filter((leaf) => orchestrateVerbRow(leaf) === null);
-    expect(unfolded.map((leaf) => leaf.join(" ")), "every leaf must belong to a declared phase-1 row").toEqual([]);
+    expect(unfolded.map((leaf) => leaf.join(" ")), "every leaf must belong to a declared registered row").toEqual([]);
 
     const covered = new Set(leaves.map((leaf) => orchestrateVerbRow(leaf) as string));
-    expect([...covered].sort()).toEqual([...ORCHESTRATE_PHASE1_VERB_ROWS].sort());
+    expect([...covered].sort()).toEqual([...ORCHESTRATE_REGISTERED_VERB_ROWS].sort());
   });
 
-  it("registers none of the five phase-2 rows", () => {
+  it("registers none of the phase-2 rows still listed as deferred", () => {
     const covered = new Set(orchestrateLeafPaths().map((leaf) => orchestrateVerbRow(leaf) as string));
-    for (const row of ORCHESTRATE_PHASE2_VERB_ROWS) {
-      expect(covered.has(row), `phase-2 row '${row}' must not be registered`).toBe(false);
+    for (const row of ORCHESTRATE_DEFERRED_VERB_ROWS) {
+      expect(covered.has(row), `deferred row '${row}' must not be registered`).toBe(false);
     }
+    // Phase membership is fixed at five by 05 §10.6; how many of them are still deferred is not.
     expect(ORCHESTRATE_PHASE2_VERB_ROWS).toHaveLength(5);
+    expect(ORCHESTRATE_DEFERRED_VERB_ROWS).toHaveLength(4);
+    for (const row of ORCHESTRATE_DEFERRED_VERB_ROWS) expect(ORCHESTRATE_PHASE2_VERB_ROWS).toContain(row);
   });
 });
 
@@ -152,18 +160,35 @@ describe("IR-CLI-082 AC-3 — run, route, issue and schedule subcommand sets", (
   });
 });
 
-describe("IR-CLI-082 AC-4 — lane and replay are unregistered", () => {
-  it("registers no `lane` or `replay` container", () => {
+describe("IR-CLI-082 AC-4 — the deferred rows are unregistered", () => {
+  it("registers no leaf for a deferred row", () => {
+    // Derived from the deferred list rather than hard-coded, so a row leaving that list is not
+    // silently still asserted absent here — which is how this case would have gone stale when
+    // `replay plan` landed. @req IR-CLI-091
+    //
+    // The subject is the LEAF, not the container. Asserting the container absent only holds while
+    // every row under it is deferred: the day `lane audit` lands with the other three still
+    // deferred, `lane` must be both registered and absent, and this case would demand a
+    // contradiction. The container check below is therefore conditioned on that being true.
+    expect(ORCHESTRATE_DEFERRED_VERB_ROWS.length, "the deferred list must name at least one row").toBeGreaterThan(0);
+    const registeredLeaves = new Set(orchestrateLeafPaths().map((leaf) => leaf.join(" ")));
+    for (const row of ORCHESTRATE_DEFERRED_VERB_ROWS) {
+      expect(registeredLeaves.has(row), `deferred row '${row}' must have no registered leaf`).toBe(false);
+    }
+
     const topLevel = orchestrateCommand().commands.map((sub) => sub.name());
-    expect(topLevel).not.toContain("lane");
-    expect(topLevel).not.toContain("replay");
+    const containerOf = (row: string): string => row.split(" ")[0] as string;
+    const deferred = new Set<string>(ORCHESTRATE_DEFERRED_VERB_ROWS);
+    for (const container of new Set(ORCHESTRATE_DEFERRED_VERB_ROWS.map(containerOf))) {
+      const siblings = ORCHESTRATE_REGISTERED_VERB_ROWS.filter((row) => containerOf(row) === container);
+      if (siblings.length > 0) continue; // partially landed: the container legitimately exists
+      expect(deferred.size, `${container} is wholly deferred`).toBeGreaterThan(0);
+      expect(topLevel, `no leaf under '${container}' has landed, so the container must be absent`).not.toContain(container);
+    }
   });
 
   it("exits with an unknown-command error rather than a stub", async () => {
-    for (const argv of [
-      ["orchestrate", "lane", "status", "--json"],
-      ["orchestrate", "replay", "plan", "--json"]
-    ]) {
+    for (const argv of ORCHESTRATE_DEFERRED_VERB_ROWS.map((row) => ["orchestrate", ...row.split(" "), "--json"])) {
       const pipes = io();
       const exit = await main(argv, pipes);
       const text = `${drain(pipes.stdout)}${drain(pipes.stderr)}`;

@@ -9,9 +9,9 @@ import { isReadOnlyTool, toolSchemas } from "../../src/mcp/server.js";
 import { toolSpecs } from "../../src/mcp/schemas.js";
 import { buildCommand } from "../../src/cli/command.js";
 import {
+  ORCHESTRATE_DEFERRED_VERB_ROWS,
   ORCHESTRATE_MCP_TOOLS,
-  ORCHESTRATE_PHASE1_VERB_ROWS,
-  ORCHESTRATE_PHASE2_VERB_ROWS,
+  ORCHESTRATE_REGISTERED_VERB_ROWS,
   ORCHESTRATE_TOOL_BINDINGS,
   orchestrateVerbRow,
   registerOrchestrateCommands
@@ -49,13 +49,15 @@ const NAMED_IN_REQUIREMENT = [
   "orchestrate_auto_gate"
 ] as const;
 
-const DEFERRED_TOOLS = [
-  "orchestrate_lane_audit",
-  "orchestrate_lane_harvest",
-  "orchestrate_lane_release",
-  "orchestrate_lane_status",
-  "orchestrate_replay_plan"
-] as const;
+const DEFERRED_TOOLS = ["orchestrate_lane_audit", "orchestrate_lane_harvest", "orchestrate_lane_release", "orchestrate_lane_status"] as const;
+
+/**
+ * `orchestrate_*` tools registered by a later target than the one IR-MCP-003 belongs to. They are
+ * outside the family this requirement names, so they are listed here rather than folded into
+ * `NAMED_IN_REQUIREMENT` — the twenty-five count is a fact about the phase-1 family and must not
+ * drift upward whenever phase 2 lands a row. @req IR-CLI-091
+ */
+const REGISTERED_BEYOND_PHASE1 = ["orchestrate_replay_plan"] as const;
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "speckiwi-orchestrate-mcp-"));
@@ -89,7 +91,7 @@ function cliLeafPaths(): string[][] {
   return leaves;
 }
 
-describe("IR-MCP-003 AC-1 / AC-2 — the family is registered and the five lane tools are not", () => {
+describe("IR-MCP-003 AC-1 / AC-2 — the family is registered and the four deferred lane tools are not", () => {
   it("registers every orchestrate_* tool the requirement names", async () => {
     const registered = new Set(serverToolNames(await tempRoot()));
     for (const name of NAMED_IN_REQUIREMENT) {
@@ -98,34 +100,42 @@ describe("IR-MCP-003 AC-1 / AC-2 — the family is registered and the five lane 
     expect(NAMED_IN_REQUIREMENT).toHaveLength(25);
   });
 
-  it("registers no deferred lane or replay tool", async () => {
+  it("registers no deferred lane tool", async () => {
     const registered = new Set(serverToolNames(await tempRoot()));
     for (const name of DEFERRED_TOOLS) {
-      expect(registered.has(name), `${name} is phase 2 and must not be registered`).toBe(false);
+      expect(registered.has(name), `${name} is deferred and must not be registered`).toBe(false);
     }
   });
 
-  it("registers no orchestrate_* tool beyond the named family", async () => {
+  it("registers no orchestrate_* tool beyond the named family and the rows later targets landed", async () => {
     const orchestrateTools = serverToolNames(await tempRoot()).filter((name) => name.startsWith("orchestrate_"));
-    expect([...orchestrateTools].sort()).toEqual([...NAMED_IN_REQUIREMENT].sort());
+    expect([...orchestrateTools].sort()).toEqual([...NAMED_IN_REQUIREMENT, ...REGISTERED_BEYOND_PHASE1].sort());
   });
 });
 
-describe("IR-MCP-003 AC-3 — every tool resolves to a phase-1 CLI verb row, and no phase-2 row has one", () => {
-  it("maps each tool onto a registered leaf whose row is a phase-1 row", () => {
+describe("IR-MCP-003 AC-3 — every tool resolves to a registered CLI verb row, and no deferred row has one", () => {
+  it("maps each tool onto a registered leaf whose row is a registered row", () => {
     const leafKeys = new Set(cliLeafPaths().map((leaf) => leaf.join(" ")));
     for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
       expect(leafKeys.has(binding.path.join(" ")), `${binding.tool} must name a registered CLI leaf`).toBe(true);
       const row = orchestrateVerbRow(binding.path);
       expect(row, `${binding.tool} must resolve to a verb row`).not.toBeNull();
-      expect(ORCHESTRATE_PHASE1_VERB_ROWS).toContain(row);
+      expect(ORCHESTRATE_REGISTERED_VERB_ROWS).toContain(row);
       expect(ORCHESTRATE_MCP_TOOLS[binding.tool]).toBe(row);
     }
   });
 
-  it("gives no phase-2 verb row an MCP counterpart", () => {
+  it("mirrors every phase-1 row and gives no deferred row an MCP counterpart", () => {
+    // Both directions. Checking only the absence half is what lets a phase-1 row quietly lose its
+    // mirror while the requirement still claims the family mirrors the CLI namespace.
     const mirroredRows = new Set(Object.values(ORCHESTRATE_MCP_TOOLS));
-    for (const row of ORCHESTRATE_PHASE2_VERB_ROWS) expect(mirroredRows.has(row)).toBe(false);
+    for (const row of ORCHESTRATE_DEFERRED_VERB_ROWS) expect(mirroredRows.has(row)).toBe(false);
+    // Quantified over the REGISTERED rows, not the phase-1 rows: a later phase-2 row registered on
+    // the CLI with no binding is exactly the drift this direction exists to catch, and quantifying
+    // over phase 1 alone would let it through while the sentence still claimed the family mirrors
+    // the namespace.
+    const unmirrored = ORCHESTRATE_REGISTERED_VERB_ROWS.filter((row) => !mirroredRows.has(row));
+    expect(unmirrored, "every registered row must have an MCP counterpart").toEqual([]);
   });
 
   it("classifies every orchestrate tool's read-only hint from its binding kind", () => {
