@@ -1,0 +1,14 @@
+# Line-ending policy. @req FR-NODE-183
+#
+# Without this file the repository had no policy at all, only `core.autocrlf`, which is a per-clone
+# setting. The effect was invisible and one-directional: `git status` reported nothing while the
+# index and the working tree disagreed, and a fresh checkout on Windows produced CRLF for files the
+# author had committed as LF. Text-asserting tests then passed for the author and failed for anyone
+# who cloned — measured at 145 spurious failures in a clean Windows checkout, none of which Linux CI
+# could reproduce. A contributor could not reproduce CI, and CI could not reproduce a contributor.
+#
+# `text=auto` lets git detect binary content rather than trusting a list — which matters here,
+# because four TypeScript sources under `src/` legitimately carry NUL bytes and must not be
+# converted. `eol=lf` puts LF in the working tree too, so a Windows checkout is byte-identical to
+# what `ubuntu-latest` sees in CI.
+* text=auto eol=lf
