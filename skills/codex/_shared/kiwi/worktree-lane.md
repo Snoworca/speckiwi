@@ -28,11 +28,20 @@ lane holding an MCP handle still cannot touch its own worktree through it.
 ## 2. Creating one — never trust the default head
 
 ```
-git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key}
-git -C <lane-root> checkout <base_sha>        # mandatory, never skipped
+git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
 ```
 
-**The explicit `checkout` is not optional.** Measured: a runtime-created worktree opened at
+**Pass the base as the third argument — never split this into two commands.** `add -b BR` followed by a
+separate `checkout <base_sha>` creates the branch at the current tip and then DETACHES HEAD from it.
+The lane's commits pile up on a detached HEAD while the branch stays put — reproduced. The "commits on
+its own branch" that §1 lists as the lane's property then do not exist, §5's `base..head` check reads
+zero for a lane that did work, and removing the worktree leaves those commits unreferenced.
+
+Where a single command is not possible — a runtime handed you the worktree already made — use
+`git -C <lane-root> switch -C <branch> <base_sha>`, which moves the branch to the base and leaves HEAD
+ATTACHED to it. `checkout <sha>` is never the answer.
+
+**Naming the base is itself not optional.** Measured: a runtime-created worktree opened at
 `origin/<default-branch>`, **114 commits behind** the branch under work. A diff produced on that base
 **merges cleanly**, so nothing afterwards reveals that months-old code was edited.
 

@@ -111,4 +111,29 @@ describe("FR-NODE-187 — MCP registration in a self-hosting checkout", () => {
     expect(text).toContain('"command":"node"');
     expect(text).toContain("bin/speckiwi");
   });
+
+  it("AC-6: the Codex remediation also quotes the selected launcher, on every path", async () => {
+    // This warning ships on EVERY registration, not only the unparseable one, and it used to advise
+    // `npx -y speckiwi mcp` unconditionally — recreating in Codex exactly the drift this requirement
+    // removes for Claude.
+    const dir = await root("codex");
+    await withPackage(dir, "speckiwi");
+    await withBin(dir);
+
+    const result = await registerSpeckiwiMcp(dir);
+
+    const codex = result.warnings.find((line) => line.includes("codex mcp add"));
+    expect(codex, "the Codex remediation must be present").toBeDefined();
+    expect(codex).toContain("node bin/speckiwi mcp");
+    expect(codex).not.toContain("npx -y speckiwi mcp");
+  });
+
+  it("AC-6: an ordinary project's Codex remediation still names the published launcher", async () => {
+    const dir = await root("codex-ordinary");
+    await withPackage(dir, "some-consumer");
+
+    const result = await registerSpeckiwiMcp(dir);
+
+    expect(result.warnings.find((line) => line.includes("codex mcp add"))).toContain("npx -y speckiwi mcp");
+  });
 });

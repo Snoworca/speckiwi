@@ -30,8 +30,11 @@ export const REPO_POLLUTION_SENTINELS: readonly string[] = [
  * content only when the stat says it could have changed brings it to 3.4 ms.
  *
  * The limit this accepts, stated rather than hidden: a rewrite that preserves BOTH byte size and
- * mtime is invisible. Nothing a leaking test does looks like that — a test leaks by creating files,
- * which the entry set catches outright, and any rewrite moves mtime.
+ * mtime is invisible. Measured on this host, that is not vanishingly rare — 400 same-size rewrites in
+ * a loop collided on `mtimeMs` 5 times, and all 5 went unreported. What the limit does NOT reach is
+ * the reason the guard exists: a test leaks by CREATING files, and creation is decided by the entry
+ * set, which reads no content at all. The blind spot is confined to the `modified` axis, which did
+ * not exist before this guard grew a baseline.
  */
 export interface FileFingerprint {
   readonly stat: string;

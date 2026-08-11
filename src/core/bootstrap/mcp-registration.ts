@@ -63,9 +63,17 @@ async function speckiwiServerEntry(root: string): Promise<McpLauncher> {
   return (await isSelfHostingCheckout(root)) ? SELF_HOSTED_LAUNCHER : PUBLISHED_LAUNCHER;
 }
 
-const CODEX_REMEDIATION =
-  "Codex MCP registration is not written automatically (the global ~/.codex/config.toml is left " +
-  "untouched). To register speckiwi for Codex run: codex mcp add speckiwi -- npx -y speckiwi mcp";
+/**
+ * Codex registration is never written automatically, so the operator is told what to run. The command
+ * quotes the SAME launcher the detection selected — advising `npx -y speckiwi mcp` inside a
+ * self-hosting checkout would recreate exactly the drift FR-NODE-187 removes. @req FR-NODE-187
+ */
+function codexRemediation(entry: McpLauncher): string {
+  return (
+    "Codex MCP registration is not written automatically (the global ~/.codex/config.toml is left " +
+    `untouched). To register speckiwi for Codex run: codex mcp add speckiwi -- ${entry.command} ${entry.args.join(" ")}`
+  );
+}
 
 function unparseableWarning(filePath: string, entry: McpLauncher): string {
   return (
@@ -108,8 +116,8 @@ export async function registerSpeckiwiMcp(
 ): Promise<McpRegistrationResult> {
   const dryRun = Boolean(options.dryRun);
   const filePath = path.join(root, MCP_CONFIG_FILE);
-  const warnings = [CODEX_REMEDIATION];
   const entry = await speckiwiServerEntry(root);
+  const warnings = [codexRemediation(entry)];
   const existing = await readExisting(filePath);
 
   if (existing.kind === "absent") {

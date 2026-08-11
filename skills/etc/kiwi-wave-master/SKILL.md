@@ -30,7 +30,7 @@ description: "OpenCode/Hermes local-LLM variant of the multi-wave orchestrator. 
 | §0.9 | **wave 분해 SSOT**. 본 스킬은 `../_shared/kiwi/wave-decomposition.md` v1.0.0 을 따른다 — 두 갈래 split 휴리스틱, 설계 기준선 물질화, 분해 커버리지 게이트. `artifact_root` 인자로 `docs/analysis/kiwi-wave-master-{run_id}/` 를 전달한다(§3) |
 | §0.10 | **상호검증 엔진 SSOT**. 본 스킬은 `../_shared/kiwi/verify-loop.md` v1.0.0 을 따른다 — 증거 번들 규칙, 두 stance, 라운드 구조(§5.5.3), 종료 조건(§5.5.4), 진동 감지, 개선 위임(§5.5.5), 교차 wave 이월(§5.5.7). 본 스킬 고유의 **분모 표**는 §5.5.2 |
 | §0.11 | **wave target 등록 계약 SSOT**. 본 스킬은 `../_shared/kiwi/wave-srs-registration.md` v1.0.0 을 따른다 — `--research-doc` / `--constraints-doc` / `existing_modules` 저작 입력과 `srs_authored` 멱등 표식 |
-| §0.12 | **워크트리 레인 SSOT**. 본 스킬은 `../_shared/kiwi/worktree-lane.md` v1.0.0 을 따른다 — run root 와 lane workspace 의 분리, 명시 checkout 의무, 레인이 하지 않는 세 가지, role 게이트, 호스트 판정, 재생 승인. 본 스킬은 run 스코프 워크스페이스를 **준비해 넘기고 자신은 들어가지 않는다** — MCP root 가 세션을 따라가지 못하기 때문이다(§2.1). per-wave `kiwi-pipeline --wt` 위임 거부는 §2.1 이 소유하며 그 사유를 본 행에 다시 적지 않는다 — run 스코프 워크스페이스는 wave 스코프가 아니므로 그 거부와 충돌하지 않는다. |
+| §0.12 | **워크트리 레인 SSOT**. 본 스킬은 `../_shared/kiwi/worktree-lane.md` v1.0.0 을 따른다 — run root 와 lane workspace 의 분리, 명시 checkout 의무, 레인이 하지 않는 세 가지, role 게이트, 호스트 판정, 재생 승인. 본 스킬은 워크스페이스를 **만들지 않으며 들어가지도 않는다** — MCP root 가 세션을 따라가지 못하고(§2.1), 워크트리를 root 로 하는 세션을 여는 것은 §2.1 복구 경로 2 가 **사용자에게** 넘기는 일이다. per-wave `kiwi-pipeline --wt` 위임 거부는 §2.1 이 소유하며 그 사유를 본 행에 다시 적지 않는다 — run 스코프 워크스페이스는 wave 스코프가 아니므로 그 거부와 충돌하지 않는다. |
 | §7 참고 | `--mini`/`--loops N` 를 per-wave kiwi-srs + kiwi-pipeline 에 전파 (loop-option.md §6) |
 
 ---

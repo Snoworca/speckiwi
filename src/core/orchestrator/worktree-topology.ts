@@ -88,15 +88,20 @@ export const ROLE_REFUSAL_REASONS = [
 
 export type RoleRefusalReason = (typeof ROLE_REFUSAL_REASONS)[number];
 
-export interface LanePlanEntry {
+export interface FrozenLaneEntry {
   writeSet: readonly string[];
 }
 
-export type LanePlan = Readonly<Record<string, LanePlanEntry>>;
+/**
+ * The frozen lane membership the gate consults, keyed by lane id. Deliberately NOT named `LanePlan`:
+ * `lane-plan.ts` in this same directory already owns that name for a different shape, and two types
+ * with one name in one directory is how a caller ends up passing the wrong one. @req FR-NODE-186
+ */
+export type FrozenLanePlan = Readonly<Record<string, FrozenLaneEntry>>;
 
 export type RunRootRequest =
   | { role: "host"; mcpRoot: string; gitRoot: string }
-  | { role: "lane"; mcpRoot: string; gitRoot: string; laneId: string; lanePlan: LanePlan };
+  | { role: "lane"; mcpRoot: string; gitRoot: string; laneId: string; lanePlan: FrozenLanePlan };
 
 export interface RoleRootVerdict {
   ok: boolean;

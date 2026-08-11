@@ -79,7 +79,7 @@ export const ORCHESTRATE_PHASE1_VERB_ROWS = [
 ] as const;
 
 /**
- * The five rows 05 §10.6 assigns to `2.6.0-phase2-parallel-lanes`. Each takes a lane workspace, a
+ * The six rows 05 §10.6 assigns to `2.6.0-phase2-parallel-lanes`. Each takes a lane workspace, a
  * lane manifest or a harvested lane queue as its subject, and phase 1 creates none of those.
  *
  * This is **phase membership**, which is a fixed fact about the design, not registration state — a
