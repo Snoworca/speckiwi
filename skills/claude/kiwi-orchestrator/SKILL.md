@@ -30,6 +30,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 | §0.11 | **work-mode SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/workmode-policy.md` 를 따른다. 본 스킬 자신의 wave 흐름(`R-ORCH`)은 **body scope** 이므로 `tdd` 모드의 step 스코프 라우팅이 이를 다시 라우팅하지 않는다. run 단위 `kiwi-tdd` 라우팅은 §4 가 지배한다. |
 | §0.12 | **pipeline 이벤트 SSOT**: `~/.claude/skills/_shared/kiwi/pipeline-event.md`. 종료 시 MCP `workflow_pipeline_emit` 으로 이벤트 1건을 emit 한다(§17). |
 | §0.13 | **경계 규칙**: 판단이 필요한 것은 에이전트가 표시하고, 도구는 표시된 것의 형식만 검사한다. 본 문서가 "도구가 확인한다"고 적은 곳은 전부 형식 검사이며 내용의 옳고 그름은 검사하지 않는다. |
+| §0.14 | **워크트리 레인 SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/worktree-lane.md` v1.0.0 을 따른다 — run root 와 lane workspace 의 분리, 명시 checkout 의무, 레인이 하지 않는 세 가지, role 게이트, 호스트 판정, 재생 승인. 본 스킬은 **호스트에 머문 채** 레인 워크스페이스를 만들고 `--root` 로 그 안쪽에 손을 뻗는다 — 세션은 이동하지 않는다. 절차를 본 문서에 다시 적지 않는다. |
 
 ## 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유
 

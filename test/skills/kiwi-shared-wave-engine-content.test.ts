@@ -730,7 +730,9 @@ describe("FR-FLOW-110 — the resolved-skill reader", () => {
         "auto-option",
         "wave-decomposition",
         "verify-loop",
-        "wave-srs-registration"
+        "wave-srs-registration",
+        // @req FR-FLOW-122 — the worktree-lane contract is declared last, in §0.12.
+        "worktree-lane"
       ]);
     }
   });
