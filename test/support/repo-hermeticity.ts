@@ -21,12 +21,29 @@ export const REPO_POLLUTION_SENTINELS: readonly string[] = [
   path.posix.join(".agents", "skills", "kiwi-wave-master")
 ];
 
+/**
+ * `stat` is `size:mtimeMs`, `digest` is sha256 of the content.
+ *
+ * Both are kept so the per-test audit can read `stat` and consult `digest` only when `stat` moved.
+ * Digesting every sentinel after every test costs 12 ms — 62 s across this suite, measured — and that
+ * overhead is what pushed subprocess-spawning tests past their 5 s timeout under load. Reading
+ * content only when the stat says it could have changed brings it to 3.4 ms.
+ *
+ * The limit this accepts, stated rather than hidden: a rewrite that preserves BOTH byte size and
+ * mtime is invisible. Nothing a leaking test does looks like that — a test leaks by creating files,
+ * which the entry set catches outright, and any rewrite moves mtime.
+ */
+export interface FileFingerprint {
+  readonly stat: string;
+  readonly digest: string;
+}
+
 export type SentinelSnapshot =
   | { readonly kind: "absent" }
-  | { readonly kind: "file"; readonly digest: string }
+  | { readonly kind: "file"; readonly fingerprint: FileFingerprint }
   /** Files below the directory, keyed by their path within it, so a leak into a
    *  directory the baseline already held is still visible. */
-  | { readonly kind: "dir"; readonly entries: Readonly<Record<string, string>> };
+  | { readonly kind: "dir"; readonly entries: Readonly<Record<string, FileFingerprint>> };
 
 export type SentinelBaseline = Readonly<Record<string, SentinelSnapshot>>;
 
@@ -37,18 +54,31 @@ export interface RepoAudit {
   readonly modified: string[];
 }
 
-function digestFile(absolute: string): string {
-  return createHash("sha256").update(readFileSync(absolute)).digest("hex");
+function statOf(absolute: string): string {
+  const stats = statSync(absolute);
+  return `${stats.size}:${stats.mtimeMs}`;
 }
 
-function collectFiles(directory: string, prefix: string, into: Record<string, string>): void {
+/** Reads content only when `known` is absent or its stat moved — see {@link FileFingerprint}. */
+function fingerprintFile(absolute: string, known?: FileFingerprint): FileFingerprint {
+  const stat = statOf(absolute);
+  if (known !== undefined && known.stat === stat) return known;
+  return { stat, digest: createHash("sha256").update(readFileSync(absolute)).digest("hex") };
+}
+
+function collectFiles(
+  directory: string,
+  prefix: string,
+  into: Record<string, FileFingerprint>,
+  known: Readonly<Record<string, FileFingerprint>>
+): void {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
-      collectFiles(absolute, relative, into);
+      collectFiles(absolute, relative, into, known);
     } else {
-      into[relative] = digestFile(absolute);
+      into[relative] = fingerprintFile(absolute, known[relative]);
     }
   }
 }
@@ -56,21 +86,26 @@ function collectFiles(directory: string, prefix: string, into: Record<string, st
 /** Captures what each sentinel looks like right now. Call once before the suite runs. */
 export function snapshotSentinels(
   repoRoot: string,
-  sentinels: readonly string[] = REPO_POLLUTION_SENTINELS
+  sentinels: readonly string[] = REPO_POLLUTION_SENTINELS,
+  known: SentinelBaseline | null = null
 ): SentinelBaseline {
   // Null-prototype: a sentinel or directory entry literally named `__proto__` would
   // otherwise assign the prototype and create no own property.
   const baseline = Object.create(null) as Record<string, SentinelSnapshot>;
   for (const relative of sentinels) {
     const absolute = path.join(repoRoot, relative);
+    const previous = known?.[relative];
     if (!existsSync(absolute)) {
       baseline[relative] = { kind: "absent" };
     } else if (statSync(absolute).isDirectory()) {
-      const entries = Object.create(null) as Record<string, string>;
-      collectFiles(absolute, "", entries);
+      const entries = Object.create(null) as Record<string, FileFingerprint>;
+      collectFiles(absolute, "", entries, previous?.kind === "dir" ? previous.entries : {});
       baseline[relative] = { kind: "dir", entries };
     } else {
-      baseline[relative] = { kind: "file", digest: digestFile(absolute) };
+      baseline[relative] = {
+        kind: "file",
+        fingerprint: fingerprintFile(absolute, previous?.kind === "file" ? previous.fingerprint : undefined)
+      };
     }
   }
   return baseline;
@@ -88,7 +123,8 @@ export function auditRepoAgainstBaseline(
   baseline: SentinelBaseline | null,
   sentinels: readonly string[] = REPO_POLLUTION_SENTINELS
 ): RepoAudit {
-  const current = snapshotSentinels(repoRoot, sentinels);
+  // The baseline is passed through so an unchanged file costs one stat instead of a full read.
+  const current = snapshotSentinels(repoRoot, sentinels, baseline);
   const added: string[] = [];
   const modified: string[] = [];
 
@@ -116,7 +152,7 @@ export function auditRepoAgainstBaseline(
     }
 
     if (now.kind === "file" && was.kind === "file") {
-      if (now.digest !== was.digest) modified.push(relative);
+      if (now.fingerprint.digest !== was.fingerprint.digest) modified.push(relative);
       continue;
     }
 
@@ -125,7 +161,7 @@ export function auditRepoAgainstBaseline(
         const inside = path.posix.join(relative, entry);
         const before = was.entries[entry];
         if (before === undefined) added.push(inside);
-        else if (before !== now.entries[entry]) modified.push(inside);
+        else if (before.digest !== now.entries[entry]!.digest) modified.push(inside);
       }
     }
   }
@@ -155,8 +191,8 @@ export function loadBaseline(envVar = "SPECKIWI_HERMETICITY_BASELINE"): Sentinel
   const baseline = Object.create(null) as Record<string, SentinelSnapshot>;
   for (const [relative, snapshot] of Object.entries(parsed as Record<string, SentinelSnapshot>)) {
     if (snapshot.kind === "dir") {
-      const entries = Object.create(null) as Record<string, string>;
-      for (const [inner, digest] of Object.entries(snapshot.entries)) entries[inner] = digest;
+      const entries = Object.create(null) as Record<string, FileFingerprint>;
+      for (const [inner, fingerprint] of Object.entries(snapshot.entries)) entries[inner] = fingerprint;
       baseline[relative] = { kind: "dir", entries };
     } else {
       baseline[relative] = snapshot;

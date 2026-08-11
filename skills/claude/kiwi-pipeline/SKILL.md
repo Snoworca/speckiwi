@@ -22,7 +22,7 @@ description: "kiwi-* 스킬 파이프라인 메타 오케스트레이터. ./kiwi
 | 키 | 규칙 |
 |---|---|
 | §0.1 | **이벤트 SSOT**: `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 가 schema·파일위치·emit 규칙의 SSOT. 본 문서는 *read·다음 단계 추천* 만 담당. |
-| §0.2 | **자기 mutation 금지**: 본 스킬은 speckiwi MCP / 파일 시스템 / git 어느 것도 mutation 하지 않는다. 유일한 부작용 = `pipeline.jsonl` 에 자기 실행 1줄 append. |
+| §0.2 | **자기 mutation 금지 (기본값)**: 본 스킬은 speckiwi MCP / 파일 시스템 / git 어느 것도 mutation 하지 않는다. **예외 하나 — §2.6 워크트리 격리**(`--wt` 또는 격리 요청)에서 `git worktree add` 로 전용 worktree 를 생성한다(FR-FLOW-027). 그 외 부작용 = `pipeline.jsonl` 에 자기 실행 1줄 append. |
 | §0.3 | **/snoworca-\* 호출 절대 금지**. kiwi-* 시리즈 호출만 (Skill 도구 사용). |
 | §0.4 | **--auto 안전 게이트**: 직전 이벤트 `status ∈ {NEEDS_USER, FAILED}` 시 --auto 라도 자동 진행 차단 + 사용자 결정 강제. |
 | §0.5 | **자기 무한 루프 방지**: 본 스킬의 `next_hint` 가 `kiwi-pipeline` 인 경우 자동 진행 불가 (사용자 확인 의무). 직전 직전 이벤트도 `kiwi-pipeline` 이면 ERROR. |
