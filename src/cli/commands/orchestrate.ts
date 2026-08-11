@@ -7,7 +7,12 @@ import { writeHuman, writeJson } from "../formatters.js";
 import type { ProjectRoot } from "../../core/types.js";
 import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
-import { replayDeferredMutations, type DeferredMutation, type ReplayIndex } from "../../core/orchestrator/replay.js";
+import { replayDeferredMutations, type DeferredMutation, type ReplayIndex, type ReplayPlan } from "../../core/orchestrator/replay.js";
+import { applyReplayPlan, type ReplayDispatch } from "../../core/orchestrator/replay-apply.js";
+import { addTraceLink } from "../../core/mutation/add-trace.js";
+import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
+import { updateStatus } from "../../core/mutation/update-status.js";
+import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { groundFiles, isGroundingRefusal, type DeclaredEntry } from "../../core/orchestrator/grounding.js";
 import { validateHandoff } from "../../core/orchestrator/handoff.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
@@ -87,7 +92,8 @@ export const ORCHESTRATE_PHASE2_VERB_ROWS = [
   "lane harvest",
   "lane release",
   "lane status",
-  "replay plan"
+  "replay plan",
+  "replay apply"
 ] as const;
 
 /**
@@ -122,7 +128,10 @@ export const ORCHESTRATE_MUTATION_VERB_ROWS = [
   "freeze design|waves|lanes|handoff|issues|postmortem",
   "schedule plan",
   "round record",
-  "issue open|plan|resolve|defer|list"
+  "issue open|plan|resolve|defer|list",
+  // @req IR-CLI-092 — applying a replay writes SRS at the host root, so the leaf is a mutation and
+  // carries `--dry-run`. Omitting it here classified the leaf as a read and the surface test caught it.
+  "replay apply"
 ] as const;
 
 /**
@@ -250,7 +259,15 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   // @req IR-CLI-091 — the first phase-2 row to register. Both options are declared because the MCP
   // input schema is derived from this list: an omission here leaves the field uncallable over MCP
   // while the CLI accepts it, which is how `orchestrate_round_record` once shipped uncallable.
-  { tool: "orchestrate_replay_plan", path: ["replay", "plan"], kind: "read", options: [o("--queue", "queue", "string", true), o("--index", "index")] }
+  { tool: "orchestrate_replay_plan", path: ["replay", "plan"], kind: "read", options: [o("--queue", "queue", "string", true), o("--index", "index")] },
+  // @req IR-CLI-092 — kind `mutation`, so the generated mirror carries the dry-run option and the
+  // write envelope. A leaf without a binding ships an absent MCP tool and nothing says so.
+  {
+    tool: "orchestrate_replay_apply",
+    path: ["replay", "apply"],
+    kind: "mutation",
+    options: [o("--plan", "plan", "string", true), o("--applied", "applied", "string", true), o("--frozen-target", "frozenTarget"), DRY_RUN_OPTION]
+  }
 ];
 
 /**
@@ -461,6 +478,57 @@ async function readJsonLinesFile(absolutePath: string, label: string): Promise<A
     }
   }
   return values;
+}
+
+/**
+ * Dispatches one admitted replay call to the SRS mutation it names, at the HOST root.
+ *
+ * The four are exhaustive by construction: `admitReplayCalls` refuses everything else before a call
+ * reaches here, so the default branch is unreachable rather than a fallback. It still returns a
+ * failure instead of throwing, because a replay's account of what it attempted must survive the
+ * attempt that went wrong. @req IR-CLI-092
+ */
+function hostRootDispatch(root: ProjectRoot): ReplayDispatch {
+  return async (tool, args) => {
+    // The queue carries each mutation's own argument object; admission has already refused every
+    // tool but these four, so the cast is narrowing to a shape the plan was built from.
+    const input = (args ?? {}) as never;
+    const outcome =
+      tool === "add_trace_link"
+        ? await addTraceLink(root, input)
+        : tool === "add_verification_evidence"
+          ? await addVerificationEvidence(root, input)
+          : tool === "update_status"
+            ? await updateStatus(root, input)
+            : tool === "add_completed_work"
+              ? await addCompletedWork(root, input)
+              : null;
+    if (outcome === null) return { ok: false, error: `no host-root dispatch for ${tool}` };
+    if (outcome.ok) return { ok: true };
+    return { ok: false, error: outcome.error?.message ?? outcome.error?.code ?? "mutation refused" };
+  };
+}
+
+/**
+ * A `replay plan` output read back for application. Validated rather than cast: the plan is a file a
+ * previous step wrote and a human reviewed, and a malformed one must not be applied silently.
+ * @req IR-CLI-092
+ */
+function replayPlanFromJson(value: unknown, label: string, absolutePath: string): ReplayPlan {
+  const fail = (detail: string): never => {
+    throw new OperationalError(`${label} is not a replay plan at ${absolutePath}: ${detail}`);
+  };
+  if (typeof value !== "object" || value === null) return fail("not an object");
+  const calls = (value as { calls?: unknown }).calls;
+  if (!Array.isArray(calls)) return fail("no calls array");
+  calls.forEach((call, index) => {
+    if (typeof call !== "object" || call === null) fail(`calls[${index}] is not an object`);
+    const row = call as { tool?: unknown; argsHash?: unknown; action?: unknown };
+    if (typeof row.tool !== "string" || row.tool.length === 0) fail(`calls[${index}].tool is not a name`);
+    if (typeof row.argsHash !== "string" || row.argsHash.length === 0) fail(`calls[${index}].argsHash is missing`);
+    if (row.action !== "apply" && row.action !== "skip-duplicate") fail(`calls[${index}].action is not a plan action`);
+  });
+  return value as ReplayPlan;
 }
 
 /**
@@ -1484,6 +1552,39 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         }
         const plan = replayDeferredMutations(queue, index);
         return { calls: plan.calls, indexAfter: plan.indexAfter };
+      });
+    });
+
+  // @req IR-CLI-092 — the applier. Takes `--plan`, not `--queue`: re-planning here would let the
+  // applied set differ from the reviewed one, and review is the only place a human sees what a lane
+  // asked the host to do.
+  addMutationOptions(replay.command("apply"))
+    .requiredOption("--plan <path>", "a reviewed `replay plan` output")
+    .requiredOption("--applied <path>", "append-only record of attempts; what makes a resume exact")
+    .option("--frozen-target <target>", "refuse any call carrying a different target")
+    .action(async (options) => {
+      await mutate(options, async () => {
+        const root = runRoot(command);
+        const planPath = path.resolve(root, options.plan as string);
+        const plan = replayPlanFromJson(await readJsonFile(planPath, "--plan"), "--plan", planPath);
+        const result = await applyReplayPlan(plan, {
+          appliedPath: path.resolve(root, options.applied as string),
+          frozenTarget: typeof options.frozenTarget === "string" ? options.frozenTarget : null,
+          dispatch: hostRootDispatch(projectRoot(command)),
+          ...(options.dryRun === true ? { dryRun: true } : {})
+        });
+        // The refusals and the applied count are reported either way — a run that stopped still has
+        // to say what it did before it stopped.
+        if (!result.ok) {
+          throw new OperationalError(
+            `${result.gate}: ${result.failure?.tool} — ${result.failure?.error} (applied ${result.applied})`
+          );
+        }
+        return {
+          applied: result.applied,
+          refused: result.refused,
+          ...(result.wouldApply === undefined ? {} : { wouldApply: result.wouldApply })
+        };
       });
     });
 

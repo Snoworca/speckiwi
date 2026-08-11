@@ -130,7 +130,8 @@ describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
       expect(covered.has(row), `deferred row '${row}' must not be registered`).toBe(false);
     }
     // Phase membership is fixed at five by 05 §10.6; how many of them are still deferred is not.
-    expect(ORCHESTRATE_PHASE2_VERB_ROWS).toHaveLength(5);
+    // @req IR-CLI-092 — six once `replay apply` joined the design table's phase-2 rows.
+    expect(ORCHESTRATE_PHASE2_VERB_ROWS).toHaveLength(6);
     expect(ORCHESTRATE_DEFERRED_VERB_ROWS).toHaveLength(4);
     for (const row of ORCHESTRATE_DEFERRED_VERB_ROWS) expect(ORCHESTRATE_PHASE2_VERB_ROWS).toContain(row);
   });
