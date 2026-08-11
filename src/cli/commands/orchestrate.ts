@@ -20,7 +20,8 @@ import { computeLanePlan, LanePlanError, type LanePlanInput } from "../../core/o
 import { freezeLock, serializeLock } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
 import { normaliseRoot, preflightRunRoot } from "../../core/orchestrator/preflight.js";
-import { gitToplevelOf, realpathProbe } from "../../core/root-facts.js";
+import { gitCommonDirOf, gitToplevelOf, realpathProbe, registeredWorktreesOf } from "../../core/root-facts.js";
+import { preflightRunRootForRole, type FrozenLanePlan } from "../../core/orchestrator/worktree-topology.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
 import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
@@ -481,6 +482,99 @@ async function readJsonLinesFile(absolutePath: string, label: string): Promise<A
 }
 
 /**
+ * @req IR-CLI-093 — the role-aware run-root verdict, decided by the topology gate.
+ *
+ * Both extra facts — the git common directory and the registered worktree list — are read from git
+ * here rather than taken as arguments. That is the whole point: the caller supplies the two roots and
+ * its claimed role, and the repository itself supplies what corroborates them.
+ */
+async function roleAwarePreflight(
+  command: Command,
+  options: Record<string, unknown>,
+  role: "host" | "lane"
+): Promise<VerbResult> {
+  const mcpRoot = options.mcpRoot as string;
+  const gitRoot = options.gitRoot as string;
+
+  const toplevels = new Map<string, string | undefined>();
+  const commonDirs = new Map<string, string | undefined>();
+  for (const target of [mcpRoot, gitRoot]) {
+    if (!toplevels.has(target)) toplevels.set(target, await gitToplevelOf(target));
+    if (!commonDirs.has(target)) commonDirs.set(target, await gitCommonDirOf(target));
+  }
+  const hostCommon = commonDirs.get(mcpRoot);
+  const candidateCommon = commonDirs.get(gitRoot);
+  const registered = new Map<string, readonly string[]>();
+  for (const dir of [hostCommon, candidateCommon]) {
+    if (dir !== undefined && !registered.has(dir)) registered.set(dir, await registeredWorktreesOf(dir));
+  }
+
+  const probes = {
+    realpath: realpathProbe,
+    gitToplevel: (target: string) => toplevels.get(target),
+    gitCommonDir: (target: string) => commonDirs.get(target),
+    registeredWorktrees: (dir: string) => registered.get(dir) ?? []
+  };
+
+  let request;
+  if (role === "lane") {
+    const laneId = requireOption(options.laneId, "--lane-id");
+    const planPath = path.resolve(runRoot(command), requireOption(options.lanePlan, "--lane-plan"));
+    const lanePlan = lanePlanFromJson(await readJsonFile(planPath, "--lane-plan"), "--lane-plan", planPath);
+    request = { role, mcpRoot, gitRoot, laneId, lanePlan } as const;
+  } else {
+    request = { role, mcpRoot, gitRoot } as const;
+  }
+
+  // @req FR-NODE-178 — the equality verdict still runs on the host path, and its refusal still wins,
+  // so IR-CLI-090's three conditions and their reported shape are untouched. The topology gate adds
+  // one refusal the equality test structurally cannot see: a host that is itself a linked worktree,
+  // where both roots agree and SRS is written into a checkout still waiting to be merged.
+  if (role === "host") {
+    const legacy = preflightRunRoot(mcpRoot, gitRoot, {
+      realpath: realpathProbe,
+      gitToplevel: (target: string) => toplevels.get(target)
+    });
+    if (!legacy.ok) {
+      return refuse("run-root-preflight-mismatch", [
+        { reason: legacy.reason, gitToplevel: legacy.gitToplevel, ...legacy.comparison }
+      ]);
+    }
+    const role_ = preflightRunRootForRole(request, probes);
+    if (!role_.ok) {
+      return refuse("run-root-preflight-mismatch", [
+        { reason: role_.reason, topology: role_.topology, role, gitToplevel: legacy.gitToplevel }
+      ]);
+    }
+    return { comparison: legacy.comparison, gitToplevel: legacy.gitToplevel, role, topology: role_.topology };
+  }
+
+  const verdict = preflightRunRootForRole(request, probes);
+  if (!verdict.ok) {
+    return refuse("run-root-preflight-mismatch", [{ reason: verdict.reason, topology: verdict.topology, role }]);
+  }
+  return { ok: true, role, topology: verdict.topology };
+}
+
+/** A frozen lane plan read back for the gate. Validated rather than cast: it decides an admission. */
+function lanePlanFromJson(value: unknown, label: string, absolutePath: string): FrozenLanePlan {
+  const fail = (detail: string): never => {
+    throw new OperationalError(`${label} is not a lane plan at ${absolutePath}: ${detail}`);
+  };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail("not an object");
+  const plan = Object.create(null) as Record<string, { writeSet: readonly string[] }>;
+  for (const [laneId, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry !== "object" || entry === null) fail(`${laneId} is not an object`);
+    const writeSet = (entry as { writeSet?: unknown }).writeSet;
+    if (!Array.isArray(writeSet) || writeSet.some((item) => typeof item !== "string")) {
+      fail(`${laneId}.writeSet is not a list of paths`);
+    }
+    plan[laneId] = { writeSet: writeSet as string[] };
+  }
+  return plan;
+}
+
+/**
  * Dispatches one admitted replay call to the SRS mutation it names, at the HOST root.
  *
  * The four are exhaustive by construction: `admitReplayCalls` refuses everything else before a call
@@ -929,25 +1023,21 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     // because the CLI resolves cwd and the MCP server fixes its own, so an in-tool read is vacuous.
     .requiredOption("--mcp-root <path>", "the root the MCP server reports")
     .requiredOption("--git-root <path>", "the root `git rev-parse --show-toplevel` reports")
+    // @req IR-CLI-093 — the role is DECLARED. Inferring it from the roots would let any worktree of
+    // the repository satisfy "this must be a lane", including one the run never planned.
+    .option("--role <host|lane>", "which relation this run root is claiming", "host")
+    .option("--lane-id <id>", "the lane this root claims to be, required with --role lane")
+    .option("--lane-plan <path>", "the frozen lane plan the id must appear in, required with --role lane")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
-        // @req FR-NODE-178 — resolved before the pure verdict rather than inside it: the answer needs
-        // a subprocess, and the comparison module holds no facility to run one, which is the same
-        // reason `realpath` arrives injected.
-        const toplevel = await gitToplevelOf(options.gitRoot as string);
-        const verdict = preflightRunRoot(options.mcpRoot as string, options.gitRoot as string, {
-          realpath: realpathProbe,
-          gitToplevel: () => toplevel
-        });
-        // @req IR-CLI-090 — the reason travels inside the violation. The gate vocabulary is a closed
-        // union with a parity assertion over it, so three conditions share one gate id and are told
-        // apart by a field; widening the union would cost more than the diagnosis is worth.
-        if (!verdict.ok) {
-          return refuse("run-root-preflight-mismatch", [
-            { reason: verdict.reason, gitToplevel: verdict.gitToplevel, ...verdict.comparison }
-          ]);
+        const role = options.role as string;
+        if (role !== "host" && role !== "lane") {
+          throw new OperationalError(`--role must be host or lane, not ${role}`);
         }
-        return { comparison: verdict.comparison, gitToplevel: verdict.gitToplevel };
+        // Every call routes through the gate, the default host included. Reaching it only when a
+        // role is typed would make the safe behaviour the one you have to ask for, and would leave a
+        // host rooted in a worktree passing for every caller that never heard of the option.
+        return await roleAwarePreflight(command, options, role);
       });
     });
 

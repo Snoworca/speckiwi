@@ -76,6 +76,58 @@ export async function gitToplevelOf(target: string): Promise<string | undefined>
 }
 
 /**
+ * The git common directory `target` resolves to, or `undefined` when it names no repository.
+ *
+ * This is the discriminator the topology gate rests on: every linked worktree of one repository
+ * reports the SAME common directory while reporting a different top level, and neither value comes
+ * from the caller being checked. `--path-format=absolute` because a relative answer would be relative
+ * to a working directory the comparison does not share. @req IR-CLI-093
+ */
+export async function gitCommonDirOf(target: string): Promise<string | undefined> {
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync(
+      "git",
+      ["-C", target, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+      { encoding: "utf8", windowsHide: true, maxBuffer: 1024 * 1024, timeout: GIT_TIMEOUT_MS, env: scrubbedEnvironment() }
+    ));
+  } catch (error) {
+    const failure = classify(target, error);
+    if (failure === undefined) return undefined;
+    throw failure;
+  }
+  const reported = stdout.trim();
+  return reported.length > 0 ? reported : undefined;
+}
+
+/**
+ * The worktrees `commonDir` registers, main checkout first, as `git worktree list --porcelain` gives
+ * them. Registration is what separates a real linked worktree from a directory carrying a
+ * hand-written `.git` file. @req IR-CLI-093
+ */
+export async function registeredWorktreesOf(commonDir: string): Promise<string[]> {
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync("git", ["--git-dir", commonDir, "worktree", "list", "--porcelain"], {
+      encoding: "utf8",
+      windowsHide: true,
+      maxBuffer: 4 * 1024 * 1024,
+      timeout: GIT_TIMEOUT_MS,
+      env: scrubbedEnvironment()
+    }));
+  } catch (error) {
+    const failure = classify(commonDir, error);
+    if (failure === undefined) return [];
+    throw failure;
+  }
+  return stdout
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.slice("worktree ".length).trim())
+    .filter((entry) => entry.length > 0);
+}
+
+/**
  * `process.env` with every root-steering variable removed and the locale pinned.
  *
  * Removed case-insensitively: Windows matches environment names without regard to case for the child
