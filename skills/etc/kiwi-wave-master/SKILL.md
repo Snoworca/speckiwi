@@ -483,3 +483,49 @@ wave 를 추출한 뒤부터는 **FR-FLOW-029 와 동일(identical)** 하게 진
 이때 저널 경로는 `pipeline-event.md` §1 의 해석 순서(git root `git rev-parse --show-toplevel` → cwd 의 `kiwi/` → 홈 폴백)를 **run 자신의 cwd 기준으로 1회 평가**해서 정한다. 폴백 체인과 `.pipeline-path` 마커 파일 규칙을 그대로 상속하므로 git 조회가 실패한 환경에서도 기록 경로가 정의된다. MCP 가 보고한 root 는 이 해석에 쓰지 않는다.
 
 **재개**된 실행은 `{run_id}#r{n}` 를 emit 키로 쓴다(`pipeline-event.md` §5.4) — 멱등 skip 은 **같은 키**에만 적용된다. 중단 시 `FAILED` 를 남긴 run 이 재개로 완주하면, bare `run_id` 로는 최종 `TASK_DONE` 이 영구히 기록되지 않아 `kiwi-pipeline` 의 직전-이벤트 게이트가 계속 발동한다.
+
+## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다
+
+**적용 대상: `2.6.0-phase2-parallel-lanes`.** 본 스킬의 wave 흐름은 직렬이고 per-wave 워크트리를 만들지 않는다 — §2.1 의 `--wt` 위임 거부는 그대로다. 아래는 run 스코프 워크스페이스의 순서이고, wave 스코프가 아니다.
+
+사유와 경계와 해서는 안 되는 것은 `../_shared/kiwi/worktree-lane.md` 가 소유한다. 여기에 다시 적지 않는다. 아래는 순서뿐이다.
+
+1. **만든다** — base 를 같은 명령의 인자로 준다.
+
+   ```
+   git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
+   ```
+
+   base 를 두 번째 명령으로 따로 체크아웃하지 않는다 — 그러면 HEAD 가 브랜치에서 떨어지고 레인의 커밋이 어느 브랜치에도 닿지 않는다. 이미 만들어진 워크트리를 옮겨야 하면 `git -C <lane-root> switch -C <branch> <base_sha>` 를 쓴다.
+
+2. **배치를 승인받는다** — 가정하지 않고 게이트에 묻는다.
+
+   ```
+   speckiwi orchestrate preflight --json --mcp-root <path> --git-root <path> --role <id> --lane-id <id> --lane-plan <path>
+   ```
+
+   `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 레인 워크트리, `--lane-plan` 은 `kiwi/orchestrator/{run_id}/lanes.lock.json` 이다. `--role` 은 `host` 또는 `lane` 이고, 레인 배치를 승인받을 때는 **`--role lane`** 이다. exit 0 이 아니면 그 배치에서 아무것도 하지 않는다 — 거부 사유가 무엇을 고쳐야 하는지 말한다.
+
+3. **부트스트랩** — 레인에서 1회.
+
+   ```
+   npm ci --include=dev --ignore-scripts
+   ```
+
+4. **코드 작업** — 레인 안에서. SRS mutation 은 `--defer-srs-mutation <queue>` 로 큐에만 적는다.
+
+5. **수확(harvest)** — 큐와 매니페스트를 호스트 run 디렉터리로 가져온다.
+
+6. **판정** — 호스트가 cwd 를 레인으로 놓고 `verification_cmd` 를 직접 1회 실행한다. 레인의 자기보고는 판정이 아니다.
+
+7. **통합** — write_set 게이트를 통과한 분만 병합한다.
+
+8. **재생** — 호스트 root 에서.
+
+   ```
+   speckiwi orchestrate replay apply --json --plan <path> --applied <path> --frozen-target <id>
+   ```
+
+   `--applied` 는 `kiwi/orchestrator/{run_id}/replay-applied.jsonl`, `--frozen-target` 은 run 의 동결 target 이름이다.
+
+9. **반납(release)** — **수확이 끝난 뒤에만.** 워크트리를 먼저 제거하면 그 안의 ignored 산출물이 함께 증발한다.

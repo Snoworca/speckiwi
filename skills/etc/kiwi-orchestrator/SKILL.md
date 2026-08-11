@@ -1172,3 +1172,49 @@ recovery class **externally-visible**. §15. `halt` 의 동의어가 **아니다
 ### §V.halt
 
 종단. recovery class 를 선언하지 않는다. 중단 사유가 된 게이트를 그대로 보고하고 멈춘다. 저장소 상태를 지명해야 하는 중단은 `halt` 가 아니라 `abort-run` 이다.
+
+## 18 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다
+
+**적용 대상: `2.6.0-phase2-parallel-lanes`.** 이 스킬의 phase-1 흐름(§10)은 lane workspace 를 만들지 않고 모든 단위를 host root 에서 돌린다(§0.I). 아래 절차는 그 phase-1 진술을 대체하지 않으며, phase 2 에서 레인이 실재할 때의 순서다.
+
+사유와 경계와 해서는 안 되는 것은 `../_shared/kiwi/worktree-lane.md` 가 소유한다. 여기에 다시 적지 않는다. 아래는 순서뿐이다.
+
+1. **만든다** — base 를 같은 명령의 인자로 준다.
+
+   ```
+   git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
+   ```
+
+   base 를 두 번째 명령으로 따로 체크아웃하지 않는다 — 그러면 HEAD 가 브랜치에서 떨어지고 레인의 커밋이 어느 브랜치에도 닿지 않는다. 이미 만들어진 워크트리를 옮겨야 하면 `git -C <lane-root> switch -C <branch> <base_sha>` 를 쓴다.
+
+2. **배치를 승인받는다** — 가정하지 않고 게이트에 묻는다.
+
+   ```
+   speckiwi orchestrate preflight --json --mcp-root <path> --git-root <path> --role <id> --lane-id <id> --lane-plan <path>
+   ```
+
+   `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 레인 워크트리, `--lane-plan` 은 `kiwi/orchestrator/{run_id}/lanes.lock.json` 이다. `--role` 은 `host` 또는 `lane` 이고, 레인 배치를 승인받을 때는 **`--role lane`** 이다. exit 0 이 아니면 그 배치에서 아무것도 하지 않는다 — 거부 사유가 무엇을 고쳐야 하는지 말한다.
+
+3. **부트스트랩** — 레인에서 1회.
+
+   ```
+   npm ci --include=dev --ignore-scripts
+   ```
+
+4. **코드 작업** — 레인 안에서. SRS mutation 은 `--defer-srs-mutation <queue>` 로 큐에만 적는다.
+
+5. **수확(harvest)** — 큐와 매니페스트를 호스트 run 디렉터리로 가져온다.
+
+6. **판정** — 호스트가 cwd 를 레인으로 놓고 `verification_cmd` 를 직접 1회 실행한다. 레인의 자기보고는 판정이 아니다.
+
+7. **통합** — write_set 게이트를 통과한 분만 병합한다.
+
+8. **재생** — 호스트 root 에서.
+
+   ```
+   speckiwi orchestrate replay apply --json --plan <path> --applied <path> --frozen-target <id>
+   ```
+
+   `--applied` 는 `kiwi/orchestrator/{run_id}/replay-applied.jsonl`, `--frozen-target` 은 run 의 동결 target 이름이다.
+
+9. **반납(release)** — **수확이 끝난 뒤에만.** 워크트리를 먼저 제거하면 그 안의 ignored 산출물이 함께 증발한다.
