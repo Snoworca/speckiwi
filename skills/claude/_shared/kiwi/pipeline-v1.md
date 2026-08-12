@@ -19,7 +19,7 @@ orchestration, or final event emission rules.
 | `kiwi-commit-auto-pr` | Commit, push, and create or update a GitHub PR with issue/SRS trailers | no | no |
 | `kiwi-hot-fix` | Urgent TDD bug fix with review and delegated SRS sync | no | no |
 | `kiwi-review-fix-loop` | Review, fix, re-review, and optionally close implemented REQs with evidence | yes | no |
-| `kiwi-pipeline` | Read pipeline events, recommend the next skill, and orchestrate the end-to-end cycle | no | no |
+| `kiwi-pipeline` | Orchestrate the end-to-end cycle by default; recommend a single next step under `--none-cycle` | transitive, via its children | transitive, via `kiwi-srs-feasibility` |
 
 ## Routing
 
@@ -42,8 +42,10 @@ routing summary is:
 
 ## End-to-end cycle
 
-Under `--cycle`, `kiwi-pipeline` chains the full research-to-implementation
-sequence rather than stopping after one next hint:
+By default `kiwi-pipeline` chains the full research-to-implementation sequence
+rather than stopping after one next hint. `--none-cycle` is the single opt-out and
+restores single-next-step recommendation; `--cycle` is still accepted and changes
+nothing. The chain only executes when the invocation carries a work input:
 
 `kiwi-srs -> (conditional) kiwi-srs-feasibility -> kiwi-planner -> kiwi-pm -> kiwi-review-fix-loop`
 

@@ -140,10 +140,30 @@ describe("FR-FLOW-116 — kiwi-pipeline §2.8 and kiwi-tdd's gate declaration ca
       /증거 번들이 성립하지 않는다/.test(rule),
       `${copy} the evidence-bundle reason must survive unchanged`
     ).toBe(true);
-    // And the conclusion the two reasons support is the thing that must NOT move.
+    // @req FR-FLOW-126 — the conclusion the two reasons support still must not move, but its KEY
+    // has. This assertion used to pin the sentence verbatim, on the reasoning that only the false
+    // premise moves. Once FR-FLOW-124 made the cycle the default, keying the exclusion on cycle
+    // entry made it true of every invocation, so pinning the sentence would have mandated a §2.8
+    // that can never fire — and both reasons above are properties of a delegated wave run, not of
+    // a flag. What is pinned now is that the exclusion survives, keyed on delegation, and that the
+    // document says in its own words that the default cycle alone does not earn it.
+    const exclusion = line(twoEight, /적용 대상이 아니다/);
+    expect(exclusion, `${copy} the exclusion must still exist`).not.toBe("");
+    // Not `/--from=|…/`: the pre-flip sentence carried `--from=` as well, so that disjunction is
+    // green on exactly the text this check exists to reject.
+    expect(
+      /위임 진입/.test(exclusion),
+      `${copy} the exclusion must key on delegated entry, not on the chain being active`
+    ).toBe(true);
     expect(
       /`--cycle` \/ `--from=` 진입은 본 라우팅의 적용 대상이 아니다/.test(twoEight),
-      `${copy} the exclusion itself must be unchanged; only its false premise moves`
+      `${copy} keyed on cycle entry the exclusion swallows every invocation and §2.8 never fires`
+    ).toBe(false);
+    const alone = line(twoEight, /기본 사이클/);
+    expect(alone, `${copy} §2.8 must say what running the default cycle alone does NOT do`).not.toBe("");
+    expect(
+      /만으로는|그 자체로는/.test(alone) && /않는다|아니다/.test(alone),
+      `${copy} a reader who knows the cycle is the default would otherwise re-derive the dead gate`
     ).toBe(true);
   });
 });

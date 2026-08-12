@@ -773,8 +773,19 @@ describe("FR-FLOW-052 — unattended continuity across cycle entry and cost gate
         const cells = rowCells(gates, /multi-candidate-ambiguous/);
         expect(cells.length, `${variant}: the multi-candidate gate row must exist`).toBeGreaterThan(2);
         expect(
-          /`--cycle`/.test(cells.join(" ")) && /(?:비적용|적용되지 않는다|적용하지 않는다)/.test(cells.join(" ")),
-          `${variant}: the gate ROW itself must declare that it does not apply to cycle-mode entry`,
+          /§2\.5|체인 핸드오프/.test(cells.join(" ")) && /(?:비적용|적용되지 않는다|적용하지 않는다)/.test(cells.join(" ")),
+          `${variant}: the gate ROW itself must declare that it does not apply to a fixed chain hand-off`,
+        ).toBe(true);
+        // @req FR-FLOW-127 — this assertion used to require the exemption to name `--cycle`. Once
+        // FR-FLOW-124 made the cycle the default, that spelling exempted every advancement and
+        // retired a user-confirmation gate repo-wide. The exemption's own premise is that the chain
+        // fixes the next step; Table T1 advancement does not fix it — the feasibility row forks to
+        // kiwi-planner or kiwi-srs-research — so the row must name T1 as where the gate still
+        // fires. Asserted positively: a universal exemption re-spelled in new wording evades a
+        // negative check but cannot satisfy this one.
+        expect(
+          /(?:T1|§5\.1)/.test(cells.join(" ")) && /발동|적용된다|유지/.test(cells.join(" ")),
+          `${variant}: the row must name Table T1 advancement as the case the gate still fires on`,
         ).toBe(true);
       });
 

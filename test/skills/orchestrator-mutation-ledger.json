@@ -62,17 +62,17 @@
     "variant": "claude",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않고**",
-      "replace": "**`--wt` 를 전달하고**"
+      "find": "**`--wt` 를 절대 전달하지 않는다**",
+      "replace": "**`--wt` 를 전달한다**"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않고"
+        "snippet": "를 절대 전달하지 않는다"
       }
     ]
   },
@@ -564,17 +564,17 @@
     "variant": "codex",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않고**",
-      "replace": "**`--wt` 를 전달하고**"
+      "find": "**`--wt` 를 절대 전달하지 않는다**",
+      "replace": "**`--wt` 를 전달한다**"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않고"
+        "snippet": "를 절대 전달하지 않는다"
       }
     ]
   },
@@ -1066,17 +1066,17 @@
     "variant": "etc",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to the kiwi-pipeline it delegates to, and refuses such a delegation at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않고**",
-      "replace": "**`--wt` 를 전달하고**"
+      "find": "**`--wt` 를 절대 전달하지 않는다**",
+      "replace": "**`--wt` 를 전달한다**"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않고"
+        "snippet": "를 절대 전달하지 않는다"
       }
     ]
   },

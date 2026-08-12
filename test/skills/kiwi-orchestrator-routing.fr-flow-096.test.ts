@@ -395,10 +395,20 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
     }
   });
 
-  it("AC-6 — per-wave delegation calls the four skills individually rather than entering --cycle", () => {
+  // @req FR-FLOW-129 — the object of this refusal used to be the `--cycle` flag. Once FR-FLOW-124
+  // made the cycle the default, refusing the flag stopped refusing the chain: a bare
+  // `kiwi-pipeline` call is exactly the fixed five-stage sequence this rung must not enter, so a
+  // flag-shaped prohibition inverts into a permission while a byte-string check keeps passing. The
+  // refusal now names the skill, and says so for every invocation form.
+  it("AC-6 — per-wave delegation calls the four skills individually rather than invoking kiwi-pipeline", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
-      expect(body).toMatch(/이름으로 개별 호출한다\*\* — [^\n]*kiwi-pipeline --cycle[^\n]* 로 진입하지 않는다/);
+      // Scoped to wave delegation, not to the skill outright: `wt-delegation-refused` (§0.G) needs a
+      // delegation to refuse, and a blanket "never invokes it" leaves that gate with no subject.
+      expect(body).toMatch(/이름으로 개별 호출한다\*\* — [^\n]*wave 위임[^\n]*kiwi-pipeline[^\n]*어떤 호출 형태로도[^\n]*거치지 않는다/);
+      // Opting out is not the remedy either: a single-next-step advisor is not this rung's
+      // behaviour, so `--none-cycle` must be named and rejected rather than left as an inference.
+      expect(body).toMatch(/--none-cycle[^\n]*(?:해법이 아니다|아니다)/);
     }
   });
 });

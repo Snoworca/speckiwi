@@ -309,10 +309,17 @@ describe("FR-FLOW-117 — kiwi-pipeline section 2.8 accepts a frozen route lock"
     const two_eight = section(read(copy), /^##\s*2\.8/);
     const rule = line(two_eight, /두 (?:개의 )?라우터|two (?:live )?routers/i);
     expect(rule, `${copy} must record the failure the amendment forestalls`).not.toBe("");
+    // @req FR-FLOW-126 — this was `/`--cycle`|--from=/`, a disjunction over the whole section that
+    // stayed green on `--from=` alone and would therefore have survived a regression to the
+    // pre-flip `--cycle` key. The dormancy now rests on delegated entry, and that is what is named.
     expect(
-      /`--cycle`|--from=/.test(two_eight),
+      /위임 진입/.test(two_eight),
       `${copy} the exclusion that makes §2.8 dormant inside an orchestrator run must be named`
     ).toBe(true);
+    expect(
+      /`--cycle` \/ `--from=` 진입은 본 라우팅의 적용 대상이 아니다/.test(two_eight),
+      `${copy} a regression to the flag key must fail here, not merely elsewhere`
+    ).toBe(false);
     expect(
       /개별|individually|각각 호출/.test(two_eight),
       `${copy} the orchestrator calling the stages individually must be named as the other half`

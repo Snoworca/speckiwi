@@ -43,7 +43,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 - **모든 wave 의 모든 단위를 host root 에서 run 의 통합 브랜치 위에 실행한다**(§10).
 - **`isolation_profile` 은 상수 `none-serial`** 이며 `frozen` 안에 있어 `invariant_digest` 가 덮는다. Preflight P.6 의 isolation probe 는 `2.6.0-phase2-parallel-lanes` 로 **이연**되고, 다른 프로파일 값은 phase 1 에 존재하지 않는다.
 
-거부 자체는 상속한다. 오케스트레이터는 위임하는 `kiwi-pipeline` 에 **`--wt` 를 절대 전달하지 않고**, 그런 위임을 Preflight P.2 에서 `wt-delegation-refused` 로 거부한다. 본 스킬 자신의 근거는 다르다: **cycle 스코프 worktree 를 lane 스코프 worktree 안에 중첩시키는 위상**을 이 설계가 지원하지 않기 때문이다. `kiwi-wave-master` 의 per-wave 누적 근거를 본 스킬 자신의 근거로 다시 적지 않는다.
+거부 자체는 상속한다. 오케스트레이터는 `kiwi-pipeline` 에 wave 를 위임하지 않으므로(§4.5.3) **`--wt` 를 절대 전달하지 않는다** — 전달할 자리 자체가 없다. 사용자가 `kiwi-pipeline --wt` 위임을 **요청해 오면** Preflight P.2 에서 `wt-delegation-refused` 로 거부한다 — 이 게이트의 술어는 우리가 만드는 위임이 아니라 들어오는 요청이다. 본 스킬 자신의 근거는 다르다: **cycle 스코프 worktree 를 lane 스코프 worktree 안에 중첩시키는 위상**을 이 설계가 지원하지 않기 때문이다. `kiwi-wave-master` 의 per-wave 누적 근거를 본 스킬 자신의 근거로 다시 적지 않는다.
 
 **task 단위 격리**의 나머지 절반 — lane workspace, 클레임 감사, per-lane merge — 는 `2.6.0-phase2-parallel-lanes` 에서 **재진입**한다. phase 1 이 그것을 가졌다고 주장하지 않는다.
 
@@ -56,7 +56,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 | `run-root-preflight-mismatch` | MCP `workspaceRoot` 가 git toplevel 과 다르거나 조회 실패 | Preflight P.1 |
 | `invalid-run-scope-option` | 명시된 `--run-id` 가 `^[A-Za-z0-9._-]{1,48}$` 또는 `git check-ref-format --allow-onelevel` 을 통과하지 못하거나, 명시된 `--work` 가 `^[a-z0-9][a-z0-9.-]{2,39}$` 를 통과하지 못함 | Preflight P.2 |
 | `unsafe-option-refused` | `--skip-regression` 또는 `--reviewer-off` 요청 | Preflight P.2 |
-| `wt-delegation-refused` | 위임되는 `kiwi-pipeline --wt` — cycle 스코프 worktree 를 lane 스코프 안에 중첩하는 위상 | Preflight P.2 |
+| `wt-delegation-refused` | 요청되어 들어온 `kiwi-pipeline --wt` 위임 — cycle 스코프 worktree 를 lane 스코프 안에 중첩하는 위상 | Preflight P.2 |
 | `invalid-loop-option` | `--loops N` 이 정수 1 이상이 아님 | Preflight P.2 |
 | `orchestrator-run-lock-held` | 다른 orchestrator run 이 git common dir 키의 lease 를 보유 | Preflight P.5 |
 | `resume-card-missing-or-invalid` | run 의 이벤트는 있는데 재개 카드가 읽히지 않거나 상한을 넘음 | Phase 0 |
@@ -484,7 +484,7 @@ residual 행은 `{req_id, reason, owner}` 이고 `kiwi/waves.jsonl` 의 `R-PLAN`
 
 **사용자가 `kiwi-wave-master` 를 명시적으로 지목한 요청은 가로채지 않는다.** 분류하지도 않고 run 을 시작하지도 않는다 — 요청이 형제 스킬을 지목했다고 보고하고 멈춘다.
 
-**wave 마다의 위임은 이름으로 개별 호출한다** — `$kiwi-pipeline --cycle` 로 진입하지 않는다. `05` 의 흐름이 계획과 구현 사이에 `derive-readiness`(3.c′)와 `commit-wave-inputs`(3.d)를 끼우는데 파이프라인의 고정 사슬에는 그 이음매가 없기 때문이다.
+**wave 마다의 위임은 이름으로 개별 호출한다** — 이 rung 의 wave 위임은 `kiwi-pipeline` 을 **어떤 호출 형태로도** 거치지 않는다. `05` 의 흐름이 계획과 구현 사이에 `derive-readiness`(3.c′)와 `commit-wave-inputs`(3.d)를 끼우는데 파이프라인의 고정 사슬에는 그 이음매가 없기 때문이다. `--none-cycle` 도 해법이 아니다 — 단일 다음-단계 조언자 역시 이 rung 의 동작이 아니므로, 거부의 대상은 플래그가 아니라 스킬이다.
 
 ```
 Skill({ skill: "kiwi-srs",
