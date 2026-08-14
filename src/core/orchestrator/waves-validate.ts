@@ -24,7 +24,9 @@ import {
   type EventStatus,
   type JournalProof,
   type WavesEvent,
-  type WavesRuleCode
+  type WavesRuleCode,
+  TERMINAL_REVIEW_VERDICTS,
+  TERMINAL_REVIEW_DISCHARGING_VERDICTS
 } from "./journal-schema.js";
 
 /**
@@ -335,6 +337,150 @@ function checkFinalVerify(view: WavesJournalView, diagnostics: WavesDiagnostic[]
   }
 }
 
+/**
+ * @req FR-NODE-188 — the run-close review obligation.
+ *
+ * A run may not record completion on the strength of a verification pass while no review loop
+ * covered the commits that pass judges. Scoped to `final-verify`, not to every `complete`: the
+ * per-wave loop is already policed by the wave-verify gate, and duplicating it here would make one
+ * obligation refuse n+1 times.
+ */
+function closesTheRun(event: WavesEvent): boolean {
+  // Three shapes, because the three rungs end differently and only one of them writes a
+  // `final-verify` line. R-ORCH and kiwi-wave-master close with the run-scope verification record;
+  // R-STEP and R-PLAN terminate at their dispatch result and never write one, so a rule keyed on
+  // `final-verify` alone would police one rung of three.
+  if (event.phase === "final-verify") return true;
+  return isDelegatedComplete(event);
+}
+
+/**
+ * The delegating rungs' close-out: a `dispatch-route` RESULT whose outcome says the delegation
+ * finished. The `event` check is not decoration — an unmatched `intent` is what the run ledger
+ * defines as an interrupted verb, so a predicate that omits it reads an interrupted dispatch as a
+ * completed run. Derived once because two callers need the same shape and the second one drifted.
+ */
+function isDelegatedComplete(event: WavesEvent): boolean {
+  return event.verb === "dispatch-route" && event.event === "result" && text(event.outcome) === "delegated-complete";
+}
+
+/**
+ * Whether a run-closing line REPORTS COMPLETION, which is what makes an absent review a defect
+ * rather than a record of an unfinished run.
+ *
+ * The two shapes signal it differently, and reading only `status` was the same "one rung of three"
+ * error `closesTheRun` exists to avoid: the run-scope line carries `status: "complete"`, while the
+ * delegating rungs' close-out is documented to record `outcome: "delegated-complete"` and is never
+ * instructed to carry a status at all. Keyed on `status` alone, the refusal cannot fire on R-STEP or
+ * R-PLAN — the two rungs whose hop this obligation was written to add.
+ */
+function reportsCompletion(event: WavesEvent): boolean {
+  // The stated status wins wherever there is one. Letting the outcome token override it would make
+  // `residual` and `skipped-run-halted` — half the declared verdict vocabulary, and the two that
+  // describe a run that did NOT complete — legal on a final-verify close and refused on a
+  // dispatch-route close recording the same fact. The token is the fallback for the shape the
+  // orchestrator actually documents, whose close-out enumerates what to record and names no status.
+  if (text(event.status) !== null) return event.status === COMPLETION_STATUS;
+  return isDelegatedComplete(event);
+}
+
+function checkTerminalReview(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
+  // @req FR-NODE-188 — gated like every other rule in this file. Without it a journal completed
+  // under an earlier version is refused for lacking a field that did not exist when it was
+  // written, which is the retroactive reinterpretation the event contract forbids.
+  for (const event of view.lines) {
+    if (!closesTheRun(event)) continue;
+    // Judged at its OWN version, not the run maximum. `runIsAtLeast` reinterprets a line written
+    // before the field existed the moment one newer line joins its run — which is what a resume
+    // under a newer release does — and the shipped contract guarantees, in the sentence that
+    // introduces every minor, that an already-written event's reading never changes.
+    //
+    // KNOWN, BOUNDED GAP, recorded rather than closed: the downgrade guard is forward-only, so a
+    // close stamped below the gated version with the newer lines AFTER it escapes both checks. The
+    // obvious remedy — judge the run's final close at the run maximum — was implemented, went red
+    // against the retroactivity case, and was reverted: it closes the gap by doing precisely what
+    // the additivity guarantee forbids. Closing it honestly means diagnosing the RUN (a run whose
+    // lines continue past its final close has no close at the current version), which is a separate
+    // rule about a different subject, not a wider reading of this one. Reaching the gap requires a
+    // writer to append newer lines past its own close and never re-close; the wave-append re-entry
+    // re-closes, and the append cap bounds the alternative.
+    if (compareSchemaVersions(schemaVersionOf(event), "1.5.0") < 0) continue;
+
+    const review = record(event.terminal_review);
+    const verdict = review === null ? null : text(review.verdict);
+
+    if (review !== null && verdict !== null && !(TERMINAL_REVIEW_VERDICTS as readonly string[]).includes(verdict)) {
+      diagnostics.push(
+        diagnosticFor("terminal-review-verdict-outside-vocabulary", "error", "a terminal_review verdict is outside the closed vocabulary", event, { verdict })
+      );
+      continue;
+    }
+
+    // The window is what makes the record mean anything: a review with no stated range cannot be
+    // checked against the commits the boundary judges, and the reviewing skill falls back to a
+    // five-commit window when it is given none.
+    if (review !== null && (text(review.base) === null || text(review.head) === null)) {
+      diagnostics.push(
+        diagnosticFor("terminal-review-window-missing", "error", "a terminal_review carries no base/head window", event, {
+          base: text(review.base),
+          head: text(review.head)
+        })
+      );
+      continue;
+    }
+
+    // The window has to be the boundary's own, or the record discharges the obligation with a review
+    // of commits nobody chose — which is the failure the explicit window exists to prevent one level
+    // up. Checked only when the line states its window, so older shapes are untouched.
+    const runWindow = record(event.run_diff_window);
+    // A `final-verify` line is the only shape the event contract puts `run_diff_window` on, and it
+    // is the only thing the comparison below has to compare against. Omitting it does not fail the
+    // comparison — it skips it, letting the writer state any window at all. So the field is required
+    // exactly where the contract already places it, and nowhere else: a `dispatch-route` close
+    // legitimately has no run window and must not be refused for lacking one.
+    if (review !== null && runWindow === null && event.phase === "final-verify") {
+      diagnostics.push(
+        diagnosticFor("terminal-review-run-window-missing", "error", "a final-verify close states a terminal_review window with no run_diff_window to check it against", event, {
+          base: text(review.base),
+          head: text(review.head),
+          run_diff_window: null
+        })
+      );
+      continue;
+    }
+    if (review !== null && runWindow !== null) {
+      const base = text(runWindow.base_sha);
+      const head = text(runWindow.head_sha);
+      // Base equality, not base-and-head: the review's own fix commit lands after the range it
+      // reviewed, so the run head legitimately advances past `terminal_review.head`. Requiring both
+      // would make a correct run refuse. Requiring the base still refuses the two shapes that
+      // matter — a window that starts somewhere else, and an empty window over a non-empty run.
+      const startsWithTheRun = base !== null && text(review.base) === base;
+      const empty = text(review.base) !== null && text(review.base) === text(review.head);
+      const runIsEmpty = base !== null && base === head;
+      if (!startsWithTheRun || (empty && !runIsEmpty)) {
+        diagnostics.push(
+          diagnosticFor("terminal-review-window-mismatch", "error", "a terminal_review window does not cover the run window on its own line", event, {
+            reviewed: `${text(review.base)}..${text(review.head)}`,
+            run: `${base}..${head}`
+          })
+        );
+        continue;
+      }
+    }
+
+    if (!reportsCompletion(event)) continue;
+
+    if (verdict !== null && (TERMINAL_REVIEW_DISCHARGING_VERDICTS as readonly string[]).includes(verdict)) continue;
+
+    diagnostics.push(
+      diagnosticFor("terminal-review-loop-missing", "error", "a run-closing record reports completion without a discharging terminal_review", event, {
+        verdict
+      })
+    );
+  }
+}
+
 function checkExclusionClasses(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
   for (const event of view.lines) {
     const outOfScope = array(record(event.design_baseline)?.out_of_scope ?? null) ?? [];
@@ -357,7 +503,11 @@ function checkExclusionClasses(view: WavesJournalView, diagnostics: WavesDiagnos
  * bypass — writing 1.3.0 after a 1.4.0 line in the same run.
  */
 function checkWriterStamp(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
-  let seenV14 = false;
+  // Monotonic from the highest version the run has used, not a boolean about 1.4.0. The boolean form
+  // let a writer drop from 1.5.0 back to 1.4.0 silently, and that is not a cosmetic gap: every
+  // version-gated rule is judged per line, so writing the close one minor lower would opt the line
+  // out of the rules its own run already demonstrated the writer supports.
+  let highest: string | null = null;
   for (const event of view.lines) {
     const version = schemaVersionOf(event);
     const atLeastV14 = compareSchemaVersions(version, WRITER_REQUIRED_FROM) >= 0;
@@ -365,14 +515,17 @@ function checkWriterStamp(view: WavesJournalView, diagnostics: WavesDiagnostic[]
     if (atLeastV14 && text(event.writer) === null) {
       diagnostics.push(diagnosticFor("unstamped-writer", "error", "a 1.4.0 or higher line carries no writer stamp", event));
     }
-    if (seenV14 && !atLeastV14) {
+    if (highest !== null && compareSchemaVersions(version, highest) < 0) {
       diagnostics.push(
-        diagnosticFor("journal-version-downgrade", "error", "a lower schema_version follows a 1.4.0 line in the same run", event, {
-          schema_version: version
+        diagnosticFor("journal-version-downgrade", "error", "a schema_version below the highest the run has already used", event, {
+          schema_version: version,
+          highest
         })
       );
     }
-    if (atLeastV14) seenV14 = true;
+    // Activation still requires a 1.4.0 line, as the contract states: a pre-1.4.0 run is not policed
+    // for version movement at all.
+    if (atLeastV14 && (highest === null || compareSchemaVersions(version, highest) > 0)) highest = version;
   }
 }
 
@@ -491,6 +644,7 @@ export function validateWavesJournal(view: WavesJournalView): WavesDiagnostic[] 
   checkAbortGate(view, diagnostics);
   checkCompletionGate(view, diagnostics);
   checkFinalVerify(view, diagnostics);
+  checkTerminalReview(view, diagnostics);
   checkExclusionClasses(view, diagnostics);
   checkWriterStamp(view, diagnostics);
   checkLaneTerminality(view, diagnostics);

@@ -650,7 +650,13 @@ describe("R3-H9 — the final pass reads the preservation denominator over the r
     describe(`${variant} variant`, () => {
       it("substitutes the run window for the wave diff window", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
-        const rule = lineWith(final, /`run_diff_window`/);
+        // Identify the preservation rule, not "the first line in §5.6 that mentions the field".
+        // §5.6 now also states which fields the close event must carry, and that sentence names
+        // `run_diff_window` earlier in the section — so the loose selector returned it and the
+        // §5.5.2 check below failed against a line that was never about the denominator. Narrowing
+        // does not weaken anything: a line losing `보존` makes the selector return "" and the first
+        // assertion below fails.
+        const rule = lineWith(final, /`run_diff_window`[^\n]*보존|보존[^\n]*`run_diff_window`/);
         expect(rule, `${variant}: the final pass must state which window its preservation denominator uses`).not.toBe(
           ""
         );
@@ -759,7 +765,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 // Bumped to v1.4.0 with FR-FLOW-104 (S1), which added `oscillation` and `budget-exhausted` to the
 // closed `reason_class` vocabulary — values kiwi-wave-master's verify loop now writes.
 // =============================================================================================
-describe("R3-M1 — kiwi-wave-master pins waves-event v1.4.0", () => {
+describe("R3-M1 — kiwi-wave-master pins waves-event v1.5.0", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("cites the version that actually defines the fields it writes", () => {
@@ -768,7 +774,7 @@ describe("R3-M1 — kiwi-wave-master pins waves-event v1.4.0", () => {
         const row = tableRows(common, /waves-event\.md/)[0] ?? "";
         expect(row, `${variant}: the event-SSOT row must exist`).not.toBe("");
         expect(
-          /v1\.4\.0/.test(row),
+          /v1\.5\.0/.test(row),
           `${variant}: the pin must name v1.4.0 — the reason_class values this skill writes are v1.4.0-new`
         ).toBe(true);
         expect(

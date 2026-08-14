@@ -181,10 +181,10 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
   it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
     const text = read(copy);
     expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.4\.0/m
+      /^#\s*kiwi waves event v1\.5\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.4\.0"/
+      /"schema_version"\s*:\s*"1\.5\.0"/
     );
     expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
       /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
@@ -675,10 +675,10 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
   it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
     const text = read(copy);
     expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.4\.0/m
+      /^#\s*kiwi waves event v1\.5\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.4\.0"/
+      /"schema_version"\s*:\s*"1\.5\.0"/
     );
     expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
       /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/

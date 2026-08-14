@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
@@ -12,6 +13,8 @@ import { registerRepairCommands } from "../../src/cli/commands/repair.js";
 import { registerOrchestrateCommands } from "../../src/cli/commands/orchestrate.js";
 import { toolSchemas } from "../../src/mcp/server.js";
 import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
+
+const REPO_ROOT = path.join(process.cwd());
 
 const DOC_AND_SKILL_ROOTS = ["docs/spec/90.appendix.md", "AGENTS.md", "CLAUDE.md", "skills/codex", "skills/claude", "skills/etc", ".agents/skills"];
 
@@ -305,8 +308,11 @@ describe("FR-NODE-122 gate-id parity", () => {
     }
     // 39 orchestrator-owned phase-1 rows + 4 routing gates + 13 inherited + 2 never-auto-granted
     // + 3 adopted + 2 emitted by a phase-1 kernel but absent from §13's table (@req FR-NODE-166).
-    expect(GATE_IDS).toHaveLength(63);
-    expect(new Set(GATE_IDS).size).toBe(63);
+    // @req FR-NODE-188 / FR-FLOW-134 — 65 since the run-close refusal and wave-master's direct
+    // review child joined. The count moving with the vocabulary is the point: a gate id no
+    // refusal can carry is prose in a machine costume.
+    expect(GATE_IDS).toHaveLength(65);
+    expect(new Set(GATE_IDS).size).toBe(65);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {
@@ -357,5 +363,30 @@ describe("FR-NODE-122 gate-id parity", () => {
       expect(GATE_IDS as readonly string[]).toContain(gateId);
     }
     expect(extractDeclaredGateIds(FIXTURE_VARIANT).severityRows).toHaveLength(4);
+  });
+});
+
+// @req FR-NODE-188 AC-6 — membership in the union is not declaration by the skills. The existing
+// assertions run `declared ⊆ known` plus a length check on the union, and a skill that OMITTED its
+// row passes both: the subset relation only tightens, and the union count does not move. So the two
+// gate ids this work introduced are asserted per skill, against the skill that owns each.
+describe("FR-NODE-188 — the terminal-review gate ids are declared, not merely known", () => {
+  const OWNED: ReadonlyArray<{ readonly skill: string; readonly gateId: string }> = [
+    { skill: "kiwi-orchestrator", gateId: "terminal-review-loop-missing" },
+    { skill: "kiwi-wave-master", gateId: "terminal-review-loop-missing" },
+    { skill: "kiwi-wave-master", gateId: "child-review-fix-loop-needs-user-or-failed" }
+  ];
+
+  it.each(OWNED)("$skill declares $gateId in every rendering it ships", ({ skill, gateId }) => {
+    // kiwi-wave-master is excluded from the .agents mirror by design, so its census is three.
+    const roots =
+      skill === "kiwi-wave-master"
+        ? ["skills/claude", "skills/codex", "skills/etc"]
+        : ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"];
+    for (const root of roots) {
+      const text = readFileSync(path.join(REPO_ROOT, root, skill, "SKILL.md"), "utf8");
+      expect(text.includes(gateId), `${root}/${skill}: ${gateId} must be declared, not only known`).toBe(true);
+    }
+    expect(GATE_IDS as readonly string[]).toContain(gateId);
   });
 });

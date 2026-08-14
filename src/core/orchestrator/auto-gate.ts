@@ -112,7 +112,16 @@ export const GATE_IDS = [
   //   `--auto` behaviour. Declaring them is a separate decision, and taking it means adding a §13
   //   row across three variants plus the `.agents` mirror.
   "handoff-pin-untrusted",
-  "lane-plan-incomplete"
+  "lane-plan-incomplete",
+  // @req FR-NODE-188 — the run-close refusal both orchestrating skills declare. It is here, not
+  // only in their gate tables, because a gate id no refusal can carry is prose with a machine
+  // costume: `refuse()` rejects a bare string, and the declared-subset assertion over each
+  // variant's `critical_gates[]` reads this union.
+  "terminal-review-loop-missing",
+  // @req FR-FLOW-134 — kiwi-wave-master spawns the run-scope review loop itself, so the
+  // pipeline gate cannot cover it. Every sibling child gate is a member; without membership
+  // the halt falls to `business-decision` and a committee approves skipping it.
+  "child-review-fix-loop-needs-user-or-failed"
 ] as const;
 
 export type GateId = (typeof GATE_IDS)[number];

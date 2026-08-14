@@ -34,6 +34,7 @@ import { normalizeTasks, type SidecarPhase, type SidecarTask, type TaskCatalogEn
 import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
 import { parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
+import { ENGINES, type Engine } from "../../core/orchestrator/journal-schema.js";
 
 // @req IR-CLI-082 / IR-CLI-083 / IR-CLI-084 / IR-MCP-003 / FR-NODE-127 / FR-NODE-137
 //
@@ -754,6 +755,18 @@ function requireOption(value: unknown, flag: string): string {
   return value;
 }
 
+/**
+ * `parseWavesJournal` drops every line whose engine differs, so coercing an unrecognised `--engine`
+ * to a default does not fail loudly — it validates the other producer's lines, finds none, and
+ * reports a clean run for a journal it never opened. @req FR-NODE-188
+ */
+function requireEngine(value: unknown): Engine {
+  if (typeof value !== "string" || !(ENGINES as readonly string[]).includes(value)) {
+    throw new OperationalError(`--engine must be one of ${ENGINES.join(" | ")}`);
+  }
+  return value as Engine;
+}
+
 async function writeUnderRoot(root: string, relativePath: string, text: string): Promise<string> {
   const absolute = path.resolve(root, relativePath);
   await mkdir(path.dirname(absolute), { recursive: true });
@@ -879,9 +892,14 @@ async function appendWavesLine(
 }
 
 /** Reads a run's journal view, or throws an operational error when the file cannot be parsed. */
-async function readJournalView(root: ProjectRoot, runId: string, relativePath: string): Promise<WavesJournalView> {
+async function readJournalView(
+  root: ProjectRoot,
+  runId: string,
+  relativePath: string,
+  engine: Engine = "kiwi-orchestrator"
+): Promise<WavesJournalView> {
   try {
-    return await parseWavesJournal(root, { runId, engine: "kiwi-orchestrator", relativePath });
+    return await parseWavesJournal(root, { runId, engine, relativePath });
   } catch (error) {
     throw new OperationalError(`the run journal is unreadable at ${relativePath}: ${(error as Error).message}`, { cause: error });
   }
@@ -1684,11 +1702,16 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     // @req IR-CLI-083 — `--strict` is what makes an unstamped 1.4.0 line and a version downgrade fail.
     .option("--strict", "fail on an unstamped 1.4.0 line or a run-scoped version downgrade")
+    // @req FR-NODE-188 — without this a kiwi-wave-master run has no enforcement caller: every
+    // reader here is scoped to the orchestrator engine and `parseWavesJournal` drops the other's
+    // lines, so its run-close record would be validated by nothing that ships.
+    .option("--engine <engine>", "journal engine to validate (kiwi-orchestrator | kiwi-wave-master)", "kiwi-orchestrator")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const view = await readJournalView(root, runId, options.journal as string);
+        const engine = requireEngine(options.engine);
+        const view = await readJournalView(root, runId, options.journal as string, engine);
         const diagnostics = validateWavesJournal(view).map((entry) => ({
           code: entry.code,
           message: entry.message,

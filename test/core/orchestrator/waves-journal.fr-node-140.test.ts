@@ -36,8 +36,10 @@ describe("FR-NODE-140 parseWavesJournal", () => {
     expect(waveMaster.lines.map((line) => line.summary)).toEqual(["no engine field", "explicit wave-master"]);
   });
 
-  it("AC-3 accepts the five supported schema versions and diagnoses one outside the set", async () => {
-    expect(WAVES_SCHEMA_VERSIONS).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"]);
+  it("AC-3 accepts the six supported schema versions and diagnoses one outside the set", async () => {
+    // @req FR-NODE-188 — 1.5.0 is the version the terminal_review obligation arrives at. The set is
+    // pinned rather than counted so a version added without a validator gate is visible here first.
+    expect(WAVES_SCHEMA_VERSIONS).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]);
 
     const supported = await journalRoot(
       WAVES_SCHEMA_VERSIONS.map((version, index) =>
@@ -45,9 +47,9 @@ describe("FR-NODE-140 parseWavesJournal", () => {
       )
     );
     const supportedView = await parseWavesJournal(supported, { runId: "run-a", engine: "kiwi-wave-master" });
-    expect(supportedView.lines).toHaveLength(5);
+    expect(supportedView.lines).toHaveLength(6);
     expect(supportedView.diagnostics.filter((item) => item.code === "SRS-W055")).toEqual([]);
-    expect(supportedView.schemaVersions).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"]);
+    expect(supportedView.schemaVersions).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]);
 
     const unsupported = await journalRoot([waveVerify({ schema_version: "2.0.0" })]);
     const unsupportedView = await parseWavesJournal(unsupported, { runId: "run-a", engine: "kiwi-wave-master" });

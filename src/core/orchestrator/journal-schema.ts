@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------------------------
 
 /** The closed set of schema versions the reader accepts (waves-event.md v1.0.0 through v1.4.0). */
-export const WAVES_SCHEMA_VERSIONS = ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] as const;
+export const WAVES_SCHEMA_VERSIONS = ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"] as const;
 export type WavesSchemaVersion = (typeof WAVES_SCHEMA_VERSIONS)[number];
 
 /** The producing skill. @req FR-NODE-140 — a line with no `engine` field is `kiwi-wave-master`. */
@@ -220,6 +220,30 @@ export const VERIFICATION_VERDICTS = ["in-progress", "pass", "fail-residual", "f
 export type VerificationVerdict = (typeof VERIFICATION_VERDICTS)[number];
 
 /**
+ * @req FR-NODE-188 — what a run-closing record says about the review loop that covered it.
+ *
+ * `residual` and `skipped-run-halted` are recordable but do not discharge the obligation: the first
+ * is a review that ran and still found CRITICAL or HIGH, the second a run that halted after commits
+ * landed, and neither is a run that may report itself complete. `not-applicable-empty-window` is the
+ * branch that keeps the gate's predicate honest — a run that wrote no code owes no review, and
+ * without it the gate would fire on every requirements-only run, which the orchestrator's own gate
+ * table names as worse than omitting the gate.
+ */
+export const TERMINAL_REVIEW_VERDICTS = [
+  "pass",
+  "residual",
+  "not-applicable-empty-window",
+  "skipped-run-halted"
+] as const;
+export type TerminalReviewVerdict = (typeof TERMINAL_REVIEW_VERDICTS)[number];
+
+/** The verdicts a run-closing record may carry while still recording completion. */
+export const TERMINAL_REVIEW_DISCHARGING_VERDICTS: readonly TerminalReviewVerdict[] = [
+  "pass",
+  "not-applicable-empty-window"
+];
+
+/**
  * `evaluateRound`'s verdict vocabulary (05 §10.1). Deliberately wider than the journal's: `invalid`
  * is a round the denominator mismatch voided, which consumes the cap without failing the round, and
  * `pass-with-residual` is Normal's early exit.
@@ -356,6 +380,13 @@ export interface WavesEvent {
 export const WAVES_EVENT_FIELDS = {
   required: ["ts", "schema_version", "run_id", "wave", "order", "target", "status", "summary"],
   optional: [
+    // @req FR-NODE-188 — declared because the validator refuses a run-close without it. A field
+    // the tool enforces and the contract does not declare is enforced nowhere a reader can see.
+    "terminal_review",
+    // @req FR-NODE-188 — read by the run-close predicate, so it is declared for the same
+    // reason terminal_review is: a field the tool keys on and the contract omits is enforced
+    // nowhere a reader can see.
+    "outcome",
     "scope",
     "pipeline_run_id",
     "req_ids",
@@ -433,6 +464,14 @@ export const JOURNAL_RULE_CODES = [
   "complete-without-latest-pass",
   "cross-run-complete",
   "final-verify-not-passed-complete",
+  // @req FR-NODE-188 — the run-close review obligation. The first is the gate both
+  // orchestrating skills declare; the other two refuse a record that carries the field but
+  // says nothing checkable with it.
+  "terminal-review-loop-missing",
+  "terminal-review-verdict-outside-vocabulary",
+  "terminal-review-window-missing",
+  "terminal-review-run-window-missing",
+  "terminal-review-window-mismatch",
   "reason-class-outside-vocabulary",
   "exclusion-class-outside-vocabulary",
   "unstamped-writer",
@@ -636,6 +675,45 @@ export const JOURNAL_RULES: readonly WavesRule[] = [
     // resolves is the §2.3 bullet list. `exclusion-class-outside-vocabulary` is the same shape.
     code: "abort-gate-outside-vocabulary",
     rule: "an abort_gate outside the GateId vocabulary — error on the newest line, warning on history",
+    source: "waves-event.md §2.2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  // The five terminal-review rules. Declaring a code in `JOURNAL_RULE_CODES` and not here exempts it
+  // from the fixture harness whose denominator is these tables — the rule ships, the union accepts
+  // it, and nothing ever demands the violating-plus-legal pair every other journal rule pays for.
+  // @req FR-NODE-188
+  {
+    code: "terminal-review-loop-missing",
+    rule: "a run-closing record that reports completion needs a terminal_review whose verdict discharges it",
+    source: "waves-event.md §2.2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "terminal-review-verdict-outside-vocabulary",
+    rule: "a terminal_review verdict outside the closed four",
+    source: "waves-event.md §2.2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "terminal-review-window-missing",
+    rule: "a terminal_review carrying no base/head window of its own",
+    source: "waves-event.md §2.2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "terminal-review-run-window-missing",
+    rule: "a final-verify close stating a terminal_review window with no run_diff_window to check it against",
+    source: "waves-event.md §2.2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "terminal-review-window-mismatch",
+    rule: "a terminal_review window that does not start where the run window on its own line starts",
     source: "waves-event.md §2.2",
     enforcement: "diagnostic",
     producer: "journal"

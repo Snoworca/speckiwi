@@ -19,10 +19,10 @@ description: "OpenCode/Hermes local-LLM variant of the multi-wave orchestrator. 
 
 | 키 | 규칙 |
 |---|---|
-| §0.1 | **이벤트 SSOT**: `../_shared/kiwi/waves-event.md` v1.4.0 가 `./kiwi/waves.jsonl` 의 schema·파일위치·mark-complete 규칙 SSOT. 본 문서는 wave 분해·오케스트레이션 로직만 담당. |
+| §0.1 | **이벤트 SSOT**: `../_shared/kiwi/waves-event.md` v1.5.0 가 `./kiwi/waves.jsonl` 의 schema·파일위치·mark-complete 규칙 SSOT. 본 문서는 wave 분해·오케스트레이션 로직만 담당. |
 | §0.2 | **/snoworca-\* 호출 절대 금지**. kiwi-* 시리즈만 `Skill` 도구로 호출한다. |
 | §0.3 | **CLAUDE.md §6 시그니처 금지** + **§7 변경 이력 금지**. 본 스킬 본문에 변경 이력 섹션 없음 — git history 가 SSOT. |
-| §0.4 | **--auto 안전 게이트**: 어떤 wave 의 `$kiwi-srs` 또는 `$kiwi-pipeline` 이 `NEEDS_USER` / `FAILED` 를 반환하거나 critical 게이트에 도달하면, `--auto` 라도 자동 진행을 중단하고 사용자 결정을 받는다. |
+| §0.4 | **--auto 안전 게이트**: 어떤 wave 의 `$kiwi-srs` · `$kiwi-pipeline` 또는 §5.55 가 직접 호출한 `$kiwi-review-fix-loop` 이 `NEEDS_USER` / `FAILED` 를 반환하거나 critical 게이트에 도달하면, `--auto` 라도 자동 진행을 중단하고 사용자 결정을 받는다. |
 | §0.5 | **wave 경계 불변 원칙**: 일단 `waves.jsonl` 에 확정된 wave 순서·범위는 실행 도중 임의로 재분할하지 않는다. 재분해가 필요하면 처음부터 다시 분해한다. **예외** — 발견된 설계 **커버리지 갭**을 닫기 위해 새 wave 를 **추가**하는 것은 본 원칙의 명시적 예외이며 **재분해가 아니다**. 이때 **이미 등록된 wave 의 순서는 바뀌지 않는다** — 순서가 바뀌면 앞 wave 가 뒤 wave 의 토대라는 전제 자체가 깨진다. |
 | §0.6 | **멱등 재개**: 이미 완료로 표시된 wave 는 재실행하지 않고 건너뛴다. 진행은 항상 첫 미완료 wave 부터 이어간다. |
 | §0.7 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
@@ -50,6 +50,8 @@ description: "OpenCode/Hermes local-LLM variant of the multi-wave orchestrator. 
 | `wave-verify-cross-wave-fix-required` | 이전 wave 의 **요구사항**을 바꿔야 하고, carry-forward 경로가 양쪽 다 불가능함 — `complete` 는 취소 불가 (§0.5 / §5.5.7) | §5.5 |
 | `wave-decomposition-coverage-gap` | 입력의 최상위 섹션이 어느 wave 에도 배정되지 않았고 out-of-scope 사유도 기록되지 않음 — target 등록 진입 불가 | §3.2 |
 | `final-verify-residual-critical` | 전체 wave 최종 검증 종료 시 잔여 CRITICAL/HIGH, 검증자 1 의 `GAPS`, cap 소진(`fail-cap`), 또는 `fail-residual` — `--auto` 라도 중단 | §5.6 |
+| `terminal-review-loop-missing` | §5.55 가 정한 조건이 충족되지 않은 채 통과 판정이 기록됨 | §5.55 / §5.6 |
+| `child-review-fix-loop-needs-user-or-failed` | §5.55 가 **직접** 호출한 `/kiwi-review-fix-loop` 이 `NEEDS_USER` / `FAILED` 반환 — 사이클이 아니라 본 스킬이 spawn 하므로 pipeline 게이트가 덮지 못한다 | §5.55 |
 | `unsafe-option-refused` | `--skip-regression` / `--reviewer-off` 요청 — 회귀와 리뷰를 끄면 wave 누적 위에서 결함 피해가 복리로 커진다 | §2.1 |
 | `child-srs-needs-user-or-failed` | 직접 호출한 `$kiwi-srs` 가 `NEEDS_USER` / `FAILED` 를 반환하거나 자체 critical 게이트에 도달 — 사이클은 kiwi-srs 를 spawn 하지 않으므로 pipeline 게이트가 덮지 못한다 | §4 / §5.5.5 |
 | `decomposition-input-missing` | 분해할 대상 문서·설계 문서·에픽 이슈가 모두 부재 — 입력을 위원회가 창작할 수 없다 | §1.1 |
@@ -154,7 +156,7 @@ wave 분해에 들어가기 전에 본 스킬은 이 run 의 **run root** 를 �
 
 **work-mode 판독**: 같은 preflight 에서 `get_work_mode`(MCP 우선, CLI `speckiwi mode` 폴백)로 지속된 work-mode 를 읽는다. wave 사이클은 **body-scope**(본문 스코프) 작업이므로, `tdd` 모드의 step-scoped 라우팅(`kiwi-tdd` 위임)은 wave 사이클에 **적용되지 않는다** — wave 는 body SRS target 을 단위로 돌고 step 디렉터리를 쓰지 않기 때문이다.
 
-**위험 옵션 거부**: `--skip-regression` / `--reviewer-off` 요청은 `--wt` 와 동일하게 **거부한다** — 회귀 검증과 리뷰를 끄면 wave 가 뒤 wave 의 토대라는 전제 위에서 결함이 복리로 누적된다(§0.G `unsafe-option-refused`).
+**위험 옵션 거부**: `--skip-regression` / `--reviewer-off` / `--no-review-loop` / `--skip-review-loop` 요청은 `--wt` 와 동일하게 **거부한다** — 종료 hop 은 끌 수 없고 적용 여부는 커밋 창이 정하므로, 조용히 무시하지 않고 이름을 들어 거부한다 — 회귀 검증과 리뷰를 끄면 wave 가 뒤 wave 의 토대라는 전제 위에서 결함이 복리로 누적된다(§0.G `unsafe-option-refused`).
 
 **회귀 기준선 캡처**: preflight 에서 전체 회귀 스위트를 **1회** 실행해 실패 목록을 `baseline_failing_tests` 로 캡처하고, 그 값을 이 **run 전체에 pin** 한다 — wave 마다 다시 재면 앞 wave 가 만든 실패가 다음 wave 의 기준선으로 승격된다. 캡처는 kiwi-coder `state.regression_baseline` 과 같은 스위트·같은 명령을 쓰며, 두 값은 하나의 SSOT 를 공유한다. 캡처 자체가 실패하면 `baseline_failing_tests` 를 부재로 두고 그 사실을 보고한다.
 
@@ -202,7 +204,7 @@ target 은 `--target` 인자로 `wave-{n}` 을 **명시 전달**한다 — 활�
 
 ## 5.5 Phase 3.5 — 웨이브 종료 상호검증 (FR-FLOW-044 / FR-FLOW-045)
 
-wave 의 $kiwi-pipeline 이 `TASK_DONE` 을 반환한 뒤, **§6 의 `waves.jsonl` `complete` 기록 이전에** 본 루프를 돌린다. 통과하지 못한 wave 는 `complete` 로 기록하지 않는다.
+wave 의 $kiwi-pipeline 이 `TASK_DONE` 을 반환한 뒤, **§6 의 `waves.jsonl` `complete` 기록 이전에** 본 루프를 돌린다. 통과하지 못한 wave 는 `complete` 로 기록하지 않는다. 그 wave 의 증거 창에 `kiwi-review-fix-loop` 실행이 없는 wave 도 마찬가지로 `complete` 로 기록하지 않는다 — 부재를 사후 finding 으로 올리는 것과 기록 자체를 막는 것은 다르다.
 
 `complete` 를 먼저 쓰고 사후 감사하는 배치는 쓸 수 없다 — `complete` 는 append-only 이고 전이도에 `complete → failed` 간선이 없으며 §0.6 재개가 완료 wave 를 영구히 건너뛰므로, 실패가 어떤 후속 동작도 바꾸지 못하는 장식이 된다.
 
@@ -294,6 +296,26 @@ pipeline 을 **spawn 할 때마다** 그 run_id 를 `pipeline_run_ids` 에 **app
 ---
 
 
+## 5.55 Phase 4.4 — run 창 종료 리뷰 (FR-FLOW-134)
+
+**마지막 wave 의 `complete` 뒤, §5.6 최종 검증 앞에** run 전체의 커밋 창을 1회 리뷰한다. 이 순서여야 hop 의 보고가 최종 검증의 증거 안에 든다.
+
+```
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {§2.1 이 pin 한 값} [--auto] [--max] [--mini|--loops N]" })
+```
+
+**`kiwi-pipeline` 의 마지막 홉이 이것을 대신하지 않는다.** wave 별 리뷰의 분모는 그 wave 의 `diff_window` 하나이고, 여기의 분모는 run 전체다 — §5.6 이 자기 존재 이유로 드는 논거("wave 별 검증은 각 wave 의 scope 안만 보므로 어느 wave 의 scope 에도 속하지 않은 항목은 끝까지 검증되지 않는다")가 리뷰에도 그대로 성립한다. run 창은 모든 wave 창의 **상위집합**이므로 두 분모는 당연히 겹친다 — 중복이 아닌 이유는 서로소여서가 아니라 **심판 단위**가 다르기 때문이다: wave 별 리뷰는 각 wave 안만 보므로 wave 를 **가로지르는** 상호작용, 즉 §5.6 이 최종 패스 분모에 더하는 `integration_items`(wave 경계를 가로지르는 통합 항목)가 걸리는 자리는 어느 wave 리뷰의 시야에도 들어오지 않는다. 개별 커밋이 두 번 읽히는 비용은 치르고, 그 대신 아무도 보지 않던 교차면을 얻는다.
+
+`--close-reqs` 는 **주지 않는다** — run 스코프에서 그것을 주면 모든 wave target 의 요구 status 를 한 호출로 뒤집는 bulk-finalize 가 된다. 요구 종결은 wave 별로 이미 끝났다.
+
+리뷰가 고친 것은 §5.6 앞에서 **커밋한다** — 커밋하지 않으면 §5.6 의 보존 계층이 읽는 분모(커밋된 run 창) 밖에 남아 그 편집이 보이지 않는다.
+
+반환이 `NEEDS_USER` · `FAILED` 이면 §0.G 의 `child-review-fix-loop-needs-user-or-failed` 로 중단한다.
+
+기록은 §6 의 run 종료 줄에 `terminal_review {skill, base, head, verdict}` 로 남긴다(FR-NODE-188). 창이 비면 `not-applicable-empty-window`, 커밋 착지 뒤 중단이면 `skipped-run-halted` 이고 그 run 은 완료로 보고하지 않는다.
+
+---
+
 ## 5.6 Phase 4.5 — 전체 wave 최종 검증 (FR-FLOW-049)
 
 **마지막 wave** 의 `complete` 이벤트가 기록된 **뒤**, 오케스트레이션 완료를 보고하기 전에 최종 검증 패스를 1회 돌린다. 이 패스는 마지막 wave 의 **재검사가 아니다** — wave 별 검증은 각 wave 의 scope 안만 보므로, 어느 wave 의 scope 에도 속하지 않은 항목은 마지막까지 한 번도 검증되지 않는다.
@@ -304,7 +326,7 @@ pipeline 을 **spawn 할 때마다** 그 run_id 를 `pipeline_run_ids` 에 **app
 
 루프 자체는 §5.5 를 그대로 재사용한다(엔진 SSOT: `../_shared/kiwi/verify-loop.md`): **정확히 2개의 검증 축**을 stance 로 분리해 순차 수행하고, 교차반박은 `add-only` 이며, clean 라운드는 **그 라운드에서 수정이 적용되지 않았을 것**을 요구한다. 라운드 상한과 `--mini` / `--loops N` 도 §5.5.4 를 따르고, finding 의 수정 라우팅은 §5.5.5 를, wave 로 귀속되는 finding 의 이월은 §5.5.7 을 그대로 쓴다 — 재사용 목록에서 이 둘이 빠지면 최종 패스의 finding 은 전부 HALT 로만 끝난다.
 
-기록은 하나의 wave 가 아니라 run 전체에 붙는다 — `wave="all"` · `order=0` · `phase="final-verify"` 를 실은 이벤트를 `waves.jsonl` 에 append 하고, 자체 `verification` 객체를 싣는다. wave 별 최신 상태를 계산할 때 이 이벤트는 제외한다 — 포함하면 존재하지 않는 wave 하나가 영원히 미완료로 읽힌다.
+기록은 하나의 wave 가 아니라 run 전체에 붙는다 — `wave="all"` · `order=0` · `phase="final-verify"` 를 실은 이벤트를 `waves.jsonl` 에 append 하고, 자체 `verification` 객체와 함께 `run_diff_window` 및 §5.55 가 남긴 `terminal_review` 를 **반드시** 싣는다 — 이 둘이 빠진 종료 줄은 검증기가 거부한다. wave 별 최신 상태를 계산할 때 이 이벤트는 제외한다 — 포함하면 존재하지 않는 wave 하나가 영원히 미완료로 읽힌다.
 
 §5.5.4 의 "wave head 회귀"는 최종 패스에서 **run head** 회귀로 읽는다.
 
@@ -314,7 +336,7 @@ pipeline 을 **spawn 할 때마다** 그 run_id 를 `pipeline_run_ids` 에 **app
 
 최종 패스도 `unapproved-damage` **0 건**을 통과 조건으로 요구한다.
 
-run-scope finding — 어느 wave 의 scope 에도 속하지 않아 wave 로 귀속할 수 없는 것 — 은 HALT 가 아니라 §0.5 **예외**에 따라 wave-N+1 을 추가해 처리한다. 추가한 wave 는 §4~§5.5 를 정상 실행하고, 그 wave 가 `complete` 로 기록된 뒤 §5.6 을 **재실행**한다.
+run-scope finding — 어느 wave 의 scope 에도 속하지 않아 wave 로 귀속할 수 없는 것 — 은 HALT 가 아니라 §0.5 **예외**에 따라 wave-N+1 을 추가해 처리한다. 추가한 wave 는 §4~§5.5 를 정상 실행하고, 그 wave 가 `complete` 로 기록된 뒤 **§5.55 와 §5.6 을 순서대로 재실행**한다 — 추가된 wave 의 커밋은 run 스코프 리뷰가 새로 닿을 수 있는 유일한 커밋이고, §5.55 를 건너뛰면 `run_diff_window.head_sha` 만 전진해 종료 줄의 `terminal_review` 창이 낡는다.
 
 wave 추가는 run 당 **3** 회를 상한으로 한다 — 상한에 닿으면 §0.G `wave-append-cap-exhausted` 로 중단하고 잔여를 전량 보고한다. 상한이 없으면 최종 패스가 wave 를 추가하고 그 wave 가 다시 최종 패스를 부르는 루프에 종료 보장이 없다.
 

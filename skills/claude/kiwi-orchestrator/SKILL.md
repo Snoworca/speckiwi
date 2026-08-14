@@ -17,7 +17,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 
 | 키 | 규칙 |
 |---|---|
-| §0.1 | **이벤트 SSOT**: `~/.claude/skills/_shared/kiwi/waves-event.md` v1.4.0 가 `./kiwi/waves.jsonl` 의 schema·파일위치·`complete` 규칙 SSOT. 본 문서는 오케스트레이션 로직만 담당한다. |
+| §0.1 | **이벤트 SSOT**: `~/.claude/skills/_shared/kiwi/waves-event.md` v1.5.0 가 `./kiwi/waves.jsonl` 의 schema·파일위치·`complete` 규칙 SSOT. 본 문서는 오케스트레이션 로직만 담당한다. |
 | §0.2 | **/snoworca-\* 호출 절대 금지**. kiwi-* 시리즈만 `Skill` 도구로 호출한다. |
 | §0.3 | **CLAUDE.md §6 시그니처 금지** + **§7 변경 이력 금지**. 본 스킬 본문에 변경 이력 섹션 없음 — git history 가 SSOT. |
 | §0.4 | **--auto 안전 게이트**: 어떤 자식(`/kiwi-srs` · `/kiwi-planner` · `/kiwi-pm` · `/kiwi-review-fix-loop` · `/kiwi-tdd`)이 `NEEDS_USER` 또는 `FAILED` 를 반환하면 `--auto` 라도 부모가 중단하고 사용자 결정을 받는다. 자식이 **자기 게이트 표**의 `gate_id` 를 bubble 하면 §0.G 에 같은 이름의 행이 없어도 무조건 중단한다. |
@@ -52,7 +52,8 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 |---|---|---|
 | `run-root-preflight-mismatch` | MCP `workspaceRoot` 가 git toplevel 과 다르거나 조회 실패 | Preflight P.1 |
 | `invalid-run-scope-option` | 명시된 `--run-id` 가 `^[A-Za-z0-9._-]{1,48}$` 또는 `git check-ref-format --allow-onelevel` 을 통과하지 못하거나, 명시된 `--work` 가 `^[a-z0-9][a-z0-9.-]{2,39}$` 를 통과하지 못함 | Preflight P.2 |
-| `unsafe-option-refused` | `--skip-regression` 또는 `--reviewer-off` 요청 | Preflight P.2 |
+| `terminal-review-loop-missing` | §4.5 가 정한 조건이 충족되지 않은 채 통과 판정이 기록됨 | §4.5 / 각 경계 close-out |
+| `unsafe-option-refused` | `--skip-regression` 또는 `--reviewer-off` 요청, 그리고 `--no-review-loop` · `--skip-review-loop` — 종료 hop 은 끌 수 없고, 적용 여부는 커밋 창이 정한다. 조용히 무시하지 않고 이름을 들어 **거부**한다 | Preflight P.2 |
 | `wt-delegation-refused` | 요청되어 들어온 `kiwi-pipeline --wt` 위임 — cycle 스코프 worktree 를 lane 스코프 안에 중첩하는 위상 | Preflight P.2 |
 | `invalid-loop-option` | `--loops N` 이 정수 1 이상이 아님 | Preflight P.2 |
 | `orchestrator-run-lock-held` | 다른 orchestrator run 이 git common dir 키의 lease 를 보유 | Preflight P.5 |
@@ -233,7 +234,7 @@ Phase 1  intake → route → design                                  [loop D]
                                             route-probe-unreadable                  C
                                      조건부: route-step-requires-mode-switch  business-decision
                                             tdd-route-unattended             business-decision
-       ├─ R-STEP → dispatch-route → Skill(kiwi-tdd) → validate/sync-index → emit-and-finish
+       ├─ R-STEP → dispatch-route → Skill(kiwi-tdd) → Skill(kiwi-review-fix-loop) → validate/sync-index → emit-and-finish
        ├─ R-PLAN → dispatch-route → Skill(kiwi-pm) → Skill(kiwi-review-fix-loop --close-reqs)
        │            → plan-coverage close-out + validate/sync-index → emit-and-finish
        └─ R-ORCH → 1.d 로 진행 — 아래 전부는 이 rung 에서만 실행된다
@@ -417,6 +418,15 @@ order: R-PLAN → R-STEP → R-ORCH        첫 생존 rung 이 이긴다
 
 ### 4.5 rung 별 경로표
 
+**종료 hop 의무** — 통과 판정을 기록하는 모든 경계는 `kiwi-review-fix-loop` 을 **정확히 한 번** 거친다. R-STEP 과 R-PLAN 은 그런 경계가 run 종료 하나, R-ORCH 는 각 wave 마감과 run 최종 검증이다. 세 rung 어디에도 **예외는 없다** — rung 별 면제를 쓰면 분류기의 크기 술어를 되풀이하게 되어 이후의 모든 step 라우트가 스스로를 면제한다.
+
+이 의무는 자식의 **반환값에 조건 걸지 않는다**. `TASK_DONE` 이어야 도는 것이 아니고, `NEEDS_USER` · `FAILED` 는 §0.4 가 부모를 중단시키므로 애초에 hop 에 닿지 않는다 — §0.4 halt 가 **유일한** 비실행 경로다. "무조건 실행한다"라고 쓰지 않는 이유가 이것이다: 그렇게 쓰면 §0.4 와 정면으로 부딪힌다.
+
+경계가 심판하는 커밋 창이 비어 있으면 `terminal_review.verdict = "not-applicable-empty-window"` 로 기록하고 게이트는 **발동하지 않는다** — 코드를 한 줄도 쓰지 않은 run 은 리뷰를 빚지지 않으며, 이 분기가 없으면 요구만 저작한 run 마다 술어가 소음인 게이트가 울린다. 커밋이 착지한 **뒤** run 이 게이트에서 멈췄으면 hop 을 자동 실행하지 않고 `terminal_review.verdict = "skipped-run-halted"` 로 기록하며, 그 run 은 **완료로 보고하지 않는다** — resume 의 첫 동작이 이 hop 이다.
+
+기록은 `waves.jsonl` 의 run 종료 줄에 `terminal_review {skill, base, head, verdict}` 로 남긴다(FR-NODE-188). 위임 유닛은 `--no-pipeline-emit` 로 돌므로 `pipeline.jsonl` 에 근거를 두면 resume 뒤에 증명할 수 없다. 이 hop 은 심판이 아니라 심판의 **선행 조건**이다 — 자신의 PASS 가 wave 게이트를 충족하지는 않는다.
+
+
 #### 4.5.1 `R-STEP` → `kiwi-tdd`
 
 **호출 전에 존재해야 하는 것**: 동결된 `routing/probe.json` 과 `rung = "R-STEP"` 인 `routing/route.lock.json`; intake 요약에서 결정론적으로 파생한 **40자 이하 kebab** `<task>` 이름; 1.c 에서 이미 쓴 작업 개요 문단 `docs/research/{work}/01.intake.md`; `S1.mode == "tdd"`; 그리고 **설계 문서 없음** — 1.d 는 실행되지 않았고 실행되어서도 안 된다. `kiwi-tdd` 가 자기 SDS 를 저작하기 때문이다.
@@ -425,13 +435,24 @@ order: R-PLAN → R-STEP → R-ORCH        첫 생존 rung 이 이긴다
 Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })
 ```
 
-**플래그**: `--mini` 와 `--loops N` 은 전파한다. `--model` 은 사용자가 지정했을 때 전파한다. `--auto` 는 일관성을 위해 전달하되 자식이 **조용히 무시**하므로 효과가 없다는 사실을 **오류로 읽지 않는다**. `--max` 와 네 pass-through — `--auto-integration` · `--auto-cost-warning` · `--force` · `--regression-baseline` — 는 **전파하지 않는다**. 그것들은 이 경로에 존재하지 않는 게이트를 겨냥한다.
+**플래그**: `--mini` 와 `--loops N` 은 전파한다. `--model` 은 사용자가 지정했을 때 전파한다. `--max` 는 **아래 리뷰 hop 의 자식에게 전파한다** — 리뷰 루프 자신의 옵션이다. `--regression-baseline` 은 **주지 않는다**: `기존` 은 baseline 커밋 시점에 이미 있던 것으로 판정되고(kiwi-coder §0.20.1), 자식의 불가침 게이트는 `기존` 만 보호한다. run 시작에 고정된 P.4 pin 을 주면 kiwi-tdd 가 방금 쓴 red 단계 테스트가 `기존` 이 **아니게 되어 보호 밖으로 나간다**. 주지 않으면 자식이 hop 직전에 스스로 baseline 을 잡아 그 테스트들이 `기존` 이 되고, §0.17 이 삭제·약화를 막는다. `--auto-cost-warning` · `--auto-integration` · `--force` 는 전파하지 않는다 — 리뷰 루프에 그 옵션이 없다. 그것들은 `kiwi-pm` 을 거쳐 `kiwi-coder` 에 닿는 게이트이고 이 rung 에는 그 경로가 없다. `--auto` 는 일관성을 위해 전달하되 자식이 **조용히 무시**하므로 효과가 없다는 사실을 **오류로 읽지 않는다**. `kiwi-tdd` 자신에게는 `--max` 와 네 pass-through 를 전파하지 않는다 — 그 자식에게는 해당 게이트가 없다. 리뷰 hop 의 자식에게는 위 문장대로 전파한다.
 
-**반환 후 세 결과**:
+**리뷰 hop** — 승급 여부와 무관하게, 아래 close-out 보다 **먼저** 이 step 의 커밋 창을 리뷰한다:
 
-- *승급됨*: `dispatch-route` result line 에 `outcome: "delegated-complete"` 를 기록하고, **P.5 run lock 을 해제**하고, 통합 브랜치를 그대로 두고 run 리포트에 지명하고, `validate` → `sync-index` → `validate --fail-on-warning` 을 실행한다. 살아남은 드리프트는 `post-merge-index-drift`(critical)다. 그 뒤 `next_hint: null` 과 rung 및 step 을 지명하는 summary 로 `pipeline.jsonl` 이벤트 1건을 emit 하고 중단한다.
+```
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--model <name>]" })
+```
+
+`--close-reqs` 는 **주지 않는다** — `kiwi-tdd` 가 이미 `promote_step_requirement` 로 승급했고, 리뷰 루프는 `implemented` 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 `TASK_DONE` 을 반환한다. 창을 명시하는 이유도 같다: 범위를 주지 않으면 커밋이 끝난 깨끗한 트리에서 직전 5커밋으로 폴백한다.
+
+리뷰가 고친 것은 close-out **앞에서 커밋한다** — 커밋하지 않으면 아래 종료 줄의 `terminal_review.head` 가 자기 결과를 담지 않은 커밋을 가리킨다. 이 hop 은 **red 단계에서 저작한 테스트를 수정하지 않는다**. `kiwi-tdd` 는 red 테스트 약화를 금지하지만 리뷰 루프의 시니어 fixer 에게는 그 제약이 없어서, 명시하지 않으면 이 rung 이 존재하는 이유인 규율을 합법적으로 무를 수 있다.
+
+**반환 후 네 결과**:
+
+- *승급됨*: `dispatch-route` result line 에 `outcome: "delegated-complete"` 와 `status: "complete"` 를 함께 기록하고, **P.5 run lock 을 해제**하고, 통합 브랜치를 그대로 두고 run 리포트에 지명하고, `validate` → `sync-index` → `validate --fail-on-warning` 을 실행한다. 살아남은 드리프트는 `post-merge-index-drift`(critical)다. 그 뒤 `next_hint: null` 과 rung 및 step 을 지명하는 summary 로 `pipeline.jsonl` 이벤트 1건을 emit 하고 중단한다.
 - *자식 자신의 게이트에서 정지*: 그대로 보고하고 멈춘다. **다시 라우팅하지 않는다.** 그것들은 misroute 가 아니라 run 안의 결함이다.
 - *경계 redirect 발화*: E1 로 승격한다(§4.7).
+- *리뷰 hop 이 `NEEDS_USER` · `FAILED` 를 반환하거나 잔여 CRITICAL/HIGH 로 끝남*: `child-pipeline-needs-user-or-failed` 로 중단한다. 덮는 실행이 아니므로 run 은 완료로 보고하지 않는다.
 
 #### 4.5.2 `R-PLAN` → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`
 
@@ -446,11 +467,13 @@ Skill({ skill: "kiwi-pm",
 
 `--resume` 은 `.kiwi/sessions/{plan run_id}/pm-state.json` 이 존재할 때 정확히 그때 전달한다. task 목록의 status 가 아니라 **그 파일**이 `kiwi-pm` 으로 하여금 `status="done"` Task 를 건너뛰게 만들며, 그것이 없으면 **새 세션이 되어 완료된 Task 를 다시 실행한다**.
 
-`TASK_DONE` 이면 두 번째 hop:
+두 번째 hop 은 자식의 반환값에 조건 걸리지 않는다 — `TASK_DONE` 이어야 도는 것이 아니고, `NEEDS_USER` · `FAILED` 는 §0.4 가 이미 부모를 중단시켜 여기 닿지 않는다:
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs [--auto] [--max] [--mini|--loops N]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs --base {plan_window_base} --head {plan_window_head} [--auto] [--max] [--mini|--loops N]" })
 ```
+
+창을 명시하는 이유: `kiwi-pm` 의 유닛이 이미 커밋한 뒤라 워킹 트리가 깨끗하고, 범위를 주지 않으면 리뷰 루프가 직전 **5**커밋으로 폴백한다. 그 폴백 확인 게이트는 자식의 `critical_gates[]` 밖이라 `--auto` 에서는 위원회가 답하고 아무도 묻지 않는다 — 그렇게 통과한 종료 hop 은 진짜 구멍을 기록된 통과로 바꾼다.
 
 **두 번째 hop 은 오케스트레이터 자신이 선언한 정책**이고 **상속된 의무가 아니다**. 근거는 `--close-reqs` 없이는 어떤 요구도 `verified` 에 도달하지 못하고 run 에 마무리가 없다는 것이다.
 
@@ -464,7 +487,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs [--auto] [--max] [--m
 
 residual 행은 `{req_id, reason, owner}` 이고 `kiwi/waves.jsonl` 의 `R-PLAN` `dispatch-route` result line 에 기록되며 `reason` 은 20자 이상이다.
 
-`kiwi-review-fix-loop --close-reqs` 는 `stability=draft` 이거나 `implemented` 가 아닌 요구를 **건너뛰고 보고**할 뿐 그것으로 게이트하지 않는다. 따라서 그 `TASK_DONE` 은 요구 집합이 닫혔다는 증거가 아니다. close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning` 을 실행하고 `post-merge-index-drift`(critical)를 거친 다음 마감 이벤트 1건을 emit 한다.
+`kiwi-review-fix-loop --close-reqs` 는 `stability=draft` 이거나 `implemented` 가 아닌 요구를 **건너뛰고 보고**할 뿐 그것으로 게이트하지 않는다. 따라서 그 `TASK_DONE` 은 요구 집합이 닫혔다는 증거가 아니다. close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning` 을 실행하고 `post-merge-index-drift`(critical)를 거친 다음 마감 이벤트 1건을 emit 한다. 그 `dispatch-route` result line 에는 `outcome: "delegated-complete"` 와 `status: "complete"` 를 함께 싣는다. `status` 는 §2.1 의 **필수** 필드라 값이 비어 있을 수 없고, 어떤 값인지 정해두지 않으면 `in_progress` 를 실은 종료 줄이 완료 보고가 아닌 것으로 읽혀 종료 리뷰 검사를 그대로 통과한다 — run 종료 판정이 이 값으로 이루어지므로, 싣지 않으면 이 rung 의 종료는 검증기에 보이지 않고 §4.5 가 이 rung 에 지운 종료 리뷰 의무가 R-PLAN 에서만 조용히 미검증으로 남는다.
 
 #### 4.5.3 `R-ORCH` → 공용 wave 엔진을 직접 구동
 
@@ -1152,6 +1175,19 @@ recovery class **externally-visible**. Phase 3.n. §14 의 집합과 전이와 �
 ### §V.final-verify
 
 recovery class **idempotent-by-key**. Phase 4 의 loop F 라운드. 분모는 모든 `design_items` 와 `integration_items` 의 합집합이다.
+
+**run 창 종료 리뷰** (§4.5 가 선언한 의무의 R-ORCH 쪽 이행) — loop F 가 pass 를 기록하기 **전에** run 전체 커밋 창을 1회 리뷰한다. wave 별 홉의 분모는 그 wave 창 하나이므로, 어느 wave 창에도 온전히 들어가지 않는 결함은 여기서만 보인다:
+
+```
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {P.4 pin} [--auto] [--max] [--mini|--loops N]" })
+```
+
+`--close-reqs` 는 주지 않는다 — run 스코프에서 그것은 모든 wave target 의 status 를 한 호출로 뒤집는 bulk-finalize 다. `--regression-baseline` 은 P.4 가 run 시작에 고정한 값을 준다: 주지 않으면 자식이 run 끝에서 스스로 baseline 을 잡아 wave 1..N 이 만든 실패를 전부 "기존"으로 승격시킨다.
+
+리뷰 뒤 **커밋한 다음** run 종료 줄을 쓴다 — 리뷰가 고친 것이 커밋되지 않으면 `terminal_review.head` 가 자기 결과를 담지 않은 커밋을 가리킨다.
+
+run 종료 줄에는 `terminal_review {skill, base, head, verdict}` 를 싣는다. `base` 는 그 줄의 `run_diff_window.base_sha` 와 같아야 한다. `head` 는 심판한 범위의 head 이며 run head 와 같을 필요가 없다 — 리뷰의 수정을 커밋한 뒤 이 줄을 쓰기 때문이다. verdict 은 `pass` · `residual` · `not-applicable-empty-window` · `skipped-run-halted` 중 하나이고, 뒤의 둘은 완료를 방면하지 않는다(FR-NODE-188). 창이 비면 `not-applicable-empty-window`, 커밋 착지 뒤 중단이면 `skipped-run-halted`.
+
 복구: 라운드를 다시 한다.
 게이트: `final-verify-residual-critical` · `wave-append-cap-exhausted`.
 

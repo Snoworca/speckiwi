@@ -1504,5 +1504,59 @@
       "replace": "**어떤 편집도 적용한다**"
     },
     "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-STEP-REVIEW-HOP-DOES-NOT-TOUCH-RED-TESTS",
+    "owning_requirement": "FR-FLOW-132",
+    "sentence": "§4.5.1 — the review hop the step rung now runs does not modify the tests the red phase authored, because kiwi-tdd forbids weakening them and the review loop's fixer carries no such constraint",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "red 테스트 약화를 금지하지만",
+      "replace": "red 테스트 약화를 허용하고"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.1 `R-STEP` → `kiwi-tdd`",
+        "carrier": "금지",
+        "snippet": "약화를 금지하지만"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-STEP-REVIEW-HOP-DOES-NOT-TOUCH-RED-TESTS",
+    "owning_requirement": "FR-FLOW-132",
+    "sentence": "§4.5.1 — the review hop the step rung now runs does not modify the tests the red phase authored, because kiwi-tdd forbids weakening them and the review loop's fixer carries no such constraint",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "red 테스트 약화를 금지하지만",
+      "replace": "red 테스트 약화를 허용하고"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.1 `R-STEP` → `kiwi-tdd`",
+        "carrier": "금지",
+        "snippet": "약화를 금지하지만"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-STEP-REVIEW-HOP-DOES-NOT-TOUCH-RED-TESTS",
+    "owning_requirement": "FR-FLOW-132",
+    "sentence": "§4.5.1 — the review hop the step rung now runs does not modify the tests the red phase authored, because kiwi-tdd forbids weakening them and the review loop's fixer carries no such constraint",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "red 테스트 약화를 금지하지만",
+      "replace": "red 테스트 약화를 허용하고"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.1 `R-STEP` → `kiwi-tdd`",
+        "carrier": "금지",
+        "snippet": "약화를 금지하지만"
+      }
+    ]
   }
 ]

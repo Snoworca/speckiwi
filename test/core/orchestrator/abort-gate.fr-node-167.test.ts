@@ -84,11 +84,14 @@ describe("FR-NODE-167 AC-2 — abort_gate is declared in all four copies and in 
   });
 });
 
-describe("FR-NODE-167 AC-3 — the document version is not bumped", () => {
-  it("still reads v1.4.0 in every copy", async () => {
+describe("FR-NODE-167 AC-3 — the document version tracks the field set", () => {
+  // @req FR-NODE-188 — this AC pinned v1.4.0 and recorded, as a cost, that the string then
+  // named two field sets with no version signal between them. `terminal_review` and
+  // `outcome` are a real field-set change, so the version moves with them.
+  it("reads v1.5.0 in every copy now that the field set has moved", async () => {
     for (const copy of COPIES) {
       const first = (await readFile(path.join(process.cwd(), copy), "utf8")).split("\n")[0];
-      expect(first, copy).toContain("v1.4.0");
+      expect(first, copy).toContain("v1.5.0");
     }
   });
 });

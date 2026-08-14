@@ -124,3 +124,33 @@ describe("IR-CLI-083 AC-5 — the downgrade rule is run-scoped, not file-scoped"
     expect(codes(result.payload, "diagnostics")).not.toContain("journal-version-downgrade");
   });
 });
+
+// @req FR-NODE-188 — `--engine` picks which producer's lines are validated. `parseWavesJournal`
+// drops every line whose engine differs, so a value outside the enum does not fail loudly: it reads
+// the other producer's lines, finds none, and reports a clean run. The one command that can enforce
+// a kiwi-wave-master run-close record would then answer PASS for a journal it never opened.
+describe("FR-NODE-188 — an out-of-enum --engine is refused, not coerced", () => {
+  const waveLine = {
+    schema_version: "1.5.0",
+    run_id: "run-a",
+    engine: "kiwi-wave-master",
+    verb: "author-design",
+    event: "intent",
+    wave: "wave-1",
+    writer: "speckiwi-orchestrate/2.9.0"
+  };
+
+  it("reads the kiwi-wave-master lines when that engine is named correctly", async () => {
+    const result = await validateRun([waveLine], ["--engine", "kiwi-wave-master", "--json"]);
+
+    expect(result.exit, JSON.stringify(result.payload)).toBe(0);
+    // The line was opened, not skipped: an unstamped-audit row exists for it only if it was read.
+    expect(Array.isArray(result.payload.diagnostics), "the run must have been parsed").toBe(true);
+  });
+
+  it("refuses a misspelled engine rather than reporting the other producer's empty run as clean", async () => {
+    const result = await validateRun([waveLine], ["--engine", "kiwi-wavemaster", "--json"]);
+
+    expect(result.exit, `a typo must not read as a clean run: ${JSON.stringify(result.payload)}`).not.toBe(0);
+  });
+});

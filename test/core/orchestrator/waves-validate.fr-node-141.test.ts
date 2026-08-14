@@ -45,6 +45,12 @@ function mutate(index: 0 | 1 | 2, overrides: Json): Json[] {
 /** The v1.4.0 lane-terminality fixtures are orchestrator lines, so every line carries the engine. */
 const V14 = { schema_version: "1.4.0", engine: "kiwi-orchestrator", writer: "speckiwi-orchestrate/2.4.1" } as const;
 
+/** The run-close line at the version the terminal-review rules arrive at; the stamp is required there. */
+const V15 = { schema_version: "1.5.0", writer: "speckiwi-orchestrate/2.10.0" } as const;
+
+/** The passing review record the legal baseline ships, spread so each fixture breaks exactly one part. */
+const REVIEW = { skill: "kiwi-review-fix-loop", base: "aaa", head: "ccc", verdict: "pass" } as const;
+
 const legalRound: Round = {
   loop: "P",
   scope: "wave-1",
@@ -231,6 +237,29 @@ const CASES: Record<string, RuleCase> = {
   "abort-gate-outside-vocabulary": {
     kind: "journal",
     violating: mutate(2, { abort_gate: "made-up-gate" })
+  },
+  // The five terminal-review rules. Every fixture bumps the run-close line to 1.5.0 with its writer
+  // stamp, because each rule stands down below that version — a fixture left at the baseline's
+  // 1.2.0 would pass while asserting nothing. @req FR-NODE-188
+  "terminal-review-loop-missing": {
+    kind: "journal",
+    violating: mutate(2, { ...V15, terminal_review: undefined })
+  },
+  "terminal-review-verdict-outside-vocabulary": {
+    kind: "journal",
+    violating: mutate(2, { ...V15, terminal_review: { ...REVIEW, verdict: "made-up-verdict" } })
+  },
+  "terminal-review-window-missing": {
+    kind: "journal",
+    violating: mutate(2, { ...V15, terminal_review: { skill: "kiwi-review-fix-loop", verdict: "pass" } })
+  },
+  "terminal-review-run-window-missing": {
+    kind: "journal",
+    violating: mutate(2, { ...V15, terminal_review: REVIEW, run_diff_window: undefined })
+  },
+  "terminal-review-window-mismatch": {
+    kind: "journal",
+    violating: mutate(2, { ...V15, terminal_review: { ...REVIEW, base: "zzz", head: "yyy" } })
   }
 };
 

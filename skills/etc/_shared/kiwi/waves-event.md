@@ -1,10 +1,10 @@
-# kiwi waves event v1.4.0
+# kiwi waves event v1.5.0
 
 본 파일은 `kiwi-wave-master`(FR-FLOW-029) 와 `kiwi-orchestrator` 가 멀티-웨이브 진행을 추적하기 위해 append 하는 **wave 진행 이벤트**(`./kiwi/waves.jsonl`) 의 SSOT. `_shared/kiwi/pipeline-event.md` 를 모델로 하며, 변경은 SemVer 를 따른다 (minor: 필드 추가, 그리고 **이미 기록된 이벤트의 해석을 바꾸지 않는** 버전-스코프 규칙 추가 / major: breaking).
 
-**v1.4.0 확장은 순수 additive 다** — 추가된 22개 필드는 전부 **선택 필드**이며, v1.4.0 은 **이미 기록된 이벤트의 해석을** 어떤 방식으로도 **바꾸지 않는다**. 저널은 두 생산자가 공유하지만 파일은 하나이며, 생산자 구분은 §2.2 의 `engine` 필드와 §4 의 재개 술어가 담당한다.
+**v1.5.0 확장도 순수 additive 다** — `terminal_review` 와 `outcome` 둘이며 **둘 다 선택 필드**다. **v1.4.0 확장은 순수 additive 다** — 추가된 22개 필드는 전부 **선택 필드**이며, v1.4.0 은 **이미 기록된 이벤트의 해석을** 어떤 방식으로도 **바꾸지 않는다**. 저널은 두 생산자가 공유하지만 파일은 하나이며, 생산자 구분은 §2.2 의 `engine` 필드와 §4 의 재개 술어가 담당한다.
 
-**버전 다운그레이드 가드 (v1.4.0)**: `1.4.0` 줄을 하나라도 포함한 run 안에서, 그 뒤에 오는 줄이 더 **낮은** `schema_version` 을 실으면 `journal-version-downgrade` 진단이다. §3 의 run 스코프 downgrade-bypass 폐쇄와 같은 논리다 — 버전은 policing 대상인 생산자가 스스로 쓰는 값이므로, 낮춰 쓰는 것이 곧 우회가 된다.
+**버전 다운그레이드 가드 (v1.4.0)**: `1.4.0` 이상 줄을 하나라도 포함한 run 안에서, 그 뒤에 오는 줄이 그 run 이 이미 사용한 **가장 높은** `schema_version` 보다 낮은 값을 실으면 `journal-version-downgrade` 진단이다 — `1.5.0` 뒤의 `1.4.0` 도 포함한다. §3 의 run 스코프 downgrade-bypass 폐쇄와 같은 논리다 — 버전은 policing 대상인 생산자가 스스로 쓰는 값이므로, 낮춰 쓰는 것이 곧 우회가 된다.
 
 `./kiwi/pipeline.jsonl`(스킬-간 파이프라인 이벤트) 와는 **별개 파일**이다 — `waves.jsonl` 은 한 실행 안의 wave 별 상태만 담는다.
 
@@ -35,7 +35,7 @@
 | 필드 | 타입 | 값 |
 |---|---|---|
 | `ts` | string (ISO-8601 UTC) | `2026-07-10T13:45:12.345Z` |
-| `schema_version` | string (SemVer) | `1.4.0` |
+| `schema_version` | string (SemVer) | `1.5.0` |
 | `run_id` | string | 그 실행(run)의 run_id |
 | `wave` | string | `wave-{n}` (예: `wave-1`) |
 | `order` | number | wave 실행 순서 (1-based) |
@@ -52,6 +52,8 @@
 | `req_ids` | string[] | 그 wave 에서 다룬 REQ-ID 목록 |
 | `notes` | string | 자유 텍스트 부연 |
 | `phase` | string (enum) | `pipeline` / `srs-authoring` / `wave-verify` / `final-verify` / `intake` / `design` / `wave-design` / `schedule` / `handoff` / `lane` / `integrate` / `stage-close` — `in_progress` 이벤트가 어느 단계에 있는지. 뒤의 8개는 v1.4.0 신설 (오케스트레이터 단계) |
+| `terminal_review` | object | 그 run 을 닫는 줄이 싣는 종료 리뷰 기록 — `{skill, base, head, verdict}`. `base` 는 같은 줄의 `run_diff_window.base_sha` 와 **같아야 하고**, `head` 는 실제로 심판한 범위의 head 다 — 리뷰가 고친 것을 커밋한 뒤 종료 줄을 쓰므로 run head 는 그보다 앞서 있는 것이 정상이며, head 까지 일치를 요구하면 올바른 run 이 거부된다. verdict 은 `pass` / `residual` / `not-applicable-empty-window` / `skipped-run-halted` 중 하나이며 뒤의 둘은 완료를 방면하지 않는다. `phase="final-verify"` 종료 줄에 이 필드를 실을 때는 같은 줄에 `run_diff_window` 를 **반드시 함께** 싣는다 — 없으면 창 대조가 수행되지 않아 임의의 창을 적어도 통과한다 (1.5.0~, FR-NODE-188) |
+| `outcome` | string | `dispatch-route` result 줄이 그 rung 의 위임 결과를 싣는 값 — `delegated-complete` 는 그 줄이 run 종료 줄임을 뜻한다. 그 줄이 `status` 를 싣지 않을 때 완료 보고 여부를 결정하는 값이 이것이며, `status` 가 있으면 `status` 가 우선한다 (1.5.0~, FR-NODE-188) |
 | `verification` | object | 웨이브 종료 상호검증 결과. 아래 §2.3 |
 | `design_baseline` | object | 그 wave 의 설계 기준선 포인터. 아래 §2.4 |
 | `constraints_path` | string | 선언된 사용자 제약 아티팩트 경로 |
@@ -214,13 +216,13 @@ elif [ -d "./kiwi" ]; then WAVE_DIR="./kiwi"
 else WAVE_DIR="$HOME/.kiwi"; fi
 mkdir -p "$WAVE_DIR"
 # 1) 웨이브 종료 상호검증 기록 (§3 이 요구하는 선행 통과 기록). 라운드마다 1줄.
-echo '{"ts":"<ISO>","schema_version":"1.4.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 
 # 2) 그 다음에야 complete. verdict 가 pass 가 아니면 이 줄을 쓰지 않는다.
-echo '{"ts":"<ISO>","schema_version":"1.4.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 
 # 3) 마지막 wave 의 complete 뒤 1회. run-scope 최종 검증 (§3): wave 는 "all", order 는 0. run 창은 `run_diff_window` 로 싣는다(wave 단위 `diff_window` 는 싣지 않는다).
-echo '{"ts":"<ISO>","schema_version":"1.4.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 ```
 
 emit 은 best-effort — 실패가 본 오케스트레이션 실패로 이어지면 안 된다 (stderr WARN).

@@ -11,6 +11,7 @@ import {
   ISSUE_CLASSES,
   JOURNAL_RULES,
   LANE_DISPOSITION_KINDS,
+  TERMINAL_REVIEW_VERDICTS,
   MANIFEST_STATUSES,
   PROOF_KINDS,
   REASON_CLASSES,
@@ -144,6 +145,18 @@ const LANE_DISPOSITION_PARITY: EnumParity = {
   name: "lane_disposition.kind",
   values: LANE_DISPOSITION_KINDS,
   locator: /`lane_disposition`\s*\|/
+};
+
+/**
+ * Same shape, same reason: §2.2's `terminal_review` row states its verdict vocabulary inline. Without
+ * a binding this is the only closed enum in the module whose runtime values and shipped declaration
+ * can diverge silently, and the census above pins itself at twelve so a new enum does not join it by
+ * accident. @req FR-NODE-188
+ */
+const TERMINAL_REVIEW_PARITY: EnumParity = {
+  name: "terminal_review.verdict",
+  values: TERMINAL_REVIEW_VERDICTS,
+  locator: /`terminal_review`\s*\|/
 };
 
 /** Which of the census a copy actually declares, measured rather than assumed. */
@@ -290,6 +303,10 @@ describe("FR-NODE-129 AC-4 — enum parity over the twelve closed enums", () => 
 
     it(`agrees on lane_disposition.kind in ${source.relativePath}`, () => {
       expect([...parseEnumValues(source.text, LANE_DISPOSITION_PARITY.locator)].sort()).toEqual([...LANE_DISPOSITION_PARITY.values].sort());
+    });
+
+    it(`agrees on terminal_review.verdict in ${source.relativePath}`, () => {
+      expect([...parseEnumValues(source.text, TERMINAL_REVIEW_PARITY.locator)].sort()).toEqual([...TERMINAL_REVIEW_PARITY.values].sort());
     });
   }
 

@@ -105,6 +105,16 @@ export function finalVerify(overrides: Json = {}): Json {
     status: "complete",
     phase: "final-verify",
     run_diff_window: { base_sha: "aaa", head_sha: "ccc" },
+    // @req FR-NODE-188 — a run-closing record that reports completion owes a discharging
+    // terminal_review. The default carries a passing one so fixtures that are about something else
+    // stay about that; the FR-NODE-188 suite removes it explicitly to exercise the refusal.
+    //
+    // The cost, recorded rather than left to be discovered: every other suite that builds a
+    // run-close now satisfies the obligation by default, so none of them can ever witness a
+    // regression in this rule. Its only witnesses are the FR-NODE-188 suite, which strips the field,
+    // and the FR-NODE-141 fixture harness, whose five terminal-review pairs strip it deliberately.
+    // Removing either leaves the rule unobserved while the suite stays green.
+    terminal_review: { skill: "kiwi-review-fix-loop", base: "aaa", head: "ccc", verdict: "pass" },
     ...verificationField(overrides),
     ...rest
   });

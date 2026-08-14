@@ -131,6 +131,13 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "wt-delegation-refused",
     "child-pipeline-needs-user-or-failed",
     "child-srs-needs-user-or-failed",
+    // @req FR-FLOW-134 — §5.55's run-scope hop is spawned by this skill, not by the cycle, so the
+    // pipeline gate cannot cover it. Without its own row the halt falls to a committee-decidable
+    // class and an unattended run auto-approves skipping the loop this work exists to guarantee.
+    "child-review-fix-loop-needs-user-or-failed",
+    // @req FR-NODE-188 — the run-close refusal. Declared here because a gate id absent from the
+    // skill's own table falls to a committee-decidable class under --auto.
+    "terminal-review-loop-missing",
     "wave-verify-residual-critical",
     "wave-verify-cross-wave-fix-required",
     "wave-decomposition-coverage-gap",

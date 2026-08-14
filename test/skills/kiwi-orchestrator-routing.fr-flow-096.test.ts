@@ -258,7 +258,14 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       const body = section(variant.body, /^####\s*4\.5\.1\b/m);
       expect(body).toContain('Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })');
       expect(tiedTogether(body, /--auto` 는 일관성을 위해 전달하되/, [/조용히 무시/, /오류로 읽지 않는다/], 300)).toBe(true);
-      expect(tiedTogether(body, /`--max` 와 네 pass-through/, [/--auto-integration/, /--auto-cost-warning/, /--force/, /--regression-baseline/, /전파하지 않는다/], 400)).toBe(true);
+      // @req FR-FLOW-132 — the flag set split when the rung gained a review hop. `--max` now
+      // propagates to that child, `--regression-baseline` deliberately does not (the run-start pin
+      // would take the red-phase tests outside the child's never-weaken protection), and the three
+      // consent flags are named as options this child does not have. The old assertion tied all
+      // five to one "not propagated" clause that no longer exists.
+      expect(tiedTogether(body, /`--regression-baseline` 은 \*\*주지 않는다\*\*/, [/kiwi-coder §0\.20\.1/, /보호 밖으로 나간다/], 400)).toBe(true);
+      expect(tiedTogether(body, /`--auto-cost-warning` · `--auto-integration` · `--force` 는 전파하지 않는다/, [/그 옵션이 없다/, /kiwi-pm/], 400)).toBe(true);
+      expect(body).toMatch(/`--max` 는 \*\*아래 리뷰 hop 의 자식에게 전파한다\*\*/);
     }
   });
 
@@ -291,7 +298,16 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
   it("AC-6/AC-7 — the second hop is declared policy, and the flag set is stated", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.2\b/m);
-      expect(body).toContain('Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs [--auto] [--max] [--mini|--loops N]" })');
+      // @req FR-FLOW-133 — the hop gained an explicit window. Without one it resolves against the
+      // clean tree kiwi-pm's committed units leave behind and falls back to the last five commits
+      // behind a prompt the committee answers under --auto, which would let the FR-FLOW-131
+      // obligation be discharged by a review of commits nobody chose.
+      expect(body).toContain(
+        'Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs --base {plan_window_base} --head {plan_window_head} [--auto] [--max] [--mini|--loops N]" })'
+      );
+      expect(body, "a scopeless hop is the false-clean path").not.toContain(
+        'args: "--close-reqs [--auto]'
+      );
       expect(
         tiedTogether(body, /두 번째 hop 은 오케스트레이터 자신이 선언한 정책/, [/상속된 의무가 아니다/, /`--close-reqs` 없이는 어떤 요구도 `verified` 에 도달하지 못하고/], 400)
       ).toBe(true);
