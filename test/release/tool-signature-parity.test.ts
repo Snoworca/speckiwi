@@ -16,7 +16,10 @@ import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 
 const REPO_ROOT = path.join(process.cwd());
 
-const DOC_AND_SKILL_ROOTS = ["docs/spec/90.appendix.md", "AGENTS.md", "CLAUDE.md", "skills/codex", "skills/claude", "skills/etc", ".agents/skills"];
+// README.md is here for the deprecated-signature blocklist below and nothing else: this root list
+// drives token forbidding, not command resolution. README's command, anchor, tool-name and count
+// claims are checked by test/release/doc-lint.rel-flow-003.test.ts (@req REL-FLOW-003).
+const DOC_AND_SKILL_ROOTS = ["docs/spec/90.appendix.md", "AGENTS.md", "CLAUDE.md", "README.md", "skills/codex", "skills/claude", "skills/etc", ".agents/skills"];
 
 function fakeIo() {
   const stream = { write: () => true } as unknown as NodeJS.WriteStream;

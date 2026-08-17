@@ -26,7 +26,7 @@ SpecKiwi is a local-first workflow tool that treats Markdown SRS (Software Requi
 2. [Install SpecKiwi](#en-install)
 3. [Initialize a project — and what `init` does](#en-init)
 4. [Install Kiwi Skills (standalone)](#en-skills)
-5. [Connect the MCP server](#en-mcp)
+5. [Connect the MCP server](#en-mcp) — ends with [your first run](#en-first-run)
 6. [Kiwi skill types](#en-skill-types)
 7. [Skill pipeline](#en-pipeline)
 8. [Command reference](#en-commands)
@@ -40,7 +40,7 @@ SpecKiwi is a local-first workflow tool that treats Markdown SRS (Software Requi
 
 - **Node.js 22 or newer** (`engines.node` is `>=22`)
 - **npm**
-- **Git** (SpecKiwi resolves the project root by searching upward for a Git repository)
+- **Git** (SpecKiwi resolves the project root by searching upward for a Git repository). **Keep `docs/spec/` at the git top level** — three things follow the top level and not the resolved root: the pre-commit hook `init` installs, the `kiwi/` pipeline journal the agent skills pin, and the `.claude` / `.codex` skill install destinations. `speckiwi doctor` checks this as *project root is the git top level*.
 - One supported coding agent: `codex`, `claude`, `opencode`, or `hermes`
 
 <a id="en-install"></a>
@@ -56,7 +56,7 @@ npm install speckiwi@latest
 After a local install, run it with `npx`:
 
 ```sh
-npx speckiwi --version   # -> 2.6.0
+npx speckiwi --version   # -> 2.10.0
 npx speckiwi --help
 ```
 
@@ -73,7 +73,7 @@ The examples below use the short `speckiwi` form. If you installed locally only,
 
 | Option | Description |
 | --- | --- |
-| `--root <path>` | Project root to operate on (default: search upward from the current directory). |
+| `--root <path>` | Project root to operate on — every command **except** `mcp` (see §5). Default: search upward from the current directory. |
 | `--json` | Emit machine-readable JSON to stdout. |
 | `--no-color` | Disable ANSI color. |
 | `--quiet` | Suppress non-essential human output. |
@@ -92,15 +92,15 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 ### What `speckiwi init` performs
 
-The whole operation runs under an SRS mutation lock and is **idempotent** — existing files are reported as `skipped` (never overwritten unless you pass `--force`), and the agent-instruction block is upgraded in place when an older version is present.
+The whole operation runs under an SRS mutation lock and is **idempotent** — existing files are reported as `skipped` (never overwritten unless you pass `--force`), and the agent-instruction block is replaced in place whenever its content differs from the shipped text, whatever version it declares.
 
 | # | Step | Result |
 | --- | --- | --- |
-| 1 | **SRS scaffold** | `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log center), `docs/spec/90.appendix.md`, and, only when the project has no scope document yet, an empty scope document `docs/spec/01.<scope>.srs.md` derived from `--scope`. A project that already has scope documents gets none, and its documents are registered under their own scope names. |
+| 1 | **SRS scaffold** | `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log center), `docs/spec/90.appendix.md`, and, only when the project has no scope document yet, an empty scope document derived from `--scope` — `docs/spec/01.<scope>.srs.md` on a fresh init; the number itself comes from the allocator, not from `--scope`, and is the lowest one not already taken by a `.md` file in `docs/spec/`. A project that already has scope documents gets none, and its documents are registered under their own scope names. |
 | 2 | **Step state** | `docs/spec/steps/state.md` with a `Mode: wait` metadata block and an empty step-state table. |
 | 3 | **Authoring rules** | `docs/rule/SRS-MD-Rules-v2.5.0.md` and `docs/rule/SDS-MD-Rules-v2.5.0.md` (the bundled SRS-MD and SDS-MD authoring rules). |
 | 4 | **Agent instructions** | Inserts/updates the *SpecKiwi SRS workflow* block in both `AGENTS.md` and `CLAUDE.md`. A block whose content differs from the shipped text is replaced in place, whatever version it declares; a block that already matches is left untouched. |
-| 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; a Git `.git/hooks/pre-commit` gate that delegates to the runner; `.claude/settings.json` (PostToolUse trace hook); `.codex/hooks.json` (apply_patch trace hook). Pre-existing hooks are never clobbered — they are left as-is with a warning. |
+| 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; a Git `.git/hooks/pre-commit` gate that delegates to the runner; `.claude/settings.json` (PostToolUse trace hook); `.codex/hooks.json` (apply_patch trace hook). An existing `.git/hooks/pre-commit` is never overwritten: it is reported as `skipped` if it already delegates to the runner, and otherwise left as-is with a warning telling you how to wire it up. The two agent hook files are reported as `skipped` when they already exist — and are overwritten by `--force`, like every other scaffolded file. |
 | 6 | **MCP registration** | Registers the SpecKiwi stdio MCP server in `.mcp.json` (idempotent; `skipped` if already present). Disable with `--no-mcp`. |
 | 7 | **Skill provisioning** | Installs the bundled Kiwi skills for **Claude** (`.claude/skills`) and **Codex** (`.agents/skills`), then prunes orphaned `kiwi-*` skill directories that SpecKiwi previously managed. Disable with `--no-skills`. |
 
@@ -113,12 +113,15 @@ AGENTS.md                     # SpecKiwi SRS workflow block
 CLAUDE.md                     # SpecKiwi SRS workflow block
 .mcp.json                     # speckiwi MCP server registration
 .claude/skills/kiwi-*         # Claude Kiwi skills
+.claude/skills/_shared/kiwi/  # contracts the skills share
 .agents/skills/kiwi-*         # Codex Kiwi skills
+.agents/skills/_shared/kiwi/  # the same, for Codex
 .claude/settings.json         # PostToolUse trace hook
 .codex/hooks.json             # apply_patch trace hook
 .git/hooks/pre-commit         # delegates to docs/.kiwi/hooks/pre-commit.mjs
 docs/
-├─ .kiwi/hooks/               # bundled hook runners + trace output
+├─ .kiwi/hooks/               # bundled hook runners
+├─ .kiwi/trace/               # trace output trace.mjs writes
 ├─ rule/
 │  ├─ SRS-MD-Rules-v2.5.0.md
 │  └─ SDS-MD-Rules-v2.5.0.md
@@ -136,12 +139,12 @@ docs/
 | Option | Description |
 | --- | --- |
 | `--target <target>` | Initial Active Target to register (e.g. `v0.1.0`). |
-| `--scope "Name:PREFIX"` | Initial scope, used only when the project has no scope document yet (e.g. `"App:APP"` → `FR-APP-001`). To add a scope to a project that already has documents, use `speckiwi scaffold-scope`, which allocates the next document number and registers both index rows. |
+| `--scope "Name:PREFIX"` | Initial scope, used only when the project has no scope document yet (e.g. `"App:APP"` → `FR-APP-001`). To add a scope to a project that already has documents, use `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the next document number and registers both index rows. |
 | `--no-mcp` | Skip registering the MCP server in `.mcp.json`. |
 | `--no-skills` | Skip installing the bundled Kiwi skills (and the orphan prune). |
 | `-g, --global` | Also install/update the bundled Kiwi skills into each **present** agent's global skills dir (Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`); an agent whose home directory is absent is skipped with a warning. The project-scope install still runs, and no orphan prune is performed at global scope (the shared home may hold skills from other projects). |
 | `--dry-run` | Preview every step (populates `created`/… ) without writing anything to disk. |
-| `--force` | Overwrite existing scaffolded files instead of skipping them. It rewrites `00.index.md`, so authored Target Map and Scope Map rows are lost; the bundled rules documents are refreshed without it. |
+| `--force` | Overwrite existing scaffolded files instead of skipping them. It rewrites author-owned files and their content is lost: `00.index.md` (Target Map, Scope Map and the Completed Work Log), `90.appendix.md`, `docs/spec/steps/state.md` (work mode and step state), and — the one most likely to hurt — the two agent hook files `.claude/settings.json` and `.codex/hooks.json`, which is where your own permissions, hooks and env live. It also restores the two bundled hook runners under `docs/.kiwi/hooks/`, so local edits to those are lost too. An **existing** scope document is never rewritten, with or without `--force`. The bundled rules documents are refreshed without it. |
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
 | `--json` | Emit the result envelope as JSON. |
 
@@ -183,6 +186,16 @@ speckiwi skills install codex all --dry-run --json
 | OpenCode | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
 | Hermes | `skills/etc` | requires `--dest <dir>` | `$HOME/.hermes/skills/<category>/<skill>` |
 
+### Other `skills` subcommands
+
+```sh
+speckiwi skills add <agent> <skill>    # alias of `skills install`
+speckiwi skills mirror --check         # verify .agents/skills/** against skills/codex/**
+speckiwi skills mirror --write         # regenerate it
+```
+
+`mirror` matters only when you maintain the skill sources themselves — the `.agents/skills/**` tree is a generated copy of `skills/codex/**` and must never be hand-edited.
+
 ### Options
 
 | Option | Description |
@@ -207,7 +220,9 @@ speckiwi mcp
 
 The server speaks **stdio** and does **not** accept `--root`. It resolves the project root from the server process's current working directory by searching upward, so set the client's working directory (cwd) to the project root. Running the server with `--root` exits with an error instead of starting.
 
-`speckiwi init` writes this registration into `.mcp.json`:
+**Git worktrees.** The root is bound to the server process, so a session cannot move it: a server already running does not follow a mid-session worktree switch — restart the agent inside the worktree instead. A worktree-rooted session must also **not allocate new Requirement IDs**, and cannot edit the host repository's `docs/spec/`; take both back to the host root.
+
+`speckiwi init` writes this registration into `.mcp.json` (inside a checkout of SpecKiwi itself it registers the local `bin/speckiwi` instead, so the checkout tests its own build):
 
 ```json
 {
@@ -236,7 +251,28 @@ Kiwi skills use MCP tools for all reads and safe SRS mutations. CLI equivalents 
 | Work mode | `get_work_mode`, `set_work_mode` |
 | Steps & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | Duplicate-ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
-| Workspace | `validate_spec`, `sync_index`, `init_project` |
+| Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info`, `preview_legacy_workflow_migration` |
+| Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
+| Orchestrator run surface | 27 `orchestrate_*` tools — the run lock and journal, routing probe/freeze, lane schedule and handoff, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
+| Workflow & pipeline | 26 `workflow_*` tools — plan tasks and checklists, pipeline emit/status/tail, worklog, artifacts, and the workflow doctor. |
+
+**100 tools ship in total.** The rows above name the ones a skill calls directly; the two grouped rows are large families whose members are documented in the skill that drives them. After an upgrade, trust the count `speckiwi doctor` reports — it is what the server actually registered.
+
+#### Per-call `workspaceRoot`
+
+The MCP server resolves its own root from the directory it was started in, and that root is the only place SRS is read or written. A session whose server is fixed to the host checkout can still address run state that lives in a linked worktree by passing an optional absolute `workspaceRoot` on each call.
+
+| Family | `workspaceRoot` |
+| --- | --- |
+| `workflow_*` (all 26) | accepted |
+| `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS mutation replays only at the host root) and `orchestrate_preflight` (it already takes `--mcp-root` and `--git-root`) |
+| Every SRS-facing tool — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` and the rest | refused |
+
+Refusal is the default: a tool that does not declare itself worktree-local refuses the argument, so a newly added SRS tool is safe without being listed anywhere. An accepted root must be an absolute path, an existing directory, a git top level rather than a subdirectory of one, and a worktree sharing the startup root's git common directory; each failure is refused with its own `workspace-root-*` reason before the tool runs, so a path that does not exist is refused rather than created. A path argument that lands under `docs/spec` is refused even on a tool that accepts the root.
+
+**Confirm workspace identity from the envelope before any target-scoped read or mutation.** Every result carries `mcpWorkspace` with `workspaceRoot`, `rootSource`, `indexPath` and `packageVersion`. `rootSource` is `server-cwd-discovery`, `auto-init`, or `per-call-workspace-root` — and it is `per-call-workspace-root` exactly when the call supplied a `workspaceRoot` that passed every gate, so the answer always names the root it came from.
+
+<a id="en-first-run"></a>
 
 ### Your first run
 
@@ -244,7 +280,7 @@ With the MCP server connected, drive the work in natural language — the Kiwi s
 
 > *Use kiwi-srs to capture a requirement: a user can reset their password by email.*
 
-`kiwi-srs` allocates a Requirement ID and writes it into `docs/spec/<scope>.srs.md`; from there `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder` carry it to implementation. The pipeline in §7 shows the full flow.
+`kiwi-srs` allocates a Requirement ID and writes it into a scope document such as `docs/spec/01.<scope>.srs.md`; from there `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder` carry it to implementation. The pipeline in §7 shows the full flow.
 
 <a id="en-skill-types"></a>
 
@@ -264,10 +300,11 @@ With the MCP server connected, drive the work in natural language — the Kiwi s
 | `kiwi-commit-auto-pr` | Commit and push, then create/update a GitHub PR with PR evidence links. |
 | `kiwi-hot-fix` | Handle urgent bugs with TDD, regression checks, and post-fix SRS sync. |
 | `kiwi-review-fix-loop` | Run review/fix/re-review over local changes or PR comments; optionally verify REQs. |
-| `kiwi-pipeline` | Read `kiwi/pipeline.jsonl` and recommend or run the next Kiwi skill step. |
+| `kiwi-pipeline` | Read `kiwi/pipeline.jsonl` and run the next Kiwi skill step. Since 2.9.0 the **default is the full research-to-implementation cycle** (`kiwi-srs` -> ... -> `kiwi-review-fix-loop`); pass `--none-cycle` for a single next-step recommendation. The cycle runs only when the invocation carries a work input, so a status question stays a status question. |
 | `kiwi-step` | Author step-local requirement drafts under `docs/spec/steps/<name>/` — claim a step, write only inside it (no body-scope SRS edits), then validate it locally. The lightweight counterpart of `kiwi-srs`. |
 | `kiwi-tdd` | Drive one step through the `tdd` work-mode's TDD First cycle: author the SDS (`design.md`), turn its EARS acceptance contracts into failing tests (red), implement to green, run regression, then synthesize and promote the step requirement with mandatory evidence. |
-| `kiwi-wave-master` | Split a large task (epic/roadmap/long research) into ordered waves, register a dedicated target per wave, and run each wave's pipeline sequentially. Resumable via `kiwi/waves.jsonl`. |
+| `kiwi-orchestrator` | Drive one run end to end from a single entry point: probe the work, route it to the rung it actually needs (step / plan / orchestrated), and run that rung to a recorded close. Owns the run journal (`kiwi/waves.jsonl`), the `--auto` gate table, resume, and — since 2.10.0 — the terminal review-loop obligation every rung's close must discharge. On the orchestrated rung a stage's lanes are partitioned and the parallelisability analysis is published for review, but the shipped skill executes them **serially** on the run's integration branch — concurrent lane execution and the per-lane merge gate are declared future work, which the skill says of itself. Options: `--auto`, `--max`, `--mini` / `--loops N`, `--work`, `--base-branch`, `--lanes N`. |
+| `kiwi-wave-master` | Split a large task (epic/roadmap/long research) into ordered waves, register a dedicated target per wave, and run each wave's pipeline sequentially. Resumable via `kiwi/waves.jsonl`. Options: `--auto`, `--max`, `--mini` / `--loops N`, and `--drive` — the flag that also opens the integration-test and cost gates `--auto` alone stops at. |
 
 The same skill set ships in agent-specific source trees: **`skills/codex`** (Codex invocation + clarification-gate wording), **`skills/claude`** (Claude skill environment), and **`skills/etc`** (Agent Skills format for OpenCode / Hermes and local-LLM usage; defaults to a single evaluator/sub-agent profile).
 
@@ -307,7 +344,7 @@ flowchart TD
     N --> O["Done"]
     T --> O
 
-    P["kiwi-pipeline: Recommend next step and track progress"] -.-> B
+    P["kiwi-pipeline: Run the next step (full cycle by default)"] -.-> B
     P -.-> F
     P -.-> I
     P -.-> J
@@ -329,10 +366,22 @@ flowchart TD
     I -->|Yes| F
     I -->|No| J["Add MCP evidence"]
     J --> K["Check AC / update status"]
-    K --> L["Update .kiwi state and worklog"]
+    K --> L["Update kiwi/ state and worklog"]
 ```
 
-This is the per-task loop inside `kiwi-coder` on the main pipeline. For **step-scoped** work the `tdd` work-mode runs a parallel **TDD First** cycle via `kiwi-tdd` — SDS → red → green → regression → `promote_step_requirement` — instead of routing through `kiwi-planner` / `kiwi-pm` (see §8, *Work modes and steps*).
+This is the per-task loop inside `kiwi-coder` on the main pipeline. For **step-scoped** work the `tdd` work-mode runs an alternative **TDD First** cycle via `kiwi-tdd` — SDS → red → green → regression → `promote_step_requirement` — instead of routing through `kiwi-planner` / `kiwi-pm` (see §8, *Work modes and steps*).
+
+### Choosing an entry point
+
+The flow above is what a single feature looks like. Three entry points sit above it — one runs that flow, two decide which flow the work needs:
+
+| Entry point | Use it when | What it does |
+| --- | --- | --- |
+| `kiwi-pipeline` | You are working through one feature and want the next step taken. | Runs the full research-to-implementation cycle by default; `--none-cycle` recommends a single next step instead. |
+| `kiwi-orchestrator` | You have one work item but do not want to decide which rung it needs. | Probes the work, routes it to the **step**, **plan**, or **orchestrated** rung, and runs that rung to a recorded close in `kiwi/waves.jsonl`. Resumable. |
+| `kiwi-wave-master` | The work is an epic, a roadmap, or long research that will not fit one target. | Splits it into ordered waves, registers a target per wave, and runs each wave's pipeline in sequence. Resumable. |
+
+**Every boundary that records a pass owes a review.** Since 2.10.0 both orchestrating skills must run `kiwi-review-fix-loop` over the commit window the boundary judges — exactly once, no rung exempt — and record the result on the run-closing journal line. A close that reports completion without a discharging review is refused by `speckiwi orchestrate validate`, so the guarantee is checkable rather than merely written down.
 
 <a id="en-commands"></a>
 
@@ -358,7 +407,9 @@ speckiwi show FR-APP-001 --markdown           # a single requirement
 speckiwi search "login timeout"               # full-text search
 speckiwi scopes                               # registered scopes
 speckiwi completed-work --target v0.1.0 --order latest
-speckiwi doctor                               # workspace/agent-file/rules-drift/rules-reference diagnostics
+speckiwi doctor                               # 11 checks: spec parseability, agent block currency, rules drift and reference,
+#            SDS rules install, skill mirror and install drift, git-top-level root,
+#            Active Target, scope/target consistency, Node version
 ```
 
 ### Maintain the index
@@ -463,10 +514,31 @@ speckiwi add-trace FR-APP-001 --type code --reference "src/app.ts:42" --relation
 speckiwi append-note FR-APP-001 --section rationale --text "record decision background"
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
 speckiwi set-active-target v0.2.0
+speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
 Most mutation commands accept `--json`, `--dry-run`, and `--ignore-lock`. A mutation failure exits with `5`.
+
+### Inspect an orchestrated run
+
+`kiwi-orchestrator` keeps its state in `kiwi/waves.jsonl`. These read-only commands let you check a run without driving it:
+
+```sh
+speckiwi orchestrate validate --run-id <id> --json          # refuse a journal that breaks a run invariant
+speckiwi orchestrate validate --run-id <id> --strict        # also fail an unstamped or downgraded line
+speckiwi orchestrate validate --run-id <id> \
+  --engine kiwi-wave-master                                 # read the other producer's lines
+speckiwi orchestrate resume --run-id <id> --json            # what a resume would pick up
+```
+
+`--engine` selects which producer's lines are read — the two engines share one file and a reader sees only its own. An unrecognised value is refused rather than defaulted, because a silent fallback validates a journal it never opened and reports it clean.
+
+The remaining `orchestrate` subcommands (`route`, `schedule`, `handoff`, `wave`, `round`, `issue`, `replay`, `auto-gate`, …) are driven by the skill, not by hand; `speckiwi orchestrate --help` lists them.
+
+Three directories are easy to confuse, and none is edited by hand. **`docs/.kiwi/`** is tool-owned and created by `init` — it holds the bundled hook runners. **`kiwi/`** is skill-owned run state that appears after your first skill run — `pipeline.jsonl`, `waves.jsonl`, and the resume card. **`.kiwi/`** at the project root holds per-run session state — locks, plan and coder state, worklog — that the executing skills write under `sessions/<run-id>/`.
+
+`speckiwi workflow` is the same shape — a group of subcommands (`plan-status`, `plan-task`, `next-task`, `pipeline-status`, `pipeline-tail`, `worklog-tail`, `task-check`, `doctor`, …) that the Kiwi skills call to keep `kiwi/pipeline.jsonl` and plan state consistent. They are diagnostic and skill-facing rather than part of a normal hand-run workflow; `speckiwi workflow --help` lists them.
 
 <a id="en-principles"></a>
 
@@ -519,6 +591,7 @@ bin/
 dist/
 docs/rule/SRS-MD-Rules-v2.5.0.md
 docs/rule/SDS-MD-Rules-v2.5.0.md
+docs/.kiwi/hooks
 skills/codex/
 skills/claude/
 skills/etc/
@@ -540,12 +613,18 @@ The onboarding, skill-installation, mutation, and workflow behavior documented a
 - `FR-PARSE-018` / `FR-MCP-019`: Target Goal meta block and `set_target_goal`.
 - `FR-ARCH-005`: Mutation tool-kind classification (bulk-mutation governance).
 - `FR-PARSE-016` / `FR-NODE-015` / `IR-CLI-024` / `FR-MCP-016`: Completed Work Log report paths.
+- `FR-FLOW-124` … `FR-FLOW-130`: the `kiwi-pipeline` default cycle and its single `--none-cycle` opt-out (2.9.0).
+- `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: the terminal review-loop obligation on every rung, and the `terminal_review` journal record a run-close validator refuses a completion without (2.10.0).
+- `FR-NODE-179`: the run-root invariant — `docs/spec/` must sit at the git top level, with a doctor check that says so (2.7.1).
+- Targets `2.5.2-phase1-target-lifecycle`, `2.6.0-phase2-parallel-lanes` and the `kiwi-orchestrator` requirement set: target status lifecycle, the lane partition and worktree contract, and the orchestrator run surface. (The 2.6.0 target's stated goal reaches further than what ships today — see the orchestrator row in §6.) See the Target Map in `docs/spec/00.index.md` for the full list.
 
 ---
 
 <a id="korean-version"></a>
 
 # SpecKiwi (한국어)
+
+[English](#english-version) · 목차는 [아래](#ko-toc)에 있습니다.
 
 SpecKiwi는 Git 저장소 안의 Markdown SRS(Software Requirements Specification) 문서를 요구사항의 **유일한 원본(canonical source)**으로 사용하고, **CLI**와 **stdio MCP 서버**를 통해 사람과 코딩 에이전트가 같은 요구사항 데이터를 함께 다루게 해 주는 local-first workflow 도구입니다.
 
@@ -557,13 +636,15 @@ SpecKiwi는 Git 저장소 안의 Markdown SRS(Software Requirements Specificatio
 
 **핵심 용어.** **Target**(예: `v0.1.0`)은 릴리스 단위로 요구사항을 묶고, **Active Target**은 새 작업이 기본으로 향하는 target입니다. **Scope**는 ID 접두사를 가진 기능 영역입니다(`App:APP` → `FR-APP-001`). 각 요구사항은 독립된 두 lifecycle 필드 — **Status**(구현·검증 진행)와 **Stability**(변경 통제 성숙도) — 를 가집니다.
 
+<a id="ko-toc"></a>
+
 ## 목차
 
 1. [요구 사항](#ko-requirements)
 2. [SpecKiwi 설치](#ko-install)
 3. [프로젝트 초기화 — `init`이 하는 일](#ko-init)
 4. [Kiwi Skills 개별 설치](#ko-skills)
-5. [MCP 서버 연결](#ko-mcp)
+5. [MCP 서버 연결](#ko-mcp) — 마지막에 [첫 실행](#ko-first-run)
 6. [Kiwi skill 종류](#ko-skill-types)
 7. [Skill 파이프라인](#ko-pipeline)
 8. [명령 레퍼런스](#ko-commands)
@@ -577,7 +658,7 @@ SpecKiwi는 Git 저장소 안의 Markdown SRS(Software Requirements Specificatio
 
 - **Node.js 22 이상** (`engines.node`는 `>=22`)
 - **npm**
-- **Git** (SpecKiwi는 상위 디렉터리로 올라가며 Git 저장소를 찾아 project root를 해석합니다)
+- **Git** (SpecKiwi는 상위 디렉터리로 올라가며 Git 저장소를 찾아 project root를 해석합니다). **`docs/spec/`는 git 최상위에 두십시오** — 세 가지가 결정된 루트가 아니라 git 최상위를 따릅니다: `init`이 설치하는 pre-commit 훅, 에이전트 skill이 고정하는 `kiwi/` 파이프라인 저널, `.claude` / `.codex` skill 설치 위치. `speckiwi doctor`가 *project root is the git top level* 항목으로 검사합니다.
 - 지원 코딩 에이전트 하나: `codex`, `claude`, `opencode`, `hermes` 중 하나
 
 <a id="ko-install"></a>
@@ -593,7 +674,7 @@ npm install speckiwi@latest
 로컬 설치 후에는 `npx`로 실행합니다.
 
 ```sh
-npx speckiwi --version   # -> 2.6.0
+npx speckiwi --version   # -> 2.10.0
 npx speckiwi --help
 ```
 
@@ -610,7 +691,7 @@ speckiwi --version
 
 | 옵션 | 설명 |
 | --- | --- |
-| `--root <path>` | 대상 project root (기본: 현재 디렉터리에서 상위 탐색). |
+| `--root <path>` | 대상 project root (`mcp`를 **제외한** 모든 명령, §5 참조). 기본: 현재 디렉터리에서 상위 탐색. |
 | `--json` | 자동화용 JSON을 stdout으로 출력합니다. |
 | `--no-color` | ANSI 색상을 끕니다. |
 | `--quiet` | 비필수 사람용 출력을 억제합니다. |
@@ -629,15 +710,15 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 ### `speckiwi init`이 수행하는 작업
 
-전체 동작은 SRS mutation lock 하에서 실행되며 **멱등(idempotent)**합니다. 이미 존재하는 파일은 `skipped`로 보고되고(`--force` 없이는 절대 덮어쓰지 않음), 에이전트 지시 블록은 구 버전이 있으면 제자리에서 최신 버전으로 교체됩니다.
+전체 동작은 SRS mutation lock 하에서 실행되며 **멱등(idempotent)**합니다. 이미 존재하는 파일은 `skipped`로 보고되고(`--force` 없이는 절대 덮어쓰지 않음), 에이전트 지시 블록은 선언된 버전과 무관하게 배포 텍스트와 내용이 다르면 제자리에서 교체됩니다.
 
 | # | 단계 | 결과 |
 | --- | --- | --- |
-| 1 | **SRS scaffold** | `docs/spec/00.index.md`(Target Map · Scope Map · Completed Work Log의 중심), `docs/spec/90.appendix.md`, 그리고 프로젝트에 scope 문서가 하나도 없을 때에 한해 `--scope`에서 파생된 빈 scope 문서 `docs/spec/01.<scope>.srs.md`. 이미 scope 문서가 있으면 새로 만들지 않고 기존 문서를 각자의 scope 이름으로 등록한다. |
+| 1 | **SRS scaffold** | `docs/spec/00.index.md`(Target Map · Scope Map · Completed Work Log의 중심), `docs/spec/90.appendix.md`, 그리고 프로젝트에 scope 문서가 하나도 없을 때에 한해 `--scope`에서 파생된 빈 scope 문서 — 새 프로젝트에서는 `docs/spec/01.<scope>.srs.md` 이고, 번호는 `--scope` 가 아니라 할당기가 정하며 `docs/spec/` 의 `.md` 파일이 아직 쓰지 않은 가장 낮은 번호다. 이미 scope 문서가 있으면 새로 만들지 않고 기존 문서를 각자의 scope 이름으로 등록한다. |
 | 2 | **Step state** | `docs/spec/steps/state.md` — `Mode: wait` 메타 블록과 빈 step-state 표. |
 | 3 | **저작 규칙** | `docs/rule/SRS-MD-Rules-v2.5.0.md`와 `docs/rule/SDS-MD-Rules-v2.5.0.md` (번들된 SRS-MD · SDS-MD 저작 규칙). |
-| 4 | **에이전트 지시문** | `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 삽입/갱신. 구 버전 블록은 제자리에서 교체되고, 최신 블록은 그대로 둡니다. |
-| 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; 러너에 위임하는 Git `.git/hooks/pre-commit` 게이트; `.claude/settings.json`(PostToolUse trace hook); `.codex/hooks.json`(apply_patch trace hook). 기존 hook은 절대 덮어쓰지 않고 경고와 함께 유지합니다. |
+| 4 | **에이전트 지시문** | `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 삽입/갱신. 배포 텍스트와 내용이 다른 블록은 선언된 버전과 무관하게 제자리에서 교체되고, 동일한 블록은 그대로 둡니다. |
+| 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` + `docs/.kiwi/trace/`; 러너에 위임하는 Git `.git/hooks/pre-commit` 게이트; `.claude/settings.json`(PostToolUse trace hook); `.codex/hooks.json`(apply_patch trace hook). 이미 있는 `.git/hooks/pre-commit`은 어떤 경우에도 덮어쓰지 않습니다 — 이미 러너에 위임하고 있으면 `skipped`로 보고하고, 그렇지 않으면 연결 방법을 안내하는 경고와 함께 그대로 둡니다. 에이전트 훅 파일 둘은 이미 있으면 `skipped`로 보고되며, 다른 scaffold 파일과 마찬가지로 `--force`로는 덮어써집니다. |
 | 6 | **MCP 등록** | SpecKiwi stdio MCP 서버를 `.mcp.json`에 등록(멱등; 이미 있으면 `skipped`). `--no-mcp`로 비활성화. |
 | 7 | **Skill 설치** | 번들된 Kiwi skills를 **Claude**(`.claude/skills`) · **Codex**(`.agents/skills`)에 설치한 뒤, SpecKiwi가 관리하던 orphan `kiwi-*` skill 디렉터리를 정리(prune). `--no-skills`로 비활성화. |
 
@@ -650,12 +731,15 @@ AGENTS.md                     # SpecKiwi SRS workflow 블록
 CLAUDE.md                     # SpecKiwi SRS workflow 블록
 .mcp.json                     # speckiwi MCP 서버 등록
 .claude/skills/kiwi-*         # Claude Kiwi skills
+.claude/skills/_shared/kiwi/  # contracts the skills share
 .agents/skills/kiwi-*         # Codex Kiwi skills
+.agents/skills/_shared/kiwi/  # the same, for Codex
 .claude/settings.json         # PostToolUse trace hook
 .codex/hooks.json             # apply_patch trace hook
 .git/hooks/pre-commit         # docs/.kiwi/hooks/pre-commit.mjs로 위임
 docs/
-├─ .kiwi/hooks/               # 번들 hook 러너 + trace 출력
+├─ .kiwi/hooks/               # 번들 hook 러너
+├─ .kiwi/trace/               # trace.mjs 가 쓰는 trace 출력
 ├─ rule/
 │  ├─ SRS-MD-Rules-v2.5.0.md
 │  └─ SDS-MD-Rules-v2.5.0.md
@@ -673,12 +757,12 @@ docs/
 | 옵션 | 설명 |
 | --- | --- |
 | `--target <target>` | 등록할 초기 Active Target (예: `v0.1.0`). |
-| `--scope "Name:PREFIX"` | 초기 scope. 프로젝트에 scope 문서가 없을 때만 사용된다 (예: `"App:APP"` → `FR-APP-001`). 이미 문서가 있는 프로젝트에 scope 를 추가하려면 `speckiwi scaffold-scope` 를 쓴다 — 다음 문서 번호를 배정하고 인덱스 두 행을 함께 등록한다. |
+| `--scope "Name:PREFIX"` | 초기 scope. 프로젝트에 scope 문서가 없을 때만 사용된다 (예: `"App:APP"` → `FR-APP-001`). 이미 문서가 있는 프로젝트에 scope 를 추가하려면 `speckiwi scaffold-scope <Name>:<PREFIX> --apply` 를 쓴다 — 다음 문서 번호를 배정하고 인덱스 두 행을 함께 등록한다. |
 | `--no-mcp` | `.mcp.json`에 MCP 서버 등록을 건너뜁니다. |
 | `--no-skills` | 번들 Kiwi skills 설치(및 orphan prune)를 건너뜁니다. |
 | `-g, --global` | 번들 Kiwi skills를 **설치된** 각 에이전트의 전역 skills 디렉터리(Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`)에도 설치/갱신합니다. 홈 디렉터리가 없는 에이전트는 경고와 함께 건너뜁니다. 프로젝트 스코프 설치는 그대로 수행하며, 전역에서는 orphan prune을 하지 않습니다(공유 홈에는 다른 프로젝트의 skills가 있을 수 있음). |
 | `--dry-run` | 디스크에 아무것도 쓰지 않고 모든 단계를 미리보기(`created`/… 채워짐). |
-| `--force` | 이미 있는 scaffold 파일을 건너뛰지 않고 덮어씁니다. |
+| `--force` | 이미 있는 scaffold 파일을 건너뛰지 않고 덮어씁니다. **author 소유 파일을 다시 쓰며 그 내용은 사라집니다** — `00.index.md`(Target Map · Scope Map · Completed Work Log), `90.appendix.md`, `docs/spec/steps/state.md`(작업 모드 · step 상태), 그리고 가장 아플 수 있는 에이전트 훅 파일 둘 `.claude/settings.json` · `.codex/hooks.json` — 직접 설정한 권한 · 훅 · 환경변수가 여기에 있습니다. `docs/.kiwi/hooks/` 아래 번들 훅 러너 둘도 원본으로 되돌리므로 그 파일을 손봤다면 그 수정도 사라집니다. **이미 있는** scope 문서는 `--force` 로도 덮어쓰지 않습니다. 번들 규칙 문서 갱신에는 이 옵션이 필요하지 않습니다. |
 | `--ignore-lock` | 잔여 SRS mutation lock을 우회합니다. |
 | `--json` | 결과 envelope를 JSON으로 출력합니다. |
 
@@ -720,6 +804,16 @@ speckiwi skills install codex all --dry-run --json
 | OpenCode | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
 | Hermes | `skills/etc` | `--dest <dir>` 필요 | `$HOME/.hermes/skills/<category>/<skill>` |
 
+### 그 밖의 `skills` 하위 명령
+
+```sh
+speckiwi skills add <agent> <skill>    # `skills install` 의 별칭
+speckiwi skills mirror --check         # .agents/skills/** 를 skills/codex/** 와 대조
+speckiwi skills mirror --write         # 재생성
+```
+
+`mirror`는 skill 소스 자체를 관리할 때만 필요합니다 — `.agents/skills/**`는 `skills/codex/**`의 생성물이며 손으로 편집해서는 안 됩니다.
+
 ### 옵션
 
 | 옵션 | 설명 |
@@ -744,7 +838,9 @@ speckiwi mcp
 
 이 서버는 **stdio**로 통신하며 `--root`를 **받지 않습니다**. 서버 프로세스의 현재 작업 디렉터리에서 상위 탐색으로 project root를 해석하므로, MCP 클라이언트 설정에서 실행 디렉터리(cwd)를 프로젝트 루트로 지정하세요. `--root`와 함께 실행하면 서버를 시작하지 않고 오류로 종료합니다.
 
-`speckiwi init`은 아래 등록을 `.mcp.json`에 기록합니다.
+**Git worktree.** 루트는 서버 프로세스에 묶이므로 세션이 도중에 옮길 수 없습니다 — 이미 떠 있는 서버는 세션 중간의 worktree 전환을 따라가지 않으니, 에이전트를 worktree 안에서 다시 시작하십시오. worktree 를 루트로 삼은 세션은 **새 Requirement ID를 할당해서도 안 되고**, 호스트 저장소의 `docs/spec/`를 편집할 수도 없습니다. 둘 다 호스트 루트에서 수행하십시오.
+
+`speckiwi init`은 아래 등록을 `.mcp.json`에 기록합니다. (SpecKiwi 저장소 자체를 체크아웃한 경우에는 로컬 `bin/speckiwi`를 대신 등록합니다 — 체크아웃이 자기 빌드를 테스트하도록.)
 
 ```json
 {
@@ -773,7 +869,28 @@ Kiwi skills는 모든 조회와 안전한 SRS mutation을 MCP 도구로 수행�
 | 작업 모드 | `get_work_mode`, `set_work_mode` |
 | Step & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | 중복 ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
-| Workspace | `validate_spec`, `sync_index`, `init_project` |
+| 워크스페이스 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info`, `preview_legacy_workflow_migration` |
+| 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
+| 오케스트레이터 run 표면 | `orchestrate_*` 27개 — run lock과 저널, 라우팅 probe/freeze, lane 스케줄·handoff, 검증 라운드, wave 종료, resume·replay, `--auto` 게이트 결정. |
+| 워크플로·파이프라인 | `workflow_*` 26개 — plan task와 체크리스트, pipeline emit/status/tail, worklog, 산출물, workflow doctor. |
+
+**총 100개 도구가 배포됩니다.** 위 표는 skill이 직접 호출하는 것들을 이름으로 싣고, 묶음 두 행은 각각을 구동하는 skill 문서가 개별 멤버를 설명합니다. 업그레이드 후 신뢰할 수치는 `speckiwi doctor`가 보고하는 값입니다 — 서버가 실제로 등록한 개수입니다.
+
+#### 호출 단위 `workspaceRoot`
+
+MCP 서버는 자신이 기동된 디렉터리에서 root를 해석하며, SRS를 읽고 쓰는 곳은 그 root뿐입니다. 서버가 호스트 체크아웃에 고정된 세션도, 호출마다 절대 경로 `workspaceRoot`를 선택적으로 넘겨 linked worktree에 있는 run 상태를 다룰 수 있습니다.
+
+| 계열 | `workspaceRoot` |
+| --- | --- |
+| `workflow_*` (26개 전부) | 수용 |
+| `orchestrate_*` | 수용. 단 `orchestrate_replay_apply`(유예된 SRS mutation은 호스트 root에서만 재생됩니다)와 `orchestrate_preflight`(이미 `--mcp-root`·`--git-root`를 받습니다)는 제외 |
+| SRS를 다루는 모든 도구 — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` 등 | 거부 |
+
+거부가 기본값입니다: worktree-local임을 스스로 선언하지 않은 도구는 이 인자를 거부하므로, 새로 추가된 SRS 도구는 어디에도 등재하지 않아도 안전합니다. 수용되는 root는 절대 경로이고, 존재하는 디렉터리이며, 하위 디렉터리가 아닌 git 최상위이고, 기동 root와 git common dir을 공유하는 worktree여야 합니다. 각 실패는 도구가 실행되기 전에 고유한 `workspace-root-*` 사유로 거부되므로, 존재하지 않는 경로는 생성되지 않고 거부됩니다. 수용된 root의 도구라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부됩니다.
+
+**target 범위의 조회·mutation 전에 envelope에서 워크스페이스 정체를 확인하십시오.** 모든 결과는 `workspaceRoot`, `rootSource`, `indexPath`, `packageVersion`을 담은 `mcpWorkspace`를 함께 반환합니다. `rootSource`는 `server-cwd-discovery`, `auto-init`, `per-call-workspace-root` 중 하나이며, 모든 게이트를 통과한 `workspaceRoot`를 넘긴 호출에 한해 정확히 `per-call-workspace-root`입니다 — 답이 어느 root에서 왔는지 항상 이름으로 알 수 있습니다.
+
+<a id="ko-first-run"></a>
 
 ### 첫 실행
 
@@ -781,7 +898,7 @@ MCP 서버가 연결되면 자연어로 작업을 지시합니다 — Kiwi skill
 
 > *kiwi-srs로 요구사항을 등록해줘: 사용자가 이메일로 비밀번호를 재설정할 수 있다.*
 
-`kiwi-srs`가 Requirement ID를 발급해 `docs/spec/<scope>.srs.md`에 기록하고, 이후 `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder`가 구현까지 이어갑니다. 전체 흐름은 §7 파이프라인을 참고하세요.
+`kiwi-srs`가 Requirement ID를 발급해 `docs/spec/01.<scope>.srs.md` 같은 scope 문서에 기록하고, 이후 `kiwi-srs-feasibility` → `kiwi-planner` → `kiwi-pm` / `kiwi-coder`가 구현까지 이어갑니다. 전체 흐름은 §7 파이프라인을 참고하세요.
 
 <a id="ko-skill-types"></a>
 
@@ -801,10 +918,11 @@ MCP 서버가 연결되면 자연어로 작업을 지시합니다 — Kiwi skill
 | `kiwi-commit-auto-pr` | commit + push 후 GitHub PR을 생성/갱신하고 PR evidence를 연결합니다. |
 | `kiwi-hot-fix` | 긴급 버그를 TDD · 회귀 검증 · 사후 SRS sync로 처리합니다. |
 | `kiwi-review-fix-loop` | 로컬 변경 또는 PR 코멘트를 review/fix/re-review 루프로 정리하고 선택적으로 REQ를 verified 전이합니다. |
-| `kiwi-pipeline` | `kiwi/pipeline.jsonl`을 읽어 다음 Kiwi skill 단계를 추천/자동 진행합니다. |
+| `kiwi-pipeline` | `kiwi/pipeline.jsonl`을 읽어 다음 Kiwi skill 단계를 실행합니다. 2.9.0부터 **기본 동작이 전체 연구→구현 사이클**(`kiwi-srs` → … → `kiwi-review-fix-loop`)이며, 단일 다음-단계 추천만 원하면 `--none-cycle`을 명시합니다. 사이클은 호출이 작업 입력을 실을 때만 돌아가므로 상태 질문은 상태 질문으로 남습니다. |
 | `kiwi-step` | `docs/spec/steps/<name>/` 아래 step-local 요구 초안을 저작 — step을 선점(claim)하고 그 안에만 작성(body-scope SRS 미수정) 후 step 국소 검증. `kiwi-srs`의 경량 대응물. |
 | `kiwi-tdd` | 하나의 step을 `tdd` work-mode의 TDD First 사이클로 진행 — SDS(`design.md`) 저작 → EARS acceptance contract를 실패 테스트(red)로 변환 → green 구현 → 회귀 → step SRS 합성 및 evidence 필수 승격(promote). |
-| `kiwi-wave-master` | 대형 작업(에픽/로드맵/장기 연구)을 순서 있는 wave로 분해하고 wave마다 전용 target을 등록한 뒤 wave별 파이프라인을 순차 실행. `kiwi/waves.jsonl`로 재개 가능. |
+| `kiwi-orchestrator` | 단일 진입점에서 run 하나를 끝까지 구동합니다 — 작업을 probe 하고 실제로 필요한 rung(step / plan / orchestrated)으로 라우팅한 뒤 그 rung을 기록된 종료까지 실행합니다. run 저널(`kiwi/waves.jsonl`), `--auto` 게이트 표, 재개(resume), 그리고 2.10.0부터는 각 rung의 종료가 반드시 이행해야 하는 종료 리뷰 루프 의무를 소유합니다. orchestrated rung 에서는 한 stage 의 lane 을 분할하고 병렬화 분석을 공개해 검토받지만, 배포된 skill 은 이들을 run 의 통합 브랜치 위에서 **직렬로** 실행합니다 — 동시 lane 실행과 lane 별 병합 게이트는 skill 자신이 밝히는 대로 향후 작업입니다. 옵션 — `--auto` · `--max` · `--mini` / `--loops N` · `--work` · `--base-branch` · `--lanes N`. |
+| `kiwi-wave-master` | 대형 작업(에픽/로드맵/장기 연구)을 순서 있는 wave로 분해하고 wave마다 전용 target을 등록한 뒤 wave별 파이프라인을 순차 실행. `kiwi/waves.jsonl`로 재개 가능. 옵션 — `--auto` · `--max` · `--mini` / `--loops N`, 그리고 `--drive`(`--auto` 만으로는 멈추는 통합 테스트·비용 게이트까지 함께 여는 플래그). |
 
 같은 skill set은 에이전트별 source tree로 배포됩니다 — **`skills/codex`**(Codex 호출 + clarification gate 용어), **`skills/claude`**(Claude skill 환경), **`skills/etc`**(OpenCode/Hermes 및 local-LLM용 Agent Skills 형식; 기본 단일 evaluator/sub-agent profile).
 
@@ -844,7 +962,7 @@ flowchart TD
     N --> O["완료"]
     T --> O
 
-    P["kiwi-pipeline: 다음 단계 추천 및 진행 추적"] -.-> B
+    P["kiwi-pipeline: 다음 단계 실행 (기본은 전체 사이클)"] -.-> B
     P -.-> F
     P -.-> I
     P -.-> J
@@ -866,10 +984,22 @@ flowchart TD
     I -->|있음| F
     I -->|없음| J["MCP evidence 추가"]
     J --> K["AC check / status update"]
-    K --> L[".kiwi 상태와 worklog 갱신"]
+    K --> L["kiwi/ 상태와 worklog 갱신"]
 ```
 
-이는 메인 파이프라인의 `kiwi-coder` 내부 per-task 루프입니다. **step 단위** 작업에서는 `tdd` work-mode가 `kiwi-planner` / `kiwi-pm`를 거치지 않고 `kiwi-tdd`로 병렬 **TDD First** 사이클 — SDS → red → green → 회귀 → `promote_step_requirement` — 을 진행합니다(§8 *작업 모드와 step* 참조).
+이는 메인 파이프라인의 `kiwi-coder` 내부 per-task 루프입니다. **step 단위** 작업에서는 `tdd` work-mode가 `kiwi-planner` / `kiwi-pm`를 거치지 않고 `kiwi-tdd`로 이를 **대체하는 TDD First** 사이클 — SDS → red → green → 회귀 → `promote_step_requirement` — 을 진행합니다(§8 *작업 모드와 step* 참조).
+
+### 진입점 선택
+
+위 흐름은 기능 하나의 모습입니다. 그 위에 진입점 셋이 있습니다 — 하나는 이 흐름을 실행하고, 둘은 작업에 어느 흐름이 필요한지를 대신 정합니다.
+
+| 진입점 | 이럴 때 | 하는 일 |
+| --- | --- | --- |
+| `kiwi-pipeline` | 기능 하나를 진행 중이고 다음 단계를 실행하고 싶을 때. | 기본으로 전체 연구→구현 사이클을 실행합니다. `--none-cycle`이면 단일 다음 단계만 추천합니다. |
+| `kiwi-orchestrator` | 작업 하나가 있는데 어느 rung이 필요한지 직접 정하고 싶지 않을 때. | 작업을 probe 해 **step** · **plan** · **orchestrated** 중 맞는 rung으로 라우팅하고, 그 rung을 `kiwi/waves.jsonl`에 기록된 종료까지 실행합니다. 재개 가능. |
+| `kiwi-wave-master` | 에픽·로드맵·장기 연구처럼 target 하나에 담기지 않는 작업일 때. | 순서 있는 wave로 분해하고 wave마다 target을 등록한 뒤 wave별 파이프라인을 순차 실행합니다. 재개 가능. |
+
+**통과 판정을 기록하는 모든 경계는 리뷰를 빚집니다.** 2.10.0부터 두 오케스트레이션 skill은 그 경계가 심판하는 커밋 창에 대해 `kiwi-review-fix-loop`을 **정확히 한 번** 실행해야 하며(어느 rung도 예외 없음), 결과를 run 종료 저널 줄에 기록합니다. 리뷰 기록 없이 완료를 보고하는 종료 줄은 `speckiwi orchestrate validate`가 거부하므로, 이 보장은 문서에만 적힌 것이 아니라 검사 가능합니다.
 
 <a id="ko-commands"></a>
 
@@ -895,7 +1025,8 @@ speckiwi show FR-APP-001 --markdown           # 단일 요구사항
 speckiwi search "login timeout"               # 전문 검색
 speckiwi scopes                               # 등록된 scope
 speckiwi completed-work --target v0.1.0 --order latest
-speckiwi doctor                               # workspace/에이전트 파일/규칙 드리프트/규칙 참조 진단
+speckiwi doctor                               # 11개 검사: spec 파싱, agent 블록 최신성, rules drift·참조, SDS 규칙 설치,
+#            skill 미러·설치 drift, git 최상위 루트, Active Target, scope/target 정합, Node 버전
 ```
 
 ### 인덱스 유지보수
@@ -1000,10 +1131,31 @@ speckiwi add-trace FR-APP-001 --type code --reference "src/app.ts:42" --relation
 speckiwi append-note FR-APP-001 --section rationale --text "결정 배경 기록"
 speckiwi set-target-goal v0.1.0 --goal "첫 사용 가능 릴리스"
 speckiwi set-active-target v0.2.0
+speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
 대부분의 mutation 명령은 `--json` · `--dry-run` · `--ignore-lock`을 받습니다. mutation 실패 시 `5`로 종료합니다.
+
+### 오케스트레이션 run 조회
+
+`kiwi-orchestrator`는 상태를 `kiwi/waves.jsonl`에 둡니다. 아래 읽기 전용 명령으로 run을 구동하지 않고 확인할 수 있습니다.
+
+```sh
+speckiwi orchestrate validate --run-id <id> --json          # run 불변식을 깨는 저널을 거부
+speckiwi orchestrate validate --run-id <id> --strict        # 스탬프 누락·버전 하강도 실패 처리
+speckiwi orchestrate validate --run-id <id> \
+  --engine kiwi-wave-master                                 # 다른 생산자의 줄을 읽기
+speckiwi orchestrate resume --run-id <id> --json            # 재개 시 이어받을 지점
+```
+
+`--engine`은 어느 생산자의 줄을 읽을지 고릅니다 — 두 엔진이 파일 하나를 공유하며 리더는 자기 줄만 봅니다. 열거값 밖의 값은 기본값으로 강등하지 않고 거부합니다. 조용히 폴백하면 열지도 않은 저널을 검증하고 깨끗하다고 보고하기 때문입니다.
+
+나머지 `orchestrate` 하위 명령(`route` · `schedule` · `handoff` · `wave` · `round` · `issue` · `replay` · `auto-gate` 등)은 손으로 쓰는 것이 아니라 skill이 구동합니다. 목록은 `speckiwi orchestrate --help`에 있습니다.
+
+헷갈리기 쉬운 디렉터리가 셋 있고, 어느 것도 손으로 편집하지 않습니다. **`docs/.kiwi/`**는 도구 소유이며 `init`이 만듭니다 — 번들 훅 러너가 들어갑니다. **`kiwi/`**는 skill 소유의 run 상태로 첫 skill 실행 후에 생깁니다 — `pipeline.jsonl` · `waves.jsonl` · 재개 카드. 프로젝트 루트의 **`.kiwi/`**에는 실행 계열 skill 이 쓰는 run 별 세션 상태 — lock, plan·coder 상태, worklog — 가 `sessions/<run-id>/` 아래에 놓입니다.
+
+`speckiwi workflow`도 같은 성격입니다 — Kiwi skill이 `kiwi/pipeline.jsonl`과 plan 상태를 일관되게 유지하기 위해 호출하는 하위 명령 그룹(`plan-status` · `plan-task` · `next-task` · `pipeline-status` · `pipeline-tail` · `worklog-tail` · `task-check` · `doctor` 등)입니다. 손으로 돌리는 일반 워크플로가 아니라 진단·skill 전용이며, 목록은 `speckiwi workflow --help`에 있습니다.
 
 <a id="ko-principles"></a>
 
@@ -1056,6 +1208,7 @@ bin/
 dist/
 docs/rule/SRS-MD-Rules-v2.5.0.md
 docs/rule/SDS-MD-Rules-v2.5.0.md
+docs/.kiwi/hooks
 skills/codex/
 skills/claude/
 skills/etc/
@@ -1077,3 +1230,7 @@ skills/etc/
 - `FR-PARSE-018` / `FR-MCP-019`: Target Goal meta block과 `set_target_goal`.
 - `FR-ARCH-005`: Mutation tool kind 분류 (bulk mutation 거버넌스).
 - `FR-PARSE-016` / `FR-NODE-015` / `IR-CLI-024` / `FR-MCP-016`: Completed Work Log 보고서 경로.
+- `FR-FLOW-124` … `FR-FLOW-130`: `kiwi-pipeline` 기본 사이클과 단일 opt-out `--none-cycle` (2.9.0).
+- `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: 모든 rung의 종료 리뷰 루프 의무와, 리뷰 기록 없는 완료를 run-close 검증기가 거부하게 만드는 `terminal_review` 저널 기록 (2.10.0).
+- `FR-NODE-179`: run-root 불변식 — `docs/spec/`는 git 최상위에 있어야 하며 doctor가 이를 검사합니다 (2.7.1).
+- target `2.5.2-phase1-target-lifecycle` · `2.6.0-phase2-parallel-lanes` 및 `kiwi-orchestrator` 요구 집합: target status lifecycle, lane 분할과 worktree 계약, 오케스트레이터 run 표면. (2.6.0 target 의 선언된 목표는 현재 배포물보다 앞서 있습니다 — §6 의 오케스트레이터 행을 보십시오.) 전체 목록은 `docs/spec/00.index.md`의 Target Map을 보십시오.

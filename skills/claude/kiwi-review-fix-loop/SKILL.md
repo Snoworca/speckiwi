@@ -337,6 +337,8 @@ resume 알고리즘 (`--resume` 활성 시):
 
 `is_behavioral=true` 가 §0.3 TDD 의무의 트리거 (회귀 테스트 작성 대상).
 
+리뷰 범위에 산문 문서가 들어 있으면 그 문서의 검증자 입력은 §11 의 델타 프로토콜을 따른다.
+
 ### 4.1.p PR 모드 — gh CLI 수집
 
 §0.G3 의 알고리즘 그대로:
@@ -477,6 +479,8 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 - 본 라운드의 새 finding 만 식별 요구 + 직전 finding 의 해소 여부 평가
 
 출력: `prickly_recheck_iter{N}.json` (Phase 1.s 와 동일 schema + `resolved_findings: [FND-id...]`)
+
+산문 문서의 재검증 입력은 §11 의 델타 프로토콜로 좁힌다 — 라운드 2 이상에서는 dirty 섹션만 넣는다.
 
 ### 6.4 Phase 6 — 개선 루프 (심각도 카운터)
 
@@ -709,3 +713,19 @@ Regression tests: PASS (N tests)
 | PR 생성 (없는 PR 새로 만들기) | 사용자 또는 `/kiwi-commit-auto-push` |
 | 풀 plan 수립 (Phase 분해) | `/kiwi-planner` |
 | 통합 테스트 | `/kiwi-coder` Phase 4 |
+
+---
+
+## 11. 검증 장부 — 문서 델타 리뷰
+
+리뷰 범위에 산문 문서(`.md` 등)가 들어오면 라운드마다 문서 전체를 다시 읽지 않는다. heading 섹션 단위 해시 장부 `kiwi/verification-ledger.jsonl` 로 바뀐 섹션만 골라 검증자에게 넘긴다. 장부는 라운드를 가로질러 남아야 하므로 run 단위 세션 상태(`.kiwi/`)나 도구 소유 경로(`docs/.kiwi/`)에 두지 않는다.
+
+- **라운드 1 은 델타를 쓰지 않는다** — 문서 전량을 검증자에게 넘긴다. 한 번도 읽히지 않은 섹션이 clean 으로 남는 경로를 만들지 않기 위해서다.
+- **라운드 2 이상**: `speckiwi workflow verification-ledger plan --doc <path> --round <n> --json` 이 dirty 섹션만 돌려준다. `sections[].payload` (섹션 본문 + 전후 문맥) 가 검증자 입력이고, **clean 섹션은 검증자에게 보내지 않는다**.
+- **검증 직후 기록**: 검증자가 한 섹션을 읽고 판정을 끝내면 `speckiwi workflow verification-ledger record --doc <path> --section "<heading path>" --verifier <id> --round <n>` 을 호출한다. 해시는 도구가 문서에서 직접 계산한다 — 에이전트가 적어 낸 해시는 증거가 아니다.
+- **무매칭 키는 항상 dirty** — 이름이 바뀌거나 쪼개진 heading 은 장부와 매칭되지 않으며, 그때는 재검증 쪽으로 fail open 한다. 치르는 값이 토큰인 쪽을 고르고 거짓 신뢰인 쪽을 고르지 않는다.
+- **고아 정리**: heading 이 사라진 장부 항목은 `plan` 이 패스마다 정리한다. 정리도 append 로 기록되며 기존 줄을 고쳐 쓰지 않는다.
+
+**전체 문서 감사**: `--close-reqs` 로 REQ 를 닫기 전 — target 마감 전 — 이 run 에서 **1회**는 장부를 무시하고 문서 전체를 감사한다. 장부가 clean 이라는 이유로 이 감사를 건너뛰지 않는다.
+
+**알려진 한계**: 개별 섹션은 그 자체로 참이면서 바뀐 주변 맥락에서는 거짓일 수 있고, hash-clean 섹션은 다시 읽지 않는다. 따라서 이 교차 의존 결함은 구조적으로 못 잡는다 — 전체 문서 리뷰만 잡는 부류이며, 토큰 절감과 맞바꾼 것이다. 이 거래는 여기 적혀 있고 침묵으로 넘어가지 않는다.

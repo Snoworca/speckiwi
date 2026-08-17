@@ -214,7 +214,21 @@ const LEDGER_OPTION = o("--ledger", "ledger");
  */
 export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_resume", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
-  { tool: "orchestrate_preflight", path: ["preflight"], kind: "read", options: [o("--mcp-root", "mcpRoot", "string", true), o("--git-root", "gitRoot", "string", true)] },
+  // @req IR-MCP-005 — the role declaration is bound too. Without it the binding could only ever
+  // produce the default host role, and the role-aware gate refuses a linked worktree claiming to be
+  // a host, which leaves the topology gate unreachable from the surface a worktree session uses.
+  {
+    tool: "orchestrate_preflight",
+    path: ["preflight"],
+    kind: "read",
+    options: [
+      o("--mcp-root", "mcpRoot", "string", true),
+      o("--git-root", "gitRoot", "string", true),
+      o("--role", "role"),
+      o("--lane-id", "laneId"),
+      o("--lane-plan", "lanePlan")
+    ]
+  },
   { tool: "orchestrate_route_probe", path: ["route", "probe"], kind: "mutation", options: [o("--probe", "probe"), o("--payload", "payload", "json"), o("--out", "out"), DRY_RUN_OPTION] },
   { tool: "orchestrate_route_freeze", path: ["route", "freeze"], kind: "mutation", options: [o("--probe", "probe"), o("--gate", "gate"), o("--out", "out"), o("--auto", "auto", "boolean"), DRY_RUN_OPTION] },
   { tool: "orchestrate_route_show", path: ["route", "show"], kind: "read", options: [o("--lock", "lock")] },

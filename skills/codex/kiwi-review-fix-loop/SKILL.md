@@ -79,7 +79,8 @@ performed by separate delegated workers or clearly separated passes.
 6. Delegate fixes to a fixer pass.
 7. Run the preservation scan over the fixer diff (보존 스캔 section)
    before the re-review.
-8. Run a fresh prickly re-review with isolated input.
+8. Run a fresh prickly re-review with isolated input; for prose documents in scope,
+   narrow that input with the delta protocol (검증 장부 section).
 9. Iterate until CRITICAL/HIGH findings are clear.
 10. Run regression and affected tests.
 11. In PR mode, write a response comment unless `--no-respond`.
@@ -132,6 +133,20 @@ For each eligible REQ:
   completing where in fact one unit of one stage of one wave completed, and a parent may not record
   on a child's behalf to correct it.
 - `kiwi-pipeline` does not gain `--no-pipeline-emit` — no orchestrated unit invokes it.
+
+## 검증 장부 — 문서 델타 리뷰
+
+리뷰 범위에 산문 문서(`.md` 등)가 들어오면 라운드마다 문서 전체를 다시 읽지 않는다. heading 섹션 단위 해시 장부 `kiwi/verification-ledger.jsonl` 로 바뀐 섹션만 골라 검증자에게 넘긴다. 장부는 라운드를 가로질러 남아야 하므로 run 단위 세션 상태(`.kiwi/`)나 도구 소유 경로(`docs/.kiwi/`)에 두지 않는다.
+
+- **라운드 1 은 델타를 쓰지 않는다** — 문서 전량을 검증자에게 넘긴다. 한 번도 읽히지 않은 섹션이 clean 으로 남는 경로를 만들지 않기 위해서다.
+- **라운드 2 이상**: `speckiwi workflow verification-ledger plan --doc <path> --round <n> --json` 이 dirty 섹션만 돌려준다. `sections[].payload` (섹션 본문 + 전후 문맥) 가 검증자 입력이고, **clean 섹션은 검증자에게 보내지 않는다**.
+- **검증 직후 기록**: 검증자가 한 섹션을 읽고 판정을 끝내면 `speckiwi workflow verification-ledger record --doc <path> --section "<heading path>" --verifier <id> --round <n>` 을 호출한다. 해시는 도구가 문서에서 직접 계산한다 — 에이전트가 적어 낸 해시는 증거가 아니다.
+- **무매칭 키는 항상 dirty** — 이름이 바뀌거나 쪼개진 heading 은 장부와 매칭되지 않으며, 그때는 재검증 쪽으로 fail open 한다. 치르는 값이 토큰인 쪽을 고르고 거짓 신뢰인 쪽을 고르지 않는다.
+- **고아 정리**: heading 이 사라진 장부 항목은 `plan` 이 패스마다 정리한다. 정리도 append 로 기록되며 기존 줄을 고쳐 쓰지 않는다.
+
+**전체 문서 감사**: `--close-reqs` 로 REQ 를 닫기 전 — target 마감 전 — 이 run 에서 **1회**는 장부를 무시하고 문서 전체를 감사한다. 장부가 clean 이라는 이유로 이 감사를 건너뛰지 않는다.
+
+**알려진 한계**: 개별 섹션은 그 자체로 참이면서 바뀐 주변 맥락에서는 거짓일 수 있고, hash-clean 섹션은 다시 읽지 않는다. 따라서 이 교차 의존 결함은 구조적으로 못 잡는다 — 전체 문서 리뷰만 잡는 부류이며, 토큰 절감과 맞바꾼 것이다. 이 거래는 여기 적혀 있고 침묵으로 넘어가지 않는다.
 
 ## Extended References
 

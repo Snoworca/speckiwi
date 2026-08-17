@@ -26,14 +26,23 @@ import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
-import type { McpDependencies, McpServerHandle } from "../adapter.js";
+import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
 import { mcpFailure, resultToMcp } from "../errors.js";
 import { registerOrchestrateTools } from "./read-tools.js";
 
-async function root(deps: McpDependencies, input: Record<string, unknown>) {
+/**
+ * The root one mutation writes to. `input` is deliberately still ignored: this helper has 38 call
+ * sites and only the nine `workflow_*` rows are worktree-local, so honouring `input.workspaceRoot`
+ * here would open `update_status`, `supersede_requirement` and the rest of the SRS family. The
+ * effective root arrives as `context`, decided by the registration gate. @req REL-MCP-005 AC-3
+ */
+async function root(deps: McpDependencies, input: Record<string, unknown>, context?: McpCallContext) {
   void input;
-  return resolveProjectRoot(process.cwd(), deps.root);
+  return resolveProjectRoot(process.cwd(), context?.root ?? deps.root);
 }
+
+/** @req FR-MCP-058 AC-1 / AC-4 — the `workflow_*` mutation family declares itself worktree-local. */
+const WORKTREE_LOCAL_MUTATION = { kind: "workspace", workspaceScope: "worktree-local" } as const;
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
@@ -397,97 +406,97 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
     },
     { kind: "workspace" }
   );
-  server.registerTool("workflow_task_check", async (input) =>
+  server.registerTool("workflow_task_check", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("plan_checkbox_check", input),
         taskId: String(input.taskId),
         planPath: String(input.path ?? input.planPath)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_task_uncheck", async (input) =>
+  server.registerTool("workflow_task_uncheck", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("plan_checkbox_uncheck", input),
         taskId: String(input.taskId),
         planPath: String(input.path ?? input.planPath)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_checklist_set", async (input) =>
+  server.registerTool("workflow_checklist_set", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("plan_checklist_item_update", input),
         taskId: String(input.taskId),
         planPath: String(input.path ?? input.planPath),
         checked: input.checked === true
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_task_status_set", async (input) =>
+  server.registerTool("workflow_task_status_set", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("pm_task_status_update", input),
         taskId: String(input.taskId),
         pmStatePath: String(input.pmStatePath),
         status: String(input.status)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_pipeline_emit", async (input) =>
+  server.registerTool("workflow_pipeline_emit", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("pipeline_event_append", input),
         jsonlPath: typeof input.path === "string" ? input.path : "kiwi/pipeline.jsonl",
         event: workflowJsonEvent(input)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_worklog_emit", async (input) =>
+  server.registerTool("workflow_worklog_emit", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("worklog_event_append", input),
         jsonlPath: typeof input.path === "string" ? input.path : `.kiwi/sessions/${String(input.runId)}/worklog.jsonl`,
         event: workflowJsonEvent(input)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_repair_record", async (input) =>
+  server.registerTool("workflow_repair_record", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("workflow_repair_record", input),
         jsonlPath: typeof input.path === "string" ? input.path : `.kiwi/sessions/${String(input.runId)}/worklog.jsonl`,
         event: workflowJsonEvent(input)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
   server.registerTool(
     "workflow_record_reclassification",
-    async (input) => {
+    async (input, context) => {
       const parsed = workflowRecordReclassificationInput(input);
       if (!parsed) return workflowRecordReclassificationUsageFailure(input);
-      return resultToMcp(await applyWorkflowMutation(await root(deps, input), parsed));
+      return resultToMcp(await applyWorkflowMutation(await root(deps, input, context), parsed));
     },
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
-  server.registerTool("workflow_logical_delete", async (input) =>
+  server.registerTool("workflow_logical_delete", async (input, context) =>
     resultToMcp(
-      await applyWorkflowMutation(await root(deps, input), {
+      await applyWorkflowMutation(await root(deps, input, context), {
         ...workflowBase("workflow_logical_delete", input),
         jsonlPath: typeof input.path === "string" ? input.path : "kiwi/pipeline.jsonl",
         recordType: String(input.recordType),
         recordId: String(input.recordId)
       })
     ),
-    { kind: "workspace" }
+    WORKTREE_LOCAL_MUTATION
   );
   server.registerTool(
     "apply_requirement_id_collision_repair",

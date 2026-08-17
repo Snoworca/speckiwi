@@ -10,9 +10,9 @@ import { TARGET_TYPES } from "../core/target-types.js";
 import { initProject } from "../core/bootstrap/init-project.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import type { ProjectRoot } from "../core/types.js";
-import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
+import { createTestMcpServer, type McpDependencies, type McpRootSource, type McpServerHandle } from "./adapter.js";
 import { getServerMetadata, type PackageInfo } from "./metadata.js";
-import { registerReadTools } from "./tools/read-tools.js";
+import { orchestrateAcceptsWorkspaceRoot, registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
 import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
@@ -33,6 +33,15 @@ export function createMcpServer(deps: McpDependencies): McpServerHandle {
   return server;
 }
 
+/**
+ * The per-call workspace root. Optional everywhere it appears: omitting it reproduces the startup
+ * root behaviour exactly, so the argument is additive. @req REL-MCP-005 / FR-MCP-058 AC-1
+ */
+const WORKSPACE_ROOT_SCHEMA = z
+  .string()
+  .describe("absolute path of a git top level that is a worktree of the MCP server's own repository")
+  .optional();
+
 const reportPathSchema = z
   .string()
   .trim()
@@ -49,6 +58,9 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
   const out: Record<string, Record<string, z.ZodTypeAny>> = {};
   for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
     const shape: Record<string, z.ZodTypeAny> = {};
+    // @req FR-MCP-059 — derived from the same declaration the registration gate reads, so the
+    // schema and the gate cannot disagree about which rows take a per-call root.
+    if (orchestrateAcceptsWorkspaceRoot(binding.tool)) shape.workspaceRoot = WORKSPACE_ROOT_SCHEMA;
     if (binding.selector) {
       shape[binding.selector.dest] = z.enum(binding.selector.values as [string, ...string[]]).optional();
     }
@@ -125,7 +137,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     referenceEdits: z.array(z.object({ filePath: z.string(), line: z.number().int().positive(), from: z.string(), to: z.string() })).optional(),
     dryRun: z.boolean().optional()
   },
-  workflow_workspace_info: {},
+  workflow_workspace_info: { workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_artifacts_list: {
     path: z.string().optional(),
     runId: z.string().optional(),
@@ -134,7 +146,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     includeBody: z.boolean().optional(),
     allowAmbiguous: z.boolean().optional(),
     limit: z.number().int().positive().optional(),
-    offset: z.number().int().nonnegative().optional()
+    offset: z.number().int().nonnegative().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_latest_artifact: {
     path: z.string().optional(),
@@ -142,7 +155,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     target: z.string().optional(),
     kind: z.string().optional(),
     includeBody: z.boolean().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_resolve_artifact: {
     path: z.string().optional(),
@@ -150,51 +164,58 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     target: z.string().optional(),
     kind: z.string().optional(),
     includeBody: z.boolean().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_plan_status: {
     path: z.string().optional(),
     runId: z.string().optional(),
     target: z.string().optional(),
     includeBody: z.boolean().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_plan_task: {
     taskId: z.string(),
     path: z.string().optional(),
     runId: z.string().optional(),
-    target: z.string().optional()
+    target: z.string().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_next_plan_task: {
     path: z.string().optional(),
     runId: z.string().optional(),
-    target: z.string().optional()
+    target: z.string().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_doctor: {
     path: z.string().optional(),
     runId: z.string().optional(),
     target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_diff: {
     path: z.string().optional(),
     runId: z.string().optional(),
     target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_schema_check: {
     path: z.string().optional(),
     runId: z.string().optional(),
     target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional()
+    allowAmbiguous: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
-  workflow_pipeline_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional() },
-  workflow_pipeline_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional() },
-  workflow_pipeline_next: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional() },
-  workflow_pipeline_compact: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional() },
-  workflow_session_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeBody: z.boolean().optional() },
-  workflow_resume_hint: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional() },
-  workflow_worklog_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional() },
+  workflow_pipeline_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_pipeline_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_pipeline_next: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_pipeline_compact: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_session_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeBody: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_resume_hint: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
+  workflow_worklog_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   preview_legacy_workflow_migration: {
     path: z.string().optional(),
     runId: z.string().optional(),
@@ -204,7 +225,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     write: z.boolean().optional(),
     fix: z.boolean().optional(),
     normalize: z.boolean().optional(),
-    migrate: z.boolean().optional()
+    migrate: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   get_next_work_order: {
     target: z.string().optional(),
@@ -334,7 +356,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_task_uncheck: {
     runId: z.string(),
@@ -345,7 +368,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_checklist_set: {
     runId: z.string(),
@@ -357,7 +381,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_task_status_set: {
     runId: z.string(),
@@ -369,7 +394,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_pipeline_emit: {
     runId: z.string(),
@@ -380,7 +406,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_worklog_emit: {
     runId: z.string(),
@@ -392,7 +419,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_repair_record: {
     runId: z.string(),
@@ -404,7 +432,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string().optional(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_record_reclassification: {
     runId: z.string().refine((value) => value.trim().length > 0, { message: "runId must not be blank" }),
@@ -423,7 +452,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reqId: z.string().min(1).optional(),
     idempotencyKey: z.string().min(1).optional(),
     repairToken: z.string().min(1).optional(),
-    dryRun: z.boolean()
+    dryRun: z.boolean(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   workflow_logical_delete: {
     runId: z.string(),
@@ -436,7 +466,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     reason: z.string(),
     expectedSha256: z.string().optional(),
     idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional()
+    dryRun: z.boolean().optional(),
+    workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   apply_requirement_id_collision_repair: {
     duplicateId: z.string(),
@@ -574,16 +605,19 @@ export async function resolveMcpStartupRoot(): Promise<ProjectRoot> {
   return { root: srsRoot ?? cwd };
 }
 
-async function ensureMcpStartupWorkspace(): Promise<ProjectRoot> {
+/**
+ * The startup root, plus how it came to exist. @req REL-MCP-005 AC-2 — `auto-init` is a source a
+ * caller may be told about, so it has to be carried rather than inferred by the reader.
+ */
+export async function ensureMcpStartupWorkspace(): Promise<ProjectRoot & { rootSource: McpRootSource }> {
   const root = await resolveMcpStartupRoot();
   const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
-  if (!(await exists(indexPath))) {
-    const result = await initProject(root, {});
-    if (!result.ok) {
-      throw new Error(result.error?.message ?? "MCP workspace initialization failed");
-    }
+  if (await exists(indexPath)) return { ...root, rootSource: "server-cwd-discovery" };
+  const result = await initProject(root, {});
+  if (!result.ok) {
+    throw new Error(result.error?.message ?? "MCP workspace initialization failed");
   }
-  return root;
+  return { ...root, rootSource: "auto-init" };
 }
 
 export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
@@ -592,7 +626,7 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<vo
   }
   const sdk = new McpServer(MCP_SERVER_METADATA);
   const root = await ensureMcpStartupWorkspace();
-  const local = createMcpServer({ root: root.root });
+  const local = createMcpServer({ root: root.root, rootSource: root.rootSource });
   for (const [name, handler] of Object.entries(local.tools).filter(([name]) => !name.startsWith("resource:"))) {
     sdk.registerTool(name, {
       title: name,

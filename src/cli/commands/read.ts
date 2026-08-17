@@ -48,6 +48,7 @@ import {
   workflowWorkspaceInfo
 } from "../../core/workflow/read.js";
 import { buildNextWorkOrder } from "../../core/workflow/work-order.js";
+import { planVerificationRound, recordSectionVerified } from "../../core/workflow/verification-ledger.js";
 import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import type { WorkflowArtifactKind } from "../../core/workflow/artifacts.js";
 
@@ -601,6 +602,52 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   addWorkflowOptions(workflow.command("worklog-tail")).action(async (options) => {
     workflowOutput(options, await workflowWorklogTail(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
   });
+
+  // @req FR-FLOW-136 — the two verbs a review round needs: what to send, and what was verified.
+  // `plan` also prunes orphans, because an orphan is only observable against a freshly parsed
+  // document and this pass already holds one.
+  const verificationLedger = workflow.command("verification-ledger");
+  verificationLedger
+    .command("plan")
+    .requiredOption("--doc <path>", "document to plan a verification round for")
+    .option("--round <n>", "review round number", "1")
+    .option("--context <n>", "context lines carried around each dirty section")
+    .option("--no-prune", "classify without pruning orphan ledger entries")
+    .option("--run-id <runId>")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      workflowOutput(
+        options,
+        await planVerificationRound(await workflowRoot(), {
+          doc: String(options.doc),
+          round: Number(options.round),
+          ...(options.context === undefined ? {} : { contextLines: Number(options.context) }),
+          ...(typeof options.runId === "string" ? { runId: options.runId } : {}),
+          prune: options.prune !== false
+        })
+      );
+    });
+  verificationLedger
+    .command("record")
+    .requiredOption("--doc <path>", "document the section belongs to")
+    .requiredOption("--section <key>", "heading path of the verified section")
+    .requiredOption("--verifier <id>", "identity of the verifier that read it")
+    .requiredOption("--round <n>", "review round number")
+    .option("--run-id <runId>")
+    .option("--dry-run")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      const result = await recordSectionVerified(await workflowRoot(), {
+        doc: String(options.doc),
+        key: String(options.section),
+        verifier: String(options.verifier),
+        round: Number(options.round),
+        ...(typeof options.runId === "string" ? { runId: options.runId } : {}),
+        dryRun: options.dryRun === true
+      });
+      workflowOutput(options, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
 
   const addWorkflowMutationOptions = (target: Command): Command =>
     addWorkflowOptions(target)

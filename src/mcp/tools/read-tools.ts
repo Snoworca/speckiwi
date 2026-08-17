@@ -11,7 +11,8 @@ import { listSteps } from "../../core/query/list-steps.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
 import type { Diagnostic, ParsedWorkspace } from "../../core/types.js";
-import type { McpDependencies, McpServerHandle } from "../adapter.js";
+import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
+import type { WorkspaceRootReason } from "../workspace-root.js";
 import { mcpFailure, mcpSuccess } from "../errors.js";
 import {
   workflowArtifacts,
@@ -48,9 +49,16 @@ async function workspace(deps: McpDependencies) {
   return parseWorkspace(root);
 }
 
-async function projectRoot(deps: McpDependencies) {
-  return resolveProjectRoot(process.cwd(), deps.root);
+/**
+ * The root one read answers from. `context` is absent for every SRS-facing caller, so passing it is
+ * what opts a tool into the per-call root — the helper never reads `input`. @req REL-MCP-005 AC-3
+ */
+async function projectRoot(deps: McpDependencies, context?: McpCallContext) {
+  return resolveProjectRoot(process.cwd(), context?.root ?? deps.root);
 }
+
+/** @req FR-MCP-058 AC-1 — the `workflow_*` read family declares itself worktree-local. */
+const WORKTREE_LOCAL_READ = { readOnlyHint: true, workspaceScope: "worktree-local" } as const;
 
 function workflowOptions(input: Record<string, unknown>): WorkflowReadOptions {
   return {
@@ -142,14 +150,17 @@ function repairPlanInput(input: Record<string, unknown>): RequirementIdCollision
 export async function callOrchestrateTool(
   binding: OrchestrateToolBinding,
   input: Record<string, unknown>,
-  deps: McpDependencies
+  deps: McpDependencies,
+  context?: McpCallContext
 ): Promise<unknown> {
   const { main } = await import("../../cli/index.js");
   const chunks: string[] = [];
   const sink = () => ({ write: (text: string) => { chunks.push(text); return true; } }) as unknown as NodeJS.WriteStream;
   let argv: string[];
   try {
-    argv = orchestrateArgv(binding, input, deps.root);
+    // @req FR-MCP-059 AC-1 — an accepted per-call root becomes the CLI's own `--root`, which the
+    // leaf already takes as a global option; omitting it leaves the argv exactly as it is today.
+    argv = orchestrateArgv(binding, input, context?.root ?? deps.root);
   } catch (error) {
     return { ok: false, error: (error as Error).message };
   }
@@ -162,21 +173,55 @@ export async function callOrchestrateTool(
   }
 }
 
-/** Registers every `orchestrate_*` binding of the given kind onto the server. */
+/**
+ * Registers every `orchestrate_*` binding of the given kind onto the server.
+ *
+ * Two rows stay host-fixed: `orchestrate_replay_apply`, because replaying a deferred SRS mutation
+ * anywhere but the host root is what the deferral exists to prevent, and `orchestrate_preflight`,
+ * because it already takes both roots it judges as required arguments. @req FR-MCP-059 AC-3 / AC-4
+ */
 export function registerOrchestrateTools(server: McpServerHandle, deps: McpDependencies, kind: "read" | "mutation"): void {
   for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
     if (binding.kind !== kind) continue;
     server.registerTool(
       binding.tool,
-      async (input) => callOrchestrateTool(binding, input, deps),
-      kind === "read" ? { readOnlyHint: true } : { kind: "workspace" }
+      async (input, context) => callOrchestrateTool(binding, input, deps, context),
+      { ...(kind === "read" ? { readOnlyHint: true } : { kind: "workspace" as const }), ...ORCHESTRATE_WORKSPACE_METADATA[binding.tool] }
     );
   }
 }
 
+/** What each `orchestrate_*` row declares about the per-call root. Absence is refusal. */
+const ORCHESTRATE_WORKSPACE_METADATA: Readonly<Record<string, {
+  workspaceScope?: "worktree-local";
+  workspaceRootRefusal?: { reason: WorkspaceRootReason; message: string };
+}>> = Object.freeze(
+  Object.fromEntries(
+    ORCHESTRATE_TOOL_BINDINGS.map((binding) => [
+      binding.tool,
+      binding.tool === "orchestrate_replay_apply"
+        ? {
+          workspaceRootRefusal: {
+            reason: "workspace-root-forbidden-for-replay-apply" as const,
+            message:
+              "orchestrate_replay_apply refuses workspaceRoot: a deferred SRS mutation replays only at the host root, which is the rule the deferral exists to enforce."
+          }
+        }
+        : binding.tool === "orchestrate_preflight"
+          ? {}
+          : { workspaceScope: "worktree-local" as const }
+    ])
+  )
+);
+
+/** Whether an `orchestrate_*` row takes the per-call root; the schema is derived from the same fact. */
+export function orchestrateAcceptsWorkspaceRoot(tool: string): boolean {
+  return ORCHESTRATE_WORKSPACE_METADATA[tool]?.workspaceScope === "worktree-local";
+}
+
 export function registerReadTools(server: McpServerHandle, deps: McpDependencies): void {
   registerOrchestrateTools(server, deps, "read");
-  server.registerTool("mcp_workspace_info", async () => {
+  server.registerTool("mcp_workspace_info", async (_input, context) => {
     const parsed = await workspace(deps);
     const diagnostics = readDiagnostics(parsed);
     return mcpSuccess(
@@ -184,7 +229,9 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
         parsed,
         {
           workspaceRoot: parsed.root.root,
-          rootSource: "server-cwd-discovery",
+          // @req REL-MCP-005 AC-2 — the reported source is the one that decided this call's root,
+          // never a constant; `mcp_workspace_info` is SRS-facing, so `context` is always the startup one.
+          rootSource: context?.rootSource ?? deps.rootSource ?? "server-cwd-discovery",
           indexPath: "docs/spec/00.index.md",
           activeTarget: parsed.index.activeTarget
         },
@@ -269,23 +316,23 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("get_work_mode", async () => mcpSuccess(await getWorkMode(await projectRoot(deps))), { readOnlyHint: true });
   // FR-MCP-054 — check_vibe_gate mirrors `speckiwi vibe-gate check` (shared core, read-only probe).
   server.registerTool("check_vibe_gate", async () => mcpSuccess(await evaluateVibeGate(await projectRoot(deps))), { readOnlyHint: true });
-  server.registerTool("workflow_workspace_info", async () => workflowWorkspaceInfo(await projectRoot(deps)), { readOnlyHint: true });
-  server.registerTool("workflow_artifacts_list", async (input) => workflowArtifacts(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_latest_artifact", async (input) => workflowArtifacts(await projectRoot(deps), { ...workflowOptions(input), limit: 1 }), { readOnlyHint: true });
-  server.registerTool("workflow_resolve_artifact", async (input) => workflowArtifacts(await projectRoot(deps), { ...workflowOptions(input), limit: 1 }), { readOnlyHint: true });
-  server.registerTool("workflow_plan_status", async (input) => workflowPlanStatus(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_plan_task", async (input) => workflowPlanTask(await projectRoot(deps), String(input.taskId), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_next_plan_task", async (input) => workflowNextPlanTask(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_doctor", async (input) => workflowDoctor(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_diff", async (input) => workflowDiff(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_schema_check", async (input) => workflowSchemaCheck(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_pipeline_status", async (input) => workflowPipelineStatus(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_pipeline_tail", async (input) => workflowPipelineTail(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_pipeline_next", async (input) => workflowPipelineNext(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_pipeline_compact", async (input) => workflowPipelineCompact(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_session_status", async (input) => workflowSessionStatus(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_resume_hint", async (input) => workflowResumeHint(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
-  server.registerTool("workflow_worklog_tail", async (input) => workflowWorklogTail(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
+  server.registerTool("workflow_workspace_info", async (_input, context) => workflowWorkspaceInfo(await projectRoot(deps, context)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_artifacts_list", async (input, context) => workflowArtifacts(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_latest_artifact", async (input, context) => workflowArtifacts(await projectRoot(deps, context), { ...workflowOptions(input), limit: 1 }), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_resolve_artifact", async (input, context) => workflowArtifacts(await projectRoot(deps, context), { ...workflowOptions(input), limit: 1 }), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_plan_status", async (input, context) => workflowPlanStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_plan_task", async (input, context) => workflowPlanTask(await projectRoot(deps, context), String(input.taskId), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_next_plan_task", async (input, context) => workflowNextPlanTask(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_doctor", async (input, context) => workflowDoctor(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_diff", async (input, context) => workflowDiff(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_schema_check", async (input, context) => workflowSchemaCheck(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_pipeline_status", async (input, context) => workflowPipelineStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_pipeline_tail", async (input, context) => workflowPipelineTail(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_pipeline_next", async (input, context) => workflowPipelineNext(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_pipeline_compact", async (input, context) => workflowPipelineCompact(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_session_status", async (input, context) => workflowSessionStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_resume_hint", async (input, context) => workflowResumeHint(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
+  server.registerTool("workflow_worklog_tail", async (input, context) => workflowWorklogTail(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("preview_legacy_workflow_migration", async (input) => unsupportedWorkflowMigrationInput(input) ?? workflowMigrationPreview(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("get_next_work_order", async (input) => buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), { readOnlyHint: true });
   // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories,

@@ -14,6 +14,15 @@ The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics
 
 When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
 
+## Verification intensity policy (documents and comments)
+
+User-approved relaxation (2026-08-17), grounded in `docs/research/19.verification-token-economy-research.md`. It applies ONLY to prose documents and code comments — code, contracts, SRS acceptance criteria, and safety boundaries keep the full policy (TDD, per-AC mutation proof, CRITICAL=0 and HIGH=0, subagent verification).
+
+- **Human-facing prose (README and similar)**: mechanical checks first (doc-lint / links / mirror), then ONE delta-scoped LLM review round over changed sections. Stop there even if LOW findings remain. Exception: a paragraph documenting a destructive or irreversible command (e.g. `--force`) keeps safety-boundary-level review.
+- **Agent-facing instructions (SKILL.md and shared contracts)**: mechanical drift checks always; LLM review is delta-scoped and capped at 2 rounds, stopping at zero HIGH-or-above on one independent pass. Sections that gate a safety boundary or a contract escalate to the full contract bar.
+- **Comments**: never reviewed in rounds. Two checks only — `@req` references must resolve to real requirements (mechanical), and a "why"-comment attached to a safety gate is verified once at write time. A comment that restates the code is deleted, not reviewed.
+- Verification stops on **evidence completeness, not round count**. Recorded history shows every CRITICAL/HIGH catch came from mutation testing or adversarial execution, never from a 5th–6th uniform review round, while a 6-round prose loop introduced 8 new defects of its own.
+
 # SpecKiwi SRS workflow v1.9
 
 This repository uses `docs/spec/` as the required source of truth for requirements.

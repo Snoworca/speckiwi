@@ -508,6 +508,13 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("repair-record", "workflow_repair_record", "workspace", "workflowRepairRecord"),
   mutationSpec("reclassify-record", "workflow_record_reclassification", "workspace", "workflowRecordReclassification"),
   mutationSpec("logical-delete", "workflow_logical_delete", "workspace", "workflowLogicalDelete"),
+  // @req FR-FLOW-136 — the verification-ledger namespace: a container with no own handler plus two
+  // leaves. Both leaves append to `kiwi/verification-ledger.jsonl` (`plan` writes the orphan-prune
+  // record), so they carry the same "workspace" kind as the neighbouring pipeline/worklog appends.
+  // CLI-only: no mcpName, so neither appears in toolNames, toolSchemas or the forwarding contract.
+  readSpec("verification-ledger", undefined, "workflowVerificationLedger"),
+  mutationSpec("plan", undefined, "workspace", "planVerificationRound"),
+  mutationSpec("record", undefined, "workspace", "recordSectionVerified"),
   // Container command with no own handler; hosts the collision-repair "apply" tool (CLI in repair.ts).
   mutationSpec("work-order", "apply_requirement_id_collision_repair", "workspace", "applyRequirementIdCollisionRepair"),
 
