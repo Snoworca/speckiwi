@@ -76,7 +76,7 @@ function registerInstallAction(parent: Command, context: CliContext, alias: "ins
 
 /**
  * @req FR-NODE-105 — the sanctioned writer for `.agents/skills/**` (05 §9.5), and neither `init` nor
- * `skills install`, so `00.charter.md:303-304`'s prohibition is untouched.
+ * `skills install`, so the charter's standing-constraints prohibition is untouched.
  *
  * The mode is required and the two modes are mutually exclusive. `--write` is the destructive branch,
  * so a bare `speckiwi skills mirror` fails immediately rather than regenerating the tree; defaulting

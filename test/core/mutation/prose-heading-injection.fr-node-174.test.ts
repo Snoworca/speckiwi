@@ -207,7 +207,7 @@ describe("FR-NODE-174 AC-9 — a status reason is a table cell and cannot open a
   });
 
   it("a multi-line reason that opens no heading is still accepted, because two criteria require it", async () => {
-    // NOT an oversight. `20.parser-validation.srs.md:1148` AC-7 and `40.mcp-stdio-interface.srs.md:1416`
+    // NOT an oversight. `FR-PARSE-017` AC-7 and `FR-MCP-018`
     // AC-4 both state that a reason rejects control characters *other than* TAB, LF and CR, and a
     // case named "accepts reason with TAB / LF / CR (Windows CRLF friendly)" asserts it. A first
     // attempt at this guard used `assertSafeMarkdownTableCell`, which forbids newline and pipe
@@ -228,7 +228,7 @@ describe("FR-NODE-174 AC-9 — a status reason is a table cell and cannot open a
 
   it("a reason whose heading is indented past the CommonMark threshold is refused", async () => {
     // Round 7. The guard used CommonMark's rule — up to three leading spaces — while
-    // `block-scanner.ts:74` matches its section pattern against `line.trim()`. Four spaces and a
+    // `block-scanner.ts` matches its section pattern against `line.trim()`. Four spaces and a
     // `##` therefore passed the guard and was still a top-level section to the parser. Measured
     // consequence of the gap: one `update_status` deleted two requirements from the parsed model and
     // turned `ready: false` into `ready: true` with zero validation errors.
@@ -670,7 +670,7 @@ describe("FR-NODE-174 AC-9 — the index writers consult the guard as well", () 
       goal: "Ship it.\n| Alpha | Beta |\n| --- | --- |\n| forged | row |"
     });
 
-    // Accepted, not refused — `20.parser-validation.srs.md:1209` AC-6 states that goal text accepts
+    // Accepted, not refused — `FR-PARSE-018` AC-6 states that goal text accepts
     // CR/LF/TAB, and that criterion is ticked. A first attempt at this repair rejected the newline,
     // which turned that criterion false; the suite caught it and the guard was withdrawn in favour of
     // folding the value at the point it is rendered. What matters is the FILE, so that is what is

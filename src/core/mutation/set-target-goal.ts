@@ -89,7 +89,7 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
   // table into the index while the heading guard above passed it, because a table row is not a
   // heading and not a fence.
   //
-  // The fix is in the renderer, not in a refusal. `20.parser-validation.srs.md:1209` AC-6 states that
+  // The fix is in the renderer, not in a refusal. `FR-PARSE-018` AC-6 states that
   // goal text ACCEPTS CR/LF/TAB — a ticked criterion — so refusing a newline here would make that
   // criterion false. Accepting the newline and folding it into a space keeps both: the mutation layer
   // takes the value, and nothing the caller wrote reaches column zero.

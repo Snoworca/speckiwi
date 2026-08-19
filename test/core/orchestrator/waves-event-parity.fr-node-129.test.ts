@@ -30,7 +30,7 @@ import {
 // `verification-gate.ts` implements are stated as **bullet list items**, not table rows, so a
 // table-only parity check misses the exact drift class that produced `IR-CLI-080`. The bullet set is
 // enumerated by measurement from the document at test time — no count literal appears below, because
-// §10.4 records that the first revision's "the nine invariants at waves-event.md:89-99" was wrong on
+// §10.4 records that the first revision's "the nine invariants at waves-event.md §2.2" was wrong on
 // the count, the range AND the unit, and a test pinned to it would have asserted the wrong denominator.
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));

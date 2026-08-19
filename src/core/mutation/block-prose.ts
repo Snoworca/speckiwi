@@ -25,7 +25,7 @@ import { mutationFail } from "./guards.js";
 const OPENS_SECTION = /^\s*#{1,6}\s/;
 
 /**
- * Copied from `FENCE_RE` in `parser/block-scanner.ts:40` rather than approximated, for the reason
+ * Copied from `FENCE_RE` in `parser/block-scanner.ts` rather than approximated, for the reason
  * the paragraph above gives: the parser decides what a requirement block is, so the guard follows
  * it exactly. Both markers, three or more, up to three leading spaces.
  *

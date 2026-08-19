@@ -1487,7 +1487,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--run-id <id>", "the run the round belongs to")
     .option("--payload <json>", "the round, inline")
     // @req FR-NODE-169 AC-7 — required, not optional. A round record is verdict-bearing and
-    // `waves-event.md:96` requires one externally recomputable proof on such a line, but
+    // `waves-event.md` §2.2 requires one externally recomputable proof on such a line, but
     // `checkJournalOnlyProofs` skips a proofless line entirely, so omitting it violates the contract
     // silently. The verb reads no filesystem, so the caller supplies it.
     .requiredOption("--proof <json>", "one externally recomputable proof for the round, inline")

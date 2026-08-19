@@ -1,5 +1,9 @@
 # Mechanical findings — structural checks the semantic hunters do not perform
 
+> **이 문서는 미검증 작업 노트다.** 확정된 사실은 요구(`docs/spec/`)와 그 테스트에 있다.
+> 여기의 수치·판단·계획은 검토를 거치지 않았고 틀릴 수 있다. 이 문서를 근거로 구현하지 말고,
+> 요구로 승격된 뒤 그 요구를 근거로 구현한다. — `FR-FLOW-137`
+
 These come from running structural checks over the document set rather than from reading it. They are
 recorded here because a hunter looking for contradictions in *meaning* will not find them, and because
 the loop that would otherwise catch them is paused.

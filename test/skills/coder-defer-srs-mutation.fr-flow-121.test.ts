@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 // is discarded by a kiwi-coder that does not read it.
 //
 // Runtime lag: these read the BUNDLED copies. The running agent reads `~/.claude/skills/…`, which
-// `00.charter.md:303-304` forbids reinstalling from this repository; the lag is recorded as
+// `the charter's standing constraints` forbids reinstalling from this repository; the lag is recorded as
 // verification evidence rather than accommodated here.
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -58,7 +58,7 @@ function section(text: string, headingRe: RegExp): string {
 /** A section with its own heading line removed. Every rule assertion runs against this rather than
  * against `section()`, because a sub-block heading repeats the rule's words — so an unscoped search
  * matches the heading and leaves the rule sentence below it entirely unchecked. The sibling suite
- * names the same trap at `orchestrator-delegated-flags.fr-flow-113.test.ts:71-73`. */
+ * names the same trap at `orchestrator-delegated-flags.fr-flow-113.test.ts`. */
 function body(sectionText: string): string {
   return sectionText.split("\n").slice(1).join("\n");
 }

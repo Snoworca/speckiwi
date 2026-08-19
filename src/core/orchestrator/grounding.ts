@@ -5,7 +5,7 @@
 // the real edit is never made, and the defect surfaces only after promotion is queued.
 //
 // The gate is a **near-miss** detector, not an existence check. The planner sidecar schema carries
-// no to-be-created marker (`kiwi-planner/SKILL.md:744`), so an existence check would refuse every
+// no to-be-created marker (`kiwi-planner` writes no to-be-created marker), so an existence check would refuse every
 // greenfield unit — including the orchestrator design's own worked example, whose whole purpose is
 // creating two new files. A path that does not exist and has no near neighbour is a legitimate new
 // file and passes.

@@ -475,7 +475,12 @@ const CANONICAL_HIGH = canonical(
   "- **HIGH**: 테스트 fail, DoD 미충족, 의도 이탈, acceptance_tests fail, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨"
 );
 
-const CANONICAL_LOW = canonical("- **LOW**: 스타일, 주석 표현·서식");
+/**
+ * Updated deliberately for FR-FLOW-140. AC-7 here asks only that comment wording stay at the
+ * non-blocking severity, and it still does; what changed is that the severity now says it buys no
+ * rework round. The pin is why that change had to be made on purpose rather than in passing.
+ */
+const CANONICAL_LOW = canonical("- **LOW**: 스타일, 주석 표현·서식 — 정보 보고 전용이며 개선 루프 재작업 라운드 0");
 
 function copyBody(relPath: string): string {
   return readFileSync(path.join(REPO_ROOT, relPath), "utf8");

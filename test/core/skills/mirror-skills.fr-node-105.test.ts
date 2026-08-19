@@ -12,7 +12,7 @@ import { MIRROR_MODES, mirrorSkills } from "../../../src/core/skills/mirror-skil
 // 05 §9.5: CP-05 marks the mirror orchestrator-only while §14 registration 5 requires
 // `waves-event.md` v1.4.0 in all four copies and E28 asserts set-equality across them — so four-copy
 // parity was a shipping requirement with no sanctioned writer. This verb is neither `init` nor
-// `skills install`, so `00.charter.md:303-304` is untouched.
+// `skills install`, so `the charter's standing constraints` is untouched.
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const roots: string[] = [];

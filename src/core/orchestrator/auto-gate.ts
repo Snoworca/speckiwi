@@ -11,7 +11,7 @@
  * @req FR-NODE-122 — 05 §13's 39 orchestrator-owned phase-1 rows, the four `business-decision`
  * routing gates, and the three groups §13 requires the phase-1 skill to declare alongside them: the
  * ids inherited verbatim from `kiwi-wave-master`, the two never auto-granted by `--auto` alone, and
- * the three adopted as-is from `auto-option.md:254-274`.
+ * the three adopted as-is from `auto-option.md` §`critical_gates[]`.
  *
  * §13's 20 phase-2 rows are **not** members: an undeclared gate falls to `business-decision`, which a
  * committee auto-approves at confidence at or above 0.7, so declaring a gate whose machinery does not
@@ -96,7 +96,7 @@ export const GATE_IDS = [
   "integration-test-user-consent",
   "cost-warning-large-task",
 
-  // — Adopted as-is from `auto-option.md:254-274` (§13) —
+  // — Adopted as-is from `auto-option.md` §`critical_gates[]` (§13) —
   "external-module-impact",
   "mcp-cli-both-unavailable",
   "self-recursive-spawn",
@@ -136,7 +136,7 @@ export const AUTO_GATE_ACTIONS = ["adopt-recommended", "adopt-default-if-auto", 
 
 export type AutoGateAction = (typeof AUTO_GATE_ACTIONS)[number];
 
-/** `auto-option.md:157`'s `merge_method.rule` vocabulary, restated in full (05 §12 edit 12.5). */
+/** The `merge_method.rule` vocabulary from `auto-option.md` §Logging, restated in full (05 §12 edit 12.5). */
 export const AUTO_GATE_RULES = ["recommended-fastpath", "default-if-auto", "majority", "escalated"] as const;
 
 export type AutoGateRule = (typeof AUTO_GATE_RULES)[number];
@@ -172,7 +172,7 @@ export interface AutoGateDecision {
   reason: string;
 }
 
-/** 3 under `--auto`, 5 under `--auto --max` (`auto-option.md:32` seeds `--max` with 5 directly). */
+/** 3 under `--auto`, 5 under `--auto --max` (`auto-option.md` §Decision Committee fixes both sizes). */
 function committeeSize(mode: AutoGateInput["mode"]): number {
   return mode === "auto-max" ? 5 : 3;
 }

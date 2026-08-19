@@ -89,7 +89,7 @@ Step 13  : push 실패 / PR 작업 실패 처리 (부모 Step 10 push 충돌 처
 - 부모 Step 2 코드 의도 분석 (type / 영향 범위 / WHY)
 - 부모 Step 3 Issue 후보 감지 + 매칭 평가 (브랜치명 패턴 → assignee → trailer → 수동 hint → Haiku 매칭). **등급 정의**: Haiku 평가자가 scope_match / intent_match / ac_coverage / no_partial 4축 모두 A+ 일 때 `A+`. 1축 이상 A 이하 + 후보 자체는 유효한 경우 `A 이하`. 후보 자체가 0건이거나 평가자가 매칭 근거 부재로 거부한 경우 `매칭 없음` (부모 §3.3 참조 — 등급 변화 시 부모 SSOT 갱신)
 - 부모 Step 4 커밋 메시지 초안 작성 (`Closes #N` / `Refs #N` trailer 결정)
-- 부모 Step 5 2개 Haiku 평가자 A+ 루프 (MessageQualityReviewer + SpecComplianceChecker, `MAX_EVAL_ITERATIONS = 10`)
+- 부모 Step 5 2개 Haiku 평가자 A+ 루프 (MessageQualityReviewer + SpecComplianceChecker, `MAX_EVAL_ITERATIONS` = `--loops N`이면 N, `--mini`면 3, 없으면 기본값 10)
 - 부모 Step 6 자동 스테이징 + 커밋 (민감 파일 필터)
 - 부모 Step 7 시그니처 검증
 
@@ -331,7 +331,7 @@ PR body 의 trailer 와 commit message 의 trailer 는 **양쪽 모두 동일 tr
 부모 Step 5 와 동일 구조 (동일 `MAX_EVAL_ITERATIONS` 상수 — 부모 갱신 시 자동 계승), 평가자 1개 (PR body 전용):
 
 ```
-MAX_EVAL_ITERATIONS = 10   # 부모 Step 5 와 동일. 부모 값 변경 시 본 스킬은 자동 계승
+MAX_EVAL_ITERATIONS = (--loops N ? N : --mini ? 3 : 10)   # 기본값 10, 부모 Step 5 와 동일 해석 (loop-option.md §4)
 
 best_body = None
 best_score = -1   # A+ 받은 축 수가 많을수록 높은 점수 (초기 -1 → 첫 iteration 무조건 갱신)

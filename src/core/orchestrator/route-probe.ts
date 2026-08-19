@@ -54,7 +54,7 @@ export interface PlanProbe {
 }
 
 // 09 §3.2 S2, §3.3 D5. The contract values a `kiwi-pm` boot admits, and the id regexes it enforces
-// (`kiwi-pm/SKILL.md:21`, `:41-51`, `§0.14`). Each is a boot rejection in the delegated child, so a plan
+// (`kiwi-pm` §Official Workflow Tool Policy and §0.14). Each is a boot rejection in the delegated child, so a plan
 // failing any of them is not runnable and the routing decision must know which one failed.
 const PLAN_CONTRACT = "1.2.0";
 const PLAN_SCHEMA_VERSION = "1.1.0";
@@ -365,7 +365,7 @@ export function parseRouteProbe(json: unknown): RouteProbe {
   const scopeReqIds = s4 && !("scope_req_ids" in s4) && emptyDenominator ? [] : mark("S4", s4 ? stringArray(s4.scope_req_ids) : undefined, unreadableList("S4"));
 
   const probe: RouteProbe = {
-    // S1's fail-open lands on `wait`, which is `workmode-policy.md:17`'s own value and §4's business
+    // S1's fail-open lands on `wait`, which is `workmode-policy.md` §1's own value and §4's business
     // rather than a disqualifier's; §8.2 clause 4 is what withholds the fast path on it.
     mode: mark("S1", mode, "wait"),
     modeSource: mark("S1", modeSource, "default-wait"),

@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 // mirror — and a stale copy silently restores the pre-extension contract with no other trace.
 //
 // Runtime lag: these assertions read the BUNDLED copies under `skills/**` and `.agents/skills/**`.
-// The running agent reads `~/.claude/skills/…`, which `00.charter.md:303-304` forbids this
+// The running agent reads `~/.claude/skills/…`, which `the charter's standing constraints` forbids this
 // repository from reinstalling into, so the installed copy stays behind until a consumer reinstalls.
 // That lag is recorded as verification evidence on each requirement; it is not a reason to weaken
 // anything here.

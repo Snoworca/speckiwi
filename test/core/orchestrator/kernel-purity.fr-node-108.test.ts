@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 //
 // VE-1 says this half of the criterion is carried by nothing: determinism and injection both hold
 // even if a kernel read a file that exists, and the only scan that looks for impurity —
-// resume.fr-node-150.test.ts:26 — reads `resume.ts`'s own text and stops there. A module it imports
+// resume.fr-node-150.test.ts — reads `resume.ts`'s own text and stops there. A module it imports
 // could open a socket and every assertion would stay green.
 //
 // A committed handoff read the criterion as FALSE on the strength of `resume-card.ts` →

@@ -22,7 +22,7 @@ import {
 // Two facts about the key are load-bearing and each is asserted by a case that fails when it is
 // wrong rather than by a comment:
 //
-//   1. The tool name is NOT inside the hash. `kiwi-coder SKILL.md:569` already writes
+//   1. The tool name is NOT inside the hash. `kiwi-coder SKILL.md` already writes
 //      `args_hash: sha1(canonicalJson(args))`. A planner that hashed `tool | args` would compute a
 //      different key for every recorded entry, so every dedupe lookup would MISS and a resume after
 //      `integrate-lane` would re-apply every lane's evidence and completed-work rows.

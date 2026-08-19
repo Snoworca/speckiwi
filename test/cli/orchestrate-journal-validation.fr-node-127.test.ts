@@ -39,7 +39,7 @@ async function write(root: string, relativePath: string, text: string): Promise<
 
 const JOURNAL = "kiwi/waves.jsonl";
 
-/** A `complete` with no passing wave-verify record: `waves-event.md:135`'s completion gate. */
+/** A `complete` with no passing wave-verify record: `waves-event.md §2.3`'s completion gate. */
 const INVALIDATING_LINE = {
   schema_version: "1.4.0",
   run_id: "run-a",

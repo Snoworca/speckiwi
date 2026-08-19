@@ -21,15 +21,15 @@ import { describe, expect, it } from "vitest";
 //
 // Every discriminating assertion is anchored on a window around a NET-NEW token that is ABSENT from
 // kiwi-srs today — the "Process A" / "Process B" loop labels, "research document" intake, the
-// "improvements document", the "divergence" guard, and "document count × 3" fan-out. The single
+// "improvements document", the "divergence" guard, and the document-count fan-out. The single
 // "verification subagent" wording added by FR-FLOW-022 / T-PH001-02 is deliberately NOT used as a red
 // anchor because it already exists; the A/B-loop concepts above do not. Because windowsAround on an
 // absent anchor returns [], each `.some(...)` is false today -> genuine red, with no false-green risk.
 //
 // The "Process A" / "Process B" labels are matched case-SENSITIVELY so an incidental "process a
 // request" prose phrase cannot satisfy the anchor. Divergence-guard cap numbers (5 normal / 8 --max)
-// follow plan OQ-023; the --max Process-A fan-out (3 verification subagents on the single-document
-// baseline; document count × 3 for multiple documents) follows AC-4 / AC-5.
+// follow plan OQ-023; the --max Process-A fan-out follows AC-4 / AC-5 — 3 verification subagents,
+// and since FR-FLOW-142 superseded AC-5 that stays 3 however many documents there are.
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -86,6 +86,8 @@ const RUN_SCOPED_TEMP =
 // generic 종료/end token near a recurring "Process A" cannot false-satisfy the assertion.
 const TERMINATES_CLEAN =
   /no\s+(?:more\s+)?improvements?[^\n]{0,60}(?:terminate|stop|halt|end|complete|exit)|(?:terminate|stop|halt|exit)[^\n]{0,50}no\s+(?:more\s+)?improvements?|(?:zero|0)\s+improvements?[^\n]{0,50}(?:terminate|stop|halt|end|complete|exit)|개선(?:사항|점)?[^\n]{0,8}(?:이\s*)?없[^\n]{0,40}(?:종료|중단|끝|완료)|개선(?:사항|점)?[^\n]{0,6}0\s*건[^\n]{0,30}(?:종료|중단|끝|완료)|(?:종료|중단|완료)[^\n]{0,30}개선(?:사항|점)?[^\n]{0,8}(?:이\s*)?없/i;
+/** The severity floor FR-FLOW-142 put in place of the exhaustion exit. */
+const SEVERITY_FLOOR = /CRITICAL[^\n]{0,20}HIGH|HIGH[^\n]{0,20}CRITICAL/;
 const APPLY = /appl(?:y|ies|ied)|반영|적용/i;
 // Korean gap widened so an inline recipient ("제어권을 Process A로 반환") does not false-red the claude
 // variant; the surrounding assertion also independently requires PROCESS_A in the same window.
@@ -105,7 +107,9 @@ const SUBAGENT = /sub-?agents?|서브\s*에이전트|서브에이전트/i;
 const THREE_NEAR_SUBAGENT =
   /\b3\b[^\n]{0,24}(?:sub-?agents?|서브\s*에이전트|서브에이전트)|(?:sub-?agents?|서브\s*에이전트|서브에이전트)[^\n]{0,12}(?:\b3\b|3\s*개|세\s*개)/i;
 const DOC_COUNT = /document\s+count|문서\s*(?:수|개수|갯수)|doc\s+count/i; // net-new
-const TIMES_THREE = /[×xX*]\s*3|3\s*[×xX*]|곱하기\s*3|3\s*배/;
+const TIMES_THREE = /[×xX*]\s*3|3\s*[×xX*]|곱하기\s*3|3\s*배|3\s*개|3\s*회/;
+/** The fan-out is fixed, not scaled by how many documents there are (FR-FLOW-142 AC-2). */
+const NOT_SCALED = /곱하지\s*않|무관하게|regardless of/i;
 const PER_DOCUMENT = /per[\s-]*document|per[\s-]*doc\b|문서\s*(?:별|마다|당)|각\s*문서/i;
 const SEQUENTIAL = /sequential|순차/i;
 
@@ -175,6 +179,19 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
         TERMINATES_CLEAN.test(text),
         `FR-FLOW-023 AC-2: ${variant} Process A must terminate when no improvements are found`,
       ).toBe(true);
+
+      // AC-2 amended by FR-FLOW-142: the floor is a SEVERITY, not the exhaustion of findings.
+      //
+      // TERMINATES_CLEAN alone cannot see that change — it matches "개선…없…종료", which the amended
+      // sentence still contains, so reverting §9.6 to unconditional exhaustion left this case green.
+      // That is the same defect as the AC-5 one below: a pattern that matches a claim also matches
+      // the claim it replaced. Assert the severity floor, and reject a bare exhaustion exit.
+      const clause = text.split(/\r?\n/).filter((line) => TERMINATES_CLEAN.test(line));
+      expect(clause, "no line states the termination condition").not.toEqual([]);
+      expect(
+        clause.every((line) => SEVERITY_FLOOR.test(line)),
+        `FR-FLOW-023 AC-2: ${variant} the termination must be conditioned on CRITICAL/HIGH, not on the exhaustion of findings`,
+      ).toBe(true);
     });
 
     it(`FR-FLOW-023 red :: AC-3 [${variant}] — Process B applies improvements and returns control, bounded by a 5/8 divergence guard`, () => {
@@ -233,21 +250,26 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
       ).toBe(true);
     });
 
-    it(`FR-FLOW-023 red :: AC-5 [${variant}] — multiple docs: non-max sequential per document, --max spawns (document count × 3)`, () => {
+    it(`FR-FLOW-023 red :: AC-5 [${variant}] — multiple docs: non-max sequential per document, --max stays at 3`, () => {
       const text = srsText(variant);
 
-      // --max spawns (document count × 3) verification subagents for multiple documents. Anchored
-      // on the net-new "document count" token.
+      // AC-5 amended: `--max` uses 3 verification subagents regardless of document count, superseded
+      // from (document count × 3) by FR-FLOW-142 AC-2.
+      //
+      // The earlier assertions here could not see that change. They required the tokens
+      // `document count`, `× 3` and `--max` to co-occur within one window, and the replacement text
+      // — "문서 수와 무관하게 검증 서브에이전트 3개" — contains all three while saying the opposite.
+      // Token co-occurrence cannot distinguish a claim from its negation, so the claim is asserted.
       expect(
         DOC_COUNT.test(text),
-        `FR-FLOW-023 AC-5: ${variant} must scale the --max fan-out by the research document count`,
+        `FR-FLOW-023 AC-5: ${variant} must say what the --max fan-out does with the document count`,
       ).toBe(true);
       const maxFanout = windowsAround(text, DOC_COUNT, 300).some(
-        (w) => TIMES_THREE.test(w) && MAX_FLAG.test(w),
+        (w) => TIMES_THREE.test(w) && MAX_FLAG.test(w) && NOT_SCALED.test(w),
       );
       expect(
         maxFanout,
-        `FR-FLOW-023 AC-5: ${variant} must state --max spawns (document count × 3) verification subagents`,
+        `FR-FLOW-023 AC-5: ${variant} must state --max uses 3 verification subagents regardless of document count`,
       ).toBe(true);
 
       // Non-max mode spawns verification subagents sequentially, per document. Bound to a

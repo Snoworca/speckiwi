@@ -62,11 +62,11 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 본 스킬은 Synthesizer 출력 후 자동 검증 단계를 수행:
 1. 각 source_quote 의 `quote` 가 `raw_path` 위치의 텍스트와 **literal string match** 되는지 확인 (결정적 검증, 자기검증 편향 없음)
-2. 매칭 실패 발견 시 `§10 axis 8 CRITICAL` finding 발생 + Synthesizer 재spawn
+2. 매칭 실패 발견 시 `§10 axis 8 CRITICAL` finding 발생 + Synthesizer 재spawn (**상한 2회**; 초과 시 재spawn 하지 않고 잔여 finding 을 호출자에게 보고)
 3. 매칭 성공 후 의역 detector 2축 병렬 검증:
    - **standard detector**: "claim 이 quote 의 의미를 보존하는가? 의역/확장/축소 여부" 판정
    - **high-reasoning detector**: 동일 질문 (모델 비대칭 보정)
-4. 두 detector 모두 "의역 의심" 시 `§10 axis 8 HIGH` finding + Synthesizer 재spawn
+4. 두 detector 모두 "의역 의심" 시 `§10 axis 8 HIGH` finding + Synthesizer 재spawn (2번과 같은 카운터, 합산 상한 2회)
 5. 한 detector 만 의심 (불일치) 시 사용자 보고에 "의역 의심 분기됨: claim 검토 권장" 경고 첨부. 본 detector 이견은 별도 필드 `paraphrase_detector_disagreements[]` 에 기록 (`dissent_findings` 와 분리 — 후자는 원본 researcher A/B/C 이견 전용 컨테이너)
 
 **주의 사용자 메시지**: 의역 의심 0건 보고도 detector LLM 자기 판단이므로 사용자 샘플 검토 권장. report.md 에 "자동 detector 통과는 100% 무결성 보증 아님 — 1-2건 sampling 권장" 워닝 첨부 (§7.1.3 사용자 보고).

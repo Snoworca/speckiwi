@@ -13,7 +13,7 @@ export const ISSUE_CLASSES = ["local-defect", "missing-task", "design-gap", "new
 export type IssueClass = (typeof ISSUE_CLASSES)[number];
 
 /**
- * The closed `reason_class` vocabulary (`waves-event.md:92`, plus v1.4.0's two additive values).
+ * The closed `reason_class` vocabulary (`waves-event.md` §2.3 `residual[]`, plus v1.4.0's two additive values).
  *
  * A deferral records *why* an issue was held as a classification rather than as free text.
  */

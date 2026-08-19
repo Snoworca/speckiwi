@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 // and structures the three share rather than on prose that legitimately differs.
 //
 // Runtime lag: these read the BUNDLED copies. The installed copies under `~/.claude/skills/…` stay
-// at the old text because `00.charter.md:303-304` forbids reinstalling from this repository; that
+// at the old text because `the charter's standing constraints` forbids reinstalling from this repository; that
 // lag is recorded as verification evidence, not accommodated here.
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -114,7 +114,7 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
     }
   });
 
-  // AC-1: the table, in the three-column shape `auto-option.md:252` demands. The string does not
+  // AC-1: the table, in the three-column shape `auto-option.md §Propagation` demands. The string does not
   // occur in the skill today, which is what makes `--auto` inactive for it by the safe default.
   it.each(TDD_COPIES)("%s declares a three-column critical_gates table", (copy) => {
     const gates = gatesSection(read(copy));

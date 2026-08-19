@@ -142,7 +142,7 @@ GitHub 의 close keyword 6종 (`close|closes|closed|fix|fixes|fixed|resolve|reso
 기존 git-commit-auto-push 와 동일하되, SpecComplianceChecker 평가 축에 **issue_trailer_correctness** 추가:
 
 ```
-MAX_EVAL_ITERATIONS = 10
+MAX_EVAL_ITERATIONS = (--loops N ? N : --mini ? 3 : 10)   # 기본값 10 (loop-option.md §4; 동시 지정 시 --loops 우선)
 
 WHILE iterations < MAX_EVAL_ITERATIONS:
     quality_result    = Agent(haiku, MessageQualityReviewer)

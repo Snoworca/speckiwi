@@ -11,7 +11,7 @@ import { computeRunProgress } from "../../../src/core/orchestrator/waves-validat
 // its wave from `waveStatuses` entirely, so a resumed run cannot find the unfinished wave and
 // advances to final verification without it. A verb line stamped `status: "in_progress"` — the
 // obvious repair — reopens a wave that had completed. The cause is `latestPerWave`
-// (`waves-journal.ts:76`), which is set by every line carrying a `wave-{n}` value; a program-counter
+// (`waves-journal.ts`), which is set by every line carrying a `wave-{n}` value; a program-counter
 // line is a record that a verb ran, not an assertion about the wave's state.
 
 const RUN = "run-a";

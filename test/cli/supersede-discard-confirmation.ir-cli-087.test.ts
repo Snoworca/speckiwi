@@ -15,7 +15,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // surface: there was no way to ask for the guarded behaviour.
 //
 // CORRECTION 2026-08-06: this comment used to say the same supersede "was guarded through MCP and
-// unguarded through the CLI". That is false. `src/mcp/tools/mutation-tools.ts:534` hardcodes
+// unguarded through the CLI". That is false. ``supersedeRequirement` in src/mcp/tools/mutation-tools.ts` hardcodes
 // `confirmDiscardVerified: true` as well and the MCP schema declares no such argument, so an agent
 // cannot express the choice either. Both surfaces bypassed the guard. Nothing asserted below changes
 // — every case here is scoped to the CLI — but the reason written above it was wrong.

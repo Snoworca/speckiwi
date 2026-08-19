@@ -103,7 +103,7 @@ function modeDivergence(probe: RouteProbe, rung: Rung, removed: readonly RouteRe
   if (rung === "R-STEP") return probe.mode === "tdd" ? null : "step-rung-requires-mode-switch";
   if (probe.mode !== "tdd") return null;
   // Mode `tdd` on a non-step rung: conformance when D1–D4 removed the step rung
-  // (`kiwi-pipeline/SKILL.md:194-195` keeps those on the sdd chain regardless of mode), an override of
+  // (`kiwi-pipeline` §2.7.2 keeps those on the sdd chain regardless of mode), an override of
   // its routing clause when the step rung survived and lost on §3.4's order.
   return removed.some((entry) => entry.rung === "R-STEP") ? "step-rung-removed" : "plan-rung-won-on-order";
 }

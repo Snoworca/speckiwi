@@ -303,7 +303,7 @@ Phase 2.5 종료 시점에 `validate_spec` MCP 호출. diagnostic 0건이면 Pha
 
 ### 7.1 서브에이전트 spawn (병렬)
 
-scope 1개 = Opus 서브에이전트 1개 (격리 컨텍스트). **병렬 실행 = 단일 메시지에서 모든 scope agent 를 동시 spawn**.
+scope 1개 = 서브에이전트 1개 (격리 컨텍스트). 모델은 §0.10 이 SSOT — 현재 세션 모델 상속, `--model` 로 override. **병렬 실행 = 단일 메시지에서 모든 scope agent 를 동시 spawn**.
 
 ### 7.2 Resume Protocol (CRITICAL 차단 해제)
 

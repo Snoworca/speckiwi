@@ -1,6 +1,6 @@
 ---
 name: kiwi-coder
-description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → standard×4 병렬 TDD 검증 → high-reasoning 시니어 구현 → 정형 검사 → 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --auto 는 공용 auto-option 정책으로 메인 게이트와 후속 kiwi-review-fix-loop --close-reqs handoff를 자동화하되 --yes-all/--auto-integration/--auto-cost-warning은 자동 활성하지 않음. 검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 그 모델을 override 한다(TDD 검증 standard×4 불변)."
+description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입력 SSOT 로 받아 Task 단위로 TDD 선행 → standard×2 병렬 TDD 검증 → high-reasoning 시니어 구현 → 정형 검사 → 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화하는 코딩 스킬 v0.1. 재개 가능. 트리거: 계획대로 구현, kiwi 코딩, tdd 코딩, plan 구현, kiwi planner 산출물 구현. --auto 는 공용 auto-option 정책으로 메인 게이트와 후속 kiwi-review-fix-loop --close-reqs handoff를 자동화하되 --yes-all/--auto-integration/--auto-cost-warning은 자동 활성하지 않음. 검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 그 모델을 override 한다(TDD 검증 standard×2 불변)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-coder v0.1.9
@@ -25,7 +25,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 
 | 키 | 규칙 |
 |---|---|
-| §0.1 | **TDD 강제**. 모든 코딩 Task 는 (1) 테스트 작성 → (2) standard×4 병렬 검증 → (3) red 실패 확인 → (4) 구현 → (5) green 확인 순서. 우회 금지 |
+| §0.1 | **TDD 강제**. 모든 코딩 Task 는 (1) 테스트 작성 → (2) standard×2 병렬 검증 → (3) red 실패 확인 → (4) 구현 → (5) green 확인 순서. 우회 금지 |
 | §0.2 | **planner sidecar 의무 SSOT**. 입력 plan 의 `plan_contract` ∈ {"1.2.0"} 필수 (kiwi-planner §0.15 의 dual-accept `["1.1.0", "1.2.0"]` 중 본 스킬은 `1.2.0` 만 수용 — `1.1.0` 은 TDD 필드 부재로 §0.1 강제와 충돌). `schema_version` ∈ {"1.1.0"} 필수. `tdd_policy=disabled` 인 plan 은 즉시 거부. 거부 시 안내: "kiwi-planner --tdd-policy=relaxed\|strict 로 재실행하여 plan_contract=1.2.0 + schema_version=1.1.0 산출물을 생성하십시오" |
 | §0.3 | **/snoworca-\* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부. `_shared/snoworca/` 모듈 로드도 금지 |
 | §0.4 | **검증자는 별도 서브에이전트**. 인라인 자가검증 금지 (project verification rule) |
@@ -40,22 +40,24 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | §0.13 | **회귀 테스트 의무**. Task 종료마다 (1) 영향받는 test 파일 실행 + (2) 전체 회귀 스위트 실행. `--skip-regression` 플래그 명시 시에만 (2) skip, (1) 은 항상 실행 |
 | §0.14 | **id 정규식 SSOT** (kiwi-planner §0.14 와 동일). `run_id` = `[a-z0-9.-]{4,40}` (dot 허용 — planner run-id `{YYYY-MM-DD}.{project-slug}.{target-slug}` 호환), `phase_id` = `^PH-\d{3}$`, `task_id` = `^T-PH\d{3}-\d{2}$`. 입력 sidecar 가 위반하면 §0.G3 차단 |
 | §0.15 | **plan-step ↔ task 1:1**. sidecar.tasks[] 가 곧 작업 단위. 메인이 임의로 task 분할/병합 금지 — 필요 시 `$kiwi-planner` 재호출 권고 |
-| §0.16 | **검증 서브에이전트 모델 정책 SSOT**. 정형 검사·까칠 리뷰 등 검증 서브에이전트(verification subagent)는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다 (시니어 코더는 영향 없음). **TDD 검증 standard×4 (Phase 1.2) 는 모든 모드 공통 유지 (§0.1)** — 모델 불변. 심각도 게이트·회귀 테스트 의무는 불변 |
+| §0.16 | **검증 서브에이전트 모델 정책 SSOT**. 까칠 리뷰 등 검증 서브에이전트(verification subagent)는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 검증 서브에이전트의 모델을 override 한다 (시니어 코더는 영향 없음). **TDD 검증 standard×2 (Phase 1.2) 는 모든 모드 공통 유지 (§0.1)** — 모델 불변. 심각도 게이트·회귀 테스트 의무는 불변 |
 | §0.17 | **`@req` 태그 부착 (참고용 SSOT)**. 본 §0.17 은 글로벌 project editing guidance (Simplicity / Surgical Changes) 의 코멘트 보수성 가이드보다 본 skill 내부에서 **우선**한다. 세부 규약은 §0.17.1~§0.17.7. **본 태그는 순수 참고용** — speckiwi `add_trace_link` 가 SSOT, 태그는 rg/search 보조. REQ rename/deprecate 시 자동 갱신 의무 없음 (부패 허용). **운영 순서 SSOT** (시니어 코더 단계별): (1) §0.17.1 의무 범위 + §0.17.2 면제 enum 판정 → (2) 면제 시 worklog `req_tag_exempted` append + skip / 의무 시 다음 → (3) §0.17.5 lenient 정규식으로 기존 토큰 set 추출 + 새 토큰 dedupe 검사 → (4) 일치 시 skip / 미일치 시 §0.17.4 위치 결정 → (5) 위치 모호 시 worklog `req_tag_position_ambiguous` + 보류 / 결정 시 §0.17.3 wrapper-tolerant 정규식 형식으로 신규 라인 작성 |
 | §0.17.1 | **의무 범위**. 코딩 Task (type ∈ {code, perf_test, infra}) 의 **구현 단계 (Phase 2.c) 에서 새로 정의되는 클래스/메서드/함수** 에 한해 부착 의무 (가시성 제한 없음 — public/private 무관). 함수 정의 = 명명 함수 (named function/method) + lambda/closure/arrow function (단, §0.17.2 enum (5) 의 private 1라인 lambda 는 면제). 부착 위치 = 정의 직전 라인 또는 docstring 첫 줄. **테스트 파일은 부착 의무 대상에서 제외** — 식별 SSOT: (a) sidecar.tdd.test_cases[].test_file 에 명시된 모든 파일, (b) 경로 정규식 `(^|/)(tests?|__tests__|spec|e2e|integration)(/|$)` 매칭 디렉토리 내 파일, (c) 파일명 정규식 `\.(test|spec)\.[a-zA-Z]+$` 매칭 파일. 통합 테스트 (§8.2 산출물) 도 본 면제에 포함. 테스트의 REQ 매핑은 `test_case.ac_refs` 가 SSOT. 비코딩 Task (type ∈ {doc, file_op, issue, pr, review}) 도 면제 |
 | §0.17.2 | **면제 enum (closed-list, 시니어 재량 없음)**. 아래 8종만 면제: (1) 1라인 getter (`return this.x`), (2) 1라인 setter (`this.x = v`), (3) 언어 자동 생성 메서드 명시 (Java toString/hashCode/equals, JS Object.prototype.*, Python `__repr__`/`__eq__`/`__hash__`/`__init__` 자동 생성, Rust `#[derive(...)]` / procedural attribute macro `#[...]` (예: `#[tokio::main]`, `#[async_trait]`) / function-like macro `macro!(...)` (예: `lazy_static!{}`, `bitflags!{}`) 가 생성한 메서드, Go receiver method 자동 생성), (4) IDE 자동 생성 boilerplate constructor (필드 대입 (다중 가능) + `super(...)` 호출 + null-coalescing default 까지 허용. 비즈니스 로직·검증·side effect 가 1줄이라도 포함되면 부착 의무), (5) private 1라인 lambda/helper (가시성 무관 의무 §0.17.1 에 따라 lambda 도 의무 — 본 enum 항목으로만 면제), (6) 인터페이스/추상메서드 (구현 없음), (7) override 시 부모에 이미 `@req` 가 있고 **부모가 cwd 내부일 때만** (부모가 외부 라이브러리면 enum 7 미적용 = 부착 의무), (8) IDE/언어/매크로가 인간 작성 없이 자동 생성한 메서드 일반 (worklog 사유에 `reason_enum_id=8` + `raw_reason` 부가 **의무**). **결정 알고리즘**: enum (1)~(7) 매칭 패턴이 있으면 우선 분류 (raw_reason 불필요), enum (1)~(7) 어디에도 매칭 안 되는 자동 생성 메서드만 enum (8) 사용 — Rust derive 같이 enum (3) 명시 항목이 있는 경우는 항상 (3). **면제 적용 시 worklog `req_tag_exempted { task_id, member_path, reason_enum_id, raw_reason? (enum=8 필수, 그 외 생략) }` append 의무** (§7.3 enum 19). enum 외 사유로 면제 불가 |
 | §0.17.3 | **형식·정규식 SSOT**. REQ-ID 토큰 형식 정규식: `[A-Z][A-Z0-9-]*[A-Z0-9]` (trailing hyphen 차단, 2자 이상). **단일 라인/wrapper-tolerant 정규식** (신규 부착 검증용 + §0.17.6 운영 면책용 공용, line-anchored, 부가 표기 흡수, **1라인 1 REQ-ID**): `^\s*([/*#]+\s*)?@req\s+[A-Z][A-Z0-9-]*[A-Z0-9](\s*\(.+?\))?\s*\*?/?\s*$`. 라인 시작 anchor `^` 강제 — 코드+태그 섞임 라인 (예: `let x=1; // @req X`) 매칭 차단. trailing 부가 표기 흡수 — `\s*\(.+?\)` non-greedy 라 공백 유무 무관 (`@req X (legacy)` / `@req X(legacy)` 둘 다 매칭). 다중 REQ → 라인 분리. 언어별 주석 스타일: TS/JS/Java/Go/Rust/C/C++ = `// @req X`, Python/Ruby/Shell = `# @req X`, JSDoc/JavaDoc multi-line = `* @req X` (단일 라인 `/** @req X @param y */` **금지**). **REQ-ID 토큰의 실재성 (speckiwi 조회) 은 본 skill 어디서도 검증하지 않음** (§0.17.6 면책). 형식적 무결성도 검증 안 함 — REQ-ID 형식은 speckiwi/kiwi-srs 가 보장하는 외부 책임. 형식 위반 토큰 (1자, trailing hyphen 등) 은 라인 정규식 매칭 실패로 자연 차단됨. dedupe 비교는 §0.17.5 의 lenient 정규식 사용 (별도 용도) |
 | §0.17.4 | **append 위치 SSOT + docstring 정의**. docstring 정의 (언어별): Python `"""..."""` 또는 `'''...'''` triple-quoted / JSDoc·JavaDoc `/** ... */` block / Rust `///` line-doc + `/** */` block-doc / TS·C#·PHP `/** */`. **docstring 개념이 없는 언어 (Go·Bash 등) 는 항상 (b) 외부 분기 적용**. append 규칙: (a) 기존 `@req` 라인이 docstring 내부면 마지막 `@req` 라인 직하 (동일 docstring block 내부) 에 새 라인 추가. (b) 외부 (정의 직전 주석 블록) 면 외부의 마지막 `@req` 라인 직하. 기존 라인 사이 삽입·재배치·삭제 금지. 위치 모호 시 시니어는 추가 보류 + worklog `req_tag_position_ambiguous { task_id, member_path }` 기록 (§7.3 enum 20). 보류된 멤버는 §0.17.7 의 부착 누락 상태로 간주 — `req_tag_missing_observed` 도 함께 append 가능 (별도 정리 Task). **mixed-location 케이스** (한 멤버에 docstring 내부 + 외부 양쪽에 기존 `@req` 가 모두 존재) 는 docstring 내부를 우선 — Python·JSDoc 자연스러운 문서 통합 위치. 단 모호 시 보류로 fallback |
 | §0.17.5 | **dedupe SSOT**. 기존 라인에서 REQ-ID 토큰을 추출할 때는 **lenient 정규식 (dedupe 전용)** `@req\s+([A-Z][A-Z0-9-]*[A-Z0-9])` (§0.17.3 와 동일 REQ-ID 형식, line-anchored 제거) 으로 lenient 검색. 부가 표기 (예: `@req FR-X-001 (legacy)` 의 `(legacy)`, 단일 라인 다중 태그 `/** @req X @param y */`) 가 붙은 비정상 라인에서도 토큰 추출. 추출된 모든 REQ-ID 토큰의 set 을 기존 부착 토큰 set 으로 간주. 새 토큰이 set 에 case-sensitive 일치 시 dedupe (추가 금지). **§0.17.3 wrapper-tolerant 정규식 (line-anchored, 부착 검증 + §0.17.6 면책 공용) 과 본 §0.17.5 lenient 정규식 (line-anchored 미적용, dedupe 전용) 은 별개 SSOT** — 두 정규식의 분리 사용으로 dedupe 의 부가 표기 흡수 (§0.17.5) 와 면책의 코드+태그 섞임 차단 (§0.17.3/§0.17.6) 동시 보장 |
-| §0.17.6 | **포괄 면책 (검증 leak 차단) + 운영 알고리즘**. `@req` 태그는 본 skill 의 다음 모든 단계에서 점검·비교·검증·존재 여부 확인 대상이 **아니다**: §0.G1~§0.G5 게이트, §4.2 standard×4 TDD 검증, §5.1.(b) Mock 금지 regex 스캔, §5.1.(d) ZERO TOLERANCE 계획-코드 일치 게이트, §5.1.(e) 정형 검사, §5.1.(f) 까칠 리뷰, §5.1.(j) DoD 검증, §6.1 회귀 테스트, §6.2 MCP mutation, §8.2 통합 테스트 정형/까칠 리뷰. **§0.7 의 ZERO TOLERANCE 평가 알고리즘 SSOT**: diff hunk 의 added-only 라인 중 **§0.17.3 wrapper-tolerant 정규식** (line-anchored, 부가 표기 흡수) 매칭 라인만 변경 set 에서 제거 후 sidecar.action 외 변경 판정. 부가 표기 라인 (예: `@req FR-X-001 (legacy)`) 은 wrapper-tolerant 가 직접 흡수. **코드+태그 섞임 라인** (예: `let x=1; // @req X`, `const msg="@req X"`) 은 라인 시작 anchor `^` 와 주석 prefix 강제로 자동 차단 → 변경 set 에 포함 (false-negative 방지). §0.17.5 lenient 정규식은 본 면책에 사용하지 않음 — dedupe 전용. 어느 검증자도 `@req` 관련 finding 발행 금지 |
+| §0.17.6 | **포괄 면책 (검증 leak 차단) + 운영 알고리즘**. `@req` 태그는 본 skill 의 다음 모든 단계에서 점검·비교·검증·존재 여부 확인 대상이 **아니다**: §0.G1~§0.G5 게이트, §4.2 standard×2 TDD 검증, §5.1.(b) Mock 금지 regex 스캔, §5.1.(d) ZERO TOLERANCE 계획-코드 일치 게이트, §5.1.(e) 정형 검사, §5.1.(f) 까칠 리뷰, §5.1.(j) DoD 검증, §6.1 회귀 테스트, §6.2 MCP mutation, §8.2 통합 테스트 정형/까칠 리뷰. **§0.7 의 ZERO TOLERANCE 평가 알고리즘 SSOT**: diff hunk 의 added-only 라인 중 **§0.17.3 wrapper-tolerant 정규식** (line-anchored, 부가 표기 흡수) 매칭 라인만 변경 set 에서 제거 후 sidecar.action 외 변경 판정. 부가 표기 라인 (예: `@req FR-X-001 (legacy)`) 은 wrapper-tolerant 가 직접 흡수. **코드+태그 섞임 라인** (예: `let x=1; // @req X`, `const msg="@req X"`) 은 라인 시작 anchor `^` 와 주석 prefix 강제로 자동 차단 → 변경 set 에 포함 (false-negative 방지). §0.17.5 lenient 정규식은 본 면책에 사용하지 않음 — dedupe 전용. 어느 검증자도 `@req` 관련 finding 발행 금지 |
 | §0.17.7 | **부착 누락의 처리**. 누락은 본 skill 의 어떤 게이트도 차단하지 않는다. 사후 보완은 별도 정리 Task 로 처리 (본 스킬 책임 외). 누락 발견 시 시니어 코더가 자기 점검으로 worklog `req_tag_missing_observed { task_id, member_path }` 정보성 append 가능 (severity 없음, §7.3 enum 21). 검증자는 본 이벤트 append 도 금지 (§0.17.6) |
 | §0.18 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto` 는 메인 게이트 결정과 §8.4 후속 `$kiwi-review-fix-loop --close-reqs --auto` handoff 에만 적용한다. `--yes-all`, `--auto-integration`, `--auto-cost-warning` 은 사용자가 명시했을 때만 활성화된다. |
-| §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
+| §0.19 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 대체 대상 카운터는 §0.G4 의 셋 — 시니어 코더 재호출, TDD 검증자 재호출, 까칠 리뷰어 재호출 — 이며 그 외 게이트 카운터는 불변. 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.20 | **기존 테스트 불가침**. green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**를 모두 **금지**한다 — 통과하지 않는 테스트는 구현을 고쳐서 닫는다. 테스트를 지우면 그 시점에 회귀 안전망이 사라지고, 이후 라운드는 사라진 계약을 검증하지 못한다. 계약 자체가 바뀌어야 하면 plan/SRS 를 먼저 고쳐 §0.7 을 다시 통과한다. 탐지·차단 = §5.1.(d) + §0.G6 `existing-test-weakened-or-deleted` |
 | §0.20.1 | **기존** 의 판정. 그 Task 의 **기준선 커밋** (`state.regression_baseline.head_sha`) 시점에 이미 존재하던 파일 · 테스트 케이스 · 단언 · 심볼만 "기존"이다 — 같은 Task 안에서 새로 만든 것은 §0.20 의 대상이 아니다. `regression_baseline` 이 null (§3.5 캡처 실패) 이면 그 Task 의 첫 편집 직전 HEAD 를 기준선 커밋으로 쓴다. 시점을 고정하지 않으면 방금 쓴 red 테스트를 고치는 일까지 같은 금지에 걸린다 |
 | §0.20.2 | **public 심볼** 의 판정. 기준선 커밋 시점에 그 모듈의 **export 표면** (언어별 `export` 선언 / `public` 선언 / 패키지 공개 API 목록) 에 있던 이름만 public 이다 — 경로 토큰 휴리스틱 (`api/` · `public/` 등) 으로 대신하지 않는다. 계약 파손은 경로가 아니라 심볼에서 일어난다 (§0.G6 `existing-public-contract-change`) |
 | §0.20.3 | **약화** 의 판정 (closed list — 넷이 전부이며, 넷 중 하나라도 diff 에 있으면 약화다). (1) **단언 삭제**, (2) 단언 술어를 더 느슨한 것으로 교체 (동등 비교 → 존재 확인 등), (3) 케이스의 `skip` / `only` / 주석 처리, (4) **기대값**을 관측값으로 교체. 판정에 시니어 재량 없음 — 목록 밖의 사유로 약화를 면제하지 않는다 |
 | §0.20.4 | **증거 기반 해소**. 기존 파일의 삭제·이동(§0.G6 `existing-file-deleted-or-moved`, 검출 지점 §5.1.(d)) 과 기존 public 심볼의 삭제·시그니처 변경(동 `existing-public-contract-change`) 은, 그 변경을 요구하는 **REQ-ID** 또는 **Task-ID** 가 `sidecar` 에 있고 그 Task 의 `action` 이 이동·삭제·시그니처 변경을 **명시**할 때 `intended-improvement` 로 기록하고 진행한다. 근거를 대지 못한 변경은 `unapproved-damage` 이며 critical 이다 — `sidecar.files[]` 등재는 편집 허가일 뿐 제거 허가가 아니다. **단 §0.20.3 의 약화와 기존 테스트 삭제는 같은 근거로 해소되지 않는다** — 기준을 낮추는 것은 어떤 계획도 승인할 수 없다. 본 판정은 `kiwi-wave-master §5.5.2` 의 보존 계층과 **같은 두 값 enum · 같은 근거 요건**을 쓴다 |
+| §0.21 | **주석은 저 혼자 움직이는 것을 가리키지 않는다**. 코드 주석에 **줄번호 인용 금지** (`file.md:412` · `helper.ts:40-52` 형태) — 인용 대상 파일이 편집되면 조용히 틀려지고, 틀린 줄번호를 다시 찾아주는 일이 곧 검증 비용이다. 대신 **함께 움직이는 이름**으로 가리킨다: 코드 **심볼**명 · 문서 **헤딩** 제목 · `@req <REQ-ID> AC-N`. 불가피하면 그 줄에 `@cite-lint: ignore` 를 붙인다 (줄 단위 범위 — 파일 단위 면제는 없다). 같은 이유로 열거된 집합의 **개수를 옮겨 적지 않는다** — 집합 이름으로 부르거나, 단언에서 그 집합으로부터 세어 쓴다 |
+| §0.22 | **요구는 틀릴 수 있다 — 우회하지 말고 보고한다**. 구현 중 요구와 코드가 어긋나면 요구를 억지로 만족시키는 우회 구현을 하지 않고 그 자리에서 보고한다. 충돌로 보는 것 셋: (1) 요구가 단언한 사실을 코드가 반증한다, (2) 기준을 적힌 대로는 만족시킬 수 없다, (3) 같은 요구의 두 부분이 서로 다른 답을 낸다. 해소는 **요구를 고치거나**(그 수정은 해당 요구의 Change Notes 에 남는다) **그대로 두는 이유를 기록**하는 것이다 — 저자가 알아보지 못할 방식으로 기준의 문면만 맞추는 것은 해소가 아니다 |
 | §8.4 참고 | `--mini`/`--loops N` 는 kiwi-review-fix-loop follow-up 에 전파 (loop-option.md §6) |
 
 ### §0.G — 핵심 게이트 결정표
@@ -69,7 +71,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | 비코딩 Task (type ∈ {doc, file_op, issue, pr, review}) 에 `tdd.applicable=false` (kiwi-planner C22 auto-exempt — `exempt_reason` 부재 허용) | TDD skip 허용, `state.tdd_exempted_task_ids[]` 에 등재, worklog `tdd_exempted { reason: "auto-exempt by type" }`, Phase 2 직행 |
 | `tdd.applicable=true` + `test_cases[]` 빈 배열 | 차단 + 사용자 보고 |
 | 시니어 코더가 테스트 작성 단계 skip 시도 | 차단 + Phase 1 재진입 강제 |
-| standard×4 검증에서 1개라도 CRITICAL finding 잔존 | Phase 2 (구현) 진입 차단, Phase 1.3 개선 루프 |
+| Phase 1 검증(standard×2 + 스크립트 판정 2종)에서 1개라도 CRITICAL finding 잔존 | Phase 2 (구현) 진입 차단, Phase 1.3 개선 루프 |
 | green 확인 실패 (구현 후에도 test 가 fail) | Phase 2.h 개선 루프 편입 (HIGH 카운터 소모) |
 
 #### §0.G2 — 외부 모듈 영향
@@ -160,7 +162,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | "통합 테스트 자동 동의" | `--auto-integration` | off (사용자 동의 게이트 유지) |
 | "비용 경고 자동 skip" | `--auto-cost-warning` | off |
 | "자동", "auto", "묻지 말고" | `--auto` | off (`../_shared/kiwi/auto-option.md`; 기존 세부 자동 옵션은 자동 활성하지 않음) |
-| "--model <name>", "검증 모델 지정", "다른 모델로 검증" | `--model <name>` | 현재 세션 모델 (정형 검사·까칠 리뷰 검증 서브에이전트에 적용) |
+| "--model <name>", "검증 모델 지정", "다른 모델로 검증" | `--model <name>` | 현재 세션 모델 (까칠 리뷰 검증 서브에이전트에 적용) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | "dry-run" | `--dry-run` | off (MCP mutation 미실행) |
@@ -172,15 +174,15 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 
 ### 1.3 모드 매트릭스
 
-| 모드 | 시니어 코더 | TDD 검증 (standard) | 정형 검사 (현재 세션 모델) | 까칠 리뷰어 (현재 세션 모델) | 비용 배수 |
+| 모드 | 시니어 코더 | TDD 검증 (standard) | 정형 검사 (스크립트) | 까칠 리뷰어 (현재 세션 모델) | 비용 배수 |
 |---|---|---|---|---|---|
-| Normal (기본) | high-reasoning × 1 | × 4 (병렬) | × 1 | × 1 | 2.0~2.5× (snoworca-coder Normal 대비) |
-| `--max` | high-reasoning × 3 | × 4 | × 1 | × 2 | 12~15× |
-| `--reviewer-off` | high-reasoning × 1 | × 4 | × 1 | × 0 | 1.6× |
+| Normal (기본) | high-reasoning × 1 | × 2 (병렬) | × 1 | × 1 | 2.0~2.5× (snoworca-coder Normal 대비) |
+| `--max` | high-reasoning × 3 | × 2 | × 1 | × 2 | 12~15× |
+| `--reviewer-off` | high-reasoning × 1 | × 2 | × 1 | × 0 | 1.6× |
 
-`--model <name>` 지정 시 정형 검사·까칠 리뷰 검증 서브에이전트의 모델을 override (기본은 현재 세션 모델; 시니어 코더·TDD 검증은 영향 없음).
+`--model <name>` 지정 시 까칠 리뷰 검증 서브에이전트의 모델을 override (정형 검사는 스크립트라 대상 아님) (기본은 현재 세션 모델; 시니어 코더·TDD 검증은 영향 없음).
 
-TDD 검증 (standard×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1) 의 핵심 검증 채널이므로 모드 변경 영향 없음.
+TDD 검증 (standard×2) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1) 의 핵심 검증 채널이므로 모드 변경 영향 없음.
 
 ### 1.4 출력 (산출물)
 
@@ -202,7 +204,7 @@ TDD 검증 (standard×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1)
       └── append-errors.log
   ```
 - **분석 로그**: `docs/analysis/kiwi-coder-{run-id}/`
-  - `tdd_review_iter{N}.json` (standard×4 결과 통합)
+  - `tdd_review_iter{N}.json` (standard×2 결과 통합)
   - `formal_review_iter{N}.json` (현재 세션 모델 정형)
   - `prickly_review_iter{N}.json` (현재 세션 모델 까칠)
   - `mcp_call_log.jsonl`
@@ -225,7 +227,7 @@ TDD 검증 (standard×4) 는 **모든 모드 공통**. TDD 강제 원칙 (§0.1)
 Phase 0 : Bootstrap (preflight, plan/sidecar 로드, .kiwi init/resume, target 확인, 회귀 기준선 캡처)
 Phase 1 : Task 진입 + TDD 작성·검증
   1.1 : 시니어 코더가 sidecar.tdd.test_cases[] 기반으로 테스트 파일 작성
-  1.2 : standard×4 병렬 검증 (4축, §4.2)
+  1.2 : standard×2 병렬 검증 (2축, §4.2)
   1.3 : 개선 루프 (CRITICAL/HIGH 잔존 시 1.1 재진입)
   1.4 : red 확인 (테스트 실행 → 의도된 fail + expected_failure_signature 정합)
   1.5 : sidecar.tdd.red_evidence 채움
@@ -234,7 +236,7 @@ Phase 2 : 구현 (snoworca-coder 차용)
   2.b : Mock 금지 regex 스캔
   2.c : 시니어 코더 구현
   2.d : 계획-코드 일치 게이트 (sidecar.files[], action, dod 정합)
-  2.e : 정형 검사 (현재 세션 모델×1, 4축)
+  2.e : 정형 검사 (스크립트, 4축)
   2.f : 까칠 리뷰 (현재 세션 모델×1/2, 8축)
   2.g : 개선 루프 (심각도 카운터)
   2.h : 테스트 실행 + green 확인
@@ -357,24 +359,37 @@ sidecar 의 모든 `traces[].req_id` 를 수집한 뒤 MCP `list_requirements` �
 
 분석 로그: `docs/analysis/kiwi-coder-{run-id}/tdd_draft_T-PHnnn-mm.txt`
 
-### 4.2 standard×4 병렬 TDD 검증 (4축)
+**검증 패스 산출물 영속 의무**: 각 검증 패스(TDD 검증·정형 검사·까칠 리뷰)는 결과를 `docs/analysis/kiwi-coder-{run-id}/` 아래에 기록한다. **finding 0 건이어도 기록한다** — 기록이 없으면 "아무것도 못 잡은 패스"와 "돌지 않은 패스"와 "버려진 산출물"을 구별할 수 없고, 그 구별 불가가 검사의 가치를 판단 불가로 만든다. 각 기록은 패스 이름·대상 task_id·severity 별 finding 을 담는다.
 
-**모든 모드 공통**. standard 4 인스턴스를 사용 가능한 서브에이전트 위임 도구로 병렬 실행한다. 각 검증자는 시니어의 rationale 미수신 (§0.5).
+### 4.2 standard×2 병렬 TDD 검증 (2축)
 
-**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: S1~S4 어느 검증자도 코드 주석의 `@req` 라인 존재 여부·정확성·REQ-ID 실재성을 검증/비교하지 않는다. 태그는 참고용이며 검증 축에 포함되지 않는다.
+**모든 모드 공통**. standard 2 인스턴스를 사용 가능한 서브에이전트 위임 도구로 병렬 실행한다. 각 검증자는 시니어의 rationale 미수신 (§0.5).
+
+**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: S1~S2 어느 검증자도 코드 주석의 `@req` 라인 존재 여부·정확성·REQ-ID 실재성을 검증/비교하지 않는다. 태그는 참고용이며 검증 축에 포함되지 않는다.
 
 | 검증자 | 모델 | 검증 축 | 출력 finding 형식 |
 |---|---|---|---|
-| **S1** intent-alignment | standard | 계획 의도/AC ↔ test 의미 일치 (test 가 정말 해당 AC 를 검증하는가, mock/회피 없는가, ac_refs 가 정확한가) | `{ severity, axis: "intent-alignment", evidence: {file, line}, suggestion }` |
+| **S1** intent-alignment | standard | 계획 의도/AC ↔ test 의미 일치 — test 가 정말 해당 AC 를 검증하는가 | `{ severity, axis: "intent-alignment", evidence: {file, line}, suggestion }` |
 | **S2** technical-quality | standard | TDD 코드 기술 품질 (네이밍, 결정성, flaky 위험, assertion 적절성, isolation, fixture) | `{ severity, axis: "tech-quality", ... }` |
-| **S3** req-mapping | standard | test_case.req_id / ac_refs 와 실제 코드의 매핑 정확성 (req_id ∈ task.req_ids, ac_refs ⊆ REQ.ac_total, test_case.id 정규식 SSOT 준수) | `{ severity, axis: "req-mapping", ... }` |
-| **S4** red-verification | standard | 작성된 테스트를 실제 실행 → fail 발생 여부 + expected_failure_signature 정합. **테스트 실행은 검증자가 직접 수행** (verification_cmd 또는 추론된 명령) | `{ severity, axis: "red-verification", expected_signature, actual_signature, exit_code, suggestion }` |
+
+**req-mapping · red-verification 은 서브에이전트가 아니라 스크립트가 판정한다.** 두 축의 통과 규칙이 각각 집합 소속·정규식과 exit_code·시그니처 동등비교로 이미 결정적으로 진술돼 있어, 판단자가 실행할 이유가 없다.
+
+| 판정 | 실행 주체 | 규칙 | 결과 |
+|---|---|---|---|
+| req-mapping | `kiwi-planner` **validator** 를 그대로 재사용 (해당 Task 범위로 실행) | `test_case.req_id ∈ task.req_ids` · `ac_refs ⊆ inventory(req_id).ac_ids` · `test_case.id` 정규식 — validator 의 C23·R04 가 이미 내리는 판정이며 **재구현하지 않는다** | 위반 시 CRITICAL, Phase 2 진입 차단 |
+| red-verification | 테스트 러너 직접 실행 (`task.verification_cmd`, 없으면 추론된 명령) | `exit_code` 와 `captured_failure` 를 `expected_failure_signature` 와 **동등비교**. 근사 일치는 실패로 본다 — 판단자보다 엄격하다 | red 미발생·시그니처 불일치 시 CRITICAL |
+
+**validator 는 이 자리에서 직접 실행하며, 그 필수 입력도 이 자리에서 만든다** — `--inventory-file` 은 해당 Task 의 `task.req_ids` 에 대해 `list_requirements`(또는 REQ 별 `get_requirement`) 결과를 `docs/analysis/kiwi-coder-{run-id}/inventory.json` 으로 dump 해 만든다. 형식은 `kiwi-planner` 와 동일한 `[{ id, ac_ids }]` 이다. 이 파일 없이 실행하면 validator 는 `ac_refs` 검증을 못 한 채 error 를 내고, req-mapping 축이 코드 품질과 무관한 이유로 CRITICAL 루프를 돈다. 상위 `kiwi-planner` 가 이미 돌렸다고 가정하지 않는다. 본 스킬은 다른 곳에서 작성된 plan 으로도 진입할 수 있고, 선행 단계가 일어났음을 전제한 보증은 보증이 아니다.
+
 
 **severity 정의**:
-- **CRITICAL**: 의도 위배 (S1), Mock 사용 (S2), req_id 위반 (S3), red 미발생 (S4)
-- **HIGH**: 모호한 assertion (S2), ac_refs 누락 (S3), expected_failure_signature 불일치 (S4)
+- **CRITICAL**: 의도 위배 (S1), Mock 사용 (S2), req_id 위반 (validator), red 미발생 (러너)
+- **HIGH**: 모호한 assertion (S2), ac_refs 누락 (validator), expected_failure_signature 불일치 (러너)
 - **MEDIUM**: 네이밍 / fixture 개선 (S2)
 - **LOW**: 스타일 (S2)
+
+**축 소관 경계**: 각 축은 자기 주제만 판정한다. Mock 사용은 S2 가, `test_case` 매핑은 validator 가 단독 소관이며 S1 은 이를 중복 판정하지 않는다 — 한 결함이 두 축에서 서로 다른 설명으로 두 번 보고되면 시니어가 같은 원인을 두 번 해석해야 하고, 스크립트가 내린 판정을 축이 다시 이름 부르면 판단을 없애려고 옮긴 것을 산문으로 되불러온다.
+
 
 ### 4.3 개선 루프 (CRITICAL=0 + HIGH=0 까지)
 
@@ -439,7 +454,14 @@ Phase 2 진입 (current_task_id 유지)
   │       │       └─ 검출 시 CRITICAL + (c) 재호출로 재구현 강제 — `sidecar.files[]` 에 등재되어 있다는 사실만으로는 해소되지 않는다. 등재는 그 파일을 편집한다는 허가이지 제거한다는 허가가 아니다
   │       ├─ **동일 항목 2회째 검출** 시 (c) 재호출로 자기 치유하지 않고 §0.G6 의 대응 gate_id 로 부모에 **버블업**한다 — 1차 검출은 재구현으로 닫되, 같은 항목이 두 번 나오면 치유가 수렴하지 않는 것이므로 사용자 결정으로 올린다
   │       └─ 위반 시 CRITICAL + (c) 재호출
-  ├─ (e) 정형 검사 (현재 세션 모델×1; --model 로 override)
+  ├─ (e) 정형 검사 (**스크립트**, 서브에이전트 아님)
+  │       └─ 4축 전부 결정적 판정 — 판단자가 실행할 이유가 없다
+  │       ├─ Mock 사용: §0.6 의 regex 를 **그대로 재사용** (재구현 금지)
+  │       ├─ 타입/빌드: 빌드를 실행하고 exit_code 로 판정
+  │       ├─ 계획-코드 매핑: 앞선 (d) ZERO TOLERANCE 게이트(§0.7)가 이미 계산한 결과를 **재사용** — 같은 규칙을 두 번 구현하면 두 곳에서 어긋난다
+  │       └─ 테스트 커버리지: `sidecar.tdd.test_cases[]` 각 항목이 **실제로 실행된 테스트**에 대응하는가. 전역 커버리지 %가 아니라 그 Task 가 약속한 케이스를 본다
+  │               └─ **이 축은 종전에 기준이 없었다** — 스킬에도 확장 레퍼런스에도 판정 규칙이 정의된 적 없이 축 이름만 있었다. 여기서 처음 정의한다 (옮겨온 것이 아니다)
+  │       └─ 위반 시 CRITICAL + (c) 재호출
   │       └─ 검증 축 4개: Mock regex, 타입/빌드, 계획-코드 매핑 재확인, 테스트 커버리지
   │       └─ CRITICAL 발견 시 (g) 직행 (까칠 skip)
   ├─ (f) 까칠 리뷰 (현재 세션 모델×1, --max 시 ×2, --reviewer-off 시 skip; --model 로 override)
@@ -448,7 +470,7 @@ Phase 2 진입 (current_task_id 유지)
   │       ├─ CRITICAL ≤ 3
   │       ├─ HIGH ≤ 3
   │       ├─ MEDIUM ≤ 2
-  │       ├─ LOW ≤ 1 (정보만)
+  │       ├─ LOW ≤ 1 (정보만) — 주석 표현·서식 LOW 는 재작업 라운드 0, 보고만 하고 넘어간다
   │       └─ 초과 시 §0.G4 발동
   ├─ (h) 테스트 실행 (green 확인)
   │       ├─ Phase 1.4 의 red cmd 동일하게 실행
@@ -476,14 +498,14 @@ Phase 2 진입 (current_task_id 유지)
 
 **축 8 의 경계**: 닫힌 4종 밖의 주석 주장은 finding 이 아니다 — 의도·설계 의견을 다투지 않는다. 4종은 `existsSync` · `grep -c` 로 판정되므로 축 8 은 라운드당 비용이 사실상 0 이며, 임의 주석을 코드와 대조하는 비용(요구 1건당 약 27초 수준의 추론)을 지지 않는다.
 
-**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: 정형 검사 (현재 세션 모델×1) 와 까칠 리뷰 (현재 세션 모델×1/2) 모두 코드 주석의 `@req` 라인에 대해 다음 행위를 금지한다 — (a) 존재 여부 점검, (b) task.req_ids 와 비교, (c) REQ-ID 실재성 검증 (speckiwi 조회), (d) 라인 누락을 finding 으로 발행. 본 태그는 정보용 breadcrumb 이며 어떤 게이트에도 영향 주지 않는다.
+**`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: 정형 검사 (스크립트) 와 까칠 리뷰 (현재 세션 모델×1/2) 모두 코드 주석의 `@req` 라인에 대해 다음 행위를 금지한다 — (a) 존재 여부 점검, (b) task.req_ids 와 비교, (c) REQ-ID 실재성 검증 (speckiwi 조회), (d) 라인 누락을 finding 으로 발행. 본 태그는 정보용 breadcrumb 이며 어떤 게이트에도 영향 주지 않는다.
 
 ### 5.3 심각도 정의 (구현 단계)
 
 - **CRITICAL**: Mock 사용, 계획-코드 매핑 누락, 빌드/타입 실패, 보안 중대, green 미달성
 - **HIGH**: 테스트 fail, DoD 미충족, 의도 이탈, acceptance_tests fail, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨
 - **MEDIUM**: 경계 조건 누락, 리팩토링 미흡, 에러 처리 불충분
-- **LOW**: 스타일, 주석 표현·서식
+- **LOW**: 스타일, 주석 표현·서식 — 정보 보고 전용이며 개선 루프 재작업 라운드 0
 
 Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**.
 

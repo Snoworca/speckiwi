@@ -11,7 +11,7 @@ import path from "node:path";
  * asserts set-equality across all four — so four-copy parity was a shipping requirement with no
  * sanctioned writer, and the mirror was maintained out of band.
  *
- * This verb is neither `init` nor `skills install`. `00.charter.md:303-304` forbids running those
+ * This verb is neither `init` nor `skills install`. The charter's standing constraints forbid running those
  * three against this repository as the target root; nothing here reaches either code path, and the
  * requirement asserts that as a test. `--check` is the CI/gate form.
  */

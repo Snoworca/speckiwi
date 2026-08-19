@@ -43,7 +43,7 @@ export interface TaskCatalogEntry extends WorkflowTaskCatalogEntry {
   phaseDependsOn: string[];
 }
 
-/** The sidecar task shape, as `kiwi-planner` writes it (`SKILL.md:741-759`). */
+/** The sidecar task shape, as `kiwi-planner` §5.3 "Task 작성 의무 필드" defines it. */
 export interface SidecarTask {
   id?: string;
   task_id?: string;

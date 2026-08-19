@@ -19,7 +19,7 @@ export type ReplayAction = (typeof REPLAY_ACTIONS)[number];
  * One harvested `deferred-mutations.jsonl` entry, as far as the planner is concerned.
  *
  * The file's entries are `kiwi-coder`'s existing `mcp_call_log[]` shape —
- * `{tool, args, args_hash, ok, response_hash, dry_run, called_at}` (`kiwi-coder SKILL.md:569`) — and
+ * `{tool, args, args_hash, ok, response_hash, dry_run, called_at}` (`kiwi-coder`'s MCP mutation record) — and
  * the four members not declared here are read by nothing, deliberately:
  *
  * - `args_hash` is **recomputed** rather than trusted, so the key the plan dedupes on is always the

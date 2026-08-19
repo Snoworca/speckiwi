@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 // the plan, commits nothing, and writes a pipeline record describing a run that did not happen.
 //
 // Runtime lag: these read the BUNDLED copies. The running agent reads `~/.claude/skills/…`, which
-// `00.charter.md:303-304` forbids reinstalling from this repository; the lag is recorded as
+// `the charter's standing constraints` forbids reinstalling from this repository; the lag is recorded as
 // verification evidence on each requirement rather than accommodated here.
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -388,7 +388,7 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
     ).toBe(true);
   });
 
-  // AC-3: trailers carry the run coordinates; the subject carries none. `00.charter.md:302` forbids
+  // AC-3: trailers carry the run coordinates; the subject carries none. `the charter's standing constraints` forbids
   // phase and step markers in a commit title, and the recovery mechanism must not buy itself by
   // violating a standing constraint.
   it.each(PM_COPIES)("%s puts the run coordinates in trailers and not in the subject", (copy) => {

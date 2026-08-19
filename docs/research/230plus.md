@@ -1,5 +1,9 @@
 # Doc230 Plus: Workflow Tool Utility and Validity Review
 
+> **이 문서는 미검증 작업 노트다.** 확정된 사실은 요구(`docs/spec/`)와 그 테스트에 있다.
+> 여기의 수치·판단·계획은 검토를 거치지 않았고 틀릴 수 있다. 이 문서를 근거로 구현하지 말고,
+> 요구로 승격된 뒤 그 요구를 근거로 구현한다. — `FR-FLOW-137`
+
 | Field | Value |
 | --- | --- |
 | Date | 2026-06-29 |

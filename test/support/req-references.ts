@@ -5,7 +5,7 @@ import path from "node:path";
  * @req REL-NODE-007 — resolve `@req` citations in source against the requirements that exist.
  *
  * The scan owns its file reading on purpose. `grep` and every tool built on it treat a file
- * containing a NUL byte as binary and skip it without a word, and four of this repository's sources
+ * containing a NUL byte as binary and skip it without a word, and five of the files this scan reads
  * carry one; reading each candidate as UTF-8 is what makes those files visible to the check.
  */
 

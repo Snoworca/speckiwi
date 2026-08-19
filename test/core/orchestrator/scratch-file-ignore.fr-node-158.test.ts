@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest";
 // @req FR-NODE-158 — the atomic-write scratch files are ignored by *filename pattern*, not by one
 // directory.
 //
-// `src/core/patch/apply-patch.ts:58` writes `.speckiwi-<uuid>.tmp` beside the file it patches, so the
+// `src/core/patch/apply-patch.ts` writes `.speckiwi-<uuid>.tmp` beside the file it patches, so the
 // directory is wherever the patched document lives — `docs/spec/` for a scope SRS, but
 // `docs/spec/steps/<task>/` for a step SRS, and the repository root for the merge journal
-// (`merge-journal.ts:73`, `:143`). A rule keyed to one directory therefore leaves the others staged
+// (`merge-journal.ts`, `:143`). A rule keyed to one directory therefore leaves the others staged
 // by `git add -A`, which is exactly how two of these files were committed on 2026-08-01.
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");

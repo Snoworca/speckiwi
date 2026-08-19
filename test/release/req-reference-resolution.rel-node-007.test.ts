@@ -14,9 +14,10 @@ import {
 
 // @req REL-NODE-007 — `@req` citations in src/ and test/ resolve to requirements that exist.
 //
-// 926 references across 257 files had no mechanical check at all before this. The scan owns its own
-// file reading because that is where the requirement's hardest criterion lives: four source files
-// carry literal NUL bytes and a plain text search drops them without saying so.
+// The citations across this repository's sources had no mechanical check at all before this. The
+// scan owns its own file reading because that is where the requirement's hardest criterion lives:
+// files under both scanned roots carry literal NUL bytes and a plain text search drops them without
+// saying so.
 
 const NUL = String.fromCharCode(0);
 const REPO_ROOT = process.cwd();
