@@ -295,6 +295,17 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--apply", "apply"),
     opt("--no-skills", "skills"),
     opt("--no-mcp", "mcp"),
+    // IR-CLI-095 — spelled as `init` spells it, and additive as init's is: the project migration still
+    // runs. The destructive counterpart is where that symmetry stops (IR-CLI-096).
+    opt("-g, --global", "installSkillsGlobal"),
+    IGNORE_LOCK
+  ]),
+  // IR-CLI-096 — CLI-only for the same reason `upgrade` is, only more so: this one deletes. No agent
+  // drives it unattended.
+  mutationSpec("remove", undefined, "workspace", "removeProject", [
+    DRY_RUN,
+    opt("--apply", "apply"),
+    opt("-g, --global", "global"),
     IGNORE_LOCK
   ]),
   mutationSpec("sync-index", "sync_index", "workspace", "syncIndexRollups", [

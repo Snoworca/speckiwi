@@ -157,3 +157,42 @@ export async function registerSpeckiwiMcp(
   if (!dryRun) await writeAtomic(filePath, `${JSON.stringify(next, null, 2)}\n`);
   return { status: "updated", filePath, warnings };
 }
+
+export type McpUnregistrationStatus = "removed" | "absent" | "unreadable";
+
+export interface McpUnregistrationResult {
+  status: McpUnregistrationStatus;
+  filePath: string;
+}
+
+/**
+ * Removes the `speckiwi` server key, and only that key.
+ *
+ * @req FR-NODE-191 — the inverse of the registration above, at the same granularity. Registration
+ * merges one key into whatever file it finds and records nothing about whether it created that file,
+ * so removal has no way to tell a file init wrote from one the operator wrote. Deleting the file would
+ * therefore be a guess with the operator's other servers riding on it; an empty `mcpServers` map is a
+ * valid configuration and is what an undone registration looks like.
+ */
+export async function unregisterSpeckiwiMcp(root: string, options: { dryRun?: boolean } = {}): Promise<McpUnregistrationResult> {
+  const filePath = path.join(root, MCP_CONFIG_FILE);
+  const existing = await readExisting(filePath);
+  if (existing.kind === "absent") return { status: "absent", filePath };
+  if (existing.kind === "unreadable") return { status: "unreadable", filePath };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(existing.text);
+  } catch {
+    return { status: "unreadable", filePath };
+  }
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.mcpServers)) return { status: "unreadable", filePath };
+
+  const servers = parsed.mcpServers;
+  if (!Object.prototype.hasOwnProperty.call(servers, SERVER_KEY)) return { status: "absent", filePath };
+
+  const remaining = Object.fromEntries(Object.entries(servers).filter(([key]) => key !== SERVER_KEY));
+  const next = { ...parsed, mcpServers: remaining };
+  if (!options.dryRun) await writeAtomic(filePath, `${JSON.stringify(next, null, 2)}\n`);
+  return { status: "removed", filePath };
+}

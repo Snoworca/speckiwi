@@ -44,6 +44,20 @@ export interface UpgradeProjectInput {
   /** Delegated to init; both default on, matching a plain `speckiwi init`. */
   installSkills?: boolean;
   registerMcp?: boolean;
+  /**
+   * @req FR-NODE-189 — refresh the installed agents' global skills as well. Everything this implies
+   * (the per-agent home-presence gate, the install/update/skip classification, and the absence of an
+   * orphan prune at global scope) is FR-NODE-084's behaviour, reached by handing the flag to the init
+   * this command already delegates to. Nothing below resolves a global destination itself: a second
+   * resolution is how IR-CLI-086's three entry points came to disagree about where a global install
+   * lands, and here the disagreement would be silent — a refresh of a directory nobody installs into,
+   * reported as success.
+   */
+  installSkillsGlobal?: boolean;
+  /** Test/DI seams, passed straight through to init so a global run can be made hermetic. */
+  globalHomeDir?: string;
+  globalCodexHome?: string;
+  skillSourceBaseDir?: string;
 }
 
 export interface RulesReferenceFinding {
@@ -98,7 +112,13 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
     // This command already holds the lock; init must not try to take it again.
     skipLock: true,
     installSkills: input.installSkills !== false,
-    registerMcp: input.registerMcp !== false
+    registerMcp: input.registerMcp !== false,
+    // Spread rather than passed as `false`, so a run without the flag hands init exactly the input it
+    // received before this option existed.
+    ...(input.installSkillsGlobal ? { installSkillsGlobal: true } : {}),
+    ...(input.globalHomeDir ? { globalHomeDir: input.globalHomeDir } : {}),
+    ...(input.globalCodexHome ? { globalCodexHome: input.globalCodexHome } : {}),
+    ...(input.skillSourceBaseDir ? { skillSourceBaseDir: input.skillSourceBaseDir } : {})
   });
   if (!initResult.ok || !initResult.value) {
     // The refresh failure is the whole command's failure, reported verbatim rather than re-worded.

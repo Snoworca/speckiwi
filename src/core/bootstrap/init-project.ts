@@ -26,7 +26,7 @@ import {
   renderIndexTemplate
 } from "./templates.js";
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
-import { installSkill, planSkillInstall, pruneOrphanKiwiSkills } from "../skills/install-skill.js";
+import { installSkill, planSkillInstall, removeManagedKiwiSkills } from "../skills/install-skill.js";
 import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
 import { registerSpeckiwiMcp } from "./mcp-registration.js";
 
@@ -36,7 +36,7 @@ const REQUIRED_AGENT_FILES: readonly AgentFileMode[] = ["AGENTS.md", "CLAUDE.md"
 
 // FR-NODE-068 — init provisions the bundled kiwi skills for the fixed Claude + Codex agent pair,
 // matching init's existing dual AGENTS.md/CLAUDE.md + dual-hook policy.
-const SKILL_PROVISION_AGENTS: readonly SkillAgent[] = ["claude", "codex"];
+export const SKILL_PROVISION_AGENTS: readonly SkillAgent[] = ["claude", "codex"];
 
 export interface InitProjectInput {
   product?: string;
@@ -68,7 +68,7 @@ export interface InitProjectOutput {
   warnings?: string[];
 }
 
-interface AgentInstructionBlock {
+export interface AgentInstructionBlock {
   start: number;
   end: number;
   /** Only set for a block written in the current heading format; a legacy block never reports a version. */
@@ -113,9 +113,15 @@ function renderStepStateTemplate(): string {
 // directories, while surfacing clobber and enterprise-policy suppression
 // warnings instead of silently overwriting existing files.
 
-const GIT_PRE_COMMIT_RUNNER = "docs/.kiwi/hooks/pre-commit.mjs";
+// @req FR-NODE-191 — exported so removal tests the hook it installed against what this renders, rather
+// than against a second copy of the same string. The renderers below are deterministic, which is what
+// makes a byte comparison a usable ownership proof for files that carry no marker of their own.
+export const GIT_PRE_COMMIT_RUNNER = "docs/.kiwi/hooks/pre-commit.mjs";
 
-function renderGitPreCommitHook(): string {
+/** The trace runner the agent hook entries invoke; the token that identifies a speckiwi hook entry. */
+export const TRACE_HOOK_RUNNER = "docs/.kiwi/hooks/trace.mjs";
+
+export function renderGitPreCommitHook(): string {
   return [
     "#!/bin/sh",
     "# speckiwi managed pre-commit hook — delegates to the docs/.kiwi runner.",
@@ -124,14 +130,14 @@ function renderGitPreCommitHook(): string {
   ].join("\n");
 }
 
-function renderClaudeSettings(): string {
+export function renderClaudeSettings(): string {
   return `${JSON.stringify(
     {
       hooks: {
         PostToolUse: [
           {
             matcher: "Edit|Write|MultiEdit",
-            hooks: [{ type: "command", command: "node docs/.kiwi/hooks/trace.mjs" }]
+            hooks: [{ type: "command", command: `node ${TRACE_HOOK_RUNNER}` }]
           }
         ]
       }
@@ -141,11 +147,11 @@ function renderClaudeSettings(): string {
   )}\n`;
 }
 
-function renderCodexHooks(): string {
+export function renderCodexHooks(): string {
   return `${JSON.stringify(
     {
       hooks: {
-        PostToolUse: [{ match: { tool: "apply_patch" }, command: ["node", "docs/.kiwi/hooks/trace.mjs"] }]
+        PostToolUse: [{ match: { tool: "apply_patch" }, command: ["node", TRACE_HOOK_RUNNER] }]
       }
     },
     null,
@@ -163,7 +169,7 @@ async function pathExists(target: string): Promise<boolean> {
 }
 
 /** Reads a bundled docs/.kiwi runner shipped with the package, or undefined when absent. */
-async function loadBundledHookRunner(name: string): Promise<string | undefined> {
+export async function loadBundledHookRunner(name: string): Promise<string | undefined> {
   const candidate = fileURLToPath(new URL(`../../../docs/.kiwi/hooks/${name}`, import.meta.url));
   try {
     return await readFile(candidate, "utf8");
@@ -413,7 +419,7 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
   (fileExists ? output.updated : output.created).push(filePath);
 }
 
-function findAgentInstructionBlock(content: string): AgentInstructionBlock | undefined {
+export function findAgentInstructionBlock(content: string): AgentInstructionBlock | undefined {
   const current = findVersionedBlock(content, VERSIONED_AGENT_HEADING_PATTERN, AGENT_INSTRUCTION_END_MARKER);
   if (current) return current;
 
@@ -645,14 +651,14 @@ async function registerMcpStep(root: string, output: InitProjectOutput, warnings
 
 type SkillProvisionScope = "project" | "global";
 
-interface GlobalSkillContext {
+export interface GlobalSkillContext {
   homeDir: string;
   codexHome?: string;
 }
 
 // FR-NODE-084 — resolve the home dir + CODEX_HOME used to locate global skill destinations. Test/DI seams
 // (globalHomeDir/globalCodexHome) override the process env so the global pass is deterministic under test.
-function resolveGlobalSkillContext(input: InitProjectInput): GlobalSkillContext {
+export function resolveGlobalSkillContext(input: InitProjectInput): GlobalSkillContext {
   const homeDir = input.globalHomeDir ?? process.env.HOME ?? process.env.USERPROFILE ?? "";
   const codexHome = input.globalCodexHome ?? process.env.CODEX_HOME;
   return codexHome ? { homeDir, codexHome } : { homeDir };
@@ -665,7 +671,7 @@ async function directoryExists(dir: string): Promise<boolean> {
 
 // FR-NODE-084 — an agent is provisioned globally only when its home directory is present: Claude uses
 // `~/.claude`, Codex uses `${CODEX_HOME:-~/.codex}`. An absent home means the agent is not installed.
-async function isAgentHomePresent(agent: SkillAgent, ctx: GlobalSkillContext): Promise<boolean> {
+export async function isAgentHomePresent(agent: SkillAgent, ctx: GlobalSkillContext): Promise<boolean> {
   if (agent === "claude") return directoryExists(path.join(ctx.homeDir, ".claude"));
   if (agent === "codex") {
     const codexHome = ctx.codexHome ? path.resolve(ctx.codexHome) : path.join(ctx.homeDir, ".codex");
@@ -714,10 +720,12 @@ async function provisionSkills(root: string, input: InitProjectInput, output: In
       // skills provisioned by another project or a different speckiwi version; pruning by one project's
       // source set could delete them. The global pass installs/updates only, never prunes.
       if (scope === "project") {
-        const prune = await pruneOrphanKiwiSkills({
+        const prune = await removeManagedKiwiSkills({
           destinationRoot: provisioned.value.destinationRoot,
           agent,
-          sourceSkillNames: provisioned.value.results.map((result) => result.name),
+          // The current source set: only what has left it is a candidate here. FR-NODE-190's removal
+          // passes an empty set to the same verdict.
+          keepNames: provisioned.value.results.map((result) => result.name),
           dryRun
         });
         output.removed.push(...prune.removed);

@@ -2,7 +2,7 @@ import { access, cp, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { installSkill, pruneOrphanKiwiSkills } from "../../../src/core/skills/install-skill.js";
+import { installSkill, removeManagedKiwiSkills } from "../../../src/core/skills/install-skill.js";
 
 // @req FR-NODE-069 — speckiwi init orphaned kiwi-* skill prune (metadata-gated, drift-safe).
 // Removes only kiwi-* dirs that are speckiwi-managed runtime mirrors, absent from the current source
@@ -46,14 +46,14 @@ async function exists(target: string): Promise<boolean> {
   return access(target).then(() => true).catch(() => false);
 }
 
-describe("pruneOrphanKiwiSkills", () => {
+describe("removeManagedKiwiSkills", () => {
   it("AC-1: removes a speckiwi-managed kiwi-* orphan absent from the source set and lists it in removed", async () => {
     const root = await tempRoot();
     await writeSourceSkill(root, "kiwi-keep");
     await writeSourceSkill(root, "kiwi-old");
     await installClaudeAll(root);
     const dest = claudeDest(root);
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: ["kiwi-keep"], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: ["kiwi-keep"], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-old"))).toBe(false);
     expect(await exists(path.join(dest, "kiwi-keep"))).toBe(true);
     expect(prune.removed).toContain(path.join(dest, "kiwi-old"));
@@ -64,7 +64,7 @@ describe("pruneOrphanKiwiSkills", () => {
     const dest = claudeDest(root);
     await mkdir(path.join(dest, "kiwi-mine"), { recursive: true });
     await writeFile(path.join(dest, "kiwi-mine", "SKILL.md"), "mine\n", "utf8");
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: [], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: [], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-mine"))).toBe(true);
     expect(prune.removed).toEqual([]);
   });
@@ -74,7 +74,7 @@ describe("pruneOrphanKiwiSkills", () => {
     await writeSourceSkill(root, "othertool");
     await installClaudeAll(root);
     const dest = claudeDest(root);
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: [], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: [], dryRun: false });
     expect(await exists(path.join(dest, "othertool"))).toBe(true);
     expect(prune.removed).toEqual([]);
   });
@@ -85,7 +85,7 @@ describe("pruneOrphanKiwiSkills", () => {
     await writeSourceSkill(root, "kiwi-old");
     await installClaudeAll(root);
     const dest = claudeDest(root);
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: ["kiwi-keep", "kiwi-old"], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: ["kiwi-keep", "kiwi-old"], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-keep"))).toBe(true);
     expect(await exists(path.join(dest, "kiwi-old"))).toBe(true);
     expect(prune.removed).toEqual([]);
@@ -97,7 +97,7 @@ describe("pruneOrphanKiwiSkills", () => {
     await installClaudeAll(root);
     const dest = claudeDest(root);
     await writeFile(path.join(dest, "kiwi-old", "SKILL.md"), "LOCALLY MODIFIED\n", "utf8");
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: [], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: [], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-old"))).toBe(true);
     expect(prune.removed).toEqual([]);
     expect(prune.warnings.some((w) => w.includes("kiwi-old"))).toBe(true);
@@ -116,7 +116,7 @@ describe("pruneOrphanKiwiSkills", () => {
       symlinkSupported = false;
     }
     if (!symlinkSupported) return; // platform without symlink permission (e.g. Windows without dev mode)
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: [], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: [], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-link"))).toBe(true);
     expect(prune.removed).toEqual([]);
     expect(prune.warnings.some((w) => w.includes("kiwi-link"))).toBe(true);
@@ -127,7 +127,7 @@ describe("pruneOrphanKiwiSkills", () => {
     await writeSourceSkill(root, "kiwi-old");
     await installClaudeAll(root);
     const dest = claudeDest(root);
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: [], dryRun: true });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: [], dryRun: true });
     expect(prune.removed).toContain(path.join(dest, "kiwi-old"));
     expect(await exists(path.join(dest, "kiwi-old"))).toBe(true);
   });
@@ -139,14 +139,14 @@ describe("pruneOrphanKiwiSkills", () => {
     const dest = claudeDest(root);
     // A user copies an installed skill to a new name; the metadata still says name: kiwi-old.
     await cp(path.join(dest, "kiwi-old"), path.join(dest, "kiwi-old-copy"), { recursive: true });
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: dest, agent: "claude", sourceSkillNames: ["kiwi-old"], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: dest, agent: "claude", keepNames: ["kiwi-old"], dryRun: false });
     expect(await exists(path.join(dest, "kiwi-old-copy"))).toBe(true);
     expect(prune.removed).not.toContain(path.join(dest, "kiwi-old-copy"));
   });
 
   it("returns empty results when the destination root does not exist", async () => {
     const root = await tempRoot();
-    const prune = await pruneOrphanKiwiSkills({ destinationRoot: path.join(root, "missing", "skills"), agent: "claude", sourceSkillNames: [], dryRun: false });
+    const prune = await removeManagedKiwiSkills({ destinationRoot: path.join(root, "missing", "skills"), agent: "claude", keepNames: [], dryRun: false });
     expect(prune.removed).toEqual([]);
     expect(prune.warnings).toEqual([]);
   });

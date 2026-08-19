@@ -448,11 +448,56 @@ What it deliberately does **not** do, and says so in its own report: it never re
 | --- | --- |
 | `--dry-run` | Print the plan and write nothing. |
 | `--apply` | Perform the plan. This is the default; the flag is accepted for callers that predate it. |
+| `-g`, `--global` | Also refresh the bundled skills in each present agent's global skills directory. |
 | `--no-skills` / `--no-mcp` | Skip the corresponding `init` step during the refresh. |
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
 | `--json` | Emit the result envelope as JSON. |
 
+`--global` is the flag to reach for right after `npm i -g speckiwi@latest`: that is the moment the bundled skills are known to have changed, and without it `upgrade` refreshes only the project copies while each agent keeps loading the older global ones. It means the same thing here as on `init` — *in addition to* the project, never instead of it. It never deletes: a global skill this release no longer ships is left alone, because the same home may serve another project still pinned to the version that ships it. `speckiwi remove --global` is what removes those.
+
 **Exit codes:** `0` success · `5` failure (e.g. a held mutation lock, or `--apply` and `--dry-run` together — nothing is written).
+
+<a id="en-remove"></a>
+
+### Remove what init wired in
+
+`speckiwi remove` undoes `speckiwi init`. **It never removes your requirements** — `docs/spec/` is what you wrote with the tool, not what the tool wrote, and no flag opens it. `docs/rule/` stays too (the index `Rules` row cites it), as does `docs/.kiwi/trace/` (accumulated hook output with no second copy). All three are named in the report as deliberately kept, so you never have to guess whether they were missed.
+
+```sh
+speckiwi remove --dry-run           # read the plan; nothing is written
+speckiwi remove --apply             # remove this project's wiring
+speckiwi remove --global --apply    # remove the agents' GLOBAL kiwi skills instead
+```
+
+There is no default mode. A bare `speckiwi remove` is refused, because the one thing this command must never be is reachable by a forgotten flag — what it deletes lives outside git or untracked, so an unintended run is not recoverable.
+
+**`-g` means *instead of*, not *in addition to*.** This is the one place the flag reads differently from `init -g`, and it is deliberate: when a destructive flag is misread, the reading that removes less is the one to be wrong about. (The flag already means both things in this CLI — additive on `init`, selective on `skills install`.)
+
+Nothing is deleted on the strength of its path. Each thing is removed only against a proof that speckiwi wrote it:
+
+| What | Proof required | If the proof fails |
+| --- | --- | --- |
+| `kiwi-*` skill directories | install metadata identifying this agent and name, plus a checksum still matching the install | kept — you edited it |
+| `.mcp.json` | the `speckiwi` key only; other servers and keys untouched, file never deleted | kept, reported |
+| `.claude/settings.json`, `.codex/hooks.json` | only the hook entry invoking the trace runner; the file goes only if that leaves nothing | kept, reported |
+| `.git/hooks/pre-commit`, `docs/.kiwi/hooks/*.mjs` | byte-identical to what the installer renders | kept — you edited it |
+| `AGENTS.md`, `CLAUDE.md` | the managed block, delimited by both its heading and its end marker | kept — a legacy block's extent can only be guessed |
+
+A run that kept anything **exits non-zero** and names what it kept. That is not a failure to fix so much as a fact you need: a removal reporting success while directories remain teaches you the tool is gone, and the next thing you do is uninstall the package that could have finished the job. For the same reason, a project-scope run tells you when managed skills are still installed globally.
+
+`speckiwi` itself is installed by npm and is not what this command removes — run `npm uninstall -g speckiwi` for that. The report says so.
+
+| Option | Description |
+| --- | --- |
+| `--dry-run` | Print the plan and write nothing. Required unless `--apply` is given. |
+| `--apply` | Perform the removal. Required unless `--dry-run` is given. |
+| `-g`, `--global` | Remove the agents' global kiwi skills **instead of** this project's. |
+| `--ignore-lock` | Bypass a stale SRS mutation lock. |
+| `--json` | Emit the result envelope as JSON. |
+
+**Exit codes:** `0` removed everything it found (including nothing to remove) · `2` no mode given, or a positional argument · `5` failure, or a run that kept something.
+
+Like `upgrade`, this command is CLI-only. No MCP tool exposes it — an agent does not drive an uninstall unattended.
 
 ### Resolve duplicate Requirement IDs after a merge
 
@@ -1065,11 +1110,56 @@ speckiwi upgrade --json           # 표준 mutation 결과 envelope
 | --- | --- |
 | `--dry-run` | 계획만 출력하고 아무것도 쓰지 않음. |
 | `--apply` | 계획을 실제로 수행. 기본 동작이며, 이전 계약으로 작성된 호출자를 위해 계속 받아들임. |
+| `-g`, `--global` | 설치된 각 에이전트의 전역 skills 디렉터리에 있는 번들 스킬도 함께 갱신. |
 | `--no-skills` / `--no-mcp` | 갱신 단계에서 해당 `init` 단계를 건너뜀. |
 | `--ignore-lock` | stale SRS mutation lock 우회. |
 | `--json` | 결과 envelope 을 JSON 으로 출력. |
 
+`--global` 은 `npm i -g speckiwi@latest` 직후에 쓰는 플래그입니다. 번들 스킬이 바뀌었음이 확실한 시점인데, 이 플래그가 없으면 `upgrade` 는 프로젝트 사본만 갱신하고 에이전트는 계속 구버전 전역 스킬을 로드합니다. 의미는 `init` 과 같습니다 — 프로젝트에 **더해서**이지 대신이 아닙니다. 삭제는 하지 않습니다. 이번 릴리스가 더 이상 배포하지 않는 전역 스킬도 그대로 두는데, 같은 홈을 쓰는 다른 프로젝트가 아직 구버전에 고정돼 그 스킬에 의존할 수 있기 때문입니다. 그것을 지우는 명령은 `speckiwi remove --global` 입니다.
+
 **Exit code:** `0` 성공 · `5` 실패 (예: lock 점유, 또는 `--apply` 와 `--dry-run` 동시 지정 — 아무것도 쓰이지 않음).
+
+<a id="ko-remove"></a>
+
+### init 이 심어둔 것 제거하기
+
+`speckiwi remove` 는 `speckiwi init` 을 되돌립니다. **요구사항은 절대 지우지 않습니다** — `docs/spec/` 은 도구가 쓴 것이 아니라 사용자가 도구로 쓴 것이며, 어떤 플래그로도 열리지 않습니다. `docs/rule/` 도 남습니다(인덱스의 `Rules` 행이 이 문서를 가리키기 때문입니다). `docs/.kiwi/trace/` 도 남습니다(다른 사본이 없는 누적 작업 기록입니다). 셋 다 "의도적으로 남김"으로 보고서에 이름이 적히므로, 빠뜨린 것인지 추측할 필요가 없습니다.
+
+```sh
+speckiwi remove --dry-run           # 계획 확인, 아무것도 쓰지 않음
+speckiwi remove --apply             # 이 프로젝트의 배선 제거
+speckiwi remove --global --apply    # 대신 에이전트의 전역 kiwi 스킬 제거
+```
+
+기본 모드가 없습니다. 맨 `speckiwi remove` 는 거부됩니다. 이 명령만큼은 플래그 하나 빠뜨린 것으로 도달해서는 안 되기 때문입니다 — 지우는 대상이 git 밖이거나 미추적이라 의도치 않은 실행은 되돌릴 수 없습니다.
+
+**`-g` 는 "추가로"가 아니라 "대신"입니다.** 이 CLI 에서 플래그 의미가 `init -g` 와 달라지는 유일한 지점이고, 의도한 것입니다. 파괴적 플래그를 오해했을 때는 **덜 지우는 쪽**으로 틀리는 게 낫습니다. (이 플래그는 이미 두 의미로 쓰이고 있습니다 — `init` 에서는 가산, `skills install` 에서는 선택자.)
+
+경로만 보고 지우는 것은 없습니다. 각 대상은 speckiwi 가 썼다는 증거가 있을 때만 제거됩니다.
+
+| 대상 | 필요한 증거 | 증거가 없으면 |
+| --- | --- | --- |
+| `kiwi-*` 스킬 디렉터리 | 이 에이전트·이 이름을 지목하는 설치 메타데이터 + 설치 시점과 일치하는 checksum | 남김 — 수정했기 때문 |
+| `.mcp.json` | `speckiwi` 키만. 다른 서버·키는 그대로, 파일은 삭제하지 않음 | 남기고 보고 |
+| `.claude/settings.json`, `.codex/hooks.json` | trace 러너를 호출하는 훅 엔트리만. 그것을 빼서 아무것도 안 남을 때만 파일 삭제 | 남기고 보고 |
+| `.git/hooks/pre-commit`, `docs/.kiwi/hooks/*.mjs` | 설치기가 렌더링하는 내용과 바이트 일치 | 남김 — 수정했기 때문 |
+| `AGENTS.md`, `CLAUDE.md` | 헤딩과 종료 마커 **양쪽**으로 구획된 관리 블록 | 남김 — 레거시 블록은 범위를 추측할 수밖에 없음 |
+
+무언가를 남긴 실행은 **비-0 으로 종료**하고 남긴 것의 이름을 출력합니다. 이건 고쳐야 할 실패라기보다 알아야 할 사실입니다. 디렉터리가 남아 있는데 성공을 보고하면 사용자는 도구가 사라졌다고 배우고, 그다음에 하는 일이 그 작업을 끝낼 수 있었던 패키지를 지우는 것이기 때문입니다. 같은 이유로 프로젝트 스코프 실행은 전역에 관리 스킬이 남아 있으면 그 사실을 알립니다.
+
+`speckiwi` 자체는 npm 이 설치한 것이라 이 명령이 지우지 않습니다 — 그건 `npm uninstall -g speckiwi` 입니다. 보고서에 그렇게 적혀 있습니다.
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--dry-run` | 계획만 출력하고 아무것도 쓰지 않음. `--apply` 를 주지 않으면 필수. |
+| `--apply` | 실제로 제거 수행. `--dry-run` 을 주지 않으면 필수. |
+| `-g`, `--global` | 이 프로젝트 대신 에이전트의 전역 kiwi 스킬을 제거. |
+| `--ignore-lock` | stale SRS mutation lock 우회. |
+| `--json` | 결과 envelope 을 JSON 으로 출력. |
+
+**Exit code:** `0` 찾은 것을 전부 제거(지울 것이 없던 경우 포함) · `2` 모드 미지정 또는 위치 인자 · `5` 실패, 또는 무언가를 남긴 실행.
+
+`upgrade` 와 마찬가지로 CLI 전용입니다. MCP 도구로 노출되지 않습니다 — 에이전트가 무인으로 언인스톨을 몰지 않습니다.
 
 ### 병합 후 중복 Requirement ID 해소
 

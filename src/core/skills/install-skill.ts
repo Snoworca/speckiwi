@@ -136,23 +136,65 @@ export async function installSkill(options: SkillInstallOptions): Promise<Result
 // resolved source set, are not symlinks (nor contain symlinked entries), and whose on-disk contents match
 // the recorded install checksum. A drifted (locally edited) or user-authored directory is warned, not
 // deleted. Non-kiwi directories are never touched.
-export interface OrphanSkillPruneOptions {
+export interface ManagedSkillRemovalOptions {
   destinationRoot: string;
   agent: SkillAgent;
-  sourceSkillNames: string[];
+  /**
+   * Names this call must not touch. init's prune passes the current source set, so only orphans are
+   * candidates; removal passes nothing, so every managed mirror is. @req FR-NODE-190 — this set is the
+   * ONLY thing that differs between the two callers, which is what keeps the ownership verdict below
+   * from existing twice.
+   */
+  keepNames: string[];
   dryRun?: boolean;
+  /**
+   * Reconcile the `_shared` mirror once the directories are gone, dropping files no surviving skill
+   * cites. init leaves this off: its installer already reconciles the mirror on the way in, against a
+   * destination that still holds every skill it just wrote.
+   */
+  reconcileSharedMirror?: boolean;
+  /**
+   * The bundled skill source, used only by the mirror reconciliation to read the references of a skill
+   * the workspace excludes from the mirror (FR-NODE-090). Absent, that branch is skipped and the
+   * reconciliation keeps more than it otherwise would.
+   */
+  sourceRoot?: string;
 }
 
-export interface OrphanSkillPruneResult {
+/** Why a `kiwi-*` directory was left in place. Every value means "we could not prove we wrote this". */
+export type SkillKeepReason = "user-authored" | "locally-modified" | "symlink" | "foreign-metadata" | "error";
+
+export interface KeptSkillDirectory {
+  path: string;
+  reason: SkillKeepReason;
+  detail?: string;
+}
+
+export interface ManagedSkillRemovalResult {
   removed: string[];
+  /** @req FR-NODE-190 — a directory left behind and not named here is indistinguishable from one that was missed. */
+  kept: KeptSkillDirectory[];
   warnings: string[];
 }
 
-export async function pruneOrphanKiwiSkills(options: OrphanSkillPruneOptions): Promise<OrphanSkillPruneResult> {
+/**
+ * Removes the `kiwi-*` directories this tool can prove it wrote, and keeps every other one.
+ *
+ * @req FR-NODE-190 / FR-NODE-069 — one verdict, two callers. The name says `managed`, not `orphan`,
+ * because with an empty keep set nothing here is an orphan: the caller that removes everything is as
+ * legitimate as the one that removes what has left the source set.
+ */
+export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOptions): Promise<ManagedSkillRemovalResult> {
   const removed: string[] = [];
+  const kept: KeptSkillDirectory[] = [];
   const warnings: string[] = [];
-  const keep = new Set(options.sourceSkillNames);
-  if (!(await directoryExists(options.destinationRoot))) return { removed, warnings };
+  const keep = new Set(options.keepNames);
+  if (!(await directoryExists(options.destinationRoot))) return { removed, kept, warnings };
+  /** Records the verdict in both channels: `kept` for callers that branch, `warnings` for init's report. */
+  const hold = (candidate: string, reason: SkillKeepReason, message: string): void => {
+    kept.push({ path: candidate, reason, detail: message });
+    warnings.push(`Skipped ${candidate}: ${message}`);
+  };
   const entries = await readdir(options.destinationRoot, { withFileTypes: true });
   for (const entry of entries) {
     if (!entry.name.startsWith("kiwi-")) continue;
@@ -161,19 +203,26 @@ export async function pruneOrphanKiwiSkills(options: OrphanSkillPruneOptions): P
     try {
       const stats = await lstat(candidate);
       if (stats.isSymbolicLink()) {
-        warnings.push(`Skipped ${candidate}: refusing to remove a symlinked skill directory.`);
+        hold(candidate, "symlink", "refusing to remove a symlinked skill directory.");
         continue;
       }
       if (!stats.isDirectory()) continue;
       const metadata = await readInstallMetadata(candidate);
-      if (!metadata) continue; // user-authored (no speckiwi metadata) — never remove
+      if (!metadata) {
+        // User-authored (no speckiwi metadata) — never removed, by any option.
+        hold(candidate, "user-authored", "no speckiwi install metadata; this directory was not written by speckiwi.");
+        continue;
+      }
       // The metadata must positively identify THIS directory as a speckiwi-managed mirror for this
       // agent AND this exact name. The directory name is not part of the checksum, so a verbatim copy
       // of a managed dir to a new name would otherwise pass the checksum gate — guard against deleting it.
-      if (metadata.installMode !== "generated-runtime-mirror" || metadata.agent !== options.agent || metadata.name !== entry.name) continue;
+      if (metadata.installMode !== "generated-runtime-mirror" || metadata.agent !== options.agent || metadata.name !== entry.name) {
+        hold(candidate, "foreign-metadata", "install metadata identifies a different install mode, agent, or skill name.");
+        continue;
+      }
       const currentChecksum = await destinationDigest(candidate);
       if (currentChecksum !== metadata.installedChecksum) {
-        warnings.push(`Skipped ${candidate}: on-disk contents differ from the recorded install checksum (local edits).`);
+        hold(candidate, "locally-modified", "on-disk contents differ from the recorded install checksum (local edits).");
         continue;
       }
       // Only report a directory as removed once the delete has actually succeeded (in dry-run there is
@@ -187,11 +236,50 @@ export async function pruneOrphanKiwiSkills(options: OrphanSkillPruneOptions): P
     } catch (error) {
       // Any filesystem error (unreadable entry, a symlink nested inside caught by destinationDigest, an
       // rm failure, or a readdir/lstat race) degrades to a warning — the prune never aborts init.
-      warnings.push(`Skipped ${candidate}: ${(error as Error).message}`);
+      hold(candidate, "error", (error as Error).message);
     }
   }
-  return { removed, warnings };
+  // @req FR-NODE-190 AC-7 — after the removals, never before. Run first, the reference collection
+  // still sees the citations of the skills about to go, and every contract they alone cited survives
+  // as an orphan forever.
+  if (options.reconcileSharedMirror) {
+    const sharedMirrorRoot = path.join(options.destinationRoot, "_shared", "kiwi");
+    if (await directoryExists(sharedMirrorRoot)) {
+      // The installer's own collection, not a copy of it. A second traversal here would be the shape
+      // §10.2 calls worse than duplicated code: this one would have quietly lacked the FR-NODE-090
+      // exclusion branch, so a contract cited only by a skill the workspace excludes from the mirror
+      // would be deleted on removal and kept on install.
+      const desired = await collectDesiredSharedResources(options.sourceRoot, options.destinationRoot);
+      const sharedSourceRoot = options.sourceRoot ? path.join(options.sourceRoot, "_shared", "kiwi") : undefined;
+      for (const relativePath of await listSharedMirrorFiles(sharedMirrorRoot)) {
+        if (desired.has(relativePath)) continue;
+        const target = path.join(sharedMirrorRoot, relativePath);
+        // Being unreferenced is not ownership. `_shared/kiwi` is a directory in the agent's skill
+        // root, and an operator may keep their own contracts in it — a global one is shared by every
+        // project on the machine. Deleting on position alone took `_shared/kiwi/private/keys.md` in
+        // testing. The mirror is a copy, so the proof it was copied is that the bundled source still
+        // holds the same bytes at the same relative path; anything else is somebody's own file.
+        const source = sharedSourceRoot ? path.join(sharedSourceRoot, relativePath) : undefined;
+        const mirrored = source === undefined ? undefined : await readFile(source).catch(() => undefined);
+        if (mirrored === undefined || !mirrored.equals(await readFile(target).catch(() => Buffer.alloc(0)))) {
+          kept.push({
+            path: target,
+            reason: mirrored === undefined ? "user-authored" : "locally-modified",
+            detail:
+              mirrored === undefined
+                ? "no bundled shared resource matches this path; speckiwi did not mirror it here."
+                : "differs from the bundled shared resource it mirrors; edited after install."
+          });
+          continue;
+        }
+        if (!options.dryRun) await rm(target, { force: true }).catch(() => undefined);
+        removed.push(target);
+      }
+    }
+  }
+  return { removed, kept, warnings };
 }
+
 
 /** Recomputes the install checksum (packageDigest format) over a destination skill directory's files. */
 async function destinationDigest(directory: string): Promise<string> {
@@ -240,6 +328,11 @@ function normalizeOptions(options: SkillInstallOptions): Required<Pick<SkillInst
   }
   if (options.category) validateCategory(options.category);
   return { ...options, scope, dryRun: Boolean(options.dryRun) };
+}
+
+/** The bundled skill source for these options. Exported so removal reconciles against the same tree. */
+export async function resolveSkillSourceRoot(options: SkillInstallOptions): Promise<string> {
+  return resolveSourceRoot(options);
 }
 
 async function resolveSourceRoot(options: SkillInstallOptions): Promise<string> {
@@ -291,6 +384,18 @@ async function resolveSkillNames(sourceRoot: string, selector: string, agent: Sk
   }
   assertSafeSkillName(selector);
   return [selector];
+}
+
+/**
+ * Where a skill install for these options lands.
+ *
+ * @req FR-NODE-192 AC-7 — exported so removal and the home-collision guard ask this question in the
+ * same terms the installer answers it. IR-CLI-086 records what a second opinion costs: `skills install`
+ * read the home directory while `init --global` and `doctor` read CODEX_HOME, and the three disagreed
+ * about where a global install lands. A removal that disagrees deletes nothing and reports success.
+ */
+export async function resolveSkillDestinationRoot(options: SkillInstallOptions): Promise<string> {
+  return resolveDestinationRoot(options, []);
 }
 
 async function resolveDestinationRoot(options: SkillInstallOptions, names: string[]): Promise<string> {
@@ -642,7 +747,7 @@ async function syncSharedMirror(sourceRoot: string, destinationRoot: string): Pr
   await pruneSharedMirror(sharedMirrorRoot, desired);
 }
 
-async function collectDesiredSharedResources(sourceRoot: string, destinationRoot: string): Promise<Set<string>> {
+async function collectDesiredSharedResources(sourceRoot: string | undefined, destinationRoot: string): Promise<Set<string>> {
   const desired = new Set<string>();
   const entries = await readdir(destinationRoot, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
@@ -654,6 +759,10 @@ async function collectDesiredSharedResources(sourceRoot: string, destinationRoot
   // @req FR-NODE-090 — a skill the workspace excludes from the mirror is never in the destination,
   // so its references are read from the source tree instead. Without this the prune deletes the
   // contracts an excluded skill depends on, and it deletes them on every install.
+  // An absent source root means the caller cannot read an excluded skill's references at all. Skipping
+  // the branch then keeps FEWER files from being pruned than a wrong guess would, and the removal path
+  // does pass a source root — this is the degraded case, not the normal one.
+  if (sourceRoot === undefined) return desired;
   for (const name of await readMirrorExclusions(destinationRoot)) {
     if (!SKILL_NAME_PATTERN.test(name)) continue;
     const skillDir = path.join(sourceRoot, name);

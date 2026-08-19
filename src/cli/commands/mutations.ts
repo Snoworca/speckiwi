@@ -3,6 +3,7 @@ import { resolveProjectRoot } from "../../core/project-root.js";
 import { TARGET_STATUSES_SENTENCE, TARGET_TYPES_SENTENCE } from "../../core/target-types.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { upgradeProject } from "../../core/bootstrap/upgrade-project.js";
+import { removeProject } from "../../core/bootstrap/remove-project.js";
 import { mutationFail } from "../../core/mutation/guards.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
@@ -125,6 +126,9 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--apply", "perform the plan; the default, accepted so callers written against IR-CLI-076 keep working")
     .option("--no-skills", "skip refreshing the bundled kiwi skills")
     .option("--no-mcp", "skip refreshing the SpecKiwi MCP registration in .mcp.json")
+    // @req IR-CLI-095 — additive, exactly as on `init`: the project migration still runs and the
+    // global skills are refreshed as well. `remove` deliberately reads `-g` the other way, and says so.
+    .option("-g, --global", "also refresh the bundled kiwi skills in each present agent's global skills directory")
     .option("--ignore-lock")
     .option("--json")
     .action(async (options) => {
@@ -146,10 +150,71 @@ export function registerMutationCommands(command: Command, context: CliContext):
         apply: options.dryRun !== true,
         installSkills: options.skills !== false,
         registerMcp: options.mcp !== false,
+        ...(options.global ? { installSkillsGlobal: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-096 — no default mode, and `-g` reads the opposite way to `init -g`.
+  //
+  // Both choices are the destructive-command reading of a rule the two shipped precedents disagree
+  // about. `upgrade` performs by default because its worst misreading was that nothing happened;
+  // `skills mirror` refuses a bare invocation because its destructive branch would otherwise be
+  // reachable by a dropped flag. What removal deletes lives outside git or untracked, so a forgotten
+  // flag here is not recoverable — and `-g` selects the global scope rather than adding it, because
+  // when the flag is misread the version that removes less is the one to be wrong about.
+  command
+    .command("remove")
+    .description("Remove what `speckiwi init` wired into this project (never your requirements)")
+    .argument("[unsupported...]", "not accepted; see --help")
+    .option("--dry-run", "print the plan and write nothing")
+    .option("--apply", "perform the removal")
+    .option("-g, --global", "remove the installed agents' global kiwi skills INSTEAD OF this project's (init -g adds the global scope; here it replaces it)")
+    .option("--ignore-lock")
+    .option("--json")
+    .action(async (unsupported: string[], options) => {
+      const json = options.json || command.opts().json;
+      // Every neighbouring top-level command takes a requirement id, and `supersede --old <id>` even
+      // describes itself as discarding one. `speckiwi remove FR-CLI-001` will be typed.
+      if (unsupported.length > 0) {
+        output(
+          context,
+          { json },
+          mutationFail(
+            "USAGE",
+            `remove takes no arguments; it removes this project's speckiwi wiring, not a requirement. To discard a requirement use \`speckiwi supersede --old ${unsupported[0]}\`.`
+          )
+        );
+        command.setOptionValue("exitCode", 2);
+        return;
+      }
+      if (options.dryRun === true && options.apply === true) {
+        output(context, { json }, mutationFail("USAGE", "--apply and --dry-run ask for opposite runs; pass at most one of them"));
+        command.setOptionValue("exitCode", 5);
+        return;
+      }
+      if (options.dryRun !== true && options.apply !== true) {
+        output(
+          context,
+          { json },
+          mutationFail("REMOVE_MODE_REQUIRED", "remove has no default: pass --dry-run to read the plan, or --apply to perform the removal")
+        );
+        command.setOptionValue("exitCode", 2);
+        return;
+      }
+      const result = await removeProject(await rootFrom(command.opts()), {
+        apply: options.apply === true,
+        scope: options.global ? "global" : "project",
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+      // @req IR-CLI-096 AC-7 — a kept path means the removal did not finish. Exiting 0 here teaches a
+      // caller the tool is gone, and the next thing they do is uninstall the package that could have
+      // finished the job.
+      else if (result.value && !result.value.complete) command.setOptionValue("exitCode", 5);
     });
 
   command
