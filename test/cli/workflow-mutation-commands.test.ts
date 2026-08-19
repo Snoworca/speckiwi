@@ -64,9 +64,12 @@ describe("IR-CLI-042 / IR-CLI-043 workflow mutation commands", () => {
     const duplicate = await runJson(root, ["workflow", "pipeline-emit", "--run-id", "run-a", "--event", event("event-b")]);
     expect(duplicate).toMatchObject({ ok: true, value: { written: false }, mutation: { operations: [] } });
 
+    // @req FR-NODE-193 — an unreadable line is a warning: the emit reports it and proceeds. It used
+    // to exit 5, which is what left an operator unable to record anything once their journal held a
+    // single line the parser could not read.
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "{bad\n");
-    const invalidWorklog = await runJson(root, ["workflow", "worklog-emit", "--run-id", "run-a", "--event", event("worklog-a")], 5);
-    expect(invalidWorklog).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" }, diagnosticsSummary: { byCode: { "SRS-W052": 1 } } });
+    const invalidWorklog = await runJson(root, ["workflow", "worklog-emit", "--run-id", "run-a", "--event", event("worklog-a")]);
+    expect(invalidWorklog).toMatchObject({ ok: true, value: { written: true }, diagnosticsSummary: { byCode: { "SRS-W052": 1 } } });
 
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "");
     const repair = await runJson(root, ["workflow", "repair-record", "--run-id", "run-a", "--event", event("repair-a")]);

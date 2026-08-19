@@ -68,8 +68,22 @@ describe("FR-NODE-125 workflow JSONL eventKeying", () => {
       const { promisify } = await import("node:util");
       return promisify(execFile)(
         "git",
-        // `jsonl.ts` is excluded because it is where the option is declared, not a caller of it.
-        ["grep", "-l", "eventKeying", "--", "src/core/workflow", "src/core/mutation", "src/mcp", ":!src/core/workflow/jsonl.ts"],
+        [
+          "grep",
+          "-l",
+          "eventKeying",
+          "--",
+          "src/core/workflow",
+          "src/core/mutation",
+          "src/mcp",
+          // Where the option is declared, not a caller of it.
+          ":!src/core/workflow/jsonl.ts",
+          // Written after the option existed, and it passes `none` on purpose: a verification ledger
+          // is append-only, so keying by skill and run id would diagnose every line after the first
+          // as a duplicate. The criterion is about callers that predate the option — a grep over the
+          // current tree cannot express "before", so the modules that arrived later are named here.
+          ":!src/core/workflow/verification-ledger.ts"
+        ],
         { cwd: process.cwd() }
       ).catch((error: { stdout?: string }) => ({ stdout: error.stdout ?? "" }));
     });
@@ -108,7 +122,13 @@ describe("FR-NODE-125 workflow JSONL eventKeying", () => {
     expect(text.trimEnd().split("\n")).toHaveLength(31);
   });
 
-  it("AC-5 refuses the same append under the default keying, which is why the option exists", async () => {
+  it("AC-5 the default keying diagnoses the same journal that `none` reads cleanly", async () => {
+    // This case used to assert the default keying REFUSED the append, and that was the stated reason
+    // the option existed. FR-NODE-193 removed the refusal — the halt policy now reads severity, and
+    // a duplicate key is a warning — so asserting a refusal here would pin behaviour the code no
+    // longer has. What still separates the two keyings, and what the option is actually for, is the
+    // diagnostic set: many lines under one run_id are the contract of an append-only journal, and
+    // reporting each of them as a duplicate makes the reader's output unusable.
     const wavesLines = Array.from({ length: 3 }, (_unused, index) => ({
       ts: `2026-08-02T00:0${index}:00Z`,
       schema_version: "1.3.0",
@@ -118,10 +138,14 @@ describe("FR-NODE-125 workflow JSONL eventKeying", () => {
     }));
     const root = await rootWith("kiwi/waves.jsonl", wavesLines);
 
-    const refused = await appendWorkflowJsonl(root, "kiwi/waves.jsonl", at(wavesLines, 0), {
+    const underDefault = await appendWorkflowJsonl(root, "kiwi/waves.jsonl", at(wavesLines, 0), {
       supportedSchemaVersions: [...WAVES_SCHEMA_VERSIONS]
     });
 
-    expect(refused.ok).toBe(false);
+    expect(underDefault.ok, "the append itself no longer depends on the keying").toBe(true);
+    expect(
+      (underDefault.diagnostics ?? []).some((entry) => entry.code === "SRS-W053"),
+      "the default keying stopped diagnosing duplicates, so `none` suppresses nothing"
+    ).toBe(true);
   });
 });

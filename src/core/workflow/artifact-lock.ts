@@ -44,13 +44,40 @@ function artifactLockPath(canonicalPath: string): string {
   return `${canonicalPath}.speckiwi.lock`;
 }
 
-/** Resolves aliases before deriving the one lock identity for an existing workflow artifact. */
+/**
+ * Resolves aliases before deriving the one lock identity for a workflow artifact.
+ *
+ * @req FR-NODE-194 — the artifact need not exist yet. `realpath` throws on a path that is not there,
+ * and this runs before the append that would create it, so a project with no journal could not take
+ * the lock and therefore could not write its first event at all: the tool path died on ENOENT for
+ * the file it was about to make. Only the shell append the skills use — which does its own mkdir and
+ * takes no lock — could bootstrap a journal, which is why the defect stayed invisible.
+ *
+ * Aliases live in the directories, so canonicalising the nearest existing ancestor and reattaching
+ * the rest yields the same identity the file will have once created. Two writers racing to create it
+ * therefore agree on one lock path and still serialise.
+ */
 export async function resolveArtifactLockIdentity(artifactPath: string): Promise<ArtifactLockIdentity> {
   if (typeof artifactPath !== "string" || artifactPath.length === 0 || !path.isAbsolute(artifactPath)) {
     throw new Error("Resolving a workflow artifact lock requires an absolute artifact path");
   }
-  const canonicalPath = await realpath(path.resolve(artifactPath));
+  const canonicalPath = await canonicaliseAllowingAbsent(path.resolve(artifactPath));
   return Object.freeze({ canonicalPath, lockPath: artifactLockPath(canonicalPath) });
+}
+
+/** `realpath` for a path whose leaf — or whose directory — may not exist yet. */
+async function canonicaliseAllowingAbsent(target: string): Promise<string> {
+  const trailing: string[] = [];
+  let current = target;
+  for (;;) {
+    const resolved = await realpath(current).catch(() => undefined);
+    if (resolved !== undefined) return path.join(resolved, ...trailing.reverse());
+    const parent = path.dirname(current);
+    // A root that cannot be resolved is not something to walk past; hand back what we were given.
+    if (parent === current) return target;
+    trailing.push(path.basename(current));
+    current = parent;
+  }
 }
 
 export async function acquireArtifactLock(input: {

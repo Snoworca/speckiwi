@@ -88,12 +88,15 @@ describe("FR-MCP-037 / FR-MCP-038 workflow mutation tools", () => {
       mutation: { operations: [] }
     });
 
+    // @req FR-NODE-193 — an unreadable line is a warning, so the emit proceeds and reports it rather
+    // than denying every later write. The line the tool could not read is left exactly as it was.
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "{bad\n");
     await expect(server.callTool("workflow_worklog_emit", { runId: "run-a", event: event("worklog-a") })).resolves.toMatchObject({
-      ok: false,
-      error: { code: "MUTATION_DENIED" },
+      ok: true,
+      value: { written: true },
       diagnosticsSummary: { byCode: { "SRS-W052": 1 } }
     });
+    expect(await readFile(path.join(root, ".kiwi/sessions/run-a/worklog.jsonl"), "utf8")).toMatch(/^\{bad\n/);
 
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "");
     await expect(server.callTool("workflow_repair_record", { runId: "run-a", event: event("repair-a") })).resolves.toMatchObject({

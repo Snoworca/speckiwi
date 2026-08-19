@@ -97,8 +97,14 @@ describe("FR-NODE-021 workflow JSONL utilities", () => {
     const root = await tempRoot();
     await write(root, "kiwi/pipeline.jsonl", line(event("existing")));
 
+    // @req FR-NODE-021 AC-4 (amended by FR-NODE-193) — the halting policy acts on severity, and a
+    // missing trailing LF is a warning. It used to refuse here, which is what made one legacy line
+    // deny every later append; enforcement now means supplying the separator rather than declining.
     const halted = await appendWorkflowJsonl({ root }, "kiwi/pipeline.jsonl", event("new-halt"), { policy: "halt" });
-    expect(halted).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" }, diagnosticsSummary: { byCode: { "SRS-W056": 1 } } });
+    expect(halted).toMatchObject({ ok: true, value: { written: true }, diagnosticsSummary: { byCode: { "SRS-W056": 1 } } });
+    expect(await readFile(path.join(root, "kiwi/pipeline.jsonl"), "utf8")).toBe(`${line(event("existing"))}\n${line(event("new-halt"))}\n`);
+    // Reset so the cases below see the same one-line, no-trailing-LF fixture they were written for.
+    await write(root, "kiwi/pipeline.jsonl", line(event("existing")));
 
     const dryRun = await appendWorkflowJsonl({ root }, "kiwi/pipeline.jsonl", event("dry-run"), { policy: "best-effort", dryRun: true });
     expect(dryRun).toMatchObject({
@@ -115,7 +121,10 @@ describe("FR-NODE-021 workflow JSONL utilities", () => {
     const stale = await appendWorkflowJsonl({ root }, "kiwi/pipeline.jsonl", event("stale"), { expectedSha256: "wrong" });
     expect(stale).toMatchObject({ ok: false, error: { code: "STALE_PATCH" }, diagnostics: [expect.objectContaining({ code: "SRS-E032" })] });
 
+    // An unsupported schema version on the incoming event is a warning too, so it is reported and
+    // written rather than refused. Refusing here is what left a consumer unable to record anything
+    // once their journal held one line from a version that spelled an event differently.
     const unsupported = await appendWorkflowJsonl({ root }, "kiwi/pipeline.jsonl", event("unsupported", { schema_version: "2.0.0" }), { policy: "halt" });
-    expect(unsupported).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" }, diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W055" })]) });
+    expect(unsupported).toMatchObject({ ok: true, value: { written: true }, diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W055" })]) });
   });
 });

@@ -429,7 +429,16 @@ export async function appendWorkflowJsonl(
     const stale = diagnostic("SRS-E032", "error", "Mutation snapshot is stale", { filePath: relativePath }, { expectedSha256: options.expectedSha256, actualSha256: parsed.sha256 });
     return mutationFail("STALE_PATCH", "Workflow JSONL snapshot is stale", [stale], { staleGuard: { filePath: relativePath, retry: "rerun workflow jsonl append" } });
   }
-  if (policy === "halt" && diagnostics.length > 0) {
+  // @req FR-NODE-193 — severity, not count. Every diagnostic `parseWorkflowJsonl` produces is a
+  // warning, so counting them made "this journal was once written by a version that spelled an event
+  // differently" a permanent denial: one legacy line and no tool-path append ever succeeds again,
+  // undoable only by editing the file by hand. This repository's own journal reached that state.
+  //
+  // Warnings are reported, not swallowed — they ride out on the result either way. What changes is
+  // that they no longer stop the write, and the file is never edited to clear one: a line this code
+  // cannot parse is a line it has no business rewriting.
+  const blocking = diagnostics.filter((entry) => entry.severity === "error");
+  if (policy === "halt" && blocking.length > 0) {
     return mutationFail("MUTATION_DENIED", "Workflow JSONL append halted by diagnostics", diagnostics);
   }
   const line = JSON.stringify(event);
