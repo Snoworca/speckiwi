@@ -109,6 +109,8 @@ description: "OpenCode/Hermes local-LLM variant of the design-first orchestrator
 | `plan-coverage-unclosed` | `R-PLAN` close-out 에서 요구 집합이 닫히지 않음 — §4.5.2 의 세 disjunct | `R-PLAN` close-out |
 | `final-verify-residual-critical` | loop F 종료 시 잔여 CRITICAL/HIGH, `GAPS`, `fail-cap` 또는 `fail-residual` | Phase 4 |
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 | Phase 3.m / Phase 4 |
+| `run-budget-exhausted` | `--run-budget` 벽시계 초과 | 다음 stage 경계 |
+| `subagent-budget-exhausted` | `--subagent-budget` spawn 상한 소진 | 다음 stage 경계 |
 
 > **`--auto` 활성 조건**: `auto-option.md` 상 이 표의 미선언은 `--auto` **비활성**을 뜻한다. 본 표의 선언으로 이 스킬의 `--auto` 는 활성이며, 위 게이트들이 그 활성 상태의 HALT 지점이다.
 
@@ -270,7 +272,7 @@ Phase 3  wave 마다, 등록 순서대로 — wave 는 직렬이고 누적된다
                                      게이트: schedule-cycle · tdd-pair-split ·
                                             unknown-write-set-refused · files-not-grounded ·
                                             non-code-write-set-refused · lane-plan-drift   C
-  3.e′ 분할 아티팩트 공개 + 검토: lanes.lock.json + waves/wave-{n}/partition.md.
+  3.e′ 분할 아티팩트 공개 + 검토: waves/wave-{n}/lanes.lock.json + waves/wave-{n}/partition.md.
        검토자는 게이트에 선 사용자이고, 게이트가 critical 이므로 --auto 라도 멈춘다.
        verdict 어휘는 닫혀 있다: pass | revise | abort.
                                      게이트: partition-review-unrecorded            C
@@ -354,7 +356,7 @@ Phase 6  run 처분 (§15): 통합 브랜치는 그대로 두고 run 리포트�
 | S5 | `files`, `modules`, `external_paths[]` | code-context 조사자 → `code_context.json` |
 | S6 | `ambiguities`, `key_entities[]` | intent 조사자 → `intent.json`, 1.c 의 QnA **뒤** |
 | S7 | `doc` | 1.a 소스 분류 — `ordered_sections` 는 명시 순서 표식을 가진 최상위 섹션만 센다 |
-| S8 | `epic` | 입력이 GitHub 이슈일 때 `gh issue view` |
+| S8 | `epic` | 입력이 GitHub 이슈일 때 `gh issue view`. **`linked_sub_issues` 는 이슈 본문의 `- [ ] #NNNN` 참조를 세어 얻는다** — `gh issue view --json` 필드 목록에 하위 이슈 필드가 없고, 네이티브 하위 이슈 API 는 이 규칙이 잡으려는 추적 이슈에 **0** 을 돌려준다. 네이티브 0 을 "하위 이슈 없음"으로 읽지 않는다 |
 | S9 | `target` | MCP `get_active_target` |
 | S10 | `blocked_stability[]` | S3c 와 같은 `list_requirements({target})` 호출에서 `stability` 가 `deprecated` 또는 `frozen` 인 요구 |
 | S11 | `unreadable[]` | 읽지 못한 필드 id — D8 의 fail-closed 입력 |
@@ -967,8 +969,8 @@ run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `c
 | `--design-doc <path>` / `--issue <n>` | intake 소스(Phase 1.a) |
 | `--base-branch <name>` | run 의 통합 브랜치가 갈라져 나오는 곳. 기본값은 현재 브랜치. 오케스트레이터는 여기에 쓰지 않는다 |
 | `--lanes N` | **stage 당** lane 상한, 기본 4, 최대 8. phase 1 에서는 공개된 분할의 stage 당 단위 수를 제한하는 값이다 |
-| `--run-budget <mins>` | run 전체 벽시계. 초과 시 다음 stage 경계에서 `abort-run` 으로 멈춘다 |
-| `--subagent-budget N` | run 전체 서브에이전트 spawn 상한. 소진 시 현재 루프를 `verdict = fail-cap` 과 `reason_class = "budget-exhausted"` 로 닫고 다음 stage 경계에서 `abort-run` 으로 멈춘다 |
+| `--run-budget <mins>` | run 전체 벽시계. 초과 시 다음 stage 경계에서 `abort_gate` 를 `run-budget-exhausted` 로 놓고 `abort-run` 으로 멈춘다 |
+| `--subagent-budget N` | run 전체 서브에이전트 spawn 상한. 소진 시 현재 루프를 `verdict = fail-cap` 과 `reason_class = "budget-exhausted"` 로 닫고, 다음 stage 경계에서 `abort_gate` 를 `subagent-budget-exhausted` 로 놓고 `abort-run` 으로 멈춘다 |
 | `--allow-inferred-write-set` | `[INFERRED:` `files[]` 를 lane 적격으로 허용하고 저널에 기록한다 |
 | `--allow-untested-ac N` | `test_id: null` 상한을 올린다. 저널에 기록하고 run 헤더에 출력한다 |
 | `--allow-plan-residual N` | `R-PLAN` `coverage_residual[]` 행 상한을 올린다. **절대 행 수**이며 비율이 아니다. `R-PLAN` 전용 |
@@ -1116,7 +1118,9 @@ recovery class **externally-visible**. Phase 3.d. wave 설계·excerpt·계획·
 
 ### §V.freeze-lane-plan
 
-recovery class **idempotent-by-key**. Phase 3.e. `lanes.lock.json` 을 쓴다. 다시 계산한 결과가 바이트 동일해야 하며 아니면 `lane-plan-drift` 다.
+recovery class **idempotent-by-key**. Phase 3.e. `speckiwi orchestrate schedule plan --plan <path> --lanes N --out <path>` 으로 `lanes.lock.json` 을 쓴다.
+**`--out` 은 `waves/wave-{n}/lanes.lock.json` 이고 생략하지 않는다** — 도구 기본값에는 wave 성분이 없어 뒤 wave 가 앞 wave 를 덮어쓴다.
+다시 계산한 결과가 바이트 동일해야 하며 아니면 `lane-plan-drift` 다.
 게이트: `schedule-cycle` · `tdd-pair-split` · `unknown-write-set-refused` · `files-not-grounded` · `non-code-write-set-refused` · `lane-plan-drift`.
 
 ### §V.review-partition
@@ -1229,7 +1233,7 @@ recovery class **externally-visible**. §15. `halt` 의 동의어가 **아니다
    speckiwi orchestrate preflight --json --mcp-root <path> --git-root <path> --role <id> --lane-id <id> --lane-plan <path>
    ```
 
-   `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 레인 워크트리, `--lane-plan` 은 `kiwi/orchestrator/{run_id}/lanes.lock.json` 이다. `--role` 은 `host` 또는 `lane` 이고, 레인 배치를 승인받을 때는 **`--role lane`** 이다. exit 0 이 아니면 그 배치에서 아무것도 하지 않는다 — 거부 사유가 무엇을 고쳐야 하는지 말한다.
+   `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 레인 워크트리, `--lane-plan` 은 `waves/wave-{n}/lanes.lock.json` 이다. `--role` 은 `host` 또는 `lane` 이고, 레인 배치를 승인받을 때는 **`--role lane`** 이다. exit 0 이 아니면 그 배치에서 아무것도 하지 않는다 — 거부 사유가 무엇을 고쳐야 하는지 말한다.
 
    같은 판정을 MCP 에서도 받는다 — `orchestrate_preflight` 바인딩이 `role`·`laneId`·`lanePlan` 을 그대로 노출한다. 이 인자들이 없으면 MCP 호출은 언제나 기본 `role=host` 로 판정되고, 역할 게이트는 호스트를 자처하는 linked worktree 를 거부하므로 워크트리 세션이 실제로 쓰는 표면에서 게이트에 닿을 수 없다. `orchestrate_preflight` 는 `workspaceRoot` 를 받지 않는다 — 판정 대상인 두 root 를 이미 필수 인자로 받기 때문이다.
 

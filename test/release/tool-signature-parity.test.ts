@@ -312,10 +312,12 @@ describe("FR-NODE-122 gate-id parity", () => {
     // 39 orchestrator-owned phase-1 rows + 4 routing gates + 13 inherited + 2 never-auto-granted
     // + 3 adopted + 2 emitted by a phase-1 kernel but absent from §13's table (@req FR-NODE-166).
     // @req FR-NODE-188 / FR-FLOW-134 — 65 since the run-close refusal and wave-master's direct
-    // review child joined. The count moving with the vocabulary is the point: a gate id no
-    // refusal can carry is prose in a machine costume.
-    expect(GATE_IDS).toHaveLength(65);
-    expect(new Set(GATE_IDS).size).toBe(65);
+    // review child joined. @req FR-NODE-195 — 67 since the two budget stops joined; each is
+    // declared in §0.G and carried by an `abort_gate`, so both satisfy the rule this count
+    // enforces. The count moving with the vocabulary is the point: a gate id no refusal can carry
+    // is prose in a machine costume.
+    expect(GATE_IDS).toHaveLength(67);
+    expect(new Set(GATE_IDS).size).toBe(67);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {

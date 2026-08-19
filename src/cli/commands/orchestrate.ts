@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 import type { ProjectRoot } from "../../core/types.js";
@@ -571,20 +571,82 @@ async function roleAwarePreflight(
   return { ok: true, role, topology: verdict.topology };
 }
 
-/** A frozen lane plan read back for the gate. Validated rather than cast: it decides an admission. */
+/**
+ * The per-stage lane cap the orchestrator skill declares for `--lanes`. @req IR-CLI-098
+ *
+ * Exported so a test can hold it against the number the skill body states. A bound that only the
+ * code knows drifts the moment either side is edited alone, and the drift is invisible: a widened
+ * bound refuses nothing, so nothing fails.
+ */
+export const MAX_LANE_CAP = 8;
+
+/**
+ * @req IR-CLI-098 — validated where the argument arrives, not where the plan is built. Reaching
+ * `computeLanePlan` through a bare `Number.parseInt` gave a typo two different wrong endings and
+ * neither named the cause: `NaN` clamped to 1 inside the planner when lanes formed, surfacing later
+ * as `lane-plan-incomplete` blaming the task set, and never surfaced at all when every task folded
+ * to the serial epilogue, because the cap is only consulted once a stage has lanes to split.
+ */
+function laneCapOption(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError(`--lanes must be a whole number between 1 and ${MAX_LANE_CAP}, not ${value}`);
+  }
+  const cap = Number.parseInt(value, 10);
+  if (cap < 1 || cap > MAX_LANE_CAP) {
+    throw new InvalidArgumentError(`--lanes must be between 1 and ${MAX_LANE_CAP}, not ${value}`);
+  }
+  return cap;
+}
+
+/**
+ * A frozen lane plan read back for the gate. Validated rather than cast: it decides an admission.
+ *
+ * @req IR-CLI-097 — two shapes, because the file the scheduler writes and the shape this reader was
+ * built for were never the same. `schedule plan` serialises a `LanePlan`, whose lanes live in an
+ * array under `lanes`; the reader only knew a map keyed by lane id, so handing it the real file
+ * made it walk `lanes` as if that key were a lane and refuse with `lanes.writeSet is not a list of
+ * paths`. The skill's worktree procedure instructs exactly that call, so no lane could be admitted.
+ * The discriminator is an array-valued `lanes` key: a legacy map cannot collide with it, because
+ * its keys are lane ids and a lane id is not the literal `lanes`.
+ */
 function lanePlanFromJson(value: unknown, label: string, absolutePath: string): FrozenLanePlan {
   const fail = (detail: string): never => {
     throw new OperationalError(`${label} is not a lane plan at ${absolutePath}: ${detail}`);
   };
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail("not an object");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return fail("expected an object with a `lanes` array, or a map of lane ids to write sets");
+  }
   const plan = Object.create(null) as Record<string, { writeSet: readonly string[] }>;
-  for (const [laneId, entry] of Object.entries(value as Record<string, unknown>)) {
+  const readWriteSet = (laneId: string, entry: unknown): readonly string[] => {
     if (typeof entry !== "object" || entry === null) fail(`${laneId} is not an object`);
     const writeSet = (entry as { writeSet?: unknown }).writeSet;
     if (!Array.isArray(writeSet) || writeSet.some((item) => typeof item !== "string")) {
-      fail(`${laneId}.writeSet is not a list of paths`);
+      fail(`lane ${laneId} has no write set of paths`);
     }
-    plan[laneId] = { writeSet: writeSet as string[] };
+    return writeSet as string[];
+  };
+
+  const lanes = (value as { lanes?: unknown }).lanes;
+  if (Array.isArray(lanes)) {
+    for (const [index, lane] of lanes.entries()) {
+      if (typeof lane !== "object" || lane === null) fail(`lanes[${index}] is not an object`);
+      const laneId = (lane as { laneId?: unknown }).laneId;
+      // The id names the lane in every later refusal, so a plan without one is unusable rather than
+      // merely odd — the index it would fall back to means nothing to whoever reads the message.
+      if (typeof laneId !== "string" || laneId.length === 0) fail(`lanes[${index}] has no laneId`);
+      // Two lanes under one id would leave the later one's write set deciding admission for both,
+      // and the gate would answer for a lane nobody planned. Refuse rather than let one win.
+      if (Object.prototype.hasOwnProperty.call(plan, laneId as string)) fail(`lane ${laneId} appears twice`);
+      plan[laneId as string] = { writeSet: readWriteSet(laneId as string, lane) };
+    }
+    return plan;
+  }
+  if ("lanes" in (value as Record<string, unknown>)) {
+    return fail("`lanes` is present but is not an array, so this is neither a lane plan nor a map of lane ids");
+  }
+
+  for (const [laneId, entry] of Object.entries(value as Record<string, unknown>)) {
+    plan[laneId] = { writeSet: readWriteSet(laneId, entry) };
   }
   return plan;
 }
@@ -1315,7 +1377,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
 
   addMutationOptions(schedule.command("plan"))
     .requiredOption("--plan <path>", "the planner sidecar")
-    .option("--lanes <n>", "per-stage lane cap", "4")
+    .option("--lanes <n>", `per-stage lane cap, 1 to ${MAX_LANE_CAP}`, laneCapOption, 4)
     .option("--allow-inferred-write-set", "permit [INFERRED: write sets to be lane-eligible")
     // @req IR-CLI-084 AC-6 — off by default, and journalled when used.
     .option("--strict-grounding", "require every declared path to exist at the dispatch base")
@@ -1367,7 +1429,8 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           existingPaths: [...existingPaths],
           priorPostmortems: (sidecar.prior_postmortems ?? []) as LanePlanInput["priorPostmortems"],
           designItemMap: (sidecar.design_item_map ?? {}) as Record<string, string[]>,
-          laneCap: Number.parseInt(options.lanes as string, 10),
+          // @req IR-CLI-098 — already a validated number; the option parser owns the range.
+          laneCap: options.lanes as number,
           // Globs, because `insideRoots` matches them as globs; a bare `src` would classify every
           // code task `non-code-write-set` and route the whole wave to the serial epilogue.
           codeRoots: (sidecar.code_roots ?? ["src/**"]) as string[],

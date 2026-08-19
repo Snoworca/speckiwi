@@ -92,6 +92,14 @@ export const GATE_IDS = [
   "child-srs-needs-user-or-failed",
   "invalid-loop-option",
 
+  // @req FR-NODE-195 — the two budget stops. `abort_gate` is closed over this union, so a run that
+  // ended because a budget ran out could previously either be refused at append or borrow an
+  // unrelated gate and record a false cause; the journal is what a resuming session reads. Two
+  // identifiers rather than one because the remedies differ — wall clock is raised by a deadline,
+  // fan-out by a spawn allowance — and one name would leave the line unable to say which ran out.
+  "run-budget-exhausted",
+  "subagent-budget-exhausted",
+
   // — Never auto-granted by `--auto` alone; each needs its own explicit pass-through option (§13) —
   "integration-test-user-consent",
   "cost-warning-large-task",
