@@ -57,6 +57,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 | `wt-delegation-refused` | 요청되어 들어온 `kiwi-pipeline --wt` 위임 — cycle 스코프 worktree 를 lane 스코프 안에 중첩하는 위상 | Preflight P.2 |
 | `invalid-loop-option` | `--loops N` 이 정수 1 이상이 아님 | Preflight P.2 |
 | `orchestrator-run-lock-held` | 다른 orchestrator run 이 git common dir 키의 lease 를 보유 | Preflight P.5 |
+| `journal-artifact-lock-held` | run 저널 아티팩트 락을 다른 writer 가 보유 | append 시점 |
 | `resume-card-missing-or-invalid` | run 의 이벤트는 있는데 재개 카드가 읽히지 않거나 상한을 넘음 | Phase 0 |
 | `ledger-reconciliation-divergent` | 현재 `(wave, stage)` 에 대해 저널·git ref·커밋 trailer 가 불일치 | Phase 0 |
 | `run-invariant-drift` | 재계산한 `invariant_digest` 가 카드가 **현재 지시하는** lock 들과 불일치 | Phase 0 |

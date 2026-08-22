@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -371,16 +371,15 @@ describe("FR-NODE-191 AC-7/AC-8 — requirements, rules, and trace output are ne
 /** File contents under the given project-relative directories, for byte-comparison across a run. */
 async function snapshot(root: string, relativeDirs: readonly string[]): Promise<Map<string, string>> {
   const files = new Map<string, string>();
-  for (const relative of relativeDirs) {
-    const dir = path.join(root, ...relative.split("/"));
-    await walk(dir);
-    async function walk(current: string): Promise<void> {
-      for (const entry of await readdir(current, { withFileTypes: true }).catch(() => [])) {
-        const full = path.join(current, entry.name);
-        if (entry.isDirectory()) await walk(full);
-        else if (entry.isFile()) files.set(path.relative(root, full).replace(/\\/g, "/"), await readFile(full, "utf8"));
-      }
+  const walk = async (current: string): Promise<void> => {
+    for (const entry of await readdir(current, { withFileTypes: true }).catch(() => [])) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.isFile()) files.set(path.relative(root, full).replace(/\\/g, "/"), await readFile(full, "utf8"));
     }
+  };
+  for (const relative of relativeDirs) {
+    await walk(path.join(root, ...relative.split("/")));
   }
   return files;
 }

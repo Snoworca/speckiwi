@@ -32,6 +32,11 @@ export const GATE_IDS = [
   "run-root-preflight-mismatch",
   "invalid-run-scope-option",
   "orchestrator-run-lock-held",
+  // @req FR-NODE-197 — contention on the run JOURNAL, which is a different artifact from the run
+  // lock above. Both were reported as `run-invariant-drift`, which asserts the run's invariants have
+  // moved; a busy journal is not that, and an operator reading it goes looking for a corrupted file
+  // instead of a concurrent writer. `run abort` is the verb that carried it most often.
+  "journal-artifact-lock-held",
   "route-probe-unreadable",
   "route-escalation-after-landed-state",
   "route-deescalation-refused",

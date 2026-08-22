@@ -37,7 +37,7 @@ import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/
 import { computeRoute } from "../../core/orchestrator/route.js";
 import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
-import { acquire, readHolder, release, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
+import { acquire, readHolder, releaseHeldRunLock, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
 import { planStageCoupling, type ParsedHandoff } from "../../core/orchestrator/substrate.js";
 import { normalizeTasks, type SidecarPhase, type SidecarTask, type TaskCatalogEntry } from "../../core/orchestrator/task-catalog.js";
 import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
@@ -903,35 +903,14 @@ async function collectLineCounts(root: string, existingPaths: readonly string[])
 /**
  * Releases a run lock this process may not have acquired.
  *
- * `release` takes the `RunLock` its own `acquire` returned, and a fresh `speckiwi orchestrate run
- * unlock` has no such handle — so the token is read back off the sentinel here (impure collection)
- * and the module's own release performs the token check and closes the kernel fence. Unlinking the
- * sentinel directly would skip both, which within one process leaves the fence held and makes the
- * next acquire refuse a lock nobody holds.
- *
- * **This belongs in `src/core/orchestrator/run-lock.ts` as a release-by-path entry point**, beside
- * `acquire` / `renew` / `release`: the sentinel's format is that module's business, and reading its
- * token from outside couples this file to a shape it does not own.
+ * @req FR-NODE-197 AC-4/AC-7 — this used to read the sentinel's token here and hand it to the
+ * module's `release`, which is scoped to a capability the calling process still holds and returns
+ * silently when it does not. Across processes it never holds one, so both `run unlock` and `run
+ * abort` reported a holder they had not removed. The sentinel's format is that module's business
+ * anyway; the release-by-path entry point an older comment here asked for now exists.
  */
 async function releaseRunLock(commonDir: string): Promise<{ owner: string | null }> {
-  const lockPath = runLockPath(commonDir);
-  const raw = await readFile(lockPath, "utf8").catch(() => null);
-  if (raw === null) return { owner: null };
-  let record: { token?: unknown; owner?: unknown } = {};
-  try {
-    record = JSON.parse(raw) as { token?: unknown; owner?: unknown };
-  } catch {
-    // A torn sentinel names no token and no owner; removing it is the only available recovery.
-    await rm(lockPath, { force: true });
-    return { owner: null };
-  }
-  const owner = typeof record.owner === "string" ? record.owner : null;
-  if (typeof record.token !== "string") {
-    await rm(lockPath, { force: true });
-    return { owner };
-  }
-  await release({ commonDir, lockPath, token: record.token, owner: owner ?? "" });
-  return { owner };
+  return releaseHeldRunLock(commonDir);
 }
 
 // --- the journal --------------------------------------------------------------------------------
@@ -945,6 +924,14 @@ interface JournalDiagnostic {
 interface JournalAppendOutcome {
   readonly written: boolean;
   readonly diagnostics: readonly JournalDiagnostic[];
+  /**
+   * True when the write was refused because another writer held the journal's lock.
+   *
+   * @req FR-NODE-197 AC-1 — a typed answer rather than a regex over the diagnostic's prose. The
+   * caller has to tell contention from a journal that would be left invalid, and `SRS-E075` carries
+   * both here and elsewhere; matching on the message made rewording a sentence a behaviour change.
+   */
+  readonly contended?: boolean;
 }
 
 /**
@@ -978,6 +965,7 @@ async function appendWavesLine(
   if (!acquired.ok) {
     return {
       written: false,
+      contended: true,
       diagnostics: [
         {
           code: "SRS-E075",
@@ -1372,10 +1360,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   addMutationOptions(run.command("unlock")).action(async (options) => {
     await mutate(options, async () => {
       const commonDir = await resolveGitCommonDir(runRoot(command));
-      const holder = await readHolder(commonDir);
-      if (holder === null) return { lockPath: runLockPath(commonDir), heldBy: null };
-      if (options.dryRun !== true) await releaseRunLock(commonDir);
-      return { lockPath: runLockPath(commonDir), heldBy: holder.owner };
+      // @req FR-NODE-197 AC-7 — the holder reported is the one the release itself saw, not one read
+      // a moment earlier by a second call. Two reads over one sentinel can disagree, and the answer
+      // that matters is what was there when it was removed.
+      if (options.dryRun === true) {
+        return { lockPath: runLockPath(commonDir), heldBy: (await readHolder(commonDir))?.owner ?? null };
+      }
+      return { lockPath: runLockPath(commonDir), heldBy: (await releaseRunLock(commonDir)).owner };
     });
   });
 
@@ -1407,7 +1398,17 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", abort_gate: options.reason },
           options.dryRun === true
         );
-        if (!outcome.written && options.dryRun !== true) return refuse("run-invariant-drift", outcome.diagnostics);
+        if (!outcome.written && options.dryRun !== true) {
+          // @req FR-NODE-197 AC-1/AC-3 — the cause decides the gate, and the refusal says the run
+          // lock is still held. Reporting contention as invariant drift sent the operator after a
+          // corrupted journal; refusing without mentioning the lock left the run wedged behind a
+          // fact nothing had told them. Keeping the lock is deliberate: an abort that could not
+          // record itself has left the run in a state another session must not join.
+          return refuse(outcome.contended === true ? "journal-artifact-lock-held" : "run-invariant-drift", [
+            ...outcome.diagnostics,
+            { runLockHeld: true, lockPath: runLockPath(commonDir) }
+          ]);
+        }
         if (options.dryRun !== true) await releaseRunLock(commonDir);
         return { reason: options.reason, journalWritten: outcome.written };
       });

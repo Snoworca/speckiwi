@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { realpath } from "node:fs/promises";
+import { realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -132,6 +132,32 @@ export async function release(lock: RunLock): Promise<void> {
   const result = await (await exclusiveLockModule()).releaseExclusiveLock(capability);
   if (result.ok) capabilities.delete(lock.token);
   if (!result.ok) throw new Error(String(result.cleanupDiagnostic.message ?? "Run lock cleanup failed"));
+}
+
+/**
+ * Drops the run lock whoever holds it, and reports the holder that was removed.
+ *
+ * @req FR-NODE-197 AC-4/AC-7 — `release` above is scoped to a capability this process still holds,
+ * and returns doing nothing when it does not. Across processes it never does: the CLI takes the lock
+ * in one invocation and drops it in a later one, so `run unlock` and `run abort` were reporting a
+ * holder they had not removed. Every test that covered them drove `main()` inside one process, where
+ * the capability map is populated and the defect cannot appear.
+ *
+ * Releasing a lock this process never took is the point rather than a hazard: both callers are an
+ * operator deliberately ending a run. The holder is read first so the caller can name whom it
+ * displaced, and a torn sentinel - which names nobody - is still removed, because leaving it would
+ * wedge the run behind a record no one can act on.
+ */
+export async function releaseHeldRunLock(commonDir: string): Promise<{ readonly owner: string | null }> {
+  const lockPath = runLockPath(path.resolve(commonDir));
+  const holder = await readHolder(commonDir).catch(() => null);
+  const capability = [...capabilities.values()].find((entry) => entry.lockPath === lockPath);
+  if (capability) {
+    const result = await (await exclusiveLockModule()).releaseExclusiveLock(capability);
+    if (result.ok) capabilities.delete(capability.token);
+  }
+  await rm(lockPath, { force: true });
+  return { owner: holder?.owner ?? null };
 }
 
 /** Returns the current valid holder, or null for an absent/torn sentinel. */
