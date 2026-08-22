@@ -133,7 +133,7 @@ function prependCompletedOperation(
   };
 }
 
-async function appendUtf8LineAndSync(absolutePath: string, line: string, prependLineFeed = false): Promise<void> {
+export async function appendUtf8LineAndSync(absolutePath: string, line: string, prependLineFeed = false): Promise<void> {
   const handle = await open(absolutePath, "a");
   try {
     await handle.writeFile(`${prependLineFeed ? "\n" : ""}${line}\n`, { encoding: "utf8" });

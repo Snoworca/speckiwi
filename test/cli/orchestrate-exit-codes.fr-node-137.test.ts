@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -231,7 +231,13 @@ describe("FR-NODE-137 AC-6 — --dry-run produces the same exit codes and writes
     expect(accepted.exit, JSON.stringify(accepted.payload)).toBe(0);
     expect(accepted.payload.dryRun).toBe(true);
     expect(await readFile(path.join(root, "kiwi/waves.jsonl"), "utf8")).toBe(before);
-    // The candidate file the validation used must not survive the dry run.
-    await expect(stat(path.join(root, "kiwi/waves.jsonl.candidate"))).rejects.toThrow();
+    // The candidate file the validation used must not survive the dry run. Scanned by prefix, not by
+    // the one literal name: @req FR-NODE-196 AC-3 gave the candidate a per-attempt suffix, so a
+    // `stat` on the bare `waves.jsonl.candidate` became a path that can never exist and this
+    // assertion silently became a tautology that held whether or not anything was cleaned up.
+    expect(
+      (await readdir(path.join(root, "kiwi"))).filter((entry) => entry.startsWith("waves.jsonl.candidate")),
+      "the dry run left a candidate behind"
+    ).toEqual([]);
   });
 });

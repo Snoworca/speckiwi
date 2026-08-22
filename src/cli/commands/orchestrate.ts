@@ -1,4 +1,6 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { Command, InvalidArgumentError } from "commander";
@@ -22,6 +24,13 @@ import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js"
 import { normaliseRoot, preflightRunRoot } from "../../core/orchestrator/preflight.js";
 import { gitCommonDirOf, gitToplevelOf, realpathProbe, registeredWorktreesOf } from "../../core/root-facts.js";
 import { preflightRunRootForRole, type FrozenLanePlan } from "../../core/orchestrator/worktree-topology.js";
+import {
+  acquireArtifactLock,
+  releaseArtifactLock,
+  type AcquireArtifactLockResult,
+  type ArtifactLockCapability
+} from "../../core/workflow/artifact-lock.js";
+import { appendUtf8LineAndSync } from "../../core/workflow/mutation.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
 import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
@@ -581,6 +590,14 @@ async function roleAwarePreflight(
 export const MAX_LANE_CAP = 8;
 
 /**
+ * How long the wave append waits for the journal lock before refusing.
+ * @req FR-NODE-196 — a wait rather than a single try. The lock is taken for the length of one
+ * validate-and-append, so contention at the documented `--lanes` ceiling of 8 is routine rather than
+ * exceptional; refusing on the first miss turned half of eight concurrent appends into hard failures.
+ */
+const WAVES_LOCK_WAIT_MS = 10_000;
+
+/**
  * @req IR-CLI-098 — validated where the argument arrives, not where the plan is built. Reaching
  * `computeLanePlan` through a bare `Number.parseInt` gave a typo two different wrong endings and
  * neither named the cause: `NaN` clamped to 1 inside the planner when lanes formed, surfacing later
@@ -919,9 +936,15 @@ async function releaseRunLock(commonDir: string): Promise<{ owner: string | null
 
 // --- the journal --------------------------------------------------------------------------------
 
+interface JournalDiagnostic {
+  readonly code: string;
+  readonly message: string;
+  readonly severity: string;
+}
+
 interface JournalAppendOutcome {
   readonly written: boolean;
-  readonly diagnostics: readonly { code: string; message: string; severity: string }[];
+  readonly diagnostics: readonly JournalDiagnostic[];
 }
 
 /**
@@ -944,27 +967,147 @@ async function appendWavesLine(
   dryRun: boolean
 ): Promise<JournalAppendOutcome> {
   const absolute = path.resolve(root.root, relativePath);
-  const candidateRelative = `${relativePath}.candidate`;
-  const candidateAbsolute = path.resolve(root.root, candidateRelative);
-  const existing = await readFile(absolute, "utf8").catch(() => "");
-  const stamped = { ...payload, writer: JOURNAL_WRITER_STAMP };
-  const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
-  await mkdir(path.dirname(candidateAbsolute), { recursive: true });
-  await writeFile(candidateAbsolute, `${existing}${separator}${JSON.stringify(stamped)}\n`, "utf8");
+  const stamped = JSON.stringify({ ...payload, writer: JOURNAL_WRITER_STAMP });
+
+  // @req FR-NODE-196 AC-9 — a dry run takes no lock. It changes nothing, and acquiring an exclusive
+  // lock to preview made a concurrent real append fail; `runLockedJsonlMutation` short-circuits its
+  // own dry runs past the lock for the same reason.
+  if (dryRun) return { written: false, diagnostics: await validateProspectiveJournal(root, relativePath, runId, stamped) };
+
+  const acquired = await acquireJournalLock(absolute);
+  if (!acquired.ok) {
+    return {
+      written: false,
+      diagnostics: [
+        {
+          code: "SRS-E075",
+          message: `Workflow artifact mutation lock is held for ${relativePath}`,
+          severity: "error"
+        }
+      ]
+    };
+  }
+
   try {
+    const diagnostics = await validateProspectiveJournal(root, relativePath, runId, stamped);
+    if (diagnostics.some((entry) => entry.severity === "error")) {
+      return withCleanupDiagnostic({ written: false, diagnostics }, await releaseJournalLock(acquired.capability, relativePath));
+    }
+
+    // @req FR-NODE-196 AC-2 — one O_APPEND write, not a rewrite of the file. The previous shape read
+    // the journal whole, built a copy with one line added and renamed it over the original; every
+    // line another writer appended after that read was overwritten by the rename, and the survivor
+    // was well-formed JSONL so nothing could see it. Guarding the rename with a byte comparison only
+    // narrowed the window - the compare and the rename are separate syscalls - and measurement found
+    // the loss alive at 55% to 80% of the command's own duration, peaking at 7 of 10 trials. An
+    // append has no window to narrow: it cannot overwrite what it never read.
+    const existing = await readJournalBytes(absolute);
+    await mkdir(path.dirname(absolute), { recursive: true });
+    await appendUtf8LineAndSync(absolute, stamped, existing.length > 0 && !existing.endsWith("\n"));
+    return withCleanupDiagnostic({ written: true, diagnostics }, await releaseJournalLock(acquired.capability, relativePath));
+  } catch (error) {
+    // @req FR-NODE-196 AC-4 — the throw path releases too. A stranded lock is invisible across
+    // processes, because one whose owning pid is dead is stolen as stale and each CLI call is its own
+    // short-lived process; the MCP server runs `main` in-process and stays alive, so a lock stranded
+    // there is one nobody may steal and the journal stops accepting writes until restart.
+    await releaseJournalLock(acquired.capability, relativePath);
+    throw error;
+  }
+}
+
+/**
+ * Reads the journal, treating **only** a missing file as empty.
+ *
+ * @req FR-NODE-196 AC-8 — every other errno used to collapse to "" as well, and the write then put a
+ * one-line journal in place of the real one and reported success. The byte comparison that was
+ * supposed to guard it compared "" against "" and certified the truncation. EACCES, EMFILE under the
+ * lane fan-out, EBUSY from an indexer and EIO on a share all reach here.
+ */
+async function readJournalBytes(absolute: string): Promise<string> {
+  try {
+    return await readFile(absolute, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+    throw error;
+  }
+}
+
+/**
+ * Validates the journal as it **would** be once this line lands, using the same parser a reader uses
+ * rather than a reconstruction of it.
+ *
+ * @req FR-NODE-196 AC-3 — the candidate carries a per-attempt name and is removed by the attempt that
+ * wrote it. Under one fixed name two concurrent runs wrote the same path and each one's cleanup
+ * deleted the other's work in progress.
+ */
+async function validateProspectiveJournal(
+  root: ProjectRoot,
+  relativePath: string,
+  runId: string,
+  stamped: string
+): Promise<JournalDiagnostic[]> {
+  const absolute = path.resolve(root.root, relativePath);
+  const candidateRelative = `${relativePath}.candidate.${process.pid}.${randomUUID()}`;
+  const candidateAbsolute = path.resolve(root.root, candidateRelative);
+  const existing = await readJournalBytes(absolute);
+  const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
+
+  await mkdir(path.dirname(candidateAbsolute), { recursive: true });
+  try {
+    await writeFile(candidateAbsolute, `${existing}${separator}${stamped}\n`, "utf8");
     const view = await parseWavesJournal(root, { runId, engine: "kiwi-orchestrator", relativePath: candidateRelative });
-    const diagnostics = validateWavesJournal(view).map((entry) => ({
+    return validateWavesJournal(view).map((entry) => ({
       code: entry.code,
       message: entry.message,
       severity: entry.severity
     }));
-    if (diagnostics.some((entry) => entry.severity === "error")) return { written: false, diagnostics };
-    if (dryRun) return { written: false, diagnostics };
-    await rename(candidateAbsolute, absolute);
-    return { written: true, diagnostics };
   } finally {
     await rm(candidateAbsolute, { force: true });
   }
+}
+
+/**
+ * Waits for the journal lock rather than refusing on the first miss.
+ *
+ * @req FR-NODE-196 AC-1 — the lock is held for one validate-and-append, so at the documented
+ * `--lanes` ceiling of 8 two writers colliding is ordinary. A single non-blocking try turned four of
+ * eight concurrent appends into hard refusals, and it refused `run abort` - the one verb an
+ * orchestrator calls when it must stop - whenever a lane happened to be journalling. An acquire that
+ * throws is left to throw: reporting a permission fault as contention tells the operator to wait for
+ * a holder that does not exist.
+ */
+async function acquireJournalLock(absolute: string): Promise<AcquireArtifactLockResult> {
+  const deadline = process.hrtime.bigint() + BigInt(WAVES_LOCK_WAIT_MS) * 1_000_000n;
+  for (;;) {
+    const result = await acquireArtifactLock({ artifactPath: absolute, owner: JOURNAL_WRITER_STAMP });
+    if (result.ok || process.hrtime.bigint() >= deadline) return result;
+    await delay(15);
+  }
+}
+
+/**
+ * Releases the journal lock and reports a release that did not take.
+ *
+ * @req FR-NODE-196 AC-10 — the result used to be discarded. `releaseArtifactLock` answers
+ * `cleanup_failed` when the sentinel survives, parks the capability for a later retry and leaves the
+ * lock in place; in the MCP server, whose pid stays alive, that is a journal nobody can write again
+ * until restart. Silence there is the worst available answer.
+ */
+async function releaseJournalLock(
+  capability: ArtifactLockCapability,
+  relativePath: string
+): Promise<JournalDiagnostic | null> {
+  const released = await releaseArtifactLock(capability);
+  if (released.ok && released.released) return null;
+  return {
+    code: "SRS-E075",
+    message: `Workflow artifact lock cleanup failed for ${relativePath} (${released.reason ?? "unknown"}); the lock may still be held`,
+    severity: "warning"
+  };
+}
+
+function withCleanupDiagnostic(outcome: JournalAppendOutcome, cleanup: JournalDiagnostic | null): JournalAppendOutcome {
+  return cleanup === null ? outcome : { ...outcome, diagnostics: [...outcome.diagnostics, cleanup] };
 }
 
 /** Reads a run's journal view, or throws an operational error when the file cannot be parsed. */

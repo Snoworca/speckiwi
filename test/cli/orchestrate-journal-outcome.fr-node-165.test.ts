@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -216,7 +216,13 @@ describe("FR-NODE-165 AC-5 — a refused append leaves the journal byte-identica
       const result = await run(argv);
       expect(result.exit).toBe(2);
       expect(await journal(root)).toBe(before);
-      expect(await readFile(path.join(root, "kiwi", "waves.jsonl.candidate"), "utf8").catch(() => null)).toBeNull();
+      // Scanned by prefix, not by the one literal name: @req FR-NODE-196 AC-3 gave the candidate a
+      // per-attempt suffix, so reading the bare `waves.jsonl.candidate` became a read of a path that
+      // can never exist, and this assertion silently became a tautology.
+      expect(
+        (await readdir(path.join(root, "kiwi"))).filter((entry) => entry.startsWith("waves.jsonl.candidate")),
+        "the refused append left a candidate behind"
+      ).toEqual([]);
     }
   });
 });
