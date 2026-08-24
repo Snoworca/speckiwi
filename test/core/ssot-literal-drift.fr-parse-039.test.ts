@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { collectSsotLiteralDrift } from "../../src/core/validator/ssot-literal-drift.js";
@@ -6,6 +7,7 @@ import { collectSsotSpans } from "../../src/core/validator/rules.js";
 import { SSOT_LITERAL_REGISTRY, SSOT_REGISTRY_MODULES } from "../../src/core/ssot-literal-registry.js";
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../src/core/project-root.js";
+import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 import { validateWorkspace } from "../../src/core/validator/validate-workspace.js";
 
 // @req FR-PARSE-039 — a criterion that quotes a stale value of a shipped constant is reported.
@@ -170,6 +172,40 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     }
   });
 
+  // AC-3, the wiring itself. Asserting zero findings against a clean repository says nothing
+  // about whether the pass carries the diagnostic: cut the wiring and the count is still zero.
+  // Plant one into a copied workspace and require the shared pass to report it.
+  it("AC-3: the shared pass reports a planted value in a real workspace", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const before = await readFile(indexPath, "utf8");
+    await writeFile(indexPath, `${before}\n\nThe rules live in SRS-MD-Rules-v0.0.1.md.\n`, "utf8");
+
+    const parsed = await parseWorkspace(await resolveProjectRoot(root, root));
+    const ours = validateWorkspace(parsed).diagnostics.filter((item) => item.code === DIAGNOSTIC_CODE);
+
+    expect(ours.length, "the shared pass must carry this diagnostic").toBeGreaterThan(0);
+    expect(ours[0]!.severity, "info would leave validate --fail-on-warning at zero").toBe("warning");
+    expect(typeof ours[0]!.line, "every finding carries a line").toBe("number");
+    expect(ours[0]!.message).toContain("BUNDLED_SRS_RULES_FILENAME");
+  });
+
+  // And the line is the planted one, not the first line of the file: a finding that cannot be
+  // located is a finding an agent has to go looking for.
+  it("AC-1: a planted value is reported at its own line", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const indexPath = path.join(root, "docs", "spec", "00.index.md");
+    const before = await readFile(indexPath, "utf8");
+    const lines = before.split(/\r?\n/);
+    lines.push("", "The rules live in SDS-MD-Rules-v0.0.1.md.");
+    await writeFile(indexPath, lines.join("\n"), "utf8");
+
+    const parsed = await parseWorkspace(await resolveProjectRoot(root, root));
+    const ours = validateWorkspace(parsed).diagnostics.filter((item) => item.code === DIAGNOSTIC_CODE);
+
+    expect(ours).toHaveLength(1);
+    expect(ours[0]!.line).toBe(lines.length);
+  });
   // AC-3: registered at warning or higher, and emitted from the shared pass.
   it("AC-3: the diagnostic is emitted by the shared validation pass", async () => {
     const parsed = await workspace();

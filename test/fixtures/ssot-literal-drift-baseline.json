@@ -1,5 +1,28 @@
 {
   "code": "SRS-W073",
-  "note": "The repository once carried 29 of these. Phase 1 replaced every value with the constant that defines it, so the expected set is now empty. A non-empty run means either a new criterion spelled a value out, or a constant moved and something still names the old one.",
+  "note": "The repository once carried 29 of these. Phase 1 replaced every value with the constant that defines it, so the expected set is empty. A non-empty run means either a new statement spelled a value out, or a constant moved and something still names the old one.",
+  "plantingRounds": [
+    {
+      "round": 1,
+      "frozenAt": "a9e1470",
+      "plantedBy": "an agent held apart from the implementation, with the check's source, its suite and the plan documents out of reach",
+      "isolation": "git worktree",
+      "planted": 11,
+      "reported": 6,
+      "missed": 5,
+      "falsePositives": 0,
+      "negativeControls": 7,
+      "whatItFound": [
+        "Only three sections were being read, so a stale value in an evidence Reference or a Related Docs row went unreported. Both are pure pointers.",
+        "An end marker was compared by whole string, so a marker that opened correctly and closed wrongly was invisible: two of the six kinds were effectively unprotected."
+      ]
+    },
+    {
+      "round": 2,
+      "frozenAt": "75ab456",
+      "plantedBy": "the same agent, same restrictions, boundaries of its own choosing",
+      "status": "in progress"
+    }
+  ],
   "occurrences": []
 }
