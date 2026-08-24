@@ -1,3 +1,4 @@
+import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
 import type { Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
@@ -1124,7 +1125,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--from-step <step>", "origin step name")
     .option("--to-scope <scope>", "target body scope prefix")
     .option("--dry-run", "evaluate without writing")
-    .option("--ignore-lock", "bypass the SRS mutation lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json", "JSON output")
     .action(async (id, options) => {
       const json = Boolean(options.json) || command.opts().json;

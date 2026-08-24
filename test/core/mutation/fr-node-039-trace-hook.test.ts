@@ -338,7 +338,7 @@ describe("FR-NODE-054 AC-4 — trace.mjs treats a missing or unparseable state.m
     const root = await copyFixtureWorkspace("valid-basic");
     const sessionId = "sess-garbage-state";
     const activeTask = "polish-login";
-    await writeStateMd(root, { raw: "  not a state file at all " });
+    await writeStateMd(root, { raw: "\u0000\u0000not a state file at all\u0000" });
 
     const result = await runTraceHook(
       root,

@@ -287,7 +287,7 @@ function sortedPair(left: string, right: string): [string, string] {
 }
 
 function edgeKey(edge: ConflictEdge): string {
-  return [edge.reason, edge.a, edge.b ?? "", edge.pointId ?? ""].join(" ");
+  return [edge.reason, edge.a, edge.b ?? "", edge.pointId ?? ""].join("\u0000");
 }
 
 /**

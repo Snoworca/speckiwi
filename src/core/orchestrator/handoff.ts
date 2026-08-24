@@ -490,7 +490,7 @@ function checkSchema(front: { [key: string]: YamlValue }, body: string, violatio
   const required = [...HANDOFF_BODY_HEADINGS];
   const missing = required.filter((heading) => !headings.includes(heading));
   if (missing.length > 0) refuse(`body is missing the required heading(s): ${missing.join(", ")}`);
-  else if (headings.filter((heading) => required.includes(heading as (typeof HANDOFF_BODY_HEADINGS)[number])).join(" ") !== required.join(" ")) {
+  else if (headings.filter((heading) => required.includes(heading as (typeof HANDOFF_BODY_HEADINGS)[number])).join("\u0000") !== required.join("\u0000")) {
     refuse(`body headings are out of order; the declared order is ${required.join(", ")}`);
   }
 

@@ -1,3 +1,4 @@
+import { normalizeDashQueryArgv } from "./dash-query-argv.js";
 import { attachInheritedOptionsHelp, buildCommand } from "./command.js";
 import { registerReadCommands } from "./commands/read.js";
 import { registerMutationCommands } from "./commands/mutations.js";
@@ -60,7 +61,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   attachInheritedOptionsHelp(command);
   if (tryRenderHelpJson(argv, io, command)) return 0;
   try {
-    argv = await expandInputJsonArgv([...argv], command);
+    argv = normalizeDashQueryArgv(await expandInputJsonArgv([...argv], command), command);
   } catch (error) {
     const message = (error as { message?: string }).message ?? "invalid --input-json payload";
     if (jsonMode(argv, command)) {

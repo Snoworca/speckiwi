@@ -302,7 +302,7 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
   // wrong, and the lock is NOT recomputed mid-wave.
   const staleNotWrong =
     recorded.existingPathsDigest !== now.existingPathsDigest ||
-    recorded.priorPostmortemDigests.join(" ") !== now.priorPostmortemDigests.join(" ");
+    recorded.priorPostmortemDigests.join("\u0000") !== now.priorPostmortemDigests.join("\u0000");
   digests.push({
     index: 3,
     outcome: planDrift ? "drift" : staleNotWrong ? "stale-not-wrong" : "match",

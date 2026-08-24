@@ -1,3 +1,4 @@
+import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
@@ -83,7 +84,7 @@ export function registerRepairCommands(command: Command, context: CliContext): v
   ] as const) {
     rulesReferences
       .command(leaf)
-      .option("--ignore-lock")
+      .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
       .option("--json")
       .action(async (options) => {
         const result = await repairRulesReferences(await resolveProjectRoot(process.cwd(), command.opts().root), {
@@ -126,7 +127,7 @@ export function registerRepairCommands(command: Command, context: CliContext): v
     .command("apply")
     .requiredOption("--plan <path>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const rootPath = await rootFrom(command);

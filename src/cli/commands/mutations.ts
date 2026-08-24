@@ -1,3 +1,4 @@
+import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { TARGET_STATUSES_SENTENCE, TARGET_TYPES_SENTENCE } from "../../core/target-types.js";
@@ -93,12 +94,12 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("init")
     .option("--target <target>")
     .option("--scope <scope>")
-    .option("--force")
+    .option("--force", SAFETY_BYPASS_OPTION_HELP.initOverwrite)
     .option("--no-skills", "skip installing the bundled kiwi skills into the project")
     .option("--no-mcp", "skip registering the SpecKiwi MCP server in .mcp.json")
     .option("-g, --global", "also install/update the bundled kiwi skills into each present agent's global skills directory")
     .option("--dry-run", "preview all init steps without writing to the filesystem")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const root = await resolveProjectRoot(process.cwd(), command.opts().root ?? process.cwd());
@@ -129,7 +130,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     // @req IR-CLI-095 — additive, exactly as on `init`: the project migration still runs and the
     // global skills are refreshed as well. `remove` deliberately reads `-g` the other way, and says so.
     .option("-g, --global", "also refresh the bundled kiwi skills in each present agent's global skills directory")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       // Refused rather than settled by precedence: whichever way it resolved, half the callers would
@@ -172,7 +173,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--dry-run", "print the plan and write nothing")
     .option("--apply", "perform the removal")
     .option("-g, --global", "remove the installed agents' global kiwi skills INSTEAD OF this project's (init -g adds the global scope; here it replaces it)")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (unsupported: string[], options) => {
       const json = options.json || command.opts().json;
@@ -221,7 +222,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("sync-index")
     .option("--expected-sha256 <sha>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const result = await syncIndexRollups(await rootFrom(command.opts()), {
@@ -239,7 +240,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<status>")
     .option("--reason <text>", "Append a Change Notes row with the given reason (SRS-MD-Rules v1.1.0 §30.3)")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, status, options) => {
       const result = await updateStatus(await rootFrom(command.opts()), {
@@ -259,7 +260,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<stability>")
     .option("--reason <text>", "Append a Change Notes row with the given reason")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, stability, options) => {
       const result = await updateStability(await rootFrom(command.opts()), {
@@ -280,7 +281,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--text <text>", "note text (max 500 UTF-16 code units)")
     .option("--mode <mode>", "append (default) or replace")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await appendSectionNote(await rootFrom(command.opts()), {
@@ -307,7 +308,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--verification-method <method>")
     .option("--github-issue <url>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await updateRequirementFields(await rootFrom(command.opts()), {
@@ -332,7 +333,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<id>")
     .requiredOption("--items <json>", "JSON array of {text, checked?}")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await replaceAcceptanceCriteria(await rootFrom(command.opts()), {
@@ -351,7 +352,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--section <section>", "verification_evidence or trace_links")
     .requiredOption("--operations <json>", "JSON array of row operations")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await editRequirementTableRows(await rootFrom(command.opts()), {
@@ -372,7 +373,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--type <type>", `target type when --create is used: ${TARGET_TYPES_SENTENCE}`)
     .option("--description <text>", "target description when --create is used")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (target, options) => {
       const result = await setActiveTarget(await rootFrom(command.opts()), {
@@ -394,7 +395,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<target>")
     .argument("<status>", `target status: ${TARGET_STATUSES_SENTENCE}`)
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (target: string, status: string, options) => {
       const result = await setTargetStatus(await rootFrom(command.opts()), {
@@ -412,7 +413,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<target>")
     .requiredOption("--goal <text>", "goal text (max 500 UTF-16 code units)")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (target, options) => {
       const result = await setTargetGoal(await rootFrom(command.opts()), {
@@ -435,7 +436,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--report <path>", "completion report path; repeatable, stored comma-separated; forbids absolute paths, traversal, URL schemes, backslash, pipe, comma, newline, and #", pushReportPathOption, [])
     .option("--allow-incomplete", "allow historical or incomplete Completed Work Log references")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const result = await addCompletedWork(await rootFrom(command.opts()), {
@@ -463,7 +464,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
       .argument("[acIds...]")
       .option("--all")
       .option("--dry-run")
-      .option("--ignore-lock")
+      .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
       .option("--json")
       .action(async (id, acIds, options) => {
         const result = await setAcceptanceCriteriaChecked(await rootFrom(command.opts()), {
@@ -487,7 +488,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--covers <covers>")
     .option("--notes <notes>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const reference = options.reference ?? options.ref;
@@ -514,7 +515,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--relation <relation>")
     .option("--notes <notes>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const reference = options.reference ?? options.ref;
@@ -557,7 +558,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--evidence <row>", "evidence as type|reference|covers|notes; repeatable", pushOption, [])
     .option("--trace <row>", "trace as type|reference|relation|notes; repeatable", pushOption, [])
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const statement = options.requirement ?? options.statement;
@@ -600,7 +601,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<acId>")
     .requiredOption("--text <text>", "new acceptance criterion text")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, acId, options) => {
       const result = await editAcceptanceCriteria(await rootFrom(command.opts()), {
@@ -728,7 +729,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--reason <text>")
     .option("--apply")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--confirm-discard-verified", "override the verified-regression guard when discarding the old requirement")
     .option("--json")
     .action(async (options) => {
@@ -762,7 +763,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--superseded-by <id>", "write the Superseded By metadata field")
     .option("--sync-trace", "also insert the matching Trace Link row")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await setSupersede(await rootFrom(command.opts()), {
@@ -783,7 +784,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--to <status>", "active status to restore to (defaults to planned)")
     .option("--reason <text>")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await restore(await rootFrom(command.opts()), {
@@ -803,7 +804,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<name>", "scope name or name:PREFIX")
     .option("--apply", "create the scope file and register the index rows")
     .option("--dry-run")
-    .option("--ignore-lock")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (name, options) => {
       const separator = name.indexOf(":");
