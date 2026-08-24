@@ -330,15 +330,6 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
     if (typeof record.requirement === "string" && record.requirement.trim() !== "") {
       withLines(record, "requirement", record.requirement, record.headingLine);
     }
-    // A Rationale says why the requirement is what it is; a Research note records what was found.
-    // Both describe the present. A planting round put a stale value in each and nothing reported it.
-    for (const [section, text] of [
-      ["rationale", record.rationale],
-      ["research", record.research]
-    ] as const) {
-      if (typeof text !== "string" || text.trim() === "") continue;
-      withLines(record, section, text, record.headingLine);
-    }
     // A reference names a file that has to exist. The Notes beside it narrate a run that happened,
     // so naming the value in force at that time is what that column is for.
     for (const row of record.verificationEvidence ?? []) {
@@ -371,8 +362,15 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
   }
   for (const file of workspace.files) {
     const ranges = covered.get(file.relativePath) ?? covered.get(file.path) ?? [];
+    // A document that is a log end to end stays one whatever its headings say; elsewhere a heading
+    // opens or closes a retrospective section.
+    const wholeDocument = isRetrospectiveDocument(file.relativePath);
+    let retrospective = wholeDocument;
     file.lines.forEach((text: string, index: number) => {
       const line = index + 1;
+      const heading = /^#{1,3}\s+(.*)$/.exec(text);
+      if (heading && !wholeDocument) retrospective = isRetrospectiveHeading(heading[1] ?? "");
+      if (retrospective) return;
       if (ranges.some(([start, end]) => line >= start && line <= end)) return;
       if (text.trim() === "") return;
       spans.push({ filePath: file.relativePath, line, section: "sample", text });
@@ -380,6 +378,33 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
   }
 
   return spans;
+}
+
+/**
+ * Document-level sections that record what was true at the time.
+ *
+ * A requirement block has its own Change Notes, and those are already exempt. A document has the
+ * same thing at the top level — the Completed Work Log and the change history — and treating
+ * everything outside a requirement block as a live statement swept them in. It reported nothing
+ * only because those sections happened to name no registered constant; the next completed-work row
+ * naming one would have been reported, and "fixing" it would mean falsifying the record.
+ */
+const RETROSPECTIVE_HEADINGS = [
+  "completed work log",
+  "change notes",
+  "change history",
+  "변경 이력",
+  "완료 작업"
+];
+
+function isRetrospectiveHeading(heading: string): boolean {
+  const normalized = heading.toLowerCase().replace(/^[\d.\s]+/, "").trim();
+  return RETROSPECTIVE_HEADINGS.some((name) => normalized.startsWith(name));
+}
+
+/** A document that is a log end to end, rather than one that carries a log section. */
+function isRetrospectiveDocument(relativePath: string): boolean {
+  return /completed-work-log\.md$/.test(relativePath.replace(/\\/g, "/"));
 }
 
 /** The 1-based line `text` starts on, searching from `from`; falls back to `from`. */

@@ -15,7 +15,8 @@
       "whatItFound": [
         "Only three sections were being read, so a stale value in an evidence Reference or a Related Docs row went unreported. Both are pure pointers.",
         "An end marker was compared by whole string, so a marker that opened correctly and closed wrongly was invisible: two of the six kinds were effectively unprotected."
-      ]
+      ],
+      "negativeControlPlacement": "4 in acceptance criteria bodies, 2 in Change Notes, 1 in Implementation Notes"
     },
     {
       "round": 2,
@@ -23,20 +24,22 @@
       "plantedBy": "the same agent, same restrictions, boundaries of its own choosing",
       "isolation": "git worktree",
       "planted": 18,
-      "reported": 14,
-      "missed": 4,
+      "reported": 15,
+      "missed": 3,
       "falsePositives": 0,
       "negativeControls": 9,
-      "note": "Seven of the eighteen were the round-one misses, replanted in sections that are read; all seven were reported. Of the four new misses, three are values that are not the constant at all — full-width digits, a filename split by emphasis, a literal broken across lines — and catching them would mean loosening the comparison at the cost of false positives on near variants. The agent reported that the harness pushed part of the suite into its context after the planting was finished; it was not used for the judgement.",
+      "note": "Seven of the eighteen were the round-one misses, replanted in sections that are read; all seven were reported. A third party judged the four new misses afterwards and split them: the emphasis-split filename renders as the plain one, so it reads correctly and was a real miss, and it is now caught. Full-width digits and a literal broken across lines render as a different string, and reaching them would mean matching approximately, at the cost of false positives on the near variants both rounds confirmed are silent. The agent reported that the harness pushed part of the suite into its context after the planting was finished; it was not used for the judgement.",
       "whatItFound": [
         "A heading with a non-breaking space in it renders exactly like the ordinary one, reads correctly to anyone looking at it, and carried a version the tool had left behind. Pasting from a rendered document is how that character arrives.",
+        "A filename split by emphasis renders as the plain filename, with the same consequence.",
         "A Related Docs finding was reported at the block heading rather than at the row, thirteen lines above the text it was about."
-      ]
+      ],
+      "negativeControlPlacement": "9 near variants: the value in force quoted exactly (filename, heading, end marker), the current SDS value inside a link and inside a code span, the filename with .bak appended, with an .mdx extension, with no extension, lowercased, a heading at a different level, and a marker missing its slash"
     }
   ],
   "mutations": {
-    "run": 16,
-    "red": 16,
+    "run": 18,
+    "red": 18,
     "covers": [
       "cut the wiring out of the shared pass",
       "lower the severity to info, which leaves validate --fail-on-warning at zero",
@@ -53,8 +56,18 @@
       "compare a marker by whole string again",
       "drop trace references",
       "stop folding lookalike spaces",
-      "report a Related Docs row at the block heading"
+      "report a Related Docs row at the block heading",
+      "read a document-level Completed Work Log or change history as a live statement",
+      "stop stripping emphasis from inside a value"
     ]
   },
-  "occurrences": []
+  "occurrences": [],
+  "review": {
+    "round": "final",
+    "found": "A document-level Completed Work Log or change history was being read as a live statement. A requirement block's Change Notes were already exempt; a document has the same thing at the top level, and treating everything outside a requirement block as live swept them in. It reported nothing only because those sections happened to name no registered constant, and the next completed-work row naming one would have been reported - where the repair would mean falsifying the record.",
+    "alsoFound": [
+      "The registry's shape was never compared against the export it looks for, so a changed filename format would have made the check go quiet with every case still green.",
+      "The rules module was still building spans for sections the checker no longer reads, with a comment saying the opposite."
+    ]
+  }
 }

@@ -100,6 +100,34 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     }
     expect(compared, "the comparison must actually reach entries").toBeGreaterThan(3);
   });
+
+  // The value is compared against the export, but the shape that finds it was not. If a filename
+  // format changed, the check would go quiet and every case here would stay green: the shape would
+  // match nothing, so nothing would ever differ from the value.
+  it("AC-7: every shape matches the export it is meant to find", async () => {
+    const templates = (await import("../../src/core/bootstrap/templates.js")) as unknown as Record<string, unknown>;
+
+    // A heading prefix carries no version of its own — the rendered heading is the prefix followed
+    // by the version constant — so the string the shape has to match is built the way the tool
+    // builds it, not read straight off one export.
+    const rendered = (entry: (typeof SSOT_LITERAL_REGISTRY)[number]): string => {
+      const own = String(templates[entry.name] ?? "");
+      return own.endsWith("v") ? `${own}${entry.value}` : own;
+    };
+
+    let checked = 0;
+    for (const entry of SSOT_LITERAL_REGISTRY) {
+      if (entry.shape === undefined) continue;
+      expect(typeof templates[entry.name], `${entry.name} should resolve to a string`).toBe("string");
+
+      const pattern = new RegExp(entry.shape.source);
+      const match = pattern.exec(rendered(entry));
+      expect(match, `${entry.name}: the shape no longer matches what the tool renders`).not.toBeNull();
+      expect(match![1], `${entry.name}: the shape captures the wrong part`).toBe(entry.value);
+      checked += 1;
+    }
+    expect(checked, "some entries carry a shape").toBeGreaterThan(0);
+  });
   // AC-6: a compatibility-only export must never be treated as the value in force. That is the
   // trap this contract exists for: a check that scans a module's string exports picks up the Korean
   // heading kept for recognising older files, calls it current, and lets the criteria quoting it
@@ -178,8 +206,12 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
   it("AC-3: the shared pass reports a planted value in a real workspace", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const indexPath = path.join(root, "docs", "spec", "00.index.md");
-    const before = await readFile(indexPath, "utf8");
-    await writeFile(indexPath, `${before}\n\nThe rules live in SRS-MD-Rules-v0.0.1.md.\n`, "utf8");
+    // Not at the end of the file: that sits under the Completed Work Log, which is a record of
+    // what was true then and is deliberately not read. Plant it under Purpose instead.
+    const before = (await readFile(indexPath, "utf8")).split(/\r?\n/);
+    const purpose = before.findIndex((line) => /^##\s+1\./.test(line));
+    before.splice(purpose + 1, 0, "", "The rules live in SRS-MD-Rules-v0.0.1.md.");
+    await writeFile(indexPath, before.join("\n"), "utf8");
 
     const parsed = await parseWorkspace(await resolveProjectRoot(root, root));
     const ours = validateWorkspace(parsed).diagnostics.filter((item) => item.code === DIAGNOSTIC_CODE);
@@ -195,16 +227,18 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
   it("AC-1: a planted value is reported at its own line", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const indexPath = path.join(root, "docs", "spec", "00.index.md");
-    const before = await readFile(indexPath, "utf8");
-    const lines = before.split(/\r?\n/);
-    lines.push("", "The rules live in SDS-MD-Rules-v0.0.1.md.");
+    // Same reason as above: the end of the file is inside the Completed Work Log.
+    const lines = (await readFile(indexPath, "utf8")).split(/\r?\n/);
+    const purpose = lines.findIndex((line) => /^##\s+1\./.test(line));
+    lines.splice(purpose + 1, 0, "", "The rules live in SDS-MD-Rules-v0.0.1.md.");
     await writeFile(indexPath, lines.join("\n"), "utf8");
+    const plantedLine = purpose + 3;
 
     const parsed = await parseWorkspace(await resolveProjectRoot(root, root));
     const ours = validateWorkspace(parsed).diagnostics.filter((item) => item.code === DIAGNOSTIC_CODE);
 
     expect(ours).toHaveLength(1);
-    expect(ours[0]!.line).toBe(lines.length);
+    expect(ours[0]!.line).toBe(plantedLine);
   });
   // AC-3: registered at warning or higher, and emitted from the shared pass.
   it("AC-3: the diagnostic is emitted by the shared validation pass", async () => {
@@ -491,6 +525,77 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
 
     const findings = collectSsotLiteralDrift(rows);
     expect(findings.map((finding) => finding.line)).toEqual([6]);
+  });
+  // AC-4 at document level. A requirement block's Change Notes were already exempt; a document
+  // has the same thing at the top — a Completed Work Log, a change history — and reading
+  // everything outside a requirement block swept them in. It reported nothing only because those
+  // sections happened to name no registered constant, and the next completed-work row naming one
+  // would have been reported. "Fixing" that would mean falsifying the record.
+  it("AC-4: a document-level log is not read as a live statement", () => {
+    const lines = [
+      "# Index",
+      "",
+      "## 1. Purpose",
+      "",
+      "The rules live in SRS-MD-Rules-v0.0.1.md.",
+      "",
+      "## 7. Completed Work Log",
+      "",
+      "| 2026-01-01 | shipped SRS-MD-Rules-v1.0.0.md |",
+      "",
+      "## 11. Change Notes",
+      "",
+      "- the heading used to read # SpecKiwi SRS 워크플로 v1.1"
+    ];
+
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      records: [],
+      files: [
+        { path: "docs/spec/00.index.md", relativePath: "docs/spec/00.index.md", text: "", lines, newline: "\n" } as never
+      ]
+    } as never);
+
+    const findings = collectSsotLiteralDrift(spans);
+    expect(findings.map((finding) => finding.line), "only the line under Purpose is a live statement").toEqual([5]);
+  });
+
+  // A document that is a log end to end carries no live statement at all.
+  it("AC-4: a completed-work-log document is left alone entirely", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      records: [],
+      files: [
+        {
+          path: "docs/spec/91.completed-work-log.md",
+          relativePath: "docs/spec/91.completed-work-log.md",
+          text: "",
+          lines: ["# Completed Work", "", "| 2026-01-01 | shipped SRS-MD-Rules-v1.0.0.md |"],
+          newline: "\n"
+        } as never
+      ]
+    } as never);
+
+    expect(collectSsotLiteralDrift(spans)).toEqual([]);
+  });
+
+  // Emphasis that splits a value renders as the plain one, so it reads correctly and carries a
+  // version the tool left behind — the same shape of miss as the non-breaking space.
+  it("AC-1: emphasis inside a value does not hide it", () => {
+    const findings = collectSsotLiteralDrift([
+      {
+        requirementId: "FR-TEST-940",
+        filePath: "docs/spec/test.md",
+        line: 1,
+        section: "acceptanceCriteria",
+        text: "the file SRS-MD-Rules-v**2.4.0**.md is installed"
+      }
+    ]);
+    expect(findings.map((finding) => finding.found)).toEqual(["2.4.0"]);
   });
   // Sanity: the module list is not empty and every entry names one of those modules.
   it("AC-5: every entry names a module the registry draws from", () => {

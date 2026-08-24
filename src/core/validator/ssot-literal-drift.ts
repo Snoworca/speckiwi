@@ -141,8 +141,19 @@ function legacyFindings(entry: SsotLiteralEntry, span: SsotTextSpan): SsotLitera
  */
 const LOOKALIKE_SPACES = /[\u00A0\u2007\u202F]/g;
 
+/**
+ * Emphasis that splits a value without changing what a reader sees.
+ *
+ * `SRS-MD-Rules-v**2.4.0**.md` renders as the plain filename, so it reads correctly and carries a
+ * version the tool left behind — the same shape of miss as the non-breaking space. Full-width
+ * digits and a literal broken across lines are deliberately left alone: those render as a different
+ * string, and reaching them would mean matching approximately, which costs false positives on the
+ * near variants that a planting round confirmed are currently silent.
+ */
+const INLINE_EMPHASIS = /(\*\*|__|\*|_)/g;
+
 function normalizeSpaces(text: string): string {
-  return text.replace(LOOKALIKE_SPACES, " ");
+  return text.replace(LOOKALIKE_SPACES, " ").replace(INLINE_EMPHASIS, "");
 }
 
 /** Reports spans that quote a stale or compatibility-only value of a registered constant. */
