@@ -1,4 +1,45 @@
-import type { DiagnosticDefinition } from "./types.js";
+import {
+  PRIORITY_LEVELS,
+  REQUIREMENT_STATUSES,
+  RISK_LEVELS,
+  STABILITY_LEVELS,
+  type DiagnosticDefinition
+} from "./types.js";
+
+// @req FR-PARSE-038 — the remediation names the values a field may take, and an agent follows it
+// literally. Deriving the list from the constant that defines the field keeps the two from drifting.
+// Three had already drifted: SRS-E006 offered P0..P3, which the parser has never accepted; SRS-E005
+// offered draft, which is a Stability value, so following it re-raised the same diagnostic; SRS-E007
+// omitted a level that live requirements use, so following it downgraded them in silence.
+export const ENUM_REMEDIATION_LEVELS = {
+  "SRS-E005": REQUIREMENT_STATUSES,
+  "SRS-E006": PRIORITY_LEVELS,
+  "SRS-E007": RISK_LEVELS,
+  "SRS-E011": STABILITY_LEVELS
+} as const satisfies Record<string, readonly string[]>;
+
+type EnumRemediationCode = keyof typeof ENUM_REMEDIATION_LEVELS;
+
+const ENUM_REMEDIATION_LABELS: Record<EnumRemediationCode, string> = {
+  "SRS-E005": "Status",
+  "SRS-E006": "Priority",
+  "SRS-E007": "Risk",
+  "SRS-E011": "Stability"
+};
+
+/**
+ * Renders the remediation for a field whose value set is defined by a constant. Exported so a test
+ * can render the same label against a different level set: without that, an assertion can only
+ * compare the shipped string to itself and a hand-written list passes as a derived one.
+ */
+export function renderEnumRemediation(label: string, levels: readonly string[]): string {
+  return `Set ${label} to a supported value (${levels.join(", ")}).`;
+}
+
+// Compatibility-only levels stay out: they are accepted on read but must never be offered as a fix.
+function enumRemediation(code: EnumRemediationCode): string {
+  return renderEnumRemediation(ENUM_REMEDIATION_LABELS[code], ENUM_REMEDIATION_LEVELS[code]);
+}
 
 export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
   {
@@ -46,8 +87,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Invalid status for {requirementId}",
     sourceRule: "FR-PARSE-009",
     since: "v1.0.0",
-    remediation:
-      "Set Status to a supported value (draft, in_progress, blocked, implemented, verified, discarded)."
+    remediation: enumRemediation("SRS-E005")
   },
   {
     code: "SRS-E006",
@@ -56,7 +96,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Invalid priority for {requirementId}",
     sourceRule: "FR-PARSE-009",
     since: "v1.0.0",
-    remediation: "Set Priority to a supported value (P0, P1, P2, P3)."
+    remediation: enumRemediation("SRS-E006")
   },
   {
     code: "SRS-E007",
@@ -65,7 +105,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Invalid risk for {requirementId}",
     sourceRule: "FR-PARSE-009",
     since: "v1.0.0",
-    remediation: "Set Risk to a supported value (low, medium, high)."
+    remediation: enumRemediation("SRS-E007")
   },
   {
     code: "SRS-E008",
@@ -92,7 +132,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     messageTemplate: "Invalid stability for {requirementId}",
     sourceRule: "FR-PARSE-009",
     since: "v1.0.0",
-    remediation: "Set Stability to a supported value (draft, evolving, stable, frozen, deprecated)."
+    remediation: enumRemediation("SRS-E011")
   },
   {
     code: "SRS-E012",
