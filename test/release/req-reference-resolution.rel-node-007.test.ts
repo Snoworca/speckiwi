@@ -100,12 +100,15 @@ describe("REL-NODE-007 AC-3 — the scan reads files carrying literal NUL bytes"
     expect(references).toContainEqual({ file: "binaryish.ts", line: 2, id: "FR-BOGUS-999" });
   });
 
-  it("collects references from the repository's own NUL-carrying sources", async () => {
+  // These three used to carry a raw NUL, which made every tool that guesses at binaryness skip
+  // them; the case above proves the scanner does not, against a fixture that still carries one.
+  // NFR-NODE-001 replaced the byte with its escape, so asserting the repository still carries one
+  // would now be asserting a defect. What is worth keeping is that the scan reaches these files.
+  it("collects references from the sources that once carried a NUL byte", async () => {
     const references = await realReferences();
     const scannedFiles = new Set(references.map((reference) => reference.file));
 
     for (const file of NUL_FILES_WITH_REFERENCES) {
-      expect(await readFile(path.join(REPO_ROOT, file), "utf8"), `${file} no longer carries a NUL byte`).toContain(NUL);
       expect(scannedFiles, `${file} was skipped by the scan`).toContain(file);
     }
   });

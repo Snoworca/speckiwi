@@ -24,11 +24,22 @@ export type SsotSection =
   | "acceptanceCriteria"
   | "requirement"
   | "sample"
+  | "traceLinks"
   | "changeNotes"
   | "implementationNotes"
   | "other";
 
-const LIVE_SECTIONS: ReadonlySet<SsotSection> = new Set(["acceptanceCriteria", "requirement", "sample"]);
+/**
+ * A trace link is a live statement: it says this requirement is carried by that file, now. One of
+ * them named a rules document that had moved, and nothing reported it — the link checker reads
+ * Markdown links and walks past a bare path in a table cell.
+ */
+const LIVE_SECTIONS: ReadonlySet<SsotSection> = new Set([
+  "acceptanceCriteria",
+  "requirement",
+  "sample",
+  "traceLinks"
+]);
 
 export interface SsotLiteralFinding {
   readonly requirementId?: string;

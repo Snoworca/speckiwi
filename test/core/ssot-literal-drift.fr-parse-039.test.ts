@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { collectSsotLiteralDrift } from "../../src/core/validator/ssot-literal-drift.js";
+import { collectSsotSpans } from "../../src/core/validator/rules.js";
 import { SSOT_LITERAL_REGISTRY, SSOT_REGISTRY_MODULES } from "../../src/core/ssot-literal-registry.js";
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../src/core/project-root.js";
@@ -15,7 +17,9 @@ import { validateWorkspace } from "../../src/core/validator/validate-workspace.j
 const DIAGNOSTIC_CODE = "SRS-W073";
 const REPO = new URL("../../", import.meta.url);
 
-const REPO_PATH = "C:/Work/git/_Snoworca/speckiwi";
+// The repository root, from this file's own location. A hardcoded absolute path in the suite
+// for a requirement about hardcoded values would be its own joke, and would fail on CI.
+const REPO_PATH = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]$/, "");
 
 async function workspace() {
   return parseWorkspace(await resolveProjectRoot(REPO_PATH, REPO_PATH));
@@ -62,6 +66,38 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     }
   });
 
+  // HIGH: the registry records each constant's current value by hand, and nothing had ever
+  // compared those copies to the exports themselves. A drift checker whose own copy of the
+  // value can drift reports current text as stale and stale text as current — it is exposed to
+  // exactly what it exists to catch. Resolve the real values and compare.
+  it("AC-1: every recorded value matches the export it claims to copy", async () => {
+    const templates = await import("../../src/core/bootstrap/templates.js");
+    const modules: Record<string, Record<string, unknown>> = {
+      "src/core/bootstrap/templates.ts": templates as unknown as Record<string, unknown>
+    };
+
+    // Entries whose recorded value is a part of the export rather than the whole of it: the
+    // shape carries the varying part, so the value is what that part currently reads.
+    const VERSION_OF: Record<string, string> = {
+      AGENT_INSTRUCTION_HEADING_PREFIX: "AGENT_INSTRUCTION_VERSION",
+      BUNDLED_SRS_RULES_FILENAME: "BUNDLED_RULES_VERSION",
+      BUNDLED_SDS_RULES_FILENAME: "BUNDLED_SDS_RULES_VERSION"
+    };
+
+    let compared = 0;
+    for (const entry of SSOT_LITERAL_REGISTRY) {
+      if (entry.value === undefined) continue;
+      const module = modules[entry.module];
+      if (module === undefined) continue;
+
+      const versionExport = VERSION_OF[entry.name];
+      const expected = versionExport === undefined ? module[entry.name] : module[versionExport];
+      expect(typeof expected, `${entry.name} should resolve to a string`).toBe("string");
+      expect(entry.value, `${entry.name}: the registry's copy has drifted from the export`).toBe(expected);
+      compared += 1;
+    }
+    expect(compared, "the comparison must actually reach entries").toBeGreaterThan(3);
+  });
   // AC-6: a compatibility-only export must never be treated as the value in force. That is the
   // trap this contract exists for: a check that scans a module's string exports picks up the Korean
   // heading kept for recognising older files, calls it current, and lets the criteria quoting it
@@ -116,7 +152,7 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
       ]);
       expect(findings, `${section} describes what was true then`).toEqual([]);
     }
-    for (const section of ["acceptanceCriteria", "requirement", "sample"] as const) {
+    for (const section of ["acceptanceCriteria", "requirement", "sample", "traceLinks"] as const) {
       const findings = collectSsotLiteralDrift([
         { requirementId: "FR-TEST-004", filePath: "docs/spec/test.md", line: 4, section, text: staleText }
       ]);
@@ -173,6 +209,126 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     // The frozen set is empty now. It was 29 before Phase 1, and the shape of the file is what
     // keeps the comparison exact rather than a count that a partial repair could satisfy.
     expect(baseline.occurrences).toEqual([]);
+  });
+  // The repository is clean now, which means the cases above stopped exercising two things: that
+  // a reference sample outside any requirement block is collected at all, and that a requirement
+  // body is reported at the line the text sits on rather than at the block heading. Turning either
+  // off changed nothing observable. Plant them instead.
+  it("AC-4: a reference sample outside a requirement block is collected and reported", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      records: [],
+      diagnostics: [],
+      files: [
+        {
+          path: "docs/spec/90.appendix.md",
+          relativePath: "docs/spec/90.appendix.md",
+          text: "",
+          lines: ["## 9. Sample", "", "SRS-MD-Rules-v0.0.1.md is installed"],
+          newline: "\n"
+        } as never
+      ]
+    } as never);
+
+    const sample = spans.filter((span) => span.section === "sample");
+    expect(sample.length, "a document with no requirement block still states things").toBeGreaterThan(0);
+
+    const findings = collectSsotLiteralDrift(sample);
+    expect(findings.map((finding) => finding.constantName)).toContain("BUNDLED_SRS_RULES_FILENAME");
+    expect(findings[0]!.line, "reported at the line the sample sits on").toBe(3);
+  });
+
+  it("AC-1: a requirement body is reported at the offending line, not at its heading", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      records: [
+        {
+          id: "FR-TEST-900",
+          filePath: "docs/spec/test.md",
+          headingLine: 1,
+          blockStartLine: 1,
+          blockEndLine: 6,
+          acceptanceCriteria: [],
+          requirement: "The tool installs SRS-MD-Rules-v0.0.1.md."
+        } as never
+      ],
+      files: [
+        {
+          path: "docs/spec/test.md",
+          relativePath: "docs/spec/test.md",
+          text: "",
+          lines: [
+            "### FR-TEST-900 — x",
+            "",
+            "#### Requirement",
+            "",
+            "The tool installs SRS-MD-Rules-v0.0.1.md.",
+            ""
+          ],
+          newline: "\n"
+        } as never
+      ]
+    } as never);
+
+    const body = spans.filter((span) => span.section === "requirement");
+    expect(body).toHaveLength(1);
+    expect(body[0]!.line, "the heading is line 1; the text sits on line 5").toBe(5);
+
+    const findings = collectSsotLiteralDrift(body);
+    expect(findings.map((finding) => finding.line)).toEqual([5]);
+  });
+  // AC-3: a step requirement is carried by the same pass. The step-scoped pass is confined to a
+  // step's own files by design, so covering step requirements has to happen here.
+  it("AC-3: a step requirement is collected by the shared pass", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      records: [],
+      files: [],
+      stepRecords: [
+        {
+          id: "FR-STEP-900",
+          filePath: "docs/spec/steps/x/srs.md",
+          headingLine: 1,
+          acceptanceCriteria: [{ id: "AC-1", text: "installs SRS-MD-Rules-v0.0.1.md", checked: false, line: 4 }],
+          traceLinks: []
+        } as never
+      ]
+    } as never);
+
+    const findings = collectSsotLiteralDrift(spans);
+    expect(findings.map((finding) => finding.requirementId)).toContain("FR-STEP-900");
+  });
+
+  // AC-4: a trace reference states what carries the requirement now. One of them named a rules
+  // document that had moved, and the link checker walked past it: a bare path in a table cell is
+  // not a Markdown link, so it reported nothing broken.
+  it("AC-4: a trace reference naming a moved path is reported", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      files: [],
+      records: [
+        {
+          id: "FR-TEST-901",
+          filePath: "docs/spec/test.md",
+          headingLine: 1,
+          acceptanceCriteria: [],
+          traceLinks: [{ type: "doc", reference: "docs/rule/SDS-MD-Rules-v0.0.1.md", relation: "implements", line: 9 }]
+        } as never
+      ]
+    } as never);
+
+    const trace = spans.filter((span) => span.section === "traceLinks");
+    expect(trace).toHaveLength(1);
+    const findings = collectSsotLiteralDrift(trace);
+    expect(findings.map((finding) => finding.constantName)).toContain("BUNDLED_SDS_RULES_FILENAME");
+    expect(findings[0]!.line).toBe(9);
   });
   // Sanity: the module list is not empty and every entry names one of those modules.
   it("AC-5: every entry names a module the registry draws from", () => {

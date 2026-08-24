@@ -287,6 +287,82 @@ export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
   );
 }
 
+
+/**
+ * @req FR-PARSE-039 — the stretches of text that say what is true now.
+ *
+ * A requirement body is reported at the line the offending text sits on, not at the block
+ * heading: two drifted values in one body are two occurrences, and a shared line number would
+ * fold them into one. And a reference sample outside any requirement block counts, because it
+ * tells a reader what to write rather than what was once written; the appendix carried a stale
+ * agent-instruction block that nothing reported while every criterion around it was repaired.
+ */
+export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
+  const spans: SsotTextSpan[] = [];
+
+  const withLines = (record: RequirementRecord, section: "acceptanceCriteria" | "requirement", text: string, fallback: number) => {
+    const file = workspace.files.find((entry) => entry.relativePath === record.filePath || entry.path === record.filePath);
+    const line = file === undefined ? fallback : locateInFile(file.lines, text, record.blockStartLine ?? fallback);
+    spans.push({ requirementId: record.id, filePath: record.filePath, line, section, text });
+  };
+
+  for (const record of [...workspace.records, ...(workspace.stepRecords ?? [])]) {
+    for (const criterion of record.acceptanceCriteria) {
+      spans.push({
+        requirementId: record.id,
+        filePath: record.filePath,
+        line: typeof criterion.line === "number" ? criterion.line : record.headingLine,
+        section: "acceptanceCriteria",
+        text: criterion.text
+      });
+    }
+    for (const link of record.traceLinks ?? []) {
+      const reference = String(link.reference ?? "").trim();
+      if (reference === "") continue;
+      spans.push({
+        requirementId: record.id,
+        filePath: record.filePath,
+        line: typeof (link as { line?: number }).line === "number" ? (link as { line: number }).line : record.headingLine,
+        section: "traceLinks",
+        text: reference
+      });
+    }
+    if (typeof record.requirement === "string" && record.requirement.trim() !== "") {
+      withLines(record, "requirement", record.requirement, record.headingLine);
+    }
+  }
+
+  // Everything in a parsed document that no requirement block covers. A sample block, a table
+  // of shipped filenames, a quoted heading: all of them state what the tool produces now.
+  const covered = new Map<string, Array<[number, number]>>();
+  for (const record of workspace.records) {
+    const ranges = covered.get(record.filePath) ?? [];
+    ranges.push([record.blockStartLine ?? record.headingLine, record.blockEndLine ?? record.headingLine]);
+    covered.set(record.filePath, ranges);
+  }
+  for (const file of workspace.files) {
+    const ranges = covered.get(file.relativePath) ?? covered.get(file.path) ?? [];
+    file.lines.forEach((text: string, index: number) => {
+      const line = index + 1;
+      if (ranges.some(([start, end]) => line >= start && line <= end)) return;
+      if (text.trim() === "") return;
+      spans.push({ filePath: file.relativePath, line, section: "sample", text });
+    });
+  }
+
+  return spans;
+}
+
+/** The 1-based line `text` starts on, searching from `from`; falls back to `from`. */
+function locateInFile(lines: readonly string[], text: string, from: number): number {
+  const needle = text.split(/\r?\n/)[0]?.trim();
+  if (!needle) return from;
+  for (let index = Math.max(0, from - 1); index < lines.length; index += 1) {
+    if ((lines[index] ?? "").includes(needle)) return index + 1;
+  }
+  return from;
+}
+
 export function registerDefaultRules(): void {
   registerValidationRule((workspace) => {
     const diagnostics: Diagnostic[] = [...workspace.diagnostics];
@@ -605,27 +681,7 @@ export function registerDefaultRules(): void {
   // as evidence. Compare the sections that say what is true now against the shipped constants,
   // and leave the sections that describe what was true then alone.
   registerValidationRule((workspace) => {
-    const spans: SsotTextSpan[] = [];
-    for (const record of workspace.records) {
-      for (const criterion of record.acceptanceCriteria) {
-        spans.push({
-          requirementId: record.id,
-          filePath: record.filePath,
-          line: typeof criterion.line === "number" ? criterion.line : record.headingLine,
-          section: "acceptanceCriteria",
-          text: criterion.text
-        });
-      }
-      if (typeof record.requirement === "string" && record.requirement.trim() !== "") {
-        spans.push({
-          requirementId: record.id,
-          filePath: record.filePath,
-          line: record.headingLine,
-          section: "requirement",
-          text: record.requirement
-        });
-      }
-    }
+    const spans: SsotTextSpan[] = collectSsotSpans(workspace);
 
     return collectSsotLiteralDrift(spans).map((finding) =>
       diagnostic(
