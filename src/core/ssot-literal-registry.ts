@@ -30,6 +30,11 @@ export interface SsotLiteralEntry {
   readonly shape?: RegExp;
   /** The value in force, against which a shape match is compared. */
   readonly value?: string;
+  /**
+   * How an HTML-comment marker opens. A marker carries no version, so a wrong one differs by whole
+   * string rather than by a captured part; matching the opening is what catches a variant of it.
+   */
+  readonly markerPrefix?: string;
   /** Required for `unshaped` and `not-an-ssot`: why this export is outside the comparison. */
   readonly reason?: string;
 }
@@ -76,7 +81,15 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     name: "LEGACY_KOREAN_AGENT_END_MARKER",
     module: "src/core/bootstrap/templates.ts",
     role: "legacy",
-    value: "<!-- /SpecKiwi SRS 워크플로 -->"
+    value: "<!-- /SpecKiwi SRS 워크플로 -->",
+    markerPrefix: "<!-- /SpecKiwi SRS 워크플로"
+  },
+  {
+    name: "AGENT_INSTRUCTION_END_MARKER",
+    module: "src/core/bootstrap/templates.ts",
+    role: "current",
+    value: "<!-- /SpecKiwi SRS workflow -->",
+    markerPrefix: "<!-- /SpecKiwi SRS workflow"
   },
   {
     name: "AGENT_INSTRUCTION_VERSION",
@@ -96,13 +109,6 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/bootstrap/templates.ts",
     role: "unshaped",
     reason: "Covered through the SDS rules filename, whose shape carries it."
-  },
-  {
-    name: "AGENT_INSTRUCTION_END_MARKER",
-    module: "src/core/bootstrap/templates.ts",
-    role: "unshaped",
-    reason:
-      "The marker carries no version, so an older one is a different string rather than a different value of the same shape. The Korean predecessor is registered as legacy and caught that way."
   },
   {
     name: "CODEX_APPLY_PATCH_HOOK_FLOOR",

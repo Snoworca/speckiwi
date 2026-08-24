@@ -112,13 +112,23 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     expect(named.some((entry) => entry.role === "legacy")).toBe(true);
   });
 
-  // AC-7: every shaped entry proves it reports a stale value of its own constant.
-  const shaped = SSOT_LITERAL_REGISTRY.filter((entry) => entry.role === "current");
-  it.each(shaped)("AC-7: a stale $name is reported", async (entry) => {
-    const stale = (entry.shape as RegExp).source
-      .replace(/\(\\d\+\(\?:\\\.\\d\+\)\*\)/, "0.0.1")
-      .replace(/\\\./g, ".")
-      .replace(/\\/g, "");
+  // AC-7: every entry in force proves it reports a stale value of its own constant. The two kinds
+  // are compared differently — a versioned value by its shape, a marker by how it opens — so the
+  // stale string is built from whichever the entry carries.
+  const inForce = SSOT_LITERAL_REGISTRY.filter((entry) => entry.role === "current");
+  it.each(inForce)("AC-7: a stale $name is reported", (entry) => {
+    let stale: string;
+    if (entry.shape !== undefined) {
+      stale = entry.shape.source
+        .replace(/\(\\d\+\(\?:\\\.\\d\+\)\*\)/, "0.0.1")
+        .replace(/\\\./g, ".")
+        .replace(/\\/g, "");
+    } else if (entry.markerPrefix !== undefined) {
+      stale = `${entry.markerPrefix} v0.0.1 -->`;
+    } else {
+      throw new Error(`${entry.name} is in force but carries neither a shape nor a marker prefix`);
+    }
+
     const findings = collectSsotLiteralDrift([
       { requirementId: "FR-TEST-001", filePath: "docs/spec/test.md", line: 1, section: "acceptanceCriteria", text: `the file ${stale} is installed` }
     ]);
@@ -329,6 +339,51 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     const findings = collectSsotLiteralDrift(trace);
     expect(findings.map((finding) => finding.constantName)).toContain("BUNDLED_SDS_RULES_FILENAME");
     expect(findings[0]!.line).toBe(9);
+  });
+  // AC-4, the section boundary. A planting round put stale values in eight places; four of them
+  // sat in sections nothing read. Two of those are pointers and are read now; the other two are
+  // retrospective by definition and stay out, which this case fixes in both directions.
+  it("AC-4: pointer sections are read and retrospective ones are not", () => {
+    const stale = "SRS-MD-Rules-v0.0.1.md";
+    const live = ["evidenceReference", "relatedDocs", "traceLinks", "sample"] as const;
+    const retrospective = ["rationale", "research", "changeNotes", "implementationNotes", "evidenceNotes"] as const;
+
+    for (const section of live) {
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-910", filePath: "docs/spec/test.md", line: 1, section, text: stale }
+      ]);
+      expect(findings.length, `${section} names a file that has to exist`).toBeGreaterThan(0);
+    }
+
+    for (const section of retrospective) {
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-910", filePath: "docs/spec/test.md", line: 1, section, text: stale }
+      ]);
+      expect(findings, `${section} describes what was true then`).toEqual([]);
+    }
+  });
+
+  // AC-1: a marker has no version to compare, so whole-string equality only ever caught an exact
+  // copy of the retired one. A planting round wrote a marker that opened correctly and closed
+  // wrongly, in a section that was being read, and nothing saw it.
+  it("AC-1: a marker that opens right and closes wrong is reported", () => {
+    const variants = [
+      "<!-- /SpecKiwi SRS workflow v1.6 -->",
+      "<!-- /SpecKiwi SRS workflow block -->",
+      "<!-- /SpecKiwi SRS 워크플로 v1.3 -->"
+    ];
+    for (const variant of variants) {
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-911", filePath: "docs/spec/test.md", line: 2, section: "acceptanceCriteria", text: `the block ends with ${variant}` }
+      ]);
+      expect(findings.length, `${variant} should be reported`).toBeGreaterThan(0);
+    }
+
+    // And the marker in force is not reported.
+    const current = collectSsotLiteralDrift([
+      { requirementId: "FR-TEST-911", filePath: "docs/spec/test.md", line: 2, section: "acceptanceCriteria", text: "the block ends with <!-- /SpecKiwi SRS workflow -->" }
+    ]);
+    expect(current).toEqual([]);
   });
   // Sanity: the module list is not empty and every entry names one of those modules.
   it("AC-5: every entry names a module the registry draws from", () => {

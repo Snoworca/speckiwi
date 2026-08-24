@@ -300,7 +300,7 @@ export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
 export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
   const spans: SsotTextSpan[] = [];
 
-  const withLines = (record: RequirementRecord, section: "acceptanceCriteria" | "requirement", text: string, fallback: number) => {
+  const withLines = (record: RequirementRecord, section: SsotTextSpan["section"], text: string, fallback: number) => {
     const file = workspace.files.find((entry) => entry.relativePath === record.filePath || entry.path === record.filePath);
     const line = file === undefined ? fallback : locateInFile(file.lines, text, record.blockStartLine ?? fallback);
     spans.push({ requirementId: record.id, filePath: record.filePath, line, section, text });
@@ -329,6 +329,39 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
     }
     if (typeof record.requirement === "string" && record.requirement.trim() !== "") {
       withLines(record, "requirement", record.requirement, record.headingLine);
+    }
+    // A Rationale says why the requirement is what it is; a Research note records what was found.
+    // Both describe the present. A planting round put a stale value in each and nothing reported it.
+    for (const [section, text] of [
+      ["rationale", record.rationale],
+      ["research", record.research]
+    ] as const) {
+      if (typeof text !== "string" || text.trim() === "") continue;
+      withLines(record, section, text, record.headingLine);
+    }
+    // A reference names a file that has to exist. The Notes beside it narrate a run that happened,
+    // so naming the value in force at that time is what that column is for.
+    for (const row of record.verificationEvidence ?? []) {
+      const reference = String(row.reference ?? "").trim();
+      if (reference === "") continue;
+      spans.push({
+        requirementId: record.id,
+        filePath: record.filePath,
+        line: typeof (row as { line?: number }).line === "number" ? (row as { line: number }).line : record.headingLine,
+        section: "evidenceReference",
+        text: reference
+      });
+    }
+    for (const doc of record.relatedDocs ?? []) {
+      const text = String(doc ?? "").trim();
+      if (text === "") continue;
+      spans.push({
+        requirementId: record.id,
+        filePath: record.filePath,
+        line: record.headingLine,
+        section: "relatedDocs",
+        text
+      });
     }
   }
 

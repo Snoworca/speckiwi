@@ -1,6 +1,6 @@
 import { SSOT_LITERAL_REGISTRY, type SsotLiteralEntry } from "../ssot-literal-registry.js";
 
-// @req FR-PARSE-039 — compares what a criterion says against what the tool ships, so a criterion
+// @req FR-PARSE-039 — compares what a requirement says against what the tool ships, so a statement
 // that stopped being true when a constant moved is reported instead of staying quietly checked.
 //
 // Only a shape match with a differing value is a finding. Matching the shape alone would report
@@ -23,22 +23,37 @@ export interface SsotTextSpan {
 export type SsotSection =
   | "acceptanceCriteria"
   | "requirement"
+  | "rationale"
+  | "research"
   | "sample"
   | "traceLinks"
+  | "evidenceReference"
+  | "relatedDocs"
   | "changeNotes"
   | "implementationNotes"
+  | "evidenceNotes"
   | "other";
 
 /**
- * A trace link is a live statement: it says this requirement is carried by that file, now. One of
- * them named a rules document that had moved, and nothing reported it — the link checker reads
- * Markdown links and walks past a bare path in a table cell.
+ * A planting round found only three sections were being read, so a stale value in an evidence
+ * Reference or a Related Docs row went unreported. Those are pure pointers: they name a file that
+ * has to exist, and a moved one is broken the moment it moves.
+ *
+ * Rationale and Research were added with them and taken back out. A Rationale says why a
+ * requirement exists, which regularly means naming what was wrong before it: one of them reads
+ * "five requirements have carried a broken link to <old path>", and reporting that would be
+ * reporting the sentence that explains the repair. They are retrospective the way Change Notes are.
+ *
+ * The Notes columns stay out for the same reason. They narrate a run that happened — "10 cases
+ * green, mutation reverted" — and naming the value in force at that time is what they are for.
  */
 const LIVE_SECTIONS: ReadonlySet<SsotSection> = new Set([
   "acceptanceCriteria",
   "requirement",
   "sample",
-  "traceLinks"
+  "traceLinks",
+  "evidenceReference",
+  "relatedDocs"
 ]);
 
 export interface SsotLiteralFinding {
@@ -51,39 +66,69 @@ export interface SsotLiteralFinding {
   readonly message: string;
 }
 
+function build(entry: SsotLiteralEntry, span: SsotTextSpan, expected: string, found: string, message: string): SsotLiteralFinding {
+  return {
+    ...(span.requirementId === undefined ? {} : { requirementId: span.requirementId }),
+    filePath: span.filePath,
+    line: span.line,
+    constantName: entry.name,
+    expected,
+    found,
+    message
+  };
+}
+
 function shapeFindings(entry: SsotLiteralEntry, span: SsotTextSpan): SsotLiteralFinding[] {
   if (entry.shape === undefined || entry.value === undefined) return [];
-  const pattern = new RegExp(entry.shape.source, entry.shape.flags.includes("g") ? entry.shape.flags : `${entry.shape.flags}g`);
+  const flags = entry.shape.flags.includes("g") ? entry.shape.flags : `${entry.shape.flags}g`;
+  const pattern = new RegExp(entry.shape.source, flags);
   const findings: SsotLiteralFinding[] = [];
   for (const match of span.text.matchAll(pattern)) {
     const found = match[1];
     if (found === undefined || found === entry.value) continue;
-    findings.push({
-      ...(span.requirementId === undefined ? {} : { requirementId: span.requirementId }),
-      filePath: span.filePath,
-      line: span.line,
-      constantName: entry.name,
-      expected: entry.value,
-      found,
-      message: `${entry.name} is ${entry.value}, but this says ${found}`
-    });
+    findings.push(build(entry, span, entry.value, found, `${entry.name} is ${entry.value}, but this says ${found}`));
   }
   return findings;
 }
 
+/** Every comment in `text` that opens with `prefix`, as whole strings. */
+function markersOpeningWith(text: string, prefix: string): string[] {
+  const found: string[] = [];
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(prefix, from);
+    if (start === -1) return found;
+    const close = text.indexOf("-->", start);
+    found.push(close === -1 ? text.slice(start) : text.slice(start, close + 3));
+    from = start + prefix.length;
+  }
+}
+
+/**
+ * A marker carries no version, so a wrong one is a different string rather than a different value
+ * of the same shape. Comparing whole strings only catches an exact copy of the retired marker; a
+ * planting round wrote `<!-- /SpecKiwi SRS workflow v1.6 -->` and nothing saw it. Match how the
+ * marker opens instead, and report anything that opens like it without closing as it should.
+ */
+function markerFindings(entry: SsotLiteralEntry, span: SsotTextSpan): SsotLiteralFinding[] {
+  if (entry.markerPrefix === undefined || entry.value === undefined) return [];
+  const current = entry.value;
+  return markersOpeningWith(span.text, entry.markerPrefix)
+    .filter((whole) => whole !== current)
+    .map((whole) => build(entry, span, current, whole, `${entry.name} is ${current}, but this says ${whole}`));
+}
+
+const LEGACY_MESSAGE =
+  "is kept only so the tool can recognise what an older version wrote; this states it as current";
+
 function legacyFindings(entry: SsotLiteralEntry, span: SsotTextSpan): SsotLiteralFinding[] {
+  if (entry.markerPrefix !== undefined) {
+    return markersOpeningWith(span.text, entry.markerPrefix).map((whole) =>
+      build(entry, span, "", whole, `${entry.name} ${LEGACY_MESSAGE}`)
+    );
+  }
   if (entry.value === undefined || !span.text.includes(entry.value)) return [];
-  return [
-    {
-      ...(span.requirementId === undefined ? {} : { requirementId: span.requirementId }),
-      filePath: span.filePath,
-      line: span.line,
-      constantName: entry.name,
-      expected: "",
-      found: entry.value,
-      message: `${entry.name} is kept only so the tool can recognise what an older version wrote; this states it as current`
-    }
-  ];
+  return [build(entry, span, "", entry.value, `${entry.name} ${LEGACY_MESSAGE}`)];
 }
 
 /** Reports spans that quote a stale or compatibility-only value of a registered constant. */
@@ -92,7 +137,7 @@ export function collectSsotLiteralDrift(spans: readonly SsotTextSpan[]): SsotLit
   for (const span of spans) {
     if (!LIVE_SECTIONS.has(span.section)) continue;
     for (const entry of SSOT_LITERAL_REGISTRY) {
-      if (entry.role === "current") findings.push(...shapeFindings(entry, span));
+      if (entry.role === "current") findings.push(...shapeFindings(entry, span), ...markerFindings(entry, span));
       else if (entry.role === "legacy") findings.push(...legacyFindings(entry, span));
     }
   }
