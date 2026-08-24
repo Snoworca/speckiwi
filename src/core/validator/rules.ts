@@ -360,17 +360,37 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
     ranges.push([record.blockStartLine ?? record.headingLine, record.blockEndLine ?? record.headingLine]);
     covered.set(record.filePath, ranges);
   }
+  // The index parser already resolves every Completed Work Log row to a file and a line, and the
+  // SRS-W011..W015 diagnostics report on those lines. Excluding them by position needs no vocabulary
+  // and cannot drift the way a list of heading names can.
+  const loggedLines = new Map<string, Set<number>>();
+  for (const entry of workspace.index.completedWork ?? []) {
+    if (entry.filePath === undefined || typeof entry.line !== "number") continue;
+    const key = entry.filePath.replace(/\\/g, "/");
+    const lines = loggedLines.get(key) ?? new Set<number>();
+    lines.add(entry.line);
+    loggedLines.set(key, lines);
+  }
+
   for (const file of workspace.files) {
     const ranges = covered.get(file.relativePath) ?? covered.get(file.path) ?? [];
     // A document that is a log end to end stays one whatever its headings say; elsewhere a heading
     // opens or closes a retrospective section.
+    const logged = loggedLines.get(file.relativePath.replace(/\\/g, "/")) ?? new Set<number>();
     const wholeDocument = isRetrospectiveDocument(file.relativePath);
     let retrospective = wholeDocument;
+    // A heading inside a fenced block is a sample of some document, not a heading of this one.
+    // Without this, one line in a fenced sample silences every section after it — a recall hole
+    // that reports nothing and says nothing about why.
+    let fenced = false;
     file.lines.forEach((text: string, index: number) => {
       const line = index + 1;
+      if (/^\s*(```|~~~)/.test(text)) { fenced = !fenced; return; }
+
       const heading = /^#{1,3}\s+(.*)$/.exec(text);
-      if (heading && !wholeDocument) retrospective = isRetrospectiveHeading(heading[1] ?? "");
+      if (heading && !fenced && !wholeDocument) retrospective = isRetrospectiveHeading(heading[1] ?? "");
       if (retrospective) return;
+      if (logged.has(line)) return;
       if (ranges.some(([start, end]) => line >= start && line <= end)) return;
       if (text.trim() === "") return;
       spans.push({ filePath: file.relativePath, line, section: "sample", text });
@@ -390,11 +410,11 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
  * naming one would have been reported, and "fixing" it would mean falsifying the record.
  */
 const RETROSPECTIVE_HEADINGS = [
-  "completed work log",
   "change notes",
   "change history",
-  "변경 이력",
-  "완료 작업"
+  "revision history",
+  "completed work log",
+  "completed work record"
 ];
 
 function isRetrospectiveHeading(heading: string): boolean {

@@ -597,6 +597,64 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     ]);
     expect(findings.map((finding) => finding.found)).toEqual(["2.4.0"]);
   });
+  // A heading inside a fenced block is a sample of some document, not a heading of this one.
+  // Reading it as one let a single line in a fenced sample silence every section after it: a
+  // recall hole that reports nothing and says nothing about why.
+  it("AC-4: a heading inside a fenced block does not close the document", () => {
+    const lines = [
+      "# Index",
+      "",
+      "## 1. Purpose",
+      "",
+      "Documents look like this:",
+      "",
+      "```md",
+      "## Change Notes",
+      "```",
+      "",
+      "The rules live in SRS-MD-Rules-v0.0.1.md."
+    ];
+
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: { completedWork: [] } as never,
+      diagnostics: [],
+      records: [],
+      files: [
+        { path: "docs/spec/00.index.md", relativePath: "docs/spec/00.index.md", text: "", lines, newline: "\n" } as never
+      ]
+    } as never);
+
+    const findings = collectSsotLiteralDrift(spans);
+    expect(findings.map((finding) => finding.line), "the fenced heading must not close Purpose").toEqual([11]);
+  });
+  // The Completed Work Log is excluded by position rather than by heading vocabulary: the index
+  // parser already resolves every row to a file and a line, and a list of heading names is a
+  // hardcoded value of exactly the kind this check exists to remove.
+  it("AC-4: a Completed Work Log row is excluded by position, not by its heading", () => {
+    const lines = [
+      "# Index",
+      "",
+      "## A section with no retrospective name at all",
+      "",
+      "| 2026-01-01 | shipped SRS-MD-Rules-v1.0.0.md |",
+      "",
+      "The rules live in SDS-MD-Rules-v0.0.1.md."
+    ];
+
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: { completedWork: [{ filePath: "docs/spec/00.index.md", line: 5 }] } as never,
+      diagnostics: [],
+      records: [],
+      files: [
+        { path: "docs/spec/00.index.md", relativePath: "docs/spec/00.index.md", text: "", lines, newline: "\n" } as never
+      ]
+    } as never);
+
+    const findings = collectSsotLiteralDrift(spans);
+    expect(findings.map((finding) => finding.line), "the logged row is a record, the sentence is not").toEqual([7]);
+  });
   // Sanity: the module list is not empty and every entry names one of those modules.
   it("AC-5: every entry names a module the registry draws from", () => {
     for (const entry of SSOT_LITERAL_REGISTRY) {

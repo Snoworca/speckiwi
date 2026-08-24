@@ -38,8 +38,8 @@
     }
   ],
   "mutations": {
-    "run": 18,
-    "red": 18,
+    "run": 20,
+    "red": 20,
     "covers": [
       "cut the wiring out of the shared pass",
       "lower the severity to info, which leaves validate --fail-on-warning at zero",
@@ -58,7 +58,9 @@
       "stop folding lookalike spaces",
       "report a Related Docs row at the block heading",
       "read a document-level Completed Work Log or change history as a live statement",
-      "stop stripping emphasis from inside a value"
+      "stop stripping emphasis from inside a value",
+      "read a heading inside a fenced block as a heading of the document",
+      "stop excluding Completed Work Log rows by the position the index parser already knows"
     ]
   },
   "occurrences": [],
@@ -67,7 +69,9 @@
     "found": "A document-level Completed Work Log or change history was being read as a live statement. A requirement block's Change Notes were already exempt; a document has the same thing at the top level, and treating everything outside a requirement block as live swept them in. It reported nothing only because those sections happened to name no registered constant, and the next completed-work row naming one would have been reported - where the repair would mean falsifying the record.",
     "alsoFound": [
       "The registry's shape was never compared against the export it looks for, so a changed filename format would have made the check go quiet with every case still green.",
-      "The rules module was still building spans for sections the checker no longer reads, with a comment saying the opposite."
+      "The rules module was still building spans for sections the checker no longer reads, with a comment saying the opposite.",
+      "The retrospective judgement did not know about code fences, so one heading inside a fenced sample silenced every section after it — a recall hole that reported nothing and said nothing about why.",
+      "The Completed Work Log was being matched by heading vocabulary when the index parser already resolves each row to a file and a line. A hardcoded list of heading names is the kind of value this check exists to remove."
     ]
   }
 }
