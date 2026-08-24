@@ -806,6 +806,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v2.5.1",
     remediation:
       "Rename the non-scope document to an unused number, since the scope document's number is the ordering key its Scope Map row names."
+  },
+  {
+    code: "SRS-W073",
+    severity: "warning",
+    title: "Requirement text quotes a stale value of a shipped constant",
+    messageTemplate: "Stale constant value in {requirementId}: {message}",
+    sourceRule: "FR-PARSE-039",
+    since: "v3.0.0",
+    remediation:
+      "Name the constant instead of its value, or state the value in force. A criterion that spells out a value keeps saying it after the constant moves, and stays checked while becoming false."
   }
 ];
 

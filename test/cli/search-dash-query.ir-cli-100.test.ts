@@ -66,6 +66,69 @@ describe("IR-CLI-100 — search takes a dash-leading query", () => {
     expect(filteredRecords.length).toBeLessThanOrEqual(unfilteredRecords.length);
   });
 
+  // AC-4, the axis the first draft missed entirely. Commander answers --help itself, so the
+  // option never appears in the command's own options array and the first normalizer searched
+  // for the string "--help". Options declared on the parent were invisible for the same reason,
+  // which broke `search --root <path> <query>` — a form with no dash-leading query at all.
+  it("AC-4: --help still prints usage instead of being searched for", async () => {
+    for (const flag of ["--help", "-h"]) {
+      const result = await run(["search", flag]);
+      expect(result.stdout, `search ${flag}`).toMatch(/^Usage: /m);
+      expect(result.stdout, `search ${flag}`).not.toMatch(/"records"/);
+    }
+  });
+
+  it("AC-4: a global option after the subcommand is still an option", async () => {
+    // A root that does not exist proves --root was consumed: the run fails on the workspace, not
+    // on argument counting. Reading it as the query would leave two operands instead.
+    const result = await run(["search", "--root", "/nonexistent-xyz", "--json", "CON-ARCH-001"]);
+    expect(result.stderr + result.stdout).not.toMatch(/too many arguments/);
+  });
+
+  it("AC-4: quiet and no-color after the subcommand are still options", async () => {
+    for (const flag of ["--quiet", "--no-color"]) {
+      const result = await run(["search", flag, "--json", "CON-ARCH-001"]);
+      expect(result.stderr + result.stdout, `search ${flag}`).not.toMatch(/too many arguments/);
+      expect(result.code, `search ${flag}`).toBe(0);
+    }
+  });
+
+  it("AC-4: --version is answered, not searched for", async () => {
+    const result = await run(["search", "--version"]);
+    expect(result.stdout).not.toMatch(/"records"/);
+  });
+
+  // A plain operand must not be reordered: only a dash-leading token is lifted out.
+  it("AC-4: an ordinary query is left where it was", async () => {
+    const plain = await run(["search", "--json", "CON-ARCH-001"]);
+    expect(plain.code).toBe(0);
+    expect((JSON.parse(plain.stdout) as { records: unknown[] }).records.length).toBeGreaterThan(0);
+  });
+  // AC-1 for the form where a global option comes BEFORE the command name. The second draft
+  // looked for the command at argv[0], so `speckiwi --root <path> search --force` never entered
+  // the normaliser at all. This form is not hypothetical: the orchestrate command re-enters the
+  // CLI with --root ahead of the command name.
+  it("AC-1: a global option before the command name still leaves the query searchable", async () => {
+    const result = await run(["--root", ".", "search", "--json", FLAG_QUERY]);
+    expect(result.stderr).not.toMatch(/unknown option/);
+    expect(result.code).toBe(0);
+    const parsed = JSON.parse(result.stdout) as { records?: unknown[] };
+    expect(parsed.records!.length).toBeGreaterThan(0);
+  });
+
+  it("AC-1: the same holds for value-less globals before the command name", async () => {
+    for (const flag of ["--quiet", "--no-color"]) {
+      const result = await run([flag, "search", "--json", FLAG_QUERY]);
+      expect(result.stderr, `${flag} before search`).not.toMatch(/unknown option/);
+      expect(result.code, `${flag} before search`).toBe(0);
+    }
+  });
+
+  it("AC-2: a global before the command gives the same result as the escaped form", async () => {
+    const bare = await run(["--root", ".", "search", "--json", FLAG_QUERY]);
+    const escaped = await run(["--root", ".", "search", "--json", "--", FLAG_QUERY]);
+    expect(JSON.parse(bare.stdout)).toEqual(JSON.parse(escaped.stdout));
+  });
   // AC-5: absence reads as absence, not as rejection.
   it("AC-5: a dash-leading query that matches nothing returns an empty result", async () => {
     const result = await run(["search", "--json", ABSENT_QUERY]);

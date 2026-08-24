@@ -1,0 +1,5 @@
+{
+  "code": "SRS-W073",
+  "note": "The repository once carried 29 of these. Phase 1 replaced every value with the constant that defines it, so the expected set is now empty. A non-empty run means either a new criterion spelled a value out, or a constant moved and something still names the old one.",
+  "occurrences": []
+}

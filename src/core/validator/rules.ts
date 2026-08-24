@@ -15,6 +15,7 @@ import {
   type RequirementRecord
 } from "../types.js";
 import { registerValidationRule } from "./rule-registry.js";
+import { collectSsotLiteralDrift, type SsotTextSpan } from "./ssot-literal-drift.js";
 
 function includes(values: readonly string[], value: string): boolean {
   return values.includes(value);
@@ -599,5 +600,44 @@ export function registerDefaultRules(): void {
       }
     }
     return diagnostics;
+  });
+  // @req FR-PARSE-039 — a criterion that quotes a value the tool has since moved keeps reading
+  // as evidence. Compare the sections that say what is true now against the shipped constants,
+  // and leave the sections that describe what was true then alone.
+  registerValidationRule((workspace) => {
+    const spans: SsotTextSpan[] = [];
+    for (const record of workspace.records) {
+      for (const criterion of record.acceptanceCriteria) {
+        spans.push({
+          requirementId: record.id,
+          filePath: record.filePath,
+          line: typeof criterion.line === "number" ? criterion.line : record.headingLine,
+          section: "acceptanceCriteria",
+          text: criterion.text
+        });
+      }
+      if (typeof record.requirement === "string" && record.requirement.trim() !== "") {
+        spans.push({
+          requirementId: record.id,
+          filePath: record.filePath,
+          line: record.headingLine,
+          section: "requirement",
+          text: record.requirement
+        });
+      }
+    }
+
+    return collectSsotLiteralDrift(spans).map((finding) =>
+      diagnostic(
+        "SRS-W073",
+        "warning",
+        `Stale constant value in ${finding.requirementId ?? finding.filePath}: ${finding.message}`,
+        {
+          filePath: finding.filePath,
+          line: finding.line,
+          ...(finding.requirementId === undefined ? {} : { requirementId: finding.requirementId })
+        }
+      )
+    );
   });
 }

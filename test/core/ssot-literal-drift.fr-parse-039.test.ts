@@ -1,0 +1,184 @@
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vitest";
+import { collectSsotLiteralDrift } from "../../src/core/validator/ssot-literal-drift.js";
+import { SSOT_LITERAL_REGISTRY, SSOT_REGISTRY_MODULES } from "../../src/core/ssot-literal-registry.js";
+import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
+import { resolveProjectRoot } from "../../src/core/project-root.js";
+import { validateWorkspace } from "../../src/core/validator/validate-workspace.js";
+
+// @req FR-PARSE-039 — a criterion that quotes a stale value of a shipped constant is reported.
+//
+// The expectations here are stated independently of the registry wherever a mistake in the registry
+// would otherwise agree with them. The completeness case in particular reads the modules, not the
+// registry, because a registry that supplied its own denominator would pass whatever it contained.
+
+const DIAGNOSTIC_CODE = "SRS-W073";
+const REPO = new URL("../../", import.meta.url);
+
+const REPO_PATH = "C:/Work/git/_Snoworca/speckiwi";
+
+async function workspace() {
+  return parseWorkspace(await resolveProjectRoot(REPO_PATH, REPO_PATH));
+}
+
+/** Every string-valued `export const` in a module, read from the source rather than imported. */
+async function stringExportsOf(module: string): Promise<string[]> {
+  const text = await readFile(new URL(module, REPO), "utf8");
+  const names: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^export const (\w+)\s*(?::[^=]+)?=\s*(.)/.exec(line);
+    if (!match) continue;
+    const opener = match[2] as string;
+    // A string, a template literal, an array of strings or a record of them: anything whose value
+    // a criterion could quote. A function or a plain number could not.
+    if (opener === '"' || opener === "'" || opener === "`" || opener === "[" || opener === "{") {
+      names.push(match[1] as string);
+    }
+  }
+  return names;
+}
+
+describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", () => {
+  // AC-5: the denominator comes from the modules, not from the registry.
+  it("AC-5: every string export of every registry module is classified", async () => {
+    const registered = new Map(SSOT_LITERAL_REGISTRY.map((entry) => [`${entry.module}::${entry.name}`, entry]));
+    const unclassified: string[] = [];
+
+    for (const module of SSOT_REGISTRY_MODULES) {
+      const names = await stringExportsOf(module);
+      expect(names.length, `${module} should have string exports to classify`).toBeGreaterThan(0);
+      for (const name of names) {
+        if (!registered.has(`${module}::${name}`)) unclassified.push(`${module}::${name}`);
+      }
+    }
+    expect(unclassified, "classify these, with a reason when they are outside the comparison").toEqual([]);
+  });
+
+  // AC-5: the two roles that opt out must say why.
+  it("AC-5: every opted-out entry states a reason", () => {
+    for (const entry of SSOT_LITERAL_REGISTRY) {
+      if (entry.role !== "unshaped" && entry.role !== "not-an-ssot") continue;
+      expect(entry.reason?.trim(), `${entry.name} must say why it is outside the comparison`).toBeTruthy();
+    }
+  });
+
+  // AC-6: a compatibility-only export must never be treated as the value in force. That is the
+  // trap this contract exists for: a check that scans a module's string exports picks up the Korean
+  // heading kept for recognising older files, calls it current, and lets the criteria quoting it
+  // through. Opting one out with a reason is fine; calling it current is not.
+  it("AC-6: no LEGACY_ export is classified as the value in force", () => {
+    const named = SSOT_LITERAL_REGISTRY.filter((entry) => entry.name.startsWith("LEGACY_"));
+    expect(named.length, "some export should carry that name").toBeGreaterThan(0);
+    for (const entry of named) {
+      expect(entry.role, `${entry.name} is kept for compatibility`).not.toBe("current");
+    }
+    // And at least one is actually compared as compatibility-only, so the role is not decorative.
+    expect(named.some((entry) => entry.role === "legacy")).toBe(true);
+  });
+
+  // AC-7: every shaped entry proves it reports a stale value of its own constant.
+  const shaped = SSOT_LITERAL_REGISTRY.filter((entry) => entry.role === "current");
+  it.each(shaped)("AC-7: a stale $name is reported", async (entry) => {
+    const stale = (entry.shape as RegExp).source
+      .replace(/\(\\d\+\(\?:\\\.\\d\+\)\*\)/, "0.0.1")
+      .replace(/\\\./g, ".")
+      .replace(/\\/g, "");
+    const findings = collectSsotLiteralDrift([
+      { requirementId: "FR-TEST-001", filePath: "docs/spec/test.md", line: 1, section: "acceptanceCriteria", text: `the file ${stale} is installed` }
+    ]);
+    expect(findings.map((finding) => finding.constantName)).toContain(entry.name);
+  });
+
+  // AC-2: a compatibility-only value is reported wherever it appears in a live section.
+  it("AC-2: a compatibility-only value is reported", () => {
+    const legacy = SSOT_LITERAL_REGISTRY.find((entry) => entry.role === "legacy");
+    expect(legacy).toBeDefined();
+    const findings = collectSsotLiteralDrift([
+      { requirementId: "FR-TEST-002", filePath: "docs/spec/test.md", line: 2, section: "acceptanceCriteria", text: `the heading reads ${legacy!.value}1.1` }
+    ]);
+    expect(findings.map((finding) => finding.constantName)).toContain(legacy!.name);
+  });
+
+  // AC-1: a current value is not reported.
+  it("AC-1: a current value is left alone", () => {
+    const findings = collectSsotLiteralDrift([
+      { requirementId: "FR-TEST-003", filePath: "docs/spec/test.md", line: 3, section: "acceptanceCriteria", text: "installs SRS-MD-Rules-v2.5.0.md and SDS-MD-Rules-v2.5.0.md" }
+    ]);
+    expect(findings).toEqual([]);
+  });
+
+  // AC-4: the sections that describe the past are not reported; those that describe now are.
+  it("AC-4: change notes and implementation notes are exempt", () => {
+    const staleText = "the heading read # SpecKiwi SRS workflow v1.4";
+    for (const section of ["changeNotes", "implementationNotes"] as const) {
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-004", filePath: "docs/spec/test.md", line: 4, section, text: staleText }
+      ]);
+      expect(findings, `${section} describes what was true then`).toEqual([]);
+    }
+    for (const section of ["acceptanceCriteria", "requirement", "sample"] as const) {
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-004", filePath: "docs/spec/test.md", line: 4, section, text: staleText }
+      ]);
+      expect(findings.length, `${section} says what is true now`).toBeGreaterThan(0);
+    }
+  });
+
+  // AC-3: registered at warning or higher, and emitted from the shared pass.
+  it("AC-3: the diagnostic is emitted by the shared validation pass", async () => {
+    const parsed = await workspace();
+    const result = validateWorkspace(parsed);
+    const ours = result.diagnostics.filter((diagnostic) => diagnostic.code === DIAGNOSTIC_CODE);
+    // Phase 1 repaired every occurrence, so the repository is clean and this must stay at zero:
+    // the pass carrying the diagnostic is proved by the planted cases above, and by the mutation
+    // that cuts the wiring. A finding here means a criterion spelled a value out again.
+    expect(ours.map((d) => d.message), "no criterion should name a stale value").toEqual([]);
+    for (const diagnostic of ours) {
+      expect(["error", "warning"]).toContain(diagnostic.severity);
+      expect(typeof diagnostic.line, "every finding must carry a line").toBe("number");
+    }
+  });
+
+  // AC-3, continued: the code is registered, and at a severity the exit path can see.
+  it("AC-3: the code is registered at warning or higher", async () => {
+    const { getDiagnosticDefinition } = await import("../../src/core/diagnostic-registry.js");
+    const definition = getDiagnosticDefinition(DIAGNOSTIC_CODE);
+    expect(["error", "warning"]).toContain(definition.severity);
+  });
+
+  // AC-1 and AC-2 over the repository itself, as an exact set rather than a count. The baseline
+  // was produced by enumerating what the check reports, not by listing what someone expected it
+  // to report: a hand-counted inventory is short, and a short inventory becomes the pass mark.
+  it("AC-1/AC-2: the reported occurrences are exactly the frozen set", async () => {
+    const baseline = JSON.parse(await readFile(new URL("../fixtures/ssot-literal-drift-baseline.json", import.meta.url), "utf8")) as {
+      code: string;
+      occurrences: Array<{ requirementId: string | null; filePath: string; line: number; message: string }>;
+    };
+    expect(baseline.code).toBe(DIAGNOSTIC_CODE);
+
+    const parsed = await workspace();
+    const actual = validateWorkspace(parsed)
+      .diagnostics.filter((diagnostic) => diagnostic.code === DIAGNOSTIC_CODE)
+      .map((diagnostic) => ({
+        requirementId: diagnostic.requirementId ?? null,
+        filePath: diagnostic.filePath as string,
+        line: diagnostic.line as number,
+        message: diagnostic.message
+      }));
+
+    const key = (row: { filePath: string; line: number; message: string }) =>
+      `${row.filePath}:${String(row.line).padStart(6, "0")}:${row.message}`;
+    expect(actual.map(key).sort()).toEqual(baseline.occurrences.map(key).sort());
+
+    // The frozen set is empty now. It was 29 before Phase 1, and the shape of the file is what
+    // keeps the comparison exact rather than a count that a partial repair could satisfy.
+    expect(baseline.occurrences).toEqual([]);
+  });
+  // Sanity: the module list is not empty and every entry names one of those modules.
+  it("AC-5: every entry names a module the registry draws from", () => {
+    for (const entry of SSOT_LITERAL_REGISTRY) {
+      expect(SSOT_REGISTRY_MODULES as readonly string[]).toContain(entry.module);
+    }
+  });
+});
+
