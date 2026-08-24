@@ -352,16 +352,12 @@ export function collectSsotSpans(workspace: ParsedWorkspace): SsotTextSpan[] {
         text: reference
       });
     }
+    // The metadata row, not the block heading. A finding reported thirteen lines above the text it
+    // is about sends a reader hunting through a twelve-thousand-line file.
     for (const doc of record.relatedDocs ?? []) {
       const text = String(doc ?? "").trim();
       if (text === "") continue;
-      spans.push({
-        requirementId: record.id,
-        filePath: record.filePath,
-        line: record.headingLine,
-        section: "relatedDocs",
-        text
-      });
+      withLines(record, "relatedDocs", text, record.headingLine);
     }
   }
 

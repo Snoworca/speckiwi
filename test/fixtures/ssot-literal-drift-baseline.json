@@ -19,10 +19,42 @@
     },
     {
       "round": 2,
-      "frozenAt": "75ab456",
+      "frozenAt": "147a3c8",
       "plantedBy": "the same agent, same restrictions, boundaries of its own choosing",
-      "status": "in progress"
+      "isolation": "git worktree",
+      "planted": 18,
+      "reported": 14,
+      "missed": 4,
+      "falsePositives": 0,
+      "negativeControls": 9,
+      "note": "Seven of the eighteen were the round-one misses, replanted in sections that are read; all seven were reported. Of the four new misses, three are values that are not the constant at all — full-width digits, a filename split by emphasis, a literal broken across lines — and catching them would mean loosening the comparison at the cost of false positives on near variants. The agent reported that the harness pushed part of the suite into its context after the planting was finished; it was not used for the judgement.",
+      "whatItFound": [
+        "A heading with a non-breaking space in it renders exactly like the ordinary one, reads correctly to anyone looking at it, and carried a version the tool had left behind. Pasting from a rendered document is how that character arrives.",
+        "A Related Docs finding was reported at the block heading rather than at the row, thirteen lines above the text it was about."
+      ]
     }
   ],
+  "mutations": {
+    "run": 16,
+    "red": 16,
+    "covers": [
+      "cut the wiring out of the shared pass",
+      "lower the severity to info, which leaves validate --fail-on-warning at zero",
+      "classify a compatibility-only constant as the value in force",
+      "drop an entry from the registry",
+      "read the sections that describe the past",
+      "report on shape alone, carrying no information about age",
+      "omit the line from a finding",
+      "drift the registry's copy of a value",
+      "move the real constant and leave the copy behind",
+      "stop collecting reference samples outside requirement blocks",
+      "report a requirement body at its heading instead of its own line",
+      "drop the pointer sections",
+      "compare a marker by whole string again",
+      "drop trace references",
+      "stop folding lookalike spaces",
+      "report a Related Docs row at the block heading"
+    ]
+  },
   "occurrences": []
 }

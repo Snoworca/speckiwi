@@ -421,6 +421,77 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
     ]);
     expect(current).toEqual([]);
   });
+  // A planting round wrote a heading with a non-breaking space in it. It renders exactly like the
+  // ordinary one, reads correctly to anyone looking at it, and carried a version the tool had
+  // left behind — and the comparison walked past it. Pasting from a rendered document is how that
+  // character arrives.
+  it("AC-1: a lookalike space does not hide a stale value", () => {
+    for (const code of [0x00a0, 0x2007, 0x202f]) {
+      const space = String.fromCharCode(code);
+      const text = `the heading reads # SpecKiwi${space}SRS workflow v1.6`;
+      const findings = collectSsotLiteralDrift([
+        { requirementId: "FR-TEST-920", filePath: "docs/spec/test.md", line: 1, section: "acceptanceCriteria", text }
+      ]);
+      expect(findings.length, `U+${code.toString(16)} must not hide it`).toBeGreaterThan(0);
+    }
+
+    // And the version in force still passes, lookalike space or not.
+    const current = collectSsotLiteralDrift([
+      {
+        requirementId: "FR-TEST-920",
+        filePath: "docs/spec/test.md",
+        line: 1,
+        section: "acceptanceCriteria",
+        text: `# SpecKiwi${String.fromCharCode(0x00a0)}SRS workflow v1.9`
+      }
+    ]);
+    expect(current).toEqual([]);
+  });
+  // A Related Docs row was being reported at the block heading, thirteen lines above the row it
+  // was about. In a twelve-thousand-line document that is a reader hunting rather than reading.
+  it("AC-1: a Related Docs row is reported at its own line", () => {
+    const spans = collectSsotSpans({
+      root: {} as never,
+      index: {} as never,
+      diagnostics: [],
+      records: [
+        {
+          id: "FR-TEST-930",
+          filePath: "docs/spec/test.md",
+          headingLine: 1,
+          blockStartLine: 1,
+          blockEndLine: 8,
+          acceptanceCriteria: [],
+          relatedDocs: ["docs/rule/SRS-MD-Rules-v0.0.1.md"]
+        } as never
+      ],
+      files: [
+        {
+          path: "docs/spec/test.md",
+          relativePath: "docs/spec/test.md",
+          text: "",
+          lines: [
+            "### FR-TEST-930 — x",
+            "",
+            "| Field | Value |",
+            "|---|---|",
+            "| Type | functional |",
+            "| Related Docs | docs/rule/SRS-MD-Rules-v0.0.1.md |",
+            "",
+            "#### Requirement"
+          ],
+          newline: "\n"
+        } as never
+      ]
+    } as never);
+
+    const rows = spans.filter((span) => span.section === "relatedDocs");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.line, "the row is line 6; the heading is line 1").toBe(6);
+
+    const findings = collectSsotLiteralDrift(rows);
+    expect(findings.map((finding) => finding.line)).toEqual([6]);
+  });
   // Sanity: the module list is not empty and every entry names one of those modules.
   it("AC-5: every entry names a module the registry draws from", () => {
     for (const entry of SSOT_LITERAL_REGISTRY) {

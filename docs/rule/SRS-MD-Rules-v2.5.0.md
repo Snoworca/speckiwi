@@ -872,6 +872,18 @@ Sections inside a Requirement Block use the following headings.
 | `#### Trace Links` | recommended | Relationships to issues, PRs, code, documents, and other requirements |
 | `#### Research / Analysis` | optional | Investigation, comparison, analysis, and experiment rationale |
 | `#### Implementation Notes` | optional | Details for the implementer to refer to |
+
+`SRS-W073` compares what a requirement says against the values the tool ships, and it reads the
+sections that state what is true now: the Requirement statement, the Acceptance Criteria, a Trace
+or evidence Reference, a Related Docs row, and anything in a spec document that no requirement block
+covers. It leaves `Rationale`, `Research / Analysis`, `Implementation Notes`, `Change Notes` and the
+Notes columns alone, because those describe what was true then — a Rationale regularly has to name
+the broken value the requirement exists to repair.
+
+That exemption is by section, not by tense. **Do not assert a current value in one of those
+sections**: write "the bundled rules document" rather than its filename, or name the constant. A
+present-tense claim written there goes unchecked, and if it carries no Markdown link the link
+checker does not see it either.
 | `#### Change Notes` | optional | A summary of the requirement change history |
 
 ### 18.2 Section Heading Rules

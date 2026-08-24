@@ -131,11 +131,26 @@ function legacyFindings(entry: SsotLiteralEntry, span: SsotTextSpan): SsotLitera
   return [build(entry, span, "", entry.value, `${entry.name} ${LEGACY_MESSAGE}`)];
 }
 
+/**
+ * Spaces that render as an ordinary space but are not one.
+ *
+ * A planting round wrote a heading with a non-breaking space in it. It renders identically, reads
+ * correctly to anyone looking at it, and carried a version the tool had left behind — and the
+ * comparison walked straight past it. Pasting from a rendered document or a word processor is how
+ * that character arrives, so it is worth folding before comparing.
+ */
+const LOOKALIKE_SPACES = /[\u00A0\u2007\u202F]/g;
+
+function normalizeSpaces(text: string): string {
+  return text.replace(LOOKALIKE_SPACES, " ");
+}
+
 /** Reports spans that quote a stale or compatibility-only value of a registered constant. */
 export function collectSsotLiteralDrift(spans: readonly SsotTextSpan[]): SsotLiteralFinding[] {
   const findings: SsotLiteralFinding[] = [];
-  for (const span of spans) {
-    if (!LIVE_SECTIONS.has(span.section)) continue;
+  for (const original of spans) {
+    if (!LIVE_SECTIONS.has(original.section)) continue;
+    const span: SsotTextSpan = { ...original, text: normalizeSpaces(original.text) };
     for (const entry of SSOT_LITERAL_REGISTRY) {
       if (entry.role === "current") findings.push(...shapeFindings(entry, span), ...markerFindings(entry, span));
       else if (entry.role === "legacy") findings.push(...legacyFindings(entry, span));
