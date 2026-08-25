@@ -1,6 +1,6 @@
 ---
 name: kiwi-review-fix-loop
-description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, CRITICAL/HIGH-zero exit, optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
+description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Code only: prose such as SKILL.md, README, SRS documents and research notes is neither reviewed nor edited. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, CRITICAL/HIGH-zero exit, optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -47,6 +47,7 @@ performed by separate delegated workers or clearly separated passes.
 | `bulk-close-or-finalize` | requirement closure must be per-REQ with evidence; bulk finalize/archive is forbidden | close gate |
 | `existing-test-weakened-or-deleted` | fix diff 에서 기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화 검출 (§0.17) | fix scan |
 | `existing-public-contract-change` | fix diff 에서 기존 public 심볼의 삭제 또는 시그니처 변경 검출 — **경로와 무관**하게 critical (§0.17) | fix scan |
+| `empty-code-scope` | no code target survives the class filter (파일 부류 경계) | 파일 부류 경계 |
 | `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | fix scan |
 
 ## Inputs
@@ -79,8 +80,9 @@ performed by separate delegated workers or clearly separated passes.
 6. Delegate fixes to a fixer pass.
 7. Run the preservation scan over the fixer diff (보존 스캔 section)
    before the re-review.
-8. Run a fresh prickly re-review with isolated input; for prose documents in scope,
-   narrow that input with the delta protocol (검증 장부 section).
+8. Run a fresh prickly re-review with isolated input. Prose never enters that input
+   (파일 부류 경계 section); the prose delta protocol belongs to
+   `../_shared/kiwi/verify-loop.md` §10 and is not this skill's to run.
 9. Iterate until CRITICAL/HIGH findings are clear.
 10. Run regression and affected tests.
 11. In PR mode, write a response comment unless `--no-respond`.
@@ -113,6 +115,7 @@ Skip or halt when:
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
 | CRITICAL/HIGH finding remains | halt |
+| a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | no high-confidence impacted REQ | skip and report |
 | impacted REQ stability is `draft` or `deprecated` | skip that REQ |
 | impacted REQ status is not `implemented` | skip that REQ |
@@ -134,19 +137,40 @@ For each eligible REQ:
   on a child's behalf to correct it.
 - `kiwi-pipeline` does not gain `--no-pipeline-emit` — no orchestrated unit invokes it.
 
-## 검증 장부 — 문서 델타 리뷰
+## 11. 파일 부류 경계 — 이 스킬이 무엇을 보는가
 
-리뷰 범위에 산문 문서(`.md` 등)가 들어오면 라운드마다 문서 전체를 다시 읽지 않는다. heading 섹션 단위 해시 장부 `kiwi/verification-ledger.jsonl` 로 바뀐 섹션만 골라 검증자에게 넘긴다. 장부는 라운드를 가로질러 남아야 하므로 run 단위 세션 상태(`.kiwi/`)나 도구 소유 경로(`docs/.kiwi/`)에 두지 않는다.
+본 스킬은 **코드를 리뷰한다.** 그런데 "코드" 는 형용사이고 형용사는 우기는 대상이 되므로, 대상은 아래 **닫힌 목록**으로 정한다. 목록에 없는 부류는 대상이 아니다.
 
-- **라운드 1 은 델타를 쓰지 않는다** — 문서 전량을 검증자에게 넘긴다. 한 번도 읽히지 않은 섹션이 clean 으로 남는 경로를 만들지 않기 위해서다.
-- **라운드 2 이상**: `speckiwi workflow verification-ledger plan --doc <path> --round <n> --json` 이 dirty 섹션만 돌려준다. `sections[].payload` (섹션 본문 + 전후 문맥) 가 검증자 입력이고, **clean 섹션은 검증자에게 보내지 않는다**.
-- **검증 직후 기록**: 검증자가 한 섹션을 읽고 판정을 끝내면 `speckiwi workflow verification-ledger record --doc <path> --section "<heading path>" --verifier <id> --round <n>` 을 호출한다. 해시는 도구가 문서에서 직접 계산한다 — 에이전트가 적어 낸 해시는 증거가 아니다.
-- **무매칭 키는 항상 dirty** — 이름이 바뀌거나 쪼개진 heading 은 장부와 매칭되지 않으며, 그때는 재검증 쪽으로 fail open 한다. 치르는 값이 토큰인 쪽을 고르고 거짓 신뢰인 쪽을 고르지 않는다.
-- **고아 정리**: heading 이 사라진 장부 항목은 `plan` 이 패스마다 정리한다. 정리도 append 로 기록되며 기존 줄을 고쳐 쓰지 않는다.
+| 부류 | 대상 | 사유 |
+|---|---|---|
+| 소스 코드 파일 | ○ | 본 스킬의 존재 이유 |
+| 테스트 파일 | ○ | **테스트 파일은 코드다.** 범위에서 빼면 §0.17 의 `existing-test-weakened-or-deleted` 게이트가 지킬 대상을 잃는다 |
+| 설정 파일 — `package.json` · `tsconfig.json` · CI yaml 등 **파일명으로 지명한 것** | ○ | **설정 파일은 코드다.** 실행 동작을 바꾸고 결함이 빌드·테스트로 재현된다 |
+| 코드 파일 안의 주석 | ○ | **주석은 코드다.** 다만 강도는 종전대로다 — `@req` 실존은 기계 검사, 안전 게이트에 붙은 why-주석은 작성 시점 1회, 코드를 재서술하는 주석은 리뷰가 아니라 삭제다 |
+| `SKILL.md` 등 에이전트 지시문 | ✗ | 산문이며 계약 등급이다. 이 루프가 자기를 구속하는 규칙을 고치는 경로는 열지 않는다 |
+| `README.md` | ✗ | 산문이다 |
+| `docs/spec/**` 의 SRS 문서 | ✗ | 산문이며, 그 전에 Core Rules 가 이미 SRS mutation 을 금지한다. SRS 변경이 걸린 finding 은 `/kiwi-srs-sync` 에 위임을 권고한다 |
 
-**전체 문서 감사**: `--close-reqs` 로 REQ 를 닫기 전 — target 마감 전 — 이 run 에서 **1회**는 장부를 무시하고 문서 전체를 감사한다. 장부가 clean 이라는 이유로 이 감사를 건너뛰지 않는다.
+**판정 순서** — 아래 순서로 평가하며 앞선 행이 뒤의 행을 이긴다. 순서를 적지 않으면 두 규칙이 모두 참인 채로 같은 파일을 반대로 판정한다.
 
-**알려진 한계**: 개별 섹션은 그 자체로 참이면서 바뀐 주변 맥락에서는 거짓일 수 있고, hash-clean 섹션은 다시 읽지 않는다. 따라서 이 교차 의존 결함은 구조적으로 못 잡는다 — 전체 문서 리뷰만 잡는 부류이며, 토큰 절감과 맞바꾼 것이다. 이 거래는 여기 적혀 있고 침묵으로 넘어가지 않는다.
+1. **가장 먼저, 아래 목록을 거부한다.** `*.jsonl` 저널 · `*.lock` · `*.lock.json` · `resume-card.json` · run contract · `routing/probe.json` · `design/constraints.json` 을 **수정·삭제·되돌리지 않는다.** 이 목록의 구성 원리는 **run 이 동결로 선언한 것**이며, 새 동결 산출물이 생기면 그 원리에 따라 **목록에 추가한다.** 원리를 기준 자체로 삼지 않는 이유는 이 스킬이 그 선언에 닿을 인자를 갖고 있지 않기 때문이다 — 읽을 수 없는 기준은 "확인할 수 없으니 동결된 것이 없다"로 처리되어 fail-open 이 되고, 그러면 `.lock.json` 이 아닌 동결 산출물이 위 표의 "설정 파일은 코드다" 행에 그대로 삼켜진다. 닫힌 목록은 그 방향이 반대다. 되돌린 lock 한 줄은 오류를 내지 않고 다음 재개에서야 터진다. 자기 run 이 소유한 아티팩트에 **append 하는 것은 허용**한다.
+2. 위 표의 부류 판정.
+3. 앞의 세 처분(포함 · `excluded_prose` · `refused_artifacts`) 어디에도 들지 않는 것(바이너리·에셋 등)은 `unclassified_files[]` 에 싣는다. 버킷을 늘리는 것이 항등식을 포기하는 것보다 낫다 — 분류되지 않은 파일이 조용히 사라지면 항등식이 그것을 숨긴다.
+4. 남은 것이 리뷰 대상이다.
+
+**범위 결정과의 관계** — 본 절은 Inputs 절의 범위 결정이 산출한 후보 목록에 붙는 **후처리**이며 그 범위 결정을 대체하지 않는다. 부류 필터는 후보 목록이 만들어진 **직후**, 까칠 리뷰어를 spawn 하기 **전**에 적용한다. 뒤에 두면 고칠 수 없는 finding 이 심각도 게이트의 `CRITICAL=0 + HIGH=0` 카운터에 들어가, 루프가 영원히 통과하지 못하거나 게이트를 맞추려고 결국 그 문서를 고치게 된다.
+
+**커밋 창은 사람의 지목이 아니다** — `--base`/`--head` · `--commits` · `--since` 는 부류 필터를 **면제하지 않는다.** `kiwi-orchestrator` 는 §15 일정에 따라 `docs/research/{work}/` 아래 run 아티팩트를 커밋한 **다음** 그 커밋 범위를 이 스킬에 창으로 넘긴다. 연구·설계 산문이 실제로 리뷰에 들어온 경로가 이것이며, 창을 지목으로 인정하면 주 경로가 그대로 필터를 면제받는다. **`--files` 만** 사람이 파일을 지목한 것으로 인정하고, 그 목록에 든 산문은 제외 사실과 사유를 **보고**한 뒤 코드만 진행한다. 지목이 전부 산문이면 진행하지 않는다.
+
+**제외는 전수 열거한다** — 제외한 산문을 `mode_decision.json.self_scope.excluded_prose[]` 에 **빠짐없이** 싣고 보고서에도 그대로 낸다. 개수나 표본으로 줄이지 않는다. 판정 순서 1 이 거부한 저널·lock 은 `refused_artifacts[]` 에 따로 싣는다 — 코드도 산문도 아니므로 어느 쪽 버킷에 넣어도 이름을 속이게 된다. 그리고 **항등식**이 성립해야 한다: 포함한 파일 수와 `excluded_prose[]` 와 `refused_artifacts[]` 와 `unclassified_files[]` 의 수를 더한 값이 후보 수와 같아야 한다. 항등식이 없으면 규칙을 지킨 run 과 규칙을 잊은 run 이 똑같은 산출물을 남긴다.
+
+**빈 범위는 통과가 아니다** — 필터 후 코드 대상이 **0건**이면 PASS 를 보고하지 않고 `empty-code-scope` 로 **중단**한다. 아무것도 보지 않은 실행이 품질 게이트 통과로 기록되면, 빈 기준선이 깨끗한 기준선과 구별되지 않는다.
+
+**알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.**
+
+**산문 finding 은 어디로 가는가** — 부류 밖 문서에서 눈에 띈 문제는 SRS finding 에 쓰는 것과 같은 채널로 흘린다: 고치지 않고 보고하며, 담당 스킬을 지목해 위임을 권고한다.
+
+---
 
 ## Extended References
 

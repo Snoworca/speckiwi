@@ -5,18 +5,27 @@ import { describe, expect, it } from "vitest";
 
 // @req FR-FLOW-136 — the consuming skill's half of the contract.
 //
-// kiwi-review-fix-loop is the consumer: it is the only shipped skill that re-reads the same material
-// over numbered rounds (Phase 5/6, capped by `--loops`), and FR-FLOW-131..135 route all three
-// orchestrator rungs and kiwi-wave-master into it — so wiring the ledger here reaches every path that
-// re-reads a document, and wiring it anywhere else would reach none of them.
+// The consumer moved. It was kiwi-review-fix-loop, chosen because that skill was the only shipped one
+// that re-read the same material over numbered rounds and because FR-FLOW-131..135 route all three
+// orchestrator rungs and kiwi-wave-master into it. FR-FLOW-152 made that skill code-only, so it no
+// longer re-reads prose at all and the old reasoning is now false rather than merely outdated.
 //
-// Measured before this file was written: `verification-ledger`, `전체 문서`, `교차 의존` and `장부`
-// each occur zero times across `skills/**` and `.agents/skills/**`, so no assertion below can be
-// satisfied by text that already shipped.
+// The ledger lives in the shared verification engine, which kiwi-orchestrator and kiwi-wave-master
+// both cite — the two callers that still run numbered rounds over prose. FR-FLOW-136's requirement
+// text never named a skill ("The document review loop SHALL record…") and AC-6 anticipated exactly
+// this move, so the requirement was not superseded: the consumer was reassigned and the evidence
+// re-attached here.
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 const COPIES = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"].map(
+  (root) => `${root}/_shared/kiwi/verify-loop.md`
+);
+
+// The close still lives in kiwi-review-fix-loop (`--close-reqs`), and that skill now reviews only
+// code. AC-6's second half is asserted against it, because an obligation split from the skill that
+// must discharge it is where this contract would silently stop holding.
+const CLOSING_SKILL = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"].map(
   (root) => `${root}/kiwi-review-fix-loop/SKILL.md`
 );
 
@@ -96,8 +105,16 @@ describe.each(COPIES)("FR-FLOW-136 AC-4 — the audit obligation and its price, 
     const rule = line(ledger(copy), /전체 문서 감사/);
     expect(rule, `${copy}: the full-document audit obligation must be stated`).not.toBe("");
     expect(/1회|한 번/.test(rule), `${copy}: an audit without a count permits zero`).toBe(true);
-    expect(/--close-reqs|마감|close/.test(rule), `${copy}: the obligation must be tied to the close it guards`).toBe(
+    expect(/마감|close/.test(rule), `${copy}: the obligation must be tied to the close it guards`).toBe(
       true
+    );
+    // The trigger has to exist in the document that carries the obligation. Moving the ledger here
+    // carried `--close-reqs` along with it, and that option belongs to neither this engine nor either
+    // of its two callers — both of which say in writing that they do not pass it. The obligation was
+    // left with no firing condition in any run, and the old assertion could not see it because a
+    // token being present says nothing about whether what it names exists.
+    expect(rule, `${copy}: the audit cannot be triggered by an option this document does not have`).not.toMatch(
+      /--close-reqs/
     );
     expect(/장부를 무시|장부 없이|ledger 를 무시/.test(ledger(copy)), `${copy}: an audit that consults the ledger is not an audit`).toBe(
       true
@@ -123,8 +140,24 @@ describe.each(COPIES)("FR-FLOW-136 AC-4 — the audit obligation and its price, 
   });
 });
 
+describe.each(CLOSING_SKILL)("FR-FLOW-136 AC-6 — the close cannot discharge an audit it cannot run (%s)", (copy) => {
+  it("refuses to close a requirement whose evidence rests on prose, and says so", () => {
+    // The audit gates the close. The skill that performs the close now reviews only code, so it
+    // cannot perform the audit. Leaving the obligation written where it cannot be discharged turns a
+    // gate into a sentence, and --close-reqs would promote requirements verified by prose nobody read.
+    const text = body(read(copy));
+    const rule = line(text, /산문.{0,40}(증거|근거)|prose.{0,40}evidence/i);
+    expect(rule, `${copy}: the close must name the prose-evidence case it declines`).not.toBe("");
+    expect(/닫지 않는다|승격하지 않는다|skip|does not close/i.test(rule), `${copy}: it must decline, not proceed`).toBe(true);
+    expect(HEDGE.test(rule), `${copy}: a hedged refusal is the one that gets skipped`).toBe(false);
+  });
+});
+
 describe("FR-FLOW-136 — the mirror is generated, not hand-written", () => {
   it("keeps .agents/skills byte-identical to its codex source", () => {
+    expect(read(".agents/skills/_shared/kiwi/verify-loop.md")).toBe(
+      read("skills/codex/_shared/kiwi/verify-loop.md")
+    );
     expect(read(".agents/skills/kiwi-review-fix-loop/SKILL.md")).toBe(
       read("skills/codex/kiwi-review-fix-loop/SKILL.md")
     );

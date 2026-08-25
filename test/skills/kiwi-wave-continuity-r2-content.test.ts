@@ -222,6 +222,7 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "pr-mode-gh-unavailable",
     "mcp-cli-both-unavailable",
     "bulk-close-or-finalize",
+    "empty-code-scope",
     "existing-test-weakened-or-deleted",
     "existing-public-contract-change",
     "existing-file-deleted-or-moved"
