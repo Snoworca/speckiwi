@@ -565,6 +565,18 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 
 Most mutation commands accept `--json`, `--dry-run`, and `--ignore-lock`. A mutation failure exits with `5`.
 
+**`Status` is an enum on the way in, too.** `add_requirement` — and `speckiwi add-requirement` — refuses a `Status` outside `planned`, `in_progress`, `blocked`, `implemented`, `verified`, `discarded` with a `USAGE` failure and writes nothing. Earlier versions accepted the value, wrote it, and left `validate` to report it as an `SRS-E005` error afterwards: the rule is not new, only the point at which it is enforced. The likeliest way to meet it is a project that ran `npm i -g speckiwi@latest` without a following `speckiwi upgrade --global` — the package is current, but each agent still loads an older global skill that dictates the old value. Refresh the global skills and the calls pass again.
+
+A value already written into your `docs/spec/` is left alone by this check, which reads the call's input and never the rows on disk. Find it, then repair it one requirement at a time:
+
+```sh
+speckiwi validate --json          # SRS-E005 names the requirement holding it
+speckiwi explain SRS-E005         # the same remediation, without parsing a workspace
+speckiwi update-status FR-APP-001 planned --reason "SRS-E005 repair"
+```
+
+`update-status` validates only its own input, so it never blocks the transition *out* of an invalid value. There is deliberately no bulk transition for this.
+
 ### Inspect an orchestrated run
 
 `kiwi-orchestrator` keeps its state in `kiwi/waves.jsonl`. These read-only commands let you check a run without driving it:
@@ -1226,6 +1238,18 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 ```
 
 대부분의 mutation 명령은 `--json` · `--dry-run` · `--ignore-lock`을 받습니다. mutation 실패 시 `5`로 종료합니다.
+
+**`Status`는 쓰는 시점에도 enum입니다.** `add_requirement`(그리고 `speckiwi add-requirement`)는 `planned` · `in_progress` · `blocked` · `implemented` · `verified` · `discarded` 밖의 `Status` 값을 `USAGE` 실패로 거부하고 아무것도 쓰지 않습니다. 이전 버전은 그 값을 그대로 받아 문서에 기록했고, `validate`가 뒤늦게 `SRS-E005` error로 보고했습니다. 즉 규칙 자체가 새로 생긴 것이 아니라 강제되는 시점이 검증에서 쓰기로 앞당겨진 것입니다. 이 실패를 만나기 가장 쉬운 경로는 `npm i -g speckiwi@latest`만 실행하고 `speckiwi upgrade --global`을 이어서 실행하지 않은 프로젝트입니다. 패키지는 최신이지만 각 에이전트가 여전히 옛 전역 skill을 읽어 옛 값을 넘깁니다. 전역 skill을 갱신하면 호출이 다시 통과합니다.
+
+이 검사는 호출 입력만 읽고 디스크에 있는 행은 보지 않으므로, `docs/spec/`에 이미 기록된 값은 그대로 남습니다. 아래 명령으로 찾아낸 뒤 요구사항 하나씩 수리하세요.
+
+```sh
+speckiwi validate --json          # SRS-E005가 값을 들고 있는 요구사항을 지목합니다
+speckiwi explain SRS-E005         # workspace를 읽지 않고 같은 remediation을 출력합니다
+speckiwi update-status FR-APP-001 planned --reason "SRS-E005 수리"
+```
+
+`update-status`는 자기 입력만 검증하므로 잘못된 값에서 *빠져나오는* 전이는 막지 않습니다. 이 수리를 위한 일괄 전이 명령은 의도적으로 두지 않았습니다.
 
 ### 오케스트레이션 run 조회
 

@@ -322,7 +322,7 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
     {
       "req_id": "FR-TODO-001",
       "stability": "evolving",
-      "status": "proposed",
+      "status": "planned",
       "ac_total": 3,
       "ac_ids": ["AC-1","AC-2","AC-3"],
       "files_from_trace": ["src/api.ts:45-67"],

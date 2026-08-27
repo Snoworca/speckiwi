@@ -85,7 +85,7 @@ Codex clarification gate 4옵션:
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
 4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)
-6. update_stability — proposed→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
+6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 7. add_completed_work — 변경 작업 자체를 작업 로그로 기록 (한 번에 묶어서)
 ```
 

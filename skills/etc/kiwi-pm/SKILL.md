@@ -78,7 +78,7 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 
 #### §0.G5 — T-final mutation backward transition
 
-`update_status` 가 REQ status 를 역방향 (예: `implemented → in_progress`) 으로 전이시키는 호출은 PM 측에서 차단 + 경고. forward only (proposed/planned/in_progress → implemented) 만 허용.
+`update_status` 가 REQ status 를 역방향 (예: `implemented → in_progress`) 으로 전이시키는 호출은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용.
 
 #### §0.G6 — T-final dryRun 거부 / transition guard 거부
 
@@ -314,9 +314,9 @@ $kiwi-pm PLAN_PATH=docs/plans/...plan.md
       "REQ-CORE-003": "stable"
     },
     "status_snapshot": {
-      "REQ-CORE-001": "proposed",
+      "REQ-CORE-001": "planned",
       "REQ-CORE-002": "in_progress",
-      "REQ-CORE-003": "proposed"
+      "REQ-CORE-003": "planned"
     }
   },
   "req_coverage": {},

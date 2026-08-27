@@ -59,6 +59,7 @@
     "version:check": "npm run build && node scripts/version-check.mjs",
     "release:check": "npm run version:check && node scripts/release-check.mjs --strict",
     "perf:srs": "vitest run test/perf/parser-performance.test.ts --hookTimeout 120000 --testTimeout 120000",
+    "value-sites:diff": "node scripts/value-site-diff.mjs",
     "prepack": "npm run build"
   },
   "repository": {

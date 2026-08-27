@@ -127,7 +127,7 @@ self_scope.source enum 매핑 (§3.1):
 | `--close-reqs` + 까칠 리뷰 finding 잔존 (CRITICAL/HIGH ≥1) | 차단 + WARN |
 | `--close-reqs` + 영향 REQ 추출 0건 | skip + 보고 ("close 대상 REQ 없음") |
 | `--close-reqs` + 영향 REQ 중 stability=draft 1건 이상 | 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
-| `--close-reqs` + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / proposed) | 해당 REQ skip + 보고, 나머지 진행 |
+| `--close-reqs` + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행 |
 | `--close-reqs` + 영향 REQ 가 **산문 문서를 검증 증거**로 삼는 경우 | 해당 REQ 를 **닫지 않는다** + 보고 — 본 스킬은 §11 로 산문을 보지 않아 `FR-FLOW-136` AC-6 의 전체 문서 감사를 수행할 수 없고, 수행할 수 없는 의무는 게이트가 아니다. **그런 요구를 자동으로 닫는 경로는 파이프라인에 없다** — 사람이 감사하고 닫는다. 보고에 그 사실을 함께 적어, 닫히지 않은 이유가 실패로 읽히지 않게 한다 |
 | 위 차단/skip 미해당 | §6.6 진입 |
 

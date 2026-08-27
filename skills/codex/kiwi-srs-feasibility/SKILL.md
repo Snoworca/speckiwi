@@ -64,7 +64,8 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | IF | THEN |
 |---|---|
 | feasibility=blocked + REQ.status ∈ {in_progress, implemented, verified} | stability mutation skip + `status_conflict.log` 기록 + 사용자 보고 |
-| feasibility=blocked + REQ.status ∈ {proposed, planned, blocked} | 정책에 따라 stability → deprecated 또는 keep |
+| feasibility=blocked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability → deprecated 또는 keep |
+| feasibility=blocked + REQ.status = `discarded` | 기본 필터(§3.3)로는 이 게이트에 도달하지 않는다. 다만 `--req-filter` 로 호명된 REQ 는 명시 열거가 status 기본 제외보다 우선하므로 정상적으로 도달한다 — 그때는 stability mutation skip + 사용자 보고 |
 | 정책 파일 `gates.status_conflict_policy: warn` | 진행하되 경고 출력 |
 | 정책 파일 `gates.status_conflict_policy: block` | 전체 평가 중단 + 사용자 결정 대기 |
 
@@ -241,7 +242,8 @@ list_requirements { target: TARGET }
 - 전체 REQ 수 / scope 분포 / status 분포 / stability 분포
 - 평가 대상 필터링 (§4 인계 게이트 규칙 적용):
   - `--include-stable` 미지정 시 stable/frozen 제외
-  - status ∈ {discarded, draft} 제외
+  - status = `discarded` 제외
+  - stability = `draft` 제외
   - `--scope` / `--priority` 옵션 적용
   - `--req-filter` 지정 시 열거된 REQ-ID 만 남긴다 — **명시 열거**는 `--scope` / `--priority` 필터와 status 기본 제외보다 **우선**한다 (호명된 REQ 가 필터로 조용히 빠지면 "그 REQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 `--include-stable` 을 함께 준다. 열거된 ID 가 target 에 없으면 그 ID 를 사용자에게 보고한다
 - 필터 후 N개 REQ → Phase 1 입력
@@ -287,7 +289,7 @@ N=0 분기:
 ```json
 {
   "req_summaries": [
-    { "id": "FR-TODO-001", "scope": "TODO", "status": "proposed", "stability": "draft", "ac_count": 3, "trace_count": 2, "dependencies": ["FR-TODO-002"] }
+    { "id": "FR-TODO-001", "scope": "TODO", "status": "planned", "stability": "draft", "ac_count": 3, "trace_count": 2, "dependencies": ["FR-TODO-002"] }
   ],
   "dependency_graph": { "nodes": [...], "edges": [...] },
   "scope_distribution": {...}
@@ -411,7 +413,7 @@ quick_pass/quick_block 분류된 REQ 는 high-reasoning 시니어 호출 없이 
       "conditions": [],
       "has_verification": true,
       "current_stability": "draft",
-      "current_status": "proposed",
+      "current_status": "planned",
       "external_module_impact": null
     }
   ]

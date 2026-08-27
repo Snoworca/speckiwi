@@ -45,7 +45,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - §0.G 결정표
 - 선언된 사용자 제약 아티팩트 — `--constraints-doc <path>` 로 받은 경로 (미지정 시 없음). 저작 입력에 없는 제약은 검증에서 잡혀도 반영할 근거가 없다
 
-신규 REQ 기본 status: **`proposed`** (사용자 미승인).
+신규 REQ 기본 status: **`planned`** (Status enum 에 미승인을 뜻하는 값은 없다). 사용자 미승인은 Status 가 아니라 `Stability=draft` 가 나타낸다 — `add_requirement` 의 기본 stability 가 `draft` 이고, 그 값이 남아 있는 동안 그 요구는 `summarize_target` 의 `newWorkCandidates` 에 오르지 않는다.
 
 ### 9.2 분류별 MCP 시퀀스
 
@@ -53,13 +53,13 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 1. `get_requirement { id: REQ-X }`
 2. `add_requirement` — new REQ
-   - `status: "proposed"`
+   - `status: "planned"`
    - `tags: ["conflict-with:REQ-X", "feasibility:{level}"]`
    - `rationale: "Conflicts with REQ-X: {reason}. Pending user resolution."`
    - `trace`: 코드 증거
 3. `add_trace_link { id: NEW-ID, type: "Requirement", reference: "REQ-X", relation: "conflicts_with", notes: "{reason}; re_stated_from: REQ-X#AC1, REQ-X#AC2; reason_detail: {refinement-detail}" }`
    - `re_stated_from` provenance 는 `notes` 에 grammar `re_stated_from:\s*REQ-ID#ACn(,\s*REQ-ID#ACn)*` 로 인라인 인코딩 (speckiwi `add_trace_link` 가 별도 필드 미지원)
-4. `update_status { id: "REQ-X", status: "draft" }` — 자동 폐기 회피. status 만 변경, `stability` 필드 불변. 변경 사유는 §7 Change Notes 가 SSOT
+4. `update_stability { id: "REQ-X", stability: "draft", reason: "Conflicts with {NEW-ID}: {reason}. Pending user resolution." }` — 자동 폐기 회피. `Stability` 만 변경하고 `Status` 는 건드리지 않는다. 보류를 뜻하는 Status 값은 존재하지 않으며 `status: "draft"` 는 `update_status` 가 `USAGE` 로 거부한다. `reason` 이 §7 Change Notes 행을 자동 생성하므로 별도 기재하지 않는다. `reason` 은 500 UTF-16 code unit 이내의 한 줄 요약으로 쓴다 — 길이를 넘기거나 제어문자를 담거나 heading 또는 fence 로 시작하는 줄을 넣으면 `update_stability` 가 `USAGE` 로 거부한다. REQ-X 의 status 가 이미 `verified` 이면 이 호출은 `MUTATION_DENIED` 로 거부되므로, 그때는 demote 를 시도하지 않고 3단계의 `conflicts_with` trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고한다
 5. **Final `validate_spec`** — Markdown sync 완료 후 호출
 6. **사용자에게 충돌 보고** — `--qna` 미사용 시에도 conflict 발견은 사용자 결정 필요. §6.4 boundary 게이트와 동시 발동 시 §0.G5 적용
 
@@ -67,7 +67,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 1. `get_requirement { id: REQ-X }`
 2. `add_requirement` — new REQ
-   - `status: "proposed"`
+   - `status: "planned"`
    - `tags: ["supersedes:REQ-X", "feasibility:{level}"]`
    - `rationale: "Supersedes REQ-X: {delta}"`
    - **`acceptanceCriteria` 정책**: 원본 REQ-X 의 AC를 재진술 + 신규 AC 추가 (참조 형식 금지). `check_acceptance_criteria` 가 REQ별 독립 AC를 요구하므로 ID-참조는 검증 불가
@@ -79,7 +79,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 #### new-feature
 
-1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, with `trace_intent`] / status=proposed / priority / tags=[feasibility:{level}]
+1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, with `trace_intent`] / status=planned / priority / tags=[feasibility:{level}]
 2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check
@@ -99,6 +99,7 @@ Phase 2.5에서 scope 파일 + 인덱스 등록 완료. 여기서는 `add_requir
 speckiwi 보장 사항:
 - `add_requirement` → §4 Requirements 신규 블록 자동 삽입 (`renderRequirementBlock` 결정적 출력)
 - `update_status` → Status metadata row 단일 `replaceLine`
+- `update_stability` → Stability metadata row 단일 `replaceLine` (+ `draft` 시 §30.2 `[DRAFT]` heading 마커, `reason` 지정 시 §7 Change Notes row 자동 추가)
 - `add_trace_link` → Trace Links 테이블 row insert
 - `add_completed_work` → `00.index.md` Completed Work Log + Change Notes 자동 row 추가
 - 모든 호출은 `apply-patch.ts` SHA256 snapshot stale-check + tmp+rename atomic write
@@ -347,10 +348,10 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 ### Unresolved user_required OQs (승급 차단 항목)
 | OQ ID | Linked REQ | 질문 | 차단 status |
 |---|---|---|---|
-| OQ-1 | FR-TODO-004 | priority 기본값? | proposed → planned 차단 |
+| OQ-1 | FR-TODO-004 | priority 기본값? | planned → in_progress 차단 |
 ...
 
-(이 표가 비어 있어야만 `proposed → planned` 승급 가능)
+(이 표가 비어 있어야만 `planned → in_progress` 승급 가능)
 
 ### 다음 단계
 {next_steps}
@@ -367,15 +368,16 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 | 우선 | IF (조건) | THEN (권고) | 근거 |
 |---|---|---|---|
 | A | 잔존 finding 에 CRITICAL/HIGH > 0 또는 `validate_spec: FAIL` | "수렴 미달 — 평가 loop 재개 또는 사용자 결정 후 재실행 필요" | §11.2 수렴 기준 |
-| A | Unresolved user_required OQ ≥ 1 | "{N}건 OQ 미해결로 `proposed → planned` 차단. OQ 표 참조 후 답변 제공" | §0.G3 trace 보호 |
+| A | Unresolved user_required OQ ≥ 1 | "{N}건 OQ 미해결로 `planned → in_progress` 차단. OQ 표 참조 후 답변 제공" | §0.G3 trace 보호 |
 | A | §0.G2 외부 모듈 감지 + 사용자 미결정 | "외부 모듈 변경 신호 감지. 작업장 분리 또는 cwd 한정 결정 필요" | §0.G2 |
-| B | 분류 = `conflict` | "기존 REQ {X} 는 `draft` 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+| B | 분류 = `conflict` 이면서 기존 REQ {X} 의 status ≠ `verified` | "기존 REQ {X} 는 `draft` 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+| B | 분류 = `conflict` 이면서 기존 REQ {X} 의 status = `verified` | "기존 REQ {X} 는 verified 라 `draft` demote 를 시도하지 않았음 (`update_stability` 가 `MUTATION_DENIED` 로 거부하는 조합). `conflicts_with` trace link 만 등록됨 — 폐기/재작성 결정 필요" | §9.2 conflict |
 | B | 분류 = `update` 이면서 영향 REQ status = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신 검토" | §9.2 update |
 | B | 분류 = `new-scope` | "신규 scope `{S}` 진입. `set_active_target` 또는 scope 인덱스 갱신 검토" | §7 Scope gate |
-| C | 신규 또는 영향 REQ 중 `addition_site` trace 잔존 | "{N}건 REQ 가 구현 증거 부재로 `proposed` 상한. 코드 추가 후 evidence 등록 → `update_status` 가능" | §0.14 trace cap |
+| C | 신규 또는 영향 REQ 중 `addition_site` trace 잔존 | "{N}건 REQ 가 구현 증거 부재로 `planned` 상한. 코드 추가 후 evidence 등록 → `update_status` 가능" | §0.14 trace cap |
 | C | 신규 REQ 의 `feasibility.implementability ∈ {high, very-high, infeasible}` OR blocker 모호 | "구현 가능성 모호 — `$kiwi-srs-feasibility` (target 전수 평가) 또는 `$kiwi-srs-research --req-id {NEW-ID}` (블로커 심화)" | pipeline §4.1 |
 | C | 신규 REQ 의 `stability = draft` (초기) | "stability 라이프사이클 진행은 `$kiwi-srs-feasibility` 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-| D | 위 권고 모두 부재 + 신규 REQ status = `proposed` + addition_site 없음 | "AC + trace 검토 후 `update_status(planned\|implemented)` 진행 가능. 구현은 `$kiwi-coder` (stability ≥ evolving 시)" | pipeline §4.2 |
+| D | 위 권고 모두 부재 + 신규 REQ status = `planned` + addition_site 없음 | "AC + trace 검토 후 `update_status(in_progress\|implemented)` 진행 가능. 구현은 `$kiwi-coder` (stability ≥ evolving 시)" | pipeline §4.2 |
 | D | (최종 catch-all, 다른 항목 매칭 시 생략) | "SRS 갱신 완료. 후속 행동 없음 — 다음 요구사항 대기" | — |
 
 각 권고는 1줄로 출력. 중복 제거 후 ≤6개 권장. 사용자 가독성을 위해 우선순위 A 항목은 ⚠️ 마커 부착.
@@ -398,6 +400,7 @@ they are not normal fallback mutation paths.
 | REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
 | REQ 추가 | `add_requirement` | 설치/버전/설정 확인만 |
 | Status 변경 | `update_status` | 설치/버전/설정 확인만 |
+| Stability 변경 | `update_stability` | 설치/버전/설정 확인만 |
 | Trace 추가 | `add_trace_link` | 설치/버전/설정 확인만 |
 | Evidence | `add_verification_evidence` | 설치/버전/설정 확인만 |
 | AC 체크 | `check_acceptance_criteria` | 설치/버전/설정 확인만 |
@@ -422,7 +425,7 @@ they are not normal fallback mutation paths.
 
 ## 15. 주의사항
 
-- 신규 REQ 기본 status = `proposed`. 사용자 검토 후 `planned`/`implemented` 승격
+- 신규 REQ 기본 status = `planned`, 기본 stability = `draft`. 사용자 검토 후 `update_stability` 로 `evolving` 승급, 착수 시 `update_status` 로 `in_progress`/`implemented` 승격
 - conflict 시 자동 discard 금지 — `draft` demote + 사용자 결정
 - update 시 기존 REQ는 `discarded` (재사용 금지)
 - Phase 1 분석가 결론은 평가자에게 전달 금지 (§0.2)

@@ -361,7 +361,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
             req_to_tasks.setdefault(req_id, []).append(task)
 
     # 3. proposals 생성 (forward-only)
-    STATUS_ORDER = ["proposed", "planned", "in_progress", "implemented", "verified"]
+    STATUS_ORDER = ["planned", "in_progress", "implemented", "verified"]
     proposals = []
     FOR req_id, tasks IN req_to_tasks.items():
         req = reqs_by_id.get(req_id)
