@@ -50,3 +50,13 @@ Thumbs.db
 
 # A leaked FR-NODE-164 typecheck probe errors by construction; never commit one.
 test/core/orchestrator/__fr-node-164-probe.ts
+
+# Per-session agent configuration and step-local scratch. None of these belong to the package: the
+# first three are written by whichever agent runtime the developer happens to use, and the fourth is
+# the step working directory the tdd work-mode writes before a step requirement is promoted into a
+# scope document. All four were kept out by hand on every commit until now, which is a rule that
+# holds only as long as someone remembers it.
+.claude/
+.codex/
+.mcp.json
+docs/spec/steps/
