@@ -41,9 +41,9 @@ import { acquire, readHolder, releaseHeldRunLock, resolveGitCommonDir, RunLockHe
 import { planStageCoupling, type ParsedHandoff } from "../../core/orchestrator/substrate.js";
 import { normalizeTasks, type SidecarPhase, type SidecarTask, type TaskCatalogEntry } from "../../core/orchestrator/task-catalog.js";
 import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
-import { parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
+import { engineOf, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
-import { ENGINES, type Engine } from "../../core/orchestrator/journal-schema.js";
+import { ENGINES, type Engine, type WavesEvent } from "../../core/orchestrator/journal-schema.js";
 
 // @req IR-CLI-082 / IR-CLI-083 / IR-CLI-084 / IR-MCP-003 / FR-NODE-127 / FR-NODE-137
 //
@@ -955,11 +955,16 @@ async function appendWavesLine(
 ): Promise<JournalAppendOutcome> {
   const absolute = path.resolve(root.root, relativePath);
   const stamped = JSON.stringify({ ...payload, writer: JOURNAL_WRITER_STAMP });
+  // @req FR-FLOW-155 AC-2 — the candidate is read under the engine of the line being appended, and
+  // the engine comes from `engineOf` because that is the resolver the parser filters with. Pinned to
+  // a literal, the candidate view was empty for every `kiwi-wave-master` line, an empty view raises
+  // no diagnostics, and the whole family wrote past a guard the skill text says refuses it.
+  const engine = engineOf(payload as WavesEvent);
 
   // @req FR-NODE-196 AC-9 — a dry run takes no lock. It changes nothing, and acquiring an exclusive
   // lock to preview made a concurrent real append fail; `runLockedJsonlMutation` short-circuits its
   // own dry runs past the lock for the same reason.
-  if (dryRun) return { written: false, diagnostics: await validateProspectiveJournal(root, relativePath, runId, stamped) };
+  if (dryRun) return { written: false, diagnostics: await validateProspectiveJournal(root, relativePath, runId, stamped, engine) };
 
   const acquired = await acquireJournalLock(absolute);
   if (!acquired.ok) {
@@ -977,7 +982,7 @@ async function appendWavesLine(
   }
 
   try {
-    const diagnostics = await validateProspectiveJournal(root, relativePath, runId, stamped);
+    const diagnostics = await validateProspectiveJournal(root, relativePath, runId, stamped, engine);
     if (diagnostics.some((entry) => entry.severity === "error")) {
       return withCleanupDiagnostic({ written: false, diagnostics }, await releaseJournalLock(acquired.capability, relativePath));
     }
@@ -1032,7 +1037,8 @@ async function validateProspectiveJournal(
   root: ProjectRoot,
   relativePath: string,
   runId: string,
-  stamped: string
+  stamped: string,
+  engine: Engine
 ): Promise<JournalDiagnostic[]> {
   const absolute = path.resolve(root.root, relativePath);
   const candidateRelative = `${relativePath}.candidate.${process.pid}.${randomUUID()}`;
@@ -1043,7 +1049,7 @@ async function validateProspectiveJournal(
   await mkdir(path.dirname(candidateAbsolute), { recursive: true });
   try {
     await writeFile(candidateAbsolute, `${existing}${separator}${stamped}\n`, "utf8");
-    const view = await parseWavesJournal(root, { runId, engine: "kiwi-orchestrator", relativePath: candidateRelative });
+    const view = await parseWavesJournal(root, { runId, engine, relativePath: candidateRelative });
     return validateWavesJournal(view).map((entry) => ({
       code: entry.code,
       message: entry.message,

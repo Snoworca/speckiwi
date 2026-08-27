@@ -1558,5 +1558,221 @@
         "snippet": "약화를 금지하지만"
       }
     ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-REFUSAL-HALTS-WITHOUT-REWRITING-THE-TERMINAL-LINE",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — an error-severity diagnostic from the journal validator halts the run on `terminal-review-loop-missing`, and the terminal line is not written again to make the refusal go away",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "error 급 진단이 하나라도 나오면 `terminal-review-loop-missing` 으로 run 을 중단하고 **종료 줄을 다시 쓰지 않는다**",
+      "replace": "error 급 진단이 전부 fatal 이면 `terminal-review-loop-missing` 으로 run 을 계속하고 **종료 줄을 다시 쓴다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-TERMINAL-LINE-IS-PUT-THROUGH-THE-VALIDATOR-IMMEDIATELY",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the run terminal line is put through the journal validator immediately after it is written, and whether `terminal_review` was carried as contracted is decided by that validator rather than by this section's prose",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시킨다",
+      "replace": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시키는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-ORCHESTRATOR-JOURNAL-IS-VALIDATED-WITH-RUN-ID-AND-STRICT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-orchestrator is validated through MCP `orchestrate_validate` with the run id and `strict: true`, and the CLI fallback carries the same judgement when MCP is unavailable",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르고",
+      "replace": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르는 것이 바람직하고"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-CLI-IS-THE-FALLBACK-WHEN-MCP-IS-ABSENT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the CLI leaf is the fallback taken when the MCP tool is unavailable, given the same run id and the same strictness, so which caller was reachable does not change the judgement",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는다",
+      "replace": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-wave-master is not validated through the MCP tool, whose input carries no engine argument and therefore parses every such run under the kiwi-orchestrator default",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "`kiwi-wave-master` 가 쓴 저널은 **MCP 로 검증하지 않는다** — 그 도구에는 엔진 인자가 없다.",
+      "replace": "`kiwi-wave-master` 가 쓴 저널도 **MCP 로 검증한다** — 그 도구에도 엔진 인자가 있다."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the wave-master journal is validated at the CLI only, and the engine flag is supplied with it rather than left to the default",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "`--engine kiwi-wave-master` 를 함께 준다",
+      "replace": "`--engine kiwi-wave-master` 를 함께 주는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-REFUSAL-HALTS-WITHOUT-REWRITING-THE-TERMINAL-LINE",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — an error-severity diagnostic from the journal validator halts the run on `terminal-review-loop-missing`, and the terminal line is not written again to make the refusal go away",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "error 급 진단이 하나라도 나오면 `terminal-review-loop-missing` 으로 run 을 중단하고 **종료 줄을 다시 쓰지 않는다**",
+      "replace": "error 급 진단이 전부 fatal 이면 `terminal-review-loop-missing` 으로 run 을 계속하고 **종료 줄을 다시 쓴다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-TERMINAL-LINE-IS-PUT-THROUGH-THE-VALIDATOR-IMMEDIATELY",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the run terminal line is put through the journal validator immediately after it is written, and whether `terminal_review` was carried as contracted is decided by that validator rather than by this section's prose",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시킨다",
+      "replace": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시키는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-ORCHESTRATOR-JOURNAL-IS-VALIDATED-WITH-RUN-ID-AND-STRICT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-orchestrator is validated through MCP `orchestrate_validate` with the run id and `strict: true`, and the CLI fallback carries the same judgement when MCP is unavailable",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르고",
+      "replace": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르는 것이 바람직하고"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-CLI-IS-THE-FALLBACK-WHEN-MCP-IS-ABSENT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the CLI leaf is the fallback taken when the MCP tool is unavailable, given the same run id and the same strictness, so which caller was reachable does not change the judgement",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는다",
+      "replace": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-wave-master is not validated through the MCP tool, whose input carries no engine argument and therefore parses every such run under the kiwi-orchestrator default",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "`kiwi-wave-master` 가 쓴 저널은 **MCP 로 검증하지 않는다** — 그 도구에는 엔진 인자가 없다.",
+      "replace": "`kiwi-wave-master` 가 쓴 저널도 **MCP 로 검증한다** — 그 도구에도 엔진 인자가 있다."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the wave-master journal is validated at the CLI only, and the engine flag is supplied with it rather than left to the default",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "`--engine kiwi-wave-master` 를 함께 준다",
+      "replace": "`--engine kiwi-wave-master` 를 함께 주는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-REFUSAL-HALTS-WITHOUT-REWRITING-THE-TERMINAL-LINE",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — an error-severity diagnostic from the journal validator halts the run on `terminal-review-loop-missing`, and the terminal line is not written again to make the refusal go away",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "error 급 진단이 하나라도 나오면 `terminal-review-loop-missing` 으로 run 을 중단하고 **종료 줄을 다시 쓰지 않는다**",
+      "replace": "error 급 진단이 전부 fatal 이면 `terminal-review-loop-missing` 으로 run 을 계속하고 **종료 줄을 다시 쓴다**"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-TERMINAL-LINE-IS-PUT-THROUGH-THE-VALIDATOR-IMMEDIATELY",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the run terminal line is put through the journal validator immediately after it is written, and whether `terminal_review` was carried as contracted is decided by that validator rather than by this section's prose",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시킨다",
+      "replace": "종료 줄을 쓴 직후 그 줄을 검증기에 통과시키는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-ORCHESTRATOR-JOURNAL-IS-VALIDATED-WITH-RUN-ID-AND-STRICT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-orchestrator is validated through MCP `orchestrate_validate` with the run id and `strict: true`, and the CLI fallback carries the same judgement when MCP is unavailable",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르고",
+      "replace": "MCP `orchestrate_validate` 를 `runId` 와 `strict: true` 로 부르는 것이 바람직하고"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-CLI-IS-THE-FALLBACK-WHEN-MCP-IS-ABSENT",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the CLI leaf is the fallback taken when the MCP tool is unavailable, given the same run id and the same strictness, so which caller was reachable does not change the judgement",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는다",
+      "replace": "MCP 가 없으면 CLI `speckiwi orchestrate validate --run-id {run_id} --strict --json` 으로 같은 판정을 받는 것이 좋다"
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — a journal written by kiwi-wave-master is not validated through the MCP tool, whose input carries no engine argument and therefore parses every such run under the kiwi-orchestrator default",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "`kiwi-wave-master` 가 쓴 저널은 **MCP 로 검증하지 않는다** — 그 도구에는 엔진 인자가 없다.",
+      "replace": "`kiwi-wave-master` 가 쓴 저널도 **MCP 로 검증한다** — 그 도구에도 엔진 인자가 있다."
+    },
+    "carriers": []
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
+    "owning_requirement": "FR-FLOW-155",
+    "sentence": "§V.final-verify — the wave-master journal is validated at the CLI only, and the engine flag is supplied with it rather than left to the default",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "`--engine kiwi-wave-master` 를 함께 준다",
+      "replace": "`--engine kiwi-wave-master` 를 함께 주는 것이 좋다"
+    },
+    "carriers": []
   }
 ]

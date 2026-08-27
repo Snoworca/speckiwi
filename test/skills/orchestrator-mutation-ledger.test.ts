@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -43,6 +43,74 @@ const MUTATION_CLASSES = [
   "deleted negation",
   "sentence moved to an adjacent section"
 ] as const;
+
+/**
+ * Which rules each requirement owns here — the declared membership of the ledger, frozen.
+ *
+ * Everything else in this file checks rows that ARE present. Nothing checked what SHOULD be: parity
+ * is over the rule_id sets the three variants happen to declare, so dropping a rule from all three
+ * keeps them equal; coverage is over modal carriers, and a `carriers: []` row contributes none; the
+ * emptiness check is `> 0`. A rule could therefore be released by deleting its three rows, which is
+ * both easier and quieter than editing them, and for a clause whose only pin is a ledger row that is
+ * the whole defence gone. Deleting rows now fails against this map, and so does moving a rule to a
+ * different owner — the failure names the rule and the requirement that loses it.
+ *
+ * Adding a rule means adding it here too. That is the point: a rule this ledger does not declare is
+ * a rule nobody has to keep.
+ */
+const OWNED_RULES: Record<string, string[]> = {
+  "FR-FLOW-075": ["R-RESUME-NEVER-RECONSTRUCTS-FROM-CONVERSATION"],
+  "FR-FLOW-076": ["R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER", "R-RUN-CONTRACT-NO-HAND-APPEND-TO-JOURNAL"],
+  "FR-FLOW-077": ["R-INTAKE-EVERY-UNCLOSED-GAP-GOES-TO-USER-QNA", "R-INTAKE-THREE-INVESTIGATORS-IN-PARALLEL"],
+  "FR-FLOW-078": ["R-DESIGN-FREEZE-BEFORE-IMPLEMENT"],
+  "FR-FLOW-079": [
+    "R-LOOP-D-DENOMINATOR-NEVER-COMPUTED-BY-A-VERIFIER",
+    "R-LOOP-D-NO-EDIT-APPLIED-IN-THE-PASSING-ROUND",
+    "R-LOOP-D-PASS-REQUIRES-ALL-FIVE-CONJUNCTS"
+  ],
+  "FR-FLOW-080": ["R-WAVE-DESIGN-3A-BEFORE-SRS-REGISTRATION-3B"],
+  "FR-FLOW-081": [
+    "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
+    "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
+    "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS"
+  ],
+  "FR-FLOW-084": ["R-UNLANDED-TASK-FORBIDS-ALL-MATCH"],
+  "FR-FLOW-087": ["R-COMMIT-IDENTITY-BY-TRAILER-NOT-SUBJECT", "R-RUN-CONTRACT-NO-REQ-ID-ALLOCATION-OUTSIDE-3B"],
+  "FR-FLOW-088": ["R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE"],
+  "FR-FLOW-093": [
+    "R-ORCHESTRATOR-NEVER-MERGES-NEVER-OPENS-PR",
+    "R-RUN-CONTRACT-NO-BULK-STAGING",
+    "R-RUN-CONTRACT-NO-MERGE-INTO-BASE",
+    "R-RUN-CONTRACT-NO-PULL-REQUEST",
+    "R-RUN-CONTRACT-PROHIBITED-ACTIONS-CLOSED-LIST"
+  ],
+  "FR-FLOW-099": ["R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT"],
+  "FR-FLOW-102": ["R-RUN-CONTRACT-NO-REDECOMPOSITION"],
+  "FR-FLOW-103": ["R-COMMITTEE-INPUT-CARRIES-FACTS-NEVER-THE-PROPOSAL"],
+  "FR-FLOW-118": [
+    "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "R-RUN-CONTRACT-NO-TEST-WEAKENING",
+    "R-RUN-CONTRACT-NO-WRITE-OUTSIDE-LEASE"
+  ],
+  "FR-FLOW-132": ["R-STEP-REVIEW-HOP-DOES-NOT-TOUCH-RED-TESTS"],
+  // The six normative clauses of §V.final-verify's validator paragraph. Six and not three: the first
+  // round pinned only the clauses a probe had reached, and the main instruction — put the line through
+  // the validator — was not one of them, so inverting it cost nothing anywhere. The sixth was added a
+  // round later, when a probe inverted the fallback CONDITION (`MCP 가 없으면` → `MCP 가 있어도`) with
+  // an edit to the body and the golden only: the neighbouring row pinned the MCP arguments and stopped
+  // at the comma, so the clause that decides WHICH caller runs had no row of its own. Each row must
+  // quote the whole rule it names, trigger included — two of them were widened in the same change for
+  // the same reason.
+  "FR-FLOW-155": [
+    "R-FINAL-VERIFY-CLI-IS-THE-FALLBACK-WHEN-MCP-IS-ABSENT",
+    "R-FINAL-VERIFY-ORCHESTRATOR-JOURNAL-IS-VALIDATED-WITH-RUN-ID-AND-STRICT",
+    "R-FINAL-VERIFY-REFUSAL-HALTS-WITHOUT-REWRITING-THE-TERMINAL-LINE",
+    "R-FINAL-VERIFY-TERMINAL-LINE-IS-PUT-THROUGH-THE-VALIDATOR-IMMEDIATELY",
+    "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
+    "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP"
+  ],
+  unowned: ["R-SECTION-ZERO-NO-CHANGELOG-IN-BODY", "R-SECTION-ZERO-NO-COMMIT-SIGNATURE", "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL"]
+};
 
 function skillBody(variant: Variant): string {
   return readFileSync(path.resolve(REPO_ROOT, `skills/${variant}/kiwi-orchestrator/SKILL.md`), "utf8");
@@ -101,6 +169,26 @@ function headingPathAt(text: string, lineNumber: number): string {
   return chain.filter(Boolean).join(" > ");
 }
 
+/** Every requirement id that has a block in the SRS, read from the documents rather than restated. */
+function shippedRequirementIds(): Set<string> {
+  const specDir = path.resolve(REPO_ROOT, "docs/spec");
+  const ids = new Set<string>();
+  for (const file of readdirSync(specDir).filter((name) => name.endsWith(".srs.md"))) {
+    for (const line of readFileSync(path.join(specDir, file), "utf8").split(/\r?\n/)) {
+      const heading = /^###\s+([A-Z]+-[A-Z]+-\d+)\b/.exec(line);
+      if (heading !== null) ids.add(heading[1]!);
+    }
+  }
+  return ids;
+}
+
+/** Whitespace-insensitive, so `find + " "` does not read as a different string. */
+const squash = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+/** The markers a Korean or English prohibition is carried by; counted, because a sentence can hold several. */
+const NEGATIONS = /않|없|아니|말라|금지|MUST NOT/g;
+const HEDGES = /수 있다|해도 된다|권장|바람직|가능하면|되도록|가급적|것이 좋다|선택적|해도 무방|권한다/;
+
 const LEDGER: LedgerRow[] = JSON.parse(readFileSync(LEDGER_PATH, "utf8")) as LedgerRow[];
 const BODIES = new Map<Variant, string>(VARIANTS.map((variant) => [variant, skillBody(variant)]));
 
@@ -143,6 +231,31 @@ describe("05 §10.3 — the ledger is not vacuous", () => {
   });
 });
 
+describe("05 §10.3 — the ledger's membership is declared, so a rule cannot be released by deleting it", () => {
+  it.each(VARIANTS)("%s: owns exactly the rules OWNED_RULES declares, per requirement", (variant) => {
+    const declared = new Map<string, string[]>();
+    for (const row of LEDGER.filter((entry) => entry.variant === variant)) {
+      declared.set(row.owning_requirement, [...(declared.get(row.owning_requirement) ?? []), row.rule_id].sort());
+    }
+    const expected = Object.fromEntries(Object.entries(OWNED_RULES).map(([id, rules]) => [id, [...rules].sort()]));
+    expect(Object.fromEntries([...declared.entries()].sort()), `${variant}: the ledger's rule membership moved`).toEqual(
+      Object.fromEntries(Object.entries(expected).sort())
+    );
+  });
+
+  it("attributes every owned rule to a requirement that exists in the SRS, not merely to a well-formed id", () => {
+    // The shape check above accepts `FR-FLOW-001` whether or not anything by that name was ever
+    // written. An attribution that resolves to nothing is not an attribution; it reads like one in a
+    // review and carries no obligation, which is the worse of the two failures.
+    const shipped = shippedRequirementIds();
+    expect(shipped.size, "no requirement headings were read, so this check would accept anything").toBeGreaterThan(0);
+    for (const id of Object.keys(OWNED_RULES)) {
+      if (id === "unowned") continue;
+      expect(shipped.has(id), `${id} owns ledger rows but has no requirement block under docs/spec/`).toBe(true);
+    }
+  });
+});
+
 describe("05 §10.3 — every modal carrier is covered by a row's carrier anchor", () => {
   for (const variant of VARIANTS) {
     it(`${variant}: the enumerated carrier count is non-zero, so the coverage check is not vacuous`, () => {
@@ -162,7 +275,17 @@ describe("05 §10.3 — every modal carrier is covered by a row's carrier anchor
           (anchor) => anchor.carrier === carrier && lineText.includes(anchor.snippet) && anchor.snippet.includes(carrier)
         );
       });
-      expect(uncovered, `${variant} carriers with no ledger anchor`).toEqual([]);
+      // The bare list of `{line, carrier}` was the least actionable red in this suite, and it fires
+      // most often on the edit that DESERVES it least: adding `반드시` to a sentence strengthens the
+      // rule and the reader is told only that an array did not equal an empty one. Say what the
+      // invariant is and what closes it, because the alternative is that the cheapest way out of
+      // this red is to drop the word again.
+      expect(
+        uncovered,
+        `skills/${variant}/kiwi-orchestrator/SKILL.md carries modal wording that no ledger row anchors: ${JSON.stringify(
+          uncovered
+        )}. §10.3's coverage denominator is enumerated from the body, so an unanchored carrier is a normative sentence this ledger does not pin — it shrinks the denominator silently rather than failing. Close it by adding a \`carriers\` entry (\`heading_path\` + \`carrier\` + a \`snippet\` from that line) to the row whose rule that sentence states, in all three variants; if no row states it, the sentence is a rule with no probe and needs a row of its own with its owning requirement. Deleting the modal word to get green is the one repair that loses something.`
+      ).toEqual([]);
     });
 
     it(`${variant}: every anchor's snippet resolves under its own heading_path`, () => {
@@ -200,8 +323,42 @@ describe("05 §10.3 — the mutation is real: its find string exists exactly onc
       const body = BODIES.get(variant)!;
       for (const row of LEDGER.filter((entry) => entry.variant === variant)) {
         const occurrences = body.split(row.mutation.find).length - 1;
-        expect(occurrences, `${row.rule_id}: find string occurs ${occurrences} times`).toBe(1);
-        expect(row.mutation.replace, `${row.rule_id}: replace must differ from find`).not.toBe(row.mutation.find);
+        // Zero is by far the common reading of this red, and it does not mean the rule was broken —
+        // it usually means the sentence was legitimately reworded, split or reordered, and this row
+        // still quotes the old bytes. Say so, because the alternative is that someone reads a count
+        // and guesses.
+        expect(
+          occurrences,
+          `${row.rule_id}: this row quotes ${JSON.stringify(row.mutation.find.slice(0, 60))}, which now occurs ${occurrences} times in skills/${variant}/kiwi-orchestrator/SKILL.md. If the rule still holds and only its wording moved, re-copy the sentence into this row; if the rule is gone, remove it from OWNED_RULES in the same change.`
+        ).toBe(1);
+        // Squashed, because `find + " "` is a different string and the same sentence: a row whose
+        // replace differs only in whitespace declares a probe that changes the rule into itself and
+        // reports the row exercised.
+        expect(squash(row.mutation.replace), `${row.rule_id}: replace must differ from find in more than whitespace`).not.toBe(
+          squash(row.mutation.find)
+        );
+      }
+    });
+
+    // `mutation_class` was checked for enum membership only, so a row could name any of the five and
+    // carry a probe from none of them — and the two classes checked here are the ones the ledger
+    // actually leans on, 78 rows of 111. The other three are not mechanised: an ordering swap and a
+    // weakened quantifier are recognised by reading the pair, and a sentence moved to an adjacent
+    // section is not expressible as find/replace at all. Those stay reviewed rather than asserted,
+    // and this comment is the record of which half is which.
+    it(`${variant}: a row whose declared class is mechanically checkable carries a probe of that class`, () => {
+      for (const row of LEDGER.filter((entry) => entry.variant === variant)) {
+        const { find, replace } = row.mutation;
+        if (row.mutation_class === "deleted negation") {
+          const before = find.match(NEGATIONS)?.length ?? 0;
+          const after = replace.match(NEGATIONS)?.length ?? 0;
+          expect(before, `${row.rule_id}: declares a deleted negation but its find carries none`).toBeGreaterThan(0);
+          expect(after, `${row.rule_id}: declares a deleted negation but its replace deletes none`).toBeLessThan(before);
+        }
+        if (row.mutation_class === "inserted hedge") {
+          expect(HEDGES.test(find), `${row.rule_id}: declares an inserted hedge but its find is already hedged`).toBe(false);
+          expect(HEDGES.test(replace), `${row.rule_id}: declares an inserted hedge but its replace inserts none`).toBe(true);
+        }
       }
     });
 
