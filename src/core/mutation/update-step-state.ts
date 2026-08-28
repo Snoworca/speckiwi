@@ -38,7 +38,7 @@ export interface UpdateStepStateValue {
 
 // @req FR-NODE-043
 /** The Status enum a step row may transition into (FR-PARSE-026 / StepStateStatus). */
-const ALLOWED_STATUSES: readonly StepStateStatus[] = ["active", "merging", "merged", "abandoned"];
+export const STEP_STATE_STATUSES: readonly StepStateStatus[] = ["active", "merging", "merged", "abandoned"];
 
 // @req FR-NODE-043
 function todayIso(): string {
@@ -58,10 +58,10 @@ export async function updateStepState(
   root: ProjectRoot,
   input: UpdateStepStateInput
 ): Promise<MutationResult<UpdateStepStateValue>> {
-  if (input.status !== undefined && !ALLOWED_STATUSES.includes(input.status as StepStateStatus)) {
+  if (input.status !== undefined && !STEP_STATE_STATUSES.includes(input.status as StepStateStatus)) {
     return mutationFail(
       "INVALID_STATUS",
-      `Status '${input.status}' must be one of ${ALLOWED_STATUSES.join(", ")}`
+      `Status '${input.status}' must be one of ${STEP_STATE_STATUSES.join(", ")}`
     );
   }
 

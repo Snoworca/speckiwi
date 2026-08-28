@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { toolSchemas } from "../../src/mcp/server.js";
+import { renderToolDescriptions } from "../../src/mcp/schemas.js";
 import { renderAgentInstructionSnippet } from "../../src/core/bootstrap/templates.js";
 import { REQUIREMENT_STATUSES, STABILITY_LEVELS } from "../../src/core/types.js";
 import { buildCommand } from "../../src/cli/command.js";
@@ -1577,10 +1578,131 @@ function contractSourceSites(): ContractSite[] {
   return found;
 }
 
-/** How many contract-carrying string literals each source file holds, measured. */
+// ---------------------------------------------------------------------------------------------
+// The one exemption this inventory grants, and why it is a comparison rather than a permission.
+//
+// FR-MCP-060 gave every MCP tool a description, and five of those descriptions are string literals
+// long enough to be prose that name an axis and a lifecycle value — so the derivation above reports
+// five new copies of this contract in `src/mcp/schemas.ts`. Two of them restate an ENUM IN FULL,
+// because an agent choosing a value learns that vocabulary from the description and nowhere else:
+// `update_status` presents `REQUIREMENT_STATUSES` and `update_stability` presents
+// `STABILITY_LEVELS`.
+//
+// What this requirement is against is a copy NOTHING CHECKS, because that is a place the contract
+// can drift unobserved. These two are checked in both directions — FR-MCP-060 AC-8 holds each
+// presented list against the runtime constant that tool's own guard decides by — and the exemption
+// below makes THE SAME COMPARISON HERE rather than pointing at the requirement that makes it
+// elsewhere, so the excuse does not rest on another file's assertions still running. A description
+// that drops its list, invents a value or withholds one stops being exempt on the spot and lands
+// back in the frozen inventory.
+//
+// The other three — `edit_requirement_fields`, `replace_acceptance_criteria` and
+// `edit_requirement_table_rows` — name one value inside a guard clause (`refused while the
+// requirement's Status is verified`). They present no list, so nothing pins them and nothing
+// excuses them: they are frozen in the inventory like every other copy.
+// ---------------------------------------------------------------------------------------------
+
+/** Every MCP tool description this package ships, by tool name, rendered rather than transcribed. */
+const TOOL_DESCRIPTIONS: ReadonlyMap<string, string> = new Map(Object.entries(renderToolDescriptions()));
+
+/**
+ * The values a description presents: the first em-dash-delimited run, comma- or `or`-separated.
+ *
+ * That presentation is a contract FR-MCP-060 AC-8 states, and this is its reading side — so a run
+ * that stopped being findable reads as "presents nothing" here for the same reason it does there,
+ * and a description with no run at all is never excused.
+ */
+function presentedValues(description: string): string[] {
+  const run = /\s—\s([^—]+)\s—\s/.exec(description);
+  if (!run) return [];
+  return (run[1] as string)
+    .split(/,|\bor\b/)
+    .map((token) => token.replace(/[`.]/g, "").trim())
+    .filter((token) => /^[a-z][a-z_]*$/.test(token));
+}
+
+/**
+ * A contract-carrying literal, with the MCP tool it is the shipped description OF when it is one.
+ *
+ * The tool arrives as its own field rather than being recovered inside the rule, so a constructed
+ * sample can reach the comparison. Recovered by text equality inside the rule, every mutation of a
+ * description would fall out on the lookup instead — the rule would answer "not excused" without
+ * ever comparing anything, and a soundness check written against it would prove nothing.
+ */
+interface DescribedLiteral {
+  /** The MCP tool this literal is the shipped description of, or `null` when it is not one. */
+  tool: string | null;
+  text: string;
+}
+
+interface ContractExemption {
+  /** Named so a failure, the frozen roster and the report all say the same thing. */
+  id: string;
+  why: string;
+  /** The name this entry excuses the literal under, or `null` when it does not speak for it. */
+  claims: (literal: DescribedLiteral) => string | null;
+}
+
+const CONTRACT_SOURCE_EXEMPTIONS: readonly ContractExemption[] = [
+  {
+    id: "mcp-description-pinned-enum",
+    why: "an MCP tool description whose presented list equals, in both directions, one of the two enums this file is written about. FR-MCP-060 AC-8 holds the same list against the same constant from the other side.",
+    claims: ({ tool, text }) => {
+      if (tool === null) return null;
+      const presented = presentedValues(text);
+      if (presented.length === 0) return null;
+      const pinned = [REQUIREMENT_STATUSES, STABILITY_LEVELS].some(
+        (values) =>
+          values.length === presented.length && (values as readonly string[]).every((value) => presented.includes(value))
+      );
+      return pinned ? tool : null;
+    }
+  }
+];
+
+/**
+ * The copies the exemptions excuse today, frozen by the name they are excused under.
+ *
+ * Liveness alone would leave the rule excusing whatever grows into its shape: a third description
+ * that began restating an enum would be waved through in silence, which is exactly the unobserved
+ * copy this requirement exists to prevent. Both of these are among the five tools FR-MCP-060 AC-8
+ * names, and they are the only two of the five whose description presents a list at all.
+ */
+const CONTRACT_SOURCE_EXEMPT_TOOLS = ["update_stability", "update_status"] as const;
+
+interface ExemptedSite extends ContractSite {
+  /** The exemption that spoke for this site, and the name it spoke under. Both `null` when none did. */
+  exemption: string | null;
+  claimedAs: string | null;
+}
+
+/** Every derived site, paired with the exemption that speaks for it. */
+function contractSourceSitesWithExemption(): ExemptedSite[] {
+  return contractSourceSites().map((site) => {
+    const literal: DescribedLiteral = { tool: describedTool(site.text), text: site.text };
+    for (const exemption of CONTRACT_SOURCE_EXEMPTIONS) {
+      const claimedAs = exemption.claims(literal);
+      if (claimedAs !== null) return { ...site, exemption: exemption.id, claimedAs };
+    }
+    return { ...site, exemption: null, claimedAs: null };
+  });
+}
+
+/** The tool whose shipped description this literal IS, or `null` when the literal is not one. */
+function describedTool(text: string): string | null {
+  for (const [tool, description] of TOOL_DESCRIPTIONS) if (description === text) return tool;
+  return null;
+}
+
+/**
+ * How many contract-carrying string literals each source file holds that no exemption speaks for,
+ * measured. The three `src/mcp/schemas.ts` rows are the guard-clause descriptions named above;
+ * the two pinned ones are excused by `mcp-description-pinned-enum` and counted by its own roster.
+ */
 const CONTRACT_SOURCE_INVENTORY: Record<string, number> = {
   "src/core/bootstrap/templates.ts": 2,
-  "src/core/diagnostic-registry.ts": 1
+  "src/core/diagnostic-registry.ts": 1,
+  "src/mcp/schemas.ts": 3
 };
 
 /** How many files of each kind a rendering ships, measured. A kind that vanished is a defect. */
@@ -2479,7 +2601,10 @@ describe("FR-FLOW-154 AC-2 — the scan reads every rendering, and reads somethi
     // A fourth one written anywhere under `src/` lands here, and the inventory below fails until it
     // has been read and either swept or argued for.
     const counted: Record<string, number> = {};
-    for (const site of contractSourceSites()) counted[site.file] = (counted[site.file] ?? 0) + 1;
+    for (const site of contractSourceSitesWithExemption()) {
+      if (site.exemption !== null) continue;
+      counted[site.file] = (counted[site.file] ?? 0) + 1;
+    }
     expect(counted, "source files carrying an agent-facing copy of the lifecycle contract").toEqual(CONTRACT_SOURCE_INVENTORY);
     // And the detector is not vacuous: it finds the literal this requirement was written about.
     expect(
@@ -2500,6 +2625,49 @@ describe("FR-FLOW-154 AC-2 — the scan reads every rendering, and reads somethi
         .map(describeSlot),
       "a code-embedded copy names a stability the code does not define"
     ).toEqual([]);
+  });
+
+  it("FR-FLOW-154 AC-2: every exemption still excuses a copy, and only the copies recorded here", () => {
+    const claimed = contractSourceSitesWithExemption().filter((site) => site.exemption !== null);
+    for (const exemption of CONTRACT_SOURCE_EXEMPTIONS) {
+      expect(
+        claimed.some((site) => site.exemption === exemption.id),
+        `the \`${exemption.id}\` exemption excuses nothing under src/ any more — it speaks for ${exemption.why} If the shape it covered is gone, delete it: an exemption that excuses nothing is a hole waiting for whatever grows into its shape.`
+      ).toBe(true);
+    }
+    expect(
+      claimed.map((site) => site.claimedAs as string).sort(),
+      "the copies excused from the frozen inventory. A third description that began restating an enum would be excused in silence without this line, which is the unobserved copy this requirement exists to prevent."
+    ).toEqual([...CONTRACT_SOURCE_EXEMPT_TOOLS].sort());
+  });
+
+  it("FR-FLOW-154 AC-2: the exemption is that comparison, so a copy that stopped agreeing is not excused", () => {
+    // Liveness asks whether an entry still claims something; soundness asks whether anything it
+    // claims stands where a drifting copy could stand. The four samples below are constructed, so
+    // each drops ONE property of a pinned description and the rule's verdict is the answer to that
+    // property alone — which is what an exemption checked only for survival never establishes.
+    const shipped = TOOL_DESCRIPTIONS.get("update_status") as string;
+    const claims = (literal: DescribedLiteral): string | null =>
+      CONTRACT_SOURCE_EXEMPTIONS.reduce<string | null>((found, exemption) => found ?? exemption.claims(literal), null);
+    expect(claims({ tool: "update_status", text: shipped }), "the shipped description is what this exemption is for").toBe(
+      "update_status"
+    );
+    expect(
+      claims({ tool: "update_status", text: shipped.replace("blocked, ", "") }),
+      "a description withholding a value its guard admits was excused, so the rule is not comparing both directions"
+    ).toBe(null);
+    expect(
+      claims({ tool: "update_status", text: shipped.replace("discarded —", "discarded, landed —") }),
+      "a description inventing a value its guard refuses was excused, so the rule reads omissions only"
+    ).toBe(null);
+    expect(
+      claims({ tool: "update_status", text: shipped.replace(/ — planned[^—]*— /, " ") }),
+      "a description presenting no list at all was excused, so the rule excuses the tool rather than the comparison"
+    ).toBe(null);
+    expect(
+      claims({ tool: null, text: "Refused while the requirement's Status is `verified`, which is a rule and not a list." }),
+      "a literal that merely names the axis and a value was excused without being a shipped description"
+    ).toBe(null);
   });
 
   it("FR-FLOW-154 AC-2: the corpus boundary is frozen, and reads by exclusion rather than by extension", () => {

@@ -27,7 +27,7 @@ export interface SetSdsStatusValue {
 }
 
 // @req FR-NODE-081 — §6 lifecycle order (index = forward rank).
-const SDS_STATUS_ORDER = ["draft", "agreed", "superseded"] as const;
+export const SDS_STATUS_ORDER = ["draft", "agreed", "superseded"] as const;
 
 const STATUS_ROW = /^\|\s*Status\s*\|\s*([^|]*?)\s*\|\s*$/;
 

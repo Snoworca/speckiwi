@@ -12,6 +12,10 @@ import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js"
 import type { ProjectRoot } from "../core/types.js";
 import { createTestMcpServer, type McpDependencies, type McpRootSource, type McpServerHandle } from "./adapter.js";
 import { getServerMetadata, type PackageInfo } from "./metadata.js";
+// @req FR-MCP-060 — imported for its side-effect-free projection only, and read inside a function
+// body: `schemas.ts` imports this module back for `toolSchemas` and `isReadOnlyTool`, so a top-level
+// read here would run against a half-initialised module.
+import { renderToolDescriptions } from "./schemas.js";
 import { orchestrateAcceptsWorkspaceRoot, registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
@@ -620,22 +624,52 @@ export async function ensureMcpStartupWorkspace(): Promise<ProjectRoot & { rootS
   return { ...root, rootSource: "auto-init" };
 }
 
-export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
-  if (options.transport && options.transport !== "stdio") {
-    throw new Error(`Unsupported MCP transport: ${String(options.transport)}`);
-  }
+/**
+ * Builds the SDK server the stdio entry point connects, with every tool and resource registered.
+ *
+ * Split out of {@link startMcpServer} so the registered surface can be listed over the protocol
+ * without spawning a process: what `tools/list` returns is decided here, and a check that reads the
+ * registry instead would not notice this loop dropping a field. @req FR-MCP-060
+ *
+ * Each tool's description is projected from the `ToolSpec` registry, and a registered name the
+ * registry does not describe throws rather than registering undescribed — an agent choosing between
+ * two tools reads the description, and a missing one is invisible until the wrong one is called.
+ *
+ * `title` is deliberately not passed: the MCP specification uses `name` for display when `title` is
+ * absent, which the SDK's own `getDisplayName` implements, so a title equal to the name is a hundred
+ * repetitions of a value the client already holds.
+ */
+export function createSdkServer(local: McpServerHandle): McpServer {
   const sdk = new McpServer(MCP_SERVER_METADATA);
-  const root = await ensureMcpStartupWorkspace();
-  const local = createMcpServer({ root: root.root, rootSource: root.rootSource });
+  const descriptions = renderToolDescriptions();
   for (const [name, handler] of Object.entries(local.tools).filter(([name]) => !name.startsWith("resource:"))) {
+    const description = descriptions[name];
+    if (description === undefined || description.trim().length === 0) {
+      throw new Error(`MCP tool '${name}' is not described by the ToolSpec registry, so it cannot be registered`);
+    }
     sdk.registerTool(name, {
-      title: name,
+      description,
       inputSchema: toolSchemas[name] ?? {},
       annotations: { readOnlyHint: isReadOnlyTool(name) }
     }, async (input) => ({
       content: [{ type: "text", text: JSON.stringify(await handler(input as Record<string, unknown>)) }]
     }));
   }
+  registerSdkResources(sdk, local);
+  return sdk;
+}
+
+export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
+  if (options.transport && options.transport !== "stdio") {
+    throw new Error(`Unsupported MCP transport: ${String(options.transport)}`);
+  }
+  const root = await ensureMcpStartupWorkspace();
+  const local = createMcpServer({ root: root.root, rootSource: root.rootSource });
+  const sdk = createSdkServer(local);
+  await sdk.connect(new StdioServerTransport());
+}
+
+function registerSdkResources(sdk: McpServer, local: McpServerHandle): void {
   sdk.registerResource("speckiwi-index", "speckiwi://index", { title: "SpecKiwi SRS Index", mimeType: "application/json" }, async (uri) => {
     const value = await local.tools["resource:speckiwi://index"]?.({});
     return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
@@ -684,5 +718,4 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<vo
       return { contents: [{ uri: uri.href, text: JSON.stringify(value), mimeType: "application/json" }] };
     }
   );
-  await sdk.connect(new StdioServerTransport());
 }

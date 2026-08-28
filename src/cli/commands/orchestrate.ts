@@ -201,6 +201,11 @@ export interface OrchestrateToolOption {
  */
 export interface OrchestrateToolBinding {
   readonly tool: string;
+  /**
+   * The description the MCP tool ships with, declared beside the name it describes rather than in a
+   * table keyed by that name — a table outlives the row it describes. @req FR-MCP-060
+   */
+  readonly description: string;
   readonly path: readonly string[];
   readonly kind: "read" | "mutation";
   readonly options: readonly OrchestrateToolOption[];
@@ -222,12 +227,12 @@ const LEDGER_OPTION = o("--ledger", "ledger");
  * than by inspection. @req IR-MCP-003
  */
 export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
-  { tool: "orchestrate_resume", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
+  { tool: "orchestrate_resume", description: "Rebuilds the resume state of an orchestrator run from its journal and resume card — which wave and lane it stopped in, and whether anything drifted since. The git facts and drift inputs it compares against are an argument and both have to be supplied; the tool never invents them, and a call omitting either one fails. Read-only.", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
   // @req IR-MCP-005 — the role declaration is bound too. Without it the binding could only ever
   // produce the default host role, and the role-aware gate refuses a linked worktree claiming to be
   // a host, which leaves the topology gate unreachable from the surface a worktree session uses.
   {
-    tool: "orchestrate_preflight",
+    tool: "orchestrate_preflight", description: "Compares the MCP workspace root against the git root a caller passes and judges whether this session may run there, given its declared role and lane. Both roots are arguments; nothing is taken from the process working directory. Read-only.",
     path: ["preflight"],
     kind: "read",
     options: [
@@ -238,57 +243,57 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
       o("--lane-plan", "lanePlan")
     ]
   },
-  { tool: "orchestrate_route_probe", path: ["route", "probe"], kind: "mutation", options: [o("--probe", "probe"), o("--payload", "payload", "json"), o("--out", "out"), DRY_RUN_OPTION] },
-  { tool: "orchestrate_route_freeze", path: ["route", "freeze"], kind: "mutation", options: [o("--probe", "probe"), o("--gate", "gate"), o("--out", "out"), o("--auto", "auto", "boolean"), DRY_RUN_OPTION] },
-  { tool: "orchestrate_route_show", path: ["route", "show"], kind: "read", options: [o("--lock", "lock")] },
+  { tool: "orchestrate_route_probe", description: "Records one routing probe — the facts a rung classifier reads — and refuses a schema-invalid probe instead of substituting defaults. Writes the probe file the routing decision later consumes.", path: ["route", "probe"], kind: "mutation", options: [o("--probe", "probe"), o("--payload", "payload", "json"), o("--out", "out"), DRY_RUN_OPTION] },
+  { tool: "orchestrate_route_freeze", description: "Commits the run to one routing rung and records the gate ballot behind it. Writes the route lock together with the resume card's frozen route entry and invariant digest, so a later byte change to the lock surfaces as drift on resume; re-freezing over a different probe rewrites both rather than refusing.", path: ["route", "freeze"], kind: "mutation", options: [o("--probe", "probe"), o("--gate", "gate"), o("--out", "out"), o("--auto", "auto", "boolean"), DRY_RUN_OPTION] },
+  { tool: "orchestrate_route_show", description: "Reads the frozen routing lock and reports the rung this run is committed to. Read-only.", path: ["route", "show"], kind: "read", options: [o("--lock", "lock")] },
   {
-    tool: "orchestrate_run_lock",
+    tool: "orchestrate_run_lock", description: "Takes, releases or reports the repository-wide orchestrator run lock, keyed on the git common directory so linked worktrees contend for one lock. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all.",
     path: ["run", "lock"],
     kind: "mutation",
     options: [o("--owner", "owner"), DRY_RUN_OPTION],
     selector: { dest: "action", index: 1, values: ["lock", "unlock", "status"] }
   },
-  { tool: "orchestrate_run_abort", path: ["run", "abort"], kind: "mutation", options: [o("--reason", "reason", "string", true), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION] },
-  { tool: "orchestrate_journal_append", path: ["journal", "append"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
-  { tool: "orchestrate_card_write", path: ["card", "write"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
+  { tool: "orchestrate_run_abort", description: "Ends the current run on purpose and records why, so a later session reads a halted run rather than an abandoned one, and releases the repository-wide run lock once that record lands — a refused record keeps the lock deliberately, because a run that could not record its own end is one nobody should join. Writes an abort event into the run journal.", path: ["run", "abort"], kind: "mutation", options: [o("--reason", "reason", "string", true), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION] },
+  { tool: "orchestrate_journal_append", description: "Appends one event to the run journal, stamped with this tool's writer identity, after validating the journal as it would stand once that line landed: an error-severity diagnostic refuses the append and leaves the file byte-identical, and no argument skips the check. The candidate view holds only the lines matching the run id and the engine it was given. Writes the journal file.", path: ["journal", "append"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
+  { tool: "orchestrate_card_write", description: "Replaces the resume card of a run — the frozen block a resumed session compares its world against. Writes the card file.", path: ["card", "write"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
   {
-    tool: "orchestrate_freeze",
+    tool: "orchestrate_freeze", description: "Content-addresses one run artifact set — design, waves, lanes, handoff, issues or postmortem — pinning the named document by its git blob id and the declared inputs by their digest, and refusing a body that omits a field its kind requires. Writes the freeze lock for the target you name.",
     path: ["freeze", "design"],
     kind: "mutation",
     options: [o("--body", "body", "string", true), o("--document", "document", "string", true), o("--head", "head", "string", true), RUN_ID_OPTION, o("--declared-inputs", "declaredInputs"), o("--out", "out"), DRY_RUN_OPTION],
     selector: { dest: "target", index: 1, values: [...FREEZE_TARGETS] }
   },
-  { tool: "orchestrate_readiness_check", path: ["readiness", "check"], kind: "read", options: [o("--target", "target", "string", true), o("--snapshot", "snapshot", "string", true), o("--req", "req", "array")] },
+  { tool: "orchestrate_readiness_check", description: "Derives whether the requirements you name are ready to be worked, from a requirement snapshot rather than any self-attestation, and fails closed on dependency cycles or duplicate ids. That allowlist of requirement ids is mandatory in practice: an empty one is an error, never a sweep of the whole target. Read-only.", path: ["readiness", "check"], kind: "read", options: [o("--target", "target", "string", true), o("--snapshot", "snapshot", "string", true), o("--req", "req", "array")] },
   {
-    tool: "orchestrate_schedule_plan",
+    tool: "orchestrate_schedule_plan", description: "Computes the lane partition for a wave from its plan sidecar: which tasks may run in parallel, which are forced together, and why. Writes the lane lock unless the call is a dry run, and, when strict grounding is asked for beside a run id, a freeze-lane-plan line into the run journal — which lands before the grounding verdict, so a call refused for ungrounded files has journalled itself all the same.",
     path: ["schedule", "plan"],
     kind: "mutation",
     options: [o("--plan", "plan", "string", true), o("--lanes", "lanes"), o("--allow-inferred-write-set", "allowInferredWriteSet", "boolean"), o("--strict-grounding", "strictGrounding", "boolean"), o("--existing-paths", "existingPaths"), o("--out", "out"), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION]
   },
-  { tool: "orchestrate_coupling_check", path: ["coupling", "check"], kind: "read", options: [o("--handoffs", "handoffs", "string", true), o("--wave", "wave"), o("--stage", "stage")] },
-  { tool: "orchestrate_schedule_show", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
-  { tool: "orchestrate_handoff_validate", path: ["handoff", "validate"], kind: "read", options: [o("--lane", "lane", "string", true), o("--path", "path", "string", true), o("--catalog", "catalog", "string", true), o("--base", "base", "string", true)] },
+  { tool: "orchestrate_coupling_check", description: "Finds cross-lane coupling inside one stage from that stage's already-parsed handoffs: a path one lane declares it writes and another declares it reads, which the write-set-overlap rule cannot see because that rule compares write against write. Over this binding it only reports, never refusing, because the re-partition pass count that raises the gate is not an argument here and stays at zero. Read-only.", path: ["coupling", "check"], kind: "read", options: [o("--handoffs", "handoffs", "string", true), o("--wave", "wave"), o("--stage", "stage")] },
+  { tool: "orchestrate_schedule_show", description: "Reads the frozen lane partition and reports the lanes it fixed, with the tasks assigned to each. Read-only.", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
+  { tool: "orchestrate_handoff_validate", description: "Checks one lane handoff document against its contract: the ten required headings in order, the task catalogue and lane row its declared sets must agree with, and the dispatch base its references must resolve against. Over this binding it stays a pure read, because journalling a raised untested-AC allowance needs a run id no argument here declares. Read-only.", path: ["handoff", "validate"], kind: "read", options: [o("--lane", "lane", "string", true), o("--path", "path", "string", true), o("--catalog", "catalog", "string", true), o("--base", "base", "string", true)] },
   // @req IR-MCP-004 AC-1 — `--proof` is mandatory on the leaf, so it has to be declared here too:
   // `orchestrateArgv` emits a flag only for a declared option, and the input schema is derived from
   // this same list, so an omission leaves the tool uncallable in every case rather than degraded.
-  { tool: "orchestrate_round_record", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_open", path: ["issue", "open"], kind: "mutation", options: [LEDGER_OPTION, o("--payload", "payload", "json"), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_plan", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--class", "class", "string", true), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_resolve", path: ["issue", "resolve"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--proof", "proof", "json", true), o("--resolution", "resolution", "string", true), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_defer", path: ["issue", "defer"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--reason", "reason", "string", true), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_list", path: ["issue", "list"], kind: "read", options: [LEDGER_OPTION, o("--wave", "wave")] },
-  { tool: "orchestrate_wave_close", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
-  { tool: "orchestrate_duplication_plan", path: ["duplication", "plan"], kind: "read", options: [o("--diffs", "diffs", "string", true), o("--write-sets", "writeSets", "string", true), o("--wave", "wave")] },
-  { tool: "orchestrate_validate", path: ["validate"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--strict", "strict", "boolean")] },
-  { tool: "orchestrate_auto_gate", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] },
+  { tool: "orchestrate_round_record", description: "Records one verification round with the proof it rests on, which the argument list makes mandatory. The gate it refuses at is the round scope: one outside the closed vocabulary, or one belonging to a loop other than the round declares, is turned away before anything is appended. Writes a round event into the run journal.", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_open", description: "Opens a new issue in the wave ledger from the payload you supply, refusing a classification outside the closed six-value list and an issue id the ledger already carries. Writes the ledger row.", path: ["issue", "open"], kind: "mutation", options: [LEDGER_OPTION, o("--payload", "payload", "json"), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_plan", description: "Assigns a classification to one issue in the wave ledger, which decides how it must be discharged. Writes the ledger row.", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--class", "class", "string", true), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_resolve", description: "Closes one issue with the proof for it, which is mandatory and has to resolve against the facts you supply rather than merely be well shaped — a syntactically perfect sha naming no commit in that set is refused. Writes the ledger row.", path: ["issue", "resolve"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--proof", "proof", "json", true), o("--resolution", "resolution", "string", true), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_defer", description: "Records a closed-vocabulary deferral reason against one issue, with no resolution. The row stays in its wave and the wave-close judge still weighs it, so deferring does not clear the way to close. Writes the ledger row.", path: ["issue", "defer"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--reason", "reason", "string", true), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_list", description: "Lists the wave issue ledger's rows, optionally for one wave, each with its classification and disposition. Read-only.", path: ["issue", "list"], kind: "read", options: [LEDGER_OPTION, o("--wave", "wave")] },
+  { tool: "orchestrate_wave_close", description: "Judges whether a wave may close, by the evidence each issue's classification demands: a local defect or a missing task needs a resolution proof that resolves against the facts you supply, a design gap needs a fresh design-lock digest, an out-of-run or new-wave issue needs a recorded user decision, and a design contradiction needs a valid classification and nothing more. The supplied set is what proofs are checked against, never a list of outcomes the caller declares acceptable. Read-only.", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
+  { tool: "orchestrate_duplication_plan", description: "Audits lane diffs against the lanes' declared write sets, which bound each lane's candidates to the paths it said it would touch, and proposes the duplication candidates a reviewer should look at. Which wave that is comes from how the caller assembled the diff file; this tool applies no wave filter of its own. Read-only.", path: ["duplication", "plan"], kind: "read", options: [o("--diffs", "diffs", "string", true), o("--write-sets", "writeSets", "string", true), o("--wave", "wave")] },
+  { tool: "orchestrate_validate", description: "Validates a kiwi-orchestrator run journal against the waves-event contract and reports each violation by its named code; the strict flag additionally fails an unstamped 1.4.0 line and a run-scoped version downgrade. This binding declares no engine, so a journal another engine wrote is read as zero lines and answers clean without having been judged. Read-only.", path: ["validate"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--strict", "strict", "boolean")] },
+  { tool: "orchestrate_auto_gate", description: "Applies the --auto decision rule to one gate ballot the caller supplies and returns the verdict: adopt the recommended option, adopt the default-if-auto option, adopt a majority over the votes already in the payload, or escalate and halt for the user. It convenes nobody and gathers no votes of its own, and a critical gate, a degraded quorum and an absent majority each escalate. Read-only.", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] },
   // @req IR-CLI-091 — the first phase-2 row to register. Both options are declared because the MCP
   // input schema is derived from this list: an omission here leaves the field uncallable over MCP
   // while the CLI accepts it, which is how `orchestrate_round_record` once shipped uncallable.
-  { tool: "orchestrate_replay_plan", path: ["replay", "plan"], kind: "read", options: [o("--queue", "queue", "string", true), o("--index", "index")] },
+  { tool: "orchestrate_replay_plan", description: "Reads the deferred SRS-mutation queue and says whether replaying each recorded call would apply it or skip it as a duplicate, beside the index that state would leave behind. It does not judge whether a call is permitted at all; the allowlist runs at apply time, so a forbidden tool is planned as an apply here. Nothing is replayed. Read-only.", path: ["replay", "plan"], kind: "read", options: [o("--queue", "queue", "string", true), o("--index", "index")] },
   // @req IR-CLI-092 — kind `mutation`, so the generated mirror carries the dry-run option and the
   // write envelope. A leaf without a binding ships an absent MCP tool and nothing says so.
   {
-    tool: "orchestrate_replay_apply",
+    tool: "orchestrate_replay_apply", description: "Applies a deferred SRS-mutation replay plan at the host root, refusing anything outside the allowlist and refusing a per-call workspace root outright. Writes the SRS documents those calls address, and one attempt line per dispatch into the applied-record file, which is what lets an interrupted replay resume without repeating itself.",
     path: ["replay", "apply"],
     kind: "mutation",
     options: [o("--plan", "plan", "string", true), o("--applied", "applied", "string", true), o("--frozen-target", "frozenTarget"), DRY_RUN_OPTION]
