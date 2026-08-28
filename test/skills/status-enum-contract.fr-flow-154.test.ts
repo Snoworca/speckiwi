@@ -269,7 +269,13 @@ const STABILITY_SLOT_FLOOR: Record<string, number> = {
   "metadata-stability-row": 11,
   "req-stability-value": 2,
   "stability-particle-value": 2,
-  "stability-value": 13,
+  // 13 -> 12 (FR-FLOW-161, 2026-08-28). The codex/etc/mirror sentence
+  // `Exclude non-implemented, draft, deprecated, and already-verified candidates.` was
+  // replaced by the four-name table and the accounting rules, and that one sentence carried
+  // one firing of this slot. Both values are still written in three places in that skill —
+  // the `eligible` row, the exclusion sentence, and the gate table row — so what left is a
+  // restatement, not a value. A floor is only sound to lower when what left is named.
+  "stability-value": 12,
   "stability-quoted-key": 8,
   "stability-set": 11,
   "stability-enum-restatement": 5

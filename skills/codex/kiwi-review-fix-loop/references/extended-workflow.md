@@ -107,12 +107,37 @@ Do not include tool signatures.
 
 Before `--close-reqs` mutations:
 
-1. Call SpecKiwi MCP `get_active_target` and `summarize_target`.
-2. Build candidate REQs from trace links and high-confidence scope/path
-   heuristics.
-3. Exclude candidates below high confidence.
-4. Exclude non-`implemented`, `draft`, `deprecated`, and already-`verified`
-   candidates.
+1. Call SpecKiwi MCP `get_active_target` to resolve this run's target, then call
+   `list_requirements({ target, status: "implemented" })`. What it returns is the
+   DENOMINATOR. Both are reads, so they sit outside the section-zero mutation
+   prohibition and run without `--close-reqs`. If the target cannot be
+   resolved, report that the denominator could not be built and stop; do not
+   proceed on a guessed value. The skill does not build this set itself: while
+   it does, extracting less is a way past any gate keyed on it, and a reporting
+   duty laid on the same actor only produces a second self-declaration.
+2. Call `summarize_target` for the trace-link index.
+3. Build the SCOPED set by intersecting the denominator with this run's review
+   scope, using trace links and high-confidence scope/path heuristics.
+4. Candidates below high confidence leave the intersection but are COUNTED AS
+   EXCLUDED, not dropped.
+
+Four names, used exactly:
+
+| Name | What it is |
+|---|---|
+| `denominator` | what `list_requirements` returned; the skill does not build it |
+| `scoped` | the denominator intersected with this run's review scope |
+| `eligible` | `scoped` minus prose-evidence requirements and those whose stability is `draft` or `deprecated`; a status other than `implemented` was already filtered by the denominator |
+| `transitioned` | how many actually reached `verified` |
+| `excluded` | the requirements in `scoped` that were not closed, enumerated one per requirement with a reason |
+
+Accounting identity: `transitioned + excluded == scoped`. A run whose
+dispositions do not account for the whole scoped set is INVALID — some
+requirement received no disposition, and that is where under-extraction shows
+up as a count that does not add up. Prose-evidence requirements and
+`draft`/`deprecated` ones are excluded from eligibility but REMAIN IN THE
+SCOPED SET carrying their reason; dropping them would make the identity blind
+to exactly the requirements a person still has to act on.
 
 Mutation order per REQ:
 
@@ -128,6 +153,15 @@ Mutation order per REQ:
 If evidence fails for a REQ, skip its status update. Record every skipped and
 failed candidate in `closed_reqs.json`.
 
+Report the accounting by enumerating one row per requirement in `scoped`, each
+carrying either its close or one exclusion reason. Do not summarise it into
+counts or a sample: without the enumeration nobody can check the identity by
+hand, and an identity nobody can check makes obtaining the denominator
+externally pointless. When `scoped` is empty, report the DENOMINATOR'S SIZE and
+why the intersection came out zero rather than reporting no candidates — a
+denominator of zero is itself the signal (FR-NODE-198: a requirement written
+with a status outside the enum never enters it).
+
 ## Pipeline Event
 
 Standalone events:
@@ -135,7 +169,7 @@ Standalone events:
 | Field | Value |
 |---|---|
 | `skill` | `kiwi-review-fix-loop` |
-| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN` |
+| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
 | `next_hint` | `kiwi-commit-auto-push` for self-mode success, `null` for PR-mode success or unresolved gates |
 | `artifacts.analysis_dir` | `docs/analysis/kiwi-review-fix-loop-{run-id}/` |
 

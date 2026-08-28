@@ -446,7 +446,7 @@ Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model 
 Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--model <name>]" })
 ```
 
-`--close-reqs` 는 **주지 않는다** — `kiwi-tdd` 가 이미 `promote_step_requirement` 로 승급했고, 리뷰 루프는 `implemented` 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 `TASK_DONE` 을 반환한다. 창을 명시하는 이유도 같다: 범위를 주지 않으면 커밋이 끝난 깨끗한 트리에서 직전 5커밋으로 폴백한다.
+`--close-reqs` 는 **주지 않는다** — `kiwi-tdd` 가 이미 `promote_step_requirement` 로 승급했고, 리뷰 루프의 `denominator` 는 `implemented` 요구만 담으므로 이미 승급된 step 요구는 애초에 그 안에 없고, 따라서 `scoped` 가 비어 `TASK_DONE` 이 정당하다 — 스킵이 아니라 셀 것이 없는 것이다. 창을 명시하는 이유도 같다: 범위를 주지 않으면 커밋이 끝난 깨끗한 트리에서 직전 5커밋으로 폴백한다.
 
 리뷰가 고친 것은 close-out **앞에서 커밋한다** — 커밋하지 않으면 아래 종료 줄의 `terminal_review.head` 가 자기 결과를 담지 않은 커밋을 가리킨다. 이 hop 은 **red 단계에서 저작한 테스트를 수정하지 않는다**. `kiwi-tdd` 는 red 테스트 약화를 금지하지만 리뷰 루프의 시니어 fixer 에게는 그 제약이 없어서, 명시하지 않으면 이 rung 이 존재하는 이유인 규율을 합법적으로 무를 수 있다.
 
@@ -490,7 +490,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs --base {plan_window_b
 
 residual 행은 `{req_id, reason, owner}` 이고 `kiwi/waves.jsonl` 의 `R-PLAN` `dispatch-route` result line 에 기록되며 `reason` 은 20자 이상이다.
 
-`kiwi-review-fix-loop --close-reqs` 는 `stability=draft` 이거나 `implemented` 가 아닌 요구를 **건너뛰고 보고**할 뿐 그것으로 게이트하지 않는다. 따라서 그 `TASK_DONE` 은 요구 집합이 닫혔다는 증거가 아니다. close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning` 을 실행하고 `post-merge-index-drift`(critical)를 거친 다음 마감 이벤트 1건을 emit 한다. 그 `dispatch-route` result line 에는 `outcome: "delegated-complete"` 와 `status: "complete"` 를 함께 싣는다. `status` 는 §2.1 의 **필수** 필드라 값이 비어 있을 수 없고, 어떤 값인지 정해두지 않으면 `in_progress` 를 실은 종료 줄이 완료 보고가 아닌 것으로 읽혀 종료 리뷰 검사를 그대로 통과한다 — run 종료 판정이 이 값으로 이루어지므로, 싣지 않으면 이 rung 의 종료는 검증기에 보이지 않고 §4.5 가 이 rung 에 지운 종료 리뷰 의무가 R-PLAN 에서만 조용히 미검증으로 남는다.
+`kiwi-review-fix-loop --close-reqs` 는 `stability` 가 `draft`·`deprecated` 인 요구를 **건너뛰되 제외 사유와 함께 계상**하고, `eligible` 이 1건 이상인데 전이가 0건이면 `TASK_DONE` 을 반환하지 않는다(`FR-FLOW-161`). `implemented` 가 아닌 요구는 그 스킬의 분모가 이미 걸러 내므로 그 회계에 애초에 들어오지 않는다 — 그 분모는 status 가 `implemented` 인 요구만 담는다. 그래도 그 `TASK_DONE` 은 요구 집합 전체가 닫혔다는 증거가 아니다 — 그 스킬이 세는 것은 자기 리뷰 범위와 교차한 부분집합이지 target 전체가 아니기 때문이다. **위의** `plan-coverage-unclosed` 보상 게이트가 그 차이를 메우므로 그대로 둔다. close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning` 을 실행하고 `post-merge-index-drift`(critical)를 거친 다음 마감 이벤트 1건을 emit 한다. 그 `dispatch-route` result line 에는 `outcome: "delegated-complete"` 와 `status: "complete"` 를 함께 싣는다. `status` 는 §2.1 의 **필수** 필드라 값이 비어 있을 수 없고, 어떤 값인지 정해두지 않으면 `in_progress` 를 실은 종료 줄이 완료 보고가 아닌 것으로 읽혀 종료 리뷰 검사를 그대로 통과한다 — run 종료 판정이 이 값으로 이루어지므로, 싣지 않으면 이 rung 의 종료는 검증기에 보이지 않고 §4.5 가 이 rung 에 지운 종료 리뷰 의무가 R-PLAN 에서만 조용히 미검증으로 남는다.
 
 #### 4.5.3 `R-ORCH` → 공용 wave 엔진을 직접 구동
 

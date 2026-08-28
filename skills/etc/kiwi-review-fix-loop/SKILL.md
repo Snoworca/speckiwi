@@ -121,9 +121,11 @@ Skip or halt when:
 | regression failed or skipped without evidence | halt |
 | CRITICAL/HIGH finding remains | halt |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
-| no high-confidence impacted REQ | skip and report |
+| `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
+| `eligible` is at least one and `transitioned` is zero | NOT `TASK_DONE`; end `FAILED` and report |
+| `transitioned + excluded` does not equal `scoped` | the run is invalid; end `FAILED` and enumerate the requirements that received no disposition |
 | impacted REQ stability is `draft` or `deprecated` | skip that REQ |
-| impacted REQ status is not `implemented` | skip that REQ |
+| impacted REQ status is not `implemented` | skip that REQ. It is outside the denominator, so it enters neither `scoped` nor the accounting identity |
 
 For each eligible REQ:
 

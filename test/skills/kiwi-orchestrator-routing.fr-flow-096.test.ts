@@ -327,8 +327,15 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       expect(body).toContain("max(--allow-plan-residual, ceil(|req_ids| / 4))");
       expect(body).toContain("{req_id, reason, owner}");
       expect(body).toMatch(/`reason` 은 20자 이상/);
+      // The warning this rung must carry, keyed on the warning rather than on the sentence that
+      // introduces it. FR-FLOW-161 rewrote that introduction — the skill now counts `draft` and
+      // `deprecated` as excluded-with-reason and states that a requirement outside `implemented`
+      // never enters its denominator — and the old wording was pinned here verbatim, so a
+      // correction to one requirement's text failed another requirement's contract. What both
+      // require is the same: this rung is told that the loop's `TASK_DONE` is not evidence the
+      // requirement set closed.
       expect(
-        tiedTogether(body, /`stability=draft` 이거나 `implemented` 가 아닌 요구를/, [/건너뛰고 보고/, /`TASK_DONE` 은 요구 집합이 닫혔다는 증거가 아니다/], 400)
+        tiedTogether(body, /`TASK_DONE` 은 요구 집합 전체가 닫혔다는 증거가 아니다/, [/kiwi-review-fix-loop --close-reqs/, /plan-coverage-unclosed/], 700)
       ).toBe(true);
       expect(body).toMatch(/close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning`/);
     }

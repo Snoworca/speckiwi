@@ -125,9 +125,11 @@ self_scope.source enum 매핑 (§3.1):
 | `--close-reqs` + PR 모드 | 차단 + 사용자 보고 ("`--close-reqs` 는 셀프 모드 전용. PR 모드에서 SRS mutation 은 머지 후 별도 처리") |
 | `--close-reqs` + 회귀 fail | 차단 + WARN ("회귀 미통과로 verified 전이 부적합") |
 | `--close-reqs` + 까칠 리뷰 finding 잔존 (CRITICAL/HIGH ≥1) | 차단 + WARN |
-| `--close-reqs` + 영향 REQ 추출 0건 | skip + 보고 ("close 대상 REQ 없음") |
+| `--close-reqs` + `scoped` 0건 | §6.6 skip + 보고. **"close 대상 REQ 없음" 한 줄로 끝내지 않는다** — `denominator` 의 크기와 교차가 0이 된 사유를 함께 적는다. 분모가 0이면 그 자체가 신호다 (`FR-NODE-198` 참조: enum 밖 status 로 쓰인 REQ 는 분모에 애초에 들어오지 않는다) |
+| `--close-reqs` + `eligible` 1건 이상 + 전이 0건 | **`TASK_DONE` 이 아니다.** `FAILED` 로 종료 + 보고 (§7.3) |
+| `--close-reqs` + 처분 대조 불일치 (`전이 성공 수 + 제외 수 ≠ scoped 크기`) | 그 실행은 **무효**. `FAILED` 로 종료 + 처분 없는 REQ 열거 |
 | `--close-reqs` + 영향 REQ 중 stability=draft 1건 이상 | 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
-| `--close-reqs` + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행 |
+| `--close-reqs` + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행. **이 항목은 분모 밖이므로 `scoped` 에도 처분 대조에도 들어오지 않는다** |
 | `--close-reqs` + 영향 REQ 가 **산문 문서를 검증 증거**로 삼는 경우 | 해당 REQ 를 **닫지 않는다** + 보고 — 본 스킬은 §11 로 산문을 보지 않아 `FR-FLOW-136` AC-6 의 전체 문서 감사를 수행할 수 없고, 수행할 수 없는 의무는 게이트가 아니다. **그런 요구를 자동으로 닫는 경로는 파이프라인에 없다** — 사람이 감사하고 닫는다. 보고에 그 사실을 함께 적어, 닫히지 않은 이유가 실패로 읽히지 않게 한다 |
 | 위 차단/skip 미해당 | §6.6 진입 |
 
@@ -507,9 +509,23 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 
 #### 6.6.1 영향 REQ-ID 추출
 
-**선결 호출 (§6.6 진입 직전 의무)**: MCP `get_active_target` + `summarize_target` 호출 → 활성 target REQ 인벤토리 + trace link 인덱스 수집. MCP 미가용 시 source 1 skip + source 2 (scope heuristic) 만 사용 + 추출 결과에 `data_source: "scope-heuristic-only"` 메타 명시.
+**분모 획득 (§6.6 진입 직전 의무, 후보 추출보다 먼저)**: MCP `get_active_target` 으로 이번 실행의 target 을 해소하고, `list_requirements({ target: <해소한 target>, status: "implemented" })` 로 **분모**를 받는다. 이 둘은 read 이므로 §0.8 의 mutation 금지 밖이며 `--close-reqs` 없이도 호출한다. target 을 해소하지 못하면 **분모를 만들지 못했다고 보고하고 멈춘다** — 임의의 값으로 진행하지 않는다. 분모를 스킬이 스스로 만들지 않는 이유는 하나다: 후보를 자기가 추출하는 한 **덜 추출하면 어떤 게이트도 피할 수 있고**, 같은 주체에게 보고 의무를 더해 봐야 자기선언이 둘로 늘 뿐이다.
 
-다음 두 소스 합집합:
+네 집합을 이 이름으로 쓴다.
+
+| 이름 | 무엇인가 |
+|---|---|
+| `denominator` | `list_requirements` 가 돌려준 집합. 스킬이 만들지 않는다 |
+| `scoped` | `denominator` 를 이번 실행의 리뷰 범위와 교차한 부분집합. 교차 근거는 아래 `match_confidence` 이며 `high` 미만은 교차에서 빠지되 **제외로 계상한다** |
+| `eligible` | `scoped` 에서 산문 증거 REQ 와 `stability` 가 `draft`·`deprecated` 인 REQ 를 뺀 것. status 가 `implemented` 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
+| `transitioned` | 실제로 `verified` 전이에 성공한 수 |
+| `excluded` | `scoped` 에서 닫히지 않은 REQ 를 사유와 함께 REQ 단위로 열거한 목록 |
+
+**처분 대조**: `전이 성공 수 + 제외 수 = scoped 크기` 가 성립해야 한다. **항등식이 성립하지 않으면 그 실행은 무효다** — 처분을 받지 못한 REQ 가 있다는 뜻이고, "덜 추출" 이 바로 여기서 개수 불일치로 드러난다. 산문 증거 REQ 와 `draft`·`deprecated` REQ 는 `eligible` 에서 빠지지만 **`scoped` 에는 남고** 제외 사유를 받는다 — `scoped` 에서 빼면 항등식이 그 REQ 의 부재를 보지 못한다.
+
+**선결 호출 (분모 획득 직후)**: MCP `summarize_target` 호출 → trace link 인덱스 수집. MCP 미가용 시 source 1 skip + source 2 (scope heuristic) 만 사용 + 추출 결과에 `data_source: "scope-heuristic-only"` 메타 명시.
+
+`scoped` 는 `denominator` 를 아래 두 소스와 교차해 얻는다 — 두 소스는 교차의 **근거**이지 집합의 출처가 아니다:
 1. 까칠 리뷰어 입력의 활성 target REQ 인벤토리 (`summarize_target` 응답) 중 변경 파일과 trace link 가 매칭되는 REQ
 2. 변경 파일 경로 ↔ REQ scope 의 휴리스틱 매칭 (scope name keyword + path prefix 일치, confidence=high 만)
 
@@ -523,13 +539,15 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 }
 ```
 
-`match_confidence` < high 항목은 자동 close 대상에서 제외 + 보고서 §9 에 후속 검토 권고로 명시.
+`match_confidence` < high 항목은 자동 close 대상에서 제외하되 **`excluded` 에 사유와 함께 계상**하고, 보고서 §9 에 후속 검토 권고로 명시.
 
-산출물: `closed_reqs.json.candidates`
+**처분 회계 (보고 의무)**: `scoped` 의 **모든 REQ 를 REQ 단위로 행으로 열거**하고 각 행이 닫힘 또는 제외 사유 하나를 갖는다. 개수 요약이나 표본으로 줄이지 않는다 — 이 열거가 없으면 위 항등식을 사람이 확인할 수 없고, 확인할 수 없는 항등식은 분모를 밖에서 받은 의미를 지운다.
+
+산출물: `closed_reqs.json.scoped` (각 REQ 에 처분 하나: 닫힘 또는 제외 사유)
 
 #### 6.6.2 MCP 호출 (§0.8 화이트리스트 3종)
 
-각 high-confidence REQ 에 대해 순서대로:
+각 `eligible` REQ 에 대해 순서대로:
 
 1. `add_verification_evidence({ id: req_id, type: "test", reference: regression_test_path, covers: <단일 AC-ID string 또는 omit>, notes: "kiwi-review-fix-loop 회귀 검증 통과 (run_id={run-id})" })` — speckiwi MCP schema `covers: z.string().optional()` 준수. 각 REQ 의 영향 AC 별 1건씩 반복 호출 (AC-1, AC-2 …). evidence 등록 호출 총합 = N (REQ 수) × M (각 REQ 의 영향 AC 수). 어느 AC 에 매핑할지 §6.6.1 추출 단계에서 구체 AC-ID 로 resolve 되지 않은 경우 `covers` 필드 omit 허용 (REQ 전체 커버리지로 기록).
 2. `check_acceptance_criteria({ id: req_id, acIds: [<지목을 마친 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자를 먼저 지목한다.** 지목 대상은 파일 경로와 테스트 이름, 또는 직전 1번 호출이 그 AC 에 대해 `covers` 로 등록한 `reference` 다. **지목이 없는 AC 는 체크하지 않는다** — `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다.
@@ -639,7 +657,7 @@ Regression tests: PASS (N tests)
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴 적용. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 - `skill`: `"kiwi-review-fix-loop"` (pipeline-event.md §3 의 skill enum 에 등재됨)
-- `status`: 모든 immediate_fix 처리 + 회귀 PASS = `TASK_DONE`; discussion_needed 가 사용자 대기 = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`
+- `status`: 모든 immediate_fix 처리 + 회귀 PASS **+ 승급 결과 조건** = `TASK_DONE`; discussion_needed 가 사용자 대기 = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`. **승급 결과 조건**: `--close-reqs` 활성 실행에서 `eligible` 이 **1 이상인데 전이 0건**이면 `TASK_DONE` 을 반환하지 않는다 — `FAILED` 다. 처분 대조가 어긋난 실행도 마찬가지다. `--close-reqs` 가 없는 실행에는 이 조건이 적용되지 않는다. 값은 `_shared/kiwi/pipeline-event.md` §2 의 enum 안에서만 고른다 — 새 값을 만들지 않는다
 - `next_hint`: 통상 `"kiwi-commit-auto-push"` (PR 모드는 PR 푸시 이미 됨 — `null` 권장), discussion_needed 잔존 시 `null`
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-review-fix-loop-{run-id}/`
 - `notes`: "mode=self|pr / findings=N / fixed=A / rejected=C / recheck_iter=M" 권장

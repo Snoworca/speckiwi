@@ -62,6 +62,7 @@ deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / fro
 deprecated	-	kiwi-commit-auto-push/SKILL.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
 deprecated	-	kiwi-commit-auto-push/SKILL.md	자체는 자동 — clarification), draft/deprecated stability WARN 시 trailer skip v
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
+deprecated	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사유와 함께 계상하고,
 deprecated	-	kiwi-orchestrator/SKILL.md	take 에서 잡았어야 하므로 분류기 결함이다. deprecated/frozen 분기는 계획 술어가 허용하는 유일한 s
 deprecated	-	kiwi-planner/SKILL.md	- deprecated → 자동 제외, excluded_reqs[] 기록
 deprecated	-	kiwi-planner/SKILL.md	5.3 unreferenced_reqs (deprecated 외 미커버 REQ)
@@ -87,6 +88,8 @@ deprecated	-	kiwi-pm/SKILL.md	| 즉시 HALT — frozen=정책 위반, deprecated
 deprecated	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
+deprecated	-	kiwi-review-fix-loop/SKILL.md	불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible 에서 빠지지만 sc
+deprecated	-	kiwi-review-fix-loop/SKILL.md	증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. status 가 impleme
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- → deprecated: {n} (사용자 승인 완료)
@@ -141,7 +144,7 @@ draft	-	kiwi-commit-auto-push/SKILL.md	raft | WARN + trailer 부착 skip (draft 
 draft	-	kiwi-commit-auto-push/SKILL.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료
 draft	-	kiwi-hot-fix/SKILL.md	명시 시 stability 검사 강제 (§0.12). draft REQ 영향 진입 시 차단 | §0.12 |
-draft	-	kiwi-orchestrator/SKILL.md	loop --close-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건
+draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -173,6 +176,8 @@ draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 �
 draft	-	kiwi-review-fix-loop/SKILL.md	FR-X-002", "reason": "stability=draft" },
 draft	-	kiwi-review-fix-loop/SKILL.md	lose-reqs + 영향 REQ 중 stability=draft 1건 이상 | 해당 REQ skip + 사용자 보고 (d
 draft	-	kiwi-review-fix-loop/SKILL.md	t 1건 이상 | 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
+draft	-	kiwi-review-fix-loop/SKILL.md	에서 산문 증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. stat
+draft	-	kiwi-review-fix-loop/SKILL.md	여기서 개수 불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
@@ -383,11 +388,12 @@ implemented	-	kiwi-coder/SKILL.md	> "본 plan 의 REQ status 가 implemented 로
 implemented	-	kiwi-coder/SKILL.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/SKILL.md	nce 보유 + acceptance_tests 통과 → "implemented"
-implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
-implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
+implemented	-	kiwi-orchestrator/SKILL.md	NE 을 반환하지 않는다(FR-FLOW-161). implemented 가 아닌 요구는 그 스킬의 분모가 이미 걸러 내므로 그
 implemented	-	kiwi-orchestrator/SKILL.md	ull acceptance 행을 하나라도 가진 요구는 implemented 에 도달할 수 있고 그 wave 에서 verified
 implemented	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave
 implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 모든 task 가 landed
+implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
+implemented	-	kiwi-orchestrator/SKILL.md	애초에 들어오지 않는다 — 그 분모는 status 가 implemented 인 요구만 담는다. 그래도 그 TASK_DONE 은
 implemented	-	kiwi-pm/SKILL.md	# update_status implemented + add_completed_work(plan-summa
 implemented	-	kiwi-pm/SKILL.md	- (3) skip — verified 닫지 않음 (implemented 상태 유지)
 implemented	-	kiwi-pm/SKILL.md	> "본 plan 의 REQ status 가 implemented 로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐
@@ -410,7 +416,9 @@ implemented	-	kiwi-pm/SKILL.md	인 REQ 에 한해 update_status(id, "implemented
 implemented	-	kiwi-pm/SKILL.md	후 T-final 단계에서 update_status("implemented") + add_completed_work(plan-s
 implemented	-	kiwi-review-fix-loop/SKILL.md	S + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evid
 implemented	-	kiwi-review-fix-loop/SKILL.md	medium|low", "current_status": "implemented", "stability": "evolving" }
+implemented	-	kiwi-review-fix-loop/SKILL.md	recated 인 REQ 를 뺀 것. status 가 implemented 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
 implemented	-	kiwi-review-fix-loop/SKILL.md	se-reqs + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / plann
+implemented	-	kiwi-review-fix-loop/SKILL.md	target: <해소한 target>, status: "implemented" }) 로 분모를 받는다. 이 둘은 read 이
 implemented	-	kiwi-review-fix-loop/SKILL.md	시 시 셀프 모드 한정으로 update_status (implemented→verified, forward-only) + add_
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
 implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌
@@ -471,7 +479,7 @@ planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-003": "planned"
 planned	-	kiwi-pm/SKILL.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
 planned	-	kiwi-pm/SKILL.md	은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용
-planned	-	kiwi-review-fix-loop/SKILL.md	ented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행 |
+planned	-	kiwi-review-fix-loop/SKILL.md	ented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행.
 planned	-	kiwi-srs-feasibility/SKILL.md	"current_status": "planned",
 planned	-	kiwi-srs-feasibility/SKILL.md	1", "scope": "TODO", "status": "planned", "stability": "draft", "ac_cou
 planned	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability →
@@ -586,6 +594,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	l | --close-reqs + 회귀 fail — veri
 verified	-	kiwi-review-fix-loop/SKILL.md	on (--close-reqs 활성 시) — REQ verified 전이 결과 (req_id → from_status, to
 verified	-	kiwi-review-fix-loop/SKILL.md	tatus 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보
 verified	-	kiwi-review-fix-loop/SKILL.md	| "REQ 닫기", "verified 전이", "검증 완료 표시" | --close-reqs
+verified	-	kiwi-review-fix-loop/SKILL.md	| transitioned | 실제로 verified 전이에 성공한 수 |
 verified	-	kiwi-review-fix-loop/SKILL.md	| 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
 verified	-	kiwi-review-fix-loop/SKILL.md	으로 update_status (implemented→verified, forward-only) + add_verificat
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
@@ -670,6 +679,7 @@ deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated 
 deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user explicit
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
+deprecated	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사유와 함께 계상하고,
 deprecated	-	kiwi-orchestrator/SKILL.md	take 에서 잡았어야 하므로 분류기 결함이다. deprecated/frozen 분기는 계획 술어가 허용하는 유일한 s
 deprecated	-	kiwi-planner/SKILL.md	- deprecated → 자동 제외, excluded_reqs[] 기록
 deprecated	-	kiwi-planner/SKILL.md	Stability 진입 가드. Stability=deprecated REQ 는 자동 제외. Stability=draft
@@ -697,7 +707,8 @@ deprecated	-	kiwi-pm/references/extended-workflow.md	race 하는 Task 만 skip �
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
-deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	de non-implemented, draft, deprecated, and already-verified
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	ty(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
@@ -753,7 +764,7 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	loop --close-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건
+draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -785,7 +796,8 @@ draft	-	kiwi-pm/references/extended-workflow.md	ice = Codex clarification gate("
 draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 해당 REQ trace Task 만 skip + 잔
 draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 3지선다 /
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
-draft	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and already-ve
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
@@ -990,11 +1002,12 @@ implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass �
 implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
-implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
-implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
+implemented	-	kiwi-orchestrator/SKILL.md	NE 을 반환하지 않는다(FR-FLOW-161). implemented 가 아닌 요구는 그 스킬의 분모가 이미 걸러 내므로 그
 implemented	-	kiwi-orchestrator/SKILL.md	ull acceptance 행을 하나라도 가진 요구는 implemented 에 도달할 수 있고 그 wave 에서 verified
 implemented	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave
 implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 모든 task 가 landed
+implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
+implemented	-	kiwi-orchestrator/SKILL.md	애초에 들어오지 않는다 — 그 분모는 status 가 implemented 인 요구만 담는다. 그래도 그 TASK_DONE 은
 implemented	-	kiwi-pm/SKILL.md	# update_status implemented + add_completed_work(plan-summa
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
@@ -1016,8 +1029,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
-implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
-implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
+implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ. It is outside
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a status other than implemented was already filtered by the de
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
 implemented	-	kiwi-srs-feasibility/SKILL.md	lict | blocked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌
@@ -1183,7 +1197,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, f
 verified	-	kiwi-review-fix-loop/SKILL.md	ed CRITICAL/HIGH findings block verified transition | close gate |
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | stability mutation skip + s
@@ -1266,6 +1280,7 @@ deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated 
 deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user explicit
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
+deprecated	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사유와 함께 계상하고,
 deprecated	-	kiwi-orchestrator/SKILL.md	take 에서 잡았어야 하므로 분류기 결함이다. deprecated/frozen 분기는 계획 술어가 허용하는 유일한 s
 deprecated	-	kiwi-planner/SKILL.md	- deprecated → 자동 제외, excluded_reqs[] 기록
 deprecated	-	kiwi-planner/SKILL.md	Stability 진입 가드. Stability=deprecated REQ 는 자동 제외. Stability=draft
@@ -1292,7 +1307,8 @@ deprecated	-	kiwi-pm/references/extended-workflow.md	race 하는 Task 만 skip �
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
-deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	de non-implemented, draft, deprecated, and already-verified
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	local-LLM max-profile 시니어 건너뛰고 deprecated 후보
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
@@ -1343,7 +1359,7 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	loop --close-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건
+draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -1375,7 +1391,8 @@ draft	-	kiwi-pm/references/extended-workflow.md	oice = User clarification gate("
 draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 해당 REQ trace Task 만 skip + 잔
 draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 3지선다 /
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
-draft	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and already-ve
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
@@ -1568,11 +1585,12 @@ implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass �
 implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
-implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
-implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
+implemented	-	kiwi-orchestrator/SKILL.md	NE 을 반환하지 않는다(FR-FLOW-161). implemented 가 아닌 요구는 그 스킬의 분모가 이미 걸러 내므로 그
 implemented	-	kiwi-orchestrator/SKILL.md	ull acceptance 행을 하나라도 가진 요구는 implemented 에 도달할 수 있고 그 wave 에서 verified
 implemented	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave
 implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 모든 task 가 landed
+implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
+implemented	-	kiwi-orchestrator/SKILL.md	애초에 들어오지 않는다 — 그 분모는 status 가 implemented 인 요구만 담는다. 그래도 그 TASK_DONE 은
 implemented	-	kiwi-pm/SKILL.md	# update_status implemented + add_completed_work(plan-summa
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
@@ -1593,8 +1611,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_
 implemented	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
-implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
-implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
+implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ. It is outside
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a status other than implemented was already filtered by the de
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
 implemented	-	kiwi-srs-feasibility/SKILL.md	lict | blocked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌
@@ -1751,7 +1770,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
 verified	-	kiwi-review-fix-loop/SKILL.md	nd guarded --close-reqs per-REQ verified transition through speckiwi mcp
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | stability mutation skip + s
@@ -1836,6 +1855,7 @@ deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated 
 deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user explicit
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
+deprecated	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사유와 함께 계상하고,
 deprecated	-	kiwi-orchestrator/SKILL.md	take 에서 잡았어야 하므로 분류기 결함이다. deprecated/frozen 분기는 계획 술어가 허용하는 유일한 s
 deprecated	-	kiwi-planner/SKILL.md	- deprecated → 자동 제외, excluded_reqs[] 기록
 deprecated	-	kiwi-planner/SKILL.md	Stability 진입 가드. Stability=deprecated REQ 는 자동 제외. Stability=draft
@@ -1863,7 +1883,8 @@ deprecated	-	kiwi-pm/references/extended-workflow.md	race 하는 Task 만 skip �
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
-deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	de non-implemented, draft, deprecated, and already-verified
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
+deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	ty(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
@@ -1918,7 +1939,7 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	loop --close-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건
+draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -1950,7 +1971,8 @@ draft	-	kiwi-pm/references/extended-workflow.md	ice = Codex clarification gate("
 draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 해당 REQ trace Task 만 skip + 잔
 draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 3지선다 /
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
-draft	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and already-ve
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
+draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
@@ -2150,11 +2172,12 @@ implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass �
 implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
-implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
-implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
+implemented	-	kiwi-orchestrator/SKILL.md	NE 을 반환하지 않는다(FR-FLOW-161). implemented 가 아닌 요구는 그 스킬의 분모가 이미 걸러 내므로 그
 implemented	-	kiwi-orchestrator/SKILL.md	ull acceptance 행을 하나라도 가진 요구는 implemented 에 도달할 수 있고 그 wave 에서 verified
 implemented	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave
 implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 모든 task 가 landed
+implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
+implemented	-	kiwi-orchestrator/SKILL.md	애초에 들어오지 않는다 — 그 분모는 status 가 implemented 인 요구만 담는다. 그래도 그 TASK_DONE 은
 implemented	-	kiwi-pm/SKILL.md	# update_status implemented + add_completed_work(plan-summa
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
@@ -2176,8 +2199,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
-implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
-implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
+implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ. It is outside
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a status other than implemented was already filtered by the de
+implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
 implemented	-	kiwi-srs-feasibility/SKILL.md	lict | blocked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌
@@ -2334,7 +2358,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, f
 verified	-	kiwi-review-fix-loop/SKILL.md	ed CRITICAL/HIGH findings block verified transition | close gate |
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | stability mutation skip + s
