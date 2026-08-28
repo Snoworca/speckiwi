@@ -93,7 +93,7 @@ base 가 head 의 조상이다                   (올바른 기준선에서 했�
 
 ## 6. 재생 — 허용된 것만, 한 번만
 
-호스트는 수확한 큐를 계획하고(`orchestrate replay plan`) **승인된 것만** 적용한다.
+호스트는 수확한 큐를 계획하고(`orchestrate replay plan`) **승인된 것만** 적용한다(`orchestrate replay apply`).
 
 허용 집합은 `kiwi-coder §0.12` 의 넷이고 **모듈 상수**다 — 인자로 넓힐 수 있는 allowlist 는 allowlist 가 아니다.
 

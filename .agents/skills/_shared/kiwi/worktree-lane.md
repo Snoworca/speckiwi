@@ -121,7 +121,7 @@ changed paths  ∩ docs/spec/ = empty        (SRS was left alone)
 
 ## 6. Replay — only what is admitted, only once
 
-The host plans the harvested queue (`orchestrate replay plan`) and applies **only what is admitted**.
+The host plans the harvested queue (`orchestrate replay plan`) and applies **only what is admitted** (`orchestrate replay apply`).
 
 The admitted set is the four of `kiwi-coder §0.12`, and it is a **module constant** — an allowlist a
 call site can widen is not an allowlist.

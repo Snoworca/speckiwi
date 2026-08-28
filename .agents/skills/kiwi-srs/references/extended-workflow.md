@@ -73,13 +73,13 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
    - **`acceptanceCriteria` 정책**: 원본 REQ-X 의 AC를 재진술 + 신규 AC 추가 (참조 형식 금지). `check_acceptance_criteria` 가 REQ별 독립 AC를 요구하므로 ID-참조는 검증 불가
 3. `add_trace_link { id: NEW-ID, type: "Requirement", reference: "REQ-X", relation: "supersedes", notes: "{delta}; re_stated_from: REQ-X#AC1, REQ-X#AC2" }`
 4. `update_status { id: REQ-X, status: "discarded" }` — Change Notes에 NEW-ID 참조 (SRS-MD §11.4 ID 재사용 금지). status 만 변경, `stability` 불변
-5. `add_trace_link { id: NEW-ID, type: "Code", reference: "{path:line}", trace_intent: "verifies|addition_site" }`
+5. `add_trace_link { id: NEW-ID, type: "Code", reference: "{path:line}", relation: "implements", notes: "trace_intent=verifies|addition_site" }` — `add_trace_link` 에는 `trace_intent` 인자가 없다. 스키마가 받는 것은 `id` · `type` · `reference` · `relation` · `notes` · `dryRun` · `ignoreLock` 이며, 이 일곱에 없는 인자는 조용히 버려진다. intent 는 `notes` 안에 `trace_intent=<값>` 으로 적는다.
 6. **Markdown sync** (§9.4)
 7. **Final `validate_spec`** — Markdown sync 완료 후 재호출
 
 #### new-feature
 
-1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, with `trace_intent`] / status=planned / priority / tags=[feasibility:{level}]
+1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, `notes` 에 `trace_intent=<값>`] / status=planned / priority / tags=[feasibility:{level}]
 2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check

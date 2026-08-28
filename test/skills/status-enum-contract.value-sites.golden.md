@@ -486,7 +486,6 @@ planned	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status ∈ {planne
 planned	-	kiwi-srs-from-code/SKILL.md	FERRED med/high) | - | draft | planned |
 planned	-	kiwi-srs-from-code/SKILL.md	무 (INFERRED low) | - | draft | planned (Phase 4 에서 hallucinated 판정 시
 planned	-	kiwi-srs/SKILL.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
-planned	-	kiwi-srs/SKILL.md	, with trace_intent] / status=planned / priority / tags=[feasibility:
 planned	-	kiwi-srs/SKILL.md	- status: "planned"
 planned	-	kiwi-srs/SKILL.md	- status: "planned"
 planned	-	kiwi-srs/SKILL.md	- 신규 REQ 기본 status = planned, 기본 stability = draft. 사용자 검
@@ -497,6 +496,7 @@ planned	-	kiwi-srs/SKILL.md	n_site 잔존 시 해당 REQ 의 status 는 planned 
 planned	-	kiwi-srs/SKILL.md	| FR-TODO-004 | priority 기본값? | planned → in_progress 차단 |
 planned	-	kiwi-srs/SKILL.md	| 위 권고 모두 부재 + 신규 REQ status = planned + addition_site 없음 | "AC + tra
 planned	-	kiwi-srs/SKILL.md	신규 REQ 기본 status: planned (Status enum 에 미승인을 뜻하는 값은 없
+planned	-	kiwi-srs/SKILL.md	에 trace_intent=<값>] / status=planned / priority / tags=[feasibility:
 planned	-	kiwi-srs/SKILL.md	추가. user_required = status: planned → in_progress 승격 전 사용자 답변 필수
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-coder | Implement planned tasks with TDD and verification
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-pm | Run planned tasks and finalize completed wo
@@ -1104,7 +1104,6 @@ planned	-	kiwi-srs/SKILL.md	ddition_site 잔존 | status 상한 = planned |
 planned	-	kiwi-srs/SKILL.md	n_site 잔존 시 해당 REQ 의 status 는 planned 상한. 라이브 모드에서 update_status(in
 planned	-	kiwi-srs/SKILL.md	추가. user_required = status: planned → in_progress 승격 전 사용자 답변 필수
 planned	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
-planned	-	kiwi-srs/references/extended-workflow.md	, with trace_intent] / status=planned / priority / tags=[feasibility:
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- 신규 REQ 기본 status = planned, 기본 stability = draft. 사용자 검
@@ -1113,6 +1112,7 @@ planned	-	kiwi-srs/references/extended-workflow.md	equired OQ ≥ 1 | "{N}건 OQ
 planned	-	kiwi-srs/references/extended-workflow.md	| FR-TODO-004 | priority 기본값? | planned → in_progress 차단 |
 planned	-	kiwi-srs/references/extended-workflow.md	| 위 권고 모두 부재 + 신규 REQ status = planned + addition_site 없음 | "AC + tra
 planned	-	kiwi-srs/references/extended-workflow.md	신규 REQ 기본 status: planned (Status enum 에 미승인을 뜻하는 값은 없
+planned	-	kiwi-srs/references/extended-workflow.md	에 trace_intent=<값>] / status=planned / priority / tags=[feasibility:
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-coder | Implement planned tasks with TDD and verification
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-pm | Run planned tasks and finalize completed wo
 planned	wave-issues-field	_shared/kiwi/waves-event.md	ct | { doc_path, digest, open, planned, resolved, deferred } — wave 종
@@ -1686,7 +1686,6 @@ planned	-	kiwi-srs/SKILL.md	ddition_site 잔존 | status 상한 = planned |
 planned	-	kiwi-srs/SKILL.md	n_site 잔존 시 해당 REQ 의 status 는 planned 상한. 라이브 모드에서 update_status(in
 planned	-	kiwi-srs/SKILL.md	추가. user_required = status: planned → in_progress 승격 전 사용자 답변 필수
 planned	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
-planned	-	kiwi-srs/references/extended-workflow.md	, with trace_intent] / status=planned / priority / tags=[feasibility:
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- 신규 REQ 기본 status = planned, 기본 stability = draft. 사용자 검
@@ -1695,6 +1694,7 @@ planned	-	kiwi-srs/references/extended-workflow.md	equired OQ ≥ 1 | "{N}건 OQ
 planned	-	kiwi-srs/references/extended-workflow.md	| FR-TODO-004 | priority 기본값? | planned → in_progress 차단 |
 planned	-	kiwi-srs/references/extended-workflow.md	| 위 권고 모두 부재 + 신규 REQ status = planned + addition_site 없음 | "AC + tra
 planned	-	kiwi-srs/references/extended-workflow.md	신규 REQ 기본 status: planned (Status enum 에 미승인을 뜻하는 값은 없
+planned	-	kiwi-srs/references/extended-workflow.md	에 trace_intent=<값>] / status=planned / priority / tags=[feasibility:
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-coder | Implement planned tasks with TDD and verification
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-pm | Run planned tasks and finalize completed wo
 planned	wave-issues-field	_shared/kiwi/waves-event.md	ct | { doc_path, digest, open, planned, resolved, deferred } — wave 종
@@ -2268,7 +2268,6 @@ planned	-	kiwi-srs/SKILL.md	ddition_site 잔존 | status 상한 = planned |
 planned	-	kiwi-srs/SKILL.md	n_site 잔존 시 해당 REQ 의 status 는 planned 상한. 라이브 모드에서 update_status(in
 planned	-	kiwi-srs/SKILL.md	추가. user_required = status: planned → in_progress 승격 전 사용자 답변 필수
 planned	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
-planned	-	kiwi-srs/references/extended-workflow.md	, with trace_intent] / status=planned / priority / tags=[feasibility:
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- status: "planned"
 planned	-	kiwi-srs/references/extended-workflow.md	- 신규 REQ 기본 status = planned, 기본 stability = draft. 사용자 검
@@ -2277,6 +2276,7 @@ planned	-	kiwi-srs/references/extended-workflow.md	equired OQ ≥ 1 | "{N}건 OQ
 planned	-	kiwi-srs/references/extended-workflow.md	| FR-TODO-004 | priority 기본값? | planned → in_progress 차단 |
 planned	-	kiwi-srs/references/extended-workflow.md	| 위 권고 모두 부재 + 신규 REQ status = planned + addition_site 없음 | "AC + tra
 planned	-	kiwi-srs/references/extended-workflow.md	신규 REQ 기본 status: planned (Status enum 에 미승인을 뜻하는 값은 없
+planned	-	kiwi-srs/references/extended-workflow.md	에 trace_intent=<값>] / status=planned / priority / tags=[feasibility:
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-coder | Implement planned tasks with TDD and verification
 planned	planned-tasks-adjective	_shared/kiwi/pipeline-v1.md	| kiwi-pm | Run planned tasks and finalize completed wo
 planned	wave-issues-field	_shared/kiwi/waves-event.md	ct | { doc_path, digest, open, planned, resolved, deferred } — wave 종

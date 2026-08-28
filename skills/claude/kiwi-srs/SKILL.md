@@ -28,7 +28,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.11 | **Multi-aspect 요구사항 분리**. 1개 사용자 문장이 ≥2 코드 표면(예: addTodo + listTodos)을 다루면 기본은 표면당 1개 REQ로 분리하고 `depends_on` 으로 연결. 합치는 경우 `classification.rationale` 에 사유 기록 |
 | §0.12 | **`[INFERRED:level]` 배치 위치**. Markdown SRS에서는 (a) 추론 항목이 AC 라인 → 해당 AC 끝에 ` [INFERRED:high\|med\|low]` 부착, (b) 기본값/검증 정책 등 statement 차원 → §6 Open Questions 에 별도 등재 + REQ의 `rationale` 필드에도 동일 라벨 명시 |
 | §0.13 | **[INFERRED] 2단계 분류**. 라벨 뒤에 `:user_required` 또는 `:advisory` 추가. `user_required` = `status: planned → in_progress` 승격 **전 사용자 답변 필수**. `advisory` = 참고용, 승급 가능. 예: `[INFERRED:med:user_required]` |
-| §0.14 | **Trace intent 분리**. Code 타입 trace entry 에만 적용 — Requirement 타입 trace_link 에는 `trace_intent` 필드 미부착. Code trace `trace_intent` enum: `verifies` (기존 코드가 statement 동작 수행) / `addition_site` (해당 위치에 구현 추가 예정) / `negative` (의도된 부재). **Dual-intent split**: 동일 file:line-range 가 두 intent 를 동시에 가지면 범위 폭이 다른 별도 entry로 분리 등록. **Status cap**: 어느 trace 라도 `trace_intent=addition_site` 잔존 시 해당 REQ 의 status 는 `planned` 상한. 라이브 모드에서 `update_status(in_progress\|implemented)` 호출 시도 → 차단 + AskUserQuestion "구현 증거가 있습니까? (코드 path:line)" |
+| §0.14 | **Trace intent 분리**. `add_trace_link` 에는 `trace_intent` 인자가 없다. 스키마가 받는 것은 `id` · `type` · `reference` · `relation` · `notes` · `dryRun` · `ignoreLock` 이며, 이 일곱에 없는 인자는 조용히 버려진다. intent 는 `notes` 안에 `trace_intent=<값>` 으로 적는다. Code 타입 trace entry 에만 적용 — Requirement 타입 trace_link 의 `notes` 에는 `trace_intent` 미부착. Code trace `trace_intent` enum: `verifies` (기존 코드가 statement 동작 수행) / `addition_site` (해당 위치에 구현 추가 예정) / `negative` (의도된 부재). **Dual-intent split**: 동일 file:line-range 가 두 intent 를 동시에 가지면 범위 폭이 다른 별도 entry로 분리 등록. **Status cap**: 어느 trace 라도 `trace_intent=addition_site` 잔존 시 해당 REQ 의 status 는 `planned` 상한. 라이브 모드에서 `update_status(in_progress\|implemented)` 호출 시도 → 차단 + AskUserQuestion "구현 증거가 있습니까? (코드 path:line)" |
 | §0.15 | **Fabricated AC → OQ 강제**. AC 항목에 코드 증거 없거나 사용자 prompt 에 명시 없는 구체 값(예: 400-error body shape, 특정 timeout 초)이 포함되면 AC 라인에 포함 금지 — 대신 §6 Open Questions 에 `[NEEDS-USER]` 라벨로 등재. AC는 결정 가능 명제만. **Canonical placeholder grammar**: AC 본문이 OQ 결정을 참조하면 `{{OQ-N}}` 형식만 허용. `<default per OQ-1>`, `pending decision`, `TBD` 등 자유 형식 금지 |
 | §0.16 | **Discarded/Draft 마커 정책**. kiwi-srs 는 본문 마커(strikethrough / `[DISCARDED]` / `[DRAFT]`) 적용을 skip — speckiwi `Status=discarded` + `add_completed_work` Change Notes 기록을 SSOT 로 간주. 인덱스 (`00.index.md`) `(discarded)`/`(draft)` 접미사도 speckiwi mutation 이 자동 처리 |
 | §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}|{severity}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11|HIGH")` = `a5c02377715e12f316cec087d202cb76315c734c`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
@@ -68,7 +68,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 
 | IF | THEN |
 |---|---|
-| REQ 의 어느 Code trace 라도 `trace_intent = addition_site` 잔존 | status 상한 = `planned` |
+| REQ 의 어느 Code trace 라도 `notes` 에 `trace_intent=addition_site` 잔존 | status 상한 = `planned` |
 | 위 상태에서 `update_status(in_progress\|implemented)` 호출 시도 | 차단 + AskUserQuestion "구현 증거 path:line 제시 가능?" |
 | 사용자가 path:line 제시 → 검증 통과 | `addition_site` → `verifies` 로 trace 갱신 → status 승급 허용 |
 | 동일 file:line-range 가 두 intent 동시 보유 | 범위 폭이 다른 별도 entry 로 분리 등록 (단일 entry `verifies+addition_site` 금지) |
@@ -510,13 +510,13 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
    - **`acceptanceCriteria` 정책**: 원본 REQ-X 의 AC를 재진술 + 신규 AC 추가 (참조 형식 금지). `check_acceptance_criteria` 가 REQ별 독립 AC를 요구하므로 ID-참조는 검증 불가
 3. `add_trace_link { id: NEW-ID, type: "Requirement", reference: "REQ-X", relation: "supersedes", notes: "{delta}; re_stated_from: REQ-X#AC1, REQ-X#AC2" }`
 4. `update_status { id: REQ-X, status: "discarded" }` — Change Notes에 NEW-ID 참조 (SRS-MD §11.4 ID 재사용 금지). status 만 변경, `stability` 불변
-5. `add_trace_link { id: NEW-ID, type: "Code", reference: "{path:line}", trace_intent: "verifies|addition_site" }`
+5. `add_trace_link { id: NEW-ID, type: "Code", reference: "{path:line}", relation: "implements", notes: "trace_intent=verifies|addition_site" }` — `add_trace_link` 에는 `trace_intent` 인자가 없다. 스키마가 받는 것은 `id` · `type` · `reference` · `relation` · `notes` · `dryRun` · `ignoreLock` 이며, 이 일곱에 없는 인자는 조용히 버려진다. intent 는 `notes` 안에 `trace_intent=<값>` 으로 적는다.
 6. **Markdown sync** (§9.4)
 7. **Final `validate_spec`** — Markdown sync 완료 후 재호출
 
 #### new-feature
 
-1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, with `trace_intent`] / status=planned / priority / tags=[feasibility:{level}]
+1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, `notes` 에 `trace_intent=<값>`] / status=planned / priority / tags=[feasibility:{level}]
 2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check

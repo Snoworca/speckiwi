@@ -1,5 +1,4 @@
 import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // @req NFR-NODE-001 — a raw U+0000 makes ripgrep treat the file as binary. Name the file explicitly

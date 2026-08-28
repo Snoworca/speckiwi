@@ -602,7 +602,7 @@ sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
 
 도달 경로는 `kiwi-pm` 의 spawn 프롬프트 하나뿐이다 (`kiwi-pm --defer-srs-mutation <path>` 가 그대로 전달한다). 직접 호출은 지원 경로가 아니다.
 
-**적용하는 소비자는 아직 없다.** 큐를 읽어 재생 계획을 세우는 쪽(`speckiwi orchestrate replay plan`)은 이 타깃에서 착지했지만, 그 계획을 host root 에서 실제 호출로 **적용하는 쪽은 아직 저장소에 없다** — 그래서 큐를 **수확해 적용하는 오케스트레이터 run 밖에서 이 플래그를 쓰면 네 mutation 은 그대로 소실된다**. 수확 경로가 없는 맥락에서는 쓰지 않는다.
+**적용하는 소비자는 오케스트레이터다.** 큐를 읽어 재생 계획을 세우는 쪽(`speckiwi orchestrate replay plan`)과 그 계획을 host root 에서 실제 호출로 적용하는 쪽(`speckiwi orchestrate replay apply`, MCP `orchestrate_replay_apply`)이 모두 이 타깃에서 착지했다. 그러나 둘을 부르는 것은 오케스트레이터이므로, 큐를 **수확해 적용하는 오케스트레이터 run 밖에서 이 플래그를 쓰면 네 mutation 은 그대로 소실된다** — 적용 경로가 실재한다는 사실과 지금 이 run 이 그 경로 위에 있다는 사실은 별개다. 수확 경로가 확보되지 않은 맥락에서는 쓰지 않는다.
 
 **`--dry-run` 과 상호 배타다.** 둘을 함께 주면 거부하고 사유를 기록한다. dry-run 은 `dry_run: true` entry 만 남기는데 그 entry 를 host 에서 실제 호출로 재생할지가 정의돼 있지 않다 — 정의되지 않은 것을 조용히 한쪽으로 고르는 대신 거부한다.
 

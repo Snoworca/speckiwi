@@ -235,23 +235,44 @@ describe("FR-FLOW-121 — kiwi-coder --defer-srs-mutation and its kiwi-pm pass-t
     ).toBe(false);
   });
 
-  // AC-6 — the producer shipped before its consumer. Said in the text a reader reaches, not only in
-  // the requirement: today the flag is one hop from permanently losing four mutations per Task.
-  it.each(CODER_COPIES)("%s warns that the replay consumer does not exist yet", (copy) => {
+  // AC-6 — the CONDITION under which the four mutations are lost, said in the text a reader reaches
+  // rather than only in the requirement.
+  //
+  // This assertion has been re-anchored twice by the consumer arriving in pieces, and the reason is
+  // recorded here so it is not re-anchored a third time. It first demanded the text say NO consumer
+  // exists. IR-CLI-091 landed the planner and it was narrowed to "the planner is present, the
+  // applier is absent". IR-CLI-092 has since landed the applier — `orchestrate replay apply`, bound
+  // in `ORCHESTRATE_TOOL_BINDINGS` and backed by `applyReplayPlan` — so the absence half is now
+  // false in every form it has taken, and an assertion demanding it PINNED A FALSE SENTENCE INTO
+  // FOUR SHIPPED RENDERINGS. FR-FLOW-162 refuses that sentence from the other side.
+  //
+  // What was true throughout, and what the reader actually needs, is the condition: the queue is
+  // lost outside a run that harvests AND applies it. A condition does not go stale when a component
+  // ships, which is why the assertion now keys on it. FR-FLOW-121's AC-6 text still carries the
+  // superseded "the applier is absent" wording; correcting it needs a guarded status hop on a
+  // verified requirement and is left to the owner.
+  it.each(CODER_COPIES)("%s states the condition under which the queued mutations are lost", (copy) => {
     const ssot = mutationSsot(copy);
     const rule = coderFlagBody(copy);
     expect(rule, `${ssot} must define ${FLAG} before this can be asserted`).not.toBe("");
 
-    const caveat = line(rule, /소비자[는가]? 아직 없다|재생하는 쪽이 아직 없다/);
+    const caveat = line(rule, /수확해 적용하는[^\n]*밖에서/);
     expect(
       caveat,
-      `${ssot} must say the replay consumer does not exist yet; without it the text reads as if replay happens`
+      `${ssot} must name the condition — outside a run that harvests AND applies — or the text reads as if replay always happens`
     ).not.toBe("");
     expect(
       /소실|잃는다|사라진다/.test(rule),
       `${ssot} must say what is lost when the queue is never harvested`
     ).toBe(true);
     expect(HEDGE.test(caveat), `${ssot} the caveat must be absolute, not hedged`).toBe(false);
+    // The superseded wording, refused by name. Without this the cheapest way to satisfy the line
+    // above is to keep the old absence sentence and add the condition beside it, leaving the
+    // rendering saying both.
+    expect(
+      /소비자[는가]? 아직 없다|재생하는 쪽이 아직 없다|저장소에 없다/.test(rule),
+      `${ssot} still claims the applying consumer is absent, which orchestrate replay apply refutes`
+    ).toBe(false);
   });
 
   // AC-7 — the interaction the sibling family handles by refusing (`--from-task` × `--handoff`).
