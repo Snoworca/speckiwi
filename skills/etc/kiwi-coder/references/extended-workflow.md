@@ -49,7 +49,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 **평탄화 의무 — sidecar nested → MCP flat 변환은 coder 책임**:
 
-sidecar `tasks[].trace_links[]` 는 nested schema (`{source:{type,id}, target:{type,reference}, relation}`) 로 작성되어 있다. 동일하게 sidecar `mcp_call_log[].args` (planner 가 dry-run 시뮬레이션으로 적재한 entry) 도 nested 표현. 그러나 speckiwi MCP 실 호출 schema 는 **flat** 이므로, 본 §6.2 mutation 호출 직전에 반드시 평탄화해야 한다. nested 표현 그대로 호출 시 speckiwi MCP 가 임의 필드로 거부 → mutation 실패. 변환 매핑 SSOT 는 kiwi-planner §9.5 line 604-613 "sidecar nested ↔ 실 MCP flat 변환 매핑" 표 참조.
+sidecar `tasks[].trace_links[]` 는 nested schema (`{source:{type,id}, target:{type,reference}, relation}`) 로 작성되어 있다. 동일하게 sidecar `mcp_call_log[].args` (planner 가 dry-run 시뮬레이션으로 적재한 entry) 도 nested 표현. 그러나 speckiwi MCP 실 호출 schema 는 **flat** 이므로, 본 §6.2 mutation 호출 직전에 반드시 평탄화해야 한다. nested 표현 그대로 호출하면 flat 이 요구하는 `id` · `type` · `reference` · `relation` 이 전부 빠지므로 스키마 검증에서 거부된다 → mutation 실패. 반대로 스키마에 **없는** 이름을 얹는 것은 거부되지 않고 조용히 제거되므로, 거부에 기대어 오작성을 알아차릴 수는 없다. 변환 매핑 SSOT 는 kiwi-planner §9.5 "sidecar nested ↔ 실 MCP flat 변환 매핑" 표 참조.
 
 평탄화 예 (add_trace_link):
 ```
@@ -60,6 +60,8 @@ sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
   relation: "implements"                                   source.id (task id)>
                                               relation: "implements"
 ```
+
+sidecar `trace_links[i].trace_intent` 은 평탄화 대상이면서 flat schema 에 대응 인자가 없다. 값은 `notes` 에 `trace_intent=<값>` 으로 인코딩해 넘기고 최상위 인자로는 싣지 않는다 — 스키마에 없는 이름은 거부가 아니라 조용히 버려지며, 그 순간 kiwi-srs 가 `addition_site` 잔존으로 status 상한을 거는 근거가 사라진다.
 
 **시그니처 SSOT — speckiwi MCP 실제 schema 기준** (호출 인자는 flat 객체. 임의 필드 추가 금지 — 메타 정보는 summary 텍스트 또는 reportPaths 에 인코딩):
 

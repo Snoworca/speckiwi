@@ -250,6 +250,7 @@ planner 본 스킬은 (가) 만 다룬다. (나) 평탄화는 kiwi-coder §6.2 �
 | `target: {type: "Requirement", reference: "REQ-X-001"}` | `id: "REQ-X-001"`, `type: <task type 또는 "Code">`, `reference: <task.files[].path:line_range 또는 source.id>` |
 | `target: {type: "Code", reference: "src/x.ts:45-67"}` | `id: <task.req_ids 의 한 REQ>`, `type: "Code"`, `reference: "src/x.ts:45-67"` |
 | `relation` | `relation` |
+| `trace_intent` | `notes` 에 `trace_intent=<값>` 으로 인코딩 — flat schema 에 이 이름의 인자가 없으므로, 최상위 인자로 실으면 거부가 아니라 조용히 버려지고 kiwi-srs 의 `addition_site` status 상한이 읽을 데이터가 사라진다 |
 
 즉 sidecar 의 nested 표현은 plan 작성 / validator 검증 / 사람 가독성을 위한 SSOT 표현이고, 실 MCP 호출은 kiwi-coder 가 (나) flat schema 로 평탄화해 호출한다.
 
@@ -397,7 +398,7 @@ interface TraceLink {
   source: { type: "Task"; id: string };
   target: { type: "Requirement"|"Code"; reference: string };
   relation: string;
-  trace_intent?: "verifies"|"addition_site"|"negative";
+  trace_intent?: "verifies"|"addition_site"|"negative";  // 평탄화 시 실 MCP `notes` 에 `trace_intent=<값>` 으로 인코딩 — "sidecar nested ↔ 실 MCP flat 변환 매핑" 표 참조. flat schema 에 이 이름의 인자는 없다
 }
 
 interface McpCall {
