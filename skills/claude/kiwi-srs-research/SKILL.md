@@ -645,7 +645,7 @@ text 본문 (500자 한도 — §0.14):
 | 10. Mode boundary (subagent) | subagent 모드에서 mutation 시도? (§0.G3) | CRITICAL |
 
 평가자 토폴로지는 본 스킬에선 별도 Phase 없음. 검증 책임은:
-- standalone: 호출 후 사용자가 보고서 검토 + 필요 시 `kiwi-srs-reviewer` 호출 (계획)
+- standalone: 호출 후 사용자가 보고서를 직접 검토한다. 연구 산문에는 LLM 리뷰 라운드를 돌리지 않으며(저장소 CLAUDE.md 검증 정책), 그 주장이 요구가 될 때 `/kiwi-srs` · `/kiwi-srs-feasibility` 가 코드와 대조해 재검증한다
 - subagent: 호출자(예: kiwi-srs-feasibility) 가 자체 검증 축에 본 표 일부 포함
 
 ---

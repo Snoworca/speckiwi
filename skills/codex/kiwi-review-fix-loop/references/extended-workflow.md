@@ -116,9 +116,14 @@ Before `--close-reqs` mutations:
 
 Mutation order per REQ:
 
-1. `add_verification_evidence` with `type="test"`, concrete reference, and
-   optional `covers`.
-2. `update_status` to `verified`.
+1. `add_verification_evidence` with `type="test"`, a concrete reference, and
+   `covers` naming the acceptance criterion that reference proves.
+2. `check_acceptance_criteria` for those criteria. For each acceptance
+   criterion, name the test identifier that passed it first — a file path and
+   test name, or the `reference` step 1 registered under `covers` for that
+   same criterion. Do not check a criterion for which no such identifier is
+   named; leave it out of `acIds` and record the requirement as skipped.
+3. `update_status` to `verified`.
 
 If evidence fails for a REQ, skip its status update. Record every skipped and
 failed candidate in `closed_reqs.json`.

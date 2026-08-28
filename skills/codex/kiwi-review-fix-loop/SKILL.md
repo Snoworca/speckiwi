@@ -25,7 +25,7 @@ performed by separate delegated workers or clearly separated passes.
 | §0.3 | Behavioral, bug, regression, security, or performance findings need a regression test before the fix unless the finding is explicitly non-behavioral. |
 | §0.4 | Mock shortcuts, cwd-external edits, and signature text are critical violations. |
 | §0.5 | Normal mode does not mutate SRS. `--close-reqs` is the only opt-in SRS mutation path and it is self-mode only. |
-| §0.6 | `--close-reqs` may only move high-confidence impacted requirements from `implemented` to `verified` after evidence is registered per requirement. No bulk finalize, archive, or target-emptying behavior is allowed. |
+| §0.6 | `--close-reqs` allows exactly three mutations and only in self mode: `add_verification_evidence` (type=test), `check_acceptance_criteria` (per criterion, after the test that passed it is named), and `update_status` (`implemented` to `verified`, forward-only). It may only move high-confidence impacted requirements. No bulk finalize, archive, or target-emptying behavior is allowed. |
 | §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Finding classification remains local policy; `--auto` only governs user-decision gates. |
 | §0.8 | Emit pipeline events through `../_shared/kiwi/pipeline-event.md`. |
 | §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
@@ -122,9 +122,16 @@ Skip or halt when:
 
 For each eligible REQ:
 
-1. Add verification evidence with `type="test"` and a concrete test/report path.
-2. Then call `update_status` to `verified`.
-3. Log each call and result.
+1. Call `add_verification_evidence` with `type="test"` and a concrete test/report path, once for each
+   acceptance criterion the change touched, naming that criterion in `covers`.
+2. Call `check_acceptance_criteria` for those criteria. **For each acceptance criterion, name the test
+   identifier that passed it first** — a file path and test name, or the `reference` step 1 registered
+   under `covers` for that same criterion. **Do not check a criterion for which no such identifier is
+   named**: leave it out of `acIds` and record the requirement as skipped. Checking is a mutation, so a
+   criterion ticked without a named test satisfies the gate in form only.
+3. Then call `update_status` to `verified`. `update-status.ts` requires every criterion checked AND
+   evidence present, so a transition attempted without step 2 returns `MUTATION_DENIED`.
+4. Log each call and result.
 
 
 ### Orchestration delegation — `--no-pipeline-emit`

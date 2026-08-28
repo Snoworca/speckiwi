@@ -60,3 +60,6 @@ test/core/orchestrator/__fr-node-164-probe.ts
 .codex/
 .mcp.json
 docs/spec/steps/
+
+# Observed text written beside a golden on mismatch; the golden itself is copied by hand
+*.golden.md.actual

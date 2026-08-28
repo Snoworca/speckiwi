@@ -951,7 +951,14 @@ function toolAxisHits(files: string[]): ToolAxisHit[] {
  * same argument the slot floors carry: a reader that stopped matching reports zero violations.
  */
 const TOOL_AXIS_FLOOR: Record<string, number> = {
-  "skills/claude": 396,
+  // 396 → 394 (FR-FLOW-159, 2026-08-28). The claude call-log example gained a third tool name in
+  // its `"tool"` field, and that name is 25 characters, so two tokens that had been inside the
+  // 80-character window after the `update_status` anchor fell outside it. Both are JSON scaffolding
+  // of that example — the `sha1` placeholder and the `ok` key — and neither is a requirement
+  // status: the values the axis exists to read are unchanged, and the value-site golden records
+  // the change as +40/−24 sites, a net gain. Lowering a floor is a coverage reduction and is only
+  // sound when what left is named; that is why the two are named here.
+  "skills/claude": 394,
   "skills/codex": 301,
   "skills/etc": 297,
   ".agents/skills": 297
@@ -3214,7 +3221,7 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "tool-axis residue entries that are a misspelling of a lifecycle value"
     ).toEqual(["planner", "state"]);
     expect(TOOL_AXIS_FLOOR, "the tool-axis value-position floor").toEqual({
-      "skills/claude": 396,
+      "skills/claude": 394,
       "skills/codex": 301,
       "skills/etc": 297,
       ".agents/skills": 297

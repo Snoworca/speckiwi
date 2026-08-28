@@ -483,7 +483,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
 - `add_completed_work(plan-summary)` 도 skip (REQ 가 미완료인데 plan-summary append 는 오해 소지)
 - 보고서 §6.3 에서 부분 완료 REQ 목록을 명시
 
-**Stability 변경 / verified 승급**: PM 권한 아님. kiwi-srs-feasibility / kiwi-reviewer 영역.
+**Stability 변경 / verified 승급**: PM 권한 아님. Stability 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop `--close-reqs` 영역.
 
 ### 6.3 종료 보고서 + doculight 표시
 
@@ -599,11 +599,11 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 
 ### 7.4 Out of Scope (v0.1)
 
-- PRD / SRS / feasibility / planner / coder 자체 호출 (각각 kiwi-prd, kiwi-srs, kiwi-srs-feasibility, kiwi-planner, kiwi-coder 영역)
-- 구현 리뷰 (kiwi-reviewer 영역, 미구현)
+- SRS / feasibility / planner / coder 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-planner, kiwi-coder 영역). PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
+- 구현 리뷰 (kiwi-review-fix-loop 영역 — kiwi-pm 은 그 스킬을 후속으로 권고할 뿐 직접 리뷰하지 않는다)
 - 풀 파이프라인 오케스트레이션 (별도 kiwi-pipeline 향후 스킬)
-- Stability 변경 (kiwi-srs-feasibility / kiwi-reviewer)
-- verified 승급 (kiwi-reviewer 영역)
+- Stability 변경 (kiwi-srs-feasibility 영역)
+- verified 승급 (kiwi-review-fix-loop `--close-reqs` 영역에 위임)
 - `--headless` 모드 (위임 worker 위임 단일 모드 정책)
 - 비용 / 토큰 추적 (delegated worker usage 노출 후 검토)
 - 순차 단일 Task spawn (`depends_on` 독립 Task 동시 실행, v0.2 후보)

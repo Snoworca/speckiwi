@@ -27,7 +27,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.5 | **외부 모듈 수정 금지**. cwd 외부 path 가 fix diff 에 진입 시 §0.G4 발동 |
 | §0.6 | **시그니처 금지** (CLAUDE.md §6). 커밋·코드 주석·PR 응답 코멘트·산출물 어디에도 AI 식별 정보 금지 |
 | §0.7 | **/snoworca-\* 호출 절대 금지** (프로젝트 CLAUDE.md §7). 로직만 차용 |
-| §0.8 | **MCP mutation 자체 호출 금지 (느슨 결합)**. 본 스킬은 직접 `add_requirement` / `add_trace_link` / `update_status` 등을 호출하지 않는다. 리뷰-fix 흐름에서 SRS 변경이 필요한 finding 이 발생하면 사용자 보고 + `/kiwi-srs-sync` 또는 `/kiwi-srs` 위임 권고 (Skill 자동 호출 안 함 — review-fix-loop 의 책임 경계 외). **예외 (옵션 opt-in)**: 사용자가 `--close-reqs` 명시 시 셀프 모드 한정으로 `update_status` (implemented→verified, forward-only) + `add_verification_evidence` (type=test) 2종 호출 허용 (§0.G7 + §6.6). 기본 동작은 종전대로 mutation 금지 유지. read 호출 (`get_active_target` / `summarize_target` / `list_requirements`) 은 mutation 이 아니므로 §0.8 적용 외 — `--close-reqs` 미활성 상태에서도 호출 가능. |
+| §0.8 | **MCP mutation 자체 호출 금지 (느슨 결합)**. 본 스킬은 직접 `add_requirement` / `add_trace_link` / `update_status` 등을 호출하지 않는다. 리뷰-fix 흐름에서 SRS 변경이 필요한 finding 이 발생하면 사용자 보고 + `/kiwi-srs-sync` 또는 `/kiwi-srs` 위임 권고 (Skill 자동 호출 안 함 — review-fix-loop 의 책임 경계 외). **예외 (옵션 opt-in)**: 사용자가 `--close-reqs` 명시 시 셀프 모드 한정으로 `update_status` (implemented→verified, forward-only) + `add_verification_evidence` (type=test) + `check_acceptance_criteria` (AC 마다 지목 선행) 3종 호출 허용 (§0.G7 + §6.6). 기본 동작은 종전대로 mutation 금지 유지. read 호출 (`get_active_target` / `summarize_target` / `list_requirements`) 은 mutation 이 아니므로 §0.8 적용 외 — `--close-reqs` 미활성 상태에서도 호출 가능. |
 | §0.9 | **검증 서브에이전트 모델 정책 SSOT** (kiwi-coder §0.16 정합). 까칠 리뷰어 / 분류기 / 정형 검사 등 **검증 서브에이전트**는 기본적으로 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 그 모델을 override 한다. **시니어 fixer 는 현재 세션 모델이나 `--model` 영향 없음** (kiwi-coder 시니어 코더와 동일). count 는 모든 모드 공통 (각 ×1) |
 | §0.10 | **`.kiwi/` 상태 영속**. `cwd/.kiwi/sessions/{run-id}/state.json` 갱신. 재개 가능 (`--resume`) |
 | §0.11 | **모드 결정 SSOT (§0.G1)**. 기본은 셀프 모드. `--pr` / `-pr` / `--PR` / `-PR` 옵션 또는 자연어 명시 ("PR 리뷰 읽고 수정", "PR 코멘트 적용", "gh pr review fix") 시 PR 모드. 두 모드는 상호 배타 |
@@ -210,7 +210,7 @@ self_scope.source enum 매핑 (§3.1):
   - `pr_response.md` (PR 모드) — PR 응답 코멘트 본문 (`--no-respond` 부재 시)
   - `rejected_findings.log` — 거절된 finding 사유
   - `closed_reqs.json` (`--close-reqs` 활성 시) — REQ verified 전이 결과 (req_id → from_status, to_status, evidence_ref, skipped_reason)
-  - `mcp_call_log.jsonl` (`--close-reqs` 활성 시) — MCP mutation 호출 로그 (update_status, add_verification_evidence)
+  - `mcp_call_log.jsonl` (`--close-reqs` 활성 시) — MCP mutation 호출 로그 (update_status, add_verification_evidence, check_acceptance_criteria)
 - **`.kiwi/` 상태**: `cwd/.kiwi/sessions/{run-id}/`
   - `state.json` — phase, finding 큐, fix 적용 상태
   - `worklog.jsonl`
@@ -527,18 +527,19 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 
 산출물: `closed_reqs.json.candidates`
 
-#### 6.6.2 MCP 호출 (§0.8 화이트리스트 2종)
+#### 6.6.2 MCP 호출 (§0.8 화이트리스트 3종)
 
 각 high-confidence REQ 에 대해 순서대로:
 
 1. `add_verification_evidence({ id: req_id, type: "test", reference: regression_test_path, covers: <단일 AC-ID string 또는 omit>, notes: "kiwi-review-fix-loop 회귀 검증 통과 (run_id={run-id})" })` — speckiwi MCP schema `covers: z.string().optional()` 준수. 각 REQ 의 영향 AC 별 1건씩 반복 호출 (AC-1, AC-2 …). evidence 등록 호출 총합 = N (REQ 수) × M (각 REQ 의 영향 AC 수). 어느 AC 에 매핑할지 §6.6.1 추출 단계에서 구체 AC-ID 로 resolve 되지 않은 경우 `covers` 필드 omit 허용 (REQ 전체 커버리지로 기록).
-2. `update_status({ id: req_id, status: "verified" })`
+2. `check_acceptance_criteria({ id: req_id, acIds: [<지목을 마친 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자를 먼저 지목한다.** 지목 대상은 파일 경로와 테스트 이름, 또는 직전 1번 호출이 그 AC 에 대해 `covers` 로 등록한 `reference` 다. **지목이 없는 AC 는 체크하지 않는다** — `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다.
+3. `update_status({ id: req_id, status: "verified" })`
 
-순서 의무: evidence 등록 → status 전이 (evidence 등록 실패 시 status 전이 skip + skipped_reason 기록).
+순서 의무: evidence 등록 → AC 체크 → status 전이 (앞 단계 실패 시 뒤 단계 skip + skipped_reason 기록). `update-status.ts` 의 게이트가 AC 전량 체크와 증거를 함께 요구하므로, 2번을 건너뛴 3번은 `MUTATION_DENIED` 로 거부된다.
 
 각 호출은 `mcp_call_log.jsonl` 에 1줄 append:
 ```json
-{"called_at": "ISO-8601", "tool": "update_status|add_verification_evidence", "args": {...}, "args_hash": "sha1...", "ok": true|false, "response": {...}}
+{"called_at": "ISO-8601", "tool": "update_status|add_verification_evidence|check_acceptance_criteria", "args": {...}, "args_hash": "sha1...", "ok": true|false, "response": {...}}
 ```
 
 #### 6.6.3 멱등성 + 실패 처리

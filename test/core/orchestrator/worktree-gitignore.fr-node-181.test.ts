@@ -37,11 +37,26 @@ async function trackedGitignore(): Promise<string> {
   return readFile(path.join(REPO_ROOT, ".gitignore"), "utf8");
 }
 
-/** The tracked file with this requirement's entry removed — the probe AC-4's control uses. */
-function withoutWorktreeEntry(text: string): string {
+/**
+ * The tracked file with EVERY rule that covers a lane checkout removed — the probe AC-4's control
+ * uses.
+ *
+ * Two rules cover it now, not one. `.claude/` was added later to keep whatever the agent runtime
+ * writes under that directory out of the tree, and it subsumes this requirement's own
+ * `**\/.claude/worktrees/`. Removing only the narrow rule therefore left the checkouts still
+ * ignored, and the control reported nothing — which reads exactly like the case it exists to
+ * distinguish. A control that cannot make the thing happen proves nothing about the rule that
+ * prevents it, so the probe strips both.
+ */
+function withoutWorktreeCoverage(text: string): string {
+  const covers = (line: string): boolean => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#")) return false;
+    return trimmed.endsWith(".claude/worktrees/") || trimmed === ".claude/";
+  };
   const stripped = text
     .split(/\r?\n/)
-    .filter((line) => !line.trim().endsWith(".claude/worktrees/") || line.trim().startsWith("#"))
+    .filter((line) => !covers(line))
     .join("\n");
   if (stripped === text) {
     throw new Error("the probe removed no bytes; the control would prove nothing");
@@ -124,7 +139,7 @@ describe("FR-NODE-181 — tracked gitignore coverage of the agent-runtime worktr
   // AC-4: the negative control that makes the case above load-bearing. Without it the assertions
   // would keep passing if a future fixture change stopped creating the checkouts at all.
   it("would report and stage those checkouts without the entry", async () => {
-    const root = await seedRepo(withoutWorktreeEntry(await trackedGitignore()));
+    const root = await seedRepo(withoutWorktreeCoverage(await trackedGitignore()));
 
     const status = git(root, "status", "--porcelain", "--untracked-files=all");
     expect(status, "the root lane checkout must be reported without the entry").toMatch(

@@ -564,10 +564,12 @@ sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
    args: { id: "FR-X-001", status: <전이값> }       # dryRun 인자 없음 (호출 시점 적용)
    전이 규칙:
    - Task 시작 시 → "in_progress" (kiwi-coder 권한)
-   - 해당 REQ 의 모든 ac 가 green_evidence 보유 + acceptance_tests 통과 → "verified"
+   - 해당 REQ 의 모든 ac 가 green_evidence 보유 + acceptance_tests 통과 → "implemented"
    - 일부 ac 만 pass → "implemented"
    - 회귀 발생 → "blocked"
    - 기존 status 보다 backward 면 §0.G5 자체 차단 (호출 안 함)
+
+   `verified` 전이는 `$kiwi-review-fix-loop --close-reqs` 만 수행한다. `kiwi-coder` 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를 직접 실행하지 않는다. 본 스킬은 `check_acceptance_criteria` 를 부르지 않으므로, `verified` 를 시도하면 `update-status.ts` 의 게이트가 AC 전량 체크를 못 찾아 `MUTATION_DENIED` 를 돌려준다 — 그것이 이 규칙의 목표가 `implemented` 인 이유다.
 
 4. add_completed_work — Task 종료 시 1건 (Task 단위 요약)
    args: { date: "YYYY-MM-DD",                      # 필수 (today)
@@ -871,7 +873,8 @@ state_ref: ./state.json
 |---|---|
 | 계획 생성 | `kiwi-planner` |
 | SRS/요구사항 작성 | `kiwi-srs` |
-| 구현 후 간극 검토 | (예정) `kiwi-reviewer` |
+| 구현 후 코드 리뷰 · 회귀 검증 | `kiwi-review-fix-loop` |
+| 구현 결과와 SRS 의 어긋남 반영 | `kiwi-srs-sync` |
 | 실현가능성 사전 판단 | `kiwi-srs-feasibility` |
 | 외부 도구 비교 / 학습 | `kiwi-srs-research` |
 | PR/이슈 생성 | 본 스킬은 코드 변경만; PR 은 사용자 결정 |

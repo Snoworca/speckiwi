@@ -380,7 +380,9 @@ implemented	-	_shared/kiwi/feasibility-policy-schema-v1.md	ed | status is in_pro
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	- 일부 ac 만 pass → "implemented"
 implemented	-	kiwi-coder/SKILL.md	> "본 plan 의 REQ status 가 implemented 로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐
+implemented	-	kiwi-coder/SKILL.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
+implemented	-	kiwi-coder/SKILL.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
 implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
 implemented	-	kiwi-orchestrator/SKILL.md	ull acceptance 행을 하나라도 가진 요구는 implemented 에 도달할 수 있고 그 wave 에서 verified
@@ -549,9 +551,11 @@ stable	-	kiwi-srs/SKILL.md	CRITICAL | 신규 REQ가 verified/stable REQ와 명�
 stable	-	kiwi-srs/SKILL.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	kiwi-coder/SKILL.md	- (3) skip — verified 닫지 않음
-verified	-	kiwi-coder/SKILL.md	nce 보유 + acceptance_tests 통과 → "verified"
+verified	-	kiwi-coder/SKILL.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
+verified	-	kiwi-coder/SKILL.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
 verified	-	kiwi-coder/SKILL.md	sk_ids[] 비어있지 않거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
+verified	-	kiwi-coder/SKILL.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-coder/SKILL.md	로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 verified 로 닫으려면 /kiwi-review-fix-loop
 verified	-	kiwi-coder/SKILL.md	본 §8.4 의 mutation (verified 전이) 은 review-fix-loop §6.6 에 위임
 verified	-	kiwi-coder/SKILL.md	어있지 않거나 회귀 fail 잔존 시 (3) 자동 채택 (verified 닫기 부적합).
@@ -563,9 +567,10 @@ verified	-	kiwi-orchestrator/SKILL.md	의 열린 Task req_ids 집합의 어떤 �
 verified	-	kiwi-pm/SKILL.md	"in_progress", "implemented", "verified"]
 verified	-	kiwi-pm/SKILL.md	) 의 진입점. PM 의 mutation 책임 경계 외 (verified 전이) 는 review-fix-loop §6.6 에 위임
 verified	-	kiwi-pm/SKILL.md	- (3) skip — verified 닫지 않음 (implemented 상태 유지)
-verified	-	kiwi-pm/SKILL.md	- verified 승급 (kiwi-reviewer 영역)
+verified	-	kiwi-pm/SKILL.md	- verified 승급 (kiwi-review-fix-loop --clo
 verified	-	kiwi-pm/SKILL.md	6 에 위임 — PM 자체는 update_status("verified") 호출하지 않는다 (§0.12 mutation 분담
-verified	-	kiwi-pm/SKILL.md	Stability 변경 / verified 승급: PM 권한 아님. kiwi-srs-feasib
+verified	-	kiwi-pm/SKILL.md	Stability 변경 / verified 승급: PM 권한 아님. Stability 변경은 k
+verified	-	kiwi-pm/SKILL.md	ility 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop --clo
 verified	-	kiwi-pm/SKILL.md	n.md §4 conf<0.7 분기) (3) 자동 채택 (verified 닫기 부적합).
 verified	-	kiwi-pm/SKILL.md	us / trace Task 목록 / all_done / verified 여부
 verified	-	kiwi-pm/SKILL.md	로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 verified 로 닫으려면 /kiwi-review-fix-loop
@@ -982,6 +987,7 @@ implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implem
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/references/extended-workflow.md	- implemented 상태가 아닌 REQ만 영향 후보로 남음
 implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass → "implemented"
+implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
 implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
@@ -1008,7 +1014,7 @@ implemented	-	kiwi-pm/references/extended-workflow.md	to: "implemented",
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 모든
 implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_status(id, "implemented") 일괄 + add_completed_work(dat
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
-implemented	-	kiwi-review-fix-loop/SKILL.md	nce impacted requirements from implemented to verified after evidence i
+implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
 implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
@@ -1156,6 +1162,7 @@ stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐�
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
+verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
 verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
@@ -1165,16 +1172,17 @@ verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 w
 verified	-	kiwi-orchestrator/SKILL.md	근거는 --close-reqs 없이는 어떤 요구도 verified 에 도달하지 못하고 run 에 마무리가 없다는 것이다.
 verified	-	kiwi-orchestrator/SKILL.md	의 열린 Task req_ids 집합의 어떤 원소가 verified 도 아니고 coverage_residual[] 행에
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]
-verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-reviewer 영역)
-verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. kiwi-srs-feasib
+verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-review-fix-loop --clo
+verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. Stability 변경은 k
+verified	-	kiwi-pm/references/extended-workflow.md	ility 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop --clo
 verified	-	kiwi-pm/references/extended-workflow.md	us / trace Task 목록 / all_done / verified 여부
-verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified.
+verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified. update-status.ts requires e
 verified	-	kiwi-review-fix-loop/SKILL.md	ble REQs from implemented to verified.
 verified	-	kiwi-review-fix-loop/SKILL.md	d optional --close-reqs per-REQ verified transition through speckiwi MCP
+verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, forward-only). It may only mo
 verified	-	kiwi-review-fix-loop/SKILL.md	ed CRITICAL/HIGH findings block verified transition | close gate |
-verified	-	kiwi-review-fix-loop/SKILL.md	irements from implemented to verified after evidence is registered p
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	2. update_status to verified.
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
@@ -1557,6 +1565,8 @@ implemented	-	_shared/kiwi/feasibility-policy-schema-v1.md	ed | status is in_pro
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass → "implemented"
+implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
+implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
 implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
 implemented	-	kiwi-orchestrator/SKILL.md	ep_requirement 로 승급했고, 리뷰 루프는 implemented 가 아닌 요구를 건너뛰므로 분모 전체를 스킵하고도 T
@@ -1581,7 +1591,7 @@ implemented	-	kiwi-pm/references/extended-workflow.md	to: "implemented",
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 모든
 implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_status(id, "implemented") 일괄 + add_completed_work(dat
 implemented	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
-implemented	-	kiwi-review-fix-loop/SKILL.md	nce impacted requirements from implemented to verified after evidence i
+implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
 implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
@@ -1721,23 +1731,26 @@ stable	-	kiwi-srs/references/extended-workflow.md	CRITICAL | 신규 REQ가 verif
 stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
-verified	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "verified"
+verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
+verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
+verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-orchestrator/SKILL.md	2. 어떤 원소가 verified 인데 그 acceptance criterion 하나가
 verified	-	kiwi-orchestrator/SKILL.md	lemented 에 도달할 수 있고 그 wave 에서 verified 에 도달할 수 없다. 그 행의 untested_own
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
 verified	-	kiwi-orchestrator/SKILL.md	근거는 --close-reqs 없이는 어떤 요구도 verified 에 도달하지 못하고 run 에 마무리가 없다는 것이다.
 verified	-	kiwi-orchestrator/SKILL.md	의 열린 Task req_ids 집합의 어떤 원소가 verified 도 아니고 coverage_residual[] 행에
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]
-verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-reviewer 영역)
-verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. kiwi-srs-feasib
+verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-review-fix-loop --clo
+verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. Stability 변경은 k
+verified	-	kiwi-pm/references/extended-workflow.md	ility 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop --clo
 verified	-	kiwi-pm/references/extended-workflow.md	us / trace Task 목록 / all_done / verified 여부
-verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified.
+verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified. update-status.ts requires e
+verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, forward-only). It may only mo
 verified	-	kiwi-review-fix-loop/SKILL.md	ed CRITICAL/HIGH findings block verified transition | close gate |
 verified	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
-verified	-	kiwi-review-fix-loop/SKILL.md	irements from implemented to verified after evidence is registered p
 verified	-	kiwi-review-fix-loop/SKILL.md	nd guarded --close-reqs per-REQ verified transition through speckiwi mcp
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	2. update_status to verified.
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
@@ -2134,6 +2147,7 @@ implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implem
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/references/extended-workflow.md	- implemented 상태가 아닌 REQ만 영향 후보로 남음
 implemented	-	kiwi-coder/references/extended-workflow.md	- 일부 ac 만 pass → "implemented"
+implemented	-	kiwi-coder/references/extended-workflow.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/references/extended-workflow.md	nce 보유 + acceptance_tests 통과 → "implemented"
 implemented	-	kiwi-hot-fix/SKILL.md	precated impacted REQ cannot be implemented automatically | preflight |
 implemented	-	kiwi-orchestrator/SKILL.md	-reqs 는 stability=draft 이거나 implemented 가 아닌 요구를 건너뛰고 보고할 뿐 그것으로 게
@@ -2160,7 +2174,7 @@ implemented	-	kiwi-pm/references/extended-workflow.md	to: "implemented",
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 모든
 implemented	-	kiwi-pm/references/extended-workflow.md	인 REQ 에 한해 update_status(id, "implemented") 일괄 + add_completed_work(dat
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
-implemented	-	kiwi-review-fix-loop/SKILL.md	nce impacted requirements from implemented to verified after evidence i
+implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
 implemented	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ status is not implemented | skip that REQ |
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	4. Exclude non-implemented, draft, deprecated, and al
@@ -2299,6 +2313,7 @@ stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐�
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
+verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
 verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
@@ -2308,16 +2323,17 @@ verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 w
 verified	-	kiwi-orchestrator/SKILL.md	근거는 --close-reqs 없이는 어떤 요구도 verified 에 도달하지 못하고 run 에 마무리가 없다는 것이다.
 verified	-	kiwi-orchestrator/SKILL.md	의 열린 Task req_ids 집합의 어떤 원소가 verified 도 아니고 coverage_residual[] 행에
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]
-verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-reviewer 영역)
-verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. kiwi-srs-feasib
+verified	-	kiwi-pm/references/extended-workflow.md	- verified 승급 (kiwi-review-fix-loop --clo
+verified	-	kiwi-pm/references/extended-workflow.md	Stability 변경 / verified 승급: PM 권한 아님. Stability 변경은 k
+verified	-	kiwi-pm/references/extended-workflow.md	ility 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop --clo
 verified	-	kiwi-pm/references/extended-workflow.md	us / trace Task 목록 / all_done / verified 여부
-verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified.
+verified	-	kiwi-review-fix-loop/SKILL.md	. Then call update_status to verified. update-status.ts requires e
 verified	-	kiwi-review-fix-loop/SKILL.md	ble REQs from implemented to verified.
 verified	-	kiwi-review-fix-loop/SKILL.md	d optional --close-reqs per-REQ verified transition through speckiwi MCP
+verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, forward-only). It may only mo
 verified	-	kiwi-review-fix-loop/SKILL.md	ed CRITICAL/HIGH findings block verified transition | close gate |
-verified	-	kiwi-review-fix-loop/SKILL.md	irements from implemented to verified after evidence is registered p
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
-verified	-	kiwi-review-fix-loop/references/extended-workflow.md	2. update_status to verified.
+verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	ft, deprecated, and already-verified
 verified	-	kiwi-srs-feasibility/SKILL.md	ked 판정과 in_progress/implemented/verified status 충돌 | §0.G3 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
