@@ -6,8 +6,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
-import { REPO_ROOT, criticalGateRows, criticalGatesSection, isTableRowLine, stripFrontmatter } from "./kiwi-orchestrator-variants.js";
-import { MIRROR_EXCLUDED, RENDERINGS, readRepoFile, skillDirs } from "./kiwi-renderings.js";
+import { REPO_ROOT, criticalGateRows, criticalGatesSection, stripFrontmatter } from "./kiwi-orchestrator-variants.js";
+import { MIRROR_EXCLUDED, RENDERINGS, readRepoFile, scanUnits, skillDirs, unitAt } from "./kiwi-renderings.js";
 
 // @req FR-FLOW-164 — the gate that stops on a validation error, declared by the chain that promotes.
 //
@@ -364,110 +364,6 @@ const POLARITY_OVERRIDE_PHRASES: readonly string[] = POLARITY_OVERRIDES.map((ter
  */
 function retractionHits(text: string, phrases: readonly string[]): string[] {
   return phrases.filter((phrase) => text.includes(phrase));
-}
-
-/** One markdown block of a declaring section, which is the unit both section scans read. */
-interface ScanUnit {
-  /** The block's lines joined by single spaces, which is the sentence a reader is handed. */
-  readonly text: string;
-  /** 1-based within the section, so a report names the block rather than a fold inside it. */
-  readonly startLine: number;
-  readonly endLine: number;
-}
-
-/**
- * A section's blocks, with the soft line breaks inside each paragraph joined the way a renderer
- * joins them.
- *
- * Scanning raw lines let a forbidden phrase pass by being FOLDED across a line break: no line
- * carried it, while the rendered paragraph read as one sentence. That was reachable in the tree as
- * it ships rather than only in principle — three sections already wrap prose mid-sentence
- * (`skills/codex/kiwi-tdd`, `skills/etc/kiwi-tdd` and its `.agents` mirror) — and `may be
- * overridden` folded across two lines of that paragraph was measured at 20 passed.
- *
- * Flattening the WHOLE SECTION instead is the accident FR-FLOW-160 recorded: with the newline
- * boundaries gone the only boundary left was a table delimiter, and a pattern then reached across
- * 2,496 characters into an unrelated clause. A blank line is the boundary markdown itself uses, so
- * joining only within one block closes the fold and keeps every boundary a reader can see.
- *
- * A TABLE ROW is its own unit, and so is a heading — inside a quote as much as outside one, which
- * is why both are read after the quote marker is stripped rather than off the raw line. Joining
- * consecutive rows would put the 571 table lines these 27 sections carry into one blob per section,
- * which is FR-FLOW-160's shape again with cell walls for the boundaries it erased. A row is
- * `isTableRowLine`, the predicate `tableRows` reads by, and the two share it rather than each
- * holding a copy: they had diverged, and reading the leading `|` alone made a boundary out of a
- * line a renderer wraps into the prose below it — `| a | may be` continued by `overridden here`
- * rendered as one paragraph and was missed, and is caught now.
- *
- * A BLOCKQUOTE repeats its `>` on every line it wraps onto, so joining those lines raw left the
- * marker standing mid-string and the phrase still did not reassemble — the fold passed while the
- * renderer showed one paragraph. The marker is therefore stripped from each quoted line before the
- * join, and the quote is made a boundary where a quote STARTS after unquoted text, where a `>`-only
- * line blanks it, and where the NESTING DEPTH changes. These were rendered and counted rather than
- * reasoned about, and counting is what found the one place the boundary is NOT the renderer's: a
- * line DEDENTING to a shallower `>` is markdown's lazy continuation, so `>> one may be` above
- * `> overridden here` renders as a single paragraph while this closes between them and MISSES the
- * fold. Deepening is the opposite — a renderer opens a nested quote there — so no single rule
- * over `!==` serves both, and the miss was kept over the false alarm the other choice makes. It is
- * unreachable in a tree whose seven quote lines are all single-line and unnested, and AC-8, VE-6 Q8
- * and VE-7 record it. A LIST marker needs none of this and gets none: it is not repeated on a
- * wrapped line, so a wrapped item already joins while two items keep the `-` between them, which is
- * the split the renderer draws there.
- */
-function scanUnits(section: string): ScanUnit[] {
-  const units: ScanUnit[] = [];
-  const lines = section.split("\n");
-  let parts: string[] = [];
-  let startLine = 0;
-  // 0 outside a quote, otherwise how many `>` the open block's lines carry. A different depth is a
-  // different blockquote, which is why a change in it closes the block rather than joining to it.
-  let quoteDepth = 0;
-  const close = (endLine: number): void => {
-    if (parts.length > 0) units.push({ text: parts.join(" "), startLine, endLine });
-    parts = [];
-    quoteDepth = 0;
-  };
-  const open = (index: number, text: string): void => {
-    if (parts.length === 0) startLine = index + 1;
-    parts.push(text);
-  };
-  for (let index = 0; index < lines.length; index += 1) {
-    const trimmed = (lines[index] as string).trim();
-    if (trimmed === "") {
-      close(index);
-      continue;
-    }
-    let content = trimmed;
-    const quoted = /^(>+)\s?(.*)$/.exec(trimmed);
-    if (quoted !== null) {
-      const depth = (quoted[1] as string).length;
-      content = (quoted[2] as string).trim();
-      // A quote opening, a nesting change and a marker-only line each start a new paragraph in the
-      // rendered output; only a line continuing the same depth is a soft wrap inside one.
-      if (content === "" || depth !== quoteDepth) close(index);
-      if (content === "") continue;
-      quoteDepth = depth;
-    }
-    // Read AFTER the marker is off, because `> ## x` is a heading in the rendered output and this
-    // check run over the raw line could not see it: the heading fell through to the quote branch,
-    // lost its marker and joined the quoted line beneath it, which is a block a renderer never
-    // draws. An unquoted line here is either prose or markdown's lazy continuation of an open
-    // quote, which renders inside that same paragraph and so joins on the footing every soft wrap
-    // has.
-    if (isTableRowLine(content) || /^#{1,6}\s/.test(content)) {
-      close(index);
-      units.push({ text: content, startLine: index + 1, endLine: index + 1 });
-      continue;
-    }
-    open(index, content);
-  }
-  close(lines.length);
-  return units;
-}
-
-/** Where a block sits, so a failure names a place in the file rather than a joined string. */
-function unitAt(unit: ScanUnit): string {
-  return unit.startLine === unit.endLine ? `section line ${unit.startLine}` : `section lines ${unit.startLine}-${unit.endLine}`;
 }
 
 /** The sites whose declaring section also carries a sentence cancelling the rule (AC-6). */

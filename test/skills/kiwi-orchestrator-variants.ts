@@ -299,6 +299,49 @@ export function ownedSubsections(body: string, verb: string): OwnedSubsection[] 
   });
 }
 
+/**
+ * The five ways a sentence can rule on the terminal line's validation without being able to hide it.
+ *
+ * Narrower than a subject vocabulary on purpose: the shared files legitimately talk about
+ * `terminal_review`, `final-verify`, verification records and version gates all through, so a wide
+ * vocabulary would be a false positive on every second paragraph. These five name the VALIDATOR,
+ * and the validator is the thing a file the skill defers to has no business ruling on.
+ *
+ * Five is also the WIDEST set those files can carry rather than the set that closes them — the
+ * event SSOT writes the bare noun `검증` 27 times legitimately, so the bare noun cannot join. What
+ * a sentence built from it alone cannot avoid is its own SHAPE, and that is closed separately by
+ * FR-FLOW-158 AC-5 rather than by adding a sixth name here.
+ *
+ * Each pattern's case sensitivity and separator set is decided rather than inherited. The inherited
+ * MCP-tool pattern was `/orchestrate[_ ]validate/`, and `orchestrate-validate` — the spelling a
+ * Korean sentence reaches for first — walked past it. `test/skills/shared-corpus-validator-silence
+ * .fr-flow-158.test.ts` holds every edge below as an assertion and records what each one buys.
+ *
+ * Read by FR-FLOW-155 AC-8 over the one file `§0.1` names and by FR-FLOW-158 over every file under
+ * `_shared/kiwi/`; one definition, so the two corpora cannot drift into two rule sets.
+ */
+export const PROCEDURE_NOUNS: ReadonlyArray<readonly [string, RegExp]> = [
+  ["the MCP tool", /orchestrate[-_ ]validate/i],
+  ["the validator function", /validate[-_ ]?waves[-_ ]?journal/i],
+  ["the gate it raises", /terminal[-_ ]review[-_ ]loop[-_ ]missing/i],
+  ["the engine flag", /--engine/i],
+  ["the validator by common noun", /검증기/]
+];
+
+/**
+ * Rewriting the terminal line, stated as permitted. Positive conjugations only: the prohibition is
+ * `…다시 쓰지 않는다`, which none of these match, and the write instruction `종료 줄을 쓴다` carries
+ * no `다시`/`고쳐`/`재작성`. Subject-scoped on purpose — the verdict enumeration lives in the same
+ * section and is not about this rule.
+ *
+ * Shared for the same reason `PROCEDURE_NOUNS` is: FR-FLOW-155 reads it over one file of
+ * `_shared/kiwi/` and over the section it owns, and FR-FLOW-158's wider ban is asserted to subsume
+ * this verb list rather than to restate it. Two spellings of one rule drift apart, and the one that
+ * drifts is always the one nobody is looking at.
+ */
+export const REWRITE_PERMITTED =
+  /종료 줄[^\n]{0,24}?(다시 쓴다|다시 써|다시 쓸|고쳐 쓴다|고쳐 다시|재작성한다|재작성해|재발행|덮어쓴다|덮어써|덮어 쓴다|덮어쓸|재기록한다|재기록해)/;
+
 /** Text windows of +/- `radius` characters around every match of `re`. */
 export function windowsAround(text: string, re: RegExp, radius = 400): string[] {
   const scan = new RegExp(re.source, `${re.flags.replace("g", "")}g`);

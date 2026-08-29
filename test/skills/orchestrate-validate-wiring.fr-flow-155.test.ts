@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   ORCHESTRATOR_MIRROR,
   ORCHESTRATOR_VARIANTS,
+  PROCEDURE_NOUNS,
+  REWRITE_PERMITTED,
   normaliseEol,
   offsetOf,
   ownedSubsections,
@@ -151,14 +153,6 @@ const HEDGE =
   /수 있다|해도 된다|권장|바람직|원칙적으로|가능하면|되도록|경우에 따라|가급적|필요하면|필요 시|것이 좋다|편이 (안전|낫)|선택적|해도 무방|권한다/;
 
 /**
- * Rewriting the terminal line, stated as permitted. Positive conjugations only: the prohibition is
- * `…다시 쓰지 않는다`, which none of these match, and the write instruction `종료 줄을 쓴다` carries
- * no `다시`/`고쳐`/`재작성`. Subject-scoped on purpose — the verdict enumeration lives in the same
- * section and is not about this rule.
- */
-const REWRITE_PERMITTED =
-  /종료 줄[^\n]{0,24}?(다시 쓴다|다시 써|다시 쓸|고쳐 쓴다|고쳐 다시|재작성한다|재작성해|재발행|덮어쓴다|덮어써|덮어 쓴다|덮어쓸|재기록한다|재기록해)/;
-/**
  * Retiring the rule without naming the line — the other shape a token-preserving inversion takes.
  *
  * The tail alternations are the blanket form: a sentence that voids the section's instructions
@@ -180,24 +174,6 @@ const RULE_RETRACTED =
 const EVENT_CONTRACT = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"].map(
   (root) => `${root}/_shared/kiwi/waves-event.md`
 );
-
-/**
- * The five ways a sentence can rule on the terminal line's validation without being able to hide it.
- *
- * Narrower than a subject vocabulary on purpose: that file legitimately talks about `terminal_review`,
- * `final-verify`, verification records and version gates all through, so a wide vocabulary would be
- * a false positive on every second paragraph. These five name the VALIDATOR, and the validator is
- * the thing that file has no business ruling on. Five is also the WIDEST set it can carry rather than
- * the set that closes it — it writes the bare noun `검증` 27 times legitimately — and the remainder is
- * FR-FLOW-158's.
- */
-const PROCEDURE_NOUNS: Array<[string, RegExp]> = [
-  ["the MCP tool", /orchestrate[_ ]validate/],
-  ["the validator function", /validateWavesJournal/],
-  ["the gate it raises", /terminal-review-loop-missing/],
-  ["the engine flag", /--engine/],
-  ["the validator by common noun", /검증기/]
-];
 
 const bodyOf = (relPath: string): string => stripFrontmatter(readVariant(relPath));
 
@@ -464,6 +440,11 @@ describe.each(EVENT_CONTRACT)("FR-FLOW-155 AC-8 — the event SSOT does not rule
   // raises, by the flag that routes it, or by the common noun `검증기` — and all five are absent
   // here today. `종료 줄` itself is NOT on that list: this file legitimately says three times when
   // the line is written relative to the review's own commit, which is schema, not procedure.
+  //
+  // `PROCEDURE_NOUNS` is defined in `kiwi-orchestrator-variants.ts` rather than here, because
+  // FR-FLOW-158 reads the same five names over every file under `_shared/kiwi/` and two spellings of
+  // one rule is two rules. Narrowing it narrows both corpora at once, which is the point: the
+  // requirement each serves says what the set is, and neither suite may shrink it privately.
   it("is present and non-trivial, so a deleted or emptied rendering cannot pass by carrying nothing", () => {
     expect(
       readVariant(copy).length,
