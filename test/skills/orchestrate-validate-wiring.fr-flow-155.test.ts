@@ -55,7 +55,9 @@ import {
 // deleted alongside the rows.
 //
 // The coordinated-edit costs are NOT the same, and every count below was measured to green over
-// `test/skills` at 66 files / 3424 tests. Each count names the clause it belongs to, because an
+// `test/skills` as it stood at 66 files / 3424 tests, before FR-FLOW-158 took it to 67 / 3452;
+// the counts below are that reading and are not re-derived here. Each names the clause it belongs
+// to, because an
 // earlier draft of this comment reported one clause's numbers under another clause's name.
 // Inverting one of the six named clauses costs FOUR file kinds — the body, the golden, that clause's
 // rows, and THIS file, whose presence and hedge assertions still refuse the weakened sentence after
