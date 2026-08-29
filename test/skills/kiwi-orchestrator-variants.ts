@@ -227,6 +227,78 @@ export function verbSection(body: string, verb: string): string {
   return section(body, new RegExp(`^###\\s+§V\\.${verb.replace(/[-]/g, "\\-")}(?:\\s|$)`));
 }
 
+/** Line endings and trailing whitespace only, so a checkout under `core.autocrlf` is not read as a contradiction. */
+export function normaliseEol(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\s+$/, "");
+}
+
+/**
+ * The owner tag a `####` subsection heading carries: the requirement whose rules that subsection
+ * states. Backticked, so it reads the same way as the ids the bodies already cite. @req FR-FLOW-157 AC-1
+ */
+export const SUBSECTION_OWNER = /`((?:FR|IR|NFR)-[A-Z]+-\d+)`\s*(?:이|가)\s*소유한다/;
+
+export interface OwnedSubsection {
+  /** The `####` line itself, as it ships. */
+  heading: string;
+  /** The heading text before the em dash — what a ledger row points at. */
+  title: string;
+  /** The requirement the heading declares as owner, or "" when it declares none. */
+  owner: string;
+  /** Offsets into the BODY, so an edit can be spliced back without re-deriving the boundary. */
+  start: number;
+  end: number;
+  /** Heading to the subsection's end, EOL-normalised and trailing-trimmed. */
+  text: string;
+}
+
+/**
+ * The `####` subsections one `§V.<verb>` section declares, each with the requirement that owns it.
+ *
+ * `§V.final-verify` carried two subjects under two owners, and a byte comparison drawn across it
+ * would have frozen text belonging to a requirement it is not about — measured, and the reason
+ * FR-FLOW-155 bought a closed vocabulary instead. A heading is what separates them, so an edit is
+ * judged by the requirement that owns the section it landed in. Read from the body rather than
+ * from a list of expected headings: a literal answers "how many sections" with its own content,
+ * and a rendering that grew a third would be swept past.
+ *
+ * The extent of the LAST subsection is the extent of the verb section, so a golden that holds it
+ * runs from its heading to the next `###` — one subject per compared span. @req FR-FLOW-157 AC-1
+ */
+export function ownedSubsections(body: string, verb: string): OwnedSubsection[] {
+  const lines = body.split("\n");
+  const opening = new RegExp(`^###\\s+§V\\.${verb.replace(/[-]/g, "\\-")}(?:\\s|$)`);
+  const start = lines.findIndex((line) => opening.test(line));
+  if (start === -1) return [];
+  let stop = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const level = /^(#{1,6})\s/.exec(lines[index] as string)?.[1]?.length;
+    if (level !== undefined && level <= 3) {
+      stop = index;
+      break;
+    }
+  }
+  const offsets: number[] = [];
+  for (let index = 0, cursor = 0; index < lines.length; index += 1) {
+    offsets.push(cursor);
+    cursor += (lines[index] as string).length + 1;
+  }
+  const headings: number[] = [];
+  for (let index = start + 1; index < stop; index += 1) if (/^####\s/.test(lines[index] as string)) headings.push(index);
+  return headings.map((at, nth) => {
+    const end = headings[nth + 1] ?? stop;
+    const heading = (lines[at] as string).replace(/\r$/, "");
+    return {
+      heading,
+      title: (heading.replace(/^####\s+/, "").split(" — ")[0] as string).trim(),
+      owner: SUBSECTION_OWNER.exec(heading)?.[1] ?? "",
+      start: offsets[at] as number,
+      end: offsets[end] ?? body.length,
+      text: normaliseEol(lines.slice(at, end).join("\n"))
+    };
+  });
+}
+
 /** Text windows of +/- `radius` characters around every match of `re`. */
 export function windowsAround(text: string, re: RegExp, radius = 400): string[] {
   const scan = new RegExp(re.source, `${re.flags.replace("g", "")}g`);

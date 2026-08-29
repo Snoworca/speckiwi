@@ -4,11 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   ORCHESTRATOR_MIRROR,
   ORCHESTRATOR_VARIANTS,
+  normaliseEol,
   offsetOf,
+  ownedSubsections,
   readVariant,
   stripFrontmatter,
-  tiedTogether,
-  verbSection
+  tiedTogether
 } from "./kiwi-orchestrator-variants.js";
 
 // @req FR-FLOW-155 AC-3 — every rendering names the validator in its terminal-verify section: when it
@@ -16,20 +17,25 @@ import {
 // @req FR-FLOW-155 AC-4 — what this file does and does not guarantee, stated here rather than left to
 // the next reader to infer from a green run.
 // @req FR-FLOW-155 AC-5 — the wording this change introduces, counted in the shipped tree first.
+// @req FR-FLOW-155 AC-8 — the event SSOT does not rule on the procedure the skill keeps for itself.
 //
 // ─── WHAT THIS FILE GUARANTEES ──────────────────────────────────────────────────────────────────
 // That the instruction is PRESENT in all four renderings of `kiwi-orchestrator/SKILL.md`, that it
-// sits within one window of the terminal-review contract it guards, that deleting it from a single
-// rendering turns this file red, and that the span it governs — from the terminal-review contract to
-// the end of §V.final-verify — is byte-identical to `orchestrate-validate-wiring.fr-flow-155.golden.md`
-// in every rendering. The golden is what makes the coverage UNIFORM. The presence and proximity
-// assertions below read tokens, and a token survives its own inversion: each of them was satisfied by
-// a paragraph whose main instruction had been flipped to "do not put the line through the validator".
-// Pinning the span settles every clause in it at once — the four normative ones (call it after the
-// write / route kiwi-orchestrator journals to MCP with `runId` and `strict: true` / never route a
-// wave-master journal there / halt on refusal without rewriting the line), the sentence that grounds
-// the third of them, and the validator's own name — instead of settling whichever clause the last
-// probe happened to hit and leaving its neighbours open.
+// sits within one window of the terminal-review contract it guards, and that deleting it from a
+// single rendering turns this file red. Every assertion here reads the subsection whose heading
+// declares `FR-FLOW-155` as its owner — the second half of `§V.final-verify`, which FR-FLOW-157
+// split off so that a byte comparison could be drawn across a section with ONE subject.
+//
+// The byte comparison itself is FR-FLOW-157's, in `final-verify-section-split.fr-flow-157.test.ts`:
+// it holds that section from its heading to its end against
+// `orchestrate-validate-wiring.fr-flow-155.golden.md`, which is what makes the coverage UNIFORM.
+// The presence and proximity assertions below read tokens, and a token survives its own inversion:
+// each of them was satisfied by a paragraph whose main instruction had been flipped to "do not put
+// the line through the validator". Pinning the section settles every clause in it at once — the four
+// normative ones (call it after the write / route kiwi-orchestrator journals to MCP with `runId` and
+// `strict: true` / never route a wave-master journal there / halt on refusal without rewriting the
+// line), the sentence that grounds the third of them, and the validator's own name — instead of
+// settling whichever clause the last probe happened to hit and leaving its neighbours open.
 //
 // ─── WHAT THIS FILE DOES NOT GUARANTEE ──────────────────────────────────────────────────────────
 // That an agent reading the instruction actually calls `orchestrate_validate`. Nothing here observes
@@ -38,41 +44,54 @@ import {
 // `test/cli/orchestrate-journal-engine.fr-flow-155.test.ts`; a green here is not evidence for it.
 // AC-7 records the further limits that neither file closes.
 //
-// Nor is the span self-defending. The golden can be edited in the same commit as the text it pins,
-// and so can a ledger row. Neither mechanism makes a contradiction impossible; both make it LOUD, and
-// they are loud in different files: `orchestrator-mutation-ledger.json` names each of the six
-// normative clauses as a rule with an owning requirement and pins its bytes, the rule_id set it
+// Nor is the section self-defending. The golden can be edited in the same commit as the text it
+// pins, and so can a ledger row. Neither mechanism makes a contradiction impossible; both make it
+// LOUD, and they are loud in different files: `orchestrator-mutation-ledger.json` names each of the
+// six normative clauses as a rule with an owning requirement and pins its bytes, the rule_id set it
 // declares for FR-FLOW-155 is frozen in `orchestrator-mutation-ledger.test.ts` so a row cannot be
 // deleted to make its clause free, and that set is named again HERE so the declaration cannot be
 // deleted alongside the rows.
 //
-// The two coordinated-edit costs are NOT the same and were measured separately. Inverting one of the
-// six named clauses costs the body, the golden and that clause's row — three file kinds, and the row
-// makes the diff name the rule. Appending a NEW permitting sentence inside the span costs only the
-// body and the golden, because a row pins the bytes of the clause it quotes and sees nothing added
-// beside it. Each row must therefore quote the whole rule it names, trigger included: three probes
+// The coordinated-edit costs are NOT the same, and every count below was measured to green over
+// `test/skills` at 66 files / 3424 tests. Each count names the clause it belongs to, because an
+// earlier draft of this comment reported one clause's numbers under another clause's name.
+// Inverting one of the six named clauses costs FOUR file kinds — the body, the golden, that clause's
+// rows, and THIS file, whose presence and hedge assertions still refuse the weakened sentence after
+// the first three agree. On `…TERMINAL-LINE-IS-PUT-THROUGH-THE-VALIDATOR-IMMEDIATELY`: bodies alone
+// 73 failed, plus the golden 13, plus the three rows 4, plus the hedge assertion below green. The
+// neighbouring `…REFUSAL-HALTS-WITHOUT-REWRITING-THE-TERMINAL-LINE` costs more at the first two
+// steps — 77 failed, then 23 — because more assertions here read it, and it is where the 77 and 23
+// once misfiled against the clause above were measured. Appending a NEW permitting sentence inside
+// the section costs only the body and the golden — 63 failed, then green — because a row pins the
+// bytes of the clause it quotes and sees nothing added beside it.
+// Deleting a row buys silence, not a cheaper edit: its id is declared in three test files, so the
+// rows come out only with those declarations (10 failed, then green with no body touched), and the
+// clause is still inside the compared section, so the inversion costs the same kinds afterwards.
+// Each row must therefore quote the whole rule it names, trigger included: three probes
 // found a rule inverted for two file kinds because a row stopped short — a bold fragment without its
 // subject, a consequence without its trigger, and a fallback whose condition no row named at all.
 //
-// Outside the golden span the cover is not a comparison but a CLOSED VOCABULARY. The section's front
-// half — the run-window review hop, roughly the first 43% of it — must not name any of the eleven
-// nouns this instruction is made of: the tool, the function, the gate, the flags, `MCP`, `CLI`,
-// `wave-master`, `검증`, `진단`. Every one of them was zero up there before this, because the review
-// hop is about a commit range and a child skill. The two polarity bans still read the whole section,
-// but they were never the cover up there: they key on one axis each, and a sentence permitting the
-// MCP route for a wave-master journal contradicted this instruction from 500 characters above it
-// while every assertion in this file stayed green.
+// ─── WHAT WAS REMOVED WITH THE SPLIT, AND WHY ───────────────────────────────────────────────────
+// This file used to hold the section's front half CLOSED on eleven nouns — the tool, the function,
+// the gate, the flags, `MCP`, `CLI`, `wave-master`, `검증`, `진단` — because that half was read by no
+// byte comparison and the two polarity bans key on one axis each. Both halves of that trade were
+// then measured and both pointed at a boundary instead. On the defence side the vocabulary closed
+// SPELLINGS rather than the subject: `mcp`, the full-width `ＭＣＰ`, `orchestrate-validate`, `run_id`,
+// and four plain-Korean inversions carrying none of the eleven nouns each carried a contradiction
+// past every assertion. On the cost side it refused seven legitimate FR-FLOW-131 edits, among them
+// adding `--strict-grounding` — a flag this skill defines in its own options table — to the review
+// hop's argument fence, under a message that forbade both available repairs at once.
 //
-// What is still open, therefore, is narrower than a paraphrase: a contradiction that names the
-// terminal line only by pronoun, uses a verb outside the closed list, AND avoids all eleven nouns —
-// so it must be written with no antecedent for anything it refers to, because the front half is
-// forbidden to have supplied one. The AC-4 block below asserts exactly that shape, once inside the
-// span where it fails and once before it where it does not.
+// FR-FLOW-157 replaced it with the heading that now separates the two subjects, so nothing in this
+// file reads text FR-FLOW-131 owns. The price is recorded rather than hidden: a sentence in the
+// review-hop section saying the terminal line's validation is optional is compared by nothing, the
+// same way `§V.emit-and-finish` and `§V.halt` already were. FR-FLOW-157 AC-5 asserts that price.
 //
-// The same closed-vocabulary rule covers `_shared/kiwi/waves-event.md`, which §0.1 of the skill names
-// as the journal's event SSOT while keeping the orchestration procedure for itself. A contradiction
-// planted there was invisible to every layer, and it was the worse place for one: an agent reading a
-// file the skill deferred to does not read it as a conflict.
+// The same closed-boundary shape still covers `_shared/kiwi/waves-event.md`, which §0.1 of the skill
+// names as the journal's event SSOT while keeping the orchestration procedure for itself. A
+// contradiction planted there was invisible to every layer, and it was the worse place for one: an
+// agent reading a file the skill deferred to does not read it as a conflict. That file has no
+// section boundary to draw — it discusses `terminal_review` throughout — so five names hold it.
 //
 // ─── BASELINE, MEASURED BEFORE THE SKILL TEXT WAS TOUCHED ───────────────────────────────────────
 // Over `skills/` and `.agents/skills/` in the shipped tree:
@@ -134,8 +153,8 @@ const HEDGE =
 /**
  * Rewriting the terminal line, stated as permitted. Positive conjugations only: the prohibition is
  * `…다시 쓰지 않는다`, which none of these match, and the write instruction `종료 줄을 쓴다` carries
- * no `다시`/`고쳐`/`재작성`. Subject-scoped on purpose — `--close-reqs 는 주지 않는다` and the
- * verdict enumeration live in the same section and are not about this rule.
+ * no `다시`/`고쳐`/`재작성`. Subject-scoped on purpose — the verdict enumeration lives in the same
+ * section and is not about this rule.
  */
 const REWRITE_PERMITTED =
   /종료 줄[^\n]{0,24}?(다시 쓴다|다시 써|다시 쓸|고쳐 쓴다|고쳐 다시|재작성한다|재작성해|재발행|덮어쓴다|덮어써|덮어 쓴다|덮어쓸|재기록한다|재기록해)/;
@@ -151,42 +170,6 @@ const RULE_RETRACTED =
   /철회|취소된다|더 이상 적용되지|옛 규칙|이 규칙은 예외|무시하고 (run|진행)|무시한다|무효|따르지 않는다|적용하지 않는다|효력(이 없|을 잃)|폐기(된다|한다)/;
 
 /**
- * The nouns this instruction is made of. Every one of them occurs ZERO times in §V.final-verify
- * BEFORE the governed span, in all four renderings — measured, not assumed — and that is not luck of
- * phrasing. The section has two subjects and they do not overlap: its front half is the run-window
- * review hop, which routes a commit range to a child skill (FR-FLOW-131 AC-7/AC-8/AC-10 read exactly
- * that text), and its back half is the terminal line and the validator that judges it. The review hop
- * has no use for the word `MCP`, the word `검증`, or the name of a gate.
- *
- * So the front half is held CLOSED on this subject rather than policed for polarity. Before this, two
- * lexical bans read it and both keyed on one axis — the terminal line being rewritten, the rule being
- * retired — so `wave-master 저널도 MCP 로 검증해도 된다.` placed above the contract paragraph
- * contradicted the routing rule while every assertion in this file stayed green. Widening the bans to
- * the other four clauses would have been an arms race against paraphrase; refusing the SUBJECT is one
- * rule and it does not care how the sentence is worded, because a sentence that rules on this
- * instruction cannot avoid naming what it rules on.
- *
- * What this deliberately does NOT do is freeze the front half's bytes. The golden could simply have
- * been widened to the whole section — same mechanism, no new device — but the text it would then
- * freeze belongs to FR-FLOW-131, so every edit that requirement owns would fail HERE, under a message
- * about a terminal-line contract it is not about. A closed vocabulary constrains what the front half
- * may TALK about and leaves FR-FLOW-131 free to say its own thing however it likes.
- */
-const SUBJECT_NOUNS: Array<[string, RegExp]> = [
-  ["the MCP tool", /orchestrate[_ ]validate/],
-  ["the validator function", /validateWavesJournal/],
-  ["the gate it raises", /terminal-review-loop-missing/],
-  ["the engine flag", /--engine/],
-  ["the run-id argument", /runId|--run-id/],
-  ["the strictness argument", /strict/],
-  ["the MCP caller", /MCP/],
-  ["the CLI caller", /CLI/],
-  ["the engine that may not be judged over MCP", /wave-master/],
-  ["validation itself", /검증/],
-  ["a diagnostic", /진단/]
-];
-
-/**
  * The four renderings of the file `§0.1` of the skill names as the journal's event SSOT.
  *
  * Not derived from `ORCHESTRATOR_VARIANTS`, because the mirror's path is not `.agents/skills/<same
@@ -200,10 +183,13 @@ const EVENT_CONTRACT = ["skills/claude", "skills/codex", "skills/etc", ".agents/
 
 /**
  * The five ways a sentence can rule on the terminal line's validation without being able to hide it.
- * Narrower than `SUBJECT_NOUNS` on purpose: this file legitimately talks about `terminal_review`,
+ *
+ * Narrower than a subject vocabulary on purpose: that file legitimately talks about `terminal_review`,
  * `final-verify`, verification records and version gates all through, so a wide vocabulary would be
  * a false positive on every second paragraph. These five name the VALIDATOR, and the validator is
- * the thing this file has no business ruling on.
+ * the thing that file has no business ruling on. Five is also the WIDEST set it can carry rather than
+ * the set that closes it — it writes the bare noun `검증` 27 times legitimately — and the remainder is
+ * FR-FLOW-158's.
  */
 const PROCEDURE_NOUNS: Array<[string, RegExp]> = [
   ["the MCP tool", /orchestrate[_ ]validate/],
@@ -213,51 +199,47 @@ const PROCEDURE_NOUNS: Array<[string, RegExp]> = [
   ["the validator by common noun", /검증기/]
 ];
 
-const finalVerify = (relPath: string): string => verbSection(stripFrontmatter(readVariant(relPath)), "final-verify");
+const bodyOf = (relPath: string): string => stripFrontmatter(readVariant(relPath));
 
-/** From the contract signature to the end of the section: the span the terminal-line rule governs. */
-const ruleSpan = (section: string): string => section.slice(offsetOf(section, CONTRACT));
+/** The subsection of `§V.final-verify` whose heading declares this requirement as its owner. */
+const terminalSection = (body: string): string => ownedSubsections(body, "final-verify").find((sub) => sub.owner === "FR-FLOW-155")?.text ?? "";
 
-/**
- * Where the compared span begins: the start of the LINE carrying the contract signature. Everything
- * before this offset is the section's front half, which no byte comparison reads.
- *
- * A missing signature returns the section's length, so the front half becomes the whole section and
- * the vocabulary assertion below reports on all of it rather than silently reporting on nothing.
- */
-const spanStart = (section: string): number => {
-  const at = offsetOf(section, CONTRACT);
-  return at < 0 ? section.length : section.lastIndexOf("\n", at) + 1;
+/** The subsection FR-FLOW-131 owns, read only to place a probe OUTSIDE the compared one. */
+const reviewHop = (body: string): { start: number; end: number } | null => {
+  const sub = ownedSubsections(body, "final-verify").find((entry) => entry.owner === "FR-FLOW-131");
+  return sub === undefined ? null : { start: sub.start, end: sub.end };
 };
 
 const GOLDEN_PATH = path.resolve(__dirname, "orchestrate-validate-wiring.fr-flow-155.golden.md");
-
-/** Line endings only, so a checkout under `core.autocrlf` is not read as a contradiction. */
-const normalise = (text: string): string => text.replace(/\r\n/g, "\n").replace(/\s+$/, "");
-
-/**
- * The governed span as the golden holds it: whole lines from the one carrying the contract signature
- * to the end of §V.final-verify.
- *
- * Whole lines rather than `ruleSpan`'s mid-line slice, because the contract sentence opens the span
- * and half of it is not a thing a golden can be diffed against by a human. The trailing blank line
- * the section carries before the next heading is trimmed on both sides: it is markdown spacing, and
- * a red that says "you changed a blank line" teaches nobody anything.
- */
-const governedSpan = (section: string): string => {
-  if (offsetOf(section, CONTRACT) < 0) return "";
-  return normalise(section.slice(spanStart(section)));
-};
 
 /** ENOENT-to-empty-string, the convention `readVariant` already uses: a deleted golden must fail as an
  * assertion naming the fixture, not as a thrown ENOENT at import that reads like a broken harness. */
 const GOLDEN = ((): string => {
   try {
-    return normalise(readFileSync(GOLDEN_PATH, "utf8"));
+    return normaliseEol(readFileSync(GOLDEN_PATH, "utf8"));
   } catch {
     return "";
   }
 })();
+
+it("the byte comparison AC-3 requires is declared here too, so deleting the suite that runs it is loud", () => {
+  // AC-3 requires the subsection this requirement owns to be held byte-exact against a golden, and
+  // after FR-FLOW-157 that comparison lives in another file. Deleting or stubbing that file would
+  // release the clause with every assertion here still green — the exact hole the ledger closes by
+  // declaring its rule_id set in two files. This is that second declaration for the comparison.
+  const suitePath = path.resolve(__dirname, "final-verify-section-split.fr-flow-157.test.ts");
+  const suite = ((): string => {
+    try {
+      return readFileSync(suitePath, "utf8");
+    } catch {
+      return "";
+    }
+  })();
+  expect(suite, `${path.basename(suitePath)} holds AC-3's byte comparison and is missing`).not.toBe("");
+  expect(suite.includes(path.basename(GOLDEN_PATH)), `${path.basename(suitePath)} no longer reads this requirement's golden`).toBe(true);
+  expect(suite.includes("FR-FLOW-157 AC-2"), `${path.basename(suitePath)} no longer declares the criterion that holds the comparison`).toBe(true);
+  expect(suite.includes("matches the golden byte for byte"), `${path.basename(suitePath)} no longer compares a rendering against the golden`).toBe(true);
+});
 
 it("the corpus is not empty — four renderings, or every assertion below is vacuous", () => {
   // `describe.each([])` registers nothing and reports green. The mirror is generated from `codex`
@@ -265,13 +247,13 @@ it("the corpus is not empty — four renderings, or every assertion below is vac
   // does not apply here.
   expect(COPIES).toHaveLength(4);
   for (const copy of COPIES) {
-    expect(finalVerify(copy), `${copy}: §V.final-verify must exist for this suite to read anything`).not.toBe("");
+    expect(terminalSection(bodyOf(copy)), `${copy}: the terminal-line section of §V.final-verify must exist for this suite to read anything`).not.toBe("");
   }
 });
 
 it("the golden still says the thing it is holding, so gutting it cannot buy a green", () => {
-  // The comparison below is symmetric: emptying the golden AND the four bodies would satisfy it. The
-  // presence assertions read the bodies, so they close half of that; this closes the other half by
+  // FR-FLOW-157's comparison is symmetric: emptying the golden AND the four bodies would satisfy it.
+  // The presence assertions read the bodies, so they close half of that; this closes the other half by
   // reading the golden. Every clause the requirement is about must be findable in the fixture itself.
   expect(GOLDEN, "the golden fixture is empty").not.toBe("");
   const clauses: Array<[string, RegExp]> = [
@@ -298,7 +280,7 @@ it("neither radius can be widened into a no-op: each is smaller than the text it
   // Both radii are constants in this file, so without this the cheapest way past a proximity failure
   // is to raise the number, and nothing says the check stopped measuring anything.
   for (const copy of COPIES) {
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     const contract = offsetOf(section, CONTRACT);
     expect(contract, `${copy}: the contract signature must be present`).toBeGreaterThan(-1);
     expect(WINDOW_RADIUS, `${copy}: WINDOW_RADIUS spans the whole section`).toBeLessThan(section.length);
@@ -310,8 +292,8 @@ it("neither radius can be widened into a no-op: each is smaller than the text it
 });
 
 describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names the validator (%s)", (copy) => {
-  it("names the MCP tool inside §V.final-verify", () => {
-    const section = finalVerify(copy);
+  it("names the MCP tool in the section that owns the terminal line", () => {
+    const section = terminalSection(bodyOf(copy));
     expect(
       /orchestrate_validate|orchestrate validate/.test(section),
       `${copy}: the section describes a refusal it never tells anyone to obtain`
@@ -322,7 +304,7 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
     // Distance from the contract paragraph, not from any `terminal_review` token: the instruction
     // writes that token itself, so keying on it would make this assertion measure the paragraph's
     // own integrity and pass for a paragraph parked at the end of the section.
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     const contract = offsetOf(section, CONTRACT);
     const call = offsetOf(section, CALL);
     expect(contract, `${copy}: the terminal-line write instruction must survive`).toBeGreaterThan(-1);
@@ -335,7 +317,7 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
   });
 
   it("keeps the gate it raises in the call's own window", () => {
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     expect(
       tiedTogether(section, CALL, [GATE], WINDOW_RADIUS),
       `${copy}: the call must sit within ${WINDOW_RADIUS} chars of the gate it raises`
@@ -346,7 +328,7 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
     // `orchestrate validate` defaults `--engine` to `kiwi-orchestrator`, so a wave-master journal
     // validated without the flag reports a clean run over zero lines — the same empty-candidate-set
     // failure the append path had. An instruction that omits the flag reproduces it at the CLI.
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     expect(
       tiedTogether(section, CALL, [MCP_RUN_ID, MCP_STRICT], WINDOW_RADIUS),
       `${copy}: the window must say what the MCP tool is called WITH, not only that it is called`
@@ -363,7 +345,7 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
     // caller cannot pass an engine and always parses under the `kiwi-orchestrator` default. Told to
     // reach for MCP first, an agent validating a wave-master journal gets a clean answer over zero
     // lines — the exact failure this requirement closed at the append path, reopened at the call.
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     expect(
       tiedTogether(section, CALL, [MCP_NOT_FOR_WAVE_MASTER, CLI_ONLY_FOR_WAVE_MASTER], WINDOW_RADIUS),
       `${copy}: the instruction must route the wave-master journal to the CLI and say why`
@@ -371,7 +353,7 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
   });
 
   it("states when it is called", () => {
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     expect(
       tiedTogether(section, CALL, [WHEN], WINDOW_RADIUS),
       `${copy}: "run this at some point" is not an instruction anyone can be found not to have followed`
@@ -381,37 +363,14 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
   it("states what happens on refusal: halt on the gate, and do not rewrite the terminal line", () => {
     // Without the second half the obvious response to a refusal is to edit the line until it is
     // accepted, which converts a refused judgement into a recorded pass.
-    const section = finalVerify(copy);
+    const section = terminalSection(bodyOf(copy));
     expect(
       tiedTogether(section, CALL, [GATE, NO_REWRITE], WINDOW_RADIUS),
       `${copy}: the refusal branch must name the gate and forbid rewriting the line`
     ).toBe(true);
   });
 
-  it("says nothing at all about the validator before the span that is compared", () => {
-    // The section's front half is read by no byte comparison, and until this assertion the only
-    // things reading it were two polarity bans on ONE axis — rewriting the terminal line, retiring
-    // the rule. The other four normative clauses had no defence at any position up there, and a
-    // sentence contradicting the wave-master routing rule 500 characters above the paragraph that
-    // states it left every assertion in this file green.
-    //
-    // The rule here is not "do not contradict it" — it is "do not speak about it". A contradiction
-    // can be paraphrased; a subject cannot be discussed without naming it. Eleven nouns, each of
-    // them zero in the front half of all four renderings at the time this was written.
-    const section = finalVerify(copy);
-    expect(
-      offsetOf(section, CONTRACT),
-      `${copy}: the contract signature must be present, or nothing marks where the compared span begins`
-    ).toBeGreaterThan(-1);
-    const front = section.slice(0, spanStart(section));
-    const spoken = SUBJECT_NOUNS.filter(([, re]) => re.test(front)).map(([what]) => what);
-    expect(
-      spoken,
-      `${copy}: §V.final-verify names ${JSON.stringify(spoken)} BEFORE the terminal-review contract paragraph, where no byte comparison reads. That half of the section is the run-window review hop — it hands a commit range to a child skill and has no business ruling on the journal validator, and every rule about the validator lives inside the compared span so that it cannot be contradicted from a distance. If this edit genuinely belongs to the validator, move the sentence INTO the span and re-copy the golden; if it belongs to the review hop, say it without these words. Widening this list is the wrong repair — it is what closes the front half at all.`
-    ).toEqual([]);
-  });
-
-  it("never permits, anywhere in §V.final-verify, what the refusal branch forbids", () => {
+  it("never permits, inside the section it owns, what the refusal branch forbids", () => {
     // Every assertion above is a presence check, and presence survives inversion: the paragraph can
     // be rewritten to say "ignore the diagnostic and rewrite the line until it is accepted" while
     // still carrying `orchestrate_validate`, `terminal-review-loop-missing` and the very words
@@ -419,39 +378,21 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
     // with a permitting sentence appended below it. Both land the same thing in the journal — a pass
     // nobody obtained — so both are refused here rather than only the deletions.
     //
-    // Read over the whole section, not from the contract onward. Scoping the ban to the span the
-    // golden pins would have left it doing nothing the comparison does not already do, while the one
-    // place it is the only reader — the section's earlier half — went unwatched.
-    const section = finalVerify(copy);
-    expect(ruleSpan(section), `${copy}: the rule span must be non-empty for this assertion to mean anything`).not.toBe("");
+    // Scoped to the section this requirement owns. It used to read the whole of §V.final-verify,
+    // which is text FR-FLOW-131 owns for its first half; the heading FR-FLOW-157 added is what draws
+    // that line now, and reading past it would be the same overreach the closed vocabulary was.
+    // Inside this section the byte comparison already refuses both shapes, so these two bans are the
+    // rule stated directly rather than the cover — the cover is the golden.
+    const section = terminalSection(bodyOf(copy));
+    expect(section, `${copy}: the section must be non-empty for this assertion to mean anything`).not.toBe("");
     const permits = REWRITE_PERMITTED.exec(section);
     expect(permits?.[0] ?? null, `${copy}: the terminal line is rewritten in a section that forbids rewriting it`).toBe(null);
     const retracts = RULE_RETRACTED.exec(section);
     expect(retracts?.[0] ?? null, `${copy}: the section retires its own refusal rule`).toBe(null);
   });
 
-  it("holds the whole governed span byte-exact, so no clause in it is settled and its neighbour left open", () => {
-    // The one assertion here that does not read a token. Every other check in this file names what it
-    // is looking for, and therefore protects exactly what someone thought to name; this one protects
-    // the rest. It is the reason the main instruction, the MCP routing, the wave-master refusal, the
-    // refusal branch and the sentence grounding them are covered to the same depth rather than to the
-    // depth of the last probe that happened to hit each one.
-    //
-    // The price is real and is meant: splitting the paragraph, appending an explanatory sentence to
-    // it, translating a clause or reordering one all turn this red, and none of those is an attack.
-    // The failure is not "the rule is broken" — it is "the contract text moved, so re-read it and
-    // re-copy it here". For a paragraph whose subject is what may be written into a permanent journal
-    // after a refusal, that is the right question to be asked on every edit. FR-NODE-199 AC-4 turns
-    // on the same friction: the grounding sentence stops being true the day MCP gains an engine
-    // argument, and this comparison is what refuses to let that day pass quietly.
-    expect(
-      governedSpan(finalVerify(copy)),
-      `${copy}: the governed span of §V.final-verify no longer matches ${path.basename(GOLDEN_PATH)}. This says the contract text moved, not that the rule broke. Read the diff below as an edit under review: if it changes what an agent is told to do about the terminal line, that is the finding; if it does not, re-copy the span into the golden and re-read FR-NODE-199 AC-4, which turns on the grounding sentence in this paragraph.`
-    ).toBe(GOLDEN);
-  });
-
   it("gives the instruction unhedged", () => {
-    const sentence = finalVerify(copy)
+    const sentence = terminalSection(bodyOf(copy))
       .split("\n")
       .filter((line) => CALL.test(line))
       .join("\n");
@@ -465,63 +406,44 @@ describe.each(COPIES)("FR-FLOW-155 AC-3 — the terminal-verify section names th
 describe("FR-FLOW-155 AC-4 — where the cover ends, asserted rather than described", () => {
   // AC-4 asks this file to say what it does not guarantee. A comment saying so decays: the sentence
   // stays while the mechanism under it moves, and nobody notices because prose does not run. So the
-  // boundary is executed. The probe is a permission phrased the way NONE of the three mechanisms can
-  // see it — the terminal line named by pronoun (the rewrite ban is subject-scoped), the act by a verb
-  // outside the closed list, and not one of the eleven subject nouns anywhere in it — and it is
-  // placed once inside the golden span and once before it.
+  // boundary is executed. The probe is a permission phrased the way NEITHER polarity ban can see it —
+  // the terminal line named by pronoun (the rewrite ban is subject-scoped) and the act by a verb
+  // outside the closed list — and it is placed once inside the compared section and once outside it.
   //
-  // Spliced into the golden rather than into a live rendering, so the probe measures the mechanism
-  // and nothing else. Built from a body, it would turn red for every edit anywhere in the section and
-  // stop being a statement about where the cover ends.
-  //
-  // The earlier probe sentence was `다만 진단이 반복되면 그 줄을 덮어쓴다.` and it no longer evades: `진단`
-  // is a subject noun and `덮어쓴다` is now in the verb list. What survives is narrower and worth
-  // seeing plainly — a sentence with no antecedent for either `그 줄` or `거부`, because the front
-  // half is forbidden to have introduced one.
+  // The earlier probe sentence was `다만 진단이 반복되면 그 줄을 덮어쓴다.` and it no longer evades:
+  // `덮어쓴다` is now in the verb list. What survives is narrower and worth seeing plainly — a
+  // sentence with no antecedent for either `그 줄` or `거부`.
   const EVASIVE = "다만 거부가 반복되면 그 줄을 손본다.";
 
-  it("catches the evasive permission when it lands inside the span, because the span is compared and not read", () => {
+  it("catches the evasive permission when it lands inside the section, because the section is compared and not read", () => {
+    // Spliced into the golden rather than into a body, so the probe measures the mechanism and
+    // nothing else. Built from a body, it would turn red for every edit anywhere in the section and
+    // stop being a statement about where the cover ends.
     const spliced = GOLDEN.replace(NO_REWRITE, `${NO_REWRITE.source} ${EVASIVE}`);
     expect(spliced, "the splice did not change the golden, so this proves nothing").not.toBe(GOLDEN);
     expect(REWRITE_PERMITTED.test(spliced), "if the ban had caught it, this probe would be measuring the wrong thing").toBe(false);
     expect(RULE_RETRACTED.test(spliced), "same").toBe(false);
-    expect(governedSpan(spliced), "an appended sentence inside the golden span must not compare equal").not.toBe(GOLDEN);
+    expect(normaliseEol(spliced), "an appended sentence inside the compared section must not compare equal").not.toBe(GOLDEN);
   });
 
-  it("does NOT catch it before the contract paragraph, which is exactly how far the cover reaches", () => {
-    // Red here means someone widened the cover — the golden span, the bans, or the noun list. That is
-    // a good change and this assertion is the last thing to update, not the reason to stop. What it
+  it.each(COPIES)("%s: does NOT catch it in the section FR-FLOW-131 owns, which is exactly how far the cover reaches", (copy) => {
+    // Red here means someone widened the cover — the golden's extent or the bans' scope. That is a
+    // good change and this assertion is the last thing to update, not the reason to stop. What it
     // must never do is stay green while AC-4 claims the gap was closed.
-    const outside = `${EVASIVE}\n\n${GOLDEN}`;
-    expect(governedSpan(outside), "the splice landed inside the span, so it is not testing the outside").toBe(GOLDEN);
-    expect(REWRITE_PERMITTED.test(outside), "the rewrite ban").toBe(false);
-    expect(RULE_RETRACTED.test(outside), "the retraction ban").toBe(false);
-    expect(
-      SUBJECT_NOUNS.filter(([, re]) => re.test(EVASIVE)).map(([what]) => what),
-      "the probe must name none of the subject nouns, or it is measuring the noun list instead of the residual"
-    ).toEqual([]);
-  });
-});
-
-describe("FR-FLOW-155 AC-3 — the four renderings carry one spelling of the instruction", () => {
-  // This replaces a line count — `exactly one line may name the tool inside §V.final-verify` — which
-  // refused `복구: 라운드를 다시 하고 orchestrate_validate 를 다시 부른다.`, a completely
-  // sound instruction, under a message that said neither why nor what to do instead. The count was a
-  // proxy for the real rule — no SECOND, DIFFERING spelling of the instruction — and the proxy is
-  // now unnecessary in both halves of the section. Before the span: naming the tool there is one of
-  // the eleven subject nouns and fails with a message that says where the sentence belongs. Inside
-  // the span: a second mention is frozen by the golden, so it cannot drift into a different spelling,
-  // and an edit that adds one fails the comparison with the instruction to re-copy the span.
-  //
-  // What is given up by dropping the count: a rendering may now name the tool twice INSIDE the span
-  // provided the golden and all four bodies agree on both mentions. That is a three-file edit whose
-  // diff shows the second sentence in full, not a quiet one.
-  it("names the tool inside the compared span in every rendering, and only there", () => {
-    for (const copy of COPIES) {
-      const section = finalVerify(copy);
-      expect(CALL.test(section.slice(spanStart(section))), `${copy}: the tool must be named inside the compared span`).toBe(true);
-      expect(CALL.test(section.slice(0, spanStart(section))), `${copy}: the tool is named where no comparison reads it`).toBe(false);
-    }
+    //
+    // Spliced into a body rather than a fixture, because after the split the outside IS a real
+    // section of a real file: the price FR-FLOW-157 AC-5 records is that the review hop joined
+    // `§V.emit-and-finish` and `§V.halt` in the set nothing compares.
+    const body = bodyOf(copy);
+    expect(terminalSection(body), `${copy}: the baseline must be green for this measurement to mean anything`).toBe(GOLDEN);
+    const hop = reviewHop(body);
+    expect(hop, `${copy}: the review-hop section must exist for this probe to have an outside to land in`).not.toBeNull();
+    const planted = `${body.slice(0, hop!.end)}\n${EVASIVE}\n${body.slice(hop!.end)}`;
+    expect(planted, "the plant changed nothing, so this proves nothing").not.toBe(body);
+    const section = terminalSection(planted);
+    expect(section, "the plant landed inside the compared section, so it is not testing the outside").toBe(GOLDEN);
+    expect(REWRITE_PERMITTED.test(section), "the rewrite ban").toBe(false);
+    expect(RULE_RETRACTED.test(section), "the retraction ban").toBe(false);
   });
 });
 
@@ -554,7 +476,7 @@ describe.each(EVENT_CONTRACT)("FR-FLOW-155 AC-8 — the event SSOT does not rule
     const spoken = PROCEDURE_NOUNS.filter(([, re]) => re.test(text)).map(([what]) => what);
     expect(
       spoken,
-      `${copy}: the event SSOT names ${JSON.stringify(spoken)}. This file defines the journal's schema and §0.1 of kiwi-orchestrator defers to it for that; the procedure around the terminal line — when it is validated, by which caller, and what happens on refusal — belongs to §V.final-verify, where a golden holds it byte-exact. A rule stated here is a rule stated where nothing compares it, in the file an agent reads as authoritative. Move the sentence into §V.final-verify and re-copy the golden.`
+      `${copy}: the event SSOT names ${JSON.stringify(spoken)}. This file defines the journal's schema and §0.1 of kiwi-orchestrator defers to it for that; the procedure around the terminal line — when it is validated, by which caller, and what happens on refusal — belongs to the terminal-line section of §V.final-verify, where a golden holds it byte-exact. A rule stated here is a rule stated where nothing compares it, in the file an agent reads as authoritative. Move the sentence into that section and re-copy the golden.`
     ).toEqual([]);
     expect(
       REWRITE_PERMITTED.exec(text)?.[0] ?? null,
@@ -570,7 +492,7 @@ describe("FR-FLOW-155 AC-3 — the ledger layer cannot be removed whole", () => 
   // and removing `"FR-FLOW-155": […]` together with its fifteen rows fires nothing at all — after
   // which any clause in the paragraph inverts with an edit to the body and the golden only.
   //
-  // Naming the five rules here puts that deletion in front of a second file whose subject is the
+  // Naming the six rules here puts that deletion in front of a second file whose subject is the
   // requirement rather than the ledger. It does not make the deletion impossible; it makes the diff
   // carry a test named after this requirement.
   const OWNED = [
@@ -593,7 +515,7 @@ describe("FR-FLOW-155 AC-3 — the ledger layer cannot be removed whole", () => 
       const mine = ledger.filter((row) => row.variant === variant && row.owning_requirement === "FR-FLOW-155").map((row) => row.rule_id);
       expect(
         [...mine].sort(),
-        `skills/${variant}: FR-FLOW-155's clause rows in orchestrator-mutation-ledger.json are ${JSON.stringify([...mine].sort())}. Each of the six names one normative clause of §V.final-verify's validator paragraph and pins its bytes. Deleting a row — or the OWNED_RULES entry that declares them — releases that clause to be inverted with an edit to the body and the golden alone. If a clause was genuinely retired, retire it in the requirement first.`
+        `skills/${variant}: FR-FLOW-155's clause rows in orchestrator-mutation-ledger.json are ${JSON.stringify([...mine].sort())}. Each of the six names one normative clause of the terminal-line section of §V.final-verify and pins its bytes. Deleting a row — or the OWNED_RULES entry that declares them — releases that clause to be inverted with an edit to the body and the golden alone. If a clause was genuinely retired, retire it in the requirement first.`
       ).toEqual([...OWNED].sort());
     }
   });

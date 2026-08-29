@@ -1185,6 +1185,8 @@ recovery class **externally-visible**. Phase 3.n. §14 의 집합과 전이와 �
 
 ### §V.final-verify
 
+#### run 창 종료 리뷰 홉 — 이 절이 진술하는 규칙은 `FR-FLOW-131` 이 소유한다
+
 recovery class **idempotent-by-key**. Phase 4 의 loop F 라운드. 분모는 모든 `design_items` 와 `integration_items` 의 합집합이다.
 
 **run 창 종료 리뷰** (§4.5 가 선언한 의무의 R-ORCH 쪽 이행) — loop F 가 pass 를 기록하기 **전에** run 전체 커밋 창을 1회 리뷰한다. wave 별 홉의 분모는 그 wave 창 하나이므로, 어느 wave 창에도 온전히 들어가지 않는 결함은 여기서만 보인다:
@@ -1196,6 +1198,8 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} 
 `--close-reqs` 는 주지 않는다 — run 스코프에서 그것은 모든 wave target 의 status 를 한 호출로 뒤집는 bulk-finalize 다. `--regression-baseline` 은 P.4 가 run 시작에 고정한 값을 준다: 주지 않으면 자식이 run 끝에서 스스로 baseline 을 잡아 wave 1..N 이 만든 실패를 전부 "기존"으로 승격시킨다.
 
 리뷰 뒤 **커밋한 다음** run 종료 줄을 쓴다 — 리뷰가 고친 것이 커밋되지 않으면 `terminal_review.head` 가 자기 결과를 담지 않은 커밋을 가리킨다.
+
+#### run 종료 줄과 그것을 판정하는 검증기 — 이 절이 진술하는 규칙은 `FR-FLOW-155` 가 소유한다
 
 run 종료 줄에는 `terminal_review {skill, base, head, verdict}` 를 싣는다. `base` 는 그 줄의 `run_diff_window.base_sha` 와 같아야 한다. `head` 는 심판한 범위의 head 이며 run head 와 같을 필요가 없다 — 리뷰의 수정을 커밋한 뒤 이 줄을 쓰기 때문이다. verdict 은 완료를 방면하는 `pass` 와 `not-applicable-empty-window`, 그리고 방면하지 않는 `residual` 과 `skipped-run-halted` 로 갈린다(FR-NODE-188). 창이 비면 `not-applicable-empty-window`, 커밋 착지 뒤 중단이면 `skipped-run-halted`.
 

@@ -122,7 +122,12 @@ describe("FR-FLOW-161 AC-3 — the terminal status takes the promotion result as
    * FR-FLOW-114 owns — and would refuse that requirement's edits under a message about terminal
    * status. FR-FLOW-155 REJECTED exactly that widening for this reason and its Implementation
    * Notes record why; what it paid instead was a closed vocabulary, which turned seven legitimate
-   * edits red. What the narrower scope gives up: a sentence contradicting this rule elsewhere in
+   * edits red. FR-FLOW-157 later reversed that trade for FR-FLOW-155 rather than repeating it: it
+   * split the section at a `####` heading so each half declares one owner, froze the whole of the
+   * half that matters, and removed the vocabulary. The same repair is available here the day
+   * `## Pipeline Event` is given a subsection that declares its owner, so read the precedent as
+   * the vocabulary being the cost rather than the widening being refused for good.
+   * What the narrower scope gives up: a sentence contradicting this rule elsewhere in
    * the same section is caught only by the pattern checks above, which survive their own inversion.
    */
   function terminalSections(): Array<{ rendering: string; relPath: string; heading: string; rule: string; kind: "terminal" | "identity" }> {
