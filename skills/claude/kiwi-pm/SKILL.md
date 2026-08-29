@@ -97,6 +97,9 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 | `mcp-mutation-batch-large` | MCP mutation ≥10건 batch (kiwi-coder §0.8 인용, §5.1 예외) | §5.1 예외 |
 | `t-final-dryrun-rejected` | T-final dryRun 거부 / transition guard 거부 (§0.G6) | §0.G6 |
 | `external-module-impact` | 외부 모듈 영향 (kiwi-coder §0.G2 버블업) — §5.1 예외 | §5.1 예외 |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | T-final — `add_completed_work` 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 **자식 선언 승계 (일반 규칙)**: 자식 스킬이 `NEEDS_USER` payload 의 `gate_id` 로 올린 게이트가 그 **자식 자신의** `critical_gates` 목록에 있으면, 본 표에 동명 행이 **없더라도** severity 로 재분류하지 않고 **무조건 HALT** 한다. 게이트별 수동 전사는 자식이 게이트를 추가할 때마다 누락되며, 누락된 게이트는 `auto-option.md` §4 의 기본 분류에 따라 `business-decision` 으로 떨어져 `--auto` 에서 결정 위원회가 승인한다 — 승계는 표의 동기화가 아니라 규칙으로 성립해야 한다.
 

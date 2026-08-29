@@ -60,6 +60,9 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | `out-of-scope-user-consent` | 설계 항목을 `out_of_scope` 로 배제 — 배제된 항목은 모든 계층의 분모에서 빠지므로 `--auto` 라도 사용자 확인을 받는다 | §3.2 |
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 — 무인 실행의 종료를 보장하는 유일한 경계 | §5.6 |
 | `invalid-loop-option` | `--loops N` 이 정수 ≥1 이 아님 — `loop-option.md` §1 이 명령하는 HALT 를 게이트로 전사 | §0.7 / loop-option.md |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | §5.6 — `/kiwi-pipeline` 사이클이 모두 끝난 뒤 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 `wave-verify-residual-critical` 은 `--auto` 라도 wave 오케스트레이션 **전체를 중단**시킨다. wave 는 뒤 wave 의 토대이고 앞선 `complete` 기록은 되돌릴 수 없으므로, 결함을 안고 진행하면 피해 범위가 남은 wave 수에 비례해 커진다.
 

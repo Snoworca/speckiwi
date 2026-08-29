@@ -36,6 +36,9 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | `step-claim-write-skew` | `claim_step` 이 write-skew(동일 REQ 를 건드리는 다른 step 의 선점)로 거부 — 두 step 이 같은 요구를 저작하는 것을 자동 승인할 수 없다 | Phase 1 (§2.2) |
 | `promote-evidence-required` | `promote_step_requirement` 가 검증 증거 0건으로 `EVIDENCE_REQUIRED` 거부 (§0.6) — 증거 없는 승격은 우회 대상이 아니라 채워야 할 결함이다 | Phase 6 (§2.7) |
 | `step-completion-gate-blocked` | `update_step_state(merged)` 가 `COMPLETION_GATE_BLOCKED` 로 거부 (FR-NODE-078) — 비-clean 호환 엣지를 `acknowledged` 로 명시 승인하는 것은 비가역 판단이다 | Phase 7 (§2.8) |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | Phase 6 — `promote_step_requirement` 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 표를 선언하기 전까지 본 스킬은 `auto-option.md` §1 의 **안전 기본값**에 따라 `--auto` 가 **비활성**이었다 — 실패가 아니라 조용한 무시였으므로, 무인 실행이 자기 게이트 앞에서 멈춰도 그것이 정지인지 정상 중단인지 구분되지 않았다. 아래 두 문단이 그 구분을 만든다.
 

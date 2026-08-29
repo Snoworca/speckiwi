@@ -81,14 +81,14 @@ function gateIds(gates: string): string[] {
     .map((m) => m[1]);
 }
 
-/** The three gates `--auto` must never resolve on `kiwi-tdd`. Each is a user-interaction point that
+/** The gates `--auto` must never resolve on `kiwi-tdd`. Each is a user-interaction point that
  * survives a correctly dispatched step run (`09` §4.4): the mode halt and the missing-task query are
  * discharged by the dispatch preconditions and are deliberately not here.
  *
- * PROVENANCE — these three ids are a CHOICE, not a transcription. `09` §4.4 fixes the four surviving
- * interaction points and FR-FLOW-116 AC-1 fixes the table's three-column shape, but no design section
- * or acceptance criterion names the ids themselves; they were coined here to read as gates rather
- * than placeholders, and reviewed as such. Two consequences for a later reader:
+ * PROVENANCE — the first three ids are a CHOICE, not a transcription. `09` §4.4 fixes the four
+ * surviving interaction points and FR-FLOW-116 AC-1 fixes the table's three-column shape, but no
+ * design section or acceptance criterion names the ids themselves; they were coined here to read as
+ * gates rather than placeholders, and reviewed as such. Two consequences for a later reader:
  *   * renaming one is a contract change for any parent inheriting a child gate by id
  *     (`kiwi-pm` §0.G7's child-declaration inheritance rule), not a cosmetic edit;
  *   * `kiwi-tdd` is deliberately NOT a key in `CANONICAL_GATE_IDS`
@@ -98,7 +98,13 @@ function gateIds(gates: string): string[] {
 const TDD_CRITICAL_GATES = [
   "step-claim-write-skew",
   "promote-evidence-required",
-  "step-completion-gate-blocked"
+  "step-completion-gate-blocked",
+  // @req FR-FLOW-164 — the fourth has a different provenance from the three above: it is not coined
+  // here, and it is not from `auto-option.md` either — §5.1's catalogue does not list it. It comes
+  // from `kiwi-srs-sync`'s own table, carried there since 2026-06-01. This
+  // set is an EQUALITY, so a skill joining the chain that stops on an SRS validation error reddens
+  // here until the membership is recorded — which is the assertion working, not an obstacle to it.
+  "validate-spec-error"
 ] as const;
 
 /** The fourth surviving interaction point. It is NOT critical — a substantive architecture decision
@@ -133,7 +139,7 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
     ).toBe(true);
   });
 
-  // AC-2: each of the three critical gates is its own row with a reason and a location.
+  // AC-2: each critical gate is its own row with a reason and a location.
   it.each(TDD_COPIES)("%s declares each critical gate as its own row", (copy) => {
     const gates = gatesSection(read(copy));
     for (const id of TDD_CRITICAL_GATES) {
@@ -148,7 +154,7 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
   // green while one variant carries an extra halt the others do not.
   it("declares the same gate-id set in every kiwi-tdd copy", () => {
     const sets = TDD_COPIES.map((copy) => [...new Set(gateIds(gatesSection(read(copy))))].sort());
-    expect(sets[0], "the claude gate set must equal the canonical three").toEqual(
+    expect(sets[0], "the claude gate set must equal the canonical set").toEqual(
       [...TDD_CRITICAL_GATES].sort()
     );
     for (let i = 1; i < sets.length; i++) {

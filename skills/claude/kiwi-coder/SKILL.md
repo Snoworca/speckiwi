@@ -124,6 +124,9 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | `existing-file-deleted-or-moved` | diff 에서 비-테스트 기존 파일의 삭제·이동 검출 — `sidecar.files[]` 에 등재되어 있다는 사실만으로는 해소되지 않는다 (§0.20 / §5.1.(d)) — 해소 경로는 §0.20.4 | §5.1.(d) |
 | `mcp-cli-both-unavailable` | MCP 도구와 CLI fallback 이 **모두** 실패 (§0.G5) — mutation skip + `pending_mutations[]` 적재는 자동 결정으로 닫지 않는다 | §0.G5 |
 | `lifecycle-gate-deprecated-or-frozen` | deprecated / frozen REQ 구현은 정책상 중단 | Phase 0 |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | §0.12 MCP mutation — `add_verification_evidence` 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 **기존 분리 옵션 보존 (§0.18 정합)**: `--yes-all` / `--auto-integration` / `--auto-cost-warning` 의 의미는 본 §0.G6 와 독립. 본 SSOT `--auto` 가 활성되어도 3종은 명시 입력 시에만 활성된다 (자동 활성 금지). `--auto` 활성 시 §8.4 후속 review-fix-loop spawn 의 args 에 `--close-reqs --auto` 전파는 §8.4 본문이 SSOT.
 

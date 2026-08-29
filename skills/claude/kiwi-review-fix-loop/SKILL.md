@@ -153,6 +153,9 @@ self_scope.source enum 매핑 (§3.1):
 | `existing-public-contract-change` | fix diff 에서 기존 public 심볼의 삭제 또는 시그니처 변경 검출 — **경로와 무관**하게 critical (§0.17) | §0.17 / §6.2 |
 | `empty-code-scope` | 부류 필터 뒤 코드 대상 0건 (§11) | §11 / §3.1 |
 | `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | §0.17 / §6.2 |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | `--close-reqs` 승급 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 **finding 분류 매핑 (§0.G5) 와 severity 가드레일 (§0.12) 은 본 critical_gates 와 별개 채널**: discussion_needed/immediate_fix/rejected 의 자동 액션 매핑은 SSOT §4 severity 분기 정책의 적용 대상이며, 본 §0.G8 는 그 매핑이 실패하거나 critical 영역에 진입할 때의 HALT 게이트만 선언한다.
 

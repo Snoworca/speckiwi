@@ -153,7 +153,14 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "wave-verify-fail-residual",
     "out-of-scope-user-consent",
     "wave-append-cap-exhausted",
-    "invalid-loop-option"
+    "invalid-loop-option",
+    // @req FR-FLOW-164 — the SRS validator's stop, joined by every skill of the implementation,
+    // review and promotion chain. Unlike the ids above it is not coined for one skill: it comes
+    // from `kiwi-srs-sync`'s own table, carried there since 2026-06-01. `auto-option.md` §5.1's
+    // catalogue does not list it, so it is inherited from a sibling skill rather than from the
+    // SSOT. This map is a set EQUALITY, so a chain skill that declares the gate reddens here until
+    // its membership is recorded — which is this assertion working rather than an obstacle to it.
+    "validate-spec-error"
   ],
   "kiwi-coder": [
     "external-module-impact",
@@ -170,7 +177,9 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "existing-public-contract-change",
     "existing-file-deleted-or-moved",
     "mcp-cli-both-unavailable",
-    "lifecycle-gate-deprecated-or-frozen"
+    "lifecycle-gate-deprecated-or-frozen",
+    // @req FR-FLOW-164 — see the kiwi-wave-master list above.
+    "validate-spec-error"
   ],
   "kiwi-pm": [
     "lifecycle-gate-policy-stop",
@@ -185,7 +194,9 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "auto-skip-lifecycle-gate-combo",
     "path-heuristic-business-decision",
     "mcp-mutation-batch-large",
-    "external-module-impact"
+    "external-module-impact",
+    // @req FR-FLOW-164 — see the kiwi-wave-master list above.
+    "validate-spec-error"
   ],
   "kiwi-pipeline": [
     "pipeline-event-needs-user-or-failed",
@@ -209,7 +220,9 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "force-proceed-after-divergence",
     "scope-expansion-target-boundary",
     "strict-tdd-block",
-    "mcp-cli-both-unavailable"
+    "mcp-cli-both-unavailable",
+    // @req FR-FLOW-164 — see the kiwi-wave-master list above.
+    "validate-spec-error"
   ],
   "kiwi-review-fix-loop": [
     "classifier-fix-hypothesis-fail-fallback",
@@ -225,7 +238,9 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "empty-code-scope",
     "existing-test-weakened-or-deleted",
     "existing-public-contract-change",
-    "existing-file-deleted-or-moved"
+    "existing-file-deleted-or-moved",
+    // @req FR-FLOW-164 — see the kiwi-wave-master list above.
+    "validate-spec-error"
   ]
 };
 

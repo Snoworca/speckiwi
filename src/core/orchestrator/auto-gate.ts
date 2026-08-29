@@ -114,6 +114,18 @@ export const GATE_IDS = [
   "mcp-cli-both-unavailable",
   "self-recursive-spawn",
 
+  // — Declared by skills, but absent from `auto-option.md` — inherited from a sibling skill —
+  //
+  // @req FR-FLOW-164 — the SRS validator's stop. Its FOOTING is the group above: declared by skills
+  // rather than raised by this kernel, and a union member for the reason that group's header gives
+  // — the parity assertion runs `declared ⊆ union`, so an id the chain skills are required to
+  // declare and this union omitted would fail the harness on correct skill text. Its PROVENANCE is
+  // not that group's, which is why it carries its own heading: `auto-option.md` §5.1's catalogue
+  // lists those three and lists no `validate-spec-error`. Its only prior home is `kiwi-srs-sync`'s
+  // own table, which has carried it since `a6276c4` (2026-06-01), well before this union existed;
+  // the seven skills of the implementation, review and promotion chain joined it there.
+  "validate-spec-error",
+
   // — Emitted by a phase-1 kernel but absent from §13's table (@req FR-NODE-166) —
   //
   //   Both reach exit 2 from a live CLI path — `handoff-pin-untrusted` from `pinning.ts` at

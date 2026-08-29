@@ -112,6 +112,9 @@ description: "OpenCode/Hermes local-LLM variant of the design-first orchestrator
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 | Phase 3.m / Phase 4 |
 | `run-budget-exhausted` | `--run-budget` 벽시계 초과 | 다음 stage 경계 |
 | `subagent-budget-exhausted` | `--subagent-budget` spawn 상한 소진 | 다음 stage 경계 |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | Phase 3.k activity (3) — `speckiwi validate` |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 > **`--auto` 활성 조건**: `auto-option.md` 상 이 표의 미선언은 `--auto` **비활성**을 뜻한다. 본 표의 선언으로 이 스킬의 `--auto` 는 활성이며, 위 게이트들이 그 활성 상태의 HALT 지점이다.
 

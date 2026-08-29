@@ -134,12 +134,27 @@ export interface TableRow {
   cells: string[];
 }
 
+/**
+ * Whether a trimmed line is one of a markdown table's rows.
+ *
+ * BOTH ends are required. GFM lets a row drop its trailing `|` and nothing in this tree writes one
+ * that way, so the strict reading costs this reader nothing and buys the property every reader of
+ * the shape needs: a line that only OPENS with `|` can be ordinary prose a renderer wraps into the
+ * line below it, and a scanner treating it as a row of its own would put a boundary where a reader
+ * is shown none. Exported so the readers of this shape cannot drift apart — they had, and
+ * `scanUnits` in `validate-spec-error-wiring.fr-flow-164` read the leading `|` alone until this
+ * predicate became the one both call.
+ */
+export function isTableRowLine(trimmed: string): boolean {
+  return trimmed.startsWith("|") && trimmed.endsWith("|");
+}
+
 /** Data rows of every markdown table inside `text`, delimiter rows and headers dropped. */
 export function tableRows(text: string): TableRow[] {
   const rows: TableRow[] = [];
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
+    if (!isTableRowLine(trimmed)) continue;
     const cells = trimmed
       .slice(1, -1)
       .split("|")
@@ -156,9 +171,28 @@ export function bareGateId(cell: string): string | null {
   return /^[a-z][a-z0-9-]*$/.test(token) && token.includes("-") ? token : null;
 }
 
-/** The `## 0.G` section, which is where `critical_gates[]` is declared in every kiwi skill. */
+/**
+ * The section whose HEADING names `critical_gates` — where the seven chain skills declare their table.
+ *
+ * Located by the heading rather than by `## 0.G`, because that section number belongs to two skills
+ * and the chain has seven. `auto-option.md` §5.0.1 makes the position a free choice and the tree
+ * uses it: `#### §0.G8` in `kiwi-review-fix-loop`, `#### §0.G7` in `kiwi-pm`, `#### §0.G6` in
+ * `kiwi-coder`, `### §0.AG` in `kiwi-tdd`, `### 1.5` in `kiwi-planner` — and the codex and etc
+ * renderings differ again from claude for two of those. What every one of them shares is a heading
+ * that names `critical_gates`, so that is what this reads. @req FR-FLOW-164 AC-1
+ *
+ * It does NOT reach every declaration in the tree. §5.0.1 also allows a declaration under a heading
+ * that names something else, and three shipped sites use that freedom — `skills/claude` renderings of
+ * `kiwi-commit-auto-pr` (§14.9), `kiwi-commit-auto-push` (§11.10) and `kiwi-srs-sync` (§0.16, inline
+ * in a table cell) — so this returns nothing for them. Those three are named in AC-1 and held there
+ * as a set equality, so the exemption is measured rather than left to this comment.
+ *
+ * Measured at 946b5c2: the two skills whose heading was already `## 0.G` return the same rows under
+ * both rules — 58 for `kiwi-orchestrator` and 18 for `kiwi-wave-master` in every tree that ships
+ * them — so the three suites that already read this helper kept their denominators unchanged.
+ */
 export function criticalGatesSection(body: string): string {
-  return section(body, /^##\s*0\.G\b/);
+  return section(body, /^#{1,6}\s.*critical_gates/);
 }
 
 /** `{gateId, reason, location}` per row of the three-column `critical_gates[]` table. */

@@ -128,6 +128,9 @@ description: "OpenCode/Hermes local-LLM variant for executing kiwi-planner tasks
 | `mcp-mutation-backward-status` | `update_status` backward 전이 시도 (§0.G5 Rule 1) | §0.G5 |
 | `mcp-mutation-batch-large` | MCP mutation ≥10건 batch (§0.8) | §0.8 |
 | `existing-file-deleted-or-moved` | diff 에서 비-테스트 기존 파일의 삭제·이동 검출 — `sidecar.files[]` 에 등재되어 있다는 사실만으로는 해소되지 않는다 (§0.20 / §5.1.(d)) — 해소 경로는 §0.20.4 | §5.1.(d) |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | §0.12 MCP mutation — `add_verification_evidence` 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 ---
 

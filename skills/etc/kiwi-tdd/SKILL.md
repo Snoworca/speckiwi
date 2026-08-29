@@ -37,6 +37,9 @@ Each one halts **regardless of** `--auto` and cannot be routed to the decision c
 | `step-claim-write-skew` | `claim_step` rejects on write skew — another step already holds a REQ this step touches, and two steps authoring one requirement is not auto-approvable | Phase 1 (§2.2) |
 | `promote-evidence-required` | `promote_step_requirement` refuses with `EVIDENCE_REQUIRED` on zero verification evidence (§0.6) — a promotion with no evidence is a defect to fill, not a gate to bypass | Phase 6 (§2.7) |
 | `step-completion-gate-blocked` | `update_step_state(merged)` refuses with `COMPLETION_GATE_BLOCKED` (FR-NODE-078) — acknowledging a non-clean compatibility edge is an irreversible judgement | Phase 7 (§2.8) |
+| `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — evidence and promotion stacked on a requirement that carries an error cannot be read back to what admitted them | Phase 6 — before `promote_step_requirement` |
+
+**Where this gate is observed**: at the hop this row's third cell names, run MCP `validate_spec` — the CLI fallback is `speckiwi validate --json`. While any error-severity diagnostic remains, do not proceed with that hop: halt at `validate-spec-error`, which `--auto` does not lift. Never record a pass without having run it.
 
 Until this table was declared, `auto-option.md` §1's **safe default** left `--auto` **inactive** for
 this skill — a silent ignore rather than a failure, so an unattended run stopping at one of its own

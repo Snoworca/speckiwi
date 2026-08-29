@@ -315,10 +315,15 @@ describe("FR-NODE-122 gate-id parity", () => {
     // review child joined. @req FR-NODE-195 — 67 since the two budget stops joined; each is
     // declared in §0.G and carried by an `abort_gate`, so both satisfy the rule this count
     // enforces. @req FR-NODE-197 — 68 since journal contention stopped being reported as invariant
-    // drift. The count moving with the vocabulary is the point: a gate id no refusal can carry
-    // is prose in a machine costume.
-    expect(GATE_IDS).toHaveLength(68);
-    expect(new Set(GATE_IDS).size).toBe(68);
+    // drift. @req FR-FLOW-164 — 69 since the SRS validator's stop joined. Its FOOTING is the same as
+    // the three above it — declared by skills rather than raised by this kernel, and a member
+    // because the parity assertion below runs `declared ⊆ union` — but its PROVENANCE is not:
+    // `auto-option.md` §5.1's catalogue lists those three and does not list this one, whose only
+    // prior home is `kiwi-srs-sync`'s own table, carried there since `a6276c4` (2026-06-01). The
+    // count moving with the vocabulary is the point: a gate id no refusal can carry is prose in a
+    // machine costume.
+    expect(GATE_IDS).toHaveLength(69);
+    expect(new Set(GATE_IDS).size).toBe(69);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {

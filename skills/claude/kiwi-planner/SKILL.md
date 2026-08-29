@@ -215,6 +215,9 @@ AskUserQuestion 4옵션:
 | `strict-tdd-block` | `--tdd-policy=strict` 일 때 `block` 결정은 정책 위반 강제 차단이며 사용자 결정 의무 | §0.G7 |
 | `external-module-impact` | cwd 외부 path Task `files[]` 진입 — 외부 시스템 비가역 변경 | §0.G2 |
 | `mcp-cli-both-unavailable` | §3.0 판정에서 MCP `get_active_target` 과 CLI `speckiwi --version` 이 모두 실패 — target·요구사항 입력 자체가 없어 계획을 세울 수 없다 | §3.0 |
+| `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | Phase 5 — `add_trace_link` 직전 |
+
+**이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 ---
 
