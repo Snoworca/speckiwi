@@ -92,12 +92,14 @@ deprecated	-	kiwi-review-fix-loop/SKILL.md	불일치로 드러난다. 산문 증
 deprecated	-	kiwi-review-fix-loop/SKILL.md	증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. status 가 impleme
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
+deprecated	-	kiwi-srs-feasibility/SKILL.md	- stability = deprecated 제외
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- → deprecated: {n} (사용자 승인 완료)
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- 단일 질문에 stable 승급 / deprecated 강등 / status 충돌 3 카테고리를 분리된 옵션 그
 deprecated	-	kiwi-srs-feasibility/SKILL.md	ty(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	→evolving:5 evolving→stable:2 → deprecated:1") 권장
 deprecated	-	kiwi-srs-feasibility/SKILL.md	비존재 + 외부 모듈 의존) → Opus 시니어 건너뛰고 deprecated 후보
+deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/deprecated {y}, scope/priority 필터 {z})" |
 deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) deprecated 처리 |
 deprecated	-	kiwi-srs-sync/SKILL.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/SKILL.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
@@ -111,7 +113,7 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	kiwi-srs-feasibility/SKILL.md	- status = discarded 제외
 discarded	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status = discarded | 기본 필터(§3.3)로는 이 게이트에 도달하지 않는
-discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z
+discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y}, scope/priority
 discarded	-	kiwi-srs-from-code/SKILL.md	"거짓 사실 진술" | update_status 로 discarded + Change Notes "scope_creep: 코
 discarded	-	kiwi-srs-from-code/SKILL.md	(Phase 4 에서 hallucinated 판정 시 discarded) |
 discarded	-	kiwi-srs-from-code/SKILL.md	- discarded (할루시네이션·scope_creep 제거): X건
@@ -145,6 +147,9 @@ draft	-	kiwi-commit-auto-push/SKILL.md	| draft | WARN + trailer 부착 skip (dra
 draft	-	kiwi-hot-fix/SKILL.md	speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료
 draft	-	kiwi-hot-fix/SKILL.md	명시 시 stability 검사 강제 (§0.12). draft REQ 영향 진입 시 차단 | §0.12 |
 draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
+draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
+draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -183,8 +188,8 @@ draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	- draft → evolving: {n}
 draft	-	kiwi-srs-feasibility/SKILL.md	- draft → stable: {n} (사용자 승인 완료)
+draft	-	kiwi-srs-feasibility/SKILL.md	- draft 는 제외하지 않는다 — 이 스킬이 평가해 승급시키는 대
 draft	-	kiwi-srs-feasibility/SKILL.md	- notes: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 →
-draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
 draft	-	kiwi-srs-feasibility/SKILL.md	ODO-001", "current_stability": "draft", "predicted_stability_range":
 draft	-	kiwi-srs-feasibility/SKILL.md	alue": "evolving", "md_value": "draft", "retry_count": 1, "retry_dela
 draft	-	kiwi-srs-feasibility/SKILL.md	atus": "planned", "stability": "draft", "ac_count": 3, "trace_count":
@@ -193,7 +198,6 @@ draft	-	kiwi-srs-feasibility/SKILL.md	ility)을 정량 평가하고 그 결과�
 draft	-	kiwi-srs-feasibility/SKILL.md	| low | (default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	결과가 transition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선
 draft	-	kiwi-srs-feasibility/SKILL.md	되지 않아 다음 run 에서 drift 감지(stable→draft 등) 시점에 이전 feasibility 결과를 재참조 불
-draft	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z})" |
 draft	-	kiwi-srs-from-code/SKILL.md	- draft (추정 항목): Y건
 draft	-	kiwi-srs-from-code/SKILL.md	- draft → stable 승격은 사용자가 코드 확정 후 수동 수행
 draft	-	kiwi-srs-from-code/SKILL.md	5. draft 정책 (single) — 옵션: keep_draft
@@ -233,6 +237,7 @@ evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of dra
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
 evolving	-	kiwi-commit-auto-push/SKILL.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
+evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-planner/SKILL.md	": "FR-TODO-001", "stability": "evolving", "ac_total": 3, "ac_ids": ["AC
@@ -333,7 +338,7 @@ frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable | off (stable/frozen 은
 frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable 미지정 시 stable/frozen 제외
 frozen	-	kiwi-srs-feasibility/SKILL.md	3. 매칭 결과가 §0.G5 (stable/frozen 승급) 에 해당하면 사용자 승인 플래그
 frozen	-	kiwi-srs-feasibility/SKILL.md	EQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 --inc
-frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope
+frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y},
 frozen	-	kiwi-srs-feasibility/SKILL.md	frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
 frozen	-	kiwi-srs-feasibility/SKILL.md	lity = frozen | 본 스킬 권한 외 (frozen 승급 권한 ⛔). 정책 파일이 frozen 매핑을 정의해
 frozen	-	kiwi-srs-feasibility/SKILL.md	stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_ac
@@ -539,7 +544,7 @@ stable	-	kiwi-srs-feasibility/SKILL.md	low | (default) | draft | ⚠️ stable�
 stable	-	kiwi-srs-feasibility/SKILL.md	nsition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선행 호출 → gu
 stable	-	kiwi-srs-feasibility/SKILL.md	stability-stable-promotion | stable 승급은 정책 무관 항상 사용자 확인 — 거버넌스 핵심
 stable	-	kiwi-srs-feasibility/SKILL.md	stability_range": ["evolving", "stable"], "requires_user_confirm": tru
-stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}
+stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecate
 stable	-	kiwi-srs-feasibility/SKILL.md	| "stable REQ 도 재평가" | --include-stable
 stable	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책
 stable	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 사용자 확인. 정책 파일이
@@ -710,9 +715,11 @@ deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecat
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
+deprecated	-	kiwi-srs-feasibility/SKILL.md	- stability = deprecated 제외
 deprecated	-	kiwi-srs-feasibility/SKILL.md	ty(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	듈 의존) → high-reasoning 시니어 건너뛰고 deprecated 후보
+deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/deprecated {y}, scope/priority 필터 {z})" |
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- → deprecated: {n} (사용자 승인 완료)
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- 단일 질문에 stable 승급 / deprecated 강등 / status 충돌 3 카테고리를 분리된 옵션 그
@@ -730,7 +737,7 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	kiwi-srs-feasibility/SKILL.md	- status = discarded 제외
 discarded	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status = discarded | 기본 필터(§3.3)로는 이 게이트에 도달하지 않는
-discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z
+discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y}, scope/priority
 discarded	-	kiwi-srs-from-code/SKILL.md	(Phase 4 에서 hallucinated 판정 시 discarded) |
 discarded	-	kiwi-srs-from-code/SKILL.md	discard_all_inferred(추정 항목 즉시 discarded)
 discarded	-	kiwi-srs-from-code/SKILL.md	type prefix 제외, 진동 동등성 키, draft↔discarded 결정 트리, prefix-type cross-check,
@@ -765,6 +772,9 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + t
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
 draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
+draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
+draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -800,13 +810,12 @@ draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated on
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
-draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
+draft	-	kiwi-srs-feasibility/SKILL.md	- draft 는 제외하지 않는다 — 이 스킬이 평가해 승급시키는 대
 draft	-	kiwi-srs-feasibility/SKILL.md	ODO-001", "current_stability": "draft", "predicted_stability_range":
 draft	-	kiwi-srs-feasibility/SKILL.md	atus": "planned", "stability": "draft", "ac_count": 3, "trace_count":
 draft	-	kiwi-srs-feasibility/SKILL.md	ility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecat
 draft	-	kiwi-srs-feasibility/SKILL.md	| low | (default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	결과가 transition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선
-draft	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z})" |
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → evolving: {n}
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → stable: {n} (사용자 승인 완료)
@@ -860,6 +869,7 @@ evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolv
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
+evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-planner/SKILL.md	"stability": "evolving",
@@ -947,7 +957,7 @@ frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable | off (stable/frozen 은
 frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable 미지정 시 stable/frozen 제외
 frozen	-	kiwi-srs-feasibility/SKILL.md	-v1 §3.2 의 frozen 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen
 frozen	-	kiwi-srs-feasibility/SKILL.md	EQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 --inc
-frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope
+frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y},
 frozen	-	kiwi-srs-feasibility/SKILL.md	frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
 frozen	-	kiwi-srs-feasibility/SKILL.md	stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_ac
 frozen	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책 require
@@ -1150,7 +1160,7 @@ stable	-	kiwi-srs-feasibility/SKILL.md	low | (default) | draft | ⚠️ stable�
 stable	-	kiwi-srs-feasibility/SKILL.md	nsition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선행 호출 → gu
 stable	-	kiwi-srs-feasibility/SKILL.md	stability-stable-promotion | stable 승급은 항상 사용자 확인 | §0.G5 |
 stable	-	kiwi-srs-feasibility/SKILL.md	stability_range": ["evolving", "stable"], "requires_user_confirm": tru
-stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}
+stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecate
 stable	-	kiwi-srs-feasibility/SKILL.md	| "stable REQ 도 재평가" | --include-stable
 stable	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책
 stable	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 사용자 확인. 정책 파일이
@@ -1310,8 +1320,10 @@ deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecat
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
+deprecated	-	kiwi-srs-feasibility/SKILL.md	- stability = deprecated 제외
 deprecated	-	kiwi-srs-feasibility/SKILL.md	local-LLM max-profile 시니어 건너뛰고 deprecated 후보
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
+deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/deprecated {y}, scope/priority 필터 {z})" |
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- → deprecated: {n} (사용자 승인 완료)
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- 단일 질문에 stable 승급 / deprecated 강등 / status 충돌 3 카테고리를 분리된 옵션 그
@@ -1327,7 +1339,7 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 discarded	-	kiwi-srs-feasibility/SKILL.md	- status = discarded 제외
 discarded	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status = discarded | 기본 필터(§3.3)로는 이 게이트에 도달하지 않는
-discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z
+discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y}, scope/priority
 discarded	-	kiwi-srs-from-code/SKILL.md	(Phase 4 에서 hallucinated 판정 시 discarded) |
 discarded	-	kiwi-srs-from-code/SKILL.md	discard_all_inferred(추정 항목 즉시 discarded)
 discarded	-	kiwi-srs-from-code/SKILL.md	type prefix 제외, 진동 동등성 키, draft↔discarded 결정 트리, prefix-type cross-check,
@@ -1360,6 +1372,9 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + t
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
 draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
+draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
+draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -1395,12 +1410,11 @@ draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated on
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
-draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
+draft	-	kiwi-srs-feasibility/SKILL.md	- draft 는 제외하지 않는다 — 이 스킬이 평가해 승급시키는 대
 draft	-	kiwi-srs-feasibility/SKILL.md	ODO-001", "current_stability": "draft", "predicted_stability_range":
 draft	-	kiwi-srs-feasibility/SKILL.md	atus": "planned", "stability": "draft", "ac_count": 3, "trace_count":
 draft	-	kiwi-srs-feasibility/SKILL.md	| low | (default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	결과가 transition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선
-draft	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z})" |
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → evolving: {n}
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → stable: {n} (사용자 승인 완료)
@@ -1451,6 +1465,7 @@ evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of dra
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
+evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-planner/SKILL.md	"stability": "evolving",
@@ -1532,7 +1547,7 @@ frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable | off (stable/frozen 은
 frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable 미지정 시 stable/frozen 제외
 frozen	-	kiwi-srs-feasibility/SKILL.md	-v1 §3.2 의 frozen 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen
 frozen	-	kiwi-srs-feasibility/SKILL.md	EQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 --inc
-frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope
+frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y},
 frozen	-	kiwi-srs-feasibility/SKILL.md	frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
 frozen	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책 require
 frozen	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 사용자 확인. 정책 파일이 자동 허용으로
@@ -1726,7 +1741,7 @@ stable	-	kiwi-srs-feasibility/SKILL.md	low | (default) | draft | ⚠️ stable�
 stable	-	kiwi-srs-feasibility/SKILL.md	nsition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선행 호출 → gu
 stable	-	kiwi-srs-feasibility/SKILL.md	stability-stable-promotion | stable 승급은 항상 사용자 확인 | §0.G5 |
 stable	-	kiwi-srs-feasibility/SKILL.md	stability_range": ["evolving", "stable"], "requires_user_confirm": tru
-stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}
+stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecate
 stable	-	kiwi-srs-feasibility/SKILL.md	| "stable REQ 도 재평가" | --include-stable
 stable	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책
 stable	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 사용자 확인. 정책 파일이
@@ -1886,9 +1901,11 @@ deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecat
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
+deprecated	-	kiwi-srs-feasibility/SKILL.md	- stability = deprecated 제외
 deprecated	-	kiwi-srs-feasibility/SKILL.md	ty(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target
 deprecated	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅ 필수 |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	듈 의존) → high-reasoning 시니어 건너뛰고 deprecated 후보
+deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/deprecated {y}, scope/priority 필터 {z})" |
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- → deprecated: {n} (사용자 승인 완료)
 deprecated	-	kiwi-srs-feasibility/references/extended-workflow.md	- 단일 질문에 stable 승급 / deprecated 강등 / status 충돌 3 카테고리를 분리된 옵션 그
@@ -1906,7 +1923,7 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	kiwi-srs-feasibility/SKILL.md	- status = discarded 제외
 discarded	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status = discarded | 기본 필터(§3.3)로는 이 게이트에 도달하지 않는
-discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z
+discarded	-	kiwi-srs-feasibility/SKILL.md	가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y}, scope/priority
 discarded	-	kiwi-srs-from-code/SKILL.md	(Phase 4 에서 hallucinated 판정 시 discarded) |
 discarded	-	kiwi-srs-from-code/SKILL.md	discard_all_inferred(추정 항목 즉시 discarded)
 discarded	-	kiwi-srs-from-code/SKILL.md	type prefix 제외, 진동 동등성 키, draft↔discarded 결정 트리, prefix-type cross-check,
@@ -1940,6 +1957,9 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + t
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
 draft	-	kiwi-orchestrator/SKILL.md	--close-reqs 는 stability 가 draft·deprecated 인 요구를 건너뛰되 제외 사
+draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
+draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-planner/SKILL.md	#### §0.G3 — draft REQ 진입
@@ -1975,13 +1995,12 @@ draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated on
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	s and those whose stability is draft or deprecated; a status othe
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
-draft	-	kiwi-srs-feasibility/SKILL.md	- stability = draft 제외
+draft	-	kiwi-srs-feasibility/SKILL.md	- draft 는 제외하지 않는다 — 이 스킬이 평가해 승급시키는 대
 draft	-	kiwi-srs-feasibility/SKILL.md	ODO-001", "current_stability": "draft", "predicted_stability_range":
 draft	-	kiwi-srs-feasibility/SKILL.md	atus": "planned", "stability": "draft", "ac_count": 3, "trace_count":
 draft	-	kiwi-srs-feasibility/SKILL.md	ility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecat
 draft	-	kiwi-srs-feasibility/SKILL.md	| low | (default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
 draft	-	kiwi-srs-feasibility/SKILL.md	결과가 transition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선
-draft	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z})" |
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → evolving: {n}
 draft	-	kiwi-srs-feasibility/references/extended-workflow.md	- draft → stable: {n} (사용자 승인 완료)
@@ -2030,6 +2049,7 @@ evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolv
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
+evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-planner/SKILL.md	"stability": "evolving",
@@ -2117,7 +2137,7 @@ frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable | off (stable/frozen 은
 frozen	-	kiwi-srs-feasibility/SKILL.md	--include-stable 미지정 시 stable/frozen 제외
 frozen	-	kiwi-srs-feasibility/SKILL.md	-v1 §3.2 의 frozen 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen
 frozen	-	kiwi-srs-feasibility/SKILL.md	EQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 --inc
-frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope
+frozen	-	kiwi-srs-feasibility/SKILL.md	_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y},
 frozen	-	kiwi-srs-feasibility/SKILL.md	frozen 매핑을 정의해도 거부 + ERROR 보고. frozen 은 별도 release 스킬 책임 |
 frozen	-	kiwi-srs-feasibility/SKILL.md	stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_ac
 frozen	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책 require
@@ -2311,7 +2331,7 @@ stable	-	kiwi-srs-feasibility/SKILL.md	low | (default) | draft | ⚠️ stable�
 stable	-	kiwi-srs-feasibility/SKILL.md	nsition guard 충돌 가능 (예: draft → stable 직행) | dryRun: true 선행 호출 → gu
 stable	-	kiwi-srs-feasibility/SKILL.md	stability-stable-promotion | stable 승급은 항상 사용자 확인 | §0.G5 |
 stable	-	kiwi-srs-feasibility/SKILL.md	stability_range": ["evolving", "stable"], "requires_user_confirm": tru
-stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}
+stable	-	kiwi-srs-feasibility/SKILL.md	{target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecate
 stable	-	kiwi-srs-feasibility/SKILL.md	| "stable REQ 도 재평가" | --include-stable
 stable	-	kiwi-srs-feasibility/SKILL.md	| stable/frozen 승급 게이트 | approve (정책
 stable	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 사용자 확인. 정책 파일이

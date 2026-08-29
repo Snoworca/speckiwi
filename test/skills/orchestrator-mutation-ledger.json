@@ -1774,5 +1774,59 @@
       "replace": "`--engine kiwi-wave-master` 를 함께 주는 것이 좋다"
     },
     "carriers": []
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-PROMOTION-HOP-SCOPED-TO-THE-WAVE-TARGET",
+    "owning_requirement": "FR-FLOW-165",
+    "sentence": "§4.5.3 — the stability promotion hop is called with TARGET=wave-{n}, because the skill it calls moves stability across the whole target and an unscoped call would put another wave's requirements into promotion evaluation",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "범위는 `TARGET=wave-{n}` 으로 반드시 한정한다",
+      "replace": "범위는 `TARGET=wave-{n}` 으로 가능하면 한정한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.3 `R-ORCH` → 공용 wave 엔진을 직접 구동",
+        "carrier": "반드시",
+        "snippet": "으로 반드시 한정한다"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-PROMOTION-HOP-SCOPED-TO-THE-WAVE-TARGET",
+    "owning_requirement": "FR-FLOW-165",
+    "sentence": "§4.5.3 — the stability promotion hop is called with TARGET=wave-{n}, because the skill it calls moves stability across the whole target and an unscoped call would put another wave's requirements into promotion evaluation",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "범위는 `TARGET=wave-{n}` 으로 반드시 한정한다",
+      "replace": "범위는 `TARGET=wave-{n}` 으로 가능하면 한정한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.3 `R-ORCH` → 공용 wave 엔진을 직접 구동",
+        "carrier": "반드시",
+        "snippet": "으로 반드시 한정한다"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-PROMOTION-HOP-SCOPED-TO-THE-WAVE-TARGET",
+    "owning_requirement": "FR-FLOW-165",
+    "sentence": "§4.5.3 — the stability promotion hop is called with TARGET=wave-{n}, because the skill it calls moves stability across the whole target and an unscoped call would put another wave's requirements into promotion evaluation",
+    "mutation_class": "inserted hedge",
+    "mutation": {
+      "find": "범위는 `TARGET=wave-{n}` 으로 반드시 한정한다",
+      "replace": "범위는 `TARGET=wave-{n}` 으로 가능하면 한정한다"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 4. 라우팅 — 규모와 범위 판정 > 4.5 rung 별 경로표 > 4.5.3 `R-ORCH` → 공용 wave 엔진을 직접 구동",
+        "carrier": "반드시",
+        "snippet": "으로 반드시 한정한다"
+      }
+    ]
   }
 ]

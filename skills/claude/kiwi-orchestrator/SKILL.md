@@ -76,7 +76,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 | `wave-design-insufficient` | loop W cap 소진 — cap 소진은 통과가 아니다 | Phase 3.a |
 | `child-srs-needs-user-or-failed` | 직접 호출한 `/kiwi-srs` 가 `NEEDS_USER` 또는 `FAILED` 반환 | Phase 3.b |
 | `unallocated-req-id` | sidecar task 가 3.b 배정 집합 밖의 `req_id` 를 갖거나 `req_ids` 가 빔 | Phase 3.c′ |
-| `requirement-not-ready` | 파생 readiness 가 미충족 hard dependency·증거 드리프트·미검증 소유권을 보고 | Phase 3.c′ |
+| `requirement-not-ready` | 파생 readiness 가 네 원인 중 하나를 보고 (요구 자신의 status·stability 가 디스패치 집합 밖 = `lifecycleReady` 거짓, 미충족 hard dependency = `hardDependenciesSatisfied` 거짓, 증거 드리프트 = `evidenceDrift`, 미검증 소유권 = `ownershipVerified` 거짓) | Phase 3.c′ |
 | `schedule-cycle` | 의존 사이클이 lane 계획까지 살아남음 | Phase 3.e |
 | `tdd-pair-split` | `covers_ac` red/green 쌍이 서로 다른 lane 에 배치됨 | Phase 3.e |
 | `unknown-write-set-refused` | `files[]` 가 비었거나 `[INFERRED:` 인데 플래그가 없음 | Phase 3.e |
@@ -264,6 +264,7 @@ Phase 3  wave 마다, 등록 순서대로 — wave 는 직렬이고 누적된다
                                             unmarked-normative-prose                C
   3.b  /kiwi-srs 로 SRS 등록 (host root, 직렬; 모든 REQ id 를 여기서 할당)
                                      게이트: child-srs-needs-user-or-failed         C
+  3.b′ /kiwi-srs-feasibility 로 stability 승급 (조건부, TARGET=wave-{n})
   3.c  /kiwi-planner 로 계획 (host root, 직렬)
   3.c′ readiness 파생 + 배정 검사    게이트: unallocated-req-id                     C
                                             requirement-not-ready                   C
@@ -517,13 +518,16 @@ Skill({ skill: "kiwi-srs",
         args: "REQ_PATH=waves/wave-{n}/excerpt.md
                --research-doc waves/wave-{n}/design.md --research-doc waves/wave-{n}/excerpt.md
                --constraints-doc design/constraints.json TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })
+Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })   (조건부)
 Skill({ skill: "kiwi-planner",  args: "TARGET=wave-{n} [REQ_FILTER=…] [--plan-run-id …] …" })
 /kiwi-pm --handoff …                          (lane 마다, stage 마다 — §10)
 Skill({ skill: "kiwi-review-fix-loop", args: "--base {wave_window_base} --head {wave_window_head}
         --no-pipeline-emit …" })
 ```
 
-`/kiwi-review-fix-loop` 의 교정 hop 은 통합 브랜치 위 이 wave 의 **커밋 범위**에 대해 실행하며 **`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다**. 이 rung 에는 `/kiwi-srs-feasibility` hop 이 **없다**.
+`/kiwi-review-fix-loop` 의 교정 hop 은 통합 브랜치 위 이 wave 의 **커밋 범위**에 대해 실행하며 **`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다**.
+
+**stability 승급 홉은 조건부다.** 그 wave 의 요구 중 `stability` 가 `draft` 이거나 implementability 가 미검증인 것이 하나라도 있으면, 3.b 직후이자 3.c′ 앞인 3.b′ 에서 `/kiwi-srs-feasibility` 를 `TARGET=wave-{n}` 으로 부른다. 전부 `evolving` 이상이면 건너뛴다 — `kiwi-pipeline` 의 `조건부 feasibility` 절이 이미 쓰는 조건과 같은 조건이며, 승급 판정 기준을 두 벌로 만들지 않으려고 `update_stability` 를 직접 부르지 않고 그 기준을 소유한 스킬을 부른다. **위의 `kiwi-pipeline` 거부는 wave 를 파이프라인에 라우팅하는 것을 막는 것이지 형제 스킬을 이름으로 부르는 것을 막는 것이 아니다** — 뒤 세션이 그 문장을 근거로 이 홉을 지우지 않게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 `draft` 인 채로 3.c′ 에 도달하고, `requirement-not-ready` 는 §0.G 에 있어 `--auto` 로도 넘어가지 않는다. 범위는 `TARGET=wave-{n}` 으로 반드시 한정한다 — 이 스킬은 target 전수의 stability 를 일괄로 움직이므로 범위를 주지 않으면 다른 wave 의 요구까지 승급 평가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 `draft` 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것이 옳다 — 그 경우 `update_stability` 시도가 저널과 요구의 Change Notes 에 남으므로, 홉이 실행되지 않은 것과 구분된다.
 
 **wave 의미 게이트는 상속되지 않고 오케스트레이터 자신의 `critical_gates[]` 에 선언되어 있다**(§0.G): `wave-verify-residual-critical` · `wave-verify-fail-residual` · `wave-verify-cross-wave-fix-required` · `final-verify-residual-critical` · `wave-decomposition-coverage-gap` · `out-of-scope-user-consent` · `wave-append-cap-exhausted` · `decomposition-input-missing` · `child-srs-needs-user-or-failed` · `child-pipeline-needs-user-or-failed` · `unsafe-option-refused` · `wt-delegation-refused` · `invalid-loop-option` — **13개 전부**.
 
@@ -1099,6 +1103,7 @@ recovery class **idempotent-by-key**. loop W 의 라운드. 동결 분모는 그
 recovery class **externally-visible**. Phase 3.b. `/kiwi-srs` 가 요구를 저작했을 수 있다.
 복구: `list_requirements --target wave-{n}` 과 `srs_authored` 표식을 점검한 뒤 재진입한다.
 게이트: `child-srs-needs-user-or-failed`.
+같은 phase 의 stability 승급 홉(`/kiwi-srs-feasibility`, 3.b′)도 이 동사가 덮는다 — 그 홉이 요구의 stability 를 움직였을 수 있어 recovery class 가 같고 재진입 점검도 같은 조회이므로, `§V` 동사를 새로 만들지 않는다.
 
 ### §V.plan-wave
 

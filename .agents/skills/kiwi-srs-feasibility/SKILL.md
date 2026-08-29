@@ -243,7 +243,8 @@ list_requirements { target: TARGET }
 - 평가 대상 필터링 (§4 인계 게이트 규칙 적용):
   - `--include-stable` 미지정 시 stable/frozen 제외
   - status = `discarded` 제외
-  - stability = `draft` 제외
+  - stability = `deprecated` 제외
+  - `draft` 는 제외하지 않는다 — 이 스킬이 평가해 승급시키는 대상이 그 stability 이기 때문이다. 제외하면 3.b 가 막 저작한 요구만 있는 wave target 에서 평가 대상이 0건이 되고, `target-snapshot.json.empty_reason` 이 `filter_excluded` 인 채로 정상 종료한다 (`FR-FLOW-165`)
   - `--scope` / `--priority` 옵션 적용
   - `--req-filter` 지정 시 열거된 REQ-ID 만 남긴다 — **명시 열거**는 `--scope` / `--priority` 필터와 status 기본 제외보다 **우선**한다 (호명된 REQ 가 필터로 조용히 빠지면 "그 REQ 만 재실행" 이 no-op 이 된다). stable/frozen 제외는 그대로이므로 그 REQ 도 평가하려면 `--include-stable` 을 함께 준다. 열거된 ID 가 target 에 없으면 그 ID 를 사용자에게 보고한다
 - 필터 후 N개 REQ → Phase 1 입력
@@ -253,7 +254,7 @@ N=0 분기:
 | 조건 | 안내 | 권고 |
 |---|---|---|
 | `target_total = 0` (target 자체 비어있음) | "활성 target 에 REQ 가 0건. kiwi-srs 로 REQ 작성 선행 필요" | kiwi-srs / kiwi-srs-from-code 호출 |
-| `target_total > 0 AND filtered = 0` (필터 후 0) | "총 {target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/draft {y}, scope/priority 필터 {z})" | `--include-stable` 또는 `--scope`/`--priority` 옵션 조정 |
+| `target_total > 0 AND filtered = 0` (필터 후 0) | "총 {target_total}건 중 평가 대상 0건 (제외: stable/frozen {x}, discarded/deprecated {y}, scope/priority 필터 {z})" | `--include-stable` 또는 `--scope`/`--priority` 옵션 조정 |
 
 양쪽 모두 종료. `target-snapshot.json.empty_reason` 에 분류 라벨(`target_empty` / `filter_excluded`) 기록.
 

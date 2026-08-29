@@ -109,6 +109,11 @@ const OWNED_RULES: Record<string, string[]> = {
     "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
     "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP"
   ],
+  // The promotion hop's scope clause. `kiwi-srs-feasibility` moves stability across a whole target,
+  // so an unscoped call from a per-wave rung would put the other waves' requirements into promotion
+  // evaluation — which is why the hop carries `TARGET=wave-{n}` and why that is a rule rather than a
+  // convention.
+  "FR-FLOW-165": ["R-PROMOTION-HOP-SCOPED-TO-THE-WAVE-TARGET"],
   unowned: ["R-SECTION-ZERO-NO-CHANGELOG-IN-BODY", "R-SECTION-ZERO-NO-COMMIT-SIGNATURE", "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL"]
 };
 

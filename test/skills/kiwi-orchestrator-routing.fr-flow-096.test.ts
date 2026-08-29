@@ -349,7 +349,13 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       expect(
         tiedTogether(body, /.kiwi-review-fix-loop. 의 교정 hop/, [/커밋 범위/, /`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다/], 400)
       ).toBe(true);
-      expect(body).toMatch(/.kiwi-srs-feasibility. hop 이 \*\*없다\*\*/);
+      // The sentence that used to be pinned here — this rung has no `kiwi-srs-feasibility` hop — was
+      // reversed by FR-FLOW-165, which gives the rung the hop. No criterion of FR-FLOW-099 asks for
+      // it: AC-10 names the delegation to kiwi-srs, kiwi-planner and kiwi-pm and the remediation hop
+      // carrying neither flag, all of which are asserted above. Keeping the old pin would have this
+      // file assert the opposite of what the tree now ships, which is the shape the AC-8 change note
+      // of 2026-08-28 records for the same reason. The hop and its position are held by
+      // `test/skills/stability-promotion-hop.fr-flow-165.test.ts`.
     }
   });
 

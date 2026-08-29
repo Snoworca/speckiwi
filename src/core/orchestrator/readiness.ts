@@ -91,6 +91,15 @@ export interface DerivedRequirementReadiness {
   readonly status: RequirementStatus;
   readonly stability: Stability;
   readonly hardDependenciesSatisfied: boolean;
+  /**
+   * Whether the record's OWN `status` and `stability` admit a dispatch. @req FR-FLOW-165 AC-6
+   *
+   * `hardDependenciesSatisfied` already carries this as a conjunct and keeps carrying it, so this
+   * field changes no verdict; what it changes is what the refusal can be attributed to. Folded, a
+   * wave's own `draft` requirement with no dependency at all was refused under the name of an
+   * unsatisfied dependency, and the agent at the gate went looking for one that does not exist.
+   */
+  readonly lifecycleReady: boolean;
   readonly evidenceDrift: boolean;
   readonly ownershipVerified: boolean;
 }
@@ -522,7 +531,8 @@ export function scopeRequirementDiagnostics(
 }
 
 /**
- * Derives `hardDependenciesSatisfied`, `evidenceDrift` and `ownershipVerified` from raw records.
+ * Derives `hardDependenciesSatisfied`, `lifecycleReady`, `evidenceDrift` and `ownershipVerified`
+ * from raw records.
  * Extra properties a caller attached are never consulted, so readiness cannot be self-attested.
  */
 export function deriveCanonicalRequirementReadiness(
@@ -579,6 +589,7 @@ export function deriveCanonicalRequirementReadiness(
       hardDependenciesSatisfied: !invalid
         && isLifecycleReady(record)
         && hardDependencyIds(record).every((dependencyId) => dependencyReady(dependencyId, new Set([record.id]))),
+      lifecycleReady: !invalid && isLifecycleReady(record),
       evidenceDrift: recordEvidenceDrift(record, invalid),
       ownershipVerified: !invalid && occurrences.length === 1 && record.target === target
     }];

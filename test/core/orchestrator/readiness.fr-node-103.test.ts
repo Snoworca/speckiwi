@@ -72,12 +72,17 @@ const READINESS_CASES: readonly ReadinessCase[] = [
     ],
     requirementIds: ["FR-A-001"],
     expect: (rows) => {
+      // Exact shape rather than a subset, so a field appearing on the derived row is a decision
+      // recorded here rather than a silent addition. `lifecycleReady` is FR-FLOW-165's, and it does
+      // not change this row's verdict: `hardDependenciesSatisfied` still carries lifecycle as a
+      // conjunct, which is why case 05 below reads the same as it did.
       expect(row(rows, "FR-A-001")).toEqual({
         id: "FR-A-001",
         target: TARGET,
         status: "implemented",
         stability: "stable",
         hardDependenciesSatisfied: true,
+        lifecycleReady: true,
         evidenceDrift: true,
         ownershipVerified: true
       });
