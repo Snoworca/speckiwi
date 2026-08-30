@@ -50,7 +50,7 @@
 - [x] [17. 나머지 `orchestrate_*` 18종의 처분을 판정한다](17.orchestrate-tool-triage.md) — 04 가 하나만 배선하고 나머지를 이연했는데 그 이연을 받을 항목이 없었다
   - **배선 10 중 일곱의 행선지는 19 번과 20 번이다.** 17 번 §7 7번이 "배선 대상이 서너 개를 넘거나 서로 다른 스킬에 흩어져 있으면 판정 표를 먼저 닫고 배선을 도구 가족별 후속 항목으로 나눈다" 로 그 분리를 정했고, 17 번은 셋(`orchestrate_route_probe` · `orchestrate_route_freeze` · `orchestrate_readiness_check`)만 수행했다. 남은 일곱은 착지할 파일로 갈린다 — `kiwi-orchestrator` 본문에 착지하는 다섯은 [19번](19.orchestrator-body-tool-wiring.md), 공용 계약 파일에 착지하는 둘은 [20번](20.shared-contract-tool-wiring.md)이 받는다. 판정 표가 요구 `FR-FLOW-167` 에 남아 있으므로 두 항목은 조사를 반복하지 않는다
 - [x] [18. `validate-spec-error` 를 구현 사슬에 선언한다](18.validate-spec-error-wiring.md) — 04 §7 이 제안한 C·D 분리를 받는 항목. validation ERROR 로 멈추는 게이트를 `kiwi-srs-sync` 하나만 선언하고, 그것을 테스트로 고정하려면 게이트 표를 찾는 헬퍼부터 일반화해야 한다
-- [ ] [19. `kiwi-orchestrator` 본문이 받는 다섯 도구를 배선한다](19.orchestrator-body-tool-wiring.md) — 17 번이 배선으로 판정하고 수행하지 않은 일곱 중 다섯. 선행 항목은 17 번
+- [x] [19. `kiwi-orchestrator` 본문이 받는 다섯 도구를 배선한다](19.orchestrator-body-tool-wiring.md) — 17 번이 배선으로 판정하고 수행하지 않은 일곱 중 다섯. 선행 항목은 17 번
 - [ ] [20. 공용 계약 파일이 받는 두 도구를 배선한다](20.shared-contract-tool-wiring.md) — 나머지 둘. 여러 스킬이 공유하는 `_shared/kiwi/` 아래에 착지하므로 검증 바가 다르다
 - [ ] [21. 배타 락이 일시적 파일 시스템 오류를 거절로 바꾸지 않게 한다](21.exclusive-lock-transient-error.md) — 보유자가 락을 반납하는 사이 Windows 가 내는 `EPERM` 을 대기자가 예외로 흘려보내, 30 초 대기 예산이 통째로 우회되고 대기 대신 거절이 나간다
 
@@ -157,10 +157,10 @@
 
 | 그룹 | 항목 수 | 완료 |
 |---|---|---|
-| A — 계약이 깨진 자리 | 11 | 8 |
+| A — 계약이 깨진 자리 | 11 | 9 |
 | B — 판정이 자기증명인 자리 | 5 | 1 |
 | C — 정확도에 기여하지 않는 비용 | 4 | 1 |
 | D — 산문 정리 | 1 | 0 |
-| **합계** | **21** | **10** |
+| **합계** | **21** | **11** |
 
 체크박스를 채울 때는 그 항목의 요구가 `verified` 이고 검증 증거가 붙어 있어야 한다. 구현만 끝난 상태는 체크하지 않는다.

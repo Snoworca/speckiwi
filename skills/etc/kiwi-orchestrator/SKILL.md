@@ -301,10 +301,10 @@ Phase 3  wave 마다, 등록 순서대로 — wave 는 직렬이고 누적된다
   └───────────────────────────────────────────────────────────────────────────────┘
 
   3.k  wave 마감 (wave 당 1회, 마지막 stage 뒤):
-       (0) waves/wave-{n}/epilogue.md 저작 → handoff validate --lane epilogue →
-           freeze handoff → serial_epilogue ∪ unassigned task 집합을 host 단위 하나로 실행.
-           wave 안에서 order-last 다. 그 집합이 비면 (0) 은 통째로 생략하고 저널에
-           생략을 결과로 기록한다;
+       (0) waves/wave-{n}/epilogue.md 저작 → orchestrate handoff validate (§9.3) →
+           orchestrate freeze handoff (§3.2) → serial_epilogue ∪ unassigned task 집합을
+           host 단위 하나로 실행. wave 안에서 order-last 다. 그 집합이 비면 (0) 은
+           통째로 생략하고 저널에 생략을 결과로 기록한다;
        (1) 레지스트리의 수렴 레시피 실행;
        (2) 이 wave 의 커밋 범위에 대한 중복 감사 (§11.1) — (0) 뒤에 실행된다;
        (3) validate 다음 sync-index (§11.3);
@@ -332,6 +332,18 @@ Phase 6  run 처분 (§15): 통합 브랜치는 그대로 두고 run 리포트�
 3.a–3.o 는 wave 마다 반복된다. **target 을 미리 등록하지 않는다.**
 
 **`2.6.0-phase2-parallel-lanes` 로 이연된 단계와 그 자리**: 3.g 의 비차단 dispatch, 3.g′ join, 3.h 수집과 클레임 감사, 3.i loop L, 3.j 재감사와 per-lane merge, 3.j′ harvest 후 reap. 여섯 단계 모두 같은 자리로 재진입한다. 조용히 사라진 것이 아니라 이연된 것이다.
+
+### 3.1 Preflight P.5 의 run lock — 취득과 해제를 판정하는 명령
+
+P.5 의 lock 은 git common dir 를 키로 하므로 연결된 워크트리들이 하나의 lease 를 두고 경합한다. 그 취득과 해제와 조회는 MCP `orchestrate_run_lock` 에 `action` 을 `lock` · `unlock` · `status` 중 하나로 주어 수행하고, MCP 가 없으면 CLI `speckiwi orchestrate run lock|unlock|status --json` 으로 같은 판정을 받는다. 이미 다른 run 이 lease 를 들고 있으면 `lock` 이 `orchestrator-run-lock-held` 로 거절하며, 거절 응답이 보유자와 lock 파일 경로를 함께 싣는다. 그 게이트를 내는 것은 세 action 가운데 `lock` 뿐이다.
+
+lock 파일이 디스크에 있는지를 읽어 스스로 내리는 판단은 이 판정을 대신하지 못한다. abort 로 끝나는 run 의 해제는 §15 가 지배한다. abort 가 아닌 종료의 해제도 같은 도구의 `unlock` 이며, 그때 응답의 `heldBy` 는 해제 자신이 본 보유자다. `unlock` 은 보유자가 다른 run 이고 그 프로세스가 살아 있어도 거절하지 않고 lease 를 해제하므로, 종료 해제는 이 run 이 취득한 lease 에 대해서만 부른다. `status` 는 아무것도 바꾸지 않는 조회이며, 보유자의 생존을 확인하지 않고 그대로 보고한다.
+
+### 3.2 여섯 동결 target — 하나의 도구로 잠그고 하나의 철자로 부른다
+
+run 이 내용 주소화하는 아티팩트 집합은 여섯이다 — `design`(1.e) · `waves`(Phase 2 끝) · `lanes`(3.e) · `handoff`(3.f′ 와 3.k activity (0)) · `issues`(3.m) · `postmortem`(3.k activity (4)). 여섯 전부를 MCP `orchestrate_freeze` 에 `target` 과 `body` 와 `document` 와 `head` 를 주어 동결하고, MCP 가 없으면 CLI `speckiwi orchestrate freeze design|waves|lanes|handoff|issues|postmortem --body <path> --document <path> --head <sha> --run-id <id> --out <path> --json` 으로 같은 판정을 받는다. 그 kind 가 요구하는 필드를 빠뜨린 body 는 `design-not-frozen` 으로 거절되고, 지명한 문서는 git blob id 로, 선언된 입력은 digest 로 고정된다.
+
+lock 파일을 직접 저작하지 않는다. `--out` 은 target 마다 준다 — 도구 기본값 `kiwi/orchestrator/{run_id}/{target}.lock.json` 에는 wave 성분이 없으므로, 한 run 이 같은 target 을 여러 번 동결하면 뒤엣것이 앞엣것을 덮어쓴다.
 
 ---
 
@@ -749,6 +761,8 @@ handoff 는 `validateHandoff` 의 **다섯** 기계적 계층으로 검증하며
 3. 병합된 CRITICAL 과 HIGH 가 0 일 것;
 4. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.
 
+연언 1 은 MCP `orchestrate_handoff_validate` 에 `lane` 과 `path` 와 `catalog` 와 `base` 를 주어 얻는다 — 3.f 의 lane handoff 전부와 3.k activity (0) 의 epilogue handoff 가 같다. MCP 가 없으면 CLI `speckiwi orchestrate handoff validate --lane <path> --path <path> --catalog <path> --base <path> --json` 이며, 네 인자는 차례로 `lanes.lock.json` 의 그 lane 행, handoff 문서, sidecar task 목록, dispatch base 사실이다. 여섯 위반 코드 가운데 셋은 그 자체로 §0.G 의 게이트 이름이고, 나머지 셋은 우산 게이트 `handoff-verify-failed` 로 온다.
+
 **phase 1 에서 실행가능성 프로브가 여전히 불일치인 채 cap 이 소진되면 `handoff-verify-failed` 가 바로 발화하며 강등을 시도하지 않는다.** 모든 단위가 이미 직렬로 실행되므로 **강등할 곳이 없다**.
 
 ---
@@ -877,6 +891,8 @@ verdict 는 **기록된 서브에이전트 판단이고, 도구는 산출된 후
 
 `wave-issue-triage` 는 **3.m 에서, loop P 뒤·`promote-requirements` 앞**에 실행되며 `waves/wave-{n}/issues.md` 와 생성된 `issues.lock.json` 을 쓴다. **모든 이슈는 정확히 하나의 분류를 받고 목록은 닫혀 있다.**
 
+합집합의 잔여는 MCP `orchestrate_issue_open` 에 `payload` 로 행 하나를 주어 원장에 열고, MCP 가 없으면 CLI `speckiwi orchestrate issue open --payload <payload> --ledger <path> --json` 이다. 이 호출은 아래 여섯 밖의 분류를 거절하고, 원장이 이미 들고 있는 `issueId` 도 함께 거절한다 — 같은 id 가 둘이면 중복 감사의 `issue:{id}` 해소가 어느 행을 가리키는지 정해지지 않으며, `orchestrate wave close` 의 분류 검사는 중복 id 를 보지 않는다. 그래서 원장에 행을 더하는 자리는 이 호출이고, 거절은 `wave-issues-open` 으로 온다.
+
 | class | 뜻 | 경로 |
 |---|---|---|
 | **`local-defect`** | 코드가 틀렸고 설계는 맞다 | wave 창에 대한 `$kiwi-review-fix-loop`, **다음 wave 전에 해소** |
@@ -960,6 +976,8 @@ run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `c
 - run 이 **통합 브랜치에 남긴 커밋**;
 - **run 을 끝낸 게이트**;
 - 원인이 고칠 수 있는 것이면 **정확한 재개 명령**.
+
+그 중단을 저널에 기록하는 것은 MCP `orchestrate_run_abort` 에 `reason` 을 게이트 id 로, `runId` 를 이 run 으로 주는 호출이고, MCP 가 없으면 CLI `speckiwi orchestrate run abort --reason <id> --run-id <id> --json` 이다. `reason` 은 자유 문장이 아니라 게이트 id 이며 `verification.residual[]` 의 `reason_class` 어휘와 다르다. 기록이 착지한 뒤에만 run lock 이 풀린다 — 저널 쓰기가 막히면 이 호출은 lock 을 쥔 채 `run-invariant-drift` 로, 아티팩트 락 경합이면 `journal-artifact-lock-held` 로 거절한다. 자기 종료를 기록하지 못한 run 은 다른 세션이 합류해서는 안 되는 run 이기 때문이다.
 
 **workspace 행** — 병합되지 않은 채 reap 된 lane, reap 하지 못해 아직 실행 중일 수 있는 workspace — 은 phase 1 리포트에 없으며 `2.6.0-phase2-parallel-lanes` 내용으로 지명한다. **조용히 빠뜨리지 않는다.**
 
@@ -1237,7 +1255,9 @@ recovery class **idempotent-by-key**. Phase 5. MCP `workflow_pipeline_emit` 으�
 ### §V.abort-run
 
 recovery class **externally-visible**. §15. `halt` 의 동의어가 **아니다** — 사용자가 어떤 저장소 상태에 남는지를 지명하고 run 리포트에 쓴다. `frozen.integration_branch` 를 그대로 두고 P.5 의 run lock 을 해제한다. `00.run-report.md` 를 쓴다.
+중단 기록은 MCP `orchestrate_run_abort` 에 `reason` 을 게이트 id 로 주어 저널에 쓰고, MCP 가 없으면 CLI `speckiwi orchestrate run abort --reason <id> --run-id <id> --json` 으로 같은 판정을 받는다. 그 기록이 막히면 run lock 은 풀리지 않은 채 남는다.
 복구: `00.run-report.md` 가 이미 있는지 점검한다.
+게이트: `run-invariant-drift`.
 
 ### §V.halt
 
