@@ -1033,13 +1033,16 @@ recovery class **pure-reauthor**. Phase 1.b. intent 와 code-context 와 archite
 ### §V.probe-route
 
 recovery class **idempotent-by-key**. Phase 1.c′, `routing/probe.json` 을 키로 한다. `pure-reauthor` 가 아니다 — S5 와 S6 은 서브에이전트 파생이라 컴팩션을 넘어 재현되지 않으므로 다시 하면 다른 rung 이 나올 수 있다.
+`routing/probe.json` 은 MCP `orchestrate_route_probe` 에 `payload` 로 probe 문서를 주어 쓰고, MCP 가 없으면 CLI `speckiwi orchestrate route probe --payload <payload> --out <path> --json` 으로 같은 판정을 받는다. `--out` 은 `routing/probe.json` 이다. 파서가 읽지 못한 필드를 `unreadable[]` 에 모으고, 그것이 비어 있지 않으면 이 호출은 `route-probe-unreadable` 로 거절하며 거절 응답은 그 필드들을 `violations[].field` 로 싣는다 — 성공 응답의 `probe.unreadable` 이 언제나 빈 배열인 것은 그래서다. 읽지 못한 필드를 기본값으로 채운 채 진행하지 않는다.
 복구: **영속된 probe 를 읽고 다시 판단하지 않는다.** 짝 없는 `intent` 는 probe 파일이 부분적일 수 있다는 뜻이므로 스키마로 검증하고 `unreadable[]` 로 표시된 필드만 다시 읽는다.
 게이트: `route-probe-unreadable`.
 
 ### §V.freeze-route
 
 recovery class **idempotent-by-key**. 게이트 뒤 `routing/route.lock.json` 을 쓴다. 내용 주소화되어 digest 가 같으면 다시 해도 no-op 다.
+lock 은 MCP `orchestrate_route_freeze` 에 `probe`·`gate`·`out` 을 주어 쓰고, MCP 가 없으면 CLI `speckiwi orchestrate route freeze --probe <path> --gate <path> --out <path> --json` 이며 세 경로는 차례로 `routing/probe.json` 과 `routing/route-gate.json` 과 `routing/route.lock.json` 이다. 재개 카드의 경로는 이 도구의 MCP 인자가 아니다 — run id 에서 파생된 기본 경로를 쓰며, 그 경로를 지정하는 플래그는 CLI 에만 있다. 이 호출은 probe 를 다시 파싱하므로 `unreadable[]` 이 비지 않으면 여기서도 거절한다. 응답의 `noop` 이 참이면 digest 가 같아 lock 이 다시 쓰이지 않은 것이고, `card` 가 null 이 아니면 재개 카드가 같은 호출에서 함께 갱신된 것이다 — 카드 갱신은 `noop` 과 무관하다. lock 을 손으로 쓰지 않는다.
 복구: 다시 실행하면 분류기의 제안이 아니라 **override 를 재현한다** — 게이트 결과가 `routing/route-gate.json` 에 영속되어 세 번째 인자로 다시 읽히기 때문이다.
+게이트: `route-probe-unreadable`.
 
 ### §V.dispatch-route
 
@@ -1116,6 +1119,18 @@ recovery class **externally-visible**. Phase 3.c. `$kiwi-planner` 가 `docs/plan
 ### §V.derive-readiness
 
 recovery class **idempotent-by-key**. Phase 3.c′. 새 스냅샷 위의 순수 재계산이며 3.b 배정 집합에 대한 배정 검사를 함께 수행한다.
+readiness 는 MCP `orchestrate_readiness_check` 에 `target`·`snapshot`·`req` 를 주어 파생하고, MCP 가 없으면 CLI `speckiwi orchestrate readiness check --target <t> --snapshot <path> --req <id> --json` 이며 `--target` 은 이 wave 의 target 이다. `--req` 에는 3.b 배정 집합을 그대로 준다 — 빈 목록은 target 전수 훑기가 아니라 오류다. 이 도구가 올리는 게이트는 `requirement-not-ready` 하나이고, 스냅샷이 담지 않은 id 도 그 게이트로 온다. 같은 절의 `unallocated-req-id` 는 배정 검사의 게이트이며 이 도구가 내는 값이 아니다 — 그 검사는 3.b 배정 집합 밖 `req_id` 와 빈 `req_ids` 를 함께 잡고, 배정된 요구와 wave 설계 항목이 서로 짝이 없는 자리까지 네 연언으로 본다.
+스냅샷 파일은 이 wave target 의 `list_requirements` 응답과 `summarize_target` 응답을 한 JSON 문서로 합친 것이며, 레코드는 요약 투영이 아니라 전체 투영으로 받는다 — 기본 투영은 요구마다의 수용 기준과 검증 증거를 빼고 답하므로 그 응답으로 만든 문서는 게이트에 닿지 못한 채 스냅샷 해석 오류로 끝난다.
+머리줄은 최상위 키 이름이고, 이어지는 두 줄은 판별자 값마다 그 문서가 함께 실어야 하는 것을 적는다 — `target` 은 이 wave 의 target 이며 마지막 칸에 적힌 이름들이 그대로 최상위 키다. 판별자가 없거나 그 줄의 키를 빠뜨린 문서는 게이트가 아니라 스냅샷 해석 오류로 끝난다. 빈 줄 뒤의 마지막 줄은 그 전체 투영의 이름과, 그것을 지정하는 MCP 인자 이름과 CLI 플래그다.
+
+```
+transport               target  그 밖의 최상위 키
+mcp-list-requirements   <t>     records diagnostics summary
+speckiwi-list-json      <t>     list summary
+
+레코드 투영 full         MCP projection      CLI --format
+```
+
 복구: 다시 계산한다.
 게이트: `unallocated-req-id` · `requirement-not-ready`.
 
