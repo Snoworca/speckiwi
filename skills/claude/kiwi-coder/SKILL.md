@@ -126,6 +126,8 @@ description: "kiwi-planner 산출물(plan_contract=1.2.0 + sidecar TDD)을 입�
 | `lifecycle-gate-deprecated-or-frozen` | deprecated / frozen REQ 구현은 정책상 중단 | Phase 0 |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | §0.12 MCP mutation — `add_verification_evidence` 직전 |
 
+**`review-hop-start-residual-branches`**: 위 `followup-review-fix-loop-close-unsafe` 행이 덮는 것은 §8.4 3지선다의 **비가역 갈래 하나**뿐이다 — unsafe 한 상태에서 (1) 을 자동 채택해 `--close-reqs` 로 요구를 `verified` 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에 수동과 (3) skip 은 요구를 `implemented` 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 `verified` 를 쓰지 않는다 — 그 쓰기는 `kiwi-review-fix-loop` §0.G8 의 `close-reqs-with-regression-fail` · `close-reqs-critical-or-high-residual` · `bulk-close-or-finalize` 가 `--auto` 와 무관하게 항상 막는다. 그래서 3지선다 전체를 본 표에 올리지 않는다 — 올리면 모든 무인 실행이 마지막 홉에서 죽는 정지점이 되며, 이는 `kiwi-tdd` §0.AG 가 `sds-architecture-decision-approval` 을 critical 로 올리지 않은 것과 같은 이유다. 판정을 비워 두지 않기 위해 이 문단을 남긴다.
+
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
 **기존 분리 옵션 보존 (§0.18 정합)**: `--yes-all` / `--auto-integration` / `--auto-cost-warning` 의 의미는 본 §0.G6 와 독립. 본 SSOT `--auto` 가 활성되어도 3종은 명시 입력 시에만 활성된다 (자동 활성 금지). `--auto` 활성 시 §8.4 후속 review-fix-loop spawn 의 args 에 `--close-reqs --auto` 전파는 §8.4 본문이 SSOT.

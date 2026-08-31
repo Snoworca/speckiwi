@@ -64,6 +64,8 @@ query (§1.1) fires only when `<task>` is absent, and a routed dispatch discharg
 |---|---|
 | task name `<task>` | Target step. Ask the user when absent. |
 | work outline | What to build (research/intent). Source of intent.md. |
+| `--review-hop-owned-by-parent` | The parent's **explicit** signal that it already owns the review of this step window. Skips the Phase 5.5 hop of its own (§2.6.1). |
+| `--no-pipeline-emit` | Delegated-run marker. Suppresses the Phase 7 pipeline event (§2.8). |
 
 ### 1.2 Output
 
@@ -83,6 +85,7 @@ Phase 2 : author the SDS — design.md (mandatory checklist, §3)
 Phase 3 : red — translate SDS-ACs into failing tests, confirm failure, commit tests first
 Phase 4 : green — pass with the smallest change, never weakening tests
 Phase 5 : regression — full impacted tests + `speckiwi vibe-gate check`
+Phase 5.5 : review hop — `kiwi-review-fix-loop` exactly once before promotion (skipped when `--review-hop-owned-by-parent` is passed)
 Phase 6 : post-hoc SRS — synthesize → fold SDS-ACs and evidence into the step SRS → promote_step_requirement → restore traceability (add_trace_link code/implements + @req reconcile, post-promote / non-gating, §0.10)
 Phase 7 : update_step_state(merged) + report
 ```
@@ -119,6 +122,29 @@ Make the tests pass with the smallest implementation, without touching the tests
 
 Run the full impacted existing test set and confirm zero regressions, then pass the step gate (synthesis + design.md) via `speckiwi vibe-gate check`.
 
+### 2.6.1 Phase 5.5 — review hop (before promotion, exactly once)
+
+Review this step's commit window **before** promoting. `promote_step_requirement` is where the requirement is closed, so a review that runs after that has to overturn a verdict already on record.
+
+```
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>]" })
+```
+
+Take the window from the commits this step made: `{step_window_base}` is the commit just before Phase 3 committed the tests first, and `{step_window_head}` is the current HEAD. Without an explicit range the review loop falls back to the last five commits and judges someone else's window.
+
+Do not pass `--close-reqs` — promotion belongs to Phase 6, and this hop is that promotion's precondition rather than its judge. This hop does not modify the tests authored in the red phase (§0.5).
+
+**There is exactly one condition for skipping it** — the parent passed `--review-hop-owned-by-parent` as an **explicit argument**. With that argument the parent already owns this window's review, so the skill does not run a hop of its own (`kiwi-orchestrator` §4.5, "exactly once"). Without it, never infer the entry path: always run the hop. A parent misread from the entry path is silent, and this hop then never happens at all.
+
+The table below is the whole decision. The entry path, any trace of a parent and any earlier run are not inputs to it.
+
+| Did the parent pass `--review-hop-owned-by-parent` as an explicit argument? | This skill's own hop |
+| --- | --- |
+| Yes | skip it |
+| No | run it |
+
+When the review ends with a residual CRITICAL or HIGH finding, do not report `TASK_DONE` — name the remaining findings and stop.
+
 ### 2.7 Phase 6 — post-hoc SRS promotion
 
 1. Synthesize the step SRS with `speckiwi step synthesize <task>` (MCP `synthesize_step_srs`; idempotent — a no-op when the step SRS already exists), then carry the design.md SDS-ACs over as the requirement block's Acceptance Criteria and record the Phase 3–5 tests as Verification Evidence rows.
@@ -131,6 +157,9 @@ Run the full impacted existing test set and confirm zero regressions, then pass 
 ### 2.8 Phase 7 — wrap-up
 
 Transition the step to merged via `update_step_state` (CLI `speckiwi step update-state <task> --status merged`). **The merged transition must pass the completion gate (FR-NODE-078)** — when non-clean compatibility edges remain in the step's TouchesReq closure it is refused with COMPLETION_GATE_BLOCKED; resolve the contradictions (re-run the compatibility checks) or, after user confirmation, override explicitly with acknowledged. Then report the artifact paths, test results, and the promoted REQ id to the user.
+
+**Pipeline emit (mandatory)**: right after the user report, append exactly one termination event per `_shared/kiwi/pipeline-event.md` v1.0.0 (idempotent on `run_id`). Take `next_hint` from the `kiwi-tdd` row of that file's §4 decision table. The fields and the emit procedure live in that SSOT and are not restated here. Do not append when the parent passed `--no-pipeline-emit` — a delegated unit's line pollutes the parent run's journal.
+
 
 ---
 

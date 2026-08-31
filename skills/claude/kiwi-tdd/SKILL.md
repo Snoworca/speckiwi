@@ -58,6 +58,8 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 |---|---|
 | task 이름 `<task>` | 작업 대상 step. 부재 시 사용자에게 질의. |
 | 작업 개요 | 무엇을 만들지(연구/의도). intent.md의 원천. |
+| `--review-hop-owned-by-parent` | 부모가 이 step 창의 리뷰를 이미 소유한다는 **명시** 신호. 받으면 Phase 5.5 의 자체 홉을 건너뛴다(§2.6.1). |
+| `--no-pipeline-emit` | 위임 실행 표식. 받으면 Phase 7 의 파이프라인 이벤트를 append 하지 않는다(§2.8). |
 
 ### 1.2 출력
 
@@ -77,6 +79,7 @@ Phase 2 : SDS 저작 — design.md (체크리스트 의무, §3)
 Phase 3 : red — SDS-AC를 실패 테스트로 번역, 실패 확인 후 테스트 먼저 커밋
 Phase 4 : green — 테스트 약화 없이 최소 구현으로 통과
 Phase 5 : 회귀 — 영향 범위 테스트 전체 + `speckiwi vibe-gate check`
+Phase 5.5 : 리뷰 홉 — `kiwi-review-fix-loop` 을 승격 전에 정확히 한 번 (`--review-hop-owned-by-parent` 를 받았으면 건너뛴다)
 Phase 6 : 후행 SRS — synthesize → 요구 블록·증거 정리 → promote_step_requirement → 추적성 복원(add_trace_link code/implements + @req reconcile, post-promote·비차단, §0.10)
 Phase 7 : update_step_state(merged) + 사용자 보고
 ```
@@ -113,6 +116,29 @@ SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소
 
 영향 범위의 기존 테스트 전체를 실행해 0 회귀를 확인하고, `speckiwi vibe-gate check`로 step 게이트(합성·design.md)를 통과시킨다.
 
+### 2.6.1 Phase 5.5 — 리뷰 홉 (승격 전, 정확히 한 번)
+
+승격보다 **먼저** 이 step 의 커밋 창을 리뷰한다. `promote_step_requirement` 가 요구를 닫는 지점이므로, 닫힌 뒤에 도는 리뷰는 이미 기록된 판정을 뒤집어야 한다.
+
+```
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>]" })
+```
+
+창은 이 step 이 만든 커밋으로 잡는다 — `{step_window_base}` 는 Phase 3 이 테스트를 먼저 커밋하기 직전의 커밋이고, `{step_window_head}` 는 현재 HEAD 다. 범위를 명시하지 않으면 리뷰 루프가 직전 5커밋으로 폴백해 남의 창을 심판한다.
+
+`--close-reqs` 는 주지 않는다 — 승격은 Phase 6 의 몫이고, 이 홉은 그 승격의 선행 조건이지 심판이 아니다. 이 홉은 red 단계에서 저작한 테스트를 수정하지 않는다(§0.5).
+
+**건너뛰는 조건은 하나뿐이다** — 부모가 `--review-hop-owned-by-parent` 를 **명시적 인자로** 넘겼을 때. 그 인자를 받으면 이 창의 리뷰를 부모가 이미 소유하므로 자체 홉을 돌리지 않는다(`kiwi-orchestrator` §4.5 의 "정확히 한 번"). 그 인자가 없으면 진입 경로를 **추론하지 않고** 언제나 홉을 돌린다 — 부모가 있다고 오판하면 이 홉이 한 번도 돌지 않은 채 조용히 지나간다.
+
+판정은 아래 표가 전부다. 진입 경로도, 부모의 흔적도, 이전 실행 기록도 이 표의 입력이 아니다.
+
+| 부모가 `--review-hop-owned-by-parent` 를 명시적 인자로 넘겼는가 | 자체 홉 |
+| --- | --- |
+| 예 | 건너뛴다 |
+| 아니오 | 돌린다 |
+
+리뷰가 CRITICAL 또는 HIGH 를 남긴 채 끝나면 `TASK_DONE` 으로 보고하지 않는다 — 잔여 finding 을 지명해 중단한다.
+
 ### 2.7 Phase 6 — 후행 SRS 승격
 
 1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 design.md의 SDS-AC를 요구 블록의 Acceptance Criteria로 이관하고, Phase 3~5의 테스트를 Verification Evidence 행으로 기록한다.
@@ -125,6 +151,8 @@ SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소
 ### 2.8 Phase 7 — 마무리
 
 `update_step_state`(CLI `speckiwi step update-state <task> --status merged`)로 step을 merged로 전이한다. **merged 전이는 완료게이트(FR-NODE-078)를 통과해야 한다** — step의 TouchesReq 폐포에 비-clean 호환 엣지가 남아 있으면 COMPLETION_GATE_BLOCKED 로 거부되므로, 모순을 해소(재호환 검사)하거나 사용자 확인 후 acknowledged 로 명시 승인한다. 이후 산출물 경로·테스트 결과·승격된 REQ ID를 사용자에게 보고한다.
+
+**Pipeline emit (의무)**: 사용자 보고 직후 `_shared/kiwi/pipeline-event.md` v1.0.0 을 따라 종료 이벤트를 정확히 1줄 append 한다(멱등 — `run_id` 기준). `next_hint` 는 그 파일 §4 결정표의 `kiwi-tdd` 행을 적용한다. 필드와 emit 절차는 그 SSOT 가 갖고 있으므로 본문에 다시 적지 않는다. 부모가 `--no-pipeline-emit` 를 넘긴 위임 실행에서는 append 하지 않는다 — 위임 유닛의 줄은 부모 run 의 저널을 오염시킨다.
 
 ---
 

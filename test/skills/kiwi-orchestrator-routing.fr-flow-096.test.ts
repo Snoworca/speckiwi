@@ -256,7 +256,14 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
   it("AC-2 — the invocation form and the exact flag set", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.1\b/m);
-      expect(body).toContain('Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })');
+      // @req FR-FLOW-172 — the flag set grew again. `kiwi-tdd` gained a review hop of its own, so
+      // the parent now has to say it already owns this window's review and that the delegated unit
+      // must not write the run's pipeline journal. Both are sent unconditionally, which is why they
+      // sit outside the optional brackets. The child reads them as an explicit argument and never
+      // infers a parent, so dropping either here silently doubles the hop or pollutes the journal.
+      expect(body).toContain(
+        'Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--mini | --loops N] [--model <name>]" })'
+      );
       expect(tiedTogether(body, /--auto` 는 일관성을 위해 전달하되/, [/조용히 무시/, /오류로 읽지 않는다/], 300)).toBe(true);
       // @req FR-FLOW-132 — the flag set split when the rung gained a review hop. `--max` now
       // propagates to that child, `--regression-baseline` deliberately does not (the run-start pin

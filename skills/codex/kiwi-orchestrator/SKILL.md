@@ -457,10 +457,10 @@ order: R-PLAN → R-STEP → R-ORCH        첫 생존 rung 이 이긴다
 **호출 전에 존재해야 하는 것**: 동결된 `routing/probe.json` 과 `rung = "R-STEP"` 인 `routing/route.lock.json`; intake 요약에서 결정론적으로 파생한 **40자 이하 kebab** `<task>` 이름; 1.c 에서 이미 쓴 작업 개요 문단 `docs/research/{work}/01.intake.md`; `S1.mode == "tdd"`; 그리고 **설계 문서 없음** — 1.d 는 실행되지 않았고 실행되어서도 안 된다. `kiwi-tdd` 가 자기 SDS 를 저작하기 때문이다.
 
 ```
-Skill({ skill: "kiwi-tdd", args: "<task> [--auto] [--mini | --loops N] [--model <name>]" })
+Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--mini | --loops N] [--model <name>]" })
 ```
 
-**플래그**: `--mini` 와 `--loops N` 은 전파한다. `--model` 은 사용자가 지정했을 때 전파한다. `--max` 는 **아래 리뷰 hop 의 자식에게 전파한다** — 리뷰 루프 자신의 옵션이다. `--regression-baseline` 은 **주지 않는다**: `기존` 은 baseline 커밋 시점에 이미 있던 것으로 판정되고(kiwi-coder §0.20.1), 자식의 불가침 게이트는 `기존` 만 보호한다. run 시작에 고정된 P.4 pin 을 주면 kiwi-tdd 가 방금 쓴 red 단계 테스트가 `기존` 이 **아니게 되어 보호 밖으로 나간다**. 주지 않으면 자식이 hop 직전에 스스로 baseline 을 잡아 그 테스트들이 `기존` 이 되고, §0.17 이 삭제·약화를 막는다. `--auto-cost-warning` · `--auto-integration` · `--force` 는 전파하지 않는다 — 리뷰 루프에 그 옵션이 없다. 그것들은 `kiwi-pm` 을 거쳐 `kiwi-coder` 에 닿는 게이트이고 이 rung 에는 그 경로가 없다. `--auto` 는 일관성을 위해 전달하되 자식이 **조용히 무시**하므로 효과가 없다는 사실을 **오류로 읽지 않는다**. `kiwi-tdd` 자신에게는 `--max` 와 네 pass-through 를 전파하지 않는다 — 그 자식에게는 해당 게이트가 없다. 리뷰 hop 의 자식에게는 위 문장대로 전파한다.
+**플래그**: `--mini` 와 `--loops N` 은 전파한다. `--model` 은 사용자가 지정했을 때 전파한다. `--max` 는 **아래 리뷰 hop 의 자식에게 전파한다** — 리뷰 루프 자신의 옵션이다. `--regression-baseline` 은 **주지 않는다**: `기존` 은 baseline 커밋 시점에 이미 있던 것으로 판정되고(kiwi-coder §0.20.1), 자식의 불가침 게이트는 `기존` 만 보호한다. run 시작에 고정된 P.4 pin 을 주면 kiwi-tdd 가 방금 쓴 red 단계 테스트가 `기존` 이 **아니게 되어 보호 밖으로 나간다**. 주지 않으면 자식이 hop 직전에 스스로 baseline 을 잡아 그 테스트들이 `기존` 이 되고, §0.17 이 삭제·약화를 막는다. `--auto-cost-warning` · `--auto-integration` · `--force` 는 전파하지 않는다 — 리뷰 루프에 그 옵션이 없다. 그것들은 `kiwi-pm` 을 거쳐 `kiwi-coder` 에 닿는 게이트이고 이 rung 에는 그 경로가 없다. `--auto` 는 일관성을 위해 전달하되 자식이 **조용히 무시**하므로 효과가 없다는 사실을 **오류로 읽지 않는다**. `kiwi-tdd` 자신에게는 `--max` 와 네 pass-through 를 전파하지 않는다 — 그 자식에게는 해당 게이트가 없다. 리뷰 hop 의 자식에게는 위 문장대로 전파한다. `--review-hop-owned-by-parent` 와 `--no-pipeline-emit` 는 반대로 **언제나 준다**: 앞의 것은 이 rung 의 step 창 리뷰를 아래 hop 이 소유한다는 뜻이므로 자식이 자기 홉을 한 번 더 돌려 §4.5 의 "정확히 한 번"을 깨지 않게 하고, 뒤의 것은 위임 유닛의 종료 줄이 `pipeline.jsonl` 에 섞이지 않게 한다. 둘은 위 "전파하지 않는" 열거에 속하지 않는다 — 자식이 그 두 인자를 **명시적으로** 받았을 때만 억제하므로, 여기서 빠지면 자식은 추론하지 않고 자기 홉을 돌린다.
 
 **리뷰 hop** — 승급 여부와 무관하게, 아래 close-out 보다 **먼저** 이 step 의 커밋 창을 리뷰한다:
 

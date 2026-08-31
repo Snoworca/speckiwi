@@ -195,6 +195,10 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "path-heuristic-business-decision",
     "mcp-mutation-batch-large",
     "external-module-impact",
+    // @req FR-FLOW-172 — `kiwi-coder` has declared this gate for its own §8.4 since the gate table
+    // existed; `kiwi-pm` §6.4 carried the identical guardrail with no row, and pm's inheritance rule
+    // covers only gates a CHILD bubbles up, so its own §6.4 judgement fell to `business-decision`.
+    "followup-review-fix-loop-close-unsafe",
     // @req FR-FLOW-164 — see the kiwi-wave-master list above.
     "validate-spec-error"
   ],
