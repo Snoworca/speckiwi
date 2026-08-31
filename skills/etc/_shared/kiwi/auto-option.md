@@ -105,6 +105,12 @@ bypasses rank `recommended` > `default_if_auto` > committee: an option carrying 
 resolves through the `recommended` branch, and a gate whose options carry **neither** marker reaches
 the committee.
 
+**Steps 0 through 3 are decided by the tool.** Build the ballot and hand it to the MCP tool `orchestrate_auto_gate`
+— the CLI fallback is `speckiwi orchestrate auto-gate decide --payload <payload>`. The `action` it returns maps
+onto the four steps below, and a value of `escalate-critical` halts for the user at the gate the ballot names.
+A `gateId` outside the orchestrator's closed gate vocabulary is refused by that call, so for a gate outside that
+vocabulary the prose below stays the only rule.
+
 0. **`recommended` fast path (zero votes).** If a gate option carries the structured marker
    `recommended: true`, `--auto` adopts that option immediately. No committee is convened and no
    committee member is spawned. No votes are counted, so no confidence comparison is made.
@@ -149,6 +155,12 @@ a declared bypass and is not caught by this prohibition.
 
 If a gate has no explicit severity, classify it as `critical` when it matches
 `critical_gates[]`; otherwise classify it as `business-decision`.
+
+**The critical row is handed to the tool as well.** For a gate listed in `critical_gates[]`, set the ballot's
+`critical` to true and take the verdict from the MCP tool `orchestrate_auto_gate` — the CLI fallback is
+`speckiwi orchestrate auto-gate decide --payload <payload>`. That call reads `critical` before both fast paths,
+so it answers `escalate-critical` even when an option carries a recommendation, and it answers the same on a
+degraded quorum and on an absent majority.
 
 Adjust confidence before applying:
 

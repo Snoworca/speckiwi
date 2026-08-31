@@ -99,6 +99,10 @@ finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인
 
 **스트릭 요구치는** Normal **1** 라운드, `--max` **2** 라운드다 — 위 "남은 라운드" 판정이 비교하는 값이 이것이다.
 
+**이 표의 PASS 조건을 손으로 대조하지 않는다.** 라운드마다 MCP `orchestrate_round_record` 로 그 라운드의 verdict 를 받는다 — CLI 대체는 `speckiwi orchestrate round record --run-id <id> --payload <payload> --proof <payload>` 이고, 그 한 호출이 분모 일치와 `unapproved-damage` 와 회귀 부분집합과 그 라운드의 수정 적용 여부와 스트릭·cap 을 함께 판정해 저널 줄을 만든다. 라운드 scope 가 닫힌 어휘 밖이거나 선언한 loop 의 것이 아니면 그 호출이 `invalid-run-scope-option` 으로 거절한다. `--proof` 에 실을 증명의 종류는 `waves-event.md` 의 `proof_kind` 가 정하고, 저널 밖에서 재계산되는 종류를 하나도 싣지 않은 라운드 줄은 같은 호출이 `run-invariant-drift` 로 거절한다.
+
+저널을 되읽는 것으로 이 호출을 대신할 수 없다. 저널 검사는 착지한 줄의 일부 규칙만 보며, 수정이 적용된 라운드인지를 담는 필드가 저널에 없어 위 표의 그 조항은 저널 쪽에서 구조적으로 판정되지 않는다.
+
 ---
 
 ## 6. 진동(oscillation) 감지

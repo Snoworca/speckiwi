@@ -142,6 +142,8 @@ AskUserQuestion(...)
 
 `--auto` 게이트는 아래 0~3 단계 순서로 결정한다. 두 우회(bypass) 의 우선순위는 **`recommended` > `default_if_auto` > 위원회** 다 — 한 옵션이 두 마커를 **모두** 달고 있으면 `recommended` 분기로 해소되고, 게이트의 어느 옵션도 `recommended` 도 `default_if_auto` 도 **없으면** 위원회로 내려간다. 위원은 §2.3 표준 의사코드로 병렬·격리 spawn 한다.
 
+**0~3 단계의 판정은 도구가 낸다.** ballot 을 만들어 MCP `orchestrate_auto_gate` 에 넘긴다 — CLI 대체는 `speckiwi orchestrate auto-gate decide --payload <payload>` 다. 돌아오는 `action` 이 아래 네 단계에 그대로 대응하고, 그 값이 `escalate-critical` 이면 ballot 이 지목한 게이트에서 사용자에게 중단한다. `gateId` 가 오케스트레이터의 닫힌 게이트 어휘 밖이면 그 호출이 거절하며, 그 어휘 밖의 게이트에 대해서는 아래 산문이 그대로 유일한 규칙이다.
+
 0. **`recommended` fast path (0표 채택)**: 게이트 옵션 중 하나가 구조화 마커 `recommended: true` 를 달고 있으면 `--auto` 는 그 옵션을 **즉시** 채택한다. 위원회를 **소집하지 않고**, 위원을 한 명도 **spawn 하지 않는다**. 표를 세지 않으므로 confidence 비교도 없다.
    - 마커는 `kiwi-pm` 의 NEEDS_USER 옵션 스키마에 `key` / `label` / `consequence` 와 나란히 선언된 **구조화 boolean 필드**이며, opt-in — 필드가 없는 옵션은 권장이 아니다.
    - 본문에 적힌 산문 `(권장)` 라벨은 **기계적 의미가 없으며** 권장으로 **파싱하지 않는다**. (기존 `kiwi-pm` 의 `(권장)` 라벨 3개 중 2개는 HALT 옵션에 붙어 있다 — 산문 스캔은 권장 HALT 를 자동 채택하게 된다.)
@@ -185,6 +187,8 @@ AskUserQuestion(...)
 | `critical` | **HALT** (`--auto` 무관) | 스킬별 `critical_gates[]` 에 매핑된 게이트 |
 
 **severity 가 명시되지 않은 게이트**: 본 스킬의 `critical_gates[]` 에 포함되면 `critical`, 아니면 `business-decision` 으로 기본 분류.
+
+**critical 행의 판정도 도구에서 받는다.** `critical_gates[]` 에 오른 게이트는 ballot 의 `critical` 을 참으로 실어 MCP `orchestrate_auto_gate` 에 넘기고 그 값을 받는다 — CLI 대체는 `speckiwi orchestrate auto-gate decide --payload <payload>` 다. 그 호출은 두 fast path 보다 먼저 `critical` 을 읽으므로 `recommended` 가 달린 옵션이 있어도 `escalate-critical` 로 돌아오고, 정족수가 손상되었거나 과반이 형성되지 않은 경우에도 같은 값으로 돌아온다.
 
 ### 4.1 confidence 신뢰성 검증 (FN-006 대응)
 
