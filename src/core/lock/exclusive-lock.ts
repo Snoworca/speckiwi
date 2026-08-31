@@ -311,13 +311,34 @@ function holderFrom(record: SentinelRecord): ExclusiveLockHolder {
   });
 }
 
+/**
+ * Names the holder when one can be determined, and reports none when it cannot — for any reason.
+ *
+ * The absorption used to list ENOENT and SyntaxError, so every other read failure became a thrown
+ * acquisition error. A holder removes its sentinel BEFORE closing the kernel fence, and Windows
+ * answers an open of a delete-pending file with EPERM rather than ENOENT, so a waiter reading the
+ * sentinel in that window met exactly the code the list omitted. The throw then left
+ * `acquireReclassificationArtifactLock` before its wait loop, which retries only on `held`, so the
+ * whole 30-second budget was skipped and ordinary contention was rendered as refusal. Measured at 5
+ * escapes in 24000 contended acquires, every one of them here.
+ *
+ * Adding EPERM to the list would repeat the mistake that produced this: the failing code was the one
+ * nobody had listed. Absorbing everything is safe because no caller can turn "holder unknown" into
+ * "lock is free" — both internal call sites answer `held` whether or not a holder came back, and the
+ * exported reader documents null as absent-or-torn. `readSentinel` above already absorbs the same
+ * read-and-parse pair unconditionally, for the same reason.
+ *
+ * "Safe" is a claim about THIS function's callers and nothing wider. Whether an unreadable sentinel
+ * may be reclaimed is decided by `readSentinel` and `isReclaimable`, not here, and there an
+ * unreadable sentinel older than the torn grace IS reclaimed — measured, and measured the same way
+ * before this absorption widened. @req FR-NODE-203
+ */
 async function readHolderAt(lockPath: string): Promise<ExclusiveLockHolder | null> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(lockPath, "utf8")) as unknown;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT" || error instanceof SyntaxError) return null;
-    throw error;
+  } catch {
+    return null;
   }
   return validRecord(parsed) ? holderFrom(parsed) : null;
 }

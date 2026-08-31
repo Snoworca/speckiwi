@@ -962,7 +962,18 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     const { root, identity } = await incidentFixture();
     const previewValue = resultValue(await applyReclassification(root, reclassificationInput(identity)));
     const error = Object.assign(new Error(`Injected ${code} artifact-lock acquisition failure`), { code });
-    const acquireSpy = vi.spyOn(artifactLockModule, "acquireArtifactLock").mockRejectedValueOnce(error);
+    // FR-NODE-203 made a raised acquisition fault something the contention budget absorbs, so a
+    // one-shot injection is now retried and succeeds rather than reported. What AC-7 asks of this
+    // path is unchanged and still asserted below: a fault the budget cannot outlast is reported
+    // with its own code and never dressed up as contention. So the fault persists, and the budget
+    // clock is advanced rather than waited out — a real 30-second wait would be a 30-second test.
+    const acquireSpy = vi.spyOn(artifactLockModule, "acquireArtifactLock").mockRejectedValue(error);
+    const realBigint = process.hrtime.bigint;
+    let clock = 0n;
+    const clockSpy = vi.spyOn(process.hrtime, "bigint").mockImplementation(() => {
+      clock += 30_000_000_000n / 5n;
+      return clock;
+    });
 
     try {
       const result = await applyReclassification(
@@ -982,9 +993,16 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
         }
       }]);
       expect(JSON.stringify(result)).not.toMatch(/lock is held|holderOwnerIdentitySha256/i);
+      expect(acquireSpy.mock.calls.length, "the budget must be spent on retries before refusing")
+        .toBeGreaterThan(1);
     } finally {
+      clockSpy.mockRestore();
       acquireSpy.mockRestore();
     }
+    // Outside the `finally` on purpose: an assertion raised there replaces whatever the body raised,
+    // so the leak check would hide the failure it was added beside. Reached only when the body
+    // passed, which is the only run in which "did the clock spy leak" is the open question.
+    expect(realBigint, "the budget clock spy must not outlive this test").toBe(process.hrtime.bigint);
   });
 
   it("AC-7 serializes identical concurrent applies into one writer and one confirmed replay", async () => {

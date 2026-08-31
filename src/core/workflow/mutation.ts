@@ -865,29 +865,51 @@ function artifactLockAcquisitionError(error: unknown): Error & { code?: string }
   return Object.assign(new Error(String(error)), { code: "UNKNOWN" });
 }
 
+/** One acquisition attempt, with a raised fault reported as an outcome rather than as an escape. */
+async function attemptReclassificationArtifactLock(
+  artifactPath: string,
+  owner: string
+): Promise<ReclassificationArtifactLockAttempt> {
+  try {
+    return await artifactLockModule.acquireArtifactLock({ artifactPath, owner });
+  } catch (error) {
+    return { ok: false, reason: "error", error: artifactLockAcquisitionError(error) };
+  }
+}
+
+/**
+ * Waits out contention, whichever face contention wears.
+ *
+ * A raised fault used to leave this function before the loop, so the budget below was skipped
+ * entirely and the caller was refused at once — the very outcome the budget exists to prevent. A
+ * transient filesystem fault under contention is not a different situation from `held`; it is the
+ * same situation observed a moment earlier, while the previous holder's sentinel is still being
+ * deleted. Both therefore wait. @req FR-NODE-203
+ *
+ * A fault that outlasts the budget still refuses, and still refuses with itself as the reason. A
+ * permanent one costs the whole budget before saying so — the full 30 seconds that
+ * `waitBudgetNanoseconds` declares below, spent on unslept retries where the previous code refused
+ * at once — and only a fault in the artifact read below cuts that short. A permanent fault on the
+ * LOCK path is not detected and is not meant to be: telling a permanent code from a transient one is
+ * exactly the sorting that produced the defect this replaces, and a permanently held lock has always
+ * paid the same 30 seconds through the same unslept loop. Spending the budget is therefore the
+ * accepted price of not classifying; the absence of a backoff inside it is older than this change
+ * and belongs to whoever adds one. @req FR-NODE-203
+ */
 async function acquireReclassificationArtifactLock(
   artifactPath: string,
   owner: string
 ): Promise<ReclassificationArtifactLockAttempt> {
-  let result: AcquireArtifactLockResult;
-  try {
-    result = await artifactLockModule.acquireArtifactLock({ artifactPath, owner });
-  } catch (error) {
-    return { ok: false, reason: "error", error: artifactLockAcquisitionError(error) };
-  }
   const startedAt = process.hrtime.bigint();
   const waitBudgetNanoseconds = 30_000_000_000n;
+  let result = await attemptReclassificationArtifactLock(artifactPath, owner);
   while (!result.ok && process.hrtime.bigint() - startedAt < waitBudgetNanoseconds) {
     try {
       await readFile(artifactPath);
     } catch (error) {
       return { ok: false, reason: "error", error: artifactLockAcquisitionError(error) };
     }
-    try {
-      result = await artifactLockModule.acquireArtifactLock({ artifactPath, owner });
-    } catch (error) {
-      return { ok: false, reason: "error", error: artifactLockAcquisitionError(error) };
-    }
+    result = await attemptReclassificationArtifactLock(artifactPath, owner);
   }
   return result;
 }
