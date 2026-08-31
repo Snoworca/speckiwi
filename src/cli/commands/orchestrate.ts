@@ -1360,7 +1360,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         }
         try {
           const lock = await acquire({ commonDir, owner: options.owner as string });
-          return { lockPath: lock.lockPath };
+          // @req FR-NODE-204 AC-1 — the lease this call took, in the shape `run status` reports, so a
+          // run that resumes can decide whether the lease on disk is still the one it holds. Without
+          // it the response named only the path, which every run shares, and so did `--owner`.
+          return { lockPath: lock.lockPath, holder: lock.holder };
         } catch (error) {
           if (error instanceof RunLockHeldError) return refuse(error.gate, [{ owner: error.owner, lockPath: error.lockPath }]);
           throw error;

@@ -163,6 +163,7 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 Phase 0 에 만들고 **정확히 두 지점**에서만 수정한다 — Phase 1 끝(`intake_autonomy`)과 Phase 2.d 커버리지 게이트 뒤(불변 wave 순서). 수정마다 저널에 기록하고 `commit-run-artifacts` 로 다시 커밋하며 재개 카드의 `run_contract` 해시를 다시 쓴다. 매 재개 시 디스크 파일을 카드가 현재 지시하는 값과 대조하고 불일치는 `run-invariant-drift` 다. 담기는 것은 닫힌 목록이다.
 
 - `run_id`, `work_root`, 저널 경로, 고정된 run root, 동결된 `isolation_profile` 값 `none-serial`, **`base_branch` 와 `integration_branch`**;
+- **P.5 pin** — Preflight P.5 의 `lock` 이 돌려준 holder 넷(`owner` · `pid` · `host` · `acquiredAt`). Phase 0 의 생성 시점에 적으며, 종료 해제 앞의 대조가 이 값을 입력으로 쓴다(§3.1);
 - run 의 **고정 경로 규약** — `design/00.design.lock.json`, `design/constraints.json`, `design/convergence-registry.json`, `waves/waves.lock.json`, `waves/wave-{n}/lanes.lock.json`, `waves/wave-{n}/lanes/lane-{k}.md`;
 - **불변 wave 순서** — 2.d 수정에서 기록. `R-STEP` 과 `R-PLAN` 에는 없다(wave 를 나누지 않는다);
 - **`intake_autonomy` 블록** — Phase 1 끝 수정에서 기록(§5.2);
@@ -334,6 +335,8 @@ Phase 6  run 처분 (§15): 통합 브랜치는 그대로 두고 run 리포트�
 P.5 의 lock 은 git common dir 를 키로 하므로 연결된 워크트리들이 하나의 lease 를 두고 경합한다. 그 취득과 해제와 조회는 MCP `orchestrate_run_lock` 에 `action` 을 `lock` · `unlock` · `status` 중 하나로 주어 수행하고, MCP 가 없으면 CLI `speckiwi orchestrate run lock|unlock|status --json` 으로 같은 판정을 받는다. 이미 다른 run 이 lease 를 들고 있으면 `lock` 이 `orchestrator-run-lock-held` 로 거절하며, 거절 응답이 보유자와 lock 파일 경로를 함께 싣는다. 그 게이트를 내는 것은 세 action 가운데 `lock` 뿐이다.
 
 lock 파일이 디스크에 있는지를 읽어 스스로 내리는 판단은 이 판정을 대신하지 못한다. abort 로 끝나는 run 의 해제는 §15 가 지배한다. abort 가 아닌 종료의 해제도 같은 도구의 `unlock` 이며, 그때 응답의 `heldBy` 는 해제 자신이 본 보유자다. `unlock` 은 보유자가 다른 run 이고 그 프로세스가 살아 있어도 거절하지 않고 lease 를 해제하므로, 종료 해제는 이 run 이 취득한 lease 에 대해서만 부른다. `status` 는 아무것도 바꾸지 않는 조회이며, 보유자의 생존을 확인하지 않고 그대로 보고한다.
+
+P.5 에서 `lock` 이 성공하면 그 응답이 방금 취득한 lease 의 `holder` 를 함께 싣는다 — `owner` · `pid` · `host` · `acquiredAt` 네 값이다. 그 넷을 P.5 pin 으로 `00.run-contract.md` 에 적어 둔다 — 대화에만 남긴 값은 컴팩션에서 없어지고, §1 의 고정 절차가 그 파일을 첫 단계로 읽으므로 재개한 세션이 대조의 한쪽을 그 파일에서 되찾는다. §15 의 abort 를 포함해 P.5 의 lease 를 해제하는 모든 자리 앞에서 `status` 를 불러 그 응답의 `holder` 를 P.5 pin 과 대조한다. 네 값이 전부 같을 때에만 `unlock` 을 부른다. 하나라도 다르면 그 lease 는 이 run 이 취득한 것이 아니고, `holder` 가 `null` 이면 보유자를 이름 붙일 근거가 없으므로, 두 경우 모두 해제 대상에서 제외한다. 재개된 run 이 stale 회수로 교체된 lease 를 만나는 것이 그 대표적인 경우다. `owner` 하나로는 갈리지 않는다 — 그 기본값이 모든 run 에서 같은 문자열이기 때문이다.
 
 ### 3.2 여섯 동결 target — 하나의 도구로 잠그고 하나의 철자로 부른다
 

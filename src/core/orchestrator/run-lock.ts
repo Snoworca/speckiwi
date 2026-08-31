@@ -28,6 +28,14 @@ export interface RunLock {
   readonly lockPath: string;
   readonly token: string;
   readonly owner: string;
+  /**
+   * The lease this acquisition took, in the shape `readHolder` reports.
+   *
+   * `owner` alone cannot answer which lease is whose: the CLI defaults it to one string for every
+   * run and `kiwi-orchestrator` never overrides it, so a run that resumes after its own lease was
+   * reclaimed had nothing to compare a status read against. @req FR-NODE-204
+   */
+  readonly holder: RunLockHolder;
 }
 
 export interface RunLockHolder {
@@ -114,7 +122,13 @@ export async function acquire(input: AcquireRunLockInput): Promise<RunLock> {
   });
   if (!result.ok) throw new RunLockHeldError(lockPath, result.holder?.owner ?? null);
   capabilities.set(result.capability.token, result.capability);
-  return Object.freeze({ commonDir, lockPath, token: result.capability.token, owner });
+  return Object.freeze({
+    commonDir,
+    lockPath,
+    token: result.capability.token,
+    owner,
+    holder: runLockHolder(result.holder)
+  });
 }
 
 /** Refreshes the sentinel's mtime and proves this process still owns it. */
@@ -160,15 +174,34 @@ export async function releaseHeldRunLock(commonDir: string): Promise<{ readonly 
   return { owner: holder?.owner ?? null };
 }
 
-/** Returns the current valid holder, or null for an absent/torn sentinel. */
-export async function readHolder(commonDir: string): Promise<RunLockHolder | null> {
-  const holder: ExclusiveLockHolder | null = await (await exclusiveLockModule())
-    .readExclusiveLockHolder(runLockPath(path.resolve(commonDir)));
-  if (!holder) return null;
+/**
+ * The four fields a run lock lease is named by, projected off the lock layer's own holder.
+ *
+ * One projection for both the acquisition and the read, because the whole point of returning a
+ * holder from `acquire` is that a caller can compare the two: two projections would let the halves
+ * of that comparison drift apart field by field and the comparison would start answering "not mine"
+ * about a lease that is. @req FR-NODE-204 AC-1
+ */
+function runLockHolder(holder: ExclusiveLockHolder): RunLockHolder {
   return Object.freeze({
     owner: holder.owner,
     pid: holder.pid,
     host: holder.host,
     acquiredAt: holder.acquiredAt
   });
+}
+
+/**
+ * Returns the current valid holder, or null when no holder can be named.
+ *
+ * Null covers three cases and not two: the sentinel is absent, it is torn, or it could not be read
+ * at all. The third was folded in by FR-NODE-203, which stopped an unreadable sentinel from raising
+ * past a contention budget; the reader beneath now absorbs every read and parse failure. A caller
+ * deciding whether a lease is its own must therefore treat null as "unknown holder" rather than as
+ * "no holder", because the two are indistinguishable here. @req FR-NODE-204 AC-4
+ */
+export async function readHolder(commonDir: string): Promise<RunLockHolder | null> {
+  const holder: ExclusiveLockHolder | null = await (await exclusiveLockModule())
+    .readExclusiveLockHolder(runLockPath(path.resolve(commonDir)));
+  return holder ? runLockHolder(holder) : null;
 }

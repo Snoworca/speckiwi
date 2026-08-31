@@ -220,6 +220,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 내용은 **닫힌 목록**이다.
 
 - `run_id`, work root, 저널 경로, pin 된 run root, 고정된 격리 프로파일, **`base_branch` 와 `integration_branch`**;
+- **P.5 pin** — Preflight P.5 의 lock 취득이 돌려준 holder 넷. Phase 0 의 생성 시점에 적으며, 종료 해제 앞에서 그 lease 가 이 run 의 것인지 판정하는 대조의 입력이다;
 - run 의 **고정 경로 규약** — 설계 lock, 제약, 수렴 레지스트리, waves lock, lane lock 과 handoff. 현재 wave 의 해소된 포인터는 카드의 `frozen.lane_lock` 에 있으므로 wave 마다 수정하지 않는다;
 - **불변 wave 순서**;
 - **`intake_autonomy` 블록** — `--auto` 가 설계 질문에 답했는지, 몇 건인지, 결정별 감사 기록이 어디 있는지. 재개한 세션과 사용자가 설계가 자기들 없이 결정되었음을 볼 수 있게 한다;

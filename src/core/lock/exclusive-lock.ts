@@ -44,8 +44,18 @@ export interface ExclusiveLockHolder {
   readonly acquiredAt: string;
 }
 
+/**
+ * A successful acquisition carries the holder it published, not only the capability to release it.
+ *
+ * The capability names the lock and the owner; it does not name WHICH lease this is. Two
+ * acquisitions of one lock path by one owner differ only in the record on disk, so a caller holding
+ * a capability could not tell a lease it took from a successor's that displaced it. Handing back the
+ * record just published answers that without a second read: the value cannot have moved between
+ * publishing it and returning it, whereas re-reading the sentinel could observe a successor's.
+ * @req FR-NODE-204
+ */
 export type AcquireExclusiveLockResult =
-  | { readonly ok: true; readonly capability: ExclusiveLockCapability }
+  | { readonly ok: true; readonly capability: ExclusiveLockCapability; readonly holder: ExclusiveLockHolder }
   | { readonly ok: false; readonly reason: "held"; readonly holder?: ExclusiveLockHolder };
 
 export type ReleaseExclusiveLockResult =
@@ -522,7 +532,10 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
         sentinelRemoved: false
       });
       acquired = true;
-      return { ok: true, capability };
+      // `record` is the one this call published on BOTH paths above — onto an empty name, and onto
+      // the name a stale sentinel was renamed out of — so this names the lease that is on disk now.
+      // @req FR-NODE-204 AC-1
+      return { ok: true, capability, holder: holderFrom(record) };
     } catch (error) {
       if (releaseGuard) await releaseGuard().catch(() => undefined);
       if (published) await removeOwnedSentinel(lockPath, token).catch(() => undefined);
