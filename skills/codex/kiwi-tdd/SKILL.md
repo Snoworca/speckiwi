@@ -18,7 +18,7 @@ Backing requirements: FR-FLOW-037 (SDS standard FR-FLOW-036, gates IR-CLI-072 / 
 | §0.1 | **Mode check first.** Before starting, read the persisted work-mode with `speckiwi mode`. When it is not `Mode: tdd`, halt immediately and guide the user to either switch with `speckiwi mode tdd` or use the sdd workflow (kiwi-srs family). |
 | §0.2 | **Claim first.** Never author any artifact (including design.md) before claiming the step via `claim_step` (MCP preferred) or the CLI fallback `speckiwi step claim`. Halt immediately when both MCP and CLI are unavailable. |
 | §0.3 | **Step-directory confinement.** All spec artifacts are written only under `docs/spec/steps/<task>/`. Never edit body-scope SRS files (`docs/spec/*.srs.md`) — promotion happens only through the promote tool. |
-| §0.4 | **SDS before tests.** Never write tests before the SDS (design.md) exists — the moment tests are the only spec, the flow is exposed to reward hacking. |
+| §0.4 | **SDS before tests.** Never write tests before the SDS (design.md) exists — the moment tests are the only spec, the flow is exposed to reward hacking. The single exception is the **recorded skip** defined in §2.3 (a `## SDS Skip` section in intent.md); an unrecorded skip is stopped by `speckiwi step validate` with `SDS-E054`. |
 | §0.5 | **Tests are inviolable.** Commit tests first, and never weaken or edit a test during the green phase to make it pass. When the contract itself is wrong, supersede the SDS and restart from red. |
 | §0.6 | **No promotion without evidence.** `promote_step_requirement` promotes only blocks carrying at least one Verification Evidence entry (FR-NODE-074 hard-refuses in tdd mode). |
 | §0.7 | **Boundary (sdd redirect).** Edits to existing body REQs and large / architecture changes are out of scope — redirect them to sdd mode (SRS-first, kiwi-srs / kiwi-planner family). |
@@ -102,13 +102,19 @@ Claim the target step via `claim_step` (MCP preferred) or `speckiwi step claim <
 
 Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>` (MCP `scaffold_step`; writeIfMissing — it never overwrites, and the stubs are skeletons only: the content is still authored directly), then author `docs/spec/steps/<task>/design.md` per the SDS-MD Authoring Rules v2.5.0. **This checklist is mandatory and cannot be skipped**:
 
-1. **Skip-gate first**: is this a trivial change with no trade-off? Then skip the SDS and record only an EARS stub (one to three SDS-AC statements) in intent.md, then go to Phase 3.
+1. **Skip-gate first — only a recorded skip counts**: is this a trivial change with no trade-off? To skip the SDS, create a `## SDS Skip` section in `docs/spec/steps/<task>/intent.md` and fill three cells — a `| Decision | skipped |` row, a `| Reason | <one line> |` row, and at least one EARS `SDS-AC-n: WHEN … THE SYSTEM SHALL …` line. Having written the record, compare it with `speckiwi step validate <task>` (item 7 below), and go to Phase 3 only once that passes.
+
+| Skip decision | Record | `speckiwi step validate <task>` |
+| --- | --- | --- |
+| Skip | `recorded` — `intent.md` has a `## SDS Skip` section and its three cells hold what the gate asks (`Decision` is `skipped`, `Reason` is not empty, the `SDS-AC` line carries `WHEN` and `SHALL`) | `SDS-W050` warning, `exit 0` — go to Phase 3 |
+| Skip | `unrecorded` — no intent.md, no such section, or one of the three cells is missing, empty, or not the value the gate requires (a `Decision` other than `skipped`, an `SDS-AC` line without `WHEN` and `SHALL`) | `SDS-E054` error, `exit 1` — the skip does not hold, author the SDS |
+
 2. All seven required headings exist: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.
 3. Acceptance Contracts use the **EARS** form (`SDS-AC-n: WHEN … THE SYSTEM SHALL …`).
 4. **Every SDS-AC maps to at least one Test Plan row.**
 5. Stay under the 200-line cap — split the task when the draft approaches it.
 6. When Architecture Decisions carries a substantive decision, get user approval (agreed) before proceeding; otherwise proceed self-agreed.
-7. Run `speckiwi step validate <task>` and confirm zero SDS advisories (SDS-W050..W053).
+7. Run `speckiwi step validate <task>` and compare: on the authored path confirm zero SDS advisories (SDS-W050..W053); on the skip path confirm zero `SDS-E054`. Both paths run this check.
 
 ### 2.4 Phase 3 — red
 

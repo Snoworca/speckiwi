@@ -18,7 +18,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | §0.1 | **모드 확인 우선**. 시작 전 `speckiwi mode`로 현재 work-mode를 읽는다. `Mode: tdd`가 아니면 즉시 halt(중단)하고 사용자에게 `speckiwi mode tdd` 전환 또는 sdd 워크플로(kiwi-srs 계열)를 안내한다. |
 | §0.2 | **claim 우선**. 어떤 산출물(design.md 포함)도 작성하기 전에 `claim_step`(MCP 우선) 또는 CLI `speckiwi step claim`(fallback)으로 대상 step을 선점한다. MCP·CLI 둘 다 부재 시 즉시 halt. |
 | §0.3 | **step 디렉터리 한정**. 모든 스펙 산출물은 `docs/spec/steps/<task>/` 아래에만 쓴다. body-scope SRS 파일(`docs/spec/*.srs.md`)은 절대 수정하지 않는다 — 승격은 오직 promote 도구로만. |
-| §0.4 | **SDS 선행**. SDS(design.md) 없이 테스트를 먼저 작성하지 않는다 — 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. |
+| §0.4 | **SDS 선행**. SDS(design.md) 없이 테스트를 먼저 작성하지 않는다 — 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. 유일한 예외는 §2.3 이 정의한 **기록된 생략**(intent.md 의 `## SDS Skip` 절)이며, 기록이 없는 생략은 `speckiwi step validate` 가 `SDS-E054` 오류로 막는다. |
 | §0.5 | **테스트 불가침**. 테스트를 먼저 커밋하고, green 단계에서 테스트를 약화(weaken)·수정해 통과시키는 행위를 절대 금지한다. 계약 변경이 필요하면 SDS를 supersede 하고 red부터 다시 간다. |
 | §0.6 | **증거 없는 승격 금지**. `promote_step_requirement`는 Verification Evidence(검증 증거) 1건 이상을 가진 블록만 승격한다(FR-NODE-074가 tdd 모드에서 하드 거부). |
 | §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행, kiwi-srs/kiwi-planner 계열)로 리다이렉트한다. |
@@ -96,13 +96,19 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 `speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.5.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
 
-1. **skip-gate 판정 먼저**: trade-off 없는 자명한(trivial) 변경인가? 그렇다면 SDS를 생략(skip)하고 intent.md에 EARS 스텁(SDS-AC 1~3문장)만 기록 후 Phase 3으로.
+1. **skip-gate 판정 먼저 — 기록된 생략만 성립한다**: trade-off 없는 자명한(trivial) 변경인가? 생략(skip)하려면 `docs/spec/steps/<task>/intent.md` 에 `## SDS Skip` 절을 만들고 세 칸을 채운다 — `| Decision | skipped |` 행, `| Reason | <생략 사유 한 줄> |` 행, 그리고 EARS 형식의 `SDS-AC-n: WHEN … THE SYSTEM SHALL …` 줄 최소 하나. 기록을 남긴 뒤 `speckiwi step validate <task>`(아래 7번)로 대조하고, 통과한 다음에 Phase 3 으로 넘어간다.
+
+| 생략 판정 | 기록 | `speckiwi step validate <task>` 결과 |
+| --- | --- | --- |
+| 생략한다 | `recorded` — `intent.md` 의 `## SDS Skip` 절이 있고 세 칸이 게이트가 요구하는 값을 담는다(`Decision` 이 `skipped`, `Reason` 이 비어 있지 않음, `SDS-AC` 줄에 `WHEN` 과 `SHALL`) | `SDS-W050` 경고, `exit 0` — Phase 3 으로 진행한다 |
+| 생략한다 | `unrecorded` — intent.md 나 절이 없거나, 세 칸 중 하나가 없거나 비어 있거나 게이트가 요구하는 값이 아니다(`Decision` 이 `skipped` 가 아니거나 `SDS-AC` 줄에 `WHEN`·`SHALL` 이 없다) | `SDS-E054` 오류, `exit 1` — 생략이 성립하지 않으므로 SDS 를 저작한다 |
+
 2. 필수 헤딩 7개 존재: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.
 3. Acceptance Contracts는 **EARS** 문형(`SDS-AC-n: WHEN … THE SYSTEM SHALL …`).
 4. **모든 SDS-AC가 Test Plan 표에 최소 1행으로 매핑**되는지 확인.
 5. 200줄 상한 준수 — 초과 조짐이면 task를 분할.
 6. Architecture Decisions에 실질 결정이 있으면 사용자 승인(agreed) 후 진행, 없으면 self-agreed로 진행.
-7. `speckiwi step validate <task>`로 SDS advisory(SDS-W050~W053) 0건 확인.
+7. `speckiwi step validate <task>`로 대조한다 — SDS를 저작한 경로에서는 SDS advisory(SDS-W050~W053) 0건을, 생략 경로에서는 `SDS-E054` 0건을 확인한다. 두 경로 모두 이 검사를 거친다.
 
 ### 2.4 Phase 3 — red
 

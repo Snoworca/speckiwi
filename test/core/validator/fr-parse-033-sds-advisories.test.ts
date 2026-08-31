@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
-import { loadStepDesign, validateWorkspaceScoped } from "../../../src/core/validator/validate-scoped.js";
+import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../../src/core/validator/validate-scoped.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 // FR-PARSE-033 — step-local validation covers the SDS design.md. RED suite (one
@@ -77,15 +77,45 @@ async function scopedDiagnostics(rootPath: string) {
   const root = await resolveProjectRoot(rootPath);
   const workspace = await parseWorkspace(root);
   const design = await loadStepDesign(root, STEP);
-  return validateWorkspaceScoped(workspace, { step: STEP, design });
+  // FR-PARSE-040 narrowed AC-1: the absence of design.md is a warning only when the step recorded
+  // its skip, so the intent.md the record lives in is loaded here too. The assertions below are
+  // unchanged — AC-1 now writes the record first, which is the precondition under which "SDS-W050 is
+  // a warning" is still the contract.
+  const intent = await loadStepIntent(root, STEP);
+  return validateWorkspaceScoped(workspace, { step: STEP, design, intent });
+}
+
+/** A complete FR-PARSE-040 skip record, so the AC-1 fixture is a recorded skip rather than a bare absence. */
+async function writeSkipRecord(rootPath: string): Promise<void> {
+  const stepDir = path.join(rootPath, "docs", "spec", "steps", STEP);
+  await mkdir(stepDir, { recursive: true });
+  await writeFile(
+    path.join(stepDir, "intent.md"),
+    [
+      `# Intent: ${STEP}`,
+      "",
+      "## SDS Skip",
+      "",
+      "| Field | Value |",
+      "| --- | --- |",
+      "| Decision | skipped |",
+      "| Reason | Renames one private helper; no interface and no behaviour changes. |",
+      "",
+      "- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.",
+      ""
+    ].join("\n"),
+    "utf8"
+  );
 }
 
 describe("FR-PARSE-033 step-local validation covers the SDS design.md", () => {
   it("FR-PARSE-033 AC-1: tdd mode with an absent design.md emits SDS-W050 as a warning", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
-    await writeStateMd(rootPath, "tdd", STEP);
+    await writeStateMd(rootPath, "tdd", STEP);
+
+    await writeSkipRecord(rootPath);
 
-    const result = await scopedDiagnostics(rootPath);
+    const result = await scopedDiagnostics(rootPath);
     const hit = result.warnings.find((item) => item.code === "SDS-W050");
     expect(hit).toBeDefined();
     expect(result.errors).toHaveLength(0);

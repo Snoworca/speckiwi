@@ -38,6 +38,28 @@ describe("FR-PARSE-033 — step validate surfaces the SDS advisories", () => {
       ].join("\n"),
       "utf8"
     );
+    await mkdir(path.join(stepsDir, "tdd-step-x"), { recursive: true });
+
+    // FR-PARSE-040 narrowed this case: an absent design.md is a warning only when the skip is
+    // recorded. The record is written here so the assertions below still read the behaviour they
+    // were written for rather than a weakened version of it.
+    await writeFile(
+      path.join(stepsDir, "tdd-step-x", "intent.md"),
+      [
+        "# Intent: tdd-step-x",
+        "",
+        "## SDS Skip",
+        "",
+        "| Field | Value |",
+        "| --- | --- |",
+        "| Decision | skipped |",
+        "| Reason | Renames one private helper; no interface and no behaviour changes. |",
+        "",
+        "- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
 
     const streams = io();
     const code = await main(["--root", root, "step", "validate", "tdd-step-x", "--json"], streams);

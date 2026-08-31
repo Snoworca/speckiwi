@@ -37,38 +37,57 @@ export const REQUIRED_SDS_HEADINGS = [
   "Open Questions"
 ] as const;
 
-// @req FR-PARSE-033
-/** The step's design.md content as loaded for the SDS advisory pass. */
-export interface SdsDesignInput {
+// @req FR-PARSE-033 @req FR-PARSE-040
+/** One step-local markdown file (design.md, intent.md) as loaded for the SDS pass. */
+export interface StepFileInput {
   present: boolean;
   lines: readonly string[];
 }
 
-// @req FR-PARSE-033
+// @req FR-PARSE-033 @req FR-PARSE-040
 /**
- * Loads docs/spec/steps/<step>/design.md for the SDS advisory pass. design.md is
- * not part of ParsedWorkspace (discovery only reads .srs.md files and state.md),
- * so the CLI/MCP surfaces load it here and hand it to validateWorkspaceScoped.
+ * Loads one file under docs/spec/steps/<step>/ for the SDS pass. Neither design.md nor intent.md is
+ * part of ParsedWorkspace (discovery only reads .srs.md files and state.md), so the CLI/MCP surfaces
+ * load them here and hand them to validateWorkspaceScoped.
  */
-export async function loadStepDesign(root: ProjectRoot, stepName: string): Promise<SdsDesignInput> {
-  // AC-5: a non-single-segment step name never resolves a path outside docs/spec/steps.
+async function loadStepFile(root: ProjectRoot, stepName: string, fileName: string): Promise<StepFileInput> {
+  // FR-PARSE-033 AC-5: a non-single-segment step name never resolves a path outside docs/spec/steps.
   if (!isSafeTaskName(stepName)) {
     return { present: false, lines: [] };
   }
-  const designPath = path.join(root.root, "docs", "spec", "steps", stepName, "design.md");
   try {
-    const text = await readFile(designPath, "utf8");
+    const text = await readFile(path.join(root.root, "docs", "spec", "steps", stepName, fileName), "utf8");
     return { present: true, lines: text.split(/\r?\n/) };
   } catch {
     return { present: false, lines: [] };
   }
 }
 
+// @req FR-PARSE-033
+/** The step's design.md — the authored SDS the advisories read. */
+export async function loadStepDesign(root: ProjectRoot, stepName: string): Promise<StepFileInput> {
+  return loadStepFile(root, stepName, "design.md");
+}
+
+// @req FR-PARSE-040
+/** The step's intent.md — where a decision to skip the SDS is recorded, if it was recorded at all. */
+export async function loadStepIntent(root: ProjectRoot, stepName: string): Promise<StepFileInput> {
+  return loadStepFile(root, stepName, "intent.md");
+}
+
 export interface ScopedValidationOptions {
   /** The step name (docs/spec/steps/<step>/) whose local diagnostics to compute. */
   step: string;
   /** FR-PARSE-033 — the step's design.md, loaded by the surface; absent when omitted. */
-  design?: SdsDesignInput;
+  design?: StepFileInput;
+  /**
+   * FR-PARSE-040 — the step's intent.md, which is where a skip decision is recorded.
+   *
+   * Omitting it reads as "no record", which is the failing side of the gate. That default is
+   * deliberate: a surface that forgets to load the file reports an unrecorded skip loudly instead of
+   * silently excusing every skip, which is the failure mode this requirement exists to remove.
+   */
+  intent?: StepFileInput;
 }
 
 function stepPathSegment(stepName: string): string {
@@ -181,11 +200,19 @@ export function validateWorkspaceScoped(workspace: ParsedWorkspace, options: Sco
     );
   }
 
-  // @req FR-PARSE-033 — SDS advisories, tdd work-mode only. All warning severity:
-  // they inform the step gate without ever flipping it on their own.
+  // @req FR-PARSE-033 @req FR-PARSE-040 — SDS diagnostics, tdd work-mode only. All of them are
+  // warnings that inform the step gate without flipping it, with one exception FR-PARSE-040 adds:
+  // an SDS skipped without a recorded decision is SDS-E054, an error, because the alternative is a
+  // rule and its own exemption living in the same file with nothing comparing them.
   const mode = workspace.stateFile ? parseStepState(workspace.stateFile.lines).mode : "wait";
   if (mode === "tdd") {
-    diagnostics.push(...sdsAdvisories(stepName, options.design ?? { present: false, lines: [] }));
+    diagnostics.push(
+      ...sdsAdvisories(
+        stepName,
+        options.design ?? { present: false, lines: [] },
+        options.intent ?? { present: false, lines: [] }
+      )
+    );
   }
 
   return splitDiagnostics(diagnostics);
@@ -202,13 +229,75 @@ function sdsSection(lines: readonly string[], name: string): readonly string[] {
   return end < 0 ? rest : rest.slice(0, end);
 }
 
-// @req FR-PARSE-033
-/** SDS-W050..W053 advisories over the tdd step's design.md. */
-function sdsAdvisories(stepName: string, design: SdsDesignInput): Diagnostic[] {
+// @req FR-PARSE-040
+/** The heading that opens the skip record inside intent.md. */
+const SDS_SKIP_HEADING = "SDS Skip";
+
+// @req FR-PARSE-040
+/** The value cell of the first `| <field> | <value> |` row, or undefined when no such row exists. */
+function skipRecordCell(lines: readonly string[], field: string): string | undefined {
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
+    const cells = trimmed.slice(1, -1).split("|");
+    if (cells.length < 2) continue;
+    if ((cells[0] ?? "").trim().toLowerCase() === field.toLowerCase()) return (cells[1] ?? "").trim();
+  }
+  return undefined;
+}
+
+// @req FR-PARSE-040
+/**
+ * Why this step's SDS skip does not hold, or undefined when it does.
+ *
+ * Every input lands on exactly one branch and the last branch is the only pass, so a record shape
+ * nobody anticipated fails rather than slipping through — the denominator is the whole set of
+ * intent.md files, not the ones this function happens to recognise. The three cells are checked
+ * separately so the message can name the part that failed: "the record is bad" sends an author
+ * hunting, "the Reason cell is empty" does not.
+ *
+ * The cells are a structure rather than a sentence on purpose. A free-prose skip note is the
+ * self-declaration this gate replaces: every step would carry one reading "trivial", and the
+ * comparison would be back to trusting the agent that benefits from the skip.
+ */
+function sdsSkipRecordFailure(intent: StepFileInput): string | undefined {
+  if (!intent.present) return "intent.md is absent";
+  const record = sdsSection(intent.lines, SDS_SKIP_HEADING);
+  if (record.length === 0) return `intent.md has no '## ${SDS_SKIP_HEADING}' section`;
+  const decision = skipRecordCell(record, "Decision");
+  if (decision === undefined) return `the '${SDS_SKIP_HEADING}' section has no 'Decision' row`;
+  if (decision.replace(/`/g, "").trim().toLowerCase() !== "skipped") {
+    return `the 'Decision' cell reads '${decision}' rather than 'skipped'`;
+  }
+  const reason = skipRecordCell(record, "Reason");
+  if (reason === undefined) return `the '${SDS_SKIP_HEADING}' section has no 'Reason' row`;
+  if (reason === "" || reason === "-") return "the 'Reason' cell is empty";
+  // The EARS shape is what keeps the stub a contract: an "SDS-AC-1" that states no condition and no
+  // obligation carries none of what the skipped SDS would have carried.
+  const hasEars = record.some((line) => /SDS-AC-\d+\s*:/.test(line) && /\bWHEN\b/.test(line) && /\bSHALL\b/.test(line));
+  if (!hasEars) return `the '${SDS_SKIP_HEADING}' section carries no EARS 'SDS-AC-n: WHEN … SHALL …' line`;
+  return undefined;
+}
+
+// @req FR-PARSE-033 @req FR-PARSE-040
+/** SDS-W050..W053 advisories, plus the SDS-E054 skip-record error, over the tdd step's files. */
+function sdsAdvisories(stepName: string, design: StepFileInput, intent: StepFileInput): Diagnostic[] {
   const out: Diagnostic[] = [];
   const filePath = `docs/spec/steps/${stepName}/design.md`;
   if (!design.present) {
-    out.push(advisory("SDS-W050", `SDS design.md is absent for tdd step '${stepName}'`, { filePath }));
+    const failure = sdsSkipRecordFailure(intent);
+    out.push(
+      failure === undefined
+        ? advisory("SDS-W050", `SDS design.md is absent for tdd step '${stepName}'; the skip is recorded in intent.md`, {
+            filePath
+          })
+        : {
+            code: "SDS-E054",
+            severity: "error",
+            message: `SDS design.md is absent for tdd step '${stepName}' and the skip is not recorded: ${failure}`,
+            filePath: `docs/spec/steps/${stepName}/intent.md`
+          }
+    );
     return out;
   }
   for (const heading of REQUIRED_SDS_HEADINGS) {

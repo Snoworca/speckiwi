@@ -1,7 +1,7 @@
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
-import { loadStepDesign, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { getWorkMode } from "../../core/mutation/work-mode.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
@@ -341,8 +341,13 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("validate_step", async (input) => {
     const parsed = await workspace(deps);
     const stepName = String(input.step);
-    const design = await loadStepDesign(await projectRoot(deps), stepName);
-    const result = validateWorkspaceScoped(parsed, { step: stepName, design });
+    // @req FR-PARSE-040 — intent.md carries the skip record, so this surface loads it beside
+    // design.md. Loading only design.md here would let the MCP caller see a warning where the CLI
+    // sees SDS-E054, and the two surfaces would disagree about whether the step may proceed.
+    const root = await projectRoot(deps);
+    const design = await loadStepDesign(root, stepName);
+    const intent = await loadStepIntent(root, stepName);
+    const result = validateWorkspaceScoped(parsed, { step: stepName, design, intent });
     const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
     return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, result.diagnostics);
   }, { readOnlyHint: true });

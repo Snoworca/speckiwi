@@ -19,7 +19,7 @@ import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { matchesRequirementFilter } from "../../core/query/filter.js";
 import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementRecords, type RequirementDiscoveryOptions } from "../../core/query/discovery.js";
 import { buildReadEnvelope, resolveTargetSelection, summarizeTarget } from "../../core/query/summary.js";
-import { loadStepDesign, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
+import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
@@ -1011,9 +1011,14 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .action(async (name, options) => {
       const json = Boolean(options.json) || command.opts().json;
       const workspace = await workspaceFrom(command.opts());
-      // @req FR-PARSE-033 — design.md is outside ParsedWorkspace, so the surface loads it.
+      // @req FR-PARSE-033 @req FR-PARSE-040 — design.md and intent.md are outside ParsedWorkspace,
+      // so the surface loads both: the skip record lives in intent.md and decides SDS-W050 vs SDS-E054.
       const root = await resolveProjectRoot(process.cwd(), command.opts().root);
-      const result = validateWorkspaceScoped(workspace, { step: name, design: await loadStepDesign(root, name) });
+      const result = validateWorkspaceScoped(workspace, {
+        step: name,
+        design: await loadStepDesign(root, name),
+        intent: await loadStepIntent(root, name)
+      });
       const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
       output(context, { json }, { ...result, diagnosticsSummary });
       if (result.errors.length > 0) command.setOptionValue("exitCode", 1);
