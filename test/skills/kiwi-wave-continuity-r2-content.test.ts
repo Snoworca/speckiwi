@@ -240,7 +240,11 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "existing-public-contract-change",
     "existing-file-deleted-or-moved",
     // @req FR-FLOW-164 — see the kiwi-wave-master list above.
-    "validate-spec-error"
+    "validate-spec-error",
+    // @req FR-FLOW-171 AC-7 — a single failed coverage comparison is loop control, but a reviewer
+    // that truncates its row enumeration produces invalid rounds indefinitely, and that burns the
+    // cap while looking like nothing happening. The second consecutive one halts here.
+    "review-coverage-mismatch"
   ]
 };
 

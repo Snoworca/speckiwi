@@ -55,6 +55,11 @@ Normalize findings to:
 }
 ```
 
+The reviewer also returns `coverage_rows[]`, one row per file of
+`review_denominator[]`, each carrying one anchor per hunk. The rule and the
+three comparisons the loop runs over those anchors are in the SKILL.md
+리뷰 커버리지 분모 section; do not restate them here.
+
 Classification must account for every finding exactly once:
 
 | Class | Action |
@@ -78,6 +83,10 @@ Exit criteria:
 - HIGH=0
 - the preservation scan over the fixer diff found no violation (SKILL.md
   보존 스캔 section); a detection is CRITICAL and halts through its gate
+- the review coverage comparison passed (SKILL.md 리뷰 커버리지 분모 section);
+  a round whose anchors do not check out is invalid, spends the cap and
+  records no pass, and two consecutive invalid rounds halt at
+  `review-coverage-mismatch`
 - regression has no new failures against the captured baseline (SKILL.md
   regression baseline section); pre-existing failures are reported, not
   attributed to this fix

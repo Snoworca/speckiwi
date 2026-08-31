@@ -48,6 +48,7 @@ performed by separate delegated workers or clearly separated passes.
 | `existing-test-weakened-or-deleted` | fix diff 에서 기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화 검출 (§0.17) | fix scan |
 | `existing-public-contract-change` | fix diff 에서 기존 public 심볼의 삭제 또는 시그니처 변경 검출 — **경로와 무관**하게 critical (§0.17) | fix scan |
 | `empty-code-scope` | no code target survives the class filter (파일 부류 경계) | 파일 부류 경계 |
+| `review-coverage-mismatch` | 리뷰 커버리지 대조 실패가 2회 연속 — 무효 라운드만 쌓이며 cap 을 소진한다 (리뷰 커버리지 분모) | 리뷰 커버리지 분모 |
 | `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | fix scan |
 | `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — evidence and promotion stacked on a requirement that carries an error cannot be read back to what admitted them | before the `--close-reqs` promotion |
 
@@ -77,20 +78,24 @@ performed by separate delegated workers or clearly separated passes.
 1. Preflight git; for PR mode, verify `gh --version` and authentication; capture
    the regression baseline before any code change (regression baseline section).
 2. Decide mode and review scope.
-3. Collect review inventory: local diff for self mode, PR comments/reviews for PR mode.
-4. Classify findings into `immediate_fix`, `discussion_needed`, or `rejected`.
-5. For immediate behavioral fixes, create a regression test and confirm red.
-6. Delegate fixes to a fixer pass.
-7. Run the preservation scan over the fixer diff (보존 스캔 section)
+3. Fix the review denominator before spawning the reviewer: carry the included
+   bucket into `review_denominator[]` and count each file's `hunks_total`
+   yourself (리뷰 커버리지 분모 section).
+4. Collect review inventory: local diff for self mode, PR comments/reviews for PR mode.
+5. Classify findings into `immediate_fix`, `discussion_needed`, or `rejected`.
+6. For immediate behavioral fixes, create a regression test and confirm red.
+7. Delegate fixes to a fixer pass.
+8. Run the preservation scan over the fixer diff (보존 스캔 section)
    before the re-review.
-8. Run a fresh prickly re-review with isolated input. Prose never enters that input
+9. Run a fresh prickly re-review with isolated input. Prose never enters that input
    (파일 부류 경계 section); the prose delta protocol belongs to
    `../_shared/kiwi/verify-loop.md` §10 and is not this skill's to run.
-9. Iterate until CRITICAL/HIGH findings are clear.
-10. Run regression and affected tests.
-11. In PR mode, write a response comment unless `--no-respond`.
-12. If `--close-reqs`, register per-REQ test evidence and move eligible REQs from `implemented` to `verified`.
-13. Write report and emit pipeline event.
+10. Iterate until CRITICAL/HIGH findings are clear.
+    **커버리지 대조를 통과한 라운드만 PASS 가 된다** — finding 개수만으로는 PASS 가 나오지 않는다. 대조 결과는 리뷰 커버리지 분모 section 이 정하며, 무효 라운드는 어느 행에도 해당하지 않는다.
+11. Run regression and affected tests.
+12. In PR mode, write a response comment unless `--no-respond`.
+13. If `--close-reqs`, register per-REQ test evidence and move eligible REQs from `implemented` to `verified`.
+14. Write report and emit pipeline event.
 
 ### 보존 스캔 (fixer diff, §0.17)
 
@@ -181,6 +186,38 @@ For each eligible REQ:
 **알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.**
 
 **산문 finding 은 어디로 가는가** — 부류 밖 문서에서 눈에 띈 문제는 SRS finding 에 쓰는 것과 같은 채널로 흘린다: 고치지 않고 보고하며, 담당 스킬을 지목해 위임을 권고한다.
+
+---
+
+## 12. 리뷰 커버리지 분모 — 리뷰어가 무엇을 열었는가
+
+§11 의 항등식과 본 절은 대상이 다르다. 항등식은 후보 파일이 **어느 버킷에 들어갔는지**를 세고, 본 절은 포함 버킷의 **각 hunk 를 리뷰어가 실제로 처리했는지**를 대조한다. 그러므로 항등식이 성립한다는 사실이 본 절을 대신하지 못한다 — 범위를 고르는 단계에는 분모가 있는데 그 범위를 읽는 단계에는 없었다는 것이 이 절이 생긴 이유다.
+
+**분모는 루프가 고정한다.** 까칠 리뷰어를 spawn 하기 전에, 범위 결정이 산출한 `self_scope.files[]`(§11 의 포함 버킷)를 그대로 `review_denominator[]` 로 옮겨 리뷰어 프롬프트에 싣는다. 리뷰어가 스스로 정하지 않는다. 산문은 애초에 이 집합에 들어오지 않으므로(§11) 분모에도 넣지 않는다.
+
+**`hunks_total` 은 루프가 센다 — 리뷰어가 세지 않는다.** 분모의 파일마다 아래 명령으로 세어 `review_denominator[]` 의 각 항목에 `hunks_total` 로 함께 싣는다.
+
+```
+git diff -U0 <범위> -- <path> | grep -c '^@@'
+```
+
+`<범위>` 는 `self_scope.source` 가 정한 그 범위다. `-U0` 을 쓰는 이유는 컨텍스트 줄이 인접 hunk 를 병합해 개수를 줄이기 때문이다. **분모를 만든 범위, `hunks_total` 을 센 범위, 앵커를 대조하는 범위는 셋 다 같아야 한다** — 다르면 리뷰어가 아무 잘못 없이 무효 라운드를 받는다.
+
+**리뷰어 출력에 `coverage_rows[]` 가 추가된다.** `review_denominator[]` 의 **모든** 파일이 한 행씩 갖고, 각 행은 그 파일의 앵커 목록과 finding 이 붙었는지를 밝힌다. finding 0건인 파일도 행으로 남는다. 표본·발췌·상위 N 은 분모가 아니다.
+
+**리뷰어는 hunk 마다 앵커 하나를 돌려준다.** 앵커는 그 hunk 안에서 **추가되거나 삭제된 줄**(`git diff -U0` 출력에서 `+` 또는 `-` 로 시작하되 `+++`·`---` 파일 헤더가 아닌 줄) 하나를 그대로 옮긴 인용이거나, 그 줄에서 추가·삭제된 심볼 이름이다. **`@@` 헤더 줄과 파일 경로는 앵커가 될 수 없다** — 그 둘은 루프가 이미 넘긴 값에서 그대로 만들어 낼 수 있으므로 그 hunk 를 열었다는 증거가 되지 못한다.
+
+**루프가 앵커를 기계 대조한다.** 검사는 셋이다.
+
+1. 각 앵커 문자열이 `git diff -U0` 출력의 **해당 hunk 본문 안**에 실제로 있다. **"있다"는 위 정의를 만족한다는 뜻이다** — 그 hunk 의 추가·삭제된 줄 하나와 **통째로 같거나**(앞뒤 공백만 다른 것은 같은 것으로 본다), 그 줄에 **토큰 경계로 실재하는 심볼 이름**이어야 한다 — **심볼 이름은 코드 토큰을 말하며, 산문의 낱말은 심볼 이름이 아니다.** **줄의 임의의 부분문자열은 앵커가 아니다.** 정의를 적어 두는 것과 검사가 그 정의를 강제하는 것은 다르고, 강제하지 않으면 정의는 아무것도 막지 못한다 — 부분문자열을 인정하면 diff 를 한 줄도 열지 않고 고른 흔한 한 글자 N 개가 서로 다른 hunk 에 하나씩 대응해 한 행을 통째로 채운다.
+2. 한 파일 안에서 앵커 개수가 `hunks_total` 과 같고, 서로 다른 hunk 에 하나씩 대응한다. 개수만 맞추면 한 hunk 에서 뽑은 앵커 N 개가 통과한다.
+3. **한 행 안에서 같은 앵커 문자열을 두 번 쓰지 않는다.** 막지 않으면 diff 전체에서 흔한 한 줄을 골라 그 행을 통째로 채우는 출력이 통과한다. 반대로 **서로 다른 행이 같은 문자열을 앵커로 갖는 것은 막지 않는다** — 여러 파일에 같은 줄이 추가되는 변경(공통 import 가 대표적)에서는 정직한 리뷰어의 앵커도 행 사이에서 겹치므로, 행 사이까지 금지하면 잘못 없는 라운드가 무효가 된다. 겹친 문자열도 검사 1 이 파일마다 따로 확인하니 근거 없이 겹칠 수는 없다.
+
+**하나라도 어긋나면 그 라운드는 무효다.** cap 은 소비하되 PASS 로 기록하지 않으며, 무효 판정 로그에 어긋난 앵커 문자열을 그대로 남긴다 — 재사용은 개수만 세면 보이지 않고 문자열을 나란히 놓아야 눈에 띈다. **무효 라운드가 2회 연속이면 `review-coverage-mismatch` 로 중단하고 `--auto` 가 이 중단을 덮지 못한다** (게이트 선언은 `critical_gates[]` 표에 있다). 파일이 많으면 리뷰어가 행 열거를 중간에서 잘라 돌려주고 모든 라운드가 무효가 되어 cap 만 소비하는데, 그것이 이 설계에서 아무 일도 일어나지 않는 것처럼 보이는 유일한 실패 형태이기 때문이다. 그때는 분모를 쪼개 리뷰어를 여럿으로 나누고 각자에게 자기 몫의 분모를 고정해 준다. **분모 단위를 파일보다 굵게 올리거나 앵커를 파일당 하나로 줄이지 않는다.**
+
+**이 대조가 보장하지 않는 것** — 앵커 대조는 리뷰어가 그 hunk 를 **이해했다는 것을 보장하지 않으며, 리뷰 품질을 재지 않는다.** 보장하는 것은 **분모의 모든 파일이 행으로 열거되고, 적힌 앵커 하나하나가 그 hunk 에 실재한다**는 데까지다 — **리뷰어가 diff 를 열었다는 것까지는 보장하지 않는다.** 앵커를 못 채우면 그 hunk 를 건드리지 않았다는 사실이 산출물에 남고, 틀린 앵커를 채우면 대조가 그것을 잡는다. 개수 대조에는 이 두 성질이 모두 없다 — `hunks_total` 은 루프가 넘긴 값이라 리뷰어가 같은 수를 되적는 것으로 끝나므로, 열두 파일 중 셋만 읽은 리뷰어도 열두 행 모두에서 개수를 맞춘다. 그러니 이 대조를 리뷰 판정의 자리로 쓰지 않는다.
+
+**좁힌 정의로도 남는 것** — 조건은 **hunk 가 적다는 것이 아니라 hunk 마다 흔한 토큰이 하나씩 있다**는 것이다. 확장자만 보고 고른 흔한 코드 토큰이 그 파일의 hunk 를 하나씩 차지하면, hunk 가 여럿인 평범한 소스 편집도 diff 를 한 줄도 열지 않고 채워진다 — 이 저장소의 최근 40 커밋 470 파일을 그렇게 재면 **코드 파일의 80% 남짓**이 채워지고(서로 다른 보수적 풀 두 벌로 81% 와 85%), 그 안에는 6·7·11·13 hunk 짜리가 들어 있다. 최대 반례는 손으로 고친 11-hunk 소스 파일이다. 앵커 규칙으로 닫을 구멍이 아니다 — 900 줄짜리 새 파일을 읽었다는 것은 앵커 하나로 애초에 증명되지 않는다. 그러므로 **이 대조의 통과를 그 파일을 읽었다는 근거로 읽지 않는다.** 대조가 실제로 잡는 것은 분모를 표본으로 줄인 출력, 개수만 되적은 출력, 날조하거나 도배한 앵커다. 읽었는지가 걸린 변경에서는 분모를 쪼개 리뷰어를 여럿으로 나눈다.
 
 ---
 
