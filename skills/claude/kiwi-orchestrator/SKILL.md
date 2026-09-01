@@ -1040,7 +1040,7 @@ recovery class **pure-reauthor**. Phase 1.a 의 문서 소스 분기. `--design-
 
 ### §V.intake-issue
 
-recovery class **externally-visible**. Phase 1.a 의 GitHub 이슈 분기. `gh issue view` 는 읽기 전용이지만 `/kiwi-srs-research` 가 노트를 영속시켰을 수 있다.
+recovery class **externally-visible**. Phase 1.a 의 GitHub 이슈 분기. `gh issue view {N} --json title,body,comments` 로 이슈를 읽어 `01.intake.md` 를 만든다. 그 명령은 읽기 전용이지만 `/kiwi-srs-research` 가 노트를 영속시켰을 수 있다.
 복구: `docs/research/` 와 그 스킬 자신의 이벤트를 먼저 점검한다.
 
 ### §V.intake-investigate

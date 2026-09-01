@@ -80,6 +80,13 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 #### new-feature
 
 1. `add_requirement` — type / scope / target / title / requirement / acceptanceCriteria / trace=[Code, `notes` 에 `trace_intent=<값>`] / status=planned / priority / tags=[feasibility:{level}]
+   - **이슈 진입 한정 의무** — `kiwi-pipeline` §2.7 또는 `kiwi-orchestrator` 의 intake-issue 분기에서 출발한 요구는 이슈 링크를 등록 호출에 함께 싣는다. 이슈 없이 시작한 요구에는 그것을 요구하지 않는다 — 이슈 진입 경로에서만 의무다.
+
+     ```
+     githubIssue: "https://github.com/{owner}/{repo}/issues/{N}"
+     ```
+
+     CLI 는 `--github-issue` 로 같은 값을 준다. 값은 번호가 아니라 위 형식의 URL 이다 — SRS-MD 규칙 §12.3 의 `GitHub Issue` 행이 URL 을 요구하고, 그 형식을 벗어나면 `links check` 가 `SRS-W004` 를 낸다.
 2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check

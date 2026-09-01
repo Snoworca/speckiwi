@@ -470,6 +470,8 @@ per-wave 자식 스킬로의 `--auto` 자동 전파는 `../_shared/kiwi/auto-opt
 
 에픽 이슈(epic issue) 번호가 진입 인자로 제공되면, wave 의 출처만 달라질 뿐 wave 를 추출한 뒤의 흐름은 §3~§7 문서 분해 진입과 동일하다.
 
+에픽 이슈 본문은 `gh issue view {N} --json title,body,comments` 로 읽는다. 하위 이슈를 세는 방법은 `kiwi-orchestrator` 의 라우팅 신호 S8 이 이미 정했으므로 여기서 그 규칙을 다시 쓰지 않고 그대로 따른다 — 양쪽에 쓰면 한쪽만 갱신되는 형태가 만들어진다.
+
 ### 8.1 에픽에서 순서 있는 wave 추출 (AC-1)
 
 에픽 이슈가 진입점이면, 연구·계획 문서(research·plan document)를 **분석(analyze)** 하여 wave 를 나누는 §3 방식이 **아니라(instead of)**, **에픽 이슈(epic issue)** 자체에서 **순서(order)가 있는** wave 집합을 **추출(extract/도출)** 한다.

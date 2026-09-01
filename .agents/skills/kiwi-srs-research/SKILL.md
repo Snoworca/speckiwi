@@ -162,7 +162,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 
 - `REQ_ID` — speckiwi REQ id (e.g. `FR-TODO-005`). 본 스킬이 REQ 본문 자동 조회 (`get_requirement`)
 - `RESEARCH_QUESTION` — 자연어 연구 질문 (REQ 와 무관한 일반 연구 시)
-- `GITHUB_ISSUE` — GitHub 이슈 번호(issue number, 예: `#123`) 또는 이슈 본문/컨텍스트. `kiwi-pipeline` 의 이슈 진입 흐름(FR-FLOW-028)이 이슈 해결(resolution) 방향 + 구현 접근(implementation-approach) 연구를 위해 본 입력으로 전달한다. 이슈 본문·연결 정보를 `RESEARCH_QUESTION` 으로 정규화하여 5-서브에이전트 토폴로지에 투입한다.
+- `GITHUB_ISSUE` — GitHub 이슈 번호(issue number, 예: `#123`) 또는 이슈 본문/컨텍스트. `kiwi-pipeline` 의 이슈 진입 흐름(FR-FLOW-028)이 이슈 해결(resolution) 방향 + 구현 접근(implementation-approach) 연구를 위해 본 입력으로 전달한다. 이슈 본문·연결 정보를 `RESEARCH_QUESTION` 으로 정규화하여 5-서브에이전트 토폴로지에 투입한다. 이슈 본문은 `gh issue view {N} --json title,body,comments` 로 읽는다 — 저장소의 다른 스킬이 같은 일을 하는 자리와 같은 필드 목록이다.
 
 ### 1.2 선택 입력 + 자연어 매핑
 
@@ -180,6 +180,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 
 ### 1.3 출력 — standalone 모드
 
+- **이슈 진입 발췌본**: 이슈에서 출발한 실행은 `docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 를 함께 쓴다. `issue-excerpt.md` 는 이슈 본문과 연구 결과에서 뽑아낸 요구 진술만 담고 연구 요약이나 목차를 담지 않는다 — 그렇게 되면 `kiwi-srs` 가 만든 요구가 연구 문서의 목차를 닮는다. 이 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 `kiwi-srs` 에 넘기고, 연구 보고서 `report.md` 는 `--research-doc` 자리에 따로 넘긴다.
 - **speckiwi mutation**: `append_section_note { id: REQ_ID, section: "research", text: ..., mode: "append" }` (다중 호출 시 mode 동일 유지)
 - **분석 로그**: `docs/analysis/kiwi-srs-research-{run-id}/`
   - `preflight.json` / `triage.json` / `run-mode.json`

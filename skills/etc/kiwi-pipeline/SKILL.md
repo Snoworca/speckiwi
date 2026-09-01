@@ -196,6 +196,14 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 
 이슈 번호(issue number) 기반의 연구와 SRS 저작이 끝나면, 이 이슈 진입 흐름은 §2.5 의 표준 사이클로 **계속(continue)**되어 `kiwi-planner` → `kiwi-pm` → `kiwi-review-fix-loop` 로 이어진다. 즉 이슈에서 시작한 작업도 연구·저작 이후 planner/pm/review 단계를 그대로 진행한다.
 
+### 2.7.4 이슈 본문 획득과 kiwi-srs 승격 인자 (FR-FLOW-174)
+
+이슈 본문은 `gh issue view {N} --json title,body,comments` 로 읽는다. 저장소에서 같은 일을 하는 다른 자리도 같은 필드 목록을 쓰므로, 여기에 다른 필드를 적으면 같은 이슈가 스킬마다 다른 내용으로 읽힌다.
+
+`kiwi-srs-research` 가 끝나면 그 연구가 따로 쓴 요구 진술 발췌본을 `kiwi-srs` 로 넘긴다. 넘기는 인자는 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 이고, 연구 보고서 자체는 `--research-doc` 자리에 함께 넘겨 `kiwi-srs` §9.6 의 A/B 검증 루프를 돌린다. 즉 발췌본이 무엇을 만들지를 정하고 보고서가 그것을 검증한다. 이슈 본문을 `REQ_TEXT` 로 인라인하지 않는다 — `REQ_TEXT` 는 positional 이라 본문의 줄바꿈과 따옴표와 코드 블록이 인자 자리에 그대로 들어가고, 길이 상한도 정해져 있지 않다.
+
+이 흐름에서 등록되는 요구는 그 이슈의 링크를 요구 블록에 남긴다. 등록 호출에 어떤 필드로 싣는지와 값 형식은 `kiwi-srs` §9.2 의 new-feature 절이 정한다 — 값은 `https://github.com/{owner}/{repo}/issues/{N}` 형식의 URL 이고, 번호만 적으면 `speckiwi links check` 가 `SRS-W004` 로 경고한다.
+
 ---
 
 ## 2.8 work-mode 라우팅 게이트 (tdd step-scoped 라우팅, FR-FLOW-039)

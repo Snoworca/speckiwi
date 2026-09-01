@@ -123,6 +123,7 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 
 - `REQ_TEXT` — 자연어 인라인 (positional)
 - `REQ_PATH` — 요구사항 파일 경로
+- 이슈 진입에서는 `kiwi-srs-research` 가 쓴 요구 진술 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 받는다. 연구 보고서 자체를 `REQ_PATH` 로 받지 않는다 — 그 문서의 자리는 §9.6 이 A/B 검증 루프의 입력으로 규정한 `--research-doc` 다.
 
 ### 1.2 선택 입력 + 자연어 매핑
 
