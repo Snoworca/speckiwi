@@ -6,6 +6,7 @@ import { computeBlastRadius } from "./records.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, StepStateEntry } from "../types.js";
+import { todayStamp } from "../date-stamp.js";
 
 // @req FR-NODE-042
 /**
@@ -52,11 +53,6 @@ function parseReqCell(cell: string): string[] {
     .split(/[\s,]+/)
     .map((token) => token.trim())
     .filter((token) => token !== "" && token !== "-");
-}
-
-// @req FR-NODE-042
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 // @req FR-NODE-042
@@ -136,7 +132,7 @@ export async function claimStep(root: ProjectRoot, input: ClaimStepInput): Promi
     );
   }
 
-  const stamp = todayIso();
+  const stamp = todayStamp();
   const reqCell = claimReqs.length > 0 ? claimReqs.join(", ") : "-";
   const row = `| ${input.step} | active | - | ${input.touchesScope} | ${reqCell} | ${stamp} | ${stamp} |`;
   const operations: PatchOperation[] = [{ type: "appendLines", lines: [row] }];

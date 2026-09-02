@@ -8,6 +8,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { todayStamp } from "../date-stamp.js";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
@@ -65,10 +66,6 @@ export interface GranularRequirementEditOutput {
   written: boolean;
   updatedFields: string[];
   record?: RequirementRecord;
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function staleFailure(error: unknown, filePath: string): MutationResult | undefined {
@@ -315,5 +312,5 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     }
   }
 
-  return applyGranularPlan(root, input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayIso()}`]);
+  return applyGranularPlan(root, input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`]);
 }

@@ -17,10 +17,7 @@ export type { RetargetInput, RetargetItemPlan, RetargetOutput } from "../types.j
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStamp } from "../date-stamp.js";
 
 // @req FR-NODE-059
 /**
@@ -122,7 +119,7 @@ export async function retarget(
       pushOp(loaded.file, {
         type: "insertLines",
         line: insertLine,
-        lines: [`| ${todayIso()} | Target -> ${toTarget} | ${reason} |`]
+        lines: [`| ${todayStamp()} | Target -> ${toTarget} | ${reason} |`]
       });
     }
 

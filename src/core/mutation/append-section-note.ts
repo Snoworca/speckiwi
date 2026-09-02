@@ -11,6 +11,7 @@ import {
   loadRecordWithWorkspace
 } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { todayStamp } from "../date-stamp.js";
 
 /**
  * FR-MCP-018 — append_section_note mutation.
@@ -37,10 +38,6 @@ export interface AppendSectionNoteOutput {
   section: AllowedSection;
   mode: AppendSectionMode;
   written: boolean;
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export async function appendSectionNote(
@@ -90,7 +87,7 @@ async function appendSectionNoteUnlocked(
   if (mode === "append") {
     const insertion = findSectionInsertionLine(loaded.file, loaded.record, heading);
     if (!insertion) return mutationFail("MUTATION_DENIED", `cannot locate insertion point for section '${heading}'`);
-    const noteLine = `- [${todayIso()}] ${input.text}`;
+    const noteLine = `- [${todayStamp()}] ${input.text}`;
     if (insertion.mode === "append") {
       operations.push({ type: "insertLines", line: insertion.line, lines: [noteLine] });
     } else {

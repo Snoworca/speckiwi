@@ -8,6 +8,7 @@ import { getWorkMode } from "./work-mode.js";
 import { evaluateVibeCompletionGate } from "./internal.js";
 import { listDirtyEdges } from "../query/summary.js";
 import type { MutationResult, ProjectRoot, StepStateStatus } from "../types.js";
+import { todayStamp } from "../date-stamp.js";
 
 // @req FR-NODE-043
 /**
@@ -39,11 +40,6 @@ export interface UpdateStepStateValue {
 // @req FR-NODE-043
 /** The Status enum a step row may transition into (FR-PARSE-026 / StepStateStatus). */
 export const STEP_STATE_STATUSES: readonly StepStateStatus[] = ["active", "merging", "merged", "abandoned"];
-
-// @req FR-NODE-043
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // @req FR-NODE-043
 /** Split a pipe-delimited table row into its trimmed cells (between the outer pipes). */
@@ -125,7 +121,7 @@ export async function updateStepState(
 
   const original = stateFile.lines[rowLine - 1] ?? "";
   const cells = rowCells(original);
-  const stamp = todayIso();
+  const stamp = todayStamp();
   // Columns: Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated.
   const updatedColumn = table.headers.indexOf("Updated");
   if (input.status !== undefined) cells[1] = input.status;

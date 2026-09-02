@@ -13,6 +13,7 @@ import type { RequirementRecord } from "../types.js";
 import { syncIndexRollups } from "./sync-index.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
+import { todayStamp } from "../date-stamp.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.3 — `reason` 제공 시 Change Notes row 가 동일 atomic transaction 으로 append.
@@ -37,10 +38,6 @@ export interface UpdateStatusInput {
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
 const MAX_REASON_LENGTH = 500;
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 
 function statusChangeLabel(status: RequirementStatus): string {
@@ -174,7 +171,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     if (!insertLine) {
       return mutationFail("MUTATION_DENIED", "Change Notes section not found for reason append");
     }
-    const row = `| ${todayIso()} | ${statusChangeLabel(input.status)} | ${input.reason} |`;
+    const row = `| ${todayStamp()} | ${statusChangeLabel(input.status)} | ${input.reason} |`;
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
   const plan = createPatchPlan(loaded.file, operations);

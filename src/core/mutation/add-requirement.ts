@@ -18,6 +18,7 @@ import { syncIndexRollups } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
+import { todayStamp } from "../date-stamp.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target"> {
   type: RequirementType;
@@ -242,7 +243,7 @@ function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, fileP
     })),
     changeNotes: changeNoteCells
       ? [{ date: changeNoteCells[0] ?? "", change: changeNoteCells[1] ?? "", reason: changeNoteCells[2] ?? "" }]
-      : [{ date: new Date().toISOString().slice(0, 10), change: "Created", reason: "add-requirement" }],
+      : [{ date: todayStamp(), change: "Created", reason: "add-requirement" }],
     tags: input.tags ?? [],
     requirement: input.statement
   };

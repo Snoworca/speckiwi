@@ -1,5 +1,6 @@
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { TYPE_PREFIX, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
+import { todayStamp } from "../date-stamp.js";
 
 export const DEFAULT_REQUIREMENT_STABILITY = "draft";
 
@@ -103,7 +104,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
     "",
     "| Date | Change | Reason |",
     "| --- | --- | --- |",
-    input.changeNotes ? `| ${input.changeNotes} |` : `| ${new Date().toISOString().slice(0, 10)} | Created | add-requirement |`
+    input.changeNotes ? `| ${input.changeNotes} |` : `| ${todayStamp()} | Created | add-requirement |`
   ];
 }
 

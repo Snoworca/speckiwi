@@ -8,6 +8,7 @@ import { rewriteRulesReferences } from "../bootstrap/rules-references.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { todayStamp } from "../date-stamp.js";
 
 // @req FR-NODE-092
 //
@@ -74,7 +75,7 @@ async function repairUnlocked(
   // One requirement at a time, re-reading the file each round: appending a Change Note shifts the
   // lines below it, so a plan computed against a stale snapshot would patch the wrong rows.
   for (const requirementId of [...new Set(findings.map((finding) => finding.requirementId))]) {
-    const result = await repairOne(root, requirementId, input.date ?? today());
+    const result = await repairOne(root, requirementId, input.date ?? todayStamp());
     if (!result.ok) {
       // A failed write is the whole command's failure, reported verbatim. Requirements repaired
       // before it stay repaired: each is one atomic patch, and a partial run is visible in `repaired`.
@@ -185,8 +186,4 @@ async function repairOne(root: ProjectRoot, id: string, date: string): Promise<M
     }
     throw error;
   }
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
 }

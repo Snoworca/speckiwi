@@ -62,13 +62,16 @@
 - [x] [09. 단독 경로에 리뷰 홉을 붙이고 그 홉의 시작 게이트를 등재한다](09.tdd-review-hop.md) — `kiwi-tdd` 전문에 "리뷰"가 0회 등장하고, `kiwi-pm`·`kiwi-coder` 는 홉이 있으나 그 시작 판단이 `critical_gates[]` 밖이라 자동 진행에서 조용히 통과한다
 - [x] [10. SDS 생략 판정을 기계 대조로 바꾼다](10.sds-skip-gate.md) — 생략으로 일이 줄어드는 당사자가 생략 여부를 판정하고 아무도 대조하지 않는다
 - [x] [11. 진입점 이음매를 문서에 명시한다](11.entry-seam-explicit.md) — 이슈 본문을 가져오는 명령과 그것을 요구 등록에 넘기는 인자가 문서에 없다
-- [ ] [23. 요구 노트의 날짜 스탬프가 작성자의 날짜를 따르게 한다](23.note-date-stamp-utc.md) — MEDIUM. `append_section_note` 가 UTC 를 찍고 `--date` 를 받지 않아, 같은 세션에 쓴 노트와 Change Note 가 한 블록 안에서 하루 갈린다. 이미 세 요구가 그 상태다
+- [x] [23. 요구 노트의 날짜 스탬프가 작성자의 날짜를 따르게 한다](23.note-date-stamp-utc.md) — MEDIUM. `append_section_note` 가 UTC 를 찍고 `--date` 를 받지 않아, 같은 세션에 쓴 노트와 Change Note 가 한 블록 안에서 하루 갈린다. 이미 세 요구가 그 상태다
 - [ ] [24. `docs/spec` 의 줄 참조가 낡는 것을 기계가 잡게 한다](24.spec-line-reference-freshness.md) — 22 번의 소스 편집 하나가 다섯 요구의 `file:line` 참조 스물을 낡게 했다. 다섯 다 verified 라 도구가 수정을 거절하고, 산문 노트는 다음 편집에서 또 낡는다
 - [ ] [25. CLI 전용 에이전트에게도 run lock 이 배타를 만들게 한다](25.cli-only-run-lock-exclusion.md) — `orchestrator-run-lock-held`(critical)가 CLI 전용 경로에서 발화하지 않는다. 두 run 이 같은 저장소를 동시에 잡는다
 - [ ] [27. 게이트 표의 개수를 산문이 되풀이하지 않게 한다](27.gate-count-drift-in-prose.md) — MEDIUM. `kiwi-tdd` §0.AG 표가 네 행인데 그 아래 문장이 네 렌더링 전부에서 "위 3개 게이트" 라고 적는다. 표에 행을 더하는 편집이 그 표를 가리키는 산문을 붉히지 않는다
 - [ ] [28. 저작 규칙과 게이트가 같은 말을 하게 한다](28.authoring-rules-vs-gate.md) — 번들되는 `SDS-MD-Rules` 가 SDS 생략의 기록 형식을 말하지 않아, 그 규칙을 그대로 따른 저자가 `SDS-E054` 에 걸린다. 소비자 저장소마다 재현된다
 - [ ] [29. 축 면제 검사가 camelCase 인자를 못 맞추는 것을 고친다](29.axis-exemption-case-fold.md) — MEDIUM. `FR-FLOW-154` 의 면제 검사가 집합은 스키마 키 그대로 두고 조회만 소문자로 낮추어, `githubIssue` 처럼 대문자를 담은 인자는 영원히 면제되지 않는다. 11번은 우회만 했다
 - [ ] [30. 서술 절이 500자를 넘긴 뒤에도 도구로 고쳐질 수 있게 한다](30.section-note-append-only-gap.md) — MEDIUM. `append_section_note` 가 서술 절의 유일한 쓰기 경로인데 500자 상한이 `mode` 분기 이전에 걸려 `replace` 에도 적용된다. 본문이 500자를 넘긴 절은 도구로는 영구 append-only 이고, 11번이 그 자리에서 통일을 포기했다
+- [ ] [31. 경로 인자를 조용히 버리는 대신 거절하게 한다](31.mcp-workspace-root-silently-dropped.md) — HIGH. zod 가 스키마에 없는 키를 파싱에서 지워 게이트가 그 키를 영영 못 본다. `update_status({workspaceRoot: 워크트리})` 가 거절 없이 호스트에 쓰러 간다. 게이트 테스트가 어댑터 층만 불러 아무도 못 잡았다
+- [ ] [32. SRS 조회 도구가 워크트리를 가리킬 수 있게 한다](32.srs-read-tools-workspace-root.md) — MEDIUM. 도구 100개 중 51개가 `workspaceRoot` 를 받는데 SRS 계열은 못 받고, CLI 는 `--root` 를 무검사로 받는다. 5인 위원회 만장일치로 읽기만 개방(쓰기는 ID 이중 발급이 6개 root 전수로 재현됨)
+- [ ] [33. 락 테스트가 벽시계 대신 신호를 기다리게 한다](33.lock-test-wallclock-flake.md) — MEDIUM. `REL-NODE-005` 케이스가 `delay(30)` 뒤에 첫 보유자가 임계 구역에 있다고 가정하는데 실측 4/4 가 아직 진입 전이고, 4/3 은 가드 충돌로 하드 거절돼 통과가 원리적으로 불가능하다. HEAD 스냅샷 교차 실행으로 선재 확인
 
 ## 그룹 C — 정확도에 기여하지 않는 비용 (HIGH·MEDIUM, 토큰·시간)
 
@@ -167,9 +170,9 @@
 | 그룹 | 항목 수 | 완료 |
 |---|---|---|
 | A — 계약이 깨진 자리 | 12 | 12 |
-| B — 판정이 자기증명인 자리 | 12 | 5 |
+| B — 판정이 자기증명인 자리 | 15 | 6 |
 | C — 정확도에 기여하지 않는 비용 | 5 | 1 |
 | D — 산문 정리 | 1 | 0 |
-| **합계** | **30** | **18** |
+| **합계** | **33** | **19** |
 
 체크박스를 채울 때는 그 항목의 요구가 `verified` 이고 검증 증거가 붙어 있어야 한다. 구현만 끝난 상태는 체크하지 않는다.

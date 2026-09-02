@@ -11,6 +11,7 @@ import { classifyStabilityTransition, type StabilityTransitionWarning } from "./
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, Stability } from "../types.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { todayStamp } from "../date-stamp.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.2 — `update_stability` mutation 이 `Stability=draft` 로 전이될 때
@@ -45,10 +46,6 @@ export interface UpdateStabilityOutput {
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
 const MAX_REASON_LENGTH = 500;
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function stabilityChangeLabel(stability: Stability): string {
   return `Stability -> ${stability}`;
@@ -154,7 +151,7 @@ async function updateStabilityUnlocked(
     if (!insertLine) {
       return mutationFail("MUTATION_DENIED", "Change Notes section not found for reason append");
     }
-    const row = `| ${todayIso()} | ${stabilityChangeLabel(input.stability)} | ${input.reason} |`;
+    const row = `| ${todayStamp()} | ${stabilityChangeLabel(input.stability)} | ${input.reason} |`;
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
 

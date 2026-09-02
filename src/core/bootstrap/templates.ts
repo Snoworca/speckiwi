@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { REQUIRED_SDS_HEADINGS } from "../validator/validate-scoped.js";
+import { todayStamp } from "../date-stamp.js";
 
 export interface InitTemplateInput {
   product?: string;
@@ -445,7 +446,7 @@ export function renderSdsDesignTemplate(options: { task: string; target?: string
     `| Task | ${options.task} |`,
     `| Target | ${options.target ?? "-"} |`,
     "| Status | draft |",
-    `| Date | ${options.date ?? new Date().toISOString().slice(0, 10)} |`,
+    `| Date | ${options.date ?? todayStamp()} |`,
     ""
   ];
   REQUIRED_SDS_HEADINGS.forEach((heading, index) => {

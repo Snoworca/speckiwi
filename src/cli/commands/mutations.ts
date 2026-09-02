@@ -32,6 +32,7 @@ import { validateReportPathToken } from "../../core/completed-work/report-paths.
 import type { CliContext } from "../command.js";
 import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
+import { todayStamp } from "../../core/date-stamp.js";
 
 async function rootFrom(options: { root?: string }) {
   return resolveProjectRoot(process.cwd(), options.root);
@@ -642,7 +643,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .action(async (id, options) => {
       const result = await addChangeNote(await rootFrom(command.opts()), {
         id,
-        date: typeof options.date === "string" ? options.date : new Date().toISOString().slice(0, 10),
+        date: typeof options.date === "string" ? options.date : todayStamp(),
         change: options.change,
         reason: options.reason,
         ...(options.dryRun ? { dryRun: true } : {})
