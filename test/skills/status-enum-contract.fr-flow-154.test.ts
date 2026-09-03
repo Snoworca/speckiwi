@@ -1,6 +1,7 @@
-import { readdirSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { getCurrentSuite } from "vitest/suite";
 
 import { toolSchemas } from "../../src/mcp/server.js";
 import { renderToolDescriptions } from "../../src/mcp/schemas.js";
@@ -592,8 +593,16 @@ const MCP_ARGUMENT_NAMES: ReadonlySet<string> = new Set(
 );
 
 /**
+ * The two arguments that MAKE a tool a lifecycle surface. One constant with two readers: `AXIS_TOOLS`
+ * below derives the tool set by asking which schemas declare one of them, and the exemption reads the
+ * same pair case-insensitively, because a sentence naming the AXIS beside a call names what the call
+ * moves rather than what it moves it to. Written once so those two cannot drift apart.
+ */
+const AXIS_ARGUMENTS: readonly string[] = ["status", "stability"];
+
+/**
  * The tools whose arguments carry a REQUIREMENT lifecycle value, derived rather than listed: a
- * schema that declares `status` or `stability` and does not declare `step`, `task` or `taskId`.
+ * schema that declares one of the axis names and does not declare `step`, `task` or `taskId`.
  * The three excluded by that second clause — `update_step_state`, `set_sds_status`,
  * `workflow_task_status_set` — key their `status` on a step or a plan Task, so their vocabulary
  * (`merged`, `abandoned`, `acknowledged`) is a different state machine and reading it on this axis
@@ -601,11 +610,20 @@ const MCP_ARGUMENT_NAMES: ReadonlySet<string> = new Set(
  *
  * Deriving the list rather than freezing it means a tool that GAINS a requirement-status argument
  * is read from the day the schema says so, which a literal here would have to be told about.
+ *
+ * Written as a FUNCTION of the axis names rather than as a filter that spells them inline, because
+ * that is what makes the coupling observable. Inlining the two names back into the predicate leaves
+ * every value in this file identical and breaks only the link between the constant and its reader —
+ * a change no assertion over values can see. Perturbing the argument, which the tests below do, can.
  */
-const AXIS_TOOLS: readonly string[] = Object.entries(toolSchemas)
-  .filter(([, shape]) => ("status" in shape || "stability" in shape) && !("step" in shape) && !("task" in shape) && !("taskId" in shape))
-  .map(([name]) => name)
-  .sort();
+function axisToolsFor(names: readonly string[]): string[] {
+  return Object.entries(toolSchemas)
+    .filter(([, shape]) => names.some((name) => name in shape) && !("step" in shape) && !("task" in shape) && !("taskId" in shape))
+    .map(([name]) => name)
+    .sort();
+}
+
+const AXIS_TOOLS: readonly string[] = axisToolsFor(AXIS_ARGUMENTS);
 
 // ---------------------------------------------------------------------------------------------
 // The CLI spelling of the same axis.
@@ -1019,12 +1037,33 @@ const TOOL_AXIS_SURFACES_IN_USE: Record<string, readonly string[]> = {
  * Derived, still: a lifecycle call's own arguments come out of its own schema entry, so a tool that
  * gains one is exempt the day the schema says so. What it no longer inherits is every other tool's
  * vocabulary.
+ *
+ * Kept PER TOOL rather than merged, because AC-10 says `its schema entry` in the singular and a
+ * merged set does not mean that. `update_status` declares five arguments; the merge admitted 38
+ * beside it, 33 of which it does not declare — `query` belongs to `search_requirements` alone — and
+ * that is the same class of width the paragraph above rejects, one ring smaller. The merged view
+ * survives below for the assertions that speak about the vocabulary as a whole.
  */
-const AXIS_TOOL_ARGUMENTS: ReadonlySet<string> = new Set(
-  AXIS_TOOLS.flatMap((tool) => Object.keys(toolSchemas[tool] as Record<string, unknown>))
+const AXIS_TOOL_OWN_ARGUMENTS: ReadonlyMap<string, ReadonlySet<string>> = new Map(
+  AXIS_TOOLS.map((tool) => [tool, new Set(Object.keys(toolSchemas[tool] as Record<string, unknown>))] as const)
 );
 
-/** The same for the CLI half: the arguments and options the axis subcommands themselves declare. */
+const AXIS_TOOL_ARGUMENTS: ReadonlySet<string> = new Set(
+  [...AXIS_TOOL_OWN_ARGUMENTS.values()].flatMap((own) => [...own])
+);
+
+/**
+ * The same for the CLI half: the arguments and options the axis subcommands themselves declare.
+ *
+ * This half is still a MERGE across the six axis subcommands, and that is recorded rather than
+ * repaired. The MCP half could be split per call because an anchor there IS a tool name; a CLI
+ * anchor is `speckiwi list`, and two registered surfaces answer to the name `list` — the top-level
+ * reader and `orchestrate issue list` — so `speckiwi …` does not resolve to one argument set. The
+ * measured price of the merge, taken over the shipped tree: no site is exempt through it that its
+ * own subcommand would not also admit. What it does still admit is a lowercase MCP argument beside
+ * a call that does not declare it, because most of them are also a single-word CLI option somewhere
+ * on the axis — `query` is the one the requirement names.
+ */
 const AXIS_CLI_ARGUMENTS: ReadonlySet<string> = new Set(
   CLI_SURFACES.filter((surface) => AXIS_CLI_COMMANDS.includes(surface.name)).flatMap((surface) => [
     ...surface.argumentNames,
@@ -1033,11 +1072,34 @@ const AXIS_CLI_ARGUMENTS: ReadonlySet<string> = new Set(
   ])
 );
 
-function toolAxisAllows(token: string, position = ""): boolean {
+/**
+ * The axis name itself, whatever its case: `Status` and `Stability` name the AXIS, and a sentence
+ * naming the axis beside a call is naming what the call moves, not what it moves it to.
+ *
+ * Split out because it is the ONE exemption in this reader that is not spelling-exact, which makes
+ * it the one whose reach has to be measurable on its own. The site walk below asks exactly this
+ * question — which shipped sites rest on the fold and nothing else — and it can only ask it because
+ * the fold and the rest are two functions rather than two branches of one.
+ */
+function isAxisName(token: string): boolean {
+  return AXIS_ARGUMENTS.includes(token.toLowerCase());
+}
+
+function toolAxisAllows(token: string, position: string, tool: string): boolean {
+  return isAxisName(token) || toolAxisAllowsAtItsOwnSpelling(token, position, tool);
+}
+
+/** The whole of the exemption except the axis-name fold — everything it admits, it admits exactly. */
+function toolAxisAllowsAtItsOwnSpelling(token: string, position: string, tool: string): boolean {
   const always = new Set<string>([...LIFECYCLE_VALUES, ...MCP_TOOL_NAMES, ...TOOL_AXIS_NON_VALUES]);
-  // The axis words themselves, whatever their case: `Status` and `Stability` name the axis, and a
-  // sentence naming the axis beside a call is naming what the call moves, not what it moves it to.
-  if (AXIS_TOOL_ARGUMENTS.has(token.toLowerCase())) return true;
+  // The argument names THIS call's own schema entry declares, at the spelling it declares them in.
+  // Two defects met here. The comparison used to fold the token and match it against keys held at
+  // the schema's spelling, so every key carrying a capital was unreachable by any input — 15 of the
+  // 38 — and a skill writing a call's own argument beside it was read as naming a value the enums do
+  // not define. And the keys were merged across the axis tools, so `query`, which only
+  // `search_requirements` declares, was exempt beside `update_status` too. Folding both sides would
+  // have been the other wrong answer: it exempts a misspelling of the key as readily as the key.
+  if (AXIS_TOOL_OWN_ARGUMENTS.get(tool)?.has(token) === true) return true;
   if (always.has(token) || /^kiwi-[a-z-]+$/.test(token) || REQUIREMENT_ID.test(token)) return true;
   // `update-status` beside `update_status` is the CLI spelling of the same surface, and every
   // rendering's §13 table writes the two side by side.
@@ -1050,7 +1112,7 @@ function toolAxisAllows(token: string, position = ""): boolean {
 
 /** The hits the tool axis rejects: a value-shaped token beside a call that neither enum defines. */
 function toolAxisViolations(files: string[]): ToolAxisHit[] {
-  return toolAxisHits(files).filter((hit) => !toolAxisAllows(hit.token, hit.position));
+  return toolAxisHits(files).filter((hit) => !toolAxisAllows(hit.token, hit.position, hit.tool));
 }
 
 /**
@@ -1064,7 +1126,7 @@ function toolAxisViolations(files: string[]): ToolAxisHit[] {
  */
 function toolAxisProbe(line: string): string[] {
   return axisPositions(line)
-    .filter((hit) => !toolAxisAllows(hit.token, hit.position))
+    .filter((hit) => !toolAxisAllows(hit.token, hit.position, hit.tool))
     .map((hit) => hit.token);
 }
 
@@ -3684,14 +3746,24 @@ describe("FR-FLOW-154 AC-2 — every exclusion says what it silences, not merely
         expect(toolAxisProbe(shape), `another tool's vocabulary beside a lifecycle call must be read: ${shape}`).toContain(token);
       }
     }
-    // And the call's own vocabulary still passes, which is what the derivation is for — this is a
-    // narrowing, not a deletion. These are argument names `add_requirement`, `list_requirements`,
-    // `update_status` and `update_stability` actually declare, read out of their own schema entries.
-    for (const token of ["status", "stability", "reason", "target", "scope"]) {
-      expect(AXIS_TOOL_ARGUMENTS.has(token), `${token} must be an axis tool's own argument`).toBe(true);
-      expect(toolAxisProbe(`- \`update_status\` 의 \`${token}\` 를 확인한다.`), `the call's own argument name passes: ${token}`).toEqual(
-        []
-      );
+    // And the vocabulary that belongs beside that call still passes, which is what the derivation is
+    // for — this is a narrowing, not a deletion. Each of these five is an argument name some axis
+    // tool declares, and each reaches `update_status` by a route this file can name. Since the
+    // exemption was narrowed to the anchor's OWN schema entry, only one of the five arrives by the
+    // route the sentence above describes, and saying otherwise would hand a reader chasing a failure
+    // the wrong place to look.
+    for (const [token, route] of [
+      ["reason", "an argument `update_status`'s own schema entry declares"],
+      ["status", "the axis name, which this call also declares"],
+      ["stability", "the axis name, which this call does NOT declare"],
+      ["target", "named in the tool-axis residue, not an argument of this call"],
+      ["scope", "named in the tool-axis residue, not an argument of this call"]
+    ] as ReadonlyArray<readonly [string, string]>) {
+      expect(AXIS_TOOL_ARGUMENTS.has(token), `${token} must be an argument name some axis tool declares`).toBe(true);
+      expect(
+        toolAxisProbe(`- \`update_status\` 의 \`${token}\` 를 확인한다.`),
+        `${token} must pass beside update_status — ${route}`
+      ).toEqual([]);
     }
     // And a command line stays readable as a command line: inside a span that IS an invocation every
     // token is an argument by construction, so a subcommand and a flag belong there.
@@ -4352,3 +4424,452 @@ describe("FR-FLOW-154 AC-6 — the kiwi-srs-sync mutation list names a stability
 
 
 
+
+// ---------------------------------------------------------------------------------------------
+// @req FR-FLOW-175 — the exemption beside a lifecycle call is compared at the schema's spelling.
+//
+// The lookup used to fold the token to lower case and match it against a set of schema keys held at
+// their own spelling, so every key carrying a capital was unreachable by any input — measured at 15
+// of 38. That is a dead exemption and a wrong rejection at once: a skill writing a lifecycle call's
+// OWN argument name beside it was reported as naming a value the two enums do not define, and the
+// fix an earlier change reached for was to move the argument off the call's line rather than to
+// repair the lookup. Folding BOTH sides would have been the other wrong answer, because it exempts
+// a misspelling of the key as readily as the key.
+//
+// The fold is not deleted, though: it was doing one live thing besides the dead one. `Status` names
+// the AXIS, and a sentence naming the axis beside a call says what the call moves, not what it moves
+// it to. So the fold is kept for the two axis names and the schema keys are compared exactly.
+//
+// And the keys are read PER CALL. The merged set admitted 38 argument names beside `update_status`,
+// which declares five; `query` belongs to `search_requirements` alone and passed beside a status
+// mutation. Measured over the shipped tree before the split, no site depended on the merge — the
+// price of reading each call's own entry is zero and the sentence it makes true is FR-FLOW-154's
+// AC-10, which says `its schema entry` in the singular.
+// ---------------------------------------------------------------------------------------------
+
+/** Every argument name an axis tool declares, paired with the tool whose schema declares it. */
+function axisArgumentPairs(): Array<{ tool: string; key: string }> {
+  const pairs: Array<{ tool: string; key: string }> = [];
+  for (const tool of AXIS_TOOLS) {
+    for (const key of Object.keys(toolSchemas[tool] as Record<string, unknown>)) pairs.push({ tool, key });
+  }
+  return pairs;
+}
+
+/**
+ * Eight lines that write an argument name beside the call it belongs to — a bullet, a table cell, a
+ * colon list, an em-dash aside — closing the token with eight different particles.
+ *
+ * What they are NOT is eight of this reader's positions. A token carrying a capital is read in two
+ * places only, `quoted-and-particle` and `invocation`, and all eight take the first: the class the
+ * reader admits bare is lowercase by construction, so a line that does not close the token with a
+ * particle is quiet about a camelCase argument however the exemption is written, and proves nothing
+ * about it. So these eight vary the particle and the surrounding structure inside one position; the
+ * other position, where the exemption is `MCP_ARGUMENT_NAMES`, this requirement neither touches nor
+ * measures.
+ */
+function ownArgumentShapes(tool: string, token: string): string[] {
+  return [
+    `- \`${tool}\` 의 \`${token}\` 를 확인한다.`,
+    `- \`${tool}\` 의 \`${token}\` 는 선택 인자다.`,
+    `- \`${tool}\` 호출에 \`${token}\` 을 싣는다.`,
+    `- \`${tool}\` 가 받는 인자에 \`${token}\` 가 있다.`,
+    `- \`${tool}\` 를 부를 때 \`${token}\` 와 함께 넘긴다.`,
+    `| \`${tool}\` | \`${token}\` 이 필수다 | 이슈 진입 한정 |`,
+    `- \`${tool}\` 의 인자 목록: \`${token}\` 과 그 값.`,
+    `- \`${tool}\` — \`${token}\` 로 이슈 링크를 싣는다.`
+  ];
+}
+
+/**
+ * The sibling arguments the per-call narrowing does NOT reach, each with the exemption that keeps
+ * it. Frozen because every entry is a word this axis will not report beside a call that does not
+ * declare it, and one added quietly is a value silenced quietly. The bulk of them are the CLI half's
+ * merge, which is recorded rather than repaired for the reason stated beside `AXIS_CLI_ARGUMENTS`.
+ */
+const EXCUSED_SIBLING_ARGUMENTS: readonly string[] = [
+  "evidence — an argument or option of an axis CLI subcommand",
+  "fields — an argument or option of an axis CLI subcommand",
+  "id — an argument or option of an axis CLI subcommand",
+  "limit — an argument or option of an axis CLI subcommand",
+  "offset — an argument or option of an axis CLI subcommand",
+  "priority — an argument or option of an axis CLI subcommand",
+  "query — an argument or option of an axis CLI subcommand",
+  "rationale — an argument or option of an axis CLI subcommand",
+  "reason — an argument or option of an axis CLI subcommand",
+  "requirement — an argument or option of an axis CLI subcommand",
+  "research — an argument or option of an axis CLI subcommand",
+  "risk — an argument or option of an axis CLI subcommand",
+  "scope — named in the tool-axis residue",
+  "stability — an axis name, exempt whatever its case",
+  "statement — an argument or option of an axis CLI subcommand",
+  "status — an axis name, exempt whatever its case",
+  "tag — an argument or option of an axis CLI subcommand",
+  "tags — an argument or option of an axis CLI subcommand",
+  "target — named in the tool-axis residue",
+  "title — an argument or option of an axis CLI subcommand",
+  "trace — an argument or option of an axis CLI subcommand",
+  "type — an argument or option of an axis CLI subcommand"
+];
+
+/**
+ * The criteria this suite's tests claim, registered where each test is DECLARED rather than scraped
+ * out of this file's text afterwards.
+ *
+ * The first version of this check read the source for `it("FR-FLOW-175 AC-n:` and asked whether the
+ * string was present. Measured, that made a comment satisfy the contract: deleting the sibling test
+ * outright and leaving `// TODO: restore it("FR-FLOW-175 AC-7: …")` in its place took the suite from
+ * 134 tests to 133 with nothing covering AC-7, and the check stayed green. Anchoring the pattern to
+ * the start of a line would have closed that one shape and left the next — `it.each`, an indented
+ * declaration, a name built from a variable — because text is not the thing being asserted.
+ *
+ * So the claim and the name now come from ONE value. `criterion` registers the id and builds the
+ * test name out of it, which makes a mislabel unrepresentable and makes the CALL ITSELF GOING AWAY —
+ * commented out, deleted, or replaced by a bare `it.skip` — remove the claim along with the test. It
+ * fills during collection, so a filtered run (`-t`) registers every criterion just the same and
+ * cannot red this.
+ *
+ * Note the boundary precisely: what is caught here is the call not happening, not the test not
+ * running. `describe.skip` around a `criterion` call still RUNS the collector callback — it collects
+ * the child and marks it skipped — so the claim registers all the same. That is what
+ * `SKIPPED_DECLARATIONS` below is for; read its comment for where the line now falls.
+ *
+ * What no reading in this file reaches is measured shape by shape and listed in the requirement
+ * rather than implied away — these are the ones measured, not a class: a call that claims and
+ * declares but asserts nothing, a helper that declares the test with `it.skip`, and — since every
+ * reading below is fed by this file's own text — a claim written by hand beside an `it` of the right
+ * name, which satisfies all three readings while measuring nothing. A helper rewritten the other way
+ * IS caught: one that stops calling `it` at all leaves no test carrying the name, which the claim
+ * test's task-tree reading reports. What would catch the `it.skip` helper — collecting the names of
+ * tests that actually RAN — reds under `-t`, which this repository's own mutation harness uses,
+ * because `interpretTaskModes` marks a name-filtered test `skip` exactly as `describe.skip` does.
+ */
+const CLAIMED_CRITERIA = new Set<string>();
+
+/**
+ * The same ids again, written ONLY by the helper. A claim written straight into `CLAIMED_CRITERIA`
+ * lands in one set and not the other, so the difference names it — measured, and a count cannot do
+ * that job because one extra `criterion` call repays a count but not an id.
+ *
+ * This does NOT reach a mutation that writes both sets at once; nothing that reads only these two
+ * sets can, since the forger controls both. What catches the narrower half of that — a forge that
+ * does not also declare a test carrying the criterion's name — is the claim test's reading of the
+ * collected task tree. Measured, a forge that writes the name too passes every reading in this file.
+ */
+const HELPER_REGISTERED = new Set<string>();
+
+/**
+ * Criteria whose `criterion` call was collected inside a suite that will not run.
+ *
+ * `describe.skip` keeps the claim (the callback still runs) while the test never does, so the two
+ * sets above stay balanced and say nothing. The parent link is available at DECLARATION time —
+ * `@vitest/runner`'s `initSuite` sets `suite: currentSuite` on the spot, and it is `tasks` that
+ * fills later — so walking the ancestor chain here catches the wrap at any nesting depth. Measured:
+ * one wrapped call and a `describe.skip` with a plain `describe` interposed both red, a legitimate
+ * nested `describe` and `describe.only` stay green, and a `-t` filtered run does not red, since
+ * nothing here reads whether a test RAN.
+ *
+ * What stays out of reach was measured, shape by shape. Skipping the claim test itself — by wrapping
+ * this requirement's own `describe`, or by marking that one test `skip` — leaves no reading inside
+ * the file able to speak at all. And this walk runs inside the helper, so a claim written by hand —
+ * the two sets filled directly beside an `it` of the right name — never enters it, whatever suite
+ * that `it` is declared in.
+ */
+const SKIPPED_DECLARATIONS = new Set<string>();
+
+/** Declares one test of this requirement and records, from the same value, which criterion it claims. */
+function criterion(id: string, name: string, body: () => void, timeoutMs?: number): void {
+  CLAIMED_CRITERIA.add(id);
+  HELPER_REGISTERED.add(id);
+  for (let ancestor = getCurrentSuite().suite; ancestor; ancestor = ancestor.suite) {
+    if (ancestor.mode === "skip" || ancestor.mode === "todo") SKIPPED_DECLARATIONS.add(id);
+  }
+  it(`FR-FLOW-175 ${id}: ${name}`, body, timeoutMs);
+}
+
+/** One requirement block out of the scope document: its heading up to the next heading. */
+function requirementBlock(id: string): string {
+  const lines = readFileSync(path.join(REPO_ROOT, "docs/spec/60.workflow-release.srs.md"), "utf8").split("\n");
+  const start = lines.findIndex((line) => line.startsWith(`### ${id} `));
+  if (start === -1) return "";
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{1,3}\s/.test(lines[index] as string)) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+/**
+ * The criteria of FR-FLOW-175 that no automated check claims, and why. AC-6 is about which files this
+ * change touches and which neighbours stay green; the requirement itself says so and hangs it on
+ * command evidence rather than on an assertion.
+ */
+const UNCLAIMED_CRITERIA: readonly string[] = ["AC-6"];
+
+describe("FR-FLOW-175 — a lifecycle call's own argument is exempt at the schema's own spelling", () => {
+  // Deliberately claims no criterion of its own. It checks the claiming rather than any one
+  // criterion, and claiming here would satisfy the very gap it exists to catch: measured, while this
+  // test claimed `AC-7`, mislabelling the sibling check left AC-7 claimed by this line and the
+  // mutation survived.
+  it("FR-FLOW-175: every criterion this requirement declares is claimed by a test that is declared", ({ task }) => {
+    // A criterion nothing covers is the failure this repository has already had — evidence claiming
+    // an AC that no test reaches. The criteria are read out of the requirement and the claims come
+    // from the declarations in this file, so neither side can drift without the other noticing.
+    const declared = [...requirementBlock("FR-FLOW-175").matchAll(/^- \[[ x]\] (AC-\d+):/gm)].map((match) => match[1] as string);
+    expect(declared.length, "the criteria FR-FLOW-175 declares").toBeGreaterThanOrEqual(7);
+    expect(CLAIMED_CRITERIA.size, "the criteria this suite's tests claim").toBeGreaterThanOrEqual(6);
+    // A claim written straight into `CLAIMED_CRITERIA` lands in one set and not the other. Compared
+    // as sets rather than as sizes: padding the file with an extra declaration repays a count but
+    // not an id, and declaring two tests for one criterion stays legitimate either way.
+    expect(
+      [...CLAIMED_CRITERIA].filter((id) => !HELPER_REGISTERED.has(id)).sort(),
+      "a claim that did not come through the helper"
+    ).toEqual([]);
+    expect(
+      declared.filter((id) => !CLAIMED_CRITERIA.has(id)),
+      "a criterion this requirement declares that no declared test claims"
+    ).toEqual([...UNCLAIMED_CRITERIA]);
+    expect(
+      [...CLAIMED_CRITERIA].filter((id) => !declared.includes(id)).sort(),
+      "a claim naming a criterion this requirement does not declare"
+    ).toEqual([]);
+    expect([...SKIPPED_DECLARATIONS].sort(), "a criterion declared inside a suite that will not run").toEqual([]);
+    // Both sets above are written from inside this file, so a mutation that forges BOTH keeps them
+    // balanced — measured, and a count beside them does not help, since one padding call repays it.
+    // The collected task tree carries the names of the tests this describe actually declared, nested
+    // suites included, and it says nothing about whether they RAN, so a `-t` filtered run reads
+    // exactly the same. It is not a record a claim cannot write — one `it` line of the right name
+    // satisfies it — so what this closes is the forge that does not bother to declare that test.
+    const declaredTestNames: string[] = [];
+    const walk = (suite: Readonly<{ tasks: readonly { name: string; type: string }[] }>): void => {
+      for (const child of suite.tasks) {
+        declaredTestNames.push(child.name);
+        if (child.type === "suite") walk(child as Readonly<{ tasks: readonly { name: string; type: string }[] }>);
+      }
+    };
+    if (task.suite) walk(task.suite);
+    expect(
+      declared.filter(
+        (id) => !UNCLAIMED_CRITERIA.includes(id) && !declaredTestNames.some((name) => name.startsWith(`FR-FLOW-175 ${id}:`))
+      ),
+      "a criterion whose claim no declared test name carries"
+    ).toEqual([]);
+  });
+
+  criterion("AC-1", "every argument an axis tool declares passes beside THAT tool, under eight particles", () => {
+    // The floors sit on the set this walk actually iterates. Putting them on the merged key set
+    // instead would let the grid go empty while the floors still passed, which is the shape this
+    // criterion exists to forbid: a reader that stopped matching reports the same empty list a clean
+    // corpus does.
+    const pairs = axisArgumentPairs();
+    expect(pairs.length, "the (tool, argument) pairs this walk probes").toBeGreaterThanOrEqual(66);
+    expect(
+      pairs.filter(({ key }) => key !== key.toLowerCase()).length,
+      "the (tool, argument) pairs a case-folded lookup could never reach"
+    ).toBeGreaterThanOrEqual(24);
+    expect([...AXIS_TOOL_ARGUMENTS].length, "the argument names the axis tools declare between them").toBeGreaterThanOrEqual(38);
+
+    const reported: string[] = [];
+    const unread: string[] = [];
+    for (const { tool, key } of pairs) {
+      for (const shape of ownArgumentShapes(tool, key)) {
+        if (toolAxisProbe(shape).includes(key)) reported.push(shape);
+      }
+      // Non-vacuity, line by line: the same slot with a spelling no schema declares IS read. A line
+      // the reader walks past would otherwise report the empty list for the wrong reason.
+      const stranger = `${key}zz`;
+      for (const shape of ownArgumentShapes(tool, stranger)) {
+        if (!toolAxisProbe(shape).includes(stranger)) unread.push(shape);
+      }
+    }
+    expect(reported, "a lifecycle call's own argument name reported as a value it is not").toEqual([]);
+    expect(unread, "a line that reads nothing, so its empty result proves nothing").toEqual([]);
+  });
+
+  criterion("AC-7", "a SIBLING axis tool's argument beside a call that does not declare it is read", () => {
+    // The other half of `its own schema entry`. The exemption used to merge the five tools' keys, so
+    // `query` — declared by `search_requirements` alone — passed beside `update_status`. The
+    // denominator is every (tool, key) pair where the tool does NOT declare that key, filtered only
+    // by exemptions that have a NAME, and what those are is frozen below.
+    const leaked: string[] = [];
+    const excused = new Set<string>();
+    let planted = 0;
+    for (const tool of AXIS_TOOLS) {
+      const own = AXIS_TOOL_OWN_ARGUMENTS.get(tool) as ReadonlySet<string>;
+      for (const key of AXIS_TOOL_ARGUMENTS) {
+        if (own.has(key)) continue;
+        if (isAxisName(key)) {
+          excused.add(`${key} — an axis name, exempt whatever its case`);
+          continue;
+        }
+        if ((TOOL_AXIS_NON_VALUES as readonly string[]).includes(key)) {
+          excused.add(`${key} — named in the tool-axis residue`);
+          continue;
+        }
+        if (AXIS_CLI_ARGUMENTS.has(key) || AXIS_CLI_COMMANDS.includes(key)) {
+          excused.add(`${key} — an argument or option of an axis CLI subcommand`);
+          continue;
+        }
+        planted += 1;
+        const shape = `- \`${tool}\` 의 \`${key}\` 를 확인한다.`;
+        if (!toolAxisProbe(shape).includes(key)) leaked.push(`${tool}: ${key}`);
+      }
+    }
+    expect(leaked, "a sibling tool's argument the exemption still swallows").toEqual([]);
+    expect(planted, "sibling arguments actually planted").toBeGreaterThanOrEqual(40);
+    expect([...excused].sort(), "the sibling arguments excused, each by a named exemption").toEqual(EXCUSED_SIBLING_ARGUMENTS);
+  });
+
+  criterion("AC-2", "a misspelling of that argument is still reported", () => {
+    // Three mutations per key: the all-lowercase form the old lookup would have exempted, a plural,
+    // and a truncation. A mutant that IS itself an argument name of an axis tool is exempt by
+    // design, so it is skipped BY NAME and the skipped list is frozen below.
+    const missed: string[] = [];
+    const skipped: string[] = [];
+    let planted = 0;
+    for (const { tool, key } of axisArgumentPairs()) {
+      for (const wrong of [key.toLowerCase(), `${key}s`, key.slice(0, -1)]) {
+        if (wrong === key) {
+          skipped.push(`${wrong} — the key itself, not a misspelling of it`);
+          continue;
+        }
+        if (AXIS_TOOL_ARGUMENTS.has(wrong)) {
+          skipped.push(`${wrong} — an argument name an axis tool declares`);
+          continue;
+        }
+        planted += 1;
+        const shape = `- \`${tool}\` 의 \`${wrong}\` 를 확인한다.`;
+        if (!toolAxisProbe(shape).includes(wrong)) missed.push(`${tool}: ${wrong}`);
+      }
+    }
+    expect(missed, "a misspelling of an argument name that the exemption swallowed").toEqual([]);
+    expect(planted, "misspellings actually planted").toBeGreaterThanOrEqual(100);
+    expect([...new Set(skipped)].sort(), "the mutants excluded, each with the reason it is excluded").toEqual([
+      "evidence — the key itself, not a misspelling of it",
+      "fields — the key itself, not a misspelling of it",
+      "id — the key itself, not a misspelling of it",
+      "limit — the key itself, not a misspelling of it",
+      "offset — the key itself, not a misspelling of it",
+      "priority — the key itself, not a misspelling of it",
+      "projection — the key itself, not a misspelling of it",
+      "query — the key itself, not a misspelling of it",
+      "rationale — the key itself, not a misspelling of it",
+      "reason — the key itself, not a misspelling of it",
+      "relatedDoc — an argument name an axis tool declares",
+      "relatedDocs — an argument name an axis tool declares",
+      "requirement — the key itself, not a misspelling of it",
+      "research — the key itself, not a misspelling of it",
+      "risk — the key itself, not a misspelling of it",
+      "scope — the key itself, not a misspelling of it",
+      "stability — the key itself, not a misspelling of it",
+      "statement — the key itself, not a misspelling of it",
+      "status — the key itself, not a misspelling of it",
+      "tag — an argument name an axis tool declares",
+      "tag — the key itself, not a misspelling of it",
+      "tags — an argument name an axis tool declares",
+      "tags — the key itself, not a misspelling of it",
+      "target — the key itself, not a misspelling of it",
+      "title — the key itself, not a misspelling of it",
+      "trace — the key itself, not a misspelling of it",
+      "type — the key itself, not a misspelling of it"
+    ]);
+  });
+
+  criterion("AC-3", "the case-insensitive reading is the axis names and nothing else", () => {
+    // The axis names, whatever their case: a sentence naming the axis beside a call names what the
+    // call moves.
+    expect([...AXIS_ARGUMENTS], "the axis names the fold speaks for").toEqual(["status", "stability"]);
+
+    // And the tool set is derived FROM those names rather than from a copy of them. Asserting the
+    // array's contents cannot see that: inlining the two names back into the derivation's predicate
+    // leaves every value in this file identical and severs only the link. Perturbing the argument
+    // does see it — a derivation that ignores what it is given answers the same list to all three.
+    expect(AXIS_TOOLS, "the tool set is what the axis names derive").toEqual(axisToolsFor(AXIS_ARGUMENTS));
+    expect(axisToolsFor(["status"]), "the status half of the axis alone").toEqual([
+      "add_requirement",
+      "list_requirements",
+      "search_requirements",
+      "update_status"
+    ]);
+    expect(axisToolsFor(["stability"]), "the stability half of the axis alone").toEqual([
+      "add_requirement",
+      "list_requirements",
+      "search_requirements",
+      "update_stability"
+    ]);
+    expect(axisToolsFor([]), "no axis name derives no axis tool").toEqual([]);
+
+    for (const name of AXIS_ARGUMENTS) {
+      for (const spelling of [name, `${name.charAt(0).toUpperCase()}${name.slice(1)}`, name.toUpperCase()]) {
+        expect(
+          toolAxisProbe(`- \`update_status\` 의 \`${spelling}\` 를 확인한다.`),
+          `the axis name is the axis, whatever its case: ${spelling}`
+        ).toEqual([]);
+      }
+    }
+    // And the fold reaches no further than those two. Every OTHER argument name of an axis tool,
+    // written with a leading capital, is a spelling no schema declares and is read as one.
+    const swallowed: string[] = [];
+    const capitalised: string[] = [];
+    for (const { tool, key } of axisArgumentPairs()) {
+      if (key !== key.toLowerCase() || AXIS_ARGUMENTS.includes(key)) continue;
+      const capital = `${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+      if (AXIS_TOOL_ARGUMENTS.has(capital) || (TOOL_AXIS_NON_VALUES as readonly string[]).includes(capital)) continue;
+      capitalised.push(capital);
+      if (!toolAxisProbe(`- \`${tool}\` 의 \`${capital}\` 를 확인한다.`).includes(capital)) swallowed.push(capital);
+    }
+    expect(capitalised.length, "capitalised argument names actually probed").toBeGreaterThanOrEqual(15);
+    expect(swallowed, "a capitalised argument name the fold still swallows").toEqual([]);
+  });
+
+  criterion("AC-4", "the exemption decides violations and never the hit count the floor reads", () => {
+    // `TOOL_AXIS_FLOOR` is asserted over `toolAxisHits`, which does not consult the exemption at
+    // all — the filter sits behind it. So repairing the exemption cannot lower a floor, and this
+    // states that as an executable property rather than as a measurement taken once: the camelCase
+    // key IS a hit the floor counts, and is NOT a violation.
+    const missing: string[] = [];
+    const flagged: string[] = [];
+    let probed = 0;
+    for (const { tool, key } of axisArgumentPairs()) {
+      if (key === key.toLowerCase()) continue;
+      probed += 1;
+      const shape = `- \`${tool}\` 의 \`${key}\` 를 확인한다.`;
+      if (!axisPositions(shape).some((hit) => hit.token === key)) missing.push(shape);
+      if (toolAxisProbe(shape).includes(key)) flagged.push(shape);
+    }
+    // The floor this criterion was missing. Both assertions above expect an empty list, so an empty
+    // grid satisfies them for the wrong reason; this is what separates the two.
+    expect(probed, "camelCase (tool, argument) pairs actually probed").toBeGreaterThanOrEqual(24);
+    expect(missing, "a camelCase argument the floor would stop counting").toEqual([]);
+    expect(flagged, "a camelCase argument still read as a value").toEqual([]);
+  });
+
+  criterion("AC-5", "what the case-insensitive reading still claims in the shipped tree", () => {
+    // The price of the fold, asked as the question its name states rather than as a proxy for it:
+    // the site is admitted by the fold, and the rest of the exemption would not admit it. An earlier
+    // wording asked instead whether the token's lowercased twin was a schema key, which is not the
+    // same question and answers yes for tokens the reader REPORTS — planting `Reason` beside
+    // `update_status` made FR-FLOW-154 call it a violation and made this criterion call it a site
+    // resting on the fold, in one run. The two functions below let the real question be asked.
+    const sites: string[] = [];
+    for (const rendering of RENDERINGS) {
+      for (const hit of toolAxisHits(corpusFiles(rendering))) {
+        if (!isAxisName(hit.token)) continue;
+        if (toolAxisAllowsAtItsOwnSpelling(hit.token, hit.position, hit.tool)) continue;
+        sites.push(`${hit.token} @ ${hit.file}`);
+      }
+    }
+    expect([...new Set(sites.map((site) => site.split(" @ ")[0] as string))].sort(), "tokens resting on the fold").toEqual([
+      "Status"
+    ]);
+    expect(sites.sort(), "the sites that rest on the fold, one per rendering").toEqual([
+      "Status @ .agents/skills/kiwi-srs/references/extended-workflow.md",
+      "Status @ skills/claude/kiwi-srs/SKILL.md",
+      "Status @ skills/codex/kiwi-srs/references/extended-workflow.md",
+      "Status @ skills/etc/kiwi-srs/references/extended-workflow.md"
+    ]);
+  });
+});
