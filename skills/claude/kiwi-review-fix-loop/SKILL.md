@@ -324,7 +324,7 @@ resume 알고리즘 (`--resume` 활성 시):
 - `mode_decision.json.self_scope` 의 git diff 본문
 - `review_denominator[]` — 루프가 고정한 리뷰 분모. `self_scope.files[]` 의 포함 버킷을 그대로 옮긴 것이며, 항목마다 루프가 센 `hunks_total` 을 함께 싣는다 (§12). 리뷰어가 이 집합을 정하지 않는다
 - 변경 파일 주변 컨텍스트 (각 hunk 전후 50라인)
-- 활성 target 의 관련 REQ-ID 목록 (best-effort, `summarize_target` 결과)
+- 활성 target 의 관련 REQ-ID 목록과 그 `traceReferences` (best-effort, `list_requirements` 결과)
 - 코드베이스 README / CLAUDE.md (있다면)
 
 출력 (Markdown + JSON 둘 다):
@@ -541,10 +541,10 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 
 **처분 대조**: `전이 성공 수 + 제외 수 = scoped 크기` 가 성립해야 한다. **항등식이 성립하지 않으면 그 실행은 무효다** — 처분을 받지 못한 REQ 가 있다는 뜻이고, "덜 추출" 이 바로 여기서 개수 불일치로 드러난다. 산문 증거 REQ 와 `draft`·`deprecated` REQ 는 `eligible` 에서 빠지지만 **`scoped` 에는 남고** 제외 사유를 받는다 — `scoped` 에서 빼면 항등식이 그 REQ 의 부재를 보지 못한다.
 
-**선결 호출 (분모 획득 직후)**: MCP `summarize_target` 호출 → trace link 인덱스 수집. MCP 미가용 시 source 1 skip + source 2 (scope heuristic) 만 사용 + 추출 결과에 `data_source: "scope-heuristic-only"` 메타 명시.
+**trace link 인덱스 (분모 획득 직후, 추가 호출 없음)**: 위 `list_requirements` 응답의 레코드가 이미 `traceReferences` 필드를 담으므로 그것으로 인덱스를 만든다. `summarize_target` 을 여기서 **부르지 않는다** — 그 도구는 카운트와 ID 목록만 돌려주고 trace link 은 하나도 싣지 않으며, 대상을 지명하지 않고 부르면 바로 앞의 `get_active_target` 이 이미 돌려준 활성 target 요약을 그대로 다시 받는다. MCP 미가용 시 source 1 skip + source 2 (scope heuristic) 만 사용 + 추출 결과에 `data_source: "scope-heuristic-only"` 메타 명시.
 
 `scoped` 는 `denominator` 를 아래 두 소스와 교차해 얻는다 — 두 소스는 교차의 **근거**이지 집합의 출처가 아니다:
-1. 까칠 리뷰어 입력의 활성 target REQ 인벤토리 (`summarize_target` 응답) 중 변경 파일과 trace link 가 매칭되는 REQ
+1. 위 `list_requirements` 응답의 레코드 중 변경 파일과 그 `traceReferences` 필드가 매칭되는 REQ
 2. 변경 파일 경로 ↔ REQ scope 의 휴리스틱 매칭 (scope name keyword + path prefix 일치, confidence=high 만)
 
 스키마:
@@ -553,7 +553,7 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
   "candidate_reqs": [
     { "req_id": "FR-AUTH-001", "match_source": "trace|scope-heuristic", "match_confidence": "high|medium|low", "current_status": "implemented", "stability": "evolving" }
   ],
-  "extraction_basis": { "summarize_target_used": true, "trace_links_used": N, "scope_heuristic_used": M }
+  "extraction_basis": { "trace_references_used": true, "trace_links_used": N, "scope_heuristic_used": M }
 }
 ```
 

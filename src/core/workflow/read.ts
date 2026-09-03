@@ -562,6 +562,9 @@ export async function workflowNextPlanTask(root: ProjectRoot, options: WorkflowR
   return envelope(
     root.root,
     {
+      // @req FR-MCP-062 AC-1 — the resume decision lives with the task lookup it is made of, so a
+      // caller gets both in one round trip and `workflowResumeHint` has nothing left to compute.
+      resume: validation.blocking !== true && validation.nextTask !== null,
       nextTask: validation.nextTask,
       blockedBy: validation.blockedBy,
       ...(validation.blockedTask ? { blockedTask: validation.blockedTask } : {}),
@@ -589,7 +592,10 @@ export async function workflowPipelineStatus(root: ProjectRoot, options: Workflo
   if (parsed) diagnostics.push(...parsed.diagnostics);
   const latestEvent = parsed?.latestEntries.at(-1) ?? null;
   const artifacts = resolved.selected ? [await artifactRef(resolved.selected, false)] : [];
-  return envelope(resolved.workspaceRoot, { latestEvent, total: parsed?.entries.length ?? 0, invalidLines: parsed?.invalidLines ?? [] }, diagnostics, artifacts);
+  // @req FR-MCP-062 AC-2 — the hint the latest event carries travels with that event, so reading it
+  // costs no second call and `workflowPipelineNext` has nothing left to compute.
+  const nextHint = latestEvent?.event.next_hint ?? null;
+  return envelope(resolved.workspaceRoot, { latestEvent, nextHint, total: parsed?.entries.length ?? 0, invalidLines: parsed?.invalidLines ?? [] }, diagnostics, artifacts);
 }
 
 export async function workflowPipelineTail(root: ProjectRoot, options: WorkflowReadOptions = {}) {
@@ -601,10 +607,12 @@ export async function workflowPipelineTail(root: ProjectRoot, options: WorkflowR
   return envelope(status.meta.workspaceRoot, { events: sliced }, status.diagnostics, status.artifacts, cursorValue);
 }
 
+/**
+ * The pipeline status under the name `get_next_work_order` hands the agent. It delegates rather than
+ * derives: the hint is computed once, in `workflowPipelineStatus`. @req FR-MCP-062 AC-4 / AC-5
+ */
 export async function workflowPipelineNext(root: ProjectRoot, options: WorkflowReadOptions = {}) {
-  const status = await workflowPipelineStatus(root, options);
-  const latest = status.value.latestEvent as WorkflowJsonlEntry | null;
-  return envelope(status.meta.workspaceRoot, { nextHint: latest?.event.next_hint ?? null, latestEvent: latest }, status.diagnostics, status.artifacts);
+  return workflowPipelineStatus(root, options);
 }
 
 export async function workflowSessionStatus(root: ProjectRoot, options: WorkflowReadOptions = {}) {
@@ -616,10 +624,13 @@ export async function workflowSessionStatus(root: ProjectRoot, options: Workflow
   return envelope(resolved.workspaceRoot, { state, stats: state?.stats ?? null, tasks: state?.tasks ?? [] }, diagnostics, artifacts);
 }
 
+/**
+ * The next-task lookup under the name `actionTool()` returns for `resume-session` and
+ * `fix-artifact`. It delegates rather than derives: `resume` is computed once, in
+ * `workflowNextPlanTask`. @req FR-MCP-062 AC-3 / AC-5
+ */
 export async function workflowResumeHint(root: ProjectRoot, options: WorkflowReadOptions = {}) {
-  const next = await workflowNextPlanTask(root, options);
-  const value = next.value as { nextTask: unknown; blocking?: boolean };
-  return envelope(next.meta.workspaceRoot, { resume: value.blocking !== true && value.nextTask !== null, ...next.value }, next.diagnostics, next.artifacts);
+  return workflowNextPlanTask(root, options);
 }
 
 export async function workflowWorklogTail(root: ProjectRoot, options: WorkflowReadOptions = {}) {

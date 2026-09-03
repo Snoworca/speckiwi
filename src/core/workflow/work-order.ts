@@ -72,25 +72,28 @@ function unique(values: Iterable<string>): string[] {
   return [...new Set([...values].filter((item) => item.length > 0))];
 }
 
+/**
+ * The tool each action tells the agent to call next.
+ *
+ * A table rather than a switch because the names are a contract with the MCP registry — every value
+ * here must be a tool that exists, or the work order sends the agent to a name nothing answers, and
+ * that failure surfaces only when the action is first selected. The `Record<WorkOrderAction, …>`
+ * type makes the table total, so a new action cannot be added without naming its tool.
+ * @req FR-MCP-062 AC-6
+ */
+export const WORK_ORDER_ACTION_TOOLS: Readonly<Record<WorkOrderAction, string>> = Object.freeze({
+  "create-plan": "workflow_plan_status",
+  "execute-task": "workflow_next_plan_task",
+  "resume-session": "workflow_resume_hint",
+  "ask-user": "workflow_pipeline_status",
+  "fix-artifact": "workflow_resume_hint",
+  blocked: "workflow_next_plan_task",
+  complete: "add_completed_work",
+  "no-action": "summarize_target"
+});
+
 function actionTool(action: WorkOrderAction): string {
-  switch (action) {
-    case "create-plan":
-      return "workflow_plan_status";
-    case "execute-task":
-      return "workflow_next_plan_task";
-    case "resume-session":
-      return "workflow_resume_hint";
-    case "ask-user":
-      return "workflow_pipeline_status";
-    case "fix-artifact":
-      return "workflow_resume_hint";
-    case "blocked":
-      return "workflow_next_plan_task";
-    case "complete":
-      return "add_completed_work";
-    case "no-action":
-      return "summarize_target";
-  }
+  return WORK_ORDER_ACTION_TOOLS[action];
 }
 
 function blockingDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {

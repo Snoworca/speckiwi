@@ -117,7 +117,7 @@ Phase 7   : 인벤토리 게이트 + validate_spec + summarize_target 최종 보
 2. **MISSING + `--skip-init` 미지정**: MCP `init_project` 호출. 인자: `{ target: TARGET, force: false }` (`scope` 필드는 omit — undefined 명시 전달 금지).
 3. **EXISTS**: 건너뜀. `summarize_target { target: TARGET }` 로 컨텍스트 확인.
 4. **Target 등록 검증 (필수)**:
-   - MCP `get_active_target`, `summarize_target`, `list_requirements` 결과로 TARGET 을 확인한다. CLI `speckiwi targets --json` 은 진단 보조 출력으로만 사용하고 정상 판정/등록 근거로 삼지 않는다.
+   - MCP `get_active_target`, `summarize_target { target: TARGET }`, `list_requirements { target: TARGET }` 결과로 TARGET 을 확인한다. CLI `speckiwi targets --json` 은 진단 보조 출력으로만 사용하고 정상 판정/등록 근거로 삼지 않는다.
    - MCP 로 등록 여부를 판정할 수 없으면 HALT 후 `speckiwi mcp` 복구 또는 명시적 target 재실행을 요구한다.
    - 미등록 시:
      - MCP `init_project` / `set_active_target` 등 승인된 MCP bootstrap 경로만 사용한다. 지원 MCP 경로가 없으면 HALT 하고 복구 안내를 출력한다.

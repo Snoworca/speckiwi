@@ -61,7 +61,11 @@ Before `--close-reqs` mutations:
    proceed on a guessed value. The skill does not build this set itself: while
    it does, extracting less is a way past any gate keyed on it, and a reporting
    duty laid on the same actor only produces a second self-declaration.
-2. Call `summarize_target` for the trace-link index.
+2. Build the trace-link index from the `list_requirements` records already in
+   hand: each record carries `traceReferences`. Do not call `summarize_target`
+   for it - that reader returns counts and identifier lists and carries no trace
+   link at all, and called without a target it answers with the same active-target
+   summary step 1 already received.
 3. Build the SCOPED set by intersecting the denominator with this run's review
    scope, using trace links and high-confidence scope/path heuristics.
 4. Candidates below high confidence leave the intersection but are COUNTED AS
@@ -154,7 +158,11 @@ Before `--close-reqs` mutations:
    proceed on a guessed value. The skill does not build this set itself: while
    it does, extracting less is a way past any gate keyed on it, and a reporting
    duty laid on the same actor only produces a second self-declaration.
-2. Call `summarize_target` for the trace-link index.
+2. Build the trace-link index from the `list_requirements` records already in
+   hand: each record carries `traceReferences`. Do not call `summarize_target`
+   for it - that reader returns counts and identifier lists and carries no trace
+   link at all, and called without a target it answers with the same active-target
+   summary step 1 already received.
 3. Build the SCOPED set by intersecting the denominator with this run's review
    scope, using trace links and high-confidence scope/path heuristics.
 4. Candidates below high confidence leave the intersection but are COUNTED AS
@@ -247,7 +255,11 @@ Before `--close-reqs` mutations:
    proceed on a guessed value. The skill does not build this set itself: while
    it does, extracting less is a way past any gate keyed on it, and a reporting
    duty laid on the same actor only produces a second self-declaration.
-2. Call `summarize_target` for the trace-link index.
+2. Build the trace-link index from the `list_requirements` records already in
+   hand: each record carries `traceReferences`. Do not call `summarize_target`
+   for it - that reader returns counts and identifier lists and carries no trace
+   link at all, and called without a target it answers with the same active-target
+   summary step 1 already received.
 3. Build the SCOPED set by intersecting the denominator with this run's review
    scope, using trace links and high-confidence scope/path heuristics.
 4. Candidates below high confidence leave the intersection but are COUNTED AS

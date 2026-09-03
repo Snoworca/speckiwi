@@ -76,6 +76,36 @@ function mcp(name: string, description: string): McpExposure {
   return { name, description };
 }
 
+/**
+ * The derivation relationship between a reader that owns a computed fact and the thin alias that
+ * delegates to it, declared as DATA rather than left to the prose of a description.
+ *
+ * @req FR-MCP-062 AC-7 — the sentence a description must carry about that relationship is composed
+ * from this declaration by {@link derivationSentence}, so what a check reads is a value the registry
+ * states rather than a wording it has to interpret. A description free to say anything about who
+ * computes what is a description free to send an agent back to the alias, which is the round trip
+ * this requirement removes.
+ */
+export interface ToolDerivation {
+  /** An owner computes the field; an alias delegates to the owner and computes nothing itself. */
+  readonly role: "owner" | "alias";
+  /** The derived field the owner carries in its reply. */
+  readonly field: string;
+  /** Present on an alias only: the MCP name of the tool it delegates to. */
+  readonly owner?: string;
+}
+
+/** The tool an alias names beside its owner, because the composed sentence explains why it stays. */
+export const DERIVATION_KEEPER = "get_next_work_order";
+
+/** The sentence a described tool must carry, composed from its declaration. @req FR-MCP-062 AC-7 */
+export function derivationSentence(derivation: ToolDerivation): string {
+  const field = `\`${derivation.field}\``;
+  return derivation.role === "owner"
+    ? `The reply carries ${field} itself, so no second call is needed for it.`
+    : `Every call is delegated to ${derivation.owner ?? "?"}, which is where ${field} is computed and where this answer comes from; prefer that tool, and this name is kept only because ${DERIVATION_KEEPER} hands it to an agent.`;
+}
+
 /** A single command's full metadata. `mcpName` is present only for MCP-exposed commands. */
 export interface ToolSpec {
   readonly cliName: string;
@@ -89,6 +119,8 @@ export interface ToolSpec {
   readonly coreFn: string;
   /** Maps a result outcome name to the process exit code the CLI returns for it. */
   readonly resultExitMap: Record<string, number>;
+  /** Set when this tool owns a derived fact or is the alias that delegates for it. */
+  readonly derivation?: ToolDerivation | undefined;
 }
 
 // --- option builders -------------------------------------------------------------------------------
@@ -112,6 +144,7 @@ interface SpecExtra {
   readonly args?: Record<string, ToolArgSpec>;
   readonly options?: readonly ToolOptionSpec[];
   readonly resultExitMap?: Record<string, number>;
+  readonly derivation?: ToolDerivation;
 }
 
 /**
@@ -127,7 +160,8 @@ function readSpec(cliName: string, exposure: McpExposure | undefined, coreFn: st
     args: extra.args ?? {},
     options: extra.options ?? [],
     coreFn,
-    resultExitMap: extra.resultExitMap ?? { ok: 0, fail: 1 }
+    resultExitMap: extra.resultExitMap ?? { ok: 0, fail: 1 },
+    ...(extra.derivation ? { derivation: extra.derivation } : {})
   };
 }
 
@@ -232,13 +266,13 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("resolve", mcp("workflow_resolve_artifact", "Answers which one run artifact a path, run id, target and kind pick out, surfacing an unbroken tie as a diagnostic rather than choosing between the two. Behaviourally the same lookup as the best-match spelling beside it. Read-only."), "workflowResolveArtifact"),
   readSpec("plan-status", mcp("workflow_plan_status", "Reads the plan artifact for a run and reports its companion sidecar's whole task list: identifier, phase, title, dependencies and requirement ids. Which tasks are ticked is not among them — the plan document's checkboxes are opened only by the drift comparison, and per-task progress lives in the pm-state artifact the session reader returns. Read-only."), "workflowPlanStatus"),
   readSpec("plan-task", mcp("workflow_plan_task", "Returns one task of the plan sidecar by its identifier, projected onto the same five fields the phase-wide reader gives, and answers with a null task rather than an error when nothing carries that identifier. Read-only."), "workflowPlanTask", { args: { taskId: { type: "string" } } }),
-  readSpec("next-task", mcp("workflow_next_plan_task", "Returns the next plan task whose pm-state status is not yet done or skipped, or names the unfinished dependency blocking it. The plan document's own checkboxes decide nothing here; they are weighed against pm-state only as a drift warning. Read-only."), "workflowNextPlanTask"),
+  readSpec("next-task", mcp("workflow_next_plan_task", `Returns the next plan task whose pm-state status is not yet done or skipped, or names the unfinished dependency blocking it. ${derivationSentence({ role: "owner", field: "resume" })} The plan document's own checkboxes decide nothing here; they are weighed against pm-state only as a drift warning. Read-only.`), "workflowNextPlanTask", { derivation: { role: "owner", field: "resume" } }),
   readSpec("doctor", mcp("workflow_doctor", "Validates the run artifacts a selector reaches and returns every structural problem it found as one flat list, beside the outcome classes those problems fall into. Read-only."), "workflowDoctor"),
   readSpec("diff", mcp("workflow_diff", "Classifies the same run-artifact problems into repair classes, so a caller can see what kind of fix each one needs rather than the raw diagnostic list. Read-only."), "workflowDiff"),
   readSpec("schema-check", mcp("workflow_schema_check", "Checks the run artifacts against the schema version they declare and reports which schema-level outcomes they reached — an invalid plan contract, an unsupported schema version, an invalid artifact, a stale one — rather than the individual rows behind those outcomes. Read-only."), "workflowSchemaCheck"),
-  readSpec("pipeline-status", mcp("workflow_pipeline_status", "Reports the state of the pipeline journal for a run — where it lives, how many events it holds and the latest one. Read-only."), "workflowPipelineStatus"),
+  readSpec("pipeline-status", mcp("workflow_pipeline_status", `Reports the state of the pipeline journal for a run — where it lives, how many events it holds and the latest one, together with that latest event's own next hint. ${derivationSentence({ role: "owner", field: "nextHint" })} Read-only.`), "workflowPipelineStatus", { derivation: { role: "owner", field: "nextHint" } }),
   readSpec("pipeline-tail", mcp("workflow_pipeline_tail", "Pages the pipeline journal's events in append order, oldest first, with an offset and a limit that defaults to twenty, so the most recent handoffs sit at the far end rather than the near one. Read-only."), "workflowPipelineTail"),
-  readSpec("pipeline-next", mcp("workflow_pipeline_next", "Reads the `next_hint` the latest pipeline event carries and returns it beside that event, so a session knows which skill to run next. Read-only."), "workflowPipelineNext"),
+  readSpec("pipeline-next", mcp("workflow_pipeline_next", `A thin alias over the pipeline journal reader. ${derivationSentence({ role: "alias", field: "nextHint", owner: "workflow_pipeline_status" })} Read-only.`), "workflowPipelineNext", { derivation: { role: "alias", field: "nextHint", owner: "workflow_pipeline_status" } }),
   readSpec("pipeline-compact", mcp("workflow_pipeline_compact", "Reports what compacting the pipeline journal would leave behind, as counts rather than as rows: how many entries it holds, how many survive supersession, and how many logically deleted ones were filtered out. Nothing is rewritten. Read-only."), "workflowPipelineCompact"),
   // Container command with no own handler; hosts the collision-repair "plan" tool (CLI in repair.ts).
   readSpec("pipeline", mcp("plan_requirement_id_collision_repair", "Produces the repair plan for one duplicate Requirement ID: which occurrence keeps the id, which is renamed, what replacement it takes and which references move with it. Nothing is applied here. Read-only."), "planRequirementIdCollisionRepair"),
@@ -248,7 +282,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("tail", mcp("revoke_compatibility_check", "Removes the compatibility claim between two requirements, leaving that edge unchecked. Writes the holding requirement block, deleting that trace-link row out of it rather than restating it."), "req-scoped", "revokeCompatibilityCheck", [DRY_RUN]),
   readSpec("compact", undefined, "workflowPipelineCompactAlias"),
   readSpec("session-status", mcp("workflow_session_status", "Reads the pm-state artifact for a run and returns it whole, with its stats and its task list. Read-only."), "workflowSessionStatus"),
-  readSpec("resume-hint", mcp("workflow_resume_hint", "Answers whether a run can be resumed and which task it would resume into, folding the next-task lookup and its blocking reason into one reply. Read-only."), "workflowResumeHint"),
+  readSpec("resume-hint", mcp("workflow_resume_hint", `A thin alias over the next-task reader. ${derivationSentence({ role: "alias", field: "resume", owner: "workflow_next_plan_task" })} Read-only.`), "workflowResumeHint", { derivation: { role: "alias", field: "resume", owner: "workflow_next_plan_task" } }),
   readSpec("worklog-tail", mcp("workflow_worklog_tail", "Pages the worklog entries a run appended, which are per-task progress notes and not skill handoffs, in append order from the offset given, twenty at a time by default. Read-only."), "workflowWorklogTail"),
   readSpec("migrate-preview", mcp("preview_legacy_workflow_migration", "Shows what migrating pre-3.0 workflow artifacts into the current layout would change, file by file. It refuses `apply`, `write`, `fix`, `normalize` and `migrate`; there is no execute mode behind it. Read-only."), "previewLegacyWorkflowMigration"),
   readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — create a plan, execute a task, resume a session, ask the user, repair an artifact, or stop — beside the requirements that action covers, the plan task behind it and the context it needs. Read-only."), "getNextWorkOrder"),
