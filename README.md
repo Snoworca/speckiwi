@@ -267,6 +267,7 @@ The MCP server resolves its own root from the directory it was started in, and t
 | `workflow_*` (all 26) | accepted |
 | `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS mutation replays only at the host root) and `orchestrate_preflight` (it already takes `--mcp-root` and `--git-root`) |
 | Every SRS-facing tool — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` and the rest | refused |
+| `preview_legacy_workflow_migration` | refused, although its schema still lists the argument — the one tool where what `tools/list` advertises and what the gate accepts disagree |
 
 Refusal is the default: a tool that does not declare itself worktree-local refuses the argument, so a newly added SRS tool is safe without being listed anywhere. An accepted root must be an absolute path, an existing directory, a git top level rather than a subdirectory of one, and a worktree sharing the startup root's git common directory; each failure is refused with its own `workspace-root-*` reason before the tool runs, so a path that does not exist is refused rather than created. A path argument that lands under `docs/spec` is refused even on a tool that accepts the root.
 
@@ -942,6 +943,7 @@ MCP 서버는 자신이 기동된 디렉터리에서 root를 해석하며, SRS�
 | `workflow_*` (26개 전부) | 수용 |
 | `orchestrate_*` | 수용. 단 `orchestrate_replay_apply`(유예된 SRS mutation은 호스트 root에서만 재생됩니다)와 `orchestrate_preflight`(이미 `--mcp-root`·`--git-root`를 받습니다)는 제외 |
 | SRS를 다루는 모든 도구 — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` 등 | 거부 |
+| `preview_legacy_workflow_migration` | 거부. 다만 스키마는 이 인자를 여전히 싣고 있습니다 — `tools/list`가 광고하는 것과 게이트가 받는 것이 어긋나는 유일한 도구입니다 |
 
 거부가 기본값입니다: worktree-local임을 스스로 선언하지 않은 도구는 이 인자를 거부하므로, 새로 추가된 SRS 도구는 어디에도 등재하지 않아도 안전합니다. 수용되는 root는 절대 경로이고, 존재하는 디렉터리이며, 하위 디렉터리가 아닌 git 최상위이고, 기동 root와 git common dir을 공유하는 worktree여야 합니다. 각 실패는 도구가 실행되기 전에 고유한 `workspace-root-*` 사유로 거부되므로, 존재하지 않는 경로는 생성되지 않고 거부됩니다. 수용된 root의 도구라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부됩니다.
 

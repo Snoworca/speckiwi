@@ -230,6 +230,14 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
     fix: z.boolean().optional(),
     normalize: z.boolean().optional(),
     migrate: z.boolean().optional(),
+    // @req FR-MCP-063 AC-4 — this declaration is the one place the advertised schema and the
+    // registration gate disagree: the tool is registered without `workspaceScope`, so the gate
+    // refuses what this line advertises. It stays, and the reason is recorded rather than fixed
+    // here. Removing it drops the declared-argument total from 564 to 563, and 564 is a floor in
+    // FR-FLOW-162 AC-1 and in that verified requirement's own text. Giving the tool the argument
+    // for real is the other repair and it moves the accepting family from 51 to 52, which this
+    // requirement does not decide. FR-MCP-063 AC-4 holds the difference set to exactly this name,
+    // so a second disagreement reddens.
     workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
   get_next_work_order: {
@@ -532,6 +540,60 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   ...orchestrateToolSchemas()
 };
 
+/**
+ * The two keys the registration gate in `adapter.ts` decides by.
+ *
+ * Neither is a tool argument — no handler reads either — so neither appears in any tool's declared
+ * shape, and a zod object deletes what its shape does not declare. That deletion is what made the
+ * gate unreachable over the protocol: it tests `"workspaceRoot" in input`, and the SDK had already
+ * removed the key by the time the wrapper ran. @req FR-MCP-063
+ */
+const GATE_PATH_KEYS: ReadonlySet<string> = new Set(["root", "workspaceRoot"]);
+
+/**
+ * The schema the SDK validates one tool's arguments with.
+ *
+ * The catchall is the whole difference: `toolSchemas[name]` handed over as a raw shape becomes a
+ * stripping object, and with the catchall the gate's keys survive to the gate instead. What the
+ * catchall additionally lets through is dropped again by {@link narrowToDeclaredAndGateKeys}, so a
+ * handler is handed exactly what it was handed before plus the two keys the gate judges.
+ * @req FR-MCP-063 AC-5
+ */
+export function sdkToolInputSchema(name: string): z.ZodTypeAny {
+  return z.object(toolSchemas[name] ?? {}).catchall(z.unknown());
+}
+
+/**
+ * Whether one tool's shape declares this argument.
+ *
+ * `hasOwnProperty.call`, not `key in declared`: a shape is an ordinary object literal, so `in` walks
+ * `Object.prototype` and answers true for each of the eleven data properties it carries —
+ * `__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`, `constructor`,
+ * `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `toString` and
+ * `valueOf`. All eleven would then pass the narrow and reach the handler — a widening this seam
+ * introduces and the old wiring did not have, because the stripping object deleted them. Measured:
+ * with `in`, `list_requirements` was handed `["limit","toString","constructor","hasOwnProperty"]`
+ * where the old wiring handed `["limit"]`.
+ * `route.ts` guards the same map lookup the same way for the same reason, as do eight other sites.
+ * @req FR-MCP-063 AC-3
+ */
+function declaresArgument(declared: Record<string, z.ZodTypeAny>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(declared, key);
+}
+
+/**
+ * The arguments one tool is handed: what its own shape declares, plus the gate's keys when the
+ * caller sent them. @req FR-MCP-063 AC-3
+ */
+function narrowToDeclaredAndGateKeys(name: string, input: Record<string, unknown>): Record<string, unknown> {
+  const declared = toolSchemas[name] ?? {};
+  const narrowed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (declaresArgument(declared, key) || GATE_PATH_KEYS.has(key)) narrowed[key] = value;
+  }
+  return narrowed;
+}
+
 const ORCHESTRATE_READ_TOOLS: readonly string[] = ORCHESTRATE_TOOL_BINDINGS
   .filter((binding) => binding.kind === "read")
   .map((binding) => binding.tool);
@@ -649,10 +711,10 @@ export function createSdkServer(local: McpServerHandle): McpServer {
     }
     sdk.registerTool(name, {
       description,
-      inputSchema: toolSchemas[name] ?? {},
+      inputSchema: sdkToolInputSchema(name),
       annotations: { readOnlyHint: isReadOnlyTool(name) }
     }, async (input) => ({
-      content: [{ type: "text", text: JSON.stringify(await handler(input as Record<string, unknown>)) }]
+      content: [{ type: "text", text: JSON.stringify(await handler(narrowToDeclaredAndGateKeys(name, input as Record<string, unknown>))) }]
     }));
   }
   registerSdkResources(sdk, local);
