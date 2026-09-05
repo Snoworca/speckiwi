@@ -41,14 +41,39 @@ const ROOT_KEY = "root";
 const WORKSPACE_ROOT_KEY = "workspaceRoot";
 
 /**
- * The figures FR-MCP-063 records, compared with `toBe` rather than with a bound.
+ * The figure FR-MCP-063 records, compared with `toBe` rather than with a bound.
  *
- * A bound read off the same map the assertion walks is a tautology, so these are the numbers in the
+ * A bound read off the same map the assertion walks is a tautology, so this is the number in the
  * requirement text and nothing else. If the registered surface grows, both sides move together and
- * only these two lines say so.
+ * only this line says so.
  */
 const REGISTERED_TOOL_COUNT = 100;
-const REFUSING_TOOL_COUNT = 49;
+
+/**
+ * The refusing set is held to names rather than to a size.
+ *
+ * Its size is a fact about which tools may name a per-call root, and that membership belongs to
+ * REL-MCP-005 and to the family requirements — it moved from 49 to 36 when FR-MCP-064 opened the SRS
+ * query family, a change this requirement did not make and should not have reddened for. What a size
+ * bought was a guard against a collapsed denominator, and two guards replace it: the set must be
+ * non-empty, and it must contain these two by name. The other half of what the size caught — a tool
+ * quietly gaining the argument — is held by FR-MCP-064 AC-1, which compares the opened family with
+ * the names its requirement records in both directions.
+ */
+const REFUSING_WITNESSES = ["add_requirement", "update_status"] as const;
+
+/**
+ * The tool AC-5 and AC-6 are driven through: one that declares neither gate key and that the gate
+ * refuses a per-call root for.
+ *
+ * `list_requirements` played this part until FR-MCP-064 opened it. Neither criterion names a tool —
+ * AC-5 says "a tool that declares neither key" and AC-6 says "a protocol caller" — so what moved is
+ * the means, not the criterion. `get_next_work_order` stays closed because its subject is run state
+ * under `kiwi/`, and it declares own optional arguments, which AC-5 needs to show survive the parse
+ * the gate's keys do not.
+ */
+const CLOSED_VEHICLE = "get_next_work_order";
+const CLOSED_VEHICLE_OWN_KEY = "target";
 
 /**
  * The one tool whose declared schema advertises a `workspaceRoot` the gate refuses.
@@ -329,12 +354,17 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
 
   // @req FR-MCP-063 AC-1
   it("refuses workspaceRoot over tools/call on every tool the gate does not accept it for", async () => {
-    expect(refusing).toHaveLength(REFUSING_TOOL_COUNT);
+    // The denominator is held to names: non-empty, and carrying these two. A derivation that
+    // collapsed to nothing is what a size caught, and an empty set with two named members cannot.
+    expect(refusing.length, "the refusing set must not be empty").toBeGreaterThan(0);
+    for (const name of REFUSING_WITNESSES) {
+      expect(refusing, `${name} must be refused a per-call workspace root`).toContain(name);
+    }
     const before = protocolCalls;
     const escaped = await notRefusedWith("MCP_WORKSPACE_ROOT_UNSUPPORTED", WORKSPACE_ROOT_KEY, refusing);
     // The denominator was spent, not merely sized. Asserted before the escape list, because an empty
     // escape list is what a loop that never ran also produces.
-    expect(protocolCalls - before, "roundtrips actually made").toBe(REFUSING_TOOL_COUNT);
+    expect(protocolCalls - before, "roundtrips actually made").toBe(refusing.length);
     expect(escaped).toEqual([]);
   }, 180000);
 
@@ -466,21 +496,21 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
 
   // @req FR-MCP-063 AC-5
   it("parses with a schema that keeps the gate's two keys where the tool's own shape drops them", () => {
-    const declared = toolSchemas.list_requirements;
+    const declared = toolSchemas[CLOSED_VEHICLE] as Record<string, z.ZodTypeAny>;
     expect(WORKSPACE_ROOT_KEY in declared).toBe(false);
     expect(ROOT_KEY in declared).toBe(false);
 
-    const args = { limit: 1, [WORKSPACE_ROOT_KEY]: worktree, [ROOT_KEY]: worktree };
+    const args = { [CLOSED_VEHICLE_OWN_KEY]: "x", [WORKSPACE_ROOT_KEY]: worktree, [ROOT_KEY]: worktree };
     const droppedByDeclaredShape = z.object(declared).parse(args) as Record<string, unknown>;
-    expect(Object.keys(droppedByDeclaredShape)).toEqual(["limit"]);
+    expect(Object.keys(droppedByDeclaredShape)).toEqual([CLOSED_VEHICLE_OWN_KEY]);
 
-    const keptBySeamSchema = sdkToolInputSchema("list_requirements").parse(args) as Record<string, unknown>;
-    expect(Object.keys(keptBySeamSchema).sort()).toEqual(["limit", ROOT_KEY, WORKSPACE_ROOT_KEY].sort());
+    const keptBySeamSchema = sdkToolInputSchema(CLOSED_VEHICLE).parse(args) as Record<string, unknown>;
+    expect(Object.keys(keptBySeamSchema).sort()).toEqual([CLOSED_VEHICLE_OWN_KEY, ROOT_KEY, WORKSPACE_ROOT_KEY].sort());
   });
 
   // @req FR-MCP-063 AC-6
   it("answers the refusal with the gate's own diagnostic rather than a schema validation error", async () => {
-    const tool = listed.find((candidate) => candidate.name === "list_requirements");
+    const tool = listed.find((candidate) => candidate.name === CLOSED_VEHICLE);
     expect(tool).toBeDefined();
     const outcome = await protocolCall(tool as Tool, { [WORKSPACE_ROOT_KEY]: worktree });
     expect(outcome.kind).toBe("refusal");

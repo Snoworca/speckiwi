@@ -165,6 +165,25 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     expect(handler).not.toHaveBeenCalled();
   });
 
+  // @req REL-MCP-005 AC-3 — the declaration is read as membership of a closed set, so a scope that
+  // is not one of the two lands where an absent one lands. A presence test would admit this tool:
+  // the compiler catches a misspelt scope in this repository's own registrations, and catches
+  // nothing in a test that registers a synthetic tool or in a consumer on plain JavaScript.
+  it("AC-3: a tool whose declared workspace scope is misspelt inherits the refusal", async () => {
+    const host = await gitWorkspaceRepo("relmcp005-ac3-typo");
+    const lane = await linkedWorktree(host, "relmcp005-ac3-typo-wt", "lane-ac3-typo");
+    const server = createTestMcpServer({ root: host });
+    const handler = vi.fn(async () => ({ ok: true }));
+    server.registerTool("misspelt_scope_tool", handler, {
+      // @ts-expect-error the scope union rejects this spelling; the gate must refuse it at runtime too.
+      workspaceScope: "worktree_local"
+    });
+
+    const refused = (await server.callTool("misspelt_scope_tool", { workspaceRoot: lane })) as Refusal;
+    expect(refused).toMatchObject({ ok: false, error: { code: "MCP_WORKSPACE_ROOT_UNSUPPORTED", reason: "workspace-root-unsupported-for-tool" } });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it("AC-4: startMcpServer and McpServerOptions expose no root parameter", () => {
     expect(resolveMcpStartupRoot.length).toBe(0);
     // @ts-expect-error McpServerOptions must not declare a root; `npm run typecheck:test` fails here if it does.

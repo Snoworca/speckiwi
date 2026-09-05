@@ -1,6 +1,14 @@
 import { createRequire } from "node:module";
 import path from "node:path";
-import { decideWorkspaceRoot, srsDestination, type WorkspaceRootReason } from "./workspace-root.js";
+import {
+  decideWorkspaceRoot,
+  hasSrsIndex,
+  isWorkspaceScope,
+  srsDestination,
+  SRS_INDEX_RELATIVE,
+  type WorkspaceRootReason,
+  type WorkspaceScope
+} from "./workspace-root.js";
 
 export type MutationToolKind = "req-scoped" | "log-append" | "workspace";
 
@@ -32,13 +40,19 @@ export interface McpCallContext {
 export type McpToolHandler = (input: Record<string, unknown>, context?: McpCallContext) => Promise<unknown> | unknown;
 
 /**
- * A tool declares itself `worktree-local` when its subject is run state that lives in a worktree.
- * Absence is the refusal: a newly added SRS tool is fail-closed without being listed anywhere.
- * @req REL-MCP-005 AC-3
+ * A tool declares the subject it admits a per-call root for: `worktree-local` for run state that
+ * lives in a worktree, `srs-read-only` for a query that reads a checkout's SRS and writes nothing.
+ * Absence is the refusal: a newly added SRS mutation tool is fail-closed without being listed
+ * anywhere, and so is a tool whose declared scope is misspelt.
+ *
+ * `callerPathKeys` names which of the tool's arguments are paths, for the destination rule in
+ * {@link srsDestination}. Absence there is also the safe side — every argument is scanned.
+ * @req REL-MCP-005 AC-3 / AC-6 @req FR-MCP-064 AC-7
  */
 export interface McpToolMetadata {
   kind?: MutationToolKind;
-  workspaceScope?: "worktree-local";
+  workspaceScope?: WorkspaceScope;
+  callerPathKeys?: readonly string[];
   workspaceRootRefusal?: { reason: WorkspaceRootReason; message: string };
   [key: string]: unknown;
 }
@@ -88,11 +102,22 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   const startupIdentity = identityFor(startupRoot, startupSource);
   const startupContext: McpCallContext = { root: deps.root, rootSource: startupSource };
 
+  /**
+   * What a caller who named a checkout holding no SRS index is told.
+   *
+   * It names the checkout that was examined and stops there. It is deliberately not a repair
+   * command: `speckiwi init --force` is on record as removing requirements without a symptom, and a
+   * refusal that teaches it turns a typo into data loss. @req FR-MCP-064 AC-6
+   */
+  const missingIndexRecovery = (examined: string): string =>
+    `No ${SRS_INDEX_RELATIVE} was found under the workspaceRoot that was examined: ${examined}. Name a checkout that holds an SRS index, or omit workspaceRoot to read the root this server was started in.`;
+
   const refusal = (
     errorCode: "MCP_WORKSPACE_ROOT_UNSUPPORTED" | "MCP_WORKSPACE_ROOT_REFUSED",
     reason: WorkspaceRootReason,
     message: string,
-    details: Record<string, unknown>
+    details: Record<string, unknown>,
+    recoveryMessage?: string
   ): unknown => ({
     ok: false,
     error: { code: errorCode, reason, message },
@@ -106,7 +131,9 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
     ],
     diagnosticsSummary: { errors: 1, warnings: 0, byCode: { "SRS-E075": 1 } },
     mcpWorkspace: startupIdentity,
-    recovery: { message: errorCode === "MCP_WORKSPACE_ROOT_UNSUPPORTED" ? UNSUPPORTED_RECOVERY : REFUSED_RECOVERY }
+    recovery: {
+      message: recoveryMessage ?? (errorCode === "MCP_WORKSPACE_ROOT_UNSUPPORTED" ? UNSUPPORTED_RECOVERY : REFUSED_RECOVERY)
+    }
   });
 
   const attachWorkspace = (value: unknown, identity: ReturnType<typeof identityFor>): unknown => {
@@ -127,7 +154,9 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
     if (!("root" in input) && !("workspaceRoot" in input)) {
       return { context: startupContext, identity: startupIdentity };
     }
-    if ("root" in input || metadata?.workspaceScope !== "worktree-local") {
+    // Membership of the closed scope set, not the presence of a value: a scope nobody declared and a
+    // scope somebody misspelt must land on the same side. @req REL-MCP-005 AC-3
+    if ("root" in input || !isWorkspaceScope(metadata?.workspaceScope)) {
       const override = "root" in input ? undefined : metadata?.workspaceRootRefusal;
       return {
         refused: refusal(
@@ -142,7 +171,20 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
     if (!decision.ok) {
       return { refused: refusal("MCP_WORKSPACE_ROOT_REFUSED", decision.reason, decision.message, decision.details) };
     }
-    const destination = srsDestination(input, [decision.root, startupRoot]);
+    // Scoped to the SRS query family, never gate-wide: a `workflow_*` tool answers today for a
+    // checkout that holds no `docs/` at all, and a gate-wide check would refuse it. @req FR-MCP-064 AC-6
+    if (metadata?.workspaceScope === "srs-read-only" && !(await hasSrsIndex(decision.root))) {
+      return {
+        refused: refusal(
+          "MCP_WORKSPACE_ROOT_REFUSED",
+          "workspace-root-missing-srs-index",
+          `The named workspaceRoot holds no ${SRS_INDEX_RELATIVE}, so it has no SRS to read.`,
+          { workspaceRoot: decision.root, indexPath: SRS_INDEX_RELATIVE },
+          missingIndexRecovery(decision.root)
+        )
+      };
+    }
+    const destination = srsDestination(input, [decision.root, startupRoot], metadata?.callerPathKeys);
     if (destination !== null) {
       return {
         refused: refusal(

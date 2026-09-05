@@ -16,7 +16,7 @@ import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // body: `schemas.ts` imports this module back for `toolSchemas` and `isReadOnlyTool`, so a top-level
 // read here would run against a half-initialised module.
 import { renderToolDescriptions } from "./schemas.js";
-import { orchestrateAcceptsWorkspaceRoot, registerReadTools } from "./tools/read-tools.js";
+import { perCallWorkspaceRootTools, registerReadTools } from "./tools/read-tools.js";
 import { registerMutationTools } from "./tools/mutation-tools.js";
 import { registerResources } from "./resources.js";
 import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
@@ -62,9 +62,6 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
   const out: Record<string, Record<string, z.ZodTypeAny>> = {};
   for (const binding of ORCHESTRATE_TOOL_BINDINGS) {
     const shape: Record<string, z.ZodTypeAny> = {};
-    // @req FR-MCP-059 — derived from the same declaration the registration gate reads, so the
-    // schema and the gate cannot disagree about which rows take a per-call root.
-    if (orchestrateAcceptsWorkspaceRoot(binding.tool)) shape.workspaceRoot = WORKSPACE_ROOT_SCHEMA;
     if (binding.selector) {
       shape[binding.selector.dest] = z.enum(binding.selector.values as [string, ...string[]]).optional();
     }
@@ -81,7 +78,31 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
   return out;
 }
 
-export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
+/**
+ * Puts `workspaceRoot` on every schema whose tool declares a workspace scope, from that one
+ * declaration.
+ *
+ * The gate in `adapter.ts` reads the same declaration, so a tool cannot advertise a root the gate
+ * refuses or honour one it never advertised — the single surviving disagreement is a tool that
+ * declares no scope and writes the key into its literal by hand, which FR-MCP-063 AC-4 holds to a
+ * name. A declared name with no schema throws rather than being skipped, so a typo in the
+ * declaration is a startup failure instead of a tool that quietly advertises nothing.
+ * @req FR-MCP-059 @req FR-MCP-064 AC-1
+ */
+function withPerCallWorkspaceRoot(
+  table: Record<string, Record<string, z.ZodTypeAny>>
+): Record<string, Record<string, z.ZodTypeAny>> {
+  for (const tool of perCallWorkspaceRootTools()) {
+    const shape = table[tool];
+    if (shape === undefined) {
+      throw new Error(`MCP tool '${tool}' declares a per-call workspace root but has no input schema`);
+    }
+    table[tool] = { workspaceRoot: WORKSPACE_ROOT_SCHEMA, ...shape };
+  }
+  return table;
+}
+
+export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPerCallWorkspaceRoot({
   mcp_workspace_info: {},
   list_requirements: {
     target: z.string().optional(),
@@ -538,7 +559,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = {
   },
   promote_step_requirement: { id: z.string(), fromStep: z.string(), toScope: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   ...orchestrateToolSchemas()
-};
+});
 
 /**
  * The two keys the registration gate in `adapter.ts` decides by.

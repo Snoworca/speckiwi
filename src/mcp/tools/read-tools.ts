@@ -11,8 +11,8 @@ import { listSteps } from "../../core/query/list-steps.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
 import type { Diagnostic, ParsedWorkspace } from "../../core/types.js";
-import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
-import type { WorkspaceRootReason } from "../workspace-root.js";
+import type { McpCallContext, McpDependencies, McpServerHandle, McpToolMetadata } from "../adapter.js";
+import { isWorkspaceScope, type WorkspaceRootReason } from "../workspace-root.js";
 import { mcpFailure, mcpSuccess } from "../errors.js";
 import {
   workflowArtifacts,
@@ -44,8 +44,13 @@ import {
 import { resultToMcp } from "../errors.js";
 import { ORCHESTRATE_TOOL_BINDINGS, orchestrateArgv, type OrchestrateToolBinding } from "../../cli/commands/orchestrate.js";
 
-async function workspace(deps: McpDependencies) {
-  const root = await resolveProjectRoot(process.cwd(), deps.root);
+/**
+ * The parsed SRS one read answers from. Like {@link projectRoot}, it takes the per-call root from
+ * `context` rather than from `input`, so which tools may name a checkout stays a registration fact.
+ * @req FR-MCP-064 AC-3
+ */
+async function workspace(deps: McpDependencies, context?: McpCallContext) {
+  const root = await resolveProjectRoot(process.cwd(), context?.root ?? deps.root);
   return parseWorkspace(root);
 }
 
@@ -214,9 +219,77 @@ const ORCHESTRATE_WORKSPACE_METADATA: Readonly<Record<string, {
   )
 );
 
-/** Whether an `orchestrate_*` row takes the per-call root; the schema is derived from the same fact. */
-export function orchestrateAcceptsWorkspaceRoot(tool: string): boolean {
-  return ORCHESTRATE_WORKSPACE_METADATA[tool]?.workspaceScope === "worktree-local";
+/**
+ * The SRS query tools that answer from a per-call checkout, named because the requirement names them.
+ *
+ * Reading is the whole of it. A write is not here and cannot be: a Requirement ID is allocated from a
+ * counter file that `.gitignore` keeps out of git, and the SRS mutation lock is per-root as well, so
+ * two roots would mint colliding ids while excluding neither. That is also why the two
+ * requirement-id repair readers are absent — both allocate an id, whether or not they write it.
+ * @req FR-MCP-064 AC-1
+ */
+export const SRS_READ_WORKSPACE_SCOPED: readonly string[] = [
+  "list_requirements",
+  "search_requirements",
+  "get_requirement",
+  "validate_spec",
+  "summarize_target",
+  "get_active_target",
+  "list_completed_work",
+  "validate_step",
+  "get_work_mode",
+  "check_vibe_gate",
+  "list_dirty_edges",
+  "list_compat_edges",
+  "list_steps"
+];
+
+/**
+ * What each of those thirteen declares. `callerPathKeys: []` says the tool takes no caller-supplied
+ * path, which is what lets `relatedDoc` and `evidenceReference` carry the `docs/spec` reference they
+ * were designed to carry; a tool declaring nothing still has every argument scanned.
+ * @req FR-MCP-064 AC-7
+ */
+const SRS_READ_WORKSPACE_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze(
+  Object.fromEntries(
+    SRS_READ_WORKSPACE_SCOPED.map((tool) => [
+      tool,
+      Object.freeze({ readOnlyHint: true, workspaceScope: "srs-read-only" as const, callerPathKeys: Object.freeze([]) })
+    ])
+  )
+);
+
+/**
+ * The metadata one of the thirteen is registered with.
+ *
+ * Throws on a name outside the set rather than falling back to a plain read metadata, because the
+ * silent fallback is a refusal — the tool would advertise nothing, accept nothing, and look correct.
+ */
+function srsReadMetadata(tool: string): McpToolMetadata {
+  const declared = SRS_READ_WORKSPACE_METADATA[tool];
+  if (!declared) throw new Error(`MCP tool '${tool}' is not one of the SRS query tools FR-MCP-064 names`);
+  return declared;
+}
+
+/** Every tool registered here that declares a workspace scope, orchestrate rows and SRS queries alike. */
+const WORKSPACE_SCOPED_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze({
+  ...ORCHESTRATE_WORKSPACE_METADATA,
+  ...SRS_READ_WORKSPACE_METADATA
+});
+
+/**
+ * Whether a tool takes the per-call root. The registration gate reads the same declaration through
+ * `McpToolMetadata`, so the advertised schema and the honoured argument cannot disagree — the one
+ * disagreement that survives is named by FR-MCP-063 AC-4 and it is a tool declaring no scope at all.
+ * @req FR-MCP-059 @req FR-MCP-064 AC-1
+ */
+export function acceptsPerCallWorkspaceRoot(tool: string): boolean {
+  return isWorkspaceScope(WORKSPACE_SCOPED_METADATA[tool]?.workspaceScope);
+}
+
+/** The names {@link acceptsPerCallWorkspaceRoot} answers true for, for deriving the input schemas. */
+export function perCallWorkspaceRootTools(): string[] {
+  return Object.keys(WORKSPACE_SCOPED_METADATA).filter((tool) => acceptsPerCallWorkspaceRoot(tool));
 }
 
 export function registerReadTools(server: McpServerHandle, deps: McpDependencies): void {
@@ -240,19 +313,19 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
       diagnostics
     );
   }, { readOnlyHint: true });
-  server.registerTool("list_requirements", async (input) => {
-    const parsed = await workspace(deps);
+  server.registerTool("list_requirements", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     return mcpSuccess(buildReadEnvelope(parsed, projectRequirementRecords(listRequirements(parsed, input), input), diagnostics), diagnostics);
-  }, { readOnlyHint: true });
-  server.registerTool("search_requirements", async (input) => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("list_requirements"));
+  server.registerTool("search_requirements", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const query = typeof input.query === "string" ? input.query : "";
     return mcpSuccess(buildReadEnvelope(parsed, searchRequirementRecords(parsed.records, { ...input, query, filter: input }), diagnostics), diagnostics);
-  }, { readOnlyHint: true });
-  server.registerTool("get_requirement", async (input) => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("search_requirements"));
+  server.registerTool("get_requirement", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     try {
       return mcpSuccess(buildReadEnvelope(parsed, getRequirement(parsed, String(input.id), { includeMarkdown: Boolean(input.includeMarkdown) }), diagnostics), diagnostics);
@@ -262,34 +335,34 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
         recovery: { tool: "search_requirements", message: "Search for the requirement ID or title, then retry get_requirement with the exact ID." }
       });
     }
-  }, { readOnlyHint: true });
-  server.registerTool("validate_spec", async () => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("get_requirement"));
+  server.registerTool("validate_spec", async (_input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const result = splitDiagnostics(diagnostics);
     const diagnosticsSummary = summarizeDiagnostics(diagnostics);
     return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, diagnostics);
-  }, { readOnlyHint: true });
-  server.registerTool("summarize_target", async (input) => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("validate_spec"));
+  server.registerTool("summarize_target", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const target = typeof input.target === "string" ? input.target : undefined;
     const summary = typeof target === "string" ? summarizeTarget(parsed, { target, diagnostics }) : summarizeTarget(parsed, { diagnostics });
     return mcpSuccess(buildReadEnvelope(parsed, summary, diagnostics), diagnostics);
-  }, { readOnlyHint: true });
-  server.registerTool("get_active_target", async () => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("summarize_target"));
+  server.registerTool("get_active_target", async (_input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const activeTarget = parsed.index.activeTarget;
     const summary = summarizeTarget(parsed, { diagnostics });
     const goal = activeTarget && parsed.index.targetGoals[activeTarget] ? parsed.index.targetGoals[activeTarget] : null;
     return mcpSuccess(buildReadEnvelope(parsed, { activeTarget, summary, goal }, diagnostics), diagnostics);
-  }, { readOnlyHint: true });
-  server.registerTool("list_completed_work", async (input) => {
-    const parsed = await workspace(deps);
+  }, srsReadMetadata("get_active_target"));
+  server.registerTool("list_completed_work", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     return mcpSuccess(buildReadEnvelope(parsed, completedWorkReadModel(parsed, completedWorkFilter(input)), diagnostics), diagnostics);
-  }, { readOnlyHint: true });
+  }, srsReadMetadata("list_completed_work"));
   server.registerTool("diagnose_requirement_id_collisions", async (input) => {
     if ("ignoreLock" in input) {
       return mcpFailure("USAGE", "diagnose_requirement_id_collisions is read-only and does not accept ignoreLock", {
@@ -313,9 +386,9 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     return resultToMcp(await planRequirementIdCollisionRepair(await projectRoot(deps), parsed));
   }, { readOnlyHint: true });
   // FR-MCP-052 — get_work_mode mirrors the argument-less `speckiwi mode` read (fail-open to wait).
-  server.registerTool("get_work_mode", async () => mcpSuccess(await getWorkMode(await projectRoot(deps))), { readOnlyHint: true });
+  server.registerTool("get_work_mode", async (_input, context) => mcpSuccess(await getWorkMode(await projectRoot(deps, context))), srsReadMetadata("get_work_mode"));
   // FR-MCP-054 — check_vibe_gate mirrors `speckiwi vibe-gate check` (shared core, read-only probe).
-  server.registerTool("check_vibe_gate", async () => mcpSuccess(await evaluateVibeGate(await projectRoot(deps))), { readOnlyHint: true });
+  server.registerTool("check_vibe_gate", async (_input, context) => mcpSuccess(await evaluateVibeGate(await projectRoot(deps, context))), srsReadMetadata("check_vibe_gate"));
   server.registerTool("workflow_workspace_info", async (_input, context) => workflowWorkspaceInfo(await projectRoot(deps, context)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_artifacts_list", async (input, context) => workflowArtifacts(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_latest_artifact", async (input, context) => workflowArtifacts(await projectRoot(deps, context), { ...workflowOptions(input), limit: 1 }), WORKTREE_LOCAL_READ);
@@ -338,33 +411,33 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories,
   // plus the FR-PARSE-033 SDS-W05x advisories in tdd mode), scoped to a named step so a
   // body-scope error never leaks into the step diagnostics.
-  server.registerTool("validate_step", async (input) => {
-    const parsed = await workspace(deps);
+  server.registerTool("validate_step", async (input, context) => {
+    const parsed = await workspace(deps, context);
     const stepName = String(input.step);
     // @req FR-PARSE-040 — intent.md carries the skip record, so this surface loads it beside
     // design.md. Loading only design.md here would let the MCP caller see a warning where the CLI
     // sees SDS-E054, and the two surfaces would disagree about whether the step may proceed.
-    const root = await projectRoot(deps);
+    const root = await projectRoot(deps, context);
     const design = await loadStepDesign(root, stepName);
     const intent = await loadStepIntent(root, stepName);
     const result = validateWorkspaceScoped(parsed, { step: stepName, design, intent });
     const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
     return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, result.diagnostics);
-  }, { readOnlyHint: true });
+  }, srsReadMetadata("validate_step"));
   // FR-MCP-041 — compatibility edge read tools. listDirtyEdges enumerates every checked_compatible
   // edge with its clean/dirty/orphaned/missing classification; both readers project it.
-  server.registerTool("list_dirty_edges", async (input) =>
-    mcpSuccess(await listDirtyEdges(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
-    { readOnlyHint: true }
+  server.registerTool("list_dirty_edges", async (input, context) =>
+    mcpSuccess(await listDirtyEdges(await projectRoot(deps, context), typeof input.target === "string" ? { target: input.target } : {})),
+    srsReadMetadata("list_dirty_edges")
   );
-  server.registerTool("list_compat_edges", async (input) =>
-    mcpSuccess(await listDirtyEdges(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
-    { readOnlyHint: true }
+  server.registerTool("list_compat_edges", async (input, context) =>
+    mcpSuccess(await listDirtyEdges(await projectRoot(deps, context), typeof input.target === "string" ? { target: input.target } : {})),
+    srsReadMetadata("list_compat_edges")
   );
   // FR-MCP-042 — list_steps returns the Kahn topological order of docs/spec/steps/state.md with
   // cycle detection and advisory-only diagnostics.
-  server.registerTool("list_steps", async (input) =>
-    mcpSuccess(await listSteps(await projectRoot(deps), typeof input.target === "string" ? { target: input.target } : {})),
-    { readOnlyHint: true }
+  server.registerTool("list_steps", async (input, context) =>
+    mcpSuccess(await listSteps(await projectRoot(deps, context), typeof input.target === "string" ? { target: input.target } : {})),
+    srsReadMetadata("list_steps")
   );
 }
