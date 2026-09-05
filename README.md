@@ -260,16 +260,18 @@ Kiwi skills use MCP tools for all reads and safe SRS mutations. CLI equivalents 
 
 #### Per-call `workspaceRoot`
 
-The MCP server resolves its own root from the directory it was started in, and that root is the only place SRS is read or written. A session whose server is fixed to the host checkout can still address run state that lives in a linked worktree by passing an optional absolute `workspaceRoot` on each call.
+The MCP server resolves its own root from the directory it was started in, and that root is the only place SRS is written. A session whose server is fixed to the host checkout can still address run state that lives in a linked worktree, and ask what that worktree's SRS says, by passing an optional absolute `workspaceRoot` on each call.
 
 | Family | `workspaceRoot` |
 | --- | --- |
 | `workflow_*` (all 26) | accepted |
 | `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS mutation replays only at the host root) and `orchestrate_preflight` (it already takes `--mcp-root` and `--git-root`) |
-| Every SRS-facing tool — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` and the rest | refused |
+| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps` | accepted; each reads the named checkout and writes nothing |
+| Every tool that writes under `docs/spec` or allocates a Requirement ID — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` and the rest | refused |
+| `mcp_workspace_info` and `get_next_work_order` | refused — the first answers which root replied, so it cannot take that root as an argument; the second assembles a work order rather than answering a query aimed at a checkout's SRS |
 | `preview_legacy_workflow_migration` | refused, although its schema still lists the argument — the one tool where what `tools/list` advertises and what the gate accepts disagree |
 
-Refusal is the default: a tool that does not declare itself worktree-local refuses the argument, so a newly added SRS tool is safe without being listed anywhere. An accepted root must be an absolute path, an existing directory, a git top level rather than a subdirectory of one, and a worktree sharing the startup root's git common directory; each failure is refused with its own `workspace-root-*` reason before the tool runs, so a path that does not exist is refused rather than created. A path argument that lands under `docs/spec` is refused even on a tool that accepts the root.
+Refusal is the default: a tool accepts the argument only by declaring the workspace scope it admits — `worktree-local` for run state that lives in a worktree, `srs-read-only` for a query that reads a checkout's SRS and writes nothing — so a tool that declares no scope, or misspells the one it declares, refuses the argument and a newly added SRS tool is safe without being listed anywhere. An accepted root must be an absolute path, an existing directory, a git top level rather than a subdirectory of one, and a worktree sharing the startup root's git common directory; each failure is refused with its own `workspace-root-*` reason before the tool runs, so a path that does not exist is refused rather than created. An SRS query is refused too when the named checkout holds no `docs/spec/00.index.md`, and that refusal names the checkout it examined. A path argument that lands under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path at all — which is what lets an SRS query filter on a `docs/spec` reference.
 
 **Confirm workspace identity from the envelope before any target-scoped read or mutation.** Every result carries `mcpWorkspace` with `workspaceRoot`, `rootSource`, `indexPath` and `packageVersion`. `rootSource` is `server-cwd-discovery`, `auto-init`, or `per-call-workspace-root` — and it is `per-call-workspace-root` exactly when the call supplied a `workspaceRoot` that passed every gate, so the answer always names the root it came from.
 
@@ -936,16 +938,18 @@ Kiwi skills는 모든 조회와 안전한 SRS mutation을 MCP 도구로 수행�
 
 #### 호출 단위 `workspaceRoot`
 
-MCP 서버는 자신이 기동된 디렉터리에서 root를 해석하며, SRS를 읽고 쓰는 곳은 그 root뿐입니다. 서버가 호스트 체크아웃에 고정된 세션도, 호출마다 절대 경로 `workspaceRoot`를 선택적으로 넘겨 linked worktree에 있는 run 상태를 다룰 수 있습니다.
+MCP 서버는 자신이 기동된 디렉터리에서 root를 해석하며, SRS를 쓰는 곳은 그 root뿐입니다. 서버가 호스트 체크아웃에 고정된 세션도, 호출마다 절대 경로 `workspaceRoot`를 선택적으로 넘겨 linked worktree에 있는 run 상태를 다루고 그 워크트리의 SRS가 무엇을 말하는지 물을 수 있습니다.
 
 | 계열 | `workspaceRoot` |
 | --- | --- |
 | `workflow_*` (26개 전부) | 수용 |
 | `orchestrate_*` | 수용. 단 `orchestrate_replay_apply`(유예된 SRS mutation은 호스트 root에서만 재생됩니다)와 `orchestrate_preflight`(이미 `--mcp-root`·`--git-root`를 받습니다)는 제외 |
-| SRS를 다루는 모든 도구 — `add_requirement`, `update_status`, `supersede_requirement`, `validate_spec`, `sync_index`, `mcp_workspace_info` 등 | 거부 |
+| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps` | 수용. 각각 지명된 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다 |
+| `docs/spec` 아래에 쓰거나 Requirement ID를 발급하는 모든 도구 — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` 등 | 거부 |
+| `mcp_workspace_info`와 `get_next_work_order` | 거부. 앞의 것은 어느 root가 답했는지를 답하는 도구이므로 그 root를 인자로 받을 수 없고, 뒤의 것은 체크아웃의 SRS를 겨냥한 조회가 아니라 작업 지시를 조립합니다 |
 | `preview_legacy_workflow_migration` | 거부. 다만 스키마는 이 인자를 여전히 싣고 있습니다 — `tools/list`가 광고하는 것과 게이트가 받는 것이 어긋나는 유일한 도구입니다 |
 
-거부가 기본값입니다: worktree-local임을 스스로 선언하지 않은 도구는 이 인자를 거부하므로, 새로 추가된 SRS 도구는 어디에도 등재하지 않아도 안전합니다. 수용되는 root는 절대 경로이고, 존재하는 디렉터리이며, 하위 디렉터리가 아닌 git 최상위이고, 기동 root와 git common dir을 공유하는 worktree여야 합니다. 각 실패는 도구가 실행되기 전에 고유한 `workspace-root-*` 사유로 거부되므로, 존재하지 않는 경로는 생성되지 않고 거부됩니다. 수용된 root의 도구라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부됩니다.
+거부가 기본값입니다: 도구는 자신이 받아들이는 workspace scope를 선언해야만 이 인자를 수용합니다 — 워크트리에 있는 run 상태에는 `worktree-local`, 체크아웃의 SRS를 읽기만 하고 쓰지 않는 조회에는 `srs-read-only`입니다. 따라서 scope를 선언하지 않은 도구나 선언한 scope의 철자가 틀린 도구는 이 인자를 거부하며, 새로 추가된 SRS 도구는 어디에도 등재하지 않아도 안전합니다. 수용되는 root는 절대 경로이고, 존재하는 디렉터리이며, 하위 디렉터리가 아닌 git 최상위이고, 기동 root와 git common dir을 공유하는 worktree여야 합니다. 각 실패는 도구가 실행되기 전에 고유한 `workspace-root-*` 사유로 거부되므로, 존재하지 않는 경로는 생성되지 않고 거부됩니다. SRS 조회는 지명된 체크아웃에 `docs/spec/00.index.md`가 없을 때에도 거부되며, 그 거부는 자신이 검사한 체크아웃을 이름으로 밝힙니다. 수용된 root의 도구라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부됩니다. 다만 호출자가 넘기는 경로 인자를 아예 받지 않는다고 선언한 도구는 예외이며, SRS 조회가 `docs/spec` 참조로 필터링할 수 있는 것이 바로 그 선언 덕분입니다.
 
 **target 범위의 조회·mutation 전에 envelope에서 워크스페이스 정체를 확인하십시오.** 모든 결과는 `workspaceRoot`, `rootSource`, `indexPath`, `packageVersion`을 담은 `mcpWorkspace`를 함께 반환합니다. `rootSource`는 `server-cwd-discovery`, `auto-init`, `per-call-workspace-root` 중 하나이며, 모든 게이트를 통과한 `workspaceRoot`를 넘긴 호출에 한해 정확히 `per-call-workspace-root`입니다 — 답이 어느 root에서 왔는지 항상 이름으로 알 수 있습니다.
 

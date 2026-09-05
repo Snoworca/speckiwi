@@ -535,7 +535,7 @@ wave 를 추출한 뒤부터는 **FR-FLOW-029 와 동일(identical)** 하게 진
 
    같은 판정을 MCP 에서도 받는다 — `orchestrate_preflight` 바인딩이 `role`·`laneId`·`lanePlan` 을 그대로 노출한다. 이 인자들이 없으면 MCP 호출은 언제나 기본 `role=host` 로 판정되고, 역할 게이트는 호스트를 자처하는 linked worktree 를 거부하므로 워크트리 세션이 실제로 쓰는 표면에서 게이트에 닿을 수 없다. `orchestrate_preflight` 는 `workspaceRoot` 를 받지 않는다 — 판정 대상인 두 root 를 이미 필수 인자로 받기 때문이다.
 
-   그 밖의 `orchestrate_*` 도구와 `workflow_*` 도구 26 개 전부는 선택적 인자 `workspaceRoot` (absolute path) 를 받는다. 호스트에 고정된 MCP 서버로도 레인 워크트리의 plan·세션 상태·파이프라인·워크로그를 그 root 기준으로 다룰 수 있다는 뜻이다. `orchestrate_replay_apply` 는 거부한다 — 유예된 SRS mutation 은 호스트 root 에서만 재생되며, 그것이 유예가 존재하는 이유다. SRS 를 읽거나 쓰는 도구는 전부 거부한다. 수용된 root 라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부된다.
+   그 밖의 `orchestrate_*` 도구와 `workflow_*` 계열 전부는 선택적 인자 `workspaceRoot` (absolute path) 를 받는다. 호스트에 고정된 MCP 서버로도 레인 워크트리의 plan·세션 상태·파이프라인·워크로그를 그 root 기준으로 다룰 수 있다는 뜻이다. `orchestrate_replay_apply` 는 거부한다 — 유예된 SRS mutation 은 호스트 root 에서만 재생되며, 그것이 유예가 존재하는 이유다. 어느 체크아웃의 SRS 를 읽되 아무것도 쓰지 않는 조회 계열도 같은 인자를 받아 그 체크아웃의 SRS 로 답하므로, 레인의 요구 상태를 호스트 세션에서 그대로 물을 수 있다. 그 계열은 지명된 체크아웃에 `docs/spec/00.index.md` 가 없으면 거부하며, 거부는 수리 명령이 아니라 검사한 체크아웃을 이름으로 밝힌다. `docs/spec` 아래에 쓰거나 Requirement ID 를 발급하는 도구는 전부 거부하고, 자기가 어느 root 에 결속되었는지 답하는 도구도 거부한다 — 그 답을 인자로 받으면 P.1 대조의 두 변이 한 출처에서 나온다. 수용된 root 라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부된다. 다만 호출자가 넘기는 경로 인자를 아예 받지 않는다고 선언한 도구는 예외이고, SRS 조회가 `docs/spec` 참조로 필터링할 수 있는 것이 그 선언 덕분이다. 계열마다 어느 도구가 인자를 받는지는 README 의 per-call `workspaceRoot` 표가 이름으로 싣는다.
 
    **target 범위의 조회·mutation 전에 응답의 `mcpWorkspace.workspaceRoot` 와 `mcpWorkspace.rootSource` 로 워크스페이스 정체를 확인한다** — `rootSource` 가 `per-call-workspace-root` 인 호출만 넘긴 root 에서 답한 것이고, `server-cwd-discovery` 나 `auto-init` 이면 기동 root 가 답한 것이다.
 

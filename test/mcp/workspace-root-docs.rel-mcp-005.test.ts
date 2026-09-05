@@ -30,7 +30,13 @@ describe("REL-MCP-005 AC-8 — documentation and agent instructions name the per
     ] as const) {
       const start = readme.indexOf(anchor);
       expect(start, `${anchor} must exist`).toBeGreaterThan(-1);
-      const section = readme.slice(start, start + 4000);
+      // Bounded by the next same-level heading rather than by a byte count. A fixed window is a
+      // proxy for the section that fails in both directions: it had 143 characters of slack before
+      // the SRS query tools were named here, so a correct update to this very section reddened it,
+      // and on a shorter section it reaches into the next one and finds these names there.
+      const rest = readme.slice(start + anchor.length);
+      const nextHeading = rest.search(/\n### /);
+      const section = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
       expect(section, `${anchor} must name the argument`).toContain("workspaceRoot");
       expect(section, `${anchor} must name the workflow_* family as an acceptor`).toMatch(/workflow_\*/);
       expect(section, `${anchor} must name the orchestrate_* family as an acceptor`).toMatch(/orchestrate_\*/);

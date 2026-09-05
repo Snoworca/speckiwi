@@ -55,8 +55,9 @@ async function workspace(deps: McpDependencies, context?: McpCallContext) {
 }
 
 /**
- * The root one read answers from. `context` is absent for every SRS-facing caller, so passing it is
- * what opts a tool into the per-call root — the helper never reads `input`. @req REL-MCP-005 AC-3
+ * The root one read answers from. Like {@link workspace}, it takes the per-call root from `context`
+ * rather than from `input`, so which tools may name a checkout stays a registration fact: a caller
+ * that hands it no `context` is one this gate holds to the startup root. @req REL-MCP-005 AC-3
  */
 async function projectRoot(deps: McpDependencies, context?: McpCallContext) {
   return resolveProjectRoot(process.cwd(), context?.root ?? deps.root);
@@ -303,7 +304,10 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
         {
           workspaceRoot: parsed.root.root,
           // @req REL-MCP-005 AC-2 — the reported source is the one that decided this call's root,
-          // never a constant; `mcp_workspace_info` is SRS-facing, so `context` is always the startup one.
+          // never a constant; this tool declares no workspace scope, so `context` is always the
+          // startup one. @req FR-MCP-064 AC-5 — a tool whose own answer is which root replied cannot
+          // take that root as an argument without making the comparison FR-FLOW-042 requires read
+          // one source twice.
           rootSource: context?.rootSource ?? deps.rootSource ?? "server-cwd-discovery",
           indexPath: "docs/spec/00.index.md",
           activeTarget: parsed.index.activeTarget

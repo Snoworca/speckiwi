@@ -513,11 +513,12 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     // @req REL-MCP-005 AC-8 — the argument is useless to an agent that is never told which families
     // take it, and dangerous to one that assumes the answer came from the root it meant.
     "Per-call workspace root:",
-    "1. The MCP server resolves its root from its own process working directory, and SRS is read and written only there.",
+    "1. The MCP server resolves its root from its own process working directory, and SRS is written only there.",
     "2. The `workflow_*` family accepts an optional absolute `workspaceRoot` on every tool, and the `orchestrate_*` family accepts it on every tool except `orchestrate_replay_apply` and `orchestrate_preflight`.",
-    "3. Every SRS-facing tool refuses `workspaceRoot` fail-closed. Refusal is the default, so a tool not named here refuses it.",
-    "4. An accepted `workspaceRoot` MUST be an absolute path to an existing git top level that is a worktree of the startup root's repository; a path argument landing under `docs/spec` is refused even on a tool that accepts the root.",
-    "5. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, and `server-cwd-discovery` or `auto-init` otherwise.",
+    "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges` and `list_steps` — each reading the named checkout and writing nothing. They are refused when that checkout holds no `docs/spec/00.index.md`.",
+    "4. Every tool that writes under `docs/spec` or allocates a Requirement ID refuses `workspaceRoot` fail-closed, and so do `mcp_workspace_info`, `get_next_work_order` and `preview_legacy_workflow_migration`. Refusal is the default, so a tool not named here refuses it.",
+    "5. An accepted `workspaceRoot` MUST be an absolute path to an existing git top level that is a worktree of the startup root's repository; a path argument landing under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path — which is what lets an SRS query filter on a `docs/spec` reference.",
+    "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, and `server-cwd-discovery` or `auto-init` otherwise.",
     "",
     "Current work status workflow:",
     "1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
