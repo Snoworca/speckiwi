@@ -16,10 +16,34 @@ import type {
  *
  * @req FR-NODE-102 — proven across operating-system processes and linked worktrees.
  * @req FR-NODE-131 — keyed on the git common dir, never an individual worktree root.
+ * @req FR-NODE-207 — held until the lease it wrote expires, not until its writer's process stops.
  */
 
 const execFileAsync = promisify(execFile);
 const RUN_LOCK_FENCE_NAMESPACE = "speckiwi-orchestrator-run";
+
+/**
+ * How long a run lease stands once taken. Twelve hours: half a day.
+ *
+ * The number is a policy, not a measurement, and the reasoning is the asymmetry between the two ways
+ * of being wrong rather than any observed run duration — those were not measured, and FR-NODE-207
+ * AC-7 records that gap rather than papering over it.
+ *
+ * It has to cover a whole run in one stamp, because nothing renews it: `renew` below has no caller
+ * in `src`, `orchestrate run` offers only lock, unlock, status and abort, and renewal is keyed on a
+ * capability held in the acquiring process's memory — which a later CLI invocation does not have.
+ * `kiwi-orchestrator` takes the lock once at preflight and drops it when the run ends, and in
+ * between no process owns it.
+ *
+ * Too short is silent and unbounded: a live run's lease lapses mid-run, a second run takes the same
+ * repository, and neither is told — the defect this replaced. Too long is visible and costs one
+ * command: `orchestrate run status` names the holder and `orchestrate run unlock` removes another
+ * process's lease outright (FR-NODE-197 AC-4/AC-7). So the error is taken on the long side, and
+ * half a day is where that stops — long enough to outlast a run somebody starts and stays with,
+ * short enough that a lease nobody comes back to is gone before the next day's work.
+ * @req FR-NODE-207
+ */
+const RUN_LOCK_LEASE_MS = 12 * 60 * 60 * 1000;
 
 export const RUN_LOCK_GATE = "orchestrator-run-lock-held";
 
@@ -118,7 +142,8 @@ export async function acquire(input: AcquireRunLockInput): Promise<RunLock> {
   const result = await locks.acquireExclusiveLock({
     fenceNamespace: RUN_LOCK_FENCE_NAMESPACE,
     lockPath,
-    owner
+    owner,
+    leaseMs: RUN_LOCK_LEASE_MS
   });
   if (!result.ok) throw new RunLockHeldError(lockPath, result.holder?.owner ?? null);
   capabilities.set(result.capability.token, result.capability);

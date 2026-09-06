@@ -16,7 +16,7 @@ The SDS (Software Design Spec) is the lightweight natural-language contract a td
 
 - The SDS lives at `docs/spec/steps/<task>/design.md`, beside the step's `intent.md`.
 - One step, one SDS. A step whose SDS would need to be split has outgrown the step — split the task instead.
-- `intent.md` states **what/why**; `design.md` states **how**. For small tasks a single combined `intent.md` is acceptable only when the trivial-change skip-gate (§6) applies.
+- `intent.md` states **what/why**; `design.md` states **how**. For small tasks a single combined `intent.md` is acceptable only when the trivial-change skip-gate (§6) applies, and only with the skip record that gate reads.
 
 ## 3. Required Structure
 
@@ -53,7 +53,30 @@ draft ──(approval, size-scoped)──> agreed ──(design change needed)�
 - **draft → agreed** is size-scoped: a small task whose Architecture Decisions section carries no substantive decision is **self-agreed** (the agent proceeds and the SDS is reviewed post-hoc); a task with substantive architecture decisions requires user approval before red tests are written.
 - **agreed** gates implementation: no test or implementation code before the SDS is agreed (or self-agreed).
 - **superseded**: a design change replaces the SDS with a new one; the superseding SDS MUST state which SDS-ACs changed and how existing red tests are affected.
-- **Trivial-change skip-gate**: a change with no trade-off (typo, comment, mechanical rename, obvious one-line fix) may skip the SDS entirely and record an EARS stub (one to three `SDS-AC` statements) in `intent.md` instead. The skip decision is the first checklist item of the tdd cycle — skipping MUST be an explicit decision, never a default.
+- **Trivial-change skip-gate**: a change with no trade-off (typo, comment, mechanical rename, obvious one-line fix) may skip the SDS entirely, provided the skip is **recorded** in `intent.md` under a `## SDS Skip` heading. `speckiwi step validate` reads that record and refuses an unrecorded skip with `SDS-E054`, which is an error rather than an advisory — so an EARS stub on its own does not clear the gate. The skip decision is the first checklist item of the tdd cycle: skipping MUST be an explicit decision, never a default.
+
+The `## SDS Skip` section of `intent.md` MUST carry all three of:
+
+1. a `Decision` row whose value is `skipped`. Backticks are stripped and case is ignored; any other value is refused.
+2. a `Reason` row whose value is neither empty nor a bare `-`.
+3. at least one EARS stub line carrying an `SDS-AC-n` id and naming both `WHEN` and `SHALL` — one to three `SDS-AC` statements, in the form §3 requires of the Acceptance Contracts.
+
+An absent `intent.md`, an absent section, an absent or wrongly valued row, and an absent EARS stub are each refused by `SDS-E054`, and each refusal names the part that failed. Copy this record:
+
+```markdown
+# Intent: <task>
+
+<what this change does, and why it carries no trade-off>
+
+## SDS Skip
+
+| Field | Value |
+| --- | --- |
+| Decision | skipped |
+| Reason | Renames one private helper; no interface and no behaviour change. |
+
+- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.
+```
 
 ## 7. Relation to Tests and the Post-hoc SRS
 

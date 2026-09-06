@@ -388,7 +388,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement, or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, the text is capped at 500 characters, and an appended note is rendered as a dated bullet, so carrying your own date doubles it. Writes the requirement block."), "req-scoped", "appendSectionNote", [
+  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement, or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. Writes the requirement block."), "req-scoped", "appendSectionNote", [
     opt("--section <section>", "section"),
     opt("--text <text>", "text"),
     opt("--mode <mode>", "mode"),

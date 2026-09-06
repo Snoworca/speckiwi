@@ -105,6 +105,14 @@ describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { time
   it("AC-4: reclaims a sentinel whose pid is dead and refuses one whose pid is live", async () => {
     const dead = await repository("e32-dead-pid");
     const stalePath = await writeSentinel(dead.commonDir, { pid: DEAD_PID, owner: "crashed-run" });
+    // The scope this case measures, asserted rather than assumed: a record that names no lease. A
+    // record that names one is decided by that expiry instead and FR-NODE-207 owns the rule, so a
+    // fixture that quietly started stamping a lease would leave this criterion green while measuring
+    // something else entirely.
+    expect(
+      JSON.parse(await readFile(stalePath, "utf8")) as Record<string, unknown>,
+      "this criterion governs sentinels that carry no lease"
+    ).not.toHaveProperty("lease_expires_at");
     const old = new Date("2000-01-01T00:00:00.000Z");
     await utimes(stalePath, old, old);
     const reclaimed = await acquireTracked(dead.commonDir, "successor-run");

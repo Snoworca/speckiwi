@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { addRequirement } from "../../../src/core/mutation/add-requirement.js";
 import { updateStatus } from "../../../src/core/mutation/update-status.js";
@@ -51,6 +51,20 @@ function okMutationResult(written = false) {
     diagnosticsSummary: { errors: 0, warnings: 0, byCode: {} }
   };
 }
+
+/**
+ * @req REL-NODE-008 — the per-test budget is raised off the 5000ms default, which is itself a fixed
+ * wall-clock number deciding this file's colour.
+ *
+ * Every case here copies a fixture workspace, then acquires a lock that costs twenty filesystem
+ * round trips and a whole-workspace parse. Measured under forty concurrent loaders: four of the
+ * seven cases were reported as `Test timed out in 5000ms`, including the two FR-NODE-027 cases that
+ * assert nothing about concurrency at all. Raising the ceiling removes no assertion — every check in
+ * the file still runs and still has to pass; what it removes is the machine's load deciding whether
+ * they get to run. A case that genuinely hangs is still caught, by its own labelled `waitFor` below
+ * and by this ceiling behind it.
+ */
+vi.setConfig({ testTimeout: 30_000 });
 
 async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -159,7 +173,11 @@ describe("SRS mutation lock and status cache", () => {
       })
     );
 
-    await waitFor(firstEntry, 1_000, "lock winner entry");
+    // 10s rather than 1s, matching the case below. @req REL-NODE-008 — this wait was already the
+    // right shape, but its ceiling was a wall-clock number small enough to decide the colour: with
+    // five attempts contending under load, `lock winner entry timed out after 1000ms` was the most
+    // frequent failure in the file. The ceiling is a hang detector, not a performance assertion.
+    await waitFor(firstEntry, 10_000, "lock winner entry");
     expect(entered).toBe(1);
     finishWinner();
     const results = await Promise.all(attempts);
@@ -179,31 +197,58 @@ describe("SRS mutation lock and status cache", () => {
     });
   });
 
+  /**
+   * @req REL-NODE-008 — this case waits for each holder to say it is inside the critical section.
+   *
+   * It used to sleep 30ms in each of those two places. Under forty concurrent loaders the first
+   * holder needed 32-47ms to get there in eleven of twelve runs and the flag below was false in all
+   * twelve, because most of the acquisition budget is spent outside the lock: the guard is returned
+   * at about 40ms and `mutate()` is not entered until about 82ms, the difference being the status
+   * cache refresh `withSrsMutationLock` awaits first. Waiting on the entry signal also closes the
+   * other way the sleep could lose - being inside `mutate()` means the guard is already returned, so
+   * the second acquirer cannot be refused for a guard conflict at that moment.
+   *
+   * `ttlMs: 5` stays. The subject here is the ownership check on the release path; the stale reclaim
+   * is what produces that situation, so raising the lease would remove the situation rather than
+   * stabilise it.
+   */
   it("REL-NODE-005 does not let an expired holder release a newer recovered lock", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     let finishFirst!: () => void;
     let finishSecond!: () => void;
     let secondEntered = false;
+    let signalFirstEntry!: () => void;
+    let signalSecondEntry!: () => void;
+    const firstEntry = new Promise<void>((resolve) => {
+      signalFirstEntry = resolve;
+    });
+    const secondEntry = new Promise<void>((resolve) => {
+      signalSecondEntry = resolve;
+    });
 
     const first = withSrsMutationLock(root, { operation: "slow-first", ttlMs: 5 }, async () => {
-      await new Promise<void>((resolve) => {
+      const held = new Promise<void>((resolve) => {
         finishFirst = resolve;
       });
+      signalFirstEntry();
+      await held;
       return okMutationResult(true);
     });
 
-    await delay(30);
+    await waitFor(firstEntry, 10_000, "expired holder critical-section entry");
 
     const second = withSrsMutationLock(root, { operation: "second-after-stale", ttlMs: 60_000 }, async () => {
-      secondEntered = true;
-      await new Promise<void>((resolve) => {
+      const held = new Promise<void>((resolve) => {
         finishSecond = resolve;
       });
+      secondEntered = true;
+      signalSecondEntry();
+      await held;
       return okMutationResult(true);
     });
 
-    await delay(30);
+    await waitFor(secondEntry, 10_000, "stale-reclaiming holder critical-section entry");
     expect(secondEntered).toBe(true);
 
     finishFirst();

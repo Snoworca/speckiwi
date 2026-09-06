@@ -294,7 +294,11 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   append_section_note: {
     id: z.string(),
     section: z.string(),
-    text: z.string().max(500),
+    // No `.max(500)` here. The 500-unit bound applies to `append` only and lives in the mutation
+    // core, which is the single place that knows the mode; a second copy of it on this shape
+    // rejected a `replace` before the core could allow it, so the core-side fix alone left every
+    // MCP caller blocked. @req FR-NODE-202 AC-2
+    text: z.string(),
     mode: z.enum(["append", "replace"]).optional(),
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()

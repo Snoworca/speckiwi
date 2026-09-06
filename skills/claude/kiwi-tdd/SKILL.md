@@ -42,7 +42,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 
 표를 선언하기 전까지 본 스킬은 `auto-option.md` §1 의 **안전 기본값**에 따라 `--auto` 가 **비활성**이었다 — 실패가 아니라 조용한 무시였으므로, 무인 실행이 자기 게이트 앞에서 멈춰도 그것이 정지인지 정상 중단인지 구분되지 않았다. 아래 두 문단이 그 구분을 만든다.
 
-**`--auto` 가 해결할 수 없는 것**: 위 3개 게이트. 선언 여부와 무관하게 항상 HALT 하며, 결정 위원회로 넘기지 않는다.
+**`--auto` 가 해결할 수 없는 것**: 위 게이트들. 선언 여부와 무관하게 항상 HALT 하며, 결정 위원회로 넘기지 않는다.
 
 **`--auto` 가 해결할 수 있는 것**: `sds-architecture-decision-approval` — §2.3 체크리스트 6 의 Architecture Decisions 사용자 승인은 severity `business-decision` 이므로 `--auto` 에서 결정 위원회의 **자동 결정** 대상이다 (confidence < 0.7 이면 critical 로 격상). critical 로 선언하지 않는 이유: 실질 결정이 있는 모든 SDS 가 무인 실행에서 죽는 정지점이 되기 때문이다.
 

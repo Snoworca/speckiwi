@@ -14,6 +14,17 @@ interface SentinelRecord {
   readonly owner: string;
   readonly owner_identity_sha256?: string;
   readonly acquired_at: string;
+  /**
+   * When this lease stops being honoured, written by the holder rather than inferred by a reader.
+   *
+   * Absent means the record makes no claim about its own lifetime, and a reader falls back to pid
+   * liveness — the only rule this format had. The field is optional precisely so that stays true:
+   * the workflow artifact lock writes no lease and must keep its old behaviour, and a sentinel
+   * written by a build that predates this field is a record whose writer never agreed to an expiry,
+   * so inventing one for it would be a reader applying its own policy to somebody else's record.
+   * @req FR-NODE-207
+   */
+  readonly lease_expires_at?: string;
 }
 
 interface KernelFence {
@@ -71,6 +82,12 @@ export interface AcquireExclusiveLockInput {
   readonly fenceNamespace: string;
   readonly lockPath: string;
   readonly owner: string;
+  /**
+   * How long the published lease is honoured for. Omitted, the sentinel carries no expiry and is
+   * governed by pid liveness, which is what every caller got before this option existed.
+   * @req FR-NODE-207
+   */
+  readonly leaseMs?: number;
 }
 
 const activeCapabilities = new Map<string, ActiveCapability>();
@@ -110,6 +127,13 @@ function validRecord(value: unknown): value is SentinelRecord {
     typeof record.owner === "string" && record.owner.length > 0 &&
     (record.owner_identity_sha256 === undefined ||
       (typeof record.owner_identity_sha256 === "string" && /^[a-f0-9]{64}$/.test(record.owner_identity_sha256))) &&
+    // An unparseable expiry fails validity rather than being honoured, and the torn-sentinel grace
+    // decides instead. Honouring it would make the lock permanent, not lenient: `Date.parse` answers
+    // NaN and every comparison against NaN is false, so `isReclaimable` below would answer "held"
+    // for as long as the file exists — measured, with a dead pid and a sentinel a minute old.
+    // @req FR-NODE-207
+    (record.lease_expires_at === undefined ||
+      (typeof record.lease_expires_at === "string" && Number.isFinite(Date.parse(record.lease_expires_at)))) &&
     typeof record.acquired_at === "string" && Number.isFinite(Date.parse(record.acquired_at));
 }
 
@@ -305,8 +329,22 @@ async function retainFailedCleanupWhileOwned(
   }
 }
 
+/**
+ * A lease that names its own expiry is held until that instant, and nothing else is asked.
+ *
+ * Not the writer's host, and not whether the writer's process is still running. Both questions were
+ * wrong for a lock a short-lived process takes on behalf of a long-running run: a CLI invocation
+ * writes the sentinel and exits, so pid liveness answered "free" the moment the run began, and two
+ * runs took one repository 0.536 s apart with both exiting 0. Host is skipped for the same reason it
+ * mattered before — liveness cannot be probed across hosts, but an expiry needs no probe: it is an
+ * absolute instant the writer published, and honouring it is what keeps a foreign-host lease from
+ * being permanent.
+ *
+ * A record carrying no expiry keeps exactly the old rule. @req FR-NODE-207
+ */
 function isReclaimable(record: SentinelRecord | null, ageMs: number): boolean {
   if (!record) return ageMs >= TORN_SENTINEL_GRACE_MS;
+  if (record.lease_expires_at !== undefined) return Date.now() >= Date.parse(record.lease_expires_at);
   if (record.host === hostname()) return !processIsAlive(record.pid);
   return false;
 }
@@ -358,8 +396,20 @@ async function acquireRecoveryGuard(
   record: SentinelRecord
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; holder: ExclusiveLockHolder | null }> {
   const guardPath = `${lockPath}.acquire`;
+  // The guard lives for one acquisition call, not for the run the main record covers, and the
+  // process making that call is alive throughout it. So it keeps pid liveness and inherits no
+  // lease: a crash midway through an acquisition would otherwise leave a guard that blocks every
+  // later acquire for the whole lease, and the residue this code already treats as self-healing
+  // would stop being so. @req FR-NODE-207
+  // Listed field by field rather than spread-and-override, so a field added to the record later
+  // does not reach the guard by default: a required one is a compile error here, and an optional
+  // one is simply left off — which is the safe direction for anything shaped like a lease.
   const guard: SentinelRecord = {
-    ...record,
+    version: record.version,
+    token: record.token,
+    pid: record.pid,
+    host: record.host,
+    acquired_at: record.acquired_at,
     owner: `${record.owner}:acquire`,
     owner_identity_sha256: ownerIdentity(`${record.owner}:acquire`)
   };
@@ -393,6 +443,12 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
   if (typeof input?.fenceNamespace !== "string" || input.fenceNamespace.trim().length === 0) {
     throw new Error("Acquiring an exclusive lock requires a fence namespace");
   }
+  // Refused at the door rather than stamped onto disk: a zero or negative lease publishes a sentinel
+  // that is already expired, which reads as a lock nobody holds. @req FR-NODE-207
+  const leaseMs = input.leaseMs;
+  if (leaseMs !== undefined && (typeof leaseMs !== "number" || !Number.isFinite(leaseMs) || leaseMs <= 0)) {
+    throw new Error("An exclusive lock lease must be a positive number of milliseconds");
+  }
 
   const lockPath = path.resolve(input.lockPath);
   await mkdir(path.dirname(lockPath), { recursive: true });
@@ -405,6 +461,7 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
   let acquired = false;
   try {
     const token = randomUUID();
+    const acquiredAt = new Date();
     const record: SentinelRecord = {
       version: 1,
       token,
@@ -412,7 +469,10 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
       host: hostname(),
       owner,
       owner_identity_sha256: ownerIdentity(owner),
-      acquired_at: new Date().toISOString()
+      acquired_at: acquiredAt.toISOString(),
+      ...(leaseMs === undefined
+        ? {}
+        : { lease_expires_at: new Date(acquiredAt.getTime() + leaseMs).toISOString() })
     };
     const cleanupTasks: Array<() => Promise<void>> = [];
     let releaseGuard: (() => Promise<void>) | null = null;
@@ -632,9 +692,20 @@ export async function renewExclusiveLock(capability: ExclusiveLockCapability): P
       throw error;
     }
     if (!validRecord(current) || current.token !== capability.token) return false;
+    // Renewing moves the expiry by as much as it moves the acquisition, so a renewed lease is the
+    // one the holder asked for all over again. Reading the length off the record rather than
+    // remembering it keeps the lease's terms where they are honoured — on disk — and leaves a
+    // record that never carried one still carrying none. @req FR-NODE-207
+    const renewedAt = new Date();
+    const leaseMs = current.lease_expires_at === undefined
+      ? undefined
+      : Date.parse(current.lease_expires_at) - Date.parse(current.acquired_at);
     await writeFile(capability.lockPath, serialize({
       ...current,
-      acquired_at: new Date().toISOString()
+      acquired_at: renewedAt.toISOString(),
+      ...(leaseMs === undefined
+        ? {}
+        : { lease_expires_at: new Date(renewedAt.getTime() + leaseMs).toISOString() })
     }), "utf8");
     return true;
   });

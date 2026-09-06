@@ -44,6 +44,20 @@ function validationTableRows(text: string): string[] {
   return text.split(/\r?\n/).filter((line) => /^\|\s*`SRS-[EW]\d+`\s*\|/.test(line));
 }
 
+/**
+ * The §32.1 section alone, bounded at the next heading.
+ *
+ * Bounded rather than sliced to the end of the document, because every claim below is about what
+ * THIS section says: an unbounded slice lets a phrase carried by some later section stand in for one
+ * this section dropped.
+ */
+function validationSection(text: string): string {
+  const start = text.indexOf("### 32.1 validate-spec");
+  expect(start, "the rules document no longer carries a §32.1 validate-spec section").toBeGreaterThanOrEqual(0);
+  const end = text.indexOf("### 32.2", start);
+  return end < 0 ? text.slice(start) : text.slice(start, end);
+}
+
 describe("FR-NODE-095 AC-1/AC-2 — the eleven codes are gone from both surfaces", () => {
   it("defines none of them in the diagnostic registry", () => {
     const registered = new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code));
@@ -102,25 +116,32 @@ describe("FR-NODE-095 AC-3 — the two emitted step codes are registered and exp
 
 describe("FR-NODE-095 AC-4 — the table says what it contains and where the rest goes", () => {
   it("states that the table lists every emittable code and only those", async () => {
-    const text = await rulesText();
-    const validation = text.slice(text.indexOf("### 32.1 validate-spec"));
+    const validation = validationSection(await rulesText());
 
     expect(validation).toContain("lists every code `validate-spec` can emit, and only those");
-    // The exclusivity claim was falsified by step validation's own advisory namespace, which is
-    // constructed outside the registry on purpose. The section has to name it as a second surface.
-    expect(validation).toContain("Step validation reports step-scoped advisories");
-    for (const code of ["SRS-W044", "SRS-W045", "STEP_DIRECT_CONFLICT", "SDS-W050", "STEP_PROMOTE_NO_EVIDENCE"]) {
+    // The exclusivity claim was falsified by step validation, which reports outside the registry on
+    // purpose. Each surface is pinned by the bullet it owns rather than by the sentence that opens
+    // it: the prose inside a bullet is rewritten whenever the runtime it describes changes, and a
+    // check that fails on that is measuring wording rather than content. Deleting either surface
+    // still fails here, which is what the sentence literal was standing in for.
+    expect(validation).toMatch(/^- Release readiness /m);
+    expect(validation).toMatch(/^- Step validation /m);
+    for (const code of ["SRS-W044", "SRS-W045", "STEP_DIRECT_CONFLICT", "SDS-W050", "SDS-E054", "STEP_PROMOTE_NO_EVIDENCE"]) {
       expect(validation, `the section names ${code}`).toContain(code);
     }
+    // Not all of what step validation reports is an advisory: SDS-E054 carries error severity and
+    // fails the step-validate exit code. A reader told "advisories" would take a refusal that stops
+    // the command for a note, so the section has to say which one is not one.
+    expect(validation, "the section gives SDS-E054 its error severity").toMatch(/`SDS-E054`[\s\S]{0,200}?`error` severity/);
+    expect(validation, "the section says SDS-E054 turns the exit code").toMatch(/`SDS-E054`[\s\S]{0,400}?exit code/);
     // The registered pair and the unregistered rest must be distinguished, or a reader cannot tell
     // which codes `explain` will resolve.
-    expect(validation).toContain("Two of them are `SRS-` codes and so are registered");
+    expect(validation).toContain("are `SRS-` codes and so are registered");
     expect(validation).toContain("The rest live in namespaces this table does not cover");
   });
 
   it("names the typed release-readiness fields as the findings reported outside the table", async () => {
-    const text = await rulesText();
-    const validation = text.slice(text.indexOf("### 32.1 validate-spec"));
+    const validation = validationSection(await rulesText());
 
     for (const field of ["acCoverageGaps", "missingEvidenceReferences", "commandEvidencePolicyViolations", "brokenTraceLinks"]) {
       expect(validation, `the section names ${field}`).toContain(field);

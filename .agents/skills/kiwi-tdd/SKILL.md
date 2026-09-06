@@ -45,7 +45,7 @@ Until this table was declared, `auto-option.md` §1's **safe default** left `--a
 this skill — a silent ignore rather than a failure, so an unattended run stopping at one of its own
 gates was indistinguishable from a normal halt. The two paragraphs below draw that distinction.
 
-**What `--auto` cannot resolve**: the three gates above. They halt regardless of `--auto` and are
+**What `--auto` cannot resolve**: the gates above. They halt regardless of `--auto` and are
 never handed to the decision committee.
 
 **What `--auto` can resolve**: `sds-architecture-decision-approval` — the Architecture-Decisions user approval of §2.3 checklist item 6 carries severity `business-decision`, so under `--auto` the decision committee resolves it automatically (escalated to critical below confidence 0.7). It is deliberately not critical: making it so would turn every SDS carrying a substantive decision into an unattended dead stop.

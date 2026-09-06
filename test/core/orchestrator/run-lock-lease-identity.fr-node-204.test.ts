@@ -136,8 +136,10 @@ function acquireInDeadProcess(commonDir: string, owner: string): Promise<{ pid: 
     child.stdout.on("data", (chunk: string) => { out += chunk; });
     child.stderr.on("data", (chunk: string) => { err += chunk; });
     child.on("error", reject);
-    // `close`, not `exit`: the parent must not acquire until the child's pid is gone, because the
-    // reclamation this test is about is decided by that pid failing a liveness probe.
+    // `close`, not `exit`: the parent must not read the sentinel until the child has finished
+    // writing it and its streams are drained. That the child is gone no longer makes its lease
+    // reclaimable — `expireLease` below does — but the lease being one an exited process wrote is
+    // still the situation these cases are about.
     child.on("close", (code) => {
       if (code !== 0 || out.trim().length === 0) {
         reject(new Error(`the acquiring child failed (code ${String(code)}): ${out}${err}`));
@@ -146,6 +148,30 @@ function acquireInDeadProcess(commonDir: string, owner: string): Promise<{ pid: 
       resolve(JSON.parse(out.trim()) as { pid: number; holder: Record<string, unknown> | null });
     });
   });
+}
+
+/**
+ * Advances past the lease the child published, leaving everything that names it untouched.
+ *
+ * A writer's process exiting no longer makes its lease reclaimable: FR-NODE-207 replaced the pid
+ * liveness probe with the expiry the writer stamps, precisely because a CLI invocation writes the
+ * sentinel and exits while the run it stands for is still going. So the reclaim path these cases
+ * need is reached by moving the recorded expiry into the past rather than by waiting out a lease
+ * measured in hours. Owner, pid, host and acquired_at stay exactly what the child wrote, so what the
+ * discrimination below weighs is still the lease that child took.
+ */
+async function expireLease(commonDir: string): Promise<void> {
+  const lockPath = runLockPath(commonDir);
+  const record = JSON.parse(await readFile(lockPath, "utf8")) as Record<string, unknown>;
+  expect(
+    typeof record.lease_expires_at,
+    `the acquisition stamped no lease, so there is nothing to advance past: ${JSON.stringify(record)}`
+  ).toBe("string");
+  await writeFile(
+    lockPath,
+    `${JSON.stringify({ ...record, lease_expires_at: new Date(Date.now() - 60_000).toISOString() })}\n`,
+    "utf8"
+  );
 }
 
 /** A sentinel whose bytes are not a record any reader can name a holder from. */
@@ -199,6 +225,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     const target = await repository("lease-identity-reclaim");
     const first = await acquireInDeadProcess(target.commonDir, "crashed-run");
     expect(first.holder, "the child's acquisition named no holder").not.toBeNull();
+    await expireLease(target.commonDir);
 
     // The child is gone, so this acquisition takes the reclaim-then-republish path rather than the
     // publish-onto-nothing path. Both must name what they published.
@@ -220,6 +247,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     const beforeReclaim = (await readHolder(target.commonDir)) as unknown as Record<string, unknown> | null;
     expect(isOwnLease(runA.holder, beforeReclaim), "A's own lease is not recognised as A's").toBe(true);
 
+    await expireLease(target.commonDir);
     const runB = await acquire({ commonDir: target.commonDir, owner: "run-b" });
     held.push(runB);
     const now = (await readHolder(target.commonDir)) as unknown as Record<string, unknown> | null;
@@ -266,6 +294,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
   it("AC-3: owner alone cannot separate the two runs, and neither the CLI nor the skill supplies one", async () => {
     const target = await repository("lease-identity-owner");
     const first = await acquireInDeadProcess(target.commonDir, "kiwi-orchestrator");
+    await expireLease(target.commonDir);
     const second = await acquire({ commonDir: target.commonDir, owner: "kiwi-orchestrator" });
     held.push(second);
 

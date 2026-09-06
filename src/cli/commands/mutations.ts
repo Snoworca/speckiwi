@@ -279,8 +279,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("append-note")
     .argument("<id>")
     .requiredOption("--section <section>", "rationale | research | implementation_notes")
-    .requiredOption("--text <text>", "note text (max 500 UTF-16 code units)")
-    .option("--mode <mode>", "append (default) or replace")
+    .requiredOption("--text <text>", "append: one note, max 500 UTF-16 code units; replace: the whole section body, uncapped")
+    .option("--mode <mode>", "append (default) or replace; any other value is refused")
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
@@ -289,6 +289,9 @@ export function registerMutationCommands(command: Command, context: CliContext):
         id,
         section: options.section,
         text: options.text,
+        // The assertion is a claim about the type, not a check: `--mode` is free text here, unlike
+        // the MCP enum. appendSectionNote rejects an unrecognised value rather than falling through
+        // to `replace`, which is what makes passing it on safe. @req FR-NODE-202 AC-7
         ...(typeof options.mode === "string" ? { mode: options.mode as "append" | "replace" } : {}),
         ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
