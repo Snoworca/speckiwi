@@ -816,6 +816,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v3.0.0",
     remediation:
       "Name the constant instead of its value, or state the value in force. A criterion that spells out a value keeps saying it after the constant moves, and stays checked while becoming false."
+  },
+  {
+    code: "SRS-W074",
+    severity: "warning",
+    title: "Trace link path missing",
+    messageTemplate: "Trace link path is missing: {reference}",
+    sourceRule: "FR-NODE-206",
+    since: "v3.1.0",
+    remediation:
+      "Point the trace link at a path the repository holds, or remove the row. The path is resolved from the workspace root and never by basename, so a designation that names a directory is judged as written."
   }
 ];
 

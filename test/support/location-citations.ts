@@ -35,7 +35,7 @@ const CITATION = /[A-Za-z0-9_.@/-]+\.(?:[cm]?ts|tsx|js|mjs|md|json):\d+(?:-\d+)?
  * A file-level or region-level form would let a file exempt itself by accident, or let an
  * unterminated region swallow every line after it.
  */
-const EXEMPTION = /@cite-lint:\s*ignore\b/;
+export const EXEMPTION = /@cite-lint:\s*ignore\b/;
 
 export function extractLocationCitations(text: string, file: string): LocationCitation[] {
   const found: LocationCitation[] = [];

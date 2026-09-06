@@ -1719,6 +1719,7 @@ Validation items:
 | `SRS-W071` | warning | Requirement heading outside a Requirements section |
 | `SRS-W072` | warning | Numbered document shares a leading number with a scope document |
 | `SRS-W073` | warning | Requirement text quotes a stale value of a shipped constant |
+| `SRS-W074` | warning | Trace link path missing |
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 

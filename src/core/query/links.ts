@@ -27,6 +27,36 @@ function markdownLinks(value: string): string[] {
   return [...value.matchAll(/\[[^\]]+]\(([^)]+)\)/g)].map((match) => match[1] ?? "");
 }
 
+/** A trailing line designation, in either the dash-range or the colon-column spelling. */
+const LINE_SUFFIX = /:\d+(?:[-:]\d+)?$/;
+/** A reference that names a file: one token, an extension, no whitespace. */
+const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
+
+/**
+ * FR-NODE-206 — the files a Trace Link of a type other than Requirement names.
+ *
+ * Those rows went unread by THIS checker whatever they said, which is how a source edit could move a
+ * line out from under a designation with nothing reddening. They were not unread altogether: the
+ * `traceReference` filter keys on the cell whole, suffix and all, so a suffixed row answered its own
+ * exact spelling and nothing else — dropping the suffix put 73 requirements within reach of the path
+ * they always named, and cost no row the reference it had. The reference field is not always a path:
+ * it also holds a task id, a requirement id and a sentence, so a candidate has to look like a file
+ * before it is resolved as one — an extension is what separates `read.ts` from `T-PH001-02`.
+ *
+ * The line suffix goes before the path does, following what release readiness does with the
+ * Verification Evidence reference — a different field, so a precedent rather than a second reader of
+ * this one — because what this reports is whether the path resolves and not whether the line still
+ * holds what the row describes. Resolution is exact from the workspace root and never by basename:
+ * falling back to a basename search silently resolved twenty designations at a path no branch has
+ * ever held onto a different file and scored them fresh.
+ */
+function referencedPaths(reference: string): string[] {
+  return reference
+    .split(";")
+    .map((part) => part.trim().replace(/#.*$/, "").replace(LINE_SUFFIX, ""))
+    .filter((part) => REPOSITORY_PATH.test(part));
+}
+
 export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckResult> {
   const ids = new Set(workspace.records.map((record) => record.id));
   const broken: LinkCheckResult["broken"] = [];
@@ -53,6 +83,18 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
         checked += 1;
         if (!ids.has(trace.reference)) {
           broken.push({ requirementId: record.id, reference: trace.reference, reason: "requirement missing", code: "SRS-E012" });
+        }
+        continue;
+      }
+      for (const referenced of referencedPaths(trace.reference)) {
+        checked += 1;
+        if (!(await exists(path.resolve(workspace.root.root, referenced)))) {
+          broken.push({
+            requirementId: record.id,
+            reference: trace.reference,
+            reason: `${trace.type} trace path missing: ${referenced}`,
+            code: "SRS-W074"
+          });
         }
       }
     }
