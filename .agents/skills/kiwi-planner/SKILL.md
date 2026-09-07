@@ -210,7 +210,7 @@ Codex clarification gate 4옵션:
   - `eval_iter{N}.json` (검증 서브에이전트 결과)
   - `improvement_iter{N}.json`
   - `mcp_call_log.jsonl`
-  - `rejected_findings.log` / `preflight.json`
+  - `rejected_findings.log`
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자. `--plan-run-id <id>` 가 주어지면 도출하지 않고 그 값을 그대로 쓴다 — 재진입이 같은 계획 run 을 재사용하지 못하면 범위 없는 전면 재실행이 된다.
 
@@ -249,8 +249,6 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 판정 순서:
 1. MCP `get_active_target` 성공 → **PASS**
 2. MCP 실패 → **HALT** + 설치 가이드 출력 (kiwi-srs §3.0 메시지와 동일 양식). CLI `speckiwi --version` 은 진단/복구 안내에만 사용하고 PASS 대체 조건으로 삼지 않는다.
-
-기록: `preflight.json: { mcp, cli, halted }`.
 
 ### 3.1 TARGET 확정
 

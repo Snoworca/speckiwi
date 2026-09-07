@@ -30,9 +30,9 @@ routing summary is:
 |---|---|---|
 | `kiwi-srs` | `TASK_DONE` | `kiwi-srs-feasibility` |
 | `kiwi-srs-from-code` | `TASK_DONE` | `kiwi-srs-feasibility` |
-| `kiwi-srs-feasibility` | `TASK_DONE` | `kiwi-planner` |
-| `kiwi-planner` | `TASK_DONE` | `kiwi-pm` or `kiwi-coder` |
-| `kiwi-coder` | `TASK_DONE` | `kiwi-review-fix-loop` or `kiwi-commit-auto-push` |
+| `kiwi-srs-feasibility` | `TASK_DONE` | `kiwi-planner` when stability has reached `evolving`, otherwise `kiwi-srs-research` |
+| `kiwi-planner` | `TASK_DONE` | `kiwi-pm` |
+| `kiwi-coder` | `TASK_DONE` | `kiwi-review-fix-loop --close-reqs` |
 | `kiwi-pm` | `TASK_DONE` | `kiwi-review-fix-loop --close-reqs` |
 | `kiwi-review-fix-loop` | `TASK_DONE` | `kiwi-commit-auto-push` or none for PR mode |
 | `kiwi-hot-fix` | `TASK_DONE` | `kiwi-commit-auto-push` or `kiwi-pipeline` |

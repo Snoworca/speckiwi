@@ -186,7 +186,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 - **이슈 진입 발췌본**: 이슈에서 출발한 실행은 `docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 를 함께 쓴다. `issue-excerpt.md` 는 이슈 본문과 연구 결과에서 뽑아낸 요구 진술만 담고 연구 요약이나 목차를 담지 않는다 — 그렇게 되면 `kiwi-srs` 가 만든 요구가 연구 문서의 목차를 닮는다. 이 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 `kiwi-srs` 에 넘기고, 연구 보고서 `report.md` 는 `--research-doc` 자리에 따로 넘긴다.
 - **speckiwi mutation**: `append_section_note { id: REQ_ID, section: "research", text: ..., mode: "append" }` (다중 호출 시 mode 동일 유지)
 - **분석 로그**: `docs/analysis/kiwi-srs-research-{run-id}/`
-  - `preflight.json` / `triage.json` / `run-mode.json`
+  - `triage.json` / `run-mode.json`
   - `research-raw/` 디렉토리:
     - `code-research.json` (local-LLM max-profile A)
     - `external-research.json` (local-LLM max-profile B)

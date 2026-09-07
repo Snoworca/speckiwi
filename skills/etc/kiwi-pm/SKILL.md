@@ -19,6 +19,12 @@ PM 자체는 read-only orchestrator 에 가깝다 — Task 실행/TDD/회귀/MCP
 
 ---
 
+## Workflow 도구 정책
+
+pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |

@@ -1,4 +1,4 @@
-skills/claude/kiwi-review-fix-loop/SKILL.md
+skills/claude/kiwi-review-fix-loop/references/conditional-sections.md
 ---
 #### 6.6.2 MCP 호출 (§0.8 화이트리스트 3종)
 

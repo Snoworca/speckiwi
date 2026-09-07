@@ -508,7 +508,10 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "- Mark requirements as verified without evidence.",
     "- Introduce or invoke bulk-archive / bulk-finalize tooling that flips multiple requirements to `verified` or empties Active Target without per-requirement evidence and stability gate checks.",
     "",
-    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. If MCP is unavailable, use the `speckiwi` CLI.",
+    // @req FR-FLOW-179 AC-6 — this block is installed into a consumer's own instructions, so a
+    // blanket "if MCP is unavailable, use the CLI" shipped every consumer the opposite of what the
+    // bundled skills say three lines into their own banner. Reads stay; mutations do not.
+    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration and guides MCP recovery, and is not a normal replacement for an MCP mutation. Registering an unregistered target is the single exception, and the target workflow below names it. CLI reads remain available for lookup while MCP is being repaired.",
     "",
     // @req REL-MCP-005 AC-8 — the argument is useless to an agent that is never told which families
     // take it, and dangerous to one that assumes the answer came from the root it meant.
@@ -533,7 +536,7 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "2. If the target is not registered, use a supported target-registration mutation such as MCP `set_active_target` with creation support, or CLI `speckiwi set-active-target <target> --create` when that option is available.",
     "3. If the configured MCP/CLI cannot register the target, stop before target-scoped SRS changes and report the tool gap, unless the user explicitly authorizes a minimal SRS-MD patch.",
     "4. After target assignment, confirm the resolved Active Target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
-    "5. When the user provides a target goal, record it with MCP `set_target_goal`, or CLI `speckiwi set-target-goal <target> --goal <text>` if MCP is unavailable.",
+    "5. When the user provides a target goal, record it with MCP `set_target_goal`. Recording a goal is a mutation, so it waits for MCP rather than moving to the command line; if MCP cannot be repaired, report the gap instead.",
     "6. For later SRS creation, omit the target only when the tool supports Active Target defaulting; otherwise pass the confirmed Active Target explicitly.",
     "7. If the user provides an explicit different target for a requirement, the explicit target wins over Active Target.",
     "",

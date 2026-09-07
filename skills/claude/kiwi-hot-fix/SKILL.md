@@ -190,8 +190,6 @@ Phase 7 : 보고서 + pipeline.jsonl emit
 4. GitHub issue 입력 시 `gh --version` exit 0 확인 → PASS (없으면 WARN + 자연어 fallback)
 5. 위 1·2 모두 실패 → sync 위임 차단 + 사용자 보고 (`--no-sync` 강제)
 
-기록: `docs/analysis/kiwi-hot-fix-{run-id}/preflight.json: { mcp, cli, git, gh, halted }`
-
 ### 3.1 입력 자동 감지 (§0.G1 적용)
 
 알고리즘:

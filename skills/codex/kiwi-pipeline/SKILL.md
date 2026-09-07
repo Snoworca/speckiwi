@@ -296,7 +296,7 @@ tail -n "$N" "$PIPE_FILE"
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
 | kiwi-pm | TASK_DONE | `kiwi-review-fix-loop --close-reqs` |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` 또는 `kiwi-commit-auto-push` |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop --close-reqs` |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` 또는 종료 |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료, 사용자 결정) |

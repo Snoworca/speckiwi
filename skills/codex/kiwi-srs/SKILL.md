@@ -157,7 +157,6 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
   - `srs_delta.json` (MCP 호출 로그 + before/after)
   - `eval_iter{N}.json` / `improvement_iter{N}.json`
   - `qna_log.json` (--qna 시) / `rejected_findings.log`
-  - `preflight.json` (§3.0)
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{req-slug}`
 - `req-slug` = 새 요구사항의 최대 3-token kebab 요약 (메인 세션이 `intent.json.summary` 에서 결정적 생성)
@@ -244,8 +243,6 @@ MCP 가 부재하면 스킬을 즉시 차단하고 설치 가이드를 출력한
 
 설치 후 동일 명령으로 kiwi-srs 를 다시 실행하십시오.
 ```
-
-기록: `docs/analysis/kiwi-srs-{run-id}/preflight.json`: `{ mcp: false, cli: false, halted: true }`.
 
 dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 

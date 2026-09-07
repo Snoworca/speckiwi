@@ -17,6 +17,12 @@ description: "OpenCode/Hermes local-LLM variant for executing kiwi-planner tasks
 
 ---
 
+## Workflow 도구 정책
+
+pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -253,8 +259,6 @@ Phase 4 : 모든 Task 완료 후 (선택) 통합 테스트 + 최종 보고서
 1. MCP `get_active_target` 성공 → PASS
 2. CLI `speckiwi --version` exit 0 → 진단 로그만 기록 (`mode: "cli-diagnostic"`), PASS 아님
 3. MCP 실패 → HALT + 설치/연결 가이드 출력
-
-`.kiwi/sessions/{run-id}/preflight.json` 기록: `{mcp, cli, halted, node_version, git_repo}`.
 
 입력 인자에 `SPAWN_CONTEXT` 가 있으면 `state.spawn_context = "pm-child"` 로 저장. 부재 시 `state.spawn_context = "standalone"` 기본. (§8.1 통합 테스트 동의 게이트 분기에 사용)
 

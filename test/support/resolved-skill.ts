@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -125,6 +125,55 @@ export function readResolvedSkill(variant: string, skill: string): string {
     );
     if (moduleText === "") continue;
     parts.push(prefixHeadings(stripFrontmatter(moduleText), name));
+  }
+  return parts.join("\n\n");
+}
+
+/**
+ * The `references/*.md` basenames a skill body points at, in first-mention order, de-duplicated.
+ *
+ * A reference the body never names is not reachable from the entry that loaded the body, so it is
+ * not part of what the skill says — which is the whole property FR-FLOW-179 AC-1 moves sections
+ * under. Reading the pointer rather than the directory is what makes an orphaned reference
+ * observable instead of silently folded back in.
+ */
+export function referenceRefs(skillText: string): string[] {
+  const out: string[] = [];
+  const re = /references\/([A-Za-z0-9._-]+)\.md/g;
+  for (let m = re.exec(skillText); m; m = re.exec(skillText)) {
+    if (!out.includes(m[1] as string)) out.push(m[1] as string);
+  }
+  return out;
+}
+
+/** Every `references/*.md` basename a skill directory ships, whether or not the body points at it. */
+export function referenceFilesOnDisk(variant: string, skill: string): string[] {
+  const dir = path.join(REPO_ROOT, "skills", variant, skill, "references");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((entry) => entry.endsWith(".md"))
+    .map((entry) => entry.slice(0, -".md".length))
+    .sort();
+}
+
+/**
+ * A resolved skill plus the bodies of the `references/*.md` files its body points at.
+ *
+ * @req FR-FLOW-179 AC-2 — a check that reads a skill body loses whatever a progressive-disclosure
+ * move takes out of it, unless the reader follows the pointer the move leaves behind. This is that
+ * reader, and it is `readResolvedSkill` extended rather than a third one: the shared-module hop and
+ * the reference hop are the same question asked of two directories, and two readers for it drift.
+ */
+export function readSkillWithReferences(variant: string, skill: string): string {
+  const raw = readOrEmpty(path.join(REPO_ROOT, "skills", variant, skill, "SKILL.md"));
+  if (raw === "") return "";
+  const parts = [readResolvedSkill(variant, skill)];
+  for (const name of referenceRefs(raw)) {
+    const referenceText = readOrEmpty(
+      path.join(REPO_ROOT, "skills", variant, skill, "references", `${name}.md`)
+    );
+    if (referenceText === "") continue;
+    parts.push(prefixHeadings(stripFrontmatter(referenceText), name));
   }
   return parts.join("\n\n");
 }

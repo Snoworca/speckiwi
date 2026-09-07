@@ -31,6 +31,12 @@ plan.md·사이드카 최초 작성(authoring)은 `Write`/`Edit` 가 정상 경�
 
 ---
 
+## Workflow 도구 정책
+
+pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -208,7 +214,7 @@ User clarification gate 4옵션:
   - `eval_iter{N}.json` (local-LLM max-profile + local evaluator 결과 통합)
   - `improvement_iter{N}.json`
   - `mcp_call_log.jsonl`
-  - `rejected_findings.log` / `preflight.json`
+  - `rejected_findings.log`
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}`. ASCII kebab, ≤40자. `--plan-run-id <id>` 가 주어지면 도출하지 않고 그 값을 그대로 쓴다 — 재진입이 같은 계획 run 을 재사용하지 못하면 범위 없는 전면 재실행이 된다.
 
@@ -248,8 +254,6 @@ Phase 5  : Mutation + report (add_trace_link / add_verification_evidence, doculi
 1. MCP `get_active_target` 성공 → **PASS**
 2. CLI `speckiwi --version` exit 0 → 진단 로그만 기록 (`mode: "cli-diagnostic"`), PASS 아님
 3. MCP 실패 → **HALT** + 설치/연결 가이드 출력 (kiwi-srs §3.0 메시지와 동일 양식)
-
-기록: `preflight.json: { mcp, cli, halted }`.
 
 ### 3.1 TARGET 확정
 

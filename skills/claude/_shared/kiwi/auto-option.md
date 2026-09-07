@@ -15,7 +15,7 @@
 | (3) 자연어 신호 | 3 | "자동", "묻지 말고", "확인 없이", "auto" 등 §8 매핑 어휘 — 사용자에게 1회 확인 후 활성 |
 | (4) 부모 호출 전파 | 4 | §7 표에 따른 자동 전파 |
 
-활성 시 분석 로그 (`docs/analysis/{skill-run-id}/preflight.json` 등) 의 `mode_flags` 에 `"--auto"` 기록. `--auto --max` / `--auto --model` 시 함께 기록.
+활성 시 분석 로그의 `mode_flags` 에 `"--auto"` 기록. `--auto --max` / `--auto --model` 시 함께 기록.
 
 **비활성 조건 (silent skip)**:
 - `kiwi-srs-research --mode=subagent` 호출 (mutation 0건 — 게이트 자체 부재)

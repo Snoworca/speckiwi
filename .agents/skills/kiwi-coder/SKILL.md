@@ -263,8 +263,6 @@ Phase 4 : 모든 Task 완료 후 (선택) 통합 테스트 + 최종 보고서
 1. MCP `get_active_target` 성공 → PASS
 2. MCP 실패 → HALT. CLI `speckiwi --version` 은 설치/버전 진단과 MCP 복구 안내에만 사용하고 PASS 대체 조건으로 삼지 않는다.
 
-`.kiwi/sessions/{run-id}/preflight.json` 기록: `{mcp, cli, halted, node_version, git_repo}`.
-
 입력 인자에 `SPAWN_CONTEXT` 가 있으면 `state.spawn_context = "pm-child"` 로 저장. 부재 시 `state.spawn_context = "standalone"` 기본. (§8.1 통합 테스트 동의 게이트 분기에 사용)
 
 ### 3.0.1 lifecycle gate

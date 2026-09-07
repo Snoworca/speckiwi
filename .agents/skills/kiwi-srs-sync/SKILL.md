@@ -204,8 +204,6 @@ Phase 7 : MCP mutation 일괄 적용 + 보고서
 4. base/head ref 존재 확인: `git rev-parse --verify {ref}` 성공
 5. 위 필수 조건 중 하나라도 실패 → HALT
 
-기록: `docs/analysis/kiwi-srs-sync-{run-id}/preflight.json: { mcp, cli, git, base_ref, head_ref, halted }`.
-
 ### 3.1 TARGET 확정
 
 1. `TARGET` 인자 → 최우선

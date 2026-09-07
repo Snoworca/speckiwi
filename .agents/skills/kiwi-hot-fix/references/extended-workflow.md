@@ -6,7 +6,6 @@ Load this file only while executing `$kiwi-hot-fix`.
 
 Write under `docs/analysis/kiwi-hot-fix-{run-id}/`:
 
-- `preflight.json`
 - `input_inventory.json`
 - `root_cause.json`
 - `regression_test.json`

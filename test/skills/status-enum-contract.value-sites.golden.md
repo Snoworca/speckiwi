@@ -88,8 +88,8 @@ deprecated	-	kiwi-pm/SKILL.md	| 즉시 HALT — frozen=정책 위반, deprecated
 deprecated	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
-deprecated	-	kiwi-review-fix-loop/SKILL.md	불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible 에서 빠지지만 sc
-deprecated	-	kiwi-review-fix-loop/SKILL.md	증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. status 가 impleme
+deprecated	-	kiwi-review-fix-loop/references/conditional-sections.md	불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible 에서 빠지지만 sc
+deprecated	-	kiwi-review-fix-loop/references/conditional-sections.md	증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. status 가 impleme
 deprecated	-	kiwi-srs-feasibility/SKILL.md	, blocked} | 정책에 따라 stability → deprecated 또는 keep |
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- deprecated REQ 는 SRS 재작성 또는 scope 제거 검토
 deprecated	-	kiwi-srs-feasibility/SKILL.md	- stability = deprecated 제외
@@ -178,11 +178,11 @@ draft	-	kiwi-pm/SKILL.md	| --auto + lifecycle gate draft | 해당 REQ trace Task
 draft	-	kiwi-pm/SKILL.md	| 진행 불가 (정상) | draft | 차단 + interactive 3지선다 /
 draft	-	kiwi-pm/SKILL.md	가능 = evolving / stable 만. draft 는 interactive 3지선다 / --auto
 draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / f
-draft	-	kiwi-review-fix-loop/SKILL.md	FR-X-002", "reason": "stability=draft" },
 draft	-	kiwi-review-fix-loop/SKILL.md	lose-reqs + 영향 REQ 중 stability=draft 1건 이상 | 해당 REQ skip + 사용자 보고 (d
 draft	-	kiwi-review-fix-loop/SKILL.md	t 1건 이상 | 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
-draft	-	kiwi-review-fix-loop/SKILL.md	에서 산문 증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. stat
-draft	-	kiwi-review-fix-loop/SKILL.md	여기서 개수 불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible
+draft	-	kiwi-review-fix-loop/references/conditional-sections.md	FR-X-002", "reason": "stability=draft" },
+draft	-	kiwi-review-fix-loop/references/conditional-sections.md	에서 산문 증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. stat
+draft	-	kiwi-review-fix-loop/references/conditional-sections.md	여기서 개수 불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	"current_stability": "draft",
 draft	-	kiwi-srs-feasibility/SKILL.md	(default) | draft | ⚠️ stable→draft 등 강등 시 필수 |
@@ -236,6 +236,7 @@ draft	tdd-draft-phase	kiwi-coder/SKILL.md	sk-id}.json: 전체 task 실행 기록
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
+evolving	-	_shared/kiwi/pipeline-v1.md	er when stability has reached evolving, otherwise kiwi-srs-research
 evolving	-	kiwi-commit-auto-push/SKILL.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
@@ -251,7 +252,7 @@ evolving	-	kiwi-pm/SKILL.md	eckiwi Stability lifecycle gate(evolving/stable 만 
 evolving	-	kiwi-pm/SKILL.md	equirements read, Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 evolving	-	kiwi-pm/SKILL.md	| 진행 가능 | evolving / stable | OK |
 evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 intera
-evolving	-	kiwi-review-fix-loop/SKILL.md	": "implemented", "stability": "evolving" }
+evolving	-	kiwi-review-fix-loop/references/conditional-sections.md	": "implemented", "stability": "evolving" }
 evolving	-	kiwi-srs-feasibility/SKILL.md	"predicted_stability_range": ["evolving", "stable"], "requires_user_con
 evolving	-	kiwi-srs-feasibility/SKILL.md	"proposed_stability": "evolving",
 evolving	-	kiwi-srs-feasibility/SKILL.md	- draft → evolving: {n}
@@ -289,23 +290,23 @@ frozen	-	kiwi-commit-auto-pr/SKILL.md	stability 가 frozen 이고 override 사�
 frozen	-	kiwi-commit-auto-pr/SKILL.md	stability: frozen ⚠️ override (reason: "hotfix-CV
 frozen	-	kiwi-commit-auto-pr/SKILL.md	| frozen REQ → AskUserQuestion 3옵션 | NEE
 frozen	-	kiwi-commit-auto-pr/SKILL.md	부모 §11.3 그대로. standalone 모드에서 frozen REQ → AskUserQuestion 3옵션. chil
-frozen	-	kiwi-commit-auto-push/SKILL.md	"stability": "frozen"
 frozen	-	kiwi-commit-auto-push/SKILL.md	- 자율 결정 원칙 예외 2건 — frozen REQ 변경 / push 충돌. 둘 다 비가역·고위험이므
 frozen	-	kiwi-commit-auto-push/SKILL.md	-stability-override=<reason> | frozen 가드 우회 + reason trailer 자동 부착 (사
 frozen	-	kiwi-commit-auto-push/SKILL.md	ITY-OVERRIDE: <reason> ← §11.3 frozen 변경 시
-frozen	-	kiwi-commit-auto-push/SKILL.md	NEEDS_USER (사용자 결정 필요 — frozen REQ / push 충돌 / Step 3 후보 모호):
 frozen	-	kiwi-commit-auto-push/SKILL.md	efs) + speckiwi REQ/Task 식별자 + frozen 가드의 4축 책임을 명시적으로 분리. 다른 trailer
 frozen	-	kiwi-commit-auto-push/SKILL.md	ements") 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 Haiku 서브
 frozen	-	kiwi-commit-auto-push/SKILL.md	erQuestion 3옵션 (자율 결정 원칙 예외 — frozen 변경은 비가역·범위 외 위험): (1) STABILIT
 frozen	-	kiwi-commit-auto-push/SKILL.md	md 의 "자율 결정 원칙 예외 2건" (§11 본문 — frozen REQ 변경 / push 충돌) 을 SSOT §5 인터페
 frozen	-	kiwi-commit-auto-push/SKILL.md	olation | stability_frozen | frozen REQ 변경 (§11 예외 1) | §11.3 | fro
-frozen	-	kiwi-commit-auto-push/SKILL.md	rollback-confirmation (자동 승인). frozen / push 충돌은 business-decision.
 frozen	-	kiwi-commit-auto-push/SKILL.md	stability 가 frozen 이고 override 사용 시:
 frozen	-	kiwi-commit-auto-push/SKILL.md	stability: frozen ⚠️ override (reason: "hotfix-CV
 frozen	-	kiwi-commit-auto-push/SKILL.md	zen REQ 변경 (§11 예외 1) | §11.3 | frozen REQ 본문 변경은 비가역, SSOT §5.1 표준 카탈
-frozen	-	kiwi-commit-auto-push/SKILL.md	| frozen REQ → AskUserQuestion 3옵션 | NEE
 frozen	-	kiwi-commit-auto-push/SKILL.md	| frozen | AskUserQuestion 3옵션 (자율
 frozen	-	kiwi-commit-auto-push/SKILL.md	평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. 트리거 — kiwi commit au
+frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	"stability": "frozen"
+frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	NEEDS_USER (사용자 결정 필요 — frozen REQ / push 충돌 / Step 3 후보 모호):
+frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	rollback-confirmation (자동 승인). frozen / push 충돌은 business-decision.
+frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	| frozen REQ → AskUserQuestion 3옵션 | NEE
 frozen	-	kiwi-orchestrator/SKILL.md	stability 가 deprecated 또는 frozen 인 요구 |
 frozen	-	kiwi-orchestrator/SKILL.md	하므로 분류기 결함이다. deprecated/frozen 분기는 계획 술어가 허용하는 유일한 sidecar 형태
 frozen	-	kiwi-planner/SKILL.md	#### §0.G4 — frozen/stable AC 미커버
@@ -422,11 +423,11 @@ implemented	-	kiwi-pm/SKILL.md	갈래인 (2) 나중에 수동과 (3) skip 은 �
 implemented	-	kiwi-pm/SKILL.md	인 REQ 에 한해 update_status(id, "implemented") 일괄 + add_completed_work(dat
 implemented	-	kiwi-pm/SKILL.md	후 T-final 단계에서 update_status("implemented") + add_completed_work(plan-s
 implemented	-	kiwi-review-fix-loop/SKILL.md	S + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evid
-implemented	-	kiwi-review-fix-loop/SKILL.md	medium|low", "current_status": "implemented", "stability": "evolving" }
-implemented	-	kiwi-review-fix-loop/SKILL.md	recated 인 REQ 를 뺀 것. status 가 implemented 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
 implemented	-	kiwi-review-fix-loop/SKILL.md	se-reqs + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / plann
-implemented	-	kiwi-review-fix-loop/SKILL.md	target: <해소한 target>, status: "implemented" }) 로 분모를 받는다. 이 둘은 read 이
 implemented	-	kiwi-review-fix-loop/SKILL.md	시 시 셀프 모드 한정으로 update_status (implemented→verified, forward-only) + add_
+implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	medium|low", "current_status": "implemented", "stability": "evolving" }
+implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	recated 인 REQ 를 뺀 것. status 가 implemented 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
+implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	target: <해소한 target>, status: "implemented" }) 로 분모를 받는다. 이 둘은 read 이
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
 implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌
 implemented	-	kiwi-srs-from-code/SKILL.md	add_requirement 호출 시 status: "implemented". 그 후 add_verification_eviden
@@ -594,21 +595,22 @@ verified	-	kiwi-pm/SKILL.md	us / trace Task 목록 / all_done / verified 여부
 verified	-	kiwi-pm/SKILL.md	로 승급되었습니다. 회귀 검증 + 까칠 리뷰를 거쳐 verified 로 닫으려면 /kiwi-review-fix-loop
 verified	-	kiwi-pm/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-pm/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
-verified	-	kiwi-review-fix-loop/SKILL.md	### 6.6 Phase 7.5 — REQ verified 일괄 승급 (--close-reqs 활성 시)
 verified	-	kiwi-review-fix-loop/SKILL.md	+ 회귀 fail | 차단 + WARN ("회귀 미통과로 verified 전이 부적합") |
-verified	-	kiwi-review-fix-loop/SKILL.md	003", "reason": "current_status=verified (already)" }
 verified	-	kiwi-review-fix-loop/SKILL.md	0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (
 verified	-	kiwi-review-fix-loop/SKILL.md	11. (--close-reqs 활성 시) REQ verified 전이 결과 — closed_reqs.json 인용 (
 verified	-	kiwi-review-fix-loop/SKILL.md	: (--close-reqs 활성 시) 영향 REQ verified 일괄 승급 (§6.6, §0.G7 게이트)
-verified	-	kiwi-review-fix-loop/SKILL.md	atus 가 backward transition (이미 verified) → skip (forward-only)
-verified	-	kiwi-review-fix-loop/SKILL.md	e_status({ id: req_id, status: "verified" })
 verified	-	kiwi-review-fix-loop/SKILL.md	l | --close-reqs + 회귀 fail — verified 전이 부적합 (§0.G7 Rule 3) | §0.G7 |
 verified	-	kiwi-review-fix-loop/SKILL.md	on (--close-reqs 활성 시) — REQ verified 전이 결과 (req_id → from_status, to
 verified	-	kiwi-review-fix-loop/SKILL.md	tatus 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보
 verified	-	kiwi-review-fix-loop/SKILL.md	| "REQ 닫기", "verified 전이", "검증 완료 표시" | --close-reqs
-verified	-	kiwi-review-fix-loop/SKILL.md	| transitioned | 실제로 verified 전이에 성공한 수 |
 verified	-	kiwi-review-fix-loop/SKILL.md	| 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
 verified	-	kiwi-review-fix-loop/SKILL.md	으로 update_status (implemented→verified, forward-only) + add_verificat
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	### 6.6 Phase 7.5 — REQ verified 일괄 승급 (--close-reqs 활성 시)
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	- 6.6 Phase 7.5 — REQ verified 일괄 승급 (--close-reqs 활성 시)
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	003", "reason": "current_status=verified (already)" }
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	atus 가 backward transition (이미 verified) → skip (forward-only)
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	e_status({ id: req_id, status: "verified" })
+verified	-	kiwi-review-fix-loop/references/conditional-sections.md	| transitioned | 실제로 verified 전이에 성공한 수 |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | keep + 충돌 보고 | ❌ NO-OP |
 verified	-	kiwi-srs-feasibility/SKILL.md	us ∈ {in_progress, implemented, verified} | stability mutation skip + s
 verified	-	kiwi-srs-from-code/SKILL.md	### 11.4 verified 후보 식별 (선택)
@@ -874,6 +876,7 @@ draft	tdd-draft-phase	kiwi-coder/references/extended-workflow.md	sk-id}.json: �
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
+evolving	-	_shared/kiwi/pipeline-v1.md	er when stability has reached evolving, otherwise kiwi-srs-research
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
@@ -1478,6 +1481,7 @@ draft	tdd-draft-phase	kiwi-coder/references/extended-workflow.md	sk-id}.json: �
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
+evolving	-	_shared/kiwi/pipeline-v1.md	er when stability has reached evolving, otherwise kiwi-srs-research
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-planner — stability ≥ evolving REQ 가 있어 plan 진행 가능
@@ -2068,6 +2072,7 @@ draft	tdd-draft-phase	kiwi-coder/references/extended-workflow.md	sk-id}.json: �
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
 evolving	-	_shared/kiwi/pipeline-event.md	E | kiwi-planner (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
+evolving	-	_shared/kiwi/pipeline-v1.md	er when stability has reached evolving, otherwise kiwi-srs-research
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의

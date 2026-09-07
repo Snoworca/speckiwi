@@ -23,7 +23,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.3 | **코드 증거 우선**. 모든 implementability 판정은 코드 path:line 증거 첨부. 증거 없는 판정은 `evidence_strength: weak` 라벨 |
 | §0.4 | **할루시네이션 금지**. 존재하지 않는 코드/함수 인용 시 §8.2 axis 2 (Evidence existence) CRITICAL. 블로커 근거가 코드와 무관한 추측이면 §8.2 axis 5 (Blocker substantiation) HIGH |
 | §0.5 | **SRS-MD Authoring Rules v2.5.0 준수**. heading / ID 정규식 위반 금지 |
-| §0.6 | **speckiwi MCP 우선 + 황금률**. CLI 직접 호출은 MCP 부재 시에만. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** |
 | §0.7 | **stable/frozen 승급은 항상 사용자 확인**. 정책 파일이 자동 허용으로 설정해도 본 §0.7 우선. AskUserQuestion 단일 호출 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 코드/함수 판정 근거 거절 + `rejected_findings.log` |
@@ -137,7 +137,7 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
 - **speckiwi mutation**: `update_stability` per-REQ (§9.2)
 - **tag 갱신**: `feasibility:{label}`, `feasibility-score:{NN}`, `feasibility-run:{run-id}` (§9.3, `add_requirement` 신규 만 — 기존 REQ tag mutation API 미존재 시 보고만)
 - **분석 로그**: `docs/analysis/kiwi-srs-feasibility-{run-id}/`
-  - `preflight.json` / `target-snapshot.json` / `cost-estimate.json` (Phase 0 사전 비용 추정, §5.5.6)
+  - `target-snapshot.json` / `cost-estimate.json` (Phase 0 사전 비용 추정, §5.5.6)
   - `per-req-judgement.json` / `summary.md`
   - `policy-resolved.json` (적용된 정책 + 출처)
   - `stability-mutations.json` (dryRun 결과 + apply 결과)
@@ -203,20 +203,20 @@ Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (do
 
 ### 3.0 speckiwi 가용성 사전 점검
 
-`kiwi-srs` §3.0 과 동일 절차. MCP/CLI 둘 다 부재 시 HALT + 설치 가이드 출력. 기록: `preflight.json: { mcp, cli, halted, version, tools_detected }`.
+`kiwi-srs` §3.0 과 동일 절차. MCP 부재 시 HALT + 설치 가이드 출력. CLI 는 진단/복구 안내에만 사용한다.
 
-추가 점검: 본 스킬이 사용하는 MCP 도구/CLI 명령의 **존재 여부 동적 점검**. 버전 번호 hardcode 대신 도구 자체의 가용성으로 판정 — speckiwi 버전 명명 정책이 바뀌어도 본 스킬은 견고.
+추가 점검: 본 스킬이 사용하는 MCP 도구의 **존재 여부 동적 점검**. 버전 번호 hardcode 대신 도구 자체의 가용성으로 판정 — speckiwi 버전 명명 정책이 바뀌어도 본 스킬은 견고.
 
-| 필수 도구 | MCP | CLI fallback | 미가용 시 |
+| 필수 도구 | MCP | CLI 진단 | 미가용 시 |
 |---|---|---|---|
-| `update_stability` | ✅ 필수 | `speckiwi update-stability` | HALT + 업그레이드 안내 |
-| `get_active_target` | ✅ 필수 | `speckiwi active-target` | HALT |
-| `list_requirements` | ✅ 필수 | `speckiwi list` | HALT |
-| `get_requirement` | ✅ 필수 | `speckiwi show` | HALT |
-| `validate_spec` / `summarize_target` | ✅ 필수 | `speckiwi validate` / `speckiwi summary` | HALT |
+| `update_stability` | ✅ 필수 | 설치/버전 확인만 | HALT + 업그레이드 안내 |
+| `get_active_target` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `list_requirements` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `get_requirement` | ✅ 필수 | 설치/버전 확인만 | HALT |
+| `validate_spec` / `summarize_target` | ✅ 필수 | 설치/버전 확인만 | HALT |
 | `tag_mutation` (가칭, 기존 REQ tag 갱신) | ⏳ optional | — | §11.3 첫 행 활성 토글에 사용 (없으면 임시 회피 경로 유지) |
 
-가용성 결과를 `preflight.json.tools_detected` 에 도구별 boolean 으로 기록.
+가용성 결과는 본 실행 안에서만 사용하고 별도 파일로 남기지 않는다.
 
 ### 3.1 TARGET 확인
 
@@ -931,17 +931,19 @@ mcp__doculight__open_markdown({
 
 ---
 
-## 12. MCP / CLI fallback
+## 12. MCP / CLI fallback — CLI 는 진단 전용
 
-| 작업 | MCP | CLI fallback |
+정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다.
+
+| 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| Target 활성화 | `set_active_target` | `speckiwi set-active-target <t>` |
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
-| REQ 목록 | `list_requirements` | `speckiwi list --target <t> --json` |
-| **Stability 변경** | **`update_stability`** | **`speckiwi update-stability <id> <stability> --reason ... [--dry-run]`** |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary --target <t> --json` |
+| Active target | `get_active_target` | 설치/버전/설정 확인만 |
+| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
+| REQ 목록 | `list_requirements` | 설치/버전/설정 확인만 |
+| **Stability 변경** | **`update_stability`** | **설치/버전/설정 확인만** |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
 
 ---
 

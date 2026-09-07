@@ -983,7 +983,19 @@ const TOOL_AXIS_FLOOR: Record<string, number> = {
   // status: the values the axis exists to read are unchanged, and the value-site golden records
   // the change as +40/−24 sites, a net gain. Lowering a floor is a coverage reduction and is only
   // sound when what left is named; that is why the two are named here.
-  "skills/claude": 394,
+  //
+  // 394 → 324 (FR-FLOW-179 AC-6, 2026-09-07). The claude rendering stopped listing CLI mutation
+  // commands in the four `kiwi-srs*` MCP/CLI tables, because its own banner three lines above the
+  // first of them says the CLI is not a normal replacement for an MCP mutation. Measured before and
+  // after over the whole rendering, 82 positions left and none came back, and EVERY ONE of them is
+  // an option name (`--type`, `--scope`, `--target`, `--title`, `--requirement`, `--ac`, `--trace`,
+  // `--status`, `--json`, `--reason`, `--dry-run`), a subcommand name (`add-requirement`, `list`,
+  // `update-status`, `update-stability`), the word `speckiwi`, or the paired tool name of the same
+  // row. Not one requirement status and not one stability value left the corpus: the values the
+  // axis exists to read are all still there, one rendering-policy column poorer. What that column
+  // held is now what codex and etc hold — which is why the floor moves toward theirs (301 / 297)
+  // rather than away, and why three CLI surfaces leave the in-use list below.
+  "skills/claude": 324,
   "skills/codex": 301,
   "skills/etc": 297,
   ".agents/skills": 297
@@ -1001,16 +1013,12 @@ const TOOL_AXIS_FLOOR: Record<string, number> = {
  * that difference behind whichever rendering carried the most.
  */
 const TOOL_AXIS_SURFACES_IN_USE: Record<string, readonly string[]> = {
-  "skills/claude": [
-    "add_requirement",
-    "list_requirements",
-    "speckiwi add-requirement",
-    "speckiwi list",
-    "speckiwi update-stability",
-    "speckiwi update-status",
-    "update_stability",
-    "update_status"
-  ],
+  // `speckiwi add-requirement`, `speckiwi update-stability` and `speckiwi update-status` left this
+  // list with FR-FLOW-179 AC-6: the rendering no longer offers a CLI mutation where the banner says
+  // the CLI is diagnostic, so no value stands beside those three any more. `speckiwi list` stays —
+  // it is a read, and it is still cited. The remaining difference from codex and etc is that one
+  // read command, which is the difference the per-rendering shape of this record exists to show.
+  "skills/claude": ["add_requirement", "list_requirements", "speckiwi list", "update_stability", "update_status"],
   "skills/codex": ["add_requirement", "list_requirements", "update_stability", "update_status"],
   "skills/etc": ["add_requirement", "list_requirements", "update_stability", "update_status"],
   ".agents/skills": ["add_requirement", "list_requirements", "update_stability", "update_status"]
@@ -2499,7 +2507,12 @@ const SECTION_0_TABLE_SHAPE: Record<string, string> = {
 
 /** The §13 tool-table shape each rendering carries, measured. See the AC-4 test for why it is per rendering. */
 const SECTION_13_SHAPE: Record<string, string> = {
-  "skills/claude": "HT-TTTTTTTTTTTTTP",
+  // claude `HT-…` → `HPT-…` (FR-FLOW-179 AC-6, 2026-09-07). The rendering used to open straight onto
+  // the table while its own banner three lines above said the CLI is not a normal replacement for an
+  // MCP mutation; the table then listed mutation commands for the command line. The added `P` is the
+  // one-paragraph preamble that says the CLI column is diagnostic and names the single exception —
+  // the same fix codex and etc already carry as their five- and two-line preambles.
+  "skills/claude": "HPT-TTTTTTTTTTTTTP",
   "skills/codex": "HPPPPPT-TTTTTTTTTTTTP",
   "skills/etc": "HPPT-TTTTTTTTTTTTP",
   ".agents/skills": "HPPPPPT-TTTTTTTTTTTTP"
@@ -3457,22 +3470,13 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "tool-axis residue entries that are a misspelling of a lifecycle value"
     ).toEqual(["planner", "state"]);
     expect(TOOL_AXIS_FLOOR, "the tool-axis value-position floor").toEqual({
-      "skills/claude": 394,
+      "skills/claude": 324,
       "skills/codex": 301,
       "skills/etc": 297,
       ".agents/skills": 297
     });
     expect(TOOL_AXIS_SURFACES_IN_USE, "the lifecycle surfaces the shipped text writes a value beside").toEqual({
-      "skills/claude": [
-        "add_requirement",
-        "list_requirements",
-        "speckiwi add-requirement",
-        "speckiwi list",
-        "speckiwi update-stability",
-        "speckiwi update-status",
-        "update_stability",
-        "update_status"
-      ],
+      "skills/claude": ["add_requirement", "list_requirements", "speckiwi list", "update_stability", "update_status"],
       "skills/codex": ["add_requirement", "list_requirements", "update_stability", "update_status"],
       "skills/etc": ["add_requirement", "list_requirements", "update_stability", "update_status"],
       ".agents/skills": ["add_requirement", "list_requirements", "update_stability", "update_status"]

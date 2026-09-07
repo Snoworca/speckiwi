@@ -11,6 +11,12 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 
 ---
 
+## Workflow 도구 정책
+
+pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -20,7 +26,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 | §0.3 | **코드 증거 우선**. 신규/갱신 REQ는 `add_requirement` 시 `trace` 배열에 source 첨부 (NFR/PERF 예외) |
 | §0.4 | **할루시네이션 금지**. 코드/요구사항 텍스트에 증거 없는 기능 작성 금지. 추정은 `stability=draft` + `[INFERRED:high\|med\|low]` |
 | §0.5 | **SRS-MD Authoring Rules v2.5.0 준수**. heading / ID 정규식 / prefix-type 매핑 위반 금지. `checked_compatible` 호환성 캐시 필드(§23.5, `semanticSha`/`checked-at`)는 허용 필드 allowlist 에 포함 |
-| §0.6 | **speckiwi MCP 우선 + 황금률**. CLI 직접 호출은 MCP 부재 시에만. **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** (예외는 §9.4) |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence/completed-work 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** (예외는 §9.4) |
 | §0.7 | **scope/target 결정은 사용자 확인**. AskUserQuestion 단일 호출 분해 |
 | §0.8 | **/snoworca-\* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 함수/CVE/파일 추가 요구는 거절 + `rejected_findings.log` |
@@ -155,7 +161,6 @@ AskUserQuestion 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외하고 c
   - `srs_delta.json` (MCP 호출 로그 + before/after)
   - `eval_iter{N}.json` / `improvement_iter{N}.json`
   - `qna_log.json` (--qna 시) / `rejected_findings.log`
-  - `preflight.json` (§3.0)
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{req-slug}`
 - `req-slug` = 새 요구사항의 최대 3-token kebab 요약 (메인 세션이 `intent.json.summary` 에서 결정적 생성)
@@ -242,8 +247,6 @@ MCP 와 CLI 가 모두 부재하면 스킬을 즉시 차단하고 설치 가이�
 
 설치 후 동일 명령으로 kiwi-srs 를 다시 실행하십시오.
 ```
-
-기록: `docs/analysis/kiwi-srs-{run-id}/preflight.json`: `{ mcp: false, cli: false, halted: true }`.
 
 dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 
@@ -827,23 +830,25 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 
 ---
 
-## 13. MCP / CLI fallback
+## 13. MCP / CLI fallback — target 등록 예외와 CLI 진단
 
-| 작업 | MCP | CLI fallback |
+정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다. **미등록 target 등록만이 이 원칙의 유일한 예외**이며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다.
+
+| 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|
-| Active target | `get_active_target` | `speckiwi active-target --json` |
-| Target Map 전체 | (미노출) | `speckiwi targets --json` |
-| Target 활성화 | `set_active_target` (미등록이면 `create`) | `speckiwi set-active-target <t> --create` |
-| REQ 조회 | `get_requirement` | `speckiwi show <id> --json` |
-| REQ 추가 | `add_requirement` | `speckiwi add-requirement --type ... --scope ... --target ... --title ... --requirement ... --ac ... --trace 'type\|reference\|relation\|notes'` |
-| Status 변경 | `update_status` | `speckiwi update-status <id> <status>` |
-| Stability 변경 | `update_stability` | `speckiwi update-stability <id> <stability> --reason <text>` |
-| Trace 추가 | `add_trace_link` | `speckiwi add-trace <id> --type ... --reference ...` |
-| Evidence | `add_verification_evidence` | `speckiwi add-evidence <id> --type ... --reference ...` |
-| AC 체크 | `check_acceptance_criteria` | (MCP 필수) |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary --target <t> --json` |
-| 목록 | `list_requirements` | `speckiwi list --scope <s> --target <t> --json` |
+| Active target | `get_active_target` | 설치/버전/설정 확인만 |
+| Target Map 전체 | (미노출) | `speckiwi targets --json` (MCP 미노출 — 읽기 전용 진단) |
+| Target 활성화 | `set_active_target` (미등록이면 `create`) | `speckiwi set-active-target <t> --create` (미등록 target 등록 한정 예외) |
+| REQ 조회 | `get_requirement` | 설치/버전/설정 확인만 |
+| REQ 추가 | `add_requirement` | 설치/버전/설정 확인만 |
+| Status 변경 | `update_status` | 설치/버전/설정 확인만 |
+| Stability 변경 | `update_stability` | 설치/버전/설정 확인만 |
+| Trace 추가 | `add_trace_link` | 설치/버전/설정 확인만 |
+| Evidence | `add_verification_evidence` | 설치/버전/설정 확인만 |
+| AC 체크 | `check_acceptance_criteria` | 설치/버전/설정 확인만 |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
+| 목록 | `list_requirements` | 설치/버전/설정 확인만 |
 
 ---
 

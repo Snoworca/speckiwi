@@ -100,7 +100,7 @@ kiwi-tdd
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-planner | TASK_DONE | `kiwi-pm` |
 | kiwi-pm | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) 또는 `kiwi-commit-auto-push` |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |

@@ -22,7 +22,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.3 | **코드 증거 우선**. 모든 요구사항은 `add_requirement` 호출 시 `trace` 배열에 source 첨부 필수. raw Edit으로 사후 보강 금지 (단, NFR/PERF/REL 예외 §6.1) |
 | §0.4 | **할루시네이션·임의 요구사항 금지**. 코드에 존재 증거 없는 기능 작성 금지. 추정 항목은 `Stability=draft` + Rationale `[INFERRED:high\|med\|low]` 명시 |
 | §0.5 | **SRS-MD Authoring Rules v2.5.0 절대 준수**. `docs/rule/SRS-MD-Rules-v2.5.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
-| §0.6 | **speckiwi MCP 도구 우선**. CLI 직접 호출은 MCP 부재 시에만 사용. status 변경은 항상 `update_status` MCP(또는 CLI `update-status`). raw Edit 금지 |
+| §0.6 | **speckiwi MCP 도구 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 대체 경로가 아니다. status 변경은 항상 `update_status` MCP 로만 수행한다. raw Edit 금지 |
 | §0.7 | **scope 분할은 반드시 사용자 확인**. AskUserQuestion 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
 | §0.9 | **사실 위조 거절**. 서브에이전트가 존재하지 않는 함수/CVE/파일을 요구하면 거절 + `rejected_findings` 로그 |
@@ -603,26 +603,26 @@ MCP `summarize_target { target: TARGET }` 호출. 결과를 보고에 포함.
 
 ---
 
-## 12. MCP / CLI fallback (CRITICAL 차단 해제)
+## 12. MCP / CLI fallback — CLI 는 진단 전용 (CRITICAL 차단 해제)
 
-speckiwi MCP 도구 우선. 부재 시 CLI:
+정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다.
 
-| 작업 | MCP | CLI fallback |
+| 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|
-| 초기화 | `init_project` | `speckiwi init --target v0.1 [--scope <code>]` |
-| Active Target 조회 (단일) | `get_active_target` | `speckiwi active-target --json` |
+| 초기화 | `init_project` | 설치/버전/설정 확인만 |
+| Active Target 조회 (단일) | `get_active_target` | 설치/버전/설정 확인만 |
 | Target Map 전체 조회 | (MCP 미노출) | `speckiwi targets --json` (read.ts:100 — `workspace.index.targets` 배열 반환) |
-| Target 활성화 | `set_active_target` | `speckiwi set-active-target <target>` |
-| 요구사항 추가 | `add_requirement` | `speckiwi add-requirement --type ... --scope ... --target ... --title ... --requirement ... --ac ... --ac ... [--trace 'Code\|src/...:L45-67\|verifies\|notes']` (CLI `--trace` 는 pipe 구분 4필드 `type\|reference\|relation\|notes` — mutations.ts:42 `parseTraceOptions`) |
-| Status 변경 | `update_status` | `speckiwi update-status <id> <status>` |
-| Trace 추가 | `add_trace_link` | `speckiwi add-trace <id> --type ... --reference ... --relation ... [--notes ...] [--json]` |
-| Verification 추가 | `add_verification_evidence` | `speckiwi add-evidence <id> --type ... --reference ... [--covers ...] [--notes ...] [--json]` |
-| 검증 | `validate_spec` | `speckiwi validate --json` |
-| 요약 | `summarize_target` | `speckiwi summary [--target <t>] --json` |
-| 목록 | `list_requirements` | `speckiwi list [--scope <s>] [--target <t>] [--status <s>] --json` |
-| 요구사항 조회 | `get_requirement` | `speckiwi show <id> [--markdown] --json` |
+| Target 활성화 | `set_active_target` | 설치/버전/설정 확인만 |
+| 요구사항 추가 | `add_requirement` | 설치/버전/설정 확인만 |
+| Status 변경 | `update_status` | 설치/버전/설정 확인만 |
+| Trace 추가 | `add_trace_link` | 설치/버전/설정 확인만 |
+| Verification 추가 | `add_verification_evidence` | 설치/버전/설정 확인만 |
+| 검증 | `validate_spec` | 설치/버전/설정 확인만 |
+| 요약 | `summarize_target` | 설치/버전/설정 확인만 |
+| 목록 | `list_requirements` | 설치/버전/설정 확인만 |
+| 요구사항 조회 | `get_requirement` | 설치/버전/설정 확인만 |
 
-CLI stdout JSON 을 메인이 직접 파싱. 에러 시 stderr 전체를 사용자에게 보고.
+MCP 응답을 메인이 직접 파싱. MCP 가 서지 않으면 위 CLI 진단으로 설치·버전·설정을 확인하고 복구한 뒤 재시도하며, 진단 출력은 stderr 전체를 사용자에게 보고한다.
 
 ---
 

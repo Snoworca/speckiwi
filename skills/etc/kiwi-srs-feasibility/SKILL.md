@@ -153,7 +153,7 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 - **speckiwi mutation**: `update_stability` per-REQ (§9.2)
 - **tag 갱신**: `feasibility:{label}`, `feasibility-score:{NN}`, `feasibility-run:{run-id}` (§9.3, `add_requirement` 신규 만 — 기존 REQ tag mutation API 미존재 시 보고만)
 - **분석 로그**: `docs/analysis/kiwi-srs-feasibility-{run-id}/`
-  - `preflight.json` / `target-snapshot.json` / `cost-estimate.json` (Phase 0 사전 비용 추정, §5.5.6)
+  - `target-snapshot.json` / `cost-estimate.json` (Phase 0 사전 비용 추정, §5.5.6)
   - `per-req-judgement.json` / `summary.md`
   - `policy-resolved.json` (적용된 정책 + 출처)
   - `stability-mutations.json` (dryRun 결과 + apply 결과)
@@ -207,7 +207,7 @@ Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (do
 
 ### 3.0 speckiwi 가용성 사전 점검
 
-`kiwi-srs` §3.0 과 동일 절차. MCP 부재 시 HALT; CLI는 진단/복구 안내에만 사용 + 설치 가이드 출력. 기록: `preflight.json: { mcp, cli, halted, version, tools_detected }`.
+`kiwi-srs` §3.0 과 동일 절차. MCP 부재 시 HALT; CLI는 진단/복구 안내에만 사용 + 설치 가이드 출력.
 
 추가 점검: 본 스킬이 사용하는 MCP 도구의 **존재 여부 동적 점검**. CLI 명령은 진단 참고일 뿐이며 PASS 조건이 아니다.
 
@@ -220,7 +220,7 @@ Phase 8   : Apply mutations + validate_spec + sync 점검 + 사용자 보고 (do
 | `validate_spec` / `summarize_target` | ✅ 필수 | diagnostic only | HALT |
 | `tag_mutation` (가칭, 기존 REQ tag 갱신) | ⏳ optional | — | §11.3 첫 행 활성 토글에 사용 (없으면 임시 회피 경로 유지) |
 
-가용성 결과를 `preflight.json.tools_detected` 에 도구별 boolean 으로 기록.
+가용성 결과는 본 실행 안에서만 사용하고 별도 파일로 남기지 않는다.
 
 ### 3.1 TARGET 확인
 

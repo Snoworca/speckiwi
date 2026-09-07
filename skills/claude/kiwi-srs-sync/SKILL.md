@@ -28,7 +28,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.6 | **할루시네이션 금지**. 존재하지 않는 함수·파일·CVE·테스트 항목 추가 금지. 사실 위조 거절 + `rejected_findings.log` |
 | §0.7 | **외부 모듈 수정 금지**. cwd 외부 path 가 diff 에 진입 시 즉시 §0.G2 발동 |
 | §0.8 | **시그니처 금지** (CLAUDE.md §6). 커밋·SRS·산출물 어디에도 AI 식별 정보 금지 |
-| §0.9 | **speckiwi MCP 우선 + CLI fallback**. MCP 부재 시 `speckiwi` CLI 사용. 둘 다 실패 시 HALT |
+| §0.9 | **speckiwi MCP 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 fallback 이 아니다. MCP 부재 시 HALT |
 | §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
 | §0.11 | **4방향 분류 SSOT** (kiwi-srs §3.3 계승). 모든 변경 단위는 `conflict` / `update` / `new-feature` / `new-scope` 중 정확히 1개로 분류. `unclassified` 허용 안 함 (사용자 게이트 발동) |
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
@@ -184,8 +184,6 @@ Phase 7 : MCP mutation 일괄 적용 + 보고서
 3. git 환경 확인: `git rev-parse --git-dir` 성공 → PASS, 실패 시 HALT + 가이드
 4. base/head ref 존재 확인: `git rev-parse --verify {ref}` 성공
 5. 위 셋 중 하나라도 실패 → HALT
-
-기록: `docs/analysis/kiwi-srs-sync-{run-id}/preflight.json: { mcp, cli, git, base_ref, head_ref, halted }`.
 
 ### 3.1 TARGET 확정
 

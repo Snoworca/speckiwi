@@ -19,6 +19,12 @@ description: "OpenCode/Hermes local-LLM variant for incremental SpecKiwi SRS aut
 
 ---
 
+## Workflow 도구 정책
+
+pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -156,7 +162,6 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
   - `srs_delta.json` (MCP 호출 로그 + before/after)
   - `eval_iter{N}.json` / `improvement_iter{N}.json`
   - `qna_log.json` (--qna 시) / `rejected_findings.log`
-  - `preflight.json` (§3.0)
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{req-slug}`
 - `req-slug` = 새 요구사항의 최대 3-token kebab 요약 (메인 세션이 `intent.json.summary` 에서 결정적 생성)
@@ -243,8 +248,6 @@ MCP 가 부재하면 스킬을 즉시 차단하고 설치/연결 가이드를 �
 
 설치 후 동일 명령으로 kiwi-srs 를 다시 실행하십시오.
 ```
-
-기록: `docs/analysis/kiwi-srs-{run-id}/preflight.json`: `{ mcp: false, cli: false, halted: true }`.
 
 dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 

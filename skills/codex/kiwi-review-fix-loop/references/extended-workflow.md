@@ -6,7 +6,6 @@ Load this file only while executing `$kiwi-review-fix-loop`.
 
 Write under `docs/analysis/kiwi-review-fix-loop-{run-id}/`:
 
-- `preflight.json`
 - `mode_decision.json`
 - `review_inventory.json`
 - `classified_findings.json`
