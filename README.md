@@ -38,7 +38,7 @@ SpecKiwi is a local-first workflow tool that treats Markdown SRS (Software Requi
 
 ## 1. Requirements
 
-- **Node.js 22 or newer** (`engines.node` is `>=22`)
+- **Node.js 22 or newer** (`engines.node` is `>=22`). Neither check will stop you below that, and they disagree about where the floor is: `speckiwi doctor` fails only below Node **18**, so Node 20 passes it clean, while npm warns `EBADENGINE` on Node 20 and installs anyway because `engines` is advice unless `engine-strict=true` is set. Take the manifest as the real floor.
 - **npm**
 - **Git** (SpecKiwi resolves the project root by searching upward for a Git repository). **Keep `docs/spec/` at the git top level** — three things follow the top level and not the resolved root: the pre-commit hook `init` installs, the `kiwi/` pipeline journal the agent skills pin, and the `.claude` / `.codex` skill install destinations. `speckiwi doctor` checks this as *project root is the git top level*.
 - One supported coding agent: `codex`, `claude`, `opencode`, or `hermes`
@@ -56,7 +56,7 @@ npm install speckiwi@latest
 After a local install, run it with `npx`:
 
 ```sh
-npx speckiwi --version   # -> 2.10.0
+npx speckiwi --version   # -> 3.0.1
 npx speckiwi --help
 ```
 
@@ -68,6 +68,8 @@ speckiwi --version
 ```
 
 The examples below use the short `speckiwi` form. If you installed locally only, prefix each command with `npx`.
+
+> **On Windows, read [Passing a value a command line cannot carry](#en-long-values) before your first mutation.** Anything routed through `cmd.exe` — the npm `.cmd` shim, `cmd /c`, `npm run`, a `shell: true` spawn — silently truncates an argument at its first newline, taking every flag written after it along with the rest of the value.
 
 **Global options** available on every command:
 
@@ -397,7 +399,11 @@ speckiwi validate                    # exit 0 = ok, 1 = validation failed
 speckiwi validate --fail-on-warning  # treat warnings as failures
 speckiwi validate --json
 speckiwi explain SRS-E002            # explain a diagnostic code
+speckiwi explain SRS-W073            # a requirement quotes a stale value of a shipped constant
+speckiwi explain SRS-W074            # a trace link names a repository path that does not exist
 ```
+
+Two warnings are newer than the rest and check the documents against the code they describe: `SRS-W073` fires when a requirement quotes a constant's value that the source no longer holds, and `SRS-W074` when a trace link cites a path that is not in the tree. `SDS-` codes are deliberately absent from this registry — `explain SDS-E054` reports an unknown code, and the SDS rules document is where those are described.
 
 ### Read requirements and status
 
@@ -413,7 +419,14 @@ speckiwi completed-work --target v0.1.0 --order latest
 speckiwi doctor                               # 11 checks: spec parseability, agent block currency, rules drift and reference,
 #            SDS rules install, skill mirror and install drift, git-top-level root,
 #            Active Target, scope/target consistency, Node version
+speckiwi doctor --json                        # the same 11 under `health`, plus 9 package/MCP
+#            smoke checks under `checks`: version and lockfile agreement, the bin entrypoint,
+#            packed skill entrypoints, MCP metadata and tool schemas, two reads through an
+#            in-process MCP server, and one dry-run mutation through it
+speckiwi doctor --fix                         # re-upsert the agent workflow blocks; writes files
 ```
+
+`--fix` is the one `doctor` option that writes. It re-upserts the *SpecKiwi SRS workflow* block in `AGENTS.md` and `CLAUDE.md` when it is missing or outdated, and touches nothing else — not the rules documents, not the skills, not `docs/spec/`. Use `speckiwi upgrade` when more than that block has drifted.
 
 ### Maintain the index
 
@@ -549,6 +562,51 @@ speckiwi step update-state <name> --status merged              # transition the 
 speckiwi vibe-gate check                         # CI gate that blocks unsynthesized vibe/tdd commits
 ```
 
+<a id="en-long-values"></a>
+
+### Passing a value a command line cannot carry
+
+A value with a newline in it is not safe on the Windows command line. **`cmd.exe` truncates the command line at the first newline**, so the rest of the value — and every flag written after it — never reaches the process. Measured with the same arguments:
+
+```text
+node bin/speckiwi ...  ["--statement","Line one.
+
+Line two.","--dry-run"]
+cmd /c node ...        ["--statement","Line one."]
+```
+
+Nothing reports this. The one surviving line is itself a legitimate value, so the command performs exactly the request it received, and a `--dry-run` that was written after the newline is simply not there, so the write happens. The paths that go through `cmd.exe` are the npm `.cmd` shim, `cmd /c`, `npm run`, and a Node `spawn` with `shell: true`. Calling `node bin/speckiwi` directly, or `speckiwi` from PowerShell (which resolves the `.ps1` shim), is not affected.
+
+Length alone is enough even without a newline, though it fails differently. 8,191 characters still go through and 8,192 do not: `cmd.exe` refuses the line outright, the process never starts, and you get *The command line is too long.* — localised, so a Korean Windows says *명령줄이 너무 깁니다.* — which is at least loud. This repository's own requirements already contain a single line of 9,475 characters.
+
+**Every command registered as a mutation command accepts its whole argument object on stdin instead**, which no shell rewrites:
+
+```sh
+speckiwi edit-requirement --input-json - < payload.json
+```
+
+PowerShell has no input redirection — `<` is a reserved operator there and the line above is a parse error. Pipe the file in instead, with `-Raw` so the newlines this whole section is about survive `Get-Content`:
+
+```powershell
+Get-Content payload.json -Raw | speckiwi edit-requirement --input-json -
+```
+
+`payload.json` holds the same arguments as a JSON object, with newlines encoded inside the JSON string where nothing can split them:
+
+```json
+{
+  "id": "FR-APP-001",
+  "statement": "The system SHALL do the first thing.\n\nAnd the second, on its own line.",
+  "dryRun": true
+}
+```
+
+**The keys are the camelCase argument names, not the flag spellings.** `--dry-run` is `dryRun` in the payload, `--related-docs` is `relatedDocs`, `--verification-method` is `verificationMethod`. This matters more than it looks: **a key the command does not recognise is dropped without a word**, so a payload saying `"dry-run": true` previews nothing and writes. `speckiwi <command> --help --json` prints the flag spellings, which are the wrong side of that pair; `speckiwi commands --json` prints each option's `flag` and its payload key together, and is the one to read when you are unsure. `--input-json <json>` takes the object inline for a value short enough to survive the command line.
+
+The set is derived from the commands actually registered as mutations, not from a list kept beside them — an earlier list had fallen out of step twice, leaving ten commands without the channel (`IR-CLI-101`).
+
+**The channel is top-level only.** A subcommand inside a group — anything written as `workflow <sub>`, `step <sub>`, `orchestrate <sub>`, `repair <sub>`, `skills <sub>`, `links <sub>` or `vibe-gate <sub>` — is outside it, including the ones that write: `workflow worklog-emit`, `step promote`, `orchestrate journal append`, `repair rules-references apply`, `skills install`. For those, keep every value on one line, or drive them through MCP, which never touches a command line. Passing `--input-json` to one of them is refused as `unknown option`, not ignored, so this particular gap announces itself. `speckiwi <command> --help --json` answers for any single command ahead of time: a JSON description means the channel is there, commander's plain-text help means it is not.
+
 ### Mutations (MCP is the normal path; CLI is for manual operation and diagnostics)
 
 `--reason` records a Change Notes row; `--dry-run` previews the result before applying.
@@ -600,6 +658,19 @@ Three directories are easy to confuse, and none is edited by hand. **`docs/.kiwi
 
 `speckiwi workflow` is the same shape — a group of subcommands (`plan-status`, `plan-task`, `next-task`, `pipeline-status`, `pipeline-tail`, `worklog-tail`, `task-check`, `doctor`, …) that the Kiwi skills call to keep `kiwi/pipeline.jsonl` and plan state consistent. They are diagnostic and skill-facing rather than part of a normal hand-run workflow; `speckiwi workflow --help` lists them.
 
+Two groups are easy to miss because nothing above reaches for them.
+
+`speckiwi repair rules-references diagnose` lists each requirement whose `Related Docs` row still names a rules document this release no longer ships, giving the requirement id, the file, the line, and the replacement it would write. It changes nothing. `speckiwi repair rules-references apply` performs those rewrites — **it has no `--dry-run`**, so read the `diagnose` output and commit before running it. This pair exists because `upgrade` will not do it: `upgrade` repairs the references in `AGENTS.md` and `CLAUDE.md` and only *reports* the ones under `docs/`, since editing a requirement body is a governance mutation rather than a migration (`FR-NODE-092`).
+
+`speckiwi workflow verification-ledger plan` and `speckiwi workflow verification-ledger record` keep the heading-keyed ledger that scopes prose re-review to the sections that changed, and `speckiwi workflow work-order next` assembles the next work order from the Active Target.
+
+**This document names the commands worth running by hand, not all of them.** The CLI declares 149 command specs, including granular editors like `edit-requirement` and `edit-requirement-table-rows` that the Kiwi skills drive through MCP. To see every one with its arguments and options:
+
+```sh
+speckiwi commands --json
+```
+
+
 <a id="en-principles"></a>
 
 ## 9. SRS working principles
@@ -631,12 +702,19 @@ Validation commands:
 
 ```sh
 npm run typecheck
+npm run typecheck:test    # test sources; narrower than the name suggests, see tsconfig.test.json
 npm run lint
 npm test                  # vitest, --no-file-parallelism
 npm run test:coverage
 npm run test:integration
-npm run release:check
+npm run release:acceptance
+npm run version:check
+npm run release:check     # version:check, then the release gate for the Active Target
+npm run perf:srs
+npm run value-sites:diff
 ```
+
+`release:check` reads the **Active Target**, so it reports on the target being worked on rather than on the version in `package.json`. A target still holding planned requirements is not release-ready, and saying so is the answer it gives.
 
 Release baseline tag example:
 
@@ -676,7 +754,16 @@ The onboarding, skill-installation, mutation, and workflow behavior documented a
 - `FR-FLOW-124` … `FR-FLOW-130`: the `kiwi-pipeline` default cycle and its single `--none-cycle` opt-out (2.9.0).
 - `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: the terminal review-loop obligation on every rung, and the `terminal_review` journal record a run-close validator refuses a completion without (2.10.0).
 - `FR-NODE-179`: the run-root invariant — `docs/spec/` must sit at the git top level, with a doctor check that says so (2.7.1).
-- Targets `2.5.2-phase1-target-lifecycle`, `2.6.0-phase2-parallel-lanes` and the `kiwi-orchestrator` requirement set: target status lifecycle, the lane partition and worktree contract, and the orchestrator run surface. (The 2.6.0 target's stated goal reaches further than what ships today — see the orchestrator row in §6.) See the Target Map in `docs/spec/00.index.md` for the full list.
+- Targets `2.5.2-phase1-target-lifecycle`, `2.6.0-phase2-parallel-lanes` and the `kiwi-orchestrator` requirement set: target status lifecycle, the lane partition and worktree contract, and the orchestrator run surface. (The 2.6.0 target's stated goal reaches further than what ships today — see the orchestrator row in §6.)
+- `FR-MCP-058` / `FR-MCP-059` / `FR-MCP-064`: the per-call `workspaceRoot` on the tools that address worktree-local run state and on the SRS query tools, with writes and ID allocation still refused (2.11.0, extended in 3.1.0).
+- `IR-CLI-095` / `IR-CLI-096`: the install lifecycle — `upgrade --global` and the `remove` command that deletes only against proof it installed what it deletes (2.13.0).
+- `REL-FLOW-003`: this document's factual claims are checked against the symbols that own them — the commander tree, the MCP tool registry, the doctor check list. A fabricated subcommand or a count that drifts fails `npm test` (2.12.0).
+- `FR-PARSE-039` / `FR-NODE-206`: `SRS-W073` and `SRS-W074`, the two warnings that check a requirement's own prose against the code and the tree it cites (3.0.0 and 3.1.0).
+- `FR-NODE-198`: `Status` is refused at the writing site rather than reported by `validate` afterwards.
+- `IR-CLI-058` / `IR-CLI-101`: the `--input-json` stdin channel, and the derivation that keeps every mutation command reaching it — see *Passing a value a command line cannot carry* in §8.
+- `FR-NODE-207`: the orchestrator run lock held by lease expiry rather than by the lifetime of the process that wrote it. `REL-NODE-008` is its neighbour: a concurrency test that waits for the signal it needs instead of for a clock.
+
+See the Target Map in `docs/spec/00.index.md` for the full list.
 
 ---
 
@@ -716,7 +803,7 @@ SpecKiwi는 Git 저장소 안의 Markdown SRS(Software Requirements Specificatio
 
 ## 1. 요구 사항
 
-- **Node.js 22 이상** (`engines.node`는 `>=22`)
+- **Node.js 22 이상** (`engines.node`는 `>=22`). 그 아래에서도 두 검사 모두 당신을 막지 않으며, 하한이 어디인지에 대해 서로 어긋나 있습니다. `speckiwi doctor`는 Node **18** 미만에서만 실패하므로 Node 20은 그대로 통과하고, npm은 Node 20에서 `EBADENGINE`을 경고하면서도 설치를 진행합니다. `engine-strict=true`가 설정되지 않는 한 `engines`는 권고이기 때문입니다. 실제 하한은 매니페스트 쪽으로 보십시오.
 - **npm**
 - **Git** (SpecKiwi는 상위 디렉터리로 올라가며 Git 저장소를 찾아 project root를 해석합니다). **`docs/spec/`는 git 최상위에 두십시오** — 세 가지가 결정된 루트가 아니라 git 최상위를 따릅니다: `init`이 설치하는 pre-commit 훅, 에이전트 skill이 고정하는 `kiwi/` 파이프라인 저널, `.claude` / `.codex` skill 설치 위치. `speckiwi doctor`가 *project root is the git top level* 항목으로 검사합니다.
 - 지원 코딩 에이전트 하나: `codex`, `claude`, `opencode`, `hermes` 중 하나
@@ -734,7 +821,7 @@ npm install speckiwi@latest
 로컬 설치 후에는 `npx`로 실행합니다.
 
 ```sh
-npx speckiwi --version   # -> 2.10.0
+npx speckiwi --version   # -> 3.0.1
 npx speckiwi --help
 ```
 
@@ -746,6 +833,8 @@ speckiwi --version
 ```
 
 이 README의 예시는 짧게 `speckiwi`로 표기합니다. 로컬 설치만 했다면 각 명령 앞에 `npx`를 붙이세요.
+
+> **Windows에서는 첫 변이 명령을 돌리기 전에 [명령줄이 실어 나르지 못하는 값 전달하기](#ko-long-values)를 읽으십시오.** `cmd.exe`를 거치는 경로(npm이 만든 `.cmd` 런처, `cmd /c`, `npm run`, `shell: true` 실행)는 인자를 첫 줄바꿈에서 조용히 잘라내며, 값의 나머지와 함께 그 뒤에 쓴 모든 플래그를 가져갑니다.
 
 모든 명령에서 쓸 수 있는 **전역 옵션**:
 
@@ -1075,7 +1164,11 @@ speckiwi validate                    # exit 0 = 정상, 1 = 검증 실패
 speckiwi validate --fail-on-warning  # 경고를 실패로 취급
 speckiwi validate --json
 speckiwi explain SRS-E002            # 진단 코드 설명
+speckiwi explain SRS-W073            # 요구가 인용한 상수 값이 소스와 어긋남
+speckiwi explain SRS-W074            # trace link가 존재하지 않는 저장소 경로를 가리킴
 ```
+
+경고 둘이 나머지보다 나중에 생겼고, 문서를 그것이 서술하는 코드와 대조합니다. `SRS-W073`은 요구가 인용한 상수 값을 소스가 더 이상 갖고 있지 않을 때 발화하고, `SRS-W074`는 trace link가 트리에 없는 경로를 인용할 때 발화합니다. `SDS-` 계열 코드는 이 레지스트리에 의도적으로 없습니다. `explain SDS-E054`는 알 수 없는 코드라고 답하며, 그 코드들의 설명은 SDS 규칙 문서에 있습니다.
 
 ### 요구사항·상태 조회
 
@@ -1090,7 +1183,14 @@ speckiwi scopes                               # 등록된 scope
 speckiwi completed-work --target v0.1.0 --order latest
 speckiwi doctor                               # 11개 검사: spec 파싱, agent 블록 최신성, rules drift·참조, SDS 규칙 설치,
 #            skill 미러·설치 drift, git 최상위 루트, Active Target, scope/target 정합, Node 버전
+speckiwi doctor --json                        # 같은 11개가 `health`에, 그리고 패키지·MCP 스모크
+#            9개가 `checks`에 담깁니다: 버전과 잠금 파일 정합, bin 진입점, 패킹된 skill 진입점,
+#            MCP 메타데이터와 도구 스키마, 같은 프로세스 안의 MCP 서버를 통한 읽기 둘,
+#            그리고 그것을 통한 dry-run 변이 하나
+speckiwi doctor --fix                         # agent workflow 블록을 다시 씁니다. 파일을 수정합니다
 ```
+
+`--fix`는 `doctor`의 유일한 쓰기 옵션입니다. `AGENTS.md`와 `CLAUDE.md`의 *SpecKiwi SRS workflow* 블록이 없거나 낡았을 때 그것만 다시 넣고, 다른 것은 건드리지 않습니다. 규칙 문서도 skill도 `docs/spec/`도 대상이 아닙니다. 그 블록보다 넓게 어긋났다면 `speckiwi upgrade`를 쓰십시오.
 
 ### 인덱스 유지보수
 
@@ -1226,6 +1326,51 @@ speckiwi step update-state <name> --status merged              # 완료 게이�
 speckiwi vibe-gate check                         # vibe/tdd 미합성 커밋을 막는 CI 게이트
 ```
 
+<a id="ko-long-values"></a>
+
+### 명령줄이 실어 나르지 못하는 값 전달하기
+
+개행이 들어간 값은 Windows 명령줄에서 안전하지 않습니다. **`cmd.exe`가 명령줄을 첫 줄바꿈에서 잘라내므로**, 값의 나머지와 그 뒤에 쓴 모든 플래그가 프로세스에 도달하지 못합니다. 같은 인자로 실측한 결과입니다.
+
+```text
+node bin/speckiwi ...  ["--statement","Line one.
+
+Line two.","--dry-run"]
+cmd /c node ...        ["--statement","Line one."]
+```
+
+이 손실을 알려 주는 것은 없습니다. 살아남은 한 줄도 그 자체로 적법한 값이므로 명령은 자신이 받은 요청을 정확히 수행하고, 개행 뒤에 쓴 `--dry-run`은 애초에 도달하지 않았으므로 쓰기가 일어납니다. `cmd.exe`를 거치는 경로는 npm이 만든 `.cmd` 런처, `cmd /c`, `npm run`, 그리고 Node의 `shell: true` 실행입니다. `node bin/speckiwi`를 직접 부르거나 PowerShell에서 `speckiwi`를 부르는 경우(이때는 `.ps1` 런처로 해석됩니다)에는 해당하지 않습니다.
+
+개행이 없어도 길이만으로 충분하지만, 이쪽은 실패하는 방식이 다릅니다. 8,191자까지는 지나가고 8,192자부터 `cmd.exe`가 그 줄을 아예 거부합니다. 프로세스가 시작조차 하지 않고 *명령줄이 너무 깁니다.* 가 돌아오므로(영어 Windows에서는 *The command line is too long.*), 적어도 조용하지는 않습니다. 이 저장소의 요구 문서에는 이미 9,475자짜리 한 줄이 들어 있습니다.
+
+**변이 명령으로 등록된 명령은 인자 객체 전체를 표준입력으로 받습니다.** 이 경로는 어떤 셸도 고쳐 쓰지 않습니다.
+
+```sh
+speckiwi edit-requirement --input-json - < payload.json
+```
+
+PowerShell에는 입력 리다이렉션이 없습니다. 거기서 `<`는 예약 연산자라 위 줄은 파서 오류를 냅니다. 대신 파일을 파이프로 넘기되 `-Raw`를 붙이십시오. 그래야 이 절이 다루는 바로 그 개행이 `Get-Content`를 지나 살아남습니다.
+
+```powershell
+Get-Content payload.json -Raw | speckiwi edit-requirement --input-json -
+```
+
+`payload.json`은 같은 인자를 JSON 객체로 담습니다. 개행은 JSON 문자열 안에 인코딩되어 있어 무엇도 그것을 쪼개지 못합니다.
+
+```json
+{
+  "id": "FR-APP-001",
+  "statement": "The system SHALL do the first thing.\n\nAnd the second, on its own line.",
+  "dryRun": true
+}
+```
+
+**키는 플래그 철자가 아니라 낙타 표기의 인자 이름입니다.** `--dry-run`은 payload에서 `dryRun`이고, `--related-docs`는 `relatedDocs`, `--verification-method`는 `verificationMethod`입니다. 이 차이는 보기보다 중요합니다. **명령이 알아보지 못하는 키는 아무 말 없이 버려지므로**, `"dry-run": true`라고 쓴 payload는 미리보기를 하지 않고 그대로 씁니다. `speckiwi <command> --help --json`은 플래그 철자를 출력하는데 그것은 이 쌍에서 반대쪽입니다. `speckiwi commands --json`이 각 옵션의 `flag`와 payload 키를 함께 출력하므로, 확실하지 않을 때는 그쪽을 읽으십시오. `--input-json <json>`은 명령줄을 통과할 만큼 짧은 값을 인라인으로 받습니다.
+
+이 집합은 실제로 변이 명령으로 등록된 것에서 파생되며 옆에 따로 적어 둔 목록에서 오지 않습니다. 예전에 그 목록이 두 번 어긋나 명령 열 개가 이 경로를 갖지 못했습니다(`IR-CLI-101`).
+
+**이 경로는 최상위 명령에만 있습니다.** 그룹 안의 하위 명령, 곧 `workflow <sub>` · `step <sub>` · `orchestrate <sub>` · `repair <sub>` · `skills <sub>` · `links <sub>` · `vibe-gate <sub>` 형태로 쓰는 것은 전부 바깥이며, 쓰기를 하는 것들도 마찬가지입니다. `workflow worklog-emit` · `step promote` · `orchestrate journal append` · `repair rules-references apply` · `skills install` 이 그렇습니다. 이들에게 주는 값은 모두 한 줄로 유지하거나, 명령줄을 전혀 거치지 않는 MCP로 구동하십시오. 이들에게 `--input-json`을 주면 무시되는 것이 아니라 `unknown option`으로 거부되므로, 이 결핍만큼은 스스로를 알립니다. 개별 명령은 `speckiwi <command> --help --json`이 미리 답해 줍니다. JSON 설명이 나오면 경로가 있는 것이고, commander의 평문 도움말이 나오면 없는 것입니다.
+
 ### Mutation (MCP가 정상 경로; CLI는 수동 운영·진단용)
 
 `--reason`은 Change Notes 행을 남기고, `--dry-run`으로 적용 전 결과를 미리 봅니다.
@@ -1277,6 +1422,19 @@ speckiwi orchestrate resume --run-id <id> --json            # 재개 시 이어�
 
 `speckiwi workflow`도 같은 성격입니다 — Kiwi skill이 `kiwi/pipeline.jsonl`과 plan 상태를 일관되게 유지하기 위해 호출하는 하위 명령 그룹(`plan-status` · `plan-task` · `next-task` · `pipeline-status` · `pipeline-tail` · `worklog-tail` · `task-check` · `doctor` 등)입니다. 손으로 돌리는 일반 워크플로가 아니라 진단·skill 전용이며, 목록은 `speckiwi workflow --help`에 있습니다.
 
+두 그룹은 위 어디에서도 부르지 않아 놓치기 쉽습니다.
+
+`speckiwi repair rules-references diagnose`는 `Related Docs` 행이 이 릴리스가 더 이상 배포하지 않는 rules 문서를 가리키는 요구를 나열하며, 요구 id와 파일과 줄, 그리고 무엇으로 바꿀지를 함께 줍니다. 아무것도 고치지 않습니다. `speckiwi repair rules-references apply`는 그 교체를 수행합니다. **이 명령에는 `--dry-run`이 없으므로**, `diagnose` 출력을 읽고 커밋한 뒤에 돌리십시오. 이 쌍이 존재하는 이유는 `upgrade`가 그 일을 하지 않기 때문입니다. `upgrade`는 `AGENTS.md`와 `CLAUDE.md`의 참조를 고치고 `docs/` 아래는 *보고만* 합니다. 요구 본문을 고치는 것은 마이그레이션이 아니라 거버넌스 변이이기 때문입니다(`FR-NODE-092`).
+
+`speckiwi workflow verification-ledger plan`과 `speckiwi workflow verification-ledger record`는 산문 재검토 범위를 바뀐 절로 좁히는 heading 기준 원장을 유지하고, `speckiwi workflow work-order next`는 Active Target에서 다음 작업 지시를 만듭니다.
+
+**이 문서는 손으로 돌릴 만한 명령을 싣지, 전부를 싣지 않습니다.** CLI는 명령 스펙 149개를 선언하며, 여기에는 Kiwi skill이 MCP로 구동하는 `edit-requirement` · `edit-requirement-table-rows` 같은 세밀 편집기가 포함됩니다. 인자와 옵션까지 전부 보려면 다음을 쓰십시오.
+
+```sh
+speckiwi commands --json
+```
+
+
 <a id="ko-principles"></a>
 
 ## 9. SRS 작업 원칙
@@ -1308,12 +1466,19 @@ node bin/speckiwi --help
 
 ```sh
 npm run typecheck
+npm run typecheck:test    # 테스트 소스. 이름이 시사하는 것보다 좁습니다. tsconfig.test.json 참조
 npm run lint
 npm test                  # vitest, --no-file-parallelism
 npm run test:coverage
 npm run test:integration
-npm run release:check
+npm run release:acceptance
+npm run version:check
+npm run release:check     # version:check 후 Active Target에 대한 릴리스 게이트
+npm run perf:srs
+npm run value-sites:diff
 ```
+
+`release:check`는 **Active Target**을 읽으므로 `package.json`의 버전이 아니라 지금 작업 중인 target에 대해 보고합니다. planned 요구가 남아 있는 target은 릴리스 준비가 되지 않은 것이고, 그렇게 답하는 것이 이 명령의 역할입니다.
 
 릴리스 baseline tag 예시:
 
@@ -1353,4 +1518,13 @@ skills/etc/
 - `FR-FLOW-124` … `FR-FLOW-130`: `kiwi-pipeline` 기본 사이클과 단일 opt-out `--none-cycle` (2.9.0).
 - `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: 모든 rung의 종료 리뷰 루프 의무와, 리뷰 기록 없는 완료를 run-close 검증기가 거부하게 만드는 `terminal_review` 저널 기록 (2.10.0).
 - `FR-NODE-179`: run-root 불변식 — `docs/spec/`는 git 최상위에 있어야 하며 doctor가 이를 검사합니다 (2.7.1).
-- target `2.5.2-phase1-target-lifecycle` · `2.6.0-phase2-parallel-lanes` 및 `kiwi-orchestrator` 요구 집합: target status lifecycle, lane 분할과 worktree 계약, 오케스트레이터 run 표면. (2.6.0 target 의 선언된 목표는 현재 배포물보다 앞서 있습니다 — §6 의 오케스트레이터 행을 보십시오.) 전체 목록은 `docs/spec/00.index.md`의 Target Map을 보십시오.
+- target `2.5.2-phase1-target-lifecycle` · `2.6.0-phase2-parallel-lanes` 및 `kiwi-orchestrator` 요구 집합: target status lifecycle, lane 분할과 worktree 계약, 오케스트레이터 run 표면. (2.6.0 target 의 선언된 목표는 현재 배포물보다 앞서 있습니다 — §6 의 오케스트레이터 행을 보십시오.)
+- `FR-MCP-058` / `FR-MCP-059` / `FR-MCP-064`: worktree 지역 run 상태를 다루는 도구와 SRS 조회 도구가 호출 단위 `workspaceRoot`를 받고, 쓰기와 ID 발급은 여전히 거부됩니다 (2.11.0, 3.1.0에서 확장).
+- `IR-CLI-095` / `IR-CLI-096`: 설치 수명주기 — `upgrade --global`, 그리고 자기가 설치했다는 증명에 대해서만 지우는 `remove` 명령 (2.13.0).
+- `REL-FLOW-003`: 이 문서의 사실 주장을 그것을 소유한 심볼과 대조합니다 — commander 트리, MCP 도구 레지스트리, doctor 검사 목록. 없는 하위 명령이나 어긋난 계수는 `npm test`를 실패시킵니다 (2.12.0).
+- `FR-PARSE-039` / `FR-NODE-206`: `SRS-W073`과 `SRS-W074`. 요구의 산문을 그것이 인용하는 코드와 트리에 대조하는 경고 둘입니다 (3.0.0과 3.1.0).
+- `FR-NODE-198`: `Status`를 `validate`가 사후에 보고하는 대신 쓰는 시점에 거부합니다.
+- `IR-CLI-058` / `IR-CLI-101`: `--input-json` 표준입력 경로와, 모든 변이 명령이 그 경로에 닿게 유지하는 파생 — §8 의 *명령줄이 실어 나르지 못하는 값 전달하기* 를 보십시오.
+- `FR-NODE-207`: 오케스트레이터 run lock 이 그것을 쓴 프로세스의 수명이 아니라 lease 만료로 유지됩니다. `REL-NODE-008`은 그 이웃으로, 동시성 테스트가 시계가 아니라 필요한 신호를 기다리게 만든 요구입니다.
+
+전체 목록은 `docs/spec/00.index.md`의 Target Map을 보십시오.
