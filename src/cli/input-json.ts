@@ -16,30 +16,31 @@ import { writeJson } from "./formatters.js";
 // flags. Options are injected from the ToolSpec registry (FR-ARCH-006). `speckiwi <command> --help
 // --json` is intercepted to print a registry-derived machine-readable description.
 
-/** Mutation command cliNames registered by registerMutationCommands (those accepting --input-json). */
-export const MUTATION_COMMAND_NAMES: readonly string[] = [
-  "init",
-  "update-status",
-  "edit-ac",
-  "update-stability",
-  "append-note",
-  "set-active-target",
-  "set-target-goal",
-  "add-completed-work",
-  "check-ac",
-  "uncheck-ac",
-  "add-evidence",
-  "add-trace",
-  "add-requirement",
-  "mode",
-  "retarget",
-  "update-field",
-  "add-related-doc",
-  "add-change-note",
-  // FND-002: these are mutation commands too — they must accept --input-json and --help --json.
-  "supersede",
-  "restore"
-];
+/**
+ * Mutation command cliNames accepting --input-json and --help --json.
+ *
+ * Derived from registration, not transcribed. @req IR-CLI-101
+ *
+ * This used to be a literal array beside the commands it was supposed to mirror, and it fell out of
+ * step twice: FND-002 (supersede, restore) was repaired by adding two names, and by 2026-09-20 ten
+ * more had accumulated — among them edit-requirement, whose --statement is exactly the kind of
+ * multi-line value a Windows command line cannot carry. Each registrar now reports what it actually
+ * registered, so a command added later reaches the channel without anyone editing a list here.
+ */
+const MUTATION_COMMANDS = new WeakSet<Command>();
+
+/**
+ * Marks `commands` as mutation commands. Each registrar calls this with the subcommands it actually
+ * registered, so the set follows registration rather than restating it.
+ *
+ * The mark lives on the Command objects rather than in a set of names, so the answer belongs to the
+ * program that declared it: a throwaway program built elsewhere cannot make this one admit a command
+ * it never registered, and a build that stopped registering reddens instead of answering from
+ * whatever ran first.
+ */
+export function markMutationCommands(commands: readonly Command[]): void {
+  for (const command of commands) MUTATION_COMMANDS.add(command);
+}
 
 const INPUT_JSON_FLAG = "--input-json";
 
@@ -50,7 +51,7 @@ const VALUE_GLOBAL_FLAGS: ReadonlySet<string> = new Set(["--root"]);
  * Returns the cliName of the mutation command in `argv`, or undefined when none is present.
  * Global option values (e.g. the path after --root) are skipped so the command token is found.
  */
-function findMutationCommand(argv: readonly string[]): string | undefined {
+function findMutationCommand(argv: readonly string[], program: Command): string | undefined {
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index] as string;
     if (VALUE_GLOBAL_FLAGS.has(token)) {
@@ -58,7 +59,8 @@ function findMutationCommand(argv: readonly string[]): string | undefined {
       continue;
     }
     if (token.startsWith("-")) continue;
-    if (MUTATION_COMMAND_NAMES.includes(token)) return token;
+    const subcommand = program.commands.find((sub) => sub.name() === token);
+    if (subcommand && MUTATION_COMMANDS.has(subcommand)) return token;
     // The first bare token that is not a known mutation command is not one we expand.
     return undefined;
   }
@@ -119,7 +121,7 @@ export async function expandInputJsonArgv(argv: string[], program: Command): Pro
   const flagIndex = argv.indexOf(INPUT_JSON_FLAG);
   if (flagIndex === -1) return argv;
 
-  const cliName = findMutationCommand(argv);
+  const cliName = findMutationCommand(argv, program);
   if (cliName === undefined) return argv;
   const spec = findSpecByCliName(cliName);
   if (!spec) return argv;
@@ -174,6 +176,12 @@ export async function expandInputJsonArgv(argv: string[], program: Command): Pro
     const flagName = option.flag.split(/\s+/)[0] as string;
     if (option.encoding === "boolean") {
       if (value) optionTokens.push(flagName);
+    } else if (option.encoding === "json") {
+      // The discrete flag takes a JSON string, so the payload's structured value has to be encoded
+      // back rather than stringified: String([...]) yields "[object Object]", which parses as
+      // nothing. Only --items and --operations declare this encoding, and both belong to commands
+      // that had no channel before IR-CLI-101, so this path had never been exercised.
+      optionTokens.push(flagName, JSON.stringify(value));
     } else if (option.repeatable && Array.isArray(value)) {
       for (const item of value) optionTokens.push(flagName, String(item));
     } else {
@@ -194,7 +202,7 @@ export async function expandInputJsonArgv(argv: string[], program: Command): Pro
  */
 export function tryRenderHelpJson(argv: readonly string[], io: CliIo, program: Command): boolean {
   if (!argv.includes("--help") || !argv.includes("--json")) return false;
-  const cliName = findMutationCommand(argv);
+  const cliName = findMutationCommand(argv, program);
   if (cliName === undefined) return false;
   const description = describeCommandForHelp(cliName);
   if (!description) return false;

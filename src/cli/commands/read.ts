@@ -10,6 +10,7 @@ import { setSdsStatus } from "../../core/mutation/set-sds-status.js";
 import { promoteStepRequirement } from "../../core/mutation/add-requirement.js";
 import { synthesizeStepSrs } from "../../core/mutation/synthesis.js";
 import { getDiagnosticDefinition } from "../../core/diagnostic-registry.js";
+import { markMutationCommands } from "../input-json.js";
 import { mutationFail, mutationOk } from "../../core/mutation/guards.js";
 import { PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
 import { renderReadOnlyToolNames, toolSpecs, type ToolSpec } from "../../mcp/schemas.js";
@@ -832,6 +833,9 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait", "tdd"]);
   command
     .command("mode")
+    // `mode <value>` writes docs/spec/steps/state.md, so it is a mutation command even though it
+    // is declared here among the read commands for discoverability. It marks itself rather than
+    // being named in a list somewhere else, which is the drift IR-CLI-101 closes. @req IR-CLI-101
     .argument("[value]", "switch target: sdd, vibe, wait, or tdd")
     .option("--json", "JSON output")
     .action(async (value, options) => {
@@ -1195,6 +1199,10 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         }));
       output(context, { json }, { target, requirements });
     });
+
+  // `mode` is the one mutation command declared among the read commands, so it is marked here
+  // rather than by registerMutationCommands. @req IR-CLI-101
+  markMutationCommands(command.commands.filter((sub) => sub.name() === "mode"));
 }
 
 // @req IR-CLI-074 — commander collector for repeatable options (e.g. --touches-req).

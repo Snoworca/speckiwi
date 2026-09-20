@@ -33,6 +33,7 @@ import type { CliContext } from "../command.js";
 import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
 import { todayStamp } from "../../core/date-stamp.js";
+import { markMutationCommands } from "../input-json.js";
 
 async function rootFrom(options: { root?: string }) {
   return resolveProjectRoot(process.cwd(), options.root);
@@ -91,6 +92,11 @@ function parseRequirementIds(value?: string): string[] {
 }
 
 export function registerMutationCommands(command: Command, context: CliContext): void {
+  // Everything this function registers is a mutation command, so the --input-json / --help --json
+  // set is taken from the tree around the call rather than restated as a list. A command added
+  // below — including one produced by a loop, like check-ac — is covered without a second edit.
+  // @req IR-CLI-101
+  const before = new Set(command.commands.map((sub) => sub.name()));
   command
     .command("init")
     .option("--target <target>")
@@ -839,4 +845,6 @@ export function registerMutationCommands(command: Command, context: CliContext):
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
+
+  markMutationCommands(command.commands.filter((sub) => !before.has(sub.name())));
 }
