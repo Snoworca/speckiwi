@@ -59,4 +59,4 @@ Every etc skill that uses `--auto` must declare `critical_gates[]`. A matching c
 
 ## Invocation Wording
 
-Use Open Agent Skills wording such as "use the `kiwi-srs` skill" or "run the `kiwi-planner` workflow". Avoid host-specific slash commands or provider-specific tool names.
+Use Open Agent Skills wording such as "use the `kiwi-srs` skill" or "run the `kiwi-sds` workflow". Avoid host-specific slash commands or provider-specific tool names.

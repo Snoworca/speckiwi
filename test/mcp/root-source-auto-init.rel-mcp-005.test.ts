@@ -23,7 +23,8 @@ async function workspaceInfo(cwd: string): Promise<Record<string, unknown>> {
   await client.connect(transport);
   try {
     const result = await client.callTool({ name: "mcp_workspace_info", arguments: {} });
-    const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
+    const first = (result.content as Array<{ type: string; text?: string }> | undefined)?.[0];
+    const text = first?.type === "text" ? (first.text ?? "") : "";
     return JSON.parse(text) as Record<string, unknown>;
   } finally {
     await client.close();

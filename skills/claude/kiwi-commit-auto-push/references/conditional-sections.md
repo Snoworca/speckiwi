@@ -12,8 +12,7 @@
 
 ```
 KIWI_PM_CONTEXT:
-  run_id: 2026-05-19.skf.v01
-  task_id: T-PH001-02
+  run_id: 4.0.0-auth-token
   req_ids: [FR-AUTH-001]
   child_mode: true
 ```
@@ -24,7 +23,7 @@ KIWI_PM_CONTEXT:
 
 - AskUserQuestion 비활성 — kiwi-pm 의 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 bubble-up
 - doculight / telegram / google-chat 보고 channel 비활성 (호출자가 표시 책임)
-- `.kiwi/sessions/{run_id}/commit-{task_id}.json` 에 본 스킬의 결과 영속화 (kiwi-pm 이 §0.G3 누적 카운터 추적 가능)
+- `.kiwi/sessions/{run_id}/commit-{timestamp}.json` 에 본 스킬의 결과 영속화 (kiwi-pm 이 §0.G3 누적 카운터 추적 가능)
 
 #### 11.6.2 3상태 반환 JSON SSOT (kiwi-pm 3상태 프로토콜 정합)
 
@@ -32,11 +31,10 @@ KIWI_PM_CONTEXT:
 ```json
 {
   "state": "TASK_DONE",
-  "task_id": "T-PH001-02",
   "commit_hash": "abc123def",
   "commit_url": "https://github.com/.../commit/abc123def",
   "push_branch": "feature/auth",
-  "trailers": { "Closes": ["#42"], "REQ": ["FR-AUTH-001"], "Task": ["T-PH001-02"] },
+  "trailers": { "Closes": ["#42"], "REQ": ["FR-AUTH-001"] },
   "issue_comments_posted": [42],
   "mcp_calls": [
     { "tool": "add_trace_link", "id": "FR-AUTH-001", "ok": true },
@@ -50,7 +48,6 @@ KIWI_PM_CONTEXT:
 ```json
 {
   "state": "NEEDS_USER",
-  "task_id": "T-PH001-02",
   "reason": "stability_frozen" | "push_conflict_non_fast_forward" | "push_conflict_rebase" | "push_conflict_merge" | "issue_candidate_ambiguous",
   "context": {
     "req_id": "FR-AUTH-001",
@@ -71,7 +68,6 @@ KIWI_PM_CONTEXT:
 ```json
 {
   "state": "FAILED",
-  "task_id": "T-PH001-02",
   "error": "git_push_authentication_failed" | "speckiwi_mcp_unavailable_required" | "gh_cli_not_installed_required" | "commit_signature_check_failed_post_amend",
   "details": "한 줄 설명",
   "partial_state": {

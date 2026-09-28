@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { BUNDLED_RULES_VERSION, BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
+import { BUNDLED_RULES_VERSION, BUNDLED_SDS_RULES_VERSION, BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
 
 const read = (relPath: string) => readFile(relPath, "utf8");
 
@@ -71,14 +71,20 @@ describe("FR-FLOW-013 rules registration of checked_compatible", () => {
     await walk("docs/rule");
     expect(files.length).toBeGreaterThan(20);
 
-    const bundledVersion = BUNDLED_SRS_RULES_FILENAME.replace(/^SRS-MD-Rules-v|\.md$/g, "");
+    // FR-NODE-087 AC-7 — each document is held to its own constant: the SDS rules moved to 2.6.0 for
+    // the lite profile while the SRS rules stay at 2.5.0, so one shared version would flag every
+    // correct SDS citation.
+    const bundledVersion = { SRS: BUNDLED_RULES_VERSION, SDS: BUNDLED_SDS_RULES_VERSION } as const;
     const offenders: string[] = [];
     for (const relPath of files) {
       const text = await read(relPath);
       const cited = new Set(
-        [...text.matchAll(/(?:SRS|SDS)-MD(?:-Rules-v| Authoring Rules v)(\d+\.\d+\.\d+)/g)].map((match) => match[1]!)
+        [...text.matchAll(/(SRS|SDS)-MD(?:-Rules-v| Authoring Rules v)(\d+\.\d+\.\d+)/g)].map((match) => `${match[1]!} ${match[2]!}`)
       );
-      for (const version of cited) if (version !== bundledVersion) offenders.push(`${relPath}: v${version}`);
+      for (const entry of cited) {
+        const [family, version] = entry.split(" ") as ["SRS" | "SDS", string];
+        if (version !== bundledVersion[family]) offenders.push(`${relPath}: ${family} v${version}`);
+      }
     }
     expect(offenders).toEqual([]);
   });

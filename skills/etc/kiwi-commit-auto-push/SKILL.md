@@ -353,6 +353,6 @@ issue: #N Refs (참조만, 미해결 코멘트 등록)
 ## Extended References
 
 - Read `references/extended-workflow.md` when executing or validating
-speckiwi integration, REQ/Task matching, MCP evidence registration, child-mode handoff, and pipeline event emission
+speckiwi integration, REQ matching, MCP evidence registration, child-mode handoff, and pipeline event emission
 .
 - Keep `SKILL.md` as the core trigger and workflow map; load the reference file only after the relevant phase is reached.

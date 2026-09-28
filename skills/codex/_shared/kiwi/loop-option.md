@@ -67,10 +67,10 @@ to. Same additive pattern as the `auto-option.md §7` child-propagation table.
 |---|---|---|
 | kiwi-pm | kiwi-coder | `--mini`/`--loops N` → child spawn args |
 | kiwi-pipeline | every spawned sub-skill | `--mini`/`--loops N` → all children |
-| kiwi-wave-master | per-wave kiwi-srs + kiwi-pipeline | `--mini`/`--loops N` → per wave |
+| kiwi-wave-master | per-wave kiwi-srs + the per-wave calls of the shared contract `../_shared/kiwi/parallel-waves.md` (`kiwi-sds`, the worker's `kiwi-pm` and `kiwi-review-fix-loop`) | `--mini`/`--loops N` → per wave |
 | kiwi-hot-fix | kiwi-srs-sync | `--mini`/`--loops N` → delegation |
 | kiwi-coder | kiwi-review-fix-loop | `--mini`/`--loops N` → follow-up |
-| kiwi-orchestrator | the routed child on a delegated rung — `kiwi-tdd` + `kiwi-review-fix-loop` on the step rung, `kiwi-pm` + `kiwi-review-fix-loop` on the plan rung; on the orchestrated rung the per-wave set `kiwi-srs` + `kiwi-planner` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → the routed child, per wave, and additionally the orchestrator's own D / W / H / P / F loop caps — **5개** (five). The per-lane loop is **이연**(deferred) to the next target and is absent from this list: naming a cap for a loop that does not run pins a contract with nothing behind it |
+| kiwi-orchestrator | the routed child on the delegated rung — `kiwi-tdd` + `kiwi-review-fix-loop` on the step rung; on the orchestrated rung the per-wave set `kiwi-srs` + `kiwi-sds` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → the routed child, per wave, and additionally the orchestrator's own D / W / P / F loop caps — **4개** (four). No per-lane loop is in this list: a lane is one wave's worker, and that worker's loops belong to the children it calls (`kiwi-pm`, `kiwi-review-fix-loop`) |
 
 ## 7. Natural-language mapping
 

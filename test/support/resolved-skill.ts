@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { at } from "./at.js";
 
 // @req FR-FLOW-110
 // A skill body is no longer self-contained: FR-FLOW-106..109 move whole rule sets out of
@@ -40,7 +41,7 @@ export function sectionZero(body: string): string {
   if (start === -1) return "";
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if (/^#{1,2}\s/.test(lines[i])) {
+    if (/^#{1,2}\s/.test(at(lines, i))) {
       end = i;
       break;
     }
@@ -57,7 +58,8 @@ export function sharedModuleRefs(skillText: string): string[] {
   const out: string[] = [];
   const re = /_shared\/kiwi\/([A-Za-z0-9._-]+)\.md/g;
   for (let m = re.exec(zero); m; m = re.exec(zero)) {
-    if (!out.includes(m[1])) out.push(m[1]);
+    const name = at(m, 1);
+    if (!out.includes(name)) out.push(name);
   }
   return out;
 }
@@ -103,7 +105,8 @@ export function moduleRegion(resolvedBody: string, moduleName: string): string {
   if (start === -1) return "";
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if (anyModule.test(lines[i]) && !mine.test(lines[i])) {
+    const line = at(lines, i);
+    if (anyModule.test(line) && !mine.test(line)) {
       end = i;
       break;
     }

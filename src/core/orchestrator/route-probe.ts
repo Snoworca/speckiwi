@@ -1,5 +1,6 @@
-// @req FR-NODE-111, FR-NODE-112, FR-NODE-115, FR-NODE-116, FR-NODE-117, FR-NODE-118 — the producers of
-// the route probe (`docs/research/kiwi-orchestrator/09.routing-design.md` §3.2, §10.1).
+// @req FR-NODE-111, FR-NODE-112, FR-NODE-117, FR-NODE-118, FR-NODE-212 — the producers of the route probe
+// (`docs/research/kiwi-orchestrator/09.routing-design.md` §3.2, §10.1). The plan probe field S2 and its
+// producers left with the plan rung (FR-NODE-212 AC-1).
 //
 // Every function here is pure: it is handed the bytes or the records someone else read. The orchestrator
 // owns the calls; this module owns what the answers mean.
@@ -26,44 +27,6 @@ export interface RegisteredScope {
   document?: string;
 }
 
-export interface PlanFrontmatter {
-  generated_at?: string | null;
-  [key: string]: unknown;
-}
-
-export interface PlanCandidateSelection {
-  path: string | null;
-  candidates: string[];
-}
-
-/** A `workflow_next_plan_task` task-catalog entry, as D5 and D6 read it. */
-export interface PlanTaskCatalogEntry {
-  id: string;
-  req_ids: string[];
-  status: string;
-}
-
-/** S2 (09 §3.2). */
-export interface PlanProbe {
-  contract_ok: boolean;
-  reject_reason: string | null;
-  open_tasks: number;
-  req_ids: string[];
-  lifecycle_req_ids: string[];
-  target: string | null;
-}
-
-// 09 §3.2 S2, §3.3 D5. The contract values a `kiwi-pm` boot admits, and the id regexes it enforces
-// (`kiwi-pm` §Official Workflow Tool Policy and §0.14). Each is a boot rejection in the delegated child, so a plan
-// failing any of them is not runnable and the routing decision must know which one failed.
-const PLAN_CONTRACT = "1.2.0";
-const PLAN_SCHEMA_VERSION = "1.1.0";
-const REJECTED_TDD_POLICY = "disabled";
-const RUN_ID_PATTERN = /^[a-z0-9.-]{4,40}$/;
-const PHASE_ID_PATTERN = /^PH-\d{3}$/;
-const TASK_ID_PATTERN = /^T-PH\d{3}-\d{2}$/;
-const DONE_LIKE = new Set(["done", "skipped"]);
-
 // 09 §3.2 S7, §3.5 narrowing 1. Only these three forms carry an explicit ordering marker. The trailing
 // `(?!\w)` on the 단계 form is `\b`'s intent spelled so it holds: `\b` after a non-word character never
 // matches at end of input, so the literal reading of the design's `^\d+\s*단계\b` would reject `## 1단계`.
@@ -78,7 +41,7 @@ const CODE_TRACE_TYPE = "code";
  * The value an unreadable field takes (FR-NODE-111). It is deliberately not `0` and not `[]`: failing
  * open on the anchored-requirement field yields an empty anchor set, which *enables* the step rung.
  * `NaN` fails every threshold comparison, and the placeholder id matches no requirement id and no file
- * path, so every intersection it enters comes back empty and D6 stays fail-closed.
+ * path, so every intersection it enters comes back empty.
  */
 const UNREADABLE_NUMBER = Number.NaN;
 
@@ -204,93 +167,6 @@ export function deriveScopeRequirementIds(records: readonly RouteRequirementReco
 }
 
 /**
- * @req FR-NODE-115 — S2's producer. The comparator is **total**: an undated candidate exists in this
- * repository today, and two or more candidates is the normal case and deliberately not a prompt, because
- * the orchestrator has no user question at Phase 1.c-prime. Nothing is filtered out before ordering —
- * work-relevance is D6's job and contract validity is D5's, both after selection.
- */
-export function selectPlanCandidate(planPaths: readonly string[], frontmatters: Readonly<Record<string, PlanFrontmatter>>): PlanCandidateSelection {
-  const generatedAt = (path: string): string => {
-    const declared = frontmatters[path]?.generated_at;
-    return typeof declared === "string" ? declared : "";
-  };
-  const candidates = [...planPaths].sort((left, right) => {
-    const leftDate = generatedAt(left);
-    const rightDate = generatedAt(right);
-    if (leftDate !== rightDate) {
-      if (!leftDate) return 1;
-      if (!rightDate) return -1;
-      return leftDate < rightDate ? 1 : -1;
-    }
-    return left < right ? -1 : left > right ? 1 : 0;
-  });
-  return { path: candidates[0] ?? null, candidates };
-}
-
-/**
- * The plan document's frontmatter, read line-ending-agnostically.
- *
- * This repository is Windows-first with `core.autocrlf=true` and no `.gitattributes`, so the same plan
- * file is LF in the index and CRLF in the working tree. A reader anchored on `"---\n"` would give the
- * two different targets for the same plan, and D6 removes `R-PLAN` on whichever one read wrong.
- */
-function planFrontmatterValue(planText: string, key: string): string | undefined {
-  const open = /^---[ \t]*\r?\n/.exec(planText);
-  if (!open) return undefined;
-  const body = planText.slice(open[0].length);
-  const close = /\r?\n---/.exec(body);
-  if (!close) return undefined;
-  for (const line of body.slice(0, close.index).split(/\r?\n/)) {
-    const match = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
-    if (!match || match[1] !== key) continue;
-    return match[2]?.trim().replace(/^"|"$/g, "");
-  }
-  return undefined;
-}
-
-function contractRejection(sidecar: Record<string, unknown>): string | null {
-  if (sidecar.plan_contract !== PLAN_CONTRACT) return `plan_contract must be ${PLAN_CONTRACT}`;
-  if (sidecar.schema_version !== PLAN_SCHEMA_VERSION) return `schema_version must be ${PLAN_SCHEMA_VERSION}`;
-  const tasks = Array.isArray(sidecar.tasks) ? sidecar.tasks : [];
-  if (tasks.length === 0) return "tasks[] is empty";
-  if (sidecar.tdd_policy === REJECTED_TDD_POLICY) return `tdd_policy must not be ${REJECTED_TDD_POLICY}`;
-
-  const runId = typeof sidecar.run_id === "string" ? sidecar.run_id : "";
-  if (!RUN_ID_PATTERN.test(runId)) return `run id ${JSON.stringify(runId)} does not match ${RUN_ID_PATTERN.source}`;
-  for (const phase of Array.isArray(sidecar.phases) ? sidecar.phases : []) {
-    const id = isRecord(phase) && typeof phase.id === "string" ? phase.id : "";
-    if (!PHASE_ID_PATTERN.test(id)) return `phase id ${JSON.stringify(id)} does not match ${PHASE_ID_PATTERN.source}`;
-  }
-  for (const task of tasks) {
-    const id = isRecord(task) && typeof task.id === "string" ? task.id : "";
-    if (!TASK_ID_PATTERN.test(id)) return `task id ${JSON.stringify(id)} does not match ${TASK_ID_PATTERN.source}`;
-  }
-  return null;
-}
-
-/**
- * @req FR-NODE-116 — S2's contract and its two requirement-id sets. `lifecycle_req_ids` is deliberately
- * the union over **every** catalog entry rather than the Requirement-typed trace set: a trace-sourced set
- * can be strictly smaller and would hide a `frozen` requirement from S10, and therefore from D7, which is
- * the sole enforcement point for blocked stability on the plan rung.
- */
-export function derivePlanProbe(planText: string, taskCatalog: readonly PlanTaskCatalogEntry[], sidecarJson: unknown): PlanProbe {
-  const sidecar = isRecord(sidecarJson) ? sidecarJson : {};
-  const rejectReason = contractRejection(sidecar);
-  const open = taskCatalog.filter((entry) => !DONE_LIKE.has(entry.status));
-  const sidecarTarget = typeof sidecar.target === "string" ? sidecar.target : null;
-
-  return {
-    contract_ok: rejectReason === null,
-    reject_reason: rejectReason,
-    open_tasks: open.length,
-    req_ids: unique(open.flatMap((entry) => entry.req_ids)),
-    lifecycle_req_ids: unique(taskCatalog.flatMap((entry) => entry.req_ids)),
-    target: planFrontmatterValue(planText, "target") ?? sidecarTarget
-  };
-}
-
-/**
  * S11's list, kept whole. A member that is not a string, and a list that is not an array, both become
  * `MALFORMED_FIELD_ID` rather than vanishing: discarding the list because one member had the wrong type
  * would lose every other member's declaration too, which is the same fail-open the parser exists to
@@ -341,7 +217,7 @@ export function parseRouteProbe(json: unknown): RouteProbe {
   const activeTarget = mark<string | null>("S9", readActiveTarget, null);
   // 09 §3.2 S3c: when the active target is empty the denominator does not exist, so the producer call is
   // not made and its three consumers take their empty-denominator value. An unregistered target is a
-  // value `get_active_target` returned, exactly as D7 already consumes it — not an unreadable field.
+  // value `get_active_target` returned — not an unreadable field.
   // The test is on what was *read*: an S9 that could not be read is unreadable, not empty.
   const emptyDenominator = readActiveTarget !== undefined && !readActiveTarget;
 
@@ -349,7 +225,6 @@ export function parseRouteProbe(json: unknown): RouteProbe {
   const mode = s1 && typeof s1.mode === "string" && ["sdd", "vibe", "wait", "tdd"].includes(s1.mode) ? (s1.mode as RouteProbe["mode"]) : undefined;
   const modeSource = s1 && typeof s1.source === "string" && ["mcp", "cli", "default-wait"].includes(s1.source) ? (s1.source as RouteProbe["modeSource"]) : undefined;
 
-  const s2 = values.get("S2");
   const s3 = values.get("S3");
   const s3c = values.get("S3c");
   const s4 = values.get("S4");
@@ -365,15 +240,10 @@ export function parseRouteProbe(json: unknown): RouteProbe {
   const scopeReqIds = s4 && !("scope_req_ids" in s4) && emptyDenominator ? [] : mark("S4", s4 ? stringArray(s4.scope_req_ids) : undefined, unreadableList("S4"));
 
   const probe: RouteProbe = {
-    // S1's fail-open lands on `wait`, which is `workmode-policy.md` §1's own value and §4's business
-    // rather than a disqualifier's; §8.2 clause 4 is what withholds the fast path on it.
+    // S1's fail-open lands on `wait`, the work-mode's own default, and no disqualifier reads it;
+    // §8.2 clause 4 is what withholds the fast path on it.
     mode: mark("S1", mode, "wait"),
     modeSource: mark("S1", modeSource, "default-wait"),
-    planContractOk: mark("S2", s2 ? (typeof s2.contract_ok === "boolean" ? s2.contract_ok : undefined) : undefined, false),
-    planRejectReason: mark<string | null>("S2", s2 ? nullableString(s2.reject_reason) : undefined, "probe field S2 is unreadable"),
-    planOpenTasks: mark("S2", s2 ? finiteNumber(s2.open_tasks) : undefined, UNREADABLE_NUMBER),
-    planReqIds: mark("S2", s2 ? stringArray(s2.req_ids) : undefined, unreadableList("S2")),
-    planTarget: mark<string | null>("S2", s2 ? nullableString(s2.target) : undefined, null),
     anchoredReqs: mark("S3", s3 ? stringArray(s3.anchored_reqs) : undefined, unreadableList("S3")),
     anchorCoverage,
     scopes: mark("S4", s4 ? stringArray(s4.scopes) : undefined, unreadableList("S4")),

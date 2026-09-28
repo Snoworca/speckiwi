@@ -20,7 +20,8 @@ export interface RoundRow {
 }
 
 export interface Round {
-  loop: "D" | "W" | "H" | "L" | "P" | "F";
+  /** Loop H retired in 4.0.0 with the English handoff documents (FR-NODE-169). */
+  loop: "D" | "W" | "L" | "P" | "F";
   scope: string;
   /** 1-based. */
   roundIndex: number;
@@ -131,10 +132,10 @@ export function evaluateRound(round: Round): RoundOutcome {
 /**
  * The loop a scope belongs to, and the wave triple it reduces to.
  *
- * `waveNumber` is `/^wave-(\d+)$/`, so of the six legal scopes only `wave-{n}` parses as written:
- * `wave-1-post`, `wave-1-lane-2`, `wave-1-lane-2-handoff`, `design` and `run` all return `null`.
- * Writing a scope through as the `wave` field therefore refuses the wave's own completion — five of
- * the six forms, not one — which is why the reduction happens here rather than at the call site.
+ * `waveNumber` is `/^wave-(\d+)$/`, so of the five legal scopes only `wave-{n}` parses as written:
+ * `wave-1-post`, `wave-1-lane-2`, `design` and `run` all return `null`. Writing a scope through as the
+ * `wave` field therefore refuses the wave's own completion — four of the five forms, not one — which
+ * is why the reduction happens here rather than at the call site.
  * @req FR-NODE-169 AC-5
  */
 export interface RoundScope {
@@ -146,9 +147,8 @@ export interface RoundScope {
 
 const RUN_SCOPES: Record<string, Round["loop"]> = { design: "D", run: "F" };
 
-/** Longest form first: `wave-1-lane-2-handoff` also matches the lane pattern's prefix. */
+/** The loop-H form `wave-{n}-lane-{k}-handoff` retired in 4.0.0 and matches none of these. @req FR-NODE-169 AC-1 */
 const WAVE_SCOPES: Array<{ pattern: RegExp; loop: Round["loop"] }> = [
-  { pattern: /^wave-(\d+)-lane-\d+-handoff$/, loop: "H" },
   { pattern: /^wave-(\d+)-lane-\d+$/, loop: "L" },
   { pattern: /^wave-(\d+)-post$/, loop: "P" },
   { pattern: /^wave-(\d+)$/, loop: "W" }
@@ -172,7 +172,6 @@ export function parseRoundScope(scope: string): RoundScope | null {
 const LOOP_JOURNAL_SHAPE: Record<Round["loop"], { phase: string; verb: string }> = {
   D: { phase: "design", verb: "verify-design" },
   W: { phase: "wave-design", verb: "verify-wave-design" },
-  H: { phase: "handoff", verb: "verify-handoff" },
   L: { phase: "lane", verb: "verify-lane" },
   P: { phase: "wave-verify", verb: "post-merge-verify" },
   F: { phase: "final-verify", verb: "final-verify" }

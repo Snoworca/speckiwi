@@ -10,9 +10,9 @@ orchestration, or final event emission rules.
 |---|---|---:|---:|
 | `kiwi-srs` | Create or update SRS requirements | yes | no |
 | `kiwi-srs-feasibility` | Assess implementability and update requirement stability | no | yes |
-| `kiwi-planner` | Produce implementation plans from active target requirements | no | no |
-| `kiwi-coder` | Implement planned tasks with TDD and verification | yes | no |
-| `kiwi-pm` | Run planned tasks and finalize completed work | yes | no |
+| `kiwi-sds` | Author one lite SDS for the requirements in scope, and close it out after implementation | no | no |
+| `kiwi-coder` | Implement an agreed SDS test-first, with verification | yes | no |
+| `kiwi-pm` | Run an agreed SDS as one kiwi-coder run and finalize completed work | yes | no |
 | `kiwi-srs-research` | Produce research evidence for requirements | no | no |
 | `kiwi-srs-sync` | Sync already-implemented code changes back to SRS | yes | no |
 | `kiwi-commit-auto-push` | Commit and push verified changes with issue/SRS trailers | no | no |
@@ -30,10 +30,10 @@ routing summary is:
 |---|---|---|
 | `kiwi-srs` | `TASK_DONE` | `kiwi-srs-feasibility` |
 | `kiwi-srs-from-code` | `TASK_DONE` | `kiwi-srs-feasibility` |
-| `kiwi-srs-feasibility` | `TASK_DONE` | `kiwi-planner` when stability has reached `evolving`, otherwise `kiwi-srs-research` |
-| `kiwi-planner` | `TASK_DONE` | `kiwi-pm` |
-| `kiwi-coder` | `TASK_DONE` | `kiwi-review-fix-loop --close-reqs` |
-| `kiwi-pm` | `TASK_DONE` | `kiwi-review-fix-loop --close-reqs` |
+| `kiwi-srs-feasibility` | `TASK_DONE` | `kiwi-sds` when stability has reached `evolving`, otherwise `kiwi-srs-research` |
+| `kiwi-sds` | `TASK_DONE` | `kiwi-pm` (a `--close` run sets its own next hint) |
+| `kiwi-coder` | `TASK_DONE` | `kiwi-sds --close <sds-id>` (the move before promotion, when the run is close-safe), whose close event hints `kiwi-review-fix-loop --close-reqs`; otherwise `kiwi-review-fix-loop` without `--close-reqs` |
+| `kiwi-pm` | `TASK_DONE` | `kiwi-sds --close <sds-id>` (the move before promotion, when the run is close-safe), whose close event hints `kiwi-review-fix-loop --close-reqs`; otherwise `kiwi-review-fix-loop` without `--close-reqs` |
 | `kiwi-review-fix-loop` | `TASK_DONE` | `kiwi-commit-auto-push` or none for PR mode |
 | `kiwi-hot-fix` | `TASK_DONE` | `kiwi-commit-auto-push` or `kiwi-pipeline` |
 | `kiwi-commit-auto-push` | `TASK_DONE` | `kiwi-pipeline` |
@@ -47,19 +47,22 @@ rather than stopping after one next hint. `--none-cycle` is the single opt-out a
 restores single-next-step recommendation; `--cycle` is still accepted and changes
 nothing. The chain only executes when the invocation carries a work input:
 
-`kiwi-srs -> (conditional) kiwi-srs-feasibility -> kiwi-planner -> kiwi-pm -> kiwi-review-fix-loop`
+`kiwi-srs -> (conditional) kiwi-srs-feasibility -> kiwi-sds -> kiwi-pm -> kiwi-review-fix-loop --close-reqs`
+
+The cycle ends with the test-sufficiency check of `test-sufficiency.md` and the SDS close-out
+`kiwi-sds --close <sds-id>`: the close-out's move runs before the `--close-reqs` hop promotes, and
+its delete runs after the check (`kiwi-pipeline` §2.5.4).
 
 - Conditional feasibility: run `kiwi-srs-feasibility` only when the just-authored
   requirements carry `draft` stability or unverified implementability; otherwise
-  skip it and proceed to `kiwi-planner`.
+  skip it and proceed to `kiwi-sds`.
 - `--auto`: the decision committee in `auto-option.md` auto-decides every
   inter-stage gate and the cycle runs to the end; a sub-skill `NEEDS_USER` /
   `FAILED` or a critical gate still halts for the user.
 - `--max`: propagate to every spawned sub-skill.
 - Research documents supplied by the user are passed through to `kiwi-srs`.
 - A skip-authoring / resume-from-stage entry lets a caller whose SRS is already
-  authored enter the cycle at feasibility or planning (consumed by
-  `kiwi-wave-master`, FR-FLOW-029).
+  authored enter the cycle at feasibility or SDS authoring.
 
 ## Guardrails
 

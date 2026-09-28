@@ -1,4 +1,12 @@
-import { LANE_DISPOSITION_KINDS, waveNumber, type LaneDispositionKind, type WavesEvent } from "./journal-schema.js";
+import {
+  LANE_DISPOSITION_KINDS,
+  LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0,
+  waveNumber,
+  writtenBefore400,
+  type LaneDispositionKind,
+  type RetiredLaneDispositionKind,
+  type WavesEvent
+} from "./journal-schema.js";
 
 /**
  * Lane disposition and stage settlement — 05 §4.6's `lane-quarantined` class and §4.1's
@@ -25,7 +33,8 @@ export interface LaneKey {
 
 /** §4.2's `lane_disposition` object. Every kind is terminal — the field exists only for lanes that left. */
 export interface LaneDisposition {
-  readonly kind: LaneDispositionKind;
+  /** A retired kind is read only off a line written before 4.0.0 (FR-NODE-107 AC-2). */
+  readonly kind: LaneDispositionKind | RetiredLaneDispositionKind;
   readonly reason?: string;
   readonly at?: string;
 }
@@ -34,8 +43,11 @@ export type LaneDispositionRefusal = { readonly ok: false; readonly code: "lane-
 
 export type LaneDispositionRead = { readonly ok: true; readonly disposition: LaneDisposition | null } | LaneDispositionRefusal;
 
-function isLaneDispositionKind(value: unknown): value is LaneDispositionKind {
-  return typeof value === "string" && (LANE_DISPOSITION_KINDS as readonly string[]).includes(value);
+/** @req FR-NODE-107 AC-2, FR-NODE-213 AC-6 — the enum the line was written under decides the kind. */
+function isLaneDispositionKind(value: unknown, event: WavesEvent): value is LaneDisposition["kind"] {
+  if (typeof value !== "string") return false;
+  if ((LANE_DISPOSITION_KINDS as readonly string[]).includes(value)) return true;
+  return writtenBefore400(event) && (LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0 as readonly string[]).includes(value);
 }
 
 function matchesKey(event: WavesEvent, key: LaneKey): boolean {
@@ -45,9 +57,9 @@ function matchesKey(event: WavesEvent, key: LaneKey): boolean {
 /**
  * §4.6's `D(k)`: the `lane_disposition` recorded on **any** result line for `(wave, stage, lane)`.
  *
- * @req FR-NODE-107 AC-3 — no verb filter. In phase 1 the carrier is `execute-unit`; in phase 2 it is
- * `verify-lane` or `collect-lane`. A reader keyed on the phase-2 verbs reads a phase-1 refutation as
- * absent, and §4.6 finding 5's resumed session then integrates the refuted unit.
+ * @req FR-NODE-107 AC-3 — no verb filter. The carrier may be `collect-lane`, `verify-lane` or
+ * `remediate-lane`; a reader keyed on one of them reads a refutation recorded on another as absent,
+ * and §4.6 finding 5's resumed session then integrates the refuted worker.
  *
  * Intent lines are excluded: an intent is a declaration of what is about to be attempted, and a lane
  * that left the run is a fact, which only a result line records (§4.3).
@@ -57,7 +69,7 @@ export function readLaneDisposition(events: readonly WavesEvent[], key: LaneKey)
   for (const event of events) {
     if (event.event !== "result" || event.lane_disposition === undefined || !matchesKey(event, key)) continue;
     const raw = event.lane_disposition as Record<string, unknown>;
-    if (!isLaneDispositionKind(raw.kind)) {
+    if (!isLaneDispositionKind(raw.kind, event)) {
       return {
         ok: false,
         code: "lane-disposition-kind-invalid",

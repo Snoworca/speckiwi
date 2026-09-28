@@ -45,7 +45,6 @@ Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 한 뒤 **Pu
 | `--no-speckiwi` | speckiwi mutation 전부 skip (trailer 는 부착) |
 | `--no-trailer` | 모든 trailer 부착 skip (speckiwi mutation 도 자동 skip) |
 | `--req=FR-X` | REQ 자동 감지 건너뛰고 명시된 REQ 만 사용 (부모와 동일) |
-| `--task=T-PH001-01` | task 자동 감지 건너뛰고 명시된 task 만 사용 (부모와 동일) |
 | `--stability-override=<reason>` | frozen 가드 우회 + reason trailer (부모와 동일) |
 | `--model <name>` | kiwi 시리즈 일관성 위해 추가. 현재 평가자가 Haiku 기본이라 사실상 no-op. **향후 의미** — 별도 검증 서브에이전트 도입 시 지정 모델 적용. 활성화되면 본 SKILL.md 갱신 필요 |
 | `--auto` | `--auto` SSOT (`_shared/kiwi/auto-option.md` v1.0). **standalone 모드 한정** — child 모드(KIWI_PM_CONTEXT 주입) 는 호출자(kiwi-pm 등) 가 `--auto` 가드레일 책임을 지며 본 스킬은 NEEDS_USER bubble-up (§14.6) 만 담당. critical_gates 인라인 선언 + 6종 자율 결정 예외 매핑은 §14.9 참조 |
@@ -492,7 +491,7 @@ WARN 출력: "기존 PR body 를 덮어씁니다. 사용자 수동 편집분이 
 
 ## 완료 보고 양식
 
-본 절은 **기본 3종 보고 형식** (신규 PR / 기존 PR 코멘트 / PR 작업 실패) 의 SSOT. speckiwi MCP 연동 시 추가되는 REQ/Task/stability 필드는 **§14.7 보고 양식 확장** 참조 (본 양식의 superset).
+본 절은 **기본 3종 보고 형식** (신규 PR / 기존 PR 코멘트 / PR 작업 실패) 의 SSOT. speckiwi MCP 연동 시 추가되는 REQ/stability 필드는 **§14.7 보고 양식 확장** 참조 (본 양식의 superset).
 
 신규 PR 생성:
 ```
@@ -559,14 +558,14 @@ PR: 생성 실패 (gh CLI 인증 오류) ⚠️
 
 ## 14. kiwi-* 시리즈 통합 (speckiwi MCP 연동)
 
-본 스킬은 kiwi-commit-auto-push 의 §11 정책을 **그대로 계승하되 PR variant 를 추가**한다. commit ↔ REQ/Task ↔ PR 3축 trace 를 영속화한다.
+본 스킬은 kiwi-commit-auto-push 의 §11 정책을 **그대로 계승하되 PR variant 를 추가**한다. commit ↔ REQ ↔ PR 3축 trace 를 영속화한다.
 
 **부모 §11 ↔ 본 스킬 §14 매핑** (부모 누락 절 명시):
 
 | 부모 §  | 본 스킬 §  | 비고 |
 |---|---|---|
 | §11.1 입력 컨텍스트 감지 | §14.1 | 그대로 계승 |
-| §11.2 REQ/Task 매칭 평가 | §14.2 | 그대로 계승 |
+| §11.2 REQ 매칭 평가 | §14.2 | 그대로 계승 |
 | §11.3 Stability 가드 | §14.3 | 그대로 계승 |
 | §11.4 trailer 순서 SSOT | §14.4 | PR body 양쪽 적용 + squash merge 주의 추가 |
 | §11.5 speckiwi MCP mutation | §14.5 | PR variant 추가 (`type:"PullRequest"` 신규) |
@@ -577,7 +576,7 @@ PR: 생성 실패 (gh CLI 인증 오류) ⚠️
 | 부모 §12 Pipeline event emit | §15 | 그대로 계승. next_hint 동일 (`kiwi-pipeline`). `skill` 만 본 스킬 값으로 |
 
 **핵심 설계 결정** (이후 변경 시 본 문단도 함께 갱신):
-- **trailer 키 5종 화이트리스트** 부모와 동일 (`Closes` / `Refs` / `REQ` / `Task` / `STABILITY-OVERRIDE`). 본 스킬은 commit message + PR body 양쪽에 동일 trailer 부착.
+- **trailer 키 4종 화이트리스트** 부모와 동일 (`Closes` / `Refs` / `REQ` / `STABILITY-OVERRIDE`). 본 스킬은 commit message + PR body 양쪽에 동일 trailer 부착.
 - **branch 명 시그니처 차단** — 본 SKILL.md 상단 **시그니처 완전 차단 정책** 절 + §8.3 `<slug>` 생성 규칙에서 AI 식별 토큰 제거. 본 §14 도입부에서 cross-reference 로 재확인.
 - **MCP type 컨벤션 PR 추가** — `add_verification_evidence.type="pr"` 신규 도입 (commit variant 와 구분). `add_trace_link.type="PullRequest"` 신규 도입 (`type:"Code"` 는 commit reference 전용으로 부모와 분담 — §14.5.1 참조).
 - **자율 결정 원칙 예외 6종 카테고리** (`## 안전 규칙` SSOT 참조 — frozen REQ / push 충돌 / fork repo / 보호 브랜치 push reject / 보호 브랜치 직접 push 요청 / issue 후보 모호). 모두 비가역·고위험.
@@ -588,9 +587,9 @@ PR: 생성 실패 (gh CLI 인증 오류) ⚠️
 
 부모 §11.1 (Step 3 확장) 그대로. 추가 출처 없음.
 
-### 14.2 REQ-ID / Task-ID 매칭 평가
+### 14.2 REQ-ID 매칭 평가
 
-부모 §11.2 그대로. PR body 작성 (§11.1) 시 REQ/Task trailer 도 commit message trailer 와 동일하게 PR body 마지막 줄에 부착 (순서는 §14.4).
+부모 §11.2 그대로. PR body 작성 (§11.1) 시 REQ trailer 도 commit message trailer 와 동일하게 PR body 마지막 줄에 부착 (순서는 §14.4).
 
 ### 14.3 Stability 가드
 
@@ -608,7 +607,6 @@ PR: 생성 실패 (gh CLI 인증 오류) ⚠️
 Closes #N              ← Step 3 GitHub issue 결정
 Refs #N                ← Step 3 결정 (A 이하)
 REQ: FR-XXX-001        ← §14.2 REQ 매칭
-Task: T-PHnnn-mm       ← §14.2 task 매칭
 STABILITY-OVERRIDE: <reason>  ← §14.3 frozen 변경 시
 ```
 
@@ -633,7 +631,7 @@ PR body 의 trailer 는 §11.1 형식의 마지막 빈 줄 다음에 배치. PRB
 | 단독 실행 (사용자 직접) | 본 스킬이 호출 | 본 스킬이 호출 |
 | child 모드 + 부모 스킬과 chain (kiwi-pm 등) | 부모 책임 (skip) | 본 스킬이 호출 |
 
-**실제 chain 시나리오 빈도**: 본 스킬은 부모(kiwi-commit-auto-push) 의 commit+push 동작을 **완전 포함**한다 (Step 1~9 는 부모 Step 1~7 + 본 스킬 Step 8~9 로 구성). 따라서 "부모가 commit+push 만 처리하고 본 스킬을 chain 호출"하는 시나리오는 **드문 케이스** — kiwi-pm 이 동일 task 에 부모 + 본 스킬을 모두 spawn 하는 미래 시나리오 (예: Phase 1 commit only → Phase 2 PR open) 를 대비한 예약 메커니즘이다. 현재 표준 실행 경로는 단독 모드.
+**실제 chain 시나리오 빈도**: 본 스킬은 부모(kiwi-commit-auto-push) 의 commit+push 동작을 **완전 포함**한다 (Step 1~9 는 부모 Step 1~7 + 본 스킬 Step 8~9 로 구성). 따라서 "부모가 commit+push 만 처리하고 본 스킬을 chain 호출"하는 시나리오는 **드문 케이스** — kiwi-pm 이 같은 실행에 부모 + 본 스킬을 모두 spawn 하는 미래 시나리오 (예: 먼저 commit only → 이어서 PR open) 를 대비한 예약 메커니즘이다. 현재 표준 실행 경로는 단독 모드.
 
 **KIWI_PM_CONTEXT 협의 메커니즘**:
 - 부모(kiwi-commit-auto-push) 가 chain 호출의 선행 단계로 실행되어 commit_trace_link 호출까지 완료한 경우, kiwi-pm 이 본 스킬 spawn 시 `KIWI_PM_CONTEXT.commit_trace_owner: "kiwi-commit-auto-push"` 필드를 명시 주입한다 (kiwi-pm 책임)
@@ -689,13 +687,9 @@ mcp__speckiwi__add_verification_evidence({
 
 `type="pr"` 는 본 스킬이 점유. 다른 kiwi 스킬이 동일 type 도입 시 본 SKILL.md 만 갱신.
 
-#### 14.5.3 plan task 갱신 (sidecar `mcp_call_log` append)
+#### 14.5.3 MCP 부재 / mutation 실패
 
-Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그대로 적용. 추가로 sidecar `tasks[].pr_url` 필드가 정의되어 있으면 PR URL 도 채움 (kiwi-planner sidecar schema 가 해당 필드 지원 시).
-
-#### 14.5.4 MCP 부재 / mutation 실패
-
-부모 §11.5.4 그대로. commit·push·PR 작업 결과는 보존, mutation 만 skip + WARN.
+부모 §11.5.3 그대로. commit·push·PR 작업 결과는 보존, mutation 만 skip + WARN.
 
 ### 14.6 `/kiwi-coder` / `/kiwi-pm` 와의 인계 프로토콜
 
@@ -703,7 +697,7 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그�
 
 - AskUserQuestion 비활성 — 4종 예외 모두 `NEEDS_USER` bubble-up
 - `branch` 가 KIWI_PM_CONTEXT 에 명시되면 §8 자동 생성 건너뛰고 명시 branch 채택
-- `.kiwi/sessions/{run_id}/pr-{task_id}.json` 에 PR 결과 영속화 (commit / push / PR URL / mutation 결과)
+- `.kiwi/sessions/{run_id}/pr-{timestamp}.json` 에 PR 결과 영속화 (commit / push / PR URL / mutation 결과)
 
 #### 14.6.1 child 모드 3상태 반환 JSON SSOT
 
@@ -712,7 +706,6 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그�
 ```json
 {
   "state": "TASK_DONE",
-  "task_id": "T-PH001-02",
   "commit_hash": "abc123def",
   "commit_url": "https://github.com/.../commit/abc123def",
   "push_branch": "feat/fr-auth-001-token-refresh",
@@ -721,7 +714,7 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그�
     "url": "https://github.com/.../pull/101",
     "action": "created" | "commented" | "body_updated" | "skipped"
   },
-  "trailers": { "Closes": ["#42"], "REQ": ["FR-AUTH-001"], "Task": ["T-PH001-02"] },
+  "trailers": { "Closes": ["#42"], "REQ": ["FR-AUTH-001"] },
   "mcp_calls": [
     { "tool": "add_trace_link",           "id": "FR-AUTH-001", "type": "Code",        "reference_kind": "commit", "ok": true },
     { "tool": "add_trace_link",           "id": "FR-AUTH-001", "type": "PullRequest", "reference_kind": "pr",     "ok": true },
@@ -739,7 +732,6 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그�
 ```json
 {
   "state": "NEEDS_USER",
-  "task_id": "T-PH001-02",
   "reason": "stability_frozen" | "push_conflict_non_fast_forward" | "push_conflict_rebase" | "push_conflict_merge" | "pr_target_ambiguous_fork" | "protected_branch_push_rejected" | "protected_branch_direct_push_requested" | "issue_candidate_ambiguous",
   "context": {
     "commit_hash": "abc123def | null",
@@ -763,7 +755,6 @@ Task trailer 가 있고 활성 sidecar 가 감지된 경우 부모 §11.5.3 그�
 ```json
 {
   "state": "FAILED",
-  "task_id": "T-PH001-02",
   "error": "git_push_authentication_failed"
          | "speckiwi_mcp_unavailable_required"
          | "gh_cli_not_installed"
@@ -802,7 +793,7 @@ reason enum 8종 모두 본 표에서 standalone ↔ child 매핑이 명시됨 (
 
 ### 14.7 보고 양식 확장
 
-본 절은 본 SKILL.md 상단 `## 완료 보고 양식` (기본 3종) 의 **speckiwi 확장 superset**. 기본 양식의 모든 라인을 포함하고 REQ / Task / stability 라인을 추가한다. `--no-speckiwi` 명시 시 본 양식은 적용 안 함 (기본 3종 양식 그대로).
+본 절은 본 SKILL.md 상단 `## 완료 보고 양식` (기본 3종) 의 **speckiwi 확장 superset**. 기본 양식의 모든 라인을 포함하고 REQ / stability 라인을 추가한다. `--no-speckiwi` 명시 시 본 양식은 적용 안 함 (기본 3종 양식 그대로).
 
 ```
 커밋: <hash> <message 첫 줄>
@@ -812,7 +803,6 @@ PR: #N <title> (action: created | commented | body_updated)
 PR URL: <url>
 issue: #M close (Closes trailer, PR merge 시 자동 close)
 REQ: FR-XXX-001 (add_trace_link ×2 [commit+pr] + add_verification_evidence ×2 [commit+pr] 등록)
-Task: T-PH001-01 (sidecar mcp_call_log + trace_links 갱신)
 stability: stable (정상)
 ```
 
@@ -860,7 +850,7 @@ stability: frozen ⚠️ override (reason: "hotfix-CVE-2026-xxxx")
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 **호출 컨텍스트별 정책**:
-- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `next_hint`: 통상 `"kiwi-pipeline"` (다음 plan 또는 종료).
+- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `next_hint`: 통상 `"kiwi-pipeline"` (다음 사이클 또는 종료).
 - **kiwi-pm 자식 모드**: 부모(`kiwi-pm`) 의 통합 이벤트에 흡수. 본 스킬 자체 emit 하지 않음.
 
 **필수 필드 매핑** (pipeline-event.md §2.1 — 9종 필수 필드 모두 포함):
@@ -874,7 +864,7 @@ stability: frozen ⚠️ override (reason: "hotfix-CVE-2026-xxxx")
 | `status` | commit + push + PR 작업 성공 = `"TASK_DONE"`; 사용자 결정 보류 = `"NEEDS_USER"`; push 또는 인증 실패 = `"FAILED"`; dry-run 모드 = `"DRY_RUN"` (pipeline-event.md §5.3 — `dry_run=true` 와 짝). pipeline-event.md §2.1 enum (`TASK_DONE`/`NEEDS_USER`/`FAILED`/`DRY_RUN`/`CORRECTION`) 중 본 스킬은 `CORRECTION` 미사용 |
 | `summary` | 1~3문장. 예: 신규 PR `"{branch} → PR #{number} 생성 (Closes #{issue})"`, 기존 PR 코멘트 `"{branch} → PR #{number} 코멘트 등록"`, 충돌 `"push 충돌 — 사용자 결정 대기 ({reason})"` |
 | `next_hint` | pipeline-event.md §4 Table T1 따름 — TASK_DONE: `"kiwi-pipeline"`; NEEDS_USER/FAILED: `null`; DRY_RUN: `"kiwi-commit-auto-pr"` (실제 실행 권장). child 모드: emit 안 함 (부모가 통합 이벤트 emit) |
-| `artifacts` | 빈 객체 `{"spec_files":[], "plan_file":null, "sidecar_file":null, "analysis_dir":null}` (PR 은 GitHub 가 SSOT, 별도 파일 산출물 없음) |
+| `artifacts` | 빈 객체 `{"spec_files":[], "analysis_dir":null}` (PR 은 GitHub 가 SSOT, 별도 파일 산출물 없음) |
 | `dry_run` | `--dry-run` 또는 `KIWI_DRY_RUN=1` 시 `true`, 아니면 `false`. `dry_run=true` 일 때 `status` 는 `"DRY_RUN"` 권장 (pipeline-event.md §5.3) |
 
 **선택 필드** (pipeline-event.md §2.3): `req_ids` (trailer 또는 commit/PR 본문에 명시된 REQ-ID 배열), `notes` (commit hash + branch + PR number + PR URL + closed issue ids 권장), `target` (speckiwi active target), `duration_sec`.

@@ -5,6 +5,7 @@ import { applyPatchPlan } from "../../../src/core/patch/apply-patch.js";
 import { createPatchPlan } from "../../../src/core/patch/patch-plan.js";
 import { readUtf8File } from "../../../src/core/fs/read-text.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
+import { at } from "../../support/at.js";
 
 describe("line patch engine", () => {
   it("supports dry-run, replacement, insertion, append, and CRLF preservation", async () => {
@@ -40,7 +41,7 @@ describe("line patch engine", () => {
     const filePath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
     const file = await readUtf8File(filePath);
     const before = await readFile(filePath, "utf8");
-    const plan = createPatchPlan(file, [{ type: "replaceLine", line: 1, original: file.lines[0], replacement: "# planned" }]);
+    const plan = createPatchPlan(file, [{ type: "replaceLine", line: 1, original: at(file.lines, 0), replacement: "# planned" }]);
 
     await writeFile(filePath, before.replace("# Product Architecture", "# concurrent"), "utf8");
 

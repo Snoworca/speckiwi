@@ -76,7 +76,7 @@ describe("FR-NODE-174 — a reference the tool cannot resolve blocks verified", 
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.message, "the caller cannot tell which row failed").toContain("there-is-no-such-file.md");
+    expect(result.error?.message, "the caller cannot tell which row failed").toContain("there-is-no-such-file.md");
   });
 
   it("AC-1/AC-2 control: a reference that does resolve is not refused", async () => {
@@ -84,7 +84,7 @@ describe("FR-NODE-174 — a reference the tool cannot resolve blocks verified", 
 
     const result = await updateStatus(projectRoot, { id: TARGET_ID, status: "verified" });
 
-    expect(result.ok, result.ok ? "" : result.error.message).toBe(true);
+    expect(result.ok, result.ok ? "" : result.error?.message).toBe(true);
     expect(await statusOf(projectRoot)).toBe("verified");
   });
 });
@@ -296,7 +296,7 @@ describe("FR-NODE-174 — the gate cannot be walked around", () => {
       evidence: [{ type: "inspection", reference: RESOLVABLE, covers: "AC-1" }]
     });
 
-    expect(created.ok, created.ok ? "" : created.error.message).toBe(true);
+    expect(created.ok, created.ok ? "" : created.error?.message).toBe(true);
   });
 });
 
@@ -308,7 +308,7 @@ describe("FR-NODE-174 — every issue kind the resolver reports refuses the prom
 
     expect(result.ok, "a malformed URL was accepted as a reference").toBe(false);
     if (result.ok) return;
-    expect(result.error.message).toContain("invalid-url");
+    expect(result.error?.message).toContain("invalid-url");
   });
 
   it("AC-8: an empty reference cell alongside a resolvable one is refused", async () => {
@@ -331,10 +331,10 @@ describe("FR-NODE-174 — every issue kind the resolver reports refuses the prom
     // A verifier measured the message here as "references do not resolve under the project root:
     // (empty) (empty)" — nothing failed to resolve; the row has no reference at all. A refusal that
     // names the wrong cause sends the caller to fix the wrong thing.
-    expect(result.error.message, "the message asserts a resolution failure for an empty cell").not.toMatch(
+    expect(result.error?.message, "the message asserts a resolution failure for an empty cell").not.toMatch(
       /do not resolve under the project root/
     );
-    expect(result.error.message).toContain("empty");
+    expect(result.error?.message).toContain("empty");
   });
 
   it("AC-3: each kind's prose describes that kind and not a different one", async () => {
@@ -346,11 +346,11 @@ describe("FR-NODE-174 — every issue kind the resolver reports refuses the prom
     expect(missing.ok || outside.ok).toBe(false);
     if (missing.ok || outside.ok) return;
 
-    expect(missing.error.message, "the `missing` prose describes the outside-root cause").not.toMatch(
+    expect(missing.error?.message, "the `missing` prose describes the outside-root cause").not.toMatch(
       /not under the project root|outside the project root/
     );
-    expect(missing.error.message, "the `missing` prose does not say what actually failed").toMatch(/no existing file|does not exist/);
-    expect(outside.error.message, "the `outside-project-root` prose lost its cause").toMatch(/outside the project root/);
+    expect(missing.error?.message, "the `missing` prose does not say what actually failed").toMatch(/no existing file|does not exist/);
+    expect(outside.error?.message, "the `outside-project-root` prose lost its cause").toMatch(/outside the project root/);
   });
 
   it("AC-3: the four kinds do not share a description", async () => {
@@ -371,7 +371,7 @@ describe("FR-NODE-174 — every issue kind the resolver reports refuses the prom
       await updateStatus(await withEvidence("https://", "url"), { id: TARGET_ID, status: "verified" }),
       await updateStatus(emptyRoot, { id: TARGET_ID, status: "verified" })
     ];
-    const proses = cases.map((result) => (result.ok ? "" : proseOf(result.error.message)));
+    const proses = cases.map((result) => (result.ok ? "" : proseOf(result.error?.message ?? "")));
     expect(proses.every((prose) => prose !== ""), "a kind did not refuse at all").toBe(true);
     expect(new Set(proses).size, `two of the four kinds share a description: ${proses.join(" / ")}`).toBe(4);
   });
@@ -383,10 +383,10 @@ describe("FR-NODE-174 — every issue kind the resolver reports refuses the prom
     expect(missing.ok).toBe(false);
     expect(outside.ok).toBe(false);
     if (missing.ok || outside.ok) return;
-    expect(missing.error.message).toContain("missing");
-    expect(outside.error.message).toContain("outside-project-root");
+    expect(missing.error?.message).toContain("missing");
+    expect(outside.error?.message).toContain("outside-project-root");
     // The two causes are different, so the messages must not be the same sentence.
-    expect(missing.error.message).not.toBe(outside.error.message);
+    expect(missing.error?.message).not.toBe(outside.error?.message);
   });
 });
 

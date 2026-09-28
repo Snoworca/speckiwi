@@ -178,7 +178,7 @@ describe("FR-NODE-046 AC-2 — promote_step_requirement rejects an id that alrea
     });
     expect(result.ok).toBe(false);
     if (result.ok === false) {
-      expect(result.error.message.length).toBeGreaterThan(0);
+      expect(result.error?.message.length).toBeGreaterThan(0);
     }
 
     // The denied collision left the body scope document untouched: the single

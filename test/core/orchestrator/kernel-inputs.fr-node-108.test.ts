@@ -3,17 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { AUTO_GATE_ACTIONS, decideAutoGate, type AutoGateInput } from "../../../src/core/orchestrator/auto-gate.js";
-import { planDuplicationAudit, type LaneDiff } from "../../../src/core/orchestrator/duplication-audit.js";
+import { planDuplicationAudit, type LaneDiff, type LaneWriteSets } from "../../../src/core/orchestrator/duplication-audit.js";
 import { computeLanePlan, type Lane, type LanePlanInput, type Stage } from "../../../src/core/orchestrator/lane-plan.js";
-import type { ConvergencePoint, PriorPostmortemRow } from "../../../src/core/orchestrator/conflict.js";
+import type { WaveDependencies, WaveInput } from "../../../src/core/orchestrator/conflict.js";
 import { computeResumeState, type DriftInputs, type GitFacts, type LockDigests } from "../../../src/core/orchestrator/resume.js";
 import type { ResumeCard } from "../../../src/core/orchestrator/resume-card.js";
-import { planStageCoupling, type ParsedHandoff } from "../../../src/core/orchestrator/substrate.js";
-import type { TaskCatalogEntry } from "../../../src/core/orchestrator/task-catalog.js";
 import { evaluateRound, type Round } from "../../../src/core/orchestrator/verification-gate.js";
 import type { WavesJournalView } from "../../../src/core/orchestrator/waves-journal.js";
 
-// @req FR-NODE-108 — every one of the six pure kernels declares an exported input type for every
+// @req FR-NODE-108 — every one of the named pure kernels declares an exported input type for every
 // argument, and each is complete enough that a fixture is constructible from the DECLARATIONS ALONE.
 //
 // The proof is this file itself: nothing below reads a kernel's implementation, and every value is
@@ -23,7 +21,7 @@ import type { WavesJournalView } from "../../../src/core/orchestrator/waves-jour
 // argument type.
 
 // ---------------------------------------------------------------------------------------------
-// One value of each of the six input types, constructed from the type declarations
+// One value of each named input type, constructed from the type declarations
 // ---------------------------------------------------------------------------------------------
 
 const round: Round = {
@@ -40,58 +38,14 @@ const round: Round = {
   residual: []
 };
 
-const catalogEntry: TaskCatalogEntry = {
-  id: "T-PH001-01",
-  phase_id: "PH001",
-  title: "the red test",
-  depends_on_task: [],
-  req_ids: ["FR-NODE-001"],
-  legacyReqIds: [],
-  status: "pending",
-  type: "code",
-  action: "author the failing test",
-  files: [{ path: "src/a.ts", inferred: false }],
-  testFiles: [{ path: "test/a.test.ts", inferred: false }],
-  coversAc: ["AC-1"],
-  tdd: { phase: "red" },
-  phaseDependsOn: []
-};
-
-/** A second entry sharing the first's `req_id`, so the plan has a lane rather than a folded singleton. */
-const pairedCatalogEntry: TaskCatalogEntry = {
-  ...catalogEntry,
-  id: "T-PH001-02",
-  title: "the green implementation",
-  action: "make it pass",
-  files: [{ path: "src/b.ts", inferred: false }],
-  testFiles: [],
-  tdd: { phase: "green" }
-};
-
-const convergencePoint: ConvergencePoint = {
-  id: "CP-01",
-  paths: ["src/shared.ts"],
-  recipe: { kind: "exclusive-lane" }
-};
-
-const priorPostmortem: PriorPostmortemRow = {
-  fromTask: "T-PH000-01",
-  toTask: "T-PH000-02",
-  path: "src/shared.ts",
-  detectedAt: "coupling-check",
-  resolution: "merge-into-one-lane"
-};
+const firstWave: WaveInput = { waveId: "run-wave-1", writeSet: ["src/a.ts", "test/a.test.ts"] };
+const secondWave: WaveInput = { waveId: "run-wave-2", writeSet: ["src/b.ts"] };
+const waveDependencies: WaveDependencies = { "run-wave-2": [] };
 
 const lanePlanInput: LanePlanInput = {
-  catalog: [catalogEntry, pairedCatalogEntry],
-  registry: [convergencePoint],
-  existingModules: ["src/legacy-core.ts"],
-  existingPaths: ["src/a.ts"],
-  priorPostmortems: [priorPostmortem],
-  designItemMap: { "FR-NODE-001": ["D-001"] },
-  laneCap: 4,
-  codeRoots: ["src/**"],
-  testRoots: ["test/**"]
+  waves: [firstWave, secondWave],
+  dependencies: waveDependencies,
+  laneCap: 4
 };
 
 const laneDiff: LaneDiff = {
@@ -102,17 +56,7 @@ const laneDiff: LaneDiff = {
   addedBlocks: [{ path: "src/a.ts", normalizedHash: "hash-1", declName: "helper" }]
 };
 
-const duplicationWriteSets: Record<string, string[]> = { "lane-1": ["src/a.ts"] };
-
-const parsedHandoff: ParsedHandoff = {
-  kind: "lane",
-  lane: "lane-1",
-  wave: 1,
-  stage: 1,
-  frontMatter: { write_set: ["src/a.ts"], read_set: [] },
-  headings: ["Setup"],
-  body: "## Setup\n"
-};
+const duplicationWriteSets: LaneWriteSets = { "lane-1": ["src/a.ts"] };
 
 const journalView: WavesJournalView = {
   runId: "2026-08-02.speckiwi.v260",
@@ -129,7 +73,7 @@ const resumeCard: ResumeCard = {
   run_id: "2026-08-02.speckiwi.v260",
   run_contract: "docs/research/work/00.run-contract.md",
   position: { wave: 1, stage: 1, phase: "lane" },
-  next_action: { verb: "execute-unit", args: {}, preconditions: [] },
+  next_action: { verb: "dispatch-lane", args: {}, preconditions: [] },
   frozen: {
     engine: "kiwi-orchestrator",
     work_root: "docs/research/work",
@@ -167,21 +111,13 @@ const lockDigests: LockDigests = {
 const driftInputs: DriftInputs = {
   lockDigests,
   recordedLaneInputs: {
-    sidecarDigest: "sha-sidecar",
-    registryDigest: "sha-registry",
-    existingPathsDigest: "sha-existing-paths",
-    designItemMapDigest: "sha-design-item-map",
-    priorPostmortemDigests: ["sha-postmortem-1"],
-    laneCap: 4,
-    codeRoots: ["src/"],
-    testRoots: ["test/"]
+    sdsDigests: { "run-wave-1": "sha-sds-1" },
+    depends: {},
+    laneCap: 4
   },
   recomputedLaneInputDigests: {
-    sidecarDigest: "sha-sidecar",
-    registryDigest: "sha-registry",
-    existingPathsDigest: "sha-existing-paths",
-    designItemMapDigest: "sha-design-item-map",
-    priorPostmortemDigests: ["sha-postmortem-1"]
+    sdsDigests: { "run-wave-1": "sha-sds-1" },
+    closedOutWaves: []
   },
   freshIntentDigests: {},
   handoffProseDigests: {}
@@ -200,28 +136,26 @@ const autoGateInput: AutoGateInput = {
 // ---------------------------------------------------------------------------------------------
 
 describe("FR-NODE-108 AC-6 — one fixture per input type, and every kernel called with it", () => {
-  it("calls all six kernels on fixtures built from the exported declarations alone", () => {
+  it("FR-NODE-108 AC-6 calls every named kernel on fixtures built from the exported declarations alone", () => {
     expect(evaluateRound(round)).toBeDefined();
     expect(computeLanePlan(lanePlanInput)).toBeDefined();
     expect(planDuplicationAudit([laneDiff], duplicationWriteSets)).toBeDefined();
-    expect(planStageCoupling([parsedHandoff])).toBeDefined();
     expect(computeResumeState(journalView, resumeCard, gitFacts, driftInputs)).toBeDefined();
     expect(decideAutoGate(autoGateInput)).toBeDefined();
   });
 
-  it("declares six kernels, and every one of them is exercised above", () => {
-    const kernels = [evaluateRound, computeLanePlan, planDuplicationAudit, planStageCoupling, computeResumeState, decideAutoGate];
-    expect(kernels).toHaveLength(6);
+  it("FR-NODE-108 AC-6 names five kernels, and every one of them is exercised above", () => {
+    const kernels = [evaluateRound, computeLanePlan, planDuplicationAudit, computeResumeState, decideAutoGate];
+    expect(kernels).toHaveLength(5);
     for (const kernel of kernels) expect(typeof kernel).toBe("function");
   });
 });
 
 describe("FR-NODE-108 AC-1 — declared arity, per kernel", () => {
-  it("matches the arity §10.1 states for each of the six", () => {
+  it("FR-NODE-108 AC-1 matches the arity §10.1 states for each named kernel", () => {
     expect(evaluateRound).toHaveLength(1);
     expect(computeLanePlan).toHaveLength(1);
     expect(planDuplicationAudit).toHaveLength(2);
-    expect(planStageCoupling).toHaveLength(1);
     expect(computeResumeState).toHaveLength(4);
     expect(decideAutoGate).toHaveLength(1);
   });
@@ -231,12 +165,11 @@ describe("FR-NODE-108 AC-1 — declared arity, per kernel", () => {
 // SHAPE of fixtures built from the declarations. The criterion is a claim about the type graph, and
 // types are erased at runtime, so what carries it is the typecheck project — see the block below.
 describe("FR-NODE-108 AC-2 supporting shape — fixtures built from the declarations are complete", () => {
-  it("reaches LanePlanInput through TaskCatalogEntry, ConvergencePoint, Lane and Stage", () => {
-    // `catalog`, `registry` and `priorPostmortems` are annotated above with their exported element
-    // types, so this file would not compile if any of the three were unexported or incomplete.
-    expect(lanePlanInput.catalog[0]).toBe(catalogEntry);
-    expect(lanePlanInput.registry[0]).toBe(convergencePoint);
-    expect(lanePlanInput.priorPostmortems[0]).toBe(priorPostmortem);
+  it("FR-NODE-108 AC-2 reaches LanePlanInput through WaveInput, WaveDependencies, Lane and Stage", () => {
+    // `waves` and `dependencies` are annotated above with their exported types, so this file would
+    // not compile if either were unexported or incomplete.
+    expect(lanePlanInput.waves[0]).toBe(firstWave);
+    expect(lanePlanInput.dependencies).toBe(waveDependencies);
 
     // `Lane` and `Stage` are the output side of the same contract, and E43 names them because a
     // fixture for a *later* kernel is built from a plan this one returns.
@@ -247,27 +180,14 @@ describe("FR-NODE-108 AC-2 supporting shape — fixtures built from the declarat
     expect(stage?.laneIds).toBeInstanceOf(Array);
   });
 
-  it("declares all nine LanePlanInput members, so no input reaches the kernel undeclared", () => {
-    expect(Object.keys(lanePlanInput).sort()).toEqual(
-      ["catalog", "codeRoots", "designItemMap", "existingModules", "existingPaths", "laneCap", "priorPostmortems", "registry", "testRoots"].sort()
-    );
-    expect(Object.keys(lanePlanInput)).toHaveLength(9);
+  it("FR-NODE-108 AC-2 declares the three wave-level LanePlanInput members, so no input reaches the kernel undeclared", () => {
+    expect(Object.keys(lanePlanInput).sort()).toEqual(["dependencies", "laneCap", "waves"]);
   });
 
   it("reaches computeResumeState's fourth argument through DriftInputs and LockDigests", () => {
     expect(driftInputs.lockDigests).toBe(lockDigests);
     expect(Object.keys(lockDigests).sort()).toEqual(["design", "handoff", "issues", "lanes", "postmortem", "waves"]);
-    expect(Object.keys(driftInputs.recordedLaneInputs)).toHaveLength(8);
-  });
-});
-
-describe("FR-NODE-108 AC-3 — planStageCoupling takes exactly one argument", () => {
-  it("takes ParsedHandoff[] and nothing else", () => {
-    expect(planStageCoupling).toHaveLength(1);
-    // `existing_paths` is not among them: `stage-coupling` is write∩read over authored handoffs, and
-    // revision 2's path-level `shared-substrate` predicate — the one that needed `existing_paths` —
-    // was withdrawn as wholly subsumed (§7.9 a, X-04).
-    expect(planStageCoupling([parsedHandoff])).toEqual({ couplings: [] });
+    expect(Object.keys(driftInputs.recordedLaneInputs).sort()).toEqual(["depends", "laneCap", "sdsDigests"]);
   });
 });
 
@@ -320,9 +240,9 @@ describe("FR-NODE-108 AC-5 — computeResumeState takes four arguments and touch
 });
 
 describe("FR-NODE-108 AC-2 — the type-level claim, and the thing that carries it", () => {
-  // AC-2 is a claim about the type graph, and types are erased at runtime: measured, removing
-  // `action: string` from `TaskCatalogEntry` leaves every case above at 11 passed while
-  // `typecheck:test` fails at the two `action:` lines with TS2353. So the carrier is the project,
+  // AC-2 is a claim about the type graph, and types are erased at runtime: a field removed from a
+  // declared input type leaves every runtime case above green while `typecheck:test` fails at the
+  // fixture line that sets it. So the carrier is the project,
   // not this file's assertions — and the carrier only reaches this file because
   // `tsconfig.test.json` globs it in. Nothing asserted that membership, so moving this file to
   // `test/core/` would have removed the protection with no test noticing. This is that assertion.

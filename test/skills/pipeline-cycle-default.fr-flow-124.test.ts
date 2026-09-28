@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-124  the full cycle is the default; --none-cycle is the single opt-out
 // @req FR-FLOW-125  contradictory option combinations are refused at entry
@@ -64,7 +65,7 @@ function body(text: string): string {
 /** The frontmatter `description` field alone — the routing surface, asserted separately. */
 function description(text: string): string {
   const fm = /^---([\s\S]*?)\n---/.exec(text);
-  return fm ? fm[1] : "";
+  return fm ? at(fm, 1) : "";
 }
 
 /** A heading and everything under it, down to the next same-or-higher-level heading. "" when absent. */
@@ -72,10 +73,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -142,7 +143,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     const matrix = matrixOf(read(copy));
     const enumeration = line(matrix, /작업 입력은[^\n]*닫힌다|작업 입력\s*=/);
     expect(enumeration, `${copy}: the enumeration must be stated as closed`).not.toBe("");
-    for (const token of ["--from=", "--req-filter", "--plan-run-id"]) {
+    for (const token of ["--from=", "--req-filter", "--sds-id"]) {
       expect(enumeration.includes(token), `${copy}: the enumeration must list ${token}`).toBe(true);
     }
     const target = line(matrix, /`--target` 단독/);
@@ -171,7 +172,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     const declarations = lines(text, /`--cycle`[^\n]*inert/);
     expect(declarations.length, `${copy}: exactly one inert declaration, not ${declarations.length}`).toBe(1);
     expect(
-      /뒤처지|lag/.test(declarations[0]),
+      /뒤처지|lag/.test(at(declarations, 0)),
       `${copy}: the reason a parsed-but-inert token is kept must be given`
     ).toBe(true);
     // Counting LINES misses a paragraph pasted twice inside one line — which is exactly how the
@@ -212,7 +213,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-125 — contradictory combinations refus
     const implications = lines(body(read(copy)), /`--stats`[^\n]*`--none-cycle`[^\n]*함의/);
     expect(implications.length, `${copy}: exactly one --stats implication line`).toBe(1);
     expect(
-      /도는가/.test(implications[0]) && /출력/.test(implications[0]),
+      /도는가/.test(at(implications, 0)) && /출력/.test(at(implications, 0)),
       `${copy}: the run-or-not axis and the what-to-print axis must be told apart by name`
     ).toBe(true);
   });
@@ -289,6 +290,13 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-126 — routing exclusion keyed on deleg
     expect(/무인 완주/.test(routing), `${copy}: the always-HALT reason must survive`).toBe(true);
     expect(/증거 번들/.test(routing), `${copy}: the evidence-bundle reason must survive`).toBe(true);
   });
+
+  // @req FR-FLOW-126 AC-5 — as revised for 4.0.0: the artifact the bundle misses is the SDS, not a plan.
+  it("AC-5 (4.0.0): the evidence-bundle reason names the SDS, worklog and review artifacts", () => {
+    const reason = line(routingOf(read(copy)), /증거 번들/);
+    expect(/SDS · worklog · 리뷰 산출물/.test(reason), `${copy}: the evidence-bundle reason must name the SDS`).toBe(true);
+    expect(/\bplan\b/.test(reason), `${copy}: the evidence-bundle reason still names the retired plan`).toBe(false);
+  });
 });
 
 describe.each(PIPELINE_COPIES)("FR-FLOW-127 — gates re-keyed on their real condition (%s)", (copy) => {
@@ -305,7 +313,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-127 — gates re-keyed on their real con
 
   it("AC-1 (discriminator): the exempt case and the re-armed case are told apart by a decidable test", () => {
     // The feasibility hop satisfies both descriptions at once — §2.5 fixes
-    // `kiwi-srs-feasibility → kiwi-planner` (a chain hand-off) while Table T1 forks that same
+    // `kiwi-srs-feasibility → kiwi-sds` (a chain hand-off) while Table T1 forks that same
     // transition to `kiwi-srs-research`. Naming the two cases is not enough; the row must say which
     // wins, or two agents on the same invocation disagree about whether a critical gate fired.
     const cells = rowCells(gatesOf(read(copy)), /multi-candidate-ambiguous/).join(" ");
@@ -465,6 +473,15 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     }
   });
 
+  // @req FR-FLOW-128 AC-1 — as revised for 4.0.0: the kiwi-sds close-out writes the SRS and its
+  // close-out commit deletes the SDS, so git history joins what the default reaches.
+  it("AC-1 (4.0.0): §0.2 names the kiwi-sds close-out and git history as reached by the default", () => {
+    const row = line(body(read(copy)), /§0\.2/);
+    expect(/kiwi-sds --close/.test(row), `${copy}: §0.2 must name the kiwi-sds close-out`).toBe(true);
+    expect(/git 기록|git history/.test(row), `${copy}: §0.2 must name git history as reached by the default`).toBe(true);
+    expect(/테스트 충분성|test-sufficiency/.test(row), `${copy}: §0.2 must name the test-sufficiency check`).toBe(true);
+  });
+
   it("AC-2: the §2.6 worktree exception survives the restatement", () => {
     expect(
       /§2\.6/.test(line(body(read(copy)), /§0\.2/)),
@@ -518,7 +535,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
 
   it("AC-7: no claim above §0.2 still describes an advisory-only skill", () => {
     const text = body(read(copy));
-    const head = text.split("## 0.")[0];
+    const head = at(text.split("## 0."), 0);
     expect(head, `${copy}: the body preamble must exist`).not.toBe("");
     expect(
       /사이클/.test(head),
@@ -664,7 +681,7 @@ describe.each(CONTRACT_COPIES)("FR-FLOW-129 — the shared contract carries the 
   });
 
   it("AC-4 (header): the header names the cycle among the reasons to load this contract", () => {
-    const header = read(copy).split("## ")[0];
+    const header = at(read(copy).split("## "), 0);
     expect(
       /cycle/i.test(header),
       `${copy}: the end-to-end cycle contract lives in this file and the header must say so`
@@ -672,16 +689,15 @@ describe.each(CONTRACT_COPIES)("FR-FLOW-129 — the shared contract carries the 
   });
 });
 
-// A survival pin, not a driver: kiwi-wave-master is not modified by this change, and this block is
-// green before and after it. It is here because the inert-token decision rests entirely on this
-// caller continuing to work, so a later edit that drops `--run` from the wave call must fail loudly.
-describe.each(WAVE_COPIES)("FR-FLOW-124 — the wave caller survives the inert token (%s)", (copy) => {
-  it("the per-wave call still states execution explicitly", () => {
+// The survival pin this block held — kiwi-wave-master calling `/kiwi-pipeline --cycle --from=feasibility
+// --run` per wave — lost its subject in 4.0.0: kiwi-wave-master no longer delegates a wave to
+// kiwi-pipeline and runs its waves through the shared parallel-waves contract (FR-FLOW-188 AC-7), so the
+// inert-token decision has no wave caller left to protect. The block now pins that absence, so a
+// per-wave pipeline call cannot come back through this file unnoticed.
+describe.each(WAVE_COPIES)("FR-FLOW-188 AC-7 — kiwi-wave-master no longer calls kiwi-pipeline per wave (%s)", (copy) => {
+  it("FR-FLOW-188 AC-7 no per-wave skip-authoring pipeline call survives", () => {
     const call = line(body(read(copy)), /[/$]kiwi-pipeline[^\n]*--from=feasibility/);
-    expect(call, `${copy}: the per-wave skip-authoring call must survive`).not.toBe("");
-    expect(
-      /--run/.test(call),
-      `${copy}: with the implicit run bound to a work input, the wave call must be explicit about executing`
-    ).toBe(true);
+    expect(call, `${copy}: a per-wave kiwi-pipeline call survives`).toBe("");
+    expect(body(read(copy)).includes("parallel-waves.md"), `${copy}: the waves must run through the shared contract`).toBe(true);
   });
 });

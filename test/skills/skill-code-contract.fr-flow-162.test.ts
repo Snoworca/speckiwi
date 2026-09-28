@@ -43,6 +43,17 @@ import { RENDERINGS, markdownFiles, readRepoFile } from "./kiwi-renderings.js";
 //    so a corrected sentence followed by one that retracts it — measured as the cheapest edit that
 //    disables a rule while leaving every token in place — is still uncaught for `trace_intent` and
 //    for the replay sections.
+//  - The census numbers are floors over the tree as it was written: growth passes, shrinkage fails.
+//    One is named rather than hidden — the replay bucket's census floor is 12 against a measured 77
+//    (124 after 4.0.0), because the per-bucket floors below it already hold that corpus and the
+//    census there guards only against the sweep collapsing entirely. (AC-8 gives that per-bucket
+//    total as 77, the sum of the replay row's floors in this file.)
+//  - The fourth drift shape, one rule stated by three renderings with three different values, is
+//    not a row of this table: item 02 took it.
+//  - The one consequence this requirement opened for its owner is closed: `FR-FLOW-121` AC-6 once
+//    required the renderings to name the replay applier as still absent, which `orchestrate replay
+//    apply` refutes; on 2026-08-28 it was corrected through a guarded status hop and now keys on the
+//    loss condition rather than on a component's presence.
 
 // --- the corpus -----------------------------------------------------------------------------------
 
@@ -430,7 +441,9 @@ const CONTRACTS: ContractRow[] = [
       ];
     },
     // Measured: `NODE_ENV=test npx vitest run test/skills/skill-code-contract.fr-flow-162.test.ts -t census`
-    floors: perRendering([31, 32, 33, 32]),
+    // 29 / 32 / 31 / 32 since 4.0.0: kiwi-planner's call examples left with the skill (FR-FLOW-184 AC-2)
+    // and kiwi-coder's plan-sidecar example with the SDS rewrite (FR-FLOW-185).
+    floors: perRendering([29, 32, 31, 32]),
     floorNote: "call examples carrying at least one argument name, per rendering"
   }),
 
@@ -558,13 +571,14 @@ describe("FR-FLOW-162 AC-5 — the code side of each contract, asserted alone", 
   it("FR-FLOW-162 AC-1: the MCP schemas are a live zod record, not a parsed source file", () => {
     // A tool may legitimately take no arguments — `mcp_workspace_info` does — so the floor is on
     // the totals rather than per tool. Measured on the tree at the time of writing: 100 tools
-    // declaring 564 arguments between them.
+    // declaring 564 arguments between them; 88 tools declaring 489 since 4.0.0 removed the twelve plan
+    // tools and two orchestrate tools and added the two SDS readers (FR-NODE-211, FR-NODE-213).
     const declared = Object.values(toolSchemas).reduce((total, schema) => total + Object.keys(schema).length, 0);
-    expect(TOOL_NAMES.length, "tools declared").toBeGreaterThanOrEqual(100);
-    expect(declared, "arguments declared across every tool").toBeGreaterThanOrEqual(564);
+    expect(TOOL_NAMES.length, "tools declared").toBeGreaterThanOrEqual(88);
+    expect(declared, "arguments declared across every tool").toBeGreaterThanOrEqual(489);
     // Read off the live objects, so a `toolSchemas` reduced to a stub of empty records fails here
     // rather than reporting a clean sweep over a corpus it can no longer judge.
-    expect(Object.keys(toolSchemas.add_trace_link).length, "add_trace_link must declare its arguments").toBeGreaterThan(0);
+    expect(Object.keys(toolSchemas.add_trace_link ?? {}).length, "add_trace_link must declare its arguments").toBeGreaterThan(0);
   });
 
   it("FR-FLOW-162 AC-3: both halves of the replay pipeline ship, and the applying half is reachable", () => {
@@ -698,9 +712,11 @@ describe("FR-FLOW-162 — census: what the sweep actually reached", () => {
   });
 
   it("FR-FLOW-162 AC-1 · AC-6: the census matches what the requirement records", () => {
-    expect(numbers.tools, "MCP tools swept").toBeGreaterThanOrEqual(100);
+    // 88 tools and 124 call examples since 4.0.0 removed the plan tools (FR-NODE-211 AC-1) and
+    // kiwi-planner with its call examples (FR-FLOW-184 AC-2).
+    expect(numbers.tools, "MCP tools swept").toBeGreaterThanOrEqual(88);
     expect(numbers.files, "markdown files across the four renderings").toBeGreaterThanOrEqual(153);
-    expect(numbers.callSites, "call examples carrying at least one argument name").toBeGreaterThanOrEqual(128);
+    expect(numbers.callSites, "call examples carrying at least one argument name").toBeGreaterThanOrEqual(124);
     expect(numbers.replaySites, "replay-pipeline lines plus plan-verb sections").toBeGreaterThanOrEqual(12);
     expect(numbers.verdictSites, "lines enumerating the verdict vocabulary").toBeGreaterThanOrEqual(8);
   });

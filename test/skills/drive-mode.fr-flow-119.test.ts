@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readResolvedSkill, stripFrontmatter } from "../support/resolved-skill.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-119 — `--drive`: run every wave unattended, repair what is safely repairable, and
 // refuse, by name, the gates whose automation would lower the goal rather than reach it.
@@ -69,18 +70,24 @@ const PINS = {
   refusalPolarity: "아래 게이트는 `--drive` 로도 열리지 않는다. 위원회가 어떤 confidence 를 보고하든 마찬가지다.",
   residualPolarity: "은 `--drive` 에서도 중단이다.",
   abortGate: "그 게이트의 id 를 `waves.jsonl` 의 `abort_gate` 필드에 **지명**한다.",
-  childBubble: "`child-pipeline-needs-user-or-failed` 로 버블업해 적는다.",
+  /**
+   * FR-FLOW-119 AC-6 (revised in 4.0.0): a child-owned gate arrives as the gate kiwi-wave-master
+   * declares for a NEEDS_USER or FAILED halt of the children each wave runs — the worker's kiwi-pm
+   * reaches the host through `serial-unit-failed`, which replaces `child-pipeline-needs-user-or-failed`.
+   */
+  childBubble: "는 자기 이름으로 적지 않고 `serial-unit-failed` 로 버블업해 적는다",
   decisionRow: "자동으로 해소한 게이트는 그 게이트를 지명하는 `decision` 객체를 1건 기록한다"
 } as const;
 
 /** The same discipline outside §7.5, where a criterion's claim lives in another skill's file. */
 const PERIMETER = {
   /** The origin hop. Round 3 found this one still unpinned while all three downstream hops were. */
-  waveRow: "| `--drive` | 무인 완주 모드 전체 — 자식 게이트 3종을 함께 연다 | kiwi-wave-master → kiwi-pipeline → kiwi-pm → kiwi-coder |",
+  // FR-FLOW-119 AC-5 (revised in 4.0.0): no per-wave kiwi-pipeline hop — the worker's kiwi-pm call of
+  // the shared parallel-waves contract (FR-FLOW-188 AC-2, AC-7) is the middle hop.
+  waveRow: "| `--drive` | 무인 완주 모드 전체 — 워커 게이트 3종을 함께 연다 | kiwi-wave-master → 워커의 kiwi-pm → kiwi-coder |",
   /** kiwi-coder is the route's endpoint; this sentence is the whole of AC-5's load-bearing half. */
   coder:
     "`--drive` 가 `--auto-integration` 과 `--auto-cost-warning` 을 함께 켠 것으로 본다 — `integration-test-user-consent` 와 `cost-warning-large-task` 두 게이트는 열린다.",
-  pipelineRow: "| `--drive` | 부모 `kiwi-wave-master` 의 무인 완주 모드 (FR-FLOW-119) | kiwi-pipeline → `kiwi-pm` → `kiwi-coder` |",
   pmRow: '| "무인 완주" (부모 전달) | `--drive` | off — 명시 입력만 kiwi-coder 로 pass-through (§3.2, FR-FLOW-119) |',
   pmProse: "`--auto-cost-warning` / `--auto-integration` / `--drive` 는 자식 args 에 그대로 전달한다",
   /** Not inherited. The inversion is a skill claiming it opens gates its own table never declares. */
@@ -173,12 +180,29 @@ function section(body: string, number: string): string {
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i += 1) {
     const heading = /^(#{1,6})\s/.exec(lines[i] ?? "");
-    if (heading && heading[1].length <= level) {
+    if (heading && at(heading, 1).length <= level) {
       end = i;
       break;
     }
   }
   return lines.slice(start, end).join("\n");
+}
+
+/**
+ * The worker's kiwi-pm invocation of the shared parallel-waves contract: the fenced command that opens
+ * with `/kiwi-pm` inside PW-6, bounded by the PW-6 and PW-7 paragraph markers so a `/kiwi-pm` line in
+ * another step cannot stand in for it.
+ */
+function workerPmCall(variant: string): string {
+  const lines = sharedProse(variant, "parallel-waves.md").split("\n");
+  const start = lines.findIndex((line) => line.startsWith("**PW-6 "));
+  if (start === -1) return "";
+  const stop = lines.findIndex((line, i) => i > start && line.startsWith("**PW-7 "));
+  const pw6 = lines.slice(start, stop === -1 ? lines.length : stop);
+  const open = pw6.findIndex((line) => /^\s*\/kiwi-pm\s/.test(line));
+  if (open === -1) return "";
+  const close = pw6.findIndex((line, i) => i > open && /^\s*```/.test(line));
+  return pw6.slice(open, close === -1 ? pw6.length : close).join("\n");
 }
 
 /** The self-repair conditions block: §7.5 with its subsections removed. */
@@ -241,15 +265,16 @@ describe("FR-FLOW-119 — --drive autonomous wave mode", () => {
       expect(residual, "a following clause revokes the residual rule").not.toMatch(FORBIDDEN.revocation);
     });
 
-    it("AC-5: routes --drive from its origin row to a destination that recognises it", () => {
+    it("FR-FLOW-119 AC-5: routes --drive from its origin row through the worker kiwi-pm call to kiwi-coder", () => {
       // Every hop pinned, origin included. Round 3 flipped the origin row to "전파하지 않는다" while
       // the three downstream pins held, and the route was dead with the suite green.
       expect(waveProse(variant), "the origin pass-through row does not match the pinned text").toContain(
         PERIMETER.waveRow
       );
-      expect(skillProse(variant, "kiwi-pipeline"), "kiwi-pipeline's row does not match the pinned text").toContain(
-        PERIMETER.pipelineRow
-      );
+      // The middle hop is the worker's kiwi-pm call of the shared contract (FR-FLOW-188 AC-2, AC-7).
+      const call = workerPmCall(variant);
+      expect(call, "parallel-waves.md PW-6 has no worker /kiwi-pm call").not.toBe("");
+      expect(call, "the worker /kiwi-pm call does not carry --drive").toMatch(/\[--drive\]/);
       expect(skillProse(variant, "kiwi-pm"), "kiwi-pm's option row does not match the pinned text").toContain(PERIMETER.pmRow);
 
       const coder = skillProse(variant, "kiwi-coder");
@@ -257,11 +282,23 @@ describe("FR-FLOW-119 — --drive autonomous wave mode", () => {
       expect(coder, "a following clause revokes kiwi-coder's --drive rule").not.toMatch(FORBIDDEN.revocation);
     });
 
-    it("AC-6: pins the journal-naming rule, including the child-gate vocabulary carve-out", () => {
+    it("FR-FLOW-119 AC-6: pins the journal-naming rule, including the child-gate vocabulary carve-out", () => {
       const record = section(resolvedProse(variant, "kiwi-wave-master"), "7.5.3");
       expect(record, "no §7.5.3 section").not.toBe("");
       expect(record, "the abort_gate rule does not match the pinned text").toContain(PINS.abortGate);
       expect(record, "the child-gate bubble-up rule does not match the pinned text").toContain(PINS.childBubble);
+      expect(record, "the retired per-wave pipeline gate is still the bubble-up target").not.toContain(
+        "child-pipeline-needs-user-or-failed"
+      );
+      // The bubble-up target must be the gate wave-master declares for a NEEDS_USER / FAILED halt of
+      // the children each wave runs — its §0.G row, naming the worker's kiwi-pm halt.
+      const gateRow = waveProse(variant)
+        .split("\n")
+        .find((line) => line.startsWith("| `serial-unit-failed` |"));
+      expect(gateRow, "§0.G declares no serial-unit-failed row").toBeDefined();
+      expect(gateRow, "serial-unit-failed does not carry the worker kiwi-pm NEEDS_USER / FAILED halt").toMatch(
+        /워커의 `[/$]kiwi-pm` 이 `NEEDS_USER` \/ `FAILED` 반환/
+      );
       expect(record, "the decision-row rule does not match the pinned text").toContain(PINS.decisionRow);
       expect(record, "a following clause revokes the journal rule").not.toMatch(FORBIDDEN.revocation);
     });

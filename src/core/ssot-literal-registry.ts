@@ -69,7 +69,7 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/bootstrap/templates.ts",
     role: "current",
     shape: /SDS-MD-Rules-v(\d+(?:\.\d+)*)\.md/g,
-    value: "2.5.0"
+    value: "2.6.0"
   },
   {
     name: "LEGACY_KOREAN_AGENT_HEADING_PREFIX",

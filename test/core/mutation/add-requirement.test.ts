@@ -33,12 +33,12 @@ describe("add requirement mutation", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.requirementId).toBe("FR-ARCH-002");
-    expect(result.value.targetSource).toBe("explicit");
-    expect(result.value.record.id).toBe("FR-ARCH-002");
-    expect(result.value.record.metadata.Priority).toBe("high");
-    expect(result.value.record.priority).toBe("high");
-    expect(result.value.record.stability).toBe("stable");
+    expect(result.value?.requirementId).toBe("FR-ARCH-002");
+    expect(result.value?.targetSource).toBe("explicit");
+    expect(result.value?.record.id).toBe("FR-ARCH-002");
+    expect(result.value?.record.metadata.Priority).toBe("high");
+    expect(result.value?.record.priority).toBe("high");
+    expect(result.value?.record.stability).toBe("stable");
     expect(result.patch?.operations).toBeGreaterThan(0);
     const text = await readFile(path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md"), "utf8");
     expect(text).toContain("### FR-ARCH-002 — 새 요구사항");
@@ -61,8 +61,8 @@ describe("add requirement mutation", () => {
     });
     expect(omitted.ok).toBe(true);
     if (!omitted.ok) return;
-    expect(omitted.value.record.stability).toBe("draft");
-    expect(omitted.value.record.metadata.Stability).toBe("draft");
+    expect(omitted.value?.record.stability).toBe("draft");
+    expect(omitted.value?.record.metadata.Stability).toBe("draft");
     expect(await readFile(specPath, "utf8")).toContain("| Stability | draft |");
 
     for (const stability of ["stable", "frozen", "deprecated"] as const) {
@@ -146,8 +146,8 @@ describe("add requirement mutation", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.filePath).toBe("docs/spec/10.product-architecture.srs.md");
-    expect(result.value.written).toBe(false);
+    expect(result.value?.filePath).toBe("docs/spec/10.product-architecture.srs.md");
+    expect(result.value?.written).toBe(false);
   });
 
   it("supports dry-run without writing and denies Scope Map path escape", async () => {

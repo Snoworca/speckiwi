@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { open, readFile, writeFile } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { resolveInsideRoot } from "../fs/safe-path.js";
@@ -22,11 +22,8 @@ import {
 export { EMPTY_WORKFLOW_REQ_TOKEN, canonicalWorkflowJson, workflowJournalIdentity } from "./identity.js";
 export type { WorkflowJournalIdentity, WorkflowJournalIdentityInput } from "./identity.js";
 
+/** @req FR-NODE-030 AC-1 — the plan checkbox, checklist and PM task status kinds left with their tools (FR-NODE-211 AC-1). */
 export type WorkflowMutationKind =
-  | "plan_checkbox_check"
-  | "plan_checkbox_uncheck"
-  | "plan_checklist_item_update"
-  | "pm_task_status_update"
   | "pipeline_event_append"
   | "worklog_event_append"
   | "workflow_repair_record"
@@ -42,15 +39,10 @@ export interface WorkflowMutationInput {
   taskId?: string;
   reqId?: string;
   reason?: string;
-  planPath?: string;
-  pmStatePath?: string;
-  sidecarPath?: string;
   jsonlPath?: string;
   expectedSha256?: string;
   recordType?: string;
   recordId?: string;
-  checked?: boolean;
-  status?: string;
   event?: WorkflowJsonlEvent;
   dryRun?: boolean;
   idempotencyKey?: string;
@@ -168,12 +160,6 @@ function isJsonlLineBoundaryPrefixHash(bytes: Buffer, expectedSha256: string): b
   return (bytes.length === 0 || bytes.at(-1) !== 0x0a) && hash.digest("hex") === expectedSha256;
 }
 
-async function readText(root: ProjectRoot, relativePath: string): Promise<{ absolutePath: string; text: string; sha256: string }> {
-  const absolutePath = await resolveInsideRoot(root.root, relativePath);
-  const text = await readFile(absolutePath, "utf8");
-  return { absolutePath, text, sha256: sha256Text(text) };
-}
-
 function ownerDiagnostic(kind: WorkflowMutationKind, owner: string): Diagnostic {
   return diagnostic("SRS-E070", "error", "Workflow mutation owner is not allowed for this operation", {}, { kind, owner });
 }
@@ -184,10 +170,6 @@ function usageDiagnostic(kind: WorkflowMutationKind, message: string): Diagnosti
 
 function staleDiagnostic(relativePath: string, expectedSha256: string, actualSha256?: string): Diagnostic {
   return diagnostic("SRS-E032", "error", "Mutation snapshot is stale", { filePath: relativePath }, { expectedSha256, actualSha256 });
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function operationPreview(operation: MutationOperationDetail): string[] {
@@ -295,12 +277,7 @@ function identityFor(input: WorkflowMutationInput): WorkflowJournalIdentity {
     args: {
       owner: input.owner,
       reason: input.reason,
-      planPath: input.planPath,
-      pmStatePath: input.pmStatePath,
-      sidecarPath: input.sidecarPath,
       jsonlPath: input.jsonlPath,
-      checked: input.checked,
-      status: input.status,
       event: input.event,
       recordType: input.recordType,
       recordId: input.recordId
@@ -309,9 +286,6 @@ function identityFor(input: WorkflowMutationInput): WorkflowJournalIdentity {
 }
 
 function isForbiddenOwner(input: WorkflowMutationInput): boolean {
-  if (input.kind === "plan_checkbox_check" || input.kind === "plan_checkbox_uncheck" || input.kind === "plan_checklist_item_update" || input.kind === "pm_task_status_update") {
-    return input.owner !== "kiwi-pm" && input.owner !== "pm";
-  }
   if (input.kind === "workflow_logical_delete") {
     return input.owner !== "kiwi-pm" && input.owner !== "pm";
   }
@@ -342,11 +316,7 @@ function targetRecord(input: WorkflowMutationInput): Record<string, unknown> {
     runId: input.runId,
     ...(input.taskId ? { taskId: input.taskId } : {}),
     ...(input.reqId ? { reqId: input.reqId } : {}),
-    ...(input.planPath ? { planPath: input.planPath } : {}),
-    ...(input.pmStatePath ? { pmStatePath: input.pmStatePath } : {}),
-    ...(input.sidecarPath ? { sidecarPath: input.sidecarPath } : {}),
     ...(input.jsonlPath ? { jsonlPath: input.jsonlPath } : {}),
-    ...(input.status ? { status: input.status } : {}),
     ...(input.recordType ? { recordType: input.recordType } : {}),
     ...(input.recordId ? { recordId: input.recordId, desiredState: "deleted" } : {}),
     ...(input.path ? { path: input.path } : {}),
@@ -357,180 +327,6 @@ function targetRecord(input: WorkflowMutationInput): Record<string, unknown> {
     ...(input.targetRunId ? { targetRunId: input.targetRunId } : {}),
     ...(input.preimagePrefixSha256 ? { preimagePrefixSha256: input.preimagePrefixSha256 } : {})
   };
-}
-
-function checkboxReplacement(text: string, taskId: string, checked: boolean): { operation: MutationOperationDetail | null; nextText: string; alreadyDesired: boolean } {
-  const lines = text.split("\n");
-  const marker = checked ? "x" : " ";
-  const taskPattern = escapeRegExp(taskId);
-  const pattern = new RegExp(`^(\\s*[-*]\\s+)\\[([ xX])\\](\\s+(?:\\*\\*)?(?:\\\`)?${taskPattern}\\b.*)$`);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    const match = pattern.exec(line);
-    if (!match) continue;
-    const current = (match[2] ?? " ") !== " ";
-    if (current === checked) return { operation: null, nextText: text, alreadyDesired: true };
-    const replacement = `${match[1]}[${marker}]${match[3]}`;
-    lines[index] = replacement;
-    return {
-      operation: { type: "replaceLine", line: index + 1, lineCount: 1, original: line, replacement },
-      nextText: lines.join("\n"),
-      alreadyDesired: false
-    };
-  }
-  return { operation: null, nextText: text, alreadyDesired: false };
-}
-
-interface WorkflowMutationSidecarTask {
-  id?: string;
-  task_id?: string;
-  depends_on_task?: string[];
-  status?: string;
-}
-
-interface WorkflowMutationSidecar {
-  tasks?: WorkflowMutationSidecarTask[];
-}
-
-interface WorkflowMutationPmState {
-  tasks?: Array<{ task_id?: string; status?: string }>;
-}
-
-function frontmatterValue(text: string, key: string): string | undefined {
-  if (!text.startsWith("---\n")) return undefined;
-  const end = text.indexOf("\n---", 4);
-  if (end < 0) return undefined;
-  for (const line of text.slice(4, end).split(/\r?\n/)) {
-    const match = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
-    if (!match || match[1] !== key) continue;
-    return match[2]?.trim().replace(/^"|"$/g, "");
-  }
-  return undefined;
-}
-
-function sidecarPathForPlan(input: WorkflowMutationInput, planPath: string, planText: string): string | null {
-  if (input.sidecarPath) return input.sidecarPath;
-  const declared = frontmatterValue(planText, "sidecar_path");
-  if (!declared) return null;
-  const baseDir = path.posix.dirname(planPath);
-  return path.posix.normalize(path.posix.join(baseDir, declared));
-}
-
-async function optionalJson<T>(root: ProjectRoot, relativePath: string): Promise<T | null> {
-  try {
-    const absolutePath = await resolveInsideRoot(root.root, relativePath);
-    return JSON.parse(await readFile(absolutePath, "utf8")) as T;
-  } catch {
-    return null;
-  }
-}
-
-function taskKey(task: WorkflowMutationSidecarTask): string {
-  return String(task.id ?? task.task_id ?? "");
-}
-
-function doneLike(status: string | undefined): boolean {
-  return status === "done" || status === "skipped";
-}
-
-async function dependencyBlockers(root: ProjectRoot, input: WorkflowMutationInput, planPath: string, planText: string): Promise<string[]> {
-  if (!input.taskId) return [];
-  const sidecarPath = sidecarPathForPlan(input, planPath, planText);
-  if (!sidecarPath) return [];
-  const sidecar = await optionalJson<WorkflowMutationSidecar>(root, sidecarPath);
-  const tasks = Array.isArray(sidecar?.tasks) ? sidecar.tasks : [];
-  const task = tasks.find((item) => taskKey(item) === input.taskId);
-  const dependencies = Array.isArray(task?.depends_on_task) ? task.depends_on_task.filter((item): item is string => typeof item === "string") : [];
-  if (dependencies.length === 0) return [];
-  const pmStatePath = input.pmStatePath ?? `.kiwi/sessions/${input.runId}/pm-state.json`;
-  const pmState = await optionalJson<WorkflowMutationPmState>(root, pmStatePath);
-  const pmStatus = new Map((pmState?.tasks ?? []).filter((item) => typeof item.task_id === "string").map((item) => [String(item.task_id), item.status]));
-  const sidecarStatus = new Map(tasks.map((item) => [taskKey(item), item.status]));
-  return dependencies.filter((dep) => !doneLike(pmStatus.get(dep) ?? sidecarStatus.get(dep)));
-}
-
-async function applyCheckboxMutation(root: ProjectRoot, input: WorkflowMutationInput, identity: WorkflowJournalIdentity): Promise<MutationResult<WorkflowMutationOutput>> {
-  const filePath = input.planPath;
-  if (!filePath || !input.taskId) {
-    const diagnostics = [usageDiagnostic(input.kind, "Workflow checkbox mutation requires planPath and taskId")];
-    return failWithEnvelope(input, filePath ?? "-", identity, diagnostics, "Workflow checkbox mutation requires planPath and taskId", null);
-  }
-  const desired = input.kind === "plan_checkbox_uncheck" ? false : input.checked ?? true;
-  const file = await readText(root, filePath);
-  const staleGuard = { filePath, retry: "rerun workflow mutation with fresh source hash" };
-  if (input.expectedSha256 && input.expectedSha256 !== file.sha256) {
-    const diagnostics = [staleDiagnostic(filePath, input.expectedSha256, file.sha256)];
-    const pendingRepair = { kind: "rerun_with_fresh_artifact", message: "Plan checkbox mutation saw a stale source hash", retry: staleGuard.retry, staleGuard };
-    return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow artifact snapshot is stale", pendingRepair, staleGuard);
-  }
-  const blockedBy = await dependencyBlockers(root, input, filePath, file.text);
-  if (blockedBy.length > 0) {
-    const diagnostics = [diagnostic("SRS-E074", "error", "Workflow mutation is blocked by task dependency state", { filePath }, { taskId: input.taskId, blockedBy })];
-    return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow mutation is blocked by task dependency state", { kind: "blocked_dependency", message: "Complete dependency tasks before mutating this workflow record", retry: "complete dependencies and retry" });
-  }
-  const replacement = checkboxReplacement(file.text, input.taskId, desired);
-  if (!replacement.operation) {
-    if (replacement.alreadyDesired) {
-      const completedOperations = [`confirm:${input.kind}`];
-      const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-      return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: false, operations: [], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
-    }
-    const diagnostics = [usageDiagnostic(input.kind, `Workflow checkbox task was not found: ${input.taskId}`)];
-    return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow checkbox task was not found", null);
-  }
-  const pendingOperations = [`write:${input.kind}`];
-  if (input.dryRun) {
-    const value = output({ kind: input.kind, written: false, identity, journalState: "skipped_dry_run", completedOperations: [], pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-    return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: true, written: false, operations: [replacement.operation], identity, journalState: "skipped_dry_run", completedOperations: [], pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
-  }
-  await writeFile(file.absolutePath, replacement.nextText, "utf8");
-  const completedOperations = [`write:${input.kind}`, `confirm:${input.kind}`];
-  const value = output({ kind: input.kind, written: true, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-  return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: false, written: true, operations: [replacement.operation], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
-}
-
-async function applyPmTaskStatusMutation(root: ProjectRoot, input: WorkflowMutationInput, identity: WorkflowJournalIdentity): Promise<MutationResult<WorkflowMutationOutput>> {
-  const filePath = input.pmStatePath;
-  if (!filePath || !input.taskId || !input.status) {
-    const diagnostics = [usageDiagnostic(input.kind, "PM task status mutation requires pmStatePath, taskId, and status")];
-    return failWithEnvelope(input, filePath ?? "-", identity, diagnostics, "PM task status mutation requires pmStatePath, taskId, and status", null);
-  }
-  const file = await readText(root, filePath);
-  const staleGuard = { filePath, retry: "rerun workflow mutation with fresh PM state hash" };
-  if (input.expectedSha256 && input.expectedSha256 !== file.sha256) {
-    const diagnostics = [staleDiagnostic(filePath, input.expectedSha256, file.sha256)];
-    const pendingRepair = { kind: "rerun_with_fresh_artifact", message: "PM task mutation saw a stale source hash", retry: staleGuard.retry, staleGuard };
-    return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow artifact snapshot is stale", pendingRepair, staleGuard);
-  }
-  let data: { tasks?: Array<Record<string, unknown>> };
-  try {
-    data = JSON.parse(file.text) as { tasks?: Array<Record<string, unknown>> };
-  } catch (error) {
-    const diagnostics = [diagnostic("SRS-W050", "warning", `Workflow artifact parse warning: ${filePath}`, { filePath }, { message: (error as Error).message })];
-    return failWithEnvelope(input, filePath, identity, diagnostics, "PM state is malformed", { kind: "repair_malformed_json", message: "Repair malformed PM state before mutation", retry: "repair PM state JSON" });
-  }
-  const task = Array.isArray(data.tasks) ? data.tasks.find((item) => item.task_id === input.taskId) : undefined;
-  if (!task) {
-    const diagnostics = [usageDiagnostic(input.kind, `PM task was not found: ${input.taskId}`)];
-    return failWithEnvelope(input, filePath, identity, diagnostics, "PM task was not found", null);
-  }
-  if (task.status === input.status) {
-    const completedOperations = [`confirm:${input.kind}`];
-    const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-    return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: false, operations: [], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
-  }
-  const next = { ...data, tasks: data.tasks?.map((item) => (item.task_id === input.taskId ? { ...item, status: input.status } : item)) };
-  const lines = JSON.stringify(next, null, 2).split("\n");
-  const operation: MutationOperationDetail = { type: "replaceRange", startLine: 1, endLine: file.text.split("\n").length, lineCount: lines.length, lines };
-  const pendingOperations = [`write:${input.kind}`];
-  if (input.dryRun) {
-    const value = output({ kind: input.kind, written: false, identity, journalState: "skipped_dry_run", completedOperations: [], pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-    return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: true, written: false, operations: [operation], identity, journalState: "skipped_dry_run", completedOperations: [], pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
-  }
-  await writeFile(file.absolutePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-  const completedOperations = [`write:${input.kind}`, `confirm:${input.kind}`];
-  const value = output({ kind: input.kind, written: true, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] });
-  return withMutationEnvelope(mutationOk(value), envelope({ kind: input.kind, filePath, dryRun: false, written: true, operations: [operation], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [staleGuard] }));
 }
 
 const retainedJsonlCleanup = new Map<string, MutationResult<WorkflowMutationOutput>>();
@@ -1531,19 +1327,13 @@ async function applyLogicalDeleteMutation(root: ProjectRoot, input: WorkflowMuta
 export async function applyWorkflowMutation(root: ProjectRoot, input: WorkflowMutationInput): Promise<MutationResult<WorkflowMutationOutput>> {
   const identity = identityFor(input);
   if (isForbiddenOwner(input)) {
-    return failWithEnvelope(input, input.planPath ?? input.pmStatePath ?? input.jsonlPath ?? "-", identity, [ownerDiagnostic(input.kind, input.owner)], "Workflow mutation owner is not allowed for this operation", null);
+    return failWithEnvelope(input, input.jsonlPath ?? "-", identity, [ownerDiagnostic(input.kind, input.owner)], "Workflow mutation owner is not allowed for this operation", null);
   }
   if (input.idempotencyKey && input.idempotencyKey !== identity.idempotencyKey) {
     const diagnostics = [diagnostic("SRS-E072", "error", "Workflow idempotency key is incompatible with canonical journal identity", {}, { supplied: input.idempotencyKey, canonical: identity.idempotencyKey })];
-    return failWithEnvelope(input, input.planPath ?? input.pmStatePath ?? input.jsonlPath ?? "-", identity, diagnostics, "Workflow idempotency key is incompatible with canonical journal identity", null);
+    return failWithEnvelope(input, input.jsonlPath ?? "-", identity, diagnostics, "Workflow idempotency key is incompatible with canonical journal identity", null);
   }
   switch (input.kind) {
-    case "plan_checkbox_check":
-    case "plan_checkbox_uncheck":
-    case "plan_checklist_item_update":
-      return applyCheckboxMutation(root, input, identity);
-    case "pm_task_status_update":
-      return applyPmTaskStatusMutation(root, input, identity);
     case "pipeline_event_append":
     case "worklog_event_append":
     case "workflow_repair_record":

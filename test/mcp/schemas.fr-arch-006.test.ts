@@ -70,7 +70,7 @@ const REQUIRED_OPTION_FIELDS: ReadonlyArray<keyof ToolOptionSpec> = [
 
 function registrySpecs(): readonly ToolSpec[] {
   // toolSpecs may be exported as an array or a name-keyed record; normalize to an array.
-  return Array.isArray(toolSpecs) ? toolSpecs : Object.values(toolSpecs as Record<string, ToolSpec>);
+  return Array.isArray(toolSpecs) ? toolSpecs : Object.values(toolSpecs);
 }
 
 function registryCliNames(): string[] {

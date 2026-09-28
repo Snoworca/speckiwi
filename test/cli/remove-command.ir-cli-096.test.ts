@@ -16,11 +16,11 @@ import { findSpecByCliName, toolSpecs } from "../../src/mcp/schemas.js";
 // every case below that could touch a global destination runs inside `withHome`.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function exists(target: string): Promise<boolean> {
@@ -70,7 +70,7 @@ async function initialised(): Promise<{ root: string; home: string }> {
     globalHomeDir: home,
     globalCodexHome: path.join(home, ".codex")
   });
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw new Error(result.error?.message ?? "expected an ok result");
   return { root, home };
 }
 

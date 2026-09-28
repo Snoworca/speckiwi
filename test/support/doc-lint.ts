@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { at } from "./at.js";
 
 /**
  * @req REL-FLOW-003 — a mechanical pass over a prose document's factual claims.
@@ -123,7 +124,7 @@ export function extractFencedCommands(text: string): Array<{ line: number; comma
   const languages = fenceLanguages(lines);
   const commands: Array<{ line: number; command: string }> = [];
   lines.forEach((line, index) => {
-    const language = languages[index];
+    const language = at(languages, index);
     if (language === null || !SHELL_FENCES.has(language)) return;
     if (!COMMAND_LINE.test(line)) return;
     commands.push({ line: index + 1, command: line.replace(/\s+#.*$/, "").trim() });

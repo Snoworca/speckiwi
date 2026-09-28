@@ -9,7 +9,7 @@ import { isReadOnlyTool, toolSchemas } from "../../src/mcp/server.js";
 import { createWorkflowFixture } from "../fixtures/workflow-artifacts.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function runCliJson(root: string, args: string[]): Promise<Record<string, unknown>> {
@@ -39,20 +39,12 @@ describe("FR-MCP-023 workflow artifact read tools", () => {
       "workflow_artifacts_list",
       "workflow_latest_artifact",
       "workflow_resolve_artifact",
-      "workflow_plan_status",
-      "workflow_plan_task",
-      "workflow_next_plan_task",
-      "workflow_doctor",
-      "workflow_diff",
-      "workflow_schema_check",
       "workflow_pipeline_status",
       "workflow_pipeline_tail",
       "workflow_pipeline_next",
       "workflow_pipeline_compact",
       "workflow_session_status",
-      "workflow_resume_hint",
-      "workflow_worklog_tail",
-      "preview_legacy_workflow_migration"
+      "workflow_worklog_tail"
     ];
     for (const name of expectedTools) {
       expect(server.tools[name], `${name} should be registered`).toBeDefined();
@@ -64,33 +56,17 @@ describe("FR-MCP-023 workflow artifact read tools", () => {
     const artifactList = (await server.callTool("workflow_artifacts_list", {})) as { artifacts: Array<{ relativePath: string; legacy: boolean }> };
     expect(artifactList).toMatchObject({ ok: true, value: { artifacts: expect.any(Array) }, artifacts: expect.any(Array), cursor: expect.any(Object) });
     expect(artifactList.artifacts.some((item) => item.relativePath === "docs/plan/legacy.plan.md" && item.legacy)).toBe(true);
-    await expect(server.callTool("workflow_latest_artifact", { kind: "plan", runId: fixture.runId })).resolves.toMatchObject({ ok: true, value: { selected: { relativePath: fixture.planPath } } });
-    await expect(server.callTool("workflow_resolve_artifact", { path: fixture.planPath })).resolves.toMatchObject({ ok: true, value: { selected: { relativePath: fixture.planPath } } });
-    await expect(server.callTool("workflow_plan_status", { path: fixture.planPath })).resolves.toMatchObject({ ok: true, value: { taskCount: 3 } });
-    await expect(server.callTool("workflow_plan_task", { path: fixture.planPath, taskId: "T-002" })).resolves.toMatchObject({ ok: true, value: { task: { id: "T-002" } } });
-    await expect(server.callTool("workflow_next_plan_task", { path: fixture.planPath })).resolves.toMatchObject({ ok: true, value: { outcome: "ok", blocking: false, nextTask: { id: "T-002" } } });
-    await expect(server.callTool("workflow_doctor", { path: fixture.stalePlanPath })).resolves.toMatchObject({
-      ok: true,
-      value: { projectionKind: "workflow_doctor", outcomeCodes: expect.arrayContaining(["stale_artifact"]), blocking: true }
-    });
-    await expect(server.callTool("workflow_diff", { path: fixture.checkboxDriftPlanPath })).resolves.toMatchObject({
-      ok: true,
-      value: { projectionKind: "workflow_diff", diffs: expect.arrayContaining([expect.objectContaining({ class: "display_drift" })]) }
-    });
-    await expect(server.callTool("workflow_schema_check", { path: fixture.invalidSidecarPlanPath })).resolves.toMatchObject({
-      ok: true,
-      value: { projectionKind: "workflow_schema_check", outcomeCodes: expect.arrayContaining(["invalid_artifact"]), blocking: true }
-    });
+    await expect(server.callTool("workflow_latest_artifact", { kind: "sds", runId: fixture.runId })).resolves.toMatchObject({ ok: true, value: { selected: { relativePath: fixture.sdsPath } } });
+    await expect(server.callTool("workflow_resolve_artifact", { path: fixture.sdsPath })).resolves.toMatchObject({ ok: true, value: { selected: { relativePath: fixture.sdsPath, kind: "sds" } } });
     await expect(server.callTool("workflow_pipeline_status", {})).resolves.toMatchObject({ ok: true, value: { total: 2 }, diagnosticsSummary: { byCode: { "SRS-W052": 1 } } });
     await expect(server.callTool("workflow_pipeline_tail", { limit: 1 })).resolves.toMatchObject({ ok: true, value: { events: [expect.objectContaining({ eventKey: "kiwi-planner|pipeline-a" })] }, cursor: { nextOffset: 1 } });
     await expect(server.callTool("workflow_pipeline_next", {})).resolves.toMatchObject({ ok: true, value: { nextHint: "kiwi-pm" } });
     await expect(server.callTool("workflow_pipeline_compact", {})).resolves.toMatchObject({ ok: true, value: { projectionKind: "pipeline_compact", latestStatus: "TASK_DONE", total: 2 } });
-    await expect(server.callTool("workflow_session_status", { runId: fixture.runId })).resolves.toMatchObject({ ok: true, value: { stats: { done: 1, pending: 2 } } });
-    await expect(server.callTool("workflow_resume_hint", { path: fixture.planPath })).resolves.toMatchObject({ ok: true, value: { resume: true, nextTask: { id: "T-002" } } });
+    await expect(server.callTool("workflow_session_status", { runId: fixture.runId })).resolves.toMatchObject({ ok: true, value: { state: { run_id: fixture.runId, run: { status: "running" } } } });
     await expect(server.callTool("workflow_worklog_tail", { runId: fixture.runId, limit: 1 })).resolves.toMatchObject({ ok: true, value: { events: [expect.objectContaining({ eventKey: "kiwi-planner|worklog-a" })] } });
   });
 
-  it("matches CLI workflow values for invalid JSONL, ambiguity, and dependency-blocked fixtures", async () => {
+  it("matches CLI workflow values for invalid JSONL and ambiguity fixtures", async () => {
     const fixture = await createWorkflowFixture();
     const server = createTestMcpServer({ root: fixture.root });
     registerReadTools(server, { root: fixture.root });
@@ -103,32 +79,13 @@ describe("FR-MCP-023 workflow artifact read tools", () => {
       diagnosticsSummary: cliTail.diagnosticsSummary
     });
 
-    const cliAmbiguous = await runCliJson(fixture.root, ["workflow", "artifacts", "--kind", "sidecar", "--run-id", "tie-run"]);
-    const mcpAmbiguous = (await server.callTool("workflow_artifacts_list", { kind: "sidecar", runId: "tie-run" })) as Record<string, unknown>;
+    const cliAmbiguous = await runCliJson(fixture.root, ["workflow", "artifacts", "--kind", "pm-state", "--run-id", "tie-run"]);
+    const mcpAmbiguous = (await server.callTool("workflow_artifacts_list", { kind: "pm-state", runId: "tie-run" })) as Record<string, unknown>;
     expect(mcpAmbiguous).toMatchObject({ value: { selected: null }, diagnosticsSummary: cliAmbiguous.diagnosticsSummary });
 
-    const cliBlocked = await runCliJson(fixture.root, ["workflow", "next-task", "--path", fixture.blockedPlanPath]);
-    const mcpBlocked = (await server.callTool("workflow_next_plan_task", { path: fixture.blockedPlanPath })) as Record<string, unknown>;
-    expect(mcpBlocked).toMatchObject({ value: cliBlocked.value, diagnosticsSummary: cliBlocked.diagnosticsSummary });
-
-    const cliIdOrder = await runCliJson(fixture.root, ["workflow", "next-task", "--path", fixture.idOrderPlanPath]);
-    const mcpIdOrder = (await server.callTool("workflow_next_plan_task", { path: fixture.idOrderPlanPath })) as Record<string, unknown>;
-    expect(mcpIdOrder).toMatchObject({ value: cliIdOrder.value, diagnosticsSummary: cliIdOrder.diagnosticsSummary });
-
-    const cliStale = await runCliJson(fixture.root, ["workflow", "resume-hint", "--path", fixture.stalePlanPath]);
-    const mcpStale = (await server.callTool("workflow_resume_hint", { path: fixture.stalePlanPath })) as Record<string, unknown>;
-    expect(mcpStale).toMatchObject({ value: cliStale.value, diagnosticsSummary: cliStale.diagnosticsSummary });
-
-    const cliCycle = await runCliJson(fixture.root, ["workflow", "next-task", "--path", fixture.cyclePlanPath]);
-    const mcpCycle = (await server.callTool("workflow_next_plan_task", { path: fixture.cyclePlanPath })) as Record<string, unknown>;
-    expect(mcpCycle).toMatchObject({
-      value: cliCycle.value,
-      diagnosticsSummary: cliCycle.diagnosticsSummary
-    });
-
-    const cliDoctor = await runCliJson(fixture.root, ["workflow", "doctor", "--path", fixture.stalePlanPath]);
-    const mcpDoctor = (await server.callTool("workflow_doctor", { path: fixture.stalePlanPath })) as Record<string, unknown>;
-    expect(mcpDoctor).toMatchObject({ value: cliDoctor.value, diagnosticsSummary: cliDoctor.diagnosticsSummary });
+    const cliSession = await runCliJson(fixture.root, ["workflow", "session-status", "--run-id", fixture.runId]);
+    const mcpSession = (await server.callTool("workflow_session_status", { runId: fixture.runId })) as Record<string, unknown>;
+    expect(mcpSession).toMatchObject({ value: cliSession.value, diagnosticsSummary: cliSession.diagnosticsSummary });
 
     const cliCompact = await runCliJson(fixture.root, ["workflow", "pipeline", "compact"]);
     const mcpCompact = (await server.callTool("workflow_pipeline_compact", {})) as Record<string, unknown>;

@@ -151,7 +151,7 @@ describe("FR-NODE-174 AC-9 — no mutation writes prose that opens a requirement
     });
 
     expect(result.ok).toBe(false);
-    const message = result.ok ? "" : result.error.message;
+    const message = result.ok ? "" : (result.error?.message ?? "");
     expect(message, "the refusal does not say which heading was found").toContain("### FR-ARCH-706");
   });
 
@@ -483,7 +483,7 @@ describe("FR-NODE-174 AC-9 — a code fence is a record boundary, and the guard 
 
     const result = await appendSectionNote(projectRoot, { id: CARRIER, section: "research", text: "Ordinary.\n```" });
 
-    const message = result.ok ? "" : result.error.message;
+    const message = result.ok ? "" : (result.error?.message ?? "");
     expect(message.toLowerCase(), "the caller cannot tell what was rejected").toContain("fence");
   });
 

@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-044
 // @req FR-FLOW-045
@@ -50,10 +51,10 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => headingRe.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -81,7 +82,7 @@ function gateSection(body: string): string {
 function phaseFlowBlock(body: string): string {
   const fences = body.split("```");
   for (let i = 1; i < fences.length; i += 2) {
-    if (/Wave 분해|wave decompos/i.test(fences[i])) return fences[i];
+    if (/Wave 분해|wave decompos/i.test(at(fences, i))) return at(fences, i);
   }
   return "";
 }
@@ -95,9 +96,6 @@ function headingLine(body: string, re: RegExp): number {
 // Shared tokens. Every variant is host-language-adapted (claude/codex Korean, etc English/Korean
 // mixed), so prose concepts key on bilingual regexes while technical identifiers key on literals.
 // --------------------------------------------------------------------------------------------------
-const TASK_DONE = /TASK_DONE/;
-const COMPLETE_APPEND = /complete/i;
-const WAVES_JSONL = /waves\.jsonl/i;
 /** Every variant states the verifier count with the literal "정확히 2" so the etc single-worker
  * profile can render it as "2 verification axes" without weakening the count itself. The negative
  * lookahead matters: "정확히 2기 이상" reads as at-least-two, which breaks the two-party premise the
@@ -146,12 +144,11 @@ const HEDGE = /수 있다|해도 된다|권장|바람직|원칙적으로|원칙�
 function sentenceWith(text: string, re: RegExp): string {
   const lines = text.split("\n");
   const i = lines.findIndex((l) => re.test(l));
-  return i === -1 ? "" : lines[i];
+  return i === -1 ? "" : at(lines, i);
 }
 
 const GATE_IDS = [
   "run-root-preflight-mismatch",
-  "wt-delegation-refused",
   "child-pipeline-needs-user-or-failed",
   "wave-verify-residual-critical",
   "wave-verify-cross-wave-fix-required",
@@ -160,28 +157,40 @@ const GATE_IDS = [
 describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: places the step after TASK_DONE and before the waves.jsonl complete append", () => {
+      // Revised in 4.0.0: the step keys on the wave's merge under the shared parallel-waves contract
+      // (FR-FLOW-188), no longer on a per-wave kiwi-pipeline TASK_DONE.
+      it("FR-FLOW-044 AC-1: places the step after the parallel-waves merge and before the waves.jsonl complete append", () => {
         const body = skillBody(readWaveSkill(variant));
         const section = verifySection(body);
         expect(section, `${variant}: a cross-verification section must exist`).not.toBe("");
 
-        // The step must sit between the per-wave pipeline section and the waves.jsonl section.
+        // The step must sit between the stage-execution section and the waves.jsonl section.
         const verifyAt = headingLine(body, /(?:상호검증|cross-verif)/i);
-        const pipelineAt = headingLine(body, /kiwi-pipeline\s*(?:실행|execution)|Phase 3\b/i);
+        const stageAt = headingLine(body, /Phase 3\b[^\n]*stage\s*(?:실행|execution)/i);
         const wavesAt = headingLine(body, /waves\.jsonl/i);
-        expect(pipelineAt, `${variant}: the per-wave pipeline section must exist`).toBeGreaterThan(-1);
+        expect(stageAt, `${variant}: the Phase 3 stage-execution section must exist`).toBeGreaterThan(-1);
         expect(wavesAt, `${variant}: the waves.jsonl progress section must exist`).toBeGreaterThan(-1);
         expect(
-          pipelineAt < verifyAt && verifyAt < wavesAt,
-          `${variant}: cross-verification must be authored between the pipeline section and the waves.jsonl section`,
+          stageAt < verifyAt && verifyAt < wavesAt,
+          `${variant}: cross-verification must be authored between the stage-execution section and the waves.jsonl section`,
         ).toBe(true);
 
-        // And the section itself must state the ordering rather than merely being positioned there.
-        expect(TASK_DONE.test(section), `${variant}: the section must key on the pipeline TASK_DONE return`).toBe(true);
+        // And the section itself must state the ordering rather than merely being positioned there:
+        // one sentence names the merge under parallel-waves.md and the waves.jsonl complete record it
+        // precedes. A bare TASK_DONE token anchors nothing any more — verify-loop.md still says it in
+        // an unrelated paragraph, so it stayed green after the per-wave pipeline was removed.
+        const orderRule = sentenceWith(section, /`waves\.jsonl`\s*`complete`\s*기록 이전에|before the waves\.jsonl complete/i);
+        expect(orderRule, `${variant}: the section must state that it runs before the waves.jsonl complete record`).not.toBe(
+          "",
+        );
         expect(
-          windowsAround(section, WAVES_JSONL, 300).some((w) => COMPLETE_APPEND.test(w)),
-          `${variant}: the section must state that it runs before the waves.jsonl complete record`,
+          /병합|merged/i.test(orderRule) && /`parallel-waves\.md`/.test(orderRule),
+          `${variant}: the ordering sentence must key on the wave's merge under parallel-waves.md`,
         ).toBe(true);
+        expect(
+          /TASK_DONE|kiwi-pipeline/.test(orderRule),
+          `${variant}: the ordering must not key on a per-wave pipeline`,
+        ).toBe(false);
 
         const flow = phaseFlowBlock(body);
         expect(flow, `${variant}: the phase-flow block must exist`).not.toBe("");
@@ -190,16 +199,21 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
           `${variant}: the phase-flow block must list Phase 3.5 between Phase 3 and Phase 4`,
         ).toBe(true);
 
-        // The sentence that actually governs when the NEXT wave launches must gate on verification
-        // too. Left keyed on TASK_DONE alone, an agent reading the pipeline section in isolation
-        // starts wave n+1 while wave n is still being verified, which defeats the halt gate.
-        const pipelineSection = sectionUnder(body, /^#{2,4}\s.*kiwi-pipeline\s*(?:실행|execution)/i);
-        expect(pipelineSection, `${variant}: the per-wave pipeline section must exist`).not.toBe("");
+        // The sentence that actually governs when a DEPENDENT wave may start must gate on
+        // verification too. Left keyed on the merge alone, an agent reading the stage section in
+        // isolation starts a dependent wave while its base is still being verified, which defeats
+        // the halt gate.
+        const stageSection = sectionUnder(body, /^#{2,4}\s.*Phase 3\b[^\n]*stage\s*(?:실행|execution)/i);
+        expect(stageSection, `${variant}: the Phase 3 stage-execution section must exist`).not.toBe("");
+        const startRule = sentenceWith(stageSection, /의존한 wave|depends? on/i);
+        expect(startRule, `${variant}: the stage section must say when a dependent wave may start`).not.toBe("");
         expect(
-          windowsAround(pipelineSection, /다음 wave|next wave/i, 260).some((w) =>
-            /상호검증|§5\.5|cross-verif/i.test(w),
-          ),
-          `${variant}: starting the next wave must be gated on the previous wave's cross-verification, not on TASK_DONE alone`,
+          /상호검증|§5\.5|cross-verif/i.test(startRule) && /`complete`/.test(startRule),
+          `${variant}: a dependent wave must start only after its base passed cross-verification and was recorded complete`,
+        ).toBe(true);
+        expect(
+          /병합만으로는 부족|merge alone is not enough/i.test(startRule),
+          `${variant}: the start rule must say the merge alone is not enough`,
         ).toBe(true);
       });
 
@@ -255,53 +269,90 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
           true,
         );
         expect(
-          /의도\s*실현/.test(stance[2]) && /과정\s*적합|process\s+conformance/i.test(stance[2]),
+          /의도\s*실현/.test(at(stance, 2)) && /과정\s*적합|process\s+conformance/i.test(at(stance, 2)),
           `${variant}: the FIRST stance column must be intent realization plus process conformance`,
         ).toBe(true);
         expect(
-          /품질/.test(stance[3]) && /회귀/.test(stance[3]),
+          /품질/.test(at(stance, 3)) && /회귀/.test(at(stance, 3)),
           `${variant}: the SECOND stance column must be artifact quality plus regression risk`,
         ).toBe(true);
         expect(
-          ALL_MATCH.test(rollup[2]) && GAPS_ROLLUP.test(rollup[2]),
+          ALL_MATCH.test(at(rollup, 2)) && GAPS_ROLLUP.test(at(rollup, 2)),
           `${variant}: the FIRST roll-up column must be ALL_MATCH / GAPS`,
         ).toBe(true);
         expect(
-          SUBSTANTIVE_CLEAN.test(rollup[3]),
+          SUBSTANTIVE_CLEAN.test(at(rollup, 3)),
           `${variant}: the SECOND roll-up column must be substantive_clean`,
         ).toBe(true);
       });
 
-      it("AC-4: enumerates a wave-evidence bundle that reaches the execution record", () => {
+      // Revised in 4.0.0: the wave SDS replaces the plan and sidecar (FR-FLOW-185 AC-1), the worker's
+      // own review report replaces the per-wave pipeline review (FR-FLOW-188 AC-2), and the window is
+      // bounded by sds_id rather than by a pipeline_run_id.
+      it("FR-FLOW-044 AC-4: enumerates a wave-evidence bundle that reaches the execution record", () => {
         // Scoped to the bundle sub-section: a section-wide `includes` stayed green after the
         // review-fix-loop report row was deleted, because §5.5.5 names the skill three more times.
         const bundle = sectionUnder(verifySection(skillBody(readWaveSkill(variant))), /^#{3,4}\s.*증거 번들/);
         expect(bundle, `${variant}: an evidence-bundle sub-section must exist`).not.toBe("");
-        for (const token of ["pipeline.jsonl", "worklog.jsonl", "sidecar", "kiwi-review-fix-loop"]) {
-          expect(bundle.includes(token), `${variant}: the evidence bundle must include ${token}`).toBe(true);
-        }
-        expect(LIST_REQUIREMENTS.test(bundle), `${variant}: the bundle must include the wave target requirement list`).toBe(
+        // Each artifact is a ROW of the bundle table, not a token somewhere in the prose around it.
+        const rows = bundle.split("\n").filter((l) => /^\|/.test(l) && !/^\|\s*-/.test(l));
+        const row = (re: RegExp): string => rows.find((r) => re.test(r)) ?? "";
+        expect(row(/worklog\.jsonl/), `${variant}: the bundle must carry the session worklog row`).not.toBe("");
+        expect(
+          /sds-id|sds_id/.test(row(/worklog\.jsonl/)),
+          `${variant}: the session worklog must be keyed by the wave's sds-id`,
+        ).toBe(true);
+        const sdsRow = row(/`docs\/sds\/\{sds_id\}\.sds\.md`/);
+        expect(sdsRow, `${variant}: the bundle must carry the wave SDS row keyed by sds_id`).not.toBe("");
+        expect(
+          /close-out[^\n|]*(?:지우기 전에|before)/i.test(sdsRow),
+          `${variant}: the wave SDS must be read before the SDS close-out deletes it`,
+        ).toBe(true);
+        expect(
+          /`sds_id`/.test(row(/`kiwi\/waves\.jsonl`/)),
+          `${variant}: the waves journal row must carry the sds_id the SDS and worklog are keyed by`,
+        ).toBe(true);
+        expect(
+          row(/review_fix_loop_analysis_dir\}\/report\.md/),
+          `${variant}: the bundle must carry the worker's review-fix-loop report row`,
+        ).not.toBe("");
+        expect(
+          /리뷰|review/i.test(row(/review_fix_loop_analysis_dir\}\/report\.md/)) &&
+            /워커|worker/i.test(row(/review_fix_loop_analysis_dir\}\/report\.md/)),
+          `${variant}: the report row must be the review the wave's worker ran over its own window`,
+        ).toBe(true);
+        expect(LIST_REQUIREMENTS.test(row(LIST_REQUIREMENTS)), `${variant}: the bundle must include the wave target requirement list`).toBe(
           true,
         );
-        expect(/diff/i.test(bundle), `${variant}: the bundle must include the wave-window diff`).toBe(true);
+        expect(row(/diff/i), `${variant}: the bundle must include the wave-window diff`).not.toBe("");
+        // The plan, the sidecar and the per-wave pipeline window are gone.
+        expect(/sidecar|plan\.md|plan_file/i.test(bundle), `${variant}: the bundle must not read the retired plan or sidecar`).toBe(
+          false,
+        );
+        expect(bundle.includes("pipeline_run_id"), `${variant}: no pipeline_run_id bounds the window any more`).toBe(false);
         expect(
-          bundle.includes("pipeline_run_id"),
-          `${variant}: the bundle window must be bounded by pipeline_run_id`,
-        ).toBe(true);
-        // The session/plan/analysis artifacts are keyed by the PLAN run-id (kiwi-planner SSOT,
-        // reused by kiwi-pm), not by the pipeline run-id, so the bundle must say how to resolve it
-        // or the process half of the verification points at a path that does not exist.
+          rows.some((r) => /pipeline\.jsonl/.test(r)),
+          `${variant}: pipeline.jsonl must not be a bundle row — a worker writes no pipeline events`,
+        ).toBe(false);
+        // The window is bounded by the wave's sds_id and its in_progress timestamp.
+        const windowRule = sentenceWith(bundle, /증거 창은|evidence window is/i);
         expect(
-          /plan run-id|plan_run_id/i.test(bundle) && /artifacts\.plan_file|artifacts\.analysis_dir/.test(bundle),
-          `${variant}: the bundle must resolve the plan run-id from the pipeline.jsonl artifacts fields`,
+          /`sds_id`/.test(windowRule) && /`in_progress`/.test(windowRule),
+          `${variant}: the evidence window must be bounded by the wave's sds_id and its in_progress timestamp`,
         ).toBe(true);
-        // docs/analysis is NOT keyed by the plan run-id: each skill writes its own run-id directory,
-        // so the review-fix-loop report resolves from that skill's own event, not the planner's.
+        // docs/analysis is NOT keyed by one shared id: each skill writes its own run-id directory,
+        // so the review-fix-loop report resolves from that review's own analysis dir.
         expect(
           windowsAround(bundle, /docs\/analysis/, 420).some(
             (w) => /kiwi-review-fix-loop[^\n]*(?:자체|자신의|own)/i.test(w) || /(?:자체|자신의|own)[^\n]*analysis_dir/i.test(w),
           ),
-          `${variant}: the review-fix-loop report must resolve from that skill's own analysis dir, not the plan run-id`,
+          `${variant}: the review-fix-loop report must resolve from that skill's own analysis dir`,
+        ).toBe(true);
+        // ... and never by an unbounded glob.
+        const globRule = sentenceWith(bundle, /글롭으로 대신하면|glob/i);
+        expect(
+          /창을 고정한 의미가 사라진다|defeats the pinned window/i.test(globRule),
+          `${variant}: the text must refuse resolving the report by an unbounded glob`,
         ).toBe(true);
       });
 
@@ -399,7 +450,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         // cross-refutation, so findings added there never reach it and add-only becomes void.
         const stepOrder = ["단계 1 — 독립", "단계 2 — 교차반박", "단계 3 — 병합"].map((s) => section.indexOf(s));
         expect(
-          stepOrder.every((i) => i > -1) && stepOrder[0] < stepOrder[1] && stepOrder[1] < stepOrder[2],
+          stepOrder.every((i) => i > -1) && at(stepOrder, 0) < at(stepOrder, 1) && at(stepOrder, 1) < at(stepOrder, 2),
           `${variant}: the three steps must appear in order — isolate, cross-refute, then merge`,
         ).toBe(true);
         expect(ADD_ONLY.test(section), `${variant}: the cross-refutation round must be add-only`).toBe(true);
@@ -614,21 +665,42 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
 describe("FR-FLOW-046 — critical gate declaration and wave verification record (skill side)", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-6: records pipeline_run_id on the events that can carry it", () => {
+      // Revised in 4.0.0: a wave runs no pipeline cycle of its own (FR-FLOW-188 AC-7), so the key the
+      // skill records is the wave's sds_id (FR-NODE-213 AC-6), not a pipeline_run_id.
+      it("FR-FLOW-046 AC-6: records the wave's sds_id on the complete and wave-verify events", () => {
         const body = skillBody(readWaveSkill(variant));
         const waves = sectionUnder(body, /^#{2,4}\s.*waves\.jsonl/i);
         expect(waves, `${variant}: the waves.jsonl progress section must exist`).not.toBe("");
-        // MUST, not MAY: relaxing "반드시 기록한다" to "가능하면 기록한다 — 없으면 `*` 글롭으로
-        // 대체해도 된다" left a token-presence check green while substituting the very glob §5.5.1
-        // forbids, which makes the whole evidence window unresolvable.
+        // MUST, not MAY, and on both named events: relaxing "반드시 기록한다" to "가능하면 기록한다 —
+        // 없으면 `*` 글롭으로 대체해도 된다" would leave a token-presence check green while
+        // substituting the very glob §5.5.1 forbids.
         expect(
-          /`pipeline_run_id` 를 반드시 기록한다/.test(waves),
-          `${variant}: recording pipeline_run_id must be mandatory, not best-effort`,
+          /`complete` 이벤트와 `phase=wave-verify` 이벤트에는 그 wave 의 `sds_id` 를 반드시 기록한다/.test(waves),
+          `${variant}: recording sds_id on the complete and wave-verify events must be mandatory, not best-effort`,
         ).toBe(true);
         expect(/글롭|glob/i.test(waves), `${variant}: a glob must never be offered as a substitute here`).toBe(false);
+        // No pipeline_run_id opens a pipeline.jsonl window any more. Scoped to the skill's own
+        // SKILL.md: the resolved text appends waves-event.md, which keeps the field to read old lines.
+        const ownSkill = readFileSync(path.join(REPO_ROOT, "skills", variant, "kiwi-wave-master", "SKILL.md"), "utf8");
+        expect(/pipeline_run_id/.test(ownSkill), `${variant}: the skill must not record or read a pipeline_run_id`).toBe(
+          false,
+        );
+        // The wave SDS resolves from sds_id; the review report resolves from the worker's own review;
+        // an absent report is a finding, never replaced by a glob.
+        const bundle = sectionUnder(verifySection(body), /^#{3,4}\s.*증거 번들/);
+        expect(/`docs\/sds\/\{sds_id\}\.sds\.md`/.test(bundle), `${variant}: the wave SDS must resolve from sds_id`).toBe(
+          true,
+        );
+        const absentRule = sentenceWith(bundle, /보고서가 아예 없으면|report is absent/i);
+        expect(
+          /워커 리뷰 보고서|worker'?s? review report/i.test(absentRule) &&
+            /글롭으로 대체하지 말고|not replaced? by a glob/i.test(absentRule) &&
+            /finding/.test(absentRule),
+          `${variant}: an absent worker review report must be raised as a finding rather than replaced by a glob`,
+        ).toBe(true);
         // The obligation cannot bind the first in_progress line, which is appended at wave start
-        // before the pipeline cycle — and therefore its run_id — exists. What is omitted is the
-        // FIELD; the event itself is still written, carrying phase=pipeline.
+        // before the wave SDS — and therefore its sds_id — exists. What is omitted is the FIELD; the
+        // event itself is still written, carrying phase=srs-authoring.
         expect(
           /첫\s*`?in_progress`?\s*\*\*에서는 그 필드를\*\*\s*생략/.test(waves),
           `${variant}: the exemption must drop the field, not the wave-start event`,
@@ -673,15 +745,34 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
           /라운드마다가 아니라|not (?:once )?per round/i.test(section),
           `${variant}: the per-round rule must not be inverted to once-after-the-loop`,
         ).toBe(false);
-        // The phase enum declares `pipeline` too; the wave-start event must actually carry it or the
-        // member is orphaned and consumers must guess that absence means the pipeline phase.
-        expect(
-          /`?phase`?\s*=?\s*"?`?pipeline`?"?/.test(section) || /phase="pipeline"/.test(section),
-          `${variant}: the wave-start event must carry phase=pipeline so the enum member is produced`,
-        ).toBe(true);
       });
 
-      it("AC-7: declares a critical_gates table covering the transcribed and new halts", () => {
+      // Old: this file's FR-FLOW-046 AC-3 case required a phase="pipeline" line at pipeline-cycle entry
+      // (FR-FLOW-056 AC-4 as first written). Superseded by FR-FLOW-188 AC-7 — a wave runs no pipeline
+      // cycle — and FR-FLOW-056 AC-4 as revised in 4.0.0: the first in_progress records SRS authoring,
+      // and the SDS and worker stages that follow carry the waves-event 2.0.0 phases sds and worker.
+      it("FR-FLOW-056 AC-4: labels the wave-start, SDS and worker in_progress events with the stage entered", () => {
+        const section = verifySection(skillBody(readWaveSkill(variant)));
+        const record = sectionUnder(section, /^#{3,4}\s.*기록|^#{3,4}\s.*record/i);
+        expect(record, `${variant}: the §5.5.6 record sub-section must exist`).not.toBe("");
+        expect(
+          /첫 `in_progress` 에는 `phase="srs-authoring"` 을 싣는다/.test(record),
+          `${variant}: the wave-start in_progress must carry phase="srs-authoring"`,
+        ).toBe(true);
+        const stageRule = sentenceWith(record, /`phase="sds"`/);
+        expect(
+          /SDS 작성|SDS authoring/i.test(stageRule) && /`phase="worker"`/.test(stageRule) && /dispatch/i.test(stageRule),
+          `${variant}: SDS authoring and worker dispatch must each append an in_progress carrying phase sds / worker`,
+        ).toBe(true);
+        expect(
+          /phase="pipeline"|`phase`\s*=\s*`?pipeline/.test(record),
+          `${variant}: no event is labelled with the retired per-wave pipeline phase`,
+        ).toBe(false);
+      });
+
+      // Revised in 4.0.0: the children each wave runs are no longer a per-wave kiwi-pipeline
+      // (FR-FLOW-188 AC-7), and wt-delegation-refused left with that delegation (FR-FLOW-188 AC-1).
+      it("FR-FLOW-046 AC-7: declares a critical_gates table covering the transcribed and new halts", () => {
         const body = skillBody(readWaveSkill(variant));
         const gates = gateSection(body);
         expect(gates, `${variant}: a critical_gates declaration section must exist`).not.toBe("");
@@ -700,6 +791,19 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
           rows.length >= GATE_IDS.length,
           `${variant}: critical_gates must be a three-column table with one row per gate`,
         ).toBe(true);
+        // The child halt row transcribes the children a wave now runs, not a per-wave kiwi-pipeline.
+        const childRow = rows.find((row) => row.includes("`child-pipeline-needs-user-or-failed`")) ?? "";
+        expect(
+          /kiwi-sds/.test(childRow) && /NEEDS_USER/.test(childRow) && /FAILED/.test(childRow),
+          `${variant}: the child halt row must name the wave's own children and their NEEDS_USER / FAILED returns`,
+        ).toBe(true);
+        expect(/kiwi-pipeline/.test(childRow), `${variant}: the child halt row must not name a per-wave kiwi-pipeline`).toBe(
+          false,
+        );
+        expect(
+          rows.some((row) => row.includes("wt-delegation-refused")),
+          `${variant}: the worktree-delegation refusal left with the per-wave pipeline delegation`,
+        ).toBe(false);
       });
 
       it("AC-8: halts the whole orchestration under --auto on a residual critical finding", () => {

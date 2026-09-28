@@ -46,14 +46,14 @@ function windowsAround(text: string, re: RegExp, radius: number): string[] {
 }
 
 // AC-1: the five stages are chained as an explicit arrow-connected sequence
-// (kiwi-srs -> (conditional) feasibility -> planner -> pm -> review-fix-loop). Table T1 lists the
+// (kiwi-srs -> (conditional) feasibility -> sds -> pm -> review-fix-loop, FR-FLOW-184 AC-1). Table T1 lists the
 // same skill names in order but separated by `|` table cells and newlines, never as an arrow
 // chain, so an arrow-connected sequence is absent today and CANNOT be satisfied merely by
 // inserting a "cycle" keyword near the table — the green edit must actually author the chain. This
 // structurally encodes AC-1's "chaining stages rather than stopping after a single next step".
 const ARROW = String.raw`(?:-->|->|→|⟶|=>)`;
 const CHAINED_FIVE_STAGES = new RegExp(
-  String.raw`kiwi-srs(?!-)[\s\S]{0,80}${ARROW}[\s\S]{0,140}kiwi-srs-feasibility[\s\S]{0,140}${ARROW}[\s\S]{0,140}kiwi-planner[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-pm\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-review-fix-loop`,
+  String.raw`kiwi-srs(?!-)[\s\S]{0,80}${ARROW}[\s\S]{0,140}kiwi-srs-feasibility[\s\S]{0,140}${ARROW}[\s\S]{0,140}kiwi-sds\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-pm\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-review-fix-loop`,
 );
 
 // AC-2: conditional feasibility — run kiwi-srs-feasibility ONLY on draft stability / unverified
@@ -93,13 +93,13 @@ const PASSTHROUGH =
 describe("FR-FLOW-026 — kiwi-pipeline end-to-end cycle orchestration", () => {
   for (const variant of VARIANTS) {
     describe(`variant: ${variant}`, () => {
-      it("AC-1: chains kiwi-srs -> (conditional) feasibility -> planner -> pm -> review-fix-loop as a cycle", () => {
+      it("AC-1: chains kiwi-srs -> (conditional) feasibility -> sds -> pm -> review-fix-loop as a cycle", () => {
         const body = skillBody(readSkill(variant));
         // Require the five stages connected by arrows in order — Table T1's `|`-separated rows do
         // not form an arrow chain, so this cannot be satisfied by a shallow "cycle" keyword edit.
         expect(
           CHAINED_FIVE_STAGES.test(body),
-          `FR-FLOW-026 AC-1: ${variant} kiwi-pipeline must chain kiwi-srs -> (conditional) kiwi-srs-feasibility -> kiwi-planner -> kiwi-pm -> kiwi-review-fix-loop as an end-to-end cycle, not just recommend a single next step`,
+          `FR-FLOW-026 AC-1: ${variant} kiwi-pipeline must chain kiwi-srs -> (conditional) kiwi-srs-feasibility -> kiwi-sds -> kiwi-pm -> kiwi-review-fix-loop as an end-to-end cycle, not just recommend a single next step`,
         ).toBe(true);
       });
 
@@ -140,6 +140,18 @@ describe("FR-FLOW-026 — kiwi-pipeline end-to-end cycle orchestration", () => {
         expect(
           stillHalts,
           `FR-FLOW-026 AC-3: ${variant} kiwi-pipeline must still halt on a sub-skill NEEDS_USER/FAILED even under --auto`,
+        ).toBe(true);
+      });
+
+      it("AC-3: the gate after /kiwi-sds asks only whether to continue, never for an SDS review or approval", () => {
+        const body = skillBody(readSkill(variant));
+        // Anchored on the kiwi-sds hand-off sentence of §2.5, so a general "no approval" clause about
+        // another stage cannot satisfy it (FR-FLOW-182 AC-7).
+        const handoff = body.split("\n").find((line) => /kiwi-sds/.test(line) && /승인|approv/i.test(line)) ?? "";
+        expect(handoff, `FR-FLOW-026 AC-3: ${variant} kiwi-pipeline states no rule for the gate after kiwi-sds`).not.toBe("");
+        expect(
+          /계속할지만|only whether to continue/i.test(handoff) && /묻지 않는다|never asks?|does not ask/i.test(handoff),
+          `FR-FLOW-026 AC-3: ${variant} kiwi-pipeline's gate after kiwi-sds must ask only whether to continue and never for an SDS review or approval`,
         ).toBe(true);
       });
 
@@ -308,11 +320,12 @@ const AMBIGUITY =
 const SUPPRESS =
   /suppress|억제|비활성|생략|없이|사용하지\s*않|미사용|\boff\b|skip|건너/i;
 
-// AC-3: the issue-driven flow must continue through the standard planner/pm/review stages. These
+// AC-3: the issue-driven flow must continue through the standard sds/pm/review stages (kiwi-sds in
+// place of kiwi-planner, FR-FLOW-184 AC-1). These
 // three skill names DO appear elsewhere (FR-FLOW-026 cycle), so the check is anchored on the
 // issue-entry cue (absent today) to stay red AND to require the continuation to be authored in the
 // issue-entry flow itself, not merely inherited from the pre-existing §6/§7 cycle text.
-const PLANNER = /kiwi-planner/;
+const SDS = /kiwi-sds\b/;
 const PM = /kiwi-pm\b/;
 const REVIEW = /kiwi-review-fix-loop/;
 const CONTINUE =
@@ -378,16 +391,16 @@ describe("FR-FLOW-028 — kiwi-pipeline GitHub issue entry mode with research-fi
         ).toBe(true);
       });
 
-      it("AC-3: after the issue-driven research and authoring, the cycle continues through planner/pm/review-fix-loop", () => {
+      it("AC-3: after the issue-driven research and authoring, the cycle continues through sds/pm/review-fix-loop", () => {
         const body = skillBody(readSkill(variant));
         // Anchored on the issue-entry cue so the continuation must be authored in the issue flow,
         // not merely inherited from the pre-existing FR-FLOW-026 cycle text elsewhere.
         const continuesCycle = windowsAround(body, ISSUE_ENTRY, 450).some(
-          (win) => PLANNER.test(win) && PM.test(win) && REVIEW.test(win) && CONTINUE.test(win),
+          (win) => SDS.test(win) && PM.test(win) && REVIEW.test(win) && CONTINUE.test(win),
         );
         expect(
           continuesCycle,
-          `FR-FLOW-028 AC-3: ${variant} kiwi-pipeline must, after the issue-driven research and authoring, continue through /kiwi-planner, /kiwi-pm, and /kiwi-review-fix-loop`,
+          `FR-FLOW-028 AC-3: ${variant} kiwi-pipeline must, after the issue-driven research and authoring, continue through /kiwi-sds, /kiwi-pm, and /kiwi-review-fix-loop`,
         ).toBe(true);
       });
     });

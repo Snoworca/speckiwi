@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { renderAgentInstructionSnippet } from "../../src/core/bootstrap/templates.js";
+import { toolSchemas } from "../../src/mcp/server.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -71,5 +72,38 @@ describe("REL-MCP-005 AC-8 — documentation and agent instructions name the per
         expect(text, `${root}/${skill} must name the MCP preflight role arguments`).toMatch(/orchestrate_preflight/);
       }
     }
+  });
+});
+
+// @req REL-MCP-005 AC-8 · FR-MCP-064 AC-1 — the SRS query tools a document tells an agent it may aim
+// at a worktree are exactly the ones the registry opens, derived from the schemas rather than listed,
+// so a tool added to the family (check_sds and check_test_sufficiency in 4.0.0) cannot be left out of
+// the documentation, and a tool that leaves cannot linger in it.
+describe("REL-MCP-005 AC-8 · FR-MCP-064 AC-1 — the documented SRS query family equals the registry's", () => {
+  const opened = Object.entries(toolSchemas)
+    .filter(([name, shape]) => "workspaceRoot" in shape && !name.startsWith("workflow_") && !name.startsWith("orchestrate_"))
+    .map(([name]) => name)
+    .sort();
+  const names = (text: string): string[] => [...text.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].map((match) => match[1] as string).sort();
+
+  it("the registry opens a non-empty family", () => {
+    expect(opened.length).toBeGreaterThan(0);
+  });
+
+  it("the managed agent instructions list exactly that family", () => {
+    const line = renderAgentInstructionSnippet()
+      .split(/\r?\n/)
+      .find((candidate) => candidate.startsWith("3. The SRS query tools also accept it:"));
+    expect(line, "the snippet's SRS query line").toBeDefined();
+    const listed = names((line ?? "").split(" — ")[0] ?? "");
+    expect(listed).toEqual(opened);
+  });
+
+  it("both README tables list exactly that family", () => {
+    const rows = read("README.md")
+      .split(/\r?\n/)
+      .filter((row) => row.startsWith("| The SRS query tools — ") || row.startsWith("| SRS 조회 도구 — "));
+    expect(rows.length, "one row per language").toBe(2);
+    for (const row of rows) expect(names(row.split(" | ")[0] ?? "")).toEqual(opened);
   });
 });

@@ -12,10 +12,10 @@ describe("renderHeadingLine — SRS-MD-Rules v1.1.0 round-trip identity", () => 
         id: parsed!.id,
         title: parsed!.title,
         strikethrough: parsed!.strikethrough,
-        marker: parsed!.marker,
+        ...(parsed!.marker === undefined ? {} : { marker: parsed!.marker }),
         // successorId/successorCount come from the fixture spec until the marker-inner sub-parser populates them
-        successorId: fixture.expected.successorId,
-        successorCount: fixture.expected.successorCount
+        ...(fixture.expected.successorId === undefined ? {} : { successorId: fixture.expected.successorId }),
+        ...(fixture.expected.successorCount === undefined ? {} : { successorCount: fixture.expected.successorCount })
       });
       expect(rendered, `round-trip failed for ${fixture.name}`).toBe(fixture.input);
     }

@@ -46,6 +46,8 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 `blocking_questions` 비어있지 않으면 Phase 6 진입 전 Codex clarification gate 강제.
 
+**verified 로 쓰는 제안** — 그 증거의 `reference`·`covers` 는 적용 시점에 §10.1 4번의 테스트 충분성 확인(`../../_shared/kiwi/test-sufficiency.md`)이 AC 마다 돌려준 인용으로 정해지고, 그 확인이 gap 을 채우려 테스트 파일을 더할 수 있다는 것을 `proposed-mutations.md` 에 적는다. 확인이 `test-sufficiency-gap` 으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
+
 ---
 
 ## 9. Phase 6 — 사용자 게이트
@@ -83,7 +85,7 @@ Codex clarification gate 4옵션:
 1. add_requirement (new-feature / new-scope=(2)기존 scope 확장만) — 신규 REQ 생성
 2. append_section_note (update) — 기존 REQ AC 보강
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
-4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록
+4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `../../_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`)
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)
 6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 7. add_completed_work — 변경 작업 자체를 작업 로그로 기록 (한 번에 묶어서)
@@ -121,7 +123,7 @@ failed: 0
 3. 적용된 mutation 목록 (도구별, REQ-ID별)
 4. 새로 생성된 REQ 목록 (신규 ID + 초안 인용)
 5. 갱신된 AC 목록 (REQ-ID + diff)
-6. Stability/Status 전이 결과
+6. Stability/Status 전이 결과 + 테스트 충분성 확인 결과 (`test_sufficiency` verdict · 범위 · 채우기로 더한 테스트)
 7. 외부 모듈 영향 (있다면)
 8. 평가자 finding 통계 (severity별)
 9. **skip 된 CU 목록** (§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_id / 분류 / skip 사유 / 후속 권고 안내)
@@ -166,8 +168,8 @@ $kiwi-srs-sync TARGET=v1.0.0 --base=develop
 | 신규 요구사항 자연어 → SRS 증분 (spec-first) | `$kiwi-srs` |
 | target 활성 REQ 전수 feasibility + Stability 일괄 | `$kiwi-srs-feasibility` |
 | REQ 또는 연구 질문 deep research | `$kiwi-srs-research` |
-| 계획 수립 (Phase>Task 분해) | `$kiwi-planner` |
-| 계획 기반 TDD-first 구현 | `$kiwi-coder` |
+| SRS 선행 구현 설계 (본문 범위 작업) | `$kiwi-srs` → `$kiwi-sds` |
+| SDS 기반 TDD-first 구현 | `$kiwi-coder` |
 | **코드 변경(diff) → 기존 SRS 사후 동기화** (본 스킬) | `$kiwi-srs-sync` |
 
 ---
@@ -177,7 +179,7 @@ $kiwi-srs-sync TARGET=v1.0.0 --base=develop
 | 범위 밖 | 담당 스킬 |
 |---|---|
 | target 신규 생성 / scope 자체 신규 등록 | `$kiwi-srs` (사용자 게이트 후) |
-| 계획 문서 (plan.md) 작성 | `$kiwi-planner` |
+| 구현 설계 (SDS) 작성 | `$kiwi-sds` |
 | 코드 구현 자체 | `$kiwi-coder` 또는 외부 도구 |
 | git commit / push | 사용자 결정 (시그니처 금지 §0.8) |
 | 통합 테스트 작성 | `$kiwi-coder` Phase 4 |

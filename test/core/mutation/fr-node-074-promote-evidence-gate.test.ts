@@ -135,7 +135,7 @@ describe("FR-NODE-074 promote_step_requirement requires verification evidence in
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("EVIDENCE_REQUIRED");
+      expect(result.error?.code).toBe("EVIDENCE_REQUIRED");
     }
     // Nothing was written to the body scope.
     expect(await bodyRecordById(rootPath, "FR-ARCH-511")).toBeUndefined();
@@ -187,7 +187,7 @@ describe("FR-NODE-074 promote_step_requirement requires verification evidence in
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("MUTATION_DENIED");
+      expect(result.error?.code).toBe("MUTATION_DENIED");
     }
   });
 });

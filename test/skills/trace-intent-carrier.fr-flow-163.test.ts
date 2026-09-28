@@ -28,7 +28,7 @@ import { RENDERINGS, enclosingSection, markdownFiles, readRepoFile } from "./kiw
 //  - The judge also accepts an argument name that is on the line for an unrelated reason. Measured:
 //    deleting the destination sentence from `kiwi-srs` §0.14 while leaving its `id` · `type` ·
 //    `reference` · `relation` enumeration in place passed the judge, and only the golden reported
-//    it. Eight of the twenty-eight sites are of that shape.
+//    it. Measured before 4.0.0, eight of the twenty-eight sites were of that shape.
 //  - A site is a PHYSICAL LINE. A rendering that rewraps the declaration across two lines drops
 //    that site: the half carrying the field is judged, the half carrying the carrier is not, so the
 //    rewrap reads as a violation. That false red is the deliberate trade — flattening first would
@@ -37,8 +37,15 @@ import { RENDERINGS, enclosingSection, markdownFiles, readRepoFile } from "./kiw
 //    phrased outside that vocabulary, or placed in a NEIGHBOURING section, is not reached. Both
 //    limits are measured rather than inferred, and the alternative — freezing the section's bytes
 //    instead of scanning it — is priced in AC-9 and refused.
+//  - The corpus equality cannot see a frozen file list on the day it is frozen: the list and the
+//    derivation agree that day, and it turns red only the next time a markdown file is added or
+//    removed.
+//  - A coordinated edit that changes a site and the golden together still lands; the golden reports
+//    a change only to a reader of the diff.
+//  - The block-set assertion (AC-10) cannot report its own deletion.
 //  - This reads instruction text. A skill carrying the corrected line and an agent ignoring it are
-//    not distinguished here.
+//    not distinguished here, and whether `kiwi-srs` actually enforces the `addition_site` status cap
+//    is not checked here.
 
 /** The invented field, and the whole subject of this requirement. */
 const FIELD = "trace_intent";
@@ -212,10 +219,15 @@ function retractions(candidates: readonly Site[]): string[] {
 /**
  * Measured on the tree with the fix in place, by the bucket census the AC-6 · AC-7 `it` builds:
  * 28 sites, 7 per rendering. `kiwi-planner` declares the sidecar field and maps it (2);
- * `kiwi-coder` owns the flattening and states the destination (1); `kiwi-srs` holds the encoding
+ * `kiwi-coder` owned the flattening and stated the destination (1); `kiwi-srs` holds the encoding
  * rule, its status cap and two call examples (4).
+ *
+ * 4.0.0 retires `kiwi-coder`'s sidecar flattening section with the plan sidecar (FR-FLOW-163 AC-6,
+ * FR-FLOW-185 AC-3), so its bucket leaves the table and the census below drops by its four sites.
+ * It also deletes `kiwi-planner` from every rendering (FR-FLOW-184 AC-2), so that bucket leaves too and
+ * the census drops by its eight: 16 sites, the four `kiwi-srs` sites per rendering.
  */
-const PER_SKILL: Record<string, number> = { "kiwi-coder": 1, "kiwi-planner": 2, "kiwi-srs": 4 };
+const PER_SKILL: Record<string, number> = { "kiwi-srs": 4 };
 
 /** Every rendering crossed with every skill that owes a mention, so a new rendering cannot skip one. */
 const FLOORS: Record<string, number> = Object.fromEntries(
@@ -229,7 +241,7 @@ const FLOORS: Record<string, number> = Object.fromEntries(
  * zero, so a floor table can be drained one number at a time and go on passing; comparing its TOTAL
  * against the recorded census is what refuses that. A floor, not an equality, because the tree grows.
  */
-const CENSUS_SITES = 28;
+const CENSUS_SITES = 16;
 
 /** What the golden must hold: the derived sites, keyed on the file with the line number stripped. */
 function renderSites(): string {

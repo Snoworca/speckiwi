@@ -32,7 +32,7 @@ import { registerOrchestrateTools } from "./read-tools.js";
 
 /**
  * The root one mutation writes to. `input` is deliberately still ignored: this helper has 38 call
- * sites and only the nine `workflow_*` rows are worktree-local, so honouring `input.workspaceRoot`
+ * sites and only the `workflow_*` rows are worktree-local, so honouring `input.workspaceRoot`
  * here would open `update_status`, `supersede_requirement` and the rest of the SRS family. The
  * effective root arrives as `context`, decided by the registration gate. @req REL-MCP-005 AC-3
  */
@@ -405,48 +405,6 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       return resultToMcp(await initProject(await root(deps, input), initInput));
     },
     { kind: "workspace" }
-  );
-  server.registerTool("workflow_task_check", async (input, context) =>
-    resultToMcp(
-      await applyWorkflowMutation(await root(deps, input, context), {
-        ...workflowBase("plan_checkbox_check", input),
-        taskId: String(input.taskId),
-        planPath: String(input.path ?? input.planPath)
-      })
-    ),
-    WORKTREE_LOCAL_MUTATION
-  );
-  server.registerTool("workflow_task_uncheck", async (input, context) =>
-    resultToMcp(
-      await applyWorkflowMutation(await root(deps, input, context), {
-        ...workflowBase("plan_checkbox_uncheck", input),
-        taskId: String(input.taskId),
-        planPath: String(input.path ?? input.planPath)
-      })
-    ),
-    WORKTREE_LOCAL_MUTATION
-  );
-  server.registerTool("workflow_checklist_set", async (input, context) =>
-    resultToMcp(
-      await applyWorkflowMutation(await root(deps, input, context), {
-        ...workflowBase("plan_checklist_item_update", input),
-        taskId: String(input.taskId),
-        planPath: String(input.path ?? input.planPath),
-        checked: input.checked === true
-      })
-    ),
-    WORKTREE_LOCAL_MUTATION
-  );
-  server.registerTool("workflow_task_status_set", async (input, context) =>
-    resultToMcp(
-      await applyWorkflowMutation(await root(deps, input, context), {
-        ...workflowBase("pm_task_status_update", input),
-        taskId: String(input.taskId),
-        pmStatePath: String(input.pmStatePath),
-        status: String(input.status)
-      })
-    ),
-    WORKTREE_LOCAL_MUTATION
   );
   server.registerTool("workflow_pipeline_emit", async (input, context) =>
     resultToMcp(

@@ -40,7 +40,7 @@ describe("FR-NODE-202 — a section rewrite is bounded by nothing smaller than t
     });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(true);
+    if (result.ok) expect(result.value?.written).toBe(true);
     expect(sectionBlock(await readArch(rootPath), "Implementation Notes")).toEqual(["", long, ""]);
   });
 
@@ -66,7 +66,7 @@ describe("FR-NODE-202 — a section rewrite is bounded by nothing smaller than t
 
     const overLimit = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "x".repeat(501) });
     expect(overLimit.ok).toBe(false);
-    if (!overLimit.ok) expect(overLimit.error.code).toBe("USAGE");
+    if (!overLimit.ok) expect(overLimit.error?.code).toBe("USAGE");
   });
 });
 
@@ -148,7 +148,7 @@ describe("FR-NODE-202 — an unrecognised mode is refused rather than treated as
     });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("USAGE");
+    if (!result.ok) expect(result.error?.code).toBe("USAGE");
     expect(await readArch(rootPath)).toBe(before);
   });
 
@@ -165,7 +165,7 @@ describe("FR-NODE-202 — an unrecognised mode is refused rather than treated as
     });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("USAGE");
+    if (!result.ok) expect(result.error?.code).toBe("USAGE");
     expect(await readArch(rootPath)).toBe(before);
   });
 });

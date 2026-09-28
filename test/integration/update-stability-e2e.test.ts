@@ -159,7 +159,7 @@ describe("update_stability end-to-end (v2.2.1 §5.2)", () => {
       const before = await readArch(rootPath);
       const denial = await updateStability(root, { id: "FR-ARCH-001", stability: "draft" });
       expect(denial.ok).toBe(false);
-      if (!denial.ok) expect(denial.error.code).toBe("MUTATION_DENIED");
+      if (!denial.ok) expect(denial.error?.code).toBe("MUTATION_DENIED");
       const after = await readArch(rootPath);
       expect(after).toBe(before);
     });
@@ -173,8 +173,8 @@ describe("update_stability end-to-end (v2.2.1 §5.2)", () => {
       const result = await updateStability(root, { id: "FR-ARCH-001", stability: "evolving", reason: "dry only", dryRun: true });
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.written).toBe(false);
-        expect(result.value.stability).toBe("evolving");
+        expect(result.value?.written).toBe(false);
+        expect(result.value?.stability).toBe("evolving");
       }
       const after = await readArch(rootPath);
       expect(after).toBe(before);

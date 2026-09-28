@@ -40,7 +40,7 @@ describe("FR-NODE-152 journal-only proofs on verdict-bearing lines", () => {
   it("AC-3 accepts a line that records no verdict with a journal proof alone", async () => {
     const lines = [
       waveVerify(V14),
-      result("plan-wave", { proof: JOURNAL_PROOF, stage: 1 }),
+      result("sds-wave", { proof: JOURNAL_PROOF, stage: 1 }),
       complete({ ...V14, proof: { kind: "git-trailer", ref: "b71c904 Orch-Run=run-a Orch-Wave=1" } }),
       finalVerify(V14)
     ];

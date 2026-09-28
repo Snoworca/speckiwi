@@ -21,11 +21,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-4: the new `synthesize` CLI leaf is declared in the tool registry.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function isFile(target: string): Promise<boolean> {

@@ -13,6 +13,7 @@ Write under `docs/analysis/kiwi-hot-fix-{run-id}/`:
 - `formal_review_iter{N}.json`
 - `prickly_review_iter{N}.json`
 - `regression_run.jsonl`
+- `test_sufficiency.json`
 - `sync_delegation.json`
 - `report.md`
 
@@ -37,7 +38,7 @@ Use two isolated passes:
 | Pass | Output |
 |---|---|
 | symptom analyst | reproduction steps, likely root causes, complexity estimate |
-| scope analyst | affected files/modules, candidate REQ IDs, external module touch, coverage status |
+| scope analyst | affected files/modules, candidate REQ IDs each with `match_confidence` (high / medium / low), external module touch, coverage status |
 
 Adopt the highest-confidence hypothesis that has code evidence. If the fix later
 changes unrelated behavior, treat that as
@@ -47,7 +48,7 @@ changes unrelated behavior, treat that as
 
 For normal hot-fixes:
 
-1. Write a regression test.
+1. Write a regression test. When an impacted requirement is mapped, its title line cites `<REQ-ID> AC-<n>` (citation convention in `../../_shared/kiwi/test-sufficiency.md` §1).
 2. Run it and capture red failure.
 3. Apply the smallest fix.
 4. Run the same test and capture green.
@@ -76,7 +77,17 @@ Repeated failure gates:
 
 ## Sync Delegation
 
-After fix + regression success, delegate:
+Right before delegating, run the test-sufficiency check of
+`../../_shared/kiwi/test-sufficiency.md` over the scope `--ids <the
+candidate_req_ids root-cause mapped with match_confidence=high>` and record the
+result as `test_sufficiency.json`. When gaps remain, halt at
+`test-sufficiency-gap` and do not delegate. An empty scope records `no-scope`
+and the delegation proceeds — `kiwi-srs-sync` reruns the same check right
+before it writes `verified`. A run that does not delegate (`--no-sync`,
+dry-run-only, or a blocking gate) does not run it. Under `--dry-run` it reports the
+first result without a fill, as contract §3 says.
+
+After fix + regression success and the test-sufficiency check, delegate:
 
 ```text
 Use $kiwi-srs-sync with --files=<changed-files>

@@ -8,7 +8,7 @@ import { main } from "../../src/cli/index.js";
 // @req IR-CLI-070 — speckiwi init CLI onboarding flags (--no-skills / --no-mcp / --dry-run) and unified report.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function emptyRepo(): Promise<string> {

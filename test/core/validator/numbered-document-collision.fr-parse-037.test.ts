@@ -148,7 +148,7 @@ describe("FR-PARSE-037 AC-4 — the two collision diagnostics do not overlap", (
     expect(definition).toBeDefined();
     expect(definition?.severity).toBe("warning");
     expect(definition?.sourceRule).toBe("FR-PARSE-037");
-    expect(definition?.remediation.length).toBeGreaterThan(0);
+    expect(definition?.remediation?.length).toBeGreaterThan(0);
   });
 });
 

@@ -37,11 +37,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 const TARGET_ID = "FR-ARCH-001";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 const originalStdin = process.stdin;
@@ -77,7 +77,7 @@ function normalizeRoot(value: unknown, root: string): unknown {
 }
 
 /** Runs one command against a fresh fixture copy and returns its exit code + parsed JSON stdout. */
-async function run(args: string[]): Promise<{ code: number; parsed: unknown }> {
+async function run(args: readonly string[]): Promise<{ code: number; parsed: unknown }> {
   const root = await copyFixtureWorkspace("mutation-target");
   const r = io();
   const code = await main(["--root", root, ...args, "--json"], r);

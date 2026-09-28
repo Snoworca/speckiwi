@@ -42,7 +42,7 @@ describe("project init bootstrap", () => {
       process.chdir(originalCwd);
     }
     expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.error.message);
+    if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "expected an ok result with a value");
     expect(result.value.created).toContain(path.join(rootPath, "AGENTS.md"));
     expect(result.value.created).toContain(path.join(rootPath, "CLAUDE.md"));
     const rules = await readFile(path.join(rootPath, "docs", "rule", BUNDLED_SRS_RULES_FILENAME), "utf8");

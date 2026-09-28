@@ -23,7 +23,7 @@ Use `kiwi-commit-auto-push` when the user only wants commit + push.
 | Key | Rule |
 |---|---|
 | §0.1 | Use Git and GitHub CLI state as evidence: `git status`, `git diff`, current branch, remote tracking, and `gh pr list/view/create/edit/comment`. |
-| §0.2 | Reuse `kiwi-commit-auto-push` semantics for staging, sensitive-file filtering, message generation, issue matching, `Closes`/`Refs`, `REQ`, `Task`, and `STABILITY-OVERRIDE` trailers. |
+| §0.2 | Reuse `kiwi-commit-auto-push` semantics for staging, sensitive-file filtering, message generation, issue matching, `Closes`/`Refs`, `REQ`, and `STABILITY-OVERRIDE` trailers. |
 | §0.3 | Never use force push. Protected branch direct push requires explicit user approval and is a critical gate under `--auto`. |
 | §0.4 | If current branch is protected and `--allow-direct` is absent, create a feature branch before push and restore the local protected branch pointer to its remote tracking branch when safe. |
 | §0.5 | Keep PR body and PR comments free of AI signatures, tool signatures, bot labels, and co-author trailers. |
@@ -62,7 +62,7 @@ Use `kiwi-commit-auto-push` when the user only wants commit + push.
 | skip existing PR comment | `--no-pr-comment` | off |
 | skip SpecKiwi mutations | `--no-speckiwi` | off |
 | skip all trailers | `--no-trailer` | off |
-| explicit REQ or task | `--req=FR-X`, `--task=T-PH001-01` | auto-detect |
+| explicit REQ | `--req=FR-X` | auto-detect |
 | auto gates | `--auto` | off |
 | precision | `--max` | default on |
 | "mini mode", "quick mode", "3 rounds" | `--mini` | off (skill default cap) |
@@ -71,14 +71,14 @@ Use `kiwi-commit-auto-push` when the user only wants commit + push.
 ## Workflow
 
 1. Collect git state and diff, then reject empty change sets.
-2. Run `kiwi-commit-auto-push` compatible staging, issue/REQ/task matching,
+2. Run `kiwi-commit-auto-push` compatible staging, issue/REQ matching,
    message generation, evaluation, commit, and signature verification.
 3. Determine branch strategy. On protected branches, create or use a feature
    branch unless the user explicitly chooses direct push.
 4. Push the selected branch without force.
 5. Detect an existing open PR for the branch.
 6. For a new PR or `--update-pr-body`, draft a PR body with Summary, Test plan,
-   linked issue/REQ/task trailers, and a concise risk note.
+   linked issue/REQ trailers, and a concise risk note.
 7. Use a single local evaluator loop until the PR body is accurate,
    non-overstated, signature-free, and consistent with trailers for three
    consecutive clean evaluations.

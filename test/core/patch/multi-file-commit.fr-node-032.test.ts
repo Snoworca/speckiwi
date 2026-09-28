@@ -5,6 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { readUtf8File } from "../../../src/core/fs/read-text.js";
 import { createPatchPlan } from "../../../src/core/patch/patch-plan.js";
+import { at } from "../../support/at.js";
 // FR-NODE-047: net-new MultiFileCommit four-phase engine + durable merge-journal.
 // These symbols are introduced by the green task (T-PH003-32) and do not exist yet,
 // so this suite is expected to be red until the implementation lands.
@@ -29,7 +30,7 @@ async function seedFile(root: string, relativePath: string, contents: string): P
 async function buildCommitFile(filePath: string, replacement: string): Promise<MergeCommitFile> {
   const file = await readUtf8File(filePath);
   const plan = createPatchPlan(file, [
-    { type: "replaceLine", line: 1, original: file.lines[0], replacement }
+    { type: "replaceLine", line: 1, original: at(file.lines, 0), replacement }
   ]);
   return { plan };
 }
@@ -47,7 +48,7 @@ describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journ
     ]);
 
     const phases: string[] = [];
-    const result = await commit.commit({ onPhase: (phase: string) => phases.push(phase) });
+    const result = await commit.commit({ onPhase: (phase: string) => { phases.push(phase); } });
 
     expect(result.committed).toBe(true);
     expect(phases).toEqual(["render", "stale-check", "write-tmp", "rename"]);

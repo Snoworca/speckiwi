@@ -7,6 +7,7 @@ import { resolveProjectRoot } from "../../src/core/project-root.js";
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
 import { summarizeReleaseReadiness } from "../../src/core/workflow/release-readiness.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import { at } from "../support/at.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -86,7 +87,7 @@ describe("release readiness and documentation", () => {
 
   it("reports stability blockers and warnings separately from status blockers", async () => {
     const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
-    const [base] = workspace.records;
+    const base = at(workspace.records, 0);
     workspace.records = [
       {
         ...base,

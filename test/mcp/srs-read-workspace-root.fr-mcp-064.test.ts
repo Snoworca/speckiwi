@@ -10,6 +10,7 @@ import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import type * as ReadTools from "../../src/mcp/tools/read-tools.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { cleanupFixtures, gitWorkspaceRepo, linkedWorktree, rawGit } from "./support/workspace-root-fixture.js";
+import { at } from "../support/at.js";
 
 // @req FR-MCP-064
 //
@@ -22,17 +23,20 @@ import { cleanupFixtures, gitWorkspaceRepo, linkedWorktree, rawGit } from "./sup
 // registered surface into accepting and refusing (AC-1). It probes the gate with a root that fails
 // the first identity check, so no handler runs and no tool needs its required arguments synthesised;
 // FR-MCP-063 is what guarantees the same refusal reaches the protocol, and AC-5 below re-drives one
-// refusal and AC-3 all thirteen acceptances over the protocol so that guarantee is not assumed here.
+// refusal and AC-3 all fifteen acceptances over the protocol so that guarantee is not assumed here.
 //
 // What this file does NOT establish, written down so it is not read into the green:
 //  - that a write tool stays refused for the right reason. REL-MCP-005 owns that and its own suite
 //    drives it; here the write family only appears as part of the census denominator.
-//  - that the thirteen are the right thirteen. That is a decision the requirement records; this file
+//  - that the fifteen are the right fifteen. That is a decision the requirement records; this file
 //    holds the implementation to the names the requirement wrote down.
 //  - that `docs/spec` is the only shape of missing SRS. AC-6 drives one checkout holding no `docs/`
 //    at all; a checkout holding a `docs/spec` without an index is not driven.
 
-/** The thirteen FR-MCP-064 AC-1 names, written as the requirement writes them. */
+/**
+ * The thirteen FR-MCP-064 AC-1 named before 4.0.0 — the tools AC-7 requires to declare that they take
+ * no caller-supplied path, written as the requirement writes them.
+ */
 const THIRTEEN = [
   "list_requirements",
   "search_requirements",
@@ -49,10 +53,16 @@ const THIRTEEN = [
   "list_steps"
 ] as const;
 
+/**
+ * The fifteen FR-MCP-064 AC-1 names: the thirteen plus the two 4.0.0 SDS readers (FR-MCP-065, FR-MCP-066),
+ * whose path arguments come from the caller and which therefore declare no path exemption (AC-7).
+ */
+const CALLER_PATH_TOOLS = ["check_sds", "check_test_sufficiency"] as const;
+const FIFTEEN = [...THIRTEEN, ...CALLER_PATH_TOOLS] as const;
+
 /** The tools AC-5 names as staying closed, each for a reason the requirement records. */
 const STAY_CLOSED = [
   "mcp_workspace_info",
-  "preview_legacy_workflow_migration",
   "get_next_work_order",
   "diagnose_requirement_id_collisions",
   "plan_requirement_id_collision_repair"
@@ -67,6 +77,8 @@ const SERVER_MODULE = "../../src/mcp/server.js";
 const MARKER = "WORKTREEMARKER";
 const WORKTREE_TARGET = "v9.9.9-WT";
 const STEP = "alpha";
+/** A lite SDS only the worktree holds, naming the worktree-only requirement, so check_sds diverges. */
+const WORKTREE_SDS = "docs/sds/fr-mcp-064.sds.md";
 
 /**
  * One read whose answer differs between the two checkouts, per tool.
@@ -193,6 +205,24 @@ const DIVERGENCES: readonly Divergence[] = [
     read: (payload) => (val(payload).steps as Array<{ step: string }>).map((entry) => entry.step),
     host: [],
     worktree: [STEP]
+  },
+  {
+    tool: "check_sds",
+    args: { path: WORKTREE_SDS },
+    read: (payload) =>
+      payload.ok === true ? (val(payload).summary as { requirementIds?: string[] })?.requirementIds : payload.error?.code,
+    host: "NOT_FOUND",
+    worktree: ["FR-ARCH-002"]
+  },
+  {
+    tool: "check_test_sufficiency",
+    args: { ids: ["FR-ARCH-002"] },
+    read: (payload) =>
+      payload.ok === true
+        ? (val(payload).gaps as { requirements: Array<{ requirementId: string; acIds: string[] }> }).requirements
+        : payload.error?.code,
+    host: "NOT_FOUND",
+    worktree: [{ requirementId: "FR-ARCH-002", acIds: ["AC-1"] }]
   }
 ];
 
@@ -282,6 +312,38 @@ const WORKTREE_STEP_STATE = [
   ""
 ].join("\n");
 
+/** A clean lite SDS: it names FR-ARCH-002 and nothing else, so it adds no diagnostic to validate_spec. */
+const WORKTREE_SDS_TEXT = [
+  "# SDS: fr-mcp-064",
+  "",
+  "| Field | Value |",
+  "|---|---|",
+  "| Document Type | sds |",
+  "| Profile | lite |",
+  `| Target | ${WORKTREE_TARGET} |`,
+  "| Status | agreed |",
+  "| Date | 2026-09-28 |",
+  "| Requirements | FR-ARCH-002 |",
+  "",
+  "## Interfaces",
+  "",
+  "### Files",
+  "",
+  "- `src/worktree.ts` — names itself @req FR-ARCH-002",
+  "  - `whoAmI(): string` — the checkout's name ← cli",
+  "",
+  "## Acceptance Contracts",
+  "",
+  "- SDS-AC-1 (FR-ARCH-002 AC-1): WHEN the worktree is read THE SYSTEM SHALL name it → `whoAmI`",
+  "",
+  "## Test Plan",
+  "",
+  "| SDS-AC | Test file | Case summary |",
+  "|---|---|---|",
+  "| SDS-AC-1 | `test/worktree.test.ts` | names the worktree |",
+  ""
+].join("\n");
+
 /** Rewrites the worktree's SRS so every row of {@link DIVERGENCES} reads differently there. */
 async function divergeWorktree(worktree: string): Promise<void> {
   const indexPath = path.join(worktree, "docs", "spec", "00.index.md");
@@ -297,6 +359,8 @@ async function divergeWorktree(worktree: string): Promise<void> {
   await mkdir(path.join(worktree, "docs", "spec", "steps", STEP), { recursive: true });
   await writeFile(path.join(worktree, "docs", "spec", "steps", "state.md"), WORKTREE_STEP_STATE, "utf8");
   await writeFile(path.join(worktree, "docs", "spec", "steps", STEP, "design.md"), WORKTREE_STEP_DESIGN, "utf8");
+  await mkdir(path.join(worktree, "docs", "sds"), { recursive: true });
+  await writeFile(path.join(worktree, ...WORKTREE_SDS.split("/")), WORKTREE_SDS_TEXT, "utf8");
 }
 
 /** What each tool was registered with, read off the registration surface rather than the wrapper. */
@@ -375,21 +439,21 @@ afterAll(async () => {
 
 describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace root", { timeout: 180_000 }, () => {
   // @req FR-MCP-064 AC-1
-  it("opens exactly the thirteen it names outside the workflow_* and orchestrate_* families", () => {
+  it("opens exactly the fifteen it names outside the workflow_* and orchestrate_* families", () => {
     expect(unclassified).toEqual([]);
     const opened = accepting
       .filter((name) => !name.startsWith("workflow_") && !name.startsWith("orchestrate_"))
       .sort();
-    // Both directions: a fourteenth tool quietly gaining the argument reddens here, and so does a
+    // Both directions: a sixteenth tool quietly gaining the argument reddens here, and so does a
     // name in the requirement being dropped from the implementation.
-    expect(opened).toEqual([...THIRTEEN].sort());
-    expect(refusing.filter((name) => (THIRTEEN as readonly string[]).includes(name))).toEqual([]);
+    expect(opened).toEqual([...FIFTEEN].sort());
+    expect(refusing.filter((name) => (FIFTEEN as readonly string[]).includes(name))).toEqual([]);
   });
 
   // @req FR-MCP-064 AC-1 — the schema and the gate come from one declaration, so neither can move alone.
-  it("advertises the argument on each of the thirteen and hands each handler the call context", () => {
+  it("advertises the argument on each of the fifteen and hands each handler the call context", () => {
     const registered = registrations(host);
-    for (const tool of THIRTEEN) {
+    for (const tool of FIFTEEN) {
       expect(Object.prototype.hasOwnProperty.call(toolSchemas[tool] ?? {}, WORKSPACE_ROOT_KEY), `${tool} must advertise ${WORKSPACE_ROOT_KEY}`).toBe(true);
       expect(listed.find((candidate) => candidate.name === tool)?.inputSchema.properties, `${tool} must advertise it over tools/list`).toHaveProperty(WORKSPACE_ROOT_KEY);
     }
@@ -425,7 +489,7 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       const built = fromEntries(entries as never) as Record<string, unknown>;
       const pairs = Array.isArray(entries) ? (entries as Array<readonly [PropertyKey, unknown]>) : [];
       if (pairs.length === THIRTEEN.length && pairs.every(([key]) => (THIRTEEN as readonly string[]).includes(String(key)))) {
-        dropped = String(pairs[pairs.length - 1][0]);
+        dropped = String(at(pairs, pairs.length - 1)[0]);
         delete built[dropped];
       }
       return built;
@@ -486,7 +550,8 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
         rootSource: "server-cwd-discovery"
       });
     }
-    expect(DIVERGENCES).toHaveLength(THIRTEEN.length);
+    // AC-2 asks for each of the fifteen, not a representative: the rows are held to the named set.
+    expect(DIVERGENCES.map((row) => row.tool).sort()).toEqual([...FIFTEEN].sort());
   });
 
   // @req FR-MCP-064 AC-3 / AC-4
@@ -518,7 +583,7 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
   });
 
   // @req FR-MCP-064 AC-5
-  it("leaves mcp_workspace_info and the four other named readers closed", async () => {
+  it("leaves mcp_workspace_info and the three other named readers closed", async () => {
     const declared = toolSchemas.mcp_workspace_info ?? {};
     expect(Object.prototype.hasOwnProperty.call(declared, WORKSPACE_ROOT_KEY)).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(declared, ROOT_KEY)).toBe(false);
@@ -549,9 +614,10 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
   });
 
   // @req FR-MCP-064 AC-6 — the check belongs to this family, not to the gate as a whole.
+  // The probe was workflow_doctor until 4.0.0, which left with the plan tools (FR-NODE-211 AC-1).
   it("still answers a workflow_* call for a checkout that holds no docs at all", async () => {
-    const answer = await call("workflow_doctor", { [WORKSPACE_ROOT_KEY]: bare });
-    expect(answer.error?.reason, "workflow_doctor must not inherit the SRS index check").toBeUndefined();
+    const answer = await call("workflow_artifacts_list", { [WORKSPACE_ROOT_KEY]: bare });
+    expect(answer.error?.reason, "workflow_artifacts_list must not inherit the SRS index check").toBeUndefined();
     expect(answer.ok).toBe(true);
   });
 
@@ -563,6 +629,8 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       .map(([name]) => name)
       .sort();
     expect(declaring).toEqual([...THIRTEEN].sort());
+    // AC-7: the two SDS readers take caller paths, so they declare nothing and every argument is scanned.
+    for (const tool of CALLER_PATH_TOOLS) expect(declaring, `${tool} must not declare a path exemption`).not.toContain(tool);
     for (const tool of THIRTEEN) {
       expect(registered.get(tool)?.metadata?.callerPathKeys, `${tool} takes no caller-supplied path`).toEqual([]);
     }
@@ -579,8 +647,9 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
     expect(answered.mcpWorkspace?.rootSource).toBe("per-call-workspace-root");
 
     // REL-MCP-005 AC-6 keeps scanning every argument of a tool that declares nothing, and this is the
-    // read whose refusal that criterion's own evidence asserts.
-    const refused = await call("workflow_plan_status", {
+    // read whose refusal that criterion's own evidence asserts; the read was workflow_plan_status
+    // until it left with the plan tools (FR-NODE-211 AC-1).
+    const refused = await call("workflow_resolve_artifact", {
       [WORKSPACE_ROOT_KEY]: worktree,
       path: path.join(worktree, "docs", "spec", "00.index.md")
     });

@@ -19,7 +19,6 @@ function envelope(producer: string, call: string, value: unknown): Record<string
 
 const DEFAULT_VALUES: Record<ProbeFieldId, Record<string, unknown>> = {
   S1: { mode: "sdd", source: "mcp" },
-  S2: { path: "docs/plans/2026-08-01.speckiwi.v260.plan.md", candidates: ["docs/plans/2026-08-01.speckiwi.v260.plan.md"], contract_ok: true, reject_reason: null, open_tasks: 3, req_ids: ["FR-NODE-001"], lifecycle_req_ids: ["FR-NODE-001"], target: "v2.6.0" },
   S3: { anchored_reqs: [] },
   S3c: { anchor_coverage: 0.5 },
   S4: { scopes: ["NODE"], scope_req_ids: ["FR-NODE-001"], unresolved: [] },
@@ -34,7 +33,6 @@ const DEFAULT_VALUES: Record<ProbeFieldId, Record<string, unknown>> = {
 
 const PRODUCERS: Record<ProbeFieldId, [string, string]> = {
   S1: ["mcp", "get_work_mode"],
-  S2: ["mcp", "workflow_next_plan_task"],
   S3: ["mcp", "list_requirements({traceReference})"],
   S3c: ["mcp", "list_requirements({target, fields})"],
   S4: ["cli", "speckiwi scopes --json"],

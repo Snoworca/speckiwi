@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "./kiwi-orchestrator-variants.js";
+import { maxFanoutBullets } from "./verifier-count.js";
 
 // @req FR-FLOW-142 — SRS verification stops on severity and does not scale by document count.
 //
@@ -66,10 +67,15 @@ describe("FR-FLOW-142 AC-2/AC-4 — the fan-out is not multiplied by document co
   });
 
   it.each(CARRIERS)("%s says the fan-out does not scale with the number of documents", (_label, relPath) => {
-    const section = body(relPath);
-    expect(section, "nothing states that document count does not multiply the fan-out").toMatch(
-      /문서 수로 곱하지 않는다|문서 수와 무관/
-    );
+    // Read from the bullets whose label names `--max`. Since FR-FLOW-180 the non-max bullet also says
+    // "문서 수와 무관하게" (one verifier), and a whole-file match kept this green after the --max
+    // bullet had been reverted to a per-document fan-out.
+    const maxBullets = maxFanoutBullets(body(relPath));
+    expect(maxBullets.length, "the fan-out list names no --max bullet").toBeGreaterThan(0);
+    expect(
+      maxBullets.some((bullet) => /문서 수로 곱하지 않는다|문서 수와 무관/.test(bullet)),
+      "no --max bullet states that document count does not multiply the fan-out"
+    ).toBe(true);
   });
 });
 

@@ -316,7 +316,7 @@ describe("FR-NODE-177 exclusive-lock post-publication rollback", () => {
             evidence.hit = true;
             throw ioError("held guard release read");
           }
-          return actual.readFile(file, ...args as never);
+          return actual.readFile(file, ...args);
         }) as FsPromises["readFile"],
         ...(operation === "rm" ? {
           rm: (async (target, options) => {
@@ -369,7 +369,7 @@ describe("FR-NODE-177 exclusive-lock post-publication rollback", () => {
               await captureOwnedMain(actual, identity.lockPath, owner, evidence);
               throw ioError("guard read");
             }
-            return actual.readFile(file, ...args as never);
+            return actual.readFile(file, ...args);
           }) as FsPromises["readFile"]
         } : {}),
         ...(operation === "rename" ? {
@@ -507,7 +507,7 @@ describe("FR-NODE-177 exclusive-lock post-publication rollback", () => {
               await captureOwnedMain(actual, identity.lockPath, owner, evidence);
               throw ioError("release guard read");
             }
-            return actual.readFile(file, ...args as never);
+            return actual.readFile(file, ...args);
           }) as FsPromises["readFile"]
         } : {}),
         ...(operation === "rm" ? {
@@ -577,7 +577,7 @@ describe("FR-NODE-177 exclusive-lock post-publication rollback", () => {
           await actual.writeFile(identity.lockPath, `${JSON.stringify(successor)}\n`, "utf8");
           throw ioError("successor replacement guard release");
         }
-        return actual.readFile(file, ...args as never);
+        return actual.readFile(file, ...args);
       }) as FsPromises["readFile"]
     }));
 

@@ -43,12 +43,12 @@ const TARGET_ID = "FR-ARCH-001";
 const NEXT_STATUS = "implemented";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains everything written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** Recovers the mutation value object (carrying id + the given keys) from a JSON result envelope. */

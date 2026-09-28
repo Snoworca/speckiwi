@@ -7,8 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
 import { WORK_ORDER_ACTION_TOOLS } from "../../src/core/workflow/work-order.js";
-import { workflowNextPlanTask } from "../../src/core/workflow/read.js";
-import { DERIVATION_KEEPER, derivationSentence, toolSpecs, type ToolSpec } from "../../src/mcp/schemas.js";
+import { derivationSentence, toolSpecs, type ToolSpec } from "../../src/mcp/schemas.js";
 import { createMcpServer, createSdkServer } from "../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 import { createWorkflowFixture, type WorkflowFixture } from "../fixtures/workflow-artifacts.js";
@@ -22,25 +21,20 @@ import { createWorkflowFixture, type WorkflowFixture } from "../fixtures/workflo
 // agent to make the call this requirement removed.
 //
 // WHAT THIS FILE DOES NOT HOLD, stated so it is not read into the green:
-//  - AC-5's single-source claim in full. The delegation check below reads the two alias bodies, and
+//  - AC-5's single-source claim in full. The delegation check below reads the alias body, and
 //    reading source is not running it; what proves the rule has one copy is the mutation recorded in
 //    the requirement's evidence, which deletes the origin's rule and watches the alias's answer move.
-//  - that the aliases are worth keeping. AC-3 and AC-4 assert the names are still reachable, which
-//    is what `actionTool()` needs; they say nothing about whether an agent should call them.
+//  - that the alias is worth keeping. AC-4 asserts the name is still reachable; it says nothing
+//    about whether an agent should call it. The resume owner and its alias, which AC-1 and AC-3
+//    covered, left with the plan tools (FR-NODE-211 AC-1), and so did their blocks here.
 //  - that a description is TRUE. AC-7 holds three things a machine can decide: the sentence the
 //    registry composes for a tool is present verbatim in that tool description, the OTHER tool
 //    names the description mentions are exactly the ones the declaration admits, and the field a
 //    declaration names is a key the owner's reply carries over the same round trip. A description
 //    can satisfy all three and still be wrong about what the tool does; only the composed half is
 //    derived.
-//  - that `resume` needs both of its conjuncts. Deleting `blocking !== true` from it is
-//    behaviour-preserving and stays green, and so is substituting `blockedBy.length === 0` for it:
-//    `selectNextTask` answers a task with an empty `blockedBy` or a null task with a non-empty one,
-//    and its caller replaces `nextTask` with null whenever `blocking` holds, so all three predicates
-//    agree on every reachable input. The invariant assertion under AC-1 is what fires the day those
-//    branches split; nothing here separates the three today because nothing can.
-//  - the CLI. `speckiwi workflow resume-hint` and `pipeline-next` share the core functions but are
-//    not exercised here; `test/mcp/workflow-read-tools.test.ts` holds that parity.
+//  - the CLI. `speckiwi workflow pipeline-next` shares the core function but is not exercised
+//    here; `test/mcp/workflow-read-tools.test.ts` holds that parity.
 
 const SRS_PATH = path.join("docs", "spec", "40.mcp-stdio-interface.srs.md");
 const REQUIREMENT_ID = "FR-MCP-062";
@@ -199,59 +193,6 @@ describe("FR-MCP-062 AC-8 — the suite runs under bounds the requirement sets, 
 
 // --- AC-1 -------------------------------------------------------------------------------------
 
-describe("FR-MCP-062 AC-1 — workflow_next_plan_task carries the resume decision itself", () => {
-  /**
-   * The three shapes the boolean is made of, so the assertion is not satisfied by a constant.
-   * `resumable` has a next task and does not block, `blocking` blocks, `exhausted` has no next task.
-   */
-  const CASES = [
-    { name: "resumable", path: () => fixture.planPath, expected: true },
-    { name: "blocking", path: () => fixture.blockedPlanPath, expected: false },
-    { name: "exhausted", path: () => fixture.completePlanPath, expected: false }
-  ] as const;
-
-  it("covers a resuming, a blocking and an exhausted plan", () => {
-    expect(CASES.length).toBe(floor("resumeCases"));
-    expect(new Set(CASES.map((item) => item.expected)).size).toBe(2);
-  });
-
-  for (const testCase of CASES) {
-    it(`returns resume for the ${testCase.name} plan and it equals blocking !== true && nextTask !== null`, async () => {
-      const next = value(await session.call("workflow_next_plan_task", { path: testCase.path() }));
-      expect(Object.keys(next)).toContain("resume");
-      expect(next.resume).toBe(next.blocking !== true && next.nextTask !== null);
-      expect(next.resume).toBe(testCase.expected);
-    });
-  }
-
-  /**
-   * Why a predicate swapping `blocking` for `blockedBy` is not caught, measured rather than assumed.
-   *
-   * Over every plan fixture this repository ships, a non-null `nextTask` comes only with
-   * `blocking === false` and an empty `blockedBy`. The two predicates are therefore extensionally
-   * equal across the whole reachable space, and no fixture can separate them; substituting one for
-   * the other is a behaviour-preserving edit today. The assertion below records the invariant that
-   * makes it so, and goes red the day the validator first answers a task while blocking — which is
-   * the day the two predicates stop agreeing and the substitution becomes a defect.
-   */
-  it("records the invariant that makes the resume predicate unsplittable by any shipped fixture", async () => {
-    const plans = Object.entries(fixture).filter(([key, value]) => /[Pp]lanPath$/.test(key) && typeof value === "string");
-    expect(plans.length, "plan fixtures walked").toBe(floor("planFixtures"));
-    const violations: string[] = [];
-    for (const [key, planPath] of plans) {
-      const answer = await workflowNextPlanTask({ root: fixture.root }, { path: planPath as string });
-      const inner = answer.value as { nextTask: unknown; blocking: boolean; blockedBy: string[] };
-      if (inner.nextTask !== null && (inner.blocking === true || inner.blockedBy.length > 0)) violations.push(key);
-    }
-    expect(
-      violations,
-      "a fixture now answers a task while blocked, so `blocking` and `blockedBy` have separated and the resume predicate needs its own case"
-    ).toEqual([]);
-  });
-});
-
-// --- AC-2 -------------------------------------------------------------------------------------
-
 describe("FR-MCP-062 AC-2 — workflow_pipeline_status carries the next hint itself", () => {
   it("answers at least the required number of distinct hint outcomes, so no literal satisfies it", async () => {
     const answers = await Promise.all([
@@ -299,30 +240,6 @@ describe("FR-MCP-062 AC-2 — workflow_pipeline_status carries the next hint its
 
 // --- AC-3 -------------------------------------------------------------------------------------
 
-describe("FR-MCP-062 AC-3 — workflow_resume_hint stays registered and adds nothing of its own", () => {
-  it("is listed by tools/list", async () => {
-    const names = (await session.client.listTools()).tools.map((tool) => tool.name);
-    expect(names).toContain("workflow_resume_hint");
-  });
-
-  for (const planKey of ["planPath", "blockedPlanPath", "completePlanPath"] as const) {
-    it(`answers the ${planKey} call key for key as workflow_next_plan_task does`, async () => {
-      const args = { path: fixture[planKey] };
-      const alias = value(await session.call("workflow_resume_hint", args));
-      const origin = value(await session.call("workflow_next_plan_task", args));
-      expect(Object.keys(alias).sort()).toEqual(Object.keys(origin).sort());
-      expect(alias).toEqual(origin);
-    });
-  }
-
-  it("answers differently for different arguments, so an alias that drops them is caught", async () => {
-    const resumable = value(await session.call("workflow_resume_hint", { path: fixture.planPath }));
-    const blocking = value(await session.call("workflow_resume_hint", { path: fixture.blockedPlanPath }));
-    expect(resumable.resume).toBe(true);
-    expect(blocking.resume).toBe(false);
-  });
-});
-
 // --- AC-4 -------------------------------------------------------------------------------------
 
 describe("FR-MCP-062 AC-4 — workflow_pipeline_next stays registered and reports the origin's values", () => {
@@ -368,10 +285,7 @@ describe("FR-MCP-062 AC-5 — the derived rule exists once", () => {
     // literal string and went red on `return await origin(root, options);` — a correct restatement.
     // What must hold is that the body passes its own arguments to the origin and re-derives nothing:
     // no mention of the derived value, and no second envelope built here.
-    const bodies = [
-      { alias: "workflowResumeHint", origin: "workflowNextPlanTask", derived: ["resume", "blocking !==", "nextTask !=="] },
-      { alias: "workflowPipelineNext", origin: "workflowPipelineStatus", derived: ["next_hint", "nextHint"] }
-    ];
+    const bodies = [{ alias: "workflowPipelineNext", origin: "workflowPipelineStatus", derived: ["next_hint", "nextHint"] }];
     for (const { alias, origin, derived } of bodies) {
       const match = new RegExp(`export async function ${alias}\\([^)]*\\)[^{]*\\{([\\s\\S]*?)\\n\\}`).exec(source);
       expect(match, `${alias} was not found in read.ts, so this reading is of nothing`).not.toBeNull();
@@ -384,9 +298,7 @@ describe("FR-MCP-062 AC-5 — the derived rule exists once", () => {
     }
   });
 
-  it("shows each derived key in the alias answer, which is where the origin's single copy reaches", async () => {
-    const resume = value(await session.call("workflow_resume_hint", { path: fixture.planPath }));
-    expect(Object.keys(resume)).toContain("resume");
+  it("shows the derived key in the alias answer, which is where the origin's single copy reaches", async () => {
     const hint = value(await tombstoneSession.call("workflow_pipeline_next", {}));
     expect(Object.keys(hint)).toContain("nextHint");
     expect(hint.nextHint).toBe(HINT_LIVE);
@@ -480,10 +392,10 @@ describe("FR-MCP-062 AC-7 — the descriptions send an agent to the tool that an
   /**
    * Which OTHER shipped tools a description points at.
    *
-   * The MCP name for all 100 tools, plus the CLI name and the core function name for the FOUR that
-   * carry a declaration — and no further than those four. Three spellings are read for them because
-   * the registry binds `resume-hint` and `workflowResumeHint` to `workflow_resume_hint` as firmly
-   * as it binds that name, so a description using either is naming the tool. The other 96 are read
+   * The MCP name for every tool, plus the CLI name and the core function name for the tools that
+   * carry a declaration — and no further than those. Three spellings are read for them because the
+   * registry binds `pipeline-next` and `workflowPipelineNext` to `workflow_pipeline_next` as firmly
+   * as it binds that name, so a description using either is naming the tool. The others are read
    * by MCP spelling alone, which means a description naming one of THEM by its CLI or core function
    * spelling is not seen here. That is a hole, and it is written down in the requirement's VE-4
    * rather than papered over by a sentence claiming the alphabet is wider than it is.
@@ -525,7 +437,7 @@ describe("FR-MCP-062 AC-7 — the descriptions send an agent to the tool that an
     expect(rows.length, "declared derivation rows").toBe(floor("derivations"));
     const owners = rows.filter((row) => row.derivation.role === "owner").map((row) => row.name).sort();
     const aliases = rows.filter((row) => row.derivation.role === "alias");
-    expect(owners).toEqual(["workflow_next_plan_task", "workflow_pipeline_status"]);
+    expect(owners).toEqual(["workflow_pipeline_status"]);
     expect(aliases.map((row) => row.derivation.owner).sort()).toEqual(owners);
     for (const row of rows) expect(toolNames, `${row.name} is declared but not registered`).toContain(row.name);
   });
@@ -541,7 +453,6 @@ describe("FR-MCP-062 AC-7 — the descriptions send an agent to the tool that an
     // composed sentence together left both checks satisfied and the description saying the reply
     // carries a key it does not. The owner is asked over the same round trip AC-1 and AC-2 use.
     const ownerArgs: Record<string, Record<string, unknown>> = {
-      workflow_next_plan_task: { path: fixture.planPath },
       workflow_pipeline_status: {}
     };
     const owners = declared().filter((row) => row.derivation.role === "owner");
@@ -563,31 +474,31 @@ describe("FR-MCP-062 AC-7 — the descriptions send an agent to the tool that an
 
   it("lets no description point an agent at a tool its declaration does not admit", () => {
     // The negative half, and the symmetric one: an owner may name no other tool at all, and an
-    // alias may name only the owner it delegates to and the tool that keeps it alive. What this
+    // alias may name only the owner it delegates to. What this
     // decides is the NAME, in any spelling the registry binds to a tool — never the sense of the
     // sentence around it. An owner description that sends the reader on to the alias WITHOUT naming
     // it in any of those spellings passes here, and that escape is enumerated in the requirement's
     // VE-4 rather than left to be found.
     for (const { name, derivation } of declared()) {
-      const admitted = derivation.role === "owner" ? [] : [derivation.owner as string, DERIVATION_KEEPER].sort();
+      const admitted = derivation.role === "owner" ? [] : [derivation.owner as string];
       expect(pointsAt(describedAs(name), name), `${name} points at a tool its declaration does not admit`).toEqual(admitted);
     }
   });
 
   it("reads a closed set of names, so the negative half is not a pattern that matches nothing", () => {
     expect(toolNames.length).toBe(floor("tools"));
-    expect(pointsAt("call workflow_resume_hint after workflow_pipeline_next", "x")).toEqual([
+    expect(pointsAt("call workflow_pipeline_next after workflow_pipeline_status", "x")).toEqual([
       "workflow_pipeline_next",
-      "workflow_resume_hint"
+      "workflow_pipeline_status"
     ]);
     expect(pointsAt("no tool is named here", "x")).toEqual([]);
     // A name inside a longer identifier is not a reference to that tool.
-    expect(pointsAt("see workflow_resume_hint_v2 for the old shape", "x")).toEqual([]);
-    // The other two spellings the registry binds to the same four tools, and the boundary each one
+    expect(pointsAt("see workflow_pipeline_next_v2 for the old shape", "x")).toEqual([]);
+    // The other two spellings the registry binds to the declared tools, and the boundary each one
     // needs: a CLI name may not be a fragment of a longer hyphenated word either.
-    expect(pointsAt("prefer resume-hint over this", "x")).toEqual(["workflow_resume_hint"]);
-    expect(pointsAt("prefer workflowResumeHint over this", "x")).toEqual(["workflow_resume_hint"]);
-    expect(pointsAt("the legacy resume-hint-v2 command is gone", "x")).toEqual([]);
-    expect(pointsAt("the legacy workflowResumeHintV2 helper is gone", "x")).toEqual([]);
+    expect(pointsAt("prefer pipeline-next over this", "x")).toEqual(["workflow_pipeline_next"]);
+    expect(pointsAt("prefer workflowPipelineNext over this", "x")).toEqual(["workflow_pipeline_next"]);
+    expect(pointsAt("the legacy pipeline-next-v2 command is gone", "x")).toEqual([]);
+    expect(pointsAt("the legacy workflowPipelineNextV2 helper is gone", "x")).toEqual([]);
   });
 });

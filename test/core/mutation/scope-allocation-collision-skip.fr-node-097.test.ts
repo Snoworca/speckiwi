@@ -70,7 +70,7 @@ describe("FR-NODE-097 AC-1 — a candidate the legacy sidecar occupies is skippe
     const result = await allocate(rootPath, "Reporting", "RPT");
 
     expect(result.ok).toBe(true);
-    expect(result.ok && result.value.document).toBe("06.reporting.srs.md");
+    expect(result.ok && result.value?.document).toBe("06.reporting.srs.md");
   });
 
   it("creates the file at the skipped number when applied", async () => {
@@ -93,7 +93,7 @@ describe("FR-NODE-097 AC-2/AC-3 — a free candidate is unchanged and a sidecar 
 
     const result = await allocate(rootPath, "Reporting", "RPT");
 
-    expect(result.ok && result.value.document).toBe("05.reporting.srs.md");
+    expect(result.ok && result.value?.document).toBe("05.reporting.srs.md");
   });
 
   it("allocates 02 for a project whose only scope document is 01, despite the high-band sidecars", async () => {
@@ -106,7 +106,7 @@ describe("FR-NODE-097 AC-2/AC-3 — a free candidate is unchanged and a sidecar 
     const result = await allocate(rootPath, "Reporting", "RPT");
 
     // 90.appendix.md ships with the fixture and 91 was just added; neither may raise the candidate.
-    expect(result.ok && result.value.document).toBe("02.reporting.srs.md");
+    expect(result.ok && result.value?.document).toBe("02.reporting.srs.md");
   });
 });
 
@@ -121,7 +121,7 @@ describe("FR-NODE-097 AC-4 — allocation advances to the lowest free number", (
     const result = await allocate(rootPath, "Reporting", "RPT");
 
     // 05 and 06 are taken, 07 is free: the answer is 07, not 09.
-    expect(result.ok && result.value.document).toBe("07.reporting.srs.md");
+    expect(result.ok && result.value?.document).toBe("07.reporting.srs.md");
   });
 });
 

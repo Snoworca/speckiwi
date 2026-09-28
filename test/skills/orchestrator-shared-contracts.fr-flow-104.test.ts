@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-104  waves-event.md v1.4.0 — the twenty added fields, additively
 // @req FR-FLOW-105  the resume predicate filters by engine; an absent engine reads as kiwi-wave-master
@@ -41,10 +42,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -97,14 +98,18 @@ const V140_FIELDS = [
   "card_digest"
 ] as const;
 
+/** The one addition that left the field table in 4.0.0 with the R-PLAN rung (AC-1 as revised). */
+const V140_FIELDS_RETIRED = ["coverage_residual"] as const;
+const V140_FIELDS_LIVE = V140_FIELDS.filter((f) => !(V140_FIELDS_RETIRED as readonly string[]).includes(f));
+
 /** Top-level optional fields reused verbatim from v1.3.0 (AC-6). A v1.4.0 that quietly drops one of
  * these is not additive. `frozen_denominator` is deliberately NOT here: it is a key of the
- * `verification` object (§2.3), not a top-level row, and is asserted there instead. */
+ * `verification` object (§2.3), not a top-level row, and is asserted there instead. `plan_run_id`
+ * left the contract in 4.0.0 (AC-6 as revised) and is asserted absent instead. */
 const V130_FIELDS_KEPT = [
   "verification",
   "design_baseline",
   "diff_window",
-  "plan_run_id",
   "pipeline_run_ids",
   "run_diff_window"
 ] as const;
@@ -116,14 +121,19 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
     expect(WAVES_COPIES, "exactly four copies of waves-event.md ship").toHaveLength(4);
   });
 
-  // AC-1: the document version reads v1.4.0 and the emit examples carry it.
-  it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
+  // AC-1 (revised in 4.0.0): the document version reads the version its field set is at — v2.0.0
+  // once 4.0.0 drops coverage_residual and plan_run_id and adds sds_id (FR-NODE-213 AC-6) — and the
+  // emit examples carry it.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-1: %s declares the schema version its field set is at", (copy) => {
     const text = read(copy);
-    expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.5\.0/m
+    expect(text, `${copy} must declare the major-bumped contract version in its title`).toMatch(
+      /^#\s*kiwi waves event v2\.0\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.5\.0"/
+      /"schema_version"\s*:\s*"2\.0\.0"/
+    );
+    expect(text, `${copy} must not leave a stale 1.x emit example behind`).not.toMatch(
+      /"schema_version"\s*:\s*"1\.(?:4|5)\.0"/
     );
     expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
       /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
@@ -133,14 +143,23 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
   // AC-1: every added field is its own row, with a type and a purpose, in the optional-field table.
   // Cell-level, not substring-level: a field name appearing only inside another row's prose would
   // satisfy `text.includes(field)` while giving the schema author nothing to copy.
-  it.each(WAVES_COPIES)("%s declares all twenty fields with a type and a purpose", (copy) => {
+  // AC-1 (revised in 4.0.0): every field of the twenty except coverage_residual, which left with the
+  // R-PLAN rung.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-1: %s declares the twenty fields but coverage_residual with a type and a purpose", (copy) => {
     const optional = section(read(copy), /^###\s.*선택 필드/);
     expect(optional, `${copy} must have an optional-fields section`).not.toBe("");
-    for (const field of V140_FIELDS) {
+    expect(V140_FIELDS_LIVE, "nineteen of the twenty remain").toHaveLength(19);
+    for (const field of V140_FIELDS_LIVE) {
       const row = cells(optional, new RegExp(`^\\s*\\|\\s*\`${field}\`\\s*\\|`));
       expect(row.length, `${copy} optional fields must declare ${field} as its own row`).toBeGreaterThan(3);
-      expect(row[2].length, `${copy} the ${field} row must state a type`).toBeGreaterThan(0);
-      expect(row[3].length, `${copy} the ${field} row must state a purpose`).toBeGreaterThan(0);
+      expect(at(row, 2).length, `${copy} the ${field} row must state a type`).toBeGreaterThan(0);
+      expect(at(row, 3).length, `${copy} the ${field} row must state a purpose`).toBeGreaterThan(0);
+    }
+    for (const field of V140_FIELDS_RETIRED) {
+      expect(
+        cells(optional, new RegExp(`^\\s*\\|\\s*\`${field}\`\\s*\\|`)).length > 3,
+        `${copy} ${field} left the field table in 4.0.0 with the R-PLAN rung`
+      ).toBe(false);
     }
   });
 
@@ -213,23 +232,23 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
     const writer = cells(optional, /^\s*\|\s*`writer`\s*\|/);
     expect(writer.length, `${copy} must declare writer`).toBeGreaterThan(3);
     expect(
-      writer[3].includes("speckiwi-orchestrate/{pkgVersion}"),
+      at(writer, 3).includes("speckiwi-orchestrate/{pkgVersion}"),
       `${copy} writer must carry the stamped tool identity and its version`
     ).toBe(true);
     expect(
-      /매 write|every write|모든 write/.test(writer[3]),
+      /매 write|every write|모든 write/.test(at(writer, 3)),
       `${copy} the stamp must be applied on every write, not opportunistically`
     ).toBe(true);
     expect(
-      /1\.4\.0 이상/.test(writer[3]),
+      /1\.4\.0 이상/.test(at(writer, 3)),
       `${copy} the writer requirement must be scoped to schema_version >= 1.4.0 lines`
     ).toBe(true);
     expect(
-      writer[3].includes("unstamped"),
+      at(writer, 3).includes("unstamped"),
       `${copy} an older line must report unstamped rather than being rejected`
     ).toBe(true);
     expect(
-      /실패하지 않는다|never fail/.test(writer[3]),
+      /실패하지 않는다|never fail/.test(at(writer, 3)),
       `${copy} an unstamped older line must never fail; otherwise the stamp is a breaking change`
     ).toBe(true);
   });
@@ -240,44 +259,48 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
     isolation: ["profile", "reason", "rejected"],
     allocation: ["target", "pre_snapshot_digest", "requirement_ids", "design_item_map"],
     partition_review: ["doc_path", "digest", "lane_plan_digest", "reviewer", "verdict"],
-    coverage_residual: ["req_id", "reason", "owner"],
     lane_disposition: ["kind", "reason", "at"]
   };
 
-  it.each(WAVES_COPIES)("%s declares the members of every object-valued field", (copy) => {
+  // AC-5 (revised in 4.0.0): coverage_residual is no longer an object-valued field of the contract.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-5: %s declares the members of every object-valued field", (copy) => {
     const optional = section(read(copy), /^###\s.*선택 필드/);
     for (const [field, members] of Object.entries(OBJECT_MEMBERS)) {
       const row = cells(optional, new RegExp(`^\\s*\\|\\s*\`${field}\`\\s*\\|`));
       expect(row.length, `${copy} must declare ${field}`).toBeGreaterThan(3);
       for (const member of members) {
-        expect(row[3].includes(member), `${copy} ${field} must carry the member ${member}`).toBe(true);
+        expect(at(row, 3).includes(member), `${copy} ${field} must carry the member ${member}`).toBe(true);
       }
     }
   });
 
-  // AC-5: coverage_residual rides on the R-PLAN dispatch-route RESULT line, which is what keeps the
-  // plan-coverage reason off the digest-pinned route lock.
-  it.each(WAVES_COPIES)("%s places coverage_residual on the R-PLAN dispatch-route result line", (copy) => {
-    const row = cells(section(read(copy), /^###\s.*선택 필드/), /^\s*\|\s*`coverage_residual`\s*\|/);
-    expect(row.length, `${copy} must declare coverage_residual`).toBeGreaterThan(3);
-    expect(row[3].includes("R-PLAN"), `${copy} coverage_residual is an R-PLAN artifact`).toBe(true);
+  // The former AC-5 clause placing coverage_residual on the R-PLAN dispatch-route result line is
+  // retired with the R-PLAN rung (FR-FLOW-104 AC-1 as revised in 4.0.0); its row-level absence is
+  // asserted in the AC-1 case above, and no R-PLAN result line is described any more.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-1: %s carries no coverage_residual anywhere in the field tables", (copy) => {
+    const text = read(copy);
     expect(
-      row[3].includes("dispatch-route"),
-      `${copy} coverage_residual must name the verb whose result line carries it`
-    ).toBe(true);
+      text.split("\n").some((l) => /^\s*\|\s*`coverage_residual`\s*\|/.test(l)),
+      `${copy} coverage_residual must not survive as a row of any field table`
+    ).toBe(false);
   });
 
-  // AC-5: lane_disposition's kind is a CLOSED four-value enum. Left open, a resumed session reads a
-  // refuted lane as integrable and merges work the run had discarded.
-  it.each(WAVES_COPIES)("%s closes the lane_disposition kind enum at four values", (copy) => {
+  // AC-5 (revised in 4.0.0): lane_disposition's kind is a CLOSED two-value enum — demoted and
+  // coupling-reset left with the handoff layer and the stage coupling check (FR-FLOW-187 AC-4,
+  // FR-NODE-213 AC-3). Left open, a resumed session reads a refuted lane as integrable and merges
+  // work the run had discarded.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-5: %s closes the lane_disposition kind enum at two values", (copy) => {
     const row = cells(section(read(copy), /^###\s.*선택 필드/), /^\s*\|\s*`lane_disposition`\s*\|/);
     expect(row.length, `${copy} must declare lane_disposition`).toBeGreaterThan(3);
-    for (const kind of ["demoted", "quarantined", "coupling-reset", "refuted"]) {
-      expect(row[3].includes(kind), `${copy} the lane_disposition kind enum must define ${kind}`).toBe(true);
+    for (const kind of ["quarantined", "refuted"]) {
+      expect(at(row, 3).includes(`\`${kind}\``), `${copy} the lane_disposition kind enum must define ${kind}`).toBe(true);
+    }
+    for (const kind of ["demoted", "coupling-reset"]) {
+      expect(at(row, 3).includes(`\`${kind}\``), `${copy} the retired kind ${kind} must not be an enum member`).toBe(false);
     }
     expect(
-      /닫힌|closed/.test(row[3]),
-      `${copy} the kind enum must be stated as closed; an open enum is not an enum`
+      /닫힌 2값|closed two-value/.test(at(row, 3)),
+      `${copy} the kind enum must be stated as closed at two values; an open enum is not an enum`
     ).toBe(true);
   });
 
@@ -286,7 +309,7 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
     const row = cells(section(read(copy), /^###\s.*선택 필드/), /^\s*\|\s*`phase`\s*\|/);
     expect(row.length, `${copy} must keep a phase enum row`).toBeGreaterThan(3);
     for (const member of ["pipeline", "srs-authoring", "wave-verify", "final-verify"]) {
-      expect(row[3].includes(member), `${copy} the phase enum must keep the v1.3.0 member ${member}`).toBe(true);
+      expect(at(row, 3).includes(member), `${copy} the phase enum must keep the v1.3.0 member ${member}`).toBe(true);
     }
     for (const member of [
       "intake",
@@ -298,7 +321,7 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
       "integrate",
       "stage-close"
     ]) {
-      expect(row[3].includes(member), `${copy} the phase enum must gain ${member}`).toBe(true);
+      expect(at(row, 3).includes(member), `${copy} the phase enum must gain ${member}`).toBe(true);
     }
   });
 
@@ -316,8 +339,9 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
     }
   });
 
-  // AC-6: every other v1.3.0 field is reused verbatim.
-  it.each(WAVES_COPIES)("%s reuses the v1.3.0 field set verbatim", (copy) => {
+  // AC-6 (revised in 4.0.0): every other v1.3.0 field is reused verbatim except plan_run_id, which
+  // left the contract in 4.0.0.
+  it.each(WAVES_COPIES)("FR-FLOW-104 AC-6: %s reuses the v1.3.0 field set verbatim except plan_run_id", (copy) => {
     const optional = section(read(copy), /^###\s.*선택 필드/);
     for (const field of V130_FIELDS_KEPT) {
       expect(
@@ -325,6 +349,10 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
         `${copy} must keep the v1.3.0 field ${field}`
       ).toBe(true);
     }
+    expect(
+      cells(optional, /^\s*\|\s*`plan_run_id`\s*\|/).length > 3,
+      `${copy} plan_run_id left the contract in 4.0.0 and must not remain a field row`
+    ).toBe(false);
     // The verification object's own v1.3.0 keys survive too; `frozen_denominator` is the one the
     // round-count invalidation rule compares against, so losing it disarms that rule silently.
     const verification = section(read(copy), /^###\s.*`verification` object/);
@@ -334,6 +362,19 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
         `${copy} the verification object must keep the v1.3.0 key ${key}`
       ).toBe(true);
     }
+  });
+
+  // The raised version AC-1 points at is the one whose field set adds sds_id (FR-NODE-213 AC-6).
+  it.each(WAVES_COPIES)("FR-NODE-213 AC-6: %s declares sds_id as an optional string field", (copy) => {
+    const optional = section(read(copy), /^###\s.*선택 필드/);
+    const row = cells(optional, /^\s*\|\s*`sds_id`\s*\|/);
+    expect(row.length, `${copy} must declare sds_id as its own row`).toBeGreaterThan(3);
+    expect(row[2], `${copy} sds_id must be typed string`).toBe("string");
+    expect(at(row, 3).includes("docs/sds/{sds_id}.sds.md"), `${copy} sds_id must name the SDS it keys`).toBe(true);
+    expect(
+      cells(section(read(copy), /^###\s.*필수 필드/), /^\s*\|\s*`sds_id`\s*\|/).length > 3,
+      `${copy} sds_id must stay optional`
+    ).toBe(false);
   });
 
   // AC-7: one change, four copies, and the field set identical across them. A set comparison, not a
@@ -348,16 +389,16 @@ describe("FR-FLOW-104 — waves-event v1.4.0 additive field set across all four 
         .map((m) => m[1]);
       return [...new Set(names)].sort();
     });
-    expect(fieldSets[0].length, "the optional-field table must not be empty").toBeGreaterThan(0);
+    expect(at(fieldSets, 0).length, "the optional-field table must not be empty").toBeGreaterThan(0);
     for (let i = 1; i < fieldSets.length; i++) {
       expect(fieldSets[i], `${WAVES_COPIES[i]} must declare the same field set as the claude copy`).toEqual(
         fieldSets[0]
       );
     }
-    // And that shared set must actually contain the twenty additions, or the four copies agree on
-    // an unextended contract.
-    for (const field of V140_FIELDS) {
-      expect(fieldSets[0].includes(field), `the shared field set must contain ${field}`).toBe(true);
+    // And that shared set must actually contain the twenty additions (less coverage_residual, which
+    // left in 4.0.0 — AC-1 as revised), or the four copies agree on an unextended contract.
+    for (const field of V140_FIELDS_LIVE) {
+      expect(at(fieldSets, 0).includes(field), `the shared field set must contain ${field}`).toBe(true);
     }
   });
 });
@@ -474,7 +515,7 @@ describe("FR-FLOW-111 — pipeline-event.md registers kiwi-orchestrator and clos
 
   it("declares an identical skill enum in all four copies", () => {
     const sets = PIPELINE_COPIES.map((copy) => [...new Set(skillEnumMembers(copy))].sort());
-    expect(sets[0].length, "the skill enum must not be empty").toBeGreaterThan(0);
+    expect(at(sets, 0).length, "the skill enum must not be empty").toBeGreaterThan(0);
     for (let i = 1; i < sets.length; i++) {
       expect(sets[i], `${PIPELINE_COPIES[i]} skill enum must equal the claude copy's`).toEqual(sets[0]);
     }
@@ -487,15 +528,15 @@ describe("FR-FLOW-111 — pipeline-event.md registers kiwi-orchestrator and clos
     expect(row.length, `${copy} T1 must carry a kiwi-orchestrator row`).toBeGreaterThan(3);
     expect(row[2], `${copy} the orchestrator row must key on the terminal status`).toContain("TASK_DONE");
     expect(
-      /`null`/.test(row[3]),
+      /`null`/.test(at(row, 3)),
       `${copy} the orchestrator's next hint must be null — the run terminates on its own branch`
     ).toBe(true);
     expect(
-      /통합 브랜치|integration branch/.test(row[3]),
+      /통합 브랜치|integration branch/.test(at(row, 3)),
       `${copy} the reason must name the integration branch the run terminates on`
     ).toBe(true);
     expect(
-      /의도적으로|deliberate/.test(row[3]),
+      /의도적으로|deliberate/.test(at(row, 3)),
       `${copy} not auto-chaining commit, push and PR creation must be recorded as deliberate`
     ).toBe(true);
   });
@@ -505,7 +546,7 @@ describe("FR-FLOW-111 — pipeline-event.md registers kiwi-orchestrator and clos
     const row = t1Row(copy, "kiwi-wave-master");
     expect(row.length, `${copy} T1 must carry a kiwi-wave-master row`).toBeGreaterThan(3);
     expect(row[2], `${copy} the wave-master row must key on the terminal status`).toContain("TASK_DONE");
-    expect(/`null`/.test(row[3]), `${copy} the wave-master's next hint must be null`).toBe(true);
+    expect(/`null`/.test(at(row, 3)), `${copy} the wave-master's next hint must be null`).toBe(true);
   });
 
   // The mandatory `any x FAILED` and `any x NEEDS_USER` gates must survive both additions. This is
@@ -515,7 +556,7 @@ describe("FR-FLOW-111 — pipeline-event.md registers kiwi-orchestrator and clos
     for (const status of ["NEEDS_USER", "FAILED"]) {
       const row = cells(table, new RegExp(`^\\s*\\|\\s*any\\s*\\|\\s*${status}\\s*\\|`));
       expect(row.length, `${copy} the mandatory any x ${status} row must survive`).toBeGreaterThan(3);
-      expect(/`null`/.test(row[3]), `${copy} any x ${status} must still route to null`).toBe(true);
+      expect(/`null`/.test(at(row, 3)), `${copy} any x ${status} must still route to null`).toBe(true);
     }
     // No skill-specific row may key on a non-terminal status and thereby shadow the any-row.
     for (const skill of ["kiwi-orchestrator", "kiwi-wave-master", "kiwi-tdd"]) {
@@ -593,47 +634,46 @@ describe("FR-FLOW-112 — loop-option.md records the orchestrator's propagation 
     expect(row.length, `${copy} section 6 must carry a kiwi-orchestrator row`).toBeGreaterThan(3);
   });
 
-  // AC-2: the routed children are propagation targets too — on two of three rungs the whole run is
-  // a delegation, so omitting them drops the flag on those rungs entirely.
-  it.each(LOOP_COPIES)("%s names the routed child on each delegated rung", (copy) => {
+  // AC-2 (as revised for 4.0.0): the routed child of the one delegated rung is a propagation target
+  // too — on that rung the whole run is a delegation. The plan rung is gone (FR-FLOW-187 AC-1).
+  it.each(LOOP_COPIES)("%s names the routed child on the delegated rung", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
     expect(row.length, `${copy} section 6 must carry a kiwi-orchestrator row`).toBeGreaterThan(3);
-    const targets = row[2];
+    const targets = at(row, 2);
     expect(targets.includes("kiwi-tdd"), `${copy} the step rung's routed child must be named`).toBe(true);
-    expect(targets.includes("kiwi-pm"), `${copy} the plan rung's routed child must be named`).toBe(true);
     expect(/step/i.test(targets), `${copy} the step rung must be identified`).toBe(true);
-    expect(/plan/i.test(targets), `${copy} the plan rung must be identified`).toBe(true);
+    expect(/plan rung|plan 렁|R-PLAN/i.test(targets), `${copy} the retired plan rung is still named`).toBe(false);
   });
 
-  // AC-3: the per-wave set on the orchestrated rung, in full.
+  // AC-3 (as revised for 4.0.0): the per-wave set on the orchestrated rung, in full, with kiwi-sds in
+  // place of kiwi-planner (FR-FLOW-187 AC-2).
   it.each(LOOP_COPIES)("%s names the full per-wave propagation set", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
-    for (const child of ["kiwi-srs", "kiwi-planner", "kiwi-pm", "kiwi-review-fix-loop"]) {
-      expect(row[2].includes(child), `${copy} the per-wave set must include ${child}`).toBe(true);
+    for (const child of ["kiwi-srs", "kiwi-sds", "kiwi-pm", "kiwi-review-fix-loop"]) {
+      expect(at(row, 2).includes(child), `${copy} the per-wave set must include ${child}`).toBe(true);
     }
+    expect(at(row, 2).includes("kiwi-planner"), `${copy} the per-wave set still names the retired kiwi-planner`).toBe(false);
   });
 
-  // AC-4: the propagated options and the orchestrator's OWN cap list. Five, not six: listing a cap
-  // for the deferred per-lane loop would pin a contract with nothing behind it.
-  it.each(LOOP_COPIES)("%s names the propagated options and the five own loop caps", (copy) => {
+  // AC-4 (as revised for 4.0.0): the propagated options and the orchestrator's OWN cap list. Four:
+  // loop H left with the handoff documents (FR-FLOW-187 AC-4), and a lane is one wave's worker, whose
+  // loops belong to the children it calls — no per-lane loop is listed.
+  it.each(LOOP_COPIES)("%s names the propagated options and the four own loop caps", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
-    expect(row[3].includes("--mini"), `${copy} --mini must be named as propagated`).toBe(true);
-    expect(row[3].includes("--loops N"), `${copy} --loops N must be named as propagated`).toBe(true);
+    expect(at(row, 3).includes("--mini"), `${copy} --mini must be named as propagated`).toBe(true);
+    expect(at(row, 3).includes("--loops N"), `${copy} --loops N must be named as propagated`).toBe(true);
     expect(
-      /D\s*\/\s*W\s*\/\s*H\s*\/\s*P\s*\/\s*F|D, W, H, P (?:and|,) F/.test(row[3]),
-      `${copy} the orchestrator's own cap list must name the D, W, H, P and F loops`
+      /D\s*\/\s*W\s*\/\s*P\s*\/\s*F|D, W, P (?:and|,) F/.test(at(row, 3)),
+      `${copy} the orchestrator's own cap list must name the D, W, P and F loops`
+    ).toBe(true);
+    expect(/\bH\b/.test(at(row, 3)), `${copy} loop H left with the handoff documents and is still listed`).toBe(false);
+    expect(
+      /4\s*개|four/.test(at(row, 3)),
+      `${copy} the cap list must state its count; the number is what makes a fifth entry detectable`
     ).toBe(true);
     expect(
-      /5\s*개|five/.test(row[3]),
-      `${copy} the cap list must state its count; the number is what makes a sixth entry detectable`
-    ).toBe(true);
-    expect(
-      /per-lane|레인/.test(row[3]),
-      `${copy} the absent per-lane loop must be named as absent, not silently omitted`
-    ).toBe(true);
-    expect(
-      /이연|deferred/.test(row[3]),
-      `${copy} the reason the per-lane loop is absent must be recorded`
+      /per-lane|레인/.test(at(row, 3)) && /워커|worker/i.test(at(row, 3)),
+      `${copy} the absent per-lane loop must be named as absent, with the worker as the reason`
     ).toBe(true);
   });
 });

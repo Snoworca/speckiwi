@@ -1,4 +1,4 @@
-// @req FR-NODE-110, FR-NODE-114 — the routing classifier of `docs/research/kiwi-orchestrator/09.routing-design.md`.
+// @req FR-NODE-110, FR-NODE-114, FR-NODE-212 — the routing classifier of `docs/research/kiwi-orchestrator/09.routing-design.md`.
 //
 // The module is pure: no filesystem, no git, no network, no clock. It imports nothing, which is the
 // enforcement of that claim rather than a comment about it. `probe.json` is read by `parseRouteProbe`
@@ -8,15 +8,15 @@
 // property the whole design exists for — a wrong route always traces to one named predicate and one
 // recorded value.
 
-/** 09 §3.6. The closed rung vocabulary, in no particular order; `SELECTION_ORDER` is the ordered one. */
-export const RUNGS = ["R-STEP", "R-PLAN", "R-ORCH"] as const;
+/** 09 §3.6. The closed rung vocabulary; `SELECTION_ORDER` is the ordered one. The plan rung left with plan mode (FR-NODE-212). */
+export const RUNGS = ["R-STEP", "R-ORCH"] as const;
 
 export type Rung = (typeof RUNGS)[number];
 
 /** 09 §3.4. First surviving rung wins. `R-ORCH` is last because no predicate may remove it. */
-export const SELECTION_ORDER: readonly Rung[] = ["R-PLAN", "R-STEP", "R-ORCH"];
+export const SELECTION_ORDER: readonly Rung[] = ["R-STEP", "R-ORCH"];
 
-export const DISQUALIFIERS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"] as const;
+export const DISQUALIFIERS = ["D1", "D2", "D3", "D4", "D8"] as const;
 
 export type DisqualifierId = (typeof DISQUALIFIERS)[number];
 
@@ -24,7 +24,7 @@ export type DisqualifierId = (typeof DISQUALIFIERS)[number];
  * 09 §3.2. The S-rows a predicate reads. `S11` is the `unreadable[]` list itself and so is not a member,
  * and there is no `S13`: the probe's field set is closed (§4.6).
  */
-export const PROBE_FIELD_IDS = ["S1", "S2", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S12"] as const;
+export const PROBE_FIELD_IDS = ["S1", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S12"] as const;
 
 export type ProbeFieldId = (typeof PROBE_FIELD_IDS)[number];
 
@@ -32,12 +32,12 @@ export type ProbeFieldId = (typeof PROBE_FIELD_IDS)[number];
  * 09 §3.3 D8. The rung each probe field protects, as a **total** map: a field carrying no protected rung
  * maps to the empty list, never to `undefined`, so the loop below is defined for every member.
  *
- * `S1`'s fail-open lands on `wait` and is §4's business; `S6` feeds only §8.2 clause 3. `R-ORCH` is
- * never removed by anything, here or elsewhere.
+ * `S1`'s fail-open lands on `wait` and is §4's business; `S6` feeds only §8.2 clause 3. `S9` and `S10`
+ * are still recorded for the gate's evidence table but protect no rung since the plan rung they guarded
+ * was removed (FR-NODE-212 AC-2). `R-ORCH` is never removed by anything, here or elsewhere.
  */
 export const GATED_BY: Record<ProbeFieldId, readonly Rung[]> = {
   S1: [],
-  S2: ["R-PLAN"],
   S3: ["R-STEP"],
   S3c: ["R-STEP"],
   S4: ["R-STEP"],
@@ -45,8 +45,8 @@ export const GATED_BY: Record<ProbeFieldId, readonly Rung[]> = {
   S6: [],
   S7: ["R-STEP"],
   S8: ["R-STEP"],
-  S9: ["R-PLAN"],
-  S10: ["R-PLAN"],
+  S9: [],
+  S10: [],
   S12: ["R-STEP"]
 };
 
@@ -57,9 +57,9 @@ export const GATED_BY: Record<ProbeFieldId, readonly Rung[]> = {
  * `S11` is the likeliest of all, because 09 §3.2 names S11 as the unreadable list itself. Dropping such
  * an id would read "a field could not be read" as "every field was read", which is the fail-open
  * direction FR-NODE-111 exists to close; removing only one rung would need knowledge the id does not
- * carry. Both cheap rungs go, `R-ORCH` survives as always, and §8.2 clause 1 withholds the marker.
+ * carry. The cheap rung goes, `R-ORCH` survives as always, and §8.2 clause 1 withholds the marker.
  */
-export const UNRECOGNISED_FIELD_GATES: readonly Rung[] = ["R-PLAN", "R-STEP"];
+export const UNRECOGNISED_FIELD_GATES: readonly Rung[] = ["R-STEP"];
 
 /** Total over every string, which is what makes `computeRoute` total over every probe (09 §3.3 D8). */
 export function gatedRungsFor(field: string): readonly Rung[] {
@@ -68,7 +68,7 @@ export function gatedRungsFor(field: string): readonly Rung[] {
   return Object.prototype.hasOwnProperty.call(GATED_BY, field) ? GATED_BY[field as ProbeFieldId] : UNRECOGNISED_FIELD_GATES;
 }
 
-export const CLASSIFIER_VERSION = "route-classifier@1.0.0";
+export const CLASSIFIER_VERSION = "route-classifier@2.0.0";
 
 // 09 §3.3. Every threshold is stated once, in its own unit, and read by both the predicate that fires on
 // it and the margin §8.2 clause 2 computes from it. Two copies would let a predicate and its margin
@@ -83,11 +83,6 @@ const TASK_LIST_GROUPS_THRESHOLD = 1;
 export interface RouteProbe {
   mode: "sdd" | "vibe" | "wait" | "tdd";        // S1.mode
   modeSource: "mcp" | "cli" | "default-wait";   // S1.source
-  planContractOk: boolean;                      // S2.contract_ok
-  planRejectReason: string | null;              // S2.reject_reason
-  planOpenTasks: number;                        // S2.open_tasks
-  planReqIds: string[];                         // S2.req_ids (open Tasks)
-  planTarget: string | null;                    // S2.target
   anchoredReqs: string[];                       // S3.anchored_reqs[]
   anchorCoverage: number;                       // S3c.anchor_coverage
   scopes: string[];                             // S4.scopes[]
@@ -139,20 +134,6 @@ export interface RouteOptions {
   auto: boolean;
 }
 
-/** 09 §3.3 D6. Which branch of the coverage test ran, and what it observed. */
-interface CoverageDiff {
-  branch: "anchored" | "substitute";
-  open_tasks: number;
-  plan_target: string | null;
-  active_target: string | null;
-  intersection: string[];
-}
-
-function intersect(left: readonly string[], right: readonly string[]): string[] {
-  const other = new Set(right);
-  return left.filter((value) => other.has(value));
-}
-
 /**
  * 09 §3.2 S3c. The anchor set carries signal only above the coverage floor: in a repository whose
  * requirements were never implemented through `kiwi-coder`, S3 is empty everywhere and would clear the
@@ -160,21 +141,6 @@ function intersect(left: readonly string[], right: readonly string[]): string[] 
  */
 function anchorSetCarriesSignal(probe: RouteProbe): boolean {
   return probe.anchoredReqs.length > 0 && probe.anchorCoverage >= ANCHOR_COVERAGE_FLOOR;
-}
-
-function coverageDiff(probe: RouteProbe): CoverageDiff {
-  const anchored = anchorSetCarriesSignal(probe);
-  return {
-    branch: anchored ? "anchored" : "substitute",
-    open_tasks: probe.planOpenTasks,
-    plan_target: probe.planTarget,
-    active_target: probe.activeTarget,
-    intersection: anchored ? intersect(probe.anchoredReqs, probe.planReqIds) : intersect(probe.planReqIds, probe.scopeReqIds)
-  };
-}
-
-function coversThisWork(diff: CoverageDiff): boolean {
-  return diff.plan_target === diff.active_target && diff.intersection.length > 0;
 }
 
 /**
@@ -191,25 +157,6 @@ function stagedInput(probe: RouteProbe): { ordered_sections: number; linked_sub_
   if (probe.linkedSubIssues >= LINKED_SUB_ISSUES_THRESHOLD) fired.push("linked_sub_issues");
   if (probe.taskListGroups >= TASK_LIST_GROUPS_THRESHOLD) fired.push("task_list_groups");
   return { ordered_sections: probe.orderedSections, linked_sub_issues: probe.linkedSubIssues, task_list_groups: probe.taskListGroups, fired };
-}
-
-/**
- * 09 §3.3 D7's two disjuncts, and which of them fired.
- *
- * The design's §3.6 code block records `p.blockedStability` whichever disjunct fired, so a removal
- * caused by an empty active target is written into the lock and into the gate's committee evidence
- * table as *"D7 observed []"* — the one value it did not fire on. FR-NODE-110 AC-3 requires `observed`
- * to record the value the predicate fired on, so the requirement is followed here and the design's
- * code block is not, exactly as for D4 above. The two grounds are not interchangeable: an empty
- * `activeTarget` is a guaranteed child halt at `kiwi-pm`'s lifecycle gate, while a blocked
- * requirement is the routing-side guard D7 is the sole enforcement point for, so a shape that could
- * record only one of them would hide the more severe ground whenever both fired.
- */
-function lifecycleBlock(probe: RouteProbe): { active_target: string | null; blocked_stability: string[]; fired: string[] } {
-  const fired: string[] = [];
-  if (!probe.activeTarget) fired.push("active_target");
-  if (probe.blockedStability.length > 0) fired.push("blocked_stability");
-  return { active_target: probe.activeTarget, blocked_stability: probe.blockedStability, fired };
 }
 
 /**
@@ -233,9 +180,7 @@ export function predicateMargin(predicate: DisqualifierId, probe: RouteProbe): n
 /**
  * 09 §8.2. The removal of the rung **nearest above** the selected one in the fixed order — the removal
  * that made the selected rung first-surviving. When several predicates removed that rung the lowest
- * D-id wins. `R-PLAN` is first in the order, so an `R-PLAN` selection always yields `null`, and clause 2
- * then fails rather than passing vacuously: a run with nothing removed has no measured discrimination
- * to fast-path on.
+ * D-id wins. `R-STEP` is first in the order, so an `R-STEP` selection always yields `null`.
  */
 function decisiveRemoval(rung: Rung, removed: readonly RouteRemoval[]): RouteDecisive | null {
   const above = SELECTION_ORDER[SELECTION_ORDER.indexOf(rung) - 1];
@@ -262,14 +207,19 @@ function marginClause(decisive: RouteDecisive, probe: RouteProbe, removed: reado
  * 09 §8.2's five clauses. A gate offering a recommended option adopts it immediately with no committee,
  * so the marker is the zero-deliberation path; it is auditable only because it is a pure function of the
  * recorded probe, and `withheld_because[]` names the clause that failed.
+ *
+ * Clause 2 is scoped to an `R-ORCH` selection (FR-NODE-114 AC-3): with `R-STEP` first in the order no rung
+ * sits above it, so reading clause 2 on an `R-STEP` selection would withhold the marker from every one.
  */
 function withheldBecause(probe: RouteProbe, rung: Rung, removed: readonly RouteRemoval[], decisive: RouteDecisive | null): string[] {
   const withheld: string[] = [];
   if (probe.unreadable.length > 0) withheld.push(`clause-1: probe fields unreadable: ${probe.unreadable.join(", ")}`);
-  if (!decisive) withheld.push(`clause-2: no rung above ${rung} was removed, so nothing discriminated`);
-  else {
-    const failure = marginClause(decisive, probe, removed);
-    if (failure) withheld.push(failure);
+  if (rung === "R-ORCH") {
+    if (!decisive) withheld.push(`clause-2: no rung above ${rung} was removed, so nothing discriminated`);
+    else {
+      const failure = marginClause(decisive, probe, removed);
+      if (failure) withheld.push(failure);
+    }
   }
   if (!(probe.ambiguities === 0)) withheld.push(`clause-3: ${probe.ambiguities} ambiguities survive the intake QnA`);
   if (rung === "R-STEP" && probe.modeSource === "default-wait") withheld.push("clause-4: the work-mode could not be read, so its source is default-wait");
@@ -301,11 +251,6 @@ export function computeRoute(probe: RouteProbe, opts: RouteOptions): RouteDecisi
   if (probe.scopes.length >= MULTI_SCOPE_THRESHOLD) kill("R-STEP", "D3", probe.scopes);
   const staged = stagedInput(probe);
   if (staged.fired.length > 0) kill("R-STEP", "D4", staged);
-  if (!probe.planContractOk) kill("R-PLAN", "D5", probe.planRejectReason);
-  const diff = coverageDiff(probe);
-  if (probe.planOpenTasks === 0 || !coversThisWork(diff)) kill("R-PLAN", "D6", diff);
-  const lifecycle = lifecycleBlock(probe);
-  if (lifecycle.fired.length > 0) kill("R-PLAN", "D7", lifecycle);
   for (const field of probe.unreadable) for (const rung of gatedRungsFor(field)) kill(rung, "D8", field);
 
   const dead = new Set(removed.map((entry) => entry.rung));

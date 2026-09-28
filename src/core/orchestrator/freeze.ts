@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { canonicalJson } from "./canonical-json.js";
-import type { LanePlanInput } from "./lane-plan.js";
+import type { WaveDependencies } from "./conflict.js";
+import type { LanePlan, LanePlanInput } from "./lane-plan.js";
 
 /**
- * Lock generation — 05 §3.3a's six freeze targets, their common envelope and their per-kind bodies.
+ * Lock generation — 05 §3.3a's freeze targets (five since 4.0.0), their common envelope and their per-kind bodies.
  *
  * @req FR-NODE-138
  *
@@ -14,60 +15,98 @@ import type { LanePlanInput } from "./lane-plan.js";
  * property a Layer-1 unit test rather than one that reads disk.
  */
 
-/** 05 §3.3a. Revision 2 stated three different sets of five; the set is six and this is the census. */
-export const FREEZE_LOCK_KINDS = ["design", "waves", "lanes", "handoff", "issues", "postmortem"] as const;
+/**
+ * 05 §3.3a. Revision 2 stated three different sets of five; the set was six and this is the census.
+ * @req FR-NODE-138 AC-1 — five since 4.0.0: `handoff` left with the English handoff documents.
+ */
+export const FREEZE_LOCK_KINDS = ["design", "waves", "lanes", "issues", "postmortem"] as const;
 export type FreezeLockKind = (typeof FREEZE_LOCK_KINDS)[number];
 
 export const LOCK_SCHEMA_VERSION = "1.0.0";
 
 /**
- * The five `lanes.lock.json` fields that record an input as a digest.
- *
- * @req FR-NODE-138 AC-5 — five, not six: §22 C-27 corrected the gloss in place.
+ * The `lanes.lock.json` field that records an input as a digest: one SDS digest per wave, keyed by
+ * wave id, each covering the write set derived from that SDS. @req FR-NODE-138 AC-5, FR-NODE-213 AC-2
  */
-export const LANES_LOCK_DIGEST_FIELDS = [
-  "sidecar_digest",
-  "registry_digest",
-  "existing_paths_digest",
-  "design_item_map_digest",
-  "prior_postmortem_digests"
-] as const;
+export const LANES_LOCK_DIGEST_FIELDS = ["sds_digests"] as const;
 
 /**
- * The eight fields `lanes.lock.json` records: the five digests above plus `lane_cap`, `code_roots`
- * and `test_roots`, which are recorded as literal values because a digest of a number or of a short
- * array buys nothing a §4.7 digest-3 recomputation could use (§22 AA-01, Z8).
- *
- * Eight recorded fields, nine pinned inputs — `sidecar_digest` covers two. The two counts are not in
- * conflict; see `LANE_PLAN_INPUT_PINS`.
+ * The fields `lanes.lock.json` records: the SDS digests plus `depends` and `lane_cap`, which are
+ * recorded as literal values because a digest of a short map or of a number buys nothing a §4.7
+ * digest-3 recomputation could use.
  */
-export const LANES_LOCK_RECORDED_INPUT_FIELDS = [
-  ...LANES_LOCK_DIGEST_FIELDS,
-  "lane_cap",
-  "code_roots",
-  "test_roots"
-] as const;
+export const LANES_LOCK_RECORDED_INPUT_FIELDS = [...LANES_LOCK_DIGEST_FIELDS, "depends", "lane_cap"] as const;
 export type LanesLockRecordedField = (typeof LANES_LOCK_RECORDED_INPUT_FIELDS)[number];
 
 /**
- * Which recorded field pins each of `computeLanePlan`'s nine declared inputs.
+ * Which recorded field pins each of `computeLanePlan`'s declared inputs.
  *
  * @req FR-NODE-138 AC-6 — the map is keyed on `keyof LanePlanInput`, so an input added to the kernel
  * without a recorded field to pin it fails to compile here rather than making §4.7 digest 3 silently
  * recompute against an input the lock never named.
  */
 export const LANE_PLAN_INPUT_PINS: Record<keyof LanePlanInput, LanesLockRecordedField> = {
-  // `existing_modules` is derived from the sidecar, so one digest covers both (§4.7 digest 3).
-  catalog: "sidecar_digest",
-  existingModules: "sidecar_digest",
-  registry: "registry_digest",
-  existingPaths: "existing_paths_digest",
-  designItemMap: "design_item_map_digest",
-  priorPostmortems: "prior_postmortem_digests",
-  laneCap: "lane_cap",
-  codeRoots: "code_roots",
-  testRoots: "test_roots"
+  waves: "sds_digests",
+  dependencies: "depends",
+  laneCap: "lane_cap"
 };
+
+/**
+ * What the lock records for one wave's SDS: the sha256 of its file, or — for a wave scheduled from
+ * several SDS files (`--sds <waveId>=<file>,<file>`) — one sha256 per file, keyed by path, so the
+ * §4.7 digest-3 check sees each file rather than a combination that hides which one moved.
+ * @req FR-NODE-213 AC-2
+ */
+export type WaveSdsDigest = string | Readonly<Record<string, string>>;
+
+export interface LanesLockSource {
+  readonly plan: LanePlan;
+  /** The dependencies as declared — a wave with no key depends on every earlier wave. */
+  readonly dependencies: WaveDependencies;
+  readonly laneCap: number;
+  /** Each wave's SDS digest, keyed by wave id. */
+  readonly sdsDigests: Readonly<Record<string, WaveSdsDigest>>;
+  /** Each wave's SDS path, or its SDS files in `--sds` order, keyed by wave id. */
+  readonly sdsPaths: Readonly<Record<string, string | readonly string[]>>;
+}
+
+function sortedKeys<T>(record: Readonly<Record<string, T>>, map: (value: T) => T): Record<string, T> {
+  return Object.fromEntries(Object.keys(record).sort().map((key) => [key, map(record[key] as T)]));
+}
+
+function sortedDigest(digest: WaveSdsDigest): WaveSdsDigest {
+  return typeof digest === "string" ? digest : sortedKeys(digest, (fileDigest) => fileDigest);
+}
+
+function sdsPathOf(sds: string | readonly string[] | undefined): string | string[] | null {
+  if (sds === undefined) return null;
+  return typeof sds === "string" ? sds : [...sds];
+}
+
+/**
+ * The `lanes.lock.json` document `orchestrate schedule waves` writes, which is also a valid `lanes`
+ * freeze body. Every map is written in sorted key order and every dependency list sorted, so equal
+ * inputs produce equal bytes however the caller ordered its `--depends` object.
+ * @req FR-NODE-213 AC-1, AC-2
+ */
+export function buildLanesLockBody(source: LanesLockSource): Record<string, unknown> {
+  return {
+    lane_cap: source.laneCap,
+    depends: sortedKeys(source.dependencies, (list) => [...new Set(list)].sort()),
+    sds_digests: sortedKeys(source.sdsDigests, sortedDigest),
+    lane_count: source.plan.laneCount,
+    stage_count: source.plan.stageCount,
+    lanes: source.plan.lanes.map((lane) => ({
+      laneId: lane.laneId,
+      stage: lane.stage,
+      wave: lane.wave,
+      sds: sdsPathOf(source.sdsPaths[lane.wave]),
+      writeSet: lane.writeSet
+    })),
+    stages: source.plan.stages,
+    conflicts: source.plan.conflicts
+  };
+}
 
 export interface LanePlanInputPin {
   readonly recordedField: LanesLockRecordedField;
@@ -75,10 +114,10 @@ export interface LanePlanInputPin {
 }
 
 /**
- * The nine declared `computeLanePlan` inputs, each resolved to the value the lock **itself** recorded.
+ * The declared `computeLanePlan` inputs, each resolved to the value the lock **itself** recorded.
  *
- * @req FR-NODE-138 AC-6 — §4.7 digest 3 recomputes "the nine inputs the lock itself records, not the
- * nine inputs available today", and this is the function that reads them back.
+ * @req FR-NODE-138 AC-6 — §4.7 digest 3 recomputes the inputs the lock itself records, not the inputs
+ * available today, and this is the function that reads them back.
  */
 export function reconstructLanePlanInputPins(lanesBody: Record<string, unknown>): Record<keyof LanePlanInput, LanePlanInputPin> {
   const entries = Object.entries(LANE_PLAN_INPUT_PINS) as Array<[keyof LanePlanInput, LanesLockRecordedField]>;
@@ -124,52 +163,45 @@ export type FreezeRefusalCode = "unknown-lock-kind" | "lock-body-invalid";
 export type FreezeResult = { readonly ok: true; readonly lock: Lock } | { readonly ok: false; readonly code: FreezeRefusalCode; readonly detail: string };
 
 // ---------------------------------------------------------------------------------------------
-// The six per-kind body schemas — 05 §3.3a
+// The five per-kind body schemas — 05 §3.3a
 // ---------------------------------------------------------------------------------------------
 
 /**
  * A body's required keys. Presence, not deep shape: the deep shapes are produced by kernels that
- * already type them (`computeLanePlan` for `lanes`, `planStageCoupling` for `postmortem`), and
- * re-validating them here would be a second, drift-prone declaration of the same contract.
- * `null` is an admissible value — `stage` is marked `null` for an `epilogue` handoff (§22 AC-07) —
- * so the check is key presence rather than a truthiness test.
+ * already type them (`computeLanePlan` for `lanes`), and re-validating them here would be a second,
+ * drift-prone declaration of the same contract. The one lanes-kind exception is the digest-per-wave
+ * pairing, which no kernel produces.
+ * The check is key presence rather than a truthiness test, so a field recorded as `null` is present.
  */
 const REQUIRED_BODY_FIELDS: Record<FreezeLockKind, readonly string[]> = {
   design: ["design_items", "integration_items", "out_of_scope"],
   waves: ["waves", "wave_count"],
-  lanes: [
-    "plan_run_id",
-    "sidecar_path",
-    ...LANES_LOCK_RECORDED_INPUT_FIELDS,
-    "lane_count",
-    "stage_count",
-    "lanes",
-    "serial_epilogue",
-    "unassigned",
-    "serialized",
-    "conflicts"
-  ],
-  // One schema serves all three `handoff_kind` values (§3.3a); the carve-outs are on the *values*
-  // (`task_field_count: 0` for `remediation`, `stage: null` for `epilogue`), never on the key set.
-  handoff: [
-    "handoff_kind",
-    "lane_id",
-    "stage",
-    "handoff_path",
-    "handoff_git_blob_oid",
-    "handoff_sha256",
-    "front_matter_digest",
-    "body_heading_digests",
-    "task_field_count",
-    "acceptance_row_count",
-    "untested_row_count"
-  ],
+  lanes: [...LANES_LOCK_RECORDED_INPUT_FIELDS, "lane_count", "stage_count", "lanes", "conflicts"],
   issues: ["wave", "issues", "counts"],
   postmortem: ["waves"]
 };
 
 function isFreezeLockKind(value: string): value is FreezeLockKind {
   return (FREEZE_LOCK_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * @req FR-NODE-138 AC-5 — one SDS digest per wave the lanes carry, and none for a wave they do not.
+ * A wave with no digest is a wave digest 3 can never find drifted, which is the one lanes-kind property
+ * key presence alone does not establish.
+ */
+function sdsDigestMismatch(body: Record<string, unknown>): string | null {
+  const digests = body.sds_digests;
+  const lanes = body.lanes;
+  if (digests === null || typeof digests !== "object" || Array.isArray(digests) || !Array.isArray(lanes)) {
+    return "lanes lock body needs sds_digests as an object keyed by wave and lanes as an array";
+  }
+  const waves = new Set(lanes.map((lane) => (lane !== null && typeof lane === "object" ? (lane as { wave?: unknown }).wave : undefined)));
+  const keys = new Set(Object.keys(digests));
+  const undigested = [...waves].filter((wave) => typeof wave !== "string" || !keys.has(wave));
+  const orphaned = [...keys].filter((key) => !waves.has(key));
+  if (undigested.length === 0 && orphaned.length === 0) return null;
+  return `lanes lock sds_digests must name exactly the waves its lanes carry: without a digest [${undigested.map(String).join(", ")}], digest without a lane [${orphaned.join(", ")}]`;
 }
 
 function sha256Hex(text: string): string {
@@ -179,7 +211,7 @@ function sha256Hex(text: string): string {
 /**
  * Freezes one lock.
  *
- * @req FR-NODE-138 — six kinds, per-kind body validation, and byte-identical output for the same
+ * @req FR-NODE-138 — five kinds, per-kind body validation, and byte-identical output for the same
  * `(kind, body, inputs)` triple. A body that fails its schema is **refused**, not frozen: the five
  * gates that read these locks would otherwise read a lock missing the field they key on.
  *
@@ -198,6 +230,10 @@ export function freezeLock(kind: FreezeLockKind, body: Record<string, unknown>, 
   const missing = REQUIRED_BODY_FIELDS[kind].filter((field) => !Object.prototype.hasOwnProperty.call(body, field));
   if (missing.length > 0) {
     return { ok: false, code: "lock-body-invalid", detail: `${kind} lock body is missing required field(s): ${missing.join(", ")}` };
+  }
+  if (kind === "lanes") {
+    const mismatch = sdsDigestMismatch(body);
+    if (mismatch !== null) return { ok: false, code: "lock-body-invalid", detail: mismatch };
   }
 
   const inputsDigest = sha256Hex(canonicalJson(inputs.declaredInputs));

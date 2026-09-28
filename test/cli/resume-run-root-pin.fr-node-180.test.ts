@@ -58,9 +58,9 @@ function card(pinnedToplevel: string): ResumeCard {
     run_contract: "docs/research/demo/00.run-contract.md@sha256:9f1c",
     position: { wave: 1, stage: 1, phase: "execute" },
     next_action: {
-      verb: "execute-unit",
+      verb: "dispatch-lane",
       args: { wave: 1, stage: 1, lane: "lane-1" },
-      preconditions: ["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-HANDOFF-VERIFIED", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]
+      preconditions: ["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]
     },
     frozen,
     done: [{ key: "intake", proof: { kind: "digest", ref: "design/00.design.lock.json@sha256:4ab0" } }],
@@ -73,14 +73,9 @@ function card(pinnedToplevel: string): ResumeCard {
 
 function facts(): string {
   const recorded = {
-    sidecarDigest: "sha256:sidecar",
-    registryDigest: "sha256:registry",
-    existingPathsDigest: "sha256:paths",
-    designItemMapDigest: "sha256:map",
-    priorPostmortemDigests: [],
-    laneCap: 8,
-    codeRoots: ["src/**"],
-    testRoots: ["test/**"]
+    sdsDigests: { "run-wave-1": "sha256:sds-1" },
+    depends: {},
+    laneCap: 8
   };
   return JSON.stringify({
     gitFacts: { branches: [], worktrees: [], heartbeats: [], integrationHead: "aaaa111", hostStatusPaths: [], integrationCommits: [] },
@@ -94,13 +89,7 @@ function facts(): string {
         postmortem: ""
       },
       recordedLaneInputs: recorded,
-      recomputedLaneInputDigests: {
-        sidecarDigest: recorded.sidecarDigest,
-        registryDigest: recorded.registryDigest,
-        existingPathsDigest: recorded.existingPathsDigest,
-        designItemMapDigest: recorded.designItemMapDigest,
-        priorPostmortemDigests: []
-      },
+      recomputedLaneInputDigests: { sdsDigests: { ...recorded.sdsDigests }, closedOutWaves: [] },
       freshIntentDigests: {},
       handoffProseDigests: {}
     }
@@ -202,9 +191,10 @@ describe("FR-NODE-180 — resume checks the repository it is resuming in", () =>
     // Delete the pin and re-stamp the digest: the card is then entirely self-consistent, passes
     // validation, and — before this criterion — resumed with no repository check whatsoever. That is
     // the same forgery FR-NODE-178 was written against, one requirement later.
-    const unpinned = card(root) as ResumeCard & { frozen: Record<string, unknown> };
-    delete unpinned.frozen.run_root;
-    unpinned.invariant_digest = computeInvariantDigest(unpinned.frozen as ResumeCard["frozen"]);
+    const unpinned = card(root);
+    const frozen: Record<string, unknown> = unpinned.frozen;
+    delete frozen.run_root;
+    unpinned.invariant_digest = computeInvariantDigest(unpinned.frozen);
     await write(root, resumeCardPath(RUN_ID), `${JSON.stringify(unpinned, null, 2)}\n`);
     const pipes = io();
     const exit = await main(["--root", root, "orchestrate", "resume", "--run-id", RUN_ID, "--facts", "facts.json", "--json"], pipes);

@@ -43,7 +43,9 @@ reasonable option to adopt (select), instead of a single rubber-stamp worker. Un
 the decision committee is raised to 5 members. The committee decides by **simple majority** — the
 option holding strictly more than half of the votes cast — and adopts that option immediately;
 unanimity is not required. Committee members are isolated sub-agents spawned in a single message (3
-for `--auto`, 5 for `--auto --max`) and inherit the current session model unless `--model <name>`
+for `--auto`, 5 for `--auto --max`) — except under `--serial` (or a natural-language serial request,
+`parallel-waves.md` §2), where they are spawned one at a time, each still a fresh isolated sub-agent
+with the same prompt that never sees an earlier member's vote; only the concurrency changes — and inherit the current session model unless `--model <name>`
 overrides the committee model (no dual-model evaluator panel). Members are numbered for
 identification only; no member's vote outweighs another's. Use current Codex delegation tools; if
 delegation is unavailable, halt instead of guessing for high-risk gates.
@@ -98,7 +100,7 @@ vocabulary the prose below stays the only rule.
      beside `key`, `label` and `consequence`. It is opt-in: an option without the field is not
      recommended.
    - A prose `(권장)` label in skill text carries **no machine meaning** and is **never parsed** as a
-     recommendation. Two of the three such labels in `kiwi-pm` annotate a HALT option, so a prose
+     recommendation. Both such labels in `kiwi-pm` annotate a HALT option, so a prose
      scan would auto-adopt a recommended HALT.
    - This contract does not judge **why an option is recommended** — it declares no field describing
      the motive and no criterion for weighing it.
@@ -221,7 +223,6 @@ Recommended catalog:
 - `stability-stable-promotion`
 - `stability-frozen-violation`
 - `sha-mismatch-on-resume`
-- `depends-on-violation`
 - `t-final-backward-transition`
 - `push-conflict-rebase-merge-choice`
 - `mcp-unavailable`

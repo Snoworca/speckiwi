@@ -16,7 +16,7 @@ import { main } from "../../src/cli/index.js";
  */
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 interface InitReport {
@@ -26,8 +26,8 @@ interface InitReport {
   warnings: string[];
 }
 
-function readJson(stream: NodeJS.WriteStream): { ok: boolean; value: InitReport } {
-  const raw = (stream as unknown as PassThrough).read();
+function readJson(stream: PassThrough): { ok: boolean; value: InitReport } {
+  const raw = stream.read();
   if (!raw) throw new Error("init command produced no JSON output on stdout");
   return JSON.parse(String(raw)) as { ok: boolean; value: InitReport };
 }

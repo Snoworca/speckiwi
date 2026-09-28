@@ -45,13 +45,12 @@
 ```json
 {
   "spec_files": ["docs/spec/...srs.md", ...],
-  "plan_file": "docs/plans/{run-id}.plan.md" | null,
-  "sidecar_file": "docs/plans/{run-id}.sidecar.json" | null,
+  "sds_files": ["docs/sds/{sds-id}.sds.md", ...],
   "analysis_dir": "docs/analysis/kiwi-{skill}-{run-id}/" | null
 }
 ```
 
-생성하지 않은 산출물은 `null` 또는 빈 배열.
+생성하지 않은 산출물은 `null` 또는 빈 배열. 4.0.0 이전 줄이 싣는 `plan_file` · `sidecar_file` 은 읽는 쪽이 무시한다 — `artifacts` 의 내용은 검증 대상이 아니다.
 
 ### 2.3 선택 필드
 
@@ -73,7 +72,7 @@ kiwi-srs-from-code
 kiwi-srs-sync
 kiwi-srs-feasibility
 kiwi-srs-research
-kiwi-planner
+kiwi-sds
 kiwi-coder
 kiwi-pm
 kiwi-commit-auto-push
@@ -96,15 +95,15 @@ kiwi-tdd
 |---|---|---|
 | kiwi-srs / kiwi-srs-from-code | TASK_DONE | `kiwi-srs-feasibility` |
 | kiwi-srs-sync | TASK_DONE | `kiwi-pipeline` (재평가) |
-| kiwi-srs-feasibility | TASK_DONE | `kiwi-planner` (stability ≥ evolving 시) 또는 `kiwi-srs-research` (블로커 모호 시) |
+| kiwi-srs-feasibility | TASK_DONE | `kiwi-sds` (stability ≥ evolving 시) 또는 `kiwi-srs-research` (블로커 모호 시) |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
-| kiwi-planner | TASK_DONE | `kiwi-pm` |
-| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증 후) |
+| kiwi-sds | TASK_DONE | `kiwi-pm` (작성 실행). `--close` 실행은 자기 `next_hint` 를 직접 정한다(그 스킬의 close-out 절) |
+| kiwi-pm | TASK_DONE | `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
-| kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
-| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 plan or 종료) |
+| kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 작업 or 종료) |
+| kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 작업 or 종료) |
 | kiwi-tdd | TASK_DONE | `kiwi-review-fix-loop` (step 승격 후 셀프 리뷰 게이트) |
 | kiwi-wave-master | TASK_DONE | `null` (종료) |
 | kiwi-orchestrator | TASK_DONE | `null` (종료) — run 은 **자기 통합 브랜치** 위에서 검증까지 마치고 끝난다. base 브랜치로의 commit·push 와 PR 생성은 **의도적으로** 자동 연결하지 않는다 |
@@ -129,7 +128,7 @@ elif [ -d "./kiwi" ]; then PIPE_DIR="./kiwi"
 else PIPE_DIR="$HOME/.kiwi"; fi
 mkdir -p "$PIPE_DIR"
 EVENT=$(cat <<'EOF'
-{"ts":"<ISO-8601>","schema_version":"1.0.0","skill":"kiwi-<name>","run_id":"<rid>","target":"<t>","status":"TASK_DONE","summary":"<one-liner>","next_hint":"kiwi-<next>","artifacts":{"spec_files":[],"plan_file":null,"sidecar_file":null,"analysis_dir":null},"dry_run":false}
+{"ts":"<ISO-8601>","schema_version":"1.0.0","skill":"kiwi-<name>","run_id":"<rid>","target":"<t>","status":"TASK_DONE","summary":"<one-liner>","next_hint":"kiwi-<next>","artifacts":{"spec_files":[],"sds_files":[],"analysis_dir":null},"dry_run":false}
 EOF
 )
 echo "$EVENT" >> "$PIPE_DIR/pipeline.jsonl"
@@ -151,13 +150,13 @@ grep -q "\"run_id\":\"<rid>\"" "$PIPE_DIR/pipeline.jsonl" 2>/dev/null && echo "[
 
 ### 5.4 재진입 멱등 키
 
-부모 오케스트레이터(`kiwi-wave-master`)의 개선 위임이 같은 run 을 다시 돌리는 **재진입** 실행은 emit 키에 회차 접미사를 붙인다: `{run_id}#r{n}` (`n` = 그 run 의 재진입 회차, 1-based).
+같은 run 을 범위를 좁혀 다시 돌리는 **재진입** 실행(`kiwi-pipeline` §7.5)은 emit 키에 회차 접미사를 붙인다: `{run_id}#r{n}` (`n` = 그 run 의 재진입 회차, 1-based).
 
 §5.2 의 멱등 skip 은 **같은 키**에만 적용한다 — bare `run_id` 를 재사용하면 재진입이 skip 되어 체인이 볼 새 `TASK_DONE` 이 생기지 않는다.
 
-본 규약은 `kiwi-pipeline` · `kiwi-planner` · `kiwi-pm` 이 함께 따른다 — 세 스킬 모두 run 을 재사용해 다시 실행될 수 있고, 한 곳만 접미사를 쓰면 나머지가 이벤트를 남기지 못한다.
+본 규약은 `kiwi-pipeline` · `kiwi-sds` · `kiwi-pm` 이 함께 따른다 — 세 스킬 모두 run 을 재사용해 다시 실행될 수 있고, 한 곳만 접미사를 쓰면 나머지가 이벤트를 남기지 못한다.
 
-emit 키는 계획 산출물의 `run_id` 와 **다른 id 공간**이다 — 사이드카 id 정규식 `[a-z0-9.-]{4,40}` 은 emit 키에 **적용하지 않는다**. 그 정규식은 계획 산출물의 식별자를 검사하는 규칙이고, emit 키는 저널의 중복 판정에만 쓰인다.
+emit 키는 SDS 식별자와 **다른 id 공간**이다 — `--sds-id` 의 문자 규칙(소문자·숫자·`.`·`-`)은 emit 키에 **적용하지 않는다**. 그 규칙은 SDS 파일 이름이 되는 식별자의 것이고, emit 키는 저널의 중복 판정에만 쓰인다.
 
 ### 5.5 실패 시
 

@@ -86,7 +86,7 @@ describe("FR-NODE-043 FND-006 — update_step_state honours dryRun", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.written).toBe(false);
+      expect(result.value?.written).toBe(false);
     }
     expect(await readStateMd(root)).toBe(before);
   });

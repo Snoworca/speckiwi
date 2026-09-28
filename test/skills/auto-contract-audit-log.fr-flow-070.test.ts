@@ -6,6 +6,7 @@ import {
   jsonBlockAfter,
   windowsAround
 } from "../support/auto-option-copies.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-070
 // FR-FLOW-070 — the `--auto` decision audit log records zero-vote adoptions, and the
@@ -29,7 +30,7 @@ const RULE_VOCABULARY = ["majority", "recommended-fastpath", "default-if-auto"] 
 
 /** Every `merge_method.rule` value in the copy's audit-log section, in document order. */
 function ruleValues(text: string): string[] {
-  return [...text.matchAll(/"rule"\s*:\s*"([^"]+)"/g)].map((m) => m[1]);
+  return [...text.matchAll(/"rule"\s*:\s*"([^"]+)"/g)].map((m) => at(m, 1));
 }
 
 interface AuditDecision {

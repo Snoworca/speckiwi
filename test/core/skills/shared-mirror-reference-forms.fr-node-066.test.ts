@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { installSkill } from "../../../src/core/skills/install-skill.js";
 import type { SkillInstallOptions } from "../../../src/core/skills/types.js";
+import { at } from "../../support/at.js";
 
 // @req FR-NODE-066 — the shared mirror must materialise the `_shared/kiwi/*` files an installed
 // skill references, whatever spelling that skill uses for the reference.
@@ -220,7 +221,7 @@ describe("FR-NODE-066 — the shared mirror follows the reference, not one spell
       const referenced = new Set<string>();
       for (const entry of installedSkills) {
         const body = await readFile(path.join(dest, entry.name, "SKILL.md"), "utf8").catch(() => "");
-        for (const match of body.matchAll(/_shared\/kiwi\/([A-Za-z0-9._-]+\.md)/g)) referenced.add(match[1]);
+        for (const match of body.matchAll(/_shared\/kiwi\/([A-Za-z0-9._-]+\.md)/g)) referenced.add(at(match, 1));
       }
       expect(referenced.size, `${variant}: shipped skills reference no shared contract`).toBeGreaterThan(0);
 

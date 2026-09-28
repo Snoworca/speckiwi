@@ -10,6 +10,7 @@ import type { RequirementStatus, Stability } from "../../../src/core/types.js";
 // src/core/query/summary.ts. Importing the not-yet-existing export makes the
 // whole suite red until then.
 import { listDirtyEdges } from "../../../src/core/query/summary.js";
+import { at } from "../../support/at.js";
 
 // FR-NODE-040 — list_dirty_edges read path with clean whitelist gate.
 //
@@ -247,7 +248,7 @@ function edgeFor(
 ) {
   const matches = edges.filter((edge) => edge.self === self && edge.peer === peer);
   expect(matches).toHaveLength(1);
-  return matches[0];
+  return at(matches, 0);
 }
 
 describe("FR-NODE-040 list_dirty_edges read path with clean whitelist gate", () => {

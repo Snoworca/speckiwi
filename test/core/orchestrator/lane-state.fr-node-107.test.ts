@@ -31,7 +31,7 @@ function result(overrides: Partial<WavesEvent>): WavesEvent {
     stage: 1,
     lane: "lane-1",
     event: "result",
-    verb: "execute-unit",
+    verb: "collect-lane",
     status: "complete",
     ...overrides
   };
@@ -55,13 +55,47 @@ function ok<T extends { ok: boolean }>(value: T): Extract<T, { ok: true }> {
   return value as Extract<T, { ok: true }>;
 }
 
-describe("FR-NODE-107 AC-2 — lane_disposition.kind is a closed four-value enum", () => {
-  it("declares exactly demoted | quarantined | coupling-reset | refuted", () => {
-    expect([...LANE_DISPOSITION_KINDS]).toEqual(["demoted", "quarantined", "coupling-reset", "refuted"]);
-    expect(LANE_DISPOSITION_KINDS).toHaveLength(4);
+describe("FR-NODE-107 AC-2 — lane_disposition.kind is a closed two-value enum", () => {
+  it("FR-NODE-107 AC-2 declares exactly quarantined | refuted", () => {
+    expect([...LANE_DISPOSITION_KINDS]).toEqual(["quarantined", "refuted"]);
   });
 
-  it("reads every one of the four kinds back", () => {
+  it("FR-NODE-107 AC-2 rejects the kinds that left with the handoff layer and the coupling check on a 2.0.0 line", () => {
+    for (const kind of ["demoted", "coupling-reset"]) {
+      const read = readLaneDisposition([result({ schema_version: "2.0.0", lane_disposition: { kind } })], key());
+      expect(read.ok, kind).toBe(false);
+      if (read.ok) throw new Error("unreachable");
+      expect(read.code).toBe("lane-disposition-kind-invalid");
+    }
+  });
+
+  it("FR-NODE-107 AC-2 reads demoted and coupling-reset on a line below 2.0.0 as the terminal kinds they were written as", () => {
+    for (const schema_version of ["1.5.0", "1.4.0", undefined]) {
+      for (const kind of ["demoted", "coupling-reset"]) {
+        const line = result({ lane_disposition: { kind, reason: "left the run" }, ...(schema_version === undefined ? {} : { schema_version }) });
+        expect(ok(readLaneDisposition([line], key())).disposition?.kind, `${kind} @ ${schema_version}`).toBe(kind);
+      }
+    }
+  });
+
+  it("FR-NODE-107 AC-2 still rejects a value outside the four-value enum on a line below 2.0.0", () => {
+    const read = readLaneDisposition([result({ schema_version: "1.5.0", lane_disposition: { kind: "abandoned" } })], key());
+    expect(read.ok).toBe(false);
+  });
+
+  it("FR-NODE-107 AC-2 settles an old demoted lane for P-PRIOR-STAGES-INTEGRATED", () => {
+    const verdict = evaluatePriorStagesIntegrated({
+      runId: RUN_ID,
+      wave: 1,
+      stage: 2,
+      waveLanes: [{ lane: "lane-1", stage: 1 }],
+      integrationCommits: [],
+      events: [result({ schema_version: "1.5.0", lane_disposition: { kind: "demoted" } })]
+    });
+    expect(ok(verdict).satisfied).toBe(true);
+  });
+
+  it("reads every one of the kinds back", () => {
     for (const kind of LANE_DISPOSITION_KINDS) {
       const read = ok(readLaneDisposition([result({ lane_disposition: { kind, reason: "r", at: "2026-08-02T09:00:00.000Z" } })], key()));
       expect(read.disposition?.kind).toBe(kind);
@@ -89,19 +123,19 @@ describe("FR-NODE-107 AC-2 — lane_disposition.kind is a closed four-value enum
   it("reads only its own (wave, stage, lane) key", () => {
     const events = [
       result({ wave: "wave-2", lane_disposition: { kind: "refuted" } }),
-      result({ stage: 2, lane_disposition: { kind: "demoted" } }),
+      result({ stage: 2, lane_disposition: { kind: "quarantined" } }),
       result({ lane: "lane-9", lane_disposition: { kind: "quarantined" } })
     ];
     expect(ok(readLaneDisposition(events, key())).disposition).toBeNull();
     expect(ok(readLaneDisposition(events, key({ wave: 2 }))).disposition?.kind).toBe("refuted");
-    expect(ok(readLaneDisposition(events, key({ stage: 2 }))).disposition?.kind).toBe("demoted");
+    expect(ok(readLaneDisposition(events, key({ stage: 2 }))).disposition?.kind).toBe("quarantined");
     expect(ok(readLaneDisposition(events, key({ lane: "lane-9" }))).disposition?.kind).toBe("quarantined");
   });
 });
 
 describe("FR-NODE-107 AC-3 — the reader is result-line-agnostic", () => {
-  it("reads a disposition on a phase-1 execute-unit result exactly as on verify-lane or collect-lane", () => {
-    const dispositions = ["execute-unit", "verify-lane", "collect-lane"].map(
+  it("FR-NODE-107 AC-3 reads a disposition on a collect-lane result exactly as on verify-lane or remediate-lane", () => {
+    const dispositions = ["collect-lane", "verify-lane", "remediate-lane"].map(
       (verb) => ok(readLaneDisposition([result({ verb, lane_disposition: { kind: "refuted", reason: "design refuted at 3.g" } })], key())).disposition
     );
     expect(dispositions[0]).toEqual(dispositions[1]);
@@ -117,17 +151,17 @@ describe("FR-NODE-107 AC-3 — the reader is result-line-agnostic", () => {
 describe("FR-NODE-107 AC-1/AC-4 — the lane-quarantined classification", () => {
   it("classifies an unmerged, dispositioned lane as lane-quarantined with no next action", () => {
     const verdict = ok(
-      classifyLaneDisposition({ key: key(), events: [result({ lane_disposition: { kind: "demoted", reason: "demoted at 3.h" } })], merged: false })
+      classifyLaneDisposition({ key: key(), events: [result({ lane_disposition: { kind: "quarantined", reason: "quarantined at 3.h" } })], merged: false })
     );
     expect(verdict.applies).toBe(true);
     if (!verdict.applies) throw new Error("unreachable");
     expect(verdict.klass).toBe("lane-quarantined");
     expect(verdict.nextVerb).toBeNull();
-    expect(verdict.disposition.kind).toBe("demoted");
+    expect(verdict.disposition.kind).toBe("quarantined");
   });
 
   it("does not apply to a lane that merged, however it was dispositioned", () => {
-    const verdict = ok(classifyLaneDisposition({ key: key(), events: [result({ lane_disposition: { kind: "demoted" } })], merged: true }));
+    const verdict = ok(classifyLaneDisposition({ key: key(), events: [result({ lane_disposition: { kind: "quarantined" } })], merged: true }));
     expect(verdict.applies).toBe(false);
   });
 
@@ -136,13 +170,13 @@ describe("FR-NODE-107 AC-1/AC-4 — the lane-quarantined classification", () => 
     expect(verdict.applies).toBe(false);
   });
 
-  it("AC-4: a commitless, action-line-free unit whose execute-unit result carries kind refuted classifies lane-quarantined, not not-dispatched", () => {
+  it("FR-NODE-107 AC-4: a commitless, action-line-free worker whose collect-lane result carries kind refuted classifies lane-quarantined, not not-dispatched", () => {
     // No dispatch line, no branch, no commit — exactly the shape §4.6 would otherwise read as
     // `not-dispatched` and re-enter `/kiwi-pm` for.
     const verdict = ok(
       classifyLaneDisposition({
         key: key(),
-        events: [result({ verb: "execute-unit", lane_disposition: { kind: "refuted", reason: "design item refuted at 3.g" } })],
+        events: [result({ verb: "collect-lane", lane_disposition: { kind: "refuted", reason: "design item refuted at 3.g" } })],
         merged: false
       })
     );
@@ -211,7 +245,7 @@ describe("FR-NODE-107 AC-5/AC-6 — P-PRIOR-STAGES-INTEGRATED", () => {
     const verdict = ok(
       priorStages({
         integrationCommits: [trailerCommit({ "Orch-Lane": "lane-2" }, "a1b2c3d")],
-        events: [result({ lane: "lane-1", lane_disposition: { kind: "demoted", reason: "legally demoted at 3.h" } })]
+        events: [result({ lane: "lane-1", lane_disposition: { kind: "quarantined", reason: "legally quarantined at 3.h" } })]
       })
     );
     expect(verdict.satisfied).toBe(true);

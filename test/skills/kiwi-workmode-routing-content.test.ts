@@ -41,11 +41,12 @@ function windowsAround(text: string, re: RegExp, radius: number): string[] {
 }
 
 // AC-3 guard: the §2.5 five-stage arrow chain must remain intact. Same regex as
-// kiwi-pipeline-content.test.ts CHAINED_FIVE_STAGES (FR-FLOW-026 AC-1). Authoring the routing gate as
-// a separate section must not disturb this chain body.
+// kiwi-pipeline-content.test.ts CHAINED_FIVE_STAGES (FR-FLOW-026 AC-1), which follows the chain
+// FR-FLOW-184 AC-1 fixes — kiwi-sds in place of kiwi-planner. Authoring the routing gate as a
+// separate section must not disturb this chain body.
 const ARROW = String.raw`(?:-->|->|→|⟶|=>)`;
 const CHAINED_FIVE_STAGES = new RegExp(
-  String.raw`kiwi-srs(?!-)[\s\S]{0,80}${ARROW}[\s\S]{0,140}kiwi-srs-feasibility[\s\S]{0,140}${ARROW}[\s\S]{0,140}kiwi-planner[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-pm\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-review-fix-loop`,
+  String.raw`kiwi-srs(?!-)[\s\S]{0,80}${ARROW}[\s\S]{0,140}kiwi-srs-feasibility[\s\S]{0,140}${ARROW}[\s\S]{0,140}kiwi-sds\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-pm\b[\s\S]{0,100}${ARROW}[\s\S]{0,100}kiwi-review-fix-loop`,
 );
 
 // Routing-gate tokens.

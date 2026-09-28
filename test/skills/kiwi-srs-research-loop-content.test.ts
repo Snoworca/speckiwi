@@ -2,8 +2,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  ANOTHER_VERIFIER,
+  MULTI_VERIFIER,
+  ONE_VERIFIER,
+  boldVerifierCounts,
+  bulletLabel,
+  defaultFanoutBullets,
+  maxFanoutBullets,
+  researchLoopSection,
+} from "./verifier-count.js";
 
 // @req FR-FLOW-023
+// @req FR-FLOW-180 (AC-5 amended: one non-max verifier for all documents; --max unchanged)
 // FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (A/B) loop.
 //
 // RED-phase content assertions (T-PH002-01). These assert the FINAL desired state of the kiwi-srs
@@ -111,7 +122,13 @@ const TIMES_THREE = /[×xX*]\s*3|3\s*[×xX*]|곱하기\s*3|3\s*배|3\s*개|3\s*�
 /** The fan-out is fixed, not scaled by how many documents there are (FR-FLOW-142 AC-2). */
 const NOT_SCALED = /곱하지\s*않|무관하게|regardless of/i;
 const PER_DOCUMENT = /per[\s-]*document|per[\s-]*doc\b|문서\s*(?:별|마다|당)|각\s*문서/i;
-const SEQUENTIAL = /sequential|순차/i;
+// FR-FLOW-180 AC-3 (amends AC-5): the non-max Process A verifier count; counts come from ./verifier-count.ts.
+const ALL_RESEARCH_DOCS = /모든\s*리서치\s*문서|리서치\s*문서\s*전체|all\s+(?:the\s+)?research\s+documents/i;
+// A verifier spawned per document: a per-document word within reach of the subagent noun.
+const PER_DOC_SPAWN = new RegExp(
+  `(?:${PER_DOCUMENT.source})[^\\n]{0,40}(?:${SUBAGENT.source})|(?:${SUBAGENT.source})[^\\n]{0,40}(?:${PER_DOCUMENT.source})`,
+  "i",
+);
 
 describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (A/B) loop", () => {
   for (const variant of VARIANTS) {
@@ -250,38 +267,56 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
       ).toBe(true);
     });
 
-    it(`FR-FLOW-023 red :: AC-5 [${variant}] — multiple docs: non-max sequential per document, --max stays at 3`, () => {
+    it(`FR-FLOW-023 red :: AC-5 [${variant}] — multiple docs: non-max one verifier for all documents, --max stays at 3`, () => {
       const text = srsText(variant);
 
       // AC-5 amended: `--max` uses 3 verification subagents regardless of document count, superseded
       // from (document count × 3) by FR-FLOW-142 AC-2.
       //
-      // The earlier assertions here could not see that change. They required the tokens
-      // `document count`, `× 3` and `--max` to co-occur within one window, and the replacement text
-      // — "문서 수와 무관하게 검증 서브에이전트 3개" — contains all three while saying the opposite.
-      // Token co-occurrence cannot distinguish a claim from its negation, so the claim is asserted.
+      // Token co-occurrence cannot distinguish a claim from its negation, so the claim is asserted —
+      // and on the bullets whose label names `--max`, not on a window over the list: the non-max
+      // bullet also says "문서 수와 무관하게", and a window reaching it kept this green after the
+      // --max bullet had been reverted to a per-document fan-out.
+      const maxBullets = maxFanoutBullets(text);
+      expect(maxBullets.length, `FR-FLOW-023 AC-5: ${variant} the fan-out list names no --max bullet`).toBeGreaterThan(0);
       expect(
-        DOC_COUNT.test(text),
-        `FR-FLOW-023 AC-5: ${variant} must say what the --max fan-out does with the document count`,
+        maxBullets.some((b) => DOC_COUNT.test(b) && TIMES_THREE.test(b) && NOT_SCALED.test(b)),
+        `FR-FLOW-023 AC-5: ${variant} a --max bullet must state 3 verification subagents regardless of document count`,
       ).toBe(true);
-      const maxFanout = windowsAround(text, DOC_COUNT, 300).some(
-        (w) => TIMES_THREE.test(w) && MAX_FLAG.test(w) && NOT_SCALED.test(w),
-      );
-      expect(
-        maxFanout,
-        `FR-FLOW-023 AC-5: ${variant} must state --max uses 3 verification subagents regardless of document count`,
-      ).toBe(true);
+      for (const b of maxBullets) {
+        expect(PER_DOC_SPAWN.test(b), `FR-FLOW-023 AC-5: ${variant} a --max bullet spawns verifiers per document: ${b.slice(0, 80)}`).toBe(false);
+      }
 
-      // Non-max mode spawns verification subagents sequentially, per document. Bound to a
-      // subagent/spawn word (as AC-4 binds "3" to a subagent) so a stray "sequential ... document"
-      // elsewhere cannot satisfy it. Anchored on the net-new research-document token -> genuinely red.
-      const seqPerDoc = windowsAround(text, RESEARCH_DOC, 600).some(
-        (w) => SEQUENTIAL.test(w) && PER_DOCUMENT.test(w) && SUBAGENT.test(w),
-      );
+      // Non-max mode: ONE verification subagent compares every research document, however many
+      // there are (FR-FLOW-180 AC-3 amends AC-5; the earlier contract spawned one per document,
+      // sequentially). Judged on the bullet whose label does not name --max.
+      const nonMax = defaultFanoutBullets(text);
       expect(
-        seqPerDoc,
-        `FR-FLOW-023 AC-5: ${variant} non-max mode must spawn verification subagents sequentially per document`,
-      ).toBe(true);
+        nonMax.length,
+        `FR-FLOW-023 AC-5: ${variant} the fan-out list must carry exactly one non-max bullet`,
+      ).toBe(1);
+      const def = nonMax[0] ?? "";
+      // The count is read from the bold count after the verifier noun, not from any "하나" in the
+      // bullet: the bullet's exclusivity sentence kept a vocabulary check green after "**1개**" had
+      // been reversed to "**둘**".
+      const counts = boldVerifierCounts(def);
+      expect(counts.length, `FR-FLOW-023 AC-5: ${variant} the non-max bullet states no bold verifier count`).toBeGreaterThan(0);
+      expect(counts.every((c) => c === "1개"), `FR-FLOW-023 AC-5: ${variant} the non-max verifier count is not 1개: ${counts.join(", ")}`).toBe(true);
+      expect(ONE_VERIFIER.test(def), `FR-FLOW-023 AC-5: ${variant} non-max Process A must use exactly one verification subagent`).toBe(true);
+      expect(MULTI_VERIFIER.test(def), `FR-FLOW-023 AC-5: ${variant} non-max Process A states more than one verifier`).toBe(false);
+      expect(ANOTHER_VERIFIER.test(def), `FR-FLOW-023 AC-5: ${variant} non-max Process A adds another verifier`).toBe(false);
+      expect(NOT_SCALED.test(def), `FR-FLOW-023 AC-5: ${variant} the non-max verifier count must not depend on the document count`).toBe(true);
+      expect(ALL_RESEARCH_DOCS.test(def), `FR-FLOW-023 AC-5: ${variant} the one non-max verifier must compare every research document`).toBe(true);
+      expect(PER_DOCUMENT.test(def), `FR-FLOW-023 AC-5: ${variant} non-max must no longer spawn a verifier per document`).toBe(false);
+
+      // Every other line of §9.6 is read too — paragraphs, a second list, a line that mentions --max
+      // in passing. Only a bullet whose label names --max is exempt.
+      for (const line of researchLoopSection(text).split(/\r?\n/)) {
+        if (line.startsWith("- ") && MAX_FLAG.test(bulletLabel(line))) continue;
+        expect(PER_DOC_SPAWN.test(line), `FR-FLOW-023 AC-5: ${variant} a non-max line spawns verifiers per document: ${line.slice(0, 80)}`).toBe(false);
+        expect(MULTI_VERIFIER.test(line), `FR-FLOW-023 AC-5: ${variant} a non-max line states more than one verifier: ${line.slice(0, 80)}`).toBe(false);
+        expect(ANOTHER_VERIFIER.test(line), `FR-FLOW-023 AC-5: ${variant} a non-max line adds another verifier: ${line.slice(0, 80)}`).toBe(false);
+      }
     });
   }
 });

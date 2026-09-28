@@ -56,12 +56,12 @@ const OLD_ID = "FR-ARCH-012";
 const PLAT_ID = "FR-PLAT-001";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the output written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** A fully-formed requirement block whose Change Notes rows are emitted verbatim. */

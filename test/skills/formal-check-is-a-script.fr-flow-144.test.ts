@@ -58,7 +58,9 @@ describe("FR-FLOW-144 AC-1 — the three restated axes reuse what already decide
     const start = text.indexOf("├─ (e) 정형 검사");
     const scope = text.slice(start, start + 1400);
     expect(scope, "the mock axis does not reuse the existing prohibition").toMatch(/§0\.6/);
-    expect(scope, "the plan-code mapping axis does not reuse the preceding gate").toMatch(/§0\.7|ZERO TOLERANCE|\(d\)/);
+    expect(scope, "the SDS-code mapping axis does not reuse the preceding gate").toMatch(/§0\.7|ZERO TOLERANCE|\(d\)/);
+    // FR-FLOW-185 AC-3 replaced the plan-code match with the SDS-code match; the reused axis follows.
+    expect(scope, "the mapping axis still reuses the retired plan-code gate").not.toMatch(/계획-코드/);
   });
 });
 
@@ -72,7 +74,7 @@ describe("FR-FLOW-144 AC-4 — each of the four rules is asserted on its own", (
   const RULES: ReadonlyArray<readonly [subject: string, pattern: RegExp]> = [
     ["the mock prohibition", /Mock 사용:/],
     ["the type and build rule", /타입\/빌드:/],
-    ["the plan-code mapping rule", /계획-코드 매핑:/],
+    ["the SDS-code mapping rule", /SDS-코드 매핑:/],
     ["the coverage rule", /테스트 커버리지:/]
   ];
 
@@ -93,9 +95,10 @@ describe("FR-FLOW-144 AC-2/AC-3 — the coverage axis is given a rule, and the a
     // the `@req` exemption list, and a window opened there reads the wrong section entirely.
     const start = text.indexOf("├─ (e) 정형 검사");
     const scope = text.slice(start, start + 1400);
-    // The chosen rule: every declared test case corresponds to a test that actually ran. A bare
+    // The chosen rule: every Test Plan row of the SDS corresponds to a test that actually ran. A bare
     // percentage would have no threshold — the skill never stated one.
-    expect(scope, "the coverage axis still names a subject with no rule").toMatch(/test_case/);
+    expect(scope, "the coverage axis still names a subject with no rule").toMatch(/Test Plan 행/);
+    expect(scope, "the coverage axis still reads the retired plan test cases").not.toMatch(/test_case/);
     expect(scope, "the coverage rule does not require the declared cases to have executed").toMatch(/실행된|실행/);
   });
 
@@ -108,5 +111,41 @@ describe("FR-FLOW-144 AC-2/AC-3 — the coverage axis is given a rule, and the a
     expect(text.slice(start, start + 1400), "the absence being repaired is not recorded").toMatch(
       /기준이 없었|정의된 적 없|처음 정의/
     );
+  });
+});
+
+/** The one line of the formal check that states `label`, read inside the step's own block. */
+function ruleLine(text: string, label: string): string {
+  const start = text.indexOf("├─ (e) 정형 검사");
+  if (start < 0) return "";
+  return text.slice(start, start + 1400).split(/\r?\n/).find((line) => line.includes(label)) ?? "";
+}
+
+describe("FR-FLOW-144 AC-1 — each restated axis names, on its own line, the decider it reuses", () => {
+  it.each(COPIES)("FR-FLOW-144 AC-1: %s decides the mock axis with the existing pattern, not a copy", (_label, relPath) => {
+    const line = ruleLine(body(relPath), "Mock 사용:");
+    expect(line, "the mock axis line was not found").not.toBe("");
+    expect(line).toMatch(/Mock 사용: §0\.6 의 regex 를 \*\*그대로 재사용\*\* \(재구현 금지\)/);
+  });
+
+  it.each(COPIES)("FR-FLOW-144 AC-1: %s decides the type and build axis by running the build and reading its exit code", (_label, relPath) => {
+    const line = ruleLine(body(relPath), "타입/빌드:");
+    expect(line, "the type and build axis line was not found").not.toBe("");
+    expect(line).toMatch(/타입\/빌드: 빌드를 실행하고 exit_code 로 판정/);
+  });
+
+  it.each(COPIES)("FR-FLOW-144 AC-1: %s reuses the preceding SDS-code match result for the mapping axis", (_label, relPath) => {
+    const line = ruleLine(body(relPath), "SDS-코드 매핑:");
+    expect(line, "the SDS-code mapping axis line was not found").not.toBe("");
+    expect(line).toMatch(/앞선 \(d\) ZERO TOLERANCE 게이트\(§0\.7\)가 이미 계산한 결과를 \*\*재사용\*\*/);
+  });
+});
+
+describe("FR-FLOW-144 AC-2 — the coverage rule, on its own line: every Test Plan row has a test that actually ran", () => {
+  it.each(COPIES)("FR-FLOW-144 AC-2: %s states the coverage rule over Test Plan rows and executed tests", (_label, relPath) => {
+    const line = ruleLine(body(relPath), "테스트 커버리지:");
+    expect(line, "the coverage axis line was not found").not.toBe("");
+    expect(line).toMatch(/SDS Test Plan 행마다 \*\*실제로 실행된 테스트\*\*가 대응하는가/);
+    expect(line, "the rule was replaced by a global percentage").toMatch(/전역 커버리지 %가 아니라/);
   });
 });

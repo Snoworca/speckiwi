@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { GATE_IDS } from "../../../src/core/orchestrator/auto-gate.js";
-import { JOURNAL_RULES, JOURNAL_RULE_CODES, WAVES_EVENT_FIELDS } from "../../../src/core/orchestrator/journal-schema.js";
+import { CURRENT_WAVES_SCHEMA_VERSION, JOURNAL_RULES, JOURNAL_RULE_CODES, WAVES_EVENT_FIELDS } from "../../../src/core/orchestrator/journal-schema.js";
 import { parseWavesJournal } from "../../../src/core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../../src/core/orchestrator/waves-validate.js";
 import { journalRoot, type Json } from "./waves-fixtures.js";
@@ -88,10 +88,11 @@ describe("FR-NODE-167 AC-3 — the document version tracks the field set", () =>
   // @req FR-NODE-188 — this AC pinned v1.4.0 and recorded, as a cost, that the string then
   // named two field sets with no version signal between them. `terminal_review` and
   // `outcome` are a real field-set change, so the version moves with them.
-  it("reads v1.5.0 in every copy now that the field set has moved", async () => {
+  it("FR-NODE-167 AC-3 reads the version the journal schema stamps in every copy now that 4.0.0 changed the field set", async () => {
+    expect(CURRENT_WAVES_SCHEMA_VERSION).toBe("2.0.0");
     for (const copy of COPIES) {
       const first = (await readFile(path.join(process.cwd(), copy), "utf8")).split("\n")[0];
-      expect(first, copy).toContain("v1.5.0");
+      expect(first, copy).toContain(`v${CURRENT_WAVES_SCHEMA_VERSION}`);
     }
   });
 });
@@ -152,5 +153,28 @@ describe("FR-NODE-167 AC-6 — the rule is registered in the rule tables", () =>
     expect(rule, "no JOURNAL_RULES row for the code").toBeDefined();
     expect(rule?.enforcement).toBe("diagnostic");
     expect(rule?.source.length ?? 0, "the row must name where the rule comes from").toBeGreaterThan(0);
+  });
+});
+
+// FR-NODE-213 AC-6 — a line written under an earlier waves schema is not re-validated against the
+// 4.0.0 contract. 4.0.0 retired the gates only the plan rung, the handoff validator, the coupling check
+// and the task-level conflict reasons raised; an older run that ended on one of them still reads clean,
+// while a 2.0.0 line naming one is outside the vocabulary.
+describe("FR-NODE-213 AC-6 — an older line keeps the gate vocabulary it was written under", () => {
+  const RETIRED = "handoff-verify-failed";
+
+  it("FR-NODE-213 AC-6 accepts a retired gate on a line stamped with an earlier schema_version", async () => {
+    expect(GATE_IDS as readonly string[]).not.toContain(RETIRED);
+    expect(await diagnose([line({ schema_version: "1.5.0", abort_gate: RETIRED })])).toEqual([]);
+    expect(await diagnose([line({ schema_version: "1.4.0", abort_gate: "plan-coverage-unclosed" })])).toEqual([]);
+  });
+
+  it("FR-NODE-213 AC-6 refuses the same gate on a line stamped with the current schema_version", async () => {
+    const found = await diagnose([line({ schema_version: CURRENT_WAVES_SCHEMA_VERSION, abort_gate: RETIRED })]);
+    expect(found.map((entry) => entry.code)).toContain(CODE);
+  });
+
+  it("FR-NODE-213 AC-6 still refuses a value that was never a gate on an older line", async () => {
+    expect((await diagnose([line({ schema_version: "1.5.0", abort_gate: ILLEGAL })])).map((entry) => entry.code)).toEqual([CODE]);
   });
 });

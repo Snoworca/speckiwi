@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { buildCommand } from "../../src/cli/command.js";
 import { registerOrchestrateCommands } from "../../src/cli/commands/orchestrate.js";
-import { workflowDoctor } from "../../src/core/workflow/read.js";
 import { minimalCard, emptyDriftInputs, emptyGitFacts } from "../core/orchestrator/resume-fixtures.js";
 
 // @req FR-NODE-127 — validation runs on every `journal append` and every `resume`, unconditionally.
@@ -140,26 +139,37 @@ describe("FR-NODE-127 AC-4 — no invocation form skips validation", () => {
   });
 });
 
-describe("FR-NODE-127 AC-5 — the doctor keeps the check, the pre-commit hook never hosts it", () => {
-  it("reports the same journal diagnostics on demand for a historical journal", async () => {
+// The on-demand host moved from the removed `workflow doctor` to `orchestrate validate` (FR-NODE-211 AC-5).
+describe("FR-NODE-127 AC-5 — orchestrate validate offers the check on demand, the pre-commit hook never hosts it", () => {
+  it("FR-NODE-127 AC-5: orchestrate validate reports the journal diagnostics on demand for a historical journal", async () => {
     const root = await tempRoot();
     await write(root, JOURNAL, `${JSON.stringify({ ...INVALIDATING_LINE, writer: "bash" })}\n`);
 
-    const doctor = await workflowDoctor({ root }, { runId: "run-a" });
+    const validated = await run(["--root", root, "orchestrate", "validate", "--run-id", "run-a"]);
 
-    expect(doctor.diagnostics.map((item) => item.code)).toContain("complete-without-latest-pass");
+    expect(validated.exit).not.toBe(0);
+    const violations = validated.payload.violations as Array<{ code: string }>;
+    expect(violations.map((entry) => entry.code)).toContain("complete-without-latest-pass");
   });
 
-  it("leaves the doctor untouched when no run is named", async () => {
+  it("FR-NODE-127 AC-5: orchestrate validate reports nothing for a journal the append gate would accept", async () => {
     const root = await tempRoot();
-    await write(root, JOURNAL, `${JSON.stringify({ ...INVALIDATING_LINE, writer: "bash" })}\n`);
+    await write(root, JOURNAL, `${JSON.stringify({ ...VALID_LINE, writer: "bash" })}\n`);
 
-    const doctor = await workflowDoctor({ root });
+    const validated = await run(["--root", root, "orchestrate", "validate", "--run-id", "run-a"]);
 
-    expect(doctor.diagnostics.map((item) => item.code)).not.toContain("complete-without-latest-pass");
+    expect(validated.exit).toBe(0);
+    expect((validated.payload.diagnostics as unknown[]) ?? []).toEqual([]);
   });
 
-  it("invokes validateWavesJournal from no pre-commit hook code path", async () => {
+  it("FR-NODE-127 AC-5: the removed workflow doctor is not a second host", async () => {
+    const pipes = io();
+    const exit = await main(["workflow", "doctor", "--run-id", "run-a", "--json"], pipes);
+
+    expect(exit).not.toBe(0);
+  });
+
+  it("FR-NODE-127 AC-5: invokes validateWavesJournal from no pre-commit hook code path", async () => {
     for (const source of ["src/core/bootstrap/init-project.ts", "src/core/bootstrap/upgrade-project.ts"]) {
       const text = await readFile(source, "utf8");
       expect(text, `${source} installs the hook and must not host the journal check`).not.toContain("validateWavesJournal");

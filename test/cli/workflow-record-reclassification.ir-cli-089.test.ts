@@ -36,14 +36,14 @@ interface RecordTarget {
 }
 
 interface Workspace {
-  planPath: string;
+  sdsPath: string;
   pipeline: RecordTarget;
   root: string;
   worklog: RecordTarget;
 }
 
 const sha256 = (value: string | Buffer): string =>
-  createHash("sha256").update(value, "utf8").digest("hex");
+  createHash("sha256").update(value).digest("hex");
 
 async function invoke(root: string, args: string[]): Promise<Omit<CliResult, "body">> {
   const stdout = new PassThrough();
@@ -122,53 +122,49 @@ function correctionRecord(runId: string): JsonObject {
 
 async function createWorkspace(): Promise<Workspace> {
   const root = await copyFixtureWorkspace("valid-basic");
-  const planPath = "docs/plan/repair-run.md";
+  // The unit of work is a lite SDS since the plan tools left (FR-NODE-211 AC-2, AC-4); its sds-id
+  // names the kiwi-pm session below.
+  const sdsPath = "docs/sds/repair-run.sds.md";
   const sessionDirectory = path.join(root, ".kiwi", "sessions", "repair-run");
-  const planDirectory = path.join(root, "docs", "plan");
+  const sdsDirectory = path.join(root, "docs", "sds");
   const pipelineDirectory = path.join(root, "kiwi");
   await Promise.all([
     mkdir(sessionDirectory, { recursive: true }),
-    mkdir(planDirectory, { recursive: true }),
+    mkdir(sdsDirectory, { recursive: true }),
     mkdir(pipelineDirectory, { recursive: true }),
   ]);
 
   await writeFile(
-    path.join(root, planPath),
+    path.join(root, sdsPath),
     [
-      "---",
-      "run_id: repair-run",
-      "target: v1.0.0",
-      'plan_contract: "1.2.0"',
-      "generated_at: 2026-08-07T00:00:00.000Z",
-      "sidecar_path: ./repair-run.sidecar.json",
-      "---",
-      "# Repair run",
+      "# SDS: repair-run",
+      "",
+      "| Field | Value |",
+      "|---|---|",
+      "| Document Type | sds |",
+      "| Profile | lite |",
+      "| Target | v1.0.0 |",
+      "| Status | agreed |",
+      "| Date | 2026-08-07 |",
+      "",
+      "## Interfaces",
+      "",
+      "### Files",
+      "",
+      `- \`src/repair.ts\` — repair unit ${["@", "req"].join("")} FR-ARCH-001`,
+      "  - `repair(input: string): string` — repairs ← cli",
+      "",
+      "## Acceptance Contracts",
+      "",
+      "- SDS-AC-1 (FR-ARCH-001 AC-1): WHEN repair is called THE SYSTEM SHALL answer → `repair`",
+      "",
+      "## Test Plan",
+      "",
+      "| SDS-AC | Test file | Case summary |",
+      "|---|---|---|",
+      "| SDS-AC-1 | test/repair.test.ts | answers |",
       "",
     ].join("\n"),
-    "utf8",
-  );
-  await writeFile(
-    path.join(planDirectory, "repair-run.sidecar.json"),
-    JSON.stringify(
-      {
-        generated_at: "2026-08-07T00:00:00.000Z",
-        plan_contract: "1.2.0",
-        run_id: "repair-run",
-        schema_version: "1.1.0",
-        target: "v1.0.0",
-        tasks: [
-          {
-            depends_on_task: [],
-            id: "T-001",
-            phase_id: "PH-001",
-            req_ids: ["FR-ARCH-001"],
-            title: "Pending task",
-          },
-        ],
-      },
-      null,
-      2,
-    ),
     "utf8",
   );
   await writeFile(
@@ -206,7 +202,7 @@ async function createWorkspace(): Promise<Workspace> {
   await writeFile(path.join(root, pipelinePath), pipelineContents, "utf8");
 
   return {
-    planPath,
+    sdsPath,
     root,
     pipeline: {
       byteOffset: Buffer.byteLength(`${pipelineFirst}\r\n`, "utf8"),
@@ -1915,11 +1911,9 @@ describe("IR-CLI-089 workflow record reclassification", () => {
     ).toEqual(Buffer.from(pipelinePreimage, "utf8"));
     expect(pipelinePreimage).toContain("\r\n");
 
+    // The plan readers (next-task, doctor, diff, schema-check, resume-hint) left with the plan tools
+    // (FR-NODE-211 AC-1); these are the named and derived readers that remain.
     const readers: string[][] = [
-      ["workflow", "next-task", "--path", workspace.planPath],
-      ["workflow", "doctor", "--path", workspace.planPath],
-      ["workflow", "diff", "--path", workspace.planPath],
-      ["workflow", "schema-check", "--path", workspace.planPath],
       ["workflow", "pipeline-status"],
       ["workflow", "pipeline", "status"],
       ["workflow", "pipeline-tail"],
@@ -1929,8 +1923,7 @@ describe("IR-CLI-089 workflow record reclassification", () => {
       ["workflow", "pipeline", "compact"],
       ["workflow", "worklog-tail", "--run-id", "repair-run"],
       ["workflow", "session-status", "--run-id", "repair-run"],
-      ["workflow", "resume-hint", "--path", workspace.planPath],
-      ["workflow", "work-order", "next", "--path", workspace.planPath],
+      ["workflow", "work-order", "next", "--path", workspace.sdsPath],
     ];
 
     for (const args of readers) {
@@ -1971,26 +1964,6 @@ describe("IR-CLI-089 workflow record reclassification", () => {
         input: JsonObject;
         tool: string;
       }> = [
-        {
-          cli: ["workflow", "next-task", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
-          tool: "workflow_next_plan_task",
-        },
-        {
-          cli: ["workflow", "doctor", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
-          tool: "workflow_doctor",
-        },
-        {
-          cli: ["workflow", "diff", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
-          tool: "workflow_diff",
-        },
-        {
-          cli: ["workflow", "schema-check", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
-          tool: "workflow_schema_check",
-        },
         { cli: ["workflow", "pipeline-status"], input: {}, tool: "workflow_pipeline_status" },
         { cli: ["workflow", "pipeline", "status"], input: {}, tool: "workflow_pipeline_status" },
         { cli: ["workflow", "pipeline-tail"], input: {}, tool: "workflow_pipeline_tail" },
@@ -2009,13 +1982,8 @@ describe("IR-CLI-089 workflow record reclassification", () => {
           tool: "workflow_session_status",
         },
         {
-          cli: ["workflow", "resume-hint", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
-          tool: "workflow_resume_hint",
-        },
-        {
-          cli: ["workflow", "work-order", "next", "--path", workspace.planPath],
-          input: { path: workspace.planPath },
+          cli: ["workflow", "work-order", "next", "--path", workspace.sdsPath],
+          input: { path: workspace.sdsPath },
           tool: "get_next_work_order",
         },
       ];

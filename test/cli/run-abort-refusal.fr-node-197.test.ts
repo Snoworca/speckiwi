@@ -21,7 +21,7 @@ function journalLine(seq: number): string {
     schema_version: "1.4.0",
     run_id: "r1",
     engine: "kiwi-orchestrator",
-    verb: "execute-unit",
+    verb: "dispatch-lane",
     event: "result",
     wave: "wave-1",
     seq,
@@ -136,7 +136,7 @@ describe("FR-NODE-197 run abort names its cause and never keeps the run lock qui
         schema_version: "1.4.0",
         run_id: "r1",
         engine: "kiwi-orchestrator",
-        verb: "execute-unit",
+        verb: "dispatch-lane",
         event: "result",
         wave: "wave-1",
         seq: 999

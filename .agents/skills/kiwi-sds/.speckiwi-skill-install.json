@@ -1,0 +1,27 @@
+{
+  "name": "kiwi-sds",
+  "agent": "codex",
+  "installedAt": "2026-09-27T18:55:15.182Z",
+  "installMode": "generated-runtime-mirror",
+  "sourceAgent": "codex",
+  "sourceRoot": "skills/codex",
+  "sourcePath": "skills/codex/kiwi-sds",
+  "installedPath": ".agents/skills/kiwi-sds",
+  "sourceRevision": "4e11f6c82bcad139960ce0c663c711a5217d3cde",
+  "sourceChecksum": "sha256:ddf7d68a1e6b1908325130378d0486dcf9c183b8faab0a6d11d8e2bf6318055a",
+  "installedChecksum": "sha256:ddf7d68a1e6b1908325130378d0486dcf9c183b8faab0a6d11d8e2bf6318055a",
+  "sourceFileCount": 2,
+  "installedFileCount": 2,
+  "sharedResourceRoot": ".agents/skills/_shared/kiwi",
+  "sharedResourceValidation": "source-references-validated",
+  "sharedResourceReferences": [
+    "_shared/kiwi/auto-option.md",
+    "_shared/kiwi/loop-option.md",
+    "_shared/kiwi/parallel-waves.md",
+    "_shared/kiwi/pipeline-event.md",
+    "_shared/kiwi/run-ledger.md",
+    "_shared/kiwi/test-sufficiency.md"
+  ],
+  "refreshCommand": "node bin/speckiwi --root . skills install codex kiwi-sds --json",
+  "noManualEdit": true
+}

@@ -16,6 +16,12 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 
 ---
 
+## Workflow 도구 정책
+
+세션 상태 조회의 정상 경로는 공식 workflow 읽기 도구다 — `--resume` 이 읽는 `.kiwi/sessions/{run-id}/state.json` 은 MCP `workflow_resolve_artifact` 에 그 실행의 `runId` 와 함께 `kind` 를 `coder-state` 로, `includeBody` 를 `true` 로 주어 읽고, 실행 기록 `worklog.jsonl` 은 `workflow_worklog_tail` 로 조회한다. 파일을 직접 읽는 것은 그 도구를 쓸 수 없을 때의 degraded 폴백이며, 그 실행은 도구 진단·산출물 경로·active target·후속 요구 또는 후보 ID 를 사용자 보고에 함께 남긴다.
+
+---
+
 ## 0. 공통 규약 (SSOT)
 
 | 키 | 규칙 |
@@ -125,6 +131,7 @@ self_scope.source enum 매핑 (§3.1):
 | `--close-reqs` + PR 모드 | 차단 + 사용자 보고 ("`--close-reqs` 는 셀프 모드 전용. PR 모드에서 SRS mutation 은 머지 후 별도 처리") |
 | `--close-reqs` + 회귀 fail | 차단 + WARN ("회귀 미통과로 verified 전이 부적합") |
 | `--close-reqs` + 까칠 리뷰 finding 잔존 (CRITICAL/HIGH ≥1) | 차단 + WARN |
+| `--close-reqs` + Phase 7.4 테스트 충분성 확인이 `test-sufficiency-gap` 을 올림 | 차단 — gap 이 남은 요구를 `verified` 로 쓰지 않는다 (§6.5.1) |
 | `--close-reqs` + `scoped` 0건 | §6.6 skip + 보고. **"close 대상 REQ 없음" 한 줄로 끝내지 않는다** — `denominator` 의 크기와 교차가 0이 된 사유를 함께 적는다. 분모가 0이면 그 자체가 신호다 (`FR-NODE-198` 참조: enum 밖 status 로 쓰인 REQ 는 분모에 애초에 들어오지 않는다) |
 | `--close-reqs` + `eligible` 1건 이상 + 전이 0건 | **`TASK_DONE` 이 아니다.** `FAILED` 로 종료 + 보고 (§7.3) |
 | `--close-reqs` + 처분 대조 불일치 (`전이 성공 수 + 제외 수 ≠ scoped 크기`) | 그 실행은 **무효**. `FAILED` 로 종료 + 처분 없는 REQ 열거 |
@@ -154,6 +161,7 @@ self_scope.source enum 매핑 (§3.1):
 | `empty-code-scope` | 부류 필터 뒤 코드 대상 0건 (§11) | §11 / §3.1 |
 | `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | §0.17 / §6.2 |
 | `review-coverage-mismatch` | 리뷰 커버리지 대조 실패가 2회 연속 — 무효 라운드만 쌓이며 cap 을 소진한다 (§12) | §12 / §6.4 |
+| `test-sufficiency-gap` | 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 이 남음 — gap 이 남은 요구는 `verified` 로 쓰지 않는다 (`_shared/kiwi/test-sufficiency.md`) | Phase 7.4 (§6.5.1) |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | `--close-reqs` 승급 직전 |
 
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
@@ -186,6 +194,8 @@ self_scope.source enum 매핑 (§3.1):
 | "PR 응답 안 함" | `--no-respond` | off (PR 모드 응답 의무) |
 | "--model <name>", "검증 모델 지정" | `--model <name>` | 현재 세션 모델 (검증 서브에이전트) |
 | "REQ 닫기", "verified 전이", "검증 완료 표시" | `--close-reqs` | off (셀프 모드 + 회귀 PASS + finding 0건 시에만 활성) |
+| "이 요구들만", "요구 범위" | `--req-filter <id,...>` (콤마) — 테스트 충분성 확인의 요구 범위 (§6.5.1) | off |
+| "이 SDS 대비", "SDS 경로" | `--sds <path>` — 테스트 충분성 확인에 함께 넘길 lite SDS(`docs/sds/*.sds.md`) (§6.5.1) | off |
 | "재개" | `--resume` | off |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` | off (스킬 기본 상한) |
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
@@ -215,6 +225,7 @@ self_scope.source enum 매핑 (§3.1):
   - `regression_run.jsonl` — 회귀 테스트 실행 로그
   - `pr_response.md` (PR 모드) — PR 응답 코멘트 본문 (`--no-respond` 부재 시)
   - `rejected_findings.log` — 거절된 finding 사유
+  - `test_sufficiency.json` (요구 범위가 알려진 실행) — 테스트 충분성 확인 결과 (§6.5.1)
   - `closed_reqs.json` (`--close-reqs` 활성 시) — REQ verified 전이 결과 (req_id → from_status, to_status, evidence_ref, skipped_reason)
   - `mcp_call_log.jsonl` (`--close-reqs` 활성 시) — MCP mutation 호출 로그 (update_status, add_verification_evidence, check_acceptance_criteria)
 - **`.kiwi/` 상태**: `cwd/.kiwi/sessions/{run-id}/`
@@ -244,6 +255,7 @@ Phase 4 : 시니어 fixer 적용 (서브에이전트)
 Phase 5 : 까칠 리뷰어 재검증 (서브에이전트, 입력 격리 §0.2)
 Phase 6 : 미해결 시 Phase 4-5 반복 (심각도 카운터)
 Phase 7 : 회귀 테스트 실행
+Phase 7.4 : 테스트 충분성 확인 — 요구 범위가 알려졌을 때(`--close-reqs` · `--req-filter` · `--sds`) `_shared/kiwi/test-sufficiency.md` 를 따른다 (§6.5.1)
 Phase 7.5 : (`--close-reqs` 활성 시) 영향 REQ verified 일괄 승급 (§6.6, §0.G7 게이트)
 Phase 8 : 보고서 + (PR 모드) PR 응답 코멘트 + pipeline.jsonl emit
 ```
@@ -499,8 +511,29 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 
 1. Phase 3 회귀 테스트 실행 → green 확인. fail 시 Phase 4 개선 루프 편입 (HIGH 카운터)
 2. `--skip-regression` 부재 시 영향 회귀 (변경 파일의 모든 테스트) 실행
-3. 판정은 §6.0 의 기준선 델타를 적용한다 — 신규 실패 0건이면 Phase 8 진입. 신규 실패 ≥1 → §0.G6 (2 연속 동일 fail 시 에스컬레이션). 기준선에 이미 있던 실패는 보고만 하고 진입을 막지 않는다
+3. 판정은 §6.0 의 기준선 델타를 적용한다 — 신규 실패 0건이면 다음 단계(Phase 7.4) 진입. 신규 실패 ≥1 → §0.G6 (2 연속 동일 fail 시 에스컬레이션). 기준선에 이미 있던 실패는 보고만 하고 진입을 막지 않는다
 4. 결과: `regression_run.jsonl`
+
+### 6.5.1 Phase 7.4 — 테스트 충분성 확인 (마지막 검증 단계)
+
+요구 범위가 알려진 실행이면 회귀 뒤에 `_shared/kiwi/test-sufficiency.md` 의 확인을 돈다. 이 단계가 이 스킬의 마지막 검증이다 — 뒤에는 `--close-reqs` 승급(Phase 7.5)과 보고(Phase 8)만 온다.
+
+| 범위를 정하는 입력 | 넘기는 범위 |
+|---|---|
+| `--close-reqs` | §6.6.1(`references/conditional-sections.md`)의 `eligible` 집합. 그 집합을 이 단계에서 먼저 만든다 — 분모와 교차는 read 이므로 §0.8 밖이다 |
+| `--req-filter <id,...>` | 그 ID |
+| `--sds <path>` | 위 두 입력이 없으면 그 lite SDS 가 `@req` 로 지명한 ID(MCP `check_sds` / `speckiwi sds check` 요약의 요구 ID). SDS 는 어느 경우든 `--sds` 로 함께 넘긴다 |
+| 셋 다 없음 | 돌지 않는다 — 결과는 `no-scope` 이고 통과로 적지 않는다 |
+
+입력이 여럿이면 표의 앞 행이 ID 를 정한다. `--close-reqs` 가 있으면 확인 범위는 언제나 승급할 `eligible` 전부다 — `--req-filter` · `--sds` 는 §6.6.1 에서 `scoped` 를 정하는 데 쓰이고 확인을 그 밖으로 따로 좁히지 않는다. 승급하는 집합 전부가 확인을 거쳐야 하기 때문이다.
+
+워커 워크트리 같은 linked worktree 에서 돌면 확인은 그 워크트리를 읽는다 — MCP `check_test_sufficiency` 에 `workspaceRoot` = 그 워크트리 절대 경로를 주고, CLI 면 그 워크트리를 cwd 로 부른다(`_shared/kiwi/test-sufficiency.md` §3 1번). 채우기 서브에이전트도 그 워크트리에서 쓴다.
+
+`--close-reqs` 면 이 단계의 끝에서 `_shared/kiwi/test-sufficiency.md` §4 대로 증거로 쓸 인용의 테스트 파일을 실행하고, 그 실행에서 통과한 테스트의 인용만 Phase 7.5 에 넘긴다 — 실패했거나 skip 되었거나 실행되지 않은 인용의 AC 는 gap 으로 남고, gap 이 남으면 `test-sufficiency-gap` 을 올린다. 도구는 인용을 읽을 뿐 테스트를 실행하지 않으므로, 바뀌지 않은 파일의 인용이나 `skip` 된 테스트의 인용이 이 실행 없이 증거가 되지 않게 한다.
+
+채우기 서브에이전트(계약 §3)는 §0.1 의 시니어 fixer 와 별개로 새 테스트만 쓰는 두 번째 코드 작성자다. 그 diff 에도 §6.2 의 보존 스캔을 적용한다. `--dry-run` 이면 채우기와 재실행 없이 처음 결과만 보고한다 (계약 §3).
+
+결과는 `test_sufficiency.json`(계약 §5 형태)에 남긴다. `test-sufficiency-gap` 이 올라가면 이 실행은 사용자 결정을 기다리며, `TASK_DONE` 으로 끝나지 않고 Phase 7.5 승급에 들어가지 않는다.
 
 ### 6.6 Phase 7.5 — REQ 승급 — `--close-reqs` 전용 (`references/conditional-sections.md`)
 
@@ -525,6 +558,7 @@ classified: { immediate_fix: A, discussion_needed: B, rejected: C }
 fix_iter: N
 recheck_iter: M
 regression_pass: true|false
+test_sufficiency: pass|gap|no-scope  # §6.5.1
 closed_reqs_count: N | null  # --close-reqs 활성 시에만, 비활성 시 null
 pr_responded: true|false
 ---
@@ -544,7 +578,8 @@ pr_responded: true|false
 11. (`--close-reqs` 활성 시) REQ verified 전이 결과 — `closed_reqs.json` 인용 (transitioned / skipped / failed 통계 + 영향 REQ-ID 목록 + evidence 경로)
 12. 제외한 산문 전량 (`excluded_prose[]`) · 거부한 아티팩트 전량 (`refused_artifacts[]`) · 분류되지 않은 파일 전량 (`unclassified_files[]`) + 항등식 확인
 13. 리뷰 커버리지 대조 결과 (§12) — 라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total` 과 앵커 개수 · 무효 판정이 있었다면 어긋난 앵커 문자열
-14. 메타 (실측 토큰, 시간)
+14. 테스트 충분성 확인 결과 (§6.5.1) — `test_sufficiency.json` 의 verdict · 넘긴 범위 · 처음과 마지막 gap · 채우기로 더한 테스트
+15. 메타 (실측 토큰, 시간)
 
 ### 7.2 PR 응답 코멘트 — PR 모드 전용 (`references/conditional-sections.md`)
 
@@ -613,13 +648,13 @@ pr_responded: true|false
 |---|---|
 | 긴급 버그 fix + SRS 사후 동기화 | `/kiwi-hot-fix` |
 | 코드 변경 → SRS 사후 동기화 (단독, 리뷰 없음) | `/kiwi-srs-sync` |
-| 정식 plan 수립 후 풀 구현 (리뷰 내장) | `/kiwi-coder` (까칠 리뷰 Phase 2.f 내장) |
+| 합의된 SDS 구현 (리뷰 내장) | `/kiwi-coder` (까칠 리뷰 Phase 2.f 내장) |
 | **셀프 리뷰 단독 또는 PR 리뷰 응답** (본 스킬) | `/kiwi-review-fix-loop` |
 | 신규 기능 SRS 작성 | `/kiwi-srs` |
 
 본 스킬과 `/kiwi-coder` 의 까칠 리뷰는 다음 점에서 다르다:
-- `/kiwi-coder` 의 까칠 리뷰는 plan 기반 구현 직후 1회 (개선 루프 포함)
-- 본 스킬은 plan 무관, 임의의 코드 변경 / PR 코멘트 / 머지 전 게이트 등에 단독 사용
+- `/kiwi-coder` 의 까칠 리뷰는 SDS 기반 구현 직후 1회 (개선 루프 포함)
+- 본 스킬은 SDS 없이도 임의의 코드 변경 / PR 코멘트 / 머지 전 게이트 등에 단독 사용
 
 ---
 
@@ -627,12 +662,12 @@ pr_responded: true|false
 
 | 범위 밖 | 담당 스킬 |
 |---|---|
-| 신규 기능 개발 | `/kiwi-srs` → `/kiwi-planner` → `/kiwi-pm` |
+| 신규 기능 개발 | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
 | 긴급 fix + SRS sync 위임 | `/kiwi-hot-fix` |
 | MCP mutation 직접 호출 | `/kiwi-srs-sync` 또는 `/kiwi-srs` (본 스킬은 §0.8 으로 금지) |
 | git commit / push | 사용자 결정 또는 `/kiwi-commit-auto-push` |
 | PR 생성 (없는 PR 새로 만들기) | 사용자 또는 `/kiwi-commit-auto-push` |
-| 풀 plan 수립 (Phase 분해) | `/kiwi-planner` |
+| 구현 설계 (SDS) 작성 | `/kiwi-sds` |
 | 통합 테스트 | `/kiwi-coder` Phase 4 |
 
 ---
@@ -666,7 +701,7 @@ pr_responded: true|false
 
 **빈 범위는 통과가 아니다** — 필터 후 코드 대상이 **0건**이면 PASS 를 보고하지 않고 `empty-code-scope` 로 **중단**한다. 아무것도 보지 않은 실행이 품질 게이트 통과로 기록되면, 빈 기준선이 깨끗한 기준선과 구별되지 않는다.
 
-**알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.**
+**알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.** 단 `_shared/kiwi/parallel-waves.md` PW-12 의 stage 마감 호스트 hop 은 부르기 전에 창의 파일을 이 절의 부류 표로 걸러, 코드 파일이 없으면 이 스킬을 부르지 않고 `no-host-code-commits` 를 기록한다 — 그 경계에서는 이 충돌이 생기지 않는다.
 
 **산문 finding 은 어디로 가는가** — 부류 밖 문서에서 눈에 띈 문제는 §0.8 이 SRS finding 에 쓰는 것과 같은 채널로 흘린다: 고치지 않고 보고하며, 담당 스킬을 지목해 위임을 권고한다.
 

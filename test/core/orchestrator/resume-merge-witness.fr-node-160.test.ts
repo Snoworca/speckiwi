@@ -12,7 +12,7 @@ import { emptyDriftInputs, emptyGitFacts, minimalCard } from "./resume-fixtures.
 // `resume.ts` decided landing from `branch.ancestorOfIntegration`, a lane-branch ancestry proof.
 // Phase 1 creates no lane branch — the unit commits onto the integration branch, which the module's
 // own comment says — so that value was structurally always false and a landed unit fell through to
-// `not-dispatched` with `nextVerb: execute-unit`, `reconciliation: consistent` and `blocking: null`.
+// `not-dispatched` with the dispatch verb next, `reconciliation: consistent` and `blocking: null`.
 // The predicate that gets it right, `hasMergeWitness`, already existed and was tested; `GitFacts`
 // simply had no field a commit trailer could arrive in, so the landed and unlanded cases were
 // indistinguishable by construction.
@@ -22,13 +22,13 @@ const BASE = { schema_version: "1.4.0", run_id: RUN, engine: "kiwi-orchestrator"
 
 const LINES: Record<string, unknown>[] = [
   { ...BASE, wave: "wave-1", order: 1, target: "wave-1", phase: "wave-verify", status: "in_progress", summary: "verify", verification: { verdict: "pass" } },
-  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "execute-unit", event: "intent" },
-  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "execute-unit", event: "result" }
+  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "dispatch-lane", event: "intent" },
+  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "dispatch-lane", event: "result" }
 ];
 
-/** What a landed phase-1 unit leaves: a trailered commit on the integration branch, no lane branch. */
+/** What a landed wave worker leaves: a trailered commit on the integration branch, no lane branch. */
 const LANDED: readonly OrchTrailerCommit[] = [
-  { commit: "aaaa111", trailers: { "Orch-Run": RUN, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1", "Orch-Task": "T-PH001-01" } }
+  { commit: "aaaa111", trailers: { "Orch-Run": RUN, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1" } }
 ];
 
 const roots: string[] = [];
@@ -50,25 +50,25 @@ function laneClass(state: Awaited<ReturnType<typeof resumeWith>>, lane: string):
 }
 
 describe("FR-NODE-160 — a landed unit is not re-executed", () => {
-  it("AC-3: the shared predicate already answers correctly over the same commits", () => {
+  it("FR-NODE-160 AC-3: the shared predicate already answers correctly over the same commits", () => {
     expect(hasMergeWitness(LANDED, RUN, { wave: 1, stage: 1, lane: "lane-1" })).toBe(true);
   });
 
-  it("AC-4: with no trailered commit the lane is still not-dispatched and execute-unit is still next", async () => {
+  it("FR-NODE-160 AC-4: with no trailered commit and no lane branch the lane is still not-dispatched and dispatch-lane is next", async () => {
     const state = await resumeWith([]);
     expect(laneClass(state, "lane-1"), "the class must survive for the unlanded case").toBe("not-dispatched");
-    expect(state.nextAction?.verb).toBe("execute-unit");
+    expect(state.nextAction?.verb).toBe("dispatch-lane");
   });
 
-  it("AC-1: with the trailered commit the lane is not not-dispatched and execute-unit is not next", async () => {
+  it("FR-NODE-160 AC-1: after a dispatch-lane intent and result, the trailered commit keeps the lane from not-dispatched and dispatch-lane from being next", async () => {
     const state = await resumeWith(LANDED);
     expect(laneClass(state, "lane-1"), "a landed unit must not read as never dispatched").not.toBe("not-dispatched");
-    expect(state.nextAction?.verb, "a landed unit must not be re-executed").not.toBe("execute-unit");
+    expect(state.nextAction?.verb, "a landed unit must not be re-executed").not.toBe("dispatch-lane");
   });
 
-  it("AC-5: a landed run is not reported reconciled-and-unblocked while directing a re-execution", async () => {
+  it("FR-NODE-160 AC-5: a landed run is not reported reconciled-and-unblocked while directing a re-execution", async () => {
     const state = await resumeWith(LANDED);
-    const directsReExecution = state.nextAction?.verb === "execute-unit";
+    const directsReExecution = state.nextAction?.verb === "dispatch-lane";
     const claimsFine = state.blocking === null;
     expect(directsReExecution && claimsFine, "the tool must not affirm the state is unblocked while re-running landed work").toBe(false);
   });

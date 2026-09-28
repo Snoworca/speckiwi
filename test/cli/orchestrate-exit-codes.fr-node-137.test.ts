@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { minimalCard, emptyDriftInputs, emptyGitFacts } from "../core/orchestrator/resume-fixtures.js";
-import { defaultCatalog, defaultHandoff, defaultLane, defaultRoot } from "../core/orchestrator/handoff-fixtures.js";
 import { pinResumeRunRoot } from "./support/resume-run-root.js";
 
 // @req FR-NODE-137 — one exit-code table for the whole `orchestrate` namespace:
@@ -81,7 +80,7 @@ async function seedRun(root: string, runId: string, lines: string[] = []): Promi
   await write(root, "kiwi/waves.jsonl", lines.length === 0 ? "" : `${lines.join("\n")}\n`);
 }
 
-describe("FR-NODE-137 AC-1 / AC-2 — the four gate verbs exit 2 on refusal and 0 on success", () => {
+describe("FR-NODE-137 AC-1 / AC-2 — the gate verbs exit 2 on refusal and 0 on success", () => {
   it("`wave close` refuses with a GateId and succeeds with an empty violation list", async () => {
     const root = await tempRoot();
     await write(root, "issues.json", JSON.stringify(OPEN_ISSUE));
@@ -134,21 +133,11 @@ describe("FR-NODE-137 AC-1 / AC-2 — the four gate verbs exit 2 on refusal and 
     expect(passed.payload.violations).toEqual([]);
   });
 
-  it("`handoff validate` refuses with a GateId and succeeds with an empty violation list", async () => {
+  it("FR-NODE-137 AC-1 no longer registers `handoff validate` among the gate verbs", async () => {
     const root = await tempRoot();
-    await write(root, "lane.json", JSON.stringify(defaultLane()));
-    await write(root, "catalog.json", JSON.stringify(defaultCatalog()));
-    await write(root, "base.json", JSON.stringify(defaultRoot()));
-    await write(root, "good.md", defaultHandoff());
-    await write(root, "bad.md", "# not a handoff\n");
-
-    const refused = await run(["--root", root, "orchestrate", "handoff", "validate", "--lane", "lane.json", "--path", "bad.md", "--catalog", "catalog.json", "--base", "base.json"]);
-    expect(refused.exit).toBe(2);
-    expect(GATE_IDS).toContain(refused.payload.gate);
-
-    const passed = await run(["--root", root, "orchestrate", "handoff", "validate", "--lane", "lane.json", "--path", "good.md", "--catalog", "catalog.json", "--base", "base.json"]);
-    expect(passed.exit, JSON.stringify(passed.payload)).toBe(0);
-    expect(passed.payload.violations).toEqual([]);
+    const removed = await run(["--root", root, "orchestrate", "handoff", "validate", "--lane", "lane.json", "--path", "x.md", "--catalog", "c.json", "--base", "b.json"]);
+    expect(removed.exit).not.toBe(0);
+    expect(removed.payload.gate).toBeUndefined();
   });
 });
 

@@ -8,8 +8,7 @@ import { toolSchemas } from "../../src/mcp/server.js";
 import { workflowWorkspaceInfo } from "../../src/core/workflow/read.js";
 import { cleanupFixtures, gitWorkspaceRepo, linkedWorktree } from "./support/workspace-root-fixture.js";
 
-const PLAN_RELATIVE = path.posix.join("docs", "plan", "lane.plan.md");
-const SIDECAR_RELATIVE = path.posix.join("docs", "plan", "lane.sidecar.json");
+const SDS_RELATIVE = path.posix.join("docs", "sds", "lane.sds.md");
 
 function serverFor(root: string) {
   const server = createTestMcpServer({ root });
@@ -18,41 +17,12 @@ function serverFor(root: string) {
   return server;
 }
 
-/** A plan the workflow read tools can project, written only where it is asked for. */
-async function writePlan(root: string, runId: string): Promise<void> {
-  await mkdir(path.join(root, "docs", "plan"), { recursive: true });
+/** An SDS the workflow read tools can resolve, written only where it is asked for; `marker` tells the roots apart. */
+async function writeSds(root: string, marker: string): Promise<void> {
+  await mkdir(path.join(root, "docs", "sds"), { recursive: true });
   await writeFile(
-    path.join(root, PLAN_RELATIVE),
-    [
-      "---",
-      `run_id: ${runId}`,
-      "target: v1.0.0",
-      'plan_contract: "1.2.0"',
-      "generated_at: 2026-06-29T08:05:04.654Z",
-      "sidecar_path: ./lane.sidecar.json",
-      "---",
-      "# Lane plan",
-      ""
-    ].join("\n"),
-    "utf8"
-  );
-  await writeFile(
-    path.join(root, SIDECAR_RELATIVE),
-    JSON.stringify(
-      {
-        schema_version: "1.1.0",
-        plan_contract: "1.2.0",
-        run_id: runId,
-        target: "v1.0.0",
-        generated_at: "2026-06-29T08:05:04.654Z",
-        tasks: [
-          { id: "T-001", title: "lane task one", status: "done", depends_on: [], req_ids: ["FR-ARCH-001"] },
-          { id: "T-002", title: "lane task two", status: "pending", depends_on: [], req_ids: ["FR-ARCH-001"] }
-        ]
-      },
-      null,
-      2
-    ),
+    path.join(root, SDS_RELATIVE),
+    ["# SDS: lane", "", "| Field | Value |", "|---|---|", "| Document Type | sds |", "| Profile | lite |", "| Target | v1.0.0 |", "| Status | draft |", `| Date | ${marker} |`, ""].join("\n"),
     "utf8"
   );
 }
@@ -92,8 +62,9 @@ describe("FR-MCP-058 — workflow_* tools resolve their paths against a per-call
 
     // The family is derived from the registered surface, so a workflow tool added later cannot be
     // silently left out of the guarantee.
+    // Fifteen since the eleven plan-mode workflow_* tools left (FR-NODE-211 AC-1).
     const family = Object.keys(server.tools).filter((name) => name.startsWith("workflow_"));
-    expect(family.length).toBe(26);
+    expect(family.length).toBe(15);
     for (const name of family) {
       expect(toolSchemas[name]?.workspaceRoot, `${name} must declare workspaceRoot in its schema`).toBeDefined();
       // Probed with a root that fails the first gate, so acceptance is read off the refusal reason
@@ -123,41 +94,45 @@ describe("FR-MCP-058 — workflow_* tools resolve their paths against a per-call
   it("AC-2: a relative path resolves against the supplied root", async () => {
     const host = await gitWorkspaceRepo("frmcp058-ac2");
     const lane = await linkedWorktree(host, "frmcp058-ac2-wt", "lane-058-ac2");
-    await writePlan(lane, "run-lane-only");
+    await writeSds(lane, "lane-only-marker");
     const server = serverFor(host);
 
-    const found = await server.callTool("workflow_plan_status", { path: PLAN_RELATIVE, workspaceRoot: lane });
-    expect(found).toMatchObject({ ok: true, value: { taskCount: 2 } });
+    const found = await server.callTool("workflow_resolve_artifact", { path: SDS_RELATIVE, includeBody: true, workspaceRoot: lane });
+    expect(found).toMatchObject({ ok: true, value: { selected: { relativePath: SDS_RELATIVE, kind: "sds" } } });
+    expect(JSON.stringify(found)).toContain("lane-only-marker");
 
-    const notFound = await settle(server.callTool("workflow_plan_status", { path: PLAN_RELATIVE }));
-    expect(notFound.ok, "the same call without workspaceRoot must not find the worktree's plan").toBe(false);
+    const notFound = await settle(server.callTool("workflow_resolve_artifact", { path: SDS_RELATIVE, includeBody: true }));
+    expect(JSON.stringify(notFound.payload), "the same call without workspaceRoot must not find the worktree's SDS").not.toContain("lane-only-marker");
   });
 
   it("AC-3: an absolute path inside the supplied root is accepted and one outside it is refused", async () => {
     const host = await gitWorkspaceRepo("frmcp058-ac3");
     const lane = await linkedWorktree(host, "frmcp058-ac3-wt", "lane-058-ac3");
-    await writePlan(lane, "run-lane-abs");
-    await writePlan(host, "run-host-abs");
+    await writeSds(lane, "lane-abs-marker");
+    await writeSds(host, "host-abs-marker");
     const server = serverFor(host);
 
-    const inside = await server.callTool("workflow_plan_status", {
-      path: path.join(lane, PLAN_RELATIVE),
+    const inside = await server.callTool("workflow_resolve_artifact", {
+      path: path.join(lane, SDS_RELATIVE),
+      includeBody: true,
       workspaceRoot: lane
     });
-    expect(inside).toMatchObject({ ok: true, value: { taskCount: 2 } });
+    expect(inside).toMatchObject({ ok: true, value: { selected: { relativePath: SDS_RELATIVE } } });
+    expect(JSON.stringify(inside)).toContain("lane-abs-marker");
 
     // Refused by the reused containment check, which reports itself as SRS-E050 rather than by
-    // failing the envelope — the plan outside the accepted root is never read.
-    const outside = (await server.callTool("workflow_plan_status", {
-      path: path.join(host, PLAN_RELATIVE),
+    // failing the envelope — the SDS outside the accepted root is never read.
+    const outside = (await server.callTool("workflow_resolve_artifact", {
+      path: path.join(host, SDS_RELATIVE),
+      includeBody: true,
       workspaceRoot: lane
-    })) as { value: { plan: unknown; taskCount: number }; diagnostics: Array<{ code: string }> };
+    })) as { value: { selected: unknown }; diagnostics: Array<{ code: string }> };
     expect(outside.diagnostics.map((item) => item.code)).toContain("SRS-E050");
-    expect(outside.value).toMatchObject({ plan: null, taskCount: 0 });
-    expect(JSON.stringify(outside)).not.toContain("run-host-abs");
+    expect(outside.value).toMatchObject({ selected: null });
+    expect(JSON.stringify(outside)).not.toContain("host-abs-marker");
 
     // Containment alone is not enough: docs/spec is an ordinary subdirectory of the accepted root.
-    const spec = (await server.callTool("workflow_plan_status", {
+    const spec = (await server.callTool("workflow_resolve_artifact", {
       path: path.join(lane, "docs", "spec", "00.index.md"),
       workspaceRoot: lane
     })) as { ok: boolean; error?: { reason?: string } };
@@ -196,31 +171,28 @@ describe("FR-MCP-058 — workflow_* tools resolve their paths against a per-call
     expect(result.mcpWorkspace).toMatchObject({ workspaceRoot: lane, rootSource: "per-call-workspace-root" });
   });
 
-  it("AC-6: the checkbox-mutation tools refuse an SRS document under the accepted root", async () => {
+  // The checkbox tools this case named before 4.0.0 left with the plan tools (FR-NODE-211 AC-1).
+  it("FR-MCP-058 AC-6: a surviving write-capable workflow_* tool refuses an SRS document under the accepted root", async () => {
     const host = await gitWorkspaceRepo("frmcp058-ac6");
     const lane = await linkedWorktree(host, "frmcp058-ac6-wt", "lane-058-ac6");
     const server = serverFor(host);
     const specPath = path.join(lane, "docs", "spec", "10.product-architecture.srs.md");
     const before = await readFile(specPath, "utf8");
-    expect(before, "the fixture must carry the plan-shaped checkbox this criterion is about").toContain("- [ ] ");
+    const event = { schema_version: "1.0.0", skill: "kiwi-pm", run_id: "run-058-ac6", status: "TASK_DONE" };
 
-    for (const [tool, extra] of [
-      ["workflow_task_check", {}],
-      ["workflow_task_uncheck", {}],
-      ["workflow_checklist_set", { checked: true }]
-    ] as const) {
+    for (const tool of ["workflow_pipeline_emit", "workflow_worklog_emit", "workflow_repair_record"]) {
       const refused = (await server.callTool(tool, {
         workspaceRoot: lane,
         runId: "run-058-ac6",
-        taskId: "AC-1",
+        owner: "kiwi-pm",
         path: "docs/spec/10.product-architecture.srs.md",
-        ...extra
+        event
       })) as { ok: boolean; error?: { code?: string; reason?: string } };
       expect(refused, `${tool} must refuse an SRS destination`).toMatchObject({
         ok: false,
         error: { code: "MCP_WORKSPACE_ROOT_REFUSED", reason: "workspace-root-forbidden-for-srs" }
       });
     }
-    expect(await readFile(specPath, "utf8"), "no acceptance-criteria checkbox may be toggled").toBe(before);
+    expect(await readFile(specPath, "utf8"), "no SRS document may be written through a workflow tool").toBe(before);
   });
 });

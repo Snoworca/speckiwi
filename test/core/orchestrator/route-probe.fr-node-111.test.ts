@@ -94,8 +94,7 @@ describe("FR-NODE-111 AC-2 — no unreadable field becomes a permissive default"
     ["S3c", "anchorCoverage"],
     ["S7", "orderedSections"],
     ["S8", "linkedSubIssues"],
-    ["S8", "taskListGroups"],
-    ["S2", "planOpenTasks"]
+    ["S8", "taskListGroups"]
   ] as const)("does not read an unreadable %s as 0 on %s", (field, property) => {
     const probe = parseRouteProbe(probeDocument({}, { omit: [field] }));
 
@@ -108,7 +107,6 @@ describe("FR-NODE-111 AC-2 — no unreadable field becomes a permissive default"
     ["S4", "scopes"],
     ["S4", "scopeReqIds"],
     ["S5", "externalPaths"],
-    ["S2", "planReqIds"],
     ["S10", "blockedStability"]
   ] as const)("does not read an unreadable %s as [] on %s", (field, property) => {
     const probe = parseRouteProbe(probeDocument({}, { omit: [field] }));
@@ -120,15 +118,6 @@ describe("FR-NODE-111 AC-2 — no unreadable field becomes a permissive default"
   // D8 masks every one of these today: it removes the rung the unreadable field protects whatever the
   // fallback holds. That is exactly why each fallback is pinned here rather than through a rung —
   // otherwise the day D8's map changes, a fallback flipped to its permissive value passes unnoticed.
-  it("takes the fail-closed value for every non-array field S2 carries", () => {
-    const probe = parseRouteProbe(probeDocument({}, { omit: ["S2"] }));
-
-    expect(probe.planContractOk).toBe(false);
-    expect(probe.planRejectReason).toBe("probe field S2 is unreadable");
-    expect(probe.planTarget).toBeNull();
-    expect(probe.planTarget).not.toBe(probe.activeTarget);
-  });
-
   it("does not read an unreadable S12 as a declared existing-requirement edit", () => {
     const probe = parseRouteProbe(probeDocument({}, { omit: ["S12"] }));
 
@@ -140,14 +129,7 @@ describe("FR-NODE-111 AC-2 — no unreadable field becomes a permissive default"
     const probe = parseRouteProbe(probeDocument({}, { omit: ["S1"] }));
 
     expect({ mode: probe.mode, modeSource: probe.modeSource }).toEqual({ mode: "wait", modeSource: "default-wait" });
-    expect(computeRoute({ ...probe, planContractOk: false, blockedStability: ["FR-NODE-007"], unreadable: [] }, AUTO).withheld_because.map((entry) => entry.split(":")[0])).toEqual(["clause-4"]);
-  });
-
-  it("keeps the unreadable placeholder out of every real intersection, so D6 stays fail-closed", () => {
-    const probe = parseRouteProbe(probeDocument({}, { omit: ["S4"] }));
-
-    expect(computeRoute(probe, AUTO).removed).toContainEqual(expect.objectContaining({ rung: "R-PLAN", by: "D6" }));
-    expect(computeRoute(probe, AUTO).rung).toBe("R-ORCH");
+    expect(computeRoute({ ...probe, unreadable: [] }, AUTO).withheld_because.map((entry) => entry.split(":")[0])).toEqual(["clause-4"]);
   });
 });
 

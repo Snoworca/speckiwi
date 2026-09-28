@@ -68,7 +68,7 @@ describe("FR-NODE-193 AC-1/AC-2 — a legacy line does not deny the write", () =
 
     const result = await appendWorkflowJsonl(root, REL, event("r-1"));
 
-    expect(result.ok, `append was denied: ${result.ok ? "" : result.error.message}`).toBe(true);
+    expect(result.ok, `append was denied: ${result.ok ? "" : result.error?.message}`).toBe(true);
     const after = await readFile(abs, "utf8");
     expect(after.startsWith(legacy), "the legacy line was rewritten or removed").toBe(true);
     expect(nonEmptyLines(after)).toHaveLength(2);
@@ -93,7 +93,7 @@ describe("FR-NODE-193 AC-3 — an unreadable line is stepped over, not repaired"
 
     const result = await appendWorkflowJsonl(root, REL, event("r-1"));
 
-    expect(result.ok, `append was denied: ${result.ok ? "" : result.error.message}`).toBe(true);
+    expect(result.ok, `append was denied: ${result.ok ? "" : result.error?.message}`).toBe(true);
     const after = await readFile(abs, "utf8");
     // The tool cannot read this line, so it has no business rewriting it — only adding after it.
     expect(after.startsWith(`${VALID}${broken}`), "the unreadable line was altered").toBe(true);
@@ -109,7 +109,7 @@ describe("FR-NODE-193 AC-4 — a missing trailing newline is resolved by the app
 
     const result = await appendWorkflowJsonl(root, REL, event("r-1"));
 
-    expect(result.ok, `append was denied: ${result.ok ? "" : result.error.message}`).toBe(true);
+    expect(result.ok, `append was denied: ${result.ok ? "" : result.error?.message}`).toBe(true);
     const after = await readFile(abs, "utf8");
     expect(nonEmptyLines(after), "the events were welded into one line").toHaveLength(2);
     expect(allLinesParse(after)).toBe(true);
@@ -180,7 +180,7 @@ describe("FR-NODE-194 AC-1/AC-2 — a journal that does not exist is created", (
 
     const result = await emit(root, "r-1");
 
-    expect(result.ok, `first append failed: ${result.ok ? "" : result.error.message}`).toBe(true);
+    expect(result.ok, `first append failed: ${result.ok ? "" : result.error?.message}`).toBe(true);
     expect(await exists(abs)).toBe(true);
     const after = await readFile(abs, "utf8");
     expect(nonEmptyLines(after)).toHaveLength(1);

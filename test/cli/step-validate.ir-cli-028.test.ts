@@ -26,7 +26,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //           body-scope diagnostics.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 const SPEC_DIR = path.join("docs", "spec");
@@ -186,8 +186,8 @@ async function breakBodyScope(root: string): Promise<void> {
   await writeFile(indexPath, original.replace("## 4. Scope Map", "## 4. Scope Mapping"), "utf8");
 }
 
-function parseJson(stream: NodeJS.WriteStream): { errors: Array<{ code: string }>; warnings: Array<{ code: string }>; diagnosticsSummary: { errors: number; byCode: Record<string, number> } } {
-  return JSON.parse((stream as unknown as PassThrough).read()?.toString() ?? "");
+function parseJson(stream: PassThrough): { errors: Array<{ code: string }>; warnings: Array<{ code: string }>; diagnosticsSummary: { errors: number; byCode: Record<string, number> } } {
+  return JSON.parse(stream.read()?.toString() ?? "");
 }
 
 describe("IR-CLI-046 — speckiwi step validate command", () => {

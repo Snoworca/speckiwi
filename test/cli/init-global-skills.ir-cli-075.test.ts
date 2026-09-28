@@ -8,7 +8,7 @@ import { main } from "../../src/cli/index.js";
 // @req IR-CLI-075 — speckiwi init --global / -g flag provisions global skills for present agents.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function emptyRepo(): Promise<string> {

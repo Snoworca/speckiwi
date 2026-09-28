@@ -47,29 +47,29 @@ export function variantBodies(): Array<{ id: string; relPath: string; body: stri
 }
 
 /**
- * The nine verbs 05 §4.4 marks `2.6.0-phase2-parallel-lanes`. `execute-unit` replaces the six lane
- * verbs in the phase-1 enum; `probe-isolation`, `run-serial-epilogue` and `replay-deferred-mutations`
- * name a probe, a distinct executor and a deferred-mutation queue phase 1 does not have.
+ * The closed verb enum the skill indexes, derived from the shipped `VERBS` constant rather than
+ * restated, so a verb added to the runtime enum without a skill section fails here.
+ *
+ * 4.0.0 has no phase-1/phase-2 split: the kernel (`src/core/orchestrator/journal-schema.ts`, owned
+ * by area D1) marks no verb deferred and exports no deferred set, so the §V set is the whole enum —
+ * `probe-isolation`, `replay-deferred-mutations` and the six lane verbs included. If the kernel ever
+ * marks a verb deferred again, that set is subtracted here. @req FR-FLOW-074 AC-2 @req FR-NODE-213 AC-5
  */
-export const PHASE2_VERBS = [
-  "probe-isolation",
-  "dispatch-lane",
-  "collect-lane",
-  "verify-lane",
-  "remediate-lane",
-  "release-lane",
-  "integrate-lane",
-  "run-serial-epilogue",
-  "replay-deferred-mutations"
-] as const;
+export const ORCHESTRATOR_VERBS: readonly string[] = [...(VERBS as readonly string[])];
 
 /**
- * The closed phase-1 verb enum, derived from the shipped `VERBS` constant rather than restated, so
- * a verb added to the runtime enum without a skill section fails here. @req FR-FLOW-074 AC-2
+ * Verbs 4.0.0 took out of the enum — `plan-wave` renamed `sds-wave` (FR-NODE-213 AC-5); the unit
+ * executor, the handoff pair, the dispatch-base commit and the serial epilogue removed with the
+ * intra-wave partition (FR-FLOW-187 AC-4). None may keep a §V section. @req FR-NODE-213 AC-5
  */
-export const PHASE1_VERBS: string[] = (VERBS as readonly string[]).filter((verb) => !(PHASE2_VERBS as readonly string[]).includes(verb));
+export const RETIRED_VERBS = ["plan-wave", "execute-unit", "author-handoff", "verify-handoff", "commit-dispatch-base", "run-serial-epilogue"] as const;
 
-/** Phase-2 gate ids named in FR-FLOW-074 AC-5, none of which may reach `critical_gates[]`. */
+/**
+ * Gate ids of the retired phase-2 design named in FR-FLOW-074 AC-5, none of which may reach
+ * `critical_gates[]`. `srs-mutation-replay-failed` is not among them: replaying deferred SRS
+ * mutations on the host is part of every 4.0.0 run (FR-FLOW-083 AC-7 retired; FR-FLOW-188 AC-1),
+ * so its gate is declared.
+ */
 export const PHASE2_GATE_IDS = [
   "lane-lease-breach",
   "lane-timeout",
@@ -89,7 +89,6 @@ export const PHASE2_GATE_IDS = [
   "integration-cas-rejected",
   "integration-restore-failed",
   "epilogue-task-failed",
-  "srs-mutation-replay-failed",
   "lane-state-harvest-failed"
 ] as const;
 

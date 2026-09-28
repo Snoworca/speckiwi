@@ -20,4 +20,4 @@ wave 진입 시 `carried_into` 가 이 wave 인 residual 을 **전량** 수집�
 
 ## 2. 저작 완료 표식 — 멱등 재개
 
-그 wave 의 이벤트 중 `srs_authored` = `true` 를 실은 줄이 **하나라도** 있으면 본 절과 target 등록을 건너뛰고 곧바로 pipeline 단계(§5)로 들어간다 — 저작은 이미 끝났고, 다시 돌리면 같은 요구를 두 번 저작한다. 저작을 마친 직후 `phase="srs-authoring"` 이벤트에 그 표식을 실어 append 하며, **표식 없는 줄**은 `srs-authoring` 줄만 저작 진행 중으로 읽는다 — wave-verify 줄에는 그 표식이 없는 것이 정상이므로, 최신 줄 하나로 판정하면 검증 기록 뒤마다 저작이 되살아난다.
+그 wave 의 이벤트 중 `srs_authored` = `true` 를 실은 줄이 **하나라도** 있으면 본 절과 target 등록을 건너뛰고 곧바로 그 다음 단계 — `parallel-waves.md` 의 SDS 작성과 워커 실행(PW-2 부터) — 로 들어간다 — 저작은 이미 끝났고, 다시 돌리면 같은 요구를 두 번 저작한다. 저작을 마친 직후 `phase="srs-authoring"` 이벤트에 그 표식을 실어 append 하며, **표식 없는 줄**은 `srs-authoring` 줄만 저작 진행 중으로 읽는다 — wave-verify 줄에는 그 표식이 없는 것이 정상이므로, 최신 줄 하나로 판정하면 검증 기록 뒤마다 저작이 되살아난다.

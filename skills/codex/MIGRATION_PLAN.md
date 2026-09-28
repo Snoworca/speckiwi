@@ -4,7 +4,9 @@ Requirement IDs: `MIG-FLOW-001`, `MIG-FLOW-002`, `FR-FLOW-012`, `FR-NODE-016`, `
 
 ## Current State
 
-`skills/codex/` started as a byte-preserving working copy of `skills/claude/`. The Claude source tree remains the baseline and must not be edited during Codex migration unless the user asks for a source-side change. As of 2026-05-19, the Codex validation-improvement pass has normalized every copied skill to required `SKILL.md`, rewritten Claude-specific invocation/tool/model/path wording, moved long operational detail into per-skill extended workflow references, generated per-skill OpenAI UI metadata, and moved the planner validator to `kiwi-planner/scripts/validator.mjs`.
+`skills/codex/` started as a byte-preserving working copy of `skills/claude/`. The Claude source tree remains the baseline and must not be edited during Codex migration unless the user asks for a source-side change. As of 2026-05-19, the Codex validation-improvement pass has normalized every copied skill to required `SKILL.md`, rewritten Claude-specific invocation/tool/model/path wording, moved long operational detail into per-skill extended workflow references, and generated per-skill OpenAI UI metadata.
+
+As of 4.0.0 (2026-09-28) the planning skill, its plan sidecar and its validator script are removed from every rendering (FR-FLOW-184 AC-2), and `kiwi-sds` is added: it writes the lite SDS (`docs/sds/<sds-id>.sds.md`) that `kiwi-pm` executes, checked by `speckiwi sds check` instead of a skill-local script.
 
 As of 2026-05-26, the delta described in `docs/research/08.claude-skill-delta-to-codex-opencode-research.md` has been applied to `skills/codex/`: shared `--auto` decision policy is available at `_shared/kiwi/auto-option.md`, the existing Kiwi Codex skills reference the shared policy and declare `critical_gates[]`, and the Codex skill set now includes `kiwi-commit-auto-pr`, `kiwi-hot-fix`, and `kiwi-review-fix-loop`.
 
@@ -16,8 +18,7 @@ Inventory copied from `skills/claude/`:
 | `kiwi-pm/skill.md` | `kiwi-pm/SKILL.md` | Anatomy, orchestration wording, lifecycle gate, `--auto`, and MCP-required wording normalized. |
 | `kiwi-srs-sync/skill.md` | `kiwi-srs-sync/SKILL.md` | Anatomy, Codex MCP/review terminology, `critical_gates[]`, and direct-apply flag boundaries normalized. |
 | `kiwi-srs-research/skill.md` | `kiwi-srs-research/SKILL.md` | Anatomy, sub-agent wording, model-role wording, `--auto`, and MCP-required wording normalized. |
-| `kiwi-planner/skill.md` | `kiwi-planner/SKILL.md` | Anatomy normalized; validator moved under `scripts/`; `--auto` and MCP-required wording applied. |
-| `kiwi-planner/validator.mjs` | `kiwi-planner/scripts/validator.mjs` | Moved to the Codex skill `scripts/` resource directory. |
+| `kiwi-sds/SKILL.md` | `kiwi-sds/SKILL.md` | Added in 4.0.0 in English with `agents/openai.yaml`; replaces the retired planning skill. |
 | `kiwi-coder/skill.md` | `kiwi-coder/SKILL.md` | Anatomy, TDD workflow, lifecycle gate, `--auto`, follow-up review-fix-loop handoff, and MCP-required wording normalized. |
 | `kiwi-commit-auto-push/SKILL.md` | `kiwi-commit-auto-push/SKILL.md` | Uppercase baseline retained; Codex terminology, `--auto`, and REQ evidence gate wording normalized. |
 | `kiwi-pipeline/SKILL.md` | `kiwi-pipeline/SKILL.md` | Uppercase baseline retained; shared path references, routing, and new skill enum entries normalized. |
@@ -40,8 +41,7 @@ Every original `skills/claude/` source item has the following current Codex disp
 | `kiwi-pm/skill.md` | Renamed to `kiwi-pm/SKILL.md` | Codex requires uppercase `SKILL.md`. |
 | `kiwi-srs-sync/skill.md` | Renamed to `kiwi-srs-sync/SKILL.md` | Codex requires uppercase `SKILL.md`. |
 | `kiwi-srs-research/skill.md` | Renamed to `kiwi-srs-research/SKILL.md` | Codex requires uppercase `SKILL.md`. |
-| `kiwi-planner/skill.md` | Renamed to `kiwi-planner/SKILL.md` | Codex requires uppercase `SKILL.md`; description changed from `Phase>Task` to `Phase-Task` to satisfy Codex validation. |
-| `kiwi-planner/validator.mjs` | Moved to `kiwi-planner/scripts/validator.mjs` | Codex reusable scripts live under `scripts/`; all command examples were updated. |
+| n/a | Added `kiwi-sds/SKILL.md` and `kiwi-sds/agents/openai.yaml` (4.0.0) | The lite SDS author; the planning skill and its script it replaces were retired from every rendering (FR-FLOW-184 AC-2). |
 | `kiwi-coder/skill.md` | Renamed to `kiwi-coder/SKILL.md` | Codex requires uppercase `SKILL.md`. |
 | `kiwi-commit-auto-push/SKILL.md` | Copied unchanged at `kiwi-commit-auto-push/SKILL.md` | Already used Codex-required filename and two-field frontmatter. |
 | `kiwi-pipeline/SKILL.md` | Copied unchanged at `kiwi-pipeline/SKILL.md` | Already used Codex-required filename and two-field frontmatter. |
@@ -95,7 +95,6 @@ Apply these rules to every copied skill before validating it as Codex-compatible
 
 2. File anatomy normalization
    - Rename every lowercase `skill.md` in `codex/kiwi-*` folders to `SKILL.md`. Completed on 2026-05-19.
-   - Move `codex/kiwi-planner/validator.mjs` to `codex/kiwi-planner/scripts/validator.mjs` if the validator remains part of the skill. Completed on 2026-05-19.
    - Keep existing `SKILL.md` files in place for `kiwi-pipeline` and `kiwi-commit-auto-push`.
 
 3. Frontmatter and trigger descriptions
@@ -147,8 +146,8 @@ Apply these rules to every copied skill before validating it as Codex-compatible
 | 6 | `kiwi-srs-feasibility` | Stability and status workflow depends on SRS vocabulary. |
 | 7 | `kiwi-srs-research` | Research topology rewrite after sub-agent wording is settled. |
 | 8 | `kiwi-srs-sync` | Uses SRS and research terminology. |
-| 9 | `kiwi-planner` | Needs script placement and plan schema references. |
-| 10 | `kiwi-coder` | Highest behavioral risk; migrate after planner vocabulary is stable. |
+| 9 | `kiwi-sds` | Added in 4.0.0; its SDS vocabulary is what `kiwi-coder` and `kiwi-pm` read. |
+| 10 | `kiwi-coder` | Highest behavioral risk; migrate after the SDS vocabulary is stable. |
 | 11 | `kiwi-pm` | Orchestrator should be last so it can reference final skill names and contracts. |
 | 12 | `kiwi-review-fix-loop` | New post-implementation gate; depends on coder, MCP evidence, and regression semantics. |
 | 13 | `kiwi-hot-fix` | New urgent-fix flow; depends on SRS sync, coder, reviewer, and stability gate vocabulary. |
@@ -171,7 +170,7 @@ Compare-Object $src $dst
 
 ```powershell
 rg -n --encoding UTF-8 "^---$|^name:|^description:" codex
-rg -n --encoding UTF-8 "spawn_agent|Skill\(|Skill 도구|\bAgent\b|subagent_type|description token|mcp__|claude mcp|claude CLI|claude-standard|opus_|opus_verdict|\bEdit\b|\bWrite\b|\bGlob\b|\bGrep\b" codex -g "!MIGRATION_PLAN.md" -g "!scripts/validator.mjs"
+rg -n --encoding UTF-8 "spawn_agent|Skill\(|Skill 도구|\bAgent\b|subagent_type|description token|mcp__|claude mcp|claude CLI|claude-standard|opus_|opus_verdict|\bEdit\b|\bWrite\b|\bGlob\b|\bGrep\b" codex -g "!MIGRATION_PLAN.md"
 rg -n --encoding UTF-8 "~/.claude|\.claude|CLAUDE\.md|AskUserQuestion" codex -g "!MIGRATION_PLAN.md"
 rg -n --pcre2 --encoding UTF-8 "(?<![A-Za-z0-9._-])/kiwi-[A-Za-z0-9-]+" codex -g "!MIGRATION_PLAN.md"
 rg -n --encoding UTF-8 "CLI fallback|cli-fallback|mcp-cli-both-unavailable|MCP / CLI|MCP/CLI|--auto --auto-apply" codex -g "*.md" -g "!MIGRATION_PLAN.md"
@@ -189,9 +188,9 @@ Current 2026-05-26 validation-improvement pass results:
 - `quick_validate.py` passed for all 13 `codex/kiwi-*` skill folders with `PYTHONUTF8=1`.
 - Every `codex/kiwi-*/SKILL.md` is under 500 lines.
 - Per-skill OpenAI UI metadata exists for every migrated skill and has `display_name`, `short_description`, and a `$skill-name` default prompt.
-- Backticked skill-resource paths for shared references, `validator.mjs`, per-skill extended workflow references, and per-skill UI metadata resolve from the file containing them.
+- Backticked skill-resource paths for shared references, per-skill extended workflow references, and per-skill UI metadata resolve from the file containing them.
 - Disposition inventory check passed for the original migrated set plus the 2026-05-26 delta: shared `auto-option.md`, 13 Codex Kiwi skill folders, generated OpenAI metadata, scripts, and reference files are accounted for.
-- Claude-residue scans for tool syntax, Claude paths, slash invocations, model/provider names, and internal MCP tool names returned no matches outside excluded migration notes and validator source.
+- Claude-residue scans for tool syntax, Claude paths, slash invocations, model/provider names, and internal MCP tool names returned no matches outside excluded migration notes.
 - Post-review safety pass removed normal CLI fallback wording from Codex Kiwi runtime docs: normal target-scoped SRS reads, mutations, status/stability changes, evidence, trace links, and completed-work logging require `speckiwi mcp`; CLI is diagnostic/remediation only.
 - The 2026-05-26 delta skills explicitly declare `critical_gates[]`, and `kiwi-hot-fix --auto` no longer propagates `--auto-apply` / `--yes-all` into `kiwi-srs-sync` unless the user supplied those direct-apply flags.
 
@@ -202,7 +201,6 @@ Current 2026-05-26 validation-improvement pass results:
 | Large `SKILL.md` files may exceed practical progressive-disclosure size. | Split long phase details into `references/` before rewriting semantics. |
 | Model-specific rules may encode useful quality gates. | Preserve the gate intent while replacing Claude model names with role-based wording. |
 | Pipeline event shared paths may break if multiple skill roots are supported. | Keep shared path references relative to `codex/_shared/kiwi/` and document any external path as environment-specific. |
-| `kiwi-planner/validator.mjs` may assume old path layout. | Move only after checking imports and command examples. |
 | Automated validation may not catch semantic Claude references. | Add `rg` checks and sub-agent review as final gates. |
 
 ## Done Criteria for This Migration

@@ -589,7 +589,7 @@ CLI 는 MCP 복구 진단에만 참고한다. etc 스킬은 CLI 로 SRS mutation
 ## 15. 파이프라인 위치
 
 ```
-kiwi-srs (authoring) → kiwi-srs-feasibility (target 전수 평가) → kiwi-coder (구현)
+kiwi-srs (authoring) → kiwi-srs-feasibility (target 전수 평가) → kiwi-sds (설계) → kiwi-pm (구현)
                               ↑ 본 스킬
 ```
 
@@ -603,7 +603,7 @@ kiwi-srs (authoring) → kiwi-srs-feasibility (target 전수 평가) → kiwi-co
 
 - `skill`: `"kiwi-srs-feasibility"`
 - `status`: 정상 종료 = `TASK_DONE`; dry-run = `DRY_RUN`; 사용자 보류 = `NEEDS_USER`; 실패 = `FAILED`
-- `next_hint`: 평가 결과 stability ≥ evolving 다수 → `"kiwi-planner"`; 블로커 모호 다수 → `"kiwi-srs-research"`; 혼재 → `null` (사용자 결정)
+- `next_hint`: 평가 결과 stability ≥ evolving 다수 → `"kiwi-sds"`; 블로커 모호 다수 → `"kiwi-srs-research"`; 혼재 → `null` (사용자 결정)
 - `req_ids`: 본 호출에서 stability 가 변경된 REQ-ID 배열
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-srs-feasibility-{run-id}/`
 - `notes`: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecated:1") 권장

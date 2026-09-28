@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-043
 // The wave/pipeline event contracts are natural-language agent instructions, not executable
@@ -99,7 +100,7 @@ describe("FR-FLOW-043 — run-root pinned wave and pipeline event journals", () 
     const text = read(copy);
     const enumBlock = text.split(/^## 3\. skill enum$/m)[1];
     expect(enumBlock, `${copy} must have a skill enum section`).toBeDefined();
-    const fenced = enumBlock.split("```")[1] ?? "";
+    const fenced = enumBlock?.split("```")[1] ?? "";
     const members = fenced
       .split("\n")
       .map((line) => line.trim())
@@ -178,16 +179,18 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
     );
   });
 
-  it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
+  // Revised in 4.0.0: "1.3.0 or later", and the version reads what its field set is at — v2.0.0 once
+  // 4.0.0 drops plan_run_id and coverage_residual and adds sds_id (FR-NODE-213 AC-6, FR-NODE-167 AC-3).
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-1: %s declares schema version 2.0.0", (copy) => {
     const text = read(copy);
-    expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.5\.0/m
+    expect(text, `${copy} must declare the contract version its field set is at in its title`).toMatch(
+      /^#\s*kiwi waves event v2\.0\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.5\.0"/
+      /"schema_version"\s*:\s*"2\.0\.0"/
     );
-    expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
-      /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
+    expect(text, `${copy} must not leave a stale 1.x schema_version example behind`).not.toMatch(
+      /"schema_version"\s*:\s*"1\.\d+\.\d+"/
     );
   });
 
@@ -390,10 +393,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -442,7 +445,7 @@ describe("FR-FLOW-047/048/049/051 — waves-event v1.2.0 continuity fields", () 
     const row = cells(optional, /^\s*\|\s*`phase`\s*\|/);
     expect(row.length, `${copy} must keep a phase enum row`).toBeGreaterThan(3);
     for (const member of ["pipeline", "srs-authoring", "wave-verify", "final-verify"]) {
-      expect(row[3].includes(member), `${copy} the phase enum CELL must list ${member}`).toBe(true);
+      expect(at(row, 3).includes(member), `${copy} the phase enum CELL must list ${member}`).toBe(true);
     }
   });
 
@@ -507,17 +510,17 @@ describe("FR-FLOW-047/048/049/051 — waves-event v1.2.0 continuity fields", () 
     const designRow = cells(verification, /^\s*\|\s*`design_layer`/);
     expect(designRow.length, `${copy} the verification object must record design_layer`).toBeGreaterThan(3);
     for (const key of ["expected", "mapped", "unmapped"]) {
-      expect(designRow[3].includes(key), `${copy} design_layer must carry ${key}`).toBe(true);
+      expect(at(designRow, 3).includes(key), `${copy} design_layer must carry ${key}`).toBe(true);
     }
 
     // preservation_layer — verifier 2's mechanically derived denominator.
     const preservationRow = cells(verification, /^\s*\|\s*`preservation_layer`/);
     expect(preservationRow.length, `${copy} the verification object must record preservation_layer`).toBeGreaterThan(3);
     for (const key of ["expected", "checked", "rows"]) {
-      expect(preservationRow[3].includes(key), `${copy} preservation_layer must carry ${key}`).toBe(true);
+      expect(at(preservationRow, 3).includes(key), `${copy} preservation_layer must carry ${key}`).toBe(true);
     }
     expect(
-      /intended-improvement/.test(preservationRow[3]) && /unapproved-damage/.test(preservationRow[3]),
+      /intended-improvement/.test(at(preservationRow, 3)) && /unapproved-damage/.test(at(preservationRow, 3)),
       `${copy} each preservation row must be judged by the two-value enum, not by free text`
     ).toBe(true);
 
@@ -525,7 +528,7 @@ describe("FR-FLOW-047/048/049/051 — waves-event v1.2.0 continuity fields", () 
     const regressionRow = cells(verification, /^\s*\|\s*`regression`/);
     expect(regressionRow.length, `${copy} the verification object must record regression`).toBeGreaterThan(3);
     for (const key of ["command", "exit_code", "failing_tests"]) {
-      expect(regressionRow[3].includes(key), `${copy} regression must carry ${key}`).toBe(true);
+      expect(at(regressionRow, 3).includes(key), `${copy} regression must carry ${key}`).toBe(true);
     }
 
     // The rules that make the fields load-bearing rather than decorative. Each is anchored to its
@@ -601,7 +604,7 @@ describe("FR-FLOW-047/048/049/051 — waves-event v1.2.0 continuity fields", () 
     const optional = section(text, /^###\s.*선택 필드/);
     const row = cells(optional, /^\s*\|\s*`srs_authored`/);
     expect(row.length, `${copy} must declare srs_authored`).toBeGreaterThan(3);
-    expect(/bool/i.test(row[2]), `${copy} srs_authored must be a boolean`).toBe(true);
+    expect(/bool/i.test(at(row, 2)), `${copy} srs_authored must be a boolean`).toBe(true);
     // The discriminator: phase alone is written at authoring START too, so the boolean is what makes
     // "finished" distinguishable from "in progress".
     const rule = line(text, /`srs_authored`[^\n]*true/);
@@ -672,16 +675,18 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
   // The optional fields added below are field additions, which the file's own SemVer rule makes a
   // minor bump. The FR-FLOW-047 block above pins 1.2.0; see the round-2 contract §0 for the exact
   // retarget that belongs with the implementation.
-  it.each(WAVES_COPIES)("%s declares schema version 1.4.0", (copy) => {
+  // Revised in 4.0.0: the contract is at v2.0.0 once its field set drops plan_run_id and
+  // coverage_residual and adds sds_id (FR-NODE-213 AC-6, FR-NODE-167 AC-3).
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-1: %s declares schema version 2.0.0", (copy) => {
     const text = read(copy);
-    expect(text, `${copy} must declare the minor-bumped contract version in its title`).toMatch(
-      /^#\s*kiwi waves event v1\.5\.0/m
+    expect(text, `${copy} must declare the contract version its field set is at in its title`).toMatch(
+      /^#\s*kiwi waves event v2\.0\.0/m
     );
     expect(text, `${copy} emit and schema examples must carry the bumped schema_version`).toMatch(
-      /"schema_version"\s*:\s*"1\.5\.0"/
+      /"schema_version"\s*:\s*"2\.0\.0"/
     );
-    expect(text, `${copy} must not leave a stale pre-1.4.0 schema_version example behind`).not.toMatch(
-      /"schema_version"\s*:\s*"1\.(?:0|1|2|3)\.0"/
+    expect(text, `${copy} must not leave a stale 1.x schema_version example behind`).not.toMatch(
+      /"schema_version"\s*:\s*"1\.\d+\.\d+"/
     );
   });
 
@@ -757,7 +762,7 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
     const row = cells(verification, /^\s*\|\s*`preservation_layer`/);
     expect(row.length, `${copy} the verification object must record preservation_layer`).toBeGreaterThan(3);
     expect(
-      row[3].includes("evidence"),
+      at(row, 3).includes("evidence"),
       `${copy} each preservation row must carry an evidence key alongside item and verdict`
     ).toBe(true);
   });
@@ -802,7 +807,7 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
     const row = cells(verification, /^\s*\|\s*`regression`/);
     expect(row.length, `${copy} the verification object must record regression`).toBeGreaterThan(3);
     expect(
-      row[3].includes("baseline_failing_tests"),
+      at(row, 3).includes("baseline_failing_tests"),
       `${copy} the regression object must record the pinned baseline failures`
     ).toBe(true);
     const rule = line(verification, /baseline_failing_tests`?\s*\)?[^\n]*(?:verdict|pass)|신규 실패/);
@@ -831,7 +836,7 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
     const row = cells(verification, /^\s*\|\s*`constraint_layer`/);
     expect(row.length, `${copy} the verification object must record constraint_layer`).toBeGreaterThan(3);
     for (const key of ["expected", "checked", "violations"]) {
-      expect(row[3].includes(key), `${copy} constraint_layer must carry ${key}`).toBe(true);
+      expect(at(row, 3).includes(key), `${copy} constraint_layer must carry ${key}`).toBe(true);
     }
     const rule = line(verification, /`constraint_layer\.violations`/);
     expect(rule, `${copy} must state what a constraint violation does to the roll-up`).not.toBe("");
@@ -859,22 +864,33 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
     const row = cells(optional, /^\s*\|\s*`diff_window`/);
     expect(row.length, `${copy} the event must be able to carry a diff window`).toBeGreaterThan(3);
     for (const key of ["base_sha", "head_sha"]) {
-      expect(row[3].includes(key), `${copy} diff_window must carry ${key}`).toBe(true);
+      expect(at(row, 3).includes(key), `${copy} diff_window must carry ${key}`).toBe(true);
     }
   });
 
-  // R2-M4: a re-entry creates a new pipeline run, so a single-run window either re-verifies
-  // pre-fix evidence or passes on stale clean evidence.
-  it.each(WAVES_COPIES)("%s records every pipeline run of a wave", (copy) => {
-    const text = read(copy);
-    const optional = section(text, /^###\s.*선택 필드/);
-    const row = cells(optional, /^\s*\|\s*`pipeline_run_ids`/);
-    expect(row.length, `${copy} the event must record the full list of pipeline runs`).toBeGreaterThan(3);
-    const rule = line(text, /`pipeline_run_ids`[^\n]*(?:전량|모든)/);
-    expect(rule, `${copy} must state that the list is complete`).not.toBe("");
+  // R2-M4: a re-entry creates a new run, so a single-run window either re-verifies pre-fix evidence
+  // or passes on stale clean evidence. Revised in 4.0.0: a wave runs no pipeline cycle (FR-FLOW-188
+  // AC-7), so every run dispatched for the wave is recorded against its sds_id (FR-NODE-213 AC-6).
+  it.each(WAVES_COPIES)("FR-FLOW-062 AC-2: %s records every run dispatched for a wave against its sds_id", (copy) => {
+    const optional = section(read(copy), /^###\s.*선택 필드/);
+    const row = cells(optional, /^\s*\|\s*`sds_id`\s*\|/);
+    expect(row.length, `${copy} the event must carry the wave's sds_id`).toBeGreaterThan(3);
+    expect(/\*\*모든\*\* run|every run/.test(at(row, 3)), `${copy} the sds_id rule must cover every run of the wave`).toBe(
+      true
+    );
+    for (const run of ["워커", "재진입", "개선 서브에이전트"]) {
+      expect(at(row, 3).includes(run), `${copy} the dispatched runs recorded against sds_id must include the ${run} run`).toBe(
+        true
+      );
+    }
+    expect(/dispatch 시점/.test(at(row, 3)), `${copy} each run must be recorded at the time it is dispatched`).toBe(true);
+    expect(V12_HEDGE.test(at(row, 3)), `${copy} the recording rule must be absolute, not hedged`).toBe(false);
+    // The pipeline-run list survives only so pre-2.0.0 lines stay readable.
+    const legacy = cells(optional, /^\s*\|\s*`pipeline_run_ids`\s*\|/);
+    expect(legacy.length, `${copy} pipeline_run_ids stays declared for old lines`).toBeGreaterThan(3);
     expect(
-      /`pipeline_run_id`/.test(rule),
-      `${copy} the relationship to the existing single-value field must be stated, not left to inference`
+      /2\.0\.0 이전/.test(at(legacy, 3)) && /옛 줄을 읽기 위해/.test(at(legacy, 3)),
+      `${copy} pipeline_run_ids must be marked as read-only legacy from before 2.0.0`
     ).toBe(true);
   });
 
@@ -884,7 +900,7 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
     const row = cells(verification, /^\s*\|\s*`frozen_denominator`/);
     expect(row.length, `${copy} the verification object must record frozen_denominator`).toBeGreaterThan(3);
     for (const key of ["round", "req_ac", "design_items", "preservation"]) {
-      expect(row[3].includes(key), `${copy} frozen_denominator must carry ${key}`).toBe(true);
+      expect(at(row, 3).includes(key), `${copy} frozen_denominator must carry ${key}`).toBe(true);
     }
     const rowCountRule = line(verification, /행 수/);
     expect(
@@ -987,34 +1003,43 @@ const R3_EXCLUSION_CLASSES = [
 describe("R3 — waves-event production duties, run-scope window and closed exclusion vocabulary", () => {
   // R3-H3: both fields have consumers in three places and no producer anywhere. The skill writes
   // them; the contract has to say they are not optional on the events the consumers read.
+  // Old R3-H3 (FR-FLOW-062 AC-3) pinned diff_window and pipeline_run_ids as de-facto required on
+  // the events the verifier reads. FR-NODE-213 AC-6 and FR-FLOW-062 AC-2 as revised in 4.0.0 move the
+  // window key to sds_id: the events now depend on diff_window and sds_id.
   it.each(WAVES_COPIES)("%s makes the window fields mandatory on the events that are read", (copy) => {
     const optional = section(read(copy), /^###\s.*선택 필드/);
     expect(optional, `${copy} must have an optional-fields section`).not.toBe("");
-    const rule = line(optional, /`diff_window`[^\n]*`pipeline_run_ids`|`pipeline_run_ids`[^\n]*`diff_window`/);
-    expect(rule, `${copy} must state the de-facto requirement for both window fields together`).not.toBe("");
+    for (const field of ["diff_window", "sds_id"]) {
+      const rule = line(optional, new RegExp(`^\`${field}\` (?:는|도)[^\\n]*사실상 필수`));
+      expect(rule, `${copy} must state the de-facto requirement for ${field}`).not.toBe("");
+      expect(
+        /wave-verify/.test(rule) && /`complete`/.test(rule),
+        `${copy} the ${field} requirement must name the two event kinds the verifier reads`
+      ).toBe(true);
+      expect(R3_HEDGE.test(rule), `${copy} the ${field} requirement must be absolute, not hedged`).toBe(false);
+    }
     expect(
-      /사실상 필수/.test(rule),
-      `${copy} both fields must be de-facto required, the same status pipeline_run_id already has`
-    ).toBe(true);
-    expect(
-      /wave-verify/.test(rule) && /`complete`/.test(rule),
-      `${copy} the requirement must name the two event kinds the verifier reads`
-    ).toBe(true);
-    expect(R3_HEDGE.test(rule), `${copy} the requirement must be absolute, not hedged`).toBe(false);
+      /`pipeline_run_ids?`[^\n]*사실상 필수/.test(optional),
+      `${copy} a pipeline run id is no longer required on any event`
+    ).toBe(false);
   });
 
-  // R3-H5: a resumed session cannot supply --plan-run-id if the journal never recorded it.
-  it.each(WAVES_COPIES)("%s records the plan run id as its own field", (copy) => {
+  // Old R3-H5 (FR-FLOW-062 AC-4 evidence): a resumed session cannot supply --plan-run-id if the
+  // journal never recorded it, so plan_run_id was its own field. Superseded by FR-NODE-213 AC-6 (and
+  // FR-FLOW-184 AC-5, --sds-id replaces --plan-run-id): the journal records sds_id, which the resume
+  // hands back as --sds-id, and plan_run_id leaves the field set.
+  it.each(WAVES_COPIES)("%s records the sds id the resume hands back, not a plan run id", (copy) => {
     const optional = section(read(copy), /^###\s.*선택 필드/);
-    const row = cells(optional, /^\s*\|\s*`plan_run_id`/);
+    const row = cells(optional, /^\s*\|\s*`sds_id`\s*\|/);
+    expect(row.length, `${copy} the event must carry the sds id the resume needs`).toBeGreaterThan(3);
     expect(
-      row.length,
-      `${copy} the event must carry the plan run id; it is a different value from pipeline_run_id and the resume needs it`
-    ).toBeGreaterThan(3);
-    expect(
-      /`pipeline_run_id`/.test(row[3]),
-      `${copy} the field must state its relationship to pipeline_run_id, which is the value it is confused with`
+      /`--sds-id`/.test(at(row, 3)),
+      `${copy} the sds_id row must say the resume hands it back as --sds-id`
     ).toBe(true);
+    expect(
+      cells(optional, /^\s*\|\s*`plan_run_id`\s*\|/).length > 3,
+      `${copy} plan_run_id left the field set in 4.0.0`
+    ).toBe(false);
   });
 
   // R3-H9: the final pass requires a preservation verdict, and its denominator is defined only over a
@@ -1028,10 +1053,10 @@ describe("R3 — waves-event production duties, run-scope window and closed excl
       `${copy} the run-scope final event needs its own window; without one the preservation denominator has no input`
     ).toBeGreaterThan(3);
     for (const key of ["base_sha", "head_sha"]) {
-      expect(row[3].includes(key), `${copy} run_diff_window must carry ${key}`).toBe(true);
+      expect(at(row, 3).includes(key), `${copy} run_diff_window must carry ${key}`).toBe(true);
     }
     expect(
-      /final-verify/.test(row[3]),
+      /final-verify/.test(at(row, 3)),
       `${copy} the field must be scoped to the final-verify event so it is not confused with the per-wave window`
     ).toBe(true);
     // The emit example is what an agent copies verbatim, so the final-verify line must carry it and
@@ -1058,7 +1083,7 @@ describe("R3 — waves-event production duties, run-scope window and closed excl
     expect(row.length, `${copy} the verification object must record frozen_denominator`).toBeGreaterThan(3);
     for (const key of ["round", "req_ac", "design_items", "preservation", "constraints"]) {
       expect(
-        row[3].includes(key),
+        at(row, 3).includes(key),
         `${copy} frozen_denominator must carry ${key}; a layer outside it escapes the row-count invalidation`
       ).toBe(true);
     }
@@ -1086,7 +1111,7 @@ describe("R3 — waves-event production duties, run-scope window and closed excl
       `${copy} the cross-wave integration items must be a recorded structure, or the final denominator is improvised`
     ).toBeGreaterThan(3);
     for (const key of ["id", "heading_path", "line_start", "line_end", "statement"]) {
-      expect(row[3].includes(key), `${copy} each integration item must record ${key}`).toBe(true);
+      expect(at(row, 3).includes(key), `${copy} each integration item must record ${key}`).toBe(true);
     }
     const verification = section(text, /^###\s.*`verification` object/);
     const rule = line(verification, /`wave="all"`[^\n]*`design_layer\.expected`|`design_layer\.expected`[^\n]*`wave="all"`/);
@@ -1108,7 +1133,7 @@ describe("R3 — waves-event production duties, run-scope window and closed excl
     const row = cells(baseline, /^\s*\|\s*`out_of_scope`/);
     expect(row.length, `${copy} design_baseline must record out_of_scope`).toBeGreaterThan(3);
     expect(
-      row[3].includes("exclusion_class"),
+      at(row, 3).includes("exclusion_class"),
       `${copy} each exclusion must carry a class alongside the free-text reason`
     ).toBe(true);
     // The enum members live in the object's own prose, next to the row that declares the key.
@@ -1161,23 +1186,27 @@ describe("R3-H4 — the re-entry emit key is defined in the shared pipeline-even
     expect(R3_HEDGE.test(skipRule), `${copy} the key rule must be absolute, not hedged`).toBe(false);
   });
 
-  it.each(PIPELINE_COPIES)("%s separates the emit key from the sidecar run_id id space", (copy) => {
+  // @req FR-FLOW-064 AC-2 — the identifier children validate is now the sds-id (FR-FLOW-184 AC-5),
+  // which replaced the sidecar run_id; `#` is outside its character set too.
+  it.each(PIPELINE_COPIES)("%s separates the emit key from the sds-id id space", (copy) => {
     const reentry = section(read(copy), /^###\s*5\.4/);
-    const rule = line(reentry, /\[a-z0-9\.-\]\{4,40\}/);
+    const rule = line(reentry, /`--sds-id`/);
     expect(
       rule,
-      `${copy} "#" is not in the sidecar run_id character class, so the separation must be stated or the children reject the key`
+      `${copy} "#" is not in the sds-id character set, so the separation must be stated or the children reject the key`
     ).not.toBe("");
     expect(
       /적용하지 않는다|대상이 아니다/.test(rule),
-      `${copy} the sidecar regex must be stated as NOT applying to the emit key`
+      `${copy} the sds-id character rule must be stated as NOT applying to the emit key`
     ).toBe(true);
     expect(R3_HEDGE.test(rule), `${copy} the separation must be absolute, not hedged`).toBe(false);
   });
 
+  // @req FR-FLOW-184 AC-3 — kiwi-sds replaces kiwi-planner among the children re-run under a reused id.
   it.each(PIPELINE_COPIES)("%s names the three skills that must honour the key", (copy) => {
     const reentry = section(read(copy), /^###\s*5\.4/);
-    for (const skill of ["kiwi-pipeline", "kiwi-planner", "kiwi-pm"]) {
+    expect(reentry.includes("kiwi-planner"), `${copy} still names the retired kiwi-planner`).toBe(false);
+    for (const skill of ["kiwi-pipeline", "kiwi-sds", "kiwi-pm"]) {
       expect(
         reentry.includes(skill),
         `${copy} ${skill} emits under a reused run id and must be named as a consumer of this rule`

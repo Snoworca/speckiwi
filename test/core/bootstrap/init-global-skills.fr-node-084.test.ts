@@ -39,7 +39,7 @@ async function exists(target: string): Promise<boolean> {
 
 async function runInit(root: string, input: Parameters<typeof initProject>[1]) {
   const result = await initProject(await resolveProjectRoot(root), input);
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "expected an ok result with a value");
   return result.value;
 }
 

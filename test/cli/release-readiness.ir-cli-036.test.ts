@@ -44,12 +44,12 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //                    VE covers AC-1 only while AC-2 is unchecked   → AC-2 coverage gap.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the output written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 const BLOCKED_ID = "FR-ARCH-010";

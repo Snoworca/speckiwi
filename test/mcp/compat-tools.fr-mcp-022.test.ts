@@ -29,6 +29,7 @@ import {
 import { createMcpServer, isReadOnlyTool } from "../../src/mcp/server.js";
 import { resolveProjectRoot } from "../../src/core/project-root.js";
 import { parseWorkspace } from "../../src/core/parser/workspace-parser.js";
+import { at } from "../support/at.js";
 
 const COMPAT_MUTATION_TOOLS = [
   "add_compatibility_check",
@@ -281,9 +282,9 @@ describe("FR-MCP-041 — MCP registration of compatibility-check tools and edge 
     expect(added).toMatchObject({ ok: true });
     let rows = await compatibilityRows(rootPath);
     expect(rows).toHaveLength(1);
-    expect(rows[0].holder).toBe(MIN_ID);
-    expect(rows[0].reference).toBe(MAX_ID);
-    const notesAfterAdd = rows[0].notes;
+    expect(at(rows, 0).holder).toBe(MIN_ID);
+    expect(at(rows, 0).reference).toBe(MAX_ID);
+    const notesAfterAdd = at(rows, 0).notes;
 
     // refresh_compatibility_check → core refreshCompatibilityCheck replaces the single row in
     // place (still exactly one row on the same min block referencing the same peer).
@@ -291,9 +292,9 @@ describe("FR-MCP-041 — MCP registration of compatibility-check tools and edge 
     expect(refreshed).toMatchObject({ ok: true });
     rows = await compatibilityRows(rootPath);
     expect(rows).toHaveLength(1);
-    expect(rows[0].holder).toBe(MIN_ID);
-    expect(rows[0].reference).toBe(MAX_ID);
-    expect(rows[0].notes).toContain("fpv1");
+    expect(at(rows, 0).holder).toBe(MIN_ID);
+    expect(at(rows, 0).reference).toBe(MAX_ID);
+    expect(at(rows, 0).notes).toContain("fpv1");
     // The refreshed row carries the canonical pin grammar (still a valid checked_compatible row).
     expect(notesAfterAdd).toContain("fpv1");
 

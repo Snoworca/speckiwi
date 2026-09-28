@@ -77,7 +77,7 @@ describe("FR-NODE-042 FND-006 — claim_step honours dryRun", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.written).toBe(false);
+      expect(result.value?.written).toBe(false);
     }
     expect(await readStateMd(root)).toBe(before);
   });

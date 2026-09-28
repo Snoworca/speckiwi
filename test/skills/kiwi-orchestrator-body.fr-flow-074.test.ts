@@ -9,10 +9,10 @@ import { EXPECTED_KIWI_SKILLS } from "../../src/doctor/package-doctor.js";
 import {
   ORCHESTRATOR_MIRROR,
   ORCHESTRATOR_VARIANTS,
-  PHASE1_VERBS,
+  ORCHESTRATOR_VERBS,
   PHASE2_GATE_IDS,
-  PHASE2_VERBS,
   REPO_ROOT,
+  RETIRED_VERBS,
   ROUTING_GATE_IDS,
   criticalGateRows,
   gateSeverityRows,
@@ -52,30 +52,37 @@ describe("FR-FLOW-074 — the kiwi-orchestrator skill ships in three variants", 
     expect(EXPECTED_KIWI_SKILLS).toContain("kiwi-orchestrator");
   });
 
-  it("AC-2 — every phase-1 verb has exactly one §V section and every §V section names a phase-1 verb", () => {
-    // The expectation is derived from the shipped VERBS constant minus 05 §4.4's phase-2 rows, so a
-    // verb added to the runtime enum with no skill section fails here rather than silently passing.
-    expect(PHASE1_VERBS.length).toBe(38);
+  it("FR-FLOW-074 AC-2 — every enum verb has exactly one §V section and every §V section names an enum verb", () => {
+    // The expectation is the shipped VERBS constant (the kernel marks no verb deferred from 4.0.0), so
+    // a verb added to the runtime enum with no skill section fails here rather than silently passing.
+    // The former `length === 38` pinned the phase-1 subset, which no longer exists; FR-FLOW-074 states
+    // no count, so the size is not restated. The lane verbs are asserted members instead, because
+    // FR-NODE-213 AC-5 puts them in the closed vocabulary and an enum losing them must fail here.
+    for (const verb of ["sds-wave", "probe-isolation", "dispatch-lane", "collect-lane", "verify-lane", "remediate-lane", "integrate-lane", "replay-deferred-mutations", "release-lane"]) {
+      expect(ORCHESTRATOR_VERBS, `the kernel enum must carry ${verb}`).toContain(verb);
+    }
 
     for (const variant of VARIANTS) {
       const declared = verbSectionNames(variant.body);
       expect(new Set(declared).size, `${variant.id}: no duplicate §V section`).toBe(declared.length);
-      expect([...declared].sort(), `${variant.id}: §V sections must equal the phase-1 verb enum`).toEqual([...PHASE1_VERBS].sort());
+      expect([...declared].sort(), `${variant.id}: §V sections must equal the verb enum`).toEqual([...ORCHESTRATOR_VERBS].sort());
     }
   });
 
-  it("AC-2 — no §V section names a verb 05 §4.4 marks phase 2", () => {
+  it("FR-FLOW-074 AC-2 — no §V section names a verb 4.0.0 retired", () => {
+    // Was "no §V section names a phase-2 verb": 4.0.0 made those verbs ordinary members (FR-NODE-213
+    // AC-5), so the orphan-section guard now points at the verbs that left the enum.
     for (const variant of VARIANTS) {
       const declared = new Set(verbSectionNames(variant.body));
-      for (const verb of PHASE2_VERBS) {
-        expect(declared.has(verb), `${variant.id}: ${verb} is phase-2 and must have no §V section`).toBe(false);
+      for (const verb of RETIRED_VERBS) {
+        expect(declared.has(verb), `${variant.id}: ${verb} left the enum in 4.0.0 and must have no §V section`).toBe(false);
       }
     }
   });
 
-  it("AC-2 — every §V section declares one of the three recovery classes", () => {
+  it("FR-FLOW-074 AC-2 — every §V section declares one of the three recovery classes", () => {
     for (const variant of VARIANTS) {
-      for (const verb of PHASE1_VERBS) {
+      for (const verb of ORCHESTRATOR_VERBS) {
         const body = verbSection(variant.body, verb);
         expect(body.length, `${variant.id}: §V.${verb} must have content`).toBeGreaterThan(0);
         if (verb === "halt") continue; // 05 §4.4: terminal, and declares no class.
@@ -116,7 +123,7 @@ describe("FR-FLOW-074 — the kiwi-orchestrator skill ships in three variants", 
     expect(severitySets[2]).toEqual(severitySets[0]);
   });
 
-  it("AC-5 — no phase-2 gate identifier appears in any variant's critical_gates[]", () => {
+  it("FR-FLOW-074 AC-5 — no phase-2 gate identifier appears in any variant's critical_gates[]", () => {
     for (const variant of VARIANTS) {
       const declared = new Set(criticalGateRows(variant.body).map((row) => row.gateId));
       for (const gateId of PHASE2_GATE_IDS) {
@@ -406,16 +413,18 @@ describe("FR-FLOW-086 AC-4 — verification-oscillation is declared by the orche
     }
   });
 
-  it("AC-5 — the rule lives in the shared engine and the body states its D/W/H/P/F reach", () => {
+  it("FR-FLOW-086 AC-5 — the rule lives in the shared engine and the body states its D/W/P/F reach", () => {
     for (const agent of ["claude", "codex", "etc"]) {
       const engine = readVariant(`skills/${agent}/_shared/kiwi/verify-loop.md`);
       expect(engine, `${agent}: verify-loop.md must carry the oscillation rule`).toContain("verification-oscillation");
     }
     // Denominator-agnostic means every caller inherits it: the orchestrator body says so by naming
-    // all five phase-1 loops rather than attaching the rule to one of them.
+    // every loop it runs rather than attaching the rule to one of them. FR-FLOW-086 AC-5 names D, W,
+    // H, P and F; 4.0.0 removed loop H with the handoff documents (FR-FLOW-187 AC-4), so the loops
+    // are D, W, P and F.
     for (const variant of VARIANTS) {
       expect(
-        tiedTogether(variant.body, /엔진에 있으므로/, [/D·W·H·P·F/, /모든 루프에 도달한다/], 300),
+        tiedTogether(variant.body, /엔진에 있으므로/, [/D·W·P·F/, /모든 루프에 도달한다/], 300),
         `${variant.id}: the reach must be stated, not implied`
       ).toBe(true);
     }
@@ -423,36 +432,34 @@ describe("FR-FLOW-086 AC-4 — verification-oscillation is declared by the orche
 });
 
 describe("FR-FLOW-088 — isolation stated in the skill's own section zero", () => {
-  it("AC-1 — a §0 section carries all three phase-1 grounds", () => {
+  it("FR-FLOW-088 AC-1 — §0 states each wave's worker runs in its own worktree, dispatched by the shared contract, serial when isolation is unavailable", () => {
     for (const variant of VARIANTS) {
       const zero = section(variant.body, /^##\s*0\.I\b/m);
       expect(zero.length, `${variant.id}: a 0.* isolation section must exist`).toBeGreaterThan(0);
-      expect(zero).toMatch(/per-wave worktree/);
-      expect(zero).toMatch(/lane workspace/);
-      expect(zero).toMatch(/host root/);
-      expect(zero).toMatch(/통합 브랜치/);
-      expect(zero).toMatch(/none-serial/);
+      // One sentence carries the worker, its worktree under worktree-lane.md and the dispatching
+      // contract, so a §0 that names the files in unrelated sentences does not pass.
+      expect(
+        tiedTogether(zero, /wave 의 워커/, [/_shared\/kiwi\/worktree-lane\.md/, /워크트리/, /_shared\/kiwi\/parallel-waves\.md/, /dispatch/], 300),
+        `${variant.id}: the worker, its worktree and the dispatching contract must be stated together`
+      ).toBe(true);
+      expect(
+        tiedTogether(zero, /격리 워커를 띄울 수 없는 런타임/, [/직렬로 돌고/, /이유를 기록한다/], 120),
+        `${variant.id}: the serial fallback and its recorded reason must be stated`
+      ).toBe(true);
     }
   });
 
-  it("AC-2 — every isolation profile named in the phase-1 text is the literal none-serial", () => {
+  it("FR-FLOW-088 AC-2/AC-3 (retired) — the constant none-serial profile and the P.6 deferral are gone", () => {
+    // AC-2 and AC-3 retired in 4.0.0 (successor FR-FLOW-188): the constant host-root profile and the
+    // deferral of P.6 to 2.6.0-phase2-parallel-lanes no longer describe the run, so their presence is
+    // now the defect.
     for (const variant of VARIANTS) {
-      expect(/\bbranch-serial-lane\b/.test(variant.body), `${variant.id}: branch-serial-lane is not a phase-1 profile`).toBe(false);
-      expect(/\bpatch-lane\b/.test(variant.body), `${variant.id}: patch-lane is not a phase-1 profile`).toBe(false);
-      for (const window of variant.body.matchAll(/isolation_profile/g)) {
-        const near = variant.body.slice(Math.max(0, window.index - 200), window.index + 200);
-        expect(near, `${variant.id}: every isolation_profile mention must name none-serial`).toContain("none-serial");
-      }
+      expect(variant.body, `${variant.id}: none-serial left with host-root serial execution`).not.toContain("none-serial");
+      expect(variant.body, `${variant.id}: nothing is deferred to the phase-2 target any more`).not.toContain("2.6.0-phase2-parallel-lanes");
     }
   });
 
-  it("AC-2 — Preflight P.6 is marked deferred to 2.6.0-phase2-parallel-lanes", () => {
-    for (const variant of VARIANTS) {
-      expect(tiedTogether(variant.body, /P\.6/, [/2\.6\.0-phase2-parallel-lanes|이연/], 300), `${variant.id}: P.6 must be marked deferred`).toBe(true);
-    }
-  });
-
-  it("AC-3 — wt-delegation-refused is declared at Preflight P.2 against a delegated pipeline --wt", () => {
+  it("FR-FLOW-088 AC-4 — wt-delegation-refused is declared at Preflight P.2 against a delegated pipeline --wt", () => {
     for (const variant of VARIANTS) {
       const row = criticalGateRows(variant.body).find((candidate) => candidate.gateId === "wt-delegation-refused");
       expect(row, `${variant.id}: wt-delegation-refused must be declared`).toBeDefined();
@@ -461,18 +468,22 @@ describe("FR-FLOW-088 — isolation stated in the skill's own section zero", () 
     }
   });
 
-  it("AC-4 — the orchestrator gives its own reason and does not restate the per-wave-accumulation one as its own", () => {
+  it("FR-FLOW-088 AC-5 — the orchestrator gives its own reason and states no per-wave-accumulation reason", () => {
+    // Revised in 4.0.0: the old text disclaimed kiwi-wave-master's per-wave-accumulation reason by
+    // name; the revised criterion asks only that no such reason be stated.
     for (const variant of VARIANTS) {
       const zero = section(variant.body, /^##\s*0\.I\b/m);
       expect(zero).toMatch(/cycle 스코프 worktree 를 lane 스코프 worktree 안에 중첩/);
-      expect(zero).toMatch(/kiwi-wave-master[^\n]*per-wave 누적 근거를 본 스킬 자신의 근거로 다시 적지 않는다/);
+      expect(zero, `${variant.id}: §0 must state no per-wave-accumulation reason`).not.toMatch(/누적/);
     }
   });
 
-  it("AC-5 — task-granularity isolation is named as re-entering in phase 2", () => {
+  it("FR-FLOW-088 AC-6 (retired) — task-granularity isolation is not announced as re-entering", () => {
+    // Retired in 4.0.0 (successor FR-FLOW-187): isolation is per wave, one worker per wave, and the
+    // intra-wave partition that task-granularity isolation would have served is gone.
     for (const variant of VARIANTS) {
       const zero = section(variant.body, /^##\s*0\.I\b/m);
-      expect(tiedTogether(zero, /task 단위 격리/, [/2\.6\.0-phase2-parallel-lanes/, /재진입/], 400), `${variant.id}: the deferred half must be named`).toBe(true);
+      expect(zero, `${variant.id}: task-granularity isolation does not re-enter`).not.toMatch(/task 단위 격리/);
     }
   });
 });
@@ -519,41 +530,57 @@ describe("FR-FLOW-093 — integration branch, committed run artifacts, and the a
     }
   });
 
-  it("AC-5 — the phase-1 report contents are listed and the workspace rows are named phase 2", () => {
+  it("FR-FLOW-093 AC-7 — the run report lists its contents, the worker workspace row included", () => {
+    // FR-FLOW-093 AC-7 (not revised) says the workspace rows are omitted and named as phase-2 content.
+    // 4.0.0 dispatches a worker per wave into a worktree on every run (FR-FLOW-188 AC-1), so the rows
+    // exist and the report lists them: unmerged worker branches and unreturned worker worktrees.
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*15\.\s/m);
+      const report = body.split("\n").filter((line) => line.startsWith("- "));
       for (const row of [/통합 브랜치와 그 sha/, /어느 wave 가 `complete`/, /통합 브랜치에 남긴 커밋/, /run 을 끝낸 게이트/, /정확한 재개 명령/]) {
-        expect(row.test(body), `${variant.id}: run report row ${row}`).toBe(true);
+        expect(report.some((line) => row.test(line)), `${variant.id}: run report row ${row}`).toBe(true);
       }
-      expect(tiedTogether(body, /workspace 행/, [/2\.6\.0-phase2-parallel-lanes/, /조용히 빠뜨리지 않는다/], 400), `${variant.id}: the omitted rows must be named as phase 2`).toBe(true);
+      expect(
+        report.some((line) => /병합되지 않은 워커 브랜치/.test(line) && /워커 워크트리/.test(line)),
+        `${variant.id}: the report must list unmerged worker branches and unreturned worker worktrees`
+      ).toBe(true);
+      expect(body, `${variant.id}: the workspace rows are no longer phase-2 content`).not.toContain("2.6.0-phase2-parallel-lanes");
     }
   });
 
-  it("AC-6 — the three post-landing terminal halts are named and the replay gate is marked phase 2", () => {
+  it("FR-FLOW-093 AC-8 — the post-landing terminal halts are named and the replay gate is declared", () => {
+    // FR-FLOW-093 AC-8 (not revised) marks srs-mutation-replay-failed as phase 2. Replaying deferred SRS
+    // mutations on the host is part of every 4.0.0 run (FR-FLOW-083 AC-7 retired, successor FR-FLOW-188
+    // AC-1), so the gate is a fourth terminal halt and is declared in critical_gates[].
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*15\.\s/m);
-      expect(tiedTogether(body, /종단 중단/, [/wave-verify-fail-residual/, /post-merge-index-drift/, /design-contradiction-at-wave-boundary/], 500), `${variant.id}: the three terminal halts`).toBe(true);
-      expect(tiedTogether(body, /srs-mutation-replay-failed/, [/2\.6\.0-phase2-parallel-lanes/], 200), `${variant.id}: the replay gate is phase 2`).toBe(true);
+      expect(
+        tiedTogether(body, /종단 중단/, [/wave-verify-fail-residual/, /post-merge-index-drift/, /design-contradiction-at-wave-boundary/, /srs-mutation-replay-failed/], 500),
+        `${variant.id}: the four terminal halts`
+      ).toBe(true);
       expect(
         criticalGateRows(variant.body).map((row) => row.gateId),
-        `${variant.id}: srs-mutation-replay-failed must not be declared in phase 1`
-      ).not.toContain("srs-mutation-replay-failed");
+        `${variant.id}: srs-mutation-replay-failed must be declared`
+      ).toContain("srs-mutation-replay-failed");
     }
   });
 });
 
 describe("cross-cutting — the routing gates are declared outside critical_gates[]", () => {
-  it("all four business-decision routing gates carry a severity row and none is in the table", () => {
+  it("all four business-decision routing gates and partition-review-unrecorded carry a severity row and none is in the table", () => {
+    // FR-FLOW-188 AC-7 made partition-review-unrecorded a business-decision gate, so §0.S carries it
+    // beside the four routing gates.
+    const businessDecision = [...ROUTING_GATE_IDS, "partition-review-unrecorded"];
     for (const variant of VARIANTS) {
       const severities = gateSeverityRows(variant.body);
-      expect([...severities.map((row) => row.gateId)].sort(), `${variant.id}: the four routing gates`).toEqual([...ROUTING_GATE_IDS].sort());
+      expect([...severities.map((row) => row.gateId)].sort(), `${variant.id}: the business-decision gates`).toEqual([...businessDecision].sort());
       expect(
         severities.filter((row) => row.severity !== "business-decision").map((row) => row.gateId),
-        `${variant.id}: every routing gate is business-decision`
+        `${variant.id}: every §0.S gate is business-decision`
       ).toEqual([]);
 
       const critical = new Set(criticalGateRows(variant.body).map((row) => row.gateId));
-      for (const gateId of ROUTING_GATE_IDS) expect(critical.has(gateId), `${variant.id}: ${gateId} must stay out of critical_gates[]`).toBe(false);
+      for (const gateId of businessDecision) expect(critical.has(gateId), `${variant.id}: ${gateId} must stay out of critical_gates[]`).toBe(false);
     }
   });
 });

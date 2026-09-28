@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { createRequire } from "node:module";
@@ -6,7 +6,7 @@ import path from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
-import type { ProjectRoot } from "../../core/types.js";
+import type { ParsedWorkspace, ProjectRoot } from "../../core/types.js";
 import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
 import { replayDeferredMutations, type DeferredMutation, type ReplayIndex, type ReplayPlan } from "../../core/orchestrator/replay.js";
@@ -15,11 +15,11 @@ import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
-import { groundFiles, isGroundingRefusal, type DeclaredEntry } from "../../core/orchestrator/grounding.js";
-import { validateHandoff } from "../../core/orchestrator/handoff.js";
+import { groundFiles, isGroundingRefusal } from "../../core/orchestrator/grounding.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
-import { computeLanePlan, LanePlanError, type LanePlanInput } from "../../core/orchestrator/lane-plan.js";
-import { freezeLock, serializeLock } from "../../core/orchestrator/freeze.js";
+import { computeLanePlan, LanePlanError } from "../../core/orchestrator/lane-plan.js";
+import type { WaveDependencies, WaveInput } from "../../core/orchestrator/conflict.js";
+import { buildLanesLockBody, freezeLock, serializeLock, type WaveSdsDigest } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
 import { normaliseRoot, preflightRunRoot } from "../../core/orchestrator/preflight.js";
 import { gitCommonDirOf, gitToplevelOf, realpathProbe, registeredWorktreesOf } from "../../core/root-facts.js";
@@ -33,17 +33,17 @@ import {
 import { appendUtf8LineAndSync } from "../../core/workflow/mutation.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
 import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
-import { computeResumeState, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
+import { computeResumeState, retiredRunMarkers, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { computeRoute } from "../../core/orchestrator/route.js";
 import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
 import { acquire, readHolder, releaseHeldRunLock, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
-import { planStageCoupling, type ParsedHandoff } from "../../core/orchestrator/substrate.js";
-import { normalizeTasks, type SidecarPhase, type SidecarTask, type TaskCatalogEntry } from "../../core/orchestrator/task-catalog.js";
 import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
 import { engineOf, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
-import { ENGINES, type Engine, type WavesEvent } from "../../core/orchestrator/journal-schema.js";
+import { CURRENT_WAVES_SCHEMA_VERSION, ENGINES, type Engine, type WavesEvent } from "../../core/orchestrator/journal-schema.js";
+import { LITE_SDS_SUFFIX, checkSdsFile } from "../../core/sds/check-sds.js";
+import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 
 // @req IR-CLI-082 / IR-CLI-083 / IR-CLI-084 / IR-MCP-003 / FR-NODE-127 / FR-NODE-137
 //
@@ -75,12 +75,10 @@ export const ORCHESTRATE_PHASE1_VERB_ROWS = [
   "run abort",
   "journal append",
   "card write",
-  "freeze design|waves|lanes|handoff|issues|postmortem",
+  "freeze design|waves|lanes|issues|postmortem",
   "readiness check",
-  "schedule plan",
-  "coupling check",
+  "schedule waves",
   "schedule show",
-  "handoff validate",
   "round record",
   "issue open|plan|resolve|defer|list",
   "wave close",
@@ -123,8 +121,8 @@ export const ORCHESTRATE_REGISTERED_VERB_ROWS: readonly string[] = [
   ...ORCHESTRATE_PHASE2_VERB_ROWS.filter((row) => !(ORCHESTRATE_DEFERRED_VERB_ROWS as readonly string[]).includes(row))
 ];
 
-/** The six freeze targets of 05 §3.3a. @req IR-CLI-082 */
-export const FREEZE_TARGETS = ["design", "waves", "lanes", "handoff", "issues", "postmortem"] as const;
+/** The freeze targets of 05 §3.3a — five since `handoff` left in 4.0.0. @req IR-CLI-082 AC-2 */
+export const FREEZE_TARGETS = ["design", "waves", "lanes", "issues", "postmortem"] as const;
 
 export type FreezeTarget = (typeof FREEZE_TARGETS)[number];
 
@@ -136,8 +134,8 @@ export const ORCHESTRATE_MUTATION_VERB_ROWS = [
   "run abort",
   "journal append",
   "card write",
-  "freeze design|waves|lanes|handoff|issues|postmortem",
-  "schedule plan",
+  "freeze design|waves|lanes|issues|postmortem",
+  "schedule waves",
   "round record",
   "issue open|plan|resolve|defer|list",
   // @req IR-CLI-092 — applying a replay writes SRS at the host root, so the leaf is a mutation and
@@ -257,7 +255,7 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_journal_append", description: "Appends one event to the run journal, stamped with this tool's writer identity, after validating the journal as it would stand once that line landed: an error-severity diagnostic refuses the append and leaves the file byte-identical, and no argument skips the check. The candidate view holds only the lines matching the run id and the engine it was given. Writes the journal file.", path: ["journal", "append"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_card_write", description: "Replaces the resume card of a run — the frozen block a resumed session compares its world against. Writes the card file.", path: ["card", "write"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
   {
-    tool: "orchestrate_freeze", description: "Content-addresses one run artifact set — design, waves, lanes, handoff, issues or postmortem — pinning the named document by its git blob id and the declared inputs by their digest, and refusing a body that omits a field its kind requires. Writes the freeze lock for the target you name.",
+    tool: "orchestrate_freeze", description: "Content-addresses one run artifact set — design, waves, lanes, issues or postmortem — pinning the named document by its git blob id and the declared inputs by their digest, and refusing a body that omits a field its kind requires. Writes the freeze lock for the target you name.",
     path: ["freeze", "design"],
     kind: "mutation",
     options: [o("--body", "body", "string", true), o("--document", "document", "string", true), o("--head", "head", "string", true), RUN_ID_OPTION, o("--declared-inputs", "declaredInputs"), o("--out", "out"), DRY_RUN_OPTION],
@@ -265,14 +263,12 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   },
   { tool: "orchestrate_readiness_check", description: "Derives whether the requirements you name are ready to be worked, from a requirement snapshot rather than any self-attestation, and fails closed on dependency cycles or duplicate ids. That allowlist of requirement ids is mandatory in practice: an empty one is an error, never a sweep of the whole target. Read-only.", path: ["readiness", "check"], kind: "read", options: [o("--target", "target", "string", true), o("--snapshot", "snapshot", "string", true), o("--req", "req", "array")] },
   {
-    tool: "orchestrate_schedule_plan", description: "Computes the lane partition for a wave from its plan sidecar: which tasks may run in parallel, which are forced together, and why. Writes the lane lock unless the call is a dry run, and, when strict grounding is asked for beside a run id, a freeze-lane-plan line into the run journal — which lands before the grounding verdict, so a call refused for ungrounded files has journalled itself all the same.",
-    path: ["schedule", "plan"],
+    tool: "orchestrate_schedule_waves", description: "Computes the stage schedule for a set of waves from their SDS files: one lane per wave, every wave in a stage after the waves it depends on, the waves of one stage writing disjoint paths, and at most the lane cap per stage. An sds entry is one SDS file, which is one wave named after the file, or <waveId>=<file>,<file>, which makes several SDS files one wave named waveId and keys that wave's dependencies by waveId. A wave the dependency map leaves out depends on every wave listed before it. Writes the lanes lock unless the call is a dry run, and, when strict grounding is asked for beside a run id, a freeze-lane-plan line into the run journal — which lands before the grounding verdict, so a call refused for ungrounded files has journalled itself all the same.",
+    path: ["schedule", "waves"],
     kind: "mutation",
-    options: [o("--plan", "plan", "string", true), o("--lanes", "lanes"), o("--allow-inferred-write-set", "allowInferredWriteSet", "boolean"), o("--strict-grounding", "strictGrounding", "boolean"), o("--existing-paths", "existingPaths"), o("--out", "out"), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION]
+    options: [o("--sds", "sds", "array", true), o("--depends", "depends", "json", true), o("--lanes", "lanes"), o("--strict-grounding", "strictGrounding", "boolean"), o("--existing-paths", "existingPaths"), o("--out", "out"), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION]
   },
-  { tool: "orchestrate_coupling_check", description: "Finds cross-lane coupling inside one stage from that stage's already-parsed handoffs: a path one lane declares it writes and another declares it reads, which the write-set-overlap rule cannot see because that rule compares write against write. Over this binding it only reports, never refusing, because the re-partition pass count that raises the gate is not an argument here and stays at zero. Read-only.", path: ["coupling", "check"], kind: "read", options: [o("--handoffs", "handoffs", "string", true), o("--wave", "wave"), o("--stage", "stage")] },
-  { tool: "orchestrate_schedule_show", description: "Reads the frozen lane partition and reports the lanes it fixed, with the tasks assigned to each. Read-only.", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
-  { tool: "orchestrate_handoff_validate", description: "Checks one lane handoff document against its contract: the ten required headings in order, the task catalogue and lane row its declared sets must agree with, and the dispatch base its references must resolve against. Over this binding it stays a pure read, because journalling a raised untested-AC allowance needs a run id no argument here declares. Read-only.", path: ["handoff", "validate"], kind: "read", options: [o("--lane", "lane", "string", true), o("--path", "path", "string", true), o("--catalog", "catalog", "string", true), o("--base", "base", "string", true)] },
+  { tool: "orchestrate_schedule_show", description: "Reads a lanes lock and reports the stages it fixed and the one lane per wave in each. Read-only.", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
   // @req IR-MCP-004 AC-1 — `--proof` is mandatory on the leaf, so it has to be declared here too:
   // `orchestrateArgv` emits a flag only for a declared option, and the input schema is derived from
   // this same list, so an omission leaves the tool uncallable in every case rather than degraded.
@@ -368,11 +364,6 @@ const EXIT_GATE_REFUSAL = 2;
 interface GateRefusal {
   readonly refusedGate: string;
   readonly violations: readonly unknown[];
-}
-
-/** Narrows a runtime string to `GateId`. @req FR-NODE-166 AC-5 */
-function isGateId(value: string): value is GateId {
-  return (GATE_IDS as readonly string[]).includes(value);
 }
 
 /**
@@ -604,10 +595,8 @@ const WAVES_LOCK_WAIT_MS = 10_000;
 
 /**
  * @req IR-CLI-098 — validated where the argument arrives, not where the plan is built. Reaching
- * `computeLanePlan` through a bare `Number.parseInt` gave a typo two different wrong endings and
- * neither named the cause: `NaN` clamped to 1 inside the planner when lanes formed, surfacing later
- * as `lane-plan-incomplete` blaming the task set, and never surfaced at all when every task folded
- * to the serial epilogue, because the cap is only consulted once a stage has lanes to split.
+ * `computeLanePlan` through a bare `Number.parseInt` let a typo clamp silently inside the planner, far
+ * from the option that caused it.
  */
 function laneCapOption(value: string): number {
   if (!/^\d+$/.test(value)) {
@@ -624,7 +613,7 @@ function laneCapOption(value: string): number {
  * A frozen lane plan read back for the gate. Validated rather than cast: it decides an admission.
  *
  * @req IR-CLI-097 — two shapes, because the file the scheduler writes and the shape this reader was
- * built for were never the same. `schedule plan` serialises a `LanePlan`, whose lanes live in an
+ * built for were never the same. `schedule waves` writes a lanes lock, whose lanes live in an
  * array under `lanes`; the reader only knew a map keyed by lane id, so handing it the real file
  * made it walk `lanes` as if that key were a lane and refuse with `lanes.writeSet is not a list of
  * paths`. The skill's worktree procedure instructs exactly that call, so no lane could be admitted.
@@ -872,38 +861,117 @@ async function writeUnderRoot(root: string, relativePath: string, text: string):
   return absolute;
 }
 
+/** One wave the scheduler reads from its SDS files: the kernel's input plus what the lock records beside it. */
+interface ScheduledWave extends WaveInput {
+  /** The wave's SDS path, or its SDS files in `--sds` order when the entry grouped several. */
+  readonly sds: string | string[];
+  readonly sdsDigest: WaveSdsDigest;
+}
+
+/** One SDS file that passed `speckiwi sds check`. */
+interface CheckedSds {
+  readonly path: string;
+  readonly writeSet: readonly string[];
+  readonly digest: string;
+}
+
 /**
- * Every declared entry of the normalised catalogue, `files[]` and `test_files[]` alike.
- *
- * Read off `TaskCatalogEntry` rather than the raw sidecar so grounding sees the same normalised,
- * `[INFERRED:]`-stripped paths the conflict analysis does — a label-bearing string would defeat both.
- * @req IR-CLI-084 AC-4
+ * Runs the check behind `speckiwi sds check` on one `--sds` file and refuses on any error it reports —
+ * a structural one, an `@req` or `(REQ AC-n)` naming nothing, or a listed requirement no `@req` names
+ * alike: a write set read from such a file cannot be trusted, and a missing path would schedule two
+ * colliding waves side by side. @req FR-NODE-213 AC-1
  */
-function declaredEntriesOf(catalog: readonly TaskCatalogEntry[]): DeclaredEntry[] {
-  const entries: DeclaredEntry[] = [];
-  for (const task of catalog) {
-    for (const entry of [...task.files, ...task.testFiles]) {
-      entries.push({ path: entry.path, ...(entry.lineRange ? { lineRange: entry.lineRange } : {}) });
-    }
+async function checkScheduledSds(root: string, workspace: ParsedWorkspace, sdsPath: string): Promise<CheckedSds> {
+  const checked = await checkSdsFile(workspace, sdsPath);
+  if (!checked.ok) throw new OperationalError(`--sds ${sdsPath}: ${checked.error.message}`);
+  const report = checked.value;
+  if (!report.passed) {
+    const reasons = report.errors.map((entry) => `${entry.code} ${entry.message}`);
+    throw new OperationalError(`--sds ${report.path} cannot be scheduled; speckiwi sds check reports: ${reasons.join("; ")}`);
   }
-  return entries;
+  if (!report.path.endsWith(LITE_SDS_SUFFIX)) throw new OperationalError(`--sds ${report.path} is not named <sds-id>${LITE_SDS_SUFFIX}`);
+  const bytes = await readFile(path.resolve(root, report.path));
+  return { path: report.path, writeSet: report.summary.writeSet, digest: createHash("sha256").update(bytes).digest("hex") };
 }
 
-/** Line counts for the declared entries that exist, read once so the detector stays pure. */
-async function collectLineCounts(root: string, existingPaths: readonly string[]): Promise<Record<string, number>> {
-  const counts: Record<string, number> = {};
-  for (const relativePath of existingPaths) {
-    try {
-      const text = await readFile(path.resolve(root, relativePath), "utf8");
-      counts[relativePath] = text.length === 0 ? 0 : text.split(/\r?\n/).length;
-    } catch {
-      // A path the caller declared existing but that cannot be read is simply not counted; the
-      // line-range rule then has no comparand and the entry is grounded on existence alone.
-    }
+/**
+ * `--sds <file>` is one wave named after the file; `--sds <waveId>=<file>,<file>...` is one wave made
+ * of several SDS files — the parts of one design — named by the id before `=`. @req FR-NODE-213 AC-1
+ */
+function parseSdsEntry(entry: string): { readonly waveId: string | null; readonly paths: string[] } {
+  const separator = entry.indexOf("=");
+  if (separator < 0) return { waveId: null, paths: [entry] };
+  const waveId = entry.slice(0, separator);
+  const paths = entry.slice(separator + 1).split(",");
+  if (waveId.length === 0 || paths.some((sdsPath) => sdsPath.length === 0)) {
+    throw new OperationalError(`--sds ${entry} must be <waveId>=<file>[,<file>...] with a wave id and no empty file`);
   }
-  return counts;
+  // The wave id becomes a lane id and a branch segment, which a resume matches as `lane-[^/]+`.
+  if (!GROUP_WAVE_ID.test(waveId)) throw new OperationalError(`--sds ${entry}: the wave id must match ${GROUP_WAVE_ID.source}`);
+  return { waveId, paths };
 }
 
+const GROUP_WAVE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/** Whether this file system treats two spellings that differ only in case as one file. */
+const CASE_INSENSITIVE_PATHS = process.platform === "win32" || process.platform === "darwin";
+
+/**
+ * The SDS files one call names more than once — twice in a group, or in two waves. A design scheduled
+ * twice cannot sit in exactly one lane, which is what `lane-plan-incomplete` refuses. @req FR-NODE-213 AC-1
+ */
+function sdsNamedTwice(waves: readonly ScheduledWave[]): Array<{ sds: string; waves: string[] }> {
+  const owners = new Map<string, { sds: string; waves: string[] }>();
+  for (const wave of waves) {
+    for (const sds of typeof wave.sds === "string" ? [wave.sds] : wave.sds) {
+      const key = CASE_INSENSITIVE_PATHS ? sds.toLowerCase() : sds;
+      const entry = owners.get(key) ?? { sds, waves: [] };
+      entry.waves.push(wave.waveId);
+      owners.set(key, entry);
+    }
+  }
+  return [...owners.values()].filter((entry) => entry.waves.length > 1);
+}
+
+/** Reads each `--sds` entry into one wave, checking every SDS file it names. @req FR-NODE-213 AC-1, AC-2 */
+async function loadScheduledWaves(root: string, entries: readonly string[]): Promise<ScheduledWave[]> {
+  const workspace = await parseWorkspace({ root });
+  const waves: ScheduledWave[] = [];
+  for (const entry of entries) {
+    const { waveId, paths } = parseSdsEntry(entry);
+    const files: CheckedSds[] = [];
+    for (const sdsPath of paths) files.push(await checkScheduledSds(root, workspace, sdsPath));
+    const writeSet = [...new Set(files.flatMap((file) => file.writeSet))].sort();
+    if (waveId === null) {
+      const [file] = files as [CheckedSds];
+      waves.push({ waveId: path.posix.basename(file.path).slice(0, -LITE_SDS_SUFFIX.length), writeSet, sds: file.path, sdsDigest: file.digest });
+      continue;
+    }
+    waves.push({
+      waveId,
+      writeSet,
+      sds: files.map((file) => file.path),
+      sdsDigest: Object.fromEntries(files.map((file) => [file.path, file.digest]))
+    });
+  }
+  return waves;
+}
+
+/**
+ * `--depends` validated into `{waveId -> waveId[]}`. Which list members exist is the kernel's to judge;
+ * a key naming no scheduled wave is not read at all. @req FR-NODE-213 AC-1
+ */
+function waveDependenciesFrom(value: Record<string, unknown>, waveIds: ReadonlySet<string>): WaveDependencies {
+  const dependencies: WaveDependencies = {};
+  for (const [waveId, list] of Object.entries(value)) {
+    if (!waveIds.has(waveId)) continue;
+    if (!Array.isArray(list) || list.some((entry) => typeof entry !== "string")) {
+      throw new OperationalError(`--depends ${waveId} must be a list of wave ids`);
+    }
+    dependencies[waveId] = list as string[];
+  }
+  return dependencies;
+}
 
 /**
  * Releases a run lock this process may not have acquired.
@@ -1194,7 +1262,12 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         const runId = requireOption(options.runId, "--run-id");
         const view = await readJournalView(root, runId, options.journal as string);
         // @req FR-NODE-127 AC-3 — an invalid journal refuses before any resume state is computed.
-        const invalid = validateWavesJournal(view).filter((entry) => entry.severity === "error");
+        // @req FR-NODE-213 AC-6 — a retired term is a warning on history only so that appends into the
+        // run are not blocked; resume refuses it at any severity, or the retired verb comes back as the
+        // next action.
+        const invalid = validateWavesJournal(view).filter(
+          (entry) => entry.severity === "error" || entry.code === "vocabulary-retired-in-4-0-0"
+        );
         if (invalid.length > 0) {
           return refuse("ledger-reconciliation-divergent", invalid.map((entry) => ({ code: entry.code, message: entry.message })));
         }
@@ -1209,7 +1282,14 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         // check the skill body promises. Three of the ten compare the card against the journal, and
         // the journal grows after the card is written, so write-time validation cannot cover them.
         const cardValidation = validateCard(parsed.card, view);
-        if (!cardValidation.ok) return refuse("resume-card-missing-or-invalid", cardValidation.violations.map((code) => ({ code })));
+        // @req FR-NODE-213 AC-6 — an R-PLAN or handoff-era run is refused by name, beside whatever the
+        // card check found: 4.0.0 has no path that continues it, and the old lines it settled its lanes
+        // on must not be read as lanes never dispatched.
+        const markers = retiredRunMarkers(view, parsed.card);
+        const predates = markers.length === 0 ? [] : [{ code: "run-predates-4.0.0", message: "this run was written before 4.0.0 and cannot be resumed; start a new run", markers }];
+        if (!cardValidation.ok || predates.length > 0) {
+          return refuse("resume-card-missing-or-invalid", [...cardValidation.violations.map((code) => ({ code })), ...predates]);
+        }
         // @req FR-NODE-180 — the card has always carried the run's two roots and the invariant digest
         // has always covered them, but nothing compared them to the world: the digest proves the card
         // did not change, not that this session is in the repository the run was pinned to. The
@@ -1409,7 +1489,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           // @req FR-NODE-167 — `abort_gate`, never `reason_class`: that name belongs to
           // `verification.residual[]` over a different closed vocabulary, and at top level it was
           // both undeclared and unenforced.
-          { schema_version: "1.4.0", run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", abort_gate: options.reason },
+          { schema_version: CURRENT_WAVES_SCHEMA_VERSION, run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", abort_gate: options.reason },
           options.dryRun === true
         );
         if (!outcome.written && options.dryRun !== true) {
@@ -1531,40 +1611,39 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     });
 
   // ---- schedule -------------------------------------------------------------------------------------------
-  const schedule = orchestrate.command("schedule").description("the lane partition");
+  const schedule = orchestrate.command("schedule").description("the wave schedule");
 
-  addMutationOptions(schedule.command("plan"))
-    .requiredOption("--plan <path>", "the planner sidecar")
+  // @req FR-NODE-213 AC-1 — one lane per wave, from the wave SDS files.
+  addMutationOptions(schedule.command("waves"))
+    .requiredOption("--sds <path...>", "the wave SDS files, in wave order; <waveId>=<file>,<file> makes several SDS files one wave")
+    .requiredOption("--depends <json>", "declared dependencies {waveId: [waveId, ...]}; a wave with no key depends on every earlier wave")
     .option("--lanes <n>", `per-stage lane cap, 1 to ${MAX_LANE_CAP}`, laneCapOption, 4)
-    .option("--allow-inferred-write-set", "permit [INFERRED: write sets to be lane-eligible")
     // @req IR-CLI-084 AC-6 — off by default, and journalled when used.
-    .option("--strict-grounding", "require every declared path to exist at the dispatch base")
+    .option("--strict-grounding", "require every SDS path to exist at the dispatch base")
     .option("--existing-paths <path>", "the dispatch base path list, as JSON")
-    .option("--out <path>", "where the lane plan is written", "waves/lanes.lock.json")
+    .option("--out <path>", "where the lanes lock is written", "waves/lanes.lock.json")
     .option("--run-id <id>", "the run whose journal records the option use")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .action(async (options) => {
       await mutate(options, async () => {
         const root = runRoot(command);
-        const sidecar = (await readJsonFile(path.resolve(root, options.plan as string), "--plan")) as Record<string, unknown>;
+        const declaredDependencies = parseInlineJson(options.depends, "--depends");
+        const waves = await loadScheduledWaves(root, options.sds as string[]);
+        const dependencies = waveDependenciesFrom(declaredDependencies, new Set(waves.map((wave) => wave.waveId)));
+        const namedTwice = sdsNamedTwice(waves);
+        if (namedTwice.length > 0) return refuse("lane-plan-incomplete", namedTwice);
         const existingPaths = options.existingPaths
           ? ((await readJsonFile(path.resolve(root, options.existingPaths as string), "--existing-paths")) as string[])
           : [];
-        const catalog = normalizeTasks(
-          (sidecar.tasks ?? []) as SidecarTask[],
-          null,
-          [],
-          options.plan as string,
-          (sidecar.phases ?? []) as SidecarPhase[]
-        );
-        const declared = declaredEntriesOf(catalog);
-        const lineCounts = await collectLineCounts(root, existingPaths);
-        // @req IR-CLI-084 AC-5 — the impure collection above ends here; the judgment is the pure
-        // detector, and it runs BEFORE the planner is called.
-        const grounding = groundFiles(declared, existingPaths, lineCounts, options.strictGrounding === true);
-        const ungrounded = grounding.filter((entry) => isGroundingRefusal(entry.verdict));
+        // @req IR-CLI-084 AC-4, AC-5 — every Files path and test file the SDS declares, judged by the pure
+        // detector over the paths the command collected, BEFORE the planner is called.
+        const declared = [...new Set(waves.flatMap((wave) => wave.writeSet))].sort();
+        const grounding = groundFiles(declared, existingPaths, options.strictGrounding === true);
+        const ungrounded = grounding
+          .filter((entry) => isGroundingRefusal(entry.verdict))
+          .map((entry) => ({ ...entry, waves: waves.filter((wave) => wave.writeSet.includes(entry.path)).map((wave) => wave.waveId) }));
         // @req FR-NODE-165 — the outcome is read, not discarded. A refused append leaves the journal
-        // byte-identical, so returning a plan here would report the option use as recorded against a
+        // byte-identical, so returning a lock here would report the option use as recorded against a
         // journal that never received it.
         let journalWritten = false;
         if (options.strictGrounding === true && typeof options.runId === "string" && options.runId.length > 0) {
@@ -1572,35 +1651,36 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             projectRoot(command),
             options.journal as string,
             options.runId,
-            { schema_version: "1.4.0", run_id: options.runId, engine: "kiwi-orchestrator", verb: "freeze-lane-plan", event: "intent", wave: "all", strict_grounding: true },
+            {
+              schema_version: CURRENT_WAVES_SCHEMA_VERSION,
+              run_id: options.runId,
+              engine: "kiwi-orchestrator",
+              verb: "freeze-lane-plan",
+              event: "intent",
+              wave: "all",
+              strict_grounding: true
+            },
             options.dryRun === true
           );
           if (!outcome.written && options.dryRun !== true) return refuse("run-invariant-drift", outcome.diagnostics);
           journalWritten = outcome.written;
         }
         if (ungrounded.length > 0) return refuse("files-not-grounded", ungrounded);
-        const input: LanePlanInput = {
-          catalog,
-          registry: (sidecar.registry ?? []) as LanePlanInput["registry"],
-          existingModules: (sidecar.existing_modules ?? []) as string[],
-          // @req IR-CLI-084 AC-5 — injected by the command; the planner never reads the filesystem.
-          existingPaths: [...existingPaths],
-          priorPostmortems: (sidecar.prior_postmortems ?? []) as LanePlanInput["priorPostmortems"],
-          designItemMap: (sidecar.design_item_map ?? {}) as Record<string, string[]>,
-          // @req IR-CLI-098 — already a validated number; the option parser owns the range.
-          laneCap: options.lanes as number,
-          // Globs, because `insideRoots` matches them as globs; a bare `src` would classify every
-          // code task `non-code-write-set` and route the whole wave to the serial epilogue.
-          codeRoots: (sidecar.code_roots ?? ["src/**"]) as string[],
-          testRoots: (sidecar.test_roots ?? ["test/**"]) as string[]
-        };
         try {
-          const plan = computeLanePlan(input);
-          if (options.dryRun !== true) await writeUnderRoot(root, options.out as string, `${JSON.stringify(plan, null, 2)}\n`);
-          return { plan, grounding, out: options.out, journalWritten };
+          const laneCap = options.lanes as number;
+          const plan = computeLanePlan({ waves: waves.map(({ waveId, writeSet }) => ({ waveId, writeSet })), dependencies, laneCap });
+          const lock = buildLanesLockBody({
+            plan,
+            dependencies,
+            laneCap,
+            sdsDigests: Object.fromEntries(waves.map((wave) => [wave.waveId, wave.sdsDigest])),
+            sdsPaths: Object.fromEntries(waves.map((wave) => [wave.waveId, wave.sds]))
+          });
+          if (options.dryRun !== true) await writeUnderRoot(root, options.out as string, `${JSON.stringify(lock, null, 2)}\n`);
+          return { lock, grounding, out: options.out, journalWritten };
         } catch (error) {
           if (error instanceof LanePlanError) return refuse(error.code, [{ message: error.message }]);
-          throw error;
+          throw new OperationalError((error as Error).message, { cause: error });
         }
       });
     });
@@ -1611,94 +1691,6 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       await read(orchestrate, options, async () => ({
         plan: await readJsonFile(path.resolve(runRoot(command), options.lock as string), "--lock")
       }));
-    });
-
-  // ---- coupling ---------------------------------------------------------------------------------------------
-  const coupling = orchestrate.command("coupling").description("cross-lane coupling within a stage");
-
-  addCommonOptions(coupling.command("check"))
-    .requiredOption("--handoffs <path>", "the stage's parsed handoffs, as JSON")
-    .option("--wave <n>", "the wave under inspection")
-    .option("--stage <s>", "the stage under inspection")
-    // @req FR-NODE-136 AC-7 — 3.f-prime-prime is bounded at one re-partition pass per stage. The
-    // caller states which pass this is; the tool never infers it, having no memory between calls.
-    .option(
-      "--repartition-pass <n>",
-      "re-partition passes this stage has already had; 0 (the default) reports couplings and asks for one pass, 1 or more raises stage-coupling-unresolved",
-      "0"
-    )
-    .action(async (options) => {
-      await read(orchestrate, options, async () => {
-        const handoffs = (await readJsonFile(path.resolve(runRoot(command), options.handoffs as string), "--handoffs")) as ParsedHandoff[];
-        const { couplings } = planStageCoupling(handoffs);
-        const pass = Number.parseInt(options.repartitionPass as string, 10);
-        if (!Number.isInteger(pass) || pass < 0) throw new OperationalError("--repartition-pass must be a non-negative integer");
-        // A stage needing two rounds of re-partitioning is mis-partitioned rather than merely
-        // coupled, which is why the second hit is a gate and the first is an instruction.
-        if (couplings.length > 0 && pass >= 1) return refuse("stage-coupling-unresolved", couplings);
-        return { couplings, repartitionRequired: couplings.length > 0, repartitionPass: pass };
-      });
-    });
-
-  // ---- handoff ----------------------------------------------------------------------------------------------
-  const handoff = orchestrate.command("handoff").description("the lane handoff document");
-
-  addCommonOptions(handoff.command("validate"))
-    .requiredOption("--lane <path>", "the lane row from lanes.lock.json, as JSON")
-    .requiredOption("--path <path>", "the handoff document")
-    .requiredOption("--catalog <path>", "the sidecar task catalog, as JSON")
-    .requiredOption("--base <path>", "the dispatch base facts, as JSON")
-    // @req FR-NODE-155 AC-3 — the allowance in force is journalled, so a raised cap is auditable
-    // rather than a fact only the invocation knew. Omitting `--run-id` keeps the verb a pure read.
-    .option("--run-id <id>", "the run whose journal records the allowance used")
-    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
-    .action(async (options) => {
-      await read(orchestrate, options, async () => {
-        const root = runRoot(command);
-        const text = await readFile(path.resolve(root, options.path as string), "utf8").catch((error: Error) => {
-          throw new OperationalError(`the handoff document is unreadable: ${error.message}`, { cause: error });
-        });
-        const lane = (await readJsonFile(path.resolve(root, options.lane as string), "--lane")) as never;
-        const catalog = (await readJsonFile(path.resolve(root, options.catalog as string), "--catalog")) as never;
-        const base = (await readJsonFile(path.resolve(root, options.base as string), "--base")) as never;
-        const validation = validateHandoff(text, lane, catalog, base);
-        if (!validation.ok) {
-          // Three of the six `HandoffViolationCode` values are themselves §13 gates; the other three
-          // are layer findings whose gate is the umbrella `handoff-verify-failed`. The reported gate
-          // is always a `GateId` member, so a caller can branch on it. @req FR-NODE-137 AC-1
-          // `.includes()` on a widened `readonly string[]` does not narrow, so the collapse needs a
-          // type predicate rather than a bare membership test. Admitting the other three codes to
-          // `GATE_IDS` would close the same compile error by stopping the collapse, which is the one
-          // thing AC-1 above forbids. @req FR-NODE-166 AC-5
-          const first = validation.violations[0]?.code;
-          const gate = first !== undefined && isGateId(first) ? first : "handoff-verify-failed";
-          return refuse(gate, validation.violations);
-        }
-        // @req FR-NODE-165 — as at `schedule plan` above: a refused append is reported, not swallowed,
-        // so `counts` is never returned alongside a claim that the allowance was recorded.
-        let journalWritten = false;
-        if (typeof options.runId === "string" && options.runId.length > 0) {
-          const outcome = await appendWavesLine(
-            projectRoot(command),
-            options.journal as string,
-            options.runId,
-            {
-              schema_version: "1.4.0",
-              run_id: options.runId,
-              engine: "kiwi-orchestrator",
-              verb: "verify-handoff",
-              event: "result",
-              wave: "all",
-              lane: (lane as { laneId?: string }).laneId ?? null,
-              untested_allowance: validation.counts.untestedAllowance ?? 0
-            },
-            false
-          );
-          if (!outcome.written) return refuse("run-invariant-drift", outcome.diagnostics);
-          journalWritten = outcome.written;
-        }
-        return { counts: validation.counts, journalWritten };
-      });
     });
 
   // ---- round ------------------------------------------------------------------------------------------------
@@ -1731,7 +1723,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           options.journal as string,
           runId,
           {
-            schema_version: "1.4.0",
+            schema_version: CURRENT_WAVES_SCHEMA_VERSION,
             run_id: runId,
             engine: "kiwi-orchestrator",
             event: "result",

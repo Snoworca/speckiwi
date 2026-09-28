@@ -57,7 +57,7 @@ async function initialisedProject(): Promise<{ root: string; home: string }> {
     globalHomeDir: home,
     globalCodexHome: path.join(home, ".codex")
   });
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw new Error(result.error?.message ?? "expected an ok result");
   return { root, home };
 }
 
@@ -69,7 +69,7 @@ async function attempt(root: string, input: RemoveInput) {
 
 async function runRemove(root: string, input: RemoveInput) {
   const result = await attempt(root, input);
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "expected an ok result with a value");
   return result.value;
 }
 

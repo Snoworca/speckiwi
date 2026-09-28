@@ -7,17 +7,14 @@ import {
   type WaveAllocationInput
 } from "../../../src/core/orchestrator/allocation.js";
 
-// @req FR-NODE-133 — Phase 3.c′'s allocation check: four conjuncts, refusing with
-// `unallocated-req-id`, over an allocation set derived mechanically from the two `list_requirements`
-// snapshots that bracket the `/kiwi-srs` hop.
+// @req FR-NODE-133 — Phase 3.c′'s allocation check over the wave SDS `@req` set: three conjuncts,
+// refusing with `unallocated-req-id`, over an allocation set derived mechanically from the two
+// `list_requirements` snapshots that bracket the `/kiwi-srs` hop.
 
 function input(overrides: Partial<WaveAllocationInput> = {}): WaveAllocationInput {
   return {
     allocation: { requirementIds: ["FR-NODE-001", "FR-NODE-002"], preSnapshotDigest: "sha-pre" },
-    tasks: [
-      { id: "T-PH001-01", reqIds: ["FR-NODE-001"] },
-      { id: "T-PH001-02", reqIds: ["FR-NODE-002"] }
-    ],
+    sdsReqIds: ["FR-NODE-001", "FR-NODE-002"],
     designItemMap: { "FR-NODE-001": ["D-001"], "FR-NODE-002": ["D-002", "D-003"] },
     waveDesignItems: ["D-001", "D-002", "D-003"],
     ...overrides
@@ -30,63 +27,36 @@ function refusal(result: ReturnType<typeof checkWaveAllocation>) {
 }
 
 describe("FR-NODE-133 AC-5 — the passing case", () => {
-  it("passes a sidecar for which all four conjuncts hold", () => {
+  it("FR-NODE-133 AC-5 passes a wave whose SDS @req set and design item map satisfy every conjunct", () => {
     expect(checkWaveAllocation(input())).toEqual({ ok: true });
   });
 
-  it("declares exactly the four conjuncts the requirement names", () => {
+  it("FR-NODE-133 AC-5 declares the three conjuncts the requirement names, and no empty-req-ids conjunct", () => {
     expect([...ALLOCATION_CONJUNCTS]).toEqual([
       "req-id-outside-allocation",
-      "empty-req-ids",
       "allocated-req-id-without-design-item",
       "design-item-against-no-req-id"
     ]);
-    expect(ALLOCATION_CONJUNCTS).toHaveLength(4);
   });
 });
 
-describe("FR-NODE-133 AC-1 — a req_id outside the 3.b allocation set", () => {
-  it("refuses with unallocated-req-id, naming the offending id", () => {
-    const result = refusal(checkWaveAllocation(input({ tasks: [{ id: "T-1", reqIds: ["FR-NODE-001", "FR-NODE-999"] }] })));
+describe("FR-NODE-133 AC-1 — an SDS @req id outside the 3.b allocation set", () => {
+  it("FR-NODE-133 AC-1 refuses with unallocated-req-id, naming the offending id", () => {
+    const result = refusal(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-001", "FR-NODE-999"] })));
     expect(result.code).toBe("unallocated-req-id");
-    expect(result.violations.map((violation) => violation.conjunct)).toContain("req-id-outside-allocation");
-    expect(result.violations.some((violation) => violation.detail.includes("FR-NODE-999"))).toBe(true);
-    expect(result.violations.some((violation) => violation.detail.includes("T-1"))).toBe(true);
+    expect(result.violations.map((violation) => violation.conjunct)).toEqual(["req-id-outside-allocation"]);
+    expect(result.violations[0]?.detail).toContain("FR-NODE-999");
   });
 
-  it("names every offending id, not only the first", () => {
-    const result = refusal(
-      checkWaveAllocation(
-        input({
-          tasks: [
-            { id: "T-1", reqIds: ["FR-NODE-900"] },
-            { id: "T-2", reqIds: ["FR-NODE-901"] }
-          ]
-        })
-      )
-    );
+  it("FR-NODE-133 AC-1 names every offending id, not only the first", () => {
+    const result = refusal(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-900", "FR-NODE-901"] })));
     const detail = result.violations.map((violation) => violation.detail).join(" ");
     expect(detail).toContain("FR-NODE-900");
     expect(detail).toContain("FR-NODE-901");
   });
 
-  it("does not refuse an allocated id merely because no task claims it", () => {
-    expect(checkWaveAllocation(input({ tasks: [{ id: "T-1", reqIds: ["FR-NODE-001", "FR-NODE-002"] }] }))).toEqual({ ok: true });
-  });
-});
-
-describe("FR-NODE-133 AC-2 — a task whose req_ids is empty", () => {
-  it("refuses with unallocated-req-id, naming that task", () => {
-    const result = refusal(checkWaveAllocation(input({ tasks: [{ id: "T-1", reqIds: ["FR-NODE-001"] }, { id: "T-EMPTY", reqIds: [] }] })));
-    expect(result.code).toBe("unallocated-req-id");
-    expect(result.violations.map((violation) => violation.conjunct)).toContain("empty-req-ids");
-    expect(result.violations.some((violation) => violation.detail.includes("T-EMPTY"))).toBe(true);
-  });
-
-  it("catches the case handoff resolvability cannot: an empty array resolves to nothing and so resolves cleanly", () => {
-    // Charter C2 as a plan property. Every id present resolves; the task simply carries none.
-    const result = refusal(checkWaveAllocation(input({ tasks: [{ id: "T-ONLY", reqIds: [] }] })));
-    expect(result.violations.map((violation) => violation.conjunct)).toEqual(["empty-req-ids"]);
+  it("FR-NODE-133 AC-1 does not refuse an allocated id merely because the SDS names no other", () => {
+    expect(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-001"] }))).toEqual({ ok: true });
   });
 });
 
@@ -124,11 +94,11 @@ describe("FR-NODE-133 AC-4 — a wave design item claimed by no req_id", () => {
     expect(result.violations.some((violation) => violation.detail.includes("D-004"))).toBe(true);
   });
 
-  it("reports all four conjuncts at once rather than stopping at the first", () => {
+  it("reports every conjunct at once rather than stopping at the first", () => {
     const result = refusal(
       checkWaveAllocation(
         input({
-          tasks: [{ id: "T-1", reqIds: ["FR-NODE-999"] }, { id: "T-2", reqIds: [] }],
+          sdsReqIds: ["FR-NODE-999"],
           designItemMap: { "FR-NODE-001": ["D-001"] },
           waveDesignItems: ["D-001", "D-009"]
         })

@@ -68,11 +68,29 @@ describe("FR-FLOW-123 — an executable worktree procedure in both skills", () =
           expect(harvest, `${bundle}/${skill}: release must come after harvest`).toBeLessThan(release);
         });
 
-        it("AC-6: names the target the procedure applies under", () => {
+        // Revised in 4.0.0: dispatching each wave's worker into a worktree is the default run
+        // (FR-FLOW-188 AC-1), so the phase-2 target the clause used to name no longer gates anything.
+        it("FR-FLOW-123 AC-6: applies to each wave dispatched to an isolated worker under parallel-waves.md, and names no phase-2 target", () => {
+          const body = procedure(readSkill(bundle, skill));
           expect(
-            /2\.6\.0-phase2-parallel-lanes/.test(procedure(readSkill(bundle, skill))),
-            `${bundle}/${skill}: without the target this reads as a claim about a phase that creates none`
+            /^\*\*적용 대상: 이 run 이 `[^`\n]*_shared\/kiwi\/parallel-waves\.md` 아래 격리 워커에 dispatch 하는 각 wave\.\*\*/m.test(body),
+            `${bundle}/${skill}: the section must open with its applicability — each wave dispatched to an isolated worker under parallel-waves.md`
           ).toBe(true);
+          expect(
+            /2\.6\.0-phase2-parallel-lanes/.test(body),
+            `${bundle}/${skill}: the section must not name the phase-2 target as the one it applies under`
+          ).toBe(false);
+        });
+
+        it("FR-FLOW-123 requirement (no AC of its own): the join, verdict and merge between harvest and replay are cited from parallel-waves.md, not restated", () => {
+          const body = procedure(readSkill(bundle, skill));
+          expect(
+            /수확과 재생 사이의 join · 판정 · 병합은 `parallel-waves\.md` PW-7 ~ PW-9 가 소유한다/.test(body),
+            `${bundle}/${skill}: the section must hand the join, verdict and merge to parallel-waves.md`
+          ).toBe(true);
+          const harvestStep = /^\d+\. \*\*수확\(harvest\)\*\*[^\n]*$/m.exec(body);
+          expect(harvestStep, `${bundle}/${skill}: no numbered harvest step`).not.toBeNull();
+          expect(harvestStep![0]).toMatch(/그 뒤 join · 판정 · 병합은 `parallel-waves\.md` PW-7 ~ PW-9 를 따른다/);
         });
 
         it("AC-7: points at the shared contract instead of restating it", () => {

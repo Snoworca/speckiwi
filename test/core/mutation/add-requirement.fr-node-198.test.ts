@@ -47,7 +47,7 @@ describe("FR-NODE-198 AC-1 — an out-of-enum status is refused with USAGE and w
 
       const result = await addRequirement(root, {
         ...baseInput(`Out-of-enum ${status}`),
-        status: status as AddRequirementInput["status"]
+        status: status as NonNullable<AddRequirementInput["status"]>
       });
 
       // Half one: the call fails, and it fails as caller error rather than as a denial or a crash.
@@ -116,7 +116,7 @@ describe("FR-NODE-198 AC-3 — one entry-point check closes both spend sites", (
 
     const result = await addRequirement(root, {
       ...baseInput("Neither spend site admits it"),
-      status: "proposed" as AddRequirementInput["status"]
+      status: "proposed" as NonNullable<AddRequirementInput["status"]>
     });
     expect(result.ok).toBe(false);
 

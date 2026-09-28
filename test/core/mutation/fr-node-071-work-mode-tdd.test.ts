@@ -55,8 +55,8 @@ describe("FR-NODE-071 work-mode model supports the tdd mode", () => {
     const result = await setWorkMode(root, { mode: "tdd", activeTask: "T-TDD-02" });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.mode).toBe("tdd");
-      expect(result.value.activeTask).toBe("T-TDD-02");
+      expect(result.value?.mode).toBe("tdd");
+      expect(result.value?.activeTask).toBe("T-TDD-02");
     }
 
     const persisted = await readFile(path.join(rootPath, STATE_PATH), "utf8");

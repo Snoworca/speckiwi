@@ -17,6 +17,12 @@ const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRU
 
 const execFileAsync = promisify(execFile);
 
+/** The text of a tools/call result's first content item when that item is text, else "". */
+function firstText(result: Awaited<ReturnType<Client["callTool"]>>): string {
+  const first = (result.content as Array<{ type: string; text?: string }> | undefined)?.[0];
+  return first?.type === "text" ? (first.text ?? "") : "";
+}
+
 async function readPackageVersion(): Promise<string> {
   const pkg = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
   return pkg.version;
@@ -74,7 +80,7 @@ describe("real stdio MCP server", () => {
       ]);
 
       const result = await client.callTool({ name: "list_requirements", arguments: {} });
-      const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
+      const text = firstText(result);
       expect(JSON.parse(text)).toMatchObject({ ok: true });
 
       await expect(client.callTool({ name: "add_completed_work", arguments: { date: "2026-05-10", summary: "Blank report path.", reportPaths: [""] } })).resolves.toMatchObject({ isError: true });
@@ -83,7 +89,8 @@ describe("real stdio MCP server", () => {
       });
 
       const completedResource = await client.readResource({ uri: "speckiwi://completed-work" });
-      const completedText = completedResource.contents[0]?.text;
+      const completedContent = completedResource.contents[0];
+      const completedText = completedContent !== undefined && "text" in completedContent ? completedContent.text : undefined;
       expect(typeof completedText).toBe("string");
       expect(JSON.parse(String(completedText))).toMatchObject({
         ok: true,
@@ -112,7 +119,7 @@ describe("real stdio MCP server", () => {
     await client.connect(transport);
     try {
       const result = await client.callTool({ name: "list_requirements", arguments: {} });
-      const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
+      const text = firstText(result);
       const parsed = JSON.parse(text);
       expect(parsed).toMatchObject({ ok: true });
       expect(parsed.value.records.map((record: { id: string }) => record.id)).toContain("FR-ARCH-001");
@@ -135,7 +142,7 @@ describe("real stdio MCP server", () => {
     await client.connect(transport);
     try {
       const result = await client.callTool({ name: "list_requirements", arguments: {} });
-      const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
+      const text = firstText(result);
       expect(JSON.parse(text)).toMatchObject({ ok: true, value: { records: [] } });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
@@ -164,7 +171,7 @@ describe("real stdio MCP server", () => {
     await client.connect(transport);
     try {
       const result = await client.callTool({ name: "validate_spec", arguments: {} });
-      const text = "content" in result && result.content[0]?.type === "text" ? result.content[0].text : "";
+      const text = firstText(result);
       expect(JSON.parse(text)).toMatchObject({ ok: true });
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
       expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");

@@ -3,7 +3,7 @@ import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { ORCHESTRATOR_VARIANTS, criticalGateTable, readVariant } from "../support/critical-gate-table.js";
 
 // @req FR-FLOW-149 — the two budget stops must be nameable by the agent that hits them.
-// @req FR-FLOW-150 — the lane plan lock must have one path, per wave, passed explicitly.
+// @req FR-FLOW-150 — the lane plan lock must have one path, passed explicitly.
 // @req FR-FLOW-151 — the sub-issue count must declare a producer the gh surface actually has.
 
 const VARIANTS = ORCHESTRATOR_VARIANTS;
@@ -64,52 +64,61 @@ describe("FR-FLOW-149 the skill declares the budget stops it can end a run on", 
 
 describe("FR-FLOW-150 the lane plan lock is spelled one way", () => {
   for (const variant of VARIANTS) {
-    it(`AC-1/AC-2/AC-4/AC-5 every mention uses the same wave-scoped path — ${variant}`, () => {
-      const paths = lockPaths(body(variant));
+    // The one stated location is read from the run's fixed-path convention list rather than written
+    // here, so the assertions below compare the body with itself. FR-FLOW-150 AC-5 (a per-wave path)
+    // is retired in 4.0.0: one lock plans one lane per wave across the waves of a stage (FR-NODE-213
+    // AC-1), so the path no longer carries a wave component.
+    const canonical = (text: string): string => {
+      const convention = text.split("\n").find((line) => line.includes("고정 경로 규약")) ?? "";
+      return lockPaths(convention)[0] ?? "";
+    };
+
+    it(`FR-FLOW-150 AC-1/AC-4 every stated location of the lock is the same path — ${variant}`, () => {
+      const text = body(variant);
+      const paths = lockPaths(text);
       expect(paths.length, `distinct spellings: ${paths.join(" | ")}`).toBe(1);
-      // Wave-scoped, because the lock is re-frozen per wave and is that wave's verification
-      // denominator; a run-scoped or wave-less path lets a later wave overwrite an earlier one.
-      expect(paths[0]).toContain("wave-{n}");
+      expect(canonical(text), "the fixed-path convention list must state the lock's location").not.toBe("");
+      expect(paths[0]).toBe(canonical(text));
     });
 
-    it(`AC-3 every command that reads or writes the lock passes the path — ${variant}`, () => {
+    it(`FR-FLOW-150 AC-3 every command that reads or writes the lock passes the path — ${variant}`, () => {
       const text = body(variant);
-      const invocations = text
-        .split("\n")
-        .filter((line) => /orchestrate\s+(schedule|freeze|preflight)/.test(line) && /lane/i.test(line));
+      const lines = text.split("\n");
+      const invocations = lines.filter((line) => /orchestrate\s+(schedule|freeze|preflight)/.test(line) && /lane/i.test(line));
       expect(invocations.length, "there must be invocations to check").toBeGreaterThan(0);
       for (const line of invocations) {
         // A placeholder counts as passing it: the point is that no invocation leaves the path to the
-        // tool's default, which spells the lock without a wave and would be shared across waves.
+        // tool's default, which spells the lock without a stage and would be shared across stages.
         expect(line, `an invocation must not rely on the tool default: ${line.trim()}`).toMatch(
           /(--out|--lock|--lane-plan)\s+\S/
         );
       }
 
-      // The read side was already covered; the WRITE side was where the default still reached. A body
-      // that never says how the lock is produced leaves `waves/lanes.lock.json` as the only way it can
-      // exist, and that path has no wave in it. Requiring the producing call closes AC-5 at its source.
-      const writeIndex = text.split("\n").findIndex((line) => /orchestrate\s+schedule\s+plan/.test(line));
+      // The WRITE side is where the default still reaches. The producing call is `orchestrate schedule
+      // waves` (FR-NODE-213 AC-1; the `schedule plan --plan <sidecar>` call it replaced is removed by
+      // FR-NODE-213 AC-3). The citation checker admits only placeholder forms inside an invocation, so
+      // the fenced call cites `--out <path>` and the paragraph right after the fence states which path.
+      // Both halves are required: the flag alone would still let the caller inherit the default.
+      const writeIndex = lines.findIndex((line) => /^speckiwi\s+orchestrate\s+schedule\s+waves\b/.test(line.trim()));
       expect(writeIndex, "the body must say how the lock is written, not only where it is read").toBeGreaterThan(-1);
-      // The citation checker admits only declared placeholder forms inside an invocation, so the
-      // call cites `--out <path>` and the sentence beside it states which path. Both halves are
-      // required: the flag alone would still let the caller inherit the wave-less default.
-      const writeStanza = text.split("\n").slice(writeIndex, writeIndex + 2).join("\n");
-      expect(writeStanza, "the producing call must pass --out").toMatch(/--out\s+\S/);
-      expect(writeStanza, "and must state the wave-scoped path it writes to").toContain(
-        `waves/wave-{n}/${LOCK_NAME}`
-      );
+      expect(lines[writeIndex], "the producing call must pass --out").toMatch(/--out\s+\S/);
+      const fenceClose = lines.findIndex((line, index) => index > writeIndex && line.trim().startsWith("```"));
+      expect(fenceClose, "the producing call sits in a code fence").toBeGreaterThan(writeIndex);
+      const explanation = lines.slice(fenceClose + 1).find((line) => line.trim().length > 0) ?? "";
+      expect(explanation, "the paragraph after the call must say what --out is").toMatch(/`--out` 은/);
+      expect(explanation, "and must state the path it writes to").toContain(canonical(text));
 
       // And wherever the body states a location for the lock, it is the canonical one.
       for (const stated of lockPaths(text)) {
-        expect(stated, "a stated lock location must be wave-scoped").toBe(`waves/wave-{n}/${LOCK_NAME}`);
+        expect(stated, "a stated lock location must be the convention's path").toBe(canonical(text));
       }
     });
 
-    it(`AC-2 the worktree procedure states the path rather than a run-scoped one — ${variant}`, () => {
-      const line = body(variant).split("\n").find((row) => row.includes("`--lane-plan` 은")) ?? "";
+    it(`FR-FLOW-150 AC-2 the worktree procedure states the path rather than a run-scoped one — ${variant}`, () => {
+      const text = body(variant);
+      const line = text.split("\n").find((row) => row.includes("`--lane-plan` 은")) ?? "";
       expect(line, "the worktree procedure must still state the flag's value").not.toBe("");
-      expect(line).toContain(`waves/wave-{n}/${LOCK_NAME}`);
+      expect(line).toContain(canonical(text));
       expect(line, "the run-scoped spelling must be gone").not.toContain("kiwi/orchestrator/");
     });
 

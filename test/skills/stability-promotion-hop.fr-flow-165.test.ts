@@ -246,27 +246,29 @@ describe("FR-FLOW-165 AC-1 — the promotion hop is stated in every rendering", 
 });
 
 describe("FR-FLOW-165 AC-2 — the hop sits between Phase 3.b and Phase 3.c-prime", () => {
-  it("orders the phase map 3.b, then the hop, then 3.c and 3.c-prime", () => {
+  it("FR-FLOW-165 AC-2 — orders the phase map 3.b, then the hop, then 3.c and 3.c-prime", () => {
     for (const rendering of ORCHESTRATOR) {
       const map = section(rendering.body, PHASE_MAP);
       expect(map, rendering.relPath).not.toBe("");
       // `3.c` is a needle rather than only `3.c′` because the requirement's boundary alone leaves the
       // map looser than the fence: with 3.c′ as the last needle the hop can be dropped below 3.c and
       // stay green, and the map then names a different place than the fence and the prose do. The
-      // fence pins the hop between `kiwi-srs` and `kiwi-planner`; this pins the same span in the map.
+      // fence pins the hop between `kiwi-srs` and `kiwi-sds`; this pins the same span in the map.
       const offsets = orderedOffsets(map, [/^\s+3\.b\s/mu, /^\s+3\.b′\s/mu, /^\s+3\.c\s/mu, /^\s+3\.c′\s/mu]);
       expect(offsets.every((offset) => offset >= 0), `${rendering.relPath}: ${JSON.stringify(offsets)}`).toBe(true);
       expect([...offsets].sort((left, right) => left - right), rendering.relPath).toEqual(offsets);
     }
   });
 
-  it("orders the call fence kiwi-srs, then the hop, then kiwi-planner", () => {
+  // 4.0.0 replaced the plan with one SDS per wave (FR-FLOW-187 AC-2), so the fence's third call is
+  // `kiwi-sds` where it was `kiwi-planner`; the span the hop must sit inside is otherwise unchanged.
+  it("FR-FLOW-165 AC-2 — orders the call fence kiwi-srs, then the hop, then kiwi-sds", () => {
     for (const rendering of ORCHESTRATOR) {
       const body = section(rendering.body, HOP_SECTION);
       const offsets = orderedOffsets(body, [
         /Skill\(\{ skill: "kiwi-srs",/u,
         /Skill\(\{ skill: "kiwi-srs-feasibility",/u,
-        /Skill\(\{ skill: "kiwi-planner",/u
+        /Skill\(\{ skill: "kiwi-sds",/u
       ]);
       expect(offsets.every((offset) => offset >= 0), `${rendering.relPath}: ${JSON.stringify(offsets)}`).toBe(true);
       expect([...offsets].sort((left, right) => left - right), rendering.relPath).toEqual(offsets);

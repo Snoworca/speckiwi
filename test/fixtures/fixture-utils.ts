@@ -38,7 +38,7 @@ afterAll(async () => {
 
 export async function copyFixtureWorkspace(name: string): Promise<string> {
   const source = path.join(fixtureRoot, name);
-  const entries = await readdir(fixtureRoot).catch(() => []);
+  const entries = await readdir(fixtureRoot).catch((): string[] => []);
   if (!entries.includes(name)) {
     throw new Error(`Unknown fixture workspace: ${name}`);
   }

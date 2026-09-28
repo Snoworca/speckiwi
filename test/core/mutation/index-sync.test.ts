@@ -68,7 +68,8 @@ describe("FR-NODE-018 index summary synchronization for mutations", () => {
     const stale = await syncIndexRollups(projectRoot, { expectedSha256: "wrong" });
     expect(stale).toMatchObject({ ok: false, error: { code: "STALE_PATCH" } });
 
-    const written = await syncIndexRollups(projectRoot, { expectedSha256: indexFile?.snapshot?.sha256 });
+    const expectedSha256 = indexFile?.snapshot?.sha256;
+    const written = await syncIndexRollups(projectRoot, expectedSha256 === undefined ? {} : { expectedSha256 });
     expect(written).toMatchObject({ ok: true, value: { written: true, statusSummaryChanged: true } });
     expect(await validationCodes(root)).not.toContain("SRS-W019");
   });

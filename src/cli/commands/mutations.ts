@@ -246,14 +246,17 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<id>")
     .argument("<status>")
     .option("--reason <text>", "Append a Change Notes row with the given reason (SRS-MD-Rules v1.1.0 §30.3)")
+    .option("--confirm-discard-verified", "override the verified-regression guard when the status is discarded")
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, status, options) => {
+      // @req IR-CLI-103 AC-1
       const result = await updateStatus(await rootFrom(command.opts()), {
         id,
         status,
         ...(typeof options.reason === "string" ? { reason: options.reason } : {}),
+        ...(options.confirmDiscardVerified === true ? { confirmDiscardVerified: options.confirmDiscardVerified } : {}),
         ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });

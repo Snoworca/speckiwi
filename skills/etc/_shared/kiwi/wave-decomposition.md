@@ -28,14 +28,16 @@ wave 분해(wave splitting) · 설계 기준선(design baseline) 물질화 · �
 
 ## 2. Wave 분해 — kiwi-wave-master §3 에서 이동
 
-입력 연구·계획 문서를 **순서(order)가 있는 여러 wave 로 분해(decompose)** 한다. 각 wave 는 순차(sequential)적으로 실행되는, 서로 정렬된(ordered) 작업 묶음이며 앞 wave 가 뒤 wave 의 토대가 된다.
+입력 연구·계획 문서를 **순서(order)가 있는 여러 wave 로 분해(decompose)** 한다. 각 wave 는 서로 정렬된(ordered) 작업 묶음이며, 한 wave 가 다른 wave 의 결과를 딛고 서면 그 wave 가 토대가 된다 — 그 관계는 아래 `depends_on[]` 으로 선언한다.
 
 **두 갈래 wave-split 휴리스틱**:
 
 1. **헤더 우선(headers-first)**: 문서에 **명시적 wave 구조**(헤더·제목·섹션, document structure)가 있으면 그 헤더/섹션 경계를 그대로 wave 경계로 채택한다. 예: `## Phase 1`, `## 1단계`, 최상위 섹션 제목 등이 자연스러운 wave 경계다.
 2. **그렇지 않으면(otherwise)**: 명시적 wave 구조가 **없으면**(when absent) **서브에이전트**가 문서의 **전체 흐름(overall flow)** 을 **분석(analyze)** 하여, 서로 응집된 3~8 개의 하위 목표(coherent sub-goals)로 wave 를 나눈다. 각 하위 목표가 하나의 wave 가 된다.
 
-분해 결과는 순서가 확정된 `wave-1, wave-2, …, wave-N` 목록이며, 이 순서가 이후 target 등록·pipeline 실행 순서를 결정한다.
+분해 결과는 순서가 확정된 `wave-1, wave-2, …, wave-N` 목록과 wave 마다의 `depends_on[]` 이며, 순서가 이후 target 등록 순서를, 의존이 병렬 실행의 stage 를 결정한다(`parallel-waves.md §3`).
+
+**wave 의존 선언** — wave 마다 `depends_on[]`(자기보다 앞 wave 의 id 목록)을 선언한다. **선언이 없는 wave 는 앞 wave 전부에 의존한다** — 모든 wave 가 하나씩 도는 안전한 기본값이다. 분해 서브에이전트는 한 wave 가 앞 wave 의 결과를 하나도 딛지 않는다고 확인할 수 있을 때에만 그 의존을 뺀다. 두 wave 가 같은 기존 모듈을 건드리면(`existing_modules`) 의존을 선언한다 — 선언하지 않아도 SDS 쓰기 집합이 겹치면 stage 계산이 둘을 가르지만, 의미상의 선후는 쓰기 집합이 보지 못한다. 선언은 설계 기준선(§3)의 wave 항목에 함께 적는다.
 
 wave-split **서브에이전트**에는 **기존 모듈**과 그 **의존** 방향의 구조 요약을 함께 전달한다 — 기존 구조를 모르는 분해는 한 모듈을 여러 wave 가 동시에 건드리도록 잘라 교차 wave 회귀를 만든다. 각 wave 는 건드릴 것으로 예상되는 기존 모듈을 `existing_modules` 에 기록한다.
 

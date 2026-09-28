@@ -38,7 +38,7 @@
     "bin",
     "dist",
     "docs/rule/SRS-MD-Rules-v2.5.0.md",
-    "docs/rule/SDS-MD-Rules-v2.5.0.md",
+    "docs/rule/SDS-MD-Rules-v2.6.0.md",
     "docs/.kiwi/hooks",
     "skills/codex",
     "skills/claude",

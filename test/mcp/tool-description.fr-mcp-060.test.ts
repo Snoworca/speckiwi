@@ -355,7 +355,7 @@ function pairViolations(pair: ConfusablePair, describeTool: (name: string) => st
 /** One listed tool, as much of it as the byte comparison below reads. */
 interface ListedDescription {
   readonly name: string;
-  readonly description: string | undefined;
+  readonly description?: string | undefined;
 }
 
 /**
@@ -801,8 +801,9 @@ describe("FR-MCP-060 AC-9 — the suite states what it cannot decide", () => {
     // The confusable-pair rule is a NAME rule, so a pair that answers nearby questions under
     // unrelated names is never asked to distinguish itself, however alike the two descriptions are.
     const unpaired: Array<[string, string]> = [
-      ["check_vibe_gate", "workflow_doctor"],
-      ["get_next_work_order", "workflow_next_plan_task"]
+      // The pairs AC-9 names since 4.0.0; the two it named before left with the plan tools (FR-NODE-211 AC-1).
+      ["validate_spec", "check_sds"],
+      ["get_next_work_order", "workflow_pipeline_next"]
     ];
     for (const [left, right] of unpaired) {
       expect(TOOL_NAMES, `${left} must still be a shipped tool for this probe to mean anything`).toContain(left);

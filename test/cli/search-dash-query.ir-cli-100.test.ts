@@ -6,11 +6,11 @@ import { main } from "../../src/cli/index.js";
 // already worked, so the escaped form is the oracle: the bare form must agree with it.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function run(argv: string[]): Promise<{ code: number; stdout: string; stderr: string }> {

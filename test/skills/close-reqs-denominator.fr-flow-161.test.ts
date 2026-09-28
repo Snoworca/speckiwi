@@ -252,7 +252,7 @@ describe("FR-FLOW-161 AC-6 — the terminal value comes from the shared contract
 });
 
 describe("FR-FLOW-161 AC-7 — the orchestrator's description matches what this skill now does", () => {
-  it.each(SHIPPED)("%s: no longer says this skill does not gate on skipped requirements", (rendering) => {
+  it.each(SHIPPED)("FR-FLOW-161 AC-7: %s no longer says this skill does not gate on skipped requirements", (rendering) => {
     const text = flat(markdownFiles(rendering, "kiwi-orchestrator").map((relPath) => readRepoFile(relPath)).join("\n"));
     expect(
       /그것으로 게이트하지 않는다|does not gate on it/.test(text),
@@ -260,17 +260,39 @@ describe("FR-FLOW-161 AC-7 — the orchestrator's description matches what this 
     ).toBe(false);
   });
 
-  it.each(SHIPPED)("%s: keeps its own compensating gate", (rendering) => {
-    // The double defence stays. Only the sentence changes: a rung that stopped compensating because
-    // the skill below started gating has no defence left the day that gate is loosened.
+  it.each(SHIPPED)("FR-FLOW-161 AC-7: %s no longer carries the R-PLAN compensating gate", (rendering) => {
+    // Revised in 4.0.0: the compensating close gate this case used to require left with the R-PLAN
+    // rung (FR-FLOW-187 AC-1, FR-NODE-212 AC-1), so its survival is no longer asserted; its absence is.
+    // Keyed on the gate's own id, as before, because `close-reqs` itself still occurs in this skill.
     const text = flat(markdownFiles(rendering, "kiwi-orchestrator").map((relPath) => readRepoFile(relPath)).join("\n"));
-    // Keyed on the gate's own id, not on the flag. `close-reqs` occurs in eight places in this
-    // skill — an invocation argument among them — so a check for it passes with the gate and its
-    // three disjuncts deleted. A defence asserted by a string that survives its removal is a
-    // declared defence, not a kept one.
     expect(
       text,
-      `${rendering}/kiwi-orchestrator: the compensating close gate was removed along with the sentence describing it. Correcting a description is not a reason to drop a defence.`
-    ).toContain("plan-coverage-unclosed");
+      `${rendering}/kiwi-orchestrator: still names the R-PLAN compensating gate, which left with the R-PLAN rung`
+    ).not.toContain("plan-coverage-unclosed");
+  });
+});
+
+describe("FR-FLOW-161 AC-7 — the R-STEP rung says there is nothing to count, not that the run skips its denominator", () => {
+  /** Each paragraph of the orchestrator, flattened, in every file of the skill. */
+  function paragraphs(rendering: string): string[] {
+    return markdownFiles(rendering, "kiwi-orchestrator")
+      .flatMap((relPath) => readRepoFile(relPath).replace(/\r\n/g, "\n").split(/\n\s*\n/))
+      .map((block) => flat(block).trim());
+  }
+
+  it.each(RENDERINGS)("FR-FLOW-161 AC-7 %s: the R-STEP review hop's --close-reqs paragraph carries the corrected sentence", (rendering) => {
+    const rule = paragraphs(rendering).find((block) => /^`--close-reqs` 는 \*\*주지 않는다\*\*/.test(block)) ?? "";
+    expect(rule, `${rendering}/kiwi-orchestrator: the R-STEP review hop does not say why it passes no --close-reqs`).not.toBe("");
+    expect(rule, `${rendering}/kiwi-orchestrator: the promoted step requirement is not placed outside the denominator`).toMatch(
+      /리뷰 루프의 `denominator` 는 `implemented` 요구만 담으므로 이미 승급된 step 요구는 애초에 그 안에 없고/
+    );
+    expect(rule, `${rendering}/kiwi-orchestrator: TASK_DONE is not justified by an empty scoped set`).toMatch(/`scoped` 가 비어 `TASK_DONE` 이 정당하다/);
+    expect(rule, `${rendering}/kiwi-orchestrator: the corrected wording is gone`).toMatch(/스킵이 아니라 셀 것이 없는 것이다/);
+  });
+
+  it.each(RENDERINGS)("FR-FLOW-161 AC-7 %s: the retired sentence — skipping the whole denominator and still returning TASK_DONE — does not return", (rendering) => {
+    const text = paragraphs(rendering).join("\n");
+    expect(text, `${rendering}/kiwi-orchestrator: the retired R-STEP sentence came back`).not.toMatch(/분모 전체를 스킵하고도/);
+    expect(text, `${rendering}/kiwi-orchestrator: the retired R-STEP sentence came back`).not.toMatch(/건너뛰므로[^.\n]{0,40}`TASK_DONE` 을 반환한다/);
   });
 });

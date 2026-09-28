@@ -106,7 +106,7 @@ describe("FR-NODE-019 granular requirement editing services", () => {
     // reaches `verified` and this case silently stops testing the verified-edit guard.
     await addVerificationEvidence(root, { id: "FR-ARCH-001", type: "test", reference: "docs/spec/10.product-architecture.srs.md", covers: "all", notes: "-" });
     const promoted = await updateStatus(root, { id: "FR-ARCH-001", status: "verified" });
-    expect(promoted.ok, promoted.ok ? "" : promoted.error.message).toBe(true);
+    expect(promoted.ok, promoted.ok ? "" : promoted.error?.message).toBe(true);
 
     await expect(updateRequirementFields(root, { id: "FR-ARCH-001", title: "Denied" })).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
     await expect(replaceAcceptanceCriteria(root, { id: "FR-ARCH-001", items: [{ text: "Denied" }] })).resolves.toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });

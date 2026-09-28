@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-022
 // FR-FLOW-022 — Single current-model verification subagent across kiwi skills (remove --mini).
@@ -227,12 +228,12 @@ function tableAfterHeading(text: string, headingRe: RegExp): string {
   if (i < 0) return "";
   i++;
   // Skip prose/blank lines until the table starts; bail if the next heading arrives first (no table).
-  while (i < lines.length && !/^\s*\|/.test(lines[i])) {
-    if (/^#{1,6}\s/.test(lines[i])) return "";
+  while (i < lines.length && !/^\s*\|/.test(at(lines, i))) {
+    if (/^#{1,6}\s/.test(at(lines, i))) return "";
     i++;
   }
   const block: string[] = [];
-  while (i < lines.length && /^\s*\|/.test(lines[i])) block.push(lines[i++]);
+  while (i < lines.length && /^\s*\|/.test(at(lines, i))) block.push(at(lines, i++));
   return block.join("\n");
 }
 

@@ -26,7 +26,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "verification_evidence", text: "x" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("MUTATION_DENIED");
+    if (!result.ok) expect(result.error?.code).toBe("MUTATION_DENIED");
   });
 
   it("(c) AC-3 deny-list: acceptance_criteria → MUTATION_DENIED", async () => {
@@ -34,7 +34,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "acceptance_criteria", text: "x" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("MUTATION_DENIED");
+    if (!result.ok) expect(result.error?.code).toBe("MUTATION_DENIED");
   });
 
   it("(d) unknown section returns USAGE", async () => {
@@ -42,7 +42,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "bogus", text: "x" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("USAGE");
+    if (!result.ok) expect(result.error?.code).toBe("USAGE");
   });
 
   it("(e) length boundary: 500 passes, 501 USAGE", async () => {
@@ -67,7 +67,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const before = await readArch(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "preview only", mode: "replace", dryRun: true });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(false);
+    if (result.ok) expect(result.value?.written).toBe(false);
     const after = await readArch(rootPath);
     expect(after).toBe(before);
   });
@@ -77,7 +77,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "Replaced rationale text", mode: "replace" });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(true);
+    if (result.ok) expect(result.value?.written).toBe(true);
     const file = await readArch(rootPath);
     expect(file).toContain("Replaced rationale text");
     expect(file).toMatch(/#### Rationale\s*\n+Replaced rationale text/);
@@ -97,9 +97,9 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const after = await readFile(filePath, "utf8");
     expect(after).toContain("<!-- external mutation -->");
     if (second.ok) {
-      expect(second.value.written).toBe(true);
+      expect(second.value?.written).toBe(true);
     } else {
-      expect(["STALE_PATCH", "MUTATION_DENIED"]).toContain(second.error.code);
+      expect(["STALE_PATCH", "MUTATION_DENIED"]).toContain(second.error?.code);
     }
   });
 
@@ -123,7 +123,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     const before = await readArch(rootPath);
     const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "dry only", dryRun: true });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(false);
+    if (result.ok) expect(result.value?.written).toBe(false);
     const after = await readArch(rootPath);
     expect(after).toBe(before);
   });

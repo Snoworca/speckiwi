@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
-import { REPO_ROOT, isTableRowLine } from "./kiwi-orchestrator-variants.js";
+import { REPO_ROOT, isTableRowLine, section } from "./kiwi-orchestrator-variants.js";
 
 /**
  * Corpus derivation shared by the suites that read every shipped rendering of a kiwi skill.
@@ -345,4 +345,22 @@ export function enclosingSection(lines: readonly string[], lineIndex: number): S
     }
   }
   return { start, end, text: lines.slice(start, end).join("\n").replace(/\s+$/, "") };
+}
+
+/**
+ * Every markdown file of one skill in one rendering, SKILL.md first, EOL-normalised. codex and etc
+ * split a skill across `SKILL.md` and `references/*.md`, so a rule is looked up in all of them.
+ */
+export function skillFiles(rendering: string, skill: string): Array<{ relPath: string; text: string }> {
+  const paths = markdownFiles(rendering, skill).sort((a, b) => Number(!a.endsWith("/SKILL.md")) - Number(!b.endsWith("/SKILL.md")));
+  return paths.map((relPath) => ({ relPath, text: readRepoFile(relPath).replace(/\r\n/g, "\n") }));
+}
+
+/** The first section, across one skill's files, whose heading matches — "" when none does. */
+export function skillSection(rendering: string, skill: string, heading: RegExp): string {
+  for (const doc of skillFiles(rendering, skill)) {
+    const found = section(doc.text, heading);
+    if (found !== "") return found;
+  }
+  return "";
 }

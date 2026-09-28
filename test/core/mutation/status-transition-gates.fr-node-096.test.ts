@@ -21,9 +21,9 @@ describe("FR-NODE-096 AC-1 — the verified transition is refused at the write",
     const result = await updateStatus(await root(), { id: "FR-ARCH-001", status: "verified" });
 
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
     // The refusal is about shape, which is what §14.2 now says.
-    expect(result.ok === false && result.error.message).toMatch(/verified without checked AC and evidence/);
+    expect(result.ok === false && result.error?.message).toMatch(/verified without checked AC and evidence/);
   });
 
   it("refuses it for a requirement with every criterion checked but no evidence", async () => {
@@ -35,7 +35,7 @@ describe("FR-NODE-096 AC-1 — the verified transition is refused at the write",
     const result = await updateStatus(projectRoot, { id: "FR-ARCH-001", status: "verified" });
 
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
   });
 
   it("allows it once the requirement is already in verified shape", async () => {
@@ -86,7 +86,7 @@ describe("FR-NODE-096 AC-1 — the discarded transition is guarded for a protect
     const result = await updateStatus(await root(), { id: "FR-ARCH-001", status: "discarded" });
 
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
-    expect(result.ok === false && result.error.message).toMatch(/confirmDiscardVerified/);
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.message).toMatch(/confirmDiscardVerified/);
   });
 });

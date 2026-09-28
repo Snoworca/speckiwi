@@ -203,7 +203,7 @@ describe("FR-FLOW-179 AC-2 — the citation denominator does not fall", () => {
 // ---------------------------------------------------------------------------------------------
 
 /** The skills whose renderings disagreed about which pipeline-event path is normal, measured. */
-const EVENT_SKILLS = ["kiwi-coder", "kiwi-planner", "kiwi-pm", "kiwi-srs", "kiwi-pipeline"] as const;
+const EVENT_SKILLS = ["kiwi-coder", "kiwi-sds", "kiwi-pm", "kiwi-srs", "kiwi-pipeline"] as const;
 
 const EMIT_TOOL = "workflow_pipeline_emit";
 const READ_TOOLS = ["workflow_pipeline_tail", "workflow_pipeline_status", "get_next_work_order"] as const;

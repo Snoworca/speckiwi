@@ -23,8 +23,8 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
   it("AC-1 validates a journal whose last line is an unmatched intent with zero diagnostics", async () => {
     const lines = [
       waveVerify(V14),
-      result("execute-unit", { stage: 1, lane: "lane-1" }),
-      intent("execute-unit", { stage: 1, lane: "lane-2" })
+      result("dispatch-lane", { stage: 1, lane: "lane-1" }),
+      intent("dispatch-lane", { stage: 1, lane: "lane-2" })
     ];
 
     expect(await codes(lines)).toEqual([]);
@@ -36,8 +36,8 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
     const full = [
       intent("freeze-lane-plan", {}),
       result("freeze-lane-plan", {}),
-      intent("execute-unit", { stage: 1, lane: "lane-1" }),
-      result("execute-unit", { stage: 1, lane: "lane-1" })
+      intent("dispatch-lane", { stage: 1, lane: "lane-1" }),
+      result("dispatch-lane", { stage: 1, lane: "lane-1" })
     ];
     for (let cut = 1; cut <= full.length; cut += 1) {
       expect(await codes(full.slice(0, cut)), `prefix of length ${cut}`).toEqual([]);
@@ -47,14 +47,14 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
   it("AC-2 classifies the same journal as an interrupted verb in computeResumeState", async () => {
     const journal = await view([
       waveVerify(V14),
-      result("execute-unit", { stage: 1, lane: "lane-1" }),
-      intent("execute-unit", { stage: 1, lane: "lane-2" })
+      result("dispatch-lane", { stage: 1, lane: "lane-1" }),
+      intent("dispatch-lane", { stage: 1, lane: "lane-2" })
     ]);
 
     const state = computeResumeState(journal, minimalCard(), emptyGitFacts(), emptyDriftInputs());
 
     expect(state.nextAction.interrupted).toBe(true);
-    expect(state.nextAction.verb).toBe("execute-unit");
+    expect(state.nextAction.verb).toBe("dispatch-lane");
     expect(state.nextAction.args.lane).toBe("lane-2");
   });
 
@@ -68,7 +68,7 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
     ]);
 
     // The same state with no `complete` and no `final-verify`: no terminality diagnostic.
-    expect(await codes([waveVerify(V14), settled, result("execute-unit", { stage: 1, lane: "lane-2", lane_plan: lanePlan })])).toEqual(
+    expect(await codes([waveVerify(V14), settled, result("dispatch-lane", { stage: 1, lane: "lane-2", lane_plan: lanePlan })])).toEqual(
       []
     );
   });
@@ -99,7 +99,7 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
     const lines = [
       waveVerify(V14),
       result("integrate-lane", { stage: 1, lane: "lane-1", isolation: { profile: "none-serial", merge_sha: "aaa" } }),
-      intent("execute-unit", {
+      intent("dispatch-lane", {
         stage: 1,
         lane: "lane-2",
         lane_plan: { lock_path: "l.json", digest: "sha256:1", lane_count: 2, stage_count: 1 }
@@ -113,7 +113,7 @@ describe("FR-NODE-139 unmatched intent and lane terminality", () => {
     const accepted = await codes([
       waveVerify(V14),
       result("integrate-lane", { stage: 1, lane: "lane-1", isolation: { profile: "none-serial", merge_sha: "aaa" } }),
-      result("execute-unit", {
+      result("dispatch-lane", {
         stage: 1,
         lane: "lane-2",
         lane_disposition: { kind: "refuted", reason: "design item false", at: "2026-08-02T00:00:00Z" }

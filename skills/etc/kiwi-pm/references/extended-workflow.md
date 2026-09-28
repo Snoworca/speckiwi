@@ -5,29 +5,25 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 ## Table of Contents
 - 4. Lifecycle Gate (kiwi-pipeline-v1 §4.2)
 - 4.1 차단 분류
-- 4.2 interactive 3지선다 (draft 차단 시)
+- 4.2 interactive 2지선다 (draft 차단 시)
 - 4.3 `--auto` 동작
-- 4.4 MCP 미가용 fallback
+- 4.4 MCP 미가용
 - 4.5 의사코드
-- 5. `--auto` 가드레일 + 재개 + 부분 재실행
+- 5. `--auto` 가드레일 + 재개
 - 5.1 severity 가드레일
 - 5.2 NEEDS_USER 재spawn 상한 (§0.G3 재기재)
-- 5.3 FAILED 3지선다 (§0.G4 재기재)
+- 5.3 FAILED 2지선다 (§0.G4 재기재)
 - 5.4 `--resume` 동작
-- 5.5 `--from-task=T-PH001-XX`
-- 5.6 의사코드
-- 6. plan.md 체크박스 + 종료 마무리
-- 6.1 plan.md 체크박스 (PM 중앙 집중 관리)
-- Phase PH-001: {phase title}
-- Phase PH-002: {phase title}
+- 5.5 의사코드
+- 6. 종료 마무리
+- 6.1 실행 결과 판정
 - 6.2 T-final SRS Status 마무리
 - 6.3 종료 보고서 + doculight 표시
-- 7. 호환성 / 에러 처리 / 매핑
+- 6.4 kiwi-review-fix-loop hand-off
+- 7. 호환성 / 에러 처리
 - 7.1 입력 무결성 게이트 (T-1)
 - 7.2 런타임 에러
-- 7.3 snoworca-pm → kiwi-pm 매핑
-- 7.4 Out of Scope (v0.1)
-- 7.5 v0.2 후보
+- 7.3 Out of Scope (v0.1)
 - 8. 호출 예시
 - 9. 설계 요약
 - MCP 호출 분담 표 (speckiwi 실제 schema)
@@ -37,30 +33,31 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ## 4. Lifecycle Gate (kiwi-pipeline-v1 §4.2)
 
-부팅 T0 단계 — sidecar 의 모든 Task 의 `traces[].req_id` 추출 후 1회 `list_requirements` read 로 일괄 평가. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
+부팅 T0 단계 — SDS `@req` 집합(`SKILL.md` §2.2 `req_ids`)을 1회 `list_requirements` read 로 일괄 평가. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
 
 ### 4.1 차단 분류
 
 | 분류 | REQ Stability | 동작 |
 |---|---|---|
 | 진행 가능 | `evolving` / `stable` | OK |
-| 진행 불가 (정상) | `draft` | **차단** + interactive 3지선다 / `--auto` 는 해당 REQ 를 trace 하는 Task 만 skip (`SKILL.md` §3.6) |
+| 진행 불가 (정상) | `draft` | **차단** + interactive 2지선다 / `--auto` 는 그 SDS 를 실행하지 않고 요구 필터로 돌려보낸다 (`SKILL.md` §3.6) |
 | 진행 불가 (정책) | `deprecated` / `frozen` | **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
 | target 비어있음 | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
 
-### 4.2 interactive 3지선다 (draft 차단 시)
+### 4.2 interactive 2지선다 (draft 차단 시)
 
-- **(A) HALT** — kiwi-srs-feasibility 실행 후 재시도 (권장)
-- **(B) 해당 REQ trace Task 만 skip 하고 나머지 진행** — 부분 진행. skip 된 Task 는 `status = "skipped"`, worklog `lifecycle_skip_per_req` 기록
-- **(C) override 진행** — 사용자 책임. worklog `lifecycle_override` 기록 + 보고서에 경고 명시
+SDS 하나는 실행 하나라 요구 하나만 떼어 내 진행할 수 없다. 요구 단위로 나누는 일은 SDS 범위를 정하는 `$kiwi-sds` 의 몫이다.
+
+- **(A) HALT** — `$kiwi-srs-feasibility` 로 승급하거나 `$kiwi-sds` 요구 필터로 그 REQ 를 뺀 SDS 를 다시 쓴 뒤 재시도 (권장)
+- **(B) override 진행** — 사용자 책임. worklog `lifecycle_override` 기록 + 보고서에 경고 명시
 
 ### 4.3 `--auto` 동작
 
-SSOT 는 `SKILL.md` §3.6 이다 — 무인 실행의 중단 지점 결정이므로 core map 에 두고, 본 절은 중복 기재하지 않는다. 요약: `draft` 는 해당 REQ 를 trace 하는 Task 만 skip 하고 잔여로 보고, `deprecated` / `frozen` / target 비어있음은 HALT, `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단.
+`SKILL.md` §3.6 이 SSOT 다 (무인 실행의 중단 지점이므로 core map 에 둔다).
 
 ### 4.4 MCP 미가용
 
-1. `list_requirements(target, projection: "compact")` 호출 시도
+1. `mcp__speckiwi__list_requirements(target, projection: "compact")` 호출 시도
 2. 실패 시 HALT + worklog `lifecycle_gate_mcp_unavailable` 기록
 3. CLI 는 진단/복구 안내에만 사용하며, 사용자 승인으로 lifecycle gate 를 우회하지 않는다
 4. 평가 결과는 `state.lifecycle_gate_state.stability_snapshot` 에 저장 (REQ-ID → stability)
@@ -68,7 +65,7 @@ SSOT 는 `SKILL.md` §3.6 이다 — 무인 실행의 중단 지점 결정이므
 ### 4.5 의사코드
 
 ```
-FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
+FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
     IF args.skip_lifecycle_gate:
         worklog.append({event: "lifecycle_override", reason: "--skip-lifecycle-gate"})
         RETURN
@@ -78,25 +75,19 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
     IF NOT target:
         HALT("활성 target 없음. speckiwi set_active_target 으로 지정 후 재실행")
     IF target != state.target_slug AND state.target_slug:
-        User clarification gate(f"plan target={state.target_slug} vs 활성 target={target} 불일치 — 진행?")
+        User clarification gate(f"SDS target={state.target_slug} vs 활성 target={target} 불일치 — 진행?")
 
-    # 2. REQ-ID 집계
-    req_ids = UNIQUE([t.req_id FOR task IN sidecar.tasks FOR t IN (task.traces OR [])])
-    IF NOT req_ids:
-        worklog.append({event: "lifecycle_gate_no_traces", reason: "sidecar tasks lack traces"})
-        RETURN   # trace 없는 plan 은 lifecycle gate 대상 아님 (kiwi-planner 가 traces 의무 위반한 경우)
-
-    # 3. 일괄 read
+    # 2. 일괄 read — 대상은 SDS @req 집합
     TRY:
         reqs = MCP_CALL(list_requirements, target=target, projection="compact")
     CATCH mcp_unavailable:
         HALT("speckiwi mcp 미가용: lifecycle gate 평가 불가. CLI 는 진단/복구 안내에만 사용")
 
-    # 4. 분류
+    # 3. 분류
     stability_snapshot = {}
     status_snapshot = {}
     blocked = []
-    FOR req IN reqs IF req.id IN req_ids:
+    FOR req IN reqs IF req.id IN state.req_ids:
         stability_snapshot[req.id] = req.stability
         status_snapshot[req.id] = req.status         # T-final 의 status_at_start 비교에 사용
         IF req.stability IN {"draft", "deprecated", "frozen"}:
@@ -110,46 +101,36 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
     }
     SAVE_STATE(state)
 
-    # 5. 차단 처리
+    # 4. 차단 처리
     IF NOT blocked: RETURN
 
     deprecated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated", "frozen"}]
     IF deprecated_or_frozen:
         HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id for r in deprecated_or_frozen]}")
 
-    # draft 만 남은 경우
+    # draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지 않고 요구 필터로 돌려보낸다
     IF args.auto:
-        # SKILL.md §3.6 — 전면 HALT 가 아니라 대화형 (B) 와 동일한 per-REQ 부분 진행
-        FOR task IN sidecar.tasks:
-            IF ANY(t.req_id IN [r.id FOR r IN blocked] FOR t IN (task.traces OR [])):
-                state.tasks[task.task_id].status = "skipped"
         worklog.append({event: "lifecycle_skip_per_req", auto: True, req_ids: [r.id FOR r IN blocked]})
         state.lifecycle_skips = [{req_id: r.id, reason_class: "draft-stability-skip"} FOR r IN blocked]
-        PRINT(f"[auto] draft REQ trace Task skip: {[r.id for r in blocked]} — kiwi-srs-feasibility 선행 권장")
         SAVE_STATE(state)
+        END_NEEDS_USER(f"[auto] draft REQ {[r.id for r in blocked]} — $kiwi-sds 요구 필터로 뺀 SDS 를 다시 쓰십시오")
     ELSE:
         choice = User clarification gate("draft REQ 차단", options=[
-            "A) HALT — kiwi-srs-feasibility 실행 후 재시도 (권장)",
-            "B) 해당 REQ trace Task 만 skip 하고 나머지 진행",
-            "C) override 진행 (사용자 책임)"
+            "A) HALT — $kiwi-srs-feasibility 로 승급하거나 $kiwi-sds 요구 필터로 뺀 SDS 로 재시도 (권장)",
+            "B) override 진행 (사용자 책임)"
         ])
         IF choice == "A": HALT("사용자 선택: HALT")
-        ELIF choice == "B":
-            # 해당 REQ trace Task 들을 미리 skipped 마크
-            FOR task IN sidecar.tasks:
-                IF ANY(t.req_id IN [r.id FOR r IN blocked] FOR t IN (task.traces OR [])):
-                    state.tasks[task.task_id].status = "skipped"
-            worklog.append({event: "lifecycle_skip_per_req", req_ids: [r.id FOR r IN blocked]})
-        ELIF choice == "C":
-            worklog.append({event: "lifecycle_override", req_ids: [r.id FOR r IN blocked]})
+        worklog.append({event: "lifecycle_override", req_ids: [r.id FOR r IN blocked]})
         SAVE_STATE(state)
 ```
+
+`END_NEEDS_USER(msg)` 는 자식을 띄우지 않고 실행을 끝낸다 — `run.status = "blocked"` 와 사유를 기록해 SAVE_STATE, 보고서(§6.3, 7번 절에 돌려보낸 draft REQ 목록)를 쓰고, §10 이벤트를 `NEEDS_USER` 로 emit 한 뒤 락을 풀고 반환한다. MAIN 으로 돌아가지 않으므로 spawn 도 §6.4 hand-off 도 없다.
 
 종료 시 (T-final) `state.lifecycle_gate_state.stability_snapshot` 과 현재 stability 를 비교하여 drift 가 감지되면 보고서에 경고로 명시 (의도된 변경일 수도 있으므로 차단은 안 함).
 
 ---
 
-## 5. `--auto` 가드레일 + 재개 + 부분 재실행
+## 5. `--auto` 가드레일 + 재개
 
 ### 5.1 severity 가드레일
 
@@ -160,58 +141,46 @@ FUNCTION APPLY_LIFECYCLE_GATE(plan, sidecar, state, args):
 | `rollback-confirmation` | "YES" 자동 승인 | 사용자에게 옵션 제시 |
 
 **예외 (always HALT, 모드 무관)**:
-- §4 lifecycle gate `deprecated`/`frozen` 차단 (`draft` 는 `SKILL.md` §3.6 per-REQ skip 으로 분리 — 예외 아님)
+- §4 lifecycle gate `deprecated`/`frozen` 차단 (`draft` 는 `SKILL.md` §3.6 요구 필터로 분리 — 예외 아님)
 - 외부 모듈 영향 (kiwi-coder §0.G2)
 - 기존 public 심볼의 삭제 · 시그니처 변경 버블업 (§0.G7 `existing-public-contract-change`) — 경로와 무관
 - 기존 테스트의 **약화·삭제** 버블업 (§0.G7 `existing-test-weakened-or-deleted`) — 회귀 안전망 제거는 위원회 결정 대상이 아니다
 - MCP mutation ≥10건 batch (kiwi-coder §0.8)
 - T-final dryRun 거부 / transition guard 거부 (§0.G6)
-- plan/sidecar SHA256 mismatch on `--resume` (§5.4)
+- SDS SHA256 mismatch on `--resume` (§5.4)
 
 ### 5.2 NEEDS_USER 재spawn 상한 (§0.G3 재기재)
 
-동일 Task 에서 NEEDS_USER 3회 누적 시 (재spawn 한도) 3지선다:
+같은 SDS 실행에서 NEEDS_USER 3회 누적 시 (재spawn 한도) 2지선다:
 
-- **(A) 추가 질문 1회 더 시도** — `attempts` 카운터는 계속 증가, 다음 NEEDS_USER 도착 시 다시 3지선다
-- **(B) Task 건너뛰기** — `status = "skipped"`, worklog `task_skipped_after_3_questions` 기록
-- **(C) 중단 + blocked 기록** — `status = "blocked"`, `state.last_question` 보존, SAVE_STATE 후 RETURN (사용자가 `--resume` 으로 재개 가능)
+- **(A) 추가 질문 1회 더 시도** — `attempts` 카운터는 계속 증가, 다음 NEEDS_USER 도착 시 다시 2지선다
+- **(B) 중단 + blocked 기록** — `run.status = "blocked"`, `state.last_question` 보존, SAVE_STATE 후 RETURN (사용자가 `--resume` 으로 재개 가능)
 
-### 5.3 FAILED 3지선다 (§0.G4 재기재)
+### 5.3 FAILED 2지선다 (§0.G4 재기재)
 
-- **(A) 같은 Task 재시도** (처음부터) — `attempts` 증가, 동일 Task 재spawn
-- **(B) Task 건너뛰기** — `status = "skipped"`
-- **(C) 중단** — `status = "failed"`, `state.last_error` 보존, RETURN
+- **(A) 같은 SDS 재시도** (처음부터) — `attempts` 증가, 재spawn
+- **(B) 중단** — `run.status = "failed"`, `state.last_error` 보존
 
 `--auto` 모드 동작: (A) 자동 재시도 1회 → 또 FAILED 면 사용자에게 에스컬레이션 (`--auto` 라도 무한 재시도 금지). 이 HALT 는 §0.G7 critical_gates `task-failure-escalation` 로 선언되어 있어, 게이트 표만 읽어도 중단 지점을 예측할 수 있다.
 
 ### 5.4 `--resume` 동작
 
-`.kiwi/sessions/{run_id}/pm-state.json` 로드 후:
+`.kiwi/sessions/{sds_id}/pm-state.json` 로드 후:
 
-1. **`status = "done"` Task → skip** (이미 완료)
-2. **`status = "blocked"` + `last_question` 존재 → 재제시**: 사용자에게 질문 다시 보여주고 답변 받음 → 답변 주입 후 해당 Task 재spawn
-3. **`status = "failed"` → 사용자 재시도 게이트**: 재시도/skip/중단 3지선다
-4. **`status = "running"` → 비정상 종료 의심**: 이전 세션이 강제 종료된 흔적. `pending` 으로 복구 후 사용자 확인 (interactive). `--auto` 시 자동 `pending` 복구 + 진행
-5. **`plan_sha256` / `sidecar_sha256` mismatch**: 외부에서 plan 변경됨. 사용자 게이트 3지선다:
-   - (A) 새 SHA 로 갱신 + 계속 진행 (의도적 수정)
+1. **`run.status = "done"` → 실행 skip**, T-final 이후 단계만 이어간다
+2. **`run.status = "blocked"` + `last_question` 존재 → 재제시**: 사용자에게 질문 다시 보여주고 답변 받음 → 답변 주입 후 재spawn
+3. **`run.status = "failed"` → 사용자 재시도 게이트**: 재시도/중단 2지선다
+4. **`run.status = "running"` → 비정상 종료 의심**: 이전 세션이 강제 종료된 흔적. `pending` 으로 복구 후 사용자 확인 (interactive). `--auto` 시 자동 `pending` 복구 + 진행
+5. **`sds_sha256` mismatch**: 외부에서 SDS 가 바뀌었다. 사용자 게이트 3지선다:
+   - (A) 새 SHA 로 갱신 + `check_sds` 재실행 후 계속 진행 (의도적 수정)
    - (B) 중단 (멀티 PM 인스턴스 / 외부 변경 의심)
    - (C) diff 표시 후 재결정 (재귀)
 
-재개 후 이번 실행에서 **상태가 바뀐 Task** 가 0 건이면 §10 의 무동작 재진입 규칙을 적용한다 — 전부 `done` 이라 아무것도 실행하지 않은 재개는 완료가 아니다.
+재개 후 이번 실행이 쓰기 집합 안에 아무 변경도 남기지 않았으면 §10 의 무동작 재진입 규칙을 적용한다 — 이미 끝난 실행을 다시 부른 재개는 완료가 아니다.
 
-`--auto + SHA mismatch` → business-decision 영역, HALT.
+`--auto + SHA mismatch` → §0.G7 critical_gates `sha-mismatch-on-resume` — `--auto` 무관 HALT.
 
-### 5.5 `--from-task=T-PH001-XX`
-
-해당 Task 부터 실행. 강제 조건:
-- 이전 Task 가 모두 `done` 상태가 아니면 경고 출력
-- `depends_on` 위반 시 강한 경고 (`User clarification gate` — 사용자가 책임지고 진행)
-- `--auto` 시 의존성 미충족이면 HALT (사용자 결정 필요)
-- 예외는 `SKILL.md` §3.1.1 하나뿐 — 미충족 선행이 **전부 `skipped`** 인 경우에만 자동 결정으로 푼다. 선행이 `failed` / `blocked` / 미실행이면 위 세 줄이 그대로 적용된다
-
-`--from-task` + `--resume` 조합: `--from-task` 가 우선. `--resume` 의 첫 pending Task 탐색을 override.
-
-### 5.6 의사코드
+### 5.5 의사코드
 
 ```
 FUNCTION HANDLE_QUESTIONS(questions, args):
@@ -251,102 +220,55 @@ FUNCTION CONSERVATIVE_DEFAULT(q):
 
 
 FUNCTION HANDLE_FAILED(result, args):
-    state.last_error = result.error
     PRINT(f"⚠️ FAILED: {result.error.reason}")
     PRINT(f"시도한 것: {result.error.attempted}")
 
-    IF args.auto AND state.tasks[task.task_id].attempts < 2:
+    IF args.auto AND state.run.attempts < 2:
         LOG("[auto] FAILED 1회 자동 재시도")
         RETURN "A"
     ELSE:
-        choice = User clarification gate(§0.G4 3지선다)
-        RETURN choice
+        RETURN User clarification gate(§0.G4 2지선다)
 
 
-FUNCTION VERIFY_SHA_ON_RESUME(state, plan_path, sidecar_path, args):
-    current_plan_sha = SHA256(plan_path)
-    current_sidecar_sha = SHA256(sidecar_path)
-    IF state.plan_sha256 == current_plan_sha AND state.sidecar_sha256 == current_sidecar_sha:
+FUNCTION VERIFY_SHA_ON_RESUME(state, args):
+    current_sds_sha = SHA256(state.sds_path)
+    IF state.sds_sha256 == current_sds_sha:
         RETURN True
 
     IF args.auto:
-        HALT("plan/sidecar SHA mismatch — --auto business-decision HALT")
+        HALT("SDS SHA mismatch — §0.G7 critical_gates `sha-mismatch-on-resume` HALT")
 
-    choice = User clarification gate("plan/sidecar 외부 변경 감지", options=[
-        "A) 새 SHA 로 갱신 + 계속 진행 (의도적 plan 수정)",
+    choice = User clarification gate("SDS 외부 변경 감지", options=[
+        "A) 새 SHA 로 갱신 + check_sds 재실행 후 계속 진행 (의도적 SDS 수정)",
         "B) 중단 (멀티 PM 의심)",
         "C) git diff 보기 후 재결정"
     ])
     SWITCH choice:
         CASE "A":
-            state.plan_sha256 = current_plan_sha
-            state.sidecar_sha256 = current_sidecar_sha
+            LOAD_AND_CHECK_SDS(state.sds_path)
+            state.sds_sha256 = current_sds_sha
             SAVE_STATE(state)
             RETURN True
         CASE "B":
             HALT("사용자 중단 — SHA mismatch")
         CASE "C":
-            SHOW_DIFF(plan_path, state.plan_sha256, current_plan_sha)
-            RETURN VERIFY_SHA_ON_RESUME(state, plan_path, sidecar_path, args)
+            SHOW_DIFF(state.sds_path, state.sds_sha256, current_sds_sha)
+            RETURN VERIFY_SHA_ON_RESUME(state, args)
 ```
 
 ---
 
-## 6. plan.md 체크박스 + 종료 마무리
+## 6. 종료 마무리
 
-### 6.1 plan.md 체크박스 (PM 중앙 집중 관리)
+### 6.1 실행 결과 판정
 
-Task `status = "done"` 마다 PM 이 plan.md 의 해당 라인을 `- [ ]` → `- [x]` 로 교체. **kiwi-coder 자식은 plan.md 직접 수정 금지** (중앙 집중 관리, race 회피).
-
-**매칭 패턴** (RE2 multiline `^\s*-\s*\[\s*\]\s*(\*\*)?{task_id}\b`):
-
-| plan.md 라인 | 매칭 | 교체 결과 |
-|---|---|---|
-| `- [ ] **T-PH001-01** ...` | YES | `- [x] **T-PH001-01** ...` |
-| `- [ ] T-PH001-01: ...` | YES | `- [x] T-PH001-01: ...` |
-| `- [ ] \`T-PH001-01\` ...` | YES | `- [x] \`T-PH001-01\` ...` |
-| `- [x] ...` 이미 체크 | NO | 무변경 (idempotent) |
-| TASK-ID 없는 line | NO | 경고 로그만 |
-
-**체크박스 부재 폴백** (`{plan_id}.checklist.md`):
-
-부팅 시 plan.md 의 TASK 체크박스 매칭률이 **<50%** 또는 **0건** 이면 외부 폴백 파일을 사용:
-
-- interactive: 3지선다
-  - (a) `{plan_id}.checklist.md` 자동 생성 (권장)
-  - (b) 체크박스 없이 진행 (pm-state.json 으로만 추적)
-  - (c) 중단 — 직접 plan.md 수정 후 재실행
-- `--auto`: (a) 자동 선택
-
-생성 형식:
-
-```markdown
-# {plan_id} — Phase Checklist
-
-> PM 자동 생성 파일. plan.md 의 보조 뷰이며 정규 진행 상태는 `pm-state.json` 이 SSOT.
-> 수동 수정 가능하지만 PM 재실행 시 덮어써질 수 있음.
-> 생성: {ISO-8601} / plan 원본: {plan.md 파일명}
-
-## Phase PH-001: {phase title}
-- [ ] **T-PH001-01** {task title}
-- [ ] **T-PH001-02** {task title}
-
-## Phase PH-002: {phase title}
-- [ ] **T-PH002-01** {task title}
-...
-```
-
-**`.bak` 백업** — 매 갱신마다 `.md.bak` 자동 생성. `.gitignore` 권장: `*.md.bak`.
-
-`--resume` 시 checklist.md 가 존재하고 sidecar.tasks 와 일치하면 재사용. TASK 추가/삭제 감지 시 경고 + 재생성 (interactive 확인 / `--auto` 자동).
-
-git 관리는 사용자 책임. PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 **유일한 예외**다 (SKILL.md §1.5).
+kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 의 commit 1개를 만든다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
 
 ### 6.2 T-final SRS Status 마무리
 
-`--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (SKILL.md §1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 Task 부분집합이 되기 때문이다. 체크박스 갱신(§6.1)과 보고서 작성(§6.3)은 그대로 수행한다.
+`--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (SKILL.md §1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 몫이 되기 때문이다. 보고서 작성(§6.3)은 그대로 수행한다.
 
-**문제**: kiwi-coder 는 Task 단위로 `update_status(in_progress)` 만 호출. 한 REQ 가 여러 Task 로 trace 될 때 multi-Task REQ 의 `implemented` 승급 판단 불가 (자식 시야 한계). PM 이 모든 Task 완료 후 일괄 마무리.
+**문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SDS `@req` 집합을 일괄 마무리한다.
 
 **의사코드**:
 
@@ -356,20 +278,13 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
     reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
     reqs_by_id = {r.id: r for r in reqs}
 
-    # 2. REQ 별 trace Task 집계
-    req_to_tasks = {}
-    FOR task IN state.tasks:
-        FOR req_id IN task.trace_req_ids:
-            req_to_tasks.setdefault(req_id, []).append(task)
-
-    # 3. proposals 생성 (forward-only)
+    # 2. proposals 생성 (forward-only) — 대상은 SDS @req 집합
     STATUS_ORDER = ["planned", "in_progress", "implemented", "verified"]
+    all_done = (state.run.status == "done")
     proposals = []
-    FOR req_id, tasks IN req_to_tasks.items():
+    FOR req_id IN state.req_ids:
         req = reqs_by_id.get(req_id)
-        IF NOT req: CONTINUE   # plan trace 에 없는 REQ — 무시
-
-        all_done = ALL(t.status == "done" FOR t IN tasks)
+        IF NOT req: CONTINUE   # SDS @req 가 가리키지만 활성 target 에 없는 REQ — 무시
         current_idx = STATUS_ORDER.index(req.status) IF req.status IN STATUS_ORDER ELSE -1
         target_idx = STATUS_ORDER.index("implemented")
 
@@ -377,18 +292,13 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
             status_at_start: state.lifecycle_gate_state.status_snapshot.get(req_id, req.status),   # 부팅 T0 시점 Status
             status_at_end: req.status,                                                              # T-final read 직후 Status (mutation 적용 전)
             stability_at_start: state.lifecycle_gate_state.stability_snapshot.get(req_id),
-            tasks: [t.task_id for t in tasks],
             all_done: all_done
         }
 
         IF all_done AND current_idx < target_idx AND current_idx >= 0:
-            proposals.append({
-                req_id: req_id,
-                from: req.status,
-                to: "implemented"
-            })
+            proposals.append({ req_id: req_id, from: req.status, to: "implemented" })
 
-    # 4. 사용자 승인 (--auto 면 자동, 단 backward transition 차단)
+    # 3. 사용자 승인 (--auto 면 자동, 단 backward transition 차단)
     IF proposals:
         IF NOT args.auto:
             choice = User clarification gate(
@@ -403,65 +313,45 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
             IF choice == "C":
                 proposals = [p FOR p IN proposals IF User clarification gate(f"{p.req_id}: {p.from} → {p.to} 적용?") == "yes"]
 
-        # 5. 실제 mutation (사전 guard → apply → 기록)
+        # 4. 실제 mutation (사전 guard → apply → 기록)
         #
         # speckiwi `update_status` MCP schema (SSOT): { id: string, status: string } — 그 외 인자 없음 (dryRun 미지원)
         # speckiwi `add_completed_work` MCP schema (SSOT):
         #   필수 { date: "YYYY-MM-DD", summary: string }
         #   선택 { requirementIds: string[], target?: string, scope?: string,
         #          reportPaths?: string[], allowIncomplete?: boolean, dryRun?: boolean }
-        # → MCP 에 plan_id / run_id / tasks / kind / entries 같은 임의 필드 전달 불가.
-        #   plan-summary 메타는 summary 텍스트에 인코딩하고, 보고서 파일은 reportPaths 로 전달.
-
-        # 5a. backward transition 사전 guard — §0.G6
-        #     (current_idx >= target_idx 인 proposal 은 §3 단계에서 이미 제외됐으므로 여기서는 forward 만 남는다.
-        #      그래도 MCP 측에서 정책 변경으로 거부할 가능성에 대비해 catch.)
-
-        # 5b. (선택) PM --dry-run 플래그: 실제 호출 대신 dryRun 옵션 전달
+        # → MCP 에 sds_id / run_id / kind / entries 같은 임의 필드 전달 불가.
+        #   sds-summary 메타는 summary 텍스트에 인코딩하고, 보고서 파일은 reportPaths 로 전달.
         is_pm_dry_run = (args.dry_run == True)
 
         FOR p IN proposals:
             TRY:
-                # 5c. update_status 적용 (forward-only)
                 IF is_pm_dry_run:
                     worklog.append({event: "t_final_dryrun_only", req_id: p.req_id, kind: "update_status"})
                 ELSE:
                     MCP_CALL(update_status, id=p.req_id, status="implemented")
                 state.final_mutations.append({
-                    ts: NOW(),
-                    kind: "update_status",
-                    req_id: p.req_id,
-                    from: p.from,
-                    to: "implemented",
-                    dry_run: is_pm_dry_run
+                    ts: NOW(), kind: "update_status", req_id: p.req_id,
+                    from: p.from, to: "implemented", dry_run: is_pm_dry_run
                 })
 
-                # 5d. plan-summary completed-work entry — REQ 별 1회 호출
-                #     speckiwi 표준 필드만 사용. plan 메타는 summary 본문에 인코딩.
-                today = TODAY_DATE_YYYY_MM_DD()
-                task_ids = req_to_tasks[p.req_id].map(t -> t.task_id)
+                # sds-summary completed-work entry — REQ 별 1회 호출. speckiwi 표준 필드만 사용.
                 summary_text = (
-                    f"[plan-summary] run_id={state.run_id} "
-                    f"plan={state.plan_path} "
-                    f"tasks={','.join(task_ids)} "
-                    f"— plan 완주, {len(task_ids)} Task done"
+                    f"[sds-summary] sds_id={state.run_id} "
+                    f"sds={state.sds_path} "
+                    f"— SDS 구현 완료, coder_run_id={state.run.coder_run_id}"
                 )
-                report_path = state.report_path   # §6.3 보고서가 이미 작성됐다고 가정 (T-final 전 호출)
-
                 MCP_CALL(add_completed_work,
-                    date=today,
+                    date=TODAY_DATE_YYYY_MM_DD(),
                     summary=summary_text,
                     requirementIds=[p.req_id],
                     target=state.target_slug,
-                    reportPaths=([report_path] IF report_path ELSE []),
+                    reportPaths=([state.report_path] IF state.report_path ELSE []),
                     dryRun=is_pm_dry_run
                 )
                 state.final_mutations.append({
-                    ts: NOW(),
-                    kind: "add_completed_work_plan_summary",
-                    req_id: p.req_id,
-                    summary: summary_text,
-                    dry_run: is_pm_dry_run
+                    ts: NOW(), kind: "add_completed_work_sds_summary", req_id: p.req_id,
+                    summary: summary_text, dry_run: is_pm_dry_run
                 })
             CATCH mcp_error AS e:
                 # MCP 일시 미가용 / transition guard 거부 등
@@ -476,29 +366,26 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
 | 호출 | 필수 인자 | 선택 인자 | 비고 |
 |---|---|---|---|
 | `update_status` | `id, status` | — | 본 호출에 `dryRun` 옵션 없음. PM 의 --dry-run flag 시 호출 자체를 skip |
-| `add_completed_work` | `date, summary` | `requirementIds, target, scope, reportPaths, allowIncomplete, dryRun` | `requirementIds[]` 로 다중 REQ 묶기 가능하지만, REQ 별 summary 가 다르므로 REQ 별 1회 호출 권장 |
+| `add_completed_work` | `date, summary` | `requirementIds, target, scope, reportPaths, allowIncomplete, dryRun` | `requirementIds[]` 로 다중 REQ 묶기 가능하지만, REQ 별 1회 호출로 기록을 요구별로 남긴다 |
 
-**부분 실패 시**:
-- 일부 Task 가 `failed` / `skipped` / `blocked` → 해당 REQ 의 `all_done == False` → `update_status` 호출 안 함 (해당 REQ 는 in_progress 또는 blocked 그대로 유지)
-- `add_completed_work(plan-summary)` 도 skip (REQ 가 미완료인데 plan-summary append 는 오해 소지)
-- 보고서 §6.3 에서 부분 완료 REQ 목록을 명시
+**실행이 성공으로 끝나지 않았을 때** (실패·차단) 해당 REQ 의 `all_done == False` → `update_status` 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). `add_completed_work(sds-summary)` 도 skip. 보고서 §6.3 에서 미완료 REQ 목록을 명시.
 
 **Stability 변경 / verified 승급**: PM 권한 아님. Stability 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop `--close-reqs` 영역.
 
 ### 6.3 종료 보고서 + doculight 표시
 
-`.kiwi/sessions/{run_id}/reports/pm-{ts}.md` 작성. **8개 섹션**:
+`.kiwi/sessions/{sds_id}/reports/pm-{ts}.md` 작성. **8개 섹션**:
 
-1. **요약** — 총 Task / done / skipped / failed / blocked / 소요 시간
-2. **Task 별 결과** — task_id / status / coder_run_id / result_summary
-3. **req_coverage 표** — REQ-ID / 진입 시 status / 종료 시 status / trace Task 목록 / all_done / verified 여부
+1. **요약** — SDS 경로 / 실행 status / attempts / 소요 시간
+2. **실행 결과** — coder_run_id / result_summary / `run.changed` / commit sha (`--commit-lane-work` 일 때)
+3. **req_coverage 표** — REQ-ID / 진입 시 status / 종료 시 status / all_done / verified 여부
 4. **SRS mutation 로그** — `state.final_mutations` 시간순. `pending_mutations` 도 별도 명시 (MCP 미가용으로 보류된 항목, 사용자 수동 처리 안내)
-5. **NEEDS_USER 이력** — severity 분포 + 발생 Task / 질문 본문 요약
+5. **NEEDS_USER 이력** — severity 분포 + 질문 본문 요약
 6. **`--auto` 자동 해소 항목** (있을 때만)
-7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B/C) 또는 `--auto` per-REQ skip 목록. skip 된 REQ 는 `reason_class` (`draft-stability-skip` / `task-failure-skip`) 와 함께 잔여로 열거하며, 잘라내지 않고 **전량** 적는다
-8. **checklist.md 사용 여부** — `생성 / 재사용 / 미사용` + 경로
+7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B) 또는 `--auto` 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 `reason_class` (`draft-stability-skip`) 와 함께 잔여로 열거하며, 잘라내지 않고 **전량** 적는다
+8. **§6.4 hand-off** — 넘긴 인자와 `kiwi-sds --close` 두 호출의 결과(옮긴 결정, 지운 SDS 파일 — 미커밋), 또는 hand-off 하지 않은 사유 (`--no-final` / `--review-hop-owned-by-parent`). 보고서는 hand-off 앞에 쓰이므로 두 `kiwi-sds --close` 결과와 review-fix-loop 의 "후속 close 결과" 는 hand-off 가 끝난 뒤 이 절 끝에 덧붙인다
 
-**Stability drift 경고** (§4 종료 시 비교): `lifecycle_gate_state.stability_snapshot` vs 종료 시점 stability 비교. drift 발견 시 §1 또는 §4 섹션 끝에 경고 박스 추가 (의도된 변경일 수도 있어 차단 안 함, 단 보고서에 명시).
+**Stability drift 경고** (§4 종료 시 비교): `lifecycle_gate_state.stability_snapshot` vs 종료 시점 stability 비교. drift 발견 시 §1 또는 §7 섹션 끝에 경고 박스 추가 (의도된 변경일 수도 있어 차단 안 함, 단 보고서에 명시).
 
 **doculight MCP 표시**:
 
@@ -534,90 +421,73 @@ FUNCTION DOCULIGHT_DISPLAY(report_path, args, state):
 
 doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (보고서 마크다운은 디스크에 작성되어 있음).
 
+### 6.4 kiwi-review-fix-loop hand-off
+
+단독 실행은 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다 — 미루거나 건너뛰는 갈래는 두지 않는다. 끝은 실행이 `done` 또는 `failed` 로 확정된 때다. `blocked` 는 끝이 아니라 멈춤이며 `--resume` 으로 이어간다.
+
+```
+Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+MOVED = CLOSE_SAFE(state) AND check_sds(state.sds_path).status == "closed"
+Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음} --sds {state.sds_path}{' --close-reqs' if MOVED else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+```
+
+- `$kiwi-sds --close` 는 `CLOSE_SAFE` 일 때, 곧 hand-off 가 `--close-reqs` 를 붙일 때만 위 순서로 두 번 부른다 — 리뷰 앞에서 SDS 의 해석 결정을 SRS 로 옮기고(승급 전이어야 한다, FR-FLOW-183), 리뷰와 그 마지막 단계인 테스트 충분성 확인 뒤에 요구가 모두 승급됐으면 SDS 파일을 지운다 (`$kiwi-sds` §3). 인자는 이 실행의 SDS id(`state.run_id`, `SKILL.md` §0.14)와 리뷰 호출과 같은 `--auto` / `--max` / `--model` / 루프 플래그다. 첫 호출 뒤 `check_sds` 로 SDS Status 를 다시 읽어 `closed` 가 아니면(옮기기가 `sds-close-after-promotion` · `stability-frozen-violation` · `validate-spec-error` 등으로 멈춤) 옮기기가 끝나지 않은 것이다 — 리뷰는 `--close-reqs` 없이 돌고(`MOVED` 거짓), 두 번째 호출은 하지 않으며, 멈춘 gate id 를 보고서 8번 절에 적는다. 승급은 옮기기가 끝난 뒤에만 온다(FR-FLOW-183). `--close-reqs` 없이 넘기는 실행은 승급하지 않으므로 SDS 를 닫지 않는다 — 닫힌 SDS 는 다음 kiwi-pm 실행이 받지 않는다(`SKILL.md` §1.1). 지운 파일은 커밋하지 않으므로 보고서에 그렇게 적는다.
+- `--req-filter` 와 `--sds` 는 이 SDS 의 요구 범위를 넘긴다 — review-fix-loop 의 마지막 단계인 테스트 충분성 확인(`../../_shared/kiwi/test-sufficiency.md`)이 이 실행의 범위를 본다.
+- `--close-reqs` 는 실행이 `done` 으로 끝나 T-final 이 요구를 `implemented` 로 올렸고 (`CLOSE_SAFE`) 옮기기가 끝났을 때(`MOVED`)만 붙인다. 실행이 `failed` 이거나 critical 로 격상된 NEEDS_USER 가 남은 채로 `--close-reqs` 를 붙이는 것은 §0.G7 `followup-review-fix-loop-close-unsafe` 가 막는다 — 되감을 수 없는 `verified` 를 향하기 때문이며 `--auto` 도 이 멈춤을 덮지 못한다. 그 경우에도 hand-off 는 `--close-reqs` 없이 돈다.
+- `--no-final` 이 있으면 hand-off 하지 않는다 — 워커 실행이며 리뷰는 호출자가 돈다.
+- `--review-hop-owned-by-parent` 를 **명시적 인자로** 받으면 hand-off 하지 않는다 — 부모(`kiwi-pipeline` 사이클)가 이 실행 뒤 리뷰 홉을 직접 돈다. 인자가 없으면 진입 경로를 추론하지 않고 언제나 넘긴다.
+- 부모 PM 의 `--model` / `--max` / `--mini` / `--loops N` 은 args 에 전파한다 (loop-option.md §6).
+- review-fix-loop 의 종료 상태 (`closed_reqs.json`) 는 본 PM 보고서 8번 절 끝의 "후속 close 결과" 에 첨부 (review-fix-loop 종료 직후 갱신, best-effort).
+- PM 자체는 `update_status("verified")` 를 호출하지 않는다 — verified 전이는 review-fix-loop 의 몫이다 (`SKILL.md` §0.12 mutation 분담 SSOT 불변).
+
 ---
 
-## 7. 호환성 / 에러 처리 / 매핑
+## 7. 호환성 / 에러 처리
 
 ### 7.1 입력 무결성 게이트 (T-1)
 
 | 실패 조건 | 동작 |
 |---|---|
-| PLAN_PATH 부재 또는 파일 없음 | HALT — "kiwi-planner 로 plan 먼저 작성하십시오" |
-| `plan_contract ≠ "1.2.0"` | HALT — kiwi-coder §0.G3 동치 거부 + 재실행 권고 |
-| `schema_version ≠ "1.1.0"` | HALT |
-| `tdd_policy = "disabled"` | HALT — TDD 강제 정책 |
-| sidecar.json parse 실패 | HALT — validator.mjs 재실행 권고 |
-| sidecar.tasks 빈 배열 또는 부재 | HALT — 실행할 Task 없음 |
-| `task_id` / `phase_id` / `run_id` 정규식 위반 (§0.14) | HALT |
-| `validator.json` 존재 + `exit_code != 0` | WARN + 사용자 진행 동의 |
-| frontmatter `sidecar_path` ↔ 실제 경로 불일치 | WARN + 실제 경로 사용 |
+| `SDS_PATH` 부재 또는 파일 없음 | HALT — "`$kiwi-sds` 로 SDS 를 먼저 작성·합의하십시오" |
+| 경로가 `docs/sds/*.sds.md` 가 아님 | HALT |
+| `Profile ≠ lite` | HALT — tdd step `design.md` 는 `$kiwi-tdd` 몫 |
+| Status ≠ `agreed` | HALT — `$kiwi-sds` 로 합의 |
+| `check_sds` error ≥1 | HALT — 진단 코드와 줄을 보고하고 `$kiwi-sds` 로 수정 |
+| SDS `@req` 집합이 비어 있음 | HALT |
+| `sds_id` 정규식 위반 (`SKILL.md` §0.14) | HALT |
 
 ### 7.2 런타임 에러
 
 | 상황 | 대응 |
 |---|---|
-| delegated worker timeout | 2회 재시도 후 FAILED → 3지선다 (§0.G4) |
+| delegated worker timeout | 2회 재시도 후 FAILED → 2지선다 (§0.G4) |
 | 자식 JSON 파싱 실패 | 1회 재spawn 시 "단일 JSON 만" 강조 재주입, 실패 시 FAILED |
 | 자식이 빈 응답 / 산문만 반환 | JSON 파싱 실패와 동일 처리 |
 | `pm-state.json` 손상 (parse error) | `.bak` 복구 시도 → 실패 시 사용자 동의 후 새 상태 생성 |
-| MCP 미가용 (lifecycle gate read) | HALT. CLI 는 진단/복구 안내에만 사용하고 사용자 승인으로 gate 를 우회하지 않음 |
+| MCP 미가용 (`check_sds` / lifecycle gate read) | HALT. CLI 는 진단/복구 안내에만 사용하고 사용자 승인으로 gate 를 우회하지 않음 |
 | MCP 미가용 (T-final update_status) | HALT + `state.pending_mutations[]` 기록. MCP 복구 후 재개 |
 | `update_status` transition guard 거부 (MCP 응답 reject) | catch → `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내. 강제 우회 없음. (`update_status` MCP 에 dryRun 옵션 없음 — 사전 시뮬레이션 불가, 호출 시점에 거부 가능성 catch) |
 | 자식이 `update_status` backward 시도 | kiwi-coder §0.G5 자체 차단. PM 무대응 |
 | `--auto` + business-decision NEEDS_USER | HALT 후 사용자 대화 복귀 |
-| `--auto` + lifecycle gate `draft` | 해당 REQ trace Task 만 skip + 잔여 보고 (`SKILL.md` §3.6). `deprecated`/`frozen` 은 종전대로 HALT |
-| `--auto` + 미충족 선행이 전부 `skipped` | `SKILL.md` §3.1.1 자동 결정 (계속 / 함께 skip). 선행이 `failed`/`blocked` 면 종전대로 HALT |
-| plan/sidecar SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
+| `--auto` + lifecycle gate `draft` | SDS 를 실행하지 않고 요구 필터로 돌려보냄 + 잔여 보고 (`SKILL.md` §3.6). `deprecated`/`frozen` 은 종전대로 HALT |
+| SDS SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
 | `pm.lock` 30분 stale | 자동 해제 + 경고 log |
 | `pm.lock` 다른 host 활성 | 명시적 차단 (`--force` 필요) |
-| Task `status="running"` 잔존 on `--resume` | `pending` 으로 복구 + 사용자 확인 (interactive) / `--auto` 자동 복구 |
+| `run.status="running"` 잔존 on `--resume` | `pending` 으로 복구 + 사용자 확인 (interactive) / `--auto` 자동 복구 |
 
-### 7.3 snoworca-pm → kiwi-pm 매핑
+### 7.3 Out of Scope (v0.1)
 
-| snoworca-pm | kiwi-pm | 비고 |
-|---|---|---|
-| `plan-contract-v1.0/1.1` dual-read | `plan_contract = "1.2.0"` + sidecar.json | sidecar JSON 단일, validator.mjs 통과 의무 |
-| `phases[]` spawn 단위 | **`tasks[]` spawn 단위** | Task 1:1 격리 (§0.7) |
-| `--headless` (legacy CLI subprocess) | **제거** | 모든 자식 실행이 위임 worker 위임 단일 모드 (§0.15) |
-| T1/T2/T3 forbidden_patterns 게이트 | **제거** | host-agent permission model 사용, 외부 강제 불필요 |
-| ENV_WHITELIST / SANITIZE_USER_ANSWERS / PARSE_SENTINEL | **제거** | subprocess 부재로 무용 |
-| process group 격리 / Windows CTRL_BREAK_EVENT | **제거** | subprocess 부재 |
-| `_shared/snoworca/` 모듈 import | **금지** | 로직만 차용, 실행은 본 스킬 내부 (§0.3) |
-| python-fix-hook self-heal | **제거** | subprocess Python 호출 없음 |
-| §11.5 Phase↔TASK 휴리스틱 | **제거** | 항상 Task |
-| §11.6 비용 추적 (subprocess usage) | **제거** | 위임 worker usage 노출 정책은 런타임에 따름 — v0.2 후보 |
-| §15 plan.md 체크박스 + §15.8 checklist.md 폴백 | **유지** | 매칭 패턴 그대로 (§6.1) |
-| 3상태 프로토콜 (PHASE_DONE/NEEDS_USER/FAILED) | **유지** (`TASK_DONE`) | severity 3종 동일 |
-| `--auto` severity 가드레일 | **유지** | clarification/business-decision/rollback-confirmation |
-| `--resume` / `--from-phase` | **유지** (`--from-task`) | task_id 기반 |
-| `--ultra` / `--no-self-heal` | **제거** | `local-LLM max profile` 도입 (kiwi 시리즈 표준). `--max` 는 PM 이 자체 소비하지 않고 kiwi-coder 로 pass-through (`SKILL.md` §3.2) |
-| `RESUME_FROM` 4지선다 (FAILED 분기) | **간소화 3지선다** | kiwi-coder 가 `partial_progress` 미보고. v0.2 후보 |
-| `mode = "headless"/"interactive"` | **단일 모드** | interactive 만 |
-| lifecycle gate (Stability) | **신규** | kiwi-pipeline-v1 §4.2 정합 (§4) |
-| 종료 T-final REQ status 마무리 | **신규** | kiwi-pm 의 핵심 부가가치 (§6.2) |
-| doculight 보고서 표시 | **신규** | MCP 가용 시 (§6.3) |
-
-### 7.4 Out of Scope (v0.1)
-
-- SRS / feasibility / planner / coder 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-planner, kiwi-coder 영역). PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
-- 구현 리뷰 (kiwi-review-fix-loop 영역 — kiwi-pm 은 그 스킬을 후속으로 권고할 뿐 직접 리뷰하지 않는다)
-- 풀 파이프라인 오케스트레이션 (별도 kiwi-pipeline 향후 스킬)
+- SRS / feasibility / SDS 작성 스킬 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-sds 영역) — §6.4 의 `kiwi-sds --close` 마감 호출만 예외다. PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
+- SDS 수정 (kiwi-sds 영역 — 설계가 틀렸으면 NEEDS_USER 로 올린다)
+- 구현 리뷰 (kiwi-review-fix-loop 영역 — kiwi-pm 은 §6.4 에서 그 스킬로 넘길 뿐 직접 리뷰하지 않는다)
+- 풀 파이프라인 오케스트레이션 (kiwi-pipeline 영역)
 - Stability 변경 (kiwi-srs-feasibility 영역)
 - verified 승급 (kiwi-review-fix-loop `--close-reqs` 영역에 위임)
 - `--headless` 모드 (위임 worker 위임 단일 모드 정책)
 - 비용 / 토큰 추적 (delegated worker usage 노출 후 검토)
-- 순차 단일 Task spawn (`depends_on` 독립 Task 동시 실행, v0.2 후보)
-- 멀티 plan 동시 실행 (`pm.lock` 의도)
-- snoworca 시리즈 호출 (AGENTS.md / .skillfactory AGENTS.md 금지)
-
-### 7.5 v0.2 후보
-
-- `--headless` 부활 (legacy CLI subprocess + 안전 게이트 복원, 별도 스킬 분리 가능)
-- 비용 추적 (delegated worker usage 노출 시 또는 doculight 보고서에 통합)
-- kiwi-coder `partial_progress.last_completed_stage` 보고 → FAILED 분기 4지선다 확장
-- `depends_on` DAG 분석 후 독립 Task 순차 단일 spawn (Race 안전성 사전 검증 필요)
-- snoworca-pm 등의 기존 `.snoworca/sessions/` state 마이그레이션 도우미
-- `task.requires_human_approval` / `task.owns` (semantic ownership) 휴리스틱 — kiwi-planner sidecar schema 가 해당 필드 도입 시 §3.5 에 재활성화. 현재 sidecar `Task` interface 에는 미존재하여 v0.1 에서 제외 (path 기반 휴리스틱으로 일부 보완 가능)
+- 여러 SDS 동시 실행 (`pm.lock` 의도 — 병렬 wave 는 워크트리마다 kiwi-pm 하나가 돈다)
+- snoworca 시리즈 호출 (project instructions 금지)
 
 ---
 
@@ -625,75 +495,67 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 
 ```bash
 # 기본 실행 (interactive)
-$kiwi-pm PLAN_PATH=docs/plans/2026-05-19.kiwi-pm.v0-1.plan.md
+$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md
 
 # 자동 모드 + local-LLM 안정성 우선
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto local-LLM max profile
+$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto
 
 # 이전 세션 재개
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --resume
-
-# 디버깅: 특정 Task 부터 실행
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --from-task=T-PH002-03
+$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --resume
 
 # stale lock 강제 해제 후 재개
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --resume --force
+$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --resume --force
 
 # doculight 끄고 자동 실행 (CI 환경 등)
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md --auto --no-doculight
-
-# SIDECAR_PATH 명시 (plan.md frontmatter 추론 실패 시)
-$kiwi-pm PLAN_PATH=docs/plans/...plan.md SIDECAR_PATH=docs/plans/...plan.json
+$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 ```
 
 ---
 
 ## 9. 설계 요약
 
-`$kiwi-pm` v0.1 은 plan-contract=1.2.0 + sidecar TDD plan 을 입력으로 받아 **각 Task 를 위임 worker 위임으로 kiwi-coder 자식을 격리 실행** 하는 coder-loop runner. PM 책임 6항:
+`$kiwi-pm` v0.1 은 합의된 lite SDS 한 파일을 입력으로 받아 **그 SDS 를 위임 worker 위임으로 kiwi-coder 자식 실행 하나에 격리** 하는 runner. PM 책임 6항:
 
-1. **부팅 lifecycle gate** — speckiwi `list_requirements` read, Stability ∈ {evolving, stable} 만 진행 허용 (§4)
-2. **Task 순차 spawn + 3상태 프로토콜** — delegated worker child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (§3)
+1. **부팅 SDS 검사 + lifecycle gate** — `check_sds` 로 lite SDS 를 검사하고, speckiwi `list_requirements` read 로 SDS `@req` 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+2. **SDS 하나 = kiwi-coder 실행 하나 + 3상태 프로토콜** — delegated worker child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (`SKILL.md` §3)
 3. **`--auto` severity 가드레일** — clarification 자동 / business-decision 강제 HALT / rollback-confirmation 자동 승인 (§5.1)
-4. **plan.md 체크박스 + checklist.md 폴백** — 중앙 집중 관리, 자식 수정 금지 (§6.1)
-5. **T-final REQ status 마무리** — 모든 trace Task done 인 REQ 에 한해 `update_status(id, "implemented")` 일괄 + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
-6. **보고서 작성 + doculight MCP 표시** — 8섹션 마크다운 + (가용 시) `open_markdown` (§6.3)
+4. **T-final REQ status 마무리** — 실행이 성공으로 끝났으면 SDS `@req` 집합에 `update_status(id, "implemented")` + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
+5. **보고서 작성 + doculight MCP 표시** — 8섹션 마크다운 + (가용 시) `open_markdown` (§6.3)
+6. **리뷰 hand-off** — 단독 실행이면 끝에서 항상 `kiwi-review-fix-loop` 로 넘긴다. `--close-reqs` 를 붙이는 실행은 그 앞뒤로 `kiwi-sds --close` 를 부른다 (§6.4)
 
 ### MCP 호출 분담 표 (speckiwi 실제 schema)
 
 | 호출 | 호출자 | 시점 | 시그니처 |
 |---|---|---|---|
+| `check_sds` (read) | **kiwi-pm** | T-1 입력 검사 | `{path}` |
 | `get_active_target` (read) | **kiwi-pm** | T0 lifecycle gate | `{}` |
 | `list_requirements` (read) | **kiwi-pm** | T0 / T-final | `{target?, status?, stability?, scope?, tag?, type?}` |
-| `add_trace_link` | kiwi-coder (자식) | Task 종료 시 (Code anchor) | `{id, type, reference, relation, [notes]}` (flat) |
-| `add_verification_evidence` | kiwi-coder (자식) | Task 종료 시 | `{id, type, reference, [covers, notes]}` |
-| `update_status(in_progress)` | kiwi-coder (자식) | Task 시작 시 | `{id, status: "in_progress"}` |
-| `add_completed_work` (Task 수준 요약) | kiwi-coder (자식) | Task 종료 시 — DoD/test 증거 | `{date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun]}` |
-| `update_status("implemented")` | **kiwi-pm** | T-final, 모든 trace Task done 시 (조건부, forward-only) | `{id, status: "implemented"}` (dryRun 인자 없음) |
-| `add_completed_work(plan-summary)` | **kiwi-pm** | T-final, plan 단위 요약 메타 entry |
+| `add_trace_link` | kiwi-coder (자식) | 실행 종료 시 (Code anchor) | `{id, type, reference, relation, [notes]}` (flat) |
+| `add_verification_evidence` | kiwi-coder (자식) | 실행 종료 시 | `{id, type, reference, [covers, notes]}` |
+| `update_status(in_progress)` | kiwi-coder (자식) | 실행 시작 시 | `{id, status: "in_progress"}` |
+| `add_completed_work` (실행 요약) | kiwi-coder (자식) | 실행 종료 시 — SDS-AC/test 증거 | `{date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun]}` |
+| `update_status("implemented")` | **kiwi-pm** | T-final, 실행이 성공으로 끝났을 때 (조건부, forward-only) | `{id, status: "implemented"}` (dryRun 인자 없음) |
+| `add_completed_work(sds-summary)` | **kiwi-pm** | T-final, SDS 단위 요약 메타 entry |
 | `open_markdown` / `update_markdown` | **kiwi-pm** | T-final 보고서 작성 직후 (가용 시) |
-
-**규모 축소**: snoworca-pm 1907 줄 → kiwi-pm v0.1 ~ 800 줄. `--headless` / T1/T2/T3 forbidden_patterns / ENV_WHITELIST / sentinel parser / Python self-heal / Phase↔TASK 휴리스틱 / 비용 추적 모두 제거.
 
 ---
 
 ## 10. Pipeline event emit (의무)
 
-`../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
+`../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 의 §6.4 hand-off 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
-- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다(`pipeline-event.md` §5.4) — 멱등 skip 은 **같은 키**에만 적용되며, 같은 키가 아니면 skip 하지 않는다. `--resume` 로 같은 plan run 을 다시 도는 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
+- 멱등 키: 재진입 실행은 `{run_id}#r{n}` 를 쓴다(`pipeline-event.md` §5.4) — 멱등 skip 은 **같은 키**에만 적용되며, 같은 키가 아니면 skip 하지 않는다. `--resume` 로 같은 SDS 를 다시 도는 재진입이 이벤트를 남기지 못하면 체인이 볼 새 `TASK_DONE` 이 없다.
 
-**자식 emit 흡수 책임**: kiwi-pm 이 자식(`kiwi-coder`) 을 spawn 하는 경우 자식은 자체 emit 하지 않는다 (§7 자식 컨텍스트 SSOT). 본 스킬이 plan 전체 종료 시 1줄로 통합 emit.
+**자식 emit 흡수 책임**: kiwi-pm 이 자식(`kiwi-coder`) 을 spawn 하는 경우 자식은 자체 emit 하지 않는다 (§7 자식 컨텍스트 SSOT). 본 스킬이 실행 종료 시 1줄로 통합 emit.
 
 - `skill`: `"kiwi-pm"`
-- `status`: 모든 Task 완료 + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 = `NEEDS_USER`; Task FAILED 잔존 = `FAILED`
-  - **무동작 재진입은 완료가 아니다**: 이번 실행에서 **상태가 바뀐 Task** 가 **0 건**이면 `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 실행하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
-- `next_hint`: 통상 `"kiwi-commit-auto-push"` (구현 완료)
+- `status`: 실행 `done` + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 또는 `--auto` 가 draft REQ 로 SDS 를 돌려보냄(§4.3, `draft-stability-skip`) = `NEEDS_USER`; 실행 `failed` = `FAILED`
+  - **무동작 재진입은 완료가 아니다**: 이번 kiwi-coder 실행이 SDS 쓰기 집합 안에 commit 도 작업 트리 변경도 남기지 않았으면(`run.changed = false`) `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
+- `next_hint`: `CLOSE_SAFE` 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다 (FR-FLOW-183, §6.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). 이벤트는 §6.4 hand-off 앞에 쓴다 — 이미 돈 홉을 가리키지 않는다
 - `req_ids`: T-final 에서 `update_status("implemented")` 호출한 REQ-ID 배열
-- `artifacts.plan_file`: 입력 plan.md 경로
-- `artifacts.sidecar_file`: 입력 sidecar.json 경로
-- `artifacts.analysis_dir`: `.kiwi/sessions/{run-id}/`
-- `notes`: Task 통계 ("total:8 done:7 skipped:1 failed:0") + plan-summary entry id 권장
+- `artifacts.sds_files`: 입력 SDS 경로 하나를 담은 배열 (`pipeline-event.md` §2 스키마)
+- `artifacts.analysis_dir`: `.kiwi/sessions/{sds_id}/`
+- `notes`: 실행 통계 ("attempts:1 changed:true") + sds-summary entry id 권장
 
 `--no-pipeline-emit` 이 명시되면 본 절의 append 를 **수행하지 않는다** (SKILL.md §1.5) — 오케스트레이션된 unit 이 자기 이름으로 남기는 기록은 run 을 **거짓으로 기술**하기 때문이다: 저널에는 `kiwi-pm` run 하나가 완료한 것으로 보이지만 실제로는 한 wave · 한 stage 의 unit 하나가 끝났을 뿐이다.
 

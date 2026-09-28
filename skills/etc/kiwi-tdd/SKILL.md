@@ -21,7 +21,7 @@ Backing requirements: FR-FLOW-037 (SDS standard FR-FLOW-036, gates IR-CLI-072 / 
 | §0.4 | **SDS before tests.** Never write tests before the SDS (design.md) exists — the moment tests are the only spec, the flow is exposed to reward hacking. The single exception is the **recorded skip** defined in §2.3 (a `## SDS Skip` section in intent.md); an unrecorded skip is stopped by `speckiwi step validate` with `SDS-E054`. |
 | §0.5 | **Tests are inviolable.** Commit tests first, and never weaken or edit a test during the green phase to make it pass. When the contract itself is wrong, supersede the SDS and restart from red. |
 | §0.6 | **No promotion without evidence.** `promote_step_requirement` promotes only blocks carrying at least one Verification Evidence entry (FR-NODE-074 hard-refuses in tdd mode). |
-| §0.7 | **Boundary (sdd redirect).** Edits to existing body REQs and large / architecture changes are out of scope — redirect them to sdd mode (SRS-first, kiwi-srs / kiwi-planner family). |
+| §0.7 | **Boundary (sdd redirect).** Edits to existing body REQs and large / architecture changes are out of scope — redirect them to sdd mode (SRS-first — the `kiwi-srs` → `kiwi-sds` chain). |
 | §0.8 | **No AI signatures anywhere / no changelog section in this skill.** |
 | §0.9 | Accepts `--mini` / `--loops N` per the `_shared/kiwi/loop-option.md` convention. The only internal loop is red→green, so the round cap applies to regression-fix iterations only. |
 | §0.10 | **Code traceability is post-promote and non-gating.** Restore the code Trace Links (`add_trace_link` Code anchor) and `@req` tags only after Phase 6 promote confirms the body REQ ID — never attach at Phase 2/4. The Code anchor is the **authoritative** traceability SSOT and the `@req` breadcrumb is **auxiliary**; both are **non-gating** (a missing or stale one never blocks promote and is **separate** from the FR-NODE-074 EVIDENCE_REQUIRED gate). Reuse the FR-FLOW-020 convention, and cite kiwi-coder §0.17 for tag format/exemption only (no operational-hook import). |
@@ -37,6 +37,7 @@ Each one halts **regardless of** `--auto` and cannot be routed to the decision c
 | `step-claim-write-skew` | `claim_step` rejects on write skew — another step already holds a REQ this step touches, and two steps authoring one requirement is not auto-approvable | Phase 1 (§2.2) |
 | `promote-evidence-required` | `promote_step_requirement` refuses with `EVIDENCE_REQUIRED` on zero verification evidence (§0.6) — a promotion with no evidence is a defect to fill, not a gate to bypass | Phase 6 (§2.7) |
 | `step-completion-gate-blocked` | `update_step_state(merged)` refuses with `COMPLETION_GATE_BLOCKED` (FR-NODE-078) — acknowledging a non-clean compatibility edge is an irreversible judgement | Phase 7 (§2.8) |
+| `test-sufficiency-gap` | citation gaps remain after the one fill attempt of the pre-promotion test-sufficiency check — a requirement whose gaps remain is not promoted (`_shared/kiwi/test-sufficiency.md`) | Phase 6 — before `promote_step_requirement` (§2.7) |
 | `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — evidence and promotion stacked on a requirement that carries an error cannot be read back to what admitted them | Phase 6 — before `promote_step_requirement` |
 
 **Where this gate is observed**: at the hop this row's third cell names, run MCP `validate_spec` — the CLI fallback is `speckiwi validate --json`. While any error-severity diagnostic remains, do not proceed with that hop: halt at `validate-spec-error`, which `--auto` does not lift. Never record a pass without having run it.
@@ -69,7 +70,7 @@ query (§1.1) fires only when `<task>` is absent, and a routed dispatch discharg
 
 ### 1.2 Output
 
-- `docs/spec/steps/<task>/design.md` — the SDS (per SDS-MD Authoring Rules v2.5.0)
+- `docs/spec/steps/<task>/design.md` — the SDS (per SDS-MD Authoring Rules v2.6.0)
 - red→green tests + implementation code
 - `docs/spec/steps/<task>/<task>.srs.md` — synthesized step SRS
 - the requirement block promoted into body scope (with evidence)
@@ -86,7 +87,7 @@ Phase 3 : red — translate SDS-ACs into failing tests, confirm failure, commit 
 Phase 4 : green — pass with the smallest change, never weakening tests
 Phase 5 : regression — full impacted tests + `speckiwi vibe-gate check`
 Phase 5.5 : review hop — `kiwi-review-fix-loop` exactly once before promotion (skipped when `--review-hop-owned-by-parent` is passed)
-Phase 6 : post-hoc SRS — synthesize → fold SDS-ACs and evidence into the step SRS → promote_step_requirement → restore traceability (add_trace_link code/implements + @req reconcile, post-promote / non-gating, §0.10)
+Phase 6 : post-hoc SRS — synthesize → fold SDS-ACs into the step SRS → test-sufficiency check → record evidence → promote_step_requirement → restore traceability (add_trace_link code/implements + @req reconcile, post-promote / non-gating, §0.10)
 Phase 7 : update_step_state(merged) + report
 ```
 
@@ -100,7 +101,7 @@ Claim the target step via `claim_step` (MCP preferred) or `speckiwi step claim <
 
 ### 2.3 Phase 2 — author the SDS (mandatory checklist)
 
-Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>` (MCP `scaffold_step`; writeIfMissing — it never overwrites, and the stubs are skeletons only: the content is still authored directly), then author `docs/spec/steps/<task>/design.md` per the SDS-MD Authoring Rules v2.5.0. **This checklist is mandatory and cannot be skipped**:
+Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>` (MCP `scaffold_step`; writeIfMissing — it never overwrites, and the stubs are skeletons only: the content is still authored directly), then author `docs/spec/steps/<task>/design.md` per the SDS-MD Authoring Rules v2.6.0. **This checklist is mandatory and cannot be skipped**:
 
 1. **Skip-gate first — only a recorded skip counts**: is this a trivial change with no trade-off? To skip the SDS, create a `## SDS Skip` section in `docs/spec/steps/<task>/intent.md` and fill three cells — a `| Decision | skipped |` row, a `| Reason | <one line> |` row, and at least one EARS `SDS-AC-n: WHEN … THE SYSTEM SHALL …` line. Having written the record, compare it with `speckiwi step validate <task>` (item 7 below), and go to Phase 3 only once that passes.
 
@@ -118,7 +119,7 @@ Generate the empty design.md/intent.md stubs with `speckiwi step scaffold <task>
 
 ### 2.4 Phase 3 — red
 
-Translate each SDS-AC of SDS §5 into a failing test (at least one case per SDS-AC). Run the tests and **confirm they fail (red)**, then commit the tests first. Never start implementation before red is confirmed.
+Translate each SDS-AC of SDS §5 into a failing test whose title line cites that `SDS-AC-<n>` (at least one case per SDS-AC; citation convention in `_shared/kiwi/test-sufficiency.md` §1). Run the tests and **confirm they fail (red)**, then commit the tests first. Never start implementation before red is confirmed.
 
 ### 2.5 Phase 4 — green
 
@@ -153,9 +154,11 @@ When the review ends with a residual CRITICAL or HIGH finding, do not report `TA
 
 ### 2.7 Phase 6 — post-hoc SRS promotion
 
-1. Synthesize the step SRS with `speckiwi step synthesize <task>` (MCP `synthesize_step_srs`; idempotent — a no-op when the step SRS already exists), then carry the design.md SDS-ACs over as the requirement block's Acceptance Criteria and record the Phase 3–5 tests as Verification Evidence rows.
-2. Promote into body scope via `promote_step_requirement` (MCP) or `speckiwi step promote <id> --from-step <task> --to-scope <scope>` (CLI fallback). **A block with zero verification evidence is refused with EVIDENCE_REQUIRED in tdd mode** — fill in the evidence and retry (no bypass).
-3. **Traceability restoration (post-promote, non-gating, §0.10)** — apply only after promote confirms the body Requirement ID (never attach at Phase 2/4):
+1. Synthesize the step SRS with `speckiwi step synthesize <task>` (MCP `synthesize_step_srs`; idempotent — a no-op when the step SRS already exists), then carry the design.md SDS-ACs over as the requirement block's Acceptance Criteria. Once the block has its ID, append the `<REQ-ID> AC-<m>` citation next to `SDS-AC-<n>` on the title line of each Phase 3 test — a citation added to a title changes no assertion, so §0.5 is not touched, and the test that was red first becomes the evidence of the requirement AC.
+2. **Test-sufficiency check (right before promotion)** — follow `_shared/kiwi/test-sufficiency.md` with the scope `--ids <the requirement block ID from step 1>` and `--sds docs/spec/steps/<task>/design.md` (without `--sds` for a step whose SDS skip is recorded). When gaps remain, halt at `test-sufficiency-gap` and do not promote.
+3. Record the tests the tool cited for each AC (the Phase 3–5 tests and any the fill added) as Verification Evidence rows.
+4. Promote into body scope via `promote_step_requirement` (MCP) or `speckiwi step promote <id> --from-step <task> --to-scope <scope>` (CLI fallback). **A block with zero verification evidence is refused with EVIDENCE_REQUIRED in tdd mode** — fill in the evidence and retry (no bypass).
+5. **Traceability restoration (post-promote, non-gating, §0.10)** — apply only after promote confirms the body Requirement ID (never attach at Phase 2/4):
    - (a) Add the **authoritative Trace Links Code anchor** (traceability SSOT) on the promoted body requirement via `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched production file>)`. One row per file when several were touched.
    - (b) Reconcile the Phase 4 production code's vibe-style **task-name** trace tag to the final promoted REQ-ID and leave it as the `@req <REQ-ID>` **auxiliary breadcrumb** — following the **FR-FLOW-020** convention, citing **kiwi-coder §0.17** for tag format/exemption only (single-line format, test-file exemption, placement; no operational-hook import).
    - (c) Both are **non-gating** — a missing or stale code Trace Link or `@req` never blocks promote and is separate from the EVIDENCE_REQUIRED gate (§0.10). Remember the Code anchor is **authoritative** and `@req` is the **auxiliary breadcrumb**.
@@ -188,5 +191,6 @@ Never run the following through this skill — stop on detection and point the u
 | `speckiwi step validate` / `validate_step` | SDS advisory validation §2.3 | CLI fallback; when both are absent, run the checklist manually |
 | `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | synthesis/SDS presence gate §2.6 | guide the user |
 | `synthesize_step_srs` (MCP / CLI `speckiwi step synthesize`) | step SRS synthesis §2.7 | curate the step SRS by hand |
+| `check_test_sufficiency` (MCP) / `speckiwi coverage --tests` (CLI) | pre-promotion test-sufficiency check §2.7 (`_shared/kiwi/test-sufficiency.md`) | when both are absent the result is `gap` per contract §3 — do not promote |
 | `promote_step_requirement` (MCP / CLI `speckiwi step promote`) | post-hoc SRS promotion §2.7 | halt when both are unavailable + never promote by hand |
 | `add_trace_link` (MCP) | restore the code anchor on the promoted requirement §2.7 (non-gating) | skill continues — only traceability is missing, promote is never blocked |

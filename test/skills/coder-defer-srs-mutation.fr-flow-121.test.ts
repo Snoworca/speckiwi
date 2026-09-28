@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-121 — kiwi-coder --defer-srs-mutation and its kiwi-pm pass-through.
 //
@@ -43,10 +44,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;

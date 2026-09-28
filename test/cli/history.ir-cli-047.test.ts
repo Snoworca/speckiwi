@@ -34,12 +34,12 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - EMPTY_ID "FR-ARCH-031" carries a Change Notes table with a header but ZERO data rows.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the output written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 const HIST_ID = "FR-ARCH-030";

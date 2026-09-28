@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { at } from "./at.js";
 
 /**
  * Shared reader and bilingual vocabulary for the four bundled `_shared/kiwi/auto-option.md`
@@ -97,11 +98,11 @@ export function sentences(text: string): string[] {
  * criterion that names a field and a value ("committee_size": 0) is checked against structure.
  */
 export function jsonBlockAfter(text: string, heading: RegExp): unknown {
-  const at = text.search(heading);
-  if (at < 0) throw new Error(`heading ${heading} not found`);
-  const fence = /```json\n([\s\S]*?)\n```/.exec(text.slice(at));
+  const offset = text.search(heading);
+  if (offset < 0) throw new Error(`heading ${heading} not found`);
+  const fence = /```json\n([\s\S]*?)\n```/.exec(text.slice(offset));
   if (!fence) throw new Error(`no fenced json block after ${heading}`);
-  return JSON.parse(fence[1]);
+  return JSON.parse(at(fence, 1));
 }
 
 // --- Bilingual vocabulary (Korean canonical `claude`, English `codex` / `etc` / `.agents`) -------

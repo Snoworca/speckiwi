@@ -8,7 +8,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 const ARCH_FILE = path.join("docs", "spec", "10.product-architecture.srs.md");
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 describe("FR-NODE-202 CLI — append-note refuses a mode it does not recognise", () => {

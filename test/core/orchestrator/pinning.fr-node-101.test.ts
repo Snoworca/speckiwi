@@ -91,7 +91,7 @@ afterAll(cleanupFixtures);
 describe("FR-NODE-101 handoff pinning harvested without trusted-git", { timeout: 120_000 }, () => {
   // -- AC-1: the branch's 15 behavioural cases, re-run against the replaced dependency. ------------
 
-  it("case 1: pins the requested documents in deterministic order with real blob oids", async () => {
+  it("FR-NODE-101 AC-4 case 1: pins the requested documents in deterministic order with real, non-null blob oids", async () => {
     const run = await handoffRepo();
     const pinned = await pinHandoff({ root: run.root, expectedHead: run.head, documentPaths: paths() }, recordingGit);
 
@@ -291,13 +291,15 @@ describe("FR-NODE-101 handoff pinning harvested without trusted-git", { timeout:
 
   // -- AC-3: the 16th case, and the absence of the AGENTS.md discovery half. ----------------------
 
-  it("case 16: pins and re-proves the orchestrator's own authored handoff, not AGENTS.md", async () => {
+  it("FR-NODE-101 AC-3 case 16: pins and re-proves a document the orchestrator itself authors, not AGENTS.md", async () => {
+    // English handoff documents left in 4.0.0 (FR-NODE-213 AC-3); the run's frozen design document is
+    // one the orchestrator still authors and pins.
     const run = await initRepo("pinning-authored");
-    await mkdir(path.join(run, ".kiwi", "orchestrator", "handoff"), { recursive: true });
-    const authored = ".kiwi/orchestrator/handoff/wave-1-lane-1.md";
-    await writeFile(path.join(run, ...authored.split("/")), "# Wave 1 / lane 1\n\nAuthored by the orchestrator.\n");
+    await mkdir(path.join(run, "docs", "research", "run-a", "design"), { recursive: true });
+    const authored = "docs/research/run-a/design/00.design.md";
+    await writeFile(path.join(run, ...authored.split("/")), "# Design\n\nAuthored by the orchestrator.\n");
     await writeFile(path.join(run, "AGENTS.md"), "# repository agent notes, which must NOT be discovered\n");
-    const head = await commitAll(run, "test: seed an authored handoff beside AGENTS.md");
+    const head = await commitAll(run, "test: seed an authored design document beside AGENTS.md");
 
     const pinned = await pinHandoff({ root: run, expectedHead: head, documentPaths: [authored] }, recordingGit);
     expect(pinned.documents.map((document) => document.path)).toEqual([authored]);

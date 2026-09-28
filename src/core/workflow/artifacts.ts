@@ -4,18 +4,19 @@ import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { summarizeDiagnostics } from "../diagnostic.js";
 import { resolveInsideRoot, toPosixPath } from "../fs/safe-path.js";
+import { LITE_SDS_DIRECTORY, LITE_SDS_SUFFIX } from "../sds/check-sds.js";
+import { parseLiteSds } from "../sds/lite-sds.js";
 import type { Diagnostic, DiagnosticsSummary, ProjectRoot } from "../types.js";
 
 /**
  * The closed artifact-kind vocabulary, declared once so the set is inspectable at runtime.
  *
- * @req FR-NODE-126 — `waves`, `resume-card` and `handoff` are the orchestrator's three artifacts;
- * `lane-manifest` is deliberately absent because the lane manifest is a phase-2 artifact (05 §3.1).
+ * @req FR-NODE-126 — `waves` and `resume-card` are the orchestrator's artifacts; `handoff` left with the
+ * English handoff documents and `lane-manifest` is deliberately absent (05 §3.1).
+ * @req FR-NODE-211 AC-2 — `sds` replaces the plan, sidecar and validator kinds, which left with plan mode.
  */
 export const WORKFLOW_ARTIFACT_KINDS = [
-  "plan",
-  "sidecar",
-  "validator",
+  "sds",
   "analysis",
   "pipeline",
   "pm-state",
@@ -25,7 +26,6 @@ export const WORKFLOW_ARTIFACT_KINDS = [
   "lock",
   "waves",
   "resume-card",
-  "handoff",
   "legacy",
   "unknown"
 ] as const;
@@ -45,10 +45,6 @@ export interface WorkflowArtifactCandidate {
   mtimeMs: number;
   sha256?: string;
   parseErrors: string[];
-  companion?: {
-    sidecarPath?: string;
-    validatorPath?: string;
-  };
 }
 
 export interface ResolveWorkflowArtifactOptions {
@@ -71,32 +67,32 @@ interface ArtifactMetadata {
   runId?: string;
   target?: string;
   generatedAt?: string;
-  sidecarPath?: string;
   parseErrors: string[];
 }
 
-const CURRENT_DIRS = ["docs/plans", ".kiwi/sessions", "kiwi"] as const;
+const CURRENT_DIRS = [LITE_SDS_DIRECTORY, ".kiwi/sessions", "kiwi"] as const;
 const LEGACY_DIRS = ["docs/plan", ".snoworca/sessions"] as const;
 
 function posixRelative(root: string, filePath: string): string {
   return toPosixPath(path.relative(root, filePath));
 }
 
-// @req FR-NODE-126 — a lane handoff document, at the run contract's fixed convention
-// `waves/wave-{n}/lanes/lane-{k}.md` (05 §11.2), wherever the work root places it.
-const HANDOFF_DOCUMENT_PATTERN = /(?:^|\/)waves\/wave-\d+\/lanes\/lane-[^/]+\.md$/;
 // @req FR-NODE-126 — the resume card, at `kiwi/orchestrator/{run_id}/resume-card.json` (05 §3.2).
 const RESUME_CARD_PATTERN = /^kiwi\/orchestrator\/[^/]+\/resume-card\.json$/;
+
+/** The sds-id of a body-scope SDS, which only a file directly in `docs/sds/` has (SDS-MD-Rules §9.1). */
+function sdsIdFromPath(posix: string): string | undefined {
+  if (path.posix.dirname(posix) !== LITE_SDS_DIRECTORY) return undefined;
+  const name = path.posix.basename(posix);
+  return name.endsWith(LITE_SDS_SUFFIX) && name.length > LITE_SDS_SUFFIX.length ? name.slice(0, -LITE_SDS_SUFFIX.length) : undefined;
+}
 
 function inferKind(relativePath: string): WorkflowArtifactKind {
   const posix = toPosixPath(relativePath);
   const name = path.posix.basename(posix);
   if (posix === "kiwi/waves.jsonl") return "waves";
   if (RESUME_CARD_PATTERN.test(posix)) return "resume-card";
-  if (HANDOFF_DOCUMENT_PATTERN.test(posix)) return "handoff";
-  if (name.endsWith(".plan.md")) return "plan";
-  if (name.endsWith(".sidecar.json") || name.endsWith(".plan.json")) return "sidecar";
-  if (name.endsWith(".validator.json")) return "validator";
+  if (sdsIdFromPath(posix) !== undefined) return "sds";
   if (name === "pipeline.jsonl") return "pipeline";
   if (name === "pm-state.json") return "pm-state";
   if (name === "state.json") return "coder-state";
@@ -161,8 +157,7 @@ function metadataFromJson(value: unknown): Omit<ArtifactMetadata, "parseErrors">
   return {
     ...(typeof record.run_id === "string" ? { runId: record.run_id } : {}),
     ...(typeof record.target === "string" ? { target: record.target } : {}),
-    ...(typeof record.generated_at === "string" ? { generatedAt: record.generated_at } : {}),
-    ...(typeof record.sidecar_path === "string" ? { sidecarPath: record.sidecar_path } : {})
+    ...(typeof record.generated_at === "string" ? { generatedAt: record.generated_at } : {})
   };
 }
 
@@ -171,9 +166,9 @@ function runIdFromSessionPath(relativePath: string): string | undefined {
   return match?.[1];
 }
 
-async function readMetadata(absolutePath: string, kind: WorkflowArtifactKind): Promise<ArtifactMetadata> {
+async function readMetadata(absolutePath: string, relativePath: string, kind: WorkflowArtifactKind): Promise<ArtifactMetadata> {
   const parseErrors: string[] = [];
-  if (!["plan", "sidecar", "validator", "pm-state", "coder-state", "task-state", "legacy"].includes(kind)) return { parseErrors };
+  if (!["sds", "pm-state", "coder-state", "task-state", "legacy"].includes(kind)) return { parseErrors };
   let text = "";
   try {
     text = await readFile(absolutePath, "utf8");
@@ -181,13 +176,17 @@ async function readMetadata(absolutePath: string, kind: WorkflowArtifactKind): P
     parseErrors.push((error as Error).message);
     return { parseErrors };
   }
-  if (kind === "plan" || absolutePath.endsWith(".md")) {
+  if (kind === "sds") {
+    // The SDS metadata table is read by the one lite-SDS parser rather than a second reader here.
+    const target = parseLiteSds(text, toPosixPath(relativePath)).document.target;
+    return { ...(target ? { target } : {}), parseErrors };
+  }
+  if (absolutePath.endsWith(".md")) {
     const frontmatter = parseFrontmatter(text);
     return {
       ...(typeof frontmatter.run_id === "string" ? { runId: frontmatter.run_id } : {}),
       ...(typeof frontmatter.target === "string" ? { target: frontmatter.target } : {}),
       ...(typeof frontmatter.generated_at === "string" ? { generatedAt: frontmatter.generated_at } : {}),
-      ...(typeof frontmatter.sidecar_path === "string" ? { sidecarPath: frontmatter.sidecar_path } : {}),
       parseErrors
     };
   }
@@ -266,41 +265,16 @@ function sameSelectionRank(a: WorkflowArtifactCandidate, b: WorkflowArtifactCand
   return a.score === b.score && (a.generatedAt ?? "") === (b.generatedAt ?? "") && a.mtimeMs === b.mtimeMs;
 }
 
-async function fileExists(absolutePath: string): Promise<boolean> {
-  try {
-    return (await stat(absolutePath)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-async function companionForPlan(root: string, candidate: WorkflowArtifactCandidate, metadata: ArtifactMetadata, diagnostics: Diagnostic[]): Promise<NonNullable<WorkflowArtifactCandidate["companion"]>> {
-  const baseDir = path.posix.dirname(candidate.relativePath);
-  const baseName = path.posix.basename(candidate.relativePath).replace(/\.plan\.md$/, "");
-  const sidecarCandidates = [
-    metadata.sidecarPath ? toPosixPath(path.posix.normalize(path.posix.join(baseDir, metadata.sidecarPath))) : undefined,
-    `${baseDir}/${baseName}.sidecar.json`,
-    `${baseDir}/${baseName}.plan.json`
-  ].filter((item): item is string => typeof item === "string");
-  for (const relativePath of sidecarCandidates) {
-    if (await fileExists(path.join(root, relativePath))) return { sidecarPath: relativePath };
-  }
-  diagnostics.push(
-    diagnostic("SRS-W051", "warning", `Workflow artifact companion is missing: ${candidate.relativePath}`, { filePath: candidate.relativePath }, { kind: "missing-companion", companionKind: "sidecar" })
-  );
-  return {};
-}
-
 async function buildCandidate(root: string, relativePath: string, options: ResolveWorkflowArtifactOptions, explicit = false): Promise<{ candidate: WorkflowArtifactCandidate; diagnostics: Diagnostic[] }> {
   const absolutePath = await resolveInsideRoot(root, relativePath);
   const info = await stat(absolutePath);
   const kind = inferKind(relativePath);
-  const metadata = await readMetadata(absolutePath, kind);
+  const metadata = await readMetadata(absolutePath, relativePath, kind);
   const diagnostics = metadata.parseErrors.map((message) =>
     diagnostic("SRS-W050", "warning", `Workflow artifact parse warning: ${relativePath}`, { filePath: relativePath }, { message })
   );
   const sha256 = await sha256File(absolutePath);
-  const runId = metadata.runId ?? runIdFromSessionPath(relativePath);
+  const runId = metadata.runId ?? runIdFromSessionPath(relativePath) ?? sdsIdFromPath(toPosixPath(relativePath));
   const base = {
     relativePath,
     absolutePath,
@@ -315,10 +289,6 @@ async function buildCandidate(root: string, relativePath: string, options: Resol
   };
   const score = scoreCandidate(base, options, explicit);
   const candidate: WorkflowArtifactCandidate = { ...base, score, confidence: Math.max(0, Math.min(100, score)) };
-  if (candidate.kind === "plan") {
-    const companion = await companionForPlan(root, candidate, metadata, diagnostics);
-    if (Object.keys(companion).length > 0) candidate.companion = companion;
-  }
   return { candidate, diagnostics };
 }
 

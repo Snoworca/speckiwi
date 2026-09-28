@@ -179,7 +179,7 @@ describe("FR-NODE-108 AC-5 — computeResumeState's whole runtime closure is pur
     ).not.toEqual([]);
   });
 
-  it("AC-1: every kernel argument is annotated with a named type that some source module exports", () => {
+  it("FR-NODE-108 AC-1: every kernel argument is annotated with a named type that some source module exports", () => {
     // AC-1's leading sentence demands "a named, exported type for every argument", and its own
     // enumerated list writes `planDuplicationAudit`'s second argument with no type name at all. An
     // independent pass measured the criterion contradicting itself; the Statement makes the same
@@ -192,7 +192,6 @@ describe("FR-NODE-108 AC-5 — computeResumeState's whole runtime closure is pur
       ["verification-gate.ts", "evaluateRound"],
       ["lane-plan.ts", "computeLanePlan"],
       ["duplication-audit.ts", "planDuplicationAudit"],
-      ["substrate.ts", "planStageCoupling"],
       ["resume.ts", "computeResumeState"],
       ["auto-gate.ts", "decideAutoGate"],
     ];
@@ -241,11 +240,11 @@ describe("FR-NODE-108 AC-5 — computeResumeState's whole runtime closure is pur
       expect(found, `${kernelName} was not found in ${file}`).toBe(true);
     }
 
-    expect(parametersSeen, "no kernel parameters were read").toBeGreaterThanOrEqual(9);
+    expect(parametersSeen, "no kernel parameters were read").toBeGreaterThanOrEqual(8);
     expect(offending, "a kernel argument cannot be named by a fixture author").toEqual([]);
   });
 
-  it("AC-6: the fixture test imports type declarations and the six kernels, and no implementation internals", () => {
+  it("FR-NODE-108 AC-6: the fixture test imports type declarations and the named kernels, and no implementation internals", () => {
     // VE-1 records this conjunct as "carried by no assertion at all and is this row's own judgment of
     // the import list". A judgment of an import list is a thing a machine can check, so it is checked:
     // every VALUE binding the fixture test takes from `src/` must be one of the six kernels or a
@@ -257,7 +256,6 @@ describe("FR-NODE-108 AC-5 — computeResumeState's whole runtime closure is pur
       "evaluateRound",
       "computeLanePlan",
       "planDuplicationAudit",
-      "planStageCoupling",
       "computeResumeState",
       "decideAutoGate",
     ];
@@ -292,7 +290,7 @@ describe("FR-NODE-108 AC-5 — computeResumeState's whole runtime closure is pur
     visit(source);
 
     // Without this the case would pass over a file whose imports the walk failed to read at all.
-    expect(sourceImports, "no import from src/ was read, so the bound below is over an empty set").toBeGreaterThanOrEqual(6);
+    expect(sourceImports, "no import from src/ was read, so the bound below is over an empty set").toBeGreaterThanOrEqual(5);
     const unexpected = valueBindings.filter((name) => !KERNELS.includes(name) && !PERMITTED_CONSTANTS.includes(name));
     expect(unexpected, "the fixture test imports a runtime value that is neither a kernel nor the declared vocabulary").toEqual([]);
     for (const kernel of KERNELS) {

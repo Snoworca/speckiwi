@@ -95,15 +95,16 @@ export interface ToolDerivation {
   readonly owner?: string;
 }
 
-/** The tool an alias names beside its owner, because the composed sentence explains why it stays. */
-export const DERIVATION_KEEPER = "get_next_work_order";
-
-/** The sentence a described tool must carry, composed from its declaration. @req FR-MCP-062 AC-7 */
+/**
+ * The sentence a described tool must carry, composed from its declaration. An alias names only its
+ * owner: the work-order tool that once handed out an alias by name left with the plan tools
+ * (FR-NODE-211 AC-1). @req FR-MCP-062 AC-7
+ */
 export function derivationSentence(derivation: ToolDerivation): string {
   const field = `\`${derivation.field}\``;
   return derivation.role === "owner"
     ? `The reply carries ${field} itself, so no second call is needed for it.`
-    : `Every call is delegated to ${derivation.owner ?? "?"}, which is where ${field} is computed and where this answer comes from; prefer that tool, and this name is kept only because ${DERIVATION_KEEPER} hands it to an agent.`;
+    : `Every call is delegated to ${derivation.owner ?? "?"}, which is where ${field} is computed and where this answer comes from; prefer that tool.`;
 }
 
 /** A single command's full metadata. `mcpName` is present only for MCP-exposed commands. */
@@ -209,7 +210,7 @@ function mutationSpec(
 /**
  * The `orchestrate` namespace's registry slice, projected from the CLI vocabulary rather than
  * retyped: every container node and every leaf of the built tree gets one spec, and the twenty-five
- * `orchestrate_*` tools attach to the leaf each mirrors. Retyping forty-seven rows by hand is exactly
+ * `orchestrate_*` tools attach to the leaf each mirrors. Retyping forty-five rows by hand is exactly
  * the drift this registry exists to prevent. @req IR-CLI-082 / IR-MCP-003
  */
 function orchestrateSpecs(): ToolSpec[] {
@@ -246,7 +247,7 @@ function orchestrateSpecs(): ToolSpec[] {
 
 export const toolSpecs: readonly ToolSpec[] = [
   // ---- read commands (registerReadCommands) ----
-  readSpec("validate", mcp("validate_spec", "Runs the SRS-MD rule set over every document under `docs/spec` and returns each diagnostic with its code, severity, file and line. Ask it before trusting any rollup; a target summary counts blocks and never re-parses them for rule violations. Read-only."), "validateWorkspace", {
+  readSpec("validate", mcp("validate_spec", "Runs the SRS-MD rule set over every document under `docs/spec`, and the lite SDS checks over `docs/sds`, and returns each diagnostic with its code, severity, file and line. Ask it before trusting any rollup; a target summary counts blocks and never re-parses them for rule violations. Read-only."), "validateWorkspace", {
     args: { strict: { type: "boolean", optional: true }, failOnWarning: { type: "boolean", optional: true } },
     resultExitMap: { ok: 0, fail: 1 }
   }),
@@ -261,15 +262,9 @@ export const toolSpecs: readonly ToolSpec[] = [
   // Container command with no own handler; hosts the MCP workspace-info probe (no dedicated CLI).
   readSpec("workflow", mcp("mcp_workspace_info", "Reports which repository this MCP server bound to at startup — the root, how that root was discovered, the index path and the package version. Ask it when a call answered about somewhere unexpected. Read-only."), "mcpWorkspaceInfo"),
   readSpec("workspace", mcp("workflow_workspace_info", "Reports the run workspace for the root you pass and the Active Target it carries, so a session inside a linked worktree can address its own tree. Read-only."), "workflowWorkspaceInfo"),
-  readSpec("artifacts", mcp("workflow_artifacts_list", "Lists every run artifact a selector admits — plan, sidecar, pipeline, pm-state, worklog, waves, resume-card, handoff and the remaining run-artifact kinds — with paging and an optional body, and reports an ambiguous selection as a diagnostic instead of choosing for you. Read-only."), "workflowArtifactsList"),
+  readSpec("artifacts", mcp("workflow_artifacts_list", "Lists every run artifact a selector admits — sds, pipeline, pm-state, worklog, waves, resume-card and the remaining run-artifact kinds — with paging and an optional body, and reports an ambiguous selection as a diagnostic instead of choosing for you. Read-only."), "workflowArtifactsList"),
   readSpec("latest", mcp("workflow_latest_artifact", "Returns the single run artifact a selector best matches, breaking ties by generation time and then by file time. This spelling and the resolve reader run one lookup and reach the same row; which name you use says only which reading you meant. Read-only."), "workflowLatestArtifact"),
   readSpec("resolve", mcp("workflow_resolve_artifact", "Answers which one run artifact a path, run id, target and kind pick out, surfacing an unbroken tie as a diagnostic rather than choosing between the two. Behaviourally the same lookup as the best-match spelling beside it. Read-only."), "workflowResolveArtifact"),
-  readSpec("plan-status", mcp("workflow_plan_status", "Reads the plan artifact for a run and reports its companion sidecar's whole task list: identifier, phase, title, dependencies and requirement ids. Which tasks are ticked is not among them — the plan document's checkboxes are opened only by the drift comparison, and per-task progress lives in the pm-state artifact the session reader returns. Read-only."), "workflowPlanStatus"),
-  readSpec("plan-task", mcp("workflow_plan_task", "Returns one task of the plan sidecar by its identifier, projected onto the same five fields the phase-wide reader gives, and answers with a null task rather than an error when nothing carries that identifier. Read-only."), "workflowPlanTask", { args: { taskId: { type: "string" } } }),
-  readSpec("next-task", mcp("workflow_next_plan_task", `Returns the next plan task whose pm-state status is not yet done or skipped, or names the unfinished dependency blocking it. ${derivationSentence({ role: "owner", field: "resume" })} The plan document's own checkboxes decide nothing here; they are weighed against pm-state only as a drift warning. Read-only.`), "workflowNextPlanTask", { derivation: { role: "owner", field: "resume" } }),
-  readSpec("doctor", mcp("workflow_doctor", "Validates the run artifacts a selector reaches and returns every structural problem it found as one flat list, beside the outcome classes those problems fall into. Read-only."), "workflowDoctor"),
-  readSpec("diff", mcp("workflow_diff", "Classifies the same run-artifact problems into repair classes, so a caller can see what kind of fix each one needs rather than the raw diagnostic list. Read-only."), "workflowDiff"),
-  readSpec("schema-check", mcp("workflow_schema_check", "Checks the run artifacts against the schema version they declare and reports which schema-level outcomes they reached — an invalid plan contract, an unsupported schema version, an invalid artifact, a stale one — rather than the individual rows behind those outcomes. Read-only."), "workflowSchemaCheck"),
   readSpec("pipeline-status", mcp("workflow_pipeline_status", `Reports the state of the pipeline journal for a run — where it lives, how many events it holds and the latest one, together with that latest event's own next hint. ${derivationSentence({ role: "owner", field: "nextHint" })} Read-only.`), "workflowPipelineStatus", { derivation: { role: "owner", field: "nextHint" } }),
   readSpec("pipeline-tail", mcp("workflow_pipeline_tail", "Pages the pipeline journal's events in append order, oldest first, with an offset and a limit that defaults to twenty, so the most recent handoffs sit at the far end rather than the near one. Read-only."), "workflowPipelineTail"),
   readSpec("pipeline-next", mcp("workflow_pipeline_next", `A thin alias over the pipeline journal reader. ${derivationSentence({ role: "alias", field: "nextHint", owner: "workflow_pipeline_status" })} Read-only.`), "workflowPipelineNext", { derivation: { role: "alias", field: "nextHint", owner: "workflow_pipeline_status" } }),
@@ -282,10 +277,8 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("tail", mcp("revoke_compatibility_check", "Removes the compatibility claim between two requirements, leaving that edge unchecked. Writes the holding requirement block, deleting that trace-link row out of it rather than restating it."), "req-scoped", "revokeCompatibilityCheck", [DRY_RUN]),
   readSpec("compact", undefined, "workflowPipelineCompactAlias"),
   readSpec("session-status", mcp("workflow_session_status", "Reads the pm-state artifact for a run and returns it whole, with its stats and its task list. Read-only."), "workflowSessionStatus"),
-  readSpec("resume-hint", mcp("workflow_resume_hint", `A thin alias over the next-task reader. ${derivationSentence({ role: "alias", field: "resume", owner: "workflow_next_plan_task" })} Read-only.`), "workflowResumeHint", { derivation: { role: "alias", field: "resume", owner: "workflow_next_plan_task" } }),
   readSpec("worklog-tail", mcp("workflow_worklog_tail", "Pages the worklog entries a run appended, which are per-task progress notes and not skill handoffs, in append order from the offset given, twenty at a time by default. Read-only."), "workflowWorklogTail"),
-  readSpec("migrate-preview", mcp("preview_legacy_workflow_migration", "Shows what migrating pre-3.0 workflow artifacts into the current layout would change, file by file. It refuses `apply`, `write`, `fix`, `normalize` and `migrate`; there is no execute mode behind it. Read-only."), "previewLegacyWorkflowMigration"),
-  readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — create a plan, execute a task, resume a session, ask the user, repair an artifact, or stop — beside the requirements that action covers, the plan task behind it and the context it needs. Read-only."), "getNextWorkOrder"),
+  readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — author or finish an SDS, execute an agreed SDS, resume its kiwi-pm session, ask the user, repair an SDS the check refuses, or stop — beside the requirements that action covers, the SDS behind it and the context it needs. Read-only."), "getNextWorkOrder"),
   readSpec("scopes", undefined, "listScopes"),
   readSpec("summary", mcp("summarize_target", "Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only."), "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
@@ -342,6 +335,12 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("release-readiness", mcp("check_vibe_gate", "Answers whether the vibe/tdd synthesis gate passes: an active vibe or tdd task with no synthesized step directory, or a tdd task with no design document, fails it. Read-only."), "evaluateVibeGate"),
   readSpec("coverage", mcp("list_dirty_edges", "Enumerates every `checked_compatible` edge with its classification — clean, dirty, orphaned or missing — optionally narrowed to one target. Read-only."), "listDirtyEdges"),
   readSpec("rtm", mcp("list_compat_edges", "Projects the same `checked_compatible` edge set as the dirty-edge reader and returns identical rows; the two spellings exist so a caller can name the traceability reading instead of the staleness one. Read-only."), "listCompatEdges"),
+  // IR-CLI-102 / FR-MCP-065 — the `sds` container (no own handler) and its `check` leaf, the third
+  // `check` node of the tree, which carries check_sds. The container hosts FR-MCP-066
+  // check_test_sufficiency, whose CLI is `coverage --tests`: the `coverage` row already carries
+  // list_dirty_edges.
+  readSpec("sds", mcp("check_test_sufficiency", "Reports, for every acceptance criterion of the requirements in a target or an id list, the test lines that cite the requirement id together with that criterion, and for a lite SDS whether each contract's planned test file exists and cites it — the same answer `speckiwi coverage --tests` prints. Gaps are listed; a gap never fails the call. Read-only."), "checkTestSufficiency"),
+  readSpec("check", mcp("check_sds", "Parses one lite-profile SDS file under `docs/sds` and returns its structural and reference diagnostics beside a summary of the files, test files, requirement ids, acceptance contracts and dependency chains it declares — the same answer `speckiwi sds check` prints. Run it before marking an SDS agreed. Read-only."), "checkSds", { args: { path: { type: "string" } } }),
 
   // ---- mutation commands (registerMutationCommands) ----
   mutationSpec("init", mcp("init_project", "Lays down the SRS scaffold a project needs — index, first scope document, appendix, step state — skipping each one that already exists, while the tool-owned files are rewritten on every run: the bundled rules documents, whose stale versioned copies are deleted, and the managed block inside `AGENTS.md` and `CLAUDE.md`. Passing `force` turns that skip off and overwrites the author-owned files with fresh templates, discarding whatever requirements they held. Over MCP it provisions files only: registering the server and installing the agent skills are CLI-side opt-ins this tool never sets. Writes the scaffold files."), "workspace", "initProject", [
@@ -575,10 +574,6 @@ export const toolSpecs: readonly ToolSpec[] = [
   ]),
 
   // ---- workflow mutation commands (registerReadCommands, under `workflow`) ----
-  mutationSpec("task-check", mcp("workflow_task_check", "Ticks one plan task as done in the plan artifact. Only that checkbox line changes: `owner`, `reqId` and `reason` come back in the reply and land nowhere in the document. `owner` is a gate rather than a record — it defaults to `kiwi-pm`, any other value but `pm` is refused, and so is a tick while a dependency of that task is unfinished. Writes the plan document."), "workspace", "workflowTaskCheck"),
-  mutationSpec("task-uncheck", mcp("workflow_task_uncheck", "Unticks one plan task, returning it to open. Only that checkbox line changes: `owner`, `reqId` and `reason` come back in the reply and land nowhere in the document. `owner` is a gate rather than a record — it defaults to `kiwi-pm`, any other value but `pm` is refused, and so is an untick while a dependency of that task is unfinished. Writes the plan document."), "workspace", "workflowTaskUncheck"),
-  mutationSpec("checklist-set", mcp("workflow_checklist_set", "Sets a plan task's checkbox to an explicit true or false, taking that value as a parameter instead of baking it into the tool name, so one call site can set either. It carries the same `owner` gate as the tick and untick spellings beside it: `kiwi-pm` or `pm`, and no other value. Writes the plan document."), "workspace", "workflowChecklistSet"),
-  mutationSpec("task-status-set", mcp("workflow_task_status_set", "Sets the status field a pm-state artifact records for one task, which is separate from the plan's checkbox and is the field the next-task selector actually consults. `owner` must be `kiwi-pm` or `pm`, or the call is refused. Writes the pm-state document."), "workspace", "workflowTaskStatusSet"),
   mutationSpec("pipeline-emit", mcp("workflow_pipeline_emit", "Appends one event to the pipeline journal, recording which kiwi skill ran, how it ended and what it hands onward. Writes the pipeline journal file."), "workspace", "workflowPipelineEmit"),
   mutationSpec("worklog-emit", mcp("workflow_worklog_emit", "Appends one worklog entry for a task — progress, not a skill handoff. Writes the worklog journal file."), "workspace", "workflowWorklogEmit"),
   mutationSpec("repair-record", mcp("workflow_repair_record", "Appends a repair record to a run journal, naming what was repaired and why. Writes the journal file `path` names, or the run's own worklog journal when `path` is left out."), "workspace", "workflowRepairRecord"),

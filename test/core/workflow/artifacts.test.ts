@@ -14,81 +14,57 @@ async function write(root: string, relativePath: string, text: string): Promise<
   await writeFile(absolutePath, text, "utf8");
 }
 
-function plan(runId: string, target: string, sidecarPath = `./${runId}.sidecar.json`): string {
-  return [
-    "---",
-    `run_id: ${runId}`,
-    `target: ${target}`,
-    "plan_contract: \"1.2.0\"",
-    "generated_at: 2026-06-29T08:05:04.654Z",
-    `sidecar_path: ${sidecarPath}`,
-    "---",
-    "# Plan"
-  ].join("\n");
+function legacyPlan(runId: string, target: string): string {
+  return ["---", `run_id: ${runId}`, `target: ${target}`, "generated_at: 2026-06-29T08:05:04.654Z", "---", "# Plan"].join("\n");
 }
 
-function sidecar(runId: string, target: string, generatedAt = "2026-06-29T08:05:04.654Z"): string {
-  return JSON.stringify({ schema_version: "1.1.0", plan_contract: "1.2.0", run_id: runId, target, generated_at: generatedAt, tasks: [] }, null, 2);
+function sds(target: string): string {
+  return ["# SDS: run-a", "", "| Field | Value |", "|---|---|", "| Document Type | sds |", "| Profile | lite |", `| Target | ${target} |`, "| Status | agreed |", "| Date | 2026-09-27 |", ""].join("\n");
 }
 
 describe("FR-NODE-020 workflow artifact resolver", () => {
-  it("discovers current, legacy, session, pipeline, and companion artifacts with deterministic scoring", async () => {
+  it("FR-NODE-020 AC-1: discovers current SDS, legacy, session and pipeline artifacts with deterministic scoring", async () => {
     const root = await tempRoot();
-    await write(root, "docs/plans/run-a.plan.md", plan("run-a", "v2.3.0"));
-    await write(root, "docs/plans/run-a.sidecar.json", sidecar("run-a", "v2.3.0"));
-    await write(root, "docs/plans/run-a.validator.json", JSON.stringify({ ok: true }));
-    await write(root, "docs/plan/legacy.plan.md", plan("run-a", "v2.3.0"));
+    await write(root, "docs/sds/run-a.sds.md", sds("v2.3.0"));
+    await write(root, "docs/plan/legacy.plan.md", legacyPlan("run-a", "v2.3.0"));
     await write(root, ".kiwi/sessions/run-a/pm-state.json", JSON.stringify({ run_id: "run-a", target: "v2.3.0" }));
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "{\"schema_version\":\"1.0.0\",\"skill\":\"kiwi-pm\",\"run_id\":\"run-a\"}\n");
     await write(root, ".snoworca/sessions/old/state.json", JSON.stringify({ run_id: "old", target: "v1.0.0" }));
     await write(root, "kiwi/pipeline.jsonl", "{\"schema_version\":\"1.0.0\",\"skill\":\"kiwi-srs\",\"run_id\":\"run-a\"}\n");
 
-    const resolution = await resolveWorkflowArtifacts({ root }, { kind: "plan", runId: "run-a", target: "v2.3.0" });
+    const resolution = await resolveWorkflowArtifacts({ root }, { kind: "sds", runId: "run-a", target: "v2.3.0" });
 
     expect(resolution.diagnosticsSummary.errors).toBe(0);
-    expect(resolution.selected).toMatchObject({
-      relativePath: "docs/plans/run-a.plan.md",
-      kind: "plan",
-      legacy: false,
-      runId: "run-a",
-      target: "v2.3.0",
-      companion: { sidecarPath: "docs/plans/run-a.sidecar.json" }
-    });
-    expect(resolution.candidates.map((candidate) => candidate.relativePath)).toContain("docs/plan/legacy.plan.md");
+    expect(resolution.selected).toMatchObject({ relativePath: "docs/sds/run-a.sds.md", kind: "sds", legacy: false, runId: "run-a", target: "v2.3.0" });
 
-    const explicitLegacy = await resolveWorkflowArtifacts({ root }, { explicitPath: "docs/plan/legacy.plan.md", kind: "plan", runId: "run-a" });
-    expect(explicitLegacy.selected).toMatchObject({ relativePath: "docs/plan/legacy.plan.md", legacy: true });
+    const everything = await resolveWorkflowArtifacts({ root }, { runId: "run-a" });
+    expect(everything.candidates.map((candidate) => candidate.relativePath).sort()).toEqual([
+      ".kiwi/sessions/run-a/pm-state.json",
+      ".kiwi/sessions/run-a/worklog.jsonl",
+      ".snoworca/sessions/old/state.json",
+      "docs/plan/legacy.plan.md",
+      "docs/sds/run-a.sds.md",
+      "kiwi/pipeline.jsonl"
+    ]);
+
+    const explicitLegacy = await resolveWorkflowArtifacts({ root }, { explicitPath: "docs/plan/legacy.plan.md", runId: "run-a" });
+    expect(explicitLegacy.selected).toMatchObject({ relativePath: "docs/plan/legacy.plan.md", kind: "legacy", legacy: true });
   });
 
-  it("returns diagnostics for missing companions, ambiguous ties, and outside explicit paths", async () => {
+  it("FR-NODE-020 AC-3: returns diagnostics for ambiguous ties and outside explicit paths", async () => {
     const root = await tempRoot();
-    await write(root, "docs/plans/no-sidecar.plan.md", plan("no-sidecar", "v2.3.0", "./missing.sidecar.json"));
-    await write(root, "docs/plans/a.sidecar.json", sidecar("tie", "v2.3.0"));
-    await write(root, "docs/plans/b.sidecar.json", sidecar("tie", "v2.3.0"));
+    await write(root, "docs/sds/a.sds.md", sds("v2.3.0"));
+    await write(root, "docs/sds/b.sds.md", sds("v2.3.0"));
     const mtime = new Date("2026-06-29T00:00:00Z");
-    await utimes(path.join(root, "docs/plans/a.sidecar.json"), mtime, mtime);
-    await utimes(path.join(root, "docs/plans/b.sidecar.json"), mtime, mtime);
+    await utimes(path.join(root, "docs/sds/a.sds.md"), mtime, mtime);
+    await utimes(path.join(root, "docs/sds/b.sds.md"), mtime, mtime);
 
-    const missingCompanion = await resolveWorkflowArtifacts({ root }, { explicitPath: "docs/plans/no-sidecar.plan.md", kind: "plan" });
-    expect(missingCompanion.diagnostics.map((item) => item.code)).toContain("SRS-W051");
-
-    const ambiguous = await resolveWorkflowArtifacts({ root }, { kind: "sidecar", runId: "tie", target: "v2.3.0" });
+    const ambiguous = await resolveWorkflowArtifacts({ root }, { kind: "sds", target: "v2.3.0" });
     expect(ambiguous.selected).toBeNull();
     expect(ambiguous.diagnostics.map((item) => item.code)).toContain("SRS-E051");
 
-    const outside = await resolveWorkflowArtifacts({ root }, { explicitPath: "../outside.plan.md" });
+    const outside = await resolveWorkflowArtifacts({ root }, { explicitPath: "../outside.sds.md" });
     expect(outside.selected).toBeNull();
     expect(outside.diagnostics.map((item) => item.code)).toContain("SRS-E050");
-  });
-
-  it("does not leak irrelevant plan companion diagnostics into kind-filtered pipeline resolution", async () => {
-    const root = await tempRoot();
-    await write(root, "docs/plans/no-sidecar.plan.md", plan("no-sidecar", "v2.3.0", "./missing.sidecar.json"));
-    await write(root, "kiwi/pipeline.jsonl", "{\"schema_version\":\"1.0.0\",\"skill\":\"kiwi-pm\",\"run_id\":\"pipeline-a\",\"status\":\"TASK_DONE\"}\n");
-
-    const resolution = await resolveWorkflowArtifacts({ root }, { kind: "pipeline" });
-
-    expect(resolution.selected).toMatchObject({ relativePath: "kiwi/pipeline.jsonl", kind: "pipeline" });
-    expect(resolution.diagnostics.map((item) => item.code)).not.toContain("SRS-W051");
   });
 });

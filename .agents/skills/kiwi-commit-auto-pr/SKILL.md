@@ -1,6 +1,6 @@
 ---
 name: kiwi-commit-auto-pr
-description: "Kiwi Git workflow that commits, pushes, and creates or updates a GitHub Pull Request while preserving SpecKiwi traceability. Use when the user asks for Kiwi commit PR, kiwi PR open, commit and PR, or automatic PR creation with issue/REQ trailers. Extends kiwi-commit-auto-push with protected-branch feature-branch creation, PR body/review quality gates, GitHub CLI checks, and speckiwi MCP evidence/trace links. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comment, --req, --task, and --issue."
+description: "Kiwi Git workflow that commits, pushes, and creates or updates a GitHub Pull Request while preserving SpecKiwi traceability. Use when the user asks for Kiwi commit PR, kiwi PR open, commit and PR, or automatic PR creation with issue/REQ trailers. Extends kiwi-commit-auto-push with protected-branch feature-branch creation, PR body/review quality gates, GitHub CLI checks, and speckiwi MCP evidence/trace links. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comment, --req, and --issue."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -21,7 +21,7 @@ Use `$kiwi-commit-auto-push` when the user only wants commit + push.
 | Key | Rule |
 |---|---|
 | §0.1 | Use Git and GitHub CLI state as evidence: `git status`, `git diff`, current branch, remote tracking, `gh pr list/view/create/edit/comment`. |
-| §0.2 | Reuse `$kiwi-commit-auto-push` semantics for staging, sensitive-file filtering, commit message generation, issue matching, `Closes`/`Refs`, `REQ`, `Task`, and `STABILITY-OVERRIDE` trailers. |
+| §0.2 | Reuse `$kiwi-commit-auto-push` semantics for staging, sensitive-file filtering, commit message generation, issue matching, `Closes`/`Refs`, `REQ`, and `STABILITY-OVERRIDE` trailers. |
 | §0.3 | Never use force push. Protected branch direct push requires explicit user approval and is a critical gate under `--auto`. |
 | §0.4 | If current branch is protected and `--allow-direct` is absent, create a feature branch before push and restore the local protected branch pointer to its remote tracking branch when safe. |
 | §0.5 | Keep PR body and PR comments free of AI signatures, tool signatures, bot labels, or co-author trailers. |
@@ -61,7 +61,7 @@ The following gates always halt for user input when matched:
 | skip existing PR comment | `--no-pr-comment` | off |
 | skip SpecKiwi mutations | `--no-speckiwi` | off |
 | skip all trailers | `--no-trailer` | off |
-| explicit REQ or task | `--req=FR-X`, `--task=T-PH001-01` | auto-detect |
+| explicit REQ | `--req=FR-X` | auto-detect |
 | auto gates | `--auto` | off |
 | verification model | `--model <name>` | current session model |
 | "mini mode", "quick mode", "3 rounds" | `--mini` | off (skill default cap) |
@@ -70,11 +70,11 @@ The following gates always halt for user input when matched:
 ## Workflow
 
 1. Collect git state and diff, then reject empty change sets.
-2. Run `$kiwi-commit-auto-push` compatible staging, issue/REQ/task matching, message generation, evaluation, commit, and signature verification.
+2. Run `$kiwi-commit-auto-push` compatible staging, issue/REQ matching, message generation, evaluation, commit, and signature verification.
 3. Determine branch strategy. On protected branches, create or use a feature branch unless the user explicitly chooses direct push.
 4. Push the selected branch without force.
 5. Detect an existing open PR for the branch.
-6. For a new PR or `--update-pr-body`, draft a PR body with Summary, Test plan, linked issue/REQ/task trailers, and a concise risk note.
+6. For a new PR or `--update-pr-body`, draft a PR body with Summary, Test plan, linked issue/REQ trailers, and a concise risk note.
 7. Use a lightweight reviewer loop until the PR body is accurate, non-overstated, signature-free, and consistent with trailers.
 8. Create the PR, update the PR body, or add a PR comment.
 9. If REQ trailers exist and `--no-speckiwi` is absent, use SpecKiwi MCP to add PR trace links and PR verification evidence per REQ. If MCP is unavailable or any per-REQ evidence mutation fails, return `FAILED` or `NEEDS_USER`.

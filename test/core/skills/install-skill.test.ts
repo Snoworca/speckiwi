@@ -271,7 +271,7 @@ describe("skill install core", () => {
 
   it("classifies scoped runtime Kiwi mirrors as generated outputs with valid shared resources", async () => {
     const repoRoot = process.cwd();
-    const skillNames = ["kiwi-planner", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
+    const skillNames = ["kiwi-sds", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
     for (const name of skillNames) {
       const sourceDir = path.join(repoRoot, "skills", "codex", name);
       const mirrorDir = path.join(repoRoot, ".agents", "skills", name);
@@ -319,7 +319,7 @@ describe("skill install core", () => {
 
   it("keeps scoped Kiwi skills on official workflow tools before degraded raw-file fallback", async () => {
     const repoRoot = process.cwd();
-    const skillNames = ["kiwi-planner", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
+    const skillNames = ["kiwi-sds", "kiwi-pm", "kiwi-coder", "kiwi-pipeline", "kiwi-srs"];
     const roots = ["skills/codex", ".agents/skills"];
     for (const root of roots) {
       for (const name of skillNames) {

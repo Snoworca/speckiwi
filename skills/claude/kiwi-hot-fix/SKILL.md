@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; Root-cause 사전조사 Sonnet 불변). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
+description: "긴급 버그·운영 이슈에 대해 SRS→SDS→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; Root-cause 사전조사 Sonnet 불변). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -15,6 +15,12 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 - 리포트된 회귀 즉시 수정
 
 본 스킬은 spec-first 원칙을 **우회하지 않고** 사후 동기화한다 — fix 완료 후 `/kiwi-srs-sync` Skill 호출로 변경분을 SRS 에 정합화 위임. TDD 와 까칠 리뷰는 의무.
+
+---
+
+## Workflow 도구 정책
+
+세션 상태 조회의 정상 경로는 공식 workflow 읽기 도구다 — `--resume` 이 읽는 `.kiwi/sessions/{run-id}/state.json` 은 MCP `workflow_resolve_artifact` 에 그 실행의 `runId` 와 함께 `kind` 를 `coder-state` 로, `includeBody` 를 `true` 로 주어 읽고, 실행 기록 `worklog.jsonl` 은 `workflow_worklog_tail` 로 조회한다. 파일을 직접 읽는 것은 그 도구를 쓸 수 없을 때의 degraded 폴백이며, 그 실행은 도구 진단·산출물 경로·active target·후속 요구 또는 후보 ID 를 사용자 보고에 함께 남긴다.
 
 ---
 
@@ -74,7 +80,8 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 |---|---|
 | `--no-sync` 명시 | sync 위임 skip + state.json `sync_skipped: "user-opt-out"` |
 | §0.G3.1 옵션 (1)(4) 선택 | sync 위임 skip (변경물 미존재 또는 미확정) |
-| fix 적용 성공 + 회귀 PASS + 위 미해당 | `/kiwi-srs-sync` Skill 호출 (자동), `--auto` 시 `--auto` 만 전파 (`--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만) |
+| 위임 직전 테스트 충분성 확인(§6.2.1)이 `test-sufficiency-gap` 을 올림 | 위임하지 않고 멈춘다 (사용자 결정) |
+| fix 적용 성공 + 회귀 PASS + 테스트 충분성 확인이 게이트를 올리지 않음(`pass` 또는 `no-scope`) + 위 미해당 | `/kiwi-srs-sync` Skill 호출 (자동), `--auto` 시 `--auto` 만 전파 (`--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만) |
 | Skill 호출 자체 실패 (Skill 도구 오류) | state.json `pending_sync: {reason}` + 사용자 보고 + 본 스킬 종료 |
 
 #### §0.G5 — 외부 모듈 영향이 fix 의 본질인 경우
@@ -96,6 +103,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
 | `zero-tolerance-hypothesis-fix-mismatch` | fix 가 채택 가설과 무관한 변경 포함 (§5.2 ZERO TOLERANCE) | §5.2 |
 | `mock-detection` | Mock regex 자동 탐지 CRITICAL (§0.6) | §0.6 / §5.2 |
 | `mcp-cli-both-unavailable` | preflight MCP + CLI 모두 실패 — sync 위임 차단 / `--no-sync` 강제 | §3.0 case 5 |
+| `test-sufficiency-gap` | 위임 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 이 남음 (`_shared/kiwi/test-sufficiency.md`) | Phase 6 — `kiwi-srs-sync` 위임 직전 (§6.2.1) |
 
 **자식 sync 전파 (§7.1 SSOT)**: 본 스킬 `--auto` 활성 시 `kiwi-srs-sync` 호출 args 에 `--auto` 만 전파한다. `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않으며, 사용자가 직접 그 플래그를 지정한 경우에만 전파한다 — codex/etc 변형과 동일한 안전 계약. `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행과 critical_gates HALT 를 유지한다.
 
@@ -147,6 +155,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→planner→pm→coder 
   - `formal_review_iter{N}.json` — 정형 검사 결과 (현재 세션 모델)
   - `prickly_review_iter{N}.json` — 까칠 리뷰 결과 (현재 세션 모델)
   - `regression_run.jsonl` — 회귀 테스트 실행 로그
+  - `test_sufficiency.json` — 위임 직전 테스트 충분성 확인 결과 (§6.2.1)
   - `sync_delegation.json` — `/kiwi-srs-sync` Skill 호출 결과 요약
   - `rejected_findings.log`
 - **`.kiwi/` 상태**: `cwd/.kiwi/sessions/{run-id}/` (kiwi-coder §7 단순화 버전)
@@ -173,7 +182,7 @@ Phase 2 : 회귀 테스트 작성 (TDD red 확정)
 Phase 3 : Fix 적용 (시니어 fixer 서브에이전트 — 현재 세션 모델)
 Phase 4 : 정형 검사 (현재 세션 모델×1) + 까칠 리뷰 (현재 세션 모델×1/2) + 개선 루프
 Phase 5 : 회귀 테스트 실행 (green 확인 + 영향 회귀)
-Phase 6 : kiwi-srs-sync Skill 위임
+Phase 6 : 테스트 충분성 확인(`_shared/kiwi/test-sufficiency.md`) → kiwi-srs-sync Skill 위임
 Phase 7 : 보고서 + pipeline.jsonl emit
 ```
 
@@ -259,7 +268,7 @@ Normal 비용 ≤ kiwi-coder 단일 task 수준. 사용자 게이트 없이 진�
 }
 ```
 
-`fix_complexity_estimate = large` 일 경우 시니어가 §10 의 "Out of Scope" 안내 후 사용자에게 `/kiwi-srs` → `/kiwi-planner` 풀 파이프라인 권고 (단 본 스킬은 그래도 진행 — 사용자가 hot-fix 를 선택한 책임).
+`fix_complexity_estimate = large` 일 경우 시니어가 §10 의 "Out of Scope" 안내 후 사용자에게 `/kiwi-srs` → `/kiwi-sds` 풀 파이프라인 권고 (단 본 스킬은 그래도 진행 — 사용자가 hot-fix 를 선택한 책임).
 
 ### 4.2 scope analyst
 
@@ -291,7 +300,7 @@ Normal 비용 ≤ kiwi-coder 단일 task 수준. 사용자 게이트 없이 진�
 
 시니어 fixer (현재 세션 모델; `--model` 영향 없음 — kiwi-coder 시니어 코더와 동일) 서브에이전트가 다음을 수행:
 
-1. `root_cause.symptom.reproduction_steps` 기반 회귀 테스트 작성
+1. `root_cause.symptom.reproduction_steps` 기반 회귀 테스트 작성 — 영향 요구가 매핑돼 있으면 테스트 제목 줄에 `<REQ-ID> AC-<n>` 을 적는다 (인용 규약: `_shared/kiwi/test-sufficiency.md` §1)
 2. 테스트 파일 경로 결정 — 기존 테스트 디렉토리 규칙 따름
 3. 테스트 실행 → red (의도된 fail) 확인. fail 메시지를 `regression_test.json.expected_failure_signature` 에 저장
 4. red 실패 안 함 → 사용자 보고 ("증상이 재현되지 않음. 가설 재검토 필요") + Phase 1 재진입
@@ -367,6 +376,8 @@ severity: P1-P5 CRITICAL, P6 HIGH, P7 HIGH (정보성 가능).
 
 #### 6.2.1 위임 결정 (§0.G4 적용)
 
+**위임 직전 테스트 충분성 확인** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <root_cause.scope.candidate_req_ids 중 match_confidence=high>` 로 따르고 결과를 `test_sufficiency.json` 에 남긴다. gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 위임하지 않는다. 범위가 비면 결과는 `no-scope` 이고 위임은 진행한다 — `kiwi-srs-sync` 가 `verified` 를 쓰기 직전에 같은 확인을 다시 돈다. 위임하지 않는 실행(§6.2.3)에서는 돌지 않는다. `--dry-run` 이면 계약 §3 대로 채우기 없이 처음 결과만 적는다.
+
 조건 통과 시 다음을 메인이 수행:
 
 ```
@@ -410,6 +421,7 @@ mode: normal|max|dry-run
 input_source: github-issue|natural-language|git-status
 fix_files: [...]
 regression_pass: true|false
+test_sufficiency: pass|gap|no-scope
 review_iter: N
 sync_delegated: true|false
 sync_run_id: ...
@@ -424,9 +436,10 @@ sync_run_id: ...
 5. 적용된 fix 요약 (파일별 변경 라인 + rationale)
 6. 정형 + 까칠 리뷰 결과 (axis 별 finding + 해소 라운드)
 7. 회귀 테스트 실행 결과 (PASS/FAIL + 실행 시간)
-8. kiwi-srs-sync 위임 결과 (sync run_id + 4방향 분류 통계 + 적용 mutation)
-9. 잔존 MEDIUM/LOW finding (사후 검토 권고)
-10. 메타 (실측 토큰, 시간)
+8. 테스트 충분성 확인 결과 (`test_sufficiency.json` 의 verdict · 범위 · 채우기로 더한 테스트)
+9. kiwi-srs-sync 위임 결과 (sync run_id + 4방향 분류 통계 + 적용 mutation)
+10. 잔존 MEDIUM/LOW finding (사후 검토 권고)
+11. 메타 (실측 토큰, 시간)
 
 ### 7.2 Pipeline event emit (의무)
 
@@ -471,7 +484,7 @@ emit 실패는 best-effort.
 |---|---|
 | 신규 요구사항 → SRS 증분 (spec-first) | `/kiwi-srs` |
 | 코드 변경 → SRS 사후 동기화 (단독) | `/kiwi-srs-sync` |
-| 정식 plan 수립 후 풀 구현 | `/kiwi-planner` → `/kiwi-pm` |
+| SRS 선행 풀 구현 (본문 범위 작업) | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
 | 단일 task TDD 구현 | `/kiwi-coder` |
 | **긴급 버그 fix + 까칠 리뷰 + 회귀 + SRS 사후 동기화** (본 스킬) | `/kiwi-hot-fix` |
 | 이미 머지된 코드 / 외부 PR 셀프 리뷰 | `/kiwi-review-fix-loop` |
@@ -482,8 +495,8 @@ emit 실패는 best-effort.
 
 | 범위 밖 | 담당 스킬 |
 |---|---|
-| 신규 기능 개발 (hot-fix 아닌 normal feature) | `/kiwi-srs` → `/kiwi-planner` → `/kiwi-pm` |
-| 대규모 refactor / 아키텍처 변경 | `/kiwi-planner` 풀 파이프라인 |
+| 신규 기능 개발 (hot-fix 아닌 normal feature) | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
+| 대규모 refactor / 아키텍처 변경 | `/kiwi-srs` → `/kiwi-sds` 풀 파이프라인 |
 | 다중 무관 이슈 동시 처리 | 본 스킬 다회 실행 (단일 fix 의미 단위, §0.13) |
 | MCP mutation 직접 호출 | `/kiwi-srs-sync` 위임 (§0.9) |
 | git commit / push | 사용자 결정 또는 `/kiwi-commit-auto-push` |

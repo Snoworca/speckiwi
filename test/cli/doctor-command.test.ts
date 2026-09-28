@@ -4,7 +4,7 @@ import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 function stream() {
-  return new PassThrough() as NodeJS.WriteStream;
+  return new PassThrough();
 }
 
 function io() {

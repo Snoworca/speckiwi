@@ -20,7 +20,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 
 | 키 | 규칙 |
 |---|---|
-| §0.1 | **TDD 의무화 제외**. 본 스킬은 reverse-direction (코드 우선) 이므로 `/kiwi-coder` 의 TDD 강제(§0.1) 미적용. 단, sync 결과 SRS 에 `tdd.applicable=true` REQ 가 추가됐는데 테스트가 없는 코드면 평가자가 MEDIUM 경고만 발행 (차단 X) |
+| §0.1 | **TDD 의무화 제외**. 본 스킬은 reverse-direction (코드 우선) 이므로 `/kiwi-coder` 의 TDD 강제(§0.1) 미적용. 단, sync 결과 SRS 에 `tdd.applicable=true` REQ 가 추가됐는데 테스트가 없는 코드면 평가자가 MEDIUM 경고만 발행 (차단 X). `verified` 직전 테스트 충분성 확인(§10.1 4번)의 채우기만은 `_shared/kiwi/test-sufficiency.md` 대로 인용 테스트를 더한다 |
 | §0.2 | **dry-run 선행 의무**. 모든 MCP mutation 은 dry-run 산출물(`docs/analysis/srs-sync-{run-id}/proposed-mutations.md`) 생성 후 사용자 승인을 거쳐야 실행. `--auto-apply`/`--yes-all` 명시 시에만 자동 진행 |
 | §0.3 | **/snoworca-\* 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.4 | **검증자는 별도 서브에이전트**. 인라인 자가검증 금지 |
@@ -33,9 +33,9 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.11 | **4방향 분류 SSOT** (kiwi-srs §3.3 계승). 모든 변경 단위는 `conflict` / `update` / `new-feature` / `new-scope` 중 정확히 1개로 분류. `unclassified` 허용 안 함 (사용자 게이트 발동) |
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 AskUserQuestion 단일 호출 분해 |
-| §0.14 | **plan_contract 무관**. 본 스킬은 plan.md 를 생성하지 않으므로 plan_contract 필드 부재. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT (planner 와 동일 원칙) |
+| §0.14 | **계획·설계 산출물 없음**. 본 스킬은 계획 문서도 SDS 도 만들지 않는다. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT |
 | §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 3 Sonnet 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
-| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}, {gate_id: "test-sufficiency-gap", reason: "verified 전이 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 잔존 — 그 REQ 는 verified 로 쓰지 않는다 (§10.1 step 4, _shared/kiwi/test-sufficiency.md)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
 | §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
@@ -122,9 +122,9 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
   - `applied-mutations.jsonl` — 실제 적용된 MCP 호출 로그 (mcp_call_log)
   - `rejected_findings.log`
 - **MCP mutation** (사용자 승인 후): `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`
-- **Markdown SRS 갱신**: speckiwi MCP 내부 line-patch (planner 황금률과 동일)
+- **Markdown SRS 갱신**: speckiwi MCP 내부 line-patch
 
-**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}.sync-{ISO-time-short}`. 정규식 SSOT: `^[a-z0-9.-]{4,50}$`. ASCII kebab, ≤50자 (kiwi-planner §0.14 의 40자 상한 대비 `sync-...` suffix 만큼 확장).
+**Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}.sync-{ISO-time-short}`. 정규식 SSOT: `^[a-z0-9.-]{4,50}$`. ASCII kebab, ≤50자.
 
 ### 1.5 dry-run 산출물 형식 (proposed-mutations.md)
 
@@ -426,6 +426,8 @@ CU 스키마:
 
 `blocking_questions` 비어있지 않으면 Phase 6 진입 전 AskUserQuestion 강제.
 
+**verified 로 쓰는 제안** — 그 증거의 `reference`·`covers` 는 적용 시점에 §10.1 4번의 테스트 충분성 확인(`_shared/kiwi/test-sufficiency.md`)이 AC 마다 돌려준 인용으로 정해지고, 그 확인이 gap 을 채우려 테스트 파일을 더할 수 있다는 것을 `proposed-mutations.md` 에 적는다. 확인이 `test-sufficiency-gap` 으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
+
 ---
 
 ## 9. Phase 6 — 사용자 게이트
@@ -463,7 +465,7 @@ AskUserQuestion 4옵션:
 1. add_requirement (new-feature / new-scope=(2)기존 scope 확장만) — 신규 REQ 생성
 2. append_section_note (update) — 기존 REQ AC 보강
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
-4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록
+4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`)
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)
 6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 7. add_completed_work — 변경 작업 자체를 작업 로그로 기록 (한 번에 묶어서)
@@ -501,7 +503,7 @@ failed: 0
 3. 적용된 mutation 목록 (도구별, REQ-ID별)
 4. 새로 생성된 REQ 목록 (신규 ID + 초안 인용)
 5. 갱신된 AC 목록 (REQ-ID + diff)
-6. Stability/Status 전이 결과
+6. Stability/Status 전이 결과 + 테스트 충분성 확인 결과 (`test_sufficiency` verdict · 범위 · 채우기로 더한 테스트)
 7. 외부 모듈 영향 (있다면)
 8. 평가자 finding 통계 (severity별)
 9. **skip 된 CU 목록** (§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_id / 분류 / skip 사유 / 후속 권고 안내)
@@ -543,8 +545,8 @@ failed: 0
 | 신규 요구사항 자연어 → SRS 증분 (spec-first) | `/kiwi-srs` |
 | target 활성 REQ 전수 feasibility + Stability 일괄 | `/kiwi-srs-feasibility` |
 | REQ 또는 연구 질문 deep research | `/kiwi-srs-research` |
-| 계획 수립 (Phase와 Task 분해) | `/kiwi-planner` |
-| 계획 기반 TDD-first 구현 | `/kiwi-coder` |
+| SRS 선행 구현 설계 (본문 범위 작업) | `/kiwi-srs` → `/kiwi-sds` |
+| SDS 기반 TDD-first 구현 | `/kiwi-coder` |
 | **코드 변경(diff) → 기존 SRS 사후 동기화** (본 스킬) | `/kiwi-srs-sync` |
 
 ---
@@ -554,7 +556,7 @@ failed: 0
 | 범위 밖 | 담당 스킬 |
 |---|---|
 | target 신규 생성 / scope 자체 신규 등록 | `/kiwi-srs` (사용자 게이트 후) |
-| 계획 문서 (plan.md) 작성 | `/kiwi-planner` |
+| 구현 설계 (SDS) 작성 | `/kiwi-sds` |
 | 코드 구현 자체 | `/kiwi-coder` 또는 외부 도구 |
 | git commit / push | 사용자 결정 (시그니처 금지 §0.8) |
 | 통합 테스트 작성 | `/kiwi-coder` Phase 4 |

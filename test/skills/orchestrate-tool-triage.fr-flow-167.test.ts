@@ -265,14 +265,42 @@ const PATH_OF = new Map(ORCHESTRATE_TOOL_BINDINGS.map((binding) => [binding.tool
  */
 function declaredExclusions(): { tools: string[]; leaves: string[] } {
   const note = lastNote("판정표 0/18 ");
-  const leaves = [...note.matchAll(/`(orchestrate (?:[a-z-]+ )*[a-z-]+)`/g)].map((match) => match[1] as string);
+  const renamed = renamedLeaves();
+  const leaves = [...note.matchAll(/`(orchestrate (?:[a-z-]+ )*[a-z-]+)`/g)].map((match) => renamed.get(match[1] as string) ?? (match[1] as string));
   const tools = REGISTERED.filter((tool) => leaves.includes(LEAF_OF.get(tool) as string));
   if (note.includes("`orchestrate_validate`")) tools.push("orchestrate_validate");
   return { tools, leaves };
 }
 
+/**
+ * The excluded CLI leaves AC-1 says 4.0.0 renamed, as `from → to` (FR-NODE-213).
+ *
+ * The denominator note is dated and append-only, so it keeps the spelling the skills used when it
+ * was written; AC-1 carries the rename. Applying it here keeps the exclusion read from the
+ * requirement instead of from a list in this file.
+ */
+function renamedLeaves(): Map<string, string> {
+  return new Map(
+    [...acText("AC-1").matchAll(/`(orchestrate [a-z -]+)` 은 같은 4\.0\.0 에서 `(orchestrate [a-z -]+)` 로 바뀐다/g)].map(
+      (match) => [match[1] as string, match[2] as string] as [string, string]
+    )
+  );
+}
+
 const EXCLUSIONS = declaredExclusions();
 const TRIAGED: string[] = REGISTERED.filter((tool) => !EXCLUSIONS.tools.includes(tool));
+
+/** Every tool the triage table gave a row when it landed, read from the `판정표 n/18` rows themselves. */
+const ROWED: string[] = [...new Set(NOTES.flatMap((note) => [...note.matchAll(/판정표 \d+\/18 `(orchestrate_[a-z_]+)`\./g)].map((match) => match[1] as string)))];
+
+/** The tools AC-1 says left the bindings in 4.0.0 — their rows stay as a record and leave the judged set. */
+function departedTools(): string[] {
+  const clause = /4\.0\.0 에서 ((?:`orchestrate_[a-z_]+`(?: 와 )?)+) 가 [^.]*?바인딩에서 빠진/.exec(acText("AC-1"));
+  if (clause === null) return [];
+  return [...(clause[1] as string).matchAll(/`(orchestrate_[a-z_]+)`/g)].map((match) => match[1] as string);
+}
+
+const DEPARTED = departedTools();
 
 /** The four dispositions the requirement admits, in the order AC-1 tallies them. */
 const DISPOSITIONS = ["배선", "코드가 이미 수행", "다른 도구가 소유", "이연"] as const;
@@ -575,13 +603,26 @@ describe("FR-FLOW-167 the triage table", () => {
     expect(CLI_SOURCE.length, `${ORCHESTRATE_CLI} is empty, so the gate provenance reader would report every gate absent`).toBeGreaterThan(10000);
   });
 
-  it("the denominator is the binding array, and the exclusion set is the requirement's own", () => {
-    // The three counts are held together so no single edit moves the boundary: the total comes from
-    // the code, the exclusions from the requirement's note, and the row set is the difference.
-    expect(REGISTERED.length, "the registered tool count changed; a new tool needs a row or an exclusion").toBe(27);
+  // Revised in 4.0.0: two tools left the bindings and one excluded leaf was renamed (FR-NODE-213),
+  // so AC-1 stops stating the judged set as a number (27 registered, 18 judged). The boundary is
+  // still held from three independent places so no single edit moves it: the registered set comes
+  // from the code, the exclusions from the requirement's note with AC-1's rename applied, and the
+  // rows plus the tools AC-1 names as departed from the notes and AC-1.
+  it("FR-FLOW-167 AC-1: the denominator is the binding array, the exclusion set is the requirement's own, and a tool leaves the judged set only as AC-1 names it", () => {
     expect(EXCLUSIONS.leaves, "the denominator note must name the eight excluded CLI leaves").toHaveLength(8);
     expect(EXCLUSIONS.tools, "eight leaves plus orchestrate_validate is nine exclusions").toHaveLength(9);
-    expect(TRIAGED, "the triaged set is the registered tools minus the nine exclusions").toHaveLength(18);
+    expect(renamedLeaves().size, "AC-1 must name the excluded leaf 4.0.0 renamed").toBeGreaterThan(0);
+    for (const [from, to] of renamedLeaves()) {
+      expect(EXCLUSIONS.leaves, `the rename AC-1 states must reach the exclusion set: ${from} → ${to}`).toContain(to);
+      expect(EXCLUSIONS.leaves, `${from} is renamed by AC-1 and must not stay excluded under its old spelling`).not.toContain(from);
+    }
+    expect(DEPARTED.length, "AC-1 must name the tools 4.0.0 took out of the bindings").toBeGreaterThan(0);
+    const unregisteredRows = ROWED.filter((tool) => !REGISTERED.includes(tool)).sort();
+    expect(unregisteredRows, "a tool with a row stopped being registered without AC-1 naming it as departed, or AC-1 names one still registered").toEqual([...DEPARTED].sort());
+    expect(
+      [...TRIAGED].sort(),
+      "the judged set (registered minus exclusions) must be exactly the rowed tools minus the departed ones; a new tool needs a row or an exclusion"
+    ).toEqual(ROWED.filter((tool) => !DEPARTED.includes(tool)).sort());
   });
 
   it("every excluded leaf is one the shipped skills really call, so the exclusion is not a way out", () => {
@@ -633,12 +674,19 @@ describe("FR-FLOW-167 the triage table", () => {
     }
   });
 
-  it("the tally the rows produce is the tally AC-1 states", () => {
-    const stated = /집계는 차례로 (\d+)·(\d+)·(\d+)·(\d+)/.exec(BLOCK);
-    expect(stated, "AC-1 must state the tally so the rows can be held against it").not.toBeNull();
-    const counted = DISPOSITIONS.map((disposition) => TRIAGED.filter((tool) => dispositionOf(rowOf(tool)) === disposition).length);
-    expect(counted, "the rows and AC-1 disagree about the tally").toEqual([1, 2, 3, 4].map((index) => Number((stated as RegExpExecArray)[index])));
-    expect(counted.reduce((sum, value) => sum + value, 0)).toBe(TRIAGED.length);
+  // Revised in 4.0.0: AC-1 keeps the tally only as the value at landing (10·1·4·3, sum 18) and counts
+  // the live set instead of stating it. The landing tally is held against every row the table ever
+  // carried; the live set is held to one disposition per judged tool.
+  it("FR-FLOW-167 AC-1: the rows reproduce the landing tally AC-1 records, and the live judged set is counted rather than stated", () => {
+    const landed = /집계는 이 요구가 착지했을 때 차례로 (\d+)·(\d+)·(\d+)·(\d+) 이고 합이 (\d+) 이었으며/.exec(acText("AC-1"));
+    expect(landed, "AC-1 must record the landing tally so the rows can be held against it").not.toBeNull();
+    const tallyOf = (tools: readonly string[]): number[] =>
+      DISPOSITIONS.map((disposition) => tools.filter((tool) => dispositionOf(rowOf(tool)) === disposition).length);
+    expect(tallyOf(ROWED), "the rows and AC-1's landing tally disagree").toEqual([1, 2, 3, 4].map((index) => Number((landed as RegExpExecArray)[index])));
+    expect(ROWED.length, "the landing sum AC-1 records is the number of rowed tools").toBe(Number((landed as RegExpExecArray)[5]));
+    expect(acText("AC-1"), "AC-1 must say the live set is counted, not stated").toMatch(/수로 적지 않고 판정 대상 집합에서 센다/);
+    const live = tallyOf(TRIAGED);
+    expect(live.reduce((sum, value) => sum + value, 0), "every judged tool carries exactly one of the four dispositions").toBe(TRIAGED.length);
   });
 });
 
@@ -950,5 +998,73 @@ describe("FR-FLOW-167 what the per-copy checks read", () => {
       reads.filter((opened) => opened.digest !== digestOf(opened.block)).map((opened) => `${opened.block} was answered with bytes that are not its own`),
       "a per-copy check was handed a rendering's bytes under another rendering's name"
     ).toEqual([]);
+  });
+});
+
+// ─── AC-8: the seven wired-but-not-performed tools each name the follow-up item that carries them ──
+// The destination is not restated here: the seven are read from the triage rows' own disposition, the
+// follow-up numbers from the requirement's destination note, and the two items from the plan index,
+// its dependency table and the two plan documents. What this holds is that the four agree.
+describe("FR-FLOW-167 AC-8 — the wiring the requirement did not perform is carried by numbered follow-up items", () => {
+  const PLAN_DIR = "docs/plan/3.0";
+  const FOLLOW_UP = /\(c\) 배선 — 후속/;
+
+  /** The tools whose latest triage row is wired to a follow-up, not performed here. */
+  const deferredWiring = (): string[] => ROWED.filter((tool) => FOLLOW_UP.test(rowOf(tool)));
+
+  /** The destination note, split into the tools it sends to each plan number. */
+  function destinations(): Map<string, string[]> {
+    const note = lastNote("배선 후속 일곱의 행선지");
+    const out = new Map<string, string[]>();
+    let rest = note;
+    for (const match of note.matchAll(/계획 (\d+)번/g)) {
+      const at = rest.indexOf(match[0]);
+      out.set(match[1] as string, [...rest.slice(0, at).matchAll(/`(orchestrate_[a-z_]+)`/g)].map((tool) => tool[1] as string));
+      rest = rest.slice(at + match[0].length);
+    }
+    return out;
+  }
+
+  it("FR-FLOW-167 AC-8: seven triage rows are wired to a follow-up, and none is left undecided", () => {
+    const wired = deferredWiring();
+    expect(wired.length, `the rows disposed as wiring-to-follow-up: ${wired.join(", ")}`).toBe(7);
+    expect(ROWED.filter((tool) => !/\(c\) \S/.test(rowOf(tool))), "a triage row carries no disposition").toEqual([]);
+  });
+
+  it("FR-FLOW-167 AC-8: the destination note names every one of the seven under plan 19 or plan 20, five and two", () => {
+    const byPlan = destinations();
+    expect([...byPlan.keys()].sort(), "the destination note does not number both follow-up items").toEqual(["19", "20"]);
+    expect(byPlan.get("19")?.length, "plan 19 does not take the five that land in the kiwi-orchestrator body").toBe(5);
+    expect(byPlan.get("20")?.length, "plan 20 does not take the two that land in shared contract files").toBe(2);
+    const named = [...(byPlan.get("19") ?? []), ...(byPlan.get("20") ?? [])];
+    expect(new Set(named).size, "a tool is sent to both follow-up items").toBe(named.length);
+    expect([...named].sort(), "the note and the triage rows disagree on which tools go to a follow-up").toEqual([...deferredWiring()].sort());
+  });
+
+  it("FR-FLOW-167 AC-8: plans 19 and 20 are rows of the plan index, and the dependency table puts 17 before both", () => {
+    const index = readRepoFile(`${PLAN_DIR}/index.md`).replace(/\r\n/g, "\n");
+    for (const [number, file] of [
+      ["19", "19.orchestrator-body-tool-wiring.md"],
+      ["20", "20.shared-contract-tool-wiring.md"]
+    ] as const) {
+      expect(index.split("\n").some((line) => new RegExp(String.raw`^- \[[ x]\] \[${number}\. [^\]]+\]\(${file.replace(/\./g, String.raw`\.`)}\)`).test(line)), `plan ${number} is not a row of the plan index`).toBe(true);
+    }
+    const dependency = index.split("\n").find((line) => /^\| 17 \| 19 · 20 \|/.test(line)) ?? "";
+    expect(dependency, "the dependency table does not list 17 as the predecessor of 19 and 20").not.toBe("");
+  });
+
+  it("FR-FLOW-167 AC-8: each follow-up plan names 17 as its predecessor and every tool the note sends it", () => {
+    const byPlan = destinations();
+    for (const [number, file] of [
+      ["19", "19.orchestrator-body-tool-wiring.md"],
+      ["20", "20.shared-contract-tool-wiring.md"]
+    ] as const) {
+      const plan = readRepoFile(`${PLAN_DIR}/${file}`);
+      const predecessor = plan.split(/\r?\n/).find((line) => line.startsWith("| 선행 항목 |")) ?? "";
+      expect(predecessor, `plan ${number} does not name 17 as its predecessor`).toMatch(/^\| 선행 항목 \| \*\*17 번\.\*\*/);
+      for (const tool of byPlan.get(number) ?? []) {
+        expect(plan, `plan ${number} does not carry ${tool}`).toContain(`\`${tool}\``);
+      }
+    }
   });
 });

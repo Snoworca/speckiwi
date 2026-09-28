@@ -38,13 +38,20 @@ async function writeStateMd(root: string, options: { mode: string; activeTask?: 
   await writeFile(path.join(stepsDir, "state.md"), lines.join("\n"), "utf8");
 }
 
+/** The envelope fields these cases read off a work-mode tool answer. */
+interface WorkModeAnswer {
+  ok: boolean;
+  value: { mode: string; activeTask?: string };
+  error: { code: string };
+}
+
 describe("FR-MCP-052 MCP work-mode tools", () => {
   it("FR-MCP-052 AC-1: get_work_mode returns the persisted tdd mode and falls open to wait", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(rootPath, { mode: "tdd", activeTask: "T-TDD-01" });
     const server = createMcpServer({ root: rootPath });
 
-    const result = await server.callTool(GET_TOOL, {});
+    const result = (await server.callTool(GET_TOOL, {})) as WorkModeAnswer;
     expect(result.ok).toBe(true);
     expect(result.value.mode).toBe("tdd");
     expect(result.value.activeTask).toBe("T-TDD-01");
@@ -52,7 +59,7 @@ describe("FR-MCP-052 MCP work-mode tools", () => {
     // Fail-open: no state.md at all still reads as wait.
     const bareRoot = await copyFixtureWorkspace("valid-basic");
     const bareServer = createMcpServer({ root: bareRoot });
-    const bare = await bareServer.callTool(GET_TOOL, {});
+    const bare = (await bareServer.callTool(GET_TOOL, {})) as WorkModeAnswer;
     expect(bare.ok).toBe(true);
     expect(bare.value.mode).toBe("wait");
   });
@@ -62,7 +69,7 @@ describe("FR-MCP-052 MCP work-mode tools", () => {
     await writeStateMd(rootPath, { mode: "sdd" });
     const server = createMcpServer({ root: rootPath });
 
-    const result = await server.callTool(SET_TOOL, { mode: "tdd", activeTask: "T-TDD-02" });
+    const result = (await server.callTool(SET_TOOL, { mode: "tdd", activeTask: "T-TDD-02" })) as WorkModeAnswer;
     expect(result.ok).toBe(true);
     expect(result.value.mode).toBe("tdd");
 
@@ -70,12 +77,12 @@ describe("FR-MCP-052 MCP work-mode tools", () => {
     expect(persisted).toMatch(/^\s*Mode:\s*tdd\s*$/m);
     expect(persisted).toMatch(/^\s*Active Task:\s*T-TDD-02\s*$/m);
 
-    const readBack = await server.callTool(GET_TOOL, {});
+    const readBack = (await server.callTool(GET_TOOL, {})) as WorkModeAnswer;
     expect(readBack.value.mode).toBe("tdd");
     expect(readBack.value.activeTask).toBe("T-TDD-02");
 
     // dryRun: a switch away from tdd must not touch the file.
-    const dry = await server.callTool(SET_TOOL, { mode: "sdd", dryRun: true });
+    const dry = (await server.callTool(SET_TOOL, { mode: "sdd", dryRun: true })) as WorkModeAnswer;
     expect(dry.ok).toBe(true);
     const afterDry = await readFile(path.join(rootPath, STATE_PATH), "utf8");
     expect(afterDry).toMatch(/^\s*Mode:\s*tdd\s*$/m);
@@ -86,7 +93,7 @@ describe("FR-MCP-052 MCP work-mode tools", () => {
     await writeStateMd(rootPath, { mode: "sdd" });
     const server = createMcpServer({ root: rootPath });
 
-    const result = await server.callTool(SET_TOOL, { mode: "tddx" });
+    const result = (await server.callTool(SET_TOOL, { mode: "tddx" })) as WorkModeAnswer;
     expect(result.ok).toBe(false);
     expect(result.error.code).toBe("INVALID_MODE");
 

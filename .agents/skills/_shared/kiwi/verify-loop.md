@@ -2,7 +2,7 @@
 
 두 검증자 상호검증 루프(cross-verification loop)의 **공용 엔진** SSOT. `kiwi-wave-master` §5.5 에서 **텍스트를 이동**해 만들었으며, 본 문서를 참조하는 모든 스킬은 아래 규칙을 read-time 에 동일하게 적용한다.
 
-**본 엔진은 분모-불가지(denominator-agnostic)** 하다 — 고정 분모를 **입력으로 받으며**, wave 고유·lane 고유·handoff 고유의 분모를 스스로 하나도 두지 않는다. 호출자마다 자기 분모 표를 공급한다.
+**본 엔진은 분모-불가지(denominator-agnostic)** 하다 — 고정 분모를 **입력으로 받으며**, wave 고유·lane 고유의 분모를 스스로 하나도 두지 않는다. 호출자마다 자기 분모 표를 공급한다.
 
 본 계약 안의 `§n` 은 이 파일의 절을 가리킨다. 아래 이동된 본문이 `§0.G` · `§5.5` · `§6` 를 가리킬 때 그것은 **호출자의** 절이다 — 이동 전 문장을 그대로 옮겼기 때문이다.
 
@@ -44,11 +44,11 @@
 
 각 행의 판정은 `intended-improvement` / `unapproved-damage` 두 값 enum 이며 자유 서술은 판정이 아니다. 결과는 `preservation_layer` 에 싣는다.
 
-`intended-improvement` 는 그 변경을 요구하는 **REQ** 또는 계획 **Task** 가 있을 때에만 쓰며, 그 근거를 행의 `evidence` 에 REQ-ID 또는 Task-ID 로 적는다.
+`intended-improvement` 는 그 변경을 요구하는 **REQ** 또는 wave SDS 의 **SDS-AC** 가 있을 때에만 쓰며, 그 근거를 행의 `evidence` 에 REQ-ID 또는 SDS-AC id 로 적는다.
 
 근거를 대지 못한 행은 `unapproved-damage` 다 — 근거 없는 재량을 남겨두면 wave 를 끝내려는 국소 이해가 그대로 verdict 가 된다.
 
-단, **약화는** REQ 또는 Task 근거가 있어도 `intended-improvement` 로 **기록하지 않는다** — 언제나 `unapproved-damage` 다. 계획 Task 안에서 단언을 낮추는 것이 이 루프에서 가장 값싼 우회로이고, 하위 루프의 PASS 가 wave 게이트를 충족하지 않는다는 §5.5.5 의 규칙과도 어긋나기 때문이다.
+단, **약화는** REQ 또는 SDS-AC 근거가 있어도 `intended-improvement` 로 **기록하지 않는다** — 언제나 `unapproved-damage` 다. SDS 안에서 단언을 낮추는 것이 이 루프에서 가장 값싼 우회로이고, 하위 루프의 PASS 가 wave 게이트를 충족하지 않는다는 §5.5.5 의 규칙과도 어긋나기 때문이다.
 
 열거한 **행 수가** 고정 분모의 개수와 다른 라운드는 두 검증자 **모두**에 대해 **무효**이며, cap 은 소비하되 연속 clean 스트릭은 0 으로 되돌린다.
 
@@ -120,18 +120,18 @@ finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인
 | finding 종류 | 처리 |
 |---|---|
 | 품질 · 회귀 · 구현 결함 | `kiwi-review-fix-loop` 위임. **명시 범위**(`--base`/`--head` 또는 `--commits`)를 함께 전달한다 — 그 wave 의 작업이 이미 커밋됐으면 working-tree diff 가 비어 clean 오보가 난다 |
-| 검증자 1 의 갭 중 **대응 계획 자체가 없던** 것 | 그 wave 의 $kiwi-pipeline **재진입** — 코드 리뷰어는 계획 항목을 만들어낼 수 없다 |
+| 검증자 1 의 갭 중 **wave SDS 가 덮지 않은** 것 | 그 wave 의 **재진입** — `$kiwi-sds` 로 그 갭의 새 SDS 를 쓰고 원래 워커가 아닌 새 워커를 띄운다(`parallel-waves.md` PW-13). 코드 리뷰어는 SDS 항목을 만들어낼 수 없다 |
 | 코드로 닫을 수 없는 SRS 수준 finding (증거 부재 등) | `residual` 로 이관 + 사용자 결정 |
 | **이전 wave** 의 완료 target 을 건드려야 하는 것 | `wave-verify-cross-wave-fix-required` critical HALT (§0.G) |
 | **산문 문서 자체**의 finding (연구 노트·intake·설계 문서의 서술) | §9 로 이 루프의 대상이 아니다. `kiwi-review-fix-loop` 으로 보내지 않는다 — 그 스킬은 코드만 보므로 리뷰할 것이 없다. **애초에 제기되지 않게 §2 가 막는다** — 그 절이 산문을 읽는 자료로 선언한다. 이미 제기된 것은 §4 (iii) 양측 만장일치 재분류로만 닫는다 — 메인 세션이 목록에서 덜어내는 넷째 경로를 열지 않는다. §4 는 닫는 경로가 셋뿐이라고 못박았고, 대가가 붙은 (iii) 옆에 대가 없는 출구를 두면 그것이 최단 경로가 된다 |
-| **설계 기준선에는 있으나** wave SRS 에 없는 것 | 그 wave target 에 `$kiwi-srs` **증분** 저작 재진입 → 이어서 planning 단계부터 pipeline **재진입** |
-| feasibility · planning 단계가 draft 로 남은 REQ | 그 REQ 만 `--req-filter` (`<REQ-ID[,…]>`) 로 지정해 `$kiwi-srs-feasibility` 재실행 후 planning 재진입; 승급 실패 시 `reason_class="draft-stability-skip"` 로 residual |
+| **설계 기준선에는 있으나** wave SRS 에 없는 것 | 그 wave target 에 `$kiwi-srs` **증분** 저작 재진입 → 이어서 SDS 작성 단계부터 그 wave **재진입** |
+| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 `--req-filter` (`<REQ-ID[,…]>`) 로 지정해 `$kiwi-srs-feasibility` 재실행 후 SDS 작성 단계부터 재진입; 승급 실패 시 `reason_class="draft-stability-skip"` 로 residual |
 
 **금지**: fixer 는 **AC 본문**을 수정하지 않는다. 기존 **테스트를 약화하거나 삭제**하지 않는다(`kiwi-coder §0.20` 확장 — 판정 기준은 그 절의 closed list 를 그대로 따른다). `severity_class` 는 그 finding 을 제기한 검증자만 작성하며 fixer 도 메인 세션도 손대지 않는다. 결함을 고치는 대신 기준을 낮추는 것이 이 루프에서 가장 값싼 우회로이므로 셋 다 명시적으로 막는다.
 
 `kiwi-review-fix-loop` **자신의 PASS 는 wave 게이트를 충족하지 않는다** — wave 수준 finding 은 오직 두 검증자의 재검증으로만 닫힌다. 그렇지 않으면 "하위 루프가 TASK_DONE 을 반환했으니 wave 검증도 통과"라는 다른 게이트의 판정으로 이 게이트를 대신하는 우회가 열린다.
 
-파이프라인 재진입은 명시 범위를 함께 전달한다 — **미해소 요구사항 필터**(그 라운드에 미대응으로 남은 REQ 목록)를 `--req-filter` 로, 기존 `plan_run_id` 를 **재사용**하는지 여부를 `--plan-run-id` 로 넘긴다. 범위 없이 재진입하면 이미 통과한 Task 까지 다시 돌아 한 라운드의 비용이 계획 전체로 불어난다.
+wave 재진입은 명시 범위를 함께 전달한다 — **미해소 요구사항 필터**(그 라운드에 미대응으로 남은 REQ 목록)를 `--req-filter` 로, 기존 sds-id 를 **재사용**하는지 여부를 `--sds-id` 로 넘긴다 — 중단된 재진입을 이어갈 때만 그 id 를 재사용하고, 새 갭은 새 재진입 id `{run_id}-wave-{n}-r{m}` 로 쓴다(`parallel-waves.md §3`). 범위 없이 재진입하면 이미 통과한 요구까지 다시 돌아 한 라운드의 비용이 wave 전체로 불어난다. 재진입의 수정은 원래 워커가 아니라 새 워커나 독립 서브에이전트가 한다.
 
 증분 저작이 완료된 이전 wave 의 target 을 건드려야 하면 `wave-verify-cross-wave-fix-required` 게이트가 그대로 적용된다 — 재진입 경로가 완료 불가역성을 우회하는 통로가 되지 않게 한다.
 
@@ -147,7 +147,7 @@ finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인
 
 이전 wave 의 **요구사항을 바꿔야** 하는 finding 도 이월을 먼저 시도하고, 남은 wave 와 신규 wave 양쪽이 **모두 불가능할 때에만** HALT 한다 — 완료된 target 을 되돌리는 일이기 때문이다.
 
-이전 wave 가 만든 **코드를 바꿔야** 하는 finding 은 남은 wave 의 scope 로 이월한다. 남은 wave 가 없으면 §0.5 예외에 따라 새 wave 를 추가하고 거기로 이월한다.
+이전 wave 가 만든 **코드를 바꿔야** 하는 finding 은 남은 wave — SRS 저작을 아직 시작하지 않은 wave(`parallel-waves.md §3`) — 의 scope 로 이월한다. 남은 wave 가 없으면 §0.5 예외에 따라 새 wave 를 추가하고 거기로 이월한다.
 
 이월은 `cross_wave` = true 와 `carried_into` = 이월한 wave id 로 `verification.residual` 에 남긴다. 이월은 이전 wave 의 `complete` 이벤트를 수정하거나 되돌리지 않는다 — 저널은 append-only 이고, 되돌림은 §0.6 재개 규약을 무너뜨린다.
 

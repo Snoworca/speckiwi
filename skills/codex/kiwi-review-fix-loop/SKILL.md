@@ -16,6 +16,13 @@ accepted fixes with optional response comments.
 The main session orchestrates only. Code review and code modification must be
 performed by separate delegated workers or clearly separated passes.
 
+## Official Workflow Tool Policy
+
+For covered workflow artifact flows, use official SpecKiwi workflow tools before raw file reads:
+
+1. Read the resume state through MCP `workflow_resolve_artifact` with the run's `runId`, `kind` `coder-state` and `includeBody` `true` (the `.kiwi/sessions/{run-id}/state.json` this skill resumes from), and `workflow_worklog_tail`, before reading `.kiwi/sessions`, worklogs, or pipeline JSONL directly.
+2. Raw file fallback is degraded mode. It is allowed only after capturing tool diagnostics, affected artifact paths, active target, and a follow-up requirement or candidate ID in `state.json`, the run report, or worklog.
+
 ## 0. Core Rules (SSOT)
 
 | Key | Rule |
@@ -29,6 +36,7 @@ performed by separate delegated workers or clearly separated passes.
 | §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Finding classification remains local policy; `--auto` only governs user-decision gates. |
 | §0.8 | Emit pipeline events through `../_shared/kiwi/pipeline-event.md`. |
 | §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
+| §0.10 | **Test sufficiency.** Whenever a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`), the last verification step runs the check of `../_shared/kiwi/test-sufficiency.md` (Test Sufficiency section). |
 | §0.17 | **기존 구조 불가침** (kiwi-coder §0.20 정합). fix 로 green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동**을 모두 **금지**한다 — 본 스킬은 kiwi-coder 를 거치지 않는 코드 변경 경로이므로, 여기서 보존 규약이 빠지면 그 우회로가 그대로 열린다. 판정 기준은 kiwi-coder §0.20.1~§0.20.3 를 그대로 따른다. 탐지·차단 = fixer pass 의 diff 스캔 + `existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved` 게이트 |
 
 ### `--auto` critical_gates[]
@@ -50,6 +58,7 @@ performed by separate delegated workers or clearly separated passes.
 | `empty-code-scope` | no code target survives the class filter (파일 부류 경계) | 파일 부류 경계 |
 | `review-coverage-mismatch` | 리뷰 커버리지 대조 실패가 2회 연속 — 무효 라운드만 쌓이며 cap 을 소진한다 (리뷰 커버리지 분모) | 리뷰 커버리지 분모 |
 | `existing-file-deleted-or-moved` | fix diff 에서 비-테스트 기존 파일의 삭제·이동 검출 (§0.17) | fix scan |
+| `test-sufficiency-gap` | citation gaps remain after the one fill attempt of the test-sufficiency check — a requirement whose gaps remain is not written as `verified` (`../_shared/kiwi/test-sufficiency.md`) | Test Sufficiency section |
 | `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — evidence and promotion stacked on a requirement that carries an error cannot be read back to what admitted them | before the `--close-reqs` promotion |
 
 **Where this gate is observed**: at the hop this row's third cell names, run MCP `validate_spec` — the CLI fallback is `speckiwi validate --json`. While any error-severity diagnostic remains, do not proceed with that hop: halt at `validate-spec-error`, which `--auto` does not lift. Never record a pass without having run it.
@@ -67,6 +76,8 @@ performed by separate delegated workers or clearly separated passes.
 | dry run | `--dry-run` | off |
 | skip PR response | `--no-respond` | off |
 | close implemented REQs | `--close-reqs` | off |
+| requirement scope of the test-sufficiency check | `--req-filter <id,...>` | off |
+| lite SDS (`docs/sds/*.sds.md`) passed to the test-sufficiency check | `--sds <path>` | off |
 | resume | `--resume` | off |
 | mini mode | `--mini` | off (skill default cap) |
 | loop round cap | `--loops N` | off (skill default cap) |
@@ -94,8 +105,9 @@ performed by separate delegated workers or clearly separated passes.
     **커버리지 대조를 통과한 라운드만 PASS 가 된다** — finding 개수만으로는 PASS 가 나오지 않는다. 대조 결과는 리뷰 커버리지 분모 section 이 정하며, 무효 라운드는 어느 행에도 해당하지 않는다.
 11. Run regression and affected tests.
 12. In PR mode, write a response comment unless `--no-respond`.
-13. If `--close-reqs`, register per-REQ test evidence and move eligible REQs from `implemented` to `verified`.
-14. Write report and emit pipeline event.
+13. Test sufficiency, the last verification step: when a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`), run the check of `../_shared/kiwi/test-sufficiency.md` (Test Sufficiency section).
+14. If `--close-reqs`, register per-REQ test evidence and move eligible REQs from `implemented` to `verified`.
+15. Write report and emit pipeline event.
 
 ### 보존 스캔 (fixer diff, §0.17)
 
@@ -113,6 +125,27 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 - **캡처 실패 격하**: 캡처 자체가 실패하면 (스위트 명령 미검출 등) `state.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며 그 사실을 보고서에 명시한다
 - **부모 기준선 우선**: `--regression-baseline` 으로 상위 오케스트레이터가 pin 한 기준선을 받으면 그 값이 자기 시점 캡처보다 **우선한다** — 값이 주어지면 자체 캡처를 수행하지 않고 전달된 기준선을 `state.regression_baseline` 에 그대로 고정한다. 방금 만들어진 실패를 "기존 실패"로 분류해 `TASK_DONE` 을 반환하는 것이 wave 게이트와 정면으로 어긋나기 때문이다.
 
+## Test Sufficiency (last verification step)
+
+When a requirement scope is known, run the check of `../_shared/kiwi/test-sufficiency.md` after regression. It is this skill's last verification; only the `--close-reqs` promotion and the report follow it.
+
+| Scope input | Scope passed |
+|---|---|
+| `--close-reqs` | the `eligible` set (Close Requirements in `references/extended-workflow.md`), built at this step — the denominator and the intersection are reads, outside the section-zero mutation prohibition |
+| `--req-filter <id,...>` | those IDs |
+| `--sds <path>` | without the two inputs above, the IDs the lite SDS names with `@req` (the requirement IDs in the summary of MCP `check_sds` / `speckiwi sds check`); the SDS itself is passed as `--sds` in every case |
+| none of the three | the check does not run — the result is `no-scope`, never recorded as a pass |
+
+When several inputs are given, the earlier row sets the IDs. With `--close-reqs`, the check's scope is always the whole `eligible` set the promotion will write — `--req-filter` and `--sds` shape `scoped` (Close Requirements in `references/extended-workflow.md`) and never narrow the check below it, because every requirement the promotion writes must pass through the check.
+
+When the run is in a linked worktree, such as a worker's, the check reads that worktree — pass `workspaceRoot` = that worktree's absolute path to MCP `check_test_sufficiency`, or run the CLI with that worktree as cwd (`../_shared/kiwi/test-sufficiency.md` §3 step 1). The fill subagent writes in the same worktree.
+
+With `--close-reqs`, this step ends by running the test files of the citations the promotion will use as evidence, as `../_shared/kiwi/test-sufficiency.md` §4 requires, and hands only the citations of tests that passed in that run to the promotion — a citation whose test failed, was skipped or did not run leaves its AC a gap, and a remaining gap raises `test-sufficiency-gap`. The tool reads citations and never runs a test, so without this run a citation in an unchanged file or on a skipped test would become evidence.
+
+The fill subagent (contract §3) is a second code writer beside the fixer pass, and it writes new tests only. Run the preservation scan (보존 스캔 section) over its diff. Under `--dry-run` there is no fill and no rerun; the first result is reported (contract §3).
+
+Record the result as `test_sufficiency.json` (contract §5). When `test-sufficiency-gap` is raised the run waits for the user: it does not end `TASK_DONE` and does not enter the `--close-reqs` promotion.
+
 ## `--close-reqs` Gate
 
 Skip or halt when:
@@ -123,6 +156,7 @@ Skip or halt when:
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
 | CRITICAL/HIGH finding remains | halt |
+| the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
 | `eligible` is at least one and `transitioned` is zero | NOT `TASK_DONE`; end `FAILED` and report |
@@ -132,12 +166,15 @@ Skip or halt when:
 
 For each eligible REQ:
 
-1. Call `add_verification_evidence` with `type="test"` and a concrete test/report path, once for each
-   acceptance criterion the change touched, naming that criterion in `covers`.
-2. Call `check_acceptance_criteria` for those criteria. **For each acceptance criterion, name the test
-   identifier that passed it first** — a file path and test name, or the `reference` step 1 registered
-   under `covers` for that same criterion. **Do not check a criterion for which no such identifier is
-   named**: leave it out of `acIds` and record the requirement as skipped. Checking is a mutation, so a
+1. Call `add_verification_evidence` with `type="test"`, `reference` = the test file the test-sufficiency
+   step cited for an acceptance criterion and `covers` = that criterion, once per cited criterion
+   (`../_shared/kiwi/test-sufficiency.md` §4).
+2. Call `check_acceptance_criteria` for those criteria. **For each acceptance criterion, the test
+   identifier that passed it is the citation the test-sufficiency step returned for it** — a file path
+   and test line; the agent does not name one itself, and step 1 registered that citation as the
+   `reference` under `covers` for that same criterion. **Do not check a criterion for which no such
+   identifier is named** — one the tool returned no citation for: leave it out of `acIds` and record
+   the requirement as skipped. Checking is a mutation, so a
    criterion ticked without a named test satisfies the gate in form only.
 3. Then call `update_status` to `verified`. `update-status.ts` requires every criterion checked AND
    evidence present, so a transition attempted without step 2 returns `MUTATION_DENIED`.
@@ -183,7 +220,7 @@ For each eligible REQ:
 
 **빈 범위는 통과가 아니다** — 필터 후 코드 대상이 **0건**이면 PASS 를 보고하지 않고 `empty-code-scope` 로 **중단**한다. 아무것도 보지 않은 실행이 품질 게이트 통과로 기록되면, 빈 기준선이 깨끗한 기준선과 구별되지 않는다.
 
-**알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.**
+**알려진 한계**: 후보가 처음부터 전부 산문이면 이 중단이 오케스트레이터의 종료 hop 과 충돌한다. 그 hop 은 통과 판정을 기록하는 모든 경계가 이 스킬을 정확히 한 번 거치도록 요구하는데, 준비된 면제 분기의 술어는 **커밋 창의 공백**이라 산문 커밋이 든 창에는 걸리지 않는다. 요구나 설계 문서만 산출한 wave 가 여기 해당한다. 해소하려면 `FR-FLOW-131` 이 소유한 그 술어를 넓히거나 별도 verdict 을 도입해야 하며, 둘 다 요구 수준의 결정이라 이 절이 정하지 않는다. **`FR-FLOW-152` 의 후속으로 남긴다.** 단 `_shared/kiwi/parallel-waves.md` PW-12 의 stage 마감 호스트 hop 은 부르기 전에 창의 파일을 이 절의 부류 표로 걸러, 코드 파일이 없으면 이 스킬을 부르지 않고 `no-host-code-commits` 를 기록한다 — 그 경계에서는 이 충돌이 생기지 않는다.
 
 **산문 finding 은 어디로 가는가** — 부류 밖 문서에서 눈에 띈 문제는 SRS finding 에 쓰는 것과 같은 채널로 흘린다: 고치지 않고 보고하며, 담당 스킬을 지목해 위임을 권고한다.
 

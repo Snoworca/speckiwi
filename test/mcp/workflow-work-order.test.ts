@@ -7,7 +7,7 @@ import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { createWorkflowFixture } from "../fixtures/workflow-artifacts.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function runCliJson(root: string, args: string[]): Promise<Record<string, unknown>> {
@@ -27,11 +27,12 @@ describe("FR-MCP-024 get_next_work_order tool", () => {
     expect(isReadOnlyTool("get_next_work_order")).toBe(true);
 
     const scenarios = [
-      { path: fixture.idOrderPlanPath, action: "execute-task" },
-      { path: fixture.planPath, action: "resume-session" },
-      { path: fixture.stalePlanPath, action: "fix-artifact" },
-      { path: fixture.blockedPlanPath, action: "blocked" },
-      { path: fixture.completePlanPath, action: "complete" }
+      { path: fixture.freshSdsPath, action: "execute-sds" },
+      { path: fixture.sdsPath, action: "resume-session" },
+      { path: fixture.draftSdsPath, action: "create-sds" },
+      { path: fixture.invalidSdsPath, action: "fix-artifact" },
+      { path: fixture.blockedSdsPath, action: "blocked" },
+      { path: fixture.completeSdsPath, action: "complete" }
     ];
 
     for (const scenario of scenarios) {
@@ -41,22 +42,22 @@ describe("FR-MCP-024 get_next_work_order tool", () => {
       expect(JSON.stringify(mcp)).not.toContain("#### Requirement");
     }
 
-    const measured = (await server.callTool("get_next_work_order", { path: fixture.idOrderPlanPath, measure: true })) as Record<string, unknown>;
+    const measured = (await server.callTool("get_next_work_order", { path: fixture.freshSdsPath, measure: true })) as Record<string, unknown>;
     expect(measured).toMatchObject({
-      action: "execute-task",
+      action: "execute-sds",
       measurement: { baselineBytes: expect.any(Number), compactBytes: expect.any(Number), requiredFieldsPresent: true }
     });
 
-    const explained = (await server.callTool("get_next_work_order", { path: fixture.planPath, explain: true, contextProfile: "compact" })) as Record<string, unknown>;
+    const explained = (await server.callTool("get_next_work_order", { path: fixture.sdsPath, explain: true, contextProfile: "compact" })) as Record<string, unknown>;
     expect(explained).toMatchObject({
       action: "resume-session",
       profile: "explain",
       contextProfile: "compact",
       decisionTrace: expect.arrayContaining([expect.objectContaining({ step: "decision", outcome: "resume-session" })]),
-      rejectedCandidates: expect.arrayContaining([expect.objectContaining({ action: "execute-task" })])
+      rejectedCandidates: expect.arrayContaining([expect.objectContaining({ action: "execute-sds" })])
     });
 
-    const compact = (await server.callTool("get_next_work_order", { path: fixture.idOrderPlanPath, profile: "compact" })) as Record<string, unknown>;
-    expect(compact).toMatchObject({ action: "execute-task", profile: "compact" });
+    const compact = (await server.callTool("get_next_work_order", { path: fixture.freshSdsPath, profile: "compact" })) as Record<string, unknown>;
+    expect(compact).toMatchObject({ action: "execute-sds", profile: "compact" });
   });
 });

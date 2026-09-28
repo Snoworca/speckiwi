@@ -14,6 +14,7 @@ Write under `docs/analysis/kiwi-review-fix-loop-{run-id}/`:
 - `regression_run.jsonl`
 - `rejected_findings.log`
 - `pr_response.md` in PR mode when responding
+- `test_sufficiency.json` when a requirement scope is known (SKILL.md Test Sufficiency section)
 - `closed_reqs.json` and `mcp_call_log.jsonl` when `--close-reqs` is active
 - `report.md`
 
@@ -114,7 +115,7 @@ Do not include tool signatures.
 
 ## Close Requirements
 
-Before `--close-reqs` mutations:
+Before `--close-reqs` mutations (the test-sufficiency step runs steps 1-4 and applies the name table below first to build `eligible`, and the promotion reuses that set):
 
 1. Call SpecKiwi MCP `get_active_target` to resolve this run's target, then call
    `list_requirements({ target, status: "implemented" })`. What it returns is the
@@ -130,7 +131,9 @@ Before `--close-reqs` mutations:
    link at all, and called without a target it answers with the same active-target
    summary step 1 already received.
 3. Build the SCOPED set by intersecting the denominator with this run's review
-   scope, using trace links and high-confidence scope/path heuristics.
+   scope, using trace links and high-confidence scope/path heuristics — unless
+   the caller named the scope with `--sds` or `--req-filter`, in which case the
+   intersection is taken with that ID set (see the `scoped` row).
 4. Candidates below high confidence leave the intersection but are COUNTED AS
    EXCLUDED, not dropped.
 
@@ -139,7 +142,7 @@ Four names, used exactly:
 | Name | What it is |
 |---|---|
 | `denominator` | what `list_requirements` returned; the skill does not build it |
-| `scoped` | the denominator intersected with this run's review scope |
+| `scoped` | the denominator intersected with this run's review scope. When the caller named the scope with `--sds` or `--req-filter`, the intersection is taken with that ID set (for `--sds`, the SDS's `@req` requirements) and the heuristics of step 3 are not used — a named requirement the heuristics missed would stay unpromoted and keep the SDS alive after the run (`kiwi-sds` §3.2) |
 | `eligible` | `scoped` minus prose-evidence requirements and those whose stability is `draft` or `deprecated`; a status other than `implemented` was already filtered by the denominator |
 | `transitioned` | how many actually reached `verified` |
 | `excluded` | the requirements in `scoped` that were not closed, enumerated one per requirement with a reason |
@@ -154,12 +157,13 @@ to exactly the requirements a person still has to act on.
 
 Mutation order per REQ:
 
-1. `add_verification_evidence` with `type="test"`, a concrete reference, and
-   `covers` naming the acceptance criterion that reference proves.
+1. `add_verification_evidence` with `type="test"`, `reference` = the test
+   file the test-sufficiency step cited for the acceptance criterion, and
+   `covers` = that criterion (`../../_shared/kiwi/test-sufficiency.md` §4).
 2. `check_acceptance_criteria` for those criteria. For each acceptance
-   criterion, name the test identifier that passed it first — a file path and
-   test name, or the `reference` step 1 registered under `covers` for that
-   same criterion. Do not check a criterion for which no such identifier is
+   criterion, the test identifier that passed it is the citation the
+   test-sufficiency step returned for it — the agent does not name one
+   itself. Do not check a criterion for which no such identifier is
    named; leave it out of `acIds` and record the requirement as skipped.
 3. `update_status` to `verified`.
 

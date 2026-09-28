@@ -132,7 +132,7 @@ describe("FR-NODE-174 AC-7 — promotion is the third writer of a Status row and
 
     const result = await promoteStepRequirement(projectRoot, { id: REQ_ID, fromStep: STEP, toScope: "ARCH" });
 
-    expect(result.ok, result.ok ? "" : result.error.message).toBe(true);
+    expect(result.ok, result.ok ? "" : result.error?.message).toBe(true);
     const workspace = await parseWorkspace(projectRoot);
     expect(workspace.records.find((record) => record.id === REQ_ID)?.status).toBe("verified");
   });

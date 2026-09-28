@@ -12,7 +12,6 @@ import {
   planDuplicationAudit,
   AUDIT_VERDICTS,
   type AuditRow,
-  type DuplicationGateContext,
   type LaneDiff
 } from "../../../src/core/orchestrator/duplication-audit.js";
 import { at } from "../../support/at.js";
@@ -138,55 +137,49 @@ describe("FR-NODE-135 AC-5 — no input expresses a classification and no branch
 });
 
 describe("FR-NODE-135 AC-6 — the gate requires a recorded verdict per candidate", () => {
-  const context: DuplicationGateContext = { frozenEpilogueTaskIds: ["T-EP-01", "T-EP-02"], ranEpilogueTaskIds: ["T-EP-01"] };
 
   function auditRow(overrides: Partial<AuditRow> = {}): AuditRow {
     return { symbolOrBlock: "h1", lanes: ["lane-1", "lane-2"], paths: ["a.ts", "b.ts"], verdict: "acceptable", resolutionTaskId: null, ...overrides };
   }
 
   it("refuses a candidate carrying no verdict", () => {
-    const result = checkDuplicationResolved([auditRow({ verdict: null })], context);
+    const result = checkDuplicationResolved([auditRow({ verdict: null })]);
     expect(result.ok).toBe(false);
     expect(result.violations.map((violation) => violation.gate)).toContain("cross-lane-duplication-unresolved");
   });
 
   it("refuses a candidate carrying a verdict outside the closed enum", () => {
-    const result = checkDuplicationResolved([auditRow({ verdict: "probably-fine" as AuditRow["verdict"] })], context);
+    const result = checkDuplicationResolved([auditRow({ verdict: "probably-fine" as AuditRow["verdict"] })]);
     expect(result.ok).toBe(false);
   });
 
   it("accepts a ledger in which every candidate carries a verdict from the enum", () => {
     const rows = [auditRow({ verdict: "acceptable" }), auditRow({ symbolOrBlock: "h2", verdict: "parallel-evolution" })];
-    expect(checkDuplicationResolved(rows, context)).toEqual({ ok: true, violations: [] });
+    expect(checkDuplicationResolved(rows)).toEqual({ ok: true, violations: [] });
   });
 });
 
 describe("FR-NODE-135 AC-7 — what counts as a resolution for a duplicate row", () => {
-  const context: DuplicationGateContext = { frozenEpilogueTaskIds: ["T-EP-01", "T-EP-02"], ranEpilogueTaskIds: ["T-EP-01"] };
-
   function duplicateRow(resolutionTaskId: string | null): AuditRow {
     return { symbolOrBlock: "h1", lanes: ["lane-1", "lane-2"], paths: ["a.ts", "b.ts"], verdict: "duplicate", resolutionTaskId };
   }
 
-  it("refuses a duplicate row whose resolution task id is null", () => {
-    expect(checkDuplicationResolved([duplicateRow(null)], context).ok).toBe(false);
-  });
-
-  it("refuses one naming a frozen epilogue task that has not run", () => {
-    const result = checkDuplicationResolved([duplicateRow("T-EP-02")], context);
+  it("FR-NODE-135 AC-7 refuses a duplicate row whose resolution is null", () => {
+    const result = checkDuplicationResolved([duplicateRow(null)]);
     expect(result.ok).toBe(false);
     expect(result.violations.map((violation) => violation.gate)).toContain("cross-lane-duplication-unresolved");
   });
 
-  it("accepts one naming an epilogue task that already ran", () => {
-    expect(checkDuplicationResolved([duplicateRow("T-EP-01")], context).ok).toBe(true);
+  it("FR-NODE-135 AC-7 accepts an issue:{id} reference", () => {
+    expect(checkDuplicationResolved([duplicateRow("issue:I-004")]).ok).toBe(true);
   });
 
-  it("accepts an issue reference", () => {
-    expect(checkDuplicationResolved([duplicateRow("issue:I-004")], context).ok).toBe(true);
+  it("FR-NODE-135 AC-7 refuses a task id, since no epilogue task remains to carry the consolidation", () => {
+    expect(checkDuplicationResolved([duplicateRow("T-EP-01")]).ok).toBe(false);
   });
 
-  it("refuses a note that is neither", () => {
-    expect(checkDuplicationResolved([duplicateRow("we agreed to leave it")], context).ok).toBe(false);
+  it("FR-NODE-135 AC-7 refuses a note that is not an issue reference", () => {
+    expect(checkDuplicationResolved([duplicateRow("we agreed to leave it")]).ok).toBe(false);
+    expect(checkDuplicationResolved([duplicateRow("issue:")]).ok).toBe(false);
   });
 });

@@ -1,21 +1,29 @@
-// @req IR-CLI-084 — the sidecar path grounding detector.
+// @req IR-CLI-084 — the SDS path grounding detector.
 //
-// A sidecar typo (`task-catalogue.ts` written for `task-catalog.ts`) produces no
-// `write-set-overlap` edge, so two tasks that actually collide are scheduled into different lanes,
-// the real edit is never made, and the defect surfaces only after promotion is queued.
+// An SDS typo (`lane-plans.ts` written for `lane-plan.ts`) produces no `write-set-overlap` edge, so two
+// waves that actually collide are scheduled into one stage, the real edit is never made, and the
+// defect surfaces only after promotion is queued.
 //
-// The gate is a **near-miss** detector, not an existence check. The planner sidecar schema carries
-// no to-be-created marker (`kiwi-planner` writes no to-be-created marker), so an existence check would refuse every
-// greenfield unit — including the orchestrator design's own worked example, whose whole purpose is
-// creating two new files. A path that does not exist and has no near neighbour is a legitimate new
-// file and passes.
+// The gate is a **near-miss** detector, not an existence check. An SDS Files entry carries no
+// to-be-created marker, so an existence check would refuse every greenfield wave. A path that does not
+// exist and has no near neighbour is a legitimate new file and passes.
 //
-// The impure collection of `existingPaths` and `lineCounts` stays in the command (§5.1); grounding
-// is never performed inside `computeLanePlan`, whose byte-determinism it would destroy.
-import { normalizeDeclaredPath } from "./task-catalog.js";
+// The impure collection of `existingPaths` stays in the command; grounding is never performed inside
+// `computeLanePlan`, whose byte-determinism it would destroy.
+
+/**
+ * Repo-relative POSIX form with no leading `./` and no trailing `/`, applied to both sides of the
+ * comparison. Case folding is deliberately **not** done here — it belongs to a comparison, not to the
+ * recorded value.
+ */
+export function normalizeDeclaredPath(value: string): string {
+  const posix = value.replace(/\\/g, "/").trim();
+  const withoutPrefix = posix.startsWith("./") ? posix.slice(2) : posix;
+  return withoutPrefix.replace(/\/+$/, "");
+}
 
 /** The closed verdict vocabulary. Only `grounded` and `new-file` are accepted. */
-export const GROUNDING_VERDICTS = ["grounded", "new-file", "near-miss", "absent", "line-range-out-of-range"] as const;
+export const GROUNDING_VERDICTS = ["grounded", "new-file", "near-miss", "absent"] as const;
 
 export type GroundingVerdict = (typeof GROUNDING_VERDICTS)[number];
 
@@ -24,12 +32,6 @@ const ACCEPTED: readonly GroundingVerdict[] = ["grounded", "new-file"];
 /** The `files-not-grounded` refusal set — the complement of the two accepted verdicts. */
 export function isGroundingRefusal(verdict: GroundingVerdict): boolean {
   return !ACCEPTED.includes(verdict);
-}
-
-/** One declared `files[]` or `test_files[]` entry, as the sidecar carries it. */
-export interface DeclaredEntry {
-  path: string;
-  lineRange?: string;
 }
 
 export interface GroundingResult {
@@ -85,52 +87,22 @@ function nearestExisting(path: string, existing: readonly string[]): string | nu
 }
 
 /**
- * The declared line range's highest line, or `null` when the sidecar's free-text range states no
- * numeric bound. An unparseable range contributes no constraint rather than a refusal: the design
- * defines half (b) over "its `line_range` is outside the file's line count", which an unparseable
- * string does not decide either way.
- */
-function highestDeclaredLine(lineRange: string | undefined): number | null {
-  if (typeof lineRange !== "string") return null;
-  const match = /^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/.exec(lineRange);
-  if (!match) return null;
-  const start = Number(match[1]);
-  const end = match[2] === undefined ? start : Number(match[2]);
-  return Math.max(start, end);
-}
-
-/**
- * Ground every declared entry against the injected repository facts.
+ * Ground every declared path against the injected repository paths.
  *
- * An entry is **not grounded** when (a) it does not exist at the dispatch base and some existing
- * path lies within Levenshtein distance 2 of it after POSIX normalisation — a probable typo for a
- * real file — or (b) it exists and its declared line range falls outside that file's line count.
- * `strict` tightens (a) to plain existence, for a repository that never creates files inside a wave.
+ * A path is **not grounded** when it does not exist at the dispatch base and some existing path lies
+ * within Levenshtein distance 2 of it after POSIX normalisation — a probable typo for a real file.
+ * `strict` tightens that to plain existence, for a repository that never creates files inside a wave.
  * @req IR-CLI-084
  */
-export function groundFiles(
-  declaredEntries: readonly DeclaredEntry[],
-  existingPaths: readonly string[],
-  lineCounts: Record<string, number>,
-  strict: boolean
-): GroundingResult[] {
+export function groundFiles(declaredPaths: readonly string[], existingPaths: readonly string[], strict: boolean): GroundingResult[] {
   const existing = existingPaths.map(normalizeDeclaredPath);
   const existingSet = new Set(existing);
 
-  return declaredEntries.map((entry) => {
-    const path = normalizeDeclaredPath(entry.path);
-
-    if (!existingSet.has(path)) {
-      const nearest = nearestExisting(path, existing);
-      if (nearest !== null) return { path, verdict: "near-miss" as const, nearest };
-      return { path, verdict: strict ? ("absent" as const) : ("new-file" as const) };
-    }
-
-    const declaredMax = highestDeclaredLine(entry.lineRange);
-    const lineCount = lineCounts[path];
-    if (declaredMax !== null && typeof lineCount === "number" && declaredMax > lineCount) {
-      return { path, verdict: "line-range-out-of-range" as const };
-    }
-    return { path, verdict: "grounded" as const };
+  return declaredPaths.map((declared) => {
+    const path = normalizeDeclaredPath(declared);
+    if (existingSet.has(path)) return { path, verdict: "grounded" as const };
+    const nearest = nearestExisting(path, existing);
+    if (nearest !== null) return { path, verdict: "near-miss" as const, nearest };
+    return { path, verdict: strict ? ("absent" as const) : ("new-file" as const) };
   });
 }

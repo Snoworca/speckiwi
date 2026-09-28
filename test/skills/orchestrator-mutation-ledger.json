@@ -62,17 +62,17 @@
     "variant": "claude",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt: it delegates no wave to kiwi-pipeline, and refuses an incoming kiwi-pipeline --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않는다**",
-      "replace": "**`--wt` 를 전달한다**"
+      "find": "**`--wt` 는 절대 전달하지 않는다.**",
+      "replace": "**`--wt` 는 전달한다.**"
     },
     "carriers": [
       {
-        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — 워커는 wave 마다 자기 워크트리에서 돈다",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않는다"
+        "snippet": "는 절대 전달하지 않는다"
       }
     ]
   },
@@ -150,19 +150,55 @@
   },
   {
     "variant": "claude",
-    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-WAVE",
     "owning_requirement": "FR-FLOW-118",
-    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "sentence": "§1.1 — editing a completed wave is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "완료된 단위 편집 금지;",
-      "replace": "완료된 단위 편집 허용;"
+      "find": "완료된 wave 편집 금지;",
+      "replace": "완료된 wave 편집 허용;"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
         "carrier": "금지",
-        "snippet": "완료된 단위 편집 금지"
+        "snippet": "완료된 wave 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-REDISPATCH-OF-A-POSSIBLY-LIVE-WORKER",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — re-dispatching a worker that may still be alive is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "살아 있을 수 있는 워커 재-dispatch 금지;",
+      "replace": "살아 있을 수 있는 워커 재-dispatch 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "살아 있을 수 있는 워커 재-dispatch 금지"
+      }
+    ]
+  },
+  {
+    "variant": "claude",
+    "rule_id": "R-RUN-CONTRACT-NO-WORKER-SRS-WRITE",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — a worker writing the SRS, docs/spec/ or docs/sds/ is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지;",
+      "replace": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지"
       }
     ]
   },
@@ -353,24 +389,6 @@
   },
   {
     "variant": "claude",
-    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
-    "owning_requirement": "FR-FLOW-099",
-    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**절대 행 수**이며 비율이 아니다",
-      "replace": "**절대 행 수**이며 비율이다"
-    },
-    "carriers": [
-      {
-        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
-        "carrier": "절대",
-        "snippet": "**절대 행 수**이며 비율이 아니다"
-      }
-    ]
-  },
-  {
-    "variant": "claude",
     "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
     "owning_requirement": "FR-FLOW-076",
     "sentence": "§2 — `intent` is appended before the verb and `result` after it",
@@ -462,42 +480,6 @@
     "mutation": {
       "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
       "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "claude",
-    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "그것이 **열 개**다",
-      "replace": "그것이 **여러 개**다"
-    },
-    "carriers": []
-  },
-  {
-    "variant": "claude",
-    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
-      "replace": "동결 분모: lane 의 `write_set`."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "claude",
-    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**어떤 편집도 적용하지 않는다**",
-      "replace": "**어떤 편집도 적용한다**"
     },
     "carriers": []
   },
@@ -564,17 +546,17 @@
     "variant": "codex",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt: it delegates no wave to kiwi-pipeline, and refuses an incoming kiwi-pipeline --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않는다**",
-      "replace": "**`--wt` 를 전달한다**"
+      "find": "**`--wt` 는 절대 전달하지 않는다.**",
+      "replace": "**`--wt` 는 전달한다.**"
     },
     "carriers": [
       {
-        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — 워커는 wave 마다 자기 워크트리에서 돈다",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않는다"
+        "snippet": "는 절대 전달하지 않는다"
       }
     ]
   },
@@ -652,19 +634,55 @@
   },
   {
     "variant": "codex",
-    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-WAVE",
     "owning_requirement": "FR-FLOW-118",
-    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "sentence": "§1.1 — editing a completed wave is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "완료된 단위 편집 금지;",
-      "replace": "완료된 단위 편집 허용;"
+      "find": "완료된 wave 편집 금지;",
+      "replace": "완료된 wave 편집 허용;"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
         "carrier": "금지",
-        "snippet": "완료된 단위 편집 금지"
+        "snippet": "완료된 wave 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-REDISPATCH-OF-A-POSSIBLY-LIVE-WORKER",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — re-dispatching a worker that may still be alive is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "살아 있을 수 있는 워커 재-dispatch 금지;",
+      "replace": "살아 있을 수 있는 워커 재-dispatch 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "살아 있을 수 있는 워커 재-dispatch 금지"
+      }
+    ]
+  },
+  {
+    "variant": "codex",
+    "rule_id": "R-RUN-CONTRACT-NO-WORKER-SRS-WRITE",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — a worker writing the SRS, docs/spec/ or docs/sds/ is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지;",
+      "replace": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지"
       }
     ]
   },
@@ -855,24 +873,6 @@
   },
   {
     "variant": "codex",
-    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
-    "owning_requirement": "FR-FLOW-099",
-    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**절대 행 수**이며 비율이 아니다",
-      "replace": "**절대 행 수**이며 비율이다"
-    },
-    "carriers": [
-      {
-        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
-        "carrier": "절대",
-        "snippet": "**절대 행 수**이며 비율이 아니다"
-      }
-    ]
-  },
-  {
-    "variant": "codex",
     "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
     "owning_requirement": "FR-FLOW-076",
     "sentence": "§2 — `intent` is appended before the verb and `result` after it",
@@ -964,42 +964,6 @@
     "mutation": {
       "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
       "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "codex",
-    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "그것이 **열 개**다",
-      "replace": "그것이 **여러 개**다"
-    },
-    "carriers": []
-  },
-  {
-    "variant": "codex",
-    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
-      "replace": "동결 분모: lane 의 `write_set`."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "codex",
-    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**어떤 편집도 적용하지 않는다**",
-      "replace": "**어떤 편집도 적용한다**"
     },
     "carriers": []
   },
@@ -1066,17 +1030,17 @@
     "variant": "etc",
     "rule_id": "R-NO-WT-PROPAGATION-TO-DELEGATED-PIPELINE",
     "owning_requirement": "FR-FLOW-088",
-    "sentence": "§0.I — the orchestrator never propagates --wt to kiwi-pipeline — it delegates no wave to it — and refuses an incoming --wt delegation request at Preflight P.2",
+    "sentence": "§0.I — the orchestrator never propagates --wt: it delegates no wave to kiwi-pipeline, and refuses an incoming kiwi-pipeline --wt delegation request at Preflight P.2",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "**`--wt` 를 절대 전달하지 않는다**",
-      "replace": "**`--wt` 를 전달한다**"
+      "find": "**`--wt` 는 절대 전달하지 않는다.**",
+      "replace": "**`--wt` 는 전달한다.**"
     },
     "carriers": [
       {
-        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — `wt-delegation-refused` 의 wave 수준 근거를 상속하지 않는 이유",
+        "heading_path": "kiwi-orchestrator v0.1 > 0.I 격리(isolation) — 워커는 wave 마다 자기 워크트리에서 돈다",
         "carrier": "절대",
-        "snippet": "를 절대 전달하지 않는다"
+        "snippet": "는 절대 전달하지 않는다"
       }
     ]
   },
@@ -1154,19 +1118,55 @@
   },
   {
     "variant": "etc",
-    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-UNIT",
+    "rule_id": "R-RUN-CONTRACT-NO-EDIT-COMPLETED-WAVE",
     "owning_requirement": "FR-FLOW-118",
-    "sentence": "§1.1 — editing a completed unit is prohibited",
+    "sentence": "§1.1 — editing a completed wave is prohibited",
     "mutation_class": "deleted negation",
     "mutation": {
-      "find": "완료된 단위 편집 금지;",
-      "replace": "완료된 단위 편집 허용;"
+      "find": "완료된 wave 편집 금지;",
+      "replace": "완료된 wave 편집 허용;"
     },
     "carriers": [
       {
         "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
         "carrier": "금지",
-        "snippet": "완료된 단위 편집 금지"
+        "snippet": "완료된 wave 편집 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-REDISPATCH-OF-A-POSSIBLY-LIVE-WORKER",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — re-dispatching a worker that may still be alive is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "살아 있을 수 있는 워커 재-dispatch 금지;",
+      "replace": "살아 있을 수 있는 워커 재-dispatch 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "살아 있을 수 있는 워커 재-dispatch 금지"
+      }
+    ]
+  },
+  {
+    "variant": "etc",
+    "rule_id": "R-RUN-CONTRACT-NO-WORKER-SRS-WRITE",
+    "owning_requirement": "FR-FLOW-118",
+    "sentence": "§1.1 — a worker writing the SRS, docs/spec/ or docs/sds/ is prohibited",
+    "mutation_class": "deleted negation",
+    "mutation": {
+      "find": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지;",
+      "replace": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 허용;"
+    },
+    "carriers": [
+      {
+        "heading_path": "kiwi-orchestrator v0.1 > 1. 재개 절차 — 본 스킬에서 가장 먼저 수행하는 것 > 1.1 `00.run-contract.md`",
+        "carrier": "금지",
+        "snippet": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지"
       }
     ]
   },
@@ -1357,24 +1357,6 @@
   },
   {
     "variant": "etc",
-    "rule_id": "R-ALLOW-PLAN-RESIDUAL-IS-AN-ABSOLUTE-ROW-COUNT",
-    "owning_requirement": "FR-FLOW-099",
-    "sentence": "§16 — --allow-plan-residual N raises an absolute row count and not a ratio",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**절대 행 수**이며 비율이 아니다",
-      "replace": "**절대 행 수**이며 비율이다"
-    },
-    "carriers": [
-      {
-        "heading_path": "kiwi-orchestrator v0.1 > 16. 옵션",
-        "carrier": "절대",
-        "snippet": "**절대 행 수**이며 비율이 아니다"
-      }
-    ]
-  },
-  {
-    "variant": "etc",
     "rule_id": "R-JOURNAL-INTENT-BEFORE-VERB-RESULT-AFTER",
     "owning_requirement": "FR-FLOW-076",
     "sentence": "§2 — `intent` is appended before the verb and `result` after it",
@@ -1466,42 +1448,6 @@
     "mutation": {
       "find": "5. 그 라운드에서 **어떤 수정도 적용되지 않았을 것**.",
       "replace": "5. 그 라운드에서 **어떤 수정도 적용되었을 것**."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "etc",
-    "rule_id": "R-HANDOFF-TEN-REQUIRED-BODY-HEADINGS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.1 — the handoff carries exactly ten required body headings, and the body states the count as ten",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "그것이 **열 개**다",
-      "replace": "그것이 **여러 개**다"
-    },
-    "carriers": []
-  },
-  {
-    "variant": "etc",
-    "rule_id": "R-HANDOFF-LOOP-H-VERIFIER-2-DENOMINATOR-INCLUDES-NULL-TEST-ID-ROWS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — loop H verifier 2's frozen denominator is the lane's write_set union the acceptance[] rows carrying test_id: null, not write_set alone",
-    "mutation_class": "weakened quantifier",
-    "mutation": {
-      "find": "동결 분모: lane 의 `write_set` ∪ `test_id: null` 을 운반하는 `acceptance[]` 행.",
-      "replace": "동결 분모: lane 의 `write_set`."
-    },
-    "carriers": []
-  },
-  {
-    "variant": "etc",
-    "rule_id": "R-HANDOFF-EXECUTABILITY-PROBE-APPLIES-NO-EDITS",
-    "owning_requirement": "FR-FLOW-081",
-    "sentence": "§9.3 — the executability probe runs in the final round only and applies no edits",
-    "mutation_class": "deleted negation",
-    "mutation": {
-      "find": "**어떤 편집도 적용하지 않는다**",
-      "replace": "**어떤 편집도 적용한다**"
     },
     "carriers": []
   },

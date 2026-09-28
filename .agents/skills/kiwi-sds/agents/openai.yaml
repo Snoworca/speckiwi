@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi SDS"
+  short_description: "Author and close a lite SDS for the requirements in scope"
+  default_prompt: "Use $kiwi-sds to author a lite SDS for the requirements about to be implemented and check it with speckiwi sds check."

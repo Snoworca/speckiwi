@@ -81,7 +81,7 @@ describe("FR-NODE-113 AC-5 — the resume kernel cannot recompute the rung", () 
     expect(Object.keys(state).sort()).toEqual(["blocking", "classification", "drift", "nextAction"]);
     expect(cardWithRoute(lock).frozen.route).toEqual({ rung: "R-STEP", lock: `${LOCK_PATH}@${routeLockDigest(lock)}`, probe_digest: PROBE_DIGEST });
     // The probe on disk today would classify the other rung; nothing above consulted it.
-    expect(computeRoute(baseProbe(), { auto: false }).rung).toBe("R-PLAN");
+    expect(computeRoute(baseProbe({ scopes: ["NODE", "CLI"] }), { auto: false }).rung).toBe("R-ORCH");
   });
 });
 

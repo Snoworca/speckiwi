@@ -14,7 +14,7 @@ describe("FR-NODE-019 MCP granular edit tools", () => {
     registerReadTools(server, { root });
     registerMutationTools(server, { root });
 
-    expect(toolSchemas.edit_requirement_fields.id?.safeParse("FR-ARCH-001").success).toBe(true);
+    expect(toolSchemas.edit_requirement_fields?.id?.safeParse("FR-ARCH-001").success).toBe(true);
     expect(server.toolKinds.edit_requirement_fields).toBe("req-scoped");
     expect(server.toolKinds.replace_acceptance_criteria).toBe("req-scoped");
     expect(server.toolKinds.edit_requirement_table_rows).toBe("req-scoped");

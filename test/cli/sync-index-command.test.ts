@@ -9,7 +9,7 @@ import { validateWorkspace } from "../../src/core/validator/validate-workspace.j
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function runJson(root: string, args: string[], expected = 0): Promise<Record<string, unknown>> {

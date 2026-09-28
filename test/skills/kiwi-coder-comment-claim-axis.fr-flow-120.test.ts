@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, type Dirent } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "./kiwi-orchestrator-variants.js";
@@ -131,7 +131,9 @@ describe("FR-FLOW-120 — the change leaves the existing contract in force", () 
     // The four prohibited acts, each pinned: a comment-claim axis that admits @req checking would
     // contradict the prohibition rather than extend the review.
     expect(body).toContain("(a) 존재 여부 점검");
-    expect(body).toContain("(b) task.req_ids 와 비교");
+    // FR-FLOW-185 AC-3: the set the tag must not be compared with is the SDS `@req` set now that the
+    // plan Task that carried `req_ids` is gone. The act is renamed, not narrowed.
+    expect(body).toContain("(b) SDS `@req` 집합과 비교");
     expect(body).toContain("(c) REQ-ID 실재성 검증");
     expect(body).toContain("(d) 라인 누락을 finding 으로 발행");
   });
@@ -230,7 +232,7 @@ describe("FR-FLOW-120 — the skill's own count claims are subject to the axis i
     const roots = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"];
     const found: string[] = [];
     const walk = (dir: string): void => {
-      let entries: ReturnType<typeof readdirSync>;
+      let entries: Dirent[];
       try {
         entries = readdirSync(path.join(REPO_ROOT, dir), { withFileTypes: true });
       } catch {
@@ -471,8 +473,13 @@ const CANONICAL_BOUND = canonical(
   "**축 8 의 경계**: 닫힌 4종 밖의 주석 주장은 finding 이 아니다 — 의도·설계 의견을 다투지 않는다. 4종은 `existsSync` · `grep -c` 로 판정되므로 축 8 은 라운드당 비용이 사실상 0 이며, 임의 주석을 코드와 대조하는 비용(요구 1건당 약 27초 수준의 추론)을 지지 않는다."
 );
 
+/**
+ * Updated deliberately for FR-FLOW-185 AC-3: the plan's DoD list and its `acceptance_tests` left with
+ * the plan, and what a run must satisfy is the SDS-AC set of the SDS it implements. The axis-8 clause —
+ * the part FR-FLOW-120 AC-7 is about — is unchanged.
+ */
 const CANONICAL_HIGH = canonical(
-  "- **HIGH**: 테스트 fail, DoD 미충족, 의도 이탈, acceptance_tests fail, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨"
+  "- **HIGH**: 테스트 fail, SDS-AC 미충족, 의도 이탈, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨"
 );
 
 /**
@@ -574,7 +581,7 @@ describe("FR-FLOW-120 — the axis contract is pinned by canonical equality, not
     const index = lines.findIndex((line, at) => at > sectionStart && line.includes("`@req` 태그 검증 금지"));
     expect(index, "the @req prohibition is gone from §5.2 or fenced").toBeGreaterThan(-1);
     const paragraph = lines[index] ?? "";
-    for (const act of ["(a) 존재 여부 점검", "(b) task.req_ids 와 비교", "(c) REQ-ID 실재성 검증", "(d) 라인 누락을 finding 으로 발행"]) {
+    for (const act of ["(a) 존재 여부 점검", "(b) SDS `@req` 집합과 비교", "(c) REQ-ID 실재성 검증", "(d) 라인 누락을 finding 으로 발행"]) {
       expect(paragraph, `the prohibition lost ${act}`).toContain(act);
     }
     expect(paragraph, "the prohibition no longer says the tag affects no gate").toContain("어떤 게이트에도 영향 주지 않는다");

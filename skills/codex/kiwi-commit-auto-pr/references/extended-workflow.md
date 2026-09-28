@@ -80,7 +80,6 @@ Use concise Markdown:
 
 Closes #N
 REQ: FR-X-001
-Task: T-PH001-01
 ```
 
 Use `Refs #N` instead of `Closes #N` when the change does not fully close an

@@ -7,7 +7,7 @@ import { main } from "../../src/cli/index.js";
 import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { LANE_PLAN_ERROR_CODES } from "../../src/core/orchestrator/lane-plan.js";
 import { HandoffPinError } from "../../src/core/orchestrator/pinning.js";
-import { defaultCatalog, defaultLane, defaultRoot } from "../core/orchestrator/handoff-fixtures.js";
+import { sdsPath, sdsWorkspace } from "../core/orchestrator/sds-fixtures.js";
 
 // @req FR-NODE-166 — the vocabulary the CLI EMITS is closed over `GateId`, not only the vocabulary
 // the shipped skills DECLARE. `FR-NODE-122` asserts declared ⊆ union; nothing asserted the other
@@ -18,9 +18,6 @@ import { defaultCatalog, defaultLane, defaultRoot } from "../core/orchestrator/h
 // under test.
 
 const GATES: readonly string[] = GATE_IDS;
-
-/** The three `HandoffViolationCode` members that are findings rather than gates. @req FR-NODE-166 AC-5 */
-const NON_GATE_VIOLATION_CODES = ["handoff-schema-invalid", "handoff-task-field-count", "handoff-set-inequality"];
 
 const ORCHESTRATOR_SKILL_ROOTS = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"];
 
@@ -52,24 +49,6 @@ async function write(root: string, relativePath: string, text: string): Promise<
   const absolute = path.join(root, relativePath);
   await mkdir(path.dirname(absolute), { recursive: true });
   await writeFile(absolute, text, "utf8");
-}
-
-/** A sidecar whose task ids are exactly `ids`; repeating one breaks the plan's partition invariant. */
-function sidecar(ids: string[]): string {
-  return JSON.stringify({
-    schema_version: "1.1.0",
-    plan_contract: "1.2.0",
-    tasks: ids.map((id, index) => ({
-      id,
-      type: "code",
-      action: `implement ${id} (${index})`,
-      req_ids: ["FR-ARCH-001"],
-      files: [{ path: `src/${id}-${index}.ts` }],
-      test_files: [],
-      covers_ac: ["AC-1"],
-      depends_on_task: []
-    }))
-  });
 }
 
 describe("FR-NODE-166 AC-1 — refuse() takes GateId alone", () => {
@@ -113,45 +92,19 @@ describe("FR-NODE-166 AC-3 — `freeze design` reports handoff-pin-untrusted", (
   });
 });
 
-describe("FR-NODE-166 AC-4 — `schedule plan` reports lane-plan-incomplete", () => {
-  it("exits 2 with the pinned identifier when the plan is not a partition of the catalogue", async () => {
-    const root = await tempRoot();
-    await write(root, "plan.sidecar.json", sidecar(["T-A", "T-A", "T-B"]));
+describe("FR-NODE-166 AC-4 — `schedule waves` reports lane-plan-incomplete", () => {
+  it("FR-NODE-166 AC-4 exits 2 with the pinned identifier when one wave is given twice, so the lanes cannot partition the waves", async () => {
+    const root = await sdsWorkspace([{ id: "run-wave-1", files: ["src/a.ts"] }]);
 
     const refused = await run([
-      "--root", root, "orchestrate", "schedule", "plan",
-      "--plan", "plan.sidecar.json", "--out", "lanes.lock.json"
+      "--root", root, "orchestrate", "schedule", "waves",
+      "--sds", sdsPath("run-wave-1"), sdsPath("run-wave-1"),
+      "--depends", "{}", "--out", "lanes.lock.json"
     ]);
 
     expect(refused.exit, JSON.stringify(refused.payload)).toBe(2);
     expect(refused.payload.gate).toBe("lane-plan-incomplete");
     expect(GATES).toContain(refused.payload.gate);
-  });
-});
-
-describe("FR-NODE-166 AC-5 — the three non-gate violation codes stay outside the union", () => {
-  it("keeps them out of GATE_IDS", () => {
-    for (const code of NON_GATE_VIOLATION_CODES) expect(GATES, code).not.toContain(code);
-  });
-
-  it("still collapses a violation of one of them to the umbrella gate", async () => {
-    const root = await tempRoot();
-    await write(root, "lane.json", JSON.stringify(defaultLane()));
-    await write(root, "catalog.json", JSON.stringify(defaultCatalog()));
-    await write(root, "base.json", JSON.stringify(defaultRoot()));
-    await write(root, "bad.md", "# not a handoff\n");
-
-    const refused = await run([
-      "--root", root, "orchestrate", "handoff", "validate",
-      "--lane", "lane.json", "--path", "bad.md", "--catalog", "catalog.json", "--base", "base.json"
-    ]);
-
-    expect(refused.exit, JSON.stringify(refused.payload)).toBe(2);
-    const violations = refused.payload.violations as Array<{ code: string }>;
-    expect(violations.length, "the fixture must actually violate something").toBeGreaterThan(0);
-    // The collapse is only observed if the leading violation is one of the three non-gate codes.
-    expect(NON_GATE_VIOLATION_CODES, JSON.stringify(violations[0])).toContain(violations[0]?.code);
-    expect(refused.payload.gate).toBe("handoff-verify-failed");
   });
 });
 

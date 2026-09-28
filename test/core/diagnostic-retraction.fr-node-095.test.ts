@@ -89,7 +89,7 @@ describe("FR-NODE-095 AC-3 — the two emitted step codes are registered and exp
       const definition = DIAGNOSTIC_DEFINITIONS.find((candidate) => candidate.code === code);
       expect(definition, `${code} must be registered`).toBeDefined();
       expect(definition?.severity).toBe("warning");
-      expect(definition?.remediation.length).toBeGreaterThan(0);
+      expect(definition?.remediation?.length).toBeGreaterThan(0);
     }
   });
 

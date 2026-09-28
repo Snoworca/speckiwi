@@ -22,7 +22,7 @@ describe("FR-PARSE-017 — updateStability", () => {
     const root = await resolveProjectRoot(await copyFixtureWorkspace("mutation-target"));
     const result = await updateStability(root, { id: "FR-ARCH-001", stability: "frozen" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("USAGE");
+    if (!result.ok) expect(result.error?.code).toBe("USAGE");
   });
 
   it("AC-2: returns 'skip-forward' warning but applies mutation (stable→deprecated)", async () => {
@@ -30,7 +30,7 @@ describe("FR-PARSE-017 — updateStability", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await updateStability(root, { id: "FR-ARCH-001", stability: "deprecated" });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.warnings).toContain("skip-forward");
+    if (result.ok) expect(result.value?.warnings).toContain("skip-forward");
     const file = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
     expect(file).toContain("| Stability | deprecated |");
   });
@@ -41,7 +41,7 @@ describe("FR-PARSE-017 — updateStability", () => {
     const before = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
     const result = await updateStability(root, { id: "FR-ARCH-001", stability: "evolving", dryRun: true });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(false);
+    if (result.ok) expect(result.value?.written).toBe(false);
     const after = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
     expect(after).toBe(before);
   });
@@ -62,7 +62,7 @@ describe("FR-PARSE-017 — updateStability", () => {
     const root = await resolveProjectRoot(await copyFixtureWorkspace("mutation-target"));
     const result = await updateStability(root, { id: "FR-ARCH-001", stability: "bogus" as never });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("USAGE");
+    if (!result.ok) expect(result.error?.code).toBe("USAGE");
   });
 
   it("AC-5: stable→draft transition applies [DRAFT — pending decision] heading marker", async () => {
@@ -91,6 +91,6 @@ describe("FR-PARSE-017 — updateStability", () => {
     const root = await resolveProjectRoot(await copyFixtureWorkspace("mutation-target"));
     const result = await updateStability(root, { id: "FR-DOES-NOT-EXIST", stability: "draft" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("NOT_FOUND");
+    if (!result.ok) expect(result.error?.code).toBe("NOT_FOUND");
   });
 });

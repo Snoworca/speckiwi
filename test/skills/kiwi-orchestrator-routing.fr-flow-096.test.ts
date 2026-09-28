@@ -37,22 +37,27 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
     }
   });
 
-  it("AC-1 — 1.c' precedes every SRS mutation, target registration and plan authoring", () => {
+  // Revised in 4.0.0: the requirement statement now says "before any SDS authoring" — the plan the
+  // old sentence named left with the R-PLAN rung (FR-FLOW-187 AC-1).
+  it("FR-FLOW-096 AC-1 — 1.c' precedes every SRS mutation, target registration and SDS authoring", () => {
     for (const variant of VARIANTS) {
       const position = section(variant.body, /^###\s*4\.1\b/m);
       expect(position).toMatch(/1\.d 의 설계 저작 앞\*\*/);
-      expect(position).toMatch(/SRS mutation·target 등록·계획 저작보다도 앞/);
+      expect(position).toMatch(/SRS mutation·target 등록·SDS 저작보다도 앞/);
+      expect(position, `${variant.id}: plan authoring left with R-PLAN`).not.toMatch(/계획 저작/);
     }
   });
 
-  it("AC-2 — the probe's thirteen fields, each with a producer and a named call", () => {
+  // Revised in 4.0.0: S2 left with the R-PLAN rung (FR-FLOW-187 AC-1), so the probe has twelve fields.
+  it("FR-FLOW-096 AC-2 — the probe's twelve fields, each with a producer and a named call, and no S2", () => {
     for (const variant of VARIANTS) {
       const probe = section(variant.body, /^###\s*4\.2\b/m);
-      const ids = ["S1", "S2", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"];
-      expect(ids.length).toBe(13);
+      const ids = ["S1", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"];
+      expect(ids.length).toBe(12);
       const rows = probe.split("\n").filter((line) => /^\|\s*S\d/.test(line.trim()));
-      expect(rows.length, `${variant.id}: thirteen probe rows`).toBe(13);
+      expect(rows.length, `${variant.id}: twelve probe rows`).toBe(12);
       for (const id of ids) expect(new RegExp(`^\\|\\s*${id}\\s*\\|`, "m").test(probe), `${variant.id}: probe row ${id}`).toBe(true);
+      expect(/^\|\s*S2\s*\|/m.test(probe), `${variant.id}: probe row S2 was removed with R-PLAN`).toBe(false);
       expect(probe).toMatch(/`producer` · `call` · `value` · `read_at`/);
     }
   });
@@ -64,12 +69,13 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
     }
   });
 
-  it("AC-4 — what has not happened at 1.c', ending at the first SRS mutation being 3.b", () => {
+  // Revised in 4.0.0: "no plan authored" became "no SDS authored".
+  it("FR-FLOW-096 AC-4 — what has not happened at 1.c', ending at the first SRS mutation being 3.b", () => {
     for (const variant of VARIANTS) {
       const position = section(variant.body, /^###\s*4\.1\b/m);
       for (const call of ["add_requirement", "update_status", "update_stability"]) expect(position, `${variant.id}: ${call}`).toContain(call);
       expect(position).toMatch(/target 등록 없음/);
-      expect(position).toMatch(/계획 저작 없음/);
+      expect(position).toMatch(/\*\*1\.c′ 에서 아직 일어나지 않은 것\*\*:[^\n]*SDS 저작 없음/);
       expect(position).toMatch(/라우팅 아티팩트 커밋 없음/);
       expect(position).toMatch(/\*\*첫 SRS mutation 은 Phase 3\.b\*\*/);
     }
@@ -99,21 +105,27 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
 });
 
 describe("FR-FLOW-097 — disqualifier-first routing", () => {
-  it("AC-1 — D1..D8 with predicate, removed rung and a threshold in a stated unit", () => {
+  // Revised in 4.0.0: D5–D7 left with the R-PLAN rung they removed (FR-FLOW-187 AC-1).
+  it("FR-FLOW-097 AC-1 — D1..D4 and D8 with predicate, removed rung and a threshold in a stated unit, and no D5–D7", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.3\b/m);
-      for (const id of ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]) {
+      for (const id of ["D1", "D2", "D3", "D4", "D8"]) {
         expect(new RegExp(`\\|\\s*\\*\\*${id}\\*\\*`).test(body), `${variant.id}: disqualifier ${id}`).toBe(true);
+      }
+      for (const id of ["D5", "D6", "D7"]) {
+        expect(new RegExp(`\\|\\s*\\*\\*${id}\\*\\*`).test(body), `${variant.id}: disqualifier ${id} was removed with R-PLAN`).toBe(false);
       }
       expect(body).toMatch(/\*\*모든 술어는 rung 을 제거하고, 어떤 술어도 rung 을 선택하지 않는다\.\*\*/);
       expect(body).toMatch(/단위: scope 개수/);
     }
   });
 
-  it("AC-2 — the fixed selection order, first survivor wins, R-ORCH never removed", () => {
+  // Revised in 4.0.0: the ladder is two rungs (FR-FLOW-187 AC-1).
+  it("FR-FLOW-097 AC-2 — the fixed selection order R-STEP → R-ORCH, first survivor wins, R-ORCH never removed", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.3\b/m);
-      expect(body).toContain("order: R-PLAN → R-STEP → R-ORCH");
+      expect(/^order: R-STEP → R-ORCH\s/m.test(body), `${variant.id}: the fenced order line`).toBe(true);
+      expect(body, `${variant.id}: R-PLAN left the ladder`).not.toContain("R-PLAN");
       expect(body).toMatch(/첫 생존 rung 이 이긴다/);
       expect(body).toMatch(/\*\*`R-ORCH` 는 어떤 술어로도 제거되지 않으므로 사다리는 항상 정확히 하나의 rung 에서 끝난다\.\*\*/);
     }
@@ -127,11 +139,12 @@ describe("FR-FLOW-097 — disqualifier-first routing", () => {
     }
   });
 
-  it("AC-4 — D8's map is total across all twelve field ids", () => {
+  // Revised in 4.0.0: with R-PLAN gone, S9 and S10 protect no rung and join S1 and S6 in removing nothing.
+  it("FR-FLOW-097 AC-4 — D8's map is total: seven fields remove R-STEP, S1/S6/S9/S10 remove nothing", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.3\b/m);
       expect(
-        tiedTogether(body, /D8 의 사상은 전역/, [/`S3` · `S3c` · `S4` · `S5` · `S7` · `S8` · `S12` 는 `R-STEP` 을 제거/, /`S2` · `S9` · `S10` 은 `R-PLAN` 을 제거/, /`S1` 과 `S6` 은 \*\*아무것도 제거하지 않는다\*\*/, /`R-ORCH` 는 결코 제거되지 않는다/], 700)
+        tiedTogether(body, /D8 의 사상은 전역/, [/`S3` · `S3c` · `S4` · `S5` · `S7` · `S8` · `S12` 는 `R-STEP` 을 제거/, /`S1` · `S6` · `S9` · `S10` 은 \*\*아무것도 제거하지 않는다\*\*/, /`R-ORCH` 는 결코 제거되지 않는다/], 700)
       ).toBe(true);
     }
   });
@@ -184,24 +197,36 @@ describe("FR-FLOW-098 — work-mode never removes the step rung", () => {
     }
   });
 
-  it("AC-2 — the four classifier/mode cases and their recorded outcomes", () => {
+  // Revised in 4.0.0: the fourth case — R-STEP survived but R-PLAN won the fixed order — left with
+  // the R-PLAN rung, so AC-2 enumerates three cases.
+  it("FR-FLOW-098 AC-2 — the three classifier/mode cases and their recorded outcomes", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.4\b/m);
-      const rows = body.split("\n").filter((line) => /^\|\s*rung `R-STEP`|^\|\s*D1–D4|^\|\s*`R-STEP` 은 생존/.test(line.trim()));
-      expect(rows.length, `${variant.id}: four case rows`).toBe(4);
-      expect(body).toMatch(/비치명 WARN 1건 — 모드와 rung 을 지명/);
-      expect(body).toMatch(/비치명 WARN 1건 — 모드·rung·무효화된 라우팅 절을 지명/);
+      const rows = body.split("\n").filter((line) => /^\|\s*rung `R-STEP`|^\|\s*D1–D4/.test(line.trim()));
+      expect(rows.length, `${variant.id}: three case rows`).toBe(3);
+      // FR-NODE-212 AC-1: with two rungs a surviving step rung reaches R-ORCH only through the gate's
+      // alternative; the row that states it names the lock's recorded divergence `step-rung-overridden`.
+      const override = body.split("\n").find((line) => /^\|\s*`R-STEP` 은 생존/.test(line.trim())) ?? "";
+      expect(override, `${variant.id}: the override case row`).toMatch(/`step-rung-overridden`/);
+      expect(override, `${variant.id}: the override row must not describe an order win`).not.toMatch(/순서로 [^|]*이김/);
+      expect(rows.filter((row) => /`S1\.mode == "tdd"`[^|]*\|\s*`[/$]kiwi-tdd` 를 dispatch/.test(row)), `${variant.id}: R-STEP + tdd dispatches`).toHaveLength(1);
+      expect(rows.filter((row) => /^\|\s*D1–D4[^\n]*비치명 WARN 1건 — 모드와 rung 을 지명/.test(row.trim())), `${variant.id}: D1–D4 row warns`).toHaveLength(1);
+      expect(rows.filter((row) => /tdd 가 아님\s*\|\s*`route-step-requires-mode-switch` 발화/.test(row)), `${variant.id}: non-tdd raises the gate`).toHaveLength(1);
+      expect(body, `${variant.id}: the R-PLAN case left with the rung`).not.toMatch(/R-PLAN/);
     }
   });
 
-  it("AC-3 — the gate is business-decision, out of critical_gates[], three options, one recommended", () => {
+  it("FR-FLOW-098 AC-3 — the gate is business-decision, out of critical_gates[], three options, one recommended", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.4\b/m);
       expect(body).toMatch(/`business-decision` 이고 `critical_gates\[\]` 밖이며 세 선택지/);
       for (const option of ["switch-and-step", "stay-and-orchestrate", "abort"]) expect(body, `${variant.id}: ${option}`).toContain(option);
       expect(tiedTogether(body, /`stay-and-orchestrate`/, [/\*\*있음\*\*/], 400)).toBe(true);
       expect(tiedTogether(body, /`switch-and-step`/, [/docs\/spec\/steps\/state\.md/], 300)).toBe(true);
-      expect(tiedTogether(body, /`abort`/, [/요구·target·계획·work-mode 를 하나도 변경하지 않는다/], 300)).toBe(true);
+      // Revised in 4.0.0: the plan the abort row listed is gone; AC-3 names requirement, target and work-mode.
+      const abortRow = body.split("\n").find((line) => /^\|\s*\*\*`abort`\*\*\s*\|/.test(line.trim())) ?? "";
+      expect(abortRow, `${variant.id}: the abort option row`).not.toBe("");
+      expect(abortRow).toMatch(/요구·target·SDS·work-mode 를 하나도 변경하지 않는다/);
 
       const critical = new Set(criticalGateRows(variant.body).map((row) => row.gateId));
       expect(critical.has("route-step-requires-mode-switch"), `${variant.id}: stays out of critical_gates[]`).toBe(false);
@@ -229,14 +254,14 @@ describe("FR-FLOW-098 — work-mode never removes the step rung", () => {
     }
   });
 
-  it("AC-6/AC-7 — set_work_mode is never called on the orchestrator's own authority; tdd_policy flows", () => {
+  // AC-7 retired in 4.0.0: `tdd_policy` left with the plan contract (successor FR-FLOW-185), so the
+  // assertion that it keeps flowing became an absence check.
+  it("FR-FLOW-098 AC-6 — set_work_mode is never called on the orchestrator's own authority; AC-7 retired: no tdd_policy flows", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.4\b/m);
       expect(body).toMatch(/\*\*오케스트레이터는 `set_work_mode` 를 자기 권한으로 호출하지 않는다\.\*\*/);
       expect(body).toMatch(/유일한 경로는 사람 또는 위원회가 게이트에서 `switch-and-step` 을 고르는 것/);
-      expect(
-        tiedTogether(body, /tdd_policy` 는 계속 흐른다/, [/`R-ORCH` 로 라우팅되어도/, /tdd_policy = strict/, /그 라우팅 절만 무효화된다/], 400)
-      ).toBe(true);
+      expect(variant.body, `${variant.id}: tdd_policy left with the plan contract`).not.toMatch(/tdd_policy/);
     }
   });
 });
@@ -261,10 +286,24 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       // must not write the run's pipeline journal. Both are sent unconditionally, which is why they
       // sit outside the optional brackets. The child reads them as an explicit argument and never
       // infers a parent, so dropping either here silently doubles the hop or pollutes the journal.
+      // @req FR-FLOW-181 — contract change, not a weakening. `kiwi-tdd` follows auto-option.md and
+      // declares its own critical_gates[], so `--auto` is active in it and `--auto --max` convenes
+      // the five-member committee for its business-decision gate. The earlier pins said the child
+      // ignores `--auto` and received no `--max`; both were false, and the second silently shrank
+      // that committee to three on this rung. The assertions now pin the opposite direction.
       expect(body).toContain(
-        'Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--mini | --loops N] [--model <name>]" })'
+        'Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--max] [--mini | --loops N] [--model <name>]" })'
       );
-      expect(tiedTogether(body, /--auto` 는 일관성을 위해 전달하되/, [/조용히 무시/, /오류로 읽지 않는다/], 300)).toBe(true);
+      expect(
+        tiedTogether(body, /`--auto` 와 `--max` 는 \*\*`kiwi-tdd` 자신에게도 전달한다\*\*/, [/auto-option\.md/, /§0\.AG/, /\*\*활성\*\*이다/, /5인/], 500)
+      ).toBe(true);
+      expect(body, "kiwi-tdd does not ignore --auto; saying so contradicts its §0.11").not.toMatch(/조용히 무시/);
+      // AC-2 as revised keeps the four pass-throughs away from the review hop as well as from kiwi-tdd.
+      const reviewHop = body.split("\n").find((line) => line.includes('skill: "kiwi-review-fix-loop"'));
+      expect(reviewHop, "R-STEP review hop not found").toBeDefined();
+      for (const option of ["--auto-integration", "--auto-cost-warning", "--force", "--regression-baseline"]) {
+        expect(reviewHop, `${option} must not reach the R-STEP review hop`).not.toContain(option);
+      }
       // @req FR-FLOW-132 — the flag set split when the rung gained a review hop. `--max` now
       // propagates to that child, `--regression-baseline` deliberately does not (the run-start pin
       // would take the red-phase tests outside the child's never-weaken protection), and the three
@@ -289,79 +328,42 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
     }
   });
 
-  it("AC-4/AC-5 — R-PLAN preconditions, PLAN_PATH resolution and the --resume rule", () => {
+  // AC-4 through AC-9 retired in 4.0.0: the R-PLAN row — its preconditions, its kiwi-pm invocation
+  // and --resume rule, its second review hop and flag set, and its plan-coverage close-out with
+  // `coverage_residual[]` and the critical gate `plan-coverage-unclosed` — left with the rung
+  // (successor FR-FLOW-187). What stays checkable is that none of it survives in the table.
+  it("FR-FLOW-099 AC-4..AC-9 retired — the route table carries no R-PLAN row and no plan-coverage close-out", () => {
     for (const variant of VARIANTS) {
-      const body = section(variant.body, /^####\s*4\.5\.2\b/m);
-      expect(body).toMatch(/rung = "R-PLAN"/);
-      expect(tiedTogether(body, /PLAN_PATH/, [/오케스트레이터가 명시적으로 해소한/, /최신 `generated_at` 폴백에 맡기지 않는다/], 400)).toBe(true);
-      expect(body).toMatch(/계획의 target 과 같은 활성 target/);
-      expect(body).toMatch(/\*\*설계 문서 없음, [^\n]*kiwi-srs[^\n]* 실행 없음\*\*/);
-      expect(
-        tiedTogether(body, /\.kiwi\/sessions\/\{plan run_id\}\/pm-state\.json/, [/status="done"/, /새 세션이 되어 완료된 Task 를 다시 실행한다/], 500)
-      ).toBe(true);
+      expect(section(variant.body, /^####\s*4\.5\.2\b/m), `${variant.id}: §4.5.2 was the R-PLAN row`).toBe("");
+      const table = section(variant.body, /^###\s*4\.5\b/m);
+      expect(table, `${variant.id}: §4.5 must exist`).not.toBe("");
+      expect(table).not.toMatch(/R-PLAN|PLAN_PATH|plan-coverage-unclosed|coverage_residual/);
+      expect(criticalGateRows(variant.body).map((row) => row.gateId), `${variant.id}: plan-coverage-unclosed removed`).not.toContain("plan-coverage-unclosed");
     }
   });
 
-  it("AC-6/AC-7 — the second hop is declared policy, and the flag set is stated", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^####\s*4\.5\.2\b/m);
-      // @req FR-FLOW-133 — the hop gained an explicit window. Without one it resolves against the
-      // clean tree kiwi-pm's committed units leave behind and falls back to the last five commits
-      // behind a prompt the committee answers under --auto, which would let the FR-FLOW-131
-      // obligation be discharged by a review of commits nobody chose.
-      expect(body).toContain(
-        'Skill({ skill: "kiwi-review-fix-loop", args: "--close-reqs --base {plan_window_base} --head {plan_window_head} [--auto] [--max] [--mini|--loops N]" })'
-      );
-      expect(body, "a scopeless hop is the false-clean path").not.toContain(
-        'args: "--close-reqs [--auto]'
-      );
-      expect(
-        tiedTogether(body, /두 번째 hop 은 오케스트레이터 자신이 선언한 정책/, [/상속된 의무가 아니다/, /`--close-reqs` 없이는 어떤 요구도 `verified` 에 도달하지 못하고/], 400)
-      ).toBe(true);
-      expect(body).toMatch(/`--auto` 는 \*\*명시적으로\*\* 전파한다/);
-      expect(
-        tiedTogether(body, /`--auto-cost-warning` · `--auto-integration` · `--force` 는 사용자가 지정했을 때에만 흐르고/, [/`--regression-baseline` 은 항상[\s\S]{0,40}P\.4 pin/], 300)
-      ).toBe(true);
-    }
-  });
-
-  it("AC-8/AC-9 — the close-out's three disjuncts, the residual row shape and the cap", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^####\s*4\.5\.2\b/m);
-      expect(body).toMatch(/`plan-coverage-unclosed`\(critical\)는 세 disjunct/);
-      expect(body).toMatch(/`verified` 도 아니고 `coverage_residual\[\]` 행에도 지명되지 않았을 때/);
-      expect(body).toMatch(/\*\*사유와 owner 를 함께\*\* 지명하지 않을 때/);
-      expect(body).toContain("max(--allow-plan-residual, ceil(|req_ids| / 4))");
-      expect(body).toContain("{req_id, reason, owner}");
-      expect(body).toMatch(/`reason` 은 20자 이상/);
-      // The warning this rung must carry, keyed on the warning rather than on the sentence that
-      // introduces it. FR-FLOW-161 rewrote that introduction — the skill now counts `draft` and
-      // `deprecated` as excluded-with-reason and states that a requirement outside `implemented`
-      // never enters its denominator — and the old wording was pinned here verbatim, so a
-      // correction to one requirement's text failed another requirement's contract. What both
-      // require is the same: this rung is told that the loop's `TASK_DONE` is not evidence the
-      // requirement set closed.
-      expect(
-        tiedTogether(body, /`TASK_DONE` 은 요구 집합 전체가 닫혔다는 증거가 아니다/, [/kiwi-review-fix-loop --close-reqs/, /plan-coverage-unclosed/], 700)
-      ).toBe(true);
-      expect(body).toMatch(/close-out 뒤에 `validate` → `sync-index` → `validate --fail-on-warning`/);
-    }
-  });
-
-  it("AC-10 — R-ORCH needs nothing beyond the probe and delegates by name per wave", () => {
+  // Revised in 4.0.0: R-ORCH writes one SDS per wave through kiwi-sds instead of a plan through
+  // kiwi-planner (FR-FLOW-187 AC-2); each wave's worker reviews its own window without
+  // `--close-reqs`, and the host's hop covers only the commits the host made after a merge
+  // (FR-FLOW-188 AC-2, AC-8).
+  it("FR-FLOW-099 AC-10 — R-ORCH needs nothing beyond the probe and delegates by name per wave", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(body).toMatch(/\*\*진입 전에 probe 말고 존재해야 하는 것은 없다\.\*\* 이 rung 은 자기 전제조건을 스스로 생산한다/);
-      for (const child of ["kiwi-srs", "kiwi-planner", "kiwi-pm", "kiwi-review-fix-loop"]) expect(body, `${variant.id}: ${child}`).toContain(child);
+      const fence = /```\n([\s\S]*?)```/.exec(body.slice(body.indexOf("wave 마다의 위임은 이름으로 개별 호출한다")))?.[1] ?? "";
+      expect(fence, `${variant.id}: the per-wave delegation block`).not.toBe("");
+      for (const child of ["kiwi-srs", "kiwi-srs-feasibility", "kiwi-sds", "kiwi-review-fix-loop"]) {
+        expect(new RegExp(`skill: "${child}"`).test(fence), `${variant.id}: ${child} invoked by name`).toBe(true);
+      }
+      expect(fence, `${variant.id}: kiwi-pm runs in the wave's worker`).toMatch(/^[/$]kiwi-pm SDS_PATH=/m);
+      expect(fence, `${variant.id}: kiwi-planner left R-ORCH`).not.toContain("kiwi-planner");
+      expect(body).toMatch(/각 wave 의 워커는 자기 창을 `--close-reqs` 없이 스스로 리뷰한다/);
       expect(
-        tiedTogether(body, /.kiwi-review-fix-loop. 의 교정 hop/, [/커밋 범위/, /`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다/], 400)
+        tiedTogether(body, /`[/$]kiwi-review-fix-loop` 교정 hop/, [/\*\*병합 뒤 호스트가 만든 커밋\*\*에 대해서만/, /\*\*`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다\*\*/], 400)
       ).toBe(true);
       // The sentence that used to be pinned here — this rung has no `kiwi-srs-feasibility` hop — was
-      // reversed by FR-FLOW-165, which gives the rung the hop. No criterion of FR-FLOW-099 asks for
-      // it: AC-10 names the delegation to kiwi-srs, kiwi-planner and kiwi-pm and the remediation hop
-      // carrying neither flag, all of which are asserted above. Keeping the old pin would have this
-      // file assert the opposite of what the tree now ships, which is the shape the AC-8 change note
-      // of 2026-08-28 records for the same reason. The hop and its position are held by
+      // reversed by FR-FLOW-165, which gives the rung the hop, and AC-10 as revised in 4.0.0 now names
+      // it. The hop's condition and position are held by
       // `test/skills/stability-promotion-hop.fr-flow-165.test.ts`.
     }
   });
@@ -450,10 +452,12 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
 });
 
 describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
-  it("AC-1 — E1's two triggers with their moment and cost, and the two non-triggers", () => {
+  // The requirement statement was revised in 4.0.0: escalation is one-way, `R-STEP → R-ORCH`, since
+  // the `R-PLAN → R-ORCH` direction left with the rung (FR-FLOW-187 AC-1). AC-1 itself is unchanged.
+  it("FR-FLOW-101 AC-1 — E1's two triggers with their moment and cost, and the two non-triggers", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
-      expect(body).toMatch(/\*\*승격은 `R-STEP → R-ORCH` 와 `R-PLAN → R-ORCH` 두 방향뿐이다\. 하향은 거부된다\.\*\*/);
+      expect(body).toMatch(/\*\*승격은 `R-STEP → R-ORCH` 한 방향뿐이다\. 하향은 거부된다\.\*\*/);
       expect(body).toMatch(/전이가 아니라 이미 착지한 것\*\*의 함수/);
       expect(tiedTogether(body, /SDS 가 200줄 상한에 접근/, [/첫 red 테스트 전/, /거의 0/], 300)).toBe(true);
       expect(tiedTogether(body, /MUTATION_DENIED/, [/Phase 6/, /구현이 이미 작성되어 있다/], 300)).toBe(true);
@@ -463,15 +467,13 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     }
   });
 
-  it("AC-2 — E2's three triggers and the deliberately excluded branch", () => {
+  // AC-2 retired in 4.0.0: E2 (`R-PLAN → R-ORCH`) and its three triggers left with the R-PLAN rung
+  // (successor FR-FLOW-187). The assertion became an absence check of E2.
+  it("FR-FLOW-101 AC-2 retired — no E2 escalation from R-PLAN survives", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
-      expect(tiedTogether(body, /`NEEDS_USER` 3회가 누적/, [/존재하지 않는 요구가 필요하다/], 300)).toBe(true);
-      expect(body).toMatch(/선행 작업 부재를 지명하는 `FAILED` 반환/);
-      expect(tiedTogether(body, /빈 활성 target 에서 멈추는 경우/, [/D7/, /\*\*분류기 결함\*\*/], 300)).toBe(true);
-      expect(
-        tiedTogether(body, /`deprecated`\/`frozen` 분기/, [/도달 불가/, /의도적으로 trigger 가 아니다/], 300)
-      ).toBe(true);
+      expect(body, `${variant.id}: §4.7 must exist`).not.toBe("");
+      expect(body).not.toMatch(/R-PLAN|\*\*E2\b|`NEEDS_USER` 3회가 누적/);
     }
   });
 
@@ -485,14 +487,19 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     }
   });
 
-  it("AC-4/AC-5 — the carry manifests, the already-implemented seal and its consent gate", () => {
+  // AC-4 revised in 4.0.0: carried green code is never placed in a wave SDS (it was "never re-planned
+  // as a Task"), because every SDS is implemented test-first.
+  it("FR-FLOW-101 AC-4/AC-5 — the carry manifests, the already-implemented seal and its consent gate", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
       expect(tiedTogether(body, /step 의 `design\.md` 와 `intent\.md`/, [/1\.d 의 연구 입력/, /--research-doc/], 400)).toBe(true);
       expect(
         tiedTogether(body, /exclusion_class = "already-implemented"/, [/out_of_scope/, /통합 브랜치에 남고/], 400)
       ).toBe(true);
-      expect(body).toMatch(/\*\*green 구현은 결코 Task 로 다시 계획되지 않는다\*\*/);
+      expect(
+        tiedTogether(body, /\*\*green 구현은 결코 wave SDS 에 들어가지 않는다\*\*/, [/모든 SDS 는 테스트 먼저 구현되고/, /\*\*의무적 red 확인\*\*/], 200)
+      ).toBe(true);
+      expect(body).not.toMatch(/Task 로 다시 계획/);
       expect(body).toMatch(/의무적 red 확인/);
       expect(
         tiedTogether(body, /`already-implemented` 봉인은 `--auto` 라도 `out-of-scope-user-consent` 를 발화시킨다/, [/조용할 수 없다/], 300)
@@ -597,18 +604,30 @@ describe("FR-FLOW-089 / FR-FLOW-103 — route-downgrade-available and the four r
     }
   });
 
-  it("089 AC-7 — no --serial degradation is offered and the floor's only outright refusal is named", () => {
+  // FR-FLOW-089 AC-7 is not revised, but its ground — "phase 1's default execution is serial" — is
+  // reversed by FR-FLOW-188 AC-5 (waves run in parallel by default; `--serial` is the user's choice).
+  // The floor still offers no `--serial` degradation; the reason it states is now the 4.0.0 one.
+  // SRS revision needed: FR-FLOW-089 AC-7's "because" clause.
+  it("FR-FLOW-089 AC-7 (4.0.0 meaning, FR-FLOW-188 AC-5) — the floor offers no --serial degradation and names its only outright refusal", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*7\.3\b/m);
-      expect(body).toMatch(/`--serial` 로의 저하를 제안하지 않고 오케스트레이터가 동시성을 끈다고 말하지도 않는다/);
+      expect(
+        tiedTogether(body, /거부 하한은 \*\*`--serial` 로의 저하를 제안하지 않는다\*\*/, [/stage 안의 동시성은 wave 의존과 쓰기 집합이 정하고/, /`--serial` 은 사용자의 선택이다/], 200)
+      ).toBe(true);
+      expect(body, `${variant.id}: the old serial-by-default ground`).not.toMatch(/phase 1 의 기본 실행이 이미 직렬/);
+      expect(body, `${variant.id}: the floor does not say the orchestrator turns concurrency off`).not.toMatch(/동시성을 끈다/);
       expect(body).toMatch(/\*\*유일한 명시적 거부는 `decomposition-input-missing`\*\*/);
     }
   });
 
-  it("103 AC-1 — all four gate ids with severity and firing condition", () => {
+  // FR-FLOW-103 AC-1 is unchanged. §0.S now also declares `partition-review-unrecorded`, which
+  // FR-FLOW-102 AC-6 / FR-FLOW-188 AC-7 moved out of critical_gates[] as a business-decision gate,
+  // so the table holds the four routing gates plus exactly that one.
+  it("FR-FLOW-103 AC-1 — all four gate ids with severity and firing condition", () => {
     for (const variant of VARIANTS) {
       const rows = gateSeverityRows(variant.body);
-      expect([...rows.map((row) => row.gateId)].sort()).toEqual([...ROUTING_GATE_IDS].sort());
+      expect([...rows.map((row) => row.gateId)].sort()).toEqual([...ROUTING_GATE_IDS, "partition-review-unrecorded"].sort());
+      for (const row of rows) expect(row.severity, `${variant.id}: ${row.gateId}`).toBe("business-decision");
       const byId = new Map(rows.map((row) => [row.gateId, row]));
       expect(byId.get("route-proposal")?.condition).toMatch(/모든 run/);
       expect(byId.get("route-proposal")?.condition).toMatch(/1\.c′/);

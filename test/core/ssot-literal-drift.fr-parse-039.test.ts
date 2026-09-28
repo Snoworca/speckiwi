@@ -178,7 +178,7 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
   // AC-1: a current value is not reported.
   it("AC-1: a current value is left alone", () => {
     const findings = collectSsotLiteralDrift([
-      { requirementId: "FR-TEST-003", filePath: "docs/spec/test.md", line: 3, section: "acceptanceCriteria", text: "installs SRS-MD-Rules-v2.5.0.md and SDS-MD-Rules-v2.5.0.md" }
+      { requirementId: "FR-TEST-003", filePath: "docs/spec/test.md", line: 3, section: "acceptanceCriteria", text: "installs SRS-MD-Rules-v2.5.0.md and SDS-MD-Rules-v2.6.0.md" }
     ]);
     expect(findings).toEqual([]);
   });

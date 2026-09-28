@@ -13,14 +13,23 @@ const VARIANTS = ["claude", "codex", "etc"] as const;
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 /**
- * The eight prohibitions, each identified by the shortest fragment that is unique to it within the
+ * The prohibitions (FR-FLOW-118's eight as 4.0.0 reads them, plus two 4.0.0 additions), each identified by the shortest fragment that is unique to it within the
  * list line. Declared as a set rather than a count, so a ninth prohibition arriving undeclared fails
  * the exhaustiveness case below rather than passing a `length === 8` check.
  */
 const FORBIDDEN = {
   "re-decomposition": "재분해 금지",
   "requirement-id allocation outside 3.b": "Requirement ID 할당 금지",
-  "editing a completed unit": "완료된 단위 편집 금지",
+  // FR-FLOW-118 AC-1 names "editing a completed unit"; 4.0.0 removes the unit (one SDS is one
+  // worker run, FR-FLOW-185 AC-2; a lane is one wave's worker, FR-FLOW-187 AC-4), so the entry is
+  // the completed wave.
+  "editing a completed wave": "완료된 wave 편집 금지",
+  // Not in FR-FLOW-118's eight: FR-FLOW-188 AC-2 forbids a worker to write the SRS, docs/spec/ and
+  // docs/sds/, and the skill states that as a closed-list entry.
+  "a worker writing the SRS": "워커의 SRS·`docs/spec/`·`docs/sds/` 쓰기 금지",
+  // Not in FR-FLOW-118's eight: 4.0.0 dispatches a worker per wave by default (FR-FLOW-188 AC-1), so
+  // the shared run ledger's never-re-dispatch-a-possibly-live-worker entry now binds the body too.
+  "re-dispatching a possibly live worker": "살아 있을 수 있는 워커 재-dispatch 금지",
   "weakening or deleting tests": "테스트 약화·삭제 금지",
   "writing outside the lease": "lease 밖 쓰기 금지",
   "hand-appending to the run journal": "직접 append 금지",
@@ -36,7 +45,7 @@ function listLine(variant: (typeof VARIANTS)[number]): string {
 }
 
 describe("FR-FLOW-118 — the closed list cannot shrink silently", () => {
-  it("AC-1: the list exists in all three variants and is the same line in each", () => {
+  it("FR-FLOW-118 AC-1: the list exists in all three variants and is the same line in each", () => {
     const lines = VARIANTS.map(listLine);
     for (const [index, line] of lines.entries()) {
       expect(line, `${VARIANTS[index]} must state the closed list`).not.toBe("");
@@ -45,7 +54,7 @@ describe("FR-FLOW-118 — the closed list cannot shrink silently", () => {
   });
 
   for (const variant of VARIANTS) {
-    it.each(Object.entries(FORBIDDEN))(`AC-1: ${variant} forbids %s`, (label, fragment) => {
+    it.each(Object.entries(FORBIDDEN))(`FR-FLOW-118 AC-1: ${variant} forbids %s`, (label, fragment) => {
       expect(listLine(variant).includes(fragment), `${variant}: the list must forbid ${label}`).toBe(true);
     });
   }
@@ -53,7 +62,7 @@ describe("FR-FLOW-118 — the closed list cannot shrink silently", () => {
   // AC-3: exhaustiveness in the other direction. The list's own separator is `;`, so its entry count
   // is readable from the document; comparing that against the declared set catches a ninth
   // prohibition arriving without a declaration here, which a membership check alone would miss.
-  it("AC-3: the list carries no entry this file does not declare", () => {
+  it("FR-FLOW-118 AC-3: the list carries no entry this file does not declare", () => {
     const entries = listLine("claude")
       .split(HEADING)[1]!
       .split(";")
@@ -70,7 +79,7 @@ describe("FR-FLOW-118 — the closed list cannot shrink silently", () => {
   // document — so the check runs the *assertions above* against a mutated line and requires each one
   // to throw. `checkList` is the same predicate the per-entry cases use, which is what makes a red
   // here mean the same thing a red there does.
-  it("AC-2: deleting any one entry makes this file's own check fail", () => {
+  it("FR-FLOW-118 AC-2: deleting any one entry makes this file's own check fail", () => {
     const line = listLine("claude");
     const checkList = (candidate: string): void => {
       for (const [label, fragment] of Object.entries(FORBIDDEN)) {

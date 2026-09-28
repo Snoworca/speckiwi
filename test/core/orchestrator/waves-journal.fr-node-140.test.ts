@@ -36,10 +36,11 @@ describe("FR-NODE-140 parseWavesJournal", () => {
     expect(waveMaster.lines.map((line) => line.summary)).toEqual(["no engine field", "explicit wave-master"]);
   });
 
-  it("AC-3 accepts the six supported schema versions and diagnoses one outside the set", async () => {
-    // @req FR-NODE-188 — 1.5.0 is the version the terminal_review obligation arrives at. The set is
-    // pinned rather than counted so a version added without a validator gate is visible here first.
-    expect(WAVES_SCHEMA_VERSIONS).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]);
+  it("FR-NODE-140 AC-3 accepts the seven supported schema versions and diagnoses one outside the set", async () => {
+    // @req FR-NODE-188 — 1.5.0 is the version the terminal_review obligation arrives at, and
+    // @req FR-NODE-213 AC-6 — 2.0.0 the one that dropped `plan_run_id` and `coverage_residual`. The set
+    // is pinned rather than counted so a version added without a validator gate is visible here first.
+    expect(WAVES_SCHEMA_VERSIONS).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "2.0.0"]);
 
     const supported = await journalRoot(
       WAVES_SCHEMA_VERSIONS.map((version, index) =>
@@ -47,11 +48,11 @@ describe("FR-NODE-140 parseWavesJournal", () => {
       )
     );
     const supportedView = await parseWavesJournal(supported, { runId: "run-a", engine: "kiwi-wave-master" });
-    expect(supportedView.lines).toHaveLength(6);
+    expect(supportedView.lines).toHaveLength(7);
     expect(supportedView.diagnostics.filter((item) => item.code === "SRS-W055")).toEqual([]);
-    expect(supportedView.schemaVersions).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]);
+    expect(supportedView.schemaVersions).toEqual(["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "2.0.0"]);
 
-    const unsupported = await journalRoot([waveVerify({ schema_version: "2.0.0" })]);
+    const unsupported = await journalRoot([waveVerify({ schema_version: "2.1.0" })]);
     const unsupportedView = await parseWavesJournal(unsupported, { runId: "run-a", engine: "kiwi-wave-master" });
     const versionDiagnostics = unsupportedView.diagnostics.filter((item) => item.code === "SRS-W055");
     expect(versionDiagnostics).toHaveLength(1);
@@ -60,9 +61,9 @@ describe("FR-NODE-140 parseWavesJournal", () => {
 
   it("AC-4 exposes the seven declared fields and keys byVerb on verb|wave|stage|lane", async () => {
     const root = await journalRoot([
-      result("execute-unit", { wave: "wave-2", order: 2, target: "wave-2", stage: 1, lane: "lane-1" }),
-      result("execute-unit", { wave: "wave-2", order: 2, target: "wave-2", stage: 1, lane: "lane-2" }),
-      result("execute-unit", { wave: "wave-2", order: 2, target: "wave-2", stage: 2, lane: "lane-1" })
+      result("dispatch-lane", { wave: "wave-2", order: 2, target: "wave-2", stage: 1, lane: "lane-1" }),
+      result("dispatch-lane", { wave: "wave-2", order: 2, target: "wave-2", stage: 1, lane: "lane-2" }),
+      result("dispatch-lane", { wave: "wave-2", order: 2, target: "wave-2", stage: 2, lane: "lane-1" })
     ]);
 
     const view = await parseWavesJournal(root, { runId: "run-a", engine: "kiwi-orchestrator" });
@@ -72,9 +73,9 @@ describe("FR-NODE-140 parseWavesJournal", () => {
     );
     expect(view.engine).toBe("kiwi-orchestrator");
     // Two lines differing only in `lane` occupy different keys; likewise for `stage`.
-    expect(view.byVerb.get("execute-unit|wave-2|1|lane-1")).toHaveLength(1);
-    expect(view.byVerb.get("execute-unit|wave-2|1|lane-2")).toHaveLength(1);
-    expect(view.byVerb.get("execute-unit|wave-2|2|lane-1")).toHaveLength(1);
+    expect(view.byVerb.get("dispatch-lane|wave-2|1|lane-1")).toHaveLength(1);
+    expect(view.byVerb.get("dispatch-lane|wave-2|1|lane-2")).toHaveLength(1);
+    expect(view.byVerb.get("dispatch-lane|wave-2|2|lane-1")).toHaveLength(1);
     expect(view.byVerb.size).toBe(3);
   });
 
@@ -116,11 +117,11 @@ describe("FR-NODE-140 parseWavesJournal", () => {
   });
 
   it("keeps an unmatched intent line in the view so computeResumeState can classify it", async () => {
-    const root = await journalRoot([intent("execute-unit", { wave: "wave-1", stage: 1, lane: "lane-1" })]);
+    const root = await journalRoot([intent("dispatch-lane", { wave: "wave-1", stage: 1, lane: "lane-1" })]);
 
     const view = await parseWavesJournal(root, { runId: "run-a", engine: "kiwi-orchestrator" });
 
-    expect(view.byVerb.get("execute-unit|wave-1|1|lane-1")).toHaveLength(1);
+    expect(view.byVerb.get("dispatch-lane|wave-1|1|lane-1")).toHaveLength(1);
     expect(view.lines[0]?.event).toBe("intent");
   });
 });

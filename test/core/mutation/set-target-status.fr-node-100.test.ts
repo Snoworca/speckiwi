@@ -173,7 +173,7 @@ describe("IR-CLI-081 — the command surface", () => {
   // the whole suite stays green while the defect is present. A mutation probe demonstrated exactly
   // that. `main()` observes what a shell would.
   function pipes() {
-    return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+    return { stdout: new PassThrough(), stderr: new PassThrough() };
   }
 
   it("applies the mutation through the command, prints JSON and exits zero", async () => {

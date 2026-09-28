@@ -4,7 +4,7 @@ import { buildCommand } from "../../src/cli/command.js";
 import { registerMcpCommand } from "../../src/cli/commands/mcp.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 describe("speckiwi mcp CLI command", () => {

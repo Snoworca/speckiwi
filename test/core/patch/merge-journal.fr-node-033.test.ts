@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { readUtf8File } from "../../../src/core/fs/read-text.js";
 import { createPatchPlan } from "../../../src/core/patch/patch-plan.js";
+import { at } from "../../support/at.js";
 // FR-NODE-048 extends the FR-NODE-047 merge-journal so that each journal entry captures the
 // requirement id alongside its sha256, marks operations as applied, and is appended durably
 // before the corresponding rename runs. The symbols exercised below (the requirementId field on
@@ -29,7 +30,7 @@ async function seedFile(root: string, relativePath: string, contents: string): P
 async function buildCommitFile(filePath: string, replacement: string): Promise<MergeCommitFile> {
   const file = await readUtf8File(filePath);
   const plan = createPatchPlan(file, [
-    { type: "replaceLine", line: 1, original: file.lines[0], replacement }
+    { type: "replaceLine", line: 1, original: at(file.lines, 0), replacement }
   ]);
   return { plan };
 }

@@ -347,8 +347,10 @@ describe("REL-FLOW-003 — the whole document is clean", () => {
 
     // A clean result is only meaningful once the ground truth is known to be populated: an empty
     // command set, an empty registry, or a missing enumerator each produce the same green.
-    expect(truth.commandPaths.size).toBeGreaterThanOrEqual(150);
-    expect(truth.toolNames.size).toBe(100);
+    // 148 paths and 88 tools since 4.0.0 removed the plan commands and tools (FR-NODE-211 AC-1) and the
+    // `freeze handoff` leaf (FR-NODE-138 AC-1, IR-CLI-082 AC-2).
+    expect(truth.commandPaths.size).toBeGreaterThanOrEqual(148);
+    expect(truth.toolNames.size).toBe(88);
     expect([...truth.counts.values()].every((count) => count > 0)).toBe(true);
 
     expect(lintDocument(readme, truth)).toEqual([]);

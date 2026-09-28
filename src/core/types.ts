@@ -151,6 +151,8 @@ export interface CompletedWorkEntry {
   filePath?: string;
   line?: number;
   reportPathsCell?: string;
+  /** The document the entry was read from; the parser attaches it non-enumerably. */
+  readonly sourceFile?: string;
 }
 
 export interface CompletedWorkPage {
@@ -264,6 +266,8 @@ export interface RequirementRecord {
   blockStartLine?: number;
   blockEndLine?: number;
   sectionLines?: Record<string, number>;
+  /** @req FR-PARSE-024 */
+  origin?: "body" | "step";
   stepName?: string;
 }
 
@@ -273,8 +277,11 @@ export interface ParsedWorkspace {
   files: TextFile[];
   records: RequirementRecord[];
   diagnostics: Diagnostic[];
-  stateFile?: TextFile;
+  /** @req FR-PARSE-024 */
+  stateFile?: TextFile | null;
   stepRecords?: RequirementRecord[];
+  /** @req FR-PARSE-024 */
+  stepFiles?: TextFile[];
   /**
    * FR-PARSE-037 — every Markdown document directly under docs/spec, as workspace-relative POSIX
    * paths. `files` carries only the documents the parser reads, which is a fixed set: the index, the

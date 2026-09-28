@@ -34,7 +34,7 @@ Do not edit `skills/codex` or `skills/claude` during this migration.
 | `skills/codex/kiwi-pm` | `skills/etc/kiwi-pm` | Copy and rewrite for single-worker local-LLM orchestration |
 | `skills/codex/kiwi-srs-sync` | `skills/etc/kiwi-srs-sync` | Copy and rewrite for MCP-required SRS sync |
 | `skills/codex/kiwi-srs-research` | `skills/etc/kiwi-srs-research` | Copy and collapse multi-researcher topology to single-worker sequence |
-| `skills/codex/kiwi-planner` | `skills/etc/kiwi-planner` | Copy, keep `scripts/validator.mjs`, rewrite evaluator topology |
+| `skills/codex/kiwi-sds` | `skills/etc/kiwi-sds` | Added in 4.0.0: copy and rewrite for the local-LLM profile (one verifier pass under the default `--max`); replaces the retired planning skill |
 | `skills/codex/kiwi-coder` | `skills/etc/kiwi-coder` | Copy and rewrite TDD/review topology for single evaluator |
 | `skills/codex/kiwi-commit-auto-push` | `skills/etc/kiwi-commit-auto-push` | Copy and rewrite commit evaluator topology |
 | `skills/codex/kiwi-commit-auto-pr` | `skills/etc/kiwi-commit-auto-pr` | Copy and rewrite PR workflow for single-evaluator local-LLM topology |

@@ -51,7 +51,7 @@ function leadingNumber(fileName: string): string | undefined {
 
 async function initOnce(rootPath: string): Promise<void> {
   const result = await initProject(await resolveProjectRoot(rootPath), {});
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw new Error(result.error?.message ?? "expected an ok result");
 }
 
 describe("FR-NODE-088 AC-1 — the first scope document in a project is 01", () => {
@@ -126,14 +126,14 @@ describe("FR-NODE-088 AC-4 — the scope template helper carries no fixed docume
     expect(parsed.slug).toBe("reporting");
     // The whole defect was a number baked into this helper. Whatever shape the helper returns, no
     // property of it may carry a document number — the number comes from allocation.
-    for (const value of Object.values(parsed as Record<string, unknown>)) {
+    for (const value of Object.values(parsed) as unknown[]) {
       if (typeof value === "string") expect(value).not.toMatch(/^\d+\./);
     }
   });
 
   it("returns the same parse result for the default scope, still without a number", () => {
     const parsed = parseScopeOption();
-    for (const value of Object.values(parsed as Record<string, unknown>)) {
+    for (const value of Object.values(parsed) as unknown[]) {
       if (typeof value === "string") expect(value).not.toMatch(/^\d+\./);
     }
   });
@@ -197,7 +197,7 @@ describe("FR-NODE-088 AC-5 — init scaffolds a default scope document only when
 
     const result = await initProject(await resolveProjectRoot(rootPath), { scope: "Auth:AUTH" });
     expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.error.message);
+    if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "expected an ok result with a value");
 
     expect(await scopeDocuments(rootPath)).toEqual(["07.billing.srs.md"]);
     const warning = (result.value.warnings ?? []).find((text) => text.includes("Auth"));

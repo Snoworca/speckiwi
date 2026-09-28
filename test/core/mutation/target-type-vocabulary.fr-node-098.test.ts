@@ -7,6 +7,7 @@ import { buildCommand } from "../../../src/cli/command.js";
 import { registerMutationCommands } from "../../../src/cli/commands/mutations.js";
 import { toolSchemas } from "../../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
+import { at } from "../../support/at.js";
 
 // FR-NODE-098 — the shipped authoring rules document defines six target types; three enforcement
 // points accepted three. The rules document ships inside the npm package, so every consuming project
@@ -35,7 +36,7 @@ async function documentedTargetTypes(): Promise<string[]> {
   for (const line of rules.slice(heading).split(/\r?\n/).slice(1)) {
     const row = line.match(/^\|\s*`([^`]+)`\s*\|/);
     if (row) {
-      types.push(row[1]);
+      types.push(at(row, 1));
       continue;
     }
     // Stop at the first non-row line after the table has started.
@@ -139,7 +140,7 @@ describe("FR-NODE-098 AC-2 — a type outside the documented set is refused", ()
 describe("FR-NODE-098 AC-3 — the MCP schema does not reject before the core is reached", () => {
   it("accepts every documented type", async () => {
     const types = await documentedTargetTypes();
-    const schema = toolSchemas.set_active_target.type;
+    const schema = toolSchemas.set_active_target?.type;
 
     expect(schema, "set_active_target must expose a type schema").toBeDefined();
     for (const targetType of types) {
@@ -148,7 +149,7 @@ describe("FR-NODE-098 AC-3 — the MCP schema does not reject before the core is
   });
 
   it("still refuses a type outside the documented set", async () => {
-    expect(toolSchemas.set_active_target.type?.safeParse("sprint").success).toBe(false);
+    expect(toolSchemas.set_active_target?.type?.safeParse("sprint").success).toBe(false);
   });
 });
 

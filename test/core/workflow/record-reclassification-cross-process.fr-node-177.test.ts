@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessByStdio } from "node:child_process";
 import { access, mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { Readable } from "node:stream";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -41,7 +42,7 @@ interface Incident {
 }
 
 interface Worker {
-  child: ChildProcessWithoutNullStreams;
+  child: ChildProcessByStdio<null, Readable, Readable>;
   completion: Promise<{ code: number | null; stderr: string; stdout: string }>;
 }
 
@@ -142,7 +143,7 @@ async function tokenizedInput(
   return {
     ...inputFor(fixture, reason),
     dryRun: false,
-    repairToken: (preview.value as JsonObject).repairToken as string,
+    repairToken: preview.value?.repairToken as string,
   };
 }
 

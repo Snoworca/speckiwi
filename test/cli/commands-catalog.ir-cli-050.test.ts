@@ -35,12 +35,12 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-4: Adding a ToolSpec entry makes that command appear in the catalog without a separate edit.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains everything written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /**

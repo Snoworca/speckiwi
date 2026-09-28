@@ -9,18 +9,23 @@
 // v1.4.0 lane-terminality rule fires only on a wave `complete` or a `final-verify` line. Either one
 // applied per line would refuse the very first write of every verb.
 import type { Diagnostic, DiagnosticSeverity } from "../types.js";
-import { GATE_IDS } from "./auto-gate.js";
+import { GATE_IDS, GATE_IDS_RETIRED_IN_4_0_0 } from "./auto-gate.js";
 import { isRoundRecord, type WavesJournalView } from "./waves-journal.js";
 import {
   COMPLETION_STATUS,
   EVENT_STATUSES,
   EXCLUSION_CLASSES,
   EXTERNAL_PROOF_KINDS,
+  LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0,
   REASON_CLASSES,
+  VERBS_RETIRED_IN_4_0_0,
   VERIFICATION_VERDICTS,
+  WAVE_PHASES_RETIRED_IN_4_0_0,
   WRITER_REQUIRED_FROM,
   compareSchemaVersions,
+  schemaVersionOf,
   waveNumber,
+  writtenBefore400,
   type EventStatus,
   type JournalProof,
   type WavesEvent,
@@ -56,10 +61,6 @@ function count(value: unknown): number | null {
 
 function text(value: unknown): string | null {
   return typeof value === "string" ? value : null;
-}
-
-function schemaVersionOf(event: WavesEvent): string {
-  return text(event.schema_version) ?? "1.0.0";
 }
 
 /** The highest schema version anywhere in the run. Run-scoped, because the producer writes the field. */
@@ -346,10 +347,10 @@ function checkFinalVerify(view: WavesJournalView, diagnostics: WavesDiagnostic[]
  * obligation refuse n+1 times.
  */
 function closesTheRun(event: WavesEvent): boolean {
-  // Three shapes, because the three rungs end differently and only one of them writes a
-  // `final-verify` line. R-ORCH and kiwi-wave-master close with the run-scope verification record;
-  // R-STEP and R-PLAN terminate at their dispatch result and never write one, so a rule keyed on
-  // `final-verify` alone would police one rung of three.
+  // Two shapes, because the rungs end differently and only one shape is a `final-verify` line.
+  // R-ORCH and kiwi-wave-master close with the run-scope verification record; R-STEP terminates at
+  // its dispatch result and never writes one, so a rule keyed on `final-verify` alone would leave
+  // the step rung unpoliced.
   if (event.phase === "final-verify") return true;
   return isDelegatedComplete(event);
 }
@@ -371,8 +372,8 @@ function isDelegatedComplete(event: WavesEvent): boolean {
  * The two shapes signal it differently, and reading only `status` was the same "one rung of three"
  * error `closesTheRun` exists to avoid: the run-scope line carries `status: "complete"`, while the
  * delegating rungs' close-out is documented to record `outcome: "delegated-complete"` and is never
- * instructed to carry a status at all. Keyed on `status` alone, the refusal cannot fire on R-STEP or
- * R-PLAN — the two rungs whose hop this obligation was written to add.
+ * instructed to carry a status at all. Keyed on `status` alone, the refusal cannot fire on R-STEP —
+ * a delegating rung whose hop this obligation was written to add.
  */
 function reportsCompletion(event: WavesEvent): boolean {
   // The stated status wins wherever there is one. Letting the outcome token override it would make
@@ -620,7 +621,6 @@ function checkJournalOnlyProofs(view: WavesJournalView, diagnostics: WavesDiagno
  * there and warning everywhere else refuses the write being attempted and nothing else.
  */
 function checkAbortGate(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
-  const newest = view.lines[view.lines.length - 1];
   for (const event of view.lines) {
     // Absent is legal; present-but-not-a-string is not. Reading the field through `text()` alone
     // conflated the two, because `text()` returns null for a number, a boolean or an object — so a
@@ -629,12 +629,50 @@ function checkAbortGate(view: WavesJournalView, diagnostics: WavesDiagnostic[]):
     if (raw === undefined || raw === null) continue;
     const gate = text(raw);
     if (gate !== null && (GATE_IDS as readonly string[]).includes(gate)) continue;
-    const severity: DiagnosticSeverity = event === newest ? "error" : "warning";
+    // @req FR-NODE-213 AC-6 — a line written before 4.0.0 keeps the vocabulary it was written under.
+    if (
+      gate !== null &&
+      (GATE_IDS_RETIRED_IN_4_0_0 as readonly string[]).includes(gate) &&
+      writtenBefore400(event)
+    ) {
+      continue;
+    }
     diagnostics.push(
-      diagnosticFor("abort-gate-outside-vocabulary", severity, "an abort_gate is outside the GateId vocabulary", event, {
+      diagnosticFor("abort-gate-outside-vocabulary", positionalSeverity(view, event), "an abort_gate is outside the GateId vocabulary", event, {
         abort_gate: gate ?? raw
       })
     );
+  }
+}
+
+/** Error on the newest line — during an append, the candidate — and warning on history. See {@link checkAbortGate}. */
+function positionalSeverity(view: WavesJournalView, event: WavesEvent): DiagnosticSeverity {
+  return event === view.lines[view.lines.length - 1] ? "error" : "warning";
+}
+
+/**
+ * @req FR-NODE-213 AC-6 — a line at 2.0.0 or later is written under the 4.0.0 contract, so a verb, a
+ * lane disposition or a phase 4.0.0 retired is refused on it; a line below 2.0.0 keeps the vocabulary
+ * it was written under. Positional for the reason `checkAbortGate` gives. A retired gate is left to
+ * `checkAbortGate` (FR-NODE-167 AC-4), so one fault raises one code.
+ */
+function checkRetiredVocabulary(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
+  for (const event of view.lines) {
+    if (writtenBefore400(event)) continue;
+    const retired: Array<[field: string, value: string | null, vocabulary: readonly string[]]> = [
+      ["verb", text(event.verb), VERBS_RETIRED_IN_4_0_0],
+      ["lane_disposition.kind", text(record(event.lane_disposition)?.kind ?? null), LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0],
+      ["phase", text(event.phase), WAVE_PHASES_RETIRED_IN_4_0_0]
+    ];
+    for (const [field, value, vocabulary] of retired) {
+      if (value === null || !vocabulary.includes(value)) continue;
+      diagnostics.push(
+        diagnosticFor("vocabulary-retired-in-4-0-0", positionalSeverity(view, event), `${field} ${value} was retired in 4.0.0 and a line at 2.0.0 or later cannot carry it`, event, {
+          field,
+          value
+        })
+      );
+    }
   }
 }
 
@@ -642,6 +680,7 @@ export function validateWavesJournal(view: WavesJournalView): WavesDiagnostic[] 
   const diagnostics: WavesDiagnostic[] = [];
   for (const event of view.lines) checkRoundInvariants(event, diagnostics);
   checkAbortGate(view, diagnostics);
+  checkRetiredVocabulary(view, diagnostics);
   checkCompletionGate(view, diagnostics);
   checkFinalVerify(view, diagnostics);
   checkTerminalReview(view, diagnostics);

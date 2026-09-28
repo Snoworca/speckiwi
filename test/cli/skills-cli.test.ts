@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function tempRoot(): Promise<string> {

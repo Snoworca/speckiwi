@@ -12,9 +12,9 @@ import {
   type FreezeLockKind
 } from "../../../src/core/orchestrator/freeze.js";
 
-// @req FR-NODE-138 — the six §3.3a lock kinds, their per-kind body schemas, the common envelope, and
-// byte-determinism over injected inputs. `lanes.lock.json`'s eight recorded fields pin the nine
-// declared `computeLanePlan` inputs that §4.7 drift digest 3 recomputes against.
+// @req FR-NODE-138 — the five §3.3a lock kinds, their per-kind body schemas, the common envelope, and
+// byte-determinism over injected inputs. `lanes.lock.json`'s recorded fields pin the three declared
+// `computeLanePlan` inputs that §4.7 drift digest 3 recomputes against.
 
 function inputs(overrides: Partial<FreezeInputs> = {}): FreezeInputs {
   return {
@@ -53,40 +53,17 @@ function wavesBody(): Record<string, unknown> {
 
 function lanesBody(): Record<string, unknown> {
   return {
-    plan_run_id: "2026-08-02T09-00-00",
-    sidecar_path: "docs/plans/2026-08-02T09-00-00.plan.tasks.json",
-    sidecar_digest: "sha-sidecar",
-    registry_digest: "sha-registry",
-    existing_paths_digest: "sha-existing-paths",
-    design_item_map_digest: "sha-design-item-map",
-    prior_postmortem_digests: ["sha-postmortem-1"],
     lane_cap: 4,
-    code_roots: ["src/"],
-    test_roots: ["test/"],
-    lane_count: 1,
+    depends: { "run-wave-2": [] },
+    sds_digests: { "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2" },
+    lane_count: 2,
     stage_count: 1,
-    lanes: [{ lane_id: "lane-1", stage: 1, task_ids: ["T-1"], write_set: ["src/a.ts"], read_set: [], req_ids: ["FR-NODE-1"], design_items: ["D-001"] }],
-    serial_epilogue: [],
-    unassigned: [],
-    serialized: [],
+    lanes: [
+      { laneId: "lane-run-wave-1", stage: 1, wave: "run-wave-1", sds: "docs/sds/run-wave-1.sds.md", writeSet: ["src/a.ts"] },
+      { laneId: "lane-run-wave-2", stage: 1, wave: "run-wave-2", sds: "docs/sds/run-wave-2.sds.md", writeSet: ["src/b.ts"] }
+    ],
+    stages: [{ index: 1, laneIds: ["lane-run-wave-1", "lane-run-wave-2"] }],
     conflicts: []
-  };
-}
-
-function handoffBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return {
-    handoff_kind: "lane",
-    lane_id: "lane-1",
-    stage: 1,
-    handoff_path: "waves/wave-1/lanes/lane-1.md",
-    handoff_git_blob_oid: "1".repeat(40),
-    handoff_sha256: "sha-handoff",
-    front_matter_digest: "sha-front-matter",
-    body_heading_digests: { Setup: "sha-setup" },
-    task_field_count: 13,
-    acceptance_row_count: 4,
-    untested_row_count: 0,
-    ...overrides
   };
 }
 
@@ -120,26 +97,23 @@ function postmortemBody(): Record<string, unknown> {
   };
 }
 
-/** One valid body per kind, so every assertion below can iterate the six rather than name three. */
+/** One valid body per kind, so every assertion below can iterate the five rather than name three. */
 const VALID_BODIES: Record<FreezeLockKind, () => Record<string, unknown>> = {
   design: designBody,
   waves: wavesBody,
   lanes: lanesBody,
-  handoff: handoffBody,
   issues: issuesBody,
   postmortem: postmortemBody
 };
 
 /**
  * AC-2's rejected-body fixtures: for each kind, one required field deleted. `lanes` deletes
- * `design_item_map_digest` by name, because that field is the one revision 3 added and the one a
- * digest-3 recomputation cannot proceed without.
+ * `sds_digests` by name, because the SDS digests are what a digest-3 recomputation compares.
  */
 const REJECTED_BODIES: Record<FreezeLockKind, { field: string; body: () => Record<string, unknown> }> = {
   design: { field: "integration_items", body: () => omit(designBody(), "integration_items") },
   waves: { field: "wave_count", body: () => omit(wavesBody(), "wave_count") },
-  lanes: { field: "design_item_map_digest", body: () => omit(lanesBody(), "design_item_map_digest") },
-  handoff: { field: "front_matter_digest", body: () => omit(handoffBody(), "front_matter_digest") },
+  lanes: { field: "sds_digests", body: () => omit(lanesBody(), "sds_digests") },
   issues: { field: "counts", body: () => omit(issuesBody(), "counts") },
   postmortem: { field: "waves", body: () => omit(postmortemBody(), "waves") }
 };
@@ -156,13 +130,13 @@ function freezeOk(kind: FreezeLockKind, body: Record<string, unknown>, injected:
   return result.lock;
 }
 
-describe("FR-NODE-138 AC-1 — exactly six lock kinds", () => {
-  it("declares the six §3.3a kinds and no seventh", () => {
-    expect([...FREEZE_LOCK_KINDS]).toEqual(["design", "waves", "lanes", "handoff", "issues", "postmortem"]);
-    expect(FREEZE_LOCK_KINDS).toHaveLength(6);
+describe("FR-NODE-138 AC-1 — exactly five lock kinds", () => {
+  it("FR-NODE-138 AC-1 declares the five kinds and no sixth", () => {
+    expect([...FREEZE_LOCK_KINDS]).toEqual(["design", "waves", "lanes", "issues", "postmortem"]);
+    expect(FREEZE_LOCK_KINDS).toHaveLength(5);
   });
 
-  it("freezes every one of the six against its own valid body", () => {
+  it("FR-NODE-138 AC-1 freezes every one of the five against its own valid body", () => {
     for (const kind of FREEZE_LOCK_KINDS) {
       const lock = freezeOk(kind, VALID_BODIES[kind](), inputs());
       expect(lock.kind, `${kind} records its own kind`).toBe(kind);
@@ -170,12 +144,20 @@ describe("FR-NODE-138 AC-1 — exactly six lock kinds", () => {
     }
   });
 
-  it("rejects a seventh kind value with unknown-lock-kind", () => {
+  it("FR-NODE-138 AC-1 rejects a sixth kind value with unknown-lock-kind", () => {
     const result = freezeLock("partition" as FreezeLockKind, designBody(), inputs());
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
     expect(result.code).toBe("unknown-lock-kind");
     expect(result.detail).toContain("partition");
+  });
+
+  it("FR-NODE-138 AC-1 rejects handoff, which left in 4.0.0 with the English handoff documents", () => {
+    const result = freezeLock("handoff" as FreezeLockKind, { handoff_kind: "lane", lane_id: "lane-1", stage: 1 }, inputs());
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.code).toBe("unknown-lock-kind");
+    expect(result.detail).toContain("handoff");
   });
 });
 
@@ -190,24 +172,24 @@ describe("FR-NODE-138 AC-2 — one rejected-body fixture per kind", () => {
     });
   }
 
-  it("refuses a lanes body missing design_item_map_digest by name", () => {
-    const result = freezeLock("lanes", omit(lanesBody(), "design_item_map_digest"), inputs());
+  it("FR-NODE-138 AC-2 refuses a lanes body missing its SDS digests by name", () => {
+    const result = freezeLock("lanes", omit(lanesBody(), "sds_digests"), inputs());
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.detail).toContain("design_item_map_digest");
+    expect(result.code).toBe("lock-body-invalid");
+    expect(result.detail).toContain("sds_digests");
   });
 
-  it("admits the two per-kind handoff carve-outs: task_field_count 0 for remediation, stage null for epilogue", () => {
-    expect(freezeOk("handoff", handoffBody({ handoff_kind: "remediation", task_field_count: 0 }), inputs()).body).toMatchObject({ task_field_count: 0 });
-    expect(freezeOk("handoff", handoffBody({ handoff_kind: "epilogue", stage: null }), inputs()).body).toMatchObject({ stage: null });
+  it("FR-NODE-138 AC-2 refuses a lanes body whose SDS digests do not name exactly the waves its lanes carry", () => {
+    for (const digests of [{ "run-wave-1": "sha-sds-1" }, { "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2", "run-wave-9": "sha-sds-9" }]) {
+      const result = freezeLock("lanes", { ...lanesBody(), sds_digests: digests }, inputs());
+      expect(result.ok, JSON.stringify(digests)).toBe(false);
+      if (result.ok) throw new Error("unreachable");
+      expect(result.code).toBe("lock-body-invalid");
+      expect(result.detail).toContain("sds_digests");
+    }
   });
 
-  it("still refuses a handoff body whose stage key is absent rather than marked null", () => {
-    const result = freezeLock("handoff", omit(handoffBody(), "stage"), inputs());
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error("unreachable");
-    expect(result.detail).toContain("stage");
-  });
 });
 
 describe("FR-NODE-138 AC-3/AC-7 — byte-determinism over injected inputs", () => {
@@ -235,7 +217,7 @@ describe("FR-NODE-138 AC-3/AC-7 — byte-determinism over injected inputs", () =
     const parsed = JSON.parse(text) as Record<string, unknown>;
     expect(parsed.sha256).toBe(lock.sha256);
     expect(parsed.inputs_digest).toBe(lock.inputs_digest);
-    expect((parsed.body as Record<string, unknown>).design_item_map_digest).toBe("sha-design-item-map");
+    expect((parsed.body as Record<string, unknown>).sds_digests).toEqual({ "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2" });
     // Canonical means sorted, so the serialized key order does not follow the envelope's declaration
     // order and two producers cannot disagree on it.
     expect(Object.keys(parsed)).toEqual([...Object.keys(parsed)].sort());
@@ -297,33 +279,39 @@ describe("FR-NODE-138 AC-4 — sha256 covers every envelope field above it", () 
   });
 });
 
-describe("FR-NODE-138 AC-5 — lanes.lock.json's eight recorded fields", () => {
-  it("declares five digest fields and three literal fields, eight in total", () => {
-    expect([...LANES_LOCK_DIGEST_FIELDS]).toEqual([
+describe("FR-NODE-138 AC-5 — lanes.lock.json records SDS digests, the declared dependencies and the lane cap", () => {
+  it("FR-NODE-138 AC-5 declares one digest field, sds_digests, and two literal fields", () => {
+    expect([...LANES_LOCK_DIGEST_FIELDS]).toEqual(["sds_digests"]);
+    expect([...LANES_LOCK_RECORDED_INPUT_FIELDS]).toEqual(["sds_digests", "depends", "lane_cap"]);
+  });
+
+  it("FR-NODE-138 AC-5 carries one SDS digest per wave, the declared dependencies and lane_cap as a literal", () => {
+    const body = freezeOk("lanes", lanesBody(), inputs()).body as Record<string, unknown>;
+    const waves = (body.lanes as Array<{ wave: string }>).map((lane) => lane.wave).sort();
+    expect(Object.keys(body.sds_digests as Record<string, string>).sort()).toEqual(waves);
+    expect(body.depends).toEqual({ "run-wave-2": [] });
+    expect(body.lane_cap).toBe(4);
+    expect(Object.keys(body)).not.toContain("lane_cap_digest");
+  });
+
+  it("FR-NODE-138 AC-5 requires none of the retired sidecar-era fields", () => {
+    const retired = [
       "sidecar_digest",
       "registry_digest",
       "existing_paths_digest",
       "design_item_map_digest",
-      "prior_postmortem_digests"
-    ]);
-    expect(LANES_LOCK_DIGEST_FIELDS).toHaveLength(5);
-    expect([...LANES_LOCK_RECORDED_INPUT_FIELDS]).toEqual([...LANES_LOCK_DIGEST_FIELDS, "lane_cap", "code_roots", "test_roots"]);
-    expect(LANES_LOCK_RECORDED_INPUT_FIELDS).toHaveLength(8);
-  });
-
-  it("records lane_cap, code_roots and test_roots as literal values with no digest of their own", () => {
-    const lock = freezeOk("lanes", lanesBody(), inputs());
-    const body = lock.body as Record<string, unknown>;
-    expect(body.lane_cap).toBe(4);
-    expect(body.code_roots).toEqual(["src/"]);
-    expect(body.test_roots).toEqual(["test/"]);
-    for (const literal of ["lane_cap", "code_roots", "test_roots"]) {
-      expect(Object.keys(body), `${literal} carries no digest field of its own`).not.toContain(`${literal.replace(/s$/, "")}_digest`);
-      expect(Object.keys(body)).not.toContain(`${literal}_digest`);
+      "prior_postmortem_digests",
+      "code_roots",
+      "test_roots"
+    ];
+    const body = freezeOk("lanes", lanesBody(), inputs()).body as Record<string, unknown>;
+    for (const field of retired) {
+      expect(Object.keys(body), field).not.toContain(field);
+      expect(LANES_LOCK_RECORDED_INPUT_FIELDS as readonly string[], field).not.toContain(field);
     }
   });
 
-  it("refuses a lanes body missing any one of the eight recorded fields", () => {
+  it("FR-NODE-138 AC-5 refuses a lanes body missing any one of the recorded fields", () => {
     for (const field of LANES_LOCK_RECORDED_INPUT_FIELDS) {
       const result = freezeLock("lanes", omit(lanesBody(), field), inputs());
       expect(result.ok, `${field} is required`).toBe(false);
@@ -333,43 +321,26 @@ describe("FR-NODE-138 AC-5 — lanes.lock.json's eight recorded fields", () => {
   });
 });
 
-describe("FR-NODE-138 AC-6 — the eight recorded fields pin all nine computeLanePlan inputs", () => {
-  it("maps every one of the nine declared inputs to a recorded field", () => {
+describe("FR-NODE-138 AC-6 — the recorded fields pin every computeLanePlan input", () => {
+  it("FR-NODE-138 AC-6 maps each of the three declared inputs to a recorded field", () => {
     const pins = reconstructLanePlanInputPins(lanesBody());
-    expect(Object.keys(pins).sort()).toEqual(
-      ["catalog", "codeRoots", "designItemMap", "existingModules", "existingPaths", "laneCap", "priorPostmortems", "registry", "testRoots"].sort()
-    );
-    expect(Object.keys(pins)).toHaveLength(9);
-    expect(new Set(Object.values(pins).map((pin) => pin.recordedField)).size).toBe(8);
+    expect(Object.keys(pins).sort()).toEqual(["dependencies", "laneCap", "waves"]);
+    expect(LANE_PLAN_INPUT_PINS).toEqual({ waves: "sds_digests", dependencies: "depends", laneCap: "lane_cap" });
   });
 
-  it("has sidecar_digest cover both catalog and existing_modules, and nothing else", () => {
-    const covered = Object.entries(LANE_PLAN_INPUT_PINS)
-      .filter(([, field]) => field === "sidecar_digest")
-      .map(([input]) => input)
-      .sort();
-    expect(covered).toEqual(["catalog", "existingModules"]);
-  });
-
-  it("resolves each pin to the value the lock recorded, so digest 3 recomputes against the lock", () => {
+  it("FR-NODE-138 AC-6 resolves each pin to the value the lock recorded, the waves through their SDS digests", () => {
     const pins = reconstructLanePlanInputPins(lanesBody());
-    expect(pins.catalog).toEqual({ recordedField: "sidecar_digest", recordedValue: "sha-sidecar" });
-    expect(pins.existingModules).toEqual({ recordedField: "sidecar_digest", recordedValue: "sha-sidecar" });
-    expect(pins.registry).toEqual({ recordedField: "registry_digest", recordedValue: "sha-registry" });
-    expect(pins.existingPaths).toEqual({ recordedField: "existing_paths_digest", recordedValue: "sha-existing-paths" });
-    expect(pins.designItemMap).toEqual({ recordedField: "design_item_map_digest", recordedValue: "sha-design-item-map" });
-    expect(pins.priorPostmortems).toEqual({ recordedField: "prior_postmortem_digests", recordedValue: ["sha-postmortem-1"] });
+    expect(pins.waves).toEqual({ recordedField: "sds_digests", recordedValue: { "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2" } });
+    expect(pins.dependencies).toEqual({ recordedField: "depends", recordedValue: { "run-wave-2": [] } });
     expect(pins.laneCap).toEqual({ recordedField: "lane_cap", recordedValue: 4 });
-    expect(pins.codeRoots).toEqual({ recordedField: "code_roots", recordedValue: ["src/"] });
-    expect(pins.testRoots).toEqual({ recordedField: "test_roots", recordedValue: ["test/"] });
   });
 
-  it("reads the recorded value rather than any value available today", () => {
+  it("FR-NODE-138 AC-6 reads the recorded value rather than any value available today", () => {
     const stale = lanesBody();
     stale.lane_cap = 2;
-    stale.sidecar_digest = "sha-the-lock-was-computed-from";
+    stale.sds_digests = { "run-wave-1": "sha-the-lock-was-computed-from", "run-wave-2": "sha-sds-2" };
     const pins = reconstructLanePlanInputPins(stale);
     expect(pins.laneCap.recordedValue).toBe(2);
-    expect(pins.catalog.recordedValue).toBe("sha-the-lock-was-computed-from");
+    expect((pins.waves.recordedValue as Record<string, string>)["run-wave-1"]).toBe("sha-the-lock-was-computed-from");
   });
 });

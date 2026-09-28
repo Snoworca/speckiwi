@@ -27,7 +27,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 const TASK = "feature-scaffold";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function isFile(target: string): Promise<boolean> {
@@ -84,8 +84,8 @@ describe("FR-NODE-080 — step scaffold creates SDS design and intent stubs", ()
     }
     expect(await isFile(path.join(stepDir(root, TASK), "intent.md"))).toBe(true);
     if (result.ok) {
-      expect(result.value.created.some((entry: string) => entry.includes("design.md"))).toBe(true);
-      expect(result.value.created.some((entry: string) => entry.includes("intent.md"))).toBe(true);
+      expect(result.value?.created.some((entry: string) => entry.includes("design.md"))).toBe(true);
+      expect(result.value?.created.some((entry: string) => entry.includes("intent.md"))).toBe(true);
     }
   });
 
@@ -100,8 +100,8 @@ describe("FR-NODE-080 — step scaffold creates SDS design and intent stubs", ()
     expect(await readFile(path.join(stepDir(root, TASK), "design.md"), "utf8")).toBe("# my handwritten design\n");
     expect(await isFile(path.join(stepDir(root, TASK), "intent.md"))).toBe(true);
     if (result.ok) {
-      expect(result.value.skipped.some((entry: string) => entry.includes("design.md"))).toBe(true);
-      expect(result.value.created.some((entry: string) => entry.includes("intent.md"))).toBe(true);
+      expect(result.value?.skipped.some((entry: string) => entry.includes("design.md"))).toBe(true);
+      expect(result.value?.created.some((entry: string) => entry.includes("intent.md"))).toBe(true);
     }
   });
 
@@ -111,7 +111,7 @@ describe("FR-NODE-080 — step scaffold creates SDS design and intent stubs", ()
     const result = await scaffoldStep({ root }, { task: TASK, dryRun: true });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(false);
+    if (result.ok) expect(result.value?.written).toBe(false);
     expect(await isFile(path.join(stepDir(root, TASK), "design.md"))).toBe(false);
     expect(await isFile(path.join(stepDir(root, TASK), "intent.md"))).toBe(false);
   });

@@ -19,7 +19,7 @@ afterAll(async () => {
 });
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 function readOut(stream: PassThrough): string {

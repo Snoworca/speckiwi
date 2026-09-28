@@ -10,6 +10,7 @@ import type { RequirementStatus, Stability } from "../../../src/core/types.js";
 // The green task (T-PH003-12) introduces src/core/mutation/add-compatibility-check.ts.
 // Importing the not-yet-existing module makes the whole suite red until then.
 import { addCompatibilityCheck } from "../../../src/core/mutation/add-compatibility-check.js";
+import { at } from "../../support/at.js";
 
 // FR-NODE-038 — add_compatibility_check mutation with dedup, frozen, and liveness
 // guards plus bidirectional semanticSha pins.
@@ -242,7 +243,7 @@ describe("FR-NODE-038 add_compatibility_check mutation with dedup, frozen, and l
     const rows = await compatibilityRows(rootPath);
     // Exactly one checked_compatible row in the whole workspace.
     expect(rows).toHaveLength(1);
-    const [row] = rows;
+    const row = at(rows, 0);
     // The single row lives on the compareReqId-minimum block, not the peer block.
     expect(row.holder).toBe(MIN_ID);
     // The Reference is the peer (max-side) REQ-ID.
@@ -345,7 +346,7 @@ describe("FR-NODE-038 add_compatibility_check mutation with dedup, frozen, and l
     const rows = await compatibilityRows(rootPath);
     expect(rows).toHaveLength(1);
     // The Reference is a bare REQ-ID (not a path#anchor or decorated value).
-    expect(rows[0].reference).toMatch(BARE_REQ_ID);
+    expect(at(rows, 0).reference).toMatch(BARE_REQ_ID);
 
     // The written Reference resolves to a live requirement, so SRS-E012
     // (Trace target does not exist) must not be raised.

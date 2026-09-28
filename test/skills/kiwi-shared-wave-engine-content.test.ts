@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { moduleRegion, prefixHeadings, readResolvedSkill, sharedModuleRefs } from "../support/resolved-skill.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-106  verify-loop.md carries the cross-verification engine, denominator-agnostically
 // @req FR-FLOW-107  wave-decomposition.md carries wave splitting, the baseline and the coverage gate
@@ -58,10 +59,10 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => /^#{1,6}\s/.test(line) && headingRe.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -194,7 +195,14 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
           `${variant}: the engine must delegate rather than grow its own fixer`
         ).toBe(true);
         expect(/`--base`\/`--head` 또는 `--commits`/.test(routing), `${variant}: the explicit review scope`).toBe(true);
-        expect(/`--req-filter`/.test(routing) && /`--plan-run-id`/.test(routing), `${variant}: the re-entry scope`).toBe(true);
+        // Old FR-FLOW-106 AC-2 pinned the re-entry scope as `--req-filter` + `--plan-run-id`;
+        // FR-FLOW-184 AC-5 replaces `--plan-run-id` with `--sds-id` in verify-loop.md.
+        const reentry = routing.split("\n").find((l) => /^wave 재진입은 명시 범위를 함께 전달한다/.test(l)) ?? "";
+        expect(
+          /`--req-filter`/.test(reentry) && /`--sds-id`/.test(reentry),
+          `${variant}: the re-entry scope`
+        ).toBe(true);
+        expect(/--plan-run-id/.test(routing), `${variant}: the retired --plan-run-id must not remain`).toBe(false);
         expect(
           /자신의 PASS 는 wave 게이트를 충족하지 않는다/.test(routing),
           `${variant}: a sub-loop's own PASS must not close a parent finding`
@@ -222,10 +230,13 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
           /고정 분모를 \*\*입력으로 받으며\*\*/.test(m),
           `${variant}: the frozen denominator must be stated as an input`
         ).toBe(true);
+        // Old FR-FLOW-106 AC-3 named wave-, lane- and handoff-specific denominators. The handoff
+        // documents are removed in 4.0.0 (FR-FLOW-187 AC-4), so the disclaimer names wave and lane.
         expect(
-          /wave 고유·lane 고유·handoff 고유의 분모를 스스로 하나도 두지 않는다/.test(m),
-          `${variant}: the module must disclaim wave-, lane- and handoff-specific denominators`
+          /wave 고유·lane 고유의 분모를 스스로 하나도 두지 않는다/.test(m),
+          `${variant}: the module must disclaim wave- and lane-specific denominators`
         ).toBe(true);
+        expect(/handoff 고유/.test(m), `${variant}: no handoff-specific denominator is left to disclaim`).toBe(false);
         // The concrete four-layer denominator is the CALLER's; if the module named those layer keys
         // it would be one caller's denominator wearing a shared module's name.
         for (const layerKey of ["design_layer.expected", "constraint_layer.expected", "list_requirements"]) {
@@ -496,7 +507,7 @@ function verbRows(moduleText: string): { verb: string; cls: string; row: string 
   const out: { verb: string; cls: string; row: string }[] = [];
   for (const line of section.split("\n")) {
     const m = line.match(/^\|\s*`([a-z][a-z0-9-]*)`\s*\|\s*([^|]*)\|/);
-    if (m) out.push({ verb: m[1], cls: m[2].trim(), row: line });
+    if (m) out.push({ verb: at(m, 1), cls: at(m, 2).trim(), row: line });
   }
   return out;
 }
@@ -515,15 +526,17 @@ describe("FR-FLOW-109 — run-ledger.md carries the ledger and the three reassig
         for (const field of ["schema_version", "next_action", "frozen", "done", "open", "invariant_digest"]) {
           expect(m.includes(`"${field}"`), `${variant}: the card schema must carry ${field}`).toBe(true);
         }
-        for (const pre of [
-          "P-DESIGN-FROZEN",
-          "P-LANE-PLAN-FROZEN",
-          "P-HANDOFF-VERIFIED",
-          "P-WAVE-ISSUES-CLOSED",
-          "P-PRIOR-STAGES-INTEGRATED"
-        ]) {
+        for (const pre of ["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]) {
           expect(m.includes(pre), `${variant}: the precondition vocabulary must include ${pre}`).toBe(true);
         }
+        // @req FR-NODE-151 AC-2 — P-HANDOFF-VERIFIED left in 4.0.0; the module says a card carrying it is refused
+        // rather than listing it as a live value.
+        expect(/정확히 네 값/.test(m), `${variant}: the precondition vocabulary is stated as four values`).toBe(true);
+        expect(
+          m.split("\n").some((row) => row.includes("P-HANDOFF-VERIFIED") && /거부/.test(row)),
+          `${variant}: P-HANDOFF-VERIFIED must be named only as refused`
+        ).toBe(true);
+        expect(/^\s*\|\s*`P-HANDOFF-VERIFIED`\s*\|/m.test(m), `${variant}: P-HANDOFF-VERIFIED is no longer a vocabulary row`).toBe(false);
       });
 
       it("AC-2: carries the proof-kind table, the reconciliation predicate and the drift digests", () => {
@@ -541,6 +554,14 @@ describe("FR-FLOW-109 — run-ledger.md carries the ledger and the three reassig
         expect(/^\d\./m.test(digests), `${variant}: the digests must be enumerated`).toBe(true);
         expect(digests.split("\n").filter((l) => /^\d\. /.test(l)).length, `${variant}: exactly four digests`).toBe(4);
         expect(/`run-invariant-drift`/.test(digests) && /`lane-plan-drift`/.test(digests), `${variant}: both drift classes`).toBe(true);
+        // Old FR-FLOW-109 AC-2: digest 4 was the handoff lock against the handoff prose. Superseded by
+        // FR-NODE-213 AC-2: the lanes freeze records SDS digests and resume detects SDS drift.
+        const fourth = digests.split("\n").find((l) => /^4\. /.test(l)) ?? "";
+        expect(
+          /wave SDS/.test(fourth) && /digest/.test(fourth) && /`lane-plan-drift`/.test(fourth),
+          `${variant}: digest 4 must compare the wave SDS against the digest the stage lock recorded`
+        ).toBe(true);
+        expect(/handoff/.test(digests), `${variant}: no drift digest may still read a handoff`).toBe(false);
       });
 
       it("AC-2: carries the run-contract preamble convention as a closed list", () => {
@@ -579,10 +600,13 @@ describe("FR-FLOW-109 — run-ledger.md carries the ledger and the three reassig
         expect(/하드 스톱|hard stop/i.test(line), `${variant}: it must be a hard stop, not a warning`).toBe(true);
       });
 
-      it("AC-3: the phase-1 enum uses execute-unit and excludes the phase-2 lane verbs", () => {
+      // Old FR-FLOW-109 AC-3 case pinned the phase-1 enum: execute-unit in, the lane verbs out.
+      // Superseded by FR-NODE-213 AC-5: plan-wave is renamed sds-wave and the worker verbs are in the
+      // closed vocabulary; the host-root serial executor and the handoff verbs left with loop H.
+      it("FR-NODE-213 AC-5: the enum carries sds-wave and the worker verbs and no serial executor", () => {
         const verbs = verbRows(readVariantModule(variant, "run-ledger")).map((r) => r.verb);
-        expect(verbs.includes("execute-unit"), `${variant}: execute-unit is phase 1's execution verb`).toBe(true);
-        for (const deferred of [
+        for (const member of [
+          "sds-wave",
           "dispatch-lane",
           "collect-lane",
           "verify-lane",
@@ -590,10 +614,19 @@ describe("FR-FLOW-109 — run-ledger.md carries the ledger and the three reassig
           "release-lane",
           "integrate-lane",
           "probe-isolation",
-          "run-serial-epilogue",
           "replay-deferred-mutations"
         ]) {
-          expect(verbs.includes(deferred), `${variant}: ${deferred} is phase 2 and must not be in the phase-1 enum`).toBe(false);
+          expect(verbs.includes(member), `${variant}: ${member} must be a member of the closed verb enum`).toBe(true);
+        }
+        for (const retired of [
+          "plan-wave",
+          "execute-unit",
+          "author-handoff",
+          "verify-handoff",
+          "commit-dispatch-base",
+          "run-serial-epilogue"
+        ]) {
+          expect(verbs.includes(retired), `${variant}: ${retired} was removed in 4.0.0 and must not be in the enum`).toBe(false);
         }
       });
 
@@ -731,8 +764,12 @@ describe("FR-FLOW-110 — the resolved-skill reader", () => {
         "wave-decomposition",
         "verify-loop",
         "wave-srs-registration",
-        // @req FR-FLOW-122 — the worktree-lane contract is declared last, in §0.12.
-        "worktree-lane"
+        // @req FR-FLOW-122 — the worktree-lane contract is declared in §0.12.
+        "worktree-lane",
+        // @req FR-FLOW-188 AC-1 — the shared parallel-waves contract is cited from §0.13.
+        "parallel-waves",
+        // @req FR-FLOW-186 AC-4 — the test-sufficiency contract is cited last, from §0.14.
+        "test-sufficiency"
       ]);
     }
   });

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, type Dirent } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "./kiwi-orchestrator-variants.js";
@@ -38,7 +38,7 @@ function filesContaining(marker: RegExp): Array<[string, string]> {
     // Narrow on purpose: a broad catch here once swallowed a ReferenceError from a missing import
     // and the walk returned nothing, which made every case pass over an empty population. Only a
     // missing directory is tolerated; anything else is a defect in this file and must surface.
-    let entries: ReturnType<typeof readdirSync>;
+    let entries: Dirent[];
     try {
       entries = readdirSync(path.join(REPO_ROOT, relDir), { withFileTypes: true });
     } catch (error) {

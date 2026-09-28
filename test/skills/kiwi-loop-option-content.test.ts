@@ -27,7 +27,7 @@ const LOOP_SKILLS = [
   "kiwi-srs-feasibility",
   "kiwi-srs-from-code",
   "kiwi-srs-sync",
-  "kiwi-planner",
+  "kiwi-sds",
   "kiwi-coder",
   "kiwi-hot-fix",
   "kiwi-review-fix-loop",

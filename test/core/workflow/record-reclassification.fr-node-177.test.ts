@@ -12,19 +12,13 @@ import {
   type WorkflowMutationInput
 } from "../../../src/core/workflow/mutation.js";
 import {
-  workflowDiff,
-  workflowDoctor,
-  workflowNextPlanTask,
   workflowPipelineCompact,
   workflowPipelineNext,
   workflowPipelineStatus,
   workflowPipelineTail,
-  workflowResumeHint,
-  workflowSchemaCheck,
   workflowSessionStatus,
   workflowWorklogTail
 } from "../../../src/core/workflow/read.js";
-import { validateWorkflowArtifacts } from "../../../src/core/workflow/validate.js";
 import { buildNextWorkOrder } from "../../../src/core/workflow/work-order.js";
 import { resolveWorkflowArtifacts } from "../../../src/core/workflow/artifacts.js";
 import { createWorkflowFixture } from "../../fixtures/workflow-artifacts.js";
@@ -64,10 +58,25 @@ interface DiagnosticShape {
   details?: Record<string, unknown>;
 }
 
+/** The operation lists every reclassification envelope reports; the rest of the envelope stays opaque. */
+interface ReclassificationMutation extends Record<string, unknown> {
+  completedOperations?: string[];
+  pendingOperations?: string[];
+}
+
+/** The fields these cases read from a reclassification's value; the rest of the value stays opaque. */
+interface ReclassificationValue extends Record<string, unknown> {
+  targetRecord: Record<string, unknown>;
+  completedOperations: string[];
+  pendingOperations: string[];
+  /** Read only from dry-run previews, each of which carries one. */
+  repairToken: string;
+}
+
 interface ReclassificationResult {
   ok: boolean;
-  value?: Record<string, unknown>;
-  mutation?: Record<string, unknown>;
+  value?: ReclassificationValue;
+  mutation?: ReclassificationMutation;
   diagnostics: DiagnosticShape[];
   error?: { code: string; message: string };
 }
@@ -225,9 +234,11 @@ function stringArray(value: unknown): string[] {
   return value as string[];
 }
 
-function resultValue(result: ReclassificationResult): Record<string, unknown> {
+function resultValue(result: ReclassificationResult): ReclassificationValue {
   expect(result.ok).toBe(true);
-  return objectValue(result.value);
+  objectValue(result.value);
+  if (result.value === undefined) throw new Error("expected a reclassification value");
+  return result.value;
 }
 
 function predictedOverlayBytes(result: ReclassificationResult): string {
@@ -825,8 +836,8 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
         overlayEventKey: previewPendingRepair.overlayEventKey,
         retry: { action: "retry_same_record_reclassification", mode: "confirm_only" }
       });
-      expect(result.mutation?.completedOperations.some((operation: string) => /write/i.test(operation))).toBe(true);
-      expect(result.mutation?.pendingOperations.some((operation: string) => /confirm/i.test(operation))).toBe(true);
+      expect(result.mutation?.completedOperations?.some((operation: string) => /write/i.test(operation))).toBe(true);
+      expect(result.mutation?.pendingOperations?.some((operation: string) => /confirm/i.test(operation))).toBe(true);
       expect(durableBytes).toContain('"event":"record_reclassification"');
     } finally {
       parseSpy.mockRestore();
@@ -1135,21 +1146,16 @@ describe("FR-NODE-177 append-only workflow record reclassification", () => {
     const worklogIdentity = identityFor(worklogBefore, worklogRaw, worklogPath, "worklog");
     await write(fixture.root, worklogPath, `${worklogBefore}${JSON.stringify(durableOverlay(worklogIdentity))}\n`);
 
-    const validationOptions = { path: fixture.planPath, runId: fixture.runId };
+    // The validator and the plan readers left with the plan tools (FR-NODE-211 AC-1, AC-3); these are
+    // the public and derived readers that remain.
     const readerResults: Array<[string, { diagnostics: Array<{ code: string; filePath?: string; line?: number }> }]> = [
-      ["validateWorkflowArtifacts", await validateWorkflowArtifacts({ root: fixture.root }, validationOptions)],
-      ["workflowNextPlanTask", await workflowNextPlanTask({ root: fixture.root }, validationOptions)],
-      ["workflowDoctor", await workflowDoctor({ root: fixture.root }, validationOptions)],
-      ["workflowDiff", await workflowDiff({ root: fixture.root }, validationOptions)],
-      ["workflowSchemaCheck", await workflowSchemaCheck({ root: fixture.root }, validationOptions)],
       ["workflowPipelineStatus", await workflowPipelineStatus({ root: fixture.root })],
       ["workflowPipelineTail", await workflowPipelineTail({ root: fixture.root })],
       ["workflowPipelineNext", await workflowPipelineNext({ root: fixture.root })],
       ["workflowPipelineCompact", await workflowPipelineCompact({ root: fixture.root })],
       ["workflowWorklogTail", await workflowWorklogTail({ root: fixture.root }, { path: worklogPath, runId: fixture.runId })],
       ["workflowSessionStatus", await workflowSessionStatus({ root: fixture.root }, { runId: fixture.runId })],
-      ["workflowResumeHint", await workflowResumeHint({ root: fixture.root }, validationOptions)],
-      ["buildNextWorkOrder", await buildNextWorkOrder({ root: fixture.root }, { path: fixture.planPath, runId: fixture.runId, pipelinePath: PIPELINE_PATH })]
+      ["buildNextWorkOrder", await buildNextWorkOrder({ root: fixture.root }, { path: fixture.sdsPath, runId: fixture.runId, pipelinePath: PIPELINE_PATH })]
     ];
 
     for (const [name, result] of readerResults) {

@@ -1,20 +1,19 @@
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
-import { defaultCatalog, defaultHandoff, defaultLane, defaultRoot } from "../core/orchestrator/handoff-fixtures.js";
+import { sdsPath, sdsWorkspace, writeUnder } from "../core/orchestrator/sds-fixtures.js";
 
 // @req FR-NODE-165 — a verb that journals its own option use reports whether the line landed.
 //
 // `run abort` reads the append helper's outcome and refuses with `run-invariant-drift` when the line
-// did not land. `schedule plan` and `handoff validate` awaited the same helper and threw the result
-// away, so a refused append was silent and the caller was told the option use was recorded when the
-// journal was byte-identical afterwards. Two acceptance criteria state that recording flatly —
-// IR-CLI-084 AC-6 and FR-NODE-155 AC-3 — and both were false on this path.
+// did not land. The scheduler once awaited the same helper and threw the result away, so a refused
+// append was silent and the caller was told the option use was recorded when the journal was
+// byte-identical afterwards. `orchestrate schedule waves` keeps the journalled grounding
+// (IR-CLI-084 AC-6), so it keeps this obligation.
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -41,16 +40,6 @@ function io() {
   return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-async function tempRoot(): Promise<string> {
-  return mkdtemp(path.join(tmpdir(), "fr-node-165-"));
-}
-
-async function write(root: string, relativePath: string, text: string): Promise<void> {
-  const absolute = path.join(root, relativePath);
-  await mkdir(path.dirname(absolute), { recursive: true });
-  await writeFile(absolute, text, "utf8");
-}
-
 async function run(argv: string[]): Promise<{ exit: number; payload: Record<string, unknown> }> {
   const pipes = io();
   const exit = await main([...argv, "--json"], pipes);
@@ -62,48 +51,19 @@ async function journal(root: string): Promise<string> {
   return readFile(path.join(root, "kiwi", "waves.jsonl"), "utf8").catch(() => "");
 }
 
-const SIDECAR = JSON.stringify({
-  schema_version: "1.1.0",
-  plan_contract: "1.2.0",
-  tasks: [
-    {
-      id: "T-PH001-01",
-      type: "code",
-      action: "implement T-PH001-01",
-      req_ids: ["FR-ARCH-001"],
-      files: [{ path: "src/a.ts" }],
-      test_files: [{ path: "test/a.test.ts" }],
-      covers_ac: ["AC-1"],
-      depends_on_task: []
-    }
-  ]
-});
-
-/** A root whose sidecar grounds cleanly, so the only thing that can refuse is the journal append. */
-async function planRoot(journalText: string): Promise<string> {
-  const root = await tempRoot();
-  await write(root, "kiwi/waves.jsonl", journalText);
-  await write(root, "plan.sidecar.json", SIDECAR);
-  await write(root, "existing.json", JSON.stringify(["src/a.ts", "test/a.test.ts"]));
-  await write(root, "src/a.ts", "export const a = 1;\n");
-  await write(root, "test/a.test.ts", "export const t = 1;\n");
+/** A root whose one SDS grounds cleanly, so the only thing that can refuse is the journal append. */
+async function scheduleRoot(journalText: string): Promise<string> {
+  const root = await sdsWorkspace([{ id: "run-f-wave-1", files: ["src/a.ts"], testFiles: ["test/a.test.ts"] }]);
+  await writeUnder(root, "kiwi/waves.jsonl", journalText);
+  await writeUnder(root, "existing.json", JSON.stringify(["src/a.ts", "test/a.test.ts"]));
   return root;
 }
 
-async function handoffRoot(journalText: string): Promise<string> {
-  const root = await tempRoot();
-  await write(root, "kiwi/waves.jsonl", journalText);
-  await write(root, "lane.json", JSON.stringify(defaultLane()));
-  await write(root, "catalog.json", JSON.stringify(defaultCatalog()));
-  await write(root, "base.json", JSON.stringify({ ...defaultRoot(), allowUntestedAc: 2 }));
-  await write(root, "handoff.md", defaultHandoff());
-  return root;
-}
-
-function planArgv(root: string, extra: string[] = []): string[] {
+function scheduleArgv(root: string, extra: string[] = []): string[] {
   return [
-    "--root", root, "orchestrate", "schedule", "plan",
-    "--plan", "plan.sidecar.json",
+    "--root", root, "orchestrate", "schedule", "waves",
+    "--sds", sdsPath("run-f-wave-1"),
+    "--depends", "{}",
     "--existing-paths", "existing.json",
     "--strict-grounding",
     "--run-id", "run-f",
@@ -111,93 +71,63 @@ function planArgv(root: string, extra: string[] = []): string[] {
   ];
 }
 
-function handoffArgv(root: string, extra: string[] = []): string[] {
-  return [
-    "--root", root, "orchestrate", "handoff", "validate",
-    "--lane", "lane.json", "--path", "handoff.md", "--catalog", "catalog.json", "--base", "base.json",
-    "--run-id", "run-f",
-    ...extra
-  ];
-}
-
-describe("FR-NODE-165 AC-1 — schedule plan refuses when its own journal line cannot land", () => {
-  it("raises run-invariant-drift carrying the append's diagnostics instead of returning a plan", async () => {
-    const root = await planRoot(POISON);
-    const result = await run(planArgv(root));
+describe("FR-NODE-165 AC-1 — schedule waves refuses when its own journal line cannot land", () => {
+  it("FR-NODE-165 AC-1 raises run-invariant-drift carrying the append's diagnostics instead of returning a lanes lock", async () => {
+    const root = await scheduleRoot(POISON);
+    const result = await run(scheduleArgv(root));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(2);
     expect(result.payload.gate).toBe("run-invariant-drift");
     expect(JSON.stringify(result.payload.violations)).toContain("complete-without-latest-pass");
-    expect(result.payload, "a refused recording must not also report a plan").not.toHaveProperty("plan");
+    expect(result.payload, "a refused recording must not also report a lanes lock").not.toHaveProperty("lock");
   });
 
-  it("still returns a plan when the journal accepts the line, so the refusal is the poison and not the verb", async () => {
-    const root = await planRoot("");
-    const result = await run(planArgv(root));
+  it("FR-NODE-165 AC-1 still returns a lanes lock when the journal accepts the line, so the refusal is the poison and not the verb", async () => {
+    const root = await scheduleRoot("");
+    const result = await run(scheduleArgv(root));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
-    expect(result.payload).toHaveProperty("plan");
+    expect(result.payload).toHaveProperty("lock");
   });
 });
 
 describe("FR-NODE-165 AC-2 — a dry run is not a failed write", () => {
-  it("does not refuse under --dry-run, and leaves the journal untouched", async () => {
+  it("FR-NODE-165 AC-2 does not refuse under --dry-run, and leaves the journal untouched", async () => {
     // The baseline is POISON rather than "": over an empty journal the untouched assertion compared
     // "" with "" and also held if the file had been emptied or deleted, so it could not fail.
-    const root = await planRoot(POISON);
+    const root = await scheduleRoot(POISON);
     const before = await journal(root);
     expect(before, "the baseline must be non-empty for 'untouched' to mean anything").toBe(POISON);
 
-    const result = await run(planArgv(root, ["--dry-run"]));
+    const result = await run(scheduleArgv(root, ["--dry-run"]));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
     expect(await journal(root), "a dry run must write nothing").toBe(before);
   });
 
-  it("reports the dry run as not written rather than claiming a write", async () => {
-    // The clause "the dry run is reported as such" had no assertion at all: setting journalWritten
-    // unconditionally true left every case in this file green, so the verb could report a write it
-    // had not performed.
-    const root = await planRoot("");
-    const result = await run(planArgv(root, ["--dry-run", "--strict-grounding", "--run-id", "run-a"]));
+  it("FR-NODE-165 AC-2 reports the dry run as not written rather than claiming a write", async () => {
+    const root = await scheduleRoot("");
+    const result = await run(scheduleArgv(root, ["--dry-run"]));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
     expect(result.payload.journalWritten, "a dry run wrote nothing, and must say so").toBe(false);
   });
 });
 
-describe("FR-NODE-165 AC-3 — handoff validate refuses when its own journal line cannot land", () => {
-  it("raises run-invariant-drift instead of returning counts", async () => {
-    const root = await handoffRoot(POISON);
-    const result = await run(handoffArgv(root));
-
-    expect(result.exit, JSON.stringify(result.payload)).toBe(2);
-    expect(result.payload.gate).toBe("run-invariant-drift");
-    expect(result.payload, "a refused recording must not also report counts").not.toHaveProperty("counts");
-  });
-});
-
 describe("FR-NODE-165 AC-4 — the success path says a line landed, and it did", () => {
-  it("reports the write and the journal read back from disk holds the line, at both verbs", async () => {
-    const planned = await planRoot("");
-    const plannedResult = await run(planArgv(planned));
-    expect(plannedResult.exit, JSON.stringify(plannedResult.payload)).toBe(0);
-    expect(plannedResult.payload.journalWritten, "schedule plan must report the write it performed").toBe(true);
-    expect(await journal(planned)).toContain("\"strict_grounding\":true");
-
-    const validated = await handoffRoot("");
-    const validatedResult = await run(handoffArgv(validated));
-    expect(validatedResult.exit, JSON.stringify(validatedResult.payload)).toBe(0);
-    expect(validatedResult.payload.journalWritten, "handoff validate must report the write it performed").toBe(true);
-    expect(await journal(validated)).toContain("\"verb\":\"verify-handoff\"");
+  it("FR-NODE-165 AC-4 reports the write and the journal read back from disk holds exactly that line", async () => {
+    const root = await scheduleRoot("");
+    const result = await run(scheduleArgv(root));
+    expect(result.exit, JSON.stringify(result.payload)).toBe(0);
+    expect(result.payload.journalWritten, "schedule waves must report the write it performed").toBe(true);
+    const lines = (await journal(root)).trim().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0] as string)).toMatchObject({ run_id: "run-f", verb: "freeze-lane-plan", strict_grounding: true });
   });
 
-  it("reports no write when no run is named, so a read stays a read", async () => {
-    const root = await handoffRoot("");
-    const result = await run([
-      "--root", root, "orchestrate", "handoff", "validate",
-      "--lane", "lane.json", "--path", "handoff.md", "--catalog", "catalog.json", "--base", "base.json"
-    ]);
+  it("FR-NODE-165 AC-4 reports no write when no run is named", async () => {
+    const root = await scheduleRoot("");
+    const result = await run(scheduleArgv(root).filter((arg, index, all) => arg !== "--run-id" && all[index - 1] !== "--run-id"));
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
     expect(result.payload.journalWritten).toBe(false);
@@ -206,24 +136,21 @@ describe("FR-NODE-165 AC-4 — the success path says a line landed, and it did",
 });
 
 describe("FR-NODE-165 AC-5 — a refused append leaves the journal byte-identical", () => {
-  it("changes nothing at either verb, and leaves no candidate file behind", async () => {
-    for (const build of [planRoot, handoffRoot]) {
-      const root = await build(POISON);
-      const before = await journal(root);
-      expect(before, "the poison must actually be present, or this assertion is vacuous").toContain("complete");
+  it("FR-NODE-165 AC-5 changes nothing, and leaves no candidate file behind", async () => {
+    const root = await scheduleRoot(POISON);
+    const before = await journal(root);
+    expect(before, "the poison must actually be present, or this assertion is vacuous").toContain("complete");
 
-      const argv = build === planRoot ? planArgv(root) : handoffArgv(root);
-      const result = await run(argv);
-      expect(result.exit).toBe(2);
-      expect(await journal(root)).toBe(before);
-      // Scanned by prefix, not by the one literal name: @req FR-NODE-196 AC-3 gave the candidate a
-      // per-attempt suffix, so reading the bare `waves.jsonl.candidate` became a read of a path that
-      // can never exist, and this assertion silently became a tautology.
-      expect(
-        (await readdir(path.join(root, "kiwi"))).filter((entry) => entry.startsWith("waves.jsonl.candidate")),
-        "the refused append left a candidate behind"
-      ).toEqual([]);
-    }
+    const result = await run(scheduleArgv(root));
+    expect(result.exit).toBe(2);
+    expect(await journal(root)).toBe(before);
+    // Scanned by prefix, not by the one literal name: @req FR-NODE-196 AC-3 gave the candidate a
+    // per-attempt suffix, so reading the bare `waves.jsonl.candidate` became a read of a path that
+    // can never exist, and this assertion silently became a tautology.
+    expect(
+      (await readdir(path.join(root, "kiwi"))).filter((entry) => entry.startsWith("waves.jsonl.candidate")),
+      "the refused append left a candidate behind"
+    ).toEqual([]);
   });
 });
 

@@ -2,12 +2,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
-// @req FR-FLOW-131  one terminal review-loop obligation binding all three rungs
+// @req FR-FLOW-131  one terminal review-loop obligation binding every rung (R-STEP and R-ORCH)
 // @req FR-FLOW-132  the R-STEP rung invokes the loop before its close-out
-// @req FR-FLOW-133  the R-PLAN hop carries a window and drops its return-value condition
 // @req FR-FLOW-134  kiwi-wave-master owns a run-scope terminal hop
 // @req FR-FLOW-135  refused by name rather than opted out of; stale neighbours move
+//
+// FR-FLOW-133 (the R-PLAN hop's window, its return-value condition and its close-out token) was
+// discarded in 4.0.0 with the R-PLAN rung (FR-FLOW-187 AC-1), so its blocks are retired here.
 //
 // Measured before these were written: a naive `/kiwi-review-fix-loop/` is GREEN today over the
 // orchestrator body, over §4.5.2, over §4.5.3, over the wave-master body and over wave-master §5.5 —
@@ -36,10 +39,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -58,21 +61,23 @@ const offsetOf = (t: string, re: RegExp): number => t.search(re);
  * along — the same shape as the `후보 ≥2` and `wave 위임` false-greens this suite has already had
  * to repair twice.
  */
-const rungPreamble = (t: string): string => section(body(t), /^###\s*4\.5\s/).split(/^#{4,6}\s/m)[0];
+const rungPreamble = (t: string): string => at(section(body(t), /^###\s*4\.5\s/).split(/^#{4,6}\s/m), 0);
 
 const stepRung = (t: string): string => section(body(t), /^####\s*4\.5\.1\b/m);
-const planRung = (t: string): string => section(body(t), /^####\s*4\.5\.2\b/m);
 
 const HEDGE = /수 있다|해도 된다|권장|바람직|원칙적으로|가능하면|되도록|경우에 따라|가급적|필요하면|필요 시/;
 
-describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-131 — one obligation binding all three rungs (%s)", (copy) => {
+describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-131 — one obligation binding every rung (%s)", (copy) => {
   const rule = (): string => line(rungPreamble(read(copy)), /종료 hop/);
 
-  it("AC-1: §4.5's preamble carries the rule, binding every rung, unhedged", () => {
+  // Revised in 4.0.0: the ladder is R-STEP → R-ORCH (FR-FLOW-187 AC-1), so the rule names two rungs
+  // and a rule still naming R-PLAN binds a rung that no longer exists.
+  it("FR-FLOW-131 AC-1: §4.5's preamble carries the rule, binding R-STEP and R-ORCH, unhedged", () => {
     expect(rule(), `${copy}: the terminal-hop rule must sit above the rung subsections`).not.toBe("");
-    for (const rung of ["R-STEP", "R-PLAN", "R-ORCH"]) {
+    for (const rung of ["R-STEP", "R-ORCH"]) {
       expect(rule().includes(rung), `${copy}: the obligation must bind ${rung}`).toBe(true);
     }
+    expect(rule().includes("R-PLAN"), `${copy}: R-PLAN was removed from the ladder`).toBe(false);
     expect(/kiwi-review-fix-loop/.test(rule())).toBe(true);
     expect(/정확히 한 번/.test(rule()), `${copy}: "runs" without a count permits zero`).toBe(true);
     expect(/예외는 없다/.test(rule()), `${copy}: an unstated exception is a per-rung exception`).toBe(true);
@@ -93,7 +98,9 @@ describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-131 — one obligation binding all t
 
   it("AC-3: both halt branches are stated with their recorded verdicts", () => {
     const pre = rungPreamble(read(copy));
-    const empty = line(pre, /not-applicable-empty-window/);
+    // The verdict assignment, not the first mention: the return-value paragraph above names the
+    // same token to say both window branches are decided by the window (AC-2).
+    const empty = line(pre, /verdict = "not-applicable-empty-window"/);
     expect(empty, `${copy}: the empty-window branch keeps the gate's predicate honest`).not.toBe("");
     expect(/발동하지 않는다/.test(empty), `${copy}: an empty window must not fire the gate`).toBe(true);
     const halted = line(pre, /skipped-run-halted/);
@@ -185,44 +192,6 @@ describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-132 — the R-STEP rung owns a hop (
   });
 });
 
-describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-133 — the R-PLAN hop is windowed (%s)", (copy) => {
-  it("AC-1: the hop's arguments carry an explicit window", () => {
-    const rung = planRung(read(copy));
-    const call = rung.slice(rung.indexOf('Skill({ skill: "kiwi-review-fix-loop"'));
-    const args = call.slice(0, call.indexOf("})") + 2);
-    expect(args.includes("--close-reqs"), `${copy}: R-PLAN's closure policy is unchanged`).toBe(true);
-    for (const flag of ["--base", "--head"]) {
-      expect(args.includes(flag), `${copy}: without ${flag} the hop reviews a fallback window`).toBe(true);
-    }
-  });
-
-  it("AC-2: the rung says why the window is explicit", () => {
-    // Selected by the review loop's OWN fallback: `/5|다섯/` picks the first line carrying any digit
-    // 5, and a bare `/폴백/` picks the precondition line's unrelated `generated_at` fallback.
-    const why = line(planRung(read(copy)), /리뷰 루프가[^|]*폴백/);
-    expect(why, `${copy}: the reason the window is explicit must be stated`).not.toBe("");
-    expect(
-      /5|다섯/.test(why),
-      `${copy}: a gate satisfied by a false-clean five-commit run converts a real gap into a recorded pass`
-    ).toBe(true);
-  });
-
-  it("AC-3: no line introducing the hop keys it on a return value", () => {
-    for (const l of lines(planRung(read(copy)), /두 번째 hop/)) {
-      expect(
-        /`TASK_DONE` 이면|완주하면|성공하면/.test(l),
-        `${copy}: still conditional: ${l}`
-      ).toBe(false);
-    }
-  });
-
-  it("AC-5: the policy sentence survives with its ground", () => {
-    const rung = planRung(read(copy));
-    expect(/두 번째 hop 은 오케스트레이터 자신이 선언한 정책/.test(rung)).toBe(true);
-    expect(/상속된 의무가 아니다/.test(rung)).toBe(true);
-  });
-});
-
 describe.each(WAVE_COPIES)("FR-FLOW-134 — kiwi-wave-master owns a run-scope hop (%s)", (copy) => {
   const owned = (): string => {
     const b = body(read(copy));
@@ -250,11 +219,18 @@ describe.each(WAVE_COPIES)("FR-FLOW-134 — kiwi-wave-master owns a run-scope ho
     expect(args.includes("--close-reqs"), `${copy}: a run-scope close would be a bulk finalize`).toBe(false);
   });
 
-  it("AC-3: the inheritance reading is rejected by name", () => {
+  // Revised in 4.0.0: waves no longer run through a per-wave kiwi-pipeline; each worker reviews its
+  // own window (FR-FLOW-188 AC-2), and that is the reading §5.55 must refuse by name.
+  it("FR-FLOW-134 AC-3: the run-scope hop's section refuses the per-worker-review reading by name", () => {
+    const hop = section(body(read(copy)), /^##\s*5\.55\s/);
+    expect(hop, `${copy}: §5.55 must exist`).not.toBe("");
+    const refusal = line(hop, /워커가 자기 창을 도는 리뷰가 이것을 대신하지 않는다/);
     expect(
-      /(kiwi-pipeline|파이프라인)[^\n]*(마지막 홉|종료 hop)[^\n]*(대신하지 않는다|충분하지 않다)/.test(body(read(copy))),
-      `${copy}: "the pipeline already ran a review" must be refused, not left as a live reading`
-    ).toBe(true);
+      refusal,
+      `${copy}: "each worker already reviewed its window" must be refused, not left as a live reading`
+    ).not.toBe("");
+    expect(/^\*\*각 워커가 자기 창을 도는 리뷰가 이것을 대신하지 않는다\.\*\*/.test(refusal), `${copy}: stated as the paragraph's bold lead`).toBe(true);
+    expect(/kiwi-pipeline[^\n]*마지막 홉/.test(hop), `${copy}: the per-wave pipeline reading left with kiwi-pipeline`).toBe(false);
   });
 
   it("AC-3b: the non-redundancy argument rests on scope, not on a false disjointness", () => {
@@ -418,37 +394,7 @@ describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-131 — the R-ORCH rung discharges t
   });
 });
 
-describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-133 — the R-PLAN close is observable at all (%s)", (copy) => {
-  // The run-close validator recognises a delegating rung's close by `outcome: "delegated-complete"`
-  // on a dispatch-route result. R-STEP's close-out records it; R-PLAN's did not, so the rule this
-  // change added swept past R-PLAN entirely — a gate that reads as covering three rungs while
-  // reaching two. The tell was that `delegated-complete` occurred exactly once in the whole document.
-  it("AC-6: the R-PLAN close-out records the outcome the run-close rule keys on", () => {
-    const rung = planRung(read(copy));
-    expect(rung, `${copy}: §4.5.2 must exist`).not.toBe("");
-    expect(
-      /delegated-complete/.test(rung),
-      `${copy}: without the outcome token the R-PLAN close is invisible to the run-close validator`
-    ).toBe(true);
-  });
-
-  it("AC-7: both delegating rungs record it, so the count is two rather than one", () => {
-    expect(lines(body(read(copy)), /delegated-complete/).length).toBeGreaterThanOrEqual(2);
-  });
-});
-
-describe("FR-FLOW-133 / FR-FLOW-135 — the two contracts the change left unasserted", () => {
-  it.each(ORCHESTRATOR_COPIES)("FR-FLOW-133 AC-4: %s states what governs the R-PLAN hop", (copy) => {
-    // Measured: the FR-FLOW-133 block had no AC-4 reader at all, and the nearest assertion reads
-    // §4.5's preamble rather than §4.5.2 — so the rung's own replacement text was unprotected.
-    const rung = planRung(read(copy));
-    const governs = line(rung, /반환값에 조건 걸리지 않는다/);
-    expect(governs, `${copy}: §4.5.2 must state that the hop is not keyed on the return value`).not.toBe("");
-    for (const token of ["TASK_DONE", "NEEDS_USER", "FAILED", "§0.4"]) {
-      expect(governs.includes(token), `${copy}: the replacement must name ${token}`).toBe(true);
-    }
-  });
-
+describe("FR-FLOW-135 — the contract the change left unasserted", () => {
   const ROUTING_COPIES = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"].map(
     (root) => `${root}/_shared/kiwi/pipeline-event.md`
   );
@@ -466,15 +412,20 @@ describe("FR-FLOW-133 / FR-FLOW-135 — the two contracts the change left unasse
   });
 });
 
-describe.each(ORCHESTRATOR_COPIES)("FR-FLOW-133 — the delegating closes name their status value (%s)", (copy) => {
+describe.each(ORCHESTRATOR_COPIES)("the delegating close names its status value (%s)", (copy) => {
   // `status` is a REQUIRED field of every event, so a contract-conforming producer always writes
-  // one — and neither close-out said which. The run-close rule reads the stated status in
-  // preference to the outcome token, so an unspecified status leaves `in_progress` on a completing
-  // close as a legal spelling that silences the refusal. Naming the value is what closes it.
-  it("AC-7: both close-outs record status complete alongside the outcome token", () => {
+  // one. The run-close rule reads the stated status in preference to the outcome token
+  // (FR-NODE-188 AC-10), so an unspecified status leaves `in_progress` on a completing close as a
+  // legal spelling that silences the refusal. Naming the value is what closes it.
+  // This block was FR-FLOW-133's, which 4.0.0 discarded with R-PLAN (FR-FLOW-187 AC-1). R-STEP is
+  // now the only delegating rung, so the count is one rather than two; the per-row status check is
+  // kept because it guards the surviving R-STEP close. No live AC names that status value —
+  // see the triage report's SRS-revision list (FR-FLOW-099 AC-3).
+  it("the R-STEP close-out records status complete alongside the outcome token", () => {
     const b = body(read(copy));
     const rows = lines(b, /delegated-complete/);
-    expect(rows.length, `${copy}: both delegating rungs must record the token`).toBeGreaterThanOrEqual(2);
+    expect(rows.length, `${copy}: the delegating rung must record the token`).toBeGreaterThanOrEqual(1);
+    expect(lines(stepRung(read(copy)), /delegated-complete/).length, `${copy}: R-STEP's close-out records it`).toBe(1);
     for (const row of rows) {
       expect(
         /status.{0,4}:?.{0,4}"?complete/.test(row),

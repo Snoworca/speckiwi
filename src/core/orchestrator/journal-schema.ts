@@ -11,9 +11,16 @@
 // Journal identity
 // ---------------------------------------------------------------------------------------------
 
-/** The closed set of schema versions the reader accepts (waves-event.md v1.0.0 through v1.4.0). */
-export const WAVES_SCHEMA_VERSIONS = ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"] as const;
+/** The closed set of schema versions the reader accepts (waves-event.md v1.0.0 through v2.0.0). */
+export const WAVES_SCHEMA_VERSIONS = ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "2.0.0"] as const;
 export type WavesSchemaVersion = (typeof WAVES_SCHEMA_VERSIONS)[number];
+
+/**
+ * The version this tool stamps on the lines it writes. @req FR-NODE-213 AC-6 — raised to 2.0.0 when
+ * the field set dropped `plan_run_id` and `coverage_residual` and gained `sds_id`. A line carrying an
+ * earlier version is read as it was written and is not re-validated against this field set.
+ */
+export const CURRENT_WAVES_SCHEMA_VERSION: WavesSchemaVersion = "2.0.0";
 
 /** The producing skill. @req FR-NODE-140 — a line with no `engine` field is `kiwi-wave-master`. */
 export const ENGINES = ["kiwi-wave-master", "kiwi-orchestrator"] as const;
@@ -40,9 +47,19 @@ export const WAVE_PHASES = [
   "handoff",
   "lane",
   "integrate",
-  "stage-close"
+  "stage-close",
+  // @req FR-FLOW-051 AC-6 — the two stages between a wave's SRS authoring and its verification.
+  "sds",
+  "worker"
 ] as const;
 export type WavePhase = (typeof WAVE_PHASES)[number];
+
+/**
+ * @req FR-NODE-213 AC-6, FR-FLOW-104 AC-6 — the phases no 4.0.0 stage produces: `handoff` left with
+ * loop H and the English handoff documents, `pipeline` with the per-wave pipeline cycle a wave no
+ * longer runs. They stay in {@link WAVE_PHASES} only so a line below 2.0.0 still reads.
+ */
+export const WAVE_PHASES_RETIRED_IN_4_0_0 = ["pipeline", "handoff"] as const satisfies readonly WavePhase[];
 
 /** 05 §4.3's write-ahead / write-behind pair. */
 export const EVENT_KINDS = ["intent", "result"] as const;
@@ -81,22 +98,21 @@ export const VERB_RECOVERY_CLASS = {
   "author-wave-design": "pure-reauthor",
   "verify-wave-design": "idempotent-by-key",
   "register-wave-srs": "externally-visible",
-  "plan-wave": "externally-visible",
+  // @req FR-NODE-213 AC-5 — was `plan-wave`: a wave is designed by one SDS, not planned.
+  "sds-wave": "externally-visible",
   "derive-readiness": "idempotent-by-key",
   "commit-wave-inputs": "externally-visible",
   "freeze-lane-plan": "idempotent-by-key",
   "review-partition": "pure-reauthor",
-  "author-handoff": "pure-reauthor",
-  "verify-handoff": "idempotent-by-key",
-  "commit-dispatch-base": "externally-visible",
-  "execute-unit": "externally-visible",
+  // @req FR-NODE-163 — `author-handoff`, `verify-handoff`, `commit-dispatch-base`, `execute-unit`
+  // and `run-serial-epilogue` retired in 4.0.0 with the handoff documents, the serial epilogue and
+  // the phase-1 unit executor; a wave's worker is journalled by the six lane verbs below.
   "dispatch-lane": "externally-visible",
   "collect-lane": "idempotent-by-key",
   "verify-lane": "idempotent-by-key",
   "remediate-lane": "externally-visible",
   "release-lane": "externally-visible",
   "integrate-lane": "externally-visible",
-  "run-serial-epilogue": "externally-visible",
   "replay-deferred-mutations": "idempotent-by-key",
   "post-merge-verify": "idempotent-by-key",
   "wave-issue-triage": "pure-reauthor",
@@ -113,35 +129,10 @@ export type VerbName = keyof typeof VERB_RECOVERY_CLASS;
 export const VERBS = Object.keys(VERB_RECOVERY_CLASS) as VerbName[];
 
 /**
- * @req FR-NODE-163 - the nine verbs the shipped skill states are NOT in the phase-1 enum: the six
- * lane verbs, which `execute-unit` replaces, plus the three that belong to
- * `2.6.0-phase2-parallel-lanes`. They keep their recovery class here because the vocabulary is the
- * journal's and spans both phases; what is phase-scoped is which of them a resume will accept.
+ * @req FR-NODE-163 — the verb set a resume card is checked against, which the shipped skill body
+ * declares one `§V.<verb>` section per member of. From 4.0.0 no verb is deferred, so the journal's
+ * vocabulary and the resume vocabulary are one set. @req FR-NODE-213 AC-5
  */
-export const DEFERRED_VERBS = [
-  "probe-isolation",
-  "dispatch-lane",
-  "collect-lane",
-  "verify-lane",
-  "remediate-lane",
-  "release-lane",
-  "integrate-lane",
-  "run-serial-epilogue",
-  "replay-deferred-mutations"
-] as const satisfies readonly VerbName[];
-
-/**
- * The phase-1 enum, derived rather than restated. The skill body carries one `§V.<verb>` section per
- * member (FR-FLOW-074 AC-2), and a test asserts this set equal to that one in all three variants, so
- * the document is the definition and the constant cannot quietly drift from it.
- */
-export const PHASE_1_VERBS = VERBS.filter((verb) => !(DEFERRED_VERBS as readonly string[]).includes(verb));
-
-/** Membership in the phase-1 enum. `isVerb` stays the union, which the journal reader still needs. */
-export function isPhase1Verb(value: string): value is VerbName {
-  return isVerb(value) && !(DEFERRED_VERBS as readonly string[]).includes(value);
-}
-
 export function isVerb(value: string): value is VerbName {
   return Object.prototype.hasOwnProperty.call(VERB_RECOVERY_CLASS, value);
 }
@@ -211,9 +202,24 @@ export const MANIFEST_STATUSES = [
 ] as const;
 export type ManifestStatus = (typeof MANIFEST_STATUSES)[number];
 
-/** 05 §4.2 — a lane leaving the run without merging. Every member is terminal. */
-export const LANE_DISPOSITION_KINDS = ["demoted", "quarantined", "coupling-reset", "refuted"] as const;
+/**
+ * 05 §4.2 — a lane leaving the run without merging. Every member is terminal. @req FR-NODE-107 AC-2 —
+ * `demoted` and `coupling-reset` left in 4.0.0 with the handoff layer and the stage coupling check.
+ */
+export const LANE_DISPOSITION_KINDS = ["quarantined", "refuted"] as const;
 export type LaneDispositionKind = (typeof LANE_DISPOSITION_KINDS)[number];
+
+/**
+ * @req FR-NODE-107 AC-2, FR-NODE-213 AC-6 — the two kinds that left in 4.0.0. A line below
+ * {@link FIRST_4_0_0_SCHEMA_VERSION} was written under the four-value enum and keeps it: its
+ * `demoted` or `coupling-reset` is still terminal, and reading it as invalid would re-dispatch a lane
+ * that left the run.
+ */
+export const LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0 = ["demoted", "coupling-reset"] as const;
+export type RetiredLaneDispositionKind = (typeof LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0)[number];
+
+/** @req FR-NODE-163, FR-NODE-213 AC-5 — the verbs 4.0.0 retired or renamed (`plan-wave` became `sds-wave`). */
+export const VERBS_RETIRED_IN_4_0_0 = ["plan-wave", "author-handoff", "verify-handoff", "commit-dispatch-base", "execute-unit", "run-serial-epilogue"] as const;
 
 /** waves-event.md §2.3 — the verdict a `verification` object records. */
 export const VERIFICATION_VERDICTS = ["in-progress", "pass", "fail-residual", "fail-cap"] as const;
@@ -262,15 +268,20 @@ export type LoopMode = (typeof LOOP_MODES)[number];
  */
 export const REQUIRED_CLEAN_STREAK: Record<LoopMode, number> = { normal: 1, max: 2, mini: 1, explicit: 1 };
 
-/** 05 §4.1 property 1 — the resume card's precondition vocabulary, exactly five values. */
+/**
+ * 05 §4.1 property 1 — the resume card's precondition vocabulary. @req FR-NODE-151 AC-2 — four values
+ * since `P-HANDOFF-VERIFIED` left in 4.0.0 with the English handoff documents (FR-FLOW-187 AC-4).
+ */
 export const CARD_PRECONDITIONS = [
   "P-DESIGN-FROZEN",
   "P-LANE-PLAN-FROZEN",
-  "P-HANDOFF-VERIFIED",
   "P-WAVE-ISSUES-CLOSED",
   "P-PRIOR-STAGES-INTEGRATED"
 ] as const;
 export type CardPrecondition = (typeof CARD_PRECONDITIONS)[number];
+
+/** @req FR-NODE-151 AC-2 — the card precondition that left in 4.0.0 with the handoff documents. */
+export const CARD_PRECONDITIONS_RETIRED_IN_4_0_0 = ["P-HANDOFF-VERIFIED"] as const;
 
 /**
  * 05 §10.1 — `decideAutoGate`'s action vocabulary, registered here so the parity test covers it.
@@ -398,7 +409,8 @@ export const WAVES_EVENT_FIELDS = {
     "srs_authored",
     "diff_window",
     "pipeline_run_ids",
-    "plan_run_id",
+    // @req FR-NODE-213 AC-6 — the wave's SDS id, in place of the plan run id.
+    "sds_id",
     "run_diff_window",
     "engine",
     "writer",
@@ -418,7 +430,6 @@ export const WAVES_EVENT_FIELDS = {
     "decision",
     "deadline_at",
     "postmortem",
-    "coverage_residual",
     "card_digest",
     "proof",
     "strict_grounding",
@@ -428,11 +439,7 @@ export const WAVES_EVENT_FIELDS = {
     "abort_gate",
     // @req FR-NODE-168 — the round index, and the field both run-state readers key on to tell a
     // round record from a compliant status assertion. Written today and declared nowhere.
-    "round",
-    // @req FR-NODE-172 — written by `handoff validate` since FR-NODE-155 AC-3 required the allowance
-    // journalled, and declared in neither half until now. It was the last such field at any typed
-    // call site; `reason_class` shows what an undeclared one costs.
-    "untested_allowance"
+    "round"
   ]
 } as const;
 
@@ -479,7 +486,9 @@ export const JOURNAL_RULE_CODES = [
   "lane-not-terminal",
   "integrated-lane-without-merge-sha",
   "journal-only-verdict",
-  "abort-gate-outside-vocabulary"
+  "abort-gate-outside-vocabulary",
+  // @req FR-NODE-213 AC-6 — a verb, lane disposition or phase 4.0.0 retired, on a 2.0.0 line.
+  "vocabulary-retired-in-4-0-0"
 ] as const;
 export type JournalRuleCode = (typeof JOURNAL_RULE_CODES)[number];
 
@@ -679,6 +688,14 @@ export const JOURNAL_RULES: readonly WavesRule[] = [
     enforcement: "diagnostic",
     producer: "journal"
   },
+  {
+    // A retired gate is not here: FR-NODE-167 AC-4 keeps it under `abort-gate-outside-vocabulary`.
+    code: "vocabulary-retired-in-4-0-0",
+    rule: "a verb, lane_disposition.kind or phase 4.0.0 retired, on a 2.0.0 or later line — error on the newest line, warning on history",
+    source: "FR-NODE-213 AC-6",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
   // The five terminal-review rules. Declaring a code in `JOURNAL_RULE_CODES` and not here exempts it
   // from the fixture harness whose denominator is these tables — the rule ships, the union accepts
   // it, and nothing ever demands the violating-plus-legal pair every other journal rule pays for.
@@ -737,6 +754,22 @@ export const WAVES_EVENT_NON_VIOLATION_BULLETS = [
 // ---------------------------------------------------------------------------------------------
 // Small shared predicates
 // ---------------------------------------------------------------------------------------------
+
+/** The schema version the first 4.0.0 lines carry. @req FR-NODE-213 AC-6 */
+export const FIRST_4_0_0_SCHEMA_VERSION = "2.0.0";
+
+/** A line's schema version; a line that carries none was written under 1.0.0. */
+export function schemaVersionOf(event: WavesEvent): string {
+  return typeof event.schema_version === "string" ? event.schema_version : "1.0.0";
+}
+
+/**
+ * @req FR-NODE-213 AC-6 — whether a line was written before 4.0.0, so it keeps the vocabulary it was
+ * written under rather than being re-validated against the 4.0.0 contract.
+ */
+export function writtenBefore400(event: WavesEvent): boolean {
+  return compareSchemaVersions(schemaVersionOf(event), FIRST_4_0_0_SCHEMA_VERSION) < 0;
+}
 
 /** Compares two dotted SemVer-ish schema versions. Returns <0, 0 or >0. */
 export function compareSchemaVersions(a: string, b: string): number {

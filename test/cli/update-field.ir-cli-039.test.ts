@@ -48,12 +48,12 @@ const SCOPE_DOC = path.join("docs", "spec", "10.product-architecture.srs.md");
 const TARGET_ID = "FR-ARCH-001";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the output written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** Reads the current value of a single metadata cell (e.g. "Priority") for a requirement block. */

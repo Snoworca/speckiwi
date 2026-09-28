@@ -6,6 +6,7 @@ import { getRequirement, listRequirements } from "../../../src/core/query/lookup
 import { isNewWorkCandidate, summarizeTarget } from "../../../src/core/query/summary.js";
 import type { ParsedWorkspace, RequirementRecord } from "../../../src/core/types.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
+import { at } from "../../support/at.js";
 
 function requirementVariant(base: RequirementRecord, id: string, status: RequirementRecord["status"], stability: NonNullable<RequirementRecord["stability"]>): RequirementRecord {
   return {
@@ -36,7 +37,7 @@ describe("query services", () => {
 
   it("summarizes stability fields and deterministic new-work candidates", async () => {
     const workspace = await parseWorkspace(await resolveProjectRoot(await copyFixtureWorkspace("valid-basic")));
-    const base = workspace.records[0];
+    const base = at(workspace.records, 0);
     const records = [
       requirementVariant(base, "FR-ARCH-001", "planned", "stable"),
       requirementVariant(base, "FR-ARCH-002", "planned", "draft"),
@@ -50,11 +51,11 @@ describe("query services", () => {
     expect(listRequirements(expanded, { status: "planned" }).map((record) => record.id)).toEqual(["FR-ARCH-001", "FR-ARCH-002"]);
     expect(listRequirements(expanded, { status: "blocked" }).map((record) => record.id)).toEqual(["FR-ARCH-003"]);
     expect(getRequirement(expanded, "FR-ARCH-003")).toMatchObject({ id: "FR-ARCH-003", stability: "deprecated" });
-    expect(isNewWorkCandidate(records[0])).toBe(true);
-    expect(isNewWorkCandidate(records[1])).toBe(false);
-    expect(isNewWorkCandidate(records[2])).toBe(false);
-    expect(isNewWorkCandidate(records[4])).toBe(false);
-    expect(isNewWorkCandidate(records[5])).toBe(false);
+    expect(isNewWorkCandidate(at(records, 0))).toBe(true);
+    expect(isNewWorkCandidate(at(records, 1))).toBe(false);
+    expect(isNewWorkCandidate(at(records, 2))).toBe(false);
+    expect(isNewWorkCandidate(at(records, 4))).toBe(false);
+    expect(isNewWorkCandidate(at(records, 5))).toBe(false);
 
     expect(summarizeTarget(expanded)).toMatchObject({
       countsByStability: { stable: 2, draft: 2, deprecated: 1, volatile: 1 },

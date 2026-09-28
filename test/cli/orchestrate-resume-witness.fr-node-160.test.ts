@@ -34,8 +34,8 @@ const BASE = { schema_version: "1.4.0", run_id: RUN_ID, engine: "kiwi-orchestrat
 
 const JOURNAL = [
   { ...BASE, wave: "wave-1", order: 1, target: "wave-1", phase: "wave-verify", status: "in_progress", summary: "verify", verification: { verdict: "pass" } },
-  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "execute-unit", event: "intent" },
-  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "execute-unit", event: "result" }
+  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "dispatch-lane", event: "intent" },
+  { ...BASE, wave: "wave-1", stage: 1, lane: "lane-1", verb: "dispatch-lane", event: "result" }
 ];
 
 function frozenBlock(): ResumeCard["frozen"] {
@@ -62,9 +62,9 @@ function card(): ResumeCard {
     run_contract: "docs/research/demo/00.run-contract.md@sha256:9f1c",
     position: { wave: 1, stage: 1, phase: "execute" },
     next_action: {
-      verb: "execute-unit",
+      verb: "dispatch-lane",
       args: { wave: 1, stage: 1, lane: "lane-1" },
-      preconditions: ["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-HANDOFF-VERIFIED", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]
+      preconditions: ["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]
     },
     frozen,
     done: [{ key: "intake", proof: { kind: "digest", ref: "design/00.design.lock.json@sha256:4ab0" } }],
@@ -77,19 +77,14 @@ function card(): ResumeCard {
 
 /** The commit a landed phase-1 unit leaves: trailered, on the integration branch, no lane branch. */
 const LANDED = [
-  { sha: "aaaa111", trailers: { "Orch-Run": RUN_ID, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1", "Orch-Task": "T-PH001-01" } }
+  { sha: "aaaa111", trailers: { "Orch-Run": RUN_ID, "Orch-Wave": "1", "Orch-Stage": "1", "Orch-Lane": "lane-1" } }
 ];
 
 function factsBundle(integrationCommits: unknown[]): string {
   const recorded = {
-    sidecarDigest: "sha256:sidecar",
-    registryDigest: "sha256:registry",
-    existingPathsDigest: "sha256:paths",
-    designItemMapDigest: "sha256:map",
-    priorPostmortemDigests: [],
-    laneCap: 8,
-    codeRoots: ["src/**"],
-    testRoots: ["test/**"]
+    sdsDigests: { "run-wave-1": "sha256:sds-1" },
+    depends: {},
+    laneCap: 8
   };
   return JSON.stringify({
     gitFacts: { branches: [], worktrees: [], heartbeats: [], integrationHead: "aaaa111", hostStatusPaths: [], integrationCommits },
@@ -103,13 +98,7 @@ function factsBundle(integrationCommits: unknown[]): string {
         postmortem: ""
       },
       recordedLaneInputs: recorded,
-      recomputedLaneInputDigests: {
-        sidecarDigest: recorded.sidecarDigest,
-        registryDigest: recorded.registryDigest,
-        existingPathsDigest: recorded.existingPathsDigest,
-        designItemMapDigest: recorded.designItemMapDigest,
-        priorPostmortemDigests: []
-      },
+      recomputedLaneInputDigests: { sdsDigests: { ...recorded.sdsDigests }, closedOutWaves: [] },
       freshIntentDigests: {},
       handoffProseDigests: {}
     }
@@ -134,7 +123,7 @@ describe("FR-NODE-160 AC-2 — the merge witness travels through the CLI's --fac
   it("without the commits, the resumed session is told to execute the unit and reports itself consistent", async () => {
     const result = await resume([]);
     expect(result.exit, "this baseline must succeed, or the contrast below is between two refusals").toBe(0);
-    expect(nextVerb(result)).toBe("execute-unit");
+    expect(nextVerb(result)).toBe("dispatch-lane");
     expect((result.payload as { resume?: { nextAction?: { reconciliation?: unknown } } }).resume?.nextAction?.reconciliation).toBe("consistent");
   });
 

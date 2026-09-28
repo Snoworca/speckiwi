@@ -201,7 +201,7 @@ describe("FR-NODE-045 AC-2 — self-reference, reverse-duplicate, and N>1 ambigu
     );
     expect(result.ok).toBe(false);
     if (result.ok === false) {
-      expect(result.error.message.length).toBeGreaterThan(0);
+      expect(result.error?.message.length).toBeGreaterThan(0);
     }
 
     // No mutation occurred for the rejected self-reference path.
@@ -230,7 +230,7 @@ describe("FR-NODE-045 AC-2 — self-reference, reverse-duplicate, and N>1 ambigu
     );
     expect(result.ok).toBe(false);
     if (result.ok === false) {
-      expect(result.error.message.length).toBeGreaterThan(0);
+      expect(result.error?.message.length).toBeGreaterThan(0);
     }
     const after = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
     expect(after).toBe(before);
@@ -260,7 +260,7 @@ describe("FR-NODE-045 AC-2 — self-reference, reverse-duplicate, and N>1 ambigu
     const result = await supersedeRequirement(root, supersedeInput(OLD_ID));
     expect(result.ok).toBe(false);
     if (result.ok === false) {
-      expect(result.error.message.length).toBeGreaterThan(0);
+      expect(result.error?.message.length).toBeGreaterThan(0);
     }
     // The denied ambiguous supersede left the document untouched.
     const after = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
@@ -293,7 +293,7 @@ describe("FR-NODE-045 AC-3 — T2 hardened updateStatus honors the verified-regr
     const denied = await supersedeRequirement(root, supersedeInput(OLD_ID));
     expect(denied.ok).toBe(false);
     if (denied.ok === false) {
-      expect(denied.error.code).toBe("MUTATION_DENIED");
+      expect(denied.error?.code).toBe("MUTATION_DENIED");
     }
     // The protected requirement is still verified (not discarded).
     expect((await recordById(rootPath, OLD_ID))?.status).toBe("verified");

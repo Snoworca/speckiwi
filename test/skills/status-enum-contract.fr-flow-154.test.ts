@@ -67,9 +67,9 @@ const SKILL_DIRECTORIES = [
   "kiwi-hot-fix",
   "kiwi-orchestrator",
   "kiwi-pipeline",
-  "kiwi-planner",
   "kiwi-pm",
   "kiwi-review-fix-loop",
+  "kiwi-sds",
   "kiwi-srs",
   "kiwi-srs-feasibility",
   "kiwi-srs-from-code",
@@ -255,20 +255,25 @@ const STATUS_SLOT_FLOOR: Record<string, number> = {
   "status-literal-bullet": 2,
   "status-transition": 2,
   "status-order-ladder": 4,
-  "status-snapshot-map": 3,
+  // 3 -> 2 (4.0.0): the plan sidecar's status snapshot left with kiwi-planner (FR-FLOW-184 AC-2).
+  "status-snapshot-map": 2,
   "metadata-status-row": 1,
   "status-bound-value": 1,
   "update_status-list-line": 2,
   "status-backward-guard": 4,
-  "req-keyed-status": 2
+  // 2 -> 1 (4.0.0): kiwi-planner's req-keyed status line left with the skill (FR-FLOW-184 AC-2).
+  "req-keyed-status": 1
 };
 
 const STABILITY_SLOT_FLOOR: Record<string, number> = {
   "update_stability-argument": 1,
   "update_stability-transition": 6,
   "stability-transition": 1,
-  "stability-snapshot-map": 3,
-  "metadata-stability-row": 11,
+  // 4.0.0 (FR-FLOW-184 AC-2, FR-FLOW-185), measured per file against HEAD: kiwi-pm's plan-sidecar
+  // snapshot map left (3 -> 2), and kiwi-planner's metadata rows (11 -> 6), quoted keys (8 -> 6) and
+  // stability sets (11 -> 7) left with the skill. No other file lost a firing.
+  "stability-snapshot-map": 2,
+  "metadata-stability-row": 6,
   "req-stability-value": 2,
   "stability-particle-value": 2,
   // 13 -> 12 (FR-FLOW-161, 2026-08-28). The codex/etc/mirror sentence
@@ -278,8 +283,8 @@ const STABILITY_SLOT_FLOOR: Record<string, number> = {
   // the `eligible` row, the exclusion sentence, and the gate table row — so what left is a
   // restatement, not a value. A floor is only sound to lower when what left is named.
   "stability-value": 12,
-  "stability-quoted-key": 8,
-  "stability-set": 11,
+  "stability-quoted-key": 6,
+  "stability-set": 7,
   "stability-enum-restatement": 5
 };
 
@@ -351,22 +356,23 @@ const NO_CHANGE_OUTCOME = ["keep"] as const;
  * slot walks past it — and a survey of the lines no slot reads found all four of these carrying
  * real instructions.
  */
+// `stability-rule-bullet` left in 4.0.0: its only block (`REQ 를 Stability 별로 분류`) was kiwi-planner's
+// (FR-FLOW-184 AC-2), so no rendering carries one and no floor can be measured. The reader still runs in
+// the violation sweep, so a block written later is judged; it just carries no floor until one exists.
 const DECISION_FLOOR: Record<string, number> = {
   "stability-decision-column": 23,
   "status-decision-predicate": 3,
   "status-rule-bullet": 4,
-  "stability-rule-bullet": 5,
   "transition-table": 5
 };
 
 /**
- * A rendering ships executable files beside its prose, and one of them holds a third copy of the
- * stability enum: `kiwi-planner`'s `validator.mjs` compares `r.stability` against a hardcoded
- * `'deprecated'` in two checks. The requirement text says "skill text", so this is a guard the
- * contract test adds rather than an obligation AC-1 states — but a code copy drifting silently is
- * the situation this requirement exists to prevent, and a markdown-only walk cannot see it.
+ * A rendering used to ship executable files beside its prose, and one of them held a third copy of
+ * the stability enum: `kiwi-planner`'s `validator.mjs` compared `r.stability` against a hardcoded
+ * `'deprecated'` in two checks. It left with kiwi-planner in 4.0.0 (FR-FLOW-184 AC-2), so no rendering
+ * ships a script and the floor that held its literals has nothing to hold. The slot test instead
+ * asserts that none ships: a script added later is a code copy of the enum that needs this floor back.
  */
-const SCRIPT_STABILITY_FLOOR = 2;
 
 // ---------------------------------------------------------------------------------------------
 // The coverage layer, which reads by EXCLUSION rather than by slot.
@@ -446,26 +452,20 @@ const HOMONYM_RULES: Homonym[] = [
  */
 const HOMONYM_SITES: Homonym[] = [
   { id: "review-round-blocked-warn", value: "blocked", at: /\0\/warn/, why: "리뷰 라운드의 blocked/warn 상태 표기다" },
-  { id: "planned-tasks-adjective", value: "planned", at: /\0\s+tasks\b/, why: "영어 형용사다 — planned tasks" },
   { id: "verified-changes-adjective", value: "verified", at: /\0\s+changes\b/, why: "영어 형용사다 — verified changes" },
   { id: "card-frozen-json-key", value: "frozen", at: /"\0"\s*:\s*\{/, why: "재개 카드 JSON 의 `frozen` 블록 키다" },
   { id: "card-frozen-block", value: "frozen", at: /\0`?\s*(?:블록|block)/, why: "재개 카드의 `frozen` 블록 이름이다" },
   { id: "card-frozen-inside", value: "frozen", at: /\0`?\s*안에\s/, why: "재개 카드의 `frozen` 블록 안이라는 위치 서술이다" },
   { id: "card-frozen-record", value: "frozen", at: /\0`?\s*에\s*기록/, why: "재개 카드의 `frozen` 블록에 기록한다는 서술이다" },
   { id: "frozen-denominator", value: "frozen", at: /\0\s+denominator\b/, why: "영어 형용사다 — frozen denominator table" },
-  { id: "plan-freeze-path", value: "frozen", at: /outputs\/\0/, why: "plan freeze 산출물 경로 `outputs/frozen/` 의 한 마디다" },
   { id: "waves-event-name", value: "in_progress", at: /\0`?\**\s*(?:이벤트|타임스탬프|event)/, why: "waves.jsonl 저널 이벤트의 이름이다" },
   { id: "waves-event-particle", value: "in_progress", at: /\0`?\s*(?:에서는|1줄|\*\*에서는)/, why: "waves.jsonl 저널 이벤트의 이름이다" },
   { id: "wave-issues-field", value: "planned", at: /\bopen,\s\0/, why: "wave_issues 집계 객체의 필드 이름이다" },
-  { id: "coder-task-status", value: "in_progress", at: /current_task_id\b[^\n]{0,40}\0/, why: "kiwi-coder 실행 상태 파일의 Task status 다" },
-  { id: "tdd-draft-phase", value: "draft", at: /\bTDD\s\0/, why: "TDD 초안 단계 이름(tdd-draft)이다" },
   { id: "pr-draft-flag-ko", value: "draft", at: /\0\s*(?:로 생성|비활성)/, why: "GitHub PR 의 draft 플래그 설명이다" },
   { id: "pr-draft-flag-en", value: "draft", at: /\0\s+(?:PR\b|a PR body)/, why: "GitHub PR 의 draft 플래그이거나 영어 동사 draft 다" },
   { id: "alias-deprecated-note", value: "deprecated", at: /alias\*{0,2}\s*\(\0/, why: "반환 필드 alias 의 폐기 예정 표기다" },
-  { id: "plan-draft-artifact", value: "draft", at: /\0`?\s*만\s*보존/, why: "plan 초안 산출물을 가리킨다" },
   { id: "pm-task-status-literal", value: "blocked", at: /status\s*=\s*"\0/, why: "kiwi-pm 실행 상태 파일의 Task status 다" },
   { id: "pm-task-status-record", value: "blocked", at: /\0\s*기록/, why: "kiwi-pm 실행 상태 파일의 Task status 다" },
-  { id: "pm-task-counter-key", value: "blocked", at: /^\s*"\0"\s*:\s*\d/, why: "kiwi-pm 상태 파일의 Task 집계 카운터 키다" },
   { id: "pm-pseudocode-init", value: "blocked", at: /\0\s*=\s*\[\]/, why: "kiwi-pm 의사코드의 지역 변수다" },
   { id: "pm-pseudocode-append", value: "blocked", at: /\0\.append/, why: "kiwi-pm 의사코드의 지역 변수다" },
   { id: "pm-pseudocode-ref", value: "blocked", at: /\b(?:IN|NOT)\s\0/, why: "kiwi-pm 의사코드의 지역 변수다" },
@@ -492,7 +492,6 @@ const HOMONYM_DICTIONARY: Homonym[] = [...HOMONYM_RULES, ...HOMONYM_SITES];
  */
 const ALLOWED_NEAR_MISS = [
   "state",
-  "planner",
   "unverified",
   "drift",
   "blockers",
@@ -516,57 +515,61 @@ const ALLOWED_NEAR_MISS = [
  * Widening the dictionary has the same effect, so an exclusion cannot be added quietly either.
  */
 const VALUE_FLOOR: Record<string, Record<string, number>> = {
+  // Lowered for 4.0.0 (2026-09-28), and only where occurrences left with removed text: kiwi-planner's
+  // body in every rendering (FR-FLOW-184 AC-2) carried most of the `stable` / `frozen` / `evolving` /
+  // `deprecated` mentions, and the kiwi-pm and pipeline rewrites to SDS input (FR-FLOW-185,
+  // FR-FLOW-184 AC-1) took out a `planned` each. Measured per file against HEAD before lowering.
   "skills/claude": {
-    planned: 25,
+    planned: 24,
     in_progress: 26,
     blocked: 10,
     implemented: 46,
     verified: 52,
     discarded: 24,
     draft: 87,
-    evolving: 38,
-    stable: 56,
-    frozen: 81,
-    deprecated: 43
+    evolving: 35,
+    stable: 46,
+    frozen: 75,
+    deprecated: 37
   },
   "skills/codex": {
-    planned: 26,
+    planned: 25,
     in_progress: 27,
     blocked: 12,
     implemented: 48,
     verified: 42,
     discarded: 24,
     draft: 97,
-    evolving: 37,
-    stable: 57,
-    frozen: 69,
-    deprecated: 49
+    evolving: 33,
+    stable: 46,
+    frozen: 64,
+    deprecated: 40
   },
   "skills/etc": {
-    planned: 26,
+    planned: 25,
     in_progress: 27,
     blocked: 12,
     implemented: 45,
     verified: 39,
     discarded: 24,
     draft: 93,
-    evolving: 34,
-    stable: 50,
-    frozen: 64,
-    deprecated: 45
+    evolving: 31,
+    stable: 40,
+    frozen: 60,
+    deprecated: 38
   },
   ".agents/skills": {
-    planned: 26,
+    planned: 25,
     in_progress: 27,
     blocked: 12,
     implemented: 48,
     verified: 42,
     discarded: 24,
     draft: 91,
-    evolving: 37,
-    stable: 54,
-    frozen: 69,
-    deprecated: 48
+    evolving: 33,
+    stable: 43,
+    frozen: 64,
+    deprecated: 39
   }
 };
 
@@ -747,8 +750,6 @@ const TOOL_AXIS_NON_VALUES = [
   "fence",
   "finding",
   "freeze-route",
-  "green",
-  "json",
   "lifecycle_override",
   "line",
   "lock",
@@ -765,7 +766,6 @@ const TOOL_AXIS_NON_VALUES = [
   "none",
   "out_of_scope",
   "p",
-  "planner",
   "prefix",
   "reach",
   "read",
@@ -793,7 +793,6 @@ const TOOL_AXIS_NON_VALUES = [
   "with",
   "workflow",
   "--close-reqs",
-  "--inventory-file",
   "--skip-lifecycle-gate"
 ] as const;
 
@@ -995,7 +994,11 @@ const TOOL_AXIS_FLOOR: Record<string, number> = {
   // axis exists to read are all still there, one rendering-policy column poorer. What that column
   // held is now what codex and etc hold — which is why the floor moves toward theirs (301 / 297)
   // rather than away, and why three CLI surfaces leave the in-use list below.
-  "skills/claude": 324,
+  //
+  // 324 → 323 (4.0.0, 2026-09-28). kiwi-pm's plan/Task text (FR-FLOW-185), the commit skills' sidecar
+  // text (FR-FLOW-184 AC-6) and kiwi-planner (FR-FLOW-184 AC-2) left; the SDS text that replaced them
+  // writes one position fewer beside a lifecycle call. The value-site golden names every site that left.
+  "skills/claude": 323,
   "skills/codex": 301,
   "skills/etc": 297,
   ".agents/skills": 297
@@ -1504,7 +1507,7 @@ function readCorpus(file: string): string {
 // directory somebody typed, and the file kinds inside it were inverted while the roots were not.
 // `package.json`'s `files` is this repository's only statement of what the published package
 // actually contains, and it names two documents no rendering carries:
-// `docs/rule/SRS-MD-Rules-v2.5.0.md` and `docs/rule/SDS-MD-Rules-v2.5.0.md`. The first names
+// `docs/rule/SRS-MD-Rules-v2.5.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`. The first names
 // lifecycle values on 85 lines, this repository's own CLAUDE.md instructs agents to read it, and
 // `speckiwi init` installs it into a consumer repository — where it reads as the authoritative
 // statement of the enum. No walk opened either of them, so `Status 칸에는 frozen 을 적는다` and
@@ -1777,10 +1780,10 @@ const CONTRACT_SOURCE_INVENTORY: Record<string, number> = {
 
 /** How many files of each kind a rendering ships, measured. A kind that vanished is a defect. */
 const CORPUS_KIND_FLOOR: Record<string, Record<string, number>> = {
-  "skills/claude": { ".md": 29, ".mjs": 1 },
-  "skills/codex": { ".md": 42, ".mjs": 1, ".yaml": 13 },
-  "skills/etc": { ".md": 43, ".mjs": 1 },
-  ".agents/skills": { ".json": 15, ".md": 39, ".mjs": 1, ".yaml": 13 }
+  "skills/claude": { ".md": 29 },
+  "skills/codex": { ".md": 42, ".yaml": 13 },
+  "skills/etc": { ".md": 43 },
+  ".agents/skills": { ".json": 15, ".md": 39, ".yaml": 13 }
 };
 
 /** The skill directory names a rendering ships, read from disk. */
@@ -2599,16 +2602,11 @@ describe("FR-FLOW-154 AC-2 — the scan reads every rendering, and reads somethi
       expect(axisBlockSlots(files, "status").length, `${rendering}: status rule bullets`).toBeGreaterThanOrEqual(
         DECISION_FLOOR["status-rule-bullet"] as number
       );
-      expect(axisBlockSlots(files, "stability").length, `${rendering}: stability rule bullets`).toBeGreaterThanOrEqual(
-        DECISION_FLOOR["stability-rule-bullet"] as number
-      );
       expect(
         transitionTables(files).flatMap(({ slots }) => slots).length,
         `${rendering}: transition-table cells`
       ).toBeGreaterThanOrEqual(DECISION_FLOOR["transition-table"] as number);
-      expect(scriptStabilitySlots(rendering).length, `${rendering}: stability literals in shipped scripts`).toBeGreaterThanOrEqual(
-        SCRIPT_STABILITY_FLOOR
-      );
+      expect(filesUnder(rendering, ".mjs"), `${rendering}: a shipped script needs its stability-literal floor restored`).toEqual([]);
     });
   }
 
@@ -2750,10 +2748,10 @@ describe("FR-FLOW-154 AC-2 — the scan reads every rendering, and reads somethi
     // whichever extension a walk happened to ask for.
     expect([...CORPUS_KINDS], "the file kinds the corpus reads").toEqual([".json", ".md", ".mjs", ".yaml"]);
     expect(CORPUS_KIND_FLOOR, "how many files of each kind each rendering ships").toEqual({
-      "skills/claude": { ".md": 29, ".mjs": 1 },
-      "skills/codex": { ".md": 42, ".mjs": 1, ".yaml": 13 },
-      "skills/etc": { ".md": 43, ".mjs": 1 },
-      ".agents/skills": { ".json": 15, ".md": 39, ".mjs": 1, ".yaml": 13 }
+      "skills/claude": { ".md": 29 },
+      "skills/codex": { ".md": 42, ".yaml": 13 },
+      "skills/etc": { ".md": 43 },
+      ".agents/skills": { ".json": 15, ".md": 39, ".yaml": 13 }
     });
 
     // The exclusion list is EMPTY: every file these renderings ship is read. Kept as a list rather
@@ -2881,7 +2879,6 @@ describe("FR-FLOW-154 AC-2 — the scan reads every rendering, and reads somethi
       "stability-decision-column": 23,
       "status-decision-predicate": 3,
       "status-rule-bullet": 4,
-      "stability-rule-bullet": 5,
       "transition-table": 5
     });
     expect([...NO_CHANGE_OUTCOME], "the no-change outcome").toEqual(["keep"]);
@@ -2896,7 +2893,7 @@ describe("FR-FLOW-154 AC-11 — the corpus roots come out of the packaging manif
       "bin",
       "dist",
       "docs/.kiwi/hooks",
-      "docs/rule/SDS-MD-Rules-v2.5.0.md",
+      "docs/rule/SDS-MD-Rules-v2.6.0.md",
       "docs/rule/SRS-MD-Rules-v2.5.0.md",
       "skills/claude",
       "skills/codex",
@@ -2956,7 +2953,7 @@ describe("FR-FLOW-154 AC-11 — the documents the manifest ships are read by the
     expect(files, "the documents the manifest ships beside the renderings").toEqual([
       "docs/.kiwi/hooks/pre-commit.mjs",
       "docs/.kiwi/hooks/trace.mjs",
-      "docs/rule/SDS-MD-Rules-v2.5.0.md",
+      "docs/rule/SDS-MD-Rules-v2.6.0.md",
       "docs/rule/SRS-MD-Rules-v2.5.0.md"
     ]);
     const kinds = [...new Set(files.map((file) => file.slice(file.lastIndexOf("."))))].sort();
@@ -3186,26 +3183,20 @@ describe("FR-FLOW-154 AC-1 · AC-2 — every lifecycle line is read, by exclusio
       "task-status",
       "journal-status",
       "review-round-blocked-warn",
-      "planned-tasks-adjective",
       "verified-changes-adjective",
       "card-frozen-json-key",
       "card-frozen-block",
       "card-frozen-inside",
       "card-frozen-record",
       "frozen-denominator",
-      "plan-freeze-path",
       "waves-event-name",
       "waves-event-particle",
       "wave-issues-field",
-      "coder-task-status",
-      "tdd-draft-phase",
       "pr-draft-flag-ko",
       "pr-draft-flag-en",
       "alias-deprecated-note",
-      "plan-draft-artifact",
       "pm-task-status-literal",
       "pm-task-status-record",
-      "pm-task-counter-key",
       "pm-pseudocode-init",
       "pm-pseudocode-append",
       "pm-pseudocode-ref",
@@ -3238,56 +3229,56 @@ describe("FR-FLOW-154 AC-1 · AC-2 — every lifecycle line is read, by exclusio
     // to be read as one.
     expect(VALUE_FLOOR, "the per-rendering value floor").toEqual({
       "skills/claude": {
-        planned: 25,
+        planned: 24,
         in_progress: 26,
         blocked: 10,
         implemented: 46,
         verified: 52,
         discarded: 24,
         draft: 87,
-        evolving: 38,
-        stable: 56,
-        frozen: 81,
-        deprecated: 43
+        evolving: 35,
+        stable: 46,
+        frozen: 75,
+        deprecated: 37
       },
       "skills/codex": {
-        planned: 26,
+        planned: 25,
         in_progress: 27,
         blocked: 12,
         implemented: 48,
         verified: 42,
         discarded: 24,
         draft: 97,
-        evolving: 37,
-        stable: 57,
-        frozen: 69,
-        deprecated: 49
+        evolving: 33,
+        stable: 46,
+        frozen: 64,
+        deprecated: 40
       },
       "skills/etc": {
-        planned: 26,
+        planned: 25,
         in_progress: 27,
         blocked: 12,
         implemented: 45,
         verified: 39,
         discarded: 24,
         draft: 93,
-        evolving: 34,
-        stable: 50,
-        frozen: 64,
-        deprecated: 45
+        evolving: 31,
+        stable: 40,
+        frozen: 60,
+        deprecated: 38
       },
       ".agents/skills": {
-        planned: 26,
+        planned: 25,
         in_progress: 27,
         blocked: 12,
         implemented: 48,
         verified: 42,
         discarded: 24,
         draft: 91,
-        evolving: 37,
-        stable: 54,
-        frozen: 69,
-        deprecated: 48
+        evolving: 33,
+        stable: 43,
+        frozen: 64,
+        deprecated: 39
       }
     });
 
@@ -3304,7 +3295,6 @@ describe("FR-FLOW-154 AC-1 · AC-2 — every lifecycle line is read, by exclusio
 
     expect([...ALLOWED_NEAR_MISS], "the near-miss allow list").toEqual([
       "state",
-      "planner",
       "unverified",
       "drift",
       "blockers",
@@ -3377,7 +3367,8 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "update_status"
     ]);
     // And the three the second clause excludes are excluded for a stated reason, not by accident.
-    for (const tool of ["update_step_state", "set_sds_status", "workflow_task_status_set"]) {
+    // `workflow_task_status_set` was the third until it left with the plan tools (FR-NODE-211 AC-1).
+    for (const tool of ["update_step_state", "set_sds_status"]) {
       expect(Object.keys(toolSchemas), `${tool} must still be a tool`).toContain(tool);
       expect(AXIS_TOOLS, `${tool} keys its status on a step or a Task, not on a requirement`).not.toContain(tool);
     }
@@ -3403,8 +3394,6 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "fence",
       "finding",
       "freeze-route",
-      "green",
-      "json",
       "lifecycle_override",
       "line",
       "lock",
@@ -3414,7 +3403,6 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "none",
       "out_of_scope",
       "p",
-      "planner",
       "prefix",
       "reach",
       "read",
@@ -3442,7 +3430,6 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "with",
       "workflow",
       "--close-reqs",
-      "--inventory-file",
       "--skip-lifecycle-gate"
     ]);
     // An entry that claims nothing is an exemption left behind after the text it described was
@@ -3461,16 +3448,16 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
     ).toEqual([]);
     // Soundness beside liveness, the pairing AC-10 asks of every exclusion: an entry that reads as a
     // misspelling of an enum member would silence the likeliest attack there is on a value position.
-    // Two entries do read that way and are named rather than exempted: `planner` is two edits from
-    // `planned` and is half of `kiwi-planner`, `state` is two edits from `stable` and is a field
-    // name. Both are also in `ALLOWED_NEAR_MISS`, so the near-miss reader does not report them
-    // either — which is the point of naming them here: a THIRD one has to be read and argued for.
+    // One entry does read that way and is named rather than exempted: `state` is two edits from
+    // `stable` and is a field name. It is also in `ALLOWED_NEAR_MISS`, so the near-miss reader does not
+    // report it either — which is the point of naming it here: a second one has to be read and argued
+    // for. (`planner`, the other such entry, claimed nothing once kiwi-planner left in 4.0.0.)
     expect(
       TOOL_AXIS_NON_VALUES.filter((token) => isNearMiss(token.toLowerCase())),
       "tool-axis residue entries that are a misspelling of a lifecycle value"
-    ).toEqual(["planner", "state"]);
+    ).toEqual(["state"]);
     expect(TOOL_AXIS_FLOOR, "the tool-axis value-position floor").toEqual({
-      "skills/claude": 324,
+      "skills/claude": 323,
       "skills/codex": 301,
       "skills/etc": 297,
       ".agents/skills": 297
@@ -3491,7 +3478,8 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "update-stability",
       "update-status"
     ]);
-    for (const command of ["set-target-status", "task-status-set", "update-state", "sds-status"]) {
+    // `task-status-set` left with the plan tools (FR-NODE-211 AC-1).
+    for (const command of ["set-target-status", "update-state", "sds-status"]) {
       expect([...CLI_COMMAND_NAMES], `${command} must still be a CLI subcommand`).toContain(command);
       expect(AXIS_CLI_COMMANDS, `${command} keys its status on a step, a Task or a target`).not.toContain(command);
     }
@@ -3675,7 +3663,8 @@ describe("FR-FLOW-154 AC-2 — every exclusion says what it silences, not merely
     // stops it reaching the one place a wrong value is written.
     expect(scopedOutHomonyms(), "homonym entries the axis-field scoping had to refuse").toEqual([]);
 
-    // And the scoping is not vacuous: these are the seven sentences the dictionary used to silence,
+    // And the scoping is not vacuous: these are the sentences the dictionary used to silence — seven
+    // until 4.0.0 removed `planned-tasks-adjective` with the kiwi-planner text it spoke for, six now —
     // one per value that had a rule reaching the field. Each names a legitimate enum word on the
     // WRONG axis — which no vocabulary check can call wrong — and each is now unclaimed, so the site
     // golden records it and a commit that writes one has it in the diff.
@@ -3684,7 +3673,6 @@ describe("FR-FLOW-154 AC-2 — every exclusion says what it silences, not merely
       ["- phase 진입 시 REQ 의 Stability 칸에는 in_progress 를 적는다.", "in_progress"],
       ["- REQ 의 Stability 칸에는 verified changes 라고 적는다.", "verified"],
       ["- done 인 REQ 의 Stability 칸엔 blocked 를 적는다.", "blocked"],
-      ["- 남은 REQ 의 Stability 칸에는 planned tasks 기준을 적는다.", "planned"],
       ["- 종료된 REQ 의 Status 칸에는 deprecated 예정이라고 적는다.", "deprecated"],
       ["- 검토가 끝난 REQ 는 Status 칸 frozen 안에 기록한다.", "frozen"]
     ];
@@ -4648,7 +4636,7 @@ describe("FR-FLOW-175 — a lifecycle call's own argument is exempt at the schem
     // exactly the same. It is not a record a claim cannot write — one `it` line of the right name
     // satisfies it — so what this closes is the forge that does not bother to declare that test.
     const declaredTestNames: string[] = [];
-    const walk = (suite: Readonly<{ tasks: readonly { name: string; type: string }[] }>): void => {
+    const walk = (suite: Readonly<{ tasks: readonly { name: string; type: string; tasks?: readonly { name: string; type: string }[] }[] }>): void => {
       for (const child of suite.tasks) {
         declaredTestNames.push(child.name);
         if (child.type === "suite") walk(child as Readonly<{ tasks: readonly { name: string; type: string }[] }>);

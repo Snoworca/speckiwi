@@ -128,7 +128,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     if (protectedForDiscard) {
       return mutationFail(
         "MUTATION_DENIED",
-        `Cannot discard protected requirement ${input.id} (status=${record.status}, stability=${record.stability ?? "unset"}): set confirmDiscardVerified=true to override this verified-regression guard`
+        `Cannot discard protected requirement ${input.id} (status=${record.status}, stability=${record.stability ?? "unset"}): confirm the discard to override this verified-regression guard (CLI --confirm-discard-verified, MCP confirmDiscardVerified=true)`
       );
     }
   }

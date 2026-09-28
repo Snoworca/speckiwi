@@ -69,7 +69,7 @@ async function withFrozenClock<T>(iso: string, body: () => Promise<T> | T): Prom
   const fixed = new Date(iso).getTime();
   const RealDate = Date;
   class FrozenDate extends RealDate {
-    constructor(...args: ConstructorParameters<typeof Date>) {
+    constructor(...args: [] | ConstructorParameters<typeof Date>) {
       if (args.length === 0) super(fixed);
       else super(...args);
     }
@@ -91,12 +91,12 @@ function inKstSplitWindow<T>(body: () => Promise<T> | T, instant = SPLIT_INSTANT
 }
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Reads whatever a finished run wrote to one of the streams above. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 const ARCH_FILE = path.join("docs", "spec", "10.product-architecture.srs.md");
@@ -264,7 +264,7 @@ describe("FR-NODE-205 — the document date stamp follows the writer's local cal
       addCompletedWork(root, { date: "", summary: "no date given" })
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("date is required");
+    if (!result.ok) expect(result.error?.message).toContain("date is required");
   });
 
   it("AC-7: the CLI keeps --date required for add-completed-work", async () => {
@@ -932,7 +932,7 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
     // widened mapping plus a relabelled row could send every caller site to ONE destination, leaving
     // the other name dead while all four rows stayed self-consistent. This asserts the taxonomy stays
     // populated, so the four sites keep splitting into the two shapes they actually return.
-    const byDestination = new Map<CallerDestination, number>();
+    const byDestination = new Map<Destination, number>();
     for (const site of CALLER_SITES) {
       byDestination.set(site.destination, (byDestination.get(site.destination) ?? 0) + 1);
     }

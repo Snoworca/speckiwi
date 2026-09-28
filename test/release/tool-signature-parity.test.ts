@@ -103,11 +103,11 @@ describe("REL-FLOW-002 tool signature parity", () => {
   });
 
   it("keeps MCP schemas aligned with documented target creation and compact projection names", () => {
-    expect(toolSchemas.set_active_target.create?.safeParse(true).success).toBe(true);
-    expect(toolSchemas.set_active_target.type?.safeParse("version").success).toBe(true);
-    expect(toolSchemas.set_active_target.description?.safeParse("Tool improvement").success).toBe(true);
-    expect(toolSchemas.add_requirement.target?.safeParse(undefined).success).toBe(true);
-    expect(toolSchemas.list_requirements.projection?.safeParse("compact").success).toBe(true);
+    expect(toolSchemas.set_active_target?.create?.safeParse(true).success).toBe(true);
+    expect(toolSchemas.set_active_target?.type?.safeParse("version").success).toBe(true);
+    expect(toolSchemas.set_active_target?.description?.safeParse("Tool improvement").success).toBe(true);
+    expect(toolSchemas.add_requirement?.target?.safeParse(undefined).success).toBe(true);
+    expect(toolSchemas.list_requirements?.projection?.safeParse("compact").success).toBe(true);
     expect(toolSchemas.list_requirements).not.toHaveProperty("includeContent");
     expect(toolSchemas.list_requirements).not.toHaveProperty("include-content");
   });
@@ -127,13 +127,13 @@ describe("REL-FLOW-002 tool signature parity", () => {
     for (const commandName of [
       "workspace",
       "artifacts",
-      "plan-status",
-      "task-check",
-      "task-uncheck",
+      // plan-status, task-check, task-uncheck and migrate-preview left with the plan tools in 4.0.0
+      // (FR-NODE-211 AC-1); workflow-plan-tools-removed.fr-node-211 asserts their absence.
+      "session-status",
       "pipeline-emit",
       "worklog-emit",
       "logical-delete",
-      "migrate-preview"
+      "work-order"
     ]) {
       expect(workflowHelp).toContain(commandName);
     }
@@ -151,7 +151,6 @@ describe("REL-FLOW-002 tool signature parity", () => {
     expect(doctorHelp).toContain("--json");
 
     for (const snippet of [
-      "speckiwi workflow task-check <taskId> --path <plan.md> --run-id <runId>",
       "speckiwi workflow pipeline-emit --event <json> --run-id <runId>",
       "speckiwi workflow work-order next [shared read options]",
       "speckiwi repair requirement-id-collisions plan --duplicate-id <id>",
@@ -254,7 +253,7 @@ const FIXTURE_VARIANT = [
   "| gate_id | reason | location |",
   "| --- | --- | --- |",
   "| `run-root-preflight-mismatch` | MCP workspaceRoot is not the git toplevel | Preflight P.1 |",
-  "| `handoff-not-english` | non-Latin script in a handoff body | Phase 3.f |",
+  "| `worker-touched-srs` | a worker diff touches the SRS | PW-8 |",
   "| `cross-lane-duplication-unresolved` | a duplicate row carries no resolution | Phase 3.k |",
   "",
   "## Gate severities",
@@ -322,14 +321,18 @@ describe("FR-NODE-122 gate-id parity", () => {
     // prior home is `kiwi-srs-sync`'s own table, carried there since `a6276c4` (2026-06-01). The
     // count moving with the vocabulary is the point: a gate id no refusal can carry is prose in a
     // machine costume.
-    expect(GATE_IDS).toHaveLength(69);
-    expect(new Set(GATE_IDS).size).toBe(69);
+    // @req FR-NODE-212 · FR-NODE-122 AC-2 · FR-NODE-213 AC-3 — 63 in 4.0.0: `plan-coverage-unclosed`
+    // left with the plan rung, the parallel-waves run joined three (`worker-touched-srs`,
+    // `test-sufficiency-gap`, `srs-mutation-replay-failed`), and the eight gates only the removed
+    // handoff validator, coupling check and task-level conflict reasons raised left with them.
+    expect(GATE_IDS).toHaveLength(63);
+    expect(new Set(GATE_IDS).size).toBe(63);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {
     const extracted = extractDeclaredGateIds(FIXTURE_VARIANT);
 
-    expect(extracted.criticalGates).toEqual(["run-root-preflight-mismatch", "handoff-not-english", "cross-lane-duplication-unresolved"]);
+    expect(extracted.criticalGates).toEqual(["run-root-preflight-mismatch", "worker-touched-srs", "cross-lane-duplication-unresolved"]);
     expect(extracted.criticalTableWidths.every((width) => width === 3)).toBe(true);
     expect(extracted.severityRows).toEqual(["route-proposal", "route-step-requires-mode-switch", "tdd-route-unattended", "route-downgrade-available"]);
   });
@@ -361,11 +364,11 @@ describe("FR-NODE-122 gate-id parity", () => {
   });
 
   it("AC-4 — a variant declaring an id absent from the union is red", () => {
-    const mistyped = FIXTURE_VARIANT.replace("`handoff-not-english`", "`handoff-not-englsh`");
+    const mistyped = FIXTURE_VARIANT.replace("`worker-touched-srs`", "`worker-touched-sr`");
     expect(mistyped).not.toBe(FIXTURE_VARIANT);
 
     const extracted = extractDeclaredGateIds(mistyped);
-    expect(extracted.criticalGates).toContain("handoff-not-englsh");
+    expect(extracted.criticalGates).toContain("worker-touched-sr");
     expect([...extracted.criticalGates, ...extracted.severityRows].every((gateId) => (GATE_IDS as readonly string[]).includes(gateId))).toBe(false);
   });
 

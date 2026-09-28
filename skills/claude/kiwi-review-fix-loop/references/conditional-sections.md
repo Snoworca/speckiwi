@@ -37,14 +37,14 @@
 
 #### 6.6.1 영향 REQ-ID 추출
 
-**분모 획득 (§6.6 진입 직전 의무, 후보 추출보다 먼저)**: MCP `get_active_target` 으로 이번 실행의 target 을 해소하고, `list_requirements({ target: <해소한 target>, status: "implemented" })` 로 **분모**를 받는다. 이 둘은 read 이므로 §0.8 의 mutation 금지 밖이며 `--close-reqs` 없이도 호출한다. target 을 해소하지 못하면 **분모를 만들지 못했다고 보고하고 멈춘다** — 임의의 값으로 진행하지 않는다. 분모를 스킬이 스스로 만들지 않는 이유는 하나다: 후보를 자기가 추출하는 한 **덜 추출하면 어떤 게이트도 피할 수 있고**, 같은 주체에게 보고 의무를 더해 봐야 자기선언이 둘로 늘 뿐이다.
+**분모 획득 (§6.6 진입 직전 의무, 후보 추출보다 먼저)**: MCP `get_active_target` 으로 이번 실행의 target 을 해소하고, `list_requirements({ target: <해소한 target>, status: "implemented" })` 로 **분모**를 받는다. 이 둘은 read 이므로 §0.8 의 mutation 금지 밖이며 `--close-reqs` 없이도 호출한다. target 을 해소하지 못하면 **분모를 만들지 못했다고 보고하고 멈춘다** — 임의의 값으로 진행하지 않는다. 분모를 스킬이 스스로 만들지 않는 이유는 하나다: 후보를 자기가 추출하는 한 **덜 추출하면 어떤 게이트도 피할 수 있고**, 같은 주체에게 보고 의무를 더해 봐야 자기선언이 둘로 늘 뿐이다. 이 절차는 Phase 7.4 테스트 충분성 확인(SKILL.md §6.5.1)이 범위를 정하려고 먼저 돌리며, 여기서는 그때 만든 집합을 그대로 쓴다.
 
 네 집합을 이 이름으로 쓴다.
 
 | 이름 | 무엇인가 |
 |---|---|
 | `denominator` | `list_requirements` 가 돌려준 집합. 스킬이 만들지 않는다 |
-| `scoped` | `denominator` 를 이번 실행의 리뷰 범위와 교차한 부분집합. 교차 근거는 아래 `match_confidence` 이며 `high` 미만은 교차에서 빠지되 **제외로 계상한다** |
+| `scoped` | `denominator` 를 이번 실행의 리뷰 범위와 교차한 부분집합. 교차 근거는 아래 `match_confidence` 이며 `high` 미만은 교차에서 빠지되 **제외로 계상한다**. 호출자가 `--sds` 나 `--req-filter` 로 범위를 지명했으면 교차 상대는 그 ID 집합(`--sds` 면 그 SDS 의 `@req` 요구)이고 아래 휴리스틱을 쓰지 않는다 — 지명된 요구가 휴리스틱에 빠져 승급되지 않으면 SDS 가 run 뒤에도 남는다(`kiwi-sds` §3.2) |
 | `eligible` | `scoped` 에서 산문 증거 REQ 와 `stability` 가 `draft`·`deprecated` 인 REQ 를 뺀 것. status 가 `implemented` 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
 | `transitioned` | 실제로 `verified` 전이에 성공한 수 |
 | `excluded` | `scoped` 에서 닫히지 않은 REQ 를 사유와 함께 REQ 단위로 열거한 목록 |
@@ -53,7 +53,7 @@
 
 **trace link 인덱스 (분모 획득 직후, 추가 호출 없음)**: 위 `list_requirements` 응답의 레코드가 이미 `traceReferences` 필드를 담으므로 그것으로 인덱스를 만든다. `summarize_target` 을 여기서 **부르지 않는다** — 그 도구는 카운트와 ID 목록만 돌려주고 trace link 은 하나도 싣지 않으며, 대상을 지명하지 않고 부르면 바로 앞의 `get_active_target` 이 이미 돌려준 활성 target 요약을 그대로 다시 받는다. MCP 미가용 시 source 1 skip + source 2 (scope heuristic) 만 사용 + 추출 결과에 `data_source: "scope-heuristic-only"` 메타 명시.
 
-`scoped` 는 `denominator` 를 아래 두 소스와 교차해 얻는다 — 두 소스는 교차의 **근거**이지 집합의 출처가 아니다:
+범위를 지명받지 않았으면 `scoped` 는 `denominator` 를 아래 두 소스와 교차해 얻는다 — 두 소스는 교차의 **근거**이지 집합의 출처가 아니다:
 1. 위 `list_requirements` 응답의 레코드 중 변경 파일과 그 `traceReferences` 필드가 매칭되는 REQ
 2. 변경 파일 경로 ↔ REQ scope 의 휴리스틱 매칭 (scope name keyword + path prefix 일치, confidence=high 만)
 
@@ -77,8 +77,8 @@
 
 각 `eligible` REQ 에 대해 순서대로:
 
-1. `add_verification_evidence({ id: req_id, type: "test", reference: regression_test_path, covers: <단일 AC-ID string 또는 omit>, notes: "kiwi-review-fix-loop 회귀 검증 통과 (run_id={run-id})" })` — speckiwi MCP schema `covers: z.string().optional()` 준수. 각 REQ 의 영향 AC 별 1건씩 반복 호출 (AC-1, AC-2 …). evidence 등록 호출 총합 = N (REQ 수) × M (각 REQ 의 영향 AC 수). 어느 AC 에 매핑할지 §6.6.1 추출 단계에서 구체 AC-ID 로 resolve 되지 않은 경우 `covers` 필드 omit 허용 (REQ 전체 커버리지로 기록).
-2. `check_acceptance_criteria({ id: req_id, acIds: [<지목을 마친 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자를 먼저 지목한다.** 지목 대상은 파일 경로와 테스트 이름, 또는 직전 1번 호출이 그 AC 에 대해 `covers` 로 등록한 `reference` 다. **지목이 없는 AC 는 체크하지 않는다** — `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다.
+1. `add_verification_evidence({ id: req_id, type: "test", reference: <그 AC 의 인용 테스트 파일>, covers: <그 AC-ID>, notes: "kiwi-review-fix-loop 회귀 검증 통과 (run_id={run-id})" })` — speckiwi MCP schema `covers: z.string().optional()` 준수. AC 마다 1건씩 호출한다. `reference` 와 `covers` 는 Phase 7.4 테스트 충분성 확인(SKILL.md §6.5.1)이 그 AC 에 돌려준 인용에서 가져온다 (`_shared/kiwi/test-sufficiency.md` §4). 인용이 없는 AC 에는 증거를 등록하지 않는다.
+2. `check_acceptance_criteria({ id: req_id, acIds: [<인용이 있는 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자는 Phase 7.4 테스트 충분성 확인이 그 AC 에 돌려준 인용(파일 경로와 테스트 줄)이다** — 에이전트가 스스로 테스트를 지목하지 않는다. 직전 1번 호출은 같은 인용을 `reference` 로 등록했다. **지목이 없는 AC 는 체크하지 않는다** — 도구가 인용을 돌려주지 않은 AC 다. `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다.
 3. `update_status({ id: req_id, status: "verified" })`
 
 순서 의무: evidence 등록 → AC 체크 → status 전이 (앞 단계 실패 시 뒤 단계 skip + skipped_reason 기록). `update-status.ts` 의 게이트가 AC 전량 체크와 증거를 함께 요구하므로, 2번을 건너뛴 3번은 `MUTATION_DENIED` 로 거부된다.

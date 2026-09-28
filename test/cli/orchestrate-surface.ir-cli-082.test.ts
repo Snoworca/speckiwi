@@ -108,11 +108,31 @@ const READABLE_PROBE_DOCUMENT = {
 };
 
 describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
-  it("declares twenty-one phase-1 rows and folds every registered leaf into a registered row", () => {
-    // The count literal stays a literal. It is the tripwire that forces an author who changes the
-    // surface to come here and say so, and phase 1's own row count is a historical fact that does
-    // not move when a phase-2 row lands — that lands in ORCHESTRATE_REGISTERED_VERB_ROWS instead.
-    expect(ORCHESTRATE_PHASE1_VERB_ROWS).toHaveLength(21);
+  it("IR-CLI-082 AC-1 declares exactly the nineteen phase-1 rows the requirement names and folds every registered leaf into a registered row", () => {
+    // The rows are written out rather than counted. They are the tripwire that forces an author who
+    // changes the surface to come here and say so; 4.0.0 replaced `schedule plan` with
+    // `schedule waves` and removed `coupling check` and `handoff validate` (FR-NODE-213 AC-3).
+    expect([...ORCHESTRATE_PHASE1_VERB_ROWS]).toEqual([
+      "resume",
+      "preflight",
+      "route probe",
+      "route freeze",
+      "route show",
+      "run lock|unlock|status",
+      "run abort",
+      "journal append",
+      "card write",
+      "freeze design|waves|lanes|issues|postmortem",
+      "readiness check",
+      "schedule waves",
+      "schedule show",
+      "round record",
+      "issue open|plan|resolve|defer|list",
+      "wave close",
+      "duplication plan",
+      "validate",
+      "auto-gate decide"
+    ]);
 
     const leaves = orchestrateLeafPaths();
     expect(leaves.length, "the namespace must register leaves").toBeGreaterThan(0);
@@ -137,27 +157,35 @@ describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
   });
 });
 
-describe("IR-CLI-082 AC-2 — freeze accepts exactly six targets", () => {
-  it("registers the six named targets and no seventh", () => {
-    expect([...FREEZE_TARGETS]).toEqual(["design", "waves", "lanes", "handoff", "issues", "postmortem"]);
+describe("IR-CLI-082 AC-2 — freeze accepts exactly five targets", () => {
+  it("IR-CLI-082 AC-2 registers the five named targets and no sixth", () => {
+    expect([...FREEZE_TARGETS]).toEqual(["design", "waves", "lanes", "issues", "postmortem"]);
     expect(subcommandNames("freeze").sort()).toEqual([...FREEZE_TARGETS].sort());
   });
 
-  it("rejects a seventh target value", async () => {
+  it("IR-CLI-082 AC-2 rejects a sixth target value", async () => {
     const pipes = io();
     const exit = await main(["orchestrate", "freeze", "convergence", "--json"], pipes);
 
     expect(exit).not.toBe(0);
     expect(`${drain(pipes.stdout)}${drain(pipes.stderr)}`).toMatch(/convergence/);
   });
+
+  it("IR-CLI-082 AC-2 rejects handoff, which left in 4.0.0 with the English handoff documents", async () => {
+    const pipes = io();
+    const exit = await main(["orchestrate", "freeze", "handoff", "--json"], pipes);
+
+    expect(exit).not.toBe(0);
+    expect(`${drain(pipes.stdout)}${drain(pipes.stderr)}`).toMatch(/handoff/);
+  });
 });
 
 describe("IR-CLI-082 AC-3 — run, route, issue and schedule subcommand sets", () => {
-  it("registers exactly the declared subcommands of each container", () => {
+  it("IR-CLI-082 AC-3 registers exactly the declared subcommands of each container", () => {
     expect(subcommandNames("run").sort()).toEqual(["abort", "lock", "status", "unlock"]);
     expect(subcommandNames("route").sort()).toEqual(["freeze", "probe", "show"]);
     expect(subcommandNames("issue").sort()).toEqual(["defer", "list", "open", "plan", "resolve"]);
-    expect(subcommandNames("schedule").sort()).toEqual(["plan", "show"]);
+    expect(subcommandNames("schedule").sort()).toEqual(["show", "waves"]);
   });
 });
 

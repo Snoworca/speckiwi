@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-116  kiwi-tdd declares critical_gates[] and joins the closed pipeline skill enum
 // @req FR-FLOW-117  kiwi-pipeline §2.8 accepts a frozen route lock as its step-scoped conjunct
@@ -43,10 +44,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -78,7 +79,7 @@ function gateIds(gates: string): string[] {
     .split("\n")
     .map((l) => l.match(/^\s*\|\s*`([a-z0-9-]+)`\s*\|/))
     .filter((m): m is RegExpMatchArray => m !== null)
-    .map((m) => m[1]);
+    .map((m) => at(m, 1));
 }
 
 /** The gates `--auto` must never resolve on `kiwi-tdd`. Each is a user-interaction point that
@@ -104,7 +105,10 @@ const TDD_CRITICAL_GATES = [
   // from `kiwi-srs-sync`'s own table, carried there since 2026-06-01. This
   // set is an EQUALITY, so a skill joining the chain that stops on an SRS validation error reddens
   // here until the membership is recorded — which is the assertion working, not an obstacle to it.
-  "validate-spec-error"
+  "validate-spec-error",
+  // @req FR-FLOW-186 AC-3 — kiwi-tdd runs the test-sufficiency check immediately before
+  // `promote_step_requirement`, and a gap that survives the one fill halts the promotion.
+  "test-sufficiency-gap"
 ] as const;
 
 /** The fourth surviving interaction point. It is NOT critical — a substantive architecture decision
@@ -132,9 +136,9 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
     const columns = header.split("|").map((c) => c.trim()).filter(Boolean);
     expect(columns.length, `${copy} the gate table must have exactly three columns`).toBe(3);
     expect(columns[0], `${copy} column 1 must be gate_id`).toContain("gate_id");
-    expect(/reason/i.test(columns[1]), `${copy} column 2 must be the reason`).toBe(true);
+    expect(/reason/i.test(at(columns, 1)), `${copy} column 2 must be the reason`).toBe(true);
     expect(
-      /location|위치/i.test(columns[2]),
+      /location|위치/i.test(at(columns, 2)),
       `${copy} column 3 must be the location the gate fires at`
     ).toBe(true);
   });
@@ -145,8 +149,8 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
     for (const id of TDD_CRITICAL_GATES) {
       const row = cells(gates, new RegExp(`^\\s*\\|\\s*\`${id}\`\\s*\\|`));
       expect(row.length, `${copy} critical_gates must declare ${id} as a table row`).toBeGreaterThan(3);
-      expect(row[2].length, `${copy} ${id} must state a reason`).toBeGreaterThan(0);
-      expect(row[3].length, `${copy} ${id} must state where it fires`).toBeGreaterThan(0);
+      expect(at(row, 2).length, `${copy} ${id} must state a reason`).toBeGreaterThan(0);
+      expect(at(row, 3).length, `${copy} ${id} must state where it fires`).toBeGreaterThan(0);
     }
   });
 
@@ -251,7 +255,7 @@ describe("FR-FLOW-116 — kiwi-tdd critical gates and pipeline registration", ()
     const row = cells(table, /^\s*\|\s*kiwi-tdd\s*\|/);
     expect(row.length, `${copy} T1 must carry a kiwi-tdd row`).toBeGreaterThan(3);
     expect(row[2], `${copy} the kiwi-tdd row must key on the terminal status`).toContain("TASK_DONE");
-    expect(row[3].length, `${copy} the kiwi-tdd row must state a next hint`).toBeGreaterThan(0);
+    expect(at(row, 3).length, `${copy} the kiwi-tdd row must state a next hint`).toBeGreaterThan(0);
     expect(
       row[3],
       `${copy} the chosen hint must stay consistent across renderings; see the provenance note above`

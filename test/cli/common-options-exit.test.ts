@@ -11,7 +11,7 @@ const requirePackage = createRequire(import.meta.url);
 const { version: PACKAGE_VERSION } = requirePackage("../../package.json") as { version: string };
 
 function stream() {
-  return new PassThrough() as NodeJS.WriteStream;
+  return new PassThrough();
 }
 
 describe("CLI common framework", () => {
@@ -19,7 +19,9 @@ describe("CLI common framework", () => {
     const stdout = stream();
     const stderr = stream();
     const command = buildCommand({ io: { stdout, stderr } }, [
-      (root) => root.command("ping").action(() => stdout.write(`${formatJsonOutput({ pong: true })}\n`))
+      (root) => root.command("ping").action(() => {
+        stdout.write(`${formatJsonOutput({ pong: true })}\n`);
+      })
     ]);
     await command.parseAsync(["ping"], { from: "user" });
     expect(stdout.read()?.toString()).toContain('"pong":true');

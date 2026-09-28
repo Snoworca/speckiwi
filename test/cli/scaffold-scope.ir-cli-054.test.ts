@@ -175,13 +175,13 @@ let workspaceRoot: string;
 
 function io() {
   return {
-    stdout: new PassThrough() as NodeJS.WriteStream,
-    stderr: new PassThrough() as NodeJS.WriteStream
+    stdout: new PassThrough(),
+    stderr: new PassThrough()
   };
 }
 
-function read(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function read(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function specDir(): Promise<string> {

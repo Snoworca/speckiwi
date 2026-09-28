@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
+import { readRepoFile } from "./kiwi-renderings.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-047
 // @req FR-FLOW-048
@@ -42,7 +44,6 @@ function readSkill(variant: string, skill: string): string {
 
 const readWave = (v: string) => readSkill(v, "kiwi-wave-master");
 const readSrs = (v: string) => readSkill(v, "kiwi-srs");
-const readPipeline = (v: string) => readSkill(v, "kiwi-pipeline");
 const readPm = (v: string) => readSkill(v, "kiwi-pm");
 const readCoder = (v: string) => readSkill(v, "kiwi-coder");
 
@@ -56,10 +57,10 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => /^#{1,6}\s/.test(line) && headingRe.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -92,7 +93,7 @@ function headingLine(body: string, re: RegExp): number {
 function phaseFlowBlock(body: string): string {
   const fences = body.split("```");
   for (let i = 1; i < fences.length; i += 2) {
-    if (/Wave 분해|wave decompos/i.test(fences[i])) return fences[i];
+    if (/Wave 분해|wave decompos/i.test(at(fences, i))) return at(fences, i);
   }
   return "";
 }
@@ -157,13 +158,18 @@ const NEW_WAVE_GATE_IDS = [
   "unsafe-option-refused",
 ] as const;
 
+// FR-FLOW-046 AC-7 (revised in 4.0.0): the table transcribes the NEEDS_USER / FAILED halts of the
+// children each wave runs — the worker's kiwi-pm arrives as `serial-unit-failed` — and the worktree-
+// delegation refusal leaves with the per-wave kiwi-pipeline (FR-FLOW-188 AC-1).
 const EXISTING_WAVE_GATE_IDS = [
   "run-root-preflight-mismatch",
-  "wt-delegation-refused",
   "child-pipeline-needs-user-or-failed",
+  "serial-unit-failed",
   "wave-verify-residual-critical",
   "wave-verify-cross-wave-fix-required",
 ] as const;
+
+const RETIRED_WAVE_GATE_IDS = ["wt-delegation-refused"] as const;
 
 describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () => {
   for (const variant of VARIANTS) {
@@ -286,9 +292,10 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
           `${variant}: appending a gap-closing wave must be declared NOT a re-decomposition`,
         ).toBe(true);
         // Without this, "append a wave" could be read as licence to reorder the queue, which
-        // reverses already-registered waves.
+        // reverses already-registered waves. FR-FLOW-047 AC-5 (order unchanged) read together with
+        // FR-FLOW-188 AC-3: waves now declare depends_on[], so the row freezes order AND dependencies.
         expect(
-          /이미 등록된 wave 의 순서는 (?:바뀌지 않는다|변경하지 않는다)/.test(row),
+          /이미 등록된 wave 의 (?:순서는|순서와 의존은) (?:바뀌지 않는다|변경하지 않는다)/.test(row),
           `${variant}: the order of already registered waves must stay unchanged`,
         ).toBe(true);
       });
@@ -589,7 +596,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(true);
       });
 
-      it("AC-3: routes a design-present / SRS-absent finding to incremental authoring re-entry", () => {
+      it("FR-FLOW-050 AC-3: routes a design-present / SRS-absent finding to incremental authoring re-entry, then wave re-entry from SDS authoring", () => {
         const section = verifySection(skillBody(readWave(variant)));
         const routing = sectionUnder(section, /^#{2,4}\s.*개선 위임/);
         expect(routing, `${variant}: the remediation routing sub-section must exist`).not.toBe("");
@@ -600,10 +607,16 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
           KIWI_SRS_CALL.test(handling) && /증분/.test(handling),
           `${variant}: the row's handling must be incremental SRS authoring re-entry for that wave target`,
         ).toBe(true);
+        // Revised in 4.0.0: no planning stage (FR-FLOW-184 AC-2) and no per-wave kiwi-pipeline
+        // (FR-FLOW-188 AC-7) — the wave re-enters the shared parallel-waves contract at SDS authoring.
         expect(
-          /planning|계획/.test(handling) && /재진입/.test(handling),
-          `${variant}: the row must also route pipeline re-entry from the planning stage`,
+          /SDS 작성 단계부터[^|]*재진입/.test(handling),
+          `${variant}: the row must re-enter the wave from its SDS authoring step`,
         ).toBe(true);
+        expect(
+          /planning|planner|계획|pipeline/.test(handling),
+          `${variant}: the row still routes through a planning stage or a per-wave pipeline`,
+        ).toBe(false);
       });
 
       it("AC-4: keeps the design-gap row distinct from the unclosable-in-code row", () => {
@@ -619,7 +632,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         // Merging them the other way — routing the unclosable row into authoring re-entry — would
         // also collapse the distinction, so pin the residual row's own handling.
         expect(
-          /residual/.test(residualRow[0]),
+          /residual/.test(at(residualRow, 0)),
           `${variant}: the unclosable-in-code row must remain a residual plus user decision`,
         ).toBe(true);
       });
@@ -677,7 +690,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         const cells = rowCells(fallback, /Target 활성화/);
         expect(cells.length, `${variant}: the fallback table must have a target-activation row`).toBeGreaterThan(3);
         expect(
-          /--create/.test(cells[3]),
+          /--create/.test(at(cells, 3)),
           `${variant}: the CLI-fallback CELL for target activation must show the creation option`,
         ).toBe(true);
       });
@@ -694,7 +707,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         ).toBe(true);
       });
 
-      it("AC-5: skips registration and authoring for a wave marked srs_authored on ANY event", () => {
+      it("FR-FLOW-051 AC-5: skips registration and authoring for a wave marked srs_authored on ANY event", () => {
         const body = skillBody(readWave(variant));
         const register = withModule(body, /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         const rule = lineWith(register, /`srs_authored`/);
@@ -715,14 +728,17 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
           /최신/.test(skipSentence),
           `${variant}: the skip trigger must not be keyed to the wave's latest event`,
         ).toBe(false);
+        // FR-FLOW-051 AC-5 (revised in 4.0.0): the stage after SRS authoring is SDS authoring and worker
+        // execution under the shared parallel-waves contract (FR-FLOW-188 AC-1), not a pipeline phase.
         expect(
-          /(?:건너뛰고|skip하고|skip 하고)[^\n]*(?:곧바로|직접)[^\n]*pipeline/.test(rule),
-          `${variant}: such a wave must enter the pipeline phase directly`,
+          /(?:건너뛰고|skip하고|skip 하고)[^\n]*(?:곧바로|직접)[^\n]*SDS 작성/.test(rule),
+          `${variant}: such a wave must enter SDS authoring and worker execution directly`,
         ).toBe(true);
+        expect(/pipeline/.test(rule), `${variant}: the skip still enters a per-wave pipeline phase`).toBe(false);
         expect(HEDGE.test(skipSentence), `${variant}: the skip rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("AC-6: defines wave-internal resume at three stages", () => {
+      it("FR-FLOW-051 AC-6: defines wave-internal resume at three stages", () => {
         const progress = sectionUnder(skillBody(readWave(variant)), /^##\s.*진행 추적/);
         expect(progress, `${variant}: the waves.jsonl progress section must exist`).not.toBe("");
         const rule = lineWith(progress, /재개 단위/);
@@ -731,9 +747,12 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
           /\*\*3단계\*\*/.test(rule),
           `${variant}: resume granularity must be the three wave-internal stages`,
         ).toBe(true);
-        for (const stage of ["target 등록", "pipeline", "wave 검증"]) {
+        // Revised in 4.0.0: the middle stage is SDS authoring and worker execution under the shared
+        // parallel-waves contract (FR-FLOW-188 AC-1), not a per-wave pipeline run.
+        for (const stage of ["target 등록", "SDS 작성과 워커 실행", "wave 검증"]) {
           expect(rule.includes(stage), `${variant}: the resume granularity must name the ${stage} stage`).toBe(true);
         }
+        expect(/pipeline/.test(rule), `${variant}: the resume granularity still names a pipeline stage`).toBe(false);
         // Polarity: leaving whole-wave granularity as an accepted alternative reinstates the very
         // re-authoring this requirement removes.
         expect(
@@ -748,46 +767,33 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
 describe("FR-FLOW-052 — unattended continuity across cycle entry and cost gates", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: makes cycle-entry spawning unambiguous on one of the two contract ends", () => {
-        const waveBody = skillBody(readWave(variant));
-        const pipelineBody = skillBody(readPipeline(variant));
-        const waveRun = sectionUnder(waveBody, /^##\s.*kiwi-pipeline 실행/);
-        const cycle = sectionUnder(pipelineBody, /^##\s.*사이클 오케스트레이션/);
-        expect(waveRun, `${variant}: the per-wave pipeline section must exist`).not.toBe("");
-        expect(cycle, `${variant}: the pipeline cycle section must exist`).not.toBe("");
-        // Either the orchestrator passes --run explicitly on the cycle invocation …
-        const orchestratorPasses = /--cycle[^\n]*--run|--run[^\n]*--cycle/.test(waveRun);
-        // … or the pipeline contract states that cycle mode implies spawning.
-        const contractImplies = /`--cycle`[^\n]*(?:는|은)[^\n]*`--run`[^\n]*(?:함의|포함|의미)한다/.test(cycle);
+      it("FR-FLOW-052 AC-1: the worker entry states the worker kiwi-pm invocation and its flags", () => {
+        // Revised in 4.0.0: wave-master enters no kiwi-pipeline cycle (FR-FLOW-188 AC-7); the worker
+        // entry is the shared contract's kiwi-pm call (FR-FLOW-188 AC-2).
+        const stage = sectionUnder(skillBody(readWave(variant)), /^##\s+5\.\s/);
+        expect(stage, `${variant}: the §5 stage-execution section must exist`).not.toBe("");
         expect(
-          orchestratorPasses || contractImplies,
-          `${variant}: cycle entry must be unambiguous — either wave-master passes --run explicitly or the pipeline contract states that --cycle implies it`,
+          /parallel-waves\.md/.test(stage),
+          `${variant}: §5 must hand the waves to the shared parallel-waves contract`,
         ).toBe(true);
+        // Anchored on the contract's PW-6 worker step: the fenced command opening with /kiwi-pm.
+        const contract = readRepoFile(`skills/${variant}/_shared/kiwi/parallel-waves.md`).split("\n");
+        const pw6 = contract.findIndex((line) => line.startsWith("**PW-6 "));
+        const pw7 = contract.findIndex((line, i) => i > pw6 && line.startsWith("**PW-7 "));
+        expect(pw6, `${variant}: parallel-waves.md must carry the PW-6 worker step`).toBeGreaterThan(-1);
+        const worker = contract.slice(pw6, pw7 === -1 ? contract.length : pw7);
+        const open = worker.findIndex((line) => /^\s*\/kiwi-pm\s/.test(line));
+        expect(open, `${variant}: PW-6 must state the worker /kiwi-pm invocation`).toBeGreaterThan(-1);
+        const close = worker.findIndex((line, i) => i > open && /^\s*```/.test(line));
+        const call = worker.slice(open, close === -1 ? worker.length : close).join(" ");
+        for (const flag of ["--no-final", "--no-pipeline-emit", "--commit-lane-work", "--defer-srs-mutation"]) {
+          expect(call.includes(flag), `${variant}: the worker /kiwi-pm invocation must carry ${flag}`).toBe(true);
+        }
       });
 
-      it("AC-2: exempts cycle-mode entry from the multi-candidate ambiguity gate", () => {
-        const gates = gateSection(skillBody(readPipeline(variant)));
-        expect(gates, `${variant}: kiwi-pipeline must declare critical_gates`).not.toBe("");
-        // Anchored to the gate ROW: stated in the prose below, an agent reading the SSOT table
-        // still halts on every cycle hand-off.
-        const cells = rowCells(gates, /multi-candidate-ambiguous/);
-        expect(cells.length, `${variant}: the multi-candidate gate row must exist`).toBeGreaterThan(2);
-        expect(
-          /§2\.5|체인 핸드오프/.test(cells.join(" ")) && /(?:비적용|적용되지 않는다|적용하지 않는다)/.test(cells.join(" ")),
-          `${variant}: the gate ROW itself must declare that it does not apply to a fixed chain hand-off`,
-        ).toBe(true);
-        // @req FR-FLOW-127 — this assertion used to require the exemption to name `--cycle`. Once
-        // FR-FLOW-124 made the cycle the default, that spelling exempted every advancement and
-        // retired a user-confirmation gate repo-wide. The exemption's own premise is that the chain
-        // fixes the next step; Table T1 advancement does not fix it — the feasibility row forks to
-        // kiwi-planner or kiwi-srs-research — so the row must name T1 as where the gate still
-        // fires. Asserted positively: a universal exemption re-spelled in new wording evades a
-        // negative check but cannot satisfy this one.
-        expect(
-          /(?:T1|§5\.1)/.test(cells.join(" ")) && /발동|적용된다|유지/.test(cells.join(" ")),
-          `${variant}: the row must name Table T1 advancement as the case the gate still fires on`,
-        ).toBe(true);
-      });
+      // FR-FLOW-052 AC-2 retired in 4.0.0 (successor FR-FLOW-188): wave-master enters no kiwi-pipeline
+      // cycle, and the pipeline's multi-candidate gate row is FR-FLOW-127's — asserted in
+      // test/skills/pipeline-cycle-default.fr-flow-124.test.ts, not here.
 
       it("AC-3: reads the work mode in preflight and declares wave cycles body-scope", () => {
         const preflight = sectionUnder(skillBody(readWave(variant)), /^##\s.*Preflight/);
@@ -818,13 +824,22 @@ describe("FR-FLOW-052 — unattended continuity across cycle entry and cost gate
           ).toBe(true);
         }
         // The chain is what makes the option actually arrive; naming only the endpoints leaves the
-        // intermediate skills free to drop it.
-        for (const hop of ["kiwi-pipeline", "kiwi-pm", "kiwi-coder"]) {
+        // intermediate skills free to drop it. FR-FLOW-052 AC-4 (unrevised) read with FR-FLOW-188
+        // AC-2/AC-7: the per-wave kiwi-pipeline hop is gone, so each option's own row must route
+        // through the worker's kiwi-pm to kiwi-coder, and the section must name the worker card and
+        // the worker kiwi-pm call of parallel-waves.md that carry it.
+        for (const opt of ["--auto-cost-warning", "--auto-integration"]) {
+          const row = tableRows(propagation, new RegExp("^\\s*\\|\\s*`" + opt + "`")).join(" ");
           expect(
-            propagation.includes(hop),
-            `${variant}: the propagation path must name the intermediate skill ${hop}`,
+            /워커의 kiwi-pm → kiwi-coder/.test(row),
+            `${variant}: the ${opt} row must route through the worker's kiwi-pm to kiwi-coder`,
           ).toBe(true);
+          expect(/kiwi-pipeline/.test(row), `${variant}: the ${opt} row still routes through kiwi-pipeline`).toBe(false);
         }
+        expect(
+          /parallel-waves\.md` PW-5/.test(propagation) && /PW-6/.test(propagation),
+          `${variant}: the pass-through section must name the worker card (PW-5) and the worker kiwi-pm call (PW-6) that carry the options`,
+        ).toBe(true);
       });
 
       it("AC-5: guards the integration-test consent gate with the child-context check", () => {
@@ -836,7 +851,7 @@ describe("FR-FLOW-052 — unattended continuity across cycle entry and cost gate
         ).toBe(true);
       });
 
-      it("AC-6: refuses the regression-skip and reviewer-off options like worktree delegation", () => {
+      it("FR-FLOW-052 AC-6: refuses the regression-skip and reviewer-off options by name through a declared critical gate", () => {
         const body = skillBody(readWave(variant));
         const preflight = sectionUnder(body, /^##\s.*Preflight/);
         const rule = lineWith(preflight, /--skip-regression/);
@@ -869,16 +884,21 @@ describe("FR-FLOW-052 — unattended continuity across cycle entry and cost gate
 describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run blocking", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: skips only the tasks tracing to a draft requirement under --auto", () => {
+      // FR-FLOW-053 AC-1 as revised for 4.0.0: one SDS is one kiwi-coder run, so kiwi-pm cannot run
+      // part of it. The per-requirement cut happens where the SDS scope is chosen — the kiwi-sds
+      // requirement filter — and kiwi-pm's --auto branch sends the draft requirement there instead of
+      // halting the whole run.
+      it("FR-FLOW-053 AC-1: leaves a draft requirement out of the SDS scope under --auto", () => {
         const body = skillBody(readPm(variant));
         const auto = sectionUnder(body, /^#{3}\s.*`--auto` 동작/);
         expect(auto, `${variant}: kiwi-pm must have an --auto lifecycle-gate section`).not.toBe("");
         const draft = lineWith(auto, /`draft`/);
         expect(draft, `${variant}: the draft branch must exist`).not.toBe("");
         expect(
-          /해당 REQ 를 trace 하는 Task 만 skip/.test(draft),
-          `${variant}: a draft requirement must skip only the tasks tracing to it`,
+          /요구 필터/.test(draft) && /kiwi-sds/.test(draft) && /SDS 범위/.test(draft),
+          `${variant}: a draft requirement must be left out of the SDS scope through the kiwi-sds requirement filter`,
         ).toBe(true);
+        expect(/Task/.test(draft), `${variant}: the draft branch still skips plan Tasks`).toBe(false);
         // Polarity: leaving HALT on that line reinstates whole-run blocking.
         expect(
           /HALT/.test(draft),
@@ -905,14 +925,22 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
         ).toBe(0);
       });
 
-      it("AC-2: routes requirements left at draft through the remediation table", () => {
+      it("FR-FLOW-053 AC-2: routes requirements left at draft by the feasibility stage through the remediation table", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
-        const row = rowCells(routing, /draft 로 남은/);
-        expect(row.length, `${variant}: the routing table must have a left-at-draft row`).toBeGreaterThan(2);
+        // Revised in 4.0.0: only the feasibility stage leaves a requirement at draft — the planning
+        // stage is gone (FR-FLOW-184 AC-2). Anchored on the row whose finding cell names that stage.
+        const row = rowCells(routing, /feasibility 단계가 draft 로 남긴/);
+        expect(row.length, `${variant}: the routing table must have a left-at-draft-by-feasibility row`).toBeGreaterThan(2);
+        const handling = row.slice(2).join(" ");
         expect(
-          /feasibility/.test(row.join(" ")),
-          `${variant}: the row must name the stage that left the requirement at draft`,
+          /kiwi-srs-feasibility/.test(handling) && /--req-filter/.test(handling),
+          `${variant}: the row's destination must re-run feasibility on exactly those requirements`,
         ).toBe(true);
+        expect(
+          /SDS 작성 단계부터 재진입/.test(handling) && /draft-stability-skip/.test(handling),
+          `${variant}: the row must re-enter from SDS authoring and record a failed promotion as residual`,
+        ).toBe(true);
+        expect(/planning|planner|계획/.test(row.join(" ")), `${variant}: the row still names a planning stage`).toBe(false);
       });
 
       it("AC-3: declares the task-failure escalation halt as a critical gate", () => {
@@ -921,19 +949,17 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
         expect(cells.length, `${variant}: kiwi-pm critical_gates must declare task-failure-escalation`).toBeGreaterThan(2);
       });
 
-      it("AC-4: resolves a skipped predecessor by an automated decision, not a halt", () => {
-        const body = skillBody(readPm(variant));
-        const rule = lineWith(body, /선행 Task 가 \*\*실패가 아니라 skip\*\*/);
-        expect(rule, `${variant}: the dependency check must distinguish a skipped predecessor from a failed one`).not.toBe(
-          "",
-        );
+      // FR-FLOW-053 AC-4 retired in 4.0.0 (successor FR-FLOW-188): kiwi-pm runs one SDS as one
+      // kiwi-coder run and no plan Task depends on another, so no predecessor rule may linger.
+      it("FR-FLOW-053 AC-4: carries no plan-task predecessor rule any more", () => {
+        // kiwi-pm's own text only: the resolved body appends shared modules (auto-option.md), whose
+        // gate catalogue is not this skill's rule. Read the file itself — a CRLF module leaves its
+        // headings unprefixed, so cutting the resolved body at the first prefixed heading is unsafe.
+        const body = skillBody(readRepoFile(`skills/${variant}/kiwi-pm/SKILL.md`));
+        expect(body, `${variant}: kiwi-pm must exist`).not.toBe("");
         expect(
-          /자동 결정/.test(rule),
-          `${variant}: a skipped predecessor must be resolvable by an automated continue-or-skip decision`,
-        ).toBe(true);
-        expect(
-          /무조건 HALT|일률적으로 HALT/.test(rule),
-          `${variant}: a skipped predecessor must not fall through to an unconditional halt`,
+          /선행 Task|depends_on/.test(body),
+          `${variant}: kiwi-pm still resolves plan-task predecessors that no longer exist`,
         ).toBe(false);
       });
 
@@ -997,13 +1023,13 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         expect(HEDGE.test(rule), `${variant}: the inviolability rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("AC-2: detects the three in the diff at the plan-versus-code gate as CRITICAL", () => {
+      it("FR-FLOW-054 AC-2: detects the three in the diff at the SDS-code match gate as CRITICAL", () => {
         const impl = sectionUnder(skillBody(readCoder(variant)), /^#{3}\s.*단계 흐름/);
         expect(impl, `${variant}: the implementation-loop flow must exist`).not.toBe("");
-        // Scoped to the plan-vs-code gate branch of the flow block, so a mention in the review-axis
-        // table below cannot satisfy it.
-        const gate = impl.split(/\(d\) 계획-코드 일치 게이트/)[1]?.split(/\(e\)/)[0] ?? "";
-        expect(gate, `${variant}: the plan-versus-code gate branch must exist`).not.toBe("");
+        // Scoped to the SDS-code match gate branch of the flow block (FR-FLOW-185 AC-3, which replaced
+        // the plan-versus-code gate), so a mention in the review-axis table below cannot satisfy it.
+        const gate = impl.split(/\(d\) SDS-코드 일치 게이트/)[1]?.split(/\(e\)/)[0] ?? "";
+        expect(gate, `${variant}: the SDS-code match gate branch must exist`).not.toBe("");
         expect(
           /기존 테스트/.test(gate) && /(?:삭제|제거)/.test(gate) && /약화/.test(gate),
           `${variant}: the gate must detect test-file deletion, test-case removal and assertion weakening in the diff`,
@@ -1190,21 +1216,25 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
         ).toBe(true);
       });
 
-      it("AC-6: gives a verification-driven pipeline re-entry an explicit scope", () => {
+      it("FR-FLOW-055 AC-6: gives a verification-driven wave re-entry an explicit scope", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         // The review delegation row already carries --base/--commits; the re-entry row must reach
-        // the same specificity or a re-entry silently re-runs the whole plan.
+        // the same specificity or a re-entry silently re-runs the whole wave.
         const row = rowCells(routing, /재진입/);
-        expect(row.length, `${variant}: a pipeline re-entry row must exist`).toBeGreaterThan(2);
-        const scope = routing;
+        expect(row.length, `${variant}: a wave re-entry row must exist`).toBeGreaterThan(2);
+        // Revised in 4.0.0: re-entry no longer goes through a per-wave kiwi-pipeline and its identity
+        // flag is `--sds-id` (FR-FLOW-184 AC-5). Anchored on the re-entry scope rule itself.
+        const rule = lineWith(routing, /재진입은 명시 범위/);
+        expect(rule, `${variant}: the re-entry scope rule must exist`).not.toBe("");
         expect(
-          /미해소 요구사항 필터|미대응 REQ 필터/.test(scope),
+          /미해소 요구사항 필터|미대응 REQ 필터/.test(rule) && /`--req-filter`/.test(rule),
           `${variant}: a re-entry must carry the unaddressed requirement filter`,
         ).toBe(true);
         expect(
-          /`plan_run_id`[^\n]*재사용/.test(scope),
-          `${variant}: a re-entry must state whether the existing plan run identifier is reused`,
+          /sds-id 를 \*\*재사용\*\*하는지 여부를 `--sds-id`/.test(rule),
+          `${variant}: a re-entry must state whether the existing sds-id is reused`,
         ).toBe(true);
+        expect(/plan_run_id|--plan-run-id/.test(routing), `${variant}: the retired plan run identifier is still used`).toBe(false);
       });
     });
   }
@@ -1226,6 +1256,9 @@ describe("FR-FLOW-047..055 — the wave critical_gates table keeps every declare
         rows.length >= EXISTING_WAVE_GATE_IDS.length + NEW_WAVE_GATE_IDS.length,
         `${variant}: critical_gates must carry one row per declared gate`,
       ).toBe(true);
+      for (const id of RETIRED_WAVE_GATE_IDS) {
+        expect(rows.some((row) => row.includes(id)), `${variant}: the retired gate ${id} is still declared`).toBe(false);
+      }
     });
   }
 });

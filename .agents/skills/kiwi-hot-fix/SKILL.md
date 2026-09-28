@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to planner to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
+description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to SDS to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -17,6 +17,13 @@ This skill does not bypass repository stability blockers. If an affected REQ is
 `draft` or `deprecated`, halt unless the user explicitly overrides the project
 workflow. If `--no-sync` is used, run the stability gate before any behavior
 change and report that SRS synchronization was intentionally skipped.
+
+## Official Workflow Tool Policy
+
+For covered workflow artifact flows, use official SpecKiwi workflow tools before raw file reads:
+
+1. Read the resume state through MCP `workflow_resolve_artifact` with the run's `runId`, `kind` `coder-state` and `includeBody` `true` (the `.kiwi/sessions/{run-id}/state.json` this skill resumes from), and `workflow_worklog_tail`, before reading `.kiwi/sessions`, worklogs, or pipeline JSONL directly.
+2. Raw file fallback is degraded mode. It is allowed only after capturing tool diagnostics, affected artifact paths, active target, and a follow-up requirement or candidate ID in `state.json`, the run report, or worklog.
 
 ## Core Rules
 
@@ -40,11 +47,12 @@ change and report that SRS synchronization was intentionally skipped.
 | `lifecycle-gate-draft` | draft/deprecated impacted REQ cannot be implemented automatically | preflight |
 | `no-sync-with-stability-gate` | `--no-sync` removes the normal SRS catch-up path | preflight |
 | `external-module-impact` | cwd-external edit or external module ownership issue | scope gate |
-| `fix-complexity-large` | large work should enter the full SRS/planner pipeline | root-cause analysis |
+| `fix-complexity-large` | large work should enter the full SRS/SDS pipeline | root-cause analysis |
 | `zero-tolerance-hypothesis-fix-mismatch` | fix does not match the accepted root-cause hypothesis | fix review |
 | `mock-detection` | mock shortcut detected in a bug fix | test/fix scan |
 | `mcp-unavailable` | SRS sync requires `speckiwi mcp`; CLI diagnostics cannot replace sync mutations | preflight |
 | `improvement-loop-divergence-4opt` | repeated fix/review/regression failure needs user decision | improvement loop |
+| `test-sufficiency-gap` | citation gaps remain after the one fill attempt of the test-sufficiency check run before the sync delegation (`../_shared/kiwi/test-sufficiency.md`) | before the sync delegation |
 
 ## Inputs
 
@@ -69,13 +77,14 @@ change and report that SRS synchronization was intentionally skipped.
 1. Preflight: verify git, test tooling, SpecKiwi MCP availability, active target, and `gh` if a GitHub issue is supplied.
 2. Detect input from issue URL, natural-language symptom, or existing working tree changes.
 3. Run two isolated root-cause passes: symptom/reproduction and scope/REQ impact.
-4. If complexity is large, halt or ask whether to move into the full `$kiwi-srs` -> `$kiwi-planner` flow.
+4. If complexity is large, halt or ask whether to move into the full `$kiwi-srs` -> `$kiwi-sds` flow.
 5. Write a regression test and confirm red. If exempted, record the reason and make the reviewer evaluate the exemption.
 6. Apply the smallest fix within cwd.
 7. Run formal checks and prickly review. Iterate until CRITICAL/HIGH findings are clear.
 8. Run the regression test and affected test suite unless explicitly skipped.
-9. Delegate to `$kiwi-srs-sync` unless `--no-sync`, dry-run-only, or an unresolved gate blocks it.
-10. Write a report and emit a pipeline event.
+9. Unless the delegation is skipped, run the test-sufficiency check of `../_shared/kiwi/test-sufficiency.md` over the high-confidence candidate REQ IDs (Sync Delegation in `references/extended-workflow.md`).
+10. Delegate to `$kiwi-srs-sync` unless `--no-sync`, dry-run-only, or an unresolved gate blocks it.
+11. Write a report and emit a pipeline event.
 
 ## Boundaries
 
@@ -83,7 +92,7 @@ Use another skill when:
 
 | Scenario | Skill |
 |---|---|
-| New feature or non-urgent change | `$kiwi-srs` -> `$kiwi-planner` -> `$kiwi-pm` |
+| New feature or non-urgent change | `$kiwi-srs` -> `$kiwi-sds` -> `$kiwi-pm` |
 | Code-first SRS catch-up only | `$kiwi-srs-sync` |
 | Review/fix without urgent bug context | `$kiwi-review-fix-loop` |
 | Commit or PR after fix | `$kiwi-commit-auto-push` or `$kiwi-commit-auto-pr` |

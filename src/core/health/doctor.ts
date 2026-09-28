@@ -257,7 +257,7 @@ async function checkRulesReferencePresence(rootPath: string): Promise<DoctorChec
 // @req FR-NODE-082
 /**
  * SDS authoring rules installation: the tdd work-mode snippet cites
- * docs/rule/SDS-MD-Rules-v2.5.0.md, so its absence warns with the init remediation.
+ * docs/rule/SDS-MD-Rules-v2.6.0.md, so its absence warns with the init remediation.
  * Existence-only by design — no index coupling and no version-drift tracking.
  */
 async function checkSdsRulesPresence(rootPath: string): Promise<DoctorCheck> {
@@ -521,10 +521,10 @@ async function checkInstalledSkillDrift(
     // dead code: listSkillNames discovers a skill by stat-ing SKILL.md, so a directory holding only
     // skill.md is never listed in the first place.
     //
-    // @req FR-NODE-173 AC-6 — the comparison used to stop at SKILL.md, so a stale `validator.mjs` or
-    // a stale `references/extended-workflow.md` reported `ok` while the installed skill ran old code.
-    // Twenty-eight non-entrypoint files ship across the bundled skills. A skill is drifted when any
-    // file it ships differs, and the entrypoint is only the first of them.
+    // @req FR-NODE-173 AC-6 — the comparison used to stop at SKILL.md, so a stale script or a stale
+    // `references/extended-workflow.md` reported `ok` while the installed skill ran old code. Bundled
+    // skills ship non-entrypoint files too. A skill is drifted when any file it ships differs, and the
+    // entrypoint is only the first of them.
     for (const name of await listSkillNames(location.sourceRoot)) {
       const installedEntry = await readOrUndefined(path.join(location.destinationRoot, name, "SKILL.md"));
       if (installedEntry === undefined) {

@@ -5,7 +5,13 @@ file in their §0. One responsibility split across two documents is the failure 
 corrected and the other silently diverges.
 
 Governing requirements: `FR-FLOW-122` (this contract), `FR-NODE-186` (topology and the role gate),
-`FR-NODE-185` (replay admission and checkpointing), `FR-FLOW-121` (`--defer-srs-mutation`).
+`FR-NODE-185` (replay admission and checkpointing), `FR-FLOW-121` (`--defer-srs-mutation`), `FR-FLOW-188`
+(one worker per wave).
+
+**A lane is one wave's worker.** The lane of this contract is the one worker `parallel-waves.md`
+dispatches for a wave; a wave is never split into further lanes. A lane's `write_set` is its wave SDS's
+write set — the Files paths ∪ the Test Plan test files. When a lane is created and who judges and merges
+it is ordered by `parallel-waves.md`; this document owns the boundaries one lane must keep.
 
 ---
 
@@ -14,7 +20,7 @@ Governing requirements: `FR-FLOW-122` (this contract), `FR-NODE-186` (topology a
 | Name | What it is | What it owns |
 |---|---|---|
 | **run root** | the host checkout the MCP workspace is bound to | Requirement ID allocation, **every SRS mutation**, index roll-up, `waves.jsonl`, the run lock |
-| **lane workspace** | a git worktree the run created | code and test edits, and commits on its own branch — nothing else |
+| **lane workspace** | a git worktree the run gave one wave's worker | code and test edits, and commits on its own branch — nothing else |
 
 **The MCP root cannot move mid-session.** It is bound to the server process's working directory and
 there is no restart facility. So this design does not move the session into the worktree: the host
@@ -28,7 +34,7 @@ lane holding an MCP handle still cannot touch its own worktree through it.
 ## 2. Creating one — never trust the default head
 
 ```
-git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
+git worktree add <lane-root> -b kiwi/orch/{run_id}/{laneId} <base_sha>
 ```
 
 **Pass the base as the third argument — never split this into two commands.** `add -b BR` followed by a
@@ -46,10 +52,11 @@ ATTACHED to it. `checkout <sha>` is never the answer.
 **merges cleanly**, so nothing afterwards reveals that months-old code was edited.
 
 A worktree shares the object database, so it can move to a commit created **after** the worktree
-existed — confirmed by measurement. That is what makes "start on the previous unit's integration tip"
+existed — confirmed by measurement. That is what makes "start on the integration tip the earlier waves merged into"
 mechanically possible.
 
-**Bootstrap** finishes before the host puts an agent into the lane:
+**Bootstrap** finishes before any code work — when the host creates the worktree, before it puts an agent
+into the lane; when the runtime creates the worktree together with the worker, as the worker's first action:
 
 ```
 npm ci --include=dev --ignore-scripts
@@ -67,8 +74,8 @@ shell syntax.
 1. **Never calls an SRS mutation.** It only records into the queue given by
    `--defer-srs-mutation <path>`. Recording is not skipping — the four mutations are still accounted
    for, and the host replays them.
-2. **Never commits under `docs/spec/`.** A lane's commits are confined to its own `write_set`
-   pathspec.
+2. **Never commits under `docs/spec/`**, nor under `docs/sds/`. A lane's commits are confined to its own
+   `write_set` pathspec.
 3. **Never passes `--root`.** The moment `--root` appears it is an orchestrator operation, not lane
    work.
 
@@ -114,7 +121,7 @@ What the host confirms from the commit range:
 base..head commit count is non-zero        (something happened)
 base is an ancestor of head                (it happened on the right baseline)
 changed paths  ⊆ write_set                 (it happened inside the lease)
-changed paths  ∩ docs/spec/ = empty        (SRS was left alone)
+changed paths  ∩ (docs/spec/ ∪ docs/sds/) = empty   (SRS and SDS were left alone)
 ```
 
 ---

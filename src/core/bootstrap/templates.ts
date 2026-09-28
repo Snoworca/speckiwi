@@ -34,13 +34,14 @@ export interface AgentInstructionOptions {
 export const AGENT_INSTRUCTION_VERSION = "1.9";
 // @req FR-NODE-087 — 2.5.0 is the first bundled version whose document covers every syntax the
 // runtime writes: the `checked_compatible` relation and its Notes grammar (§23.5) and the
-// [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5). Both documents move together so a consumer
-// never has to reason about two rules versions at once.
+// [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5).
 export const BUNDLED_RULES_VERSION = "2.5.0";
 
 // @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
 // from one constant per rules document, so raising a version cannot leave a filename or a pointer behind.
-export const BUNDLED_SDS_RULES_VERSION = "2.5.0";
+// @req FR-NODE-087 AC-7 — the SDS document moves to 2.6.0 alone, raised for the lite profile
+// (FR-NODE-209 AC-5); the SRS document stays at 2.5.0.
+export const BUNDLED_SDS_RULES_VERSION = "2.6.0";
 export const BUNDLED_SRS_RULES_FILENAME = `SRS-MD-Rules-v${BUNDLED_RULES_VERSION}.md`;
 export const BUNDLED_SDS_RULES_FILENAME = `SDS-MD-Rules-v${BUNDLED_SDS_RULES_VERSION}.md`;
 
@@ -415,7 +416,9 @@ export async function loadBundledSdsRulesDocument(): Promise<string> {
       "The tdd work-mode SDS lives at `docs/spec/steps/<task>/design.md` with the headings",
       "Context & Scope, Goals / Non-goals, Architecture Decisions, Interfaces,",
       "Acceptance Contracts (EARS `SDS-AC-n` statements), Test Plan, and Open Questions,",
-      "capped at 200 lines. See the packaged SpecKiwi documentation for the full rules."
+      "capped at 200 lines. A body-scope lite SDS lives at `docs/sds/<sds-id>.sds.md` with `Profile = lite`,",
+      "the sections Interfaces, Acceptance Contracts and Test Plan, and a 100-line cap; `speckiwi sds check`",
+      "checks it. See the packaged SpecKiwi documentation for the full rules."
     ].join("\n");
   }
 }
@@ -518,8 +521,8 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "Per-call workspace root:",
     "1. The MCP server resolves its root from its own process working directory, and SRS is written only there.",
     "2. The `workflow_*` family accepts an optional absolute `workspaceRoot` on every tool, and the `orchestrate_*` family accepts it on every tool except `orchestrate_replay_apply` and `orchestrate_preflight`.",
-    "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges` and `list_steps` — each reading the named checkout and writing nothing. They are refused when that checkout holds no `docs/spec/00.index.md`.",
-    "4. Every tool that writes under `docs/spec` or allocates a Requirement ID refuses `workspaceRoot` fail-closed, and so do `mcp_workspace_info`, `get_next_work_order` and `preview_legacy_workflow_migration`. Refusal is the default, so a tool not named here refuses it.",
+    "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds` and `check_test_sufficiency` — each reading the named checkout and writing nothing. They are refused when that checkout holds no `docs/spec/00.index.md`, and `check_test_sufficiency` refuses there an `sds` path under `docs/spec` (a step `design.md`), so that check runs through `speckiwi coverage --tests` inside the worktree.",
+    "4. Every tool that writes under `docs/spec` or allocates a Requirement ID refuses `workspaceRoot` fail-closed, and so do `mcp_workspace_info` and `get_next_work_order`. Refusal is the default, so a tool not named here refuses it.",
     "5. An accepted `workspaceRoot` MUST be an absolute path to an existing git top level that is a worktree of the startup root's repository; a path argument landing under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path — which is what lets an SRS query filter on a `docs/spec` reference.",
     "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, and `server-cwd-discovery` or `auto-init` otherwise.",
     "",

@@ -23,11 +23,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //           the former host rows carry no mcpName.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 const SPEC_DIR = path.join("docs", "spec");

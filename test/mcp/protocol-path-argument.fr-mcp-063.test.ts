@@ -47,7 +47,9 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
  * requirement text and nothing else. If the registered surface grows, both sides move together and
  * only this line says so.
  */
-const REGISTERED_TOOL_COUNT = 100;
+// 88 since 4.0.0 removed the twelve plan tools (FR-NODE-211 AC-1) and two orchestrate tools
+// (FR-NODE-213 AC-3) and added `check_sds` and `check_test_sufficiency` (FR-MCP-065, FR-MCP-066).
+const REGISTERED_TOOL_COUNT = 88;
 
 /**
  * The refusing set is held to names rather than to a size.
@@ -76,14 +78,11 @@ const CLOSED_VEHICLE = "get_next_work_order";
 const CLOSED_VEHICLE_OWN_KEY = "target";
 
 /**
- * The one tool whose declared schema advertises a `workspaceRoot` the gate refuses.
- *
- * Named rather than counted. Both repairs are outside what FR-MCP-063 decides: dropping the
- * declaration takes the tree's declared-argument total below a floor that FR-FLOW-162 AC-1 holds
- * and records in its own verified text, and giving the tool the argument for real moves the
- * accepting family from 51 to 52.
+ * The tools whose declared schema advertises a `workspaceRoot` the gate refuses: none. The one this
+ * named before 4.0.0, `preview_legacy_workflow_migration`, left with the plan tools (FR-NODE-211 AC-1),
+ * and FR-MCP-063 AC-4 now holds the set to empty.
  */
-const ADVERTISED_BUT_REFUSED = "preview_legacy_workflow_migration";
+const ADVERTISED_BUT_REFUSED: readonly string[] = [];
 
 type JsonSchema = {
   type?: string;
@@ -403,7 +402,8 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
     const declared = toolSchemas.list_requirements;
     for (const key of NEAR_MISS_KEYS) {
       expect(Object.prototype.hasOwnProperty.call(declared, key), `${key} must be undeclared`).toBe(false);
-      expect(key === ROOT_KEY || key === WORKSPACE_ROOT_KEY, `${key} must not be a gate key`).toBe(false);
+      const name: string = key;
+      expect(name === ROOT_KEY || name === WORKSPACE_ROOT_KEY, `${key} must not be a gate key`).toBe(false);
     }
 
     seen.length = 0;
@@ -479,7 +479,7 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
   });
 
   // @req FR-MCP-063 AC-4
-  it("advertises workspaceRoot on every tool the gate accepts it for, and on one more it names", () => {
+  it("FR-MCP-063 AC-4: advertises workspaceRoot on every tool the gate accepts it for, and on no other", () => {
     const advertised = listed
       .filter((tool) => WORKSPACE_ROOT_KEY in ((tool.inputSchema as JsonSchema).properties ?? {}))
       .map((tool) => tool.name)
@@ -488,10 +488,9 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
     // No accepting tool hides the argument: a caller reading tools/list can find every root the
     // gate would honour.
     expect(acceptedNames.filter((name) => !advertised.includes(name))).toEqual([]);
-    // The other direction is where the known disagreement lives, and it is held to exactly one
-    // name rather than to a count, so a second tool advertising what the gate refuses reddens here
-    // and so does this one being fixed without the requirement being updated with it.
-    expect(advertised.filter((name) => !acceptedNames.includes(name))).toEqual([ADVERTISED_BUT_REFUSED]);
+    // The other direction is held to the named set rather than to a count, so any tool advertising
+    // what the gate refuses reddens here.
+    expect(advertised.filter((name) => !acceptedNames.includes(name))).toEqual(ADVERTISED_BUT_REFUSED);
   });
 
   // @req FR-MCP-063 AC-5

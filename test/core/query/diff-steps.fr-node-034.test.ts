@@ -294,8 +294,8 @@ async function bodySha(root: RootHandle, id: string): Promise<string> {
 }
 
 /** Returns the single diff entry for `id`, failing if absent/ambiguous. */
-function entryFor(
-  entries: ReadonlyArray<{ id: string; classification: string }>,
+function entryFor<T extends { id: string; classification: string }>(
+  entries: ReadonlyArray<T>,
   id: string
 ) {
   const matches = entries.filter((entry) => entry.id === id);

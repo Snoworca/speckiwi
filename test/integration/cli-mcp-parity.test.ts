@@ -7,9 +7,10 @@ import { createTestMcpServer } from "../../src/mcp/adapter.js";
 import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import { at } from "../support/at.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 describe("CLI MCP parity surface", () => {
@@ -84,7 +85,7 @@ describe("CLI MCP parity surface", () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const server = createTestMcpServer({ root });
     registerReadTools(server, { root });
-    const result = await server.callTool("list_requirements", {});
+    const result = (await server.callTool("list_requirements", {})) as { ok: true; value: { records: Array<{ id: string }> } } | { ok: false };
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.records.map((record: { id: string }) => record.id)).toContain("FR-ARCH-001");
@@ -105,12 +106,14 @@ describe("CLI MCP parity surface", () => {
     const streams = io();
     expect(await main(["--root", root, "search", "parity search coverage", "--json"], streams)).toBe(0);
     const cliSearch = JSON.parse(streams.stdout.read()?.toString() ?? "");
-    const mcpSearch = await server.callTool("search_requirements", { query: "parity search coverage" });
+    const mcpSearch = (await server.callTool("search_requirements", { query: "parity search coverage" })) as
+      | { ok: true; value: { records: Array<{ id: string; snippets: unknown }>; page: unknown } }
+      | { ok: false };
 
     expect(mcpSearch).toMatchObject({ ok: true });
     if (mcpSearch.ok) {
       expect(mcpSearch.value.records.map((record: { id: string }) => record.id)).toEqual(cliSearch.records.map((record: { id: string }) => record.id));
-      expect(mcpSearch.value.records[0].snippets).toEqual(cliSearch.records[0].snippets);
+      expect(at(mcpSearch.value.records, 0).snippets).toEqual(cliSearch.records[0].snippets);
       expect(mcpSearch.value.page).toEqual(cliSearch.page);
     }
   });
@@ -148,7 +151,21 @@ describe("CLI MCP parity surface", () => {
     const streams = io();
     expect(await main(["--root", root, "summary", "--json"], streams)).toBe(0);
     const cliSummary = JSON.parse(streams.stdout.read()?.toString() ?? "");
-    const mcpSummary = await server.callTool("summarize_target", {});
+    const mcpSummary = (await server.callTool("summarize_target", {})) as
+      | {
+          ok: true;
+          value: {
+            target: unknown;
+            targetSource: unknown;
+            countsByStatus: unknown;
+            countsByType: unknown;
+            blocked: unknown;
+            implementedNotVerified: unknown;
+            missingEvidence: unknown;
+            diagnosticsSummary: unknown;
+          };
+        }
+      | { ok: false };
 
     expect(mcpSummary.ok).toBe(true);
     if (mcpSummary.ok) {

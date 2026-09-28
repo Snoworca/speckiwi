@@ -13,11 +13,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // leaves this one mutation with no way through where it previously always succeeded.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** Writes a lock owned by another session that has not expired, so recovery does not kick in. */

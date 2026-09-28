@@ -13,7 +13,7 @@ import {
   CARD_PRECONDITIONS,
   PROOF_KINDS,
   RESUME_CARD_MAX_BYTES,
-  isPhase1Verb,
+  isVerb,
   type CardPrecondition,
   type Engine,
   type ProofKind,
@@ -136,10 +136,9 @@ export function validateCard(card: ResumeCard, journal: WavesJournalView): CardV
   const serialised = JSON.stringify(card);
   if (Buffer.byteLength(serialised, "utf8") > RESUME_CARD_MAX_BYTES) violations.push("resume-card-too-large");
 
-  // @req FR-NODE-163 - the PHASE-1 enum, not the union. The shipped body states the six lane verbs
-  // plus probe-isolation, run-serial-epilogue and replay-deferred-mutations are outside the phase-1
-  // enum and that a verb outside it halts a resume; checking the union let all nine resume clean.
-  if (!isPhase1Verb(card.next_action?.verb ?? "")) violations.push("unknown-verb");
+  // @req FR-NODE-163 — the verb set the shipped skill declares; a verb retired in 4.0.0 is outside it
+  // and halts a resume.
+  if (!isVerb(card.next_action?.verb ?? "")) violations.push("unknown-verb");
   const preconditions = card.next_action?.preconditions ?? [];
   if (preconditions.some((value) => !(CARD_PRECONDITIONS as readonly string[]).includes(value))) {
     violations.push("unknown-precondition");

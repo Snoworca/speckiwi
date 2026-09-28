@@ -14,7 +14,7 @@ describe("FR-MCP-019 — setTargetGoal", () => {
     const root = await resolveProjectRoot(await copyFixtureWorkspace("mutation-target"));
     const result = await setTargetGoal(root, { target: "v9.9.9", goal: "x" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("NOT_FOUND");
+    if (!result.ok) expect(result.error?.code).toBe("NOT_FOUND");
   });
 
   it("(2) USAGE on empty / whitespace goal", async () => {
@@ -66,10 +66,10 @@ describe("FR-MCP-019 — setTargetGoal", () => {
     const root = await resolveProjectRoot(rootPath);
     const first = await setTargetGoal(root, { target: "v1.0.0", goal: "Same" });
     expect(first.ok).toBe(true);
-    if (first.ok) expect(first.value.written).toBe(true);
+    if (first.ok) expect(first.value?.written).toBe(true);
     const second = await setTargetGoal(root, { target: "v1.0.0", goal: "Same" });
     expect(second.ok).toBe(true);
-    if (second.ok) expect(second.value.written).toBe(false);
+    if (second.ok) expect(second.value?.written).toBe(false);
   });
 
   it("(8) dryRun does not modify file", async () => {
@@ -78,7 +78,7 @@ describe("FR-MCP-019 — setTargetGoal", () => {
     const before = await readFile(path.join(rootPath, INDEX_FILE), "utf8");
     const result = await setTargetGoal(root, { target: "v1.0.0", goal: "Dry only", dryRun: true });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.written).toBe(false);
+    if (result.ok) expect(result.value?.written).toBe(false);
     const after = await readFile(path.join(rootPath, INDEX_FILE), "utf8");
     expect(after).toBe(before);
   });
@@ -100,9 +100,9 @@ describe("FR-MCP-019 — setTargetGoal", () => {
       setTargetGoal(root, { target: "v1.0.0", goal: "A" }),
       setTargetGoal(root, { target: "v1.0.0", goal: "B" })
     ]);
-    const writtenCount = [a, b].filter((r) => r.ok && r.value.written).length;
-    const stalePatchCount = [a, b].filter((r) => !r.ok && r.error.code === "STALE_PATCH").length;
-    const lockedCount = [a, b].filter((r) => !r.ok && r.error.code === "SRS_LOCKED").length;
+    const writtenCount = [a, b].filter((r) => r.ok && r.value?.written).length;
+    const stalePatchCount = [a, b].filter((r) => !r.ok && r.error?.code === "STALE_PATCH").length;
+    const lockedCount = [a, b].filter((r) => !r.ok && r.error?.code === "SRS_LOCKED").length;
     expect(writtenCount + stalePatchCount + lockedCount).toBe(2);
     // Allow either {1 write + 1 stale}, {1 write + 1 locked}, or {2 writes when the second snapshot saw the first commit and reissued}
     // but never 2 stale (would mean no progress) and never 0 writes overall.

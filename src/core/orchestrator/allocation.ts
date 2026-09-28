@@ -3,19 +3,18 @@
  *
  * @req FR-NODE-133
  *
- * Charter C2 says every task in the sidecar carries a `req_id` from the 3.b allocation set. Handoff
- * resolvability catches an unresolvable id but not a task whose `req_ids` is **empty** — an empty
- * array resolves to nothing and so resolves cleanly — and neither catches an id allocated somewhere
- * other than 3.b. This module is C2 as a checked plan property.
+ * Charter C2 says every requirement a wave's SDS designs for was allocated at 3.b: the SDS `@req` set
+ * (FR-NODE-209 AC-4) is a subset of the 3.b allocation set. `speckiwi sds check` resolves each id
+ * against the SRS but cannot tell an id allocated somewhere other than 3.b. This module is C2 as a
+ * checked design property. @req FR-FLOW-187 AC-3
  *
  * Pure: the two `list_requirements` snapshots and the recomputed digest arrive as parameters, so the
  * check runs with no MCP transport and no filesystem.
  */
 
-/** The four conjuncts, in the order §5.11 check 1 states them. */
+/** The three conjuncts, in the order §5.11 check 1 states them. */
 export const ALLOCATION_CONJUNCTS = [
   "req-id-outside-allocation",
-  "empty-req-ids",
   "allocated-req-id-without-design-item",
   "design-item-against-no-req-id"
 ] as const;
@@ -29,14 +28,10 @@ export interface AllocationRecord {
   readonly preSnapshotDigest: string;
 }
 
-export interface SidecarTaskAllocation {
-  readonly id: string;
-  readonly reqIds: readonly string[];
-}
-
 export interface WaveAllocationInput {
   readonly allocation: AllocationRecord;
-  readonly tasks: readonly SidecarTaskAllocation[];
+  /** The wave SDS's `@req` set, as the lite SDS parser exposes it. */
+  readonly sdsReqIds: readonly string[];
   /** `{req_id -> [D-nnn]}`, authored by the orchestrator and materialised at `design-item-map.json`. */
   readonly designItemMap: Readonly<Record<string, readonly string[]>>;
   /** `waves.lock.json`'s per-wave `design_items[]` slice. */
@@ -53,30 +48,24 @@ export type AllocationCheckResult =
   | { readonly ok: false; readonly code: "unallocated-req-id"; readonly violations: readonly AllocationViolation[] };
 
 /**
- * @req FR-NODE-133 — all four conjuncts, evaluated together. Every violation is reported rather than
- * the first, because the operator re-plans once against a complete list and the four conjuncts have
+ * @req FR-NODE-133 — every conjunct, evaluated together. Every violation is reported rather than the
+ * first, because the operator re-authors once against a complete list and the conjuncts have
  * independent causes.
  */
 export function checkWaveAllocation(input: WaveAllocationInput): AllocationCheckResult {
   const allocated = new Set(input.allocation.requirementIds);
   const violations: AllocationViolation[] = [];
 
-  for (const task of input.tasks) {
-    if (task.reqIds.length === 0) {
-      violations.push({ conjunct: "empty-req-ids", detail: `sidecar task ${task.id} carries an empty req_ids array` });
-      continue;
-    }
-    for (const reqId of task.reqIds) {
-      if (allocated.has(reqId)) continue;
-      violations.push({
-        conjunct: "req-id-outside-allocation",
-        detail: `sidecar task ${task.id} carries req_id ${reqId}, which is outside allocation.requirement_ids[]`
-      });
-    }
+  for (const reqId of [...new Set(input.sdsReqIds)].sort()) {
+    if (allocated.has(reqId)) continue;
+    violations.push({
+      conjunct: "req-id-outside-allocation",
+      detail: `the wave SDS names @req ${reqId}, which is outside allocation.requirement_ids[]`
+    });
   }
 
-  // The second and third conjuncts make `computeLanePlan`'s design-item-map input a checked operand
-  // rather than an assumption: the map must be total in both directions over this wave.
+  // The second and third conjuncts make the design item map a checked operand rather than an
+  // assumption: the map must be total in both directions over this wave.
   const claimedDesignItems = new Set<string>();
   for (const reqId of input.allocation.requirementIds) {
     const items = input.designItemMap[reqId] ?? [];

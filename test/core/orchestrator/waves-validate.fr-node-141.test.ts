@@ -179,17 +179,17 @@ const CASES: Record<string, RuleCase> = {
   "unstamped-writer": {
     kind: "journal",
     engine: "kiwi-orchestrator",
-    violating: [result("execute-unit", { writer: undefined, stage: 1, lane: "lane-1" })],
-    legal: [result("execute-unit", { stage: 1, lane: "lane-1" })]
+    violating: [result("dispatch-lane", { writer: undefined, stage: 1, lane: "lane-1" })],
+    legal: [result("dispatch-lane", { stage: 1, lane: "lane-1" })]
   },
   "journal-version-downgrade": {
     kind: "journal",
     engine: "kiwi-orchestrator",
     violating: [
-      intent("execute-unit", { stage: 1, lane: "lane-1" }),
-      result("execute-unit", { schema_version: "1.3.0", stage: 1, lane: "lane-1" })
+      intent("dispatch-lane", { stage: 1, lane: "lane-1" }),
+      result("dispatch-lane", { schema_version: "1.3.0", stage: 1, lane: "lane-1" })
     ],
-    legal: [intent("execute-unit", { stage: 1, lane: "lane-1" }), result("execute-unit", { stage: 1, lane: "lane-1" })]
+    legal: [intent("dispatch-lane", { stage: 1, lane: "lane-1" }), result("dispatch-lane", { stage: 1, lane: "lane-1" })]
   },
   "lane-not-terminal": {
     kind: "journal",
@@ -202,7 +202,7 @@ const CASES: Record<string, RuleCase> = {
     legal: [
       waveVerify(V14),
       result("integrate-lane", { stage: 1, lane: "lane-1", isolation: { profile: "none-serial", merge_sha: "aaa" } }),
-      result("execute-unit", {
+      result("dispatch-lane", {
         stage: 1,
         lane: "lane-2",
         lane_disposition: { kind: "refuted", reason: "r", at: "2026-08-02T00:00:00Z" }
@@ -237,6 +237,11 @@ const CASES: Record<string, RuleCase> = {
   "abort-gate-outside-vocabulary": {
     kind: "journal",
     violating: mutate(2, { abort_gate: "made-up-gate" })
+  },
+  // @req FR-NODE-213 AC-6 — a line past the run close, stamped 2.0.0, naming a verb 4.0.0 retired.
+  "vocabulary-retired-in-4-0-0": {
+    kind: "journal",
+    violating: [...legalJournal(), intent("execute-unit", { schema_version: "2.0.0", engine: "kiwi-wave-master" })]
   },
   // The five terminal-review rules. Every fixture bumps the run-close line to 1.5.0 with its writer
   // stamp, because each rule stands down below that version — a fixture left at the baseline's

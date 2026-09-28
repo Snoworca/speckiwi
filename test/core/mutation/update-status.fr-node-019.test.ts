@@ -52,7 +52,7 @@ describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
   });
 
   // AC-2: Transitioning a frozen or stable requirement to discarded without
@@ -64,7 +64,7 @@ describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
   });
 
   it("AC-2: denies frozen -> discarded without confirmDiscardVerified", async () => {
@@ -73,7 +73,7 @@ describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
     const root = await resolveProjectRoot(rootPath);
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
   });
 
   // AC-3: Transitioning an implemented requirement that has verification evidence to
@@ -93,7 +93,7 @@ describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
     await setMetadataValue(rootPath, "Status", "implemented");
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error.code).toBe("MUTATION_DENIED");
+    expect(result.ok === false && result.error?.code).toBe("MUTATION_DENIED");
   });
 
   // AC-4: Supplying reason and confirmDiscardVerified=true allows the discard
@@ -125,8 +125,8 @@ describe("FR-NODE-035 updateStatus verified-regression exit guard", () => {
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "discarded" });
     expect(result.ok).toBe(false);
     if (result.ok === false) {
-      expect(result.error.code).toBe("MUTATION_DENIED");
-      expect(result.error.message.length).toBeGreaterThan(0);
+      expect(result.error?.code).toBe("MUTATION_DENIED");
+      expect(result.error?.message.length).toBeGreaterThan(0);
     }
     // The denied transition must not mutate the document.
     const after = await readFile(await specPath(rootPath), "utf8");

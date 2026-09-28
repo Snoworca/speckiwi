@@ -2,15 +2,16 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { at } from "../support/at.js";
 
-// @req FR-FLOW-113  kiwi-pm --handoff / --session-suffix / --no-final
+// @req FR-FLOW-113  kiwi-pm --session-suffix / --no-final (--handoff retired in 4.0.0)
 // @req FR-FLOW-114  --no-pipeline-emit on kiwi-pm and kiwi-review-fix-loop
 // @req FR-FLOW-115  --commit-lane-work on kiwi-pm
 //
 // The flags an orchestrated unit is invoked with are authored text, so they are asserted as raw-text
 // contracts across every shipped rendering: the three skill variants plus the `.agents` mirror, which
-// renders the codex variant. A stale copy silently restores a `kiwi-pm` that executes every task of
-// the plan, commits nothing, and writes a pipeline record describing a run that did not happen.
+// renders the codex variant. A stale copy silently restores a `kiwi-pm` that commits nothing, or
+// writes a pipeline record describing a run that did not happen.
 //
 // Runtime lag: these read the BUNDLED copies. The running agent reads `~/.claude/skills/…`, which
 // `the charter's standing constraints` forbids reinstalling from this repository; the lag is recorded as
@@ -43,10 +44,10 @@ function section(text: string, headingRe: RegExp): string {
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#{1,6}\s/.test(l) && headingRe.test(l));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -79,10 +80,10 @@ function flagBlock(copy: string, flag: string): string {
 }
 
 // ---------------------------------------------------------------------------------------------
-// FR-FLOW-113 — --handoff, --session-suffix, --no-final
+// FR-FLOW-113 — --session-suffix, --no-final (--handoff and --from-task retired in 4.0.0)
 // ---------------------------------------------------------------------------------------------
 
-describe("FR-FLOW-113 — kiwi-pm handoff, session-suffix and no-final", () => {
+describe("FR-FLOW-113 — kiwi-pm session-suffix and no-final", () => {
   it("covers exactly the four shipped kiwi-pm copies", () => {
     expect(PM_COPIES).toHaveLength(4);
     for (const copy of PM_COPIES) {
@@ -90,119 +91,34 @@ describe("FR-FLOW-113 — kiwi-pm handoff, session-suffix and no-final", () => {
     }
   });
 
-  it.each(PM_COPIES)("%s declares all three flags in its CLI argument summary", (copy) => {
+  it.each(PM_COPIES)("FR-FLOW-113 AC-5 AC-6: %s declares both surviving flags in its CLI argument summary", (copy) => {
     const summary = section(read(copy), /^###\s.*CLI 인자 요약/);
     expect(summary, `${copy} must have a CLI argument summary`).not.toBe("");
-    for (const flag of ["--handoff", "--session-suffix", "--no-final"]) {
+    for (const flag of ["--session-suffix", "--no-final"]) {
       expect(summary.includes(flag), `${copy} the CLI summary must list ${flag}`).toBe(true);
     }
   });
 
-  // AC-1: the execution set. This is the whole defect RW-12 closed — `kiwi-pm` executes every task
-  // of the sidecar in declaration order and its only selector is a START POINT, so two units over
-  // one plan would each run every task and each trip `lane-lease-breach`.
-  it.each(PM_COPIES)("%s defines --handoff as the execution set, not the input source", (copy) => {
-    const body = handoffSection(copy);
-    expect(body, `${copy} must define the orchestration handoff flags in their own section`).not.toBe("");
-
-    const rule = line(body, /`task_ids\[\]`/);
-    expect(rule, `${copy} --handoff must key on the front matter's task_ids[]`).not.toBe("");
-    expect(
-      /정확히|exactly/.test(rule),
-      `${copy} pm must execute EXACTLY task_ids[]; "at least" or "starting from" reopens RW-12`
-    ).toBe(true);
-    expect(HEDGE.test(rule), `${copy} the execution-set rule must be absolute, not hedged`).toBe(false);
-
-    expect(
-      /선언 순서|declaration order/.test(body),
-      `${copy} the execution order must be the sidecar's declaration order`
-    ).toBe(true);
-    expect(
-      /`sidecar_path`/.test(body),
-      `${copy} each Task's body must still come from the sidecar, which the handoff does not carry`
-    ).toBe(true);
-    // The negative half of AC-7: the superseded phrasing must not be what is written.
-    expect(
-      /입력 SSOT|input SSOT|입력 진실 출처/.test(body),
-      `${copy} --handoff must not be defined as pm's input source of truth; that phrasing reopens RW-12`
-    ).toBe(false);
+  // AC-1 to AC-4 and AC-7 retired with the plan: kiwi-pm runs one agreed SDS as one kiwi-coder run,
+  // so no execution set, no start point and no task dependency is left to define. A copy that still
+  // documents them tells an orchestrator to pass flags nothing reads.
+  it.each(PM_COPIES)("FR-FLOW-113 AC-1 AC-4 AC-7: %s documents no --handoff, --from-task or task set", (copy) => {
+    const text = read(copy);
+    for (const retired of ["--handoff", "--from-task", "task_ids[]", "depends_on_task"]) {
+      expect(text.includes(retired), `${copy} still documents the retired ${retired}`).toBe(false);
+    }
   });
 
-  // AC-2: what the other three front-matter fields are for. `write_set` is the commit pathspec;
-  // `req_ids[]` and `acceptance[]` drive nothing.
-  it.each(PM_COPIES)("%s types write_set, req_ids and acceptance", (copy) => {
-    const body = handoffSection(copy);
-    const writeSet = line(body, /`write_set`/);
-    expect(writeSet, `${copy} must state what write_set is`).not.toBe("");
-    expect(
-      /pathspec/.test(writeSet),
-      `${copy} write_set must be the commit pathspec, which is what --commit-lane-work stages`
-    ).toBe(true);
-
-    const readOnly = line(body, /`req_ids\[\]`|`acceptance\[\]`/);
-    expect(readOnly, `${copy} must state what req_ids[] and acceptance[] are`).not.toBe("");
-    expect(
-      /읽기 전용|read-only/.test(readOnly),
-      `${copy} req_ids[] and acceptance[] must be read-only context`
-    ).toBe(true);
-    expect(
-      /spawn 프롬프트|spawn prompt/.test(readOnly),
-      `${copy} the read-only context must be named as passed into the coder spawn prompt`
-    ).toBe(true);
-    expect(
-      /실행 결정|execution decision|판단하지 않는다/.test(body),
-      `${copy} the body must state that the read-only context drives no execution decision`
-    ).toBe(true);
-  });
-
-  // AC-3: out-of-set predecessors. By construction they are either already merged into base_sha or
-  // in the same connected component, so firing the gate on them stalls every unit but the first.
-  it.each(PM_COPIES)("%s treats an out-of-set depends_on predecessor as satisfied", (copy) => {
-    const body = handoffSection(copy);
-    const rule = line(body, /`depends_on_task`/);
-    expect(rule, `${copy} must state how an out-of-set predecessor is evaluated`).not.toBe("");
-    expect(
-      /충족(?:된 것으로|으로)|satisfied/.test(rule),
-      `${copy} a predecessor outside task_ids[] must be treated as satisfied`
-    ).toBe(true);
-    expect(HEDGE.test(rule), `${copy} the satisfied rule must be absolute, not hedged`).toBe(false);
-    // The gate must survive INSIDE the set, or the relaxation removes the check entirely.
-    expect(
-      /`depends-on-violation`/.test(body),
-      `${copy} the depends-on-violation gate must be named so its surviving scope is unambiguous`
-    ).toBe(true);
-    const inside = line(body, /집합 (?:안|내부)|inside the (?:execution )?set/);
-    expect(inside, `${copy} must state that a violation inside the execution set is still a gate`).not.toBe("");
-    expect(
-      /게이트|gate/.test(inside),
-      `${copy} a dependency violation inside the execution set must remain a gate`
-    ).toBe(true);
-  });
-
-  // AC-4: `--from-task` is a start point and `task_ids[]` is a generally non-contiguous connected
-  // component of the conflict graph, so the two cannot both be honoured.
-  it.each(PM_COPIES)("%s refuses --from-task together with --handoff and records why", (copy) => {
-    const body = handoffSection(copy);
-    const rule = line(body, /`--from-task`/);
-    expect(rule, `${copy} must state the --from-task interaction`).not.toBe("");
-    expect(
-      /거절|refus|금지|HALT/i.test(rule),
-      `${copy} --from-task together with --handoff must be refused`
-    ).toBe(true);
-    expect(
-      /비-?연속|non-contiguous|불연속/.test(body),
-      `${copy} the reason must be recorded: a start-point selector cannot express a non-contiguous set`
-    ).toBe(true);
-  });
-
-  // AC-5: the session relocation, all five artifacts, and the spawn prompt's run-id line.
-  it.each(PM_COPIES)("%s relocates the whole session directory under --session-suffix", (copy) => {
+  // AC-5: the session relocation, all five artifacts, and the spawn prompt's run-id line. The session
+  // key is the SDS id now that the plan run id is gone.
+  it.each(PM_COPIES)("FR-FLOW-113 AC-5: %s relocates the whole session directory under --session-suffix", (copy) => {
     const body = flagBlock(copy, "--session-suffix");
     expect(body, `${copy} must define --session-suffix in its own block`).not.toBe("");
     expect(
-      body.includes(".kiwi/sessions/{plan_run_id}/lanes/{lane}/"),
-      `${copy} the relocated path must be stated literally, not described`
+      body.includes(".kiwi/sessions/{sds_id}/lanes/{lane}/"),
+      `${copy} the relocated path must be stated literally, keyed on the SDS id`
     ).toBe(true);
+    expect(body.includes("{plan_run_id}"), `${copy} the relocated path still names the retired plan run id`).toBe(false);
     for (const artifact of ["pm-state.json", "pm.lock", "worklog.jsonl", "state.json", "reports/"]) {
       expect(
         body.includes(artifact),
@@ -219,7 +135,7 @@ describe("FR-FLOW-113 — kiwi-pm handoff, session-suffix and no-final", () => {
 
   // The relocation must also be visible where the spawn prompt itself is authored, or an
   // implementer reading §3.2 alone reproduces the flat layout.
-  it.each(PM_COPIES)("%s annotates the spawn prompt's RUN_ID line with the relocation", (copy) => {
+  it.each(PM_COPIES)("FR-FLOW-113 AC-5: %s annotates the spawn prompt's RUN_ID line with the relocation", (copy) => {
     // Asserted on the line itself rather than on a §3.2 slice: the spawn prompt is a fenced block
     // whose contents open with `## INPUTS`, so any heading-based section reader stops before the
     // line this is about.
@@ -236,8 +152,8 @@ describe("FR-FLOW-113 — kiwi-pm handoff, session-suffix and no-final", () => {
   });
 
   // AC-6: --no-final, with the reason. A requirement spans units, so an all-done denominator drawn
-  // from one unit's task subset promotes on partial evidence.
-  it.each(PM_COPIES)("%s defines --no-final and records why T-final is skipped", (copy) => {
+  // from one unit's share promotes on partial evidence.
+  it.each(PM_COPIES)("FR-FLOW-113 AC-6: %s defines --no-final and records why T-final is skipped", (copy) => {
     const body = flagBlock(copy, "--no-final");
     expect(body, `${copy} must define --no-final in its own block`).not.toBe("");
     expect(
@@ -252,27 +168,13 @@ describe("FR-FLOW-113 — kiwi-pm handoff, session-suffix and no-final", () => {
 
   // §6.2 is the T-final section, and it must say it is conditional or it reads as unconditional.
   // Only the claude rendering carries §6.2 inside SKILL.md; codex, etc and the mirror carry it in
-  // `references/extended-workflow.md`, which is outside this change's file set. The load-bearing
-  // statement is in the handoff section above and is asserted in every copy.
-  it("states in the claude T-final section that --no-final suppresses it", () => {
-    const tFinal = section(read(PM_COPIES[0]), /^###\s*6\.2/);
+  // `references/extended-workflow.md`, asserted by orchestrator-followup-consistency.fr-flow-116.
+  it("FR-FLOW-113 AC-6: states in the claude T-final section that --no-final suppresses it", () => {
+    const tFinal = section(read(at(PM_COPIES, 0)), /^###\s*6\.2/);
     expect(tFinal, "the claude copy must carry the T-final section").not.toBe("");
     expect(
       /--no-final/.test(tFinal),
       "the T-final section must state that --no-final suppresses it"
-    ).toBe(true);
-  });
-
-  // AC-7: the negative. Two units over one plan must not each execute every task.
-  it.each(PM_COPIES)("%s states that two units over one plan cannot each execute every task", (copy) => {
-    const body = handoffSection(copy);
-    expect(
-      /두 unit|두 개의 unit|각각 (?:모든|전체)/.test(body),
-      `${copy} the body must state the failure the execution-set semantics prevent`
-    ).toBe(true);
-    expect(
-      /`lane-lease-breach`/.test(body),
-      `${copy} the breach the shared-plan execution would trip must be named`
     ).toBe(true);
   });
 });
@@ -350,8 +252,9 @@ describe("FR-FLOW-114 — --no-pipeline-emit on kiwi-pm and kiwi-review-fix-loop
 // ---------------------------------------------------------------------------------------------
 
 describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
-  // AC-1: on kiwi-pm, no argument, staging the handoff's own write_set.
-  it.each(PM_COPIES)("%s documents --commit-lane-work as taking no argument", (copy) => {
+  // AC-1: on kiwi-pm, no argument, staging the write set of the agreed SDS the same call runs — its
+  // Files paths and Test Plan test files (FR-NODE-209 AC-4). The handoff that used to supply it is gone.
+  it.each(PM_COPIES)("FR-FLOW-115 AC-1: %s documents --commit-lane-work as taking no argument", (copy) => {
     const text = read(copy);
     expect(text.includes("--commit-lane-work"), `${copy} must document --commit-lane-work`).toBe(true);
     expect(
@@ -359,24 +262,29 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
       `${copy} --commit-lane-work must take no argument`
     ).toBe(false);
     const body = handoffSection(copy);
-    const rule = line(body, /`--commit-lane-work`[^\n]*`write_set`|`write_set`[^\n]*`--commit-lane-work`/);
-    expect(rule, `${copy} the staged set must be the handoff's own write_set`).not.toBe("");
+    const rule = line(body, /`--commit-lane-work`[^\n]*쓰기 집합|쓰기 집합[^\n]*`--commit-lane-work`/);
+    expect(rule, `${copy} the staged set must be the SDS write set`).not.toBe("");
+    expect(/SDS/.test(rule), `${copy} the write set must be the agreed SDS's own`).toBe(true);
     expect(
-      /`--handoff`/.test(rule) || /`--handoff`/.test(body),
-      `${copy} the write_set must be sourced from the handoff the same invocation already passed`
+      /Files/.test(rule) && /Test Plan/.test(rule),
+      `${copy} the write set must be named by its two parts, the Files paths and the Test Plan test files`
     ).toBe(true);
+    expect(/`write_set`|`--handoff`/.test(body), `${copy} the staged set is still sourced from the retired handoff`).toBe(
+      false
+    );
   });
 
-  // AC-2: per Task, explicit pathspec, never the whole tree. `git add -A` inside a unit stages the
-  // orchestrator's own residue and every other unit's uncommitted work.
-  it.each(PM_COPIES)("%s commits per Task with an explicit pathspec", (copy) => {
+  // AC-2: one commit per SDS run, explicit pathspec, never the whole tree. `git add -A` inside a unit
+  // stages the orchestrator's own residue and every other unit's uncommitted work.
+  it.each(PM_COPIES)("FR-FLOW-115 AC-2: %s commits once per SDS run with an explicit pathspec", (copy) => {
     const body = handoffSection(copy);
-    const rule = line(body, /Task 당|per-task|per Task|Task 마다/);
+    const rule = line(body, /commit 1개/);
     expect(rule, `${copy} must state the commit granularity`).not.toBe("");
     expect(
-      /commit/i.test(rule),
-      `${copy} the granularity statement must be about the commit, not about something else`
+      /SDS/.test(rule) && /kiwi-coder 실행/.test(rule),
+      `${copy} the granularity must be the one kiwi-coder run of the SDS, not a plan Task`
     ).toBe(true);
+    expect(/Task/.test(rule), `${copy} the granularity still names the retired plan Task`).toBe(false);
     expect(
       /작업 트리 전체|whole working tree|`git add -A`|전체를 stage/.test(body),
       `${copy} staging the whole working tree must be named and forbidden, not left unmentioned`

@@ -34,7 +34,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     const cases: Array<[string, string]> = [
       ["decompose-waves", "pure-reauthor"],
       ["freeze-lane-plan", "idempotent-by-key"],
-      ["execute-unit", "externally-visible"]
+      ["dispatch-lane", "externally-visible"]
     ];
     const produced = new Set<string>();
 
@@ -72,7 +72,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     const produced = new Set<string>();
 
     // consistent — the ordinary mid-execution state: a unit started, no result line yet.
-    const midExecution = await journalView([waveVerify(V14), intent("execute-unit", { stage: 1, lane: "lane-1" })]);
+    const midExecution = await journalView([waveVerify(V14), intent("dispatch-lane", { stage: 1, lane: "lane-1" })]);
     const consistent = computeResumeState(
       midExecution,
       minimalCard({ open: [{ key: "wave-1/s1/lane-1", state: "executing", base_sha: "e4f5a6b", head_sha: "7bd41f0", journal_line: 2 }] }),
@@ -97,7 +97,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     // ledger-reconciliation-divergent — git is ahead of the journal: the lane has landed on the
     // integration branch and no integrate-lane result records it.
     const behind = computeResumeState(
-      await journalView([waveVerify(V14), result("execute-unit", { stage: 1, lane: "lane-1" })]),
+      await journalView([waveVerify(V14), result("dispatch-lane", { stage: 1, lane: "lane-1" })]),
       minimalCard(),
       emptyGitFacts({ branches: [{ name: "kiwi/orch/run-a/w1s1/lane-1", sha: "7bd41f0", ancestorOfIntegration: true }] }),
       emptyDriftInputs()
@@ -136,33 +136,72 @@ describe("FR-NODE-150 computeResumeState", () => {
     expect(state.drift.digests.every((entry) => entry.outcome === "match")).toBe(true);
   });
 
-  it("AC-5 separates digest 3's stale-not-wrong operands from its drift operands", async () => {
+  it("FR-NODE-150 AC-5 yields drift with lane-plan-drift when the SDS of a wave not yet closed out re-digests differently", async () => {
     const view = await journalView([waveVerify(V14)]);
     const base = emptyDriftInputs();
 
-    for (const staleOperand of ["existingPathsDigest", "priorPostmortemDigests"] as const) {
-      const recomputed = { ...base.recomputedLaneInputDigests };
-      if (staleOperand === "priorPostmortemDigests") recomputed.priorPostmortemDigests = ["sha256:pm1", "sha256:pm2"];
-      else recomputed.existingPathsDigest = "sha256:paths-moved";
-
-      const state = computeResumeState(view, minimalCard(), emptyGitFacts(), {
-        ...base,
-        recomputedLaneInputDigests: recomputed
-      });
-      const digest3 = state.drift.digests[2];
-
-      expect(digest3?.outcome, staleOperand).toBe("stale-not-wrong");
-      expect(digest3?.gate, staleOperand).toBeNull();
-      expect(state.blocking, staleOperand).toBeNull();
-    }
-
     const drifted = computeResumeState(view, minimalCard(), emptyGitFacts(), {
       ...base,
-      recomputedLaneInputDigests: { ...base.recomputedLaneInputDigests, sidecarDigest: "sha256:sidecar-changed" }
+      recomputedLaneInputDigests: { sdsDigests: { ...base.recomputedLaneInputDigests.sdsDigests, "run-a-wave-2": "sha256:sds-2-edited" }, closedOutWaves: [] }
     });
     expect(drifted.drift.digests[2]?.outcome).toBe("drift");
     expect(drifted.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(drifted.drift.digests[2]?.detail).toContain("run-a-wave-2");
     expect(drifted.blocking).toBe("lane-plan-drift");
+
+    const unchanged = computeResumeState(view, minimalCard(), emptyGitFacts(), base);
+    expect(unchanged.drift.digests[2]?.outcome).toBe("match");
+    expect(unchanged.drift.digests[2]?.gate).toBeNull();
+  });
+
+  it("FR-NODE-150 AC-5 does not recompute a wave whose SDS its close-out commit deleted", async () => {
+    const view = await journalView([waveVerify(V14)]);
+    const base = emptyDriftInputs();
+    const closed = computeResumeState(view, minimalCard(), emptyGitFacts(), {
+      ...base,
+      recomputedLaneInputDigests: { sdsDigests: { "run-a-wave-2": "sha256:sds-2" }, closedOutWaves: ["run-a-wave-1"] }
+    });
+    expect(closed.drift.digests[2]?.outcome).toBe("match");
+    expect(closed.drift.digests[2]?.gate).toBeNull();
+    expect(closed.blocking).toBeNull();
+  });
+
+  it("FR-NODE-213 AC-2 treats an SDS that vanished without a close-out as drift rather than skipping it", async () => {
+    const view = await journalView([waveVerify(V14)]);
+    const base = emptyDriftInputs();
+    const vanished = computeResumeState(view, minimalCard(), emptyGitFacts(), {
+      ...base,
+      recomputedLaneInputDigests: { sdsDigests: { "run-a-wave-2": "sha256:sds-2" }, closedOutWaves: [] }
+    });
+    expect(vanished.drift.digests[2]?.outcome).toBe("drift");
+    expect(vanished.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(vanished.drift.digests[2]?.detail).toContain("run-a-wave-1");
+  });
+
+  it("FR-NODE-213 AC-2 checks every file of a grouped wave's SDS digests for drift", async () => {
+    const view = await journalView([waveVerify(V14)]);
+    const base = emptyDriftInputs();
+    const group = { "docs/sds/big-1.sds.md": "sha256:p1", "docs/sds/big-2.sds.md": "sha256:p2" };
+    const recorded = { ...base.recordedLaneInputs, sdsDigests: { ...base.recordedLaneInputs.sdsDigests, big: group } };
+    const withNow = (now: Record<string, unknown>) =>
+      computeResumeState(view, minimalCard(), emptyGitFacts(), {
+        ...base,
+        recordedLaneInputs: recorded,
+        recomputedLaneInputDigests: { sdsDigests: { ...base.recomputedLaneInputDigests.sdsDigests, ...now } as never, closedOutWaves: [] }
+      });
+
+    const unchanged = withNow({ big: { ...group } });
+    expect(unchanged.drift.digests[2]?.outcome, unchanged.drift.digests[2]?.detail).toBe("match");
+
+    const edited = withNow({ big: { ...group, "docs/sds/big-2.sds.md": "sha256:p2-edited" } });
+    expect(edited.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(edited.drift.digests[2]?.detail).toContain("docs/sds/big-2.sds.md");
+    expect(edited.drift.digests[2]?.detail).not.toContain("docs/sds/big-1.sds.md");
+
+    const lost = withNow({ big: { "docs/sds/big-1.sds.md": "sha256:p1" } });
+    expect(lost.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(lost.drift.digests[2]?.detail).toContain("docs/sds/big-2.sds.md");
+    expect(withNow({}).drift.digests[2]?.gate, "a grouped wave with nothing recomputed has drifted").toBe("lane-plan-drift");
   });
 
   it("AC-6 returns exactly the four declared fields", async () => {
@@ -213,7 +252,7 @@ describe("FR-NODE-150 computeResumeState", () => {
   it("treats a lane carrying a terminal disposition as settled rather than integrable", async () => {
     const view = await journalView([
       waveVerify(V14),
-      result("execute-unit", {
+      result("dispatch-lane", {
         stage: 1,
         lane: "lane-1",
         lane_disposition: { kind: "refuted", reason: "design item false", at: "2026-08-02T00:00:00Z" }
@@ -228,7 +267,7 @@ describe("FR-NODE-150 computeResumeState", () => {
   });
 
   // @req FR-NODE-107 — `lane-quarantined` is `D(k)` present with a kind from the CLOSED enum
-  // (`demoted` | `quarantined` | `coupling-reset` | `refuted`), not `lane_disposition` merely being
+  // (`quarantined` | `refuted`), not `lane_disposition` merely being
   // present. Classifying on presence alone lets a mistyped kind read as terminal, and a resumed
   // session then treats a lane as settled on the strength of a value nothing recognised — settling
   // work is the direction that loses it. `lane-state.ts`'s `readLaneDisposition` owns the validated
@@ -236,7 +275,7 @@ describe("FR-NODE-150 computeResumeState", () => {
   it("does not settle a lane whose disposition kind is outside the closed enum", async () => {
     const view = await journalView([
       waveVerify(V14),
-      result("execute-unit", {
+      result("dispatch-lane", {
         stage: 1,
         lane: "lane-1",
         lane_disposition: { kind: "abandoned", reason: "not a member of the closed enum" }
@@ -247,7 +286,11 @@ describe("FR-NODE-150 computeResumeState", () => {
     const lane = state.classification.find((entry) => entry.lane === "lane-1");
 
     expect(lane?.klass).not.toBe("lane-quarantined");
-    expect(lane?.klass).toBe("not-dispatched");
-    expect(lane?.nextVerb).toBe("execute-unit");
+    // FR-NODE-213 AC-6 — nor is it dispatched again: the journal says the lane left the run, in a word
+    // nothing recognises, so the resume halts on the disagreement instead of guessing either way.
+    expect(lane?.klass).toBe("divergent");
+    expect(lane?.nextVerb).toBeNull();
+    expect(state.nextAction.verb).not.toBe("dispatch-lane");
+    expect(state.blocking).toBe("ledger-reconciliation-divergent");
   });
 });

@@ -83,10 +83,11 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
  * declaration.
  *
  * The gate in `adapter.ts` reads the same declaration, so a tool cannot advertise a root the gate
- * refuses or honour one it never advertised — the single surviving disagreement is a tool that
- * declares no scope and writes the key into its literal by hand, which FR-MCP-063 AC-4 holds to a
- * name. A declared name with no schema throws rather than being skipped, so a typo in the
- * declaration is a startup failure instead of a tool that quietly advertises nothing.
+ * refuses or honour one it never advertised — a tool that declares no scope and writes the key into
+ * its literal by hand would disagree, and FR-MCP-063 AC-4 holds the set of such tools to the empty set
+ * since the one it named left with the plan tools (FR-NODE-211 AC-1). A declared name with no schema
+ * throws rather than being skipped, so a typo in the declaration is a startup failure instead of a
+ * tool that quietly advertises nothing.
  * @req FR-MCP-059 @req FR-MCP-064 AC-1
  */
 function withPerCallWorkspaceRoot(
@@ -192,75 +193,12 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     allowAmbiguous: z.boolean().optional(),
     workspaceRoot: WORKSPACE_ROOT_SCHEMA
   },
-  workflow_plan_status: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    includeBody: z.boolean().optional(),
-    allowAmbiguous: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_plan_task: {
-    taskId: z.string(),
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_next_plan_task: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_doctor: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_diff: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_schema_check: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    allowAmbiguous: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
   workflow_pipeline_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_pipeline_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_pipeline_next: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_pipeline_compact: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_session_status: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeBody: z.boolean().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
-  workflow_resume_hint: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
   workflow_worklog_tail: { path: z.string().optional(), runId: z.string().optional(), target: z.string().optional(), includeDeleted: z.boolean().optional(), limit: z.number().int().positive().optional(), offset: z.number().int().nonnegative().optional(), workspaceRoot: WORKSPACE_ROOT_SCHEMA },
-  preview_legacy_workflow_migration: {
-    path: z.string().optional(),
-    runId: z.string().optional(),
-    target: z.string().optional(),
-    includeBody: z.boolean().optional(),
-    apply: z.boolean().optional(),
-    write: z.boolean().optional(),
-    fix: z.boolean().optional(),
-    normalize: z.boolean().optional(),
-    migrate: z.boolean().optional(),
-    // @req FR-MCP-063 AC-4 — this declaration is the one place the advertised schema and the
-    // registration gate disagree: the tool is registered without `workspaceScope`, so the gate
-    // refuses what this line advertises. It stays, and the reason is recorded rather than fixed
-    // here. Removing it drops the declared-argument total from 564 to 563, and 564 is a floor in
-    // FR-FLOW-162 AC-1 and in that verified requirement's own text. Giving the tool the argument
-    // for real is the other repair and it moves the accepting family from 51 to 52, which this
-    // requirement does not decide. FR-MCP-063 AC-4 holds the difference set to exactly this name,
-    // so a second disagreement reddens.
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
   get_next_work_order: {
     target: z.string().optional(),
     path: z.string().optional(),
@@ -384,56 +322,6 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     force: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },
-  workflow_task_check: {
-    runId: z.string(),
-    taskId: z.string(),
-    path: z.string(),
-    owner: z.string().optional(),
-    reqId: z.string().optional(),
-    reason: z.string().optional(),
-    expectedSha256: z.string().optional(),
-    idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_task_uncheck: {
-    runId: z.string(),
-    taskId: z.string(),
-    path: z.string(),
-    owner: z.string().optional(),
-    reqId: z.string().optional(),
-    reason: z.string().optional(),
-    expectedSha256: z.string().optional(),
-    idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_checklist_set: {
-    runId: z.string(),
-    taskId: z.string(),
-    path: z.string(),
-    checked: z.boolean(),
-    owner: z.string().optional(),
-    reqId: z.string().optional(),
-    reason: z.string().optional(),
-    expectedSha256: z.string().optional(),
-    idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
-  workflow_task_status_set: {
-    runId: z.string(),
-    taskId: z.string(),
-    pmStatePath: z.string(),
-    status: z.string(),
-    owner: z.string().optional(),
-    reqId: z.string().optional(),
-    reason: z.string().optional(),
-    expectedSha256: z.string().optional(),
-    idempotencyKey: z.string().optional(),
-    dryRun: z.boolean().optional(),
-    workspaceRoot: WORKSPACE_ROOT_SCHEMA
-  },
   workflow_pipeline_emit: {
     runId: z.string(),
     path: z.string().optional(),
@@ -546,6 +434,15 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   set_work_mode: { mode: z.string(), activeTask: z.string().optional(), dryRun: z.boolean().optional() },
   // FR-MCP-054 — read-only synthesis-presence gate probe (mirrors `speckiwi vibe-gate check`).
   check_vibe_gate: {},
+  // FR-MCP-065 — one lite SDS file's diagnostics and summary (mirrors `speckiwi sds check`).
+  check_sds: { path: z.string().describe("SDS file relative to the workspace root, e.g. docs/sds/<sds-id>.sds.md") },
+  // FR-MCP-066 — the test-citation coverage of a requirement scope (mirrors `speckiwi coverage --tests`).
+  check_test_sufficiency: {
+    target: z.string().optional(),
+    ids: z.array(z.string()).optional(),
+    sds: z.string().optional(),
+    testGlob: z.array(z.string()).optional()
+  },
   // FR-MCP-043 — supersede and promote mutation tools.
   supersede_requirement: {
     oldId: z.string(),
@@ -640,27 +537,21 @@ export function isReadOnlyTool(name: string): boolean {
     "workflow_artifacts_list",
     "workflow_latest_artifact",
     "workflow_resolve_artifact",
-    "workflow_plan_status",
-    "workflow_plan_task",
-    "workflow_next_plan_task",
-    "workflow_doctor",
-    "workflow_diff",
-    "workflow_schema_check",
     "workflow_pipeline_status",
     "workflow_pipeline_tail",
     "workflow_pipeline_next",
     "workflow_pipeline_compact",
     "workflow_session_status",
-    "workflow_resume_hint",
     "workflow_worklog_tail",
-    "preview_legacy_workflow_migration",
     "get_next_work_order",
     "validate_step",
     "list_dirty_edges",
     "list_compat_edges",
     "list_steps",
     "get_work_mode",
-    "check_vibe_gate"
+    "check_vibe_gate",
+    "check_sds",
+    "check_test_sufficiency"
   ].includes(name);
 }
 

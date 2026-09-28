@@ -80,7 +80,7 @@ describe("FR-NODE-073 step SRS synthesis merges design.md", () => {
     const result = await synthesizeStepSrs(await resolveProjectRoot(root), { task: TASK_NAME });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.redactions).toBeGreaterThanOrEqual(1);
+      expect(result.value?.redactions).toBeGreaterThanOrEqual(1);
     }
 
     const srs = await readFile(stepSrsPath(root, TASK_NAME), "utf8");
@@ -106,15 +106,15 @@ describe("FR-NODE-073 step SRS synthesis merges design.md", () => {
 
     const first = await synthesizeStepSrs(projectRoot, { task: TASK_NAME });
     expect(first.ok).toBe(true);
-    if (first.ok) expect(first.value.written).toBe(true);
+    if (first.ok) expect(first.value?.written).toBe(true);
 
     // A changed design.md must not be re-merged: the second run is a no-op.
     await writeFile(path.join(root, "docs", "spec", "steps", TASK_NAME, "design.md"), "# SDS v2\n", "utf8");
     const second = await synthesizeStepSrs(projectRoot, { task: TASK_NAME });
     expect(second.ok).toBe(true);
     if (second.ok) {
-      expect(second.value.skipped).toBe(true);
-      expect(second.value.written).toBe(false);
+      expect(second.value?.skipped).toBe(true);
+      expect(second.value?.written).toBe(false);
     }
 
     const srs = await readFile(stepSrsPath(root, TASK_NAME), "utf8");

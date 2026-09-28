@@ -41,8 +41,8 @@ async function write(root: string, relativePath: string, text: string): Promise<
 }
 
 async function runJson(root: string, args: string[], expectedCode = 0): Promise<Record<string, unknown>> {
-  const stdout = new PassThrough() as NodeJS.WriteStream;
-  const stderr = new PassThrough() as NodeJS.WriteStream;
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
   const code = await main(["--root", root, ...args, "--json"], { stdout, stderr });
   expect(code, `exit code for: ${args.join(" ")}`).toBe(expectedCode);
   return JSON.parse(stdout.read()?.toString() ?? "") as Record<string, unknown>;

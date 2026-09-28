@@ -102,10 +102,10 @@ export interface RouteDrift {
 function modeDivergence(probe: RouteProbe, rung: Rung, removed: readonly RouteRemoval[]): string | null {
   if (rung === "R-STEP") return probe.mode === "tdd" ? null : "step-rung-requires-mode-switch";
   if (probe.mode !== "tdd") return null;
-  // Mode `tdd` on a non-step rung: conformance when D1–D4 removed the step rung
-  // (`kiwi-pipeline` §2.7.2 keeps those on the sdd chain regardless of mode), an override of
-  // its routing clause when the step rung survived and lost on §3.4's order.
-  return removed.some((entry) => entry.rung === "R-STEP") ? "step-rung-removed" : "plan-rung-won-on-order";
+  // Mode `tdd` on `R-ORCH`: conformance when D1–D4 removed the step rung (`kiwi-pipeline` §2.7.2 keeps
+  // those on the sdd chain regardless of mode). With two rungs the step rung cannot lose on order, so a
+  // surviving step rung reaches `R-ORCH` only through the gate's alternative. @req FR-NODE-212 AC-1
+  return removed.some((entry) => entry.rung === "R-STEP") ? "step-rung-removed" : "step-rung-overridden";
 }
 
 /**

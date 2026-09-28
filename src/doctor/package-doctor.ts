@@ -68,9 +68,10 @@ export const EXPECTED_KIWI_SKILLS = [
   // ship missing from a variant with no check firing.
   "kiwi-orchestrator",
   "kiwi-pipeline",
-  "kiwi-planner",
   "kiwi-pm",
   "kiwi-review-fix-loop",
+  // @req FR-NODE-211 AC-7 — kiwi-sds replaces the retired kiwi-planner in every bundled variant.
+  "kiwi-sds",
   "kiwi-srs",
   "kiwi-srs-feasibility",
   "kiwi-srs-from-code",

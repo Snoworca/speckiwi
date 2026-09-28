@@ -1,6 +1,6 @@
 ---
 name: kiwi-commit-auto-push
-description: Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID/Task-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 lightweight 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.
+description: Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 lightweight 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. --auto 는 공용 auto-option 정책으로 비critical 사용자 게이트를 결정한다. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-commit-auto-push
@@ -347,6 +347,6 @@ issue: #N Refs (참조만, 미해결 코멘트 등록)
 ## Extended References
 
 - Read `references/extended-workflow.md` when executing or validating
-speckiwi integration, REQ/Task matching, MCP evidence registration, child-mode handoff, and pipeline event emission
+speckiwi integration, REQ matching, MCP evidence registration, child-mode handoff, and pipeline event emission
 .
 - Keep `SKILL.md` as the core trigger and workflow map; load the reference file only after the relevant phase is reached.

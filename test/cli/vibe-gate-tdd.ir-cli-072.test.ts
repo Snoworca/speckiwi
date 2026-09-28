@@ -20,11 +20,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-4: sdd/wait stay pass-through; vibe behavior unchanged.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function writeStateMd(root: string, options: { mode: string; activeTask?: string }): Promise<void> {

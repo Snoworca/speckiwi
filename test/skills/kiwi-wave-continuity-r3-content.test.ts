@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { moduleRegion, readResolvedSkill } from "../support/resolved-skill.js";
+import { at } from "../support/at.js";
 
 // Round-3 evaluation findings — docs/analysis/wave-fit-eval/round3-findings.md.
 // Each test carries the finding id (R3-H1 … R3-L2) instead of a requirement tag; the SRS ids are
@@ -40,7 +41,7 @@ function readSkill(variant: string, skill: string): string {
 
 const readWave = (v: string) => readSkill(v, "kiwi-wave-master");
 const readPipeline = (v: string) => readSkill(v, "kiwi-pipeline");
-const readPlanner = (v: string) => readSkill(v, "kiwi-planner");
+const readSds = (v: string) => readSkill(v, "kiwi-sds");
 const readPm = (v: string) => readSkill(v, "kiwi-pm");
 const readCoder = (v: string) => readSkill(v, "kiwi-coder");
 const readReviewFix = (v: string) => readSkill(v, "kiwi-review-fix-loop");
@@ -76,10 +77,10 @@ function sectionUnder(body: string, headingRe: RegExp): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => /^#{1,6}\s/.test(line) && headingRe.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -214,23 +215,35 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
         expect(HEDGE.test(row), `${variant}: the resolution rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("requires the citation to be a sidecar REQ-ID or Task-ID whose action names the change", () => {
+      // @req FR-FLOW-063 AC-1 — as revised for 4.0.0 the record that admits a structural change is the
+      // recorded requirement or the agreed SDS, not a plan Task.
+      it("FR-FLOW-063 AC-1: admits either a recorded requirement or an SDS line that names the change", () => {
         const common = sectionUnder(skillBody(readCoder(variant)), /^##\s*0\.\s/);
         const row = tableRows(common, /§0\.20\.4/)[0] ?? "";
         expect(
-          /REQ-ID/.test(row) && /Task-ID/.test(row),
-          `${variant}: the citation must be a REQ-ID or a Task-ID, not free text`
+          /REQ-ID/.test(row) && /`@req`/.test(row),
+          `${variant}: the citation must be a REQ-ID of the SDS @req set, not free text`
         ).toBe(true);
         expect(
-          /`sidecar`|sidecar\./.test(row),
-          `${variant}: the citation must be resolvable in the sidecar, otherwise the coder judges its own authority`
+          /SDS/.test(row) && !/sidecar|Task-ID/.test(row),
+          `${variant}: the citation must be resolvable in the agreed SDS, not in a retired plan sidecar`
         ).toBe(true);
-        // The whole point of the finding: mere presence in files[] never resolved the gate, so the
-        // resolution must turn on the action naming the destructive verb.
+        // The whole point of the finding: mere presence in the file list never resolved the gate, so
+        // the resolution must turn on an SDS line naming the destructive verb.
         expect(
-          /`action`[^|]*명시/.test(row),
-          `${variant}: the Task action must explicitly name the move/deletion/signature change; presence in files[] alone is not authority`
+          /SDS[^|]*(?:Files|SDS-AC)[^|]*명시/.test(row),
+          `${variant}: an SDS line must explicitly name the move/deletion/signature change; presence in Files alone is not authority`
         ).toBe(true);
+        // AC-1 reads "a recorded requirement OR the agreed SDS": either source alone is enough, the
+        // same disjunction verify-loop.md applies at wave level.
+        expect(
+          /둘 중 하나/.test(row) && /REQ-ID[^|]*거나[^|]*SDS/.test(row),
+          `${variant}: the two sources must be alternatives, not both required`
+        ).toBe(true);
+        expect(
+          /REQ-ID[^|]*있고[^|]*SDS[^|]*명시할 때/.test(row),
+          `${variant}: requiring both the REQ-ID and the SDS line narrows AC-1`
+        ).toBe(false);
         expect(
           /근거[^|]*(?:없|대지 못)[^|]*`unapproved-damage`|`unapproved-damage`[^|]*근거/.test(row),
           `${variant}: an uncited change must default to unapproved-damage`
@@ -254,7 +267,7 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
           const cells = rowCells(gates, new RegExp("`" + id + "`"));
           expect(cells.length > 3, `${variant}: kiwi-coder must declare ${id}`).toBe(true);
           expect(
-            /§0\.20\.4/.test(cells[2]),
+            /§0\.20\.4/.test(at(cells, 2)),
             `${variant}: ${id} must name §0.20.4 as its resolution path, otherwise the halt is still unconditional`
           ).toBe(true);
         }
@@ -367,14 +380,21 @@ describe("R3-H3 — the diff window and the pipeline run list are produced, not 
         expect(HEDGE.test(rule), `${variant}: the capture obligation must be absolute, not hedged`).toBe(false);
       });
 
-      it("appends every spawned pipeline run id to pipeline_run_ids", () => {
+      // @req FR-FLOW-062 AC-2 — as revised for 4.0.0 a wave spawns no pipeline runs: every run
+      // dispatched for it (worker, re-entry, fix subagent — FR-FLOW-188 AC-4) is recorded against the
+      // wave's sds_id (FR-NODE-213 AC-6) when it is dispatched.
+      it("FR-FLOW-062 AC-2: appends every dispatched run against the wave's sds_id", () => {
         const record = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.6/);
-        const rule = lineWith(record, /`pipeline_run_ids`/);
+        const rule = lineWith(record, /dispatch 할 때마다/);
         expect(rule, `${variant}: the run list must have a producer`).not.toBe("");
+        expect(/`sds_id`/.test(rule), `${variant}: the run must be recorded against the wave's sds_id`).toBe(true);
+        for (const run of ["워커", "재진입", "개선 서브에이전트"]) {
+          expect(rule.includes(run), `${variant}: the ${run} run must be recorded when it is dispatched`).toBe(true);
+        }
         expect(
-          /spawn|호출할 때마다|실행할 때마다/.test(rule),
-          `${variant}: the append must be tied to each pipeline spawn, or a re-entry run is silently missing`
-        ).toBe(true);
+          /`pipeline_run_ids?`/.test(record),
+          `${variant}: a wave spawns no pipeline, so the record must not keep a pipeline run list`
+        ).toBe(false);
         expect(
           /append/i.test(rule),
           `${variant}: the list must be appended to, not rewritten — the earlier runs are what widen the window`
@@ -406,20 +426,29 @@ describe("R3-H4 — the re-entry emit key is a shared rule with a declared id sp
         ).toBe(true);
       });
 
-      it("makes kiwi-planner state the exception to its own same-run_id skip", () => {
-        const emit = skillOrRefSection(variant, "kiwi-planner", /^##\s*17\./);
-        expect(emit, `${variant}: kiwi-planner must have a pipeline-emit section`).not.toBe("");
+      // @req FR-FLOW-064 AC-1 — kiwi-planner, which this assertion used to cover, is retired
+      // (FR-FLOW-184 AC-2). kiwi-sds took its chain position and re-enters under the same sds-id
+      // (FR-FLOW-060 AC-1), so it is the child whose own same-run_id skip must carry the exception.
+      // codex/etc kiwi-sds is written in English.
+      it("FR-FLOW-064 AC-1: makes kiwi-sds state the exception to its own same-run_id skip", () => {
+        const emit = sectionUnder(skillBody(readSds(variant)), /^###\s*2\.6\s/);
+        expect(emit, `${variant}: kiwi-sds must have an agreement/report/event phase`).not.toBe("");
         const rule = lineWith(emit, /\{run_id\}#r\{n\}/);
-        expect(rule, `${variant}: kiwi-planner must know the re-entry key; otherwise it skips the emit`).not.toBe("");
+        expect(rule, `${variant}: kiwi-sds must know the re-entry key; otherwise it skips the emit`).not.toBe("");
         expect(
-          /재진입/.test(rule),
+          /재진입|re-entry/.test(rule),
           `${variant}: the exception must be attached to the re-entry case, not stated as a general rename`
         ).toBe(true);
         expect(
-          /skip 하지 않는다|skip 되지 않는다/.test(rule),
+          /skip 하지 않는다|skip 되지 않는다|never skipped/.test(rule),
           `${variant}: the sentence must say the re-entry emit is NOT skipped — that is the defect being closed`
         ).toBe(true);
+        expect(/pipeline-event\.md` §5\.4/.test(rule), `${variant}: the key must cite the shared SSOT`).toBe(true);
         expect(HEDGE.test(rule), `${variant}: the exception must be absolute, not hedged`).toBe(false);
+        expect(
+          /\b(?:should|may|if possible|where possible|ideally)\b/i.test(rule),
+          `${variant}: the exception must be absolute, not hedged`
+        ).toBe(false);
       });
 
       it("makes kiwi-pm state the same exception", () => {
@@ -441,7 +470,9 @@ describe("R3-H4 — the re-entry emit key is a shared rule with a declared id sp
       it("keeps the emit key out of the sidecar id regex", () => {
         const common = sectionUnder(skillBody(readPm(variant)), /^##\s*0\.\s/);
         expect(common, `${variant}: kiwi-pm must have a common-convention section`).not.toBe("");
-        const idRule = lineWith(common, /`run_id`\s*=\s*`\[a-z0-9\.-\]\{4,40\}`/);
+        // 4.0.0: the cap is 128 so a wave sds-id built from the default orchestrator run_id fits
+        // (parallel-waves.md §0); the row's id space and its emit-key exclusion are what this pins.
+        const idRule = lineWith(common, /`run_id`\s*=\s*`\[a-z0-9\.-\]\{4,128\}`/);
         expect(idRule, `${variant}: kiwi-pm must keep its id-regex SSOT row`).not.toBe("");
         expect(
           /emit 키|이벤트 emit 키/.test(idRule),
@@ -462,30 +493,58 @@ describe("R3-H4 — the re-entry emit key is a shared rule with a declared id sp
 describe("R3-H5 — resuming the pipeline stage carries its scope", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("requires both scope arguments and a kiwi-pm resume on a pipeline-stage resume", () => {
-        const progress = sectionUnder(skillBody(readWave(variant)), /^##\s*6\./);
+      // @req FR-FLOW-064 AC-4 — as revised for 4.0.0 the stage a wave resumes into is its worker stage
+      // under the parallel-waves contract (FR-FLOW-188 AC-7). The resume carries the recorded sds_id
+      // (FR-FLOW-184 AC-5) instead of a plan run id and re-runs neither SRS nor SDS authoring; the
+      // worker-level rule (kiwi-pm is not re-run over a landed lane, and is entered with --resume when
+      // its state exists) lives in parallel-waves.md §6. An interrupted §5.5.5 re-entry carries its
+      // scope and sds-id together.
+      it("FR-FLOW-064 AC-4: resumes the worker stage on the recorded sds_id without re-running earlier stages", () => {
+        const body = skillBody(readWave(variant));
+        const progress = sectionUnder(body, /^##\s*6\./);
         expect(progress, `${variant}: the progress-tracking section must exist`).not.toBe("");
-        const rule = lineWith(progress, /pipeline 단계 재개/);
-        expect(rule, `${variant}: §6 must define how the pipeline stage itself resumes`).not.toBe("");
+        const rule = lineWith(progress, /워커 단계 재개/);
+        expect(rule, `${variant}: §6 must define how the worker stage itself resumes`).not.toBe("");
+        expect(/`parallel-waves\.md §6`/.test(rule), `${variant}: the worker resume must follow parallel-waves.md §6`).toBe(
+          true
+        );
+        expect(/기록된 `sds_id`/.test(rule), `${variant}: the resume must find the wave's SDS and worker by the recorded sds_id`).toBe(
+          true
+        );
         expect(
-          /`--plan-run-id`/.test(rule) && /`--req-filter`/.test(rule),
-          `${variant}: both scope arguments must be carried; dropping either re-runs the whole plan`
+          /SRS 저작도 SDS 작성도 다시 돌리지 않/.test(rule),
+          `${variant}: resume must not re-author the SRS (stability mutations) or the SDS`
         ).toBe(true);
         expect(
-          /kiwi-pm[^\n]*`--resume`/.test(rule),
-          `${variant}: kiwi-pm must be entered with --resume, or completed Tasks run twice`
+          /`--sds-id`/.test(rule) && /`--req-filter`/.test(rule) && /반드시 함께/.test(rule),
+          `${variant}: a re-entry must carry its scope and sds-id together; dropping either widens it or re-authors the SDS`
         ).toBe(true);
+        expect(/`--plan-run-id`/.test(progress), `${variant}: the replaced plan flag must not remain in §6`).toBe(false);
         expect(HEDGE.test(rule), `${variant}: the resume contract must be absolute, not hedged`).toBe(false);
+        // The worker-level half, in the contract §6 the rule defers to (KR in claude, EN in codex/etc).
+        const resume = sectionUnder(moduleRegion(body, "parallel-waves"), /^##\s.*6\.\s*(?:재개|Resume)/);
+        expect(resume, `${variant}: parallel-waves.md §6 must exist`).not.toBe("");
+        const pm = lineWith(resume, /`pm-state\.json`/);
+        expect(
+          /`\/kiwi-pm`[^\n]*(?:다시 돌리지 않|does not run again)/.test(pm),
+          `${variant}: a lane whose trailer commit already landed must not run kiwi-pm again`
+        ).toBe(true);
+        expect(/`--resume`/.test(pm), `${variant}: kiwi-pm must be entered with --resume when its state exists`).toBe(true);
       });
 
-      it("journals the plan run id so a resumed session can supply it", () => {
+      // FR-FLOW-064 AC-5 (not revised) requires the stage-resume values on the journal. In 4.0.0 the
+      // value is the wave's sds_id (FR-NODE-213 AC-6 drops plan_run_id and adds sds_id).
+      it("FR-FLOW-064 AC-5: journals the sds_id so a resumed session can supply it", () => {
         const progress = sectionUnder(skillBody(readWave(variant)), /^##\s*6\./);
-        const rule = lineWith(progress, /`plan_run_id`/);
-        expect(rule, `${variant}: the plan run id must be recorded on the event`).not.toBe("");
+        const rule = lineWith(progress, /`sds_id` 필드로/);
+        expect(rule, `${variant}: the sds id must be recorded on the event`).not.toBe("");
         expect(
-          /`waves\.jsonl`|기록한다/.test(rule),
+          /`waves\.jsonl`/.test(rule) && /기록한다/.test(rule),
           `${variant}: a resumed session has no conversation, so the value must be resolvable from the journal`
         ).toBe(true);
+        expect(/`plan_run_id`/.test(progress), `${variant}: the dropped plan_run_id field must not remain in §6`).toBe(
+          false
+        );
       });
     });
   }
@@ -525,7 +584,7 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
           `${variant}: with no gate row the exclusion falls to the auto committee, which is the cheapest way to shrink every denominator`
         ).toBe(true);
         expect(
-          /§3\.2/.test(cells[3]),
+          /§3\.2/.test(at(cells, 3)),
           `${variant}: the gate's origin cell must point at §3.2, where the coverage gate reads the exclusions`
         ).toBe(true);
         const gate = sectionUnder(skillBody(readWave(variant)), COVERAGE_SECTION);
@@ -711,7 +770,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
           `${variant}: an undeclared fail-residual halt drops to business-decision, and no committee choice satisfies the journal rules`
         ).toBe(true);
         expect(
-          /§5\.5/.test(cells[3]),
+          /§5\.5/.test(at(cells, 3)),
           `${variant}: the gate's origin cell must point at §5.5`
         ).toBe(true);
       });
@@ -721,7 +780,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
         const cells = rowCells(gates, /`wave-verify-residual-critical`/);
         expect(cells.length > 3, `${variant}: the existing residual gate row must survive`).toBe(true);
         expect(
-          /`fail-residual`[^|]*별도 행|별도 행[^|]*`fail-residual`/.test(cells[2]),
+          /`fail-residual`[^|]*별도 행|별도 행[^|]*`fail-residual`/.test(at(cells, 2)),
           `${variant}: the reason cell must say fail-residual is a separate row, or the three-trigger list reads as exhaustive`
         ).toBe(true);
       });
@@ -731,7 +790,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
         const cells = rowCells(gates, /`final-verify-residual-critical`/);
         expect(cells.length > 3, `${variant}: the final-pass gate row must exist`).toBe(true);
         expect(
-          /`fail-residual`/.test(cells[2]),
+          /`fail-residual`/.test(at(cells, 2)),
           `${variant}: the final pass has the same terminal-state hole and must name fail-residual`
         ).toBe(true);
       });
@@ -763,36 +822,49 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 // =============================================================================================
 // R3-M1 — the SSOT version pin is stale, so the skill cites a contract without the fields it uses.
 // Bumped to v1.4.0 with FR-FLOW-104 (S1), which added `oscillation` and `budget-exhausted` to the
-// closed `reason_class` vocabulary — values kiwi-wave-master's verify loop now writes.
+// closed `reason_class` vocabulary — values kiwi-wave-master's verify loop now writes. 4.0.0 raised
+// it to v2.0.0 (FR-NODE-213 AC-6: +sds_id, +sds/worker phases), so the pin is derived, not literal.
 // =============================================================================================
-describe("R3-M1 — kiwi-wave-master pins waves-event v1.5.0", () => {
+describe("R3-M1 — kiwi-wave-master pins the waves-event version that defines its fields", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("cites the version that actually defines the fields it writes", () => {
+      // FR-FLOW-062 AC-6 (not revised): the pin is the version that defines the fields the skill writes.
+      // 4.0.0 raised the contract to 2.0.0, which adds `sds_id` and the `sds`/`worker` phases the skill
+      // now writes (FR-NODE-213 AC-6), so the pin is derived from the variant's own contract header.
+      it("FR-FLOW-062 AC-6: cites the version that actually defines the fields it writes", () => {
+        const contract = readShared(`skills/${variant}/_shared/kiwi/waves-event.md`);
+        const version = (contract.match(/^# kiwi waves event v(\d+\.\d+\.\d+)/m) ?? [])[1] ?? "";
+        expect(version, `${variant}: the waves-event contract must declare its version`).not.toBe("");
+        expect(
+          Number(version.split(".")[0]) >= 2,
+          `${variant}: sds_id and the sds/worker phases arrive with waves-event 2.0.0 (FR-NODE-213 AC-6)`
+        ).toBe(true);
         const common = sectionUnder(skillBody(readWave(variant)), /^##\s*0\.\s/);
         expect(common, `${variant}: the common-convention table must exist`).not.toBe("");
         const row = tableRows(common, /waves-event\.md/)[0] ?? "";
         expect(row, `${variant}: the event-SSOT row must exist`).not.toBe("");
         expect(
-          /v1\.5\.0/.test(row),
-          `${variant}: the pin must name v1.4.0 — the reason_class values this skill writes are v1.4.0-new`
+          row.includes(`v${version}`),
+          `${variant}: the pin must name v${version}, the contract version that defines sds_id`
         ).toBe(true);
         expect(
-          /v1\.3\.0|v1\.2\.0|v1\.1\.0|v1\.0\.0/.test(row),
+          /v1\.\d+\.\d+/.test(row),
           `${variant}: a stale version must not remain beside the new one`
         ).toBe(false);
       });
 
-      it("updates the recording-section heading to the same version", () => {
+      it("FR-FLOW-062 AC-6: updates the recording-section heading to the same version", () => {
+        const contract = readShared(`skills/${variant}/_shared/kiwi/waves-event.md`);
+        const version = (contract.match(/^# kiwi waves event v(\d+\.\d+\.\d+)/m) ?? [])[1] ?? "";
         const body = skillBody(readWave(variant));
         const heading = lineWith(body, /^###\s*5\.5\.6/);
         expect(heading, `${variant}: the recording section must exist`).not.toBe("");
         expect(
-          /1\.4\.0/.test(heading),
+          version !== "" && heading.includes(version),
           `${variant}: the heading names the contract version the recorded object conforms to`
         ).toBe(true);
         expect(
-          /1\.3\.0|1\.2\.0|1\.1\.0/.test(heading),
+          /\b1\.\d+\.\d+/.test(heading),
           `${variant}: the stale version must not survive in the heading`
         ).toBe(false);
       });
@@ -934,15 +1006,24 @@ describe("R3-M6 — the pipeline target is passed explicitly", () => {
         ).toBe(true);
       });
 
-      it("makes kiwi-wave-master pass it on every wave", () => {
+      // @req FR-FLOW-064 AC-6 — as revised for 4.0.0 a wave's target is handed explicitly to the stages
+      // that run it under the parallel-waves contract — the wave's /kiwi-sds call and its worker card —
+      // since no per-wave kiwi-pipeline receives a `--target` any more (FR-FLOW-188 AC-7).
+      it("FR-FLOW-064 AC-6: makes kiwi-wave-master hand the target explicitly to kiwi-sds and the worker", () => {
         const run = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.\s/);
-        expect(run, `${variant}: the per-wave pipeline section must exist`).not.toBe("");
-        const rule = lineWith(run, /`--target`/);
-        expect(rule, `${variant}: §5 must state how the target reaches the pipeline`).not.toBe("");
+        expect(run, `${variant}: the stage-execution section must exist`).not.toBe("");
+        const rule = lineWith(run, /\*\*명시 전달\*\*/);
+        expect(rule, `${variant}: §5 must state how the target reaches the wave's stages`).not.toBe("");
+        expect(
+          /kiwi-sds[^\n]*`TARGET=wave-\{n\}`/.test(rule),
+          `${variant}: kiwi-sds must receive TARGET=wave-{n}`
+        ).toBe(true);
+        expect(/워커 카드[^\n]*`target`/.test(rule), `${variant}: the worker card must carry target`).toBe(true);
         expect(
           /부수효과|side effect|set_active_target/.test(rule),
           `${variant}: the sentence must say the explicit argument replaces the side effect, not merely add one`
         ).toBe(true);
+        expect(/kiwi-pipeline/.test(rule), `${variant}: a wave no longer hands its target to kiwi-pipeline`).toBe(false);
         expect(HEDGE.test(rule), `${variant}: the explicit hand-off must be absolute, not hedged`).toBe(false);
       });
 
@@ -977,7 +1058,7 @@ describe("R3-M7 — kiwi-pipeline forwards --force", () => {
           `${variant}: kiwi-wave-master declares the chain through kiwi-pipeline, so a missing middle hop breaks it`
         ).toBe(true);
         expect(
-          /kiwi-pm/.test(cells[3]),
+          /kiwi-pm/.test(at(cells, 3)),
           `${variant}: the forwarding path must name kiwi-pm as the consumer`
         ).toBe(true);
         expect(
@@ -1022,13 +1103,16 @@ describe("R3-M8 — feasibility accepts a requirement filter", () => {
 // =============================================================================================
 // R3-M9 — the Phase flow reads as a batch registration while §4/§6 interleave per wave.
 // =============================================================================================
-describe("R3-M9 — the phase flow states that phases 2 to 3.5 repeat per wave", () => {
+describe("R3-M9 — the phase flow states that phases 2 to 4 repeat per stage", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("says the per-wave phases repeat and are not registered in one batch", () => {
+      // FR-FLOW-064 AC-9 (not revised) asks the phase description to agree with the interleaved order.
+      // 4.0.0 interleaves per stage — the ready set of waves whose dependencies are complete
+      // (FR-FLOW-188 AC-3) — rather than per single wave, so the repetition unit is the stage.
+      it("FR-FLOW-064 AC-9: says the per-stage phases repeat and are not registered in one batch", () => {
         const phases = sectionUnder(skillBody(readWave(variant)), /^##\s*2\.\s/);
         expect(phases, `${variant}: the phase-flow section must exist`).not.toBe("");
-        const rule = lineWith(phases, /wave 마다 반복/);
+        const rule = lineWith(phases, /stage 마다 반복/);
         expect(rule, `${variant}: the interleaving must be stated where the flow is drawn`).not.toBe("");
         expect(
           /일괄 등록하지 않는다/.test(rule),
@@ -1217,7 +1301,7 @@ describe("R3-M13 — the regression baseline is delivered, not re-captured", () 
 // =============================================================================================
 // R3-M14 — existing_modules reaches the verifiers but never the authors or the planners.
 // =============================================================================================
-describe("R3-M14 — the recorded existing modules reach authoring and planning", () => {
+describe("R3-M14 — the recorded existing modules reach SRS authoring and SDS authoring", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("hands existing_modules to the authoring call", () => {
@@ -1230,24 +1314,31 @@ describe("R3-M14 — the recorded existing modules reach authoring and planning"
         ).toBe(true);
       });
 
-      it("makes kiwi-planner require the destructive verb in the Task action", () => {
-        const common = sectionUnder(skillBody(readPlanner(variant)), /^##\s*0\.\s/);
-        expect(common, `${variant}: kiwi-planner must have a common-convention section`).not.toBe("");
-        const row = tableRows(common, /§0\.22/)[0] ?? "";
-        expect(row, `${variant}: kiwi-planner has no notion of preserving existing structure today`).not.toBe("");
+      // @req FR-FLOW-063 AC-7 — as revised for 4.0.0 the list is an input to SDS authoring where it
+      // used to be an input to planning (kiwi-planner is retired, FR-FLOW-184 AC-2; the SDS replaces
+      // the plan, FR-FLOW-182). The AC is revised, not retired, so the obligation moves to the wave's
+      // SDS-authoring step: the /kiwi-sds call in parallel-waves.md PW-2, and kiwi-sds's own inputs.
+      it("FR-FLOW-063 AC-7: hands existing_modules to the wave's SDS authoring", () => {
+        const body = skillBody(readWave(variant));
+        const pw = moduleRegion(body, "parallel-waves");
+        expect(pw, `${variant}: kiwi-wave-master must resolve the parallel-waves contract`).not.toBe("");
+        const start = pw.indexOf("**PW-2");
+        const end = pw.indexOf("**PW-3");
+        expect(start > -1 && end > start, `${variant}: the contract must have a PW-2 SDS-authoring step`).toBe(true);
+        // Pinned inside the PW-2 `Skill({ skill: "kiwi-sds", … })` fence, so a sentence merely mentioning
+        // the list (or saying it is not passed) cannot satisfy it.
+        const call = (pw.slice(start, end).match(/```[^\n]*\n([\s\S]*?)```/) ?? [])[1] ?? "";
+        expect(/skill:\s*"kiwi-sds"/.test(call), `${variant}: PW-2 must carry the /kiwi-sds call`).toBe(true);
         expect(
-          /`existing_modules`/.test(row),
-          `${variant}: the rule must key on the recorded module list, not on the planner's own reading of the code`
+          /existing_modules|existing-modules/.test(call),
+          `${variant}: SDS authoring must receive the recorded module list; a list only verifiers and SRS authors read cannot change what the SDS declares`
         ).toBe(true);
+        // The consumer side, as R2-H2 checks for --sds-id: kiwi-sds must declare the input.
+        const inputs = sectionUnder(skillBody(readSds(variant)), /^###\s*1\.1\s/);
         expect(
-          /`action`/.test(row),
-          `${variant}: the requirement must land on the Task action, which is what kiwi-coder §0.20.4 reads`
-        ).toBe(true);
-        expect(
-          /이동[^|]*삭제[^|]*시그니처|시그니처[^|]*이동[^|]*삭제/.test(row),
-          `${variant}: the three destructive changes must be named, matching the resolution rule downstream`
-        ).toBe(true);
-        expect(HEDGE.test(row), `${variant}: the authoring requirement must be absolute, not hedged`).toBe(false);
+          tableRows(inputs, /existing[_-]modules/).length,
+          `${variant}: kiwi-sds §1.1 must declare the recorded existing-module list as an input`
+        ).toBeGreaterThan(0);
       });
     });
   }
@@ -1369,7 +1460,7 @@ describe("R3-L2 — an invalid loop option is a declared halt", () => {
           `${variant}: loop-option.md orders a HALT that the gate table does not declare, so it drops to the committee`
         ).toBe(true);
         expect(
-          /loop-option|§0\.7/.test(cells[3]),
+          /loop-option|§0\.7/.test(at(cells, 3)),
           `${variant}: the origin cell must point at the shared loop-option contract that orders the halt`
         ).toBe(true);
       });
@@ -1457,15 +1548,19 @@ describe("R3-H11 — a child's critical gate halts the parent by rule, not by tr
 describe("R3-H12 — a no-op run is not a completion", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("refuses TASK_DONE when no task changed state in this run", () => {
+      // @req FR-FLOW-066 AC-4 — as revised for 4.0.0: one SDS is one kiwi-coder run, so the no-op rule
+      // keys on that run producing no commit and no working-tree change inside the SDS write set,
+      // rather than on plan Tasks changing state.
+      it("FR-FLOW-066 AC-4: refuses TASK_DONE when the run changed nothing inside the SDS write set", () => {
         const emit = skillOrRefSection(variant, "kiwi-pm", /^##\s*10\./);
         expect(emit, `${variant}: kiwi-pm must have a pipeline-emit section`).not.toBe("");
-        const rule = lineWith(emit, /상태가 바뀐 Task/);
+        const rule = lineWith(emit, /쓰기 집합/);
         expect(rule, `${variant}: the no-op case must be distinguished from a completion`).not.toBe("");
         expect(
-          /0\s*건/.test(rule),
-          `${variant}: the condition must be zero state-changing tasks, stated as a count`
+          /commit/.test(rule) && /작업 트리 변경/.test(rule),
+          `${variant}: the condition must be no commit and no working-tree change inside the SDS write set`
         ).toBe(true);
+        expect(/Task/.test(rule), `${variant}: the no-op rule still counts plan Tasks`).toBe(false);
         expect(
           /`TASK_DONE`[^\n]*(?:아니라|아니다|반환하지 않는다)/.test(rule),
           `${variant}: the sentence must deny TASK_DONE, not merely annotate it`
@@ -1477,9 +1572,9 @@ describe("R3-H12 — a no-op run is not a completion", () => {
         expect(HEDGE.test(rule), `${variant}: the no-op rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("marks the no-op explicitly rather than leaving the caller to infer it", () => {
+      it("FR-FLOW-066 AC-4: marks the no-op explicitly rather than leaving the caller to infer it", () => {
         const emit = skillOrRefSection(variant, "kiwi-pm", /^##\s*10\./);
-        const rule = lineWith(emit, /상태가 바뀐 Task/);
+        const rule = lineWith(emit, /쓰기 집합/);
         expect(
           /no-op/i.test(rule),
           `${variant}: the return must carry the no-op fact; an unexplained NEEDS_USER is indistinguishable from a question`

@@ -3,16 +3,14 @@
 This file was split from `SKILL.md` for progressive disclosure. Read it only when the active task needs the detailed phases, schemas, reports, fallback rules, or pipeline event instructions listed below.
 
 ## Table of Contents
-- 6. Phase 3 — Task 종료 처리
+- 6. Phase 3 — 실행 종료 처리
 - 6.1 회귀 테스트 (§0.13 의무)
 - 6.2 MCP mutation 4종 batch
 - 6.3 .kiwi 상태 갱신
-- 6.4 다음 task 진입
 - 7. .kiwi/ 상태 스키마 SSOT
 - 7.1 state.json 스키마
-- 7.2 tasks/{task-id}.json 스키마
-- 7.3 worklog.jsonl 이벤트 enum (21종) 및 호출 사이트
-- 7.4 재개 (`--resume`) 로직
+- 7.2 worklog.jsonl 이벤트 enum 및 호출 사이트
+- 7.3 재개 (`--resume`) 로직
 - 8. 통합 테스트 (Phase 4, 선택)
 - 8.1 조건
 - 8.2 플로우 (snoworca-coder §5 차용)
@@ -25,12 +23,14 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ---
 
-## 6. Phase 3 — Task 종료 처리
+## 6. Phase 3 — 실행 종료 처리
 
 ### 6.1 회귀 테스트 (§0.13 의무)
 
+**6.1.0 기준선(baseline) 캡처**: 실행이 **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. run 단위 기준선은 §3.5 에서 `state.regression_baseline` 에 이미 고정되어 있으므로, 그것이 존재하고 `head_sha` 가 현재 HEAD 와 같으면 그 값을 그대로 쓴다. 없거나 HEAD 가 다르면 첫 편집 전에 캡처한다.
+
 **6.1.1 영향받는 테스트 (항상 실행)**:
-- sidecar.tasks[t].files[] 의 각 파일이 의존되는 test 파일을 정적 추론 (import graph / require / package 동일성)
+- SDS Files 의 각 파일이 의존되는 test 파일을 정적 추론 (import graph / require / package 동일성)
 - 추론 어려운 경우 fallback: 최근 1주일 내 수정된 모든 test 파일
 
 **6.1.2 전체 회귀 스위트 (--skip-regression 부재 시)**:
@@ -38,66 +38,50 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 실행 시간 추정 ≥10분 시 사용자 동의 게이트 (`--yes-all`/`--auto-cost-warning` skip)
 - 결과를 `docs/analysis/kiwi-coder-{run-id}/regression_run.jsonl` 에 append
 
-**6.1.3 회귀 발견 시 처리** — 판정 규칙의 SSOT 는 `SKILL.md` §6.1.0 / §6.1.3 이며, 본 절은 그와 다른 판정 규칙을 말하지 않는다. 회귀는 `state.regression_baseline` (SKILL.md §3.5 에서 첫 Task 진입 전 고정) 대비 **델타로 판정**한다:
-- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 Task 가 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
-- 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 Task 의 것으로 **귀속하지 않는다**
+**6.1.3 회귀 발견 시 처리** — 회귀 여부는 기준선 대비 **델타로 판정**한다:
+- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 실행이 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
+- 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 실행의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 실행의 루프가 발산한다
 - 기준선에서 fail 이었는데 이번에 pass 한 test 는 회귀가 아니다 (보고만)
-- `state.regression_baseline` 이 null (SKILL.md §3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다
-- 2회 연속 동일 파일 **신규 실패** → §0.G4 발동 + state.failed_task_ids[] 등재
+- `state.regression_baseline` 이 null (§3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다
+- 2회 연속 동일 파일 신규 실패 → §0.G4 발동 + `state.failed = true`
 - 외부 모듈 (cwd 외부) 실패 → WARN 만, 차단 안 함
 
 ### 6.2 MCP mutation 4종 batch
 
-**평탄화 의무 — sidecar nested → MCP flat 변환은 coder 책임**:
-
-sidecar `tasks[].trace_links[]` 는 nested schema (`{source:{type,id}, target:{type,reference}, relation}`) 로 작성되어 있다. 동일하게 sidecar `mcp_call_log[].args` (planner 가 dry-run 시뮬레이션으로 적재한 entry) 도 nested 표현. 그러나 speckiwi MCP 실 호출 schema 는 **flat** 이므로, 본 §6.2 mutation 호출 직전에 반드시 평탄화해야 한다. nested 표현 그대로 호출하면 flat 이 요구하는 `id` · `type` · `reference` · `relation` 이 전부 빠지므로 스키마 검증에서 거부된다 → mutation 실패. 반대로 스키마에 **없는** 이름을 얹는 것은 거부되지 않고 조용히 제거되므로, 거부에 기대어 오작성을 알아차릴 수는 없다. 변환 매핑 SSOT 는 kiwi-planner §9.5 "sidecar nested ↔ 실 MCP flat 변환 매핑" 표 참조.
-
-평탄화 예 (add_trace_link):
-```
-sidecar.tasks[].trace_links[i]            →  MCP add_trace_link args (flat)
-  source: {type: "Task", id: "T-PH001-02"}    id: <REQ id from target.reference>
-  target: {type: "Requirement", reference:    type: <task type 매핑 또는 "Code">
-           "FR-X-001"}                         reference: <task.files[].path:line_range 또는
-  relation: "implements"                                   source.id (task id)>
-                                              relation: "implements"
-```
-
-sidecar `trace_links[i].trace_intent` 은 평탄화 대상이면서 flat schema 에 대응 인자가 없다. 값은 `notes` 에 `trace_intent=<값>` 으로 인코딩해 넘기고 최상위 인자로는 싣지 않는다 — 스키마에 없는 이름은 거부가 아니라 조용히 버려지며, 그 순간 kiwi-srs 가 `addition_site` 잔존으로 status 상한을 거는 근거가 사라진다.
-
-**시그니처 SSOT — speckiwi MCP 실제 schema 기준** (호출 인자는 flat 객체. 임의 필드 추가 금지 — 메타 정보는 summary 텍스트 또는 reportPaths 에 인코딩):
+**시그니처 SSOT — speckiwi MCP 실제 schema 기준** (호출 인자는 flat 객체. 임의 필드 추가 금지 — 메타 정보는 summary 텍스트 또는 reportPaths 에 인코딩. 스키마에 **없는** 이름은 거부되지 않고 조용히 제거되므로, 거부에 기대어 오작성을 알아차릴 수 없다):
 
 ```
 1. add_trace_link (Code anchor — 선택)
-   args: { id: "FR-X-001",                         # REQ id
+   args: { id: "FR-X-001",                         # REQ id (SDS @req 집합)
            type: "Code",                            # target type
            reference: "src/x.ts:45-67",             # target reference (path:line_range)
            relation: "implements",                  # 관계
            [notes: "..."] }                         # 선택
-   조건: sidecar.task.files[].line_range 가 모든 변경 파일에 존재할 때만 호출.
-         REQ 1개당 변경 파일별 1건 (REQ id × file 개수).
+   조건: 변경 파일의 line_range 를 확정할 수 있을 때만 호출.
+         REQ 1개당 그 REQ 를 @req 로 지명한 SDS Files 파일별 1건.
 
 2. add_verification_evidence (type=test)
-   args (각 PASS 한 test_case 별 1건):
+   args (각 PASS 한 테스트 인용별 1건):
    { id: "FR-X-001",                                # REQ id
      type: "test",
-     reference: "tests/x.test.ts#TC-REQ-FR-X-001-AC1-01",
+     reference: "tests/x.test.ts#FR-X-001 AC-1 rejects invalid input",
      [covers: "AC-1", notes: "..."] }               # 선택 — covers 는 AC id 명시 권장
 
 3. update_status
    args: { id: "FR-X-001", status: <전이값> }       # dryRun 인자 없음 (호출 시점 적용)
    전이 규칙:
-   - Task 시작 시 → "in_progress" (kiwi-coder 권한)
-   - 해당 REQ 의 모든 ac 가 green_evidence 보유 + acceptance_tests 통과 → "implemented"
+   - 실행 시작 시 → "in_progress" (kiwi-coder 권한)
+   - 해당 REQ 의 모든 ac 가 green_evidence 보유 → "implemented"
    - 일부 ac 만 pass → "implemented"
    - 회귀 발생 → "blocked"
    - 기존 status 보다 backward 면 §0.G5 자체 차단 (호출 안 함)
 
    `verified` 전이는 `$kiwi-review-fix-loop --close-reqs` 만 수행한다. `kiwi-coder` 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를 직접 실행하지 않는다. 본 스킬은 `check_acceptance_criteria` 를 부르지 않으므로, `verified` 를 시도하면 `update-status.ts` 의 게이트가 AC 전량 체크를 못 찾아 `MUTATION_DENIED` 를 돌려준다 — 그것이 이 규칙의 목표가 `implemented` 인 이유다.
 
-4. add_completed_work — Task 종료 시 1건 (Task 단위 요약)
+4. add_completed_work — 실행 종료 시 1건 (SDS 실행 요약)
    args: { date: "YYYY-MM-DD",                      # 필수 (today)
-           summary: "<Task title + green 결과 + DoD 요약>",  # 필수, task_id / files / dod 정보 인코딩
-           [requirementIds: ["FR-X-001", ...],      # task.req_ids
+           summary: "<SDS id + green 결과 + SDS-AC 결과 요약>",  # 필수, sds_id / files / SDS-AC 정보 인코딩
+           [requirementIds: ["FR-X-001", ...],      # SDS @req 집합
             target: "<active target slug>",
             scope: "<scope id>",
             reportPaths: ["<repo-relative POSIX path>"],   # 선택 — 보고서/test log
@@ -105,11 +89,11 @@ sidecar `trace_links[i].trace_intent` 은 평탄화 대상이면서 flat schema 
             dryRun: <--dry-run 플래그 전파>] }
 
    summary 인코딩 예:
-     "[task] T-PH001-02 — login 에러 메시지 개선. green=PASS (5/5 TC).
-      files: src/auth/login.ts, tests/auth/login.test.ts.
-      dod: ['에러 메시지 정확', '로그 마스킹']"
+     "[sds] 4.0.0-todo-service — 할 일 저장소 구현. green=PASS (7/7).
+      files: src/service.ts, test/service.test.ts.
+      SDS-AC: 1..3 PASS"
 
-   ⚠️ speckiwi schema 에 task_id / req_ids / files_changed / dod_checklist / completed_at 같은
+   ⚠️ speckiwi schema 에 sds_id / req_ids / files_changed / completed_at 같은
       임의 필드 직접 전달 불가. summary 텍스트에 인코딩하거나 reportPaths 로 detail md 첨부.
 ```
 
@@ -135,23 +119,16 @@ sidecar `trace_links[i].trace_intent` 은 평탄화 대상이면서 flat schema 
 
 ```
 state.json:
-  - completed_task_ids[] += [t]
-  - current_task_id = null (다음 task 진입 직전 갱신)
+  - phase = "done" | "failed"
   - mcp_call_log[] += (위 호출들)
   - updated_at = ISO-8601
   - next_resume_hint = null
 
-tasks/{task-id}.json: 전체 task 실행 기록 (TDD draft → review → impl → green → mutation 까지 모두)
-
 worklog.jsonl 이벤트:
-  - task_done { task_id, phase_id, green: true, regression: "pass"|"partial"|"skip", duration_ms }
+  - run_done { sds_id, green: true, regression: "pass"|"partial"|"skip", duration_ms }
 ```
 
-state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/append-errors.log` 에 기록 + 사용자 알림 (다음 task 진입 차단).
-
-### 6.4 다음 task 진입
-
-큐가 비어있지 않으면 Phase 1.1 로 복귀. 비어있으면 Phase 4.
+state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/append-errors.log` 에 기록 + 사용자 알림.
 
 ---
 
@@ -162,33 +139,38 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
 ```json
 {
   "schema_version": "1.0.0",
-  "run_id": "2026-05-19.skf.v01.coder-0519",
-  "plan_run_id": "2026-05-19.skf.v01",
-  "plan_path": "docs/plans/2026-05-19.skf.v01.plan.md",
-  "sidecar_path": "docs/plans/2026-05-19.skf.v01.sidecar.json",
-  "target": "skf-v0.1",
+  "run_id": "4.0.0-todo-service",
+  "sds_path": "docs/sds/4.0.0-todo-service.sds.md",
+  "sds_sha256": "abcdef0123...",
+  "target": "4.0.0",
+  "req_ids": ["FR-TODO-001", "FR-TODO-002"],
+  "write_set": ["src/service.ts", "test/service.test.ts"],
   "mode": "normal|max|reviewer-off|model|dry-run",
   "flags": ["--max"],
+  "spawn_context": "standalone",   // "standalone" | "pm-child" — §3.0 에서 입력 SPAWN_CONTEXT 기반 결정. §8.4 자동 시작 게이트 분기에 사용
   "started_at": "ISO-8601",
   "updated_at": "ISO-8601",
   "frozen_at": null,
 
-  "current_phase_id": "PH-001",
-  "current_task_id": "T-PH001-02",
+  "phase": "phase-2",
   "next_resume_hint": "phase-2.c (impl)|phase-1.2 (tdd-review)|phase-3.1 (regression)|...",
-
-  "task_queue": ["T-PH001-02", "T-PH001-03", "T-PH002-01"],
-  "completed_task_ids": ["T-PH001-01"],
-  "skipped_task_ids": [],
-  "failed_task_ids": [],
-  "tdd_exempted_task_ids": [],
-  "tdd_pending_task_ids": [],
+  "failed": false,
 
   "severity_counters": {
-    "T-PH001-02": {
-      "phase1": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 0, "rounds": 1},
-      "phase2": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "rounds": 0}
-    }
+    "phase1": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 0, "rounds": 1},
+    "phase2": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "rounds": 0}
+  },
+
+  "red_evidence": { "command": "...", "exit_code": 1, "captured_failure": "...", "timestamp": "ISO-8601" },
+  "green_evidence": { "command": "...", "exit_code": 0, "timestamp": "ISO-8601" },
+
+  "regression_baseline": {
+    "command": "npm test",
+    "exit_code": 1,
+    "passed": 140, "failed": 2,
+    "failed_test_ids": ["src/a.test.ts > x", "src/b.test.ts > y"],
+    "head_sha": "abc1234",
+    "captured_at": "ISO-8601"
   },
 
   "regression_summary": {
@@ -206,83 +188,52 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
       "args_hash": "sha1...",
       "ok": true,
       "response_hash": "sha1...",
-      "dry_run": false,
-      "task_id": "T-PH001-01"
+      "dry_run": false
     }
   ],
 
   "pending_mutations": [],
 
   "tool_versions": {
-    "kiwi_planner": "0.6.0",
     "kiwi_coder": "0.1.0",
     "speckiwi": "2.2.3"
   }
 }
 ```
 
-### 7.2 tasks/{task-id}.json 스키마
-
-```json
-{
-  "task_id": "T-PH001-02",
-  "started_at": "...",
-  "completed_at": null,
-  "phase1": {
-    "tdd_draft_iters": [{"iter": 1, "file_paths": [...]}],
-    "standard4_reviews": [
-      {"iter": 1, "intent_alignment": {...}, "tech_quality": {...}, "req_mapping": {...}, "red_verification": {...}}
-    ],
-    "red_evidence": { "...": "Phase 1.5 결과" }
-  },
-  "phase2": {
-    "impl_iters": [{"iter": 1, "files_changed": [...], "loc_added": N, "loc_removed": M}],
-    "formal_reviews": [{"iter": 1, "findings": [...]}],
-    "prickly_reviews": [{"iter": 1, "findings": [...]}],
-    "green_evidence": { "...": "Phase 2.i 결과" },
-    "dod_check": [{"item": "...", "satisfied": true}]
-  },
-  "phase3": {
-    "regression": {"scope": "full", "passed": 142, "failed": 0},
-    "mcp_calls": [...]
-  }
-}
-```
-
-### 7.3 worklog.jsonl 이벤트 enum (21종) 및 호출 사이트
+### 7.2 worklog.jsonl 이벤트 enum 및 호출 사이트
 
 각 이벤트는 본문 명시 단계 종료 직후 append 의무.
 
 | event | append 위치 | payload |
 |---|---|---|
-| `phase_start` | §3.2 .kiwi init 완료 직후 | { run_id, plan_path, target, mode, flags } |
-| `task_start` | §4.1.1 task pop 직후 | { task_id, phase_id } |
-| `tdd_exempted` | §4.1.2 TDD 면제 결정 시 | { task_id, reason } |
-| `tdd_draft_done` | §4.1.3 테스트 작성 완료 후 | { task_id, iter, file_paths[] } |
-| `tdd_review_done` | §4.2 standard×4 결과 통합 후 | { task_id, iter, severity_summary } |
-| `tdd_red_confirmed` | §4.4 red 확정 후 | { task_id, exit_code, test_case_ids[] } |
-| `impl_done` | §5.1.(c) 시니어 구현 완료 후 | { task_id, iter, files_changed[] } |
-| `formal_review_done` | §5.1.(e) 정형 검사 완료 후 | { task_id, iter, severity_summary } |
-| `prickly_review_done` | §5.1.(f) 까칠 리뷰 완료 후 | { task_id, iter, severity_summary } |
-| `test_green` | §5.1.(h) green 확정 후 | { task_id, exit_code } |
-| `test_fail` | §5.1.(h) fail 시 ((g) 루프 직전) | { task_id, exit_code, failed_test_case_ids[] } |
-| `regression_done` | §6.1.2 회귀 스위트 종료 후 | { task_id, scope, passed, failed } |
-| `mcp_call` | §6.2 각 mutation 호출 직후 | { task_id, tool, ok } |
-| `task_done` | §6.3 task 종료 처리 후 | { task_id, duration_ms } |
-| `task_failed` | §0.G4 4옵션 abandon 또는 §6.1.3 회귀 2연속 시 | { task_id, cause, severity } |
-| `need_user` | Codex clarification gate 호출 직후 | { task_id, reason, options[] } |
-| `checkpoint` | `/clear` 사전 또는 사용자 요청 시 강제 1회 | { task_id, resume_hint } |
+| `phase_start` | §3.2 .kiwi init 완료 직후 | { run_id, sds_path, target, mode, flags } |
+| `run_start` | §4.1.1 실행 시작 | { sds_id } |
+| `tdd_draft_done` | §4.1.3 테스트 작성 완료 후 | { sds_id, iter, file_paths[] } |
+| `tdd_review_done` | §4.2 TDD 검증 결과 통합 후 | { sds_id, iter, severity_summary } |
+| `tdd_red_confirmed` | §4.4 red 확정 후 | { sds_id, exit_code, test_names[] } |
+| `impl_done` | §5.1.(c) 시니어 구현 완료 후 | { sds_id, iter, files_changed[] } |
+| `formal_review_done` | §5.1.(e) 정형 검사 완료 후 | { sds_id, iter, severity_summary } |
+| `prickly_review_done` | §5.1.(f) 까칠 리뷰 완료 후 | { sds_id, iter, severity_summary } |
+| `test_green` | §5.1.(h) green 확정 후 | { sds_id, exit_code } |
+| `test_fail` | §5.1.(h) fail 시 ((g) 루프 직전) | { sds_id, exit_code, failed_test_names[] } |
+| `regression_done` | §6.1.2 회귀 스위트 종료 후 | { sds_id, scope, passed, failed } |
+| `mcp_call` | §6.2 각 mutation 호출 직후 | { sds_id, tool, ok } |
+| `run_done` | §6.3 실행 종료 처리 후 | { sds_id, duration_ms } |
+| `run_failed` | §0.G4 4옵션 abandon-run 또는 §6.1.3 회귀 2연속 시 | { sds_id, cause, severity } |
+| `need_user` | Codex clarification gate 호출 직후 | { sds_id, reason, options[] } |
+| `checkpoint` | `/clear` 사전 또는 사용자 요청 시 강제 1회 | { sds_id, resume_hint } |
 | `phase_end` | §8 통합 테스트 완료 (skip 포함) 후 | { run_id, summary } |
-| `req_tag_exempted` | §0.17.2 면제 적용 시 (Phase 2.c) | { task_id, member_path, reason_enum_id, raw_reason? } |
-| `req_tag_position_ambiguous` | §0.17.4 append 위치 모호 시 (Phase 2.c) | { task_id, member_path } |
-| `req_tag_missing_observed` | §0.17.7 시니어 코더 자기 점검 (Phase 2.c, 정보성, 선택) | { task_id, member_path } |
+| `req_tag_exempted` | §0.17.2 면제 적용 시 (Phase 2.c) | { sds_id, member_path, reason_enum_id, raw_reason? } |
+| `req_tag_position_ambiguous` | §0.17.4 append 위치 모호 시 (Phase 2.c) | { sds_id, member_path } |
+| `req_tag_missing_observed` | §0.17.7 시니어 코더 자기 점검 (Phase 2.c, 정보성, 선택) | { sds_id, member_path } |
 
-### 7.4 재개 (`--resume`) 로직
+### 7.3 재개 (`--resume`) 로직
 
-**resume_hint enum SSOT** (13종, 위반 시 차단):
-`phase-1.1` (tdd-draft) / `phase-1.2` (tdd-review) / `phase-1.3` (tdd-improve) / `phase-1.4` (red-confirm) / `phase-2.a` (depends-check) / `phase-2.b` (mock-scan) / `phase-2.c` (impl) / `phase-2.d` (plan-code-match) / `phase-2.e` (formal-review) / `phase-2.f` (prickly-review) / `phase-2.h` (test-green) / `phase-3.1` (regression) / `phase-3.2` (mcp-mutation).
+**resume_hint enum SSOT** (위반 시 차단):
+`phase-1.1` (tdd-draft) / `phase-1.2` (tdd-review) / `phase-1.3` (tdd-improve) / `phase-1.4` (red-confirm) / `phase-2.a` (sds-recheck) / `phase-2.b` (mock-scan) / `phase-2.c` (impl) / `phase-2.d` (sds-code-match) / `phase-2.e` (formal-review) / `phase-2.f` (prickly-review) / `phase-2.h` (test-green) / `phase-3.1` (regression) / `phase-3.2` (mcp-mutation).
 
-1. state.json 의 `current_task_id` 와 `next_resume_hint` 읽음
+1. state.json 의 `next_resume_hint` 읽음
 2. resume_hint 가 가리키는 단계로 직접 점프 (예: `phase-2.c` → 시니어 구현 재시작)
 3. 이전 단계 산출물 (test 파일, 변경된 코드) 은 그대로 유지 — 멱등성:
    - `phase-1.1`: test 파일 SHA256 비교, 변경 없으면 skip
@@ -296,22 +247,22 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
 
 ### 8.1 조건
 
-- 모든 task 가 completed_task_ids[] 에 진입
+- Phase 3 이 끝났다 (`state.phase = "done"`)
 - `--skip-integration` 부재
 - 사용자 동의 (`--auto-integration`/`--yes-all` skip)
 
-진입 게이트 판정의 SSOT 는 `SKILL.md` §8.1 이다. `state.spawn_context == "pm-child"` (SKILL.md §3.0) 인 경우 본 동의 게이트를 발동하지 않는다 — 단일 Task 자식이 Task 마다 동의를 요구하면 부모의 무인 진행이 Task 수만큼 멈춘다. 자식 컨텍스트에서 통합 테스트 실행 여부는 모든 Task 를 본 부모 `kiwi-pm` 가 결정한다.
+진입 게이트 판정의 SSOT 는 `SKILL.md` §8.1 이다. `state.spawn_context == "pm-child"` (SKILL.md §3.0) 인 경우 본 동의 게이트를 발동하지 않는다 — 자식이 동의를 요구하면 부모의 무인 진행이 멈춘다. 자식 컨텍스트에서 통합 테스트 실행 여부는 실행 전체를 본 부모 `kiwi-pm` 가 결정한다.
 
 skip 시(`--skip-integration` 명시 또는 사용자 거부)에도 **§8.3 최종 보고서는 항상 생성**. 보고서 §8 (통합 테스트 보고서) 섹션은 "skipped: {reason}" 으로 채움.
 
 ### 8.2 플로우 (snoworca-coder §5 차용)
 
-1. 의도 추출 (target goal + REQ 전체 AC 합집합)
-2. 통합 테스트 작성 (high-reasoning 시니어, Phase 간 연계 / end-to-end / 경계)
+1. 의도 추출 (target goal + SDS `@req` 집합 요구의 AC 합집합)
+2. 통합 테스트 작성 (high-reasoning 시니어, 모듈 간 연계 / end-to-end / 경계)
 3. 정형 + 까칠 리뷰 (Phase 2.e/f 동일)
 4. 개선 루프 (심각도 카운터, 통합 시도 단위)
 5. 실행 → 실패 시 관련 Phase 역순 재진입 (최대 3회)
-6. 4회차 진입 직전 4지선다: 중단 / 추가 1회 / REWORK 모드 (delta 생성 후 kiwi-planner 재호출 권고) / kiwi-srs-research 호출
+6. 4회차 진입 직전 4지선다: 중단 / 추가 1회 / REWORK 모드 (`$kiwi-sds` 로 SDS 재작성 권고) / kiwi-srs-research 호출
 
 ### 8.3 최종 보고서
 
@@ -321,53 +272,51 @@ frontmatter:
 ```yaml
 ---
 run_id: ...
-plan_run_id: ...
+sds_path: ...
 target: ...
 last_phase: phase-N | done
-last_task: T-PHnnn-mm | null
-next_skill: kiwi-coder (잔존 task 있음) | kiwi-srs-research (검증 필요) | null
+next_skill: kiwi-coder (재개 필요) | kiwi-srs-research (검증 필요) | null
 state_ref: ./state.json
 ---
 ```
 
 본문 9개 섹션 (snoworca-coder §8.2 와 동일 구조):
 1. 사용된 플래그 + 비용 배수
-2. Phase별 Task 완료 상태 + TDD 적용/면제 통계
-3. 계획-코드 매핑 결과
-4. standard×4 TDD 검증 통계 (round별)
+2. Phase 별 진행 상태
+3. SDS-코드 매핑 결과 (Files · 심볼 · `← caller` 연결)
+4. TDD 검증 통계 (round별)
 5. 까칠 리뷰 findings 통계 (severity별)
-6. 테스트 결과 (task별 + 통합)
+6. 테스트 결과 (SDS-AC 별 + 통합)
 7. 회귀 결과 (passed/failed/regressed 파일)
 8. MCP mutation 요약 (4종별 호출 수)
 9. 메타 (mode, 실측 토큰 추정, 총 소요 시간)
 
 ### 8.4 후속 review-fix-loop handoff
 
-단독 실행에서 모든 Task 가 green + 회귀 PASS 로 종료되고 `state.failed_task_ids[]`
-가 비어 있으면, 후속 close 검증을 권고한다:
+단독 실행이 green + 회귀 PASS 로 끝나고 `state.failed` 가 false 이면(`CLOSE_SAFE`), 후속 close 검증을 권고한다. 순서는 `kiwi-pm` §6.4 와 같은 close-out 순서다 — 옮기기는 승급보다 먼저여야 한다(FR-FLOW-183 AC-1):
 
 ```text
-Use $kiwi-review-fix-loop --close-reqs
+Use $kiwi-sds with --close <sds_id>                                         # CLOSE_SAFE 일 때만 — 옮기기
+MOVED = CLOSE_SAFE AND check_sds(SDS_PATH).status == "closed"
+Use $kiwi-review-fix-loop with --req-filter <SDS @req 집합> --sds <SDS_PATH> [--close-reqs 는 MOVED 일 때만]
+Use $kiwi-sds with --close <sds_id>                                         # MOVED 일 때만 — 삭제
 ```
 
-`--auto` 활성 시에는 `../../_shared/kiwi/auto-option.md` 에 따라 다음을 자동
-선택할 수 있다:
+`sds_id` 는 SDS 파일 이름에서 `.sds.md` 를 뺀 값이다(`SKILL.md` §0.14). 첫 호출 뒤 SDS Status 가 `closed` 가 아니면 옮기기가 끝나지 않은 것이다 — 리뷰는 `--close-reqs` 없이 돌고, 두 번째 `$kiwi-sds` 호출은 하지 않으며, 멈춘 gate id 를 보고서에 적는다. 두 번째 호출이 지운 SDS 파일은 커밋하지 않으므로 보고서에 그렇게 적는다.
 
-```text
-Use $kiwi-review-fix-loop --close-reqs --auto
-```
+`--auto` 활성 시에는 `../../_shared/kiwi/auto-option.md` 에 따라 위 순서를 자동 선택할 수 있다 — 세 호출 모두 `--auto` 를 붙인다.
 
-전파 규칙:
+전파 규칙 (리뷰 호출의 `--close-reqs` 는 MOVED 일 때만 붙는다):
 
-| Current flags | Handoff flags |
+| Current flags | Handoff flags (세 호출 모두) |
 |---|---|
-| `--auto` | `--close-reqs --auto` |
-| `--auto --model <name>` | `--close-reqs --auto --model <name>` |
-| `--auto --max` | `--close-reqs --auto --max` |
+| `--auto` | `--auto` |
+| `--auto --model <name>` | `--auto --model <name>` |
+| `--auto --max` | `--auto --max` |
 
 다음 중 하나라도 참이면 자동 handoff 금지:
 
-- 실패 task 존재
+- 실행 실패 (`state.failed`)
 - 회귀 실패 잔존
 - MCP preflight 실패
 - implemented 상태가 아닌 REQ만 영향 후보로 남음
@@ -381,15 +330,12 @@ Use $kiwi-review-fix-loop --close-reqs --auto
 ## 9. 호출 예시
 
 ```
-$kiwi-coder
-$kiwi-coder PLAN_PATH=docs/plans/2026-05-19.skf.v01.plan.md
-$kiwi-coder PLAN_PATH=... TASK_FILTER=T-PH001-01,T-PH001-02
-$kiwi-coder PLAN_PATH=... PHASE_FROM=2 PHASE_TO=3
-$kiwi-coder PLAN_PATH=... --max
-$kiwi-coder PLAN_PATH=... --reviewer-off --skip-regression
-$kiwi-coder PLAN_PATH=... --model <name>
-$kiwi-coder PLAN_PATH=... --resume
-$kiwi-coder PLAN_PATH=... --dry-run
+$kiwi-coder SDS_PATH=docs/sds/4.0.0-todo-service.sds.md
+$kiwi-coder SDS_PATH=... --max
+$kiwi-coder SDS_PATH=... --reviewer-off --skip-regression
+$kiwi-coder SDS_PATH=... --model <name>
+$kiwi-coder SDS_PATH=... --resume
+$kiwi-coder SDS_PATH=... --dry-run
 ```
 
 ---
@@ -398,7 +344,7 @@ $kiwi-coder PLAN_PATH=... --dry-run
 
 | 범위 밖 | 담당 스킬 |
 |---|---|
-| 계획 생성 | `kiwi-planner` |
+| SDS 작성·수정 | `kiwi-sds` |
 | SRS/요구사항 작성 | `kiwi-srs` |
 | 구현 후 코드 리뷰 · 회귀 검증 | `kiwi-review-fix-loop` |
 | 구현 결과와 SRS 의 어긋남 반영 | `kiwi-srs-sync` |
@@ -413,7 +359,6 @@ $kiwi-coder PLAN_PATH=... --dry-run
 
 - v0.2: `--pm-child` 헤드리스 자식 모드 (kiwi-pm 등장 시)
 - v0.3: 통합 테스트 단계 자동 회귀 분배 강화
-- v0.4: `--imt` (계획 없이 즉시 코딩) 재도입 검토 (TDD 강제 유지)
 - v1.0: snoworca-coder 의 모든 호환 채널 제거 확정
 
 ---
@@ -425,10 +370,11 @@ $kiwi-coder PLAN_PATH=... --dry-run
 CLI `speckiwi workflow pipeline-emit --json` 은 MCP 미가용 진단/복구 중에만 사용한다. 직접 `./kiwi/pipeline.jsonl` 에 append 하는 것은 degraded mode 이며, 사용하려면 captured tool diagnostics, affected artifact paths, active target, follow-up requirement or candidate ID 를 보고서와 worklog 에 남긴다.
 
 **호출 컨텍스트별 정책**:
-- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: 통상 `"kiwi-review-fix-loop"` (close 검증 권고) 또는 `"kiwi-commit-auto-push"`.
-- **kiwi-pm 자식으로 spawn**: 본 스킬은 emit 하지 않는다 — 부모(`kiwi-pm`) 의 Task 종료 시 부모가 일괄 emit. 자식의 결과는 부모의 보고에 인용.
+- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: `CLOSE_SAFE`(§8.4) 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다(FR-FLOW-183, §8.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). commit 은 review-fix-loop 통과 후 그 `next_hint` 로 진행.
+- **kiwi-pm 자식으로 spawn**: 본 스킬은 emit 하지 않는다 — 부모(`kiwi-pm`) 가 실행 종료 시 일괄 emit. 자식의 결과는 부모의 보고에 인용.
 
-- `req_ids`: 본 Task 가 영향을 미친 REQ-ID 배열
+- `req_ids`: 본 실행이 영향을 미친 REQ-ID 배열 (SDS `@req` 집합)
+- `artifacts.sds_files`: 입력 SDS 경로 하나를 담은 배열 (`pipeline-event.md` §2 스키마)
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-coder-{run-id}/` 또는 `.kiwi/sessions/{run-id}/`
 - `status`: TDD green + 회귀 PASS = `TASK_DONE`; business-decision = `NEEDS_USER`; 회귀 실패 = `FAILED`
 - `gate_id`: `NEEDS_USER` 로 종료한 경우 그 중단을 일으킨 §0.G6 게이트의 id. 부모(`kiwi-pm`)는 이 값을 동명 게이트로 매핑한다 — 이 채널이 없으면 어느 게이트가 멈췄는지가 부모에게 전달되지 않는다

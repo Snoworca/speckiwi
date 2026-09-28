@@ -25,11 +25,11 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 const TASK = "feature-sds-status";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 function designPath(root: string, task: string): string {
@@ -71,8 +71,8 @@ describe("FR-NODE-081 — set SDS status lifecycle mutation", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.from).toBe("draft");
-      expect(result.value.to).toBe("agreed");
+      expect(result.value?.from).toBe("draft");
+      expect(result.value?.to).toBe("agreed");
     }
     const after = await readFile(designPath(root, TASK), "utf8");
     expect(after).toContain("| Status | agreed |");

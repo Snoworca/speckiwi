@@ -35,20 +35,14 @@ async function write(root: string, relativePath: string, text: string): Promise<
   await writeFile(absolute, text, "utf8");
 }
 
-/** `contract_ok: false` removes `R-PLAN` by D5, so the frozen rung is `R-STEP`. */
+/** No disqualifier fires on the baseline document, so the frozen rung is `R-STEP`. */
 function stepProbeDocument(): unknown {
-  return probeDocument({
-    S2: {
-      path: "docs/plans/p.plan.md",
-      candidates: ["docs/plans/p.plan.md"],
-      contract_ok: false,
-      reject_reason: "plan_contract must be 1.2.0",
-      open_tasks: 3,
-      req_ids: ["FR-NODE-001"],
-      lifecycle_req_ids: ["FR-NODE-001"],
-      target: "v2.6.0"
-    }
-  });
+  return probeDocument();
+}
+
+/** A second scope removes `R-STEP` by D3, so this document classifies `R-ORCH`. */
+function orchestratedProbeDocument(): unknown {
+  return probeDocument({ S4: { scopes: ["NODE", "CLI"], scope_req_ids: ["FR-NODE-001"], unresolved: [] } });
 }
 
 function gateRecord(): unknown {
@@ -119,14 +113,9 @@ async function readCardFile(root: string): Promise<ResumeCard> {
 /** `--facts` for a resume, with the route observations the run would read off disk. */
 function facts(routeObserved: { probeDigest: string; lockDigest: string } | null): string {
   const recorded = {
-    sidecarDigest: "sha256:sidecar",
-    registryDigest: "sha256:registry",
-    existingPathsDigest: "sha256:paths",
-    designItemMapDigest: "sha256:map",
-    priorPostmortemDigests: [],
-    laneCap: 8,
-    codeRoots: ["src/**"],
-    testRoots: ["test/**"]
+    sdsDigests: { "run-wave-1": "sha256:sds-1" },
+    depends: {},
+    laneCap: 8
   };
   return JSON.stringify({
     gitFacts: { branches: [], worktrees: [], heartbeats: [], integrationHead: "9a01f3c", hostStatusPaths: [] },
@@ -135,13 +124,7 @@ function facts(routeObserved: { probeDigest: string; lockDigest: string } | null
       // routing gate at 1.c′ before design authoring, so digest 1 must be carried by the route alone.
       lockDigests: { lanes: "", handoff: {}, issues: "", postmortem: "" },
       recordedLaneInputs: recorded,
-      recomputedLaneInputDigests: {
-        sidecarDigest: recorded.sidecarDigest,
-        registryDigest: recorded.registryDigest,
-        existingPathsDigest: recorded.existingPathsDigest,
-        designItemMapDigest: recorded.designItemMapDigest,
-        priorPostmortemDigests: []
-      },
+      recomputedLaneInputDigests: { sdsDigests: { ...recorded.sdsDigests }, closedOutWaves: [] },
       freshIntentDigests: {},
       handoffProseDigests: {},
       ...(routeObserved ? { routeObserved } : {})
@@ -244,16 +227,16 @@ describe("FR-NODE-113 AC-5 — a resumed session reads the rung from the card", 
   it("reports the frozen rung even when the probe on disk would now classify a different one", async () => {
     const root = await seedRoot();
     const frozen = await run(root, ["route", "freeze"]);
-    // The probe is replaced with the baseline, on which no disqualifier fires: a recomputation here
-    // would return `R-PLAN` and switch this run's ladder mid-flight.
-    await write(root, "routing/probe.json", `${JSON.stringify(probeDocument(), null, 2)}\n`);
+    // The probe is replaced with one on which D3 fires: a recomputation here would return `R-ORCH`
+    // and switch this run's ladder mid-flight.
+    await write(root, "routing/probe.json", `${JSON.stringify(orchestratedProbeDocument(), null, 2)}\n`);
 
     const resumed = await resume(root, { probeDigest: PROBE_DIGEST, lockDigest: frozen.payload.digest as string });
 
     expect(resumed.exit).toBe(0);
     expect(resumed.payload.rung).toBe("R-STEP");
     // The replacement really would classify the other rung, so the assertion above is not vacuous.
-    expect(computeRoute(parseRouteProbe(probeDocument()), { auto: false }).rung).toBe("R-PLAN");
+    expect(computeRoute(parseRouteProbe(orchestratedProbeDocument()), { auto: false }).rung).toBe("R-ORCH");
   });
 
   it("reports no rung for a run whose card froze no route", async () => {

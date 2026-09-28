@@ -35,15 +35,15 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 // the FR-NODE-055 pre-commit gate, exposed here as a CI-wireable subcommand.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 const SPEC_STEPS_REL = path.join("docs", "spec", "steps");
 const STATE_MD_REL = path.join(SPEC_STEPS_REL, "state.md");
 
 /** Reads everything a stream has buffered (the CLI writes synchronously before main resolves). */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /**

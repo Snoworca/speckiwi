@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -8,6 +7,7 @@ import { main } from "../../src/cli/index.js";
 import { EVENT_KINDS, WAVES_EVENT_FIELDS } from "../../src/core/orchestrator/journal-schema.js";
 import { emptyDriftInputs, emptyGitFacts, minimalCard } from "../core/orchestrator/resume-fixtures.js";
 import { pinResumeRunRoot } from "./support/resume-run-root.js";
+import { sdsPath, sdsWorkspace } from "../core/orchestrator/sds-fixtures.js";
 
 // @req IR-CLI-084 AC-6 — "use of the option is recorded in the run journal". A line is *recorded*
 // only if the journal's own readers can interpret it, so the assertions below run the reader rather
@@ -52,37 +52,18 @@ async function write(root: string, relativePath: string, text: string): Promise<
 }
 
 /**
- * Runs `orchestrate schedule plan --strict-grounding --run-id run-a` over a sidecar whose one
- * declared path is absent, which is what `--strict-grounding` refuses. The journal line is written
- * before the refusal, so the refusal is the expected exit and not a failure of the fixture.
+ * Runs `orchestrate schedule waves --strict-grounding --run-id run-a` over an SDS whose one declared
+ * path is absent, which is what `--strict-grounding` refuses. The journal line is written before the
+ * refusal, so the refusal is the expected exit and not a failure of the fixture.
  */
 async function planUnderStrictGrounding(): Promise<{ root: string; exit: number }> {
-  const root = await mkdtemp(path.join(tmpdir(), "speckiwi-journal-discriminator-"));
-  await write(
-    root,
-    "plan.sidecar.json",
-    JSON.stringify({
-      schema_version: "1.1.0",
-      plan_contract: "1.2.0",
-      tasks: [
-        {
-          id: "T1",
-          type: "code",
-          action: "implement T1",
-          req_ids: ["FR-ARCH-001"],
-          files: [{ path: "src/core/new-thing.ts" }],
-          test_files: [],
-          covers_ac: ["AC-1"],
-          depends_on_task: []
-        }
-      ]
-    })
-  );
+  const root = await sdsWorkspace([{ id: "run-a-wave-1", files: ["src/core/new-thing.ts"] }]);
   await write(root, "existing.json", JSON.stringify(["src/core/lane-plan.ts"]));
 
   const result = await run([
-    "--root", root, "orchestrate", "schedule", "plan",
-    "--plan", "plan.sidecar.json",
+    "--root", root, "orchestrate", "schedule", "waves",
+    "--sds", sdsPath("run-a-wave-1"),
+    "--depends", "{}",
     "--existing-paths", "existing.json",
     "--strict-grounding",
     "--run-id", "run-a"

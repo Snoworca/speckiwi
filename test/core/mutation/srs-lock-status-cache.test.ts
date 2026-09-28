@@ -182,7 +182,7 @@ describe("SRS mutation lock and status cache", () => {
     finishWinner();
     const results = await Promise.all(attempts);
     expect(results.filter((result) => result.ok).length).toBe(1);
-    expect(results.filter((result) => !result.ok && result.error.code === "SRS_LOCKED").length).toBe(4);
+    expect(results.filter((result) => !result.ok && result.error?.code === "SRS_LOCKED").length).toBe(4);
   });
 
   it("REL-NODE-005 keeps read-only parsing available while an SRS lock is active", async () => {
@@ -323,7 +323,7 @@ describe("SRS mutation lock and status cache", () => {
     if (!regenerated.ok) return;
     await writeFile(
       path.join(rootPath, "kiwi", ".status.json"),
-      `${JSON.stringify({ ...regenerated.value, idCounters: { ...regenerated.value.idCounters, functional: { ARCH: 0 } } }, null, 2)}\n`,
+      `${JSON.stringify({ ...regenerated.value, idCounters: { ...regenerated.value?.idCounters, functional: { ARCH: 0 } } }, null, 2)}\n`,
       "utf8"
     );
     const collisionFallback = await addRequirement(root, { ...addRequirementInput("Collision fallback"), dryRun: true });

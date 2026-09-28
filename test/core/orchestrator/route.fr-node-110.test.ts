@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { computeRoute, GATED_BY, PROBE_FIELD_IDS, RUNGS, UNRECOGNISED_FIELD_GATES, type ProbeFieldId, type RouteProbe, type Rung } from "../../../src/core/orchestrator/route.js";
-import { baseProbe, stepProbe } from "../../support/route-probe-fixture.js";
+import { computeRoute, DISQUALIFIERS, GATED_BY, PROBE_FIELD_IDS, RUNGS, UNRECOGNISED_FIELD_GATES, type ProbeFieldId, type RouteProbe, type Rung } from "../../../src/core/orchestrator/route.js";
+import { baseProbe } from "../../support/route-probe-fixture.js";
 
 // FR-NODE-110 — `computeRoute` is the disqualifier-first classifier of 09 §3. Every predicate removes
 // rungs and none selects one, so a wrong route traces to one named predicate and one recorded value.
@@ -64,7 +64,7 @@ describe("FR-NODE-110 AC-1 — computeRoute is pure", () => {
 });
 
 describe("FR-NODE-110 AC-2 — computeRoute is total", () => {
-  it("returns exactly one rung from the closed three-value enum for any schema-valid probe", () => {
+  it("FR-NODE-110 AC-2: returns exactly one rung from the closed two-value enum for any schema-valid probe", () => {
     const modes: RouteProbe["mode"][] = ["sdd", "vibe", "wait", "tdd"];
     const sources: RouteProbe["modeSource"][] = ["mcp", "cli", "default-wait"];
     const ids = ["FR-NODE-001", "FR-CLI-002", "FR-FLOW-003"];
@@ -87,11 +87,6 @@ describe("FR-NODE-110 AC-2 — computeRoute is total", () => {
       const probe: RouteProbe = {
         mode: pick(modes),
         modeSource: pick(sources),
-        planContractOk: next() < 0.5,
-        planRejectReason: next() < 0.5 ? null : "reason",
-        planOpenTasks: count(),
-        planReqIds: someIds(),
-        planTarget: pick(targets),
         anchoredReqs: stepShaped ? [] : someIds(),
         anchorCoverage: [0, 0.1, 0.2, 0.5, 1][Math.floor(next() * 5)] as number,
         scopes: ["NODE", "CLI", "FLOW"].filter(() => next() < (stepShaped ? 0.2 : 0.5)),
@@ -117,7 +112,7 @@ describe("FR-NODE-110 AC-2 — computeRoute is total", () => {
       seen.add(decision.rung);
     }
 
-    expect([...seen].sort()).toEqual(["R-ORCH", "R-PLAN", "R-STEP"]);
+    expect([...seen].sort()).toEqual(["R-ORCH", "R-STEP"]);
   });
 });
 
@@ -197,86 +192,8 @@ describe("FR-NODE-110 AC-3 — every disqualifier has a firing and a non-firing 
     expect(firedBy(baseProbe({ orderedSections: 1, linkedSubIssues: 1, taskListGroups: 0 }))).not.toContain("D4");
   });
 
-  it("D5 fires on a contract-invalid plan and records the reject reason", () => {
-    const decision = computeRoute(baseProbe({ planContractOk: false, planRejectReason: "tdd_policy is disabled" }), AUTO);
-
-    expect(decision.removed).toContainEqual({ rung: "R-PLAN", by: "D5", observed: "tdd_policy is disabled" });
-  });
-
-  it("D5 does not fire on a contract-valid plan", () => {
-    expect(firedBy(baseProbe({ planContractOk: true }))).not.toContain("D5");
-  });
-
-  it("D6 fires when the plan has no open task and records which branch ran", () => {
-    const decision = computeRoute(baseProbe({ planOpenTasks: 0 }), AUTO);
-    const entry = decision.removed.find((row) => row.by === "D6");
-
-    expect(entry).toMatchObject({ rung: "R-PLAN", by: "D6" });
-    expect(entry?.observed).toMatchObject({ branch: "substitute", open_tasks: 0 });
-  });
-
-  it("D6 records the anchored branch when the anchor set carries signal", () => {
-    const decision = computeRoute(baseProbe({ anchoredReqs: ["FR-CLI-009"], anchorCoverage: 0.5 }), AUTO);
-    const entry = decision.removed.find((row) => row.by === "D6");
-
-    expect(entry?.observed).toMatchObject({ branch: "anchored", intersection: [] });
-  });
-
-  it("D6 does not fire when the plan covers this work through the substitute link", () => {
-    expect(firedBy(baseProbe())).not.toContain("D6");
-  });
-
-  it("D7 fires on blocked stability and records the blocked ids", () => {
-    const decision = computeRoute(baseProbe({ blockedStability: ["FR-NODE-007"] }), AUTO);
-
-    expect(decision.removed).toContainEqual({
-      rung: "R-PLAN",
-      by: "D7",
-      observed: { active_target: "v2.6.0", blocked_stability: ["FR-NODE-007"], fired: ["blocked_stability"] }
-    });
-  });
-
-  it("D7 fires on an empty active target", () => {
-    expect(firedBy(baseProbe({ activeTarget: "" }))).toContain("D7");
-  });
-
-  // AC-3 requires `observed` to record the value the predicate fired on. D7 is a disjunction over two
-  // grounds with different consequences (09 §3.3 D7) — an empty active target is a guaranteed child
-  // halt at `kiwi-pm`'s lifecycle gate, a blocked requirement is the routing-side guard D7 is the sole
-  // enforcement point for — and recording `blockedStability` on both branches wrote *"D7 observed []"*
-  // into the lock and into the committee's evidence table for the empty target, which is the one value
-  // it did not fire on. D4 carries the same shape above for the same reason.
-  it("D7 records the empty active target as the value it fired on", () => {
-    const decision = computeRoute(baseProbe({ activeTarget: "" }), AUTO);
-    const entry = decision.removed.find((row) => row.by === "D7");
-
-    expect(entry).toMatchObject({ rung: "R-PLAN", by: "D7" });
-    expect(entry?.observed).toEqual({ active_target: "", blocked_stability: [], fired: ["active_target"] });
-  });
-
-  it("D7 records an unregistered active target the same way", () => {
-    const decision = computeRoute(baseProbe({ activeTarget: null }), AUTO);
-
-    expect(decision.removed.find((row) => row.by === "D7")?.observed).toEqual({
-      active_target: null,
-      blocked_stability: [],
-      fired: ["active_target"]
-    });
-  });
-
-  it("D7 names both grounds when both fired, and still appends exactly one entry", () => {
-    const decision = computeRoute(baseProbe({ activeTarget: "", blockedStability: ["FR-NODE-007", "FR-NODE-008"] }), AUTO);
-
-    expect(decision.removed.filter((row) => row.by === "D7")).toHaveLength(1);
-    expect(decision.removed.find((row) => row.by === "D7")?.observed).toEqual({
-      active_target: "",
-      blocked_stability: ["FR-NODE-007", "FR-NODE-008"],
-      fired: ["active_target", "blocked_stability"]
-    });
-  });
-
-  it("D7 does not fire on a registered target with no blocked requirement", () => {
-    expect(firedBy(baseProbe())).not.toContain("D7");
+  it("FR-NODE-110 AC-3: the closed disqualifier enum is D1, D2, D3, D4 and D8", () => {
+    expect([...DISQUALIFIERS]).toEqual(["D1", "D2", "D3", "D4", "D8"]);
   });
 
   it("D8 fires on an unreadable field and records the field id", () => {
@@ -297,15 +214,12 @@ describe("FR-NODE-110 AC-4 — removed[] ordering is deterministic", () => {
     externalPaths: ["../sibling/x.ts"],
     scopes: ["NODE", "CLI"],
     orderedSections: 2,
-    planContractOk: false,
-    planRejectReason: "schema_version must be 1.1.0",
-    planOpenTasks: 0,
     blockedStability: ["FR-NODE-007"],
-    unreadable: ["S3", "S9"]
+    unreadable: ["S3", "S7"]
   });
 
-  it("evaluates predicates in the fixed order D1 through D8", () => {
-    expect(firedBy(everything)).toEqual(["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D8"]);
+  it("FR-NODE-110 AC-4: evaluates predicates in the fixed order D1, D2, D3, D4 then D8", () => {
+    expect(firedBy(everything)).toEqual(["D1", "D2", "D3", "D4", "D8", "D8"]);
   });
 
   it("produces the same sequence on every call", () => {
@@ -334,11 +248,6 @@ describe("FR-NODE-110 AC-5 — every count threshold is exercised at plus and mi
     expect(firedBy(baseProbe({ taskListGroups: 1 }))).toContain("D4");
   });
 
-  it("D6 fires at zero open tasks and clears at one", () => {
-    expect(firedBy(baseProbe({ planOpenTasks: 0 }))).toContain("D6");
-    expect(firedBy(baseProbe({ planOpenTasks: 1 }))).not.toContain("D6");
-  });
-
   it("the anchor-coverage comparison clears immediately below 0.2 and fires exactly at 0.2", () => {
     const anchored = { anchoredReqs: ["FR-NODE-001"] };
 
@@ -347,20 +256,16 @@ describe("FR-NODE-110 AC-5 — every count threshold is exercised at plus and mi
   });
 });
 
-describe("FR-NODE-110 AC-6 — each adjacent pair of the selection order", () => {
-  it("selects R-PLAN when nothing was removed", () => {
+describe("FR-NODE-110 AC-6 — the selection order's adjacent pair", () => {
+  it("FR-NODE-110 AC-6: selects R-STEP when nothing was removed", () => {
     const decision = computeRoute(baseProbe(), AUTO);
 
     expect(decision.removed).toEqual([]);
-    expect(decision.rung).toBe("R-PLAN");
+    expect(decision.rung).toBe("R-STEP");
   });
 
-  it("selects R-STEP when only R-PLAN was removed", () => {
-    expect(rungOf(stepProbe())).toBe("R-STEP");
-  });
-
-  it("selects R-ORCH when both R-PLAN and R-STEP were removed", () => {
-    expect(rungOf(stepProbe({ scopes: ["NODE", "CLI"] }))).toBe("R-ORCH");
+  it("FR-NODE-110 AC-6: selects R-ORCH when R-STEP was removed", () => {
+    expect(rungOf(baseProbe({ scopes: ["NODE", "CLI"] }))).toBe("R-ORCH");
   });
 });
 
@@ -375,9 +280,6 @@ describe("FR-NODE-110 AC-7 — no predicate removes R-ORCH", () => {
       orderedSections: 2,
       linkedSubIssues: 2,
       taskListGroups: 1,
-      planContractOk: false,
-      planRejectReason: "tasks[] is empty",
-      planOpenTasks: 0,
       blockedStability: ["FR-NODE-007"],
       activeTarget: "",
       unreadable: [...PROBE_FIELD_IDS]
@@ -390,41 +292,30 @@ describe("FR-NODE-110 AC-7 — no predicate removes R-ORCH", () => {
 });
 
 describe("FR-NODE-110 AC-8 — alternative is the second surviving rung", () => {
-  it("names R-STEP when R-PLAN is selected", () => {
-    expect(computeRoute(baseProbe(), AUTO).alternative).toBe("R-STEP");
+  it("FR-NODE-110 AC-8: names R-ORCH when R-STEP is selected", () => {
+    expect(computeRoute(baseProbe(), AUTO).alternative).toBe("R-ORCH");
   });
 
-  it("names R-ORCH when R-STEP is selected", () => {
-    expect(computeRoute(stepProbe(), AUTO).alternative).toBe("R-ORCH");
-  });
-
-  it("is null when exactly one rung survives", () => {
-    expect(computeRoute(stepProbe({ scopes: ["NODE", "CLI"] }), AUTO).alternative).toBeNull();
+  it("FR-NODE-110 AC-8: is null when exactly one rung survives", () => {
+    expect(computeRoute(baseProbe({ scopes: ["NODE", "CLI"] }), AUTO).alternative).toBeNull();
   });
 });
 
-describe("FR-NODE-110 AC-9 — D8's GATED_BY map is total over the twelve probe field ids", () => {
+describe("FR-NODE-110 AC-9 — D8's GATED_BY map is total over the eleven probe field ids", () => {
   const stepGated: ProbeFieldId[] = ["S3", "S3c", "S4", "S5", "S7", "S8", "S12"];
-  const planGated: ProbeFieldId[] = ["S2", "S9", "S10"];
 
-  it("is keyed by exactly the twelve members unreadable[] can hold", () => {
+  it("FR-NODE-110 AC-9: is keyed by exactly the eleven members unreadable[] can hold", () => {
     expect(Object.keys(GATED_BY).sort()).toEqual([...PROBE_FIELD_IDS].sort());
-    expect(PROBE_FIELD_IDS).toEqual(["S1", "S2", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S12"]);
+    expect(PROBE_FIELD_IDS).toEqual(["S1", "S3", "S3c", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S12"]);
   });
 
-  it.each(stepGated)("%s removes R-STEP", (field) => {
+  it.each(stepGated)("FR-NODE-110 AC-9: %s removes R-STEP", (field) => {
     const decision = computeRoute(baseProbe({ unreadable: [field] }), AUTO);
 
     expect(decision.removed).toEqual([{ rung: "R-STEP", by: "D8", observed: field }]);
   });
 
-  it.each(planGated)("%s removes R-PLAN", (field) => {
-    const decision = computeRoute(baseProbe({ unreadable: [field] }), AUTO);
-
-    expect(decision.removed).toEqual([{ rung: "R-PLAN", by: "D8", observed: field }]);
-  });
-
-  it.each(["S1", "S6"] as ProbeFieldId[])("%s maps to the empty list rather than to undefined", (field) => {
+  it.each(["S1", "S6", "S9", "S10"] as ProbeFieldId[])("FR-NODE-110 AC-9: %s maps to the empty list rather than to undefined", (field) => {
     expect(GATED_BY[field]).toEqual([]);
     expect(computeRoute(baseProbe({ unreadable: [field] }), AUTO).removed).toEqual([]);
   });
@@ -439,18 +330,15 @@ describe("FR-NODE-110 AC-9 — D8's GATED_BY map is total over the twelve probe 
     expect(decision.rung).toBe("R-ORCH");
   });
 
-  it("fails closed on an unrecognised id by removing both cheap rungs", () => {
+  it("FR-NODE-110 AC-9: fails closed on an unrecognised id by removing the cheap rung", () => {
     const decision = computeRoute(baseProbe({ unreadable: ["S11"] }), AUTO);
 
-    expect(UNRECOGNISED_FIELD_GATES).toEqual(["R-PLAN", "R-STEP"]);
-    expect(decision.removed).toEqual([
-      { rung: "R-PLAN", by: "D8", observed: "S11" },
-      { rung: "R-STEP", by: "D8", observed: "S11" }
-    ]);
+    expect(UNRECOGNISED_FIELD_GATES).toEqual(["R-STEP"]);
+    expect(decision.removed).toEqual([{ rung: "R-STEP", by: "D8", observed: "S11" }]);
   });
 
-  it("never lets an unrecognised id buy the zero-deliberation fast path", () => {
-    const decision = computeRoute(baseProbe({ planContractOk: false, blockedStability: ["FR-NODE-007"], unreadable: ["S11"] }), AUTO);
+  it("FR-NODE-110 AC-9: never lets an unrecognised id buy the zero-deliberation fast path", () => {
+    const decision = computeRoute(baseProbe({ blockedStability: ["FR-NODE-007"], unreadable: ["S11"] }), AUTO);
 
     expect(decision.recommended).toBe(false);
     expect(decision.withheld_because.map((entry) => entry.split(":")[0])).toContain("clause-1");
@@ -459,7 +347,7 @@ describe("FR-NODE-110 AC-9 — D8's GATED_BY map is total over the twelve probe 
 
 describe("FR-NODE-110 AC-10 — RouteDecision is a closed six-field record", () => {
   it("carries the six declared fields and no others", () => {
-    const decision = computeRoute(stepProbe(), AUTO);
+    const decision = computeRoute(baseProbe(), AUTO);
 
     expect(Object.keys(decision).sort()).toEqual(["alternative", "decisive", "recommended", "removed", "rung", "withheld_because"]);
   });

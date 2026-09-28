@@ -2,7 +2,7 @@ import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { createTestMcpServer } from "../../src/mcp/adapter.js";
+import { createTestMcpServer, type McpToolHandler } from "../../src/mcp/adapter.js";
 import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { resolveMcpStartupRoot, type McpServerOptions } from "../../src/mcp/server.js";
@@ -255,7 +255,7 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     const host = await gitWorkspaceRepo("relmcp005-ac5-order");
     const lane = await linkedWorktree(host, "relmcp005-ac5-order-wt", "lane-ac5-order");
     const server = createTestMcpServer({ root: host });
-    const handler = vi.fn(async () => ({ ok: true }));
+    const handler = vi.fn<McpToolHandler>(async () => ({ ok: true }));
     server.registerTool("worktree_local_probe", handler, { workspaceScope: "worktree-local" });
 
     expect(await server.callTool("worktree_local_probe", { workspaceRoot: path.join(host, "absent") })).toMatchObject({ ok: false });
@@ -272,35 +272,34 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     expect(handler.mock.calls[1]?.[1]).toMatchObject({ root: host, rootSource: "server-cwd-discovery" });
   });
 
-  it("AC-6: refusal is by destination — an accepting tool refuses a path landing under docs/spec", async () => {
+  // The checkbox tools this case probed until 4.0.0 left with the plan tools (FR-NODE-211 AC-1); the
+  // refusal is held on the surviving tools that take `path` straight from the caller (FR-NODE-211
+  // AC-6), in both the relative and the absolute spelling, and on a read of the same family.
+  it("REL-MCP-005 AC-6: refusal is by destination — an accepting tool refuses a path landing under docs/spec", async () => {
     const host = await gitWorkspaceRepo("relmcp005-ac6");
     const lane = await linkedWorktree(host, "relmcp005-ac6-wt", "lane-ac6");
     const server = serverFor(host);
+    const relativeSpec = "docs/spec/10.product-architecture.srs.md";
     const specPath = path.join(lane, "docs", "spec", "10.product-architecture.srs.md");
     const before = await readFile(specPath, "utf8");
+    const event = { schema_version: "1.0.0", skill: "kiwi-pm", run_id: "run-ac6", status: "TASK_DONE" };
 
-    for (const tool of ["workflow_task_check", "workflow_task_uncheck"]) {
-      const refused = (await server.callTool(tool, {
-        workspaceRoot: lane,
-        runId: "run-ac6",
-        taskId: "AC-1",
-        path: "docs/spec/10.product-architecture.srs.md"
-      })) as Refusal;
+    const probes = [
+      ["workflow_pipeline_emit", { runId: "run-ac6", owner: "kiwi-pm", path: relativeSpec, event }],
+      ["workflow_worklog_emit", { runId: "run-ac6", owner: "kiwi-pm", path: specPath, event }],
+      ["workflow_repair_record", { runId: "run-ac6", owner: "kiwi-pm", path: relativeSpec, event }],
+      ["workflow_logical_delete", { runId: "run-ac6", owner: "kiwi-pm", path: specPath, recordType: "pipeline_event", recordId: "run-ac6", reason: "probe" }],
+      ["workflow_resolve_artifact", { path: relativeSpec, includeBody: true }]
+    ] as const;
+    for (const [tool, input] of probes) {
+      const refused = (await server.callTool(tool, { workspaceRoot: lane, ...input })) as Refusal;
       expect(refused, `${tool} must refuse an SRS destination`).toMatchObject({
         ok: false,
         error: { code: "MCP_WORKSPACE_ROOT_REFUSED", reason: "workspace-root-forbidden-for-srs" }
       });
     }
-    const refusedSet = (await server.callTool("workflow_checklist_set", {
-      workspaceRoot: lane,
-      runId: "run-ac6",
-      taskId: "AC-1",
-      path: specPath,
-      checked: true
-    })) as Refusal;
-    expect(refusedSet).toMatchObject({ ok: false, error: { reason: "workspace-root-forbidden-for-srs" } });
 
-    expect(await readFile(specPath, "utf8"), "no acceptance-criteria checkbox may be toggled").toBe(before);
+    expect(await readFile(specPath, "utf8"), "no SRS document may be written through a workflow tool").toBe(before);
   });
 
   it("AC-7: a separate repository is neither read nor mutated", async () => {
@@ -349,7 +348,6 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     // Reads: each one would return the sibling's bytes if containment were absent.
     const reads = [
       ["workflow_resolve_artifact", { path: siblingPlan, includeBody: true }],
-      ["workflow_plan_status", { path: siblingPlan, includeBody: true }],
       ["workflow_pipeline_tail", { path: siblingJsonl }],
       ["workflow_worklog_tail", { path: siblingJsonl }]
     ] as const;
@@ -375,8 +373,13 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
         path: siblingJsonl,
         event: { schema_version: "1.0.0", skill: "kiwi-pm", run_id: "run-ac7-inherited", status: "TASK_DONE", summary: "intrusion" }
       }],
-      ["workflow_task_check", { runId: "run-ac7-inherited", taskId: "T-001", path: siblingPlan }],
-      ["workflow_checklist_set", { runId: "run-ac7-inherited", taskId: "AC-1", path: siblingSpec, checked: true }]
+      ["workflow_repair_record", {
+        runId: "run-ac7-inherited",
+        owner: "kiwi-pm",
+        path: siblingSpec,
+        event: { schema_version: "1.0.0", skill: "kiwi-pm", run_id: "run-ac7-inherited", status: "TASK_DONE", summary: "intrusion" }
+      }],
+      ["workflow_logical_delete", { runId: "run-ac7-inherited", owner: "kiwi-pm", path: siblingJsonl, recordType: "pipeline_event", recordId: SIBLING_RUN_MARKER, reason: "intrusion" }]
     ] as const;
     for (const [tool, input] of writes) {
       const outcome = await settle(server.callTool(tool, input));

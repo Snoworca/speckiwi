@@ -6,7 +6,11 @@
 // carries. The signature is structurally incapable of accepting conversation state, and the module
 // shells out to nothing.
 import {
+  CARD_PRECONDITIONS_RETIRED_IN_4_0_0,
+  LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0,
+  VERBS_RETIRED_IN_4_0_0,
   recoveryClassOf,
+  writtenBefore400,
   type DriftOutcome,
   type LaneClassName,
   type ReconciliationOutcome,
@@ -16,6 +20,7 @@ import {
   type WavesEvent
 } from "./journal-schema.js";
 import { hasMergeWitness, readLaneDisposition, type OrchTrailerCommit } from "./lane-state.js";
+import type { WaveSdsDigest } from "./freeze.js";
 import { computeInvariantDigest, type ResumeCard } from "./resume-card.js";
 // @req FR-NODE-113 — 09 §9.5 step 3's drift check, and deliberately not the classifier: the rung is
 // read on resume, never re-judged, and a module that cannot reach the classifier cannot re-judge it
@@ -44,22 +49,33 @@ export interface GitFacts {
   integrationCommits?: readonly OrchTrailerCommit[];
 }
 
+/** What `lanes.lock.json` records for `computeLanePlan`'s inputs (FR-NODE-138 AC-6). */
 export interface RecordedLaneInputs {
-  sidecarDigest: string;
-  registryDigest: string;
-  existingPathsDigest: string;
-  designItemMapDigest: string;
-  priorPostmortemDigests: string[];
+  /** One SDS digest per wave, keyed by wave id — one per file for a wave made of several SDS files. */
+  sdsDigests: Record<string, WaveSdsDigest>;
+  depends: Record<string, string[]>;
   laneCap: number;
-  codeRoots: string[];
-  testRoots: string[];
+}
+
+/**
+ * The SDS digests re-read now. A wave whose close-out commit deleted its SDS (FR-FLOW-183 AC-3) is
+ * named in `closedOutWaves` and is not recomputed; any other wave with no digest here has lost its SDS
+ * under the run, which is drift rather than something to skip.
+ */
+export interface RecomputedLaneInputDigests {
+  sdsDigests: Record<string, WaveSdsDigest>;
+  closedOutWaves: string[];
 }
 
 export interface LockDigests {
   design: string;
   waves: string;
   lanes: string;
-  handoff: Record<string, string>;
+  /**
+   * Digest 4's recorded side. @req FR-NODE-150 AC-4, FR-NODE-213 AC-6 — optional since 4.0.0, which
+   * freezes no handoff lock; a run that did freeze one is refused as a pre-4.0.0 run before this is read.
+   */
+  handoff?: Record<string, string>;
   issues: string;
   postmortem: string;
 }
@@ -68,18 +84,12 @@ export interface DriftInputs {
   lockDigests: LockDigests;
   /** What `lanes.lock.json` records, for digest 3. */
   recordedLaneInputs: RecordedLaneInputs;
-  /** The same five inputs re-read and re-digested now. */
-  recomputedLaneInputDigests: {
-    sidecarDigest: string;
-    registryDigest: string;
-    existingPathsDigest: string;
-    designItemMapDigest: string;
-    priorPostmortemDigests: string[];
-  };
+  /** The recorded SDS digests re-read and re-digested now. */
+  recomputedLaneInputDigests: RecomputedLaneInputDigests;
   /** Digest 2's comparand, keyed by the intent line's `verb|wave|stage|lane`. */
   freshIntentDigests: Record<string, string>;
-  /** Digest 4's comparand, keyed by lane. */
-  handoffProseDigests: Record<string, string>;
+  /** Digest 4's comparand, keyed by lane. Optional for the reason {@link LockDigests.handoff} gives. */
+  handoffProseDigests?: Record<string, string>;
   /**
    * @req FR-NODE-113 AC-6 — `routing/probe.json` and `routing/route.lock.json` as they digest on disk
    * NOW, which is 09 §9.5 step 3's comparand. It rides here rather than being derived because both
@@ -200,15 +210,15 @@ function classifyLanes(
     // presence of a `lane_disposition` object. Classifying on presence let a mistyped kind read as
     // terminal, so a resumed session settled a lane on a value nothing recognised — and settling is
     // the direction that loses work. `readLaneDisposition` refuses an out-of-enum kind, and a refusal
-    // is not a settlement: the lane falls through to the classes below.
+    // is not a settlement. Nor is it a lane never dispatched: the journal says the lane left the run,
+    // so dispatching it again repeats finished work. It classifies `divergent`, which halts the resume
+    // on the disagreement (FR-NODE-213 AC-6).
     const read = readLaneDisposition(view.lines, { wave, stage, lane });
     const disposition = read.ok && read.disposition !== null;
     const branch = branchFor(gitFacts, lane);
-    // @req FR-NODE-160 — the witness a phase-1 run leaves is a trailered commit on the integration
-    // branch, not a lane branch: the unit commits onto integration and creates no branch of its own,
-    // so `ancestorOfIntegration` was always false here and a landed unit fell through to
-    // `not-dispatched` with `execute-unit` next and nothing blocking. The lane-branch form is kept
-    // because phase 2 does create one; either witness is a landing.
+    // @req FR-NODE-160 — a landed worker may leave no lane branch, only a trailered commit on the
+    // integration branch, so `ancestorOfIntegration` alone read a landed wave as never dispatched with
+    // nothing blocking. Either witness is a landing.
     const merged =
       branch?.ancestorOfIntegration === true ||
       hasMergeWitness(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
@@ -217,12 +227,12 @@ function classifyLanes(
 
     // First match wins, in §4.6's order.
     if (live !== "dead") return { lane, wave, stage, klass: "lane-possibly-live" as LaneClassName, nextVerb: null };
+    if (!read.ok) return { lane, wave, stage, klass: "divergent" as LaneClassName, nextVerb: null };
     if (disposition && !merged) return { lane, wave, stage, klass: "lane-quarantined" as LaneClassName, nextVerb: null };
     if (merged && integrated) return { lane, wave, stage, klass: "lane-landed" as LaneClassName, nextVerb: null };
     if (merged && !integrated) return { lane, wave, stage, klass: "journal-behind-git" as LaneClassName, nextVerb: null };
-    // Phase 1 creates no lane branch, so `lane-collectable` and `lane-integrable` are unreachable and
-    // an un-landed unit resolves to the one executor phase 1 has (§4.6, §5.14).
-    return { lane, wave, stage, klass: "not-dispatched" as LaneClassName, nextVerb: "execute-unit" as VerbName };
+    // @req FR-NODE-160 AC-4 — an un-landed wave's worker is dispatched again.
+    return { lane, wave, stage, klass: "not-dispatched" as LaneClassName, nextVerb: "dispatch-lane" as VerbName };
   });
 }
 
@@ -248,6 +258,18 @@ function cardDisagrees(card: ResumeCard, classification: LaneClass[]): boolean {
 // ---------------------------------------------------------------------------------------------
 // §4.7 — the four drift digests
 // ---------------------------------------------------------------------------------------------
+
+/**
+ * The SDS of `wave` that no longer digests as recorded: the wave itself for a one-file wave, and each
+ * file by path for a wave made of several, so a drift names the file that moved. @req FR-NODE-213 AC-2
+ */
+function driftedSdsFiles(wave: string, recorded: WaveSdsDigest, now: WaveSdsDigest | undefined): string[] {
+  if (typeof recorded === "string") return now === recorded ? [] : [wave];
+  const nowFiles: Readonly<Record<string, string>> = typeof now === "object" ? now : {};
+  return Object.entries(recorded)
+    .filter(([file, digest]) => nowFiles[file] !== digest)
+    .map(([file]) => `${wave} (${file})`);
+}
 
 function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: DriftInputs): DriftReport {
   const digests: DriftReport["digests"] = [];
@@ -292,30 +314,30 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
     detail: movedIntents.length > 0 ? `inputs changed between intent and result: ${movedIntents.join(", ")}` : "every intent's inputs still digest the same"
   });
 
-  const recorded = driftInputs.recordedLaneInputs;
+  // @req FR-NODE-150 AC-5, FR-NODE-213 AC-2 — digest 3 is the SDS of every wave not yet closed out.
+  // `stale-not-wrong` keeps its declared slot with no 4.0.0 input producing it: the existing paths and
+  // prior postmortems that used to produce it are no longer lane-plan inputs.
   const now = driftInputs.recomputedLaneInputDigests;
-  const planDrift =
-    recorded.sidecarDigest !== now.sidecarDigest ||
-    recorded.registryDigest !== now.registryDigest ||
-    recorded.designItemMapDigest !== now.designItemMapDigest;
-  // A file a lane created or a postmortem a wave wrote is normal progress: the plan is stale but not
-  // wrong, and the lock is NOT recomputed mid-wave.
-  const staleNotWrong =
-    recorded.existingPathsDigest !== now.existingPathsDigest ||
-    recorded.priorPostmortemDigests.join("\u0000") !== now.priorPostmortemDigests.join("\u0000");
+  const closedOut = new Set(now.closedOutWaves);
+  const driftedWaves = Object.entries(driftInputs.recordedLaneInputs.sdsDigests)
+    .filter(([wave]) => !closedOut.has(wave))
+    .flatMap(([wave, recorded]) => driftedSdsFiles(wave, recorded, now.sdsDigests[wave]))
+    .sort();
+  const planDrift = driftedWaves.length > 0;
   digests.push({
     index: 3,
-    outcome: planDrift ? "drift" : staleNotWrong ? "stale-not-wrong" : "match",
+    outcome: planDrift ? "drift" : "match",
     gate: planDrift ? "lane-plan-drift" : null,
     detail: planDrift
-      ? "a lane-plan input the lock pins changed under the run"
-      : staleNotWrong
-        ? "existing paths or prior postmortems moved; the plan is stale but not wrong"
-        : "every recorded lane-plan input still digests the same"
+      ? `the SDS of ${driftedWaves.join(", ")} no longer digests as the lanes lock recorded`
+      : "every recorded SDS of a wave not yet closed out still digests the same"
   });
 
-  const editedHandoffs = Object.entries(driftInputs.handoffProseDigests).filter(
-    ([lane, digest]) => driftInputs.lockDigests.handoff[lane] !== undefined && driftInputs.lockDigests.handoff[lane] !== digest
+  // A lane is compared only when both sides name it, so an absent side — the 4.0.0 shape — compares
+  // nothing and is a match rather than drift.
+  const lockedHandoffs = driftInputs.lockDigests.handoff ?? {};
+  const editedHandoffs = Object.entries(driftInputs.handoffProseDigests ?? {}).filter(
+    ([lane, digest]) => lockedHandoffs[lane] !== undefined && lockedHandoffs[lane] !== digest
   );
   digests.push({
     index: 4,
@@ -328,6 +350,39 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
   });
 
   return { digests };
+}
+
+// ---------------------------------------------------------------------------------------------
+// FR-NODE-213 AC-6 — a run written in the R-PLAN and handoff era
+// ---------------------------------------------------------------------------------------------
+
+function includes(values: readonly string[], value: unknown): boolean {
+  return typeof value === "string" && values.includes(value);
+}
+
+/**
+ * What marks a run as written before 4.0.0 in a vocabulary 4.0.0 removed: a retired lane disposition
+ * or verb on a line below 2.0.0, and a card whose next verb, precondition or frozen rung left with the
+ * plan rung and the handoff documents. Empty for a run 4.0.0 can resume — including a 1.x run that
+ * never used that vocabulary. The resume path refuses a run this names, and names the reasons.
+ * @req FR-NODE-213 AC-6
+ */
+export function retiredRunMarkers(view: WavesJournalView, card: ResumeCard): string[] {
+  const markers: string[] = [];
+  for (const event of view.lines) {
+    if (!writtenBefore400(event)) continue;
+    const kind = (event.lane_disposition as { kind?: unknown } | undefined)?.kind;
+    if (includes(LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0, kind)) markers.push(`journal line ${event.journalLine}: lane_disposition.kind ${String(kind)}`);
+    if (includes(VERBS_RETIRED_IN_4_0_0, event.verb)) markers.push(`journal line ${event.journalLine}: verb ${String(event.verb)}`);
+  }
+  const verb: unknown = card.next_action?.verb;
+  if (includes(VERBS_RETIRED_IN_4_0_0, verb)) markers.push(`card next_action.verb ${String(verb)}`);
+  for (const precondition of card.next_action?.preconditions ?? []) {
+    if (includes(CARD_PRECONDITIONS_RETIRED_IN_4_0_0, precondition)) markers.push(`card precondition ${precondition}`);
+  }
+  const rung: unknown = card.frozen?.route?.rung;
+  if (rung === "R-PLAN") markers.push("card frozen.route.rung R-PLAN");
+  return markers;
 }
 
 // ---------------------------------------------------------------------------------------------

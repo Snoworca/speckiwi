@@ -19,11 +19,11 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //   - AC-4: the argument help lists tdd as a switch target.
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function writeStateMd(root: string, mode: string): Promise<void> {

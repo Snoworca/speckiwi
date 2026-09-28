@@ -13,6 +13,7 @@ import {
   tiedTogether,
   windowsAround
 } from "../support/auto-option-copies.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-073
 // FR-FLOW-073 — the committee-decided gate population is bounded by the two carried conditions.
@@ -55,13 +56,13 @@ const SKILL_VARIANTS = ["claude", "codex", "etc"] as const;
 /** The `critical_gates[]` declarations in a skill body: everything inside a `[{gate_id: ...}]`. */
 function criticalGateDeclarations(text: string): string[] {
   return [...text.matchAll(/critical_gates(?:\[\])?[^\n]*?(\[\s*\{[\s\S]*?\}\s*\])/g)].map(
-    (m) => m[1]
+    (m) => at(m, 1)
   );
 }
 
 /** Every `gate_id` a skill body registers as critical, from declarations and from table rows. */
 function criticalGateIds(text: string): string[] {
-  return [...text.matchAll(/gate_id:\s*"([^"]+)"/g)].map((m) => m[1]);
+  return [...text.matchAll(/gate_id:\s*"([^"]+)"/g)].map((m) => at(m, 1));
 }
 
 describe("FR-FLOW-073 — committee-decided gate population bounded by the two carried conditions", () => {

@@ -57,7 +57,7 @@ describe("FR-NODE-113 AC-1 — freezeRoute is deterministic and content-addresse
 
     expect(lock).toMatchObject({
       schema_version: "1.0.0",
-      classifier_version: "route-classifier@1.0.0",
+      classifier_version: "route-classifier@2.0.0",
       run_id: "2026-08-01.speckiwi.v260",
       removed: decision.removed,
       alternative: decision.alternative,
@@ -70,7 +70,8 @@ describe("FR-NODE-113 AC-1 — freezeRoute is deterministic and content-addresse
   });
 
   it("records the work-mode value, its source and the §4.3 divergence", () => {
-    const conforming = freezeRoute(baseProbe(), computeRoute(baseProbe(), AUTO), gateRecord());
+    const orchestrated = baseProbe({ scopes: ["NODE", "CLI"] });
+    const conforming = freezeRoute(orchestrated, computeRoute(orchestrated, AUTO), gateRecord());
     const stepShaped = freezeRoute(stepProbe({ mode: "vibe" }), computeRoute(stepProbe({ mode: "vibe" }), AUTO), gateRecord());
 
     expect(conforming.work_mode).toEqual({ value: "sdd", source: "mcp", divergence: null });
@@ -190,9 +191,9 @@ describe("FR-NODE-113 AC-5 — a resumed session reads the rung and cannot recom
     const frozenProbe = stepProbe();
     const lock = freezeRoute(frozenProbe, computeRoute(frozenProbe, AUTO), gateRecord());
     const frozen = frozenRouteEntry(LOCK_PATH, lock);
-    const driftedProbe = baseProbe();
+    const driftedProbe = baseProbe({ scopes: ["NODE", "CLI"] });
 
-    expect(computeRoute(driftedProbe, AUTO).rung).toBe("R-PLAN");
+    expect(computeRoute(driftedProbe, AUTO).rung).toBe("R-ORCH");
     expect(resumeRung(frozen)).toBe("R-STEP");
   });
 
@@ -253,13 +254,13 @@ describe("FR-NODE-113 — 09 §4.3's work-mode divergence, and the gate record's
     expect(lock.work_mode.divergence).toBe("step-rung-removed");
   });
 
-  it("records the overridden routing clause when mode is tdd and the step rung lost on order alone", () => {
+  it("FR-NODE-212 AC-1: records the override when mode is tdd and the gate moved a surviving step rung to R-ORCH", () => {
     const probe = baseProbe({ mode: "tdd" });
-    const lock = freezeRoute(probe, computeRoute(probe, AUTO), gateRecord());
+    const lock = freezeRoute(probe, computeRoute(probe, AUTO), gateRecord({ selected: "alternative", decided_by: "user" }));
 
-    expect(lock.rung).toBe("R-PLAN");
+    expect(lock.rung).toBe("R-ORCH");
     expect(lock.removed).toEqual([]);
-    expect(lock.work_mode.divergence).toBe("plan-rung-won-on-order");
+    expect(lock.work_mode.divergence).toBe("step-rung-overridden");
   });
 
   it("records no divergence when mode is tdd and the run dispatches the step rung", () => {

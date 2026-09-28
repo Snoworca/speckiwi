@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readResolvedSkill } from "../support/resolved-skill.js";
+import { readRepoFile } from "./kiwi-renderings.js";
+import { at } from "../support/at.js";
 
 // @req FR-FLOW-029
 // FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator with per-wave targets and resumable progress.
@@ -31,12 +33,6 @@ function readWaveSkill(variant: string): string {
   return readResolvedSkill(variant, "kiwi-wave-master");
 }
 
-/** The provider kiwi-pipeline SKILL.md already exists (FR-FLOW-026 / T-PH003-04); read it directly
- * for the AC-4 cross-file assertion that both sides of the 029->026 dependency are authored. */
-function readPipelineSkill(variant: string): string {
-  return readFileSync(path.join(REPO_ROOT, "skills", variant, "kiwi-pipeline", "SKILL.md"), "utf8");
-}
-
 /**
  * Body text with the leading YAML frontmatter block stripped. Content assertions run against the body
  * so they verify the workflow prose, not the frontmatter `description` (which mentions skill names and
@@ -44,6 +40,15 @@ function readPipelineSkill(variant: string): string {
  */
 function skillBody(text: string): string {
   return text.replace(/^---[\s\S]*?\n---\s*\n?/, "");
+}
+
+/** A `## N.` section of the skill's own body, from its heading to the next level-1/2 heading. */
+function h2Section(body: string, heading: RegExp): string {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => heading.test(line));
+  if (start === -1) return "";
+  const stop = lines.findIndex((line, i) => i > start && /^#{1,2}\s/.test(line));
+  return lines.slice(start, stop === -1 ? lines.length : stop).join("\n");
 }
 
 /** Text windows of +/- `radius` chars around every match of `re` within a single `text`. */
@@ -97,19 +102,12 @@ const RESUME = /resume|재개|이어서|다시\s*시작|재시작/i;
 const FIRST_INCOMPLETE =
   /first\s+incomplete|incomplete\s+wave|첫\s*(?:번째\s*)?(?:미완료|미완|incomplete)|미완료(?:된)?\s*(?:첫|wave)/i;
 
-// AC-4: invoke /kiwi-pipeline per wave in registration order; the per-wave pipeline SKIPS re-authoring
-// and enters at feasibility/planning because the up-front /kiwi-srs already authored the wave SRS.
+// Wave order vocabulary (FR-FLOW-030 AC-2: the epic mode merges the waves in wave order).
 const PER_WAVE_ORDER =
   /per[- ]wave|wave\s*별|각\s*wave|in\s+order|순서(?:대로|에\s*따라)?|순차|registration\s+order|등록\s*순서/i;
-const SKIP_REAUTHOR =
-  /skip-authoring|skip[\s\S]{0,16}(?:re-?author|authoring|재저작|재작성)|재저작(?:을)?\s*(?:건너|생략|하지\s*않)|재작성\s*(?:을)?\s*(?:건너|생략|없이|하지\s*않)|건너뛰고|생략하고|without\s+re-?author/i;
-const FEASIBILITY_PLANNING = /feasibility|planning|planner|타당성|구현\s*가능성|계획|--from=/i;
-// The provider entry kiwi-wave-master consumes (authored in kiwi-pipeline by T-PH003-04 / FR-FLOW-026).
-const RESUME_FROM_STAGE = /skip-authoring|resume-from-stage/i;
-const FROM_STAGE_FLAG = /--from=/;
 
 // AC-5: under --auto run all waves autonomously to the end (per-wave pipeline safety gates still
-// apply); under --max propagate --max to every wave's kiwi-pipeline and its sub-skills.
+// apply); under --max propagate --max to the sub-skills every wave runs (FR-FLOW-029 AC-5, revised in 4.0.0).
 const ALL_WAVES_END =
   /all\s+waves|every\s+wave|모든\s*wave|전체\s*wave|끝까지|to\s+the\s+end|완주|autonomous(?:ly)?|자율(?:적으로)?|자동으로\s*(?:끝|완료|진행|끝까지)/i;
 const SAFETY_GATE =
@@ -195,38 +193,46 @@ describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
         ).toBe(true);
       });
 
-      it("AC-4: runs /kiwi-pipeline per wave in order skipping re-authoring, and the provider pipeline entry exists (cross-file)", () => {
-        // Consumer side: kiwi-wave-master invokes /kiwi-pipeline per wave in order and the per-wave run
-        // SKIPS re-authoring, entering at feasibility/planning (up-front /kiwi-srs already authored it).
+      it("FR-FLOW-029 AC-4: runs its waves through the shared parallel-waves contract, never a per-wave /kiwi-pipeline, and never re-runs the host-serial /kiwi-srs authoring", () => {
+        // Revised in 4.0.0 (FR-FLOW-188 AC-7): the per-wave /kiwi-pipeline delegation and the provider
+        // skip-authoring entry it consumed are gone, so the cross-file provider check left with them.
         const waveBody = skillBody(readWaveSkill(variant));
-        const perWavePipeline = windowsAround(waveBody, KIWI_PIPELINE, 340).some((win) =>
-          PER_WAVE_ORDER.test(win),
-        );
+        const stage = h2Section(waveBody, /^##\s+5\.\s/);
+        expect(stage, `FR-FLOW-029 AC-4: ${variant} kiwi-wave-master must keep its §5 stage-execution section`).not.toBe("");
         expect(
-          perWavePipeline,
-          `FR-FLOW-029 AC-4: ${variant} kiwi-wave-master must invoke /kiwi-pipeline per wave in order`,
+          /_shared\/kiwi\/parallel-waves\.md/.test(stage),
+          `FR-FLOW-029 AC-4: ${variant} §5 must run the waves through _shared/kiwi/parallel-waves.md`,
         ).toBe(true);
-        const skipsReauthoring = windowsAround(waveBody, KIWI_PIPELINE, 420).some(
-          (win) => SKIP_REAUTHOR.test(win) && FEASIBILITY_PLANNING.test(win),
-        );
+        // Every kiwi-pipeline mention left in §5 is the refusal to delegate to it, and that refusal exists.
+        const pipelineLines = stage.split("\n").filter((line) => KIWI_PIPELINE.test(line));
+        expect(pipelineLines.length, `FR-FLOW-029 AC-4: ${variant} §5 must state that it does not delegate to /kiwi-pipeline`).toBeGreaterThan(0);
+        for (const line of pipelineLines) {
+          expect(
+            /위임하지 않는다|does not delegate/.test(line),
+            `FR-FLOW-029 AC-4: ${variant} §5 still hands a wave to /kiwi-pipeline: ${line}`,
+          ).toBe(true);
+        }
+        // The contract's host-serial /kiwi-srs step authors each wave's requirements (§4, PW-1).
+        const registration = h2Section(waveBody, /^##\s+4\.\s/);
         expect(
-          skipsReauthoring,
-          `FR-FLOW-029 AC-4: ${variant} kiwi-wave-master per-wave /kiwi-pipeline must skip re-authoring and run from feasibility/planning through implementation`,
+          /wave 하나씩 직렬로/.test(registration) && /PW-1/.test(registration),
+          `FR-FLOW-029 AC-4: ${variant} §4 must author each wave's SRS host-serially as the contract's PW-1 step`,
         ).toBe(true);
-
-        // Provider side (cross-file): the kiwi-pipeline SKILL.md the consumer relies on must itself
-        // carry the skip-authoring / resume-from-stage entry (FR-FLOW-026 / T-PH003-04, R-005), so the
-        // 029->026 capability is proven on both sides.
-        const pipeBody = skillBody(readPipelineSkill(variant));
-        const providerHasEntry =
-          RESUME_FROM_STAGE.test(pipeBody) && FROM_STAGE_FLAG.test(pipeBody) && FEASIBILITY_PLANNING.test(pipeBody);
+        // SDS authoring and the workers never re-run that authoring; only the incremental /kiwi-srs
+        // re-entry and the SDS close-out clarification stay sanctioned SRS writes.
+        const noRerun = stage.split("\n").find((line) => /SDS 작성과 워커는/.test(line)) ?? "";
+        expect(noRerun, `FR-FLOW-029 AC-4: ${variant} §5 must state that SDS authoring and the workers do not re-author`).not.toBe("");
         expect(
-          providerHasEntry,
-          `FR-FLOW-029 AC-4: ${variant} provider kiwi-pipeline SKILL.md must contain the skip-authoring / resume-from-stage (--from=) entry the wave-master consumes`,
+          /저작은 §4 에서 한 번 끝났다/.test(noRerun) && /다시 돌리지 않는다/.test(noRerun),
+          `FR-FLOW-029 AC-4: ${variant} the no-re-authoring rule must bind SDS authoring and the workers`,
+        ).toBe(true);
+        expect(
+          /증분 `[/$]kiwi-srs` 재진입/.test(noRerun) && /SDS close-out/.test(noRerun),
+          `FR-FLOW-029 AC-4: ${variant} the rule must keep the incremental /kiwi-srs re-entry and the SDS close-out clarification sanctioned`,
         ).toBe(true);
       });
 
-      it("AC-5: --auto runs all waves autonomously (gates still apply); --max propagates to every wave's pipeline and sub-skills", () => {
+      it("FR-FLOW-029 AC-5: --auto runs all waves autonomously (child safety gates still apply); --max propagates to the sub-skills every wave runs", () => {
         const body = skillBody(readWaveSkill(variant));
         // Under --auto, all waves run autonomously to the end.
         const autoRunsAll = windowsAround(body, AUTO_FLAG, 320).some((win) => ALL_WAVES_END.test(win));
@@ -234,19 +240,19 @@ describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
           autoRunsAll,
           `FR-FLOW-029 AC-5: ${variant} kiwi-wave-master must, under --auto, run all waves autonomously to the end`,
         ).toBe(true);
-        // Per-wave kiwi-pipeline safety gates still apply under --auto.
+        // The safety gates of the children each wave runs still apply under --auto.
         const gatesStillApply = windowsAround(body, AUTO_FLAG, 340).some((win) => SAFETY_GATE.test(win));
         expect(
           gatesStillApply,
-          `FR-FLOW-029 AC-5: ${variant} kiwi-wave-master must state that per-wave kiwi-pipeline safety gates still apply under --auto`,
+          `FR-FLOW-029 AC-5: ${variant} kiwi-wave-master must state that the safety gates of the children each wave runs still apply under --auto`,
         ).toBe(true);
-        // Under --max, --max is propagated to every wave's kiwi-pipeline and its sub-skills.
+        // Under --max, --max is propagated to the sub-skills every wave runs.
         const maxPropagates = windowsAround(body, MAX_FLAG, 300).some(
           (win) => PROPAGATE.test(win) && SUBSKILL.test(win),
         );
         expect(
           maxPropagates,
-          `FR-FLOW-029 AC-5: ${variant} kiwi-wave-master must propagate --max to every wave's kiwi-pipeline and its sub-skills`,
+          `FR-FLOW-029 AC-5: ${variant} kiwi-wave-master must propagate --max to the sub-skills every wave runs`,
         ).toBe(true);
       });
     });
@@ -261,7 +267,7 @@ describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
     const arrMatch = doctorSrc.match(/EXPECTED_KIWI_SKILLS\s*=\s*\[([\s\S]*?)\]/);
     expect(arrMatch, "package-doctor.ts must declare an EXPECTED_KIWI_SKILLS array").not.toBeNull();
     expect(
-      /["']kiwi-wave-master["']/.test(arrMatch![1]),
+      /["']kiwi-wave-master["']/.test(at(arrMatch!, 1)),
       "FR-FLOW-029 AC-1: package-doctor.ts EXPECTED_KIWI_SKILLS must register kiwi-wave-master so the packed-skill-entrypoints doctor check covers the three kiwi-wave-master SKILL.md entrypoints",
     ).toBe(true);
   });
@@ -298,16 +304,16 @@ function epicEntrySection(body: string): string {
   const headingStart = /^#{2,}\s+(?=.*(?:epic|에픽))(?=.*(?:entry|mode|진입|모드))/i;
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (headingStart.test(lines[i])) {
+    if (headingStart.test(at(lines, i))) {
       start = i;
       break;
     }
   }
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -329,12 +335,12 @@ const RESEARCH_PLAN_DOC =
   /research\s*(?:·|\/)?\s*plan|research\s+(?:or\s+)?plan|plan\s+document|research\s+document|연구\s*[·/]?\s*계획|계획\s*문서|연구\s*문서|로드맵\s*문서/i;
 
 // AC-2: after extraction, proceed IDENTICALLY to the FR-FLOW-029 flow — scoped per-wave target
-// registration, waves.jsonl progress, per-wave /kiwi-pipeline in order. (WAVE_TARGET / SCOPE /
+// registration, waves.jsonl progress, the shared parallel-waves contract with merges in wave order. (WAVE_TARGET / SCOPE /
 // TARGET_TOKEN / WAVES_JSONL / KIWI_PIPELINE / PER_WAVE_ORDER are reused from the FR-FLOW-029 block.)
 const IDENTICAL =
   /identical|동일(?:하게|한|히)?|same\s+(?:flow|as|way)|그대로|똑같이|equally|FR-FLOW-029/i;
 
-// AC-3: only the up-front wave-split research analysis is skipped; each wave's /kiwi-pipeline still
+// AC-3: only the up-front wave-split research analysis is skipped; each wave's feasibility and SDS authoring still
 // performs its own per-wave research. OQ-030 guard: structured epic -> research-skip + structure split;
 // unstructured epic -> FR-FLOW-029 wave-split subagent fallback. (SUBAGENT / DECOMPOSE reused above.)
 const SKIP = /skip|생략|건너뛰|건너\s*뛰/i;
@@ -390,7 +396,7 @@ describe("FR-FLOW-030 — kiwi-wave-master epic-issue entry mode", () => {
         ).toBe(true);
       });
 
-      it("AC-2: after extraction proceeds identically to FR-FLOW-029 (scoped wave-{n} target, waves.jsonl, per-wave /kiwi-pipeline in order)", () => {
+      it("FR-FLOW-030 AC-2: after extraction proceeds identically to FR-FLOW-029 (scoped wave-{n} target, waves.jsonl, shared parallel-waves contract with merges in wave order)", () => {
         const sec = epicEntrySection(skillBody(readWaveSkill(variant)));
         // Frames the post-extraction flow as identical to the FR-FLOW-029 flow, co-located with the
         // reused machinery so the "identical" claim actually references that machinery (not dead weight).
@@ -412,30 +418,44 @@ describe("FR-FLOW-030 — kiwi-wave-master epic-issue entry mode", () => {
           WAVES_JSONL.test(sec),
           `FR-FLOW-030 AC-2: ${variant} epic entry mode must track wave progress in waves.jsonl`,
         ).toBe(true);
-        // RED driver: names per-wave /kiwi-pipeline execution in order within the epic section.
+        // FR-FLOW-030 AC-2 (revised in 4.0.0): the waves run through the shared parallel-waves contract
+        // (FR-FLOW-188) with merges in wave order — anchored on the execution bullet of the AC-2
+        // subsection, and no per-wave /kiwi-pipeline left anywhere in the epic section.
+        const execution = sec.split("\n").find((line) => /^\s*-\s/.test(line) && /parallel-waves\.md/.test(line)) ?? "";
         expect(
-          KIWI_PIPELINE.test(sec) && PER_WAVE_ORDER.test(sec),
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must run a per-wave /kiwi-pipeline in order`,
+          execution,
+          `FR-FLOW-030 AC-2: ${variant} epic entry mode must run its waves through the shared parallel-waves contract`,
+        ).not.toBe("");
+        expect(
+          /병합/.test(execution) && PER_WAVE_ORDER.test(execution),
+          `FR-FLOW-030 AC-2: ${variant} epic entry mode must merge the waves in wave order`,
         ).toBe(true);
+        expect(
+          KIWI_PIPELINE.test(sec),
+          `FR-FLOW-030 AC-2: ${variant} epic entry mode still runs a per-wave /kiwi-pipeline`,
+        ).toBe(false);
       });
 
-      it("AC-3: only the up-front wave-split research is skipped and each wave still researches; OQ-030 structure guard (structured->skip / unstructured->wave-split subagent fallback)", () => {
+      it("FR-FLOW-030 AC-3: only the up-front wave-split research is skipped and each wave still researches; OQ-030 structure guard (structured->skip / unstructured->wave-split subagent fallback)", () => {
         const sec = epicEntrySection(skillBody(readWaveSkill(variant)));
         // The skipped work is scoped to the UP-FRONT wave-split research analysis.
         expect(
           SKIP.test(sec) && UPFRONT.test(sec) && WAVE_SPLIT.test(sec) && RESEARCH.test(sec),
           `FR-FLOW-030 AC-3: ${variant} epic entry mode must skip only the up-front wave-split research analysis`,
         ).toBe(true);
-        // RED driver: each wave's own /kiwi-pipeline STILL performs its OWN per-wave research. An
-        // "own/self + research" collocation must appear near a /kiwi-pipeline mention, so neither AC-2's
-        // "per-wave pipeline in order" machinery vocabulary nor the up-front-skip sentence's bare `연구`
-        // token can satisfy it.
-        const eachWaveStillResearches = windowsAround(sec, KIWI_PIPELINE, 260).some((win) =>
-          OWN_RESEARCH.test(win),
-        );
+        // FR-FLOW-030 AC-3 (revised in 4.0.0): each wave's feasibility and SDS authoring under the shared
+        // parallel-waves contract STILL perform their OWN per-wave research. The "own/self + research"
+        // collocation must sit on the line that names both feasibility and SDS authoring, so neither
+        // AC-2's machinery vocabulary nor the up-front-skip sentence's bare `연구` token can satisfy it.
+        const ownResearchLine =
+          sec.split("\n").find((line) => /feasibility/i.test(line) && /SDS 작성|SDS authoring/i.test(line)) ?? "";
         expect(
-          eachWaveStillResearches,
-          `FR-FLOW-030 AC-3: ${variant} epic entry mode must state each wave's /kiwi-pipeline still performs its own per-wave research`,
+          ownResearchLine !== "" && OWN_RESEARCH.test(ownResearchLine),
+          `FR-FLOW-030 AC-3: ${variant} epic entry mode must state each wave's feasibility and SDS authoring still perform their own per-wave research`,
+        ).toBe(true);
+        expect(
+          /공용 계약|parallel-waves/.test(ownResearchLine),
+          `FR-FLOW-030 AC-3: ${variant} the per-wave research must run under the shared parallel-waves contract`,
         ).toBe(true);
         // RED driver (OQ-030 branch a): a structured epic (task-list groups / >=2 linked sub-issues)
         // confirms the research-skip and splits the waves from that structure.
@@ -478,8 +498,6 @@ const NEW_SESSION_RECOVERY = /새 (세션|agent 세션)|new (agent )?session|세
 const NO_NEW_REQ_ID = /신규 Requirement ID|new Requirement ID|신규 REQ ID/i;
 const HOST_SPEC_UNEDITABLE = /docs\/spec/;
 const CLI_NOT_FALLBACK = /CLI[^\n]*(폴백|fallback)[^\n]*(아니|않|not)|(폴백|fallback)[^\n]*CLI[^\n]*(아니|않|not)|CLI 를? 폴백으로 쓰지/i;
-const WT_REFUSAL = /--wt/;
-const WAVE_ACCUMULATION = /누적|accumulat/i;
 
 /**
  * The dedicated run-root preflight section: from its heading down to the next same-or-higher-level
@@ -490,10 +508,10 @@ function preflightSection(body: string): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => /^#{2,4}\s.*(?:preflight|사전 점검|사전 검사)/i.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -506,7 +524,7 @@ function preflightSection(body: string): string {
 function phaseFlowBlock(body: string): string {
   const fences = body.split("```");
   for (let i = 1; i < fences.length; i += 2) {
-    if (/Wave 분해|wave decompos/i.test(fences[i])) return fences[i];
+    if (/Wave 분해|wave decompos/i.test(at(fences, i))) return at(fences, i);
   }
   return "";
 }
@@ -516,10 +534,10 @@ function emitSection(body: string): string {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => /^#{2,4}\s.*emit/i.test(line));
   if (start === -1) return "";
-  const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    const m = lines[i].match(/^#+/);
+    const m = at(lines, i).match(/^#+/);
     if (m && m[0].length <= level) {
       end = i;
       break;
@@ -539,34 +557,14 @@ function haltOutputBullets(section: string): string {
   if (lead === -1) return "";
   const out: string[] = [];
   for (let i = lead + 1; i < lines.length; i++) {
-    if (/^\s*[-*]\s/.test(lines[i])) {
-      out.push(lines[i]);
+    if (/^\s*[-*]\s/.test(at(lines, i))) {
+      out.push(at(lines, i));
       continue;
     }
-    if (out.length === 0 && lines[i].trim() === "") continue;
+    if (out.length === 0 && at(lines, i).trim() === "") continue;
     break;
   }
   return out.join("\n");
-}
-
-/**
- * The `--wt` delegation-refusal paragraph(s) — every blank-line-delimited block that mentions `--wt`,
- * with bullet lines dropped. Anchoring AC-7's re-offer check here stops the halt OUTPUT bullet block
- * (which labels the same two recovery paths a few lines above) from keeping the check green when the
- * paragraph's own "위의 두 복구 경로(…)를 대신 제시한다" clause is deleted; a +/-700 char window reached
- * those bullets and survived that mutation. Returns "" when no such paragraph exists.
- */
-function wtRefusalParagraph(body: string): string {
-  return body
-    .split(/\n[ \t]*\n/)
-    .filter((para) => WT_REFUSAL.test(para))
-    .map((para) =>
-      para
-        .split("\n")
-        .filter((line) => !/^\s*[-*]\s/.test(line))
-        .join("\n"),
-    )
-    .join("\n");
 }
 
 // FR-FLOW-042 AC-1 path-normalization rules. `git rev-parse --show-toplevel` returns `C:/Work/...`
@@ -693,21 +691,27 @@ describe("FR-FLOW-042 / FR-FLOW-043 — run-root preflight gate and halt-emit co
         expect(near.some((w) => CLI_NOT_FALLBACK.test(w)), `${variant}: the CLI must be refused as a fallback for this check`).toBe(true);
       });
 
-      it("AC-7: refuses --wt delegation with its reason and re-offers the recovery paths", () => {
-        const body = skillBody(readWaveSkill(variant));
-        expect(WT_REFUSAL.test(body), `${variant}: the skill must mention --wt to refuse it`).toBe(true);
-        const near = windowsAround(body, WT_REFUSAL, 700);
-        expect(near.some((w) => /거부|refus|위임하지 않|does not delegate/i.test(w)), `${variant}: --wt delegation must be refused`).toBe(true);
-        expect(near.some((w) => WAVE_ACCUMULATION.test(w)), `${variant}: the refusal must cite broken wave accumulation`).toBe(true);
-        // Anchored on the `--wt` paragraph itself, not a +/-700 window: that window reached the halt
-        // OUTPUT bullets, which restate both recovery paths, so deleting the paragraph's own re-offer
-        // clause left this check green.
-        const wtPara = wtRefusalParagraph(body);
-        expect(wtPara !== "", `${variant}: the --wt refusal must live in a discoverable paragraph`).toBe(true);
+      it("FR-FLOW-042 AC-1: runs the preflight before worker dispatch as well as before decomposition, registration and SRS mutation", () => {
+        // Revised in 4.0.0: the last thing the gate precedes is worker dispatch, not a child pipeline
+        // spawn (FR-FLOW-188 AC-1, AC-7). Anchored on the gate section's precedence sentence.
+        const sec = preflightSection(skillBody(readWaveSkill(variant)));
+        const precedence = sec.split("\n").find((line) => /먼저|before|선행/i.test(line)) ?? "";
+        expect(precedence, `${variant}: the gate must state what it precedes`).not.toBe("");
         expect(
-          SINGLE_ROOT_RECOVERY.test(wtPara) || NEW_SESSION_RECOVERY.test(wtPara),
-          `${variant}: the refusal must re-offer the same recovery paths`,
+          /wave 분해/.test(precedence) && /target 등록/.test(precedence) && /SRS mutation/.test(precedence),
+          `${variant}: the gate must precede wave decomposition, target registration and SRS mutation`,
         ).toBe(true);
+        expect(/워커 dispatch|worker dispatch/i.test(precedence), `${variant}: the gate must precede worker dispatch`).toBe(true);
+        expect(/pipeline|파이프라인/i.test(precedence), `${variant}: the gate still names a child pipeline spawn`).toBe(false);
+      });
+
+      // FR-FLOW-042 AC-7 retired in 4.0.0 (successor FR-FLOW-188): each wave's worker runs in its own
+      // worktree, so the --wt refusal and its accumulation ground leave. Only their absence is asserted.
+      it("FR-FLOW-042 AC-7: carries no --wt delegation refusal any more", () => {
+        const own = skillBody(readRepoFile(`skills/${variant}/kiwi-wave-master/SKILL.md`));
+        expect(own, `${variant}: kiwi-wave-master must exist`).not.toBe("");
+        expect(/--wt\b/.test(own), `${variant}: the retired --wt refusal is still in the skill`).toBe(false);
+        expect(/wt-delegation-refused/.test(own), `${variant}: the retired wt-delegation-refused gate is still declared`).toBe(false);
       });
 
       it("FR-FLOW-043 AC-5/AC-7: halted run writes no waves.jsonl but emits one FAILED pipeline event", () => {

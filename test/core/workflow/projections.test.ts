@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { workflowDiff, workflowDoctor, workflowPipelineCompact, workflowSchemaCheck } from "../../../src/core/workflow/read.js";
+import { workflowPipelineCompact } from "../../../src/core/workflow/read.js";
 import { createWorkflowFixture } from "../../fixtures/workflow-artifacts.js";
 
 async function write(root: string, relativePath: string, text: string): Promise<void> {
@@ -15,40 +15,25 @@ function workflowEvent(runId: string, status = "TASK_DONE", extra: Record<string
 }
 
 describe("REL-NODE-006 workflow diagnostic projection contracts", () => {
-  it("projects validator outcomes without raw bodies or mutation state", async () => {
+  // The doctor, diff and schema-check projections left with their tools and the validator they
+  // composed (FR-NODE-211 AC-1, AC-3); the compact pipeline projection is what REL-NODE-006 keeps.
+  it("REL-NODE-006 AC-2: a clean pipeline journal projects no_actionable_drift and nothing blocking", async () => {
+    const fixture = await createWorkflowFixture();
+    await write(fixture.root, "kiwi/pipeline.jsonl", `${workflowEvent("pipeline-a")}\n`);
+
+    const compact = await workflowPipelineCompact({ root: fixture.root });
+
+    expect(compact.value).toMatchObject({ projectionKind: "pipeline_compact", outcomeCodes: ["no_actionable_drift"], blocking: false, total: 1, active: 1 });
+    expect(JSON.stringify(compact)).not.toContain("\"body\"");
+  });
+
+  it("REL-NODE-006 AC-2: a malformed journal line projects invalid_artifact and blocks", async () => {
     const fixture = await createWorkflowFixture();
 
-    const doctor = await workflowDoctor({ root: fixture.root }, { path: fixture.stalePlanPath });
-    expect(doctor).toMatchObject({
-      ok: true,
-      value: {
-        projectionKind: "workflow_doctor",
-        outcomeCodes: expect.arrayContaining(["stale_artifact"]),
-        blocking: true,
-        artifacts: expect.arrayContaining([expect.objectContaining({ relativePath: fixture.stalePlanPath, sha256: expect.any(String), mtimeMs: expect.any(Number) })])
-      },
-      diagnosticsSummary: { byCode: { "SRS-W059": 2 } }
-    });
-    expect(JSON.stringify(doctor)).not.toContain("Workflow fixture plan");
+    const compact = await workflowPipelineCompact({ root: fixture.root });
 
-    const diff = await workflowDiff({ root: fixture.root }, { path: fixture.checkboxDriftPlanPath });
-    expect(diff).toMatchObject({
-      value: {
-        projectionKind: "workflow_diff",
-        outcomeCodes: expect.arrayContaining(["repairable_drift"]),
-        diffs: expect.arrayContaining([expect.objectContaining({ class: "display_drift", code: "SRS-W060" })])
-      }
-    });
-
-    const schemaCheck = await workflowSchemaCheck({ root: fixture.root }, { path: fixture.invalidSidecarPlanPath });
-    expect(schemaCheck).toMatchObject({
-      value: {
-        projectionKind: "workflow_schema_check",
-        outcomeCodes: expect.arrayContaining(["invalid_artifact"]),
-        blocking: true
-      },
-      diagnosticsSummary: { byCode: { "SRS-W050": expect.any(Number) } }
-    });
+    expect(compact.value.outcomeCodes).toContain("invalid_artifact");
+    expect(compact.value.blocking).toBe(true);
   });
 
   it("computes compact pipeline state after logical-delete filtering", async () => {

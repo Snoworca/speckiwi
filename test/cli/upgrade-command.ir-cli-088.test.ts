@@ -30,11 +30,11 @@ import { findSpecByCliName, renderCliCommandNames, toolSpecs } from "../../src/m
 const STALE_RULES = "SRS-MD-Rules-v1.0.0.md";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** A project an older speckiwi left behind: no index Rules row, agent files pointing at pruned rules. */

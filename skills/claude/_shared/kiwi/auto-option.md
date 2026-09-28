@@ -63,7 +63,7 @@
 
 ### 2.3 위원 spawn 표준 의사코드
 
-본 모듈을 따르는 스킬이 위원회를 소집할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지). K = 위원회 규모(`--auto`=3, `--auto --max`=5). K 명의 위원은 **단일 메시지에서 K회 동시 호출**(병렬·격리 보장)하며 모든 위원의 prompt 는 완전히 동일하다. description 만 "위원 #1 … 위원 #K" 로 구분한다. 번호는 식별용일 뿐이며 어떤 위원도 다른 위원보다 큰 표결권을 갖지 않는다.
+본 모듈을 따르는 스킬이 위원회를 소집할 때 다음 표준 호출 형식을 따른다 (LLM 환각 방지). K = 위원회 규모(`--auto`=3, `--auto --max`=5). K 명의 위원은 **단일 메시지에서 K회 동시 호출**(병렬·격리 보장)하며 모든 위원의 prompt 는 완전히 동일하다. 단 run 이 `--serial`(또는 자연어 직렬 요청, `parallel-waves.md` §2)로 돌면 위원을 **한 명씩 차례로** 부른다 — 각 위원은 여전히 새로 띄운 격리 서브에이전트이고 같은 prompt 를 받으며 앞 위원의 표를 보지 않는다. 바뀌는 것은 동시성뿐이다. description 만 "위원 #1 … 위원 #K" 로 구분한다. 번호는 식별용일 뿐이며 어떤 위원도 다른 위원보다 큰 표결권을 갖지 않는다.
 
 #### 위원 1인 호출 (모든 위원 동일 형식)
 
@@ -146,7 +146,7 @@ AskUserQuestion(...)
 
 0. **`recommended` fast path (0표 채택)**: 게이트 옵션 중 하나가 구조화 마커 `recommended: true` 를 달고 있으면 `--auto` 는 그 옵션을 **즉시** 채택한다. 위원회를 **소집하지 않고**, 위원을 한 명도 **spawn 하지 않는다**. 표를 세지 않으므로 confidence 비교도 없다.
    - 마커는 `kiwi-pm` 의 NEEDS_USER 옵션 스키마에 `key` / `label` / `consequence` 와 나란히 선언된 **구조화 boolean 필드**이며, opt-in — 필드가 없는 옵션은 권장이 아니다.
-   - 본문에 적힌 산문 `(권장)` 라벨은 **기계적 의미가 없으며** 권장으로 **파싱하지 않는다**. (기존 `kiwi-pm` 의 `(권장)` 라벨 3개 중 2개는 HALT 옵션에 붙어 있다 — 산문 스캔은 권장 HALT 를 자동 채택하게 된다.)
+   - 본문에 적힌 산문 `(권장)` 라벨은 **기계적 의미가 없으며** 권장으로 **파싱하지 않는다**. (기존 `kiwi-pm` 의 `(권장)` 라벨 2개는 모두 HALT 옵션에 붙어 있다 — 산문 스캔은 권장 HALT 를 자동 채택하게 된다.)
    - 본 계약은 **어떤 옵션이 왜 권장되는지 판단하지 않는다** — 권장 사유를 기술하는 필드도, 그것을 심사하는 기준도 두지 않는다.
 1. **`default_if_auto` fast path (0표 채택)**: `recommended` 옵션이 없고 게이트에 `default_if_auto` 가 선언돼 있으면 그 default 를 채택한다. 역시 위원회를 소집하지 않는다.
 2. **위원회 단순 과반**: 위 두 우회가 모두 없으면 §2 규모의 위원회(`--auto` 3인 / `--auto --max` 5인)를 소집하고 **단순 과반** — 던져진 표의 **절반을 초과**하는 표를 얻은 옵션 — 으로 결정해 그 옵션을 **즉시** 채택한다(`side_effects` 합집합 기록). 만장일치는 요구하지 않는다 — 3인 위원회의 2-1 은 그 자리에서 결정된다. 위원회 규모는 §2 표가 정한 값으로 고정이며 결정 과정에서 달라지지 않는다. 표는 한 번만 받는다.
@@ -239,7 +239,7 @@ spread 가 큰 상태의 잔여 효과는 §4.1.1 의 위원별 보정과 위 go
         critical_gates = [
           {gate_id: "external-module-impact", reason: "외부 시스템 비가역 변경"},
           {gate_id: "lifecycle-gate-policy-stop", reason: "deprecated / frozen REQ 구현 정책 차단"},
-          {gate_id: "sha-mismatch-on-resume", reason: "plan/sidecar 무결성 손상"}
+          {gate_id: "sha-mismatch-on-resume", reason: "SDS 무결성 손상"}
         ] |
 ```
 
@@ -254,7 +254,7 @@ spread 가 큰 상태의 잔여 효과는 §4.1.1 의 위원별 보정과 위 go
 | §0.X 표 셀 인라인 | (간결한 스킬, ≤3개 critical_gates) |
 | §0.G* 별도 결정표 절 | kiwi-coder §0.G6, kiwi-pm §0.G7, kiwi-review-fix-loop §0.G8 등 (다른 G* 게이트와 일관) |
 | §0.AG 별도 절 | kiwi-pipeline (§0.G 표가 없는 평면 구조) |
-| §1.X 절 신설 | kiwi-planner §1.5, kiwi-srs-from-code §1.4, kiwi-srs-feasibility §1.5, kiwi-srs-research §1.7 (옵션 표 §1.2 와 인접 배치) |
+| §1.X 절 신설 | kiwi-srs-from-code §1.4, kiwi-srs-feasibility §1.5, kiwi-srs-research §1.7 (옵션 표 §1.2 와 인접 배치) |
 | §0.X 본문 인라인 | kiwi-srs-sync §0.16 (단일 표가 짧을 때) |
 | §N.M kiwi 통합 절 | kiwi-commit-auto-pr §14.9, kiwi-commit-auto-push §11.10 (§0 SSOT 표가 없는 스킬) |
 
@@ -269,14 +269,13 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 - `fork-repo-pr-create` — 외부 fork repo 에 PR 생성
 - `stability-stable-promotion` — REQ stability=stable 승급 (정책 무관 항상 확인)
 - `stability-frozen-violation` — frozen REQ 본문 변경
-- `sha-mismatch-on-resume` — plan/sidecar SHA256 불일치
-- `depends-on-violation` — depends_on 미충족 REQ 진입
+- `sha-mismatch-on-resume` — 재개 시 입력 SDS 의 SHA256 불일치
 - `t-final-backward-transition` — 라이프사이클 역방향 전이
 - `push-conflict-rebase-merge-choice` — push 충돌 시 rebase/merge 자동 선택 (비가역)
 - `mcp-cli-both-unavailable` — speckiwi 도구 전부 부재
 - `transition-guard-bypass` — Stability transition guard 강제 우회 시도
 - `mock-detection` — 통합 테스트 Mock 검출 (CRITICAL finding)
-- `plan-code-divergence-critical` — 계획-코드 CRITICAL 불일치
+- `plan-code-divergence-critical` — SDS-코드 CRITICAL 불일치
 - `self-recursive-spawn` — 자기 스킬 무한 호출 가드
 - `pipeline-event-needs-user-or-failed` — 직전 이벤트 NEEDS_USER/FAILED
 

@@ -22,6 +22,9 @@ import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementR
 import { buildReadEnvelope, resolveTargetSelection, summarizeTarget } from "../../core/query/summary.js";
 import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
+import { liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
+import { failRead, registerSdsCommands } from "./sds.js";
+import { runCoverageTests, testsOnlyFlagsGiven } from "./coverage-tests.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
@@ -33,18 +36,10 @@ import { writeHuman, writeJson } from "../formatters.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "../errors.js";
 import {
   workflowArtifacts,
-  workflowDiff,
-  workflowDoctor,
-  workflowNextPlanTask,
   workflowPipelineCompact,
   workflowPipelineNext,
   workflowPipelineStatus,
   workflowPipelineTail,
-  workflowPlanStatus,
-  workflowPlanTask,
-  workflowMigrationPreview,
-  workflowResumeHint,
-  workflowSchemaCheck,
   workflowSessionStatus,
   workflowWorklogTail,
   workflowWorkspaceInfo
@@ -246,20 +241,6 @@ function workflowMutationBase(kind: WorkflowMutationKind, raw: Record<string, un
   };
 }
 
-function unsupportedWorkflowMigrationOperation(raw: Record<string, unknown>) {
-  const flag = ["apply", "write", "fix", "normalize", "migrate"].find((name) => raw[name] === true);
-  if (!flag) return null;
-  const message = `workflow migrate-preview is read-only; --${flag} is unsupported`;
-  const diagnostic: Diagnostic = { code: "UNSUPPORTED_OPERATION", severity: "error", message, details: { flag, operation: "workflow migrate-preview" } };
-  return {
-    ok: false,
-    written: false,
-    error: { code: "UNSUPPORTED_OPERATION", message },
-    diagnostics: [diagnostic],
-    diagnosticsSummary: summarizeDiagnostics([diagnostic])
-  };
-}
-
 function addRequirementFilterOptions(target: Command): Command {
   return target
     .option("--target <target>")
@@ -416,7 +397,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         return;
       }
       const workspace = await workspaceFrom(command.opts());
-      const diagnostics = readDiagnostics(workspace);
+      // @req FR-NODE-209 AC-3 — the lite SDS files under docs/sds are validated here, in every work-mode.
+      const diagnostics = [...readDiagnostics(workspace), ...(await liteSdsValidationDiagnostics(workspace))];
       // @req IR-CLI-051 — exit code is computed from the UNFILTERED error set; display filters only
       // change which diagnostics are shown, never the pass/fail decision.
       const unfiltered = splitDiagnostics(diagnostics);
@@ -555,24 +537,6 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   addWorkflowOptions(workflow.command("resolve")).action(async (options) => {
     workflowOutput(options, await workflowArtifacts(await workflowRoot(), { ...parseWorkflowReadOptions(options, workflow), limit: 1 }));
   });
-  addWorkflowOptions(workflow.command("plan-status")).action(async (options) => {
-    workflowOutput(options, await workflowPlanStatus(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("plan-task").argument("<taskId>")).action(async (taskId, options) => {
-    workflowOutput(options, await workflowPlanTask(await workflowRoot(), taskId, parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("next-task")).action(async (options) => {
-    workflowOutput(options, await workflowNextPlanTask(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("doctor")).action(async (options) => {
-    workflowOutput(options, await workflowDoctor(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("diff")).action(async (options) => {
-    workflowOutput(options, await workflowDiff(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("schema-check")).action(async (options) => {
-    workflowOutput(options, await workflowSchemaCheck(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
   addWorkflowOptions(workflow.command("pipeline-status")).action(async (options) => {
     workflowOutput(options, await workflowPipelineStatus(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
   });
@@ -597,9 +561,6 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   });
   addWorkflowOptions(workflow.command("session-status")).action(async (options) => {
     workflowOutput(options, await workflowSessionStatus(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-  });
-  addWorkflowOptions(workflow.command("resume-hint")).action(async (options) => {
-    workflowOutput(options, await workflowResumeHint(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
   });
   addWorkflowOptions(workflow.command("worklog-tail")).action(async (options) => {
     workflowOutput(options, await workflowWorklogTail(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
@@ -665,32 +626,6 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     if (!result.ok) command.setOptionValue("exitCode", 5);
   };
 
-  addWorkflowMutationOptions(workflow.command("task-check").argument("<taskId>")).action(async (taskId, options) => {
-    await workflowMutationOutput(options, {
-      ...workflowMutationBase("plan_checkbox_check", { ...options, taskId }, workflow),
-      planPath: requireStringOption(options, "path", workflow)
-    });
-  });
-  addWorkflowMutationOptions(workflow.command("task-uncheck").argument("<taskId>")).action(async (taskId, options) => {
-    await workflowMutationOutput(options, {
-      ...workflowMutationBase("plan_checkbox_uncheck", { ...options, taskId }, workflow),
-      planPath: requireStringOption(options, "path", workflow)
-    });
-  });
-  addWorkflowMutationOptions(workflow.command("checklist-set").argument("<taskId>").requiredOption("--checked <checked>", "true or false")).action(async (taskId, options) => {
-    await workflowMutationOutput(options, {
-      ...workflowMutationBase("plan_checklist_item_update", { ...options, taskId }, workflow),
-      planPath: requireStringOption(options, "path", workflow),
-      checked: String(options.checked).toLowerCase() === "true"
-    });
-  });
-  addWorkflowMutationOptions(workflow.command("task-status-set").argument("<taskId>").argument("<status>").requiredOption("--pm-state-path <path>")).action(async (taskId, status, options) => {
-    await workflowMutationOutput(options, {
-      ...workflowMutationBase("pm_task_status_update", { ...options, taskId }, workflow),
-      pmStatePath: String(options.pmStatePath),
-      status: String(status)
-    });
-  });
   addWorkflowMutationOptions(workflow.command("pipeline-emit").requiredOption("--event <json>", "JSON event object")).action(async (options) => {
     await workflowMutationOutput(options, {
       ...workflowMutationBase("pipeline_event_append", options, workflow),
@@ -777,22 +712,6 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       recordId: String(options.recordId)
     });
   });
-  addWorkflowOptions(workflow.command("migrate-preview"))
-    .option("--dry-run", "accepted for parity; preview never writes")
-    .option("--apply", "unsupported: migration apply is out of scope")
-    .option("--write", "unsupported: migration preview is read-only")
-    .option("--fix", "unsupported: migration preview is read-only")
-    .option("--normalize", "unsupported: migration preview is read-only")
-    .option("--migrate", "unsupported: migration apply is out of scope")
-    .action(async (options) => {
-      const unsupported = unsupportedWorkflowMigrationOperation(options);
-      if (unsupported) {
-        workflowOutput(options, unsupported);
-        command.setOptionValue("exitCode", 5);
-        return;
-      }
-      workflowOutput(options, await workflowMigrationPreview(await workflowRoot(), parseWorkflowReadOptions(options, workflow)));
-    });
   const workOrder = workflow.command("work-order");
   addWorkflowOptions(workOrder.command("next"))
     .option("--measure", "include payload measurement fields")
@@ -1174,10 +1093,27 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   command
     .command("coverage")
     .option("--target <target>")
+    // @req FR-NODE-210 AC-2 AC-3 AC-4 — the test-citation mode and the options that only it reads.
+    .option("--tests", "report the test lines citing each acceptance criterion, and each SDS contract")
+    .option("--ids <ids>", "with --tests: comma-separated requirement ids instead of a target")
+    .option("--sds <path>", "with --tests: a lite SDS whose contracts are checked against their Test Plan files")
+    .option("--test-glob <glob>", "with --tests: a test-file glob replacing the default patterns (repeatable)", collectOption, [])
+    .option("--fail-on-gap", "with --tests: exit non-zero when a gap exists")
     .option("--json", "JSON output")
     .action(async (options) => {
       const json = Boolean(options.json) || command.opts().json;
+      if (options.tests !== true) {
+        const misplaced = testsOnlyFlagsGiven(options);
+        if (misplaced.length > 0) {
+          failRead(command, context, json, { code: "USAGE", message: `${misplaced.join(", ")} requires --tests` });
+          return;
+        }
+      }
       const workspace = await workspaceFrom(command.opts());
+      if (options.tests === true) {
+        await runCoverageTests(command, context, workspace, options, json);
+        return;
+      }
       const summary = summarizeReleaseReadiness(workspace, typeof options.target === "string" ? { target: options.target } : {});
       output(context, { json }, { target: summary.target, acCoverageGaps: summary.acCoverageGaps });
     });
@@ -1199,6 +1135,10 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         }));
       output(context, { json }, { target, requirements });
     });
+
+  // @req IR-CLI-102 — `sds check` is a read command, registered with the rest so the ToolSpec
+  // registry walk (FR-ARCH-006) sees it.
+  registerSdsCommands(command, context);
 
   // `mode` is the one mutation command declared among the read commands, so it is marked here
   // rather than by registerMutationCommands. @req IR-CLI-101

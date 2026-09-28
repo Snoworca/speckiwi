@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { ArtifactLockCapability } from "../../../src/core/workflow/artifact-lock.js";
 import type { WorkflowMutationInput } from "../../../src/core/workflow/mutation.js";
 
 type FsPromises = typeof FsPromisesModule;
@@ -229,7 +230,7 @@ describe("FR-NODE-177 record reclassification append fault windows", () => {
       artifact: { relativePath: PIPELINE_PATH, postAppendSha256: sha256(durableBytes) },
       lock: {
         relativePath: relativeLockPath,
-        ownerIdentitySha256: retainedCapability!.ownerIdentitySha256
+        ownerIdentitySha256: (retainedCapability as ArtifactLockCapability).ownerIdentitySha256
       },
       cleanupDiagnostic,
       retry: { action: "retry_same_record_reclassification", mode: "cleanup_then_replay" }

@@ -49,6 +49,7 @@ describe("shared core contracts", () => {
       acceptanceCriteria: [{ id: "AC-1", text: "동작한다", checked: false, line: 20 }],
       verificationEvidence: [],
       traceLinks: [],
+      changeNotes: [],
       tags: ["test"]
     };
 

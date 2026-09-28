@@ -34,16 +34,16 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //     Used for AC-4 (warnings-only, must stay exit 0 under display filters).
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the human (text) validate output from a finished run's stdout. */
-function humanText(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function humanText(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 /** Drains and parses the JSON validate envelope from a finished run's stdout. */
-function parseJson(stream: NodeJS.WriteStream): {
+function parseJson(stream: PassThrough): {
   errors: Array<{ code: string }>;
   warnings: Array<{ code: string }>;
   diagnosticsSummary?: { errors: number; warnings: number; byCode: Record<string, number> };

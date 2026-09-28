@@ -34,7 +34,7 @@ async function emptyRepo(): Promise<string> {
 
 async function initOnce(rootPath: string) {
   const result = await initProject(await resolveProjectRoot(rootPath), {});
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "expected an ok result with a value");
   return result.value;
 }
 

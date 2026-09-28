@@ -158,19 +158,19 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
     const schema = toolSchemas[TOOL];
     expect(schema).toBeDefined();
     for (const field of TYPED_FIELDS) {
-      expect(schema[field], `${TOOL}.${field} should be declared`).toBeDefined();
+      expect(schema?.[field], `${TOOL}.${field} should be declared`).toBeDefined();
     }
-    expect(schema.event).toBeUndefined();
+    expect(schema?.event).toBeUndefined();
 
-    const recordType = z.object({ recordType: schema.recordType });
+    const recordType = z.object({ recordType: schema?.recordType });
     expect(recordType.safeParse({ recordType: "pipeline" }).success).toBe(true);
     expect(recordType.safeParse({ recordType: "worklog" }).success).toBe(true);
     expect(recordType.safeParse({ recordType: "legacy" }).success).toBe(false);
     expect(recordType.safeParse({ recordType: "unknown" }).success).toBe(false);
-    expect(z.object({ line: schema.line }).safeParse({ line: 0 }).success).toBe(false);
-    expect(z.object({ byteOffset: schema.byteOffset }).safeParse({ byteOffset: -1 }).success).toBe(false);
-    expect(z.object({ reason: schema.reason }).safeParse({ reason: "   " }).success).toBe(false);
-    expect(z.object({ dryRun: schema.dryRun }).safeParse({ dryRun: "true" }).success).toBe(false);
+    expect(z.object({ line: schema?.line }).safeParse({ line: 0 }).success).toBe(false);
+    expect(z.object({ byteOffset: schema?.byteOffset }).safeParse({ byteOffset: -1 }).success).toBe(false);
+    expect(z.object({ reason: schema?.reason }).safeParse({ reason: "   " }).success).toBe(false);
+    expect(z.object({ dryRun: schema?.dryRun }).safeParse({ dryRun: "true" }).success).toBe(false);
   });
 
   it("rejects every missing mandatory field, blank reason, and values outside the closed recordType enum at schema and handler boundaries", async () => {
@@ -472,7 +472,7 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
     const [firstPreview, secondPreview] = await Promise.all([
       conflictingServer.callTool(TOOL, { ...first, dryRun: true }),
       conflictingServer.callTool(TOOL, { ...second, dryRun: true })
-    ]) as Array<{ value: { repairToken: string } }>;
+    ]) as [{ value: { repairToken: string } }, { value: { repairToken: string } }];
     const conflictingResults = await Promise.all([
       conflictingServer.callTool(TOOL, { ...first, dryRun: false, repairToken: firstPreview.value.repairToken }),
       conflictingServer.callTool(TOOL, { ...second, dryRun: false, repairToken: secondPreview.value.repairToken })
@@ -493,11 +493,6 @@ describe("FR-MCP-057 / FR-NODE-177 — MCP workflow record reclassification", ()
       "workflow_pipeline_tail",
       "workflow_pipeline_next",
       "workflow_pipeline_compact",
-      "workflow_doctor",
-      "workflow_diff",
-      "workflow_schema_check",
-      "workflow_next_plan_task",
-      "workflow_resume_hint",
       "get_next_work_order"
     ]) {
       const result = await server.callTool(reader, reader === "get_next_work_order" ? { pipelinePath: PIPELINE_PATH } : { path: PIPELINE_PATH, includeDeleted: true });

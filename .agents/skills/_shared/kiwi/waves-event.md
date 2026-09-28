@@ -1,8 +1,8 @@
-# kiwi waves event v1.5.0
+# kiwi waves event v2.0.0
 
 본 파일은 `kiwi-wave-master`(FR-FLOW-029) 와 `kiwi-orchestrator` 가 멀티-웨이브 진행을 추적하기 위해 append 하는 **wave 진행 이벤트**(`./kiwi/waves.jsonl`) 의 SSOT. `_shared/kiwi/pipeline-event.md` 를 모델로 하며, 변경은 SemVer 를 따른다 (minor: 필드 추가, 그리고 **이미 기록된 이벤트의 해석을 바꾸지 않는** 버전-스코프 규칙 추가 / major: breaking).
 
-**v1.5.0 확장도 순수 additive 다** — `terminal_review` 와 `outcome` 둘이며 **둘 다 선택 필드**다. **v1.4.0 확장은 순수 additive 다** — 추가된 22개 필드는 전부 **선택 필드**이며, v1.4.0 은 **이미 기록된 이벤트의 해석을** 어떤 방식으로도 **바꾸지 않는다**. 저널은 두 생산자가 공유하지만 파일은 하나이며, 생산자 구분은 §2.2 의 `engine` 필드와 §4 의 재개 술어가 담당한다.
+**v2.0.0 은 가산이 아니다(major)** — `plan_run_id` · `coverage_residual` · `untested_allowance` 를 필드 집합에서 빼고 `sds_id` 를 더했으며, `lane_disposition.kind` 를 둘로 줄였다. `2.0.0` 보다 낮은 `schema_version` 을 단 줄은 쓰인 그대로 읽고 **새 계약으로 다시 검증하지 않는다** — 이미 기록된 저널의 해석을 소급해 바꾸지 않는다는 이 계약의 원칙은 그대로다. **v1.5.0 확장은 순수 additive 다** — `terminal_review` 와 `outcome` 둘이며 **둘 다 선택 필드**다. **v1.4.0 확장은 순수 additive 다** — 추가된 22개 필드는 전부 **선택 필드**이며, v1.4.0 은 **이미 기록된 이벤트의 해석을** 어떤 방식으로도 **바꾸지 않는다**. 저널은 두 생산자가 공유하지만 파일은 하나이며, 생산자 구분은 §2.2 의 `engine` 필드와 §4 의 재개 술어가 담당한다.
 
 **버전 다운그레이드 가드 (v1.4.0)**: `1.4.0` 이상 줄을 하나라도 포함한 run 안에서, 그 뒤에 오는 줄이 그 run 이 이미 사용한 **가장 높은** `schema_version` 보다 낮은 값을 실으면 `journal-version-downgrade` 진단이다 — `1.5.0` 뒤의 `1.4.0` 도 포함한다. §3 의 run 스코프 downgrade-bypass 폐쇄와 같은 논리다 — 버전은 policing 대상인 생산자가 스스로 쓰는 값이므로, 낮춰 쓰는 것이 곧 우회가 된다.
 
@@ -35,7 +35,7 @@
 | 필드 | 타입 | 값 |
 |---|---|---|
 | `ts` | string (ISO-8601 UTC) | `2026-07-10T13:45:12.345Z` |
-| `schema_version` | string (SemVer) | `1.5.0` |
+| `schema_version` | string (SemVer) | `2.0.0` |
 | `run_id` | string | 그 실행(run)의 run_id |
 | `wave` | string | `wave-{n}` (예: `wave-1`) |
 | `order` | number | wave 실행 순서 (1-based) |
@@ -48,10 +48,10 @@
 | 필드 | 타입 | 용도 |
 |---|---|---|
 | `scope` | string | wave 에 지정한 작업 범위 (해당 wave 로 한정) |
-| `pipeline_run_id` | string | 그 wave 의 `/kiwi-pipeline` 사이클 run_id |
+| `pipeline_run_id` | string | 2.0.0 이전 run 에서 wave 가 돌린 `/kiwi-pipeline` 사이클 run_id — 옛 줄을 읽기 위해 남는다. 2.0.0 run 의 wave 는 pipeline 사이클을 돌리지 않으므로 이 필드를 쓰지 않는다 |
 | `req_ids` | string[] | 그 wave 에서 다룬 REQ-ID 목록 |
 | `notes` | string | 자유 텍스트 부연 |
-| `phase` | string (enum) | `pipeline` / `srs-authoring` / `wave-verify` / `final-verify` / `intake` / `design` / `wave-design` / `schedule` / `handoff` / `lane` / `integrate` / `stage-close` — `in_progress` 이벤트가 어느 단계에 있는지. 뒤의 8개는 v1.4.0 신설 (오케스트레이터 단계) |
+| `phase` | string (enum) | `pipeline` / `srs-authoring` / `sds` / `worker` / `wave-verify` / `final-verify` / `intake` / `design` / `wave-design` / `schedule` / `handoff` / `lane` / `integrate` / `stage-close` — `in_progress` 이벤트가 어느 단계에 있는지. `sds`(SDS 작성)와 `worker`(워커 dispatch)는 2.0.0 신설이고, `pipeline` 과 `handoff` 는 2.0.0 미만 줄을 읽기 위해서만 남고, 2.0.0 이상 줄이 실으면 `vocabulary-retired-in-4-0-0` 이다 — `journal append` 는 최신 줄에서 거절하고 `orchestrate resume` 은 심각도와 무관하게 거절한다. `intake` 부터 뒤의 8개는 v1.4.0 신설 (오케스트레이터 단계) |
 | `terminal_review` | object | 그 run 을 닫는 줄이 싣는 종료 리뷰 기록 — `{skill, base, head, verdict}`. `base` 는 같은 줄의 `run_diff_window.base_sha` 와 **같아야 하고**, `head` 는 실제로 심판한 범위의 head 다 — 리뷰가 고친 것을 커밋한 뒤 종료 줄을 쓰므로 run head 는 그보다 앞서 있는 것이 정상이며, head 까지 일치를 요구하면 올바른 run 이 거부된다. verdict 은 `pass` / `residual` / `not-applicable-empty-window` / `skipped-run-halted` 중 하나이며, 완료를 방면하는 값은 `pass` 와 `not-applicable-empty-window` 이고, 방면하지 않는 값은 `residual` 과 `skipped-run-halted` 이다. `phase="final-verify"` 종료 줄에 이 필드를 실을 때는 같은 줄에 `run_diff_window` 를 **반드시 함께** 싣는다 — 없으면 창 대조가 수행되지 않아 임의의 창을 적어도 통과한다 (1.5.0~, FR-NODE-188) |
 | `outcome` | string | `dispatch-route` result 줄이 그 rung 의 위임 결과를 싣는 값 — `delegated-complete` 는 그 줄이 run 종료 줄임을 뜻한다. 그 줄이 `status` 를 싣지 않을 때 완료 보고 여부를 결정하는 값이 이것이며, `status` 가 있으면 `status` 가 우선한다 (1.5.0~, FR-NODE-188) |
 | `verification` | object | 웨이브 종료 상호검증 결과. 아래 §2.3 |
@@ -59,40 +59,38 @@
 | `constraints_path` | string | 선언된 사용자 제약 아티팩트 경로 |
 | `srs_authored` | bool | 그 wave 의 SRS 저작 완료 표식. `phase="srs-authoring"` 이벤트에만 싣는다 |
 | `diff_window` | object | `{ base_sha, head_sha }` — 그 wave 의 diff 창을 여는 git ref 쌍 (v1.3.0 신설) |
-| `pipeline_run_ids` | string[] | 그 wave 에서 실행한 **모든** `/kiwi-pipeline` run_id 를 순서대로. `pipeline_run_id` 는 그중 최신 값을 그대로 유지한다(하위호환) (v1.3.0 신설) |
-| `plan_run_id` | string | 그 wave 의 **계획 run-id** (`docs/plans/{plan_run_id}.plan.md` · `.kiwi/sessions/{plan_run_id}/`). `pipeline_run_id` 와 **다른 값**이며, 재개가 `--plan-run-id` 로 되돌려 줄 값이다 (v1.3.0 신설) |
+| `pipeline_run_ids` | string[] | 2.0.0 이전 run 에서 그 wave 가 실행한 **모든** `/kiwi-pipeline` run_id — 옛 줄을 읽기 위해 남는다 (v1.3.0 신설) |
+| `sds_id` | string | 그 줄의 run 이 실행한 SDS 의 id. wave 의 SDS id 는 `{run_id}-wave-{n}` 이고, 조각(`…-{k}`)과 재진입(`…-r{m}`)의 id 는 그 id 로 시작한다 — 그래서 wave 의 증거 창은 `sds_id` 가 그 wave 의 id 이거나 그 id 에 `-` 가 이어지는 줄 전부다(`parallel-waves.md §3`). 기본 값의 쓰임: `docs/sds/{sds_id}.sds.md` 와 그 wave 워커의 세션을 여는 키이고, 재개가 `--sds-id` 로 되돌려 줄 값이다. 그 wave 에 dispatch 한 **모든** run — 워커, 재진입, 개선 서브에이전트 — 을 dispatch 시점에 이 값을 실은 줄로 기록한다 (2.0.0 신설) |
 | `run_diff_window` | object | `{ base_sha, head_sha }` — run 전체의 diff 창. `phase="final-verify"` 이벤트에만 싣는다 (v1.3.0 신설) |
 | `engine` | string (enum) | `kiwi-wave-master` / `kiwi-orchestrator` — 이 줄을 쓴 **생산자**. **부재 ⇒ `kiwi-wave-master`** 로 읽는다. §4 의 재개 술어가 이 값으로 필터한다 (v1.4.0 신설) |
 | `writer` | string | `speckiwi-orchestrate/{pkgVersion}` — 도구가 **매 write 마다** 찍는 스탬프. `schema_version` **1.4.0 이상** 줄에만 요구하며, 그보다 낮은 줄은 `unstamped` 로 보고하고 **실패하지 않는다** (v1.4.0 신설) |
 | `event` | string (enum) | `intent` / `result` — write-ahead intent 와 write-behind fact 의 짝. 어떤 `(verb, wave, lane)` 키의 마지막 줄이 `intent` 면 그 verb 는 중단된 것이다 (v1.4.0 신설) |
 | `verb` | string (enum) | 이 줄이 다루는 프로그램 카운터 값. 닫힌 verb enum 은 오케스트레이터 스킬 본문이 SSOT 다 (v1.4.0 신설) |
 | `inputs_digest` | string | intent 시점의 그 verb 선언 입력들에 대한 sha256 (v1.4.0 신설) |
-| `lane` | string | `lane-{k}` — 이 줄이 특정 lane 을 다룰 때 (v1.4.0 신설) |
-| `stage` | number | 이 줄이 다루는 wave 내부 layer. wave 스코프 줄에는 싣지 않는다 (v1.4.0 신설) |
+| `lane` | string | `lane-{waveId}` — 이 줄이 특정 lane, 곧 wave 하나의 워커를 다룰 때 (v1.4.0 신설) |
+| `stage` | number | 이 줄이 다루는 stage — 서로 독립인 wave 들을 함께 dispatch 하는 묶음. stage 에 묶이지 않는 줄에는 싣지 않는다 (v1.4.0 신설) |
 | `lane_plan` | object | `{ lock_path, digest, lane_count, stage_count }` — `freeze-lane-plan` **result** 줄 (v1.4.0 신설) |
-| `partition_review` | object | `{ doc_path, digest, lane_plan_digest, reviewer, verdict }` — `review-partition` **result** 줄. `lane_plan_digest` 는 `freeze-lane-plan` 이 기록한 값이며 이것이 판정을 정확히 그 고정된 계획에 묶는다. `verdict` ∈ `pass` / `revise` / `abort`, `reviewer` 는 `"user"` (v1.4.0 신설) |
-| `isolation` | object | `{ profile, reason, rejected[], workspace_ref, base_sha, head_sha, merge_sha, probe_evidence }` — `reason` 과 `rejected[]` 가 격리 프로파일 **선택 기록**을 싣는다 (v1.4.0 신설) |
-| `lane_layer` | object | 검증자-1 의 다섯째 분모 — lane 계층의 `{ expected, checked, rows }` (v1.4.0 신설) |
+| `partition_review` | object | `{ doc_path, digest, lane_plan_digest, reviewer, verdict }` — `review-partition` **result** 줄. `lane_plan_digest` 는 `freeze-lane-plan` 이 기록한 값이며 이것이 판정을 정확히 그 고정된 계획에 묶는다. `verdict` ∈ `pass` / `revise` / `abort`, `reviewer` 는 `"user"`, 또는 `--auto` 에서 결정 위원회가 기록했을 때 `"committee"` (v1.4.0 신설) |
+| `isolation` | object | `{ profile, reason, rejected[], workspace_ref, base_sha, head_sha, merge_sha, probe_evidence }` — `profile` 은 `worktree-parallel` 또는 `worktree-serial` 이고, `reason` 과 `rejected[]` 가 격리 프로파일 **선택 기록**을 싣는다. `base_sha` 는 그 wave 의 dispatch base 다 (v1.4.0 신설) |
+| `lane_layer` | object | 검증자-1 의 다섯째 분모 — 단위 계층, 곧 그 wave 의 워커 하나의 `{ expected, checked, rows }` (v1.4.0 신설) |
 | `wave_issues` | object | `{ doc_path, digest, open, planned, resolved, deferred }` — wave 종료 시 정리한 이슈 문서 포인터. 산출물이 **wave 스코프**(`waves/wave-{n}/issues.md`) 이므로 이름도 wave 스코프다 (v1.4.0 신설) |
 | `convergence` | object | `{ registry_digest, recipes_applied[], validate_exit, sync_index_changed }` (v1.4.0 신설) |
 | `allocation` | object | `{ target, pre_snapshot_digest, requirement_ids[], design_item_map }` — `register-wave-srs` **result** 줄. `unallocated-req-id` 검사가 비교하는 3.b 할당 집합이며, `design_item_map` 은 `{req_id: string[]}` 로 lane 별 설계 항목의 생산자다 (v1.4.0 신설) |
 | `decision` | object | `{ question, options, decision, rule, committee_size, confidence, origin }` — 위원회가 결정한 intake 행마다 1건, lane 결정 재생마다 1건, `--drive` 가 자동으로 해소한 게이트마다 1건 (FR-FLOW-119). 심의 없이 내려진 결정이야말로 증거를 남기지 않는 결정이다 (v1.4.0 신설) |
 | `deadline_at` | string (ISO-8601 UTC) | `dispatch-lane` **intent** 줄의 lane 마감 시각 (v1.4.0 신설) |
 | `postmortem` | object | `{ doc_path, digest }` — 그 wave 의 포스트모템 기록 (v1.4.0 신설) |
-| `coverage_residual` | array | `{req_id, reason, owner}` 행 — **`R-PLAN`** rung 의 `dispatch-route` **result** 줄에만 싣는다. `plan-coverage-unclosed` 게이트가 읽는 잔여 사유의 거처이며, digest 로 고정된 route lock 밖에 둔다 (v1.4.0 신설) |
-| `lane_disposition` | object | `{ kind, reason, at }` — lane 이 병합 없이 run 을 떠날 때의 **종국 처분**. `kind` 는 `demoted` / `quarantined` / `coupling-reset` / `refuted` 의 **닫힌 4값 enum** 이다. 이 필드가 없으면 강등·반증된 lane 이 재개 시 병합 가능으로 읽혀 run 이 버린 작업을 다시 병합한다 (v1.4.0 신설) |
+| `lane_disposition` | object | `{ kind, reason, at }` — lane 이 병합 없이 run 을 떠날 때의 **종국 처분**. `kind` 는 `quarantined` / `refuted` 의 **닫힌 2값 enum** 이다. 이 필드가 없으면 격리·반증된 lane 이 재개 시 병합 가능으로 읽혀 run 이 버린 작업을 다시 병합한다 (v1.4.0 신설, 2.0.0 에서 두 값으로) |
 | `card_digest` | string | 이 줄 직후에 쓴 재개 카드의 sha256 (v1.4.0 신설) |
 | `proof` | object \| object[] | `{ kind, ref? }` — 그 줄이 싣는 주장을 뒷받침하는 **증명**. §4.3 write discipline 의 `result` 줄에 싣는다. `kind` 는 아래에 선언한 `proof_kind` 값 중 하나이고, `ref` 는 그 종류가 재계산에 쓰는 인자(브랜치·sha·경로·digest)다. 증명이 여럿이면 배열로 싣는다 (v1.4.0 신설) |
 | `strict_grounding` | bool | `--strict-grounding` 이 적용된 채로 그 verb 를 실행했다는 기록. `freeze-lane-plan` **intent** 줄에 싣는다 — 판정을 조인 옵션은 판정 자체의 일부이므로, 저널 밖에만 있으면 재개하는 쪽이 그 run 이 어느 기준으로 경로를 거절했는지 알 수 없다 (v1.4.0 신설) |
 | `abort_gate` | string (enum) | `abort-run` 줄이 run 을 끝낸 게이트를 지명한다. 값은 `GateId` 어휘의 원소다. 중첩 `verification.residual[]` 의 `reason_class` 와 이름을 공유하지 않는 별개 어휘이며, 최신 줄에서 어휘 밖 값은 `abort-gate-outside-vocabulary` 오류이고 그 이전 줄에서는 경고다 (v1.4.0 신설) |
 | `round` | number | 검증 라운드 기록의 1-기반 라운드 번호. **이 필드가 그 줄을 라운드 기록으로 만든다** — wave 별 최신 status 계산과 run-scope 최종 검증 판정은 둘 다 이 필드를 실은 줄을 제외한다. 라운드 기록은 루프가 어디까지 갔는지를 보고할 뿐 run 이 무엇인지를 단언하지 않기 때문이다 (v1.4.0 신설) |
-| `untested_allowance` | number | `verify-handoff` 줄이 그 판정에 적용한 미검증 AC 허용치. `FR-NODE-155` 가 기록을 요구하는 값이며, run 을 지명한 호출에만 싣는다 — 지명된 run 이 없으면 기록할 상대가 없다 (v1.4.0 신설) |
 
-`pipeline_run_id` 는 `complete` 와 `phase=wave-verify` 이벤트에서는 사실상 필수다 — 그 wave 의 `pipeline.jsonl` 창을 여는 유일한 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 pipeline 사이클이 아직 없으므로 생략한다.
+`sds_id` 는 `complete` 와 `phase=wave-verify` 이벤트에서는 사실상 필수다 — 그 wave 의 SDS 와 워커 세션과 증거 창을 여는 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 SDS 가 아직 없으므로 생략한다.
 
-`diff_window` 와 `pipeline_run_ids` 도 `phase=wave-verify` 와 `complete` 이벤트에서는 **사실상 필수**다 — 보존 계층의 분모가 이 두 값에서만 도출되므로, 없으면 그 라운드의 판정을 재개 후 재구성할 수 없다.
+`diff_window` 도 `phase=wave-verify` 와 `complete` 이벤트에서는 **사실상 필수**다 — 보존 계층의 분모가 이 값에서 도출되므로, 없으면 그 라운드의 판정을 재개 후 재구성할 수 없다.
 
-증거 창은 `pipeline_run_ids` 의 **모든** run 을 합집합으로 연다 — `pipeline_run_id` 하나만 보면 재진입이 만든 새 run 의 산출물이 창 밖으로 떨어져, 수정 전 증거로 재검증하거나 낡은 clean 증거로 통과한다.
+증거 창은 그 wave 의 `sds_id` 로 기록된 **모든** run 을 합집합으로 연다 — 가장 최근 run 하나만 보면 재진입이 만든 새 run 의 산출물이 창 밖으로 떨어져, 수정 전 증거로 재검증하거나 낡은 clean 증거로 통과한다.
 
 `srs_authored` 가 `true` 인 `phase="srs-authoring"` 기록이 그 wave 의 저작 완료 표식이며, 저작 **진행 중인 것과 구분된다** — `phase` 만으로는 저작 시작 시점의 줄과 구분되지 않는다.
 
@@ -112,7 +110,7 @@
 | `axis_b` | object | `{ substantive_clean: bool, open: { critical, high, medium, low } }` |
 | `design_layer` | object | `{ expected: n, mapped: n, unmapped: [...] }` — 설계 기준선 범위의 설계 항목 분모 (v1.2.0 신설) |
 | `constraint_layer` | object | `{ expected: n, checked: n, violations: [...] }` — 선언된 사용자 제약 분모 (v1.3.0 신설) |
-| `preservation_layer` | object | `{ expected: n, checked: n, rows: [{ item, verdict, evidence }] }` — 행마다의 판정은 `intended-improvement` / `unapproved-damage` 두 값이며, `evidence` 는 그 판정의 근거 REQ-ID 또는 Task-ID (v1.2.0 신설, `evidence` 는 v1.3.0 신설) |
+| `preservation_layer` | object | `{ expected: n, checked: n, rows: [{ item, verdict, evidence }] }` — 행마다의 판정은 `intended-improvement` / `unapproved-damage` 두 값이며, `evidence` 는 그 판정의 근거 REQ-ID 또는 SDS-AC id (v1.2.0 신설, `evidence` 는 v1.3.0 신설) |
 | `regression` | object | `{ command, exit_code, failing_tests: [...], baseline_failing_tests: [...] }` — 그 wave 의 head 에서 실행한 전체 회귀 스위트와 run 시작 시 pin 한 기준선 (v1.2.0 신설, `baseline_failing_tests` 는 v1.3.0 신설) |
 | `frozen_denominator` | object | `{ round: n, req_ac: n, design_items: n, preservation: n, constraints: n }` — 그 라운드 진입 시 freeze 한 분모 개수 (v1.3.0 신설) |
 | `residual` | array | 종료 시점의 미해소 finding **전량**. 각 항목 `{ id, severity, summary, reason_class, cross_wave, carried_into }` |
@@ -165,10 +163,10 @@ pending → in_progress → complete
 ```
 
 - wave 시작 시 `in_progress` 1줄 append.
-- **`complete` 는 그 wave 의 `/kiwi-pipeline` 이 성공적으로 완료된 뒤에만** append (mark-complete-only-after-success). 실행 중/실패 wave 는 `complete` 로 기록하지 않는다.
+- **`complete` 는 그 wave 의 실행 — 워커의 병합과 재생, 그리고 승급 — 이 성공적으로 끝난 뒤에만** append (mark-complete-only-after-success). 실행 중/실패 wave 는 `complete` 로 기록하지 않는다.
 - 실패 시 `failed` append 후 오케스트레이션 중단(사용자 결정).
 
-**검증 게이트 (v1.1.0)**: `complete` 는 그 wave 의 `/kiwi-pipeline` 성공에 더해 **웨이브 종료 상호검증 통과**를 함께 요구한다. 같은 run 안에 그 wave 의 **최신** wave-verify 기록의 `verification.verdict` 가 `pass` 가 아니거나 그런 기록 자체가 없는 `complete` 이벤트는 **무효**이며, 재개는 그 wave 를 **미완료**로 간주한다. 루프는 라운드마다 기록을 남기므로 게이트는 항상 **최신 1줄**을 보며, 비종료 라운드의 `in-progress` 는 게이트를 통과시키지 않는다. 이 조항이 없으면 검증 단계를 통째로 건너뛴 저널이 기존 저널과 바이트 동일해져 사후 탐지가 불가능하다. 이 조항은 `schema_version` **1.1.0 이상** 이벤트에만 적용한다 — 1.1.0 미만으로 기록된 기존 `complete` 는 그대로 완료로 존중하고(멱등 재개 §4 유지) §2.3 대로 **미검증**으로 보고만 한다. 단 이 면제는 **run 단위**로 판정한다: 같은 run 에 1.1.0 이벤트가 하나라도 있으면 그 run 의 `complete` 는 버전 표기와 무관하게 본 조항의 적용을 받는다. 버전은 policing 대상인 생산자가 스스로 쓰는 값이므로, 버전만 보고 면제하면 1.0.0 으로 낮춰 쓰는 것이 곧 우회(downgrade bypass)가 된다.
+**검증 게이트 (v1.1.0)**: `complete` 는 그 wave 의 실행 성공에 더해 **웨이브 종료 상호검증 통과**를 함께 요구한다. 같은 run 안에 그 wave 의 **최신** wave-verify 기록의 `verification.verdict` 가 `pass` 가 아니거나 그런 기록 자체가 없는 `complete` 이벤트는 **무효**이며, 재개는 그 wave 를 **미완료**로 간주한다. 루프는 라운드마다 기록을 남기므로 게이트는 항상 **최신 1줄**을 보며, 비종료 라운드의 `in-progress` 는 게이트를 통과시키지 않는다. 이 조항이 없으면 검증 단계를 통째로 건너뛴 저널이 기존 저널과 바이트 동일해져 사후 탐지가 불가능하다. 이 조항은 `schema_version` **1.1.0 이상** 이벤트에만 적용한다 — 1.1.0 미만으로 기록된 기존 `complete` 는 그대로 완료로 존중하고(멱등 재개 §4 유지) §2.3 대로 **미검증**으로 보고만 한다. 단 이 면제는 **run 단위**로 판정한다: 같은 run 에 1.1.0 이벤트가 하나라도 있으면 그 run 의 `complete` 는 버전 표기와 무관하게 본 조항의 적용을 받는다. 버전은 policing 대상인 생산자가 스스로 쓰는 값이므로, 버전만 보고 면제하면 1.0.0 으로 낮춰 쓰는 것이 곧 우회(downgrade bypass)가 된다.
 
 이 게이트는 `wave="all"` 인 run-scope 이벤트에는 **적용하지 않는다** — run-scope 에는 자기 wave 의 wave-verify 기록이 원리적으로 존재하지 않아 항상 무효가 된다. run-scope 완료의 선행 조건은 §4 의 최종 검증 술어다.
 
@@ -183,7 +181,7 @@ pending → in_progress → complete
 `waves.jsonl` 에서 **현재 run 의 `run_id` 와 일치하는 이벤트만**을 골라 각 wave 의 **마지막(latest)** 이벤트 status 를 계산한다. 이 계산에서 `wave="all"` 인 run-scope 최종 검증 이벤트는 **제외**한다(§3) — 그것은 어느 wave 의 상태도 아니다:
 
 - 모든 wave 가 `complete` 이고 **그리고** 최신 `final-verify` 이벤트의 `verification.verdict` 가 `pass` → 전체 완료.
-- 그 외 → status 가 `complete` 가 아닌 **첫 번째 미완료(first incomplete) wave** 부터 재개한다. 이미 `complete` 인 앞 wave 는 건너뛴다.
+- 그 외 → status 가 `complete` 가 아닌 **첫 번째 미완료(first incomplete) wave** 부터 재개한다. 이미 `complete` 인 앞 wave 는 건너뛴다. 그 wave 가 든 stage 의 준비 집합은 `parallel-waves.md §3` 이 다시 계산한다 — 의존이 모두 `complete` 인 wave 들이다.
 
 최종 검증이 통과하지 않은 run 은 완료로 보고하지 않고 **최종 검증으로 재개한다** — 모든 wave 가 `complete` 여도 마찬가지다.
 
@@ -216,13 +214,13 @@ elif [ -d "./kiwi" ]; then WAVE_DIR="./kiwi"
 else WAVE_DIR="$HOME/.kiwi"; fi
 mkdir -p "$WAVE_DIR"
 # 1) 웨이브 종료 상호검증 기록 (§3 이 요구하는 선행 통과 기록). 라운드마다 1줄.
-echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 
 # 2) 그 다음에야 complete. verdict 가 pass 가 아니면 이 줄을 쓰지 않는다.
-echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","pipeline_run_id":"<prid>","pipeline_run_ids":["<prid>"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 
 # 3) 마지막 wave 의 complete 뒤 1회. run-scope 최종 검증 (§3): wave 는 "all", order 는 0. run 창은 `run_diff_window` 로 싣는다(wave 단위 `diff_window` 는 싣지 않는다).
-echo '{"ts":"<ISO>","schema_version":"1.5.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
 ```
 
 emit 은 best-effort — 실패가 본 오케스트레이션 실패로 이어지면 안 된다 (stderr WARN).

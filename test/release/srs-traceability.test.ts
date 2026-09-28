@@ -33,6 +33,7 @@ function requirement(overrides: Partial<RequirementRecord> = {}): RequirementRec
     ],
     verificationEvidence: [{ id: "VE-1", type: "test", reference: "evidence/release.txt", covers: "all", notes: "-", line: 47 }],
     traceLinks: [],
+    changeNotes: [],
     tags: [],
     priority: "high",
     risk: "low",
@@ -49,7 +50,8 @@ function workspace(root: string, records: RequirementRecord[]): ParsedWorkspace 
       activeTarget: "v1.0.0",
       targets: [{ target: "v1.0.0", type: "release", status: "active", description: "Fixture target" }],
       scopes: [{ scope: "ARCH", prefix: "ARCH", document: "docs/spec/10.product-architecture.srs.md", description: "Architecture" }],
-      completedWork: []
+      completedWork: [],
+      targetGoals: {}
     },
     files: [],
     records,

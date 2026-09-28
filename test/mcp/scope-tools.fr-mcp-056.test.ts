@@ -8,7 +8,7 @@ import { findSpecByCliName } from "../../src/mcp/schemas.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 // FR-MCP-056 — an MCP-only agent could not create a scope document.

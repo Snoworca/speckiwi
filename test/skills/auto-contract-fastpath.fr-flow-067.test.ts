@@ -28,8 +28,8 @@ import {
 // The charter's first half of the `--auto` change. Three edits travel with it and each is asserted
 // separately: the reworded §3 prohibition (which as written forbade the feature being added), the
 // bypass precedence (two bypasses with different scopes and no ranking), and the marker being a
-// structured field rather than a prose scan (two of `kiwi-pm`'s three `(권장)` labels annotate a
-// HALT option, so a prose scan would auto-adopt a recommended HALT).
+// structured field rather than a prose scan (both of `kiwi-pm`'s `(권장)` labels annotate a HALT
+// option, so a prose scan would auto-adopt a recommended HALT).
 //
 // Deliberately NOT asserted, because the charter excludes it: any field, criterion or prose
 // describing WHY an option carries a recommendation. AC-3's last clause is the negative guard, and
@@ -141,6 +141,21 @@ describe("FR-FLOW-067 — recommended-marked gate option adopted with no committ
       ).toBe(true);
     });
 
+    it(`FR-FLOW-067 AC-4 [${copy.id}]: the kiwi-pm (권장) labels it cites are the two kiwi-pm carries since 4.0.0, both on a HALT option`, () => {
+      // The count is the one the kiwi-pm test below holds; a copy still saying "two of the three"
+      // describes the plan checklist fallback FR-FLOW-185 removed.
+      const item =
+        autoOptionText(copy.relPath)
+          .split(/\n(?=\s*[-*]\s)/)
+          .map((block) => block.replace(/\s+/g, " "))
+          .find((block) => PROSE_RECOMMENDATION_LABEL.test(block) && block.includes("`kiwi-pm`")) ?? "";
+      expect(item, `FR-FLOW-067 AC-4: ${copy.id} does not say which kiwi-pm labels a prose scan would misread`).not.toBe("");
+      expect(item, `FR-FLOW-067 AC-4: ${copy.id} still counts a third (권장) label in kiwi-pm`).not.toMatch(/3개 중|of the three/);
+      expect(item, `FR-FLOW-067 AC-4: ${copy.id} does not say both kiwi-pm (권장) labels annotate a HALT option`).toMatch(
+        /`\(권장\)` 라벨 2개는 모두 HALT 옵션에 붙어 있다|Both such labels in `kiwi-pm` annotate a HALT option/
+      );
+    });
+
     it(`AC-5 [${copy.id}]: the ladder-violation prohibition admits a zero-vote fast path and no lead-member tie-break`, () => {
       const text = autoOptionText(copy.relPath);
 
@@ -232,15 +247,16 @@ describe("FR-FLOW-067 — recommended-marked gate option adopted with no committ
     });
   }
 
-  // The three prose `(권장)` labels live in the Korean canonical rendering; two of them annotate a
-  // HALT option, which is why the marker is a structured field and not a prose scan.
-  it("AC-4 [kiwi-pm claude]: the three (권장) prose labels survive and acquire no marker", () => {
+  // The prose `(권장)` labels live in the Korean canonical rendering and both annotate a HALT option,
+  // which is why the marker is a structured field and not a prose scan. Two since 4.0.0: FR-FLOW-185
+  // removed the plan `checklist.md` fallback that carried the third (FR-FLOW-067 AC-4, revised).
+  it("FR-FLOW-067 AC-4 [kiwi-pm claude]: the two (권장) prose labels survive and acquire no marker", () => {
     const text = readRepoFile("skills/claude/kiwi-pm/SKILL.md");
 
     expect(
       windowsAround(text, PROSE_RECOMMENDATION_LABEL, 0).length,
-      "FR-FLOW-067 AC-4: the claude kiwi-pm rendering must retain its three prose (권장) labels unchanged"
-    ).toBe(3);
+      "FR-FLOW-067 AC-4: the claude kiwi-pm rendering must retain its two prose (권장) labels unchanged"
+    ).toBe(2);
 
     expect(
       windowsAround(text, PROSE_RECOMMENDATION_LABEL, 160).filter((w) =>
@@ -252,7 +268,7 @@ describe("FR-FLOW-067 — recommended-marked gate option adopted with no committ
     // Two of them annotate a HALT option — the concrete reason a prose scan is refused.
     expect(
       windowsAround(text, PROSE_RECOMMENDATION_LABEL, 120).filter((w) => /HALT/.test(w)).length,
-      "FR-FLOW-067 AC-4: two of the three (권장) labels are expected to annotate a HALT option"
+      "FR-FLOW-067 AC-4: both (권장) labels are expected to annotate a HALT option"
     ).toBe(2);
   });
 

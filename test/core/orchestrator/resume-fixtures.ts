@@ -34,12 +34,11 @@ export function minimalCard(overrides: Partial<ResumeCard> = {}): ResumeCard {
     run_contract: "docs/research/v260-orchestrator/00.run-contract.md@sha256:9f1c",
     position: { wave: 1, stage: 1, phase: "execute" },
     next_action: {
-      verb: "execute-unit",
+      verb: "dispatch-lane",
       args: { wave: 1, stage: 1, lane: "lane-1" },
       preconditions: [
         "P-DESIGN-FROZEN",
         "P-LANE-PLAN-FROZEN",
-        "P-HANDOFF-VERIFIED",
         "P-WAVE-ISSUES-CLOSED",
         "P-PRIOR-STAGES-INTEGRATED"
       ]
@@ -67,14 +66,9 @@ export function emptyGitFacts(overrides: Partial<GitFacts> = {}): GitFacts {
 
 export function emptyDriftInputs(overrides: Partial<DriftInputs> = {}): DriftInputs {
   const recorded = {
-    sidecarDigest: "sha256:sidecar",
-    registryDigest: "sha256:registry",
-    existingPathsDigest: "sha256:paths",
-    designItemMapDigest: "sha256:map",
-    priorPostmortemDigests: ["sha256:pm1"],
-    laneCap: 8,
-    codeRoots: ["src/**"],
-    testRoots: ["test/**"]
+    sdsDigests: { "run-a-wave-1": "sha256:sds-1", "run-a-wave-2": "sha256:sds-2" },
+    depends: { "run-a-wave-2": [] },
+    laneCap: 8
   };
   return {
     lockDigests: {
@@ -86,13 +80,7 @@ export function emptyDriftInputs(overrides: Partial<DriftInputs> = {}): DriftInp
       postmortem: ""
     },
     recordedLaneInputs: recorded,
-    recomputedLaneInputDigests: {
-      sidecarDigest: recorded.sidecarDigest,
-      registryDigest: recorded.registryDigest,
-      existingPathsDigest: recorded.existingPathsDigest,
-      designItemMapDigest: recorded.designItemMapDigest,
-      priorPostmortemDigests: [...recorded.priorPostmortemDigests]
-    },
+    recomputedLaneInputDigests: { sdsDigests: { ...recorded.sdsDigests }, closedOutWaves: [] },
     freshIntentDigests: {},
     handoffProseDigests: {},
     ...overrides

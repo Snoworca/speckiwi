@@ -55,20 +55,11 @@ export const GATE_IDS = [
   "unallocated-req-id",
   "requirement-not-ready",
   "schedule-cycle",
-  "tdd-pair-split",
-  "unknown-write-set-refused",
   "files-not-grounded",
-  "non-code-write-set-refused",
   "lane-plan-drift",
-  "handoff-not-english",
-  "handoff-unresolvable-reference",
-  "handoff-untested-ac-over-cap",
-  "handoff-verify-failed",
-  "stage-coupling-unresolved",
   "dispatch-base-dirty",
   "lane-design-refuted",
   "post-merge-index-drift",
-  "plan-coverage-unclosed",
   "cross-lane-duplication-unresolved",
   "verification-oscillation",
   "wave-issues-open",
@@ -130,7 +121,7 @@ export const GATE_IDS = [
   //
   //   Both reach exit 2 from a live CLI path — `handoff-pin-untrusted` from `pinning.ts` at
   //   `orchestrate freeze <target>`, `lane-plan-incomplete` from `lane-plan.ts` at
-  //   `orchestrate schedule plan` — and both were outside this union until `refuse()` stopped
+  //   `orchestrate schedule waves` — and both were outside this union until `refuse()` stopped
   //   accepting a bare string. They stay out of every variant's `critical_gates[]`, which leaves
   //   their `--auto` classification at `business-decision` exactly as it already was: that
   //   classification is keyed on the skill tables, not on this union, so admission here changes no
@@ -146,10 +137,38 @@ export const GATE_IDS = [
   // @req FR-FLOW-134 — kiwi-wave-master spawns the run-scope review loop itself, so the
   // pipeline gate cannot cover it. Every sibling child gate is a member; without membership
   // the halt falls to `business-decision` and a committee approves skipping it.
-  "child-review-fix-loop-needs-user-or-failed"
+  "child-review-fix-loop-needs-user-or-failed",
+
+  // — The 4.0.0 parallel-waves run (@req FR-NODE-122 AC-2) —
+  //
+  // @req FR-FLOW-188 AC-6 — the host found a change under `docs/spec` or `docs/sds` that a worker made.
+  "worker-touched-srs",
+  // @req FR-FLOW-186 — a scope whose requirements are not cited by enough tests.
+  "test-sufficiency-gap",
+  // @req IR-CLI-092 — `replay-apply.ts` already raises it; a refusal the union omits cannot reach
+  // `refuse()` and is enforced nowhere a reader can see.
+  "srs-mutation-replay-failed"
 ] as const;
 
 export type GateId = (typeof GATE_IDS)[number];
+
+/**
+ * @req FR-NODE-213 AC-6 — the gates 4.0.0 retired with the plan rung (FR-NODE-212), the handoff
+ * validator, the coupling check and the task-level conflict reasons (FR-NODE-213 AC-3). A run written
+ * before 4.0.0 may have ended on one, and its lines are not re-validated against the 4.0.0 contract,
+ * so the journal validator still reads them on a line stamped with an earlier schema version.
+ */
+export const GATE_IDS_RETIRED_IN_4_0_0 = [
+  "plan-coverage-unclosed",
+  "handoff-not-english",
+  "handoff-unresolvable-reference",
+  "handoff-untested-ac-over-cap",
+  "handoff-verify-failed",
+  "stage-coupling-unresolved",
+  "tdd-pair-split",
+  "unknown-write-set-refused",
+  "non-code-write-set-refused"
+] as const;
 
 /**
  * The closed action vocabulary.

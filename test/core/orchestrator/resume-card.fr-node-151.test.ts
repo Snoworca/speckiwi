@@ -35,15 +35,9 @@ describe("FR-NODE-151 resume card validation", () => {
     expect("text" in written).toBe(false);
   });
 
-  it("AC-2 refuses an out-of-enum verb and an out-of-enum precondition", async () => {
+  it("FR-NODE-151 AC-2 refuses an out-of-enum verb and an out-of-enum precondition", async () => {
     const journal = await journalView();
-    expect([...CARD_PRECONDITIONS]).toEqual([
-      "P-DESIGN-FROZEN",
-      "P-LANE-PLAN-FROZEN",
-      "P-HANDOFF-VERIFIED",
-      "P-WAVE-ISSUES-CLOSED",
-      "P-PRIOR-STAGES-INTEGRATED"
-    ]);
+    expect([...CARD_PRECONDITIONS]).toEqual(["P-DESIGN-FROZEN", "P-LANE-PLAN-FROZEN", "P-WAVE-ISSUES-CLOSED", "P-PRIOR-STAGES-INTEGRATED"]);
 
     const badVerb = minimalCard({
       next_action: { verb: "do-the-thing" as ResumeCard["next_action"]["verb"], args: {}, preconditions: [] }
@@ -51,9 +45,15 @@ describe("FR-NODE-151 resume card validation", () => {
     expect(codes(badVerb, journal)).toContain("unknown-verb");
 
     const badPrecondition = minimalCard({
-      next_action: { verb: "execute-unit", args: {}, preconditions: ["P-EVERYTHING-FINE"] as never }
+      next_action: { verb: "dispatch-lane", args: {}, preconditions: ["P-EVERYTHING-FINE"] as never }
     });
     expect(codes(badPrecondition, journal)).toContain("unknown-precondition");
+
+    // P-HANDOFF-VERIFIED left in 4.0.0 with the English handoff documents (FR-FLOW-187 AC-4).
+    const handoff = minimalCard({
+      next_action: { verb: "dispatch-lane", args: {}, preconditions: ["P-HANDOFF-VERIFIED"] as never }
+    });
+    expect(codes(handoff, journal)).toContain("unknown-precondition");
   });
 
   it("AC-3 refuses a completed-work entry whose proof kind is outside the seven kinds", async () => {

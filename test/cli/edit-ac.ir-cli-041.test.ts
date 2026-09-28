@@ -46,12 +46,12 @@ const NEW_AC1_TEXT = "The status can be updated by an authorized operator only."
 const NEW_AC1_LINE = `- [ ] AC-1: ${NEW_AC1_TEXT}`;
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 /** Drains the output written to a finished run's stream. */
-function drain(stream: NodeJS.WriteStream): string {
-  return (stream as unknown as PassThrough).read()?.toString() ?? "";
+function drain(stream: PassThrough): string {
+  return stream.read()?.toString() ?? "";
 }
 
 async function readScope(root: string): Promise<string> {

@@ -29,7 +29,7 @@ function leafFor(root: Command, path: readonly string[]): Command | null {
 
 /** The `--flag` of every option the leaf declares mandatory. */
 function requiredFlagsOf(leaf: Command): string[] {
-  return (leaf.options as Array<{ required?: boolean; mandatory?: boolean; long?: string | null }>)
+  return leaf.options
     .filter((option) => option.mandatory === true)
     .map((option) => option.long ?? "")
     .filter((flag) => flag.length > 0);

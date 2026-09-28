@@ -93,13 +93,12 @@ async function written(root: string): Promise<Record<string, unknown>> {
   return all[all.length - 1] as Record<string, unknown>;
 }
 
-/** The six legal `{scope}` forms of 05 §5.1, one per loop. */
+/** The five legal `{scope}` forms, one per loop; the loop-H form retired in 4.0.0 with loop H. */
 const LOOPS: Array<{ loop: Round["loop"]; scope: string; phase: string; verb: string; wave: string; order: number }> = [
   { loop: "D", scope: "design", phase: "design", verb: "verify-design", wave: "all", order: 0 },
   { loop: "W", scope: "wave-1", phase: "wave-design", verb: "verify-wave-design", wave: "wave-1", order: 1 },
   { loop: "L", scope: "wave-2-lane-3", phase: "lane", verb: "verify-lane", wave: "wave-2", order: 2 },
   { loop: "P", scope: "wave-3-post", phase: "wave-verify", verb: "post-merge-verify", wave: "wave-3", order: 3 },
-  { loop: "H", scope: "wave-4-lane-1-handoff", phase: "handoff", verb: "verify-handoff", wave: "wave-4", order: 4 },
   { loop: "F", scope: "run", phase: "final-verify", verb: "final-verify", wave: "all", order: 0 }
 ];
 
@@ -115,6 +114,21 @@ describe("FR-NODE-169 AC-1 / AC-2 — the scope vocabulary is closed", () => {
     expect(await readFile(path.join(root, "kiwi/waves.jsonl"), "utf8")).toBe(before);
   });
 
+  it("FR-NODE-169 AC-1 refuses the retired loop-H scope form the same way, and writes nothing", async () => {
+    const root = await tempRoot();
+    const before = await readFile(path.join(root, "kiwi/waves.jsonl"), "utf8");
+
+    // Under the retired loop and under the lane loop whose scope form it extends, so neither a loop-H
+    // payload nor a lane-loop round carrying the old suffix lands.
+    for (const loop of ["H" as Round["loop"], "L" as Round["loop"]]) {
+      const refused = await record(round({ loop, scope: "wave-4-lane-1-handoff" }), { root });
+
+      expect(refused.exit, `${loop}: ${JSON.stringify(refused.payload)}`).toBe(2);
+      expect(refused.payload.gate).toBe("invalid-run-scope-option");
+      expect(await readFile(path.join(root, "kiwi/waves.jsonl"), "utf8")).toBe(before);
+    }
+  });
+
   it("refuses a scope whose loop disagrees with the declared loop", async () => {
     const refused = await record(round({ loop: "F", scope: "wave-1-post" }));
     expect(refused.exit, JSON.stringify(refused.payload)).toBe(2);
@@ -123,7 +137,7 @@ describe("FR-NODE-169 AC-1 / AC-2 — the scope vocabulary is closed", () => {
 });
 
 describe("FR-NODE-169 AC-3 / AC-4 / AC-5 — phase, verb and the wave triple are derived", () => {
-  it.each(LOOPS)("loop $loop over $scope", async (entry) => {
+  it.each(LOOPS)("FR-NODE-169 AC-3 AC-4 AC-5 loop $loop over $scope", async (entry) => {
     const result = await record(round({ loop: entry.loop, scope: entry.scope, roundIndex: 1 }));
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
 
@@ -135,7 +149,7 @@ describe("FR-NODE-169 AC-3 / AC-4 / AC-5 — phase, verb and the wave triple are
     expect(line.target).toBe(entry.wave === "all" ? "all" : entry.wave);
   });
 
-  it("derives six DISTINCT verbs, so a hard-coded one cannot pass", async () => {
+  it("FR-NODE-169 AC-4 derives five DISTINCT verbs, so a hard-coded one cannot pass", async () => {
     const verbs = new Set<unknown>();
     const phases = new Set<unknown>();
     for (const entry of LOOPS) {
@@ -144,8 +158,9 @@ describe("FR-NODE-169 AC-3 / AC-4 / AC-5 — phase, verb and the wave triple are
       verbs.add(line.verb);
       phases.add(line.phase);
     }
-    expect(verbs.size, "one verb per loop").toBe(6);
-    expect(phases.size, "one phase per loop").toBe(6);
+    expect(verbs.size, "one verb per loop").toBe(5);
+    expect(phases.size, "one phase per loop").toBe(5);
+    expect([...verbs]).not.toContain("verify-handoff");
     for (const phase of phases) expect(WAVE_PHASES as readonly string[]).toContain(phase as string);
     // AC-4's second clause. `phase` was checked against its enum and `verb` was not, so the six verbs
     // were pinned only by the literals duplicated in this file's own table.

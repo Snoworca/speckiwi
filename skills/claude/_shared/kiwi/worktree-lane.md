@@ -2,7 +2,9 @@
 
 `kiwi-orchestrator` 와 `kiwi-wave-master` 가 공유하는 SSOT. 두 스킬은 이 절차를 각자 다시 적지 않고 §0 에서 본 문서를 지목한다 — 같은 책임을 두 곳이 나눠 가지면 한쪽만 고쳐지고 다른 쪽은 조용히 어긋난다.
 
-관장 요구: `FR-FLOW-122`(본 계약) · `FR-NODE-186`(위상 분류와 role 게이트) · `FR-NODE-185`(재생 승인·체크포인트) · `FR-FLOW-121`(`--defer-srs-mutation`).
+관장 요구: `FR-FLOW-122`(본 계약) · `FR-NODE-186`(위상 분류와 role 게이트) · `FR-NODE-185`(재생 승인·체크포인트) · `FR-FLOW-121`(`--defer-srs-mutation`) · `FR-FLOW-188`(wave 당 워커 하나).
+
+**lane 하나는 wave 하나의 워커다.** 이 계약의 레인은 `parallel-waves.md` 가 wave 마다 dispatch 하는 워커 하나이고, wave 안을 다시 lane 으로 나누지 않는다. 레인의 `write_set` 은 그 wave SDS 의 쓰기 집합 — Files 경로 ∪ Test Plan 테스트 파일 — 이다. 레인을 언제 만들고 누가 판정·병합하는지의 순서는 `parallel-waves.md` 가 소유하고, 본 문서는 레인 하나가 지켜야 할 경계를 소유한다.
 
 ---
 
@@ -11,7 +13,7 @@
 | 이름 | 무엇인가 | 무엇을 소유하는가 |
 |---|---|---|
 | **run root** | MCP workspace 에 결속된 호스트 체크아웃 | Requirement ID 할당, **모든 SRS mutation**, 인덱스 롤업, `waves.jsonl`, run 락 |
-| **lane workspace** | run 이 만든 git worktree | 코드·테스트 편집과 자기 브랜치 커밋 **뿐** |
+| **lane workspace** | run 이 wave 워커 하나에게 준 git worktree | 코드·테스트 편집과 자기 브랜치 커밋 **뿐** |
 
 **MCP root 는 세션 도중 옮길 수 없다.** 서버 프로세스의 cwd 에 묶여 있고 재기동 수단이 없다. 그래서 이 설계는 세션을 워크트리로 옮기지 않는다 — **호스트가 제자리에 머문 채 `--root` 로 레인 안쪽에 손을 뻗는다.** 방향은 호스트 → 레인 **단방향**이다.
 
@@ -22,7 +24,7 @@
 ## 2. 만들기 — 기본 HEAD 를 믿지 않는다
 
 ```
-git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
+git worktree add <lane-root> -b kiwi/orch/{run_id}/{laneId} <base_sha>
 ```
 
 **base 를 세 번째 인자로 준다 — 두 줄로 나누지 않는다.** `add -b BR` 뒤에 `checkout <base_sha>` 를
@@ -37,9 +39,9 @@ git worktree add <lane-root> -b kiwi/orch/{run_id}/{lane_key} <base_sha>
 
 **base 를 명시하는 것 자체가 선택이 아니다.** 실측: 런타임이 만든 워크트리의 기본 HEAD 는 `origin/<기본 브랜치>` 였고, 작업 중인 브랜치보다 **114 커밋 뒤**였다. 그 상태로 고친 diff 는 **깨끗하게 병합된다** — 몇 달 전 코드를 고쳤다는 사실이 어디에도 드러나지 않는다.
 
-워크트리는 객체 DB 를 공유하므로, 워크트리가 만들어진 **뒤에** 생긴 커밋으로도 이동할 수 있다(실측 확인). 그래서 "앞 단위의 통합 tip 위에서 시작한다"가 기계적으로 가능하다.
+워크트리는 객체 DB 를 공유하므로, 워크트리가 만들어진 **뒤에** 생긴 커밋으로도 이동할 수 있다(실측 확인). 그래서 "앞 wave 들이 병합된 통합 tip 위에서 시작한다"가 기계적으로 가능하다.
 
-**부트스트랩**은 호스트가 레인에 에이전트를 넣기 **전에** 끝낸다.
+**부트스트랩**은 코드 작업 **전에** 끝낸다 — 호스트가 워크트리를 만들면 호스트가 에이전트를 넣기 전에, 런타임이 워커와 함께 워크트리를 만들면 워커가 첫 행동으로 한다.
 
 ```
 npm ci --include=dev --ignore-scripts
@@ -52,7 +54,7 @@ npm ci --include=dev --ignore-scripts
 ## 3. 레인이 절대 하지 않는 세 가지
 
 1. **SRS mutation 을 직접 호출하지 않는다.** `--defer-srs-mutation <path>` 로 받은 큐에 **기록만** 한다. 기록은 skip 이 아니다 — 네 mutation 은 그대로 회계되고 호스트가 재생한다.
-2. **`docs/spec/` 아래를 커밋하지 않는다.** 레인의 커밋은 자기 `write_set` pathspec 으로 한정된다.
+2. **`docs/spec/` 아래를 커밋하지 않는다.** `docs/sds/` 도 마찬가지다. 레인의 커밋은 자기 `write_set` pathspec 으로 한정된다.
 3. **`--root` 를 쓰지 않는다.** `--root` 를 쓰는 순간 그것은 레인 작업이 아니라 오케스트레이터 연산이다.
 
 세 금지는 전부 **호스트가 레인의 자기보고 없이 검사할 수 있다** — 공유 객체 DB 위의 커밋 범위만 보면 된다.
@@ -86,7 +88,7 @@ run root 검사는 두 root 의 **일치**가 아니라 **다름이 동결된 �
 base..head 커밋이 0 이 아니다              (뭔가 했다)
 base 가 head 의 조상이다                   (올바른 기준선에서 했다)
 변경 경로 ⊆ write_set                      (리스 안에서 했다)
-변경 경로 ∩ docs/spec/ = ∅                 (SRS 를 안 건드렸다)
+변경 경로 ∩ (docs/spec/ ∪ docs/sds/) = ∅     (SRS 와 SDS 를 안 건드렸다)
 ```
 
 ---

@@ -21,10 +21,6 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   set_target_goal: "workspace",
   init_project: "workspace",
   add_requirement: "workspace",
-  workflow_task_check: "workspace",
-  workflow_task_uncheck: "workspace",
-  workflow_checklist_set: "workspace",
-  workflow_task_status_set: "workspace",
   workflow_pipeline_emit: "workspace",
   workflow_worklog_emit: "workspace",
   workflow_repair_record: "workspace",
@@ -98,22 +94,22 @@ describe("FR-ARCH-005 — mutation tool kind classification", () => {
     it("log-append tools allow requirementIds as string[]", () => {
       const cw = toolSchemas.add_completed_work;
       expect(cw).toBeDefined();
-      expect(cw.requirementIds).toBeDefined();
-      const parsed = z.object({ requirementIds: cw.requirementIds }).safeParse({ requirementIds: ["FR-1", "FR-2"] });
+      expect(cw?.requirementIds).toBeDefined();
+      const parsed = z.object({ requirementIds: cw?.requirementIds }).safeParse({ requirementIds: ["FR-1", "FR-2"] });
       expect(parsed.success).toBe(true);
     });
 
     it("preview-capable AC, evidence, and trace mutations expose dryRun schema fields", () => {
       for (const name of ["check_acceptance_criteria", "add_verification_evidence", "add_trace_link"] as const) {
         const schema = toolSchemas[name];
-        expect(schema.dryRun, `${name}.dryRun should be declared`).toBeDefined();
-        expect(z.object({ dryRun: schema.dryRun }).safeParse({ dryRun: true }).success, `${name}.dryRun accepts boolean`).toBe(true);
-        expect(z.object({ dryRun: schema.dryRun }).safeParse({ dryRun: "true" }).success, `${name}.dryRun rejects strings`).toBe(false);
+        expect(schema?.dryRun, `${name}.dryRun should be declared`).toBeDefined();
+        expect(z.object({ dryRun: schema?.dryRun }).safeParse({ dryRun: true }).success, `${name}.dryRun accepts boolean`).toBe(true);
+        expect(z.object({ dryRun: schema?.dryRun }).safeParse({ dryRun: "true" }).success, `${name}.dryRun rejects strings`).toBe(false);
       }
       for (const name of ["add_verification_evidence", "add_trace_link"] as const) {
         const schema = toolSchemas[name];
-        expect(schema.notes, `${name}.notes should be declared`).toBeDefined();
-        expect(z.object({ notes: schema.notes }).safeParse({ notes: "exact note" }).success, `${name}.notes accepts strings`).toBe(true);
+        expect(schema?.notes, `${name}.notes should be declared`).toBeDefined();
+        expect(z.object({ notes: schema?.notes }).safeParse({ notes: "exact note" }).success, `${name}.notes accepts strings`).toBe(true);
       }
     });
 

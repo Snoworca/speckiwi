@@ -21,7 +21,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | §0.4 | **SDS 선행**. SDS(design.md) 없이 테스트를 먼저 작성하지 않는다 — 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. 유일한 예외는 §2.3 이 정의한 **기록된 생략**(intent.md 의 `## SDS Skip` 절)이며, 기록이 없는 생략은 `speckiwi step validate` 가 `SDS-E054` 오류로 막는다. |
 | §0.5 | **테스트 불가침**. 테스트를 먼저 커밋하고, green 단계에서 테스트를 약화(weaken)·수정해 통과시키는 행위를 절대 금지한다. 계약 변경이 필요하면 SDS를 supersede 하고 red부터 다시 간다. |
 | §0.6 | **증거 없는 승격 금지**. `promote_step_requirement`는 Verification Evidence(검증 증거) 1건 이상을 가진 블록만 승격한다(FR-NODE-074가 tdd 모드에서 하드 거부). |
-| §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행, kiwi-srs/kiwi-planner 계열)로 리다이렉트한다. |
+| §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행 — `kiwi-srs` → `kiwi-sds` 사슬)로 리다이렉트한다. |
 | §0.8 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지**. |
 | §0.9 | `--mini` / `--loops N` 수용 — `_shared/kiwi/loop-option.md` 관례. 본 스킬의 자체 검증-개선 루프는 red→green 반복뿐이므로 라운드 캡은 회귀 수정 반복에만 적용된다. |
 | §0.10 | **코드 추적성은 후행(post-promote)·비차단**. 코드 Trace Links(`add_trace_link` Code anchor)·`@req` 태그는 Phase 6 promote가 body REQ ID를 확정한 **뒤에만** 복원한다 — Phase 2/4 부착은 금지한다. Code anchor가 **권위** traceability SSOT, `@req` breadcrumb는 **보조**이며 둘 다 **비차단**이다(누락·stale이 promote를 막지 않고 FR-NODE-074 EVIDENCE_REQUIRED 게이트와 **분리**). FR-FLOW-020 관례를 재사용하고, 태그 형식·면제는 kiwi-coder §0.17만 인용한다(운영 훅 수입 금지). |
@@ -36,6 +36,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | `step-claim-write-skew` | `claim_step` 이 write-skew(동일 REQ 를 건드리는 다른 step 의 선점)로 거부 — 두 step 이 같은 요구를 저작하는 것을 자동 승인할 수 없다 | Phase 1 (§2.2) |
 | `promote-evidence-required` | `promote_step_requirement` 가 검증 증거 0건으로 `EVIDENCE_REQUIRED` 거부 (§0.6) — 증거 없는 승격은 우회 대상이 아니라 채워야 할 결함이다 | Phase 6 (§2.7) |
 | `step-completion-gate-blocked` | `update_step_state(merged)` 가 `COMPLETION_GATE_BLOCKED` 로 거부 (FR-NODE-078) — 비-clean 호환 엣지를 `acknowledged` 로 명시 승인하는 것은 비가역 판단이다 | Phase 7 (§2.8) |
+| `test-sufficiency-gap` | 승격 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 이 남음 — gap 이 남은 요구는 승격하지 않는다 (`_shared/kiwi/test-sufficiency.md`) | Phase 6 — `promote_step_requirement` 직전 (§2.7) |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | Phase 6 — `promote_step_requirement` 직전 |
 
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
@@ -63,7 +64,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 
 ### 1.2 출력
 
-- `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v2.5.0 준수)
+- `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v2.6.0 준수)
 - red→green 테스트 + 구현 코드
 - `docs/spec/steps/<task>/<task>.srs.md` — 합성된 step SRS
 - body scope로 승격된 요구 블록(증거 포함)
@@ -80,7 +81,7 @@ Phase 3 : red — SDS-AC를 실패 테스트로 번역, 실패 확인 후 테스
 Phase 4 : green — 테스트 약화 없이 최소 구현으로 통과
 Phase 5 : 회귀 — 영향 범위 테스트 전체 + `speckiwi vibe-gate check`
 Phase 5.5 : 리뷰 홉 — `kiwi-review-fix-loop` 을 승격 전에 정확히 한 번 (`--review-hop-owned-by-parent` 를 받았으면 건너뛴다)
-Phase 6 : 후행 SRS — synthesize → 요구 블록·증거 정리 → promote_step_requirement → 추적성 복원(add_trace_link code/implements + @req reconcile, post-promote·비차단, §0.10)
+Phase 6 : 후행 SRS — synthesize → 요구 블록 정리 → 테스트 충분성 확인 → 증거 정리 → promote_step_requirement → 추적성 복원(add_trace_link code/implements + @req reconcile, post-promote·비차단, §0.10)
 Phase 7 : update_step_state(merged) + 사용자 보고
 ```
 
@@ -94,7 +95,7 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 ### 2.3 Phase 2 — SDS 저작 (체크리스트 의무)
 
-`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.5.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
+`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.6.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
 
 1. **skip-gate 판정 먼저 — 기록된 생략만 성립한다**: trade-off 없는 자명한(trivial) 변경인가? 생략(skip)하려면 `docs/spec/steps/<task>/intent.md` 에 `## SDS Skip` 절을 만들고 세 칸을 채운다 — `| Decision | skipped |` 행, `| Reason | <생략 사유 한 줄> |` 행, 그리고 EARS 형식의 `SDS-AC-n: WHEN … THE SYSTEM SHALL …` 줄 최소 하나. 기록을 남긴 뒤 `speckiwi step validate <task>`(아래 7번)로 대조하고, 통과한 다음에 Phase 3 으로 넘어간다.
 
@@ -112,7 +113,7 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 ### 2.4 Phase 3 — red
 
-SDS §5의 각 SDS-AC를 실패하는 테스트로 번역한다(SDS-AC당 최소 1 케이스). 테스트를 실행해 **실패(red)를 확인**한 뒤 테스트를 먼저 커밋한다. red 확인 전 구현 착수 금지.
+SDS §5의 각 SDS-AC를 실패하는 테스트로 번역하고, 테스트 제목 줄에 그 `SDS-AC-<n>` 을 적는다(SDS-AC당 최소 1 케이스, 인용 규약은 `_shared/kiwi/test-sufficiency.md` §1). 테스트를 실행해 **실패(red)를 확인**한 뒤 테스트를 먼저 커밋한다. red 확인 전 구현 착수 금지.
 
 ### 2.5 Phase 4 — green
 
@@ -147,9 +148,11 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 
 ### 2.7 Phase 6 — 후행 SRS 승격
 
-1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 design.md의 SDS-AC를 요구 블록의 Acceptance Criteria로 이관하고, Phase 3~5의 테스트를 Verification Evidence 행으로 기록한다.
-2. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
-3. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):
+1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 design.md의 SDS-AC를 요구 블록의 Acceptance Criteria로 이관한다. 요구 블록의 ID 가 정해지면 Phase 3 테스트 제목 줄의 `SDS-AC-<n>` 옆에 그 AC 의 `<REQ-ID> AC-<m>` 인용을 덧붙인다 — 제목에 인용만 더하고 단언은 바꾸지 않으므로 §0.5 에 걸리지 않으며, red 를 먼저 본 그 테스트가 요구 AC 의 증거가 된다.
+2. **테스트 충분성 확인 (승격 직전)** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <1번 요구 블록의 ID>` · `--sds docs/spec/steps/<task>/design.md` 로 따른다(SDS 생략이 기록된 step 은 `--sds` 없이). gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 승격하지 않는다.
+3. 도구가 AC 마다 돌려준 인용 테스트(Phase 3~5 의 테스트와 채우기로 더한 테스트)를 Verification Evidence 행으로 기록한다.
+4. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
+5. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):
    - (a) 승격된 body 요구에 `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched 프로덕션 파일>)`를 호출해 **권위 Trace Links Code anchor**(traceability SSOT)를 남긴다. 여러 파일을 만졌으면 파일마다 1행씩.
    - (b) Phase 4 프로덕션 코드의 vibe식 **task-name** trace 태그를 최종 승격 REQ-ID로 **reconcile(재조정)**해 `@req <REQ-ID>` **보조 breadcrumb**로 남긴다 — **FR-FLOW-020** 관례를 따르되, 태그 형식·면제(단일 라인 형식·테스트 파일 면제·부착 위치)는 **kiwi-coder §0.17**만 인용한다(운영 훅 수입 금지).
    - (c) 둘 다 **비차단**이다 — code Trace Link나 `@req`의 누락·stale은 promote를 막지 않으며 EVIDENCE_REQUIRED 게이트와 분리된다(§0.10). Code anchor가 **권위**, `@req`는 **보조 breadcrumb**임을 기억한다.
@@ -181,5 +184,6 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 | `speckiwi step validate` / `validate_step` | SDS advisory 검증 §2.3 | CLI fallback, 둘 다 부재 시 체크리스트 수동 수행 |
 | `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | 합성·SDS 존재 게이트 §2.6 | 사용자 안내 |
 | `synthesize_step_srs` (MCP / CLI `speckiwi step synthesize`) | step SRS 합성 §2.7 | step SRS 직접 정리 |
+| `check_test_sufficiency` (MCP) / `speckiwi coverage --tests` (CLI) | 승격 직전 테스트 충분성 확인 §2.7 (`_shared/kiwi/test-sufficiency.md`) | 둘 다 부재 시 계약 §3 대로 `gap` — 승격하지 않는다 |
 | `promote_step_requirement` (MCP / CLI `speckiwi step promote`) | 후행 SRS 승격 §2.7 | 둘 다 부재 시 halt + 수동 승격 금지 안내 |
 | `add_trace_link` (MCP) | 승격 요구에 code anchor 복원 §2.7 (비차단) | 스킬 계속 — 추적성만 누락, promote 미차단 |

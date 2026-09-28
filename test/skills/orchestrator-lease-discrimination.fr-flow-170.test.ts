@@ -138,8 +138,8 @@ function lockMentions(relPath: string): string[] {
 }
 
 /**
- * The lines of that net which do not order a release of the P.5 lease — four name another lease,
- * two state when the abort release lands rather than ordering one — subtracted by an enumerated
+ * The lines of that net which do not order a release of the P.5 lease — seven name another lease or
+ * a worktree, two state when the abort release lands rather than ordering one — subtracted by an enumerated
  * table rather than filtered out by a predicate.
  *
  * A predicate would let a fifth release site join this set by wording alone and disappear silently.
@@ -151,6 +151,15 @@ const NOT_A_RELEASE_SITE = [
   { needle: "승격의 lease 위생", why: "the step lease an R-STEP promotion abandons" },
   { needle: "여섯 lane 동사", why: "the verb enum, where `release-lane` drops a lane lease" },
   { needle: "수확이 끝난 뒤에만", why: "returning a worktree, which is not a lease at all" },
+  // 4.0.0 dispatches one worker per wave into a worktree by default (FR-FLOW-188 AC-1), so the §3
+  // phase overview gained a step for returning it; like the entry above, that is not the P.5 lease.
+  { needle: "워크트리 반납 (release-lane)", why: "the §3 overview's step 3.j, returning a wave worker's worktree" },
+  // Same 4.0.0 cause: 3.m's residual union takes the worker manifest's out-of-lease paths, which are
+  // a lane's write scope (the lease of the forbidden-action list), not the P.5 run lock.
+  { needle: "`out_of_lease_paths[]` 와 워커 리뷰 보고서", why: "3.m's residual input, a worker's out-of-lane-lease writes" },
+  // FR-NODE-213 AC-5 makes `release-lane` an ordinary verb, so it has its own §V section; the
+  // heading names the verb that returns a worker's worktree, not the P.5 lease.
+  { needle: "### §V.release-lane", why: "the heading of the verb section that returns a wave worker's worktree" },
   { needle: "기록이 착지한 뒤에만", why: "when the abort release lands, not a site that orders one" },
   { needle: "그 기록이 막히면", why: "the same condition restated in §V.abort-run" }
 ] as const;
@@ -279,7 +288,7 @@ describe("FR-FLOW-170 §3.1 says how a run tells its own lease from a successor'
         .toContain("P.5 pin");
     });
 
-    it("AC-6: every line naming the lock outside §3.1 says which lease it concerns", () => {
+    it("FR-FLOW-170 AC-6: every line naming the lock outside §3.1 says which lease it concerns", () => {
       const mentions = lockMentions(relPath);
       const subtracted = new Set<string>();
       for (const { needle, why } of NOT_A_RELEASE_SITE) {

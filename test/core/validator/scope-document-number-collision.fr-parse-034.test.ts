@@ -128,6 +128,6 @@ describe("FR-PARSE-034 AC-4 — the diagnostic is registered", () => {
     expect(entry).toBeDefined();
     expect(entry?.severity).toBe("warning");
     expect(entry?.sourceRule).toBe("FR-PARSE-034");
-    expect(entry?.remediation.length).toBeGreaterThan(0);
+    expect(entry?.remediation?.length).toBeGreaterThan(0);
   });
 });

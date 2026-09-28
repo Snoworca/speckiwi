@@ -44,9 +44,9 @@ describe("FR-MCP-039 Requirement ID collision repair tools", () => {
     expect(isReadOnlyTool("plan_requirement_id_collision_repair")).toBe(true);
     expect(isReadOnlyTool("apply_requirement_id_collision_repair")).toBe(false);
     expect(server.toolKinds.apply_requirement_id_collision_repair).toBe("workspace");
-    expect(toolSchemas.diagnose_requirement_id_collisions.dryRun?.safeParse(true).success).toBe(true);
-    expect(toolSchemas.plan_requirement_id_collision_repair.dryRun?.safeParse(true).success).toBe(true);
-    expect(toolSchemas.apply_requirement_id_collision_repair.ignoreLock?.safeParse(true).success).toBe(true);
+    expect(toolSchemas.diagnose_requirement_id_collisions?.dryRun?.safeParse(true).success).toBe(true);
+    expect(toolSchemas.plan_requirement_id_collision_repair?.dryRun?.safeParse(true).success).toBe(true);
+    expect(toolSchemas.apply_requirement_id_collision_repair?.ignoreLock?.safeParse(true).success).toBe(true);
 
     const diagnosed = (await server.callTool("diagnose_requirement_id_collisions", {})) as DiagnoseResult;
     expect(diagnosed).toMatchObject({ ok: true, mcpWorkspace: { workspaceRoot: root } });

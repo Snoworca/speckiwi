@@ -100,7 +100,9 @@ no-majority result in the decision rule below.
 ## Decision Rule (recommended fast path -> default_if_auto -> simple majority)
 
 Because etc disables multi-worker fanout, evaluate the committee members sequentially (one
-delegated worker at a time) and then apply this rule. Resolve a `--auto` gate in this order. The two
+delegated worker at a time) and then apply this rule. This is also what `--serial` asks of the
+claude and codex variants (`parallel-waves.md` §2), so `--serial` changes nothing here — each member
+is still isolated and never sees an earlier member's vote. Resolve a `--auto` gate in this order. The two
 bypasses rank `recommended` > `default_if_auto` > committee: an option carrying **both** markers
 resolves through the `recommended` branch, and a gate whose options carry **neither** marker reaches
 the committee.
@@ -118,7 +120,7 @@ vocabulary the prose below stays the only rule.
      beside `key`, `label` and `consequence`. It is opt-in: an option without the field is not
      recommended.
    - A prose `(권장)` label in skill text carries **no machine meaning** and is **never parsed** as a
-     recommendation. Two of the three such labels in `kiwi-pm` annotate a HALT option, so a prose
+     recommendation. Both such labels in `kiwi-pm` annotate a HALT option, so a prose
      scan would auto-adopt a recommended HALT.
    - This contract does not judge **why an option is recommended** — it declares no field describing
      the motive and no criterion for weighing it.
@@ -227,7 +229,6 @@ Recommended catalog:
 - `stability-frozen-violation`
 - `lifecycle-gate-deprecated-or-frozen`
 - `sha-mismatch-on-resume`
-- `depends-on-violation`
 - `t-final-backward-transition`
 - `push-conflict-rebase-merge-choice`
 - `mcp-unavailable`

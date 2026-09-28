@@ -49,10 +49,10 @@ kiwi-* 스킬의 **검증-개선 루프(verify → improve → re-verify) 라운
 |---|---|---|
 | kiwi-pm | kiwi-coder | `--mini`/`--loops N` → 자식 spawn 인자 |
 | kiwi-pipeline | 모든 spawn 하위 스킬 | `--mini`/`--loops N` → 전 하위 |
-| kiwi-wave-master | per-wave kiwi-srs + kiwi-pipeline | `--mini`/`--loops N` → per-wave |
+| kiwi-wave-master | per-wave kiwi-srs + 공용 계약 `_shared/kiwi/parallel-waves.md` 가 wave 마다 하는 호출(`kiwi-sds` · 워커의 `kiwi-pm` · `kiwi-review-fix-loop`) | `--mini`/`--loops N` → per-wave |
 | kiwi-hot-fix | kiwi-srs-sync | `--mini`/`--loops N` → 위임 |
 | kiwi-coder | kiwi-review-fix-loop | `--mini`/`--loops N` → follow-up |
-| kiwi-orchestrator | 위임 rung 의 라우팅된 자식 — step rung 은 `kiwi-tdd` + `kiwi-review-fix-loop`, plan rung 은 `kiwi-pm` + `kiwi-review-fix-loop`; orchestrated rung 은 per-wave `kiwi-srs` + `kiwi-planner` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → 라우팅된 자식 · per-wave 전파, 그리고 오케스트레이터 자신의 D / W / H / P / F 루프 상한 **5개**. per-lane 루프는 다음 target 으로 **이연**되어 이 목록에 없다 — 돌지 않는 루프의 상한을 적는 것은 뒤에 아무것도 없는 계약을 고정하는 일이다 |
+| kiwi-orchestrator | 위임 rung 의 라우팅된 자식 — step rung 은 `kiwi-tdd` + `kiwi-review-fix-loop`; orchestrated rung 은 per-wave `kiwi-srs` + `kiwi-sds` + `kiwi-pm` + `kiwi-review-fix-loop` | `--mini`/`--loops N` → 라우팅된 자식 · per-wave 전파, 그리고 오케스트레이터 자신의 D / W / P / F 루프 상한 **4개**. per-lane 루프는 이 목록에 없다 — lane 은 wave 하나의 워커이고, 그 워커의 루프는 워커가 부르는 자식(`kiwi-pm` · `kiwi-review-fix-loop`)의 것이다 |
 
 ## 7. 자연어 매핑
 

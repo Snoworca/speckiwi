@@ -7,14 +7,15 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
+import { sdsPath, sdsWorkspace } from "../core/orchestrator/sds-fixtures.js";
 
 const runProcess = promisify(execFile);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const CLI = path.join(REPO_ROOT, "bin", "speckiwi");
 
 // @req IR-CLI-097 — `orchestrate preflight --lane-plan` reads the document `orchestrate schedule
-// plan` writes. The two ends disagreed on shape, so the skill's worktree procedure could never get
-// past its own step 2.
+// waves` writes. The two ends once disagreed on shape, so the skill's worktree procedure could never
+// get past its own step 2.
 
 function io() {
   return { stdout: new PassThrough(), stderr: new PassThrough() };
@@ -72,36 +73,20 @@ function refusedAsMalformedPlan(run: Run): boolean {
 }
 
 const LANE_PLAN = {
+  lane_cap: 4,
+  depends: { "wave-2": [] },
+  sds_digests: { "wave-1": "sha-1", "wave-2": "sha-2" },
+  lane_count: 2,
+  stage_count: 1,
   lanes: [
-    { laneId: "lane-1", stage: 1, taskIds: ["T1"], writeSet: ["src/a.ts"], readSet: [], reqIds: ["FR-ARCH-001"], designItems: [] },
-    { laneId: "lane-2", stage: 1, taskIds: ["T2"], writeSet: ["src/b.ts"], readSet: [], reqIds: ["FR-ARCH-001"], designItems: [] }
+    { laneId: "lane-1", stage: 1, wave: "wave-1", sds: "docs/sds/wave-1.sds.md", writeSet: ["src/a.ts"] },
+    { laneId: "lane-2", stage: 1, wave: "wave-2", sds: "docs/sds/wave-2.sds.md", writeSet: ["src/b.ts"] }
   ],
   stages: [{ index: 1, laneIds: ["lane-1", "lane-2"] }],
-  laneCount: 2,
-  stageCount: 1,
-  serialEpilogue: [],
-  unassigned: [],
-  serialized: []
+  conflicts: []
 };
 
 const LEGACY_MAP = { "lane-1": { writeSet: ["src/a.ts"] }, "lane-2": { writeSet: ["src/b.ts"] } };
-
-function sidecar(tasks: Array<{ id: string; files: string[] }>): string {
-  return JSON.stringify({
-    schema_version: "1.1.0",
-    plan_contract: "1.2.0",
-    tasks: tasks.map((task) => ({
-      id: task.id,
-      type: "code",
-      action: `implement ${task.id}`,
-      req_ids: ["FR-ARCH-001"],
-      files: task.files.map((file) => ({ path: file })),
-      test_files: [],
-      covers_ac: ["AC-1"],
-      depends_on_task: []
-    }))
-  });
-}
 
 describe("IR-CLI-097 the lane plan the scheduler writes is the lane plan preflight reads", () => {
   it("AC-1 accepts a lane plan document and takes each lane's id and write set from lanes[]", async () => {
@@ -149,42 +134,38 @@ describe("IR-CLI-097 the lane plan the scheduler writes is the lane plan preflig
     expect(run.text).not.toMatch(/\b0\.writeSet\b/);
   });
 
-  it("AC-5 hands the scheduler's own output straight to the gate", async () => {
-    const root = await tempRoot();
-    await write(root, "plan.sidecar.json", sidecar([
-      { id: "T1", files: ["src/shared.ts"] },
-      { id: "T2", files: ["src/shared.ts"] },
-      { id: "T3", files: ["src/other.ts"] },
-      { id: "T4", files: ["src/other.ts"] }
-    ]));
-    await write(root, "existing.json", JSON.stringify(["src/shared.ts", "src/other.ts"]));
+  it("IR-CLI-097 AC-5 hands the scheduler's own output straight to the gate", async () => {
+    const root = await sdsWorkspace([
+      { id: "run-wave-1", files: ["src/shared.ts"] },
+      { id: "run-wave-2", files: ["src/other.ts"] }
+    ]);
 
     const pipes = io();
     const planExit = await main(
       [
-        "--root", root, "orchestrate", "schedule", "plan",
-        "--plan", "plan.sidecar.json", "--existing-paths", "existing.json",
-        "--out", "waves/wave-1/lanes.lock.json", "--json"
+        "--root", root, "orchestrate", "schedule", "waves",
+        "--sds", sdsPath("run-wave-1"), sdsPath("run-wave-2"), "--depends", JSON.stringify({ "run-wave-2": [] }),
+        "--out", "waves/stage-1/lanes.lock.json", "--json"
       ],
       pipes
     );
-    const planPayload = JSON.parse(drain(pipes.stdout)) as { plan?: { lanes?: Array<{ laneId: string }> } };
-    expect(planExit, "the fixture must produce a plan that forms lanes").toBe(0);
-    const laneId = planPayload.plan?.lanes?.[0]?.laneId;
+    const planPayload = JSON.parse(drain(pipes.stdout)) as { lock?: { lanes?: Array<{ laneId: string }> } };
+    expect(planExit, JSON.stringify(planPayload)).toBe(0);
+    const laneId = planPayload.lock?.lanes?.[0]?.laneId;
     expect(laneId, "a lane must exist for the gate to look one up").toBeTruthy();
 
     // What the scheduler wrote, unedited, is what the gate now receives.
-    const written = await readFile(path.join(root, "waves/wave-1/lanes.lock.json"), "utf8");
+    const written = await readFile(path.join(root, "waves/stage-1/lanes.lock.json"), "utf8");
     expect(JSON.parse(written)).toHaveProperty("lanes");
 
-    const run = await preflight(root, "waves/wave-1/lanes.lock.json", laneId as string);
+    const run = await preflight(root, "waves/stage-1/lanes.lock.json", laneId as string);
 
     expect(refusedAsMalformedPlan(run), run.text).toBe(false);
   });
 
   it("AC-6 accepts a lane plan with no lanes rather than refusing it", async () => {
     const root = await tempRoot();
-    const empty = { ...LANE_PLAN, lanes: [], stages: [], laneCount: 0, stageCount: 0, serialEpilogue: ["T1"] };
+    const empty = { ...LANE_PLAN, lanes: [], stages: [], lane_count: 0, stage_count: 0, sds_digests: {} };
     await write(root, "empty.json", JSON.stringify(empty));
 
     const run = await preflight(root, "empty.json");
@@ -255,15 +236,12 @@ describe("IR-CLI-097 AC-1 the ids and write sets a lane plan carries are what th
       planPath,
       JSON.stringify({
         lanes: [
-          { laneId: "lane-1", stage: 1, taskIds: ["T1"], writeSet: ["src/a.ts"], readSet: [], reqIds: [], designItems: [] },
-          { laneId: "lane-srs", stage: 1, taskIds: ["T2"], writeSet: ["docs/spec/50.x.srs.md"], readSet: [], reqIds: [], designItems: [] }
+          { laneId: "lane-1", stage: 1, wave: "wave-1", sds: "docs/sds/wave-1.sds.md", writeSet: ["src/a.ts"] },
+          { laneId: "lane-srs", stage: 1, wave: "srs", sds: "docs/sds/srs.sds.md", writeSet: ["docs/spec/50.x.srs.md"] }
         ],
         stages: [{ index: 1, laneIds: ["lane-1", "lane-srs"] }],
-        laneCount: 2,
-        stageCount: 1,
-        serialEpilogue: [],
-        unassigned: [],
-        serialized: []
+        lane_count: 2,
+        stage_count: 1
       }),
       "utf8"
     );
@@ -294,5 +272,35 @@ describe("IR-CLI-097 AC-1 the ids and write sets a lane plan carries are what th
 
     expect(touchesSrs.code, JSON.stringify(touchesSrs.json)).not.toBe(0);
     expect(reasonOf(touchesSrs.json)).toBe("lane-write-set-touches-srs");
+  });
+
+  it("FR-NODE-213 AC-4 admits a wave's worker by the lane id a lock from schedule waves carries, reading its write set", async () => {
+    const sdsRoot = await sdsWorkspace([
+      { id: "r1-wave-1", files: ["src/a.ts"] },
+      { id: "r1-wave-2", files: ["docs/spec/50.x.srs.md"] }
+    ]);
+    const pipes = io();
+    const exit = await main(
+      ["--root", sdsRoot, "orchestrate", "schedule", "waves", "--sds", sdsPath("r1-wave-1"), sdsPath("r1-wave-2"), "--depends", "{}", "--out", "lock.json", "--json"],
+      pipes
+    );
+    expect(exit, drain(pipes.stdout)).toBe(0);
+    const scheduled = path.join(scratch, "scheduled.lock.json");
+    await writeFile(scheduled, await readFile(path.join(sdsRoot, "lock.json"), "utf8"), "utf8");
+
+    const admit = async (laneId: string) => {
+      const out = io();
+      const code = await main(
+        ["orchestrate", "preflight", "--json", "--mcp-root", host, "--git-root", lane, "--role", "lane", "--lane-id", laneId, "--lane-plan", scheduled],
+        out
+      );
+      return { code, json: JSON.parse(drain(out.stdout)) as Record<string, unknown> };
+    };
+
+    const admitted = await admit("lane-r1-wave-1");
+    expect(admitted.code, JSON.stringify(admitted.json)).toBe(0);
+    const refused = await admit("lane-r1-wave-2");
+    expect(refused.code).not.toBe(0);
+    expect(reasonOf(refused.json)).toBe("lane-write-set-touches-srs");
   });
 });

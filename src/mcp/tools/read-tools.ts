@@ -4,6 +4,8 @@ import { validateWorkspace } from "../../core/validator/validate-workspace.js";
 import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { getWorkMode } from "../../core/mutation/work-mode.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
+import { checkSdsFile, liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
+import { checkTestSufficiency } from "../../core/testing/test-sufficiency.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { projectRequirementRecords, searchRequirementRecords } from "../../core/query/discovery.js";
 import { buildReadEnvelope, listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
@@ -16,18 +18,10 @@ import { isWorkspaceScope, type WorkspaceRootReason } from "../workspace-root.js
 import { mcpFailure, mcpSuccess } from "../errors.js";
 import {
   workflowArtifacts,
-  workflowDiff,
-  workflowDoctor,
-  workflowNextPlanTask,
   workflowPipelineCompact,
   workflowPipelineNext,
   workflowPipelineStatus,
   workflowPipelineTail,
-  workflowPlanStatus,
-  workflowPlanTask,
-  workflowMigrationPreview,
-  workflowResumeHint,
-  workflowSchemaCheck,
   workflowSessionStatus,
   workflowWorklogTail,
   workflowWorkspaceInfo,
@@ -89,17 +83,6 @@ function workOrderOptions(input: Record<string, unknown>): NextWorkOrderOptions 
     ...(input.profile === "compact" || input.profile === "explain" || input.profile === "default" ? { profile: input.profile } : {}),
     ...(input.contextProfile === "compact" || input.contextProfile === "default" ? { contextProfile: input.contextProfile } : {})
   };
-}
-
-function unsupportedWorkflowMigrationInput(input: Record<string, unknown>) {
-  const flag = ["apply", "write", "fix", "normalize", "migrate"].find((name) => input[name] === true);
-  if (!flag) return null;
-  const message = `preview_legacy_workflow_migration is read-only; ${flag} is unsupported`;
-  const diagnostic: Diagnostic = { code: "UNSUPPORTED_OPERATION", severity: "error", message, details: { flag, tool: "preview_legacy_workflow_migration" } };
-  return mcpFailure("UNSUPPORTED_OPERATION", message, {
-    diagnostics: [diagnostic],
-    metadata: { written: false, diagnosticsSummary: summarizeDiagnostics([diagnostic]) }
-  });
 }
 
 function readDiagnostics(workspace: ParsedWorkspace): Diagnostic[] {
@@ -272,11 +255,33 @@ function srsReadMetadata(tool: string): McpToolMetadata {
   return declared;
 }
 
+/**
+ * The SDS readers, which answer from a per-call checkout like the SRS queries (FR-MCP-065 / FR-MCP-066
+ * AC-1). Unlike those, they take caller-supplied paths — the SDS file, test globs — so they declare no
+ * `callerPathKeys` and every argument stays under the `docs/spec` destination scan (REL-MCP-005 AC-6).
+ */
+const SDS_READ_WORKSPACE_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze({
+  check_sds: Object.freeze({ readOnlyHint: true, workspaceScope: "srs-read-only" as const }),
+  check_test_sufficiency: Object.freeze({ readOnlyHint: true, workspaceScope: "srs-read-only" as const })
+});
+
+function stringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : undefined;
+}
+
 /** Every tool registered here that declares a workspace scope, orchestrate rows and SRS queries alike. */
 const WORKSPACE_SCOPED_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze({
   ...ORCHESTRATE_WORKSPACE_METADATA,
-  ...SRS_READ_WORKSPACE_METADATA
+  ...SRS_READ_WORKSPACE_METADATA,
+  ...SDS_READ_WORKSPACE_METADATA
 });
+
+/** The metadata an SDS reader is registered with; a name outside the set throws, as for the SRS queries. */
+function sdsReadMetadata(tool: string): McpToolMetadata {
+  const declared = SDS_READ_WORKSPACE_METADATA[tool];
+  if (!declared) throw new Error(`MCP tool '${tool}' is not one of the SDS readers FR-MCP-065 / FR-MCP-066 name`);
+  return declared;
+}
 
 /**
  * Whether a tool takes the per-call root. The registration gate reads the same declaration through
@@ -342,7 +347,8 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   }, srsReadMetadata("get_requirement"));
   server.registerTool("validate_spec", async (_input, context) => {
     const parsed = await workspace(deps, context);
-    const diagnostics = readDiagnostics(parsed);
+    // @req FR-NODE-209 AC-3 — the same lite SDS diagnostics `speckiwi validate` adds.
+    const diagnostics = [...readDiagnostics(parsed), ...(await liteSdsValidationDiagnostics(parsed))];
     const result = splitDiagnostics(diagnostics);
     const diagnosticsSummary = summarizeDiagnostics(diagnostics);
     return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, diagnostics);
@@ -397,20 +403,12 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("workflow_artifacts_list", async (input, context) => workflowArtifacts(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_latest_artifact", async (input, context) => workflowArtifacts(await projectRoot(deps, context), { ...workflowOptions(input), limit: 1 }), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_resolve_artifact", async (input, context) => workflowArtifacts(await projectRoot(deps, context), { ...workflowOptions(input), limit: 1 }), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_plan_status", async (input, context) => workflowPlanStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_plan_task", async (input, context) => workflowPlanTask(await projectRoot(deps, context), String(input.taskId), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_next_plan_task", async (input, context) => workflowNextPlanTask(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_doctor", async (input, context) => workflowDoctor(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_diff", async (input, context) => workflowDiff(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_schema_check", async (input, context) => workflowSchemaCheck(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_pipeline_status", async (input, context) => workflowPipelineStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_pipeline_tail", async (input, context) => workflowPipelineTail(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_pipeline_next", async (input, context) => workflowPipelineNext(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_pipeline_compact", async (input, context) => workflowPipelineCompact(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_session_status", async (input, context) => workflowSessionStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("workflow_resume_hint", async (input, context) => workflowResumeHint(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_worklog_tail", async (input, context) => workflowWorklogTail(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("preview_legacy_workflow_migration", async (input) => unsupportedWorkflowMigrationInput(input) ?? workflowMigrationPreview(await projectRoot(deps), workflowOptions(input)), { readOnlyHint: true });
   server.registerTool("get_next_work_order", async (input) => buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), { readOnlyHint: true });
   // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories,
   // plus the FR-PARSE-033 SDS-W05x advisories in tdd mode), scoped to a named step so a
@@ -438,6 +436,23 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     mcpSuccess(await listDirtyEdges(await projectRoot(deps, context), typeof input.target === "string" ? { target: input.target } : {})),
     srsReadMetadata("list_compat_edges")
   );
+  // FR-MCP-065 — check_sds answers from the same core as `speckiwi sds check`, over the per-call root.
+  server.registerTool("check_sds", async (input, context) => {
+    const result = await checkSdsFile(await workspace(deps, context), typeof input.path === "string" ? input.path : "");
+    return result.ok ? mcpSuccess(result.value, result.value.diagnostics) : resultToMcp(result);
+  }, sdsReadMetadata("check_sds"));
+  // FR-MCP-066 — check_test_sufficiency answers from the same core as `speckiwi coverage --tests`.
+  server.registerTool("check_test_sufficiency", async (input, context) => {
+    const ids = stringList(input.ids);
+    const testGlobs = stringList(input.testGlob);
+    const result = await checkTestSufficiency(await workspace(deps, context), {
+      ...(typeof input.target === "string" ? { target: input.target } : {}),
+      ...(ids !== undefined ? { ids } : {}),
+      ...(typeof input.sds === "string" ? { sds: input.sds } : {}),
+      ...(testGlobs !== undefined && testGlobs.length > 0 ? { testGlobs } : {})
+    });
+    return result.ok ? mcpSuccess(result.value) : resultToMcp(result);
+  }, sdsReadMetadata("check_test_sufficiency"));
   // FR-MCP-042 — list_steps returns the Kahn topological order of docs/spec/steps/state.md with
   // cycle detection and advisory-only diagnostics.
   server.registerTool("list_steps", async (input, context) =>

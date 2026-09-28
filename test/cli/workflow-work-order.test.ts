@@ -7,7 +7,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 import { createWorkflowFixture } from "../fixtures/workflow-artifacts.js";
 
 function io() {
-  return { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  return { stdout: new PassThrough(), stderr: new PassThrough() };
 }
 
 async function runJson(root: string, args: string[]): Promise<Record<string, unknown>> {
@@ -27,64 +27,69 @@ function pipeline(status: string): string {
 }
 
 describe("IR-CLI-032 workflow work-order next command", () => {
-  it("returns compact deterministic actions and measurement fields", async () => {
+  it("IR-CLI-032 AC-1: returns compact deterministic SDS-vocabulary actions and measurement fields", async () => {
     const fixture = await createWorkflowFixture();
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.idOrderPlanPath])).resolves.toMatchObject({
-      action: "execute-task",
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.freshSdsPath])).resolves.toMatchObject({
+      action: "execute-sds",
       target: "v1.0.0",
-      task: { id: "T-PH001-10" },
-      nextAction: { kind: "execute-task", tool: "workflow_next_plan_task" }
+      sds: { relativePath: fixture.freshSdsPath, sdsId: "fresh-run" },
+      nextAction: { kind: "execute-sds", tool: "check_sds" }
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.planPath])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.sdsPath])).resolves.toMatchObject({
       action: "resume-session",
-      task: { id: "T-002" },
-      nextAction: { kind: "resume-session", tool: "workflow_resume_hint" }
+      sds: { relativePath: fixture.sdsPath },
+      nextAction: { kind: "resume-session", tool: "workflow_session_status" }
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.stalePlanPath])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.draftSdsPath])).resolves.toMatchObject({
+      action: "create-sds",
+      nextAction: { kind: "create-sds", tool: "list_requirements" }
+    });
+
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.invalidSdsPath])).resolves.toMatchObject({
       action: "fix-artifact",
       blocking: true,
-      blockingDiagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W059" })])
+      blockingDiagnostics: expect.arrayContaining([expect.objectContaining({ code: "SDS-E062" })])
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.blockedPlanPath])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.blockedSdsPath])).resolves.toMatchObject({
       action: "blocked",
       blocking: true,
-      reason: expect.stringContaining("dependency")
+      reason: expect.stringContaining("blocked")
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.completePlanPath])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.completeSdsPath])).resolves.toMatchObject({
       action: "complete",
       blocking: false
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.planPath, "--explain", "--context-profile", "compact"])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.sdsPath, "--explain", "--context-profile", "compact"])).resolves.toMatchObject({
       action: "resume-session",
       profile: "explain",
       contextProfile: "compact",
       decisionTrace: expect.arrayContaining([expect.objectContaining({ step: "decision", outcome: "resume-session" })]),
-      rejectedCandidates: expect.arrayContaining([expect.objectContaining({ action: "execute-task" })]),
+      rejectedCandidates: expect.arrayContaining([expect.objectContaining({ action: "execute-sds" })]),
       blockers: expect.any(Array)
     });
 
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.idOrderPlanPath, "--profile", "compact"])).resolves.toMatchObject({
-      action: "execute-task",
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.freshSdsPath, "--profile", "compact"])).resolves.toMatchObject({
+      action: "execute-sds",
       profile: "compact"
     });
 
     await write(fixture.root, "kiwi/pipeline.jsonl", pipeline("NEEDS_USER"));
-    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.idOrderPlanPath])).resolves.toMatchObject({
+    await expect(runJson(fixture.root, ["workflow", "work-order", "next", "--path", fixture.freshSdsPath])).resolves.toMatchObject({
       action: "ask-user",
       blocking: true,
       pipeline: { latestStatus: "NEEDS_USER" }
     });
 
-    const noPlanRoot = await copyFixtureWorkspace("valid-basic");
-    const createPlan = await runJson(noPlanRoot, ["workflow", "work-order", "next", "--target", "v1.0.0", "--measure"]);
-    expect(createPlan).toMatchObject({
-      action: "create-plan",
+    const noSdsRoot = await copyFixtureWorkspace("valid-basic");
+    const createSds = await runJson(noSdsRoot, ["workflow", "work-order", "next", "--target", "v1.0.0", "--measure"]);
+    expect(createSds).toMatchObject({
+      action: "create-sds",
       measurement: {
         baselineBytes: expect.any(Number),
         compactBytes: expect.any(Number),
@@ -92,6 +97,7 @@ describe("IR-CLI-032 workflow work-order next command", () => {
         reductionRatio: expect.any(Number)
       }
     });
-    expect(JSON.stringify(createPlan)).not.toContain("#### Requirement");
+    expect(JSON.stringify(createSds)).not.toContain("#### Requirement");
+    expect(JSON.stringify(createSds)).not.toContain("create-plan");
   });
 });

@@ -9,6 +9,7 @@ import {
   AGENT_INSTRUCTION_VERSION,
   BUNDLED_SRS_RULES_FILENAME
 } from "../../src/core/bootstrap/templates.js";
+import { at } from "../support/at.js";
 
 // FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
 const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
@@ -122,7 +123,7 @@ describe("package runtime contract", () => {
     await mkdir(path.join(projectRoot, ".git"), { recursive: true });
     try {
       const { stdout } = await runNpm(["pack", "--json", "--pack-destination", externalCwd], { cwd: process.cwd(), timeout: 120000 });
-      const [packed] = JSON.parse(stdout) as Array<{ filename: string }>;
+      const packed = at(JSON.parse(stdout) as Array<{ filename: string }>, 0);
       const tarball = path.join(externalCwd, packed.filename);
       await runNpm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline", tarball], {
         cwd: externalCwd,

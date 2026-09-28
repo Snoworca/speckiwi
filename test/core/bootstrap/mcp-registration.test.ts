@@ -29,10 +29,10 @@ describe("registerSpeckiwiMcp (.mcp.json project registration)", () => {
     const json = await readJson(path.join(root, ".mcp.json"));
     const servers = json.mcpServers as Record<string, { command?: unknown; args?: unknown }>;
     expect(servers.speckiwi).toBeDefined();
-    expect(typeof servers.speckiwi.command).toBe("string");
-    expect((servers.speckiwi.command as string).length).toBeGreaterThan(0);
-    expect(servers.speckiwi.args).toContain("mcp");
-    expect(JSON.stringify(servers.speckiwi.args)).toContain("speckiwi");
+    expect(typeof servers.speckiwi?.command).toBe("string");
+    expect((servers.speckiwi?.command as string).length).toBeGreaterThan(0);
+    expect(servers.speckiwi?.args).toContain("mcp");
+    expect(JSON.stringify(servers.speckiwi?.args)).toContain("speckiwi");
   });
 
   it("AC-2: leaves an existing speckiwi registration unchanged and reports skipped", async () => {

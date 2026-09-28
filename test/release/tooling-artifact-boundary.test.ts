@@ -16,17 +16,21 @@ async function write(root: string, relativePath: string, text: string): Promise<
 describe("CON-ARCH-003 tooling artifact authority boundary", () => {
   it("does not treat workflow artifacts as canonical requirements and reports artifact source metadata", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");
+    // The probe artifact was a plan until the plan kinds left (FR-NODE-211 AC-2); an SDS under docs/sds
+    // is the operational artifact that now sits beside the SRS.
     await write(
       rootPath,
-      "docs/plans/fake-srs.plan.md",
+      "docs/sds/fake-srs.sds.md",
       [
-        "---",
-        "run_id: fake-srs",
-        "target: v1.0.0",
-        "plan_contract: \"1.2.0\"",
-        "generated_at: 2026-06-29T08:05:04.654Z",
-        "---",
-        "# Plan",
+        "# SDS: fake-srs",
+        "",
+        "| Field | Value |",
+        "|---|---|",
+        "| Document Type | sds |",
+        "| Profile | lite |",
+        "| Target | v1.0.0 |",
+        "| Status | draft |",
+        "| Date | 2026-09-27 |",
         "",
         "### FR-ARCH-999 — Fake plan requirement",
         "",
@@ -46,8 +50,8 @@ describe("CON-ARCH-003 tooling artifact authority boundary", () => {
     expect(artifacts.value.artifacts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          relativePath: "docs/plans/fake-srs.plan.md",
-          kind: "plan",
+          relativePath: "docs/sds/fake-srs.sds.md",
+          kind: "sds",
           runId: "fake-srs",
           target: "v1.0.0",
           sha256: expect.any(String),
@@ -61,6 +65,6 @@ describe("CON-ARCH-003 tooling artifact authority boundary", () => {
         })
       ])
     );
-    expect(artifacts.value.artifacts.find((artifact) => artifact.relativePath === "docs/plans/fake-srs.plan.md")?.body).toContain("FR-ARCH-999");
+    expect(artifacts.value.artifacts.find((artifact) => artifact.relativePath === "docs/sds/fake-srs.sds.md")?.body).toContain("FR-ARCH-999");
   });
 });

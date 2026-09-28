@@ -32,10 +32,8 @@ const NAMED_IN_REQUIREMENT = [
   "orchestrate_card_write",
   "orchestrate_freeze",
   "orchestrate_readiness_check",
-  "orchestrate_schedule_plan",
-  "orchestrate_coupling_check",
+  "orchestrate_schedule_waves",
   "orchestrate_schedule_show",
-  "orchestrate_handoff_validate",
   "orchestrate_round_record",
   // `orchestrate_issue_*` in the requirement, expanded over the row's five alternatives.
   "orchestrate_issue_open",
@@ -54,7 +52,7 @@ const DEFERRED_TOOLS = ["orchestrate_lane_audit", "orchestrate_lane_harvest", "o
 /**
  * `orchestrate_*` tools registered by a later target than the one IR-MCP-003 belongs to. They are
  * outside the family this requirement names, so they are listed here rather than folded into
- * `NAMED_IN_REQUIREMENT` — the twenty-five count is a fact about the phase-1 family and must not
+ * `NAMED_IN_REQUIREMENT` — the twenty-three count is a fact about the phase-1 family and must not
  * drift upward whenever phase 2 lands a row. @req IR-CLI-091
  */
 const REGISTERED_BEYOND_PHASE1 = ["orchestrate_replay_plan", "orchestrate_replay_apply"] as const;
@@ -75,7 +73,7 @@ function serverToolNames(root: string): string[] {
 
 /** The CLI leaf paths under `orchestrate`, walked from the real registrar. */
 function cliLeafPaths(): string[][] {
-  const io = { stdout: new PassThrough() as NodeJS.WriteStream, stderr: new PassThrough() as NodeJS.WriteStream };
+  const io = { stdout: new PassThrough(), stderr: new PassThrough() };
   const command = buildCommand({ io });
   registerOrchestrateCommands(command, { io });
   const root = command.commands.find((sub) => sub.name() === "orchestrate") as Command;
@@ -92,12 +90,19 @@ function cliLeafPaths(): string[][] {
 }
 
 describe("IR-MCP-003 AC-1 / AC-2 — the family is registered and the four deferred lane tools are not", () => {
-  it("registers every orchestrate_* tool the requirement names", async () => {
+  it("IR-MCP-003 AC-1 registers every orchestrate_* tool the requirement names", async () => {
     const registered = new Set(serverToolNames(await tempRoot()));
     for (const name of NAMED_IN_REQUIREMENT) {
       expect(registered.has(name), `${name} must be registered`).toBe(true);
     }
-    expect(NAMED_IN_REQUIREMENT).toHaveLength(25);
+    expect(NAMED_IN_REQUIREMENT).toHaveLength(23);
+  });
+
+  it("IR-MCP-003 AC-2 registers none of the tools 4.0.0 removed with their CLI rows", async () => {
+    const registered = new Set(serverToolNames(await tempRoot()));
+    for (const name of ["orchestrate_schedule_plan", "orchestrate_coupling_check", "orchestrate_handoff_validate"]) {
+      expect(registered.has(name), `${name} was removed`).toBe(false);
+    }
   });
 
   it("registers no deferred lane tool", async () => {

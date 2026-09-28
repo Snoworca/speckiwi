@@ -22,10 +22,12 @@ import {
 const NUL = String.fromCharCode(0);
 const REPO_ROOT = process.cwd();
 
-/** The three NUL-carrying files that also cite requirements, measured on 2026-08-17. */
+/**
+ * The NUL-carrying files that also cite requirements, measured on 2026-08-17 — three then; the third,
+ * `src/core/orchestrator/handoff.ts`, left with the handoff validator in 4.0.0 (FR-NODE-213 AC-3).
+ */
 const NUL_FILES_WITH_REFERENCES = [
   "src/core/orchestrator/conflict.ts",
-  "src/core/orchestrator/handoff.ts",
   "src/core/orchestrator/resume.ts"
 ];
 
@@ -100,7 +102,7 @@ describe("REL-NODE-007 AC-3 — the scan reads files carrying literal NUL bytes"
     expect(references).toContainEqual({ file: "binaryish.ts", line: 2, id: "FR-BOGUS-999" });
   });
 
-  // These three used to carry a raw NUL, which made every tool that guesses at binaryness skip
+  // These used to carry a raw NUL, which made every tool that guesses at binaryness skip
   // them; the case above proves the scanner does not, against a fixture that still carries one.
   // NFR-NODE-001 replaced the byte with its escape, so asserting the repository still carries one
   // would now be asserting a defect. What is worth keeping is that the scan reaches these files.

@@ -31,41 +31,45 @@ async function sha256(root: string, relativePath: string): Promise<string> {
 
 function mutationBase(overrides: Partial<WorkflowMutationInput> = {}): WorkflowMutationInput {
   return {
-    kind: "plan_checkbox_check",
+    kind: "pipeline_event_append",
     owner: "kiwi-pm",
     runId: "run-a",
     taskId: "T-PH001-01",
-    planPath: "docs/plans/run-a.plan.md",
+    jsonlPath: "kiwi/pipeline.jsonl",
     reason: "task done",
     ...overrides
   };
 }
+
+const PIPELINE_EVENT = { schema_version: "1.0.0", skill: "kiwi-pm", run_id: "event-b", status: "TASK_DONE" };
 
 describe("FR-NODE-028 canonical workflow journal identity", () => {
   it("uses deterministic canonical JSON and run-aware journal keys", () => {
     expect(canonicalWorkflowJson({ b: 2, a: 1, omitted: undefined, nested: { z: true, y: null } })).toBe('{"a":1,"b":2,"nested":{"y":null,"z":true}}');
 
     const left = workflowJournalIdentity({
-      tool: "plan_checkbox_check",
+      tool: "pipeline_event_append",
       runId: "run-a",
       taskId: "T-PH001-01",
       args: { b: 2, a: 1, omitted: undefined }
     });
+    // reqId is present-but-undefined on purpose: an untyped caller can send that shape, and the key must not
+    // tell it apart from an absent reqId. exactOptionalPropertyTypes rejects the shape, hence the cast.
     const right = workflowJournalIdentity({
-      tool: "plan_checkbox_check",
+      tool: "pipeline_event_append",
       runId: "run-a",
       taskId: "T-PH001-01",
       reqId: undefined,
       args: { a: 1, b: 2 }
-    });
+    } as unknown as Parameters<typeof workflowJournalIdentity>[0]);
     const otherRun = workflowJournalIdentity({
-      tool: "plan_checkbox_check",
+      tool: "pipeline_event_append",
       runId: "run-b",
       taskId: "T-PH001-01",
       args: { a: 1, b: 2 }
     });
     const scopedReq = workflowJournalIdentity({
-      tool: "plan_checkbox_check",
+      tool: "pipeline_event_append",
       runId: "run-a",
       taskId: "T-PH001-01",
       reqId: "FR-NODE-030",
@@ -82,64 +86,38 @@ describe("FR-NODE-028 canonical workflow journal identity", () => {
 });
 
 describe("FR-NODE-030 guarded workflow progress mutations", () => {
-  it("checks plan checkboxes with owner, stale, dry-run, and idempotency guards", async () => {
+  // The plan checkbox mutations these guards were first written on left with plan mode (FR-NODE-211
+  // AC-1); the same guards are held here on the journal append that remains (FR-NODE-030 AC-3, AC-5).
+  it("FR-NODE-030 AC-3: guards a journal append with dry-run, idempotency, stale-hash and owner checks", async () => {
     const root = await tempRoot();
-    await write(root, "docs/plans/run-a.plan.md", ["# Plan", "", "- [ ] **T-PH001-01** Implement task", "- [x] T-PH001-02 Already done", ""].join("\n"));
-    const before = await sha256(root, "docs/plans/run-a.plan.md");
+    await write(root, "kiwi/pipeline.jsonl", `${JSON.stringify({ ...PIPELINE_EVENT, run_id: "event-a" })}\n`);
+    const before = await sha256(root, "kiwi/pipeline.jsonl");
 
-    const dryRun = await applyWorkflowMutation({ root }, mutationBase({ dryRun: true, expectedSha256: before }));
+    const dryRun = await applyWorkflowMutation({ root }, mutationBase({ event: PIPELINE_EVENT, dryRun: true, expectedSha256: before }));
     expect(dryRun).toMatchObject({
       ok: true,
-      value: {
-        written: false,
-        journalState: "skipped_dry_run",
-        idempotencyKey: expect.any(String),
-        pendingOperations: ["write:plan_checkbox_check"]
-      },
-      mutation: {
-        kind: "plan_checkbox_check",
-        dryRun: true,
-        written: false,
-        journalKey: expect.any(String),
-        journalState: "skipped_dry_run"
-      }
+      value: { written: false, journalState: "skipped_dry_run", idempotencyKey: expect.any(String), pendingOperations: ["write:pipeline_event_append"] },
+      mutation: { kind: "pipeline_event_append", dryRun: true, written: false, journalKey: expect.any(String), journalState: "skipped_dry_run" }
     });
-    expect(await sha256(root, "docs/plans/run-a.plan.md")).toBe(before);
+    expect(await sha256(root, "kiwi/pipeline.jsonl")).toBe(before);
 
-    const applied = await applyWorkflowMutation({ root }, mutationBase({ expectedSha256: before }));
-    expect(applied).toMatchObject({
-      ok: true,
-      value: {
-        written: true,
-        journalState: "confirmed",
-        completedOperations: ["write:plan_checkbox_check", "confirm:plan_checkbox_check"],
-        pendingOperations: [],
-        pendingRepair: null
-      },
-      mutation: {
-        journalKey: applied.value?.journalKey,
-        idempotencyKey: applied.value?.journalKey,
-        journalState: "confirmed"
-      }
-    });
-    expect(await read(root, "docs/plans/run-a.plan.md")).toContain("- [x] **T-PH001-01** Implement task");
-
-    const repeated = await applyWorkflowMutation({ root }, mutationBase());
-    expect(repeated).toMatchObject({
-      ok: true,
-      value: { written: false, journalState: "confirmed", completedOperations: ["confirm:plan_checkbox_check"] },
-      mutation: { written: false, operations: [] }
-    });
-
-    const stale = await applyWorkflowMutation({ root }, mutationBase({ expectedSha256: "wrong" }));
+    const stale = await applyWorkflowMutation({ root }, mutationBase({ event: PIPELINE_EVENT, expectedSha256: "wrong" }));
     expect(stale).toMatchObject({
       ok: false,
       error: { code: "STALE_PATCH" },
       diagnostics: [expect.objectContaining({ code: "SRS-E032" })],
       mutation: { journalState: "failed", pendingRepair: expect.objectContaining({ kind: "rerun_with_fresh_artifact" }) }
     });
+    expect(await sha256(root, "kiwi/pipeline.jsonl")).toBe(before);
 
-    const forbidden = await applyWorkflowMutation({ root }, mutationBase({ owner: "kiwi-coder" }));
+    const applied = await applyWorkflowMutation({ root }, mutationBase({ event: PIPELINE_EVENT, expectedSha256: before }));
+    expect(applied).toMatchObject({
+      ok: true,
+      value: { written: true, journalState: "confirmed", pendingOperations: [], pendingRepair: null },
+      mutation: { journalKey: applied.value?.journalKey, idempotencyKey: applied.value?.journalKey, journalState: "confirmed" }
+    });
+
+    const forbidden = await applyWorkflowMutation({ root }, mutationBase({ kind: "workflow_logical_delete", recordType: "pipeline_event", recordId: "event-a", owner: "kiwi-coder" }));
     expect(forbidden).toMatchObject({
       ok: false,
       error: { code: "MUTATION_DENIED" },
@@ -149,71 +127,10 @@ describe("FR-NODE-030 guarded workflow progress mutations", () => {
     expect(forbidden).not.toHaveProperty("value");
   });
 
-  it("blocks task display mutations when sidecar dependencies are not done", async () => {
+  it("appends workflow JSONL events with shared journal metadata", async () => {
     const root = await tempRoot();
-    await write(
-      root,
-      "docs/plans/blocked.plan.md",
-      ["---", "run_id: blocked-run", "sidecar_path: ./blocked.sidecar.json", "---", "# Plan", "", "- [ ] **T-001** Dependency", "- [ ] **T-002** Blocked", ""].join("\n")
-    );
-    await write(
-      root,
-      "docs/plans/blocked.sidecar.json",
-      JSON.stringify({ run_id: "blocked-run", tasks: [{ id: "T-001", status: "pending" }, { id: "T-002", depends_on_task: ["T-001"] }] }, null, 2)
-    );
-    await write(root, ".kiwi/sessions/blocked-run/pm-state.json", JSON.stringify({ run_id: "blocked-run", tasks: [{ task_id: "T-001", status: "pending" }] }, null, 2));
-
-    const blocked = await applyWorkflowMutation(
-      { root },
-      mutationBase({
-        runId: "blocked-run",
-        taskId: "T-002",
-        planPath: "docs/plans/blocked.plan.md"
-      })
-    );
-    expect(blocked).toMatchObject({
-      ok: false,
-      error: { code: "MUTATION_DENIED" },
-      diagnostics: [expect.objectContaining({ code: "SRS-E074" })],
-      mutation: { written: false, journalState: "failed" }
-    });
-    expect(await read(root, "docs/plans/blocked.plan.md")).toContain("- [ ] **T-002** Blocked");
-
-    await write(root, ".kiwi/sessions/blocked-run/pm-state.json", JSON.stringify({ run_id: "blocked-run", tasks: [{ task_id: "T-001", status: "done" }] }, null, 2));
-    const unblocked = await applyWorkflowMutation(
-      { root },
-      mutationBase({
-        runId: "blocked-run",
-        taskId: "T-002",
-        planPath: "docs/plans/blocked.plan.md"
-      })
-    );
-    expect(unblocked).toMatchObject({ ok: true, value: { written: true }, mutation: { kind: "plan_checkbox_check" } });
-  });
-
-  it("updates PM task status and appends workflow JSONL events with shared journal metadata", async () => {
-    const root = await tempRoot();
-    await write(
-      root,
-      ".kiwi/sessions/run-a/pm-state.json",
-      JSON.stringify({ run_id: "run-a", tasks: [{ task_id: "T-PH001-01", status: "pending" }] }, null, 2)
-    );
     await write(root, "kiwi/pipeline.jsonl", "");
     await write(root, ".kiwi/sessions/run-a/worklog.jsonl", "");
-
-    const pmState = await applyWorkflowMutation(
-      { root },
-      mutationBase({
-        kind: "pm_task_status_update",
-        pmStatePath: ".kiwi/sessions/run-a/pm-state.json",
-        status: "done"
-      })
-    );
-    expect(pmState).toMatchObject({
-      ok: true,
-      value: { written: true, journalState: "confirmed", completedOperations: ["write:pm_task_status_update", "confirm:pm_task_status_update"] }
-    });
-    expect(JSON.parse(await read(root, ".kiwi/sessions/run-a/pm-state.json")).tasks[0].status).toBe("done");
 
     const pipeline = await applyWorkflowMutation(
       { root },

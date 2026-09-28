@@ -6,32 +6,36 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { FREEZE_TARGETS, ORCHESTRATE_TOOL_BINDINGS, type OrchestrateToolBinding } from "../../src/cli/commands/orchestrate.js";
-import { GATE_IDS } from "../../src/core/orchestrator/auto-gate.js";
 import { freezeLock, type FreezeLockKind } from "../../src/core/orchestrator/freeze.js";
-import { HANDOFF_VIOLATION_CODES } from "../../src/core/orchestrator/handoff.js";
 import { ISSUE_CLASSES, openIssue, type IssueRow } from "../../src/core/orchestrator/issue-ledger.js";
 import { ORCHESTRATOR_MIRROR, ORCHESTRATOR_VARIANTS, readVariant, section, stripFrontmatter } from "./kiwi-orchestrator-variants.js";
 import { flat, readRepoFile, scanUnits, unitAt } from "./kiwi-renderings.js";
 
-// @req FR-FLOW-168 AC-1 — the five wired tools come from FR-FLOW-167's destination note and from the
-// binding array, never from a list written here.
-// @req FR-FLOW-168 AC-2 — every rendering names the command at each of the six places, beside the
+// @req FR-FLOW-168 AC-1 — the four wired tools come from FR-FLOW-167's destination note and from the
+// binding array, never from a list written here; the one the binding array dropped in 4.0.0 is the
+// one AC-1 names.
+// @req FR-FLOW-168 AC-2 — every rendering names the command at each of the five places, beside the
 // gate that receives its verdict.
 // @req FR-FLOW-168 AC-3 — a gate named is a gate that tool's own handler can raise, read from source.
 // @req FR-FLOW-168 AC-4 — a citation carries every argument the binding declares mandatory, and two
-// of the five judgements are driven to their refusal rather than described.
-// @req FR-FLOW-168 AC-5 — the two prefix-less leaf spellings are normalised to one spelling.
+// of the four judgements are driven to their refusal rather than described.
+// @req FR-FLOW-168 AC-5 — the prefix-less freeze spelling stays normalised, and `handoff validate`
+// is gone from the skill under every spelling.
 // @req FR-FLOW-168 AC-8 — what this file does and does not guarantee, measured rather than inferred.
 //
 // ─── WHAT THIS FILE GUARANTEES ──────────────────────────────────────────────────────────────────
 //
-// (1) The denominator. The five tools this requirement wires are read out of `FR-FLOW-167`'s own
+// (1) The denominator. The tools this requirement wires are read out of `FR-FLOW-167`'s own
 // destination note — the note that split its seven wiring follow-ups by the file they land in — and
-// each of them is checked against `ORCHESTRATE_TOOL_BINDINGS`. The two that note sent to plan 20 are
-// asserted absent here, so one edit cannot move a tool between the two follow-ups unnoticed. A list
-// in this file would let the denominator shrink by the same edit that shrinks the assertions.
+// kept only while `ORCHESTRATE_TOOL_BINDINGS` still registers them (AC-1, 4.0.0). The tools the note
+// names that the binding array no longer registers must be exactly the ones AC-1 names as dropped,
+// so a binding removal cannot shrink the denominator without a requirement diff. The two that note
+// sent to plan 20 are asserted absent here, so one edit cannot move a tool between the two follow-ups
+// unnoticed. A list in this file would let the denominator shrink by the same edit that shrinks the
+// assertions.
 //
-// (2) The wiring. For each of the six (tool, section) places the requirement's map declares, all
+// (2) The wiring. For each (tool, section) place the requirement's map declares whose tool is still
+// registered — the map note is append-only history and still carries the retired `§9.3` row — all
 // four renderings of `kiwi-orchestrator/SKILL.md` name the MCP tool and the CLI fallback inside that
 // section and name the gate that receives the verdict in the same section. Section and gate come
 // from the map note, not from the section being read: a gate derived from the section it is asserted
@@ -47,7 +51,7 @@ import { flat, readRepoFile, scanUnits, unitAt } from "./kiwi-renderings.js";
 // from its `selector`, so a citation that drops one is red. `FR-NODE-128` owns the other half —
 // that the verb resolves against the command tree and the placeholders are among its thirteen forms.
 //
-// (5) That two of the five refusals exist rather than being described. `openIssue` is handed a
+// (5) That two of the four refusals exist rather than being described. `openIssue` is handed a
 // ledger already carrying the id and refuses; `freezeLock` is handed a body without the fields its
 // kind requires and refuses, and the fields it names are then supplied back to it for the other
 // direction. Both are pure kernels, so this costs no filesystem and no git.
@@ -62,17 +66,15 @@ import { flat, readRepoFile, scanUnits, unitAt } from "./kiwi-renderings.js";
 // That an agent calls any of these tools. Nothing here observes a run: a run whose agent read the
 // instruction and skipped it completes normally and this file stays green.
 //
-// That a contradiction elsewhere in the skill is caught. Only the six sections the map names are
-// read; a sentence in `§0.G` or `§16` retracting one of the six instructions is invisible here.
+// That a contradiction elsewhere in the skill is caught. Only the five sections the map names are
+// read; a sentence in `§0.G` or `§16` retracting one of the five instructions is invisible here.
 //
 // That the MCP parameter names the wiring sentence cites exist on that tool. Only the CLI flags are
 // held, and only against the binding's `required` set.
 //
-// That three of the five reach their gate when the instruction is followed. `orchestrate_run_lock`
-// would need a git common directory to take a lease in, `orchestrate_run_abort` a journal to append
-// to, and `orchestrate_handoff_validate` a ten-heading handoff fixture with a lane row, a task
-// catalogue and a dispatch base to agree with. For those three the guarantee stops at the mandatory
-// argument comparison.
+// That two of the four reach their gate when the instruction is followed. `orchestrate_run_lock`
+// would need a git common directory to take a lease in and `orchestrate_run_abort` a journal to
+// append to. For those two the guarantee stops at the mandatory argument comparison.
 //
 // That a retraction placed in `§3` outside the two subsections this requirement opened is caught.
 // The cancellation scan runs over the section the map names, and for the two phase-map tools that
@@ -191,8 +193,12 @@ function destinedFor(clause: string, plan: string): string[] {
   return [...note.slice(opened, closed).matchAll(/`(orchestrate_[a-z_]+)`/g)].map((match) => match[1] as string);
 }
 
-/** The five `FR-FLOW-167` assigned to this follow-up, and the two it assigned to the other one. */
-const CARRIED_HERE = destinedFor("본문에 착지하는 다섯(", "19");
+/** Every tool `FR-FLOW-167` assigned to this follow-up, as its append-only note still names them. */
+const NOTED_HERE = destinedFor("본문에 착지하는 다섯(", "19");
+/** AC-1 (4.0.0): the denominator is the noted tools the binding array STILL registers. */
+const CARRIED_HERE = NOTED_HERE.filter((tool) => BINDING_OF.has(tool));
+/** The noted tools the binding array dropped. AC-1 has to name each of them as dropped. */
+const DROPPED_HERE = NOTED_HERE.filter((tool) => !BINDING_OF.has(tool));
 const CARRIED_ELSEWHERE = destinedFor("파일에 착지하는 둘(", "20");
 
 // ── the wiring map ──────────────────────────────────────────────────────────────────────────────
@@ -229,7 +235,9 @@ function wiringMap(): Place[] {
   }));
 }
 
-const PLACES = wiringMap();
+/** The map note is append-only history; a place whose tool left the binding array left the map (AC-2, 4.0.0). */
+const NOTED_PLACES = wiringMap();
+const PLACES = NOTED_PLACES.filter((place) => BINDING_OF.has(place.tool));
 
 // ── reading one section of one rendering ────────────────────────────────────────────────────────
 
@@ -267,7 +275,7 @@ const IMPORTED_FROM: ReadonlyMap<string, string> = new Map(
 /**
  * The `.action` callback of one tool's CLI leaf, by bracket matching from its registration.
  *
- * Two of the five bindings here choose their leaf by a selector value rather than by the tool name,
+ * Two of the four bindings here choose their leaf by a selector value rather than by the tool name,
  * and one of those two is registered inside a loop: `for (const target of FREEZE_TARGETS)` around
  * `freeze.command(target)`. There is no `freeze.command("design")` anywhere in the file, so the
  * literal anchor `FR-FLOW-167` used returns "" and every gate would be reported absent. The fallback
@@ -352,7 +360,9 @@ const HEDGE =
  * the tool NAME on that line is what `FR-FLOW-167` measured green under `…를 부르지 않고 손으로
  * 쓴다`, which carries the name while saying the opposite.
  */
-const POLARITY_SURVIVES: readonly string[] = ["받는다", "얻는다", "거절한다"];
+// `얻는다` left in 4.0.0: its only instruction line was §9.3, which left with the handoff validator
+// (FR-NODE-213) — FR-FLOW-168 AC-8 holds the vocabulary at `survives 2`.
+const POLARITY_SURVIVES: readonly string[] = ["받는다", "거절한다"];
 
 /** A closed-vocabulary term with the sample only it catches, the shape `FR-FLOW-164` established. */
 interface PolarityTerm {
@@ -489,13 +499,19 @@ describe("FR-FLOW-168 the denominator and the map", () => {
     expect(CLI_SOURCE.length, `${ORCHESTRATE_CLI} is empty, so the gate provenance reader would report every gate absent`).toBeGreaterThan(10000);
   });
 
-  it("the five wired tools come from the triage requirement's destination note, and are registered tools", () => {
+  it("FR-FLOW-168 AC-1 the four wired tools are the destination note's tools the binding array still registers", () => {
     expect(CARRIED_HERE, "the destination note must name the tools this follow-up carries").toHaveLength(floor("tools"));
-    for (const tool of CARRIED_HERE) {
-      expect(BINDING_OF.has(tool), `${tool} is wired here but is not in ORCHESTRATE_TOOL_BINDINGS`).toBe(true);
-    }
+    // The shrink from the note's list to the denominator is a requirement diff, not a binding diff:
+    // every noted tool the binding array dropped is one AC-1 names as dropped, so removing another
+    // binding lowers the denominator only together with AC-1's text (and its `tools` floor).
+    const namedByAc1 = [...acText("AC-1").matchAll(/`(orchestrate_[a-z_]+)`/g)].map((match) => match[1] as string);
+    expect(DROPPED_HERE.length, "the note names no tool the binding array dropped, so the 4.0.0 shrink is not what this reads").toBeGreaterThan(0);
+    expect(
+      DROPPED_HERE.filter((tool) => !namedByAc1.includes(tool)),
+      "a tool left the binding array that AC-1 does not name as dropped, so the denominator shrank without a requirement diff"
+    ).toEqual([]);
     // The other follow-up's two are held here too, so one edit cannot move a tool between them: the
-    // count above would stay at five while a tool the shared-contract item owns quietly joined.
+    // count above would stay at four while a tool the shared-contract item owns quietly joined.
     expect(CARRIED_ELSEWHERE, "the destination note must name the two tools plan 20 carries").toHaveLength(2);
     expect(
       CARRIED_ELSEWHERE.filter((tool) => CARRIED_HERE.includes(tool)),
@@ -529,8 +545,20 @@ describe("FR-FLOW-168 the denominator and the map", () => {
     expect(FLOORS.size, "the requirement names no floors, and a sweep with no bound is one nothing can shrink visibly").toBeGreaterThan(0);
   });
 
-  it("the map names the same tools as the destination note, and every place is complete", () => {
+  it("FR-FLOW-168 AC-2 the map names the same tools as the destination note, and every place is complete", () => {
     expect([...new Set(PLACES.map((place) => place.tool))].sort(), "the map and the destination note name different tools").toEqual([...CARRIED_HERE].sort());
+    // The places the map still holds are the ones the revised AC-2 spells out, section and gate both,
+    // and each place the map dropped with its tool is one AC-2 records as gone.
+    const ac2 = acText("AC-2");
+    for (const place of PLACES) {
+      expect(ac2.includes(`\`${place.at}\``), `${place.tool}: AC-2 does not name the place ${place.at}`).toBe(true);
+      expect(ac2.includes(`\`${place.gate}\``), `${place.tool} at ${place.at}: AC-2 does not name the gate ${place.gate}`).toBe(true);
+    }
+    const dropped = NOTED_PLACES.filter((place) => !BINDING_OF.has(place.tool));
+    expect(dropped.map((place) => place.tool).filter((tool) => !DROPPED_HERE.includes(tool)), "the map dropped a place whose tool the denominator keeps").toEqual([]);
+    for (const place of dropped) {
+      expect(ac2.includes(`빠진 \`${place.at}\` 자리`), `${place.tool} at ${place.at} left the map, but AC-2 does not record that place as gone`).toBe(true);
+    }
     for (const place of PLACES) {
       expect(place.at, `${place.tool}: the map names no section`).not.toBe("");
       expect(place.gate, `${place.tool} at ${place.at}: the map names no gate, so the gate mutation would be vacuous`).not.toBe("");
@@ -622,27 +650,8 @@ describe("FR-FLOW-168 the citation an agent would follow", () => {
     expect(fields.length, "the refusal names no missing field, so the body below would be built from nothing").toBeGreaterThan(0);
     expect(freezeLock(kind, Object.fromEntries(fields.map((field) => [field, null])), inputs).ok, "a body carrying every field the refusal named was still refused").toBe(true);
   });
-
-  it("the split §9.3 states between the six violation codes and the umbrella gate is the code's own", () => {
-    // `§9.3` says three of the six violation codes are gate names in their own right and the other
-    // three arrive under `handoff-verify-failed`. The handler collapses exactly that way, so the
-    // sentence is a claim about two exported constants — and the numerals are read out of the shipped
-    // sentence rather than typed here, because a claim compared only against itself is not compared.
-    const named = HANDOFF_VIOLATION_CODES.filter((code) => (GATE_IDS as readonly string[]).includes(code));
-    expect((GATE_IDS as readonly string[]).includes("handoff-verify-failed"), "the umbrella gate §9.3 names is not a declared gate").toBe(true);
-
-    const numerals: Record<string, number> = { 둘: 2, 셋: 3, 넷: 4, 다섯: 5, 여섯: 6, 일곱: 7 };
-    for (const relPath of COPIES) {
-      const text = flat(sectionAt(stripFrontmatter(readVariant(relPath)), "§9.3"));
-      const stated = /(\S+) 위반 코드 가운데 (\S+)은 그 자체로 [^,]*게이트 이름이고, 나머지 (\S+)은 우산 게이트 `([a-z-]+)` 로 온다/.exec(text);
-      expect(stated, `${relPath}: §9.3 no longer states how the six violation codes split, so the constants below answer to nothing`).not.toBeNull();
-      const [, total, asGates, underUmbrella, umbrella] = stated as RegExpExecArray;
-      expect(numerals[total as string], `${relPath}: §9.3 states the wrong number of violation codes`).toBe(HANDOFF_VIOLATION_CODES.length);
-      expect(numerals[asGates as string], `${relPath}: §9.3 states the wrong number of codes that are gate names themselves`).toBe(named.length);
-      expect(numerals[underUmbrella as string], `${relPath}: §9.3 states the wrong number of codes reaching the umbrella`).toBe(HANDOFF_VIOLATION_CODES.length - named.length);
-      expect(umbrella, `${relPath}: §9.3 names the wrong umbrella gate`).toBe("handoff-verify-failed");
-    }
-  });
+  // The `§9.3` six-violation-code split test is gone: AC-4 records that statement as removed with
+  // the handoff validator in 4.0.0 (FR-NODE-213 AC-3), and `HANDOFF_VIOLATION_CODES` no longer exists.
 });
 
 describe("FR-FLOW-168 one tool, one spelling", () => {
@@ -657,14 +666,27 @@ describe("FR-FLOW-168 one tool, one spelling", () => {
     return { bare, prefixed };
   }
 
-  it.each([
-    ["orchestrate_handoff_validate", "handoff validate"],
-    ["orchestrate_freeze", "freeze handoff"]
-  ])("%s is spelled with its command family everywhere the skill calls it", (_tool, tail) => {
+  // Old AC-5 held `orchestrate freeze handoff` > 0 per copy; that spelling lived in loop H, which
+  // FR-FLOW-187 AC-4 removed in 4.0.0, so the non-vacuity guard now rests on the family prefix
+  // `orchestrate freeze ` that the `§3.2` citation still carries. SRS revision needed: AC-5 does not
+  // restate the freeze normalisation for 4.0.0.
+  it("FR-FLOW-168 AC-5 orchestrate_freeze is spelled with its command family everywhere the skill calls it", () => {
     for (const relPath of COPIES) {
-      const counted = spellings(stripFrontmatter(readVariant(relPath)), tail);
-      expect(counted.prefixed, `${relPath}: no prefixed \`${tail}\` at all, so the count below is not a normalisation`).toBeGreaterThan(0);
-      expect(counted.bare, `${relPath}: \`${tail}\` still appears without its command family, so two spellings of one tool coexist`).toBe(0);
+      const body = stripFrontmatter(readVariant(relPath));
+      expect(spellings(body, "freeze ").prefixed, `${relPath}: no prefixed \`orchestrate freeze\` at all, so the count below is not a normalisation`).toBeGreaterThan(0);
+      expect(spellings(body, "freeze handoff").bare, `${relPath}: \`freeze handoff\` still appears without its command family, so two spellings of one tool coexist`).toBe(0);
+    }
+  });
+
+  it("FR-FLOW-168 AC-5 handoff validate is gone from the skill under every spelling, with the tool AC-1 dropped", () => {
+    expect(DROPPED_HERE.length, "no dropped tool is derived, so the absence below bounds nothing").toBeGreaterThan(0);
+    for (const relPath of COPIES) {
+      const body = flat(stripFrontmatter(readVariant(relPath)));
+      const counted = spellings(body, "handoff validate");
+      expect(counted.bare + counted.prefixed, `${relPath}: \`handoff validate\` is still spelled in the skill`).toBe(0);
+      for (const tool of DROPPED_HERE) {
+        expect(body.includes(tool), `${relPath}: still names ${tool}, which left the binding array in 4.0.0`).toBe(false);
+      }
     }
   });
 

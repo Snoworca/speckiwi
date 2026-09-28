@@ -1169,6 +1169,10 @@ describe("FR-FLOW-172 — kiwi-tdd review hop and its start gate", () => {
           ).toContain(START_GATE_ID);
         });
 
+        // FR-FLOW-172 AC-4 as revised for 4.0.0: standalone `kiwi-pm` always hands off to
+        // `kiwi-review-fix-loop` (FR-FLOW-185 AC-4), so it has no reversible branch to explain and the
+        // reason paragraph is required beside `kiwi-coder`'s table only.
+        if (skill === "kiwi-pm") continue;
         it(`${copy}/${skill}: records why the remaining branches stay outside the table`, () => {
           const gates = criticalGatesSection(body(copy, skill));
           expect(gates, `${copy}/${skill}: the gate section must be locatable`).not.toBe("");

@@ -21,8 +21,8 @@ async function sha256(root: string, relativePath: string): Promise<string> {
 }
 
 async function runJson(root: string, args: string[], expectedCode = 0): Promise<Record<string, unknown>> {
-  const stdout = new PassThrough() as NodeJS.WriteStream;
-  const stderr = new PassThrough() as NodeJS.WriteStream;
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
   const code = await main(["--root", root, ...args, "--json"], { stdout, stderr });
   expect(code).toBe(expectedCode);
   return JSON.parse(stdout.read()?.toString() ?? "") as Record<string, unknown>;
@@ -35,28 +35,16 @@ function event(runId: string): string {
 describe("IR-CLI-042 / IR-CLI-043 workflow mutation commands", () => {
   it("runs guarded workflow mutations with dry-run, no-op, stale, and logical-delete behavior", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
-    await write(root, "docs/plans/run-a.plan.md", "# Plan\n\n- [ ] **T-PH001-01** Implement task\n");
     await write(root, "kiwi/pipeline.jsonl", `${event("event-a")}\n`);
-    const planHash = await sha256(root, "docs/plans/run-a.plan.md");
+    const pipelineHash = await sha256(root, "kiwi/pipeline.jsonl");
 
-    const dryRun = await runJson(root, ["workflow", "task-check", "T-PH001-01", "--run-id", "run-a", "--path", "docs/plans/run-a.plan.md", "--expected-sha256", planHash, "--dry-run"]);
-    expect(dryRun).toMatchObject({ ok: true, value: { written: false, journalState: "skipped_dry_run" }, mutation: { kind: "plan_checkbox_check", written: false } });
-    expect(await read(root, "docs/plans/run-a.plan.md")).toContain("- [ ] **T-PH001-01**");
+    // The plan checkbox, checklist and PM task status commands left with plan mode (FR-NODE-211 AC-1);
+    // the guards they exercised are exercised here on the journal writers that remain.
+    const dryRun = await runJson(root, ["workflow", "pipeline-emit", "--run-id", "run-a", "--event", event("event-b"), "--expected-sha256", pipelineHash, "--dry-run"]);
+    expect(dryRun).toMatchObject({ ok: true, value: { written: false, journalState: "skipped_dry_run" }, mutation: { kind: "pipeline_event_append", written: false } });
+    expect(await sha256(root, "kiwi/pipeline.jsonl")).toBe(pipelineHash);
 
-    const checked = await runJson(root, ["workflow", "task-check", "T-PH001-01", "--run-id", "run-a", "--path", "docs/plans/run-a.plan.md", "--expected-sha256", planHash]);
-    expect(checked).toMatchObject({ ok: true, value: { written: true, journalKey: expect.any(String) }, mutation: { journalState: "confirmed" } });
-    expect(await read(root, "docs/plans/run-a.plan.md")).toContain("- [x] **T-PH001-01**");
-
-    const checklist = await runJson(root, ["workflow", "checklist-set", "T-PH001-01", "--run-id", "run-a", "--path", "docs/plans/run-a.plan.md", "--checked", "false"]);
-    expect(checklist).toMatchObject({ ok: true, value: { written: true }, mutation: { kind: "plan_checklist_item_update" } });
-    expect(await read(root, "docs/plans/run-a.plan.md")).toContain("- [ ] **T-PH001-01**");
-
-    await write(root, ".kiwi/sessions/run-a/pm-state.json", JSON.stringify({ run_id: "run-a", tasks: [{ task_id: "T-PH001-01", status: "pending" }] }, null, 2));
-    const statusSet = await runJson(root, ["workflow", "task-status-set", "T-PH001-01", "done", "--run-id", "run-a", "--pm-state-path", ".kiwi/sessions/run-a/pm-state.json"]);
-    expect(statusSet).toMatchObject({ ok: true, value: { written: true }, mutation: { kind: "pm_task_status_update" } });
-    expect(JSON.parse(await read(root, ".kiwi/sessions/run-a/pm-state.json")).tasks[0].status).toBe("done");
-
-    const forbidden = await runJson(root, ["workflow", "task-uncheck", "T-PH001-01", "--run-id", "run-a", "--path", "docs/plans/run-a.plan.md", "--owner", "kiwi-coder"], 5);
+    const forbidden = await runJson(root, ["workflow", "logical-delete", "--run-id", "run-a", "--record-type", "pipeline_event", "--record-id", "event-a", "--reason", "obsolete", "--owner", "kiwi-coder"], 5);
     expect(forbidden).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" }, diagnosticsSummary: { byCode: { "SRS-E070": 1 } } });
 
     const emit = await runJson(root, ["workflow", "pipeline-emit", "--run-id", "run-a", "--event", event("event-b")]);
