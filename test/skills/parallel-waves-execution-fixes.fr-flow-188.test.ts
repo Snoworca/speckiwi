@@ -80,7 +80,8 @@ describe("FR-FLOW-188 AC-3 — a split wave SDS is one wave, one lane, one worke
       const rule = stages.split("\n").find((l) => l.includes("{run_id}-wave-{n}-{k}.sds.md")) ?? "";
       expect(rule, `${bundle}: §3 has no fragment rule`).not.toBe("");
       expect(/wave 하나 = lane 하나 = 워커 하나|one wave = one lane = one worker/.test(rule), `${bundle}: ${rule.slice(0, 160)}`).toBe(true);
-      expect(rule, `${bundle}: the fragments are not one --sds entry`).toContain("`{run_id}-wave-{n}=");
+      // FR-FLOW-188 AC-3 (4.1.0): the parts are listed in the wave entry's `sds[]`, not a `--sds <waveId>=…` entry.
+      expect(rule, `${bundle}: the fragments are not listed in one entry's sds[]`).toContain("`sds[]`");
       // The retired rule chained fragment k on fragment k−1, which always puts them in different stages.
       expect(/k\s*[−-]\s*1/.test(stages), `${bundle}: §3 still chains fragments by --depends`).toBe(false);
       expect(/조각마다 (하나의 )?lane|each part is a lane/.test(stages), `${bundle}: §3 still makes a lane per fragment`).toBe(false);
@@ -175,11 +176,14 @@ describe("FR-FLOW-187 AC-3 — the orchestrator's 3.c′ step runs the same allo
 
 describe("FR-FLOW-183 AC-3 — the pipeline's promoting hop always names its requirement scope", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-183 AC-3 ${bundle}: §2.5.4 item 3 passes --req-filter next to --close-reqs`, () => {
-      const cycle = section(skill(bundle, "kiwi-pipeline"), /^###\s*2\.5\.4\s/);
-      const item = cycle.split("\n").find((l) => /^3\.\s/.test(l)) ?? "";
-      expect(item, `${bundle}: no item 3`).toContain("--close-reqs");
-      expect(item, `${bundle}: item 3 has no --req-filter`).toContain("--req-filter");
+    it(`FR-FLOW-183 AC-3 ${bundle}: the promoting hop passes --req-filter next to --close-reqs (§2.5.4 item 1, §2.5.5 item 3)`, () => {
+      // FR-FLOW-193: the default end steps open on the hop (item 1); the --sds branch keeps it as item 3.
+      for (const [heading, n] of [[/^###\s*2\.5\.4\s/, "1"], [/^###\s*2\.5\.5\s/, "3"]] as const) {
+        const cycle = section(skill(bundle, "kiwi-pipeline"), heading);
+        const item = cycle.split("\n").find((l) => l.startsWith(`${n}. `)) ?? "";
+        expect(item, `${bundle}: no item ${n}`).toContain("--close-reqs");
+        expect(item, `${bundle}: item ${n} has no --req-filter`).toContain("--req-filter");
+      }
     });
   }
 });
@@ -253,15 +257,16 @@ describe("FR-FLOW-188 AC-2 — the worker's test-sufficiency check reads the wor
 
 describe("FR-FLOW-188 — option and command spellings the verification found wrong", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-188 AC-3 ${bundle}: a merged dependency keeps its wave key with an empty list`, () => {
+    it(`FR-FLOW-188 AC-3 ${bundle}: a complete dependency counts as satisfied — the tool plans the ready entries only`, () => {
+      // FR-FLOW-195 AC-2 (4.1.0): no hand-built --depends map is left whose keys must survive; `schedule waves --waves` reads the journal.
       const stages = numbered(contract(bundle), 3);
-      const line = stages.split("\n").find((l) => l.includes("`--depends`") && l.includes("`{waveId: [waveId…]}`")) ?? "";
-      expect(line, `${bundle}`).toContain("`[]`");
+      const line = stages.split("\n").find((l) => /준비 집합만 계획|plans the ready entries only/.test(l)) ?? "";
+      expect(line, `${bundle}`).toMatch(/`complete`[^.]*(?:충족|satisfied)/);
     });
 
     it(`FR-FLOW-188 AC-1 ${bundle}: the verdict's write-set line defers to the out-of-lease rule below it`, () => {
       const verdict = step(contract(bundle), 8);
-      const line = verdict.split("\n").find((l) => /변경 경로 ⊆ SDS 쓰기 집합|changed paths ⊆ the SDS write set/.test(l)) ?? "";
+      const line = verdict.split("\n").find((l) => /변경 경로 ⊆ lane 쓰기 집합|changed paths ⊆ the lane write set/.test(l)) ?? "";
       expect(line, `${bundle}`).not.toBe("");
       expect(/아래|below/.test(line), `${bundle}: ${line}`).toBe(true);
     });

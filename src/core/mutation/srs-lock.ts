@@ -1,16 +1,35 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
-import { lstat, mkdir, open, readFile, rm } from "node:fs/promises";
+import { link, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import type { Diagnostic, MutationResult, ProjectRoot, SrsMutationLockError, SrsMutationLockMetadata } from "../types.js";
 import { refreshSrsStatusCache } from "../status-cache.js";
+import { isBusy, retryBusy } from "../lock/busy-retry.js";
 
 export const SRS_LOCK_PATH = "kiwi/.srs.lock";
 const SRS_LOCK_GUARD_PATH = "kiwi/.srs.lock.guard";
 const SRS_LOCK_SCHEMA_VERSION = "1.0.0";
 const DEFAULT_LOCK_TTL_MS = 60_000;
 const DEFAULT_GUARD_TTL_MS = 30_000;
+
+// @req REL-NODE-009 — the timing contract.
+/** A lock or guard file that names no holder (empty, not JSON) is recovered only after this grace. */
+const TORN_GRACE_MS = 5_000;
+/** How long a release keeps trying before it reports the leftover lock (at least 1 s). */
+const RELEASE_WINDOW_MS = 1_200;
+const RELEASE_RETRY_DELAY_MS = 50;
+/** What a refusal caused by an active guard recommends: the guard lives for milliseconds. */
+const GUARD_RETRY_DELAY_MS = 250;
+const BUSY_RETRY_DELAY_MS = 500;
+const BUSY_MESSAGE = "another process may be deleting the lock file; if this persists, check permissions on kiwi/";
+/** How long a contender that captured a successor's file keeps trying to put it back. */
+const RESTORE_WINDOW_MS = 1_200;
+/**
+ * How long a holder whose own file is missing waits for it to come back: longer than a restorer
+ * keeps trying, so a file put back late is still found by its owner rather than left with none.
+ */
+const OWN_FILE_WAIT_MS = RESTORE_WINDOW_MS + 500;
 
 export interface SrsMutationLockOptions {
   operation: string;
@@ -33,6 +52,15 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function errnoOf(error: unknown): string | undefined {
+  return (error as NodeJS.ErrnoException | undefined)?.code;
+}
+
+
 function retryFor(metadata: SrsMutationLockMetadata): SrsMutationLockError["retry"] {
   const expiresAt = Date.parse(metadata.expiresAt);
   return {
@@ -41,9 +69,9 @@ function retryFor(metadata: SrsMutationLockMetadata): SrsMutationLockError["retr
   };
 }
 
-function unknownLock(operation: string): SrsMutationLockError {
+function unknownLock(operation: string): SrsMutationLockMetadata {
   const acquiredAt = nowIso();
-  const metadata: SrsMutationLockMetadata = {
+  return {
     schemaVersion: SRS_LOCK_SCHEMA_VERSION,
     owner: "unknown",
     operation,
@@ -51,19 +79,43 @@ function unknownLock(operation: string): SrsMutationLockError {
     acquiredAt,
     expiresAt: new Date(Date.now() + DEFAULT_LOCK_TTL_MS).toISOString()
   };
-  return { ...metadata, retry: retryFor(metadata) };
 }
 
-function lockError(metadata: SrsMutationLockMetadata, details: Record<string, unknown> = {}): MutationResult {
-  const lock = { ...metadata, retry: retryFor(metadata) };
-  const message = `SRS mutation lock is active for ${metadata.operation} by ${metadata.owner}; retry after ${metadata.expiresAt}.`;
-  const lockDiagnostic = diagnostic("SRS-E065", "error", message, { filePath: SRS_LOCK_PATH }, { ...details, lock });
+/** A structured SRS_LOCKED refusal; `message` and `recommendedDelayMs` default to the holder's. */
+function lockRefusal(
+  metadata: SrsMutationLockMetadata,
+  details: Record<string, unknown> = {},
+  override: { message?: string; recommendedDelayMs?: number; filePath?: string } = {}
+): MutationResult {
+  const retry = retryFor(metadata);
+  const lock: SrsMutationLockError = {
+    ...metadata,
+    retry: {
+      message: override.message ?? retry.message,
+      recommendedDelayMs: override.recommendedDelayMs ?? retry.recommendedDelayMs
+    }
+  };
+  const message = override.message ?? `SRS mutation lock is active for ${metadata.operation} by ${metadata.owner}; retry after ${metadata.expiresAt}.`;
+  const lockDiagnostic = diagnostic("SRS-E065", "error", message, { filePath: override.filePath ?? SRS_LOCK_PATH }, { ...details, lock });
   return {
     ok: false,
     error: { code: "SRS_LOCKED", message, diagnostics: [lockDiagnostic], lock },
     diagnostics: [lockDiagnostic],
     diagnosticsSummary: summarizeDiagnostics([lockDiagnostic])
   };
+}
+
+function lockError(metadata: SrsMutationLockMetadata, details: Record<string, unknown> = {}): MutationResult {
+  return lockRefusal(metadata, details);
+}
+
+/** @req REL-NODE-009 AC-9 — a file operation that stayed busy through its retries. */
+function lockBusy(error: unknown, operation: string): MutationResult {
+  const errno = errnoOf(error) ?? "EBUSY";
+  return lockRefusal(unknownLock(operation), { kind: "lock-busy", errno }, {
+    message: `SRS mutation lock file is busy (${errno}): ${BUSY_MESSAGE}`,
+    recommendedDelayMs: BUSY_RETRY_DELAY_MS
+  });
 }
 
 function isLockMetadata(value: unknown): value is SrsMutationLockMetadata {
@@ -79,30 +131,177 @@ function isLockMetadata(value: unknown): value is SrsMutationLockMetadata {
   );
 }
 
-async function readLockMetadataFile(root: ProjectRoot, relativePath: string, operation: string): Promise<{ metadata: SrsMutationLockMetadata | null; failure?: MutationResult; stale: boolean }> {
-  const filePath = relativeAbsolutePath(root, relativePath);
+/** The parsed JSON, or undefined when the text is not JSON (a torn write). */
+function parseJson(text: string): { value: unknown } | undefined {
+  if (text.trim() === "") return undefined;
   try {
-    const stats = await lstat(filePath);
-    if (stats.isSymbolicLink()) {
-      return { metadata: null, stale: false, failure: lockError(unknownLock(operation), { kind: "symlink-lock" }) };
-    }
-    const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
-    if (!isLockMetadata(parsed)) {
-      return { metadata: null, stale: false, failure: lockError(unknownLock(operation), { kind: "malformed-lock" }) };
-    }
-    const expiresAt = Date.parse(parsed.expiresAt);
-    const stale = Number.isFinite(expiresAt) && expiresAt <= Date.now();
-    return { metadata: parsed, stale };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { metadata: null, stale: false };
-    return { metadata: null, stale: false, failure: lockError(unknownLock(operation), { kind: "unreadable-lock", error: (error as Error).message }) };
+    return { value: JSON.parse(text) as unknown };
+  } catch {
+    return undefined;
   }
 }
 
-async function readLockMetadata(root: ProjectRoot, operation: string): Promise<{ metadata: SrsMutationLockMetadata | null; failure?: MutationResult; stale: boolean }> {
-  return readLockMetadataFile(root, SRS_LOCK_PATH, operation);
+/**
+ * Which file on disk a state was read from: `dev` + `ino` of the stat taken when it was judged.
+ * A rename keeps them, so the file a quarantine captured can be compared with the file that was judged
+ * stale. (Review r1 H1: comparing bytes cannot tell an empty torn file from a fresh one not yet written.)
+ */
+interface FileIdentity {
+  dev: bigint;
+  ino: bigint;
 }
 
+/** What a lock or guard file holds, read once. */
+type LockFileState =
+  | { kind: "absent" }
+  | { kind: "symlink" }
+  | { kind: "unreadable"; error: string }
+  /** Empty or not JSON: names no holder. Recoverable only after the grace. */
+  | { kind: "torn"; raw: string; ageMs: number; id: FileIdentity }
+  /** Parseable but not a lock this version writes: never taken over. */
+  | { kind: "unknown-format"; version: string }
+  | { kind: "valid"; raw: string; metadata: SrsMutationLockMetadata; stale: boolean; id: FileIdentity };
+
+/** @req REL-NODE-005 AC-6 @req REL-NODE-009 AC-4 AC-5 — reads and classifies one lock or guard file. */
+async function readLockFileState(root: ProjectRoot, relativePath: string): Promise<LockFileState> {
+  const filePath = relativeAbsolutePath(root, relativePath);
+  let stats;
+  try {
+    stats = await retryBusy(() => lstat(filePath, { bigint: true }));
+  } catch (error) {
+    if (errnoOf(error) === "ENOENT") return { kind: "absent" };
+    throw error;
+  }
+  if (stats.isSymbolicLink()) return { kind: "symlink" };
+  let raw: string;
+  try {
+    raw = await retryBusy(() => readFile(filePath, "utf8"));
+  } catch (error) {
+    if (errnoOf(error) === "ENOENT") return { kind: "absent" };
+    if (isBusy(error)) throw error;
+    return { kind: "unreadable", error: (error as Error).message };
+  }
+  const parsed = parseJson(raw);
+  const id: FileIdentity = { dev: stats.dev, ino: stats.ino };
+  if (!parsed) return { kind: "torn", raw, ageMs: Date.now() - Number(stats.mtimeMs), id };
+  if (!isLockMetadata(parsed.value)) {
+    const version = (parsed.value as { schemaVersion?: unknown } | null)?.schemaVersion;
+    return { kind: "unknown-format", version: typeof version === "string" ? version : "none" };
+  }
+  const expiresAt = Date.parse(parsed.value.expiresAt);
+  return { kind: "valid", raw, metadata: parsed.value, stale: Number.isFinite(expiresAt) && expiresAt <= Date.now(), id };
+}
+
+/** The refusal a state that blocks acquisition answers with, or undefined when it does not block. */
+function blockingRefusal(state: LockFileState, relativePath: string, operation: string, activeKind?: string): MutationResult | undefined {
+  switch (state.kind) {
+    case "symlink":
+      return lockRefusal(unknownLock(operation), { kind: "symlink-lock" }, { filePath: relativePath });
+    case "unreadable":
+      return lockRefusal(unknownLock(operation), { kind: "unreadable-lock", error: state.error }, { filePath: relativePath });
+    case "torn":
+      return state.ageMs > TORN_GRACE_MS
+        ? undefined
+        : lockRefusal(unknownLock(operation), { kind: "torn-lock" }, {
+            filePath: relativePath,
+            message: `SRS mutation lock file ${relativePath} is empty or unreadable; it is recovered once it is ${TORN_GRACE_MS / 1000} s old.`,
+            recommendedDelayMs: Math.min(TORN_GRACE_MS, Math.max(0, TORN_GRACE_MS - state.ageMs))
+          });
+    case "unknown-format":
+      return lockRefusal(unknownLock(operation), { kind: "unknown-lock-format", version: state.version }, {
+        filePath: relativePath,
+        message:
+          `SRS mutation lock file ${relativePath} has an unknown format (schemaVersion ${state.version}); another SpecKiwi version may hold the lock. ` +
+          `Delete ${relativePath} only when no other SpecKiwi process is running.`,
+        recommendedDelayMs: DEFAULT_LOCK_TTL_MS
+      });
+    case "valid":
+      if (state.stale) return undefined;
+      return activeKind === "lock-guard-active"
+        ? lockRefusal(state.metadata, { kind: activeKind }, { filePath: relativePath, recommendedDelayMs: GUARD_RETRY_DELAY_MS })
+        : lockError(state.metadata);
+    case "absent":
+      return undefined;
+  }
+}
+
+/**
+ * Whether the file a quarantine captured is the file that was judged. By `dev` + `ino` where the file
+ * system reports an inode; where it reports none (0), by the bytes and, for a torn file, by the
+ * captured file's own age, so a file younger than the grace is never taken for a torn one.
+ */
+async function isJudgedFile(quarantine: string, judged: Extract<LockFileState, { kind: "torn" | "valid" }>): Promise<boolean> {
+  const stats = await retryBusy(() => lstat(quarantine, { bigint: true }));
+  if (judged.id.ino !== 0n && stats.ino !== 0n) return stats.dev === judged.id.dev && stats.ino === judged.id.ino;
+  const raw = await retryBusy(() => readFile(quarantine, "utf8"));
+  if (raw !== judged.raw) return false;
+  return judged.kind === "valid" || Date.now() - Number(stats.mtimeMs) > TORN_GRACE_MS;
+}
+
+/**
+ * Puts a wrongly captured file back without overwriting anything. Review r1 M2: when another
+ * contender has taken the empty path meanwhile (`link` gives EEXIST), back off and retry rather than
+ * delete the captured file — guards live for milliseconds, so the path frees almost at once. Only if
+ * it never frees within the window is the captured file dropped; its owner's release then finds no
+ * guard of its own and removes nothing.
+ */
+async function restoreCaptured(quarantine: string, target: string): Promise<void> {
+  const deadline = Date.now() + RESTORE_WINDOW_MS;
+  for (;;) {
+    try {
+      await retryBusy(() => link(quarantine, target));
+      break;
+    } catch (error) {
+      if (errnoOf(error) !== "EEXIST") {
+        await rm(quarantine, { force: true }).catch(() => undefined);
+        throw error;
+      }
+      if (Date.now() >= deadline) break;
+      await sleep(RELEASE_RETRY_DELAY_MS);
+    }
+  }
+  await retryBusy(() => rm(quarantine, { force: true }));
+}
+
+/** The judged file was taken off the path but its quarantine name could not be deleted. */
+class QuarantineLeftBehind extends Error {
+  /** The errno of the failed delete, so acquisition answers it as it answers any busy file. */
+  readonly code: string | undefined;
+  constructor(readonly quarantine: string, cause: unknown) {
+    super(`could not delete ${quarantine}: ${(cause as Error).message}`);
+    this.code = errnoOf(cause);
+  }
+}
+
+/**
+ * @req REL-NODE-009 AC-6 @req REL-NODE-005 AC-6 — removes the file that was judged, and only that file.
+ * The path is renamed to a unique quarantine name, which only one contender can win; the winner then
+ * checks the captured file is the judged one (file identity). If it captured a successor's file, it
+ * puts it back and reports the race as lost. Used for a stale guard, a stale or torn lock, and a
+ * holder's own release (review r1 M1: no read-compare-rm anywhere).
+ */
+async function removeJudgedFile(root: ProjectRoot, relativePath: string, judged: Extract<LockFileState, { kind: "torn" | "valid" }>): Promise<"removed" | "lost"> {
+  const target = relativeAbsolutePath(root, relativePath);
+  const quarantine = `${target}.quarantine-${randomUUID()}`;
+  try {
+    await retryBusy(() => rename(target, quarantine));
+  } catch (error) {
+    if (errnoOf(error) === "ENOENT") return "lost";
+    throw error;
+  }
+  if (await isJudgedFile(quarantine, judged)) {
+    try {
+      await retryBusy(() => rm(quarantine, { force: true }));
+    } catch (error) {
+      throw new QuarantineLeftBehind(quarantine, error);
+    }
+    return "removed";
+  }
+  await restoreCaptured(quarantine, target);
+  return "lost";
+}
+
+/** @req REL-NODE-009 AC-8 — creates the file exclusively; a failed metadata write removes it again. */
 async function createLockFile(root: ProjectRoot, relativePath: string, operation: string, ttlMs: number): Promise<SrsMutationLockMetadata> {
   const filePath = relativeAbsolutePath(root, relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -115,82 +314,170 @@ async function createLockFile(root: ProjectRoot, relativePath: string, operation
     acquiredAt: new Date(acquiredAt).toISOString(),
     expiresAt: new Date(acquiredAt + ttlMs).toISOString()
   };
-  const handle = await open(filePath, "wx");
+  const handle = await retryBusy(() => open(filePath, "wx"));
   try {
     await handle.writeFile(`${JSON.stringify(metadata, null, 2)}\n`, "utf8");
     await handle.sync();
-  } finally {
-    await handle.close();
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await rm(filePath, { force: true }).catch(() => undefined);
+    throw error;
   }
+  await handle.close();
   return metadata;
-}
-
-async function createLock(root: ProjectRoot, operation: string, ttlMs = DEFAULT_LOCK_TTL_MS): Promise<SrsMutationLockMetadata> {
-  return createLockFile(root, SRS_LOCK_PATH, operation, ttlMs);
 }
 
 function sameLockIdentity(left: SrsMutationLockMetadata, right: SrsMutationLockMetadata): boolean {
   return left.owner === right.owner && left.operation === right.operation && left.requestId === right.requestId && left.acquiredAt === right.acquiredAt;
 }
 
+function recovered(relativePath: string, stale: unknown): Diagnostic {
+  return diagnostic("SRS-W068", "warning", `Recovered stale SRS mutation lock${relativePath === SRS_LOCK_GUARD_PATH ? " guard" : ""}: ${relativePath}`, { filePath: relativePath }, { staleLock: stale });
+}
+
+/** Takes the guard, recovering a stale one (expired, or torn past the grace) by quarantine. */
 async function acquireLockGuard(root: ProjectRoot, operation: string): Promise<AcquiredLock | MutationResult> {
+  const guardOperation = `srs_lock_guard:${operation}`;
   try {
-    const metadata = await createLockFile(root, SRS_LOCK_GUARD_PATH, `srs_lock_guard:${operation}`, DEFAULT_GUARD_TTL_MS);
-    return { metadata, diagnostics: [] };
+    return { metadata: await createLockFile(root, SRS_LOCK_GUARD_PATH, guardOperation, DEFAULT_GUARD_TTL_MS), diagnostics: [] };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const existing = await readLockMetadataFile(root, SRS_LOCK_GUARD_PATH, operation);
-    if (existing.failure) return existing.failure;
-    if (existing.metadata && existing.stale) {
-      await rm(relativeAbsolutePath(root, SRS_LOCK_GUARD_PATH), { force: true });
-      const metadata = await createLockFile(root, SRS_LOCK_GUARD_PATH, `srs_lock_guard:${operation}`, DEFAULT_GUARD_TTL_MS);
-      return {
-        metadata,
-        diagnostics: [diagnostic("SRS-W068", "warning", `Recovered stale SRS mutation lock guard: ${SRS_LOCK_GUARD_PATH}`, { filePath: SRS_LOCK_GUARD_PATH }, { staleLock: existing.metadata })]
-      };
-    }
-    return existing.metadata ? lockError(existing.metadata, { kind: "lock-guard-active" }) : lockError(unknownLock(operation), { kind: "lock-guard-active" });
+    if (errnoOf(error) !== "EEXIST") throw error;
+  }
+  const state = await readLockFileState(root, SRS_LOCK_GUARD_PATH);
+  const refusal = blockingRefusal(state, SRS_LOCK_GUARD_PATH, operation, "lock-guard-active");
+  if (refusal) return refusal;
+  const guardActive = (): MutationResult => lockRefusal(unknownLock(operation), { kind: "lock-guard-active" }, { filePath: SRS_LOCK_GUARD_PATH, recommendedDelayMs: GUARD_RETRY_DELAY_MS });
+  if (state.kind !== "torn" && state.kind !== "valid") return guardActive();
+  if ((await removeJudgedFile(root, SRS_LOCK_GUARD_PATH, state)) === "lost") return guardActive();
+  try {
+    const metadata = await createLockFile(root, SRS_LOCK_GUARD_PATH, guardOperation, DEFAULT_GUARD_TTL_MS);
+    return { metadata, diagnostics: [recovered(SRS_LOCK_GUARD_PATH, state.kind === "valid" ? state.metadata : { torn: true })] };
+  } catch (error) {
+    if (errnoOf(error) === "EEXIST") return guardActive();
+    throw error;
   }
 }
 
-async function releaseLockFileIfOwner(root: ProjectRoot, relativePath: string, metadata: SrsMutationLockMetadata): Promise<void> {
-  const current = await readLockMetadataFile(root, relativePath, metadata.operation);
-  if (current.metadata && sameLockIdentity(current.metadata, metadata)) {
-    await rm(relativeAbsolutePath(root, relativePath), { force: true });
+/**
+ * Removes `relativePath` when it names `metadata`. True when no file of this holder is left at the
+ * path afterwards; false when the path holds this holder's file that could not be taken.
+ *
+ * When the holder's file is not at the path, it may be in another contender's quarantine on its way
+ * back (a capture that turned out to be a successor's file is restored). Returning at once left that
+ * file at the path with no owner until its TTL, found under load in the full suite. So the holder
+ * waits for the file longer than any restorer keeps trying, and removes it if it comes back.
+ */
+async function releaseLockFileIfOwner(root: ProjectRoot, relativePath: string, metadata: SrsMutationLockMetadata): Promise<boolean> {
+  const deadline = Date.now() + OWN_FILE_WAIT_MS;
+  for (;;) {
+    const current = await readLockFileState(root, relativePath);
+    if (current.kind === "valid" && sameLockIdentity(current.metadata, metadata)) {
+      await removeJudgedFile(root, relativePath, current);
+      const after = await readLockFileState(root, relativePath);
+      return after.kind !== "valid" || !sameLockIdentity(after.metadata, metadata);
+    }
+    if (Date.now() >= deadline) return true;
+    await sleep(RELEASE_RETRY_DELAY_MS);
+  }
+}
+
+/** Releases the guard; a failure only leaves the guard until its TTL. */
+async function releaseGuardQuietly(root: ProjectRoot, guard: AcquiredLock): Promise<void> {
+  await releaseLockFileIfOwner(root, SRS_LOCK_GUARD_PATH, guard.metadata).catch(() => undefined);
+}
+
+function isRefusal(value: AcquiredLock | MutationResult): value is MutationResult {
+  return "ok" in value && value.ok === false;
+}
+
+async function acquireUnderGuard(root: ProjectRoot, options: SrsMutationLockOptions): Promise<AcquiredLock | MutationResult> {
+  const guard = await acquireLockGuard(root, options.operation);
+  if (isRefusal(guard)) return guard;
+  const diagnostics: Diagnostic[] = [...guard.diagnostics];
+  try {
+    const rechecked = await readLockFileState(root, SRS_LOCK_PATH);
+    const refusal = blockingRefusal(rechecked, SRS_LOCK_PATH, options.operation);
+    if (refusal) return refusal;
+    if (rechecked.kind === "valid" || rechecked.kind === "torn") {
+      // The stale file is taken by quarantine and file identity, so a lock created meanwhile survives.
+      if ((await removeJudgedFile(root, SRS_LOCK_PATH, rechecked)) === "removed") {
+        diagnostics.push(recovered(SRS_LOCK_PATH, rechecked.kind === "valid" ? rechecked.metadata : { torn: true }));
+      }
+    }
+    try {
+      return { metadata: await createLockFile(root, SRS_LOCK_PATH, options.operation, options.ttlMs ?? DEFAULT_LOCK_TTL_MS), diagnostics };
+    } catch (error) {
+      if (errnoOf(error) !== "EEXIST") throw error;
+      const raced = await readLockFileState(root, SRS_LOCK_PATH);
+      return blockingRefusal(raced, SRS_LOCK_PATH, options.operation) ?? lockError(unknownLock(options.operation));
+    }
+  } finally {
+    await releaseGuardQuietly(root, guard);
   }
 }
 
 async function acquireSrsMutationLock(root: ProjectRoot, options: SrsMutationLockOptions): Promise<AcquiredLock | MutationResult> {
-  const existing = await readLockMetadata(root, options.operation);
-  if (existing.failure) return existing.failure;
-  if (existing.metadata && !existing.stale) return lockError(existing.metadata);
-  if (options.dryRun) {
-    return { metadata: unknownLock(options.operation), diagnostics: existing.stale ? [diagnostic("SRS-W068", "warning", `Stale SRS mutation lock would be recovered: ${SRS_LOCK_PATH}`, { filePath: SRS_LOCK_PATH }, { staleLock: existing.metadata })] : [] };
-  }
-
-  const guard = await acquireLockGuard(root, options.operation);
-  if ("ok" in guard && guard.ok === false) return guard;
-  const diagnostics: Diagnostic[] = [];
   try {
-    diagnostics.push(...(guard as AcquiredLock).diagnostics);
-    const rechecked = await readLockMetadata(root, options.operation);
-    if (rechecked.failure) return rechecked.failure;
-    if (rechecked.metadata && !rechecked.stale) return lockError(rechecked.metadata);
-    if (rechecked.metadata && rechecked.stale) {
-      await releaseLockFileIfOwner(root, SRS_LOCK_PATH, rechecked.metadata);
-      diagnostics.push(diagnostic("SRS-W068", "warning", `Recovered stale SRS mutation lock: ${SRS_LOCK_PATH}`, { filePath: SRS_LOCK_PATH }, { staleLock: rechecked.metadata }));
+    const existing = await readLockFileState(root, SRS_LOCK_PATH);
+    const refusal = blockingRefusal(existing, SRS_LOCK_PATH, options.operation);
+    if (refusal) return refusal;
+    if (options.dryRun) {
+      const wouldRecover = existing.kind === "valid" || existing.kind === "torn";
+      return {
+        metadata: unknownLock(options.operation),
+        diagnostics: wouldRecover ? [diagnostic("SRS-W068", "warning", `Stale SRS mutation lock would be recovered: ${SRS_LOCK_PATH}`, { filePath: SRS_LOCK_PATH }, { staleLock: existing.kind === "valid" ? existing.metadata : { torn: true } })] : []
+      };
     }
-    const metadata = await createLock(root, options.operation, options.ttlMs);
-    return { metadata, diagnostics };
+    return await acquireUnderGuard(root, options);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-      const retry = await readLockMetadata(root, options.operation);
-      if (retry.failure) return retry.failure;
-      return retry.metadata ? lockError(retry.metadata) : lockError(unknownLock(options.operation));
-    }
+    if (isBusy(error)) return lockBusy(error, options.operation);
     throw error;
-  } finally {
-    await releaseLockFileIfOwner(root, SRS_LOCK_GUARD_PATH, (guard as AcquiredLock).metadata);
+  }
+}
+
+/**
+ * @req REL-NODE-009 AC-1 AC-2 AC-3 — removes the lock this call took. A busy guard or a busy file
+ * operation is retried for the release window; whatever happens, the mutation's result stands, and a
+ * lock that could not be removed is reported as SRS-W076 (it is recovered at its own expiresAt).
+ */
+async function releaseSrsMutationLock(root: ProjectRoot, lock: SrsMutationLockMetadata, operation: string): Promise<Diagnostic[]> {
+  const deadline = Date.now() + RELEASE_WINDOW_MS;
+  // Our lock, already off the path, under a quarantine name that could not be deleted yet.
+  let leftover: string | undefined;
+  for (;;) {
+    try {
+      if (leftover !== undefined) {
+        await retryBusy(() => rm(leftover as string, { force: true }));
+        return [];
+      }
+      const guard = await acquireLockGuard(root, `release:${operation}`);
+      if (!isRefusal(guard)) {
+        try {
+          if (await releaseLockFileIfOwner(root, SRS_LOCK_PATH, lock)) return [];
+          const current = await readLockFileState(root, SRS_LOCK_PATH);
+          // Someone else's lock (ours was recovered after it expired) is not ours to report.
+          if (current.kind !== "valid" || !sameLockIdentity(current.metadata, lock)) return [];
+        } finally {
+          await releaseGuardQuietly(root, guard);
+        }
+      }
+    } catch (error) {
+      // A release failure must not change the mutation's result; keep trying until the window ends.
+      if (error instanceof QuarantineLeftBehind) leftover = error.quarantine;
+    }
+    if (Date.now() >= deadline) {
+      const where = leftover === undefined ? "" : ` (moved aside as ${path.relative(root.root, leftover).replace(/\\/g, "/")}, which names no live holder)`;
+      return [
+        diagnostic(
+          "SRS-W076",
+          "warning",
+          `SRS mutation lock could not be released: ${SRS_LOCK_PATH}${where} is left until it expires at ${lock.expiresAt}`,
+          { filePath: SRS_LOCK_PATH },
+          { lock, ...(leftover === undefined ? {} : { leftover }) }
+        )
+      ];
+    }
+    await sleep(RELEASE_RETRY_DELAY_MS);
   }
 }
 
@@ -229,27 +516,17 @@ export async function withSrsMutationLock<T>(root: ProjectRoot, options: SrsMuta
   }
 
   const acquired = await acquireSrsMutationLock(root, options);
-  if ("ok" in acquired && acquired.ok === false) return acquired as MutationResult<T>;
-  const lock = acquired as AcquiredLock;
+  if (isRefusal(acquired)) return acquired as MutationResult<T>;
+  const lock = acquired;
 
-  const lockMetadata = options.dryRun ? null : lock.metadata;
   const preDiagnostics = options.dryRun ? lock.diagnostics : [...lock.diagnostics, ...(await refreshCacheDiagnostics(root, lock.metadata))];
-  let result: MutationResult<T>;
+  let result: MutationResult<T> | undefined;
+  let releaseDiagnostics: Diagnostic[] = [];
   try {
     result = await mutate();
   } finally {
-    if (!options.dryRun) {
-      const releaseGuard = await acquireLockGuard(root, `release:${options.operation}`);
-      if (!("ok" in releaseGuard && releaseGuard.ok === false)) {
-        try {
-          await releaseLockFileIfOwner(root, SRS_LOCK_PATH, lock.metadata);
-        } finally {
-          await releaseLockFileIfOwner(root, SRS_LOCK_GUARD_PATH, (releaseGuard as AcquiredLock).metadata);
-        }
-      }
-    }
+    if (!options.dryRun) releaseDiagnostics = await releaseSrsMutationLock(root, lock.metadata, options.operation);
   }
   const postDiagnostics = !options.dryRun && resultWrote(result) ? await refreshCacheDiagnostics(root, null) : [];
-  void lockMetadata;
-  return mergeDiagnostics(result, [...preDiagnostics, ...postDiagnostics]);
+  return mergeDiagnostics(result, [...preDiagnostics, ...releaseDiagnostics, ...postDiagnostics]);
 }

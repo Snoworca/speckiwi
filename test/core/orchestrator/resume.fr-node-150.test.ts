@@ -19,7 +19,7 @@ async function journalView(lines: Json[]) {
 }
 
 describe("FR-NODE-150 computeResumeState", () => {
-  it("AC-1 takes exactly four parameters and shells out to nothing", async () => {
+  it("FR-NODE-150 AC-1 takes exactly four parameters and shells out to nothing", async () => {
     expect(computeResumeState.length).toBe(4);
 
     const source = await readFile(RESUME_SOURCE, "utf8");
@@ -28,7 +28,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     }
   });
 
-  it("AC-2 classifies an unmatched intent as interrupted with the verb's recovery class", async () => {
+  it("FR-NODE-150 AC-2 classifies an unmatched intent as interrupted with the verb's recovery class", async () => {
     expect([...RECOVERY_CLASSES]).toEqual(["pure-reauthor", "idempotent-by-key", "externally-visible"]);
 
     const cases: Array<[string, string]> = [
@@ -52,7 +52,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     expect([...produced].sort()).toEqual([...RECOVERY_CLASSES].sort());
   });
 
-  it("AC-2 does not report a verb as interrupted once its result line lands", async () => {
+  it("FR-NODE-150 AC-2 does not report a verb as interrupted once its result line lands", async () => {
     const view = await journalView([
       waveVerify(V14),
       intent("freeze-lane-plan", { stage: 1 }),
@@ -62,7 +62,7 @@ describe("FR-NODE-150 computeResumeState", () => {
     expect(computeResumeState(view, minimalCard(), emptyGitFacts(), emptyDriftInputs()).nextAction.interrupted).toBe(false);
   });
 
-  it("AC-3 produces each of the four reconciliation outcomes over injected git facts", async () => {
+  it("FR-NODE-150 AC-3 produces each of the four reconciliation outcomes over injected git facts", async () => {
     expect([...RECONCILIATION_OUTCOMES]).toEqual([
       "consistent",
       "card-stale",
@@ -164,6 +164,41 @@ describe("FR-NODE-150 computeResumeState", () => {
     expect(closed.drift.digests[2]?.outcome).toBe("match");
     expect(closed.drift.digests[2]?.gate).toBeNull();
     expect(closed.blocking).toBeNull();
+  });
+
+  it("FR-NODE-150 AC-5 yields drift with lane-plan-drift naming the wave when a planned wave's declaration-entry digest differs", async () => {
+    const view = await journalView([waveVerify(V14)]);
+    const base = emptyDriftInputs();
+    const recorded = { ...base.recordedLaneInputs, declarationDigests: { "run-a-wave-3": "sha-entry-3", "run-a-wave-4": "sha-entry-4" } };
+    const drifted = computeResumeState(view, minimalCard(), emptyGitFacts(), {
+      ...base,
+      recordedLaneInputs: recorded,
+      recomputedLaneInputDigests: { ...base.recomputedLaneInputDigests, declarationDigests: { "run-a-wave-3": "sha-entry-3", "run-a-wave-4": "sha-entry-4-edited" } }
+    });
+    expect(drifted.drift.digests[2]?.outcome).toBe("drift");
+    expect(drifted.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(drifted.drift.digests[2]?.detail).toContain("run-a-wave-4");
+    expect(drifted.drift.digests[2]?.detail).not.toContain("run-a-wave-3");
+    expect(drifted.blocking).toBe("lane-plan-drift");
+
+    const unchanged = computeResumeState(view, minimalCard(), emptyGitFacts(), {
+      ...base,
+      recordedLaneInputs: recorded,
+      recomputedLaneInputDigests: { ...base.recomputedLaneInputDigests, declarationDigests: { ...recorded.declarationDigests } }
+    });
+    expect(unchanged.drift.digests[2]?.outcome).toBe("match");
+  });
+
+  it("FR-NODE-150 AC-5 reports a planned wave whose declaration entry is missing now as lane-plan-drift", async () => {
+    const view = await journalView([waveVerify(V14)]);
+    const base = emptyDriftInputs();
+    const missing = computeResumeState(view, minimalCard(), emptyGitFacts(), {
+      ...base,
+      recordedLaneInputs: { ...base.recordedLaneInputs, declarationDigests: { "run-a-wave-3": "sha-entry-3" } },
+      recomputedLaneInputDigests: { ...base.recomputedLaneInputDigests, declarationDigests: {} }
+    });
+    expect(missing.drift.digests[2]?.gate).toBe("lane-plan-drift");
+    expect(missing.drift.digests[2]?.detail).toContain("run-a-wave-3");
   });
 
   it("FR-NODE-213 AC-2 treats an SDS that vanished without a close-out as drift rather than skipping it", async () => {

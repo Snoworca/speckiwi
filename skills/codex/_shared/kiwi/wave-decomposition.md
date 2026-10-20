@@ -37,7 +37,13 @@ wave 분해(wave splitting) · 설계 기준선(design baseline) 물질화 · �
 
 분해 결과는 순서가 확정된 `wave-1, wave-2, …, wave-N` 목록과 wave 마다의 `depends_on[]` 이며, 순서가 이후 target 등록 순서를, 의존이 병렬 실행의 stage 를 결정한다(`parallel-waves.md §3`).
 
-**wave 의존 선언** — wave 마다 `depends_on[]`(자기보다 앞 wave 의 id 목록)을 선언한다. **선언이 없는 wave 는 앞 wave 전부에 의존한다** — 모든 wave 가 하나씩 도는 안전한 기본값이다. 분해 서브에이전트는 한 wave 가 앞 wave 의 결과를 하나도 딛지 않는다고 확인할 수 있을 때에만 그 의존을 뺀다. 두 wave 가 같은 기존 모듈을 건드리면(`existing_modules`) 의존을 선언한다 — 선언하지 않아도 SDS 쓰기 집합이 겹치면 stage 계산이 둘을 가르지만, 의미상의 선후는 쓰기 집합이 보지 못한다. 선언은 설계 기준선(§3)의 wave 항목에 함께 적는다.
+**wave 의존 선언** — wave 마다 `depends_on[]`(자기보다 앞 wave 의 id 목록)을 선언한다. **선언이 없는 wave 는 앞 wave 전부에 의존한다** — 모든 wave 가 하나씩 도는 안전한 기본값이다. 분해 서브에이전트는 한 wave 가 앞 wave 의 결과를 하나도 딛지 않는다고 확인할 수 있을 때에만 그 의존을 뺀다. 두 wave 가 같은 기존 모듈을 건드리면(`existing_modules`) 의존을 선언한다 — 선언하지 않아도 쓰기 집합(`files[]`)이 겹치면 stage 계산이 둘을 가르지만, 의미상의 선후는 쓰기 집합이 보지 못한다. 선언은 설계 기준선(§3)의 wave 항목에 함께 적는다.
+
+**wave 선언 파일** — 분해 결과를 `{artifact_root}waves/waves.json` 에 FR-NODE-216 스키마로 쓴다: `{ "schema_version": "1.0.0", "waves": [ { "wave", "depends_on", "files", "requirements", "sds"? } ] }`. 항목 이름은 wave 순서대로 `wave-1`, `wave-2`, … 이다 — 저널이 해석하는 유일한 형태이고, 단위 id `{run_id}-wave-{n}` 과 lane id 가 여기서 나온다. `schema_version` · `waves` · `wave` · `depends_on` · `files` · `requirements` · `sds` 밖의 키는 쓰지 않는다. 스케줄과 준비 집합은 이 파일을 읽는 도구가 계산한다(`parallel-waves.md §3`).
+
+`files[]` 는 분해 시점에 그 wave 의 기존 모듈(`existing_modules`)과 새로 만들 것으로 예상되는 경로로 채운다. 수렴 레지스트리(`run-ledger.md`)가 `orchestrator-only` 또는 `regenerate` 로 표시한 경로는 넣지 않는다 — 그 경로는 호스트가 병합 뒤에 처리한다(`parallel-waves.md` PW-12). `files[]` 가 빈 wave 는 혼자 stage 에 든다.
+
+`requirements[]` 는 분해 시점에는 비워 두고, 그 wave 의 SRS 가 저작된 뒤 스케줄 전에 3.b 배정 집합(`register-wave-srs` result 줄의 `allocation.requirement_ids[]`)으로 채운다(`parallel-waves.md` PW-1). `sds[]` 는 `--sds` 일 때만 그 wave 의 SDS 파일로 채운다.
 
 wave-split **서브에이전트**에는 **기존 모듈**과 그 **의존** 방향의 구조 요약을 함께 전달한다 — 기존 구조를 모르는 분해는 한 모듈을 여러 wave 가 동시에 건드리도록 잘라 교차 wave 회귀를 만든다. 각 wave 는 건드릴 것으로 예상되는 기존 모듈을 `existing_modules` 에 기록한다.
 

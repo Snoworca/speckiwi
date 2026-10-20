@@ -4,6 +4,10 @@ import { criticalGateRows, section, tableRows } from "./kiwi-orchestrator-varian
 import { RENDERINGS, flat, markdownFiles, readRepoFile, skillSection } from "./kiwi-renderings.js";
 
 // @req FR-FLOW-185 — kiwi-pm and kiwi-coder implement an agreed SDS as one unit of execution.
+// @req FR-FLOW-194 AC-9 — since 4.1.0 that SDS path is the opt-in branch (`--sds <path>`, alias
+// `SDS_PATH=`); the default input is a requirement-ID set (req-set-execution-unit.fr-flow-194). The
+// assertions below are kept and re-scoped to the SDS branch: §1.1's `--sds <path>` item, the §6.4.1
+// `--sds` hand-off and kiwi-coder's (d′) SDS-code gate.
 //
 // Both skills are instruction text, so the contract is read from the shipped renderings: the three
 // under `skills/` and the `.agents` mirror, which renders the codex variant and goes red until it is
@@ -55,7 +59,7 @@ describe("FR-FLOW-185 AC-1 — kiwi-pm requires an agreed SDS and halts toward k
   it.each(RENDERINGS)("%s: the required input is SDS_PATH, an agreed docs/sds SDS", (rendering) => {
     const input = sectionOf(rendering, PM, /^###\s*1\.1\s/);
     expect(input, `${rendering}: kiwi-pm §1.1 must exist`).not.toBe("");
-    expect(input).toContain("`SDS_PATH`");
+    expect(input).toContain("`--sds <path>` (별칭 `SDS_PATH=<path>`)");
     expect(input).toMatch(/docs\/sds\/[^\s`]*\.sds\.md/);
     expect(input).toContain("`agreed`");
   });
@@ -78,10 +82,11 @@ describe("FR-FLOW-185 AC-1 — kiwi-pm requires an agreed SDS and halts toward k
     expect(rule).toMatch(SDS_SKILL);
   });
 
-  it.each(RENDERINGS)("%s: the CLI summary opens on SDS_PATH", (rendering) => {
+  it.each(RENDERINGS)("%s: the CLI summary opens on the requirement set and offers --sds <path> (alias SDS_PATH=)", (rendering) => {
     const summary = sectionOf(rendering, PM, /^###\s*1\.3\s/);
     expect(summary, `${rendering}: kiwi-pm §1.3 must exist`).not.toBe("");
-    expect(summary).toMatch(/[/$]kiwi-pm SDS_PATH=docs\/sds\//);
+    expect(summary).toMatch(/[/$]kiwi-pm \[--req-filter <REQ-ID,\.\.\.>\]/);
+    expect(summary).toMatch(/\[--sds <path>\][^\n]*SDS_PATH=<path>/);
   });
 
   it.each(RENDERINGS)("%s: kiwi-pm names no plan input", (rendering) => {
@@ -174,8 +179,8 @@ describe("FR-FLOW-185 AC-3 — kiwi-coder implements the SDS test-first and chec
 
   it.each(RENDERINGS)("%s: the SDS-code match gate checks files, symbols and ← caller connections", (rendering) => {
     const loop = sectionOf(rendering, CODER, /^###\s*5\.1\s/);
-    const gate = loop.split(/\(d\) SDS-코드 일치 게이트/)[1]?.split(/\(e\)/)[0] ?? "";
-    expect(gate, `${rendering}: §5.1 must carry the (d) SDS-code match gate`).not.toBe("");
+    const gate = loop.split(/\(d′\) SDS-코드 일치 게이트/)[1]?.split(/\(e\)/)[0] ?? "";
+    expect(gate, `${rendering}: §5.1 must carry the (d′) SDS-code match gate`).not.toBe("");
     const g = flat(gate);
     expect(g).toMatch(/Files/);
     expect(g).toMatch(/심볼/);
@@ -232,7 +237,7 @@ describe("FR-FLOW-183 AC-1 · AC-3 — the standalone hand-off closes the SDS ar
    * claude spelling, `Use $… with …` on one line in codex and etc.
    */
   function calls(rendering: string): Array<{ skill: string; args: string }> {
-    const handoff = sectionOf(rendering, PM, /^###\s*6\.4\s/);
+    const handoff = sectionOf(rendering, PM, /^####\s*6\.4\.1\s/);
     const call = /Skill\(skill="([a-z-]+)",\s*args="([\s\S]*?)"\)|^Use \$([a-z-]+) with (.*)$/gm;
     return [...handoff.matchAll(call)].map((m) => ({
       skill: (m[1] ?? m[3]) as string,
@@ -273,7 +278,7 @@ describe("FR-FLOW-183 AC-1 · AC-3 — the standalone hand-off closes the SDS ar
   });
 
   it.each(RENDERINGS)("%s: FR-FLOW-183 AC-1: a move that stopped keeps the review from promoting", (rendering) => {
-    const handoff = sectionOf(rendering, PM, /^###\s*6\.4\s/);
+    const handoff = sectionOf(rendering, PM, /^####\s*6\.4\.1\s/);
     const moved = lineWith(handoff, /^MOVED\s*=/);
     expect(moved, `${rendering}: §6.4 must derive MOVED from the SDS status after the first close`).toMatch(/CLOSE_SAFE/);
     expect(moved).toMatch(/check_sds[^\n]*"closed"/);
@@ -284,8 +289,8 @@ describe("FR-FLOW-183 AC-1 · AC-3 — the standalone hand-off closes the SDS ar
   it.each(RENDERINGS)("%s: FR-FLOW-183 AC-1: the close-out runs only when the review promotes", (rendering) => {
     // Closing an SDS whose requirements are not promoted would leave a `closed` SDS the next
     // kiwi-pm run refuses as not agreed.
-    const handoff = sectionOf(rendering, PM, /^###\s*6\.4\s/);
-    const rule = lineWith(handoff, /kiwi-sds --close/);
+    const handoff = sectionOf(rendering, PM, /^####\s*6\.4\.1\s/);
+    const rule = lineWith(handoff, /^- `[/$]?kiwi-sds --close`/);
     expect(rule, `${rendering}: §6.4 must state when kiwi-sds --close runs`).not.toBe("");
     expect(rule).toMatch(/CLOSE_SAFE/);
     expect(rule).toMatch(/--close-reqs/);
@@ -293,7 +298,7 @@ describe("FR-FLOW-183 AC-1 · AC-3 — the standalone hand-off closes the SDS ar
   });
 });
 
-describe("FR-FLOW-185 AC-5 — the delegation flags keep their meaning", () => {
+describe("FR-FLOW-185 AC-5 · FR-FLOW-194 AC-10 — the delegation flags keep their meaning", () => {
   const FLAGS = ["--no-final", "--no-pipeline-emit", "--commit-lane-work", "--session-suffix", "--defer-srs-mutation"];
 
   it.each(RENDERINGS)("%s: kiwi-pm's CLI summary and delegation section list all five", (rendering) => {
@@ -307,7 +312,7 @@ describe("FR-FLOW-185 AC-5 — the delegation flags keep their meaning", () => {
   });
 });
 
-describe("FR-FLOW-185 AC-6 — one TDD verifier by default, two in parallel only under --max", () => {
+describe("FR-FLOW-185 AC-6 · FR-FLOW-194 AC-10 — one TDD verifier by default, two in parallel only under --max", () => {
   function tddCell(rendering: string, mode: RegExp): string {
     const rows = tableRows(sectionOf(rendering, CODER, /^###\s*1\.3\s/));
     const header = rows[0]?.cells ?? [];
@@ -407,12 +412,13 @@ describe("FR-FLOW-185 AC-4 — a caller that owns the review hop suppresses kiwi
     const call = lineWith(cycle, /^`kiwi-pm` 은 /);
     expect(call, `${rendering}: kiwi-pipeline §2.5.4 does not say how kiwi-pm is called`).toContain("--review-hop-owned-by-parent");
     expect(call, `${rendering}: kiwi-pipeline does not say kiwi-pm's own hand-off stays off`).toMatch(/`kiwi-pm` 의 자체 hand-off 는 돌지 않는다/);
-    const review = lineWith(cycle, /^3\.\s/);
-    expect(review, `${rendering}: the cycle's item 3 is not its own review hop`).toMatch(/^3\. 코드 리뷰 홉 `kiwi-review-fix-loop --close-reqs/);
+    // FR-FLOW-193 AC-1: the default end steps open on the review hop (item 1); the --sds branch is §2.5.5.
+    const review = lineWith(cycle, /^1\.\s/);
+    expect(review, `${rendering}: the cycle's item 1 is not its own review hop`).toMatch(/^1\. 코드 리뷰 홉 `kiwi-review-fix-loop --close-reqs/);
   });
 });
 
-describe("FR-FLOW-185 AC-6 — the etc local-LLM profile runs the two verifiers one after another, with --max as its default", () => {
+describe("FR-FLOW-185 AC-6 · FR-FLOW-194 AC-10 — the etc local-LLM profile runs the two verifiers one after another, with --max as its default", () => {
   const SEQUENTIAL = /한 번에 하나씩/;
 
   function maxLine(rendering: string): string {

@@ -19,7 +19,7 @@ async function idleTargetRoot(): Promise<string> {
   return root;
 }
 
-describe("IR-CLI-032 AC-1 — the command returns the no-action kind", () => {
+describe("IR-CLI-032 AC-1 — the command returns the no-action kind and no plan vocabulary", () => {
   it("IR-CLI-032 AC-1: a registered target with no requirements yields no-action, without blocking", async () => {
     const order = await next(await idleTargetRoot(), ["--target", "v2.0.0"]);
     expect(order).toMatchObject({
@@ -34,11 +34,64 @@ describe("IR-CLI-032 AC-1 — the command returns the no-action kind", () => {
   });
 });
 
+describe("IR-CLI-032 AC-2 — the command carries the fields an agent acts on", () => {
+  it("IR-CLI-032 AC-2: target, targetSource, requirement IDs, artifact references with a hash or mtime, nextAction, reason, blockingDiagnostics and diagnosticsSummary", async () => {
+    const fixture = await createWorkflowFixture();
+    await writeText(fixture.root, "kiwi/pipeline.jsonl", jsonl(eventLine("run-a")));
+    const orders = [await next(fixture.root), await next(fixture.root, ["--path", fixture.sdsPath])];
+    for (const order of orders) {
+      expect(order, String(order.action)).toMatchObject({
+        target: "v1.0.0",
+        targetSource: "active-target",
+        nextAction: { kind: order.action, tool: expect.any(String), reason: expect.any(String) },
+        reason: expect.any(String),
+        blockingDiagnostics: expect.any(Array),
+        diagnosticsSummary: { errors: expect.any(Number), warnings: expect.any(Number) }
+      });
+      expect(Array.isArray(order.requirementIds) && (order.requirementIds as unknown[]).length > 0, "requirement IDs").toBe(true);
+      const artifacts = order.artifacts as Array<Record<string, unknown>>;
+      expect(artifacts.length, "artifact references").toBeGreaterThan(0);
+      for (const artifact of artifacts) {
+        expect(artifact.relativePath).toEqual(expect.any(String));
+        expect(typeof artifact.sha256 === "string" || typeof artifact.mtimeMs === "number", JSON.stringify(artifact)).toBe(true);
+      }
+    }
+  });
+});
+
+describe("IR-CLI-032 AC-4 — bodies stay out by default, and measurement mode measures", () => {
+  it("IR-CLI-032 AC-4: the default answer carries no raw Markdown or raw JSON body", async () => {
+    const fixture = await createWorkflowFixture();
+    await writeText(fixture.root, ".kiwi/sessions/req-run/pm-state.json", JSON.stringify({ run_id: "req-run", req_ids: ["FR-ARCH-001"], run: { status: "running" }, note: "RAW-JSON-BODY-SENTINEL" }));
+    for (const args of [[], ["--path", fixture.sdsPath]]) {
+      const text = JSON.stringify(await next(fixture.root, args));
+      expect(text, args.join(" ")).not.toContain("#### Requirement");
+      expect(text, args.join(" ")).not.toContain("| Field | Value |");
+      expect(text, args.join(" ")).not.toContain("RAW-JSON-BODY-SENTINEL");
+      expect(text, args.join(" ")).not.toContain('"body"');
+    }
+  });
+
+  it("IR-CLI-032 AC-4: --measure records the payload measurement fields and still carries no raw Markdown", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const order = await next(root, ["--measure"]);
+    expect(order.measurement).toMatchObject({
+      baselineBytes: expect.any(Number),
+      baselineApproxTokens: expect.any(Number),
+      compactBytes: expect.any(Number),
+      compactApproxTokens: expect.any(Number),
+      requiredFieldsPresent: true,
+      reductionRatio: expect.any(Number)
+    });
+    expect(JSON.stringify(order)).not.toContain("#### Requirement");
+  });
+});
+
 describe("IR-CLI-032 AC-3 — the command fails closed", () => {
   for (const [status, action] of [["FAILED", "blocked"], ["NEEDS_USER", "ask-user"]] as const) {
     it(`IR-CLI-032 AC-3: a latest pipeline state of ${status} is answered with a blocking ${action}, not with work`, async () => {
       const root = await copyFixtureWorkspace("valid-basic");
-      expect(await next(root)).toMatchObject({ action: "create-sds", blocking: false });
+      expect(await next(root)).toMatchObject({ action: "implement-requirements", blocking: false });
 
       await writeText(root, "kiwi/pipeline.jsonl", jsonl(eventLine("run-a"), eventLine("run-b", status)));
       expect(await next(root)).toMatchObject({ action, blocking: true, pipeline: { latestStatus: status } });
@@ -57,7 +110,7 @@ describe("IR-CLI-032 AC-3 — the command fails closed", () => {
       diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W002" })])
     });
     // An explicit target is what lifts it.
-    expect(await next(root, ["--target", "v1.0.0"])).toMatchObject({ action: "create-sds", targetSource: "explicit" });
+    expect(await next(root, ["--target", "v1.0.0"])).toMatchObject({ action: "implement-requirements", targetSource: "explicit" });
   });
 });
 
@@ -68,11 +121,15 @@ describe("IR-CLI-032 AC-5 — one deterministic fixture for every action kind", 
     await writeText(stopped.root, "kiwi/pipeline.jsonl", jsonl(eventLine("run-a", "NEEDS_USER")));
     const fresh = await copyFixtureWorkspace("valid-basic");
     const idle = await idleTargetRoot();
+    // An unfinished kiwi-pm session over an open requirement, with no SDS anywhere.
+    const session = await copyFixtureWorkspace("valid-basic");
+    await writeText(session, ".kiwi/sessions/req-run/pm-state.json", JSON.stringify({ run_id: "req-run", req_ids: ["FR-ARCH-001"], run: { status: "running" } }));
 
     const cases: Array<{ action: WorkOrderAction; root: string; args: string[] }> = [
-      { action: "create-sds", root: fresh, args: [] },
+      { action: "implement-requirements", root: fresh, args: [] },
+      { action: "create-sds", root: fixture.root, args: ["--path", fixture.draftSdsPath] },
       { action: "execute-sds", root: fixture.root, args: ["--path", fixture.freshSdsPath] },
-      { action: "resume-session", root: fixture.root, args: ["--path", fixture.sdsPath] },
+      { action: "resume-session", root: session, args: [] },
       { action: "ask-user", root: stopped.root, args: ["--path", stopped.freshSdsPath] },
       { action: "fix-artifact", root: fixture.root, args: ["--path", fixture.invalidSdsPath] },
       { action: "blocked", root: fixture.root, args: ["--path", fixture.blockedSdsPath] },
@@ -88,5 +145,18 @@ describe("IR-CLI-032 AC-5 — one deterministic fixture for every action kind", 
       expect(first, item.action).toMatchObject({ action: item.action, nextAction: { kind: item.action, tool: WORK_ORDER_ACTION_TOOLS[item.action] } });
       expect(second, `${item.action} is not deterministic`).toEqual(first);
     }
+  });
+
+  it("IR-CLI-032 AC-5: a kiwi-pm session without an SDS that stopped is answered blocked", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    await writeText(root, ".kiwi/sessions/req-run/pm-state.json", JSON.stringify({ run_id: "req-run", req_ids: ["FR-ARCH-001"], run: { status: "failed" } }));
+    expect(await next(root)).toMatchObject({ action: "blocked", blocking: true, sds: null });
+  });
+
+  it("IR-CLI-032 AC-5: an open SDS on disk leaves the action implement-requirements and is listed", async () => {
+    const fixture = await createWorkflowFixture();
+    const order = await next(fixture.root);
+    expect(order).toMatchObject({ action: "implement-requirements", sds: null, blocking: false });
+    expect(order.openSds).toEqual(expect.arrayContaining([fixture.freshSdsPath, fixture.draftSdsPath]));
   });
 });

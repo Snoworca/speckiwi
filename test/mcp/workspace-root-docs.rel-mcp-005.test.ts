@@ -107,3 +107,69 @@ describe("REL-MCP-005 AC-8 · FR-MCP-064 AC-1 — the documented SRS query famil
     for (const row of rows) expect(names(row.split(" | ")[0] ?? "")).toEqual(opened);
   });
 });
+
+// @req FR-MCP-067 AC-8 (README part) — startup auto-init is gone: a server that finds no
+// docs/spec/00.index.md stays unbound and refuses every call, and the README says what to do then.
+describe("FR-MCP-067 AC-8 — the README describes the unbound server, not startup auto-init", () => {
+  /** The text from a heading to the next heading of any level. */
+  function section(readme: string, heading: string): string {
+    const start = readme.indexOf(`\n${heading}\n`);
+    expect(start, `${heading} must exist`).toBeGreaterThan(-1);
+    const rest = readme.slice(start + heading.length + 2);
+    const next = rest.search(/\n#{1,6} /);
+    return next === -1 ? rest : rest.slice(0, next);
+  }
+
+  const LANGUAGES = [
+    { perCall: "#### Per-call `workspaceRoot`", connect: "## 6. Connect the MCP server", restart: /restart/i },
+    { perCall: "#### 호출마다 넘기는 `workspaceRoot`", connect: "## 6. MCP 서버 연결", restart: /재시작|다시 시작/ }
+  ] as const;
+
+  it("FR-MCP-067 AC-8: README presents auto-init nowhere", () => {
+    expect(read("README.md")).not.toContain("auto-init");
+  });
+
+  for (const language of LANGUAGES) {
+    it(`FR-MCP-067 AC-8: ${language.perCall} lists unbound as a rootSource value and names the refusal code`, () => {
+      const text = section(read("README.md").replace(/\r\n/g, "\n"), language.perCall);
+      const rootSourceLines = text.split("\n").filter((line) => line.includes("rootSource"));
+      expect(rootSourceLines.some((line) => line.includes("`unbound`")), "a rootSource line naming `unbound`").toBe(true);
+      expect(text).toContain("MCP_WORKSPACE_UNBOUND");
+    });
+
+    it(`FR-MCP-067 AC-8: ${language.connect} says what to do on MCP_WORKSPACE_UNBOUND`, () => {
+      const lines = section(read("README.md").replace(/\r\n/g, "\n"), language.connect)
+        .split("\n")
+        .filter((line) => line.includes("MCP_WORKSPACE_UNBOUND"));
+      expect(lines.length, "a line naming MCP_WORKSPACE_UNBOUND").toBeGreaterThan(0);
+      const guidance = lines.join("\n");
+      expect(guidance, "start the server (the session) in the project").toContain("00.index.md");
+      expect(guidance, "an unbound server stays unbound until restarted").toMatch(language.restart);
+      expect(guidance, "init for a project without an SRS").toContain("speckiwi init");
+      expect(guidance, "never point at the destructive overwrite").not.toContain("--force");
+    });
+  }
+});
+
+// @req FR-MCP-067 AC-8 (U1 part) — the McpRootSource type and the managed-instruction item 6 that
+// init renders into AGENTS.md / CLAUDE.md.
+describe("FR-MCP-067 AC-8 — the root-source type and the managed agent instructions", () => {
+  it("FR-MCP-067 AC-8: McpRootSource names unbound and not auto-init", () => {
+    const adapter = read("src/mcp/adapter.ts");
+    const declaration = /export type McpRootSource = ([^;]+);/.exec(adapter)?.[1] ?? "";
+    expect(declaration).toContain('"unbound"');
+    expect(declaration).not.toContain("auto-init");
+  });
+
+  it("FR-MCP-067 AC-8: managed-instruction item 6 presents no auto-init and says what to do on MCP_WORKSPACE_UNBOUND", () => {
+    const snippet = renderAgentInstructionSnippet();
+    expect(snippet).not.toContain("auto-init");
+    const item = snippet.split("\n").find((line) => line.startsWith("6. Agents MUST confirm workspace identity")) ?? "";
+    expect(item).toContain("`unbound`");
+    expect(item).toContain("MCP_WORKSPACE_UNBOUND");
+    expect(item).toMatch(/start the agent session .*in the project directory/i);
+    expect(item).toMatch(/restart/i);
+    expect(item).not.toContain("--force");
+    for (const file of ["AGENTS.md", "CLAUDE.md"]) expect(read(file), file).not.toContain("auto-init");
+  });
+});

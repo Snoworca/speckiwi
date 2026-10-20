@@ -72,23 +72,46 @@ function assertUniqueWaveIds(waves: readonly WaveInput[]): void {
 }
 
 /**
+ * The first dependency cycle a depth-first walk in `order` meets, written `a -> b -> a`, or `null`.
+ * The walk follows `order` and each dependency list as given, so the cycle it reports is deterministic.
+ * Shared with the wave declaration parse, which refuses a cycle before any plan exists. @req FR-NODE-216 AC-1
+ */
+export function findDependencyCycle(order: readonly string[], dependsOn: ReadonlyMap<string, readonly string[]>): string | null {
+  const settled = new Set<string>();
+  const onStack: string[] = [];
+  const visit = (id: string): string | null => {
+    if (settled.has(id)) return null;
+    const at = onStack.indexOf(id);
+    if (at >= 0) return [...onStack.slice(at), id].join(" -> ");
+    onStack.push(id);
+    for (const dependency of dependsOn.get(id) ?? []) {
+      const cycle = visit(dependency);
+      if (cycle !== null) return cycle;
+    }
+    onStack.pop();
+    settled.add(id);
+    return null;
+  };
+  for (const id of order) {
+    const cycle = visit(id);
+    if (cycle !== null) return cycle;
+  }
+  return null;
+}
+
+/**
  * Topological layers, a wave's layer being one above the highest layer among its dependencies. The
  * walk follows input order, so the layering and the cycle it reports are both deterministic.
  */
 function layerWaves(waves: readonly WaveInput[], dependsOn: ReadonlyMap<string, string[]>): Map<string, number> {
+  const cycle = findDependencyCycle(waves.map((entry) => entry.waveId), dependsOn);
+  if (cycle !== null) throw new LanePlanError("schedule-cycle", cycle);
   const layer = new Map<string, number>();
-  const onStack: string[] = [];
-
   const visit = (waveId: string): number => {
     const known = layer.get(waveId);
     if (known !== undefined) return known;
-    if (onStack.includes(waveId)) {
-      throw new LanePlanError("schedule-cycle", [...onStack.slice(onStack.indexOf(waveId)), waveId].join(" -> "));
-    }
-    onStack.push(waveId);
     let highest = 0;
     for (const dependency of dependsOn.get(waveId) ?? []) highest = Math.max(highest, visit(dependency));
-    onStack.pop();
     layer.set(waveId, highest + 1);
     return highest + 1;
   };
@@ -149,7 +172,7 @@ export function computeLanePlan(input: LanePlanInput): LanePlan {
   const layers = layerWaves(input.waves, dependsOn);
   const conflicts = analyzeConflicts(input.waves, input.dependencies);
   const overlapping = new Set(
-    conflicts.filter((edge) => edge.reason === "write-set-overlap").map((edge) => overlapKey(edge.a, edge.b))
+    conflicts.filter((edge) => edge.reason !== "wave-dependency").map((edge) => overlapKey(edge.a, edge.b))
   );
 
   const laneCap = Math.max(1, input.laneCap);

@@ -269,13 +269,13 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 - `fork-repo-pr-create` — 외부 fork repo 에 PR 생성
 - `stability-stable-promotion` — REQ stability=stable 승급 (정책 무관 항상 확인)
 - `stability-frozen-violation` — frozen REQ 본문 변경
-- `sha-mismatch-on-resume` — 재개 시 입력 SDS 의 SHA256 불일치
+- `sha-mismatch-on-resume` — 재개 시 입력 SDS 의 SHA256 불일치 — SDS 가 있는 run 에서만 발동한다
 - `t-final-backward-transition` — 라이프사이클 역방향 전이
 - `push-conflict-rebase-merge-choice` — push 충돌 시 rebase/merge 자동 선택 (비가역)
 - `mcp-cli-both-unavailable` — speckiwi 도구 전부 부재
 - `transition-guard-bypass` — Stability transition guard 강제 우회 시도
 - `mock-detection` — 통합 테스트 Mock 검출 (CRITICAL finding)
-- `plan-code-divergence-critical` — SDS-코드 CRITICAL 불일치
+- `plan-code-divergence-critical` — SDS-코드 CRITICAL 불일치 — SDS 가 있는 run 에서만 발동한다
 - `self-recursive-spawn` — 자기 스킬 무한 호출 가드
 - `pipeline-event-needs-user-or-failed` — 직전 이벤트 NEEDS_USER/FAILED
 

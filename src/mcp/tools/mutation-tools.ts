@@ -535,12 +535,13 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       })
     )
   );
-  // FR-NODE-080 — scaffold_step forwards to the writeIfMissing SDS/intent stub scaffold.
+  // FR-NODE-080 — scaffold_step forwards to the writeIfMissing intent (and, with sds, SDS) stub scaffold.
   server.registerTool("scaffold_step", async (input) =>
     resultToMcp(
       await scaffoldStep(await root(deps, input), {
         task: String(input.task),
         ...(typeof input.target === "string" ? { target: input.target } : {}),
+        ...(input.sds === true ? { sds: true } : {}),
         ...(input.dryRun === true ? { dryRun: true } : {})
       })
     )

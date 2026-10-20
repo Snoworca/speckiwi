@@ -278,7 +278,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("compact", undefined, "workflowPipelineCompactAlias"),
   readSpec("session-status", mcp("workflow_session_status", "Reads the pm-state artifact for a run and returns it whole, with its stats and its task list. Read-only."), "workflowSessionStatus"),
   readSpec("worklog-tail", mcp("workflow_worklog_tail", "Pages the worklog entries a run appended, which are per-task progress notes and not skill handoffs, in append order from the offset given, twenty at a time by default. Read-only."), "workflowWorklogTail"),
-  readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — author or finish an SDS, execute an agreed SDS, resume its kiwi-pm session, ask the user, repair an SDS the check refuses, or stop — beside the requirements that action covers, the SDS behind it and the context it needs. Read-only."), "getNextWorkOrder"),
+  readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — by default `implement-requirements` for the open requirement IDs no finished kiwi-pm session covers, resuming or reporting a blocked kiwi-pm session over them, asking the user, or stopping — beside the requirements that action covers and the context it needs. SDS files on disk are only listed; the SDS actions (author or finish an SDS, execute an agreed one) answer only when the caller names an SDS by `path` or `runId`. Read-only."), "getNextWorkOrder"),
   readSpec("scopes", undefined, "listScopes"),
   readSpec("summary", mcp("summarize_target", "Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only."), "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
@@ -325,14 +325,15 @@ export const toolSpecs: readonly ToolSpec[] = [
     IGNORE_LOCK
   ]),
   // FR-NODE-080/FR-NODE-081 — SDS stub scaffold and lifecycle-status leaves under `step`.
-  mutationSpec("scaffold", mcp("scaffold_step", "Creates the SDS stub for a step under `docs/spec/steps/<task>/design.md`, which TDD-First mode requires before any test may be written. Writes the step directory, that design document and an intent stub beside it, never overwriting either one that already exists."), "workspace", "scaffoldStep", [
+  mutationSpec("scaffold", mcp("scaffold_step", "Creates the step directory `docs/spec/steps/<task>/` with an intent stub whose `## Acceptance` section holds the acceptance lines TDD-First mode requires before any test may be written, and with `sds` also the step SDS stub `design.md`. Writes the step directory and those stubs, never overwriting a file that already exists."), "workspace", "scaffoldStep", [
     opt("--target <target>", "target"),
+    opt("--sds", "sds"),
     DRY_RUN
   ]),
   mutationSpec("sds-status", mcp("set_sds_status", "Sets the SDS lifecycle status of a step's design document — draft, agreed, superseded — which the TDD-First gates consult before allowing tests. That order runs one way only, so a move backwards or onto the status already recorded is refused. Writes the design document's status line."), "workspace", "setSdsStatus", [DRY_RUN]),
   // release-readiness: real CLI read; also hosts the FR-MCP-054 check_vibe_gate read tool (its CLI
   // counterpart is `vibe-gate check`, whose registry row already hosts set_work_mode).
-  readSpec("release-readiness", mcp("check_vibe_gate", "Answers whether the vibe/tdd synthesis gate passes: an active vibe or tdd task with no synthesized step directory, or a tdd task with no design document, fails it. Read-only."), "evaluateVibeGate"),
+  readSpec("release-readiness", mcp("check_vibe_gate", "Answers whether the vibe/tdd synthesis gate passes: an active vibe or tdd task with no synthesized step directory, or a tdd task with no written acceptance contract (acceptance lines in its intent stub, or an authored design document), fails it. Read-only."), "evaluateVibeGate"),
   readSpec("coverage", mcp("list_dirty_edges", "Enumerates every `checked_compatible` edge with its classification — clean, dirty, orphaned or missing — optionally narrowed to one target. Read-only."), "listDirtyEdges"),
   readSpec("rtm", mcp("list_compat_edges", "Projects the same `checked_compatible` edge set as the dirty-edge reader and returns identical rows; the two spellings exist so a caller can name the traceability reading instead of the staleness one. Read-only."), "listCompatEdges"),
   // IR-CLI-102 / FR-MCP-065 — the `sds` container (no own handler) and its `check` leaf, the third
@@ -387,14 +388,14 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement, or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. Writes the requirement block."), "req-scoped", "appendSectionNote", [
+  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement (Rationale, Research / Analysis or Implementation Notes), or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. It works at any Status, no Status refuses it, and it writes no Change Note. Writes the requirement block."), "req-scoped", "appendSectionNote", [
     opt("--section <section>", "section"),
     opt("--text <text>", "text"),
     opt("--mode <mode>", "mode"),
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement", mcp("edit_requirement_fields", "Edits the scalar fields of one requirement — title, statement, priority, risk, tags, related documents, verification method, GitHub issue — leaving criteria and table rows alone. Refused while the requirement's Status is `verified`, unlike the two `add_*` tools beside it, which append to a verified block. Writes the requirement block."), "req-scoped", "updateRequirementFields", [
+  mutationSpec("edit-requirement", mcp("edit_requirement_fields", "Edits the scalar fields of one requirement — title, statement, priority, risk, tags, related documents, verification method, GitHub issue — leaving criteria and table rows alone. To rewrite the Rationale, Research / Analysis or Implementation Notes section, use `append_section_note` with mode `replace`. Refused while the requirement's Status is `verified`, unlike the two `add_*` tools beside it, which append to a verified block. Writes the requirement block."), "req-scoped", "updateRequirementFields", [
     opt("--title <title>", "title"),
     opt("--statement <statement>", "statement"),
     opt("--priority <priority>", "priority"),
@@ -411,7 +412,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence or Trace Links table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the two `add_*` tools beside it rather than to this one. Refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "editRequirementTableRows", [
+  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. Refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "editRequirementTableRows", [
     opt("--section <section>", "section"),
     opt("--operations <json>", "operations", { encoding: "json" }),
     DRY_RUN,

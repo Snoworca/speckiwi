@@ -30,7 +30,7 @@ async function emptyRepo() {
 }
 
 describe("project init bootstrap", () => {
-  it("creates docs/spec, docs/rule, canonical rules, index, appendix, and both agent snippets", async () => {
+  it("FR-NODE-009 AC-2 AC-3 AC-4 AC-5 AC-6 AC-7 AC-13 / FR-FLOW-009 AC-5: creates docs/spec, docs/rule, canonical rules, index, appendix, and both agent snippets", async () => {
     const rootPath = await emptyRepo();
     const externalCwd = await mkdtemp(path.join(tmpdir(), "speckiwi-init-cwd-"));
     const originalCwd = process.cwd();
@@ -79,7 +79,7 @@ describe("project init bootstrap", () => {
     expect(await readFile(path.join(rootPath, "CLAUDE.md"), "utf8")).toContain("Next target authoring workflow:");
   });
 
-  it("is idempotent and skips duplicate agent snippets", async () => {
+  it("FR-NODE-009 AC-8 / FR-FLOW-009 AC-5: is idempotent and skips duplicate agent snippets", async () => {
     const rootPath = await emptyRepo();
     const root = await resolveProjectRoot(rootPath);
     await initProject(root, {});
@@ -93,7 +93,7 @@ describe("project init bootstrap", () => {
     expect(countOccurrences(claude, AGENT_INSTRUCTION_END_MARKER)).toBe(1);
   });
 
-  it("replaces stale versioned and legacy agent instruction blocks", async () => {
+  it("FR-NODE-009 AC-8 / FR-FLOW-009 AC-3 AC-5: replaces stale versioned and legacy agent instruction blocks, keeping unrelated content", async () => {
     const rootPath = await emptyRepo();
     const root = await resolveProjectRoot(rootPath);
     await writeFile(
@@ -207,7 +207,7 @@ describe("project init bootstrap", () => {
     expect(agents).toContain("Keep this too.");
   });
 
-  it("uses target and scope input in generated index and scope document", async () => {
+  it("FR-NODE-009 AC-1 AC-14: uses target and scope input in generated index and scope document", async () => {
     const rootPath = await emptyRepo();
     const result = await initProject(await resolveProjectRoot(rootPath), { target: "v2.0.0", scope: "Payments:PAY" });
     expect(result.ok).toBe(true);

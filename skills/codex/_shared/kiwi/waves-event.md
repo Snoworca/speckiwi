@@ -43,6 +43,16 @@
 | `status` | string (enum) | `pending` / `in_progress` / `complete` / `failed` |
 | `summary` | string | 1-3 문장 사람-읽기용 요약 |
 
+`journal append` 는 줄을 쓰기 전에 그 줄의 범위가 요구하는 필드를 검사하고, 빠진 필드를 이름으로 대며 거절한다:
+
+| 범위 | 필수 필드 |
+|---|---|
+| `intent` (`event = "intent"`) | `event` · `schema_version` · `run_id` · `engine` · `verb` · `inputs_digest` |
+| `result` (`event = "result"`) | `event` · `schema_version` · `run_id` · `engine` · `verb` · `proof` |
+| `wave-state` (`event` · `round` 없음) | `schema_version` · `run_id` · `wave` · `order` · `target` · `status` · `summary` |
+
+`round` 를 실은 줄은 `round record` 가, run 중단 줄은 `run abort` 가 지으므로 이 검사 대상이 아니다. `ts` 는 `journal append` 가 채운다 — 준 값은 그대로 둔다.
+
 ### 2.2 선택 필드
 
 | 필드 | 타입 | 용도 |
@@ -60,7 +70,7 @@
 | `srs_authored` | bool | 그 wave 의 SRS 저작 완료 표식. `phase="srs-authoring"` 이벤트에만 싣는다 |
 | `diff_window` | object | `{ base_sha, head_sha }` — 그 wave 의 diff 창을 여는 git ref 쌍 (v1.3.0 신설) |
 | `pipeline_run_ids` | string[] | 2.0.0 이전 run 에서 그 wave 가 실행한 **모든** `/kiwi-pipeline` run_id — 옛 줄을 읽기 위해 남는다 (v1.3.0 신설) |
-| `sds_id` | string | 그 줄의 run 이 실행한 SDS 의 id. wave 의 SDS id 는 `{run_id}-wave-{n}` 이고, 조각(`…-{k}`)과 재진입(`…-r{m}`)의 id 는 그 id 로 시작한다 — 그래서 wave 의 증거 창은 `sds_id` 가 그 wave 의 id 이거나 그 id 에 `-` 가 이어지는 줄 전부다(`parallel-waves.md §3`). 기본 값의 쓰임: `docs/sds/{sds_id}.sds.md` 와 그 wave 워커의 세션을 여는 키이고, 재개가 `--sds-id` 로 되돌려 줄 값이다. 그 wave 에 dispatch 한 **모든** run — 워커, 재진입, 개선 서브에이전트 — 을 dispatch 시점에 이 값을 실은 줄로 기록한다 (2.0.0 신설) |
+| `sds_id` | string | 그 wave 의 **단위 id** — `{run_id}-wave-{n}` 이고, SDS 유무와 관계없이 dispatch · `complete` · wave-verify 줄에 싣는다. `docs/sds/{sds_id}.sds.md` 는 그 파일이 있을 때만(`--sds`) 이 값이 이름 짓는 SDS 다. 조각(`…-{k}`)과 재진입(`…-r{m}`)의 id 는 그 id 로 시작한다 — 그래서 wave 의 증거 창은 `sds_id` 가 그 wave 의 id 이거나 그 id 에 `-` 가 이어지는 줄 전부다(`parallel-waves.md §3`). 기본 값의 쓰임: 그 wave 워커의 세션(`kiwi-pm --run-id`)을 여는 키이고, 그 파일이 있으면 `docs/sds/{sds_id}.sds.md` 를 가리키며, 이미 `--sds` 로 opt-in 한 run 의 재개가 `--sds-id` 로 되돌려 줄 값이다. 그 wave 에 dispatch 한 **모든** run — 워커, 재진입, 개선 서브에이전트 — 을 dispatch 시점에 이 값을 실은 줄로 기록한다 (2.0.0 신설) |
 | `run_diff_window` | object | `{ base_sha, head_sha }` — run 전체의 diff 창. `phase="final-verify"` 이벤트에만 싣는다 (v1.3.0 신설) |
 | `engine` | string (enum) | `kiwi-wave-master` / `kiwi-orchestrator` — 이 줄을 쓴 **생산자**. **부재 ⇒ `kiwi-wave-master`** 로 읽는다. §4 의 재개 술어가 이 값으로 필터한다 (v1.4.0 신설) |
 | `writer` | string | `speckiwi-orchestrate/{pkgVersion}` — 도구가 **매 write 마다** 찍는 스탬프. `schema_version` **1.4.0 이상** 줄에만 요구하며, 그보다 낮은 줄은 `unstamped` 로 보고하고 **실패하지 않는다** (v1.4.0 신설) |
@@ -86,7 +96,7 @@
 | `abort_gate` | string (enum) | `abort-run` 줄이 run 을 끝낸 게이트를 지명한다. 값은 `GateId` 어휘의 원소다. 중첩 `verification.residual[]` 의 `reason_class` 와 이름을 공유하지 않는 별개 어휘이며, 최신 줄에서 어휘 밖 값은 `abort-gate-outside-vocabulary` 오류이고 그 이전 줄에서는 경고다 (v1.4.0 신설) |
 | `round` | number | 검증 라운드 기록의 1-기반 라운드 번호. **이 필드가 그 줄을 라운드 기록으로 만든다** — wave 별 최신 status 계산과 run-scope 최종 검증 판정은 둘 다 이 필드를 실은 줄을 제외한다. 라운드 기록은 루프가 어디까지 갔는지를 보고할 뿐 run 이 무엇인지를 단언하지 않기 때문이다 (v1.4.0 신설) |
 
-`sds_id` 는 `complete` 와 `phase=wave-verify` 이벤트에서는 사실상 필수다 — 그 wave 의 SDS 와 워커 세션과 증거 창을 여는 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 SDS 가 아직 없으므로 생략한다.
+`sds_id` 는 dispatch · `complete` · `phase=wave-verify` 이벤트에서는 SDS 유무와 관계없이 사실상 필수다 — 그 wave 의 워커 세션과 증거 창(그리고 있으면 SDS)을 여는 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 아직 dispatch 하지 않았으므로 생략한다.
 
 `diff_window` 도 `phase=wave-verify` 와 `complete` 이벤트에서는 **사실상 필수**다 — 보존 계층의 분모가 이 값에서 도출되므로, 없으면 그 라운드의 판정을 재개 후 재구성할 수 없다.
 
@@ -205,22 +215,33 @@ append-only 이므로 최신 상태는 항상 각 `wave` 의 마지막 줄이다
 
 ## 5. Emit 패턴
 
-`WAVE_DIR` 는 **run 시작 시 1회** 계산해 재사용한다 — 아래 해석 블록을 emit 마다 다시 실행하지 않는다(§1 run-root pin). kiwi-wave-master §5.5.6 이 라운드마다 append 를 요구하므로 이 구분이 v1.0.0 때보다 중요하다.
+모든 줄은 `orchestrate journal append` 로 쓴다 — `waves.jsonl` 에 셸 리다이렉트로 직접 append 하지 않는다. 도구가 `ts` 와 `writer` 를 찍으므로 페이로드에 싣지 않고, 줄의 범위가 요구하는 필드(§2.1)를 쓰기 전에 검사하며, `--root` · `--journal` 이 가리키는 §1 의 위치에 쓴다. 긴 JSON 은 셸 인용에서 깨지기 쉬우므로 `--payload-file` 로 넘긴다.
+
+`WAVE_ROOT` 와 `JOURNAL` 은 **run 시작 시 1회** 계산해 재사용한다 — emit 마다 다시 풀지 않는다(§1 run-root pin). kiwi-wave-master §5.5.6 이 라운드마다 append 를 요구하므로 이 구분이 중요하다.
 
 ```bash
 WAVE_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -n "$WAVE_ROOT" ]; then WAVE_DIR="$WAVE_ROOT/kiwi"
-elif [ -d "./kiwi" ]; then WAVE_DIR="./kiwi"
-else WAVE_DIR="$HOME/.kiwi"; fi
-mkdir -p "$WAVE_DIR"
+if [ -n "$WAVE_ROOT" ]; then JOURNAL="kiwi/waves.jsonl"
+elif [ -d "./kiwi" ]; then WAVE_ROOT="$PWD"; JOURNAL="kiwi/waves.jsonl"
+else WAVE_ROOT="$HOME"; JOURNAL=".kiwi/waves.jsonl"; fi   # 홈 fallback = $HOME/.kiwi/waves.jsonl
+PAYLOAD=$(mktemp)
 # 1) 웨이브 종료 상호검증 기록 (§3 이 요구하는 선행 통과 기록). 라운드마다 1줄.
-echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+cat > "$PAYLOAD" <<'JSON'
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+JSON
+speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 
 # 2) 그 다음에야 complete. verdict 가 pass 가 아니면 이 줄을 쓰지 않는다.
-echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+cat > "$PAYLOAD" <<'JSON'
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+JSON
+speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 
 # 3) 마지막 wave 의 complete 뒤 1회. run-scope 최종 검증 (§3): wave 는 "all", order 는 0. run 창은 `run_diff_window` 로 싣는다(wave 단위 `diff_window` 는 싣지 않는다).
-echo '{"ts":"<ISO>","schema_version":"2.0.0","engine":"kiwi-wave-master","writer":"speckiwi-orchestrate/{pkgVersion}","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}' >> "$WAVE_DIR/waves.jsonl"
+cat > "$PAYLOAD" <<'JSON'
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+JSON
+speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 ```
 
-emit 은 best-effort — 실패가 본 오케스트레이션 실패로 이어지면 안 된다 (stderr WARN).
+도구가 줄을 **거절**하면(`violations`) 그 줄은 쓰이지 않았다 — 거절 사유를 보고서에 남기고, 거절된 줄이 wave 의 `complete` 나 run 종료 줄이면 run 을 멈춘다. 쓰기 자체의 실패(I/O)만 best-effort 로 stderr WARN 을 남기고 오케스트레이션을 실패시키지 않는다.

@@ -31,7 +31,8 @@ export interface AgentInstructionOptions {
 // @req FR-NODE-089 — v1.8 folds the Completed Work Log history-file sentence into the shipped block
 // and moves the SDS rules citation onto the 2.5.0 document. From this version the skip condition is
 // the block's content rather than its version, so drift inside a block no longer survives an init.
-export const AGENT_INSTRUCTION_VERSION = "1.9";
+// @req FR-NODE-219 — v1.10 records the tdd acceptance lines in intent.md and makes the step SDS opt-in.
+export const AGENT_INSTRUCTION_VERSION = "1.10";
 // @req FR-NODE-087 — 2.5.0 is the first bundled version whose document covers every syntax the
 // runtime writes: the `checked_compatible` relation and its Notes grammar (§23.5) and the
 // [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5).
@@ -458,10 +459,22 @@ export function renderSdsDesignTemplate(options: { task: string; target?: string
   return lines.join("\n");
 }
 
-// @req FR-NODE-080
-/** The scaffolded step intent stub (what/why; design.md carries the how). */
+// @req FR-NODE-080 @req FR-PARSE-042
+/**
+ * The scaffolded step intent stub: what/why, and the `## Acceptance` section whose placeholder line the
+ * FR-PARSE-042 check rejects until the author replaces it with a real EARS line.
+ */
 export function renderStepIntentTemplate(task: string): string {
-  return [`# Intent: ${task}`, "", "<what this step changes and why, a few lines>", ""].join("\n");
+  return [
+    `# Intent: ${task}`,
+    "",
+    "<what this step changes and why, a few lines>",
+    "",
+    "## Acceptance",
+    "",
+    "- AC-1: WHEN <condition> THE SYSTEM SHALL <behaviour>",
+    ""
+  ].join("\n");
 }
 
 export function renderAgentInstructionSnippet(options: AgentInstructionOptions = {}): string {
@@ -490,9 +503,9 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "Work-mode and the TDD First (tdd) workflow:",
     "1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.",
     "2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.",
-    `3. When the mode is \`tdd\`, step-scoped work follows the TDD First cycle: author the step SDS at \`docs/spec/steps/<task>/design.md\` per the installed SDS-MD Authoring Rules (\`docs/rule/${BUNDLED_SDS_RULES_FILENAME}\`) with EARS acceptance contracts (SDS-AC), translate the SDS-ACs into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence.`,
-    "4. tdd gates (all mandatory): do not write tests before the step's SDS exists, unless the skip is recorded in `intent.md` under `## SDS Skip` with a `Decision` of `skipped`, a non-empty `Reason` and an EARS `SDS-AC-n: WHEN … SHALL …` line — `SDS-E054` refuses an unrecorded skip; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.",
-    "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the agreed SDS plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
+    `3. When the mode is \`tdd\`, step-scoped work follows the TDD First cycle: record EARS acceptance lines (\`AC-<n>: WHEN … THE SYSTEM SHALL …\`) in \`docs/spec/steps/<task>/intent.md\` under \`## Acceptance\` and check them with \`speckiwi step validate\`, translate them into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence. A step SDS (\`design.md\` per the installed SDS-MD Authoring Rules, \`docs/rule/${BUNDLED_SDS_RULES_FILENAME}\`) is written only when the user asks for one.`,
+    "4. tdd gates (all mandatory): no test before the step's acceptance contract exists — `STEP_ACCEPTANCE_MISSING` refuses a step without it; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.",
+    "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the step's acceptance lines plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
     "6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.",
     "",
     // @req FR-NODE-088 — without this the block is the whole instruction set for an agent that runs no
@@ -524,7 +537,7 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds` and `check_test_sufficiency` — each reading the named checkout and writing nothing. They are refused when that checkout holds no `docs/spec/00.index.md`, and `check_test_sufficiency` refuses there an `sds` path under `docs/spec` (a step `design.md`), so that check runs through `speckiwi coverage --tests` inside the worktree.",
     "4. Every tool that writes under `docs/spec` or allocates a Requirement ID refuses `workspaceRoot` fail-closed, and so do `mcp_workspace_info` and `get_next_work_order`. Refusal is the default, so a tool not named here refuses it.",
     "5. An accepted `workspaceRoot` MUST be an absolute path to an existing git top level that is a worktree of the startup root's repository; a path argument landing under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path — which is what lets an SRS query filter on a `docs/spec` reference.",
-    "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, and `server-cwd-discovery` or `auto-init` otherwise.",
+    "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, `server-cwd-discovery` when the server found the SRS from its working directory, and `unbound` when it found none. An unbound server answers every call with `MCP_WORKSPACE_UNBOUND` and creates nothing: start the agent session (or set the MCP server's working directory) in the project directory, run `speckiwi init` there first if the project has no SRS yet, then restart the session.",
     "",
     "Current work status workflow:",
     "1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",

@@ -476,7 +476,7 @@ describe("FR-PARSE-039 — a criterion quoting a stale constant is reported", ()
         filePath: "docs/spec/test.md",
         line: 1,
         section: "acceptanceCriteria",
-        text: `# SpecKiwi${String.fromCharCode(0x00a0)}SRS workflow v1.9`
+        text: `# SpecKiwi${String.fromCharCode(0x00a0)}SRS workflow v1.10`
       }
     ]);
     expect(current).toEqual([]);

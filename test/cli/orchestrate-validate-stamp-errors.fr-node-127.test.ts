@@ -44,7 +44,7 @@ const STAMPED = { ...base, schema_version: "1.4.0", writer: WRITER };
 const DOWNGRADED = { ...base, schema_version: "1.3.0" };
 /** A 1.3.0 `complete` with no passing verify before it: after UNSTAMPED and STAMPED it adds a downgrade
  * and an error that is not a stamp error. */
-const DOWNGRADED_COMPLETE = { ...base, schema_version: "1.3.0", verb: "emit-and-finish", event: "result", status: "complete" };
+const DOWNGRADED_COMPLETE = { ...base, schema_version: "1.3.0", verb: "emit-and-finish", event: "result", status: "complete", proof: { kind: "digest", ref: "sha256:out" } };
 
 describe("FR-NODE-127 AC-5 — the two stamp errors fail validate only under --strict", { timeout: 60_000 }, () => {
   it("FR-NODE-127 AC-5: without --strict, a journal whose only errors are unstamped-writer and journal-version-downgrade passes, and reports them", async () => {

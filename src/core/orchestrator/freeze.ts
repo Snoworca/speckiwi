@@ -25,13 +25,14 @@ export type FreezeLockKind = (typeof FREEZE_LOCK_KINDS)[number];
 export const LOCK_SCHEMA_VERSION = "1.0.0";
 
 /**
- * The `lanes.lock.json` field that records an input as a digest: one SDS digest per wave, keyed by
- * wave id, each covering the write set derived from that SDS. @req FR-NODE-138 AC-5, FR-NODE-213 AC-2
+ * The `lanes.lock.json` fields that record an input as a digest: SDS digests for each wave scheduled
+ * with SDS files, and - for a lock planned from a wave declaration file (`--waves`) - one
+ * declaration-entry digest per wave. @req FR-NODE-138 AC-5, FR-NODE-213 AC-2, FR-NODE-216 AC-7
  */
-export const LANES_LOCK_DIGEST_FIELDS = ["sds_digests"] as const;
+export const LANES_LOCK_DIGEST_FIELDS = ["sds_digests", "declaration_digests"] as const;
 
 /**
- * The fields `lanes.lock.json` records: the SDS digests plus `depends` and `lane_cap`, which are
+ * The fields `lanes.lock.json` records: the digests plus `depends` and `lane_cap`, which are
  * recorded as literal values because a digest of a short map or of a number buys nothing a §4.7
  * digest-3 recomputation could use.
  */
@@ -39,16 +40,17 @@ export const LANES_LOCK_RECORDED_INPUT_FIELDS = [...LANES_LOCK_DIGEST_FIELDS, "d
 export type LanesLockRecordedField = (typeof LANES_LOCK_RECORDED_INPUT_FIELDS)[number];
 
 /**
- * Which recorded field pins each of `computeLanePlan`'s declared inputs.
+ * Which recorded fields pin each of `computeLanePlan`'s declared inputs.
  *
- * @req FR-NODE-138 AC-6 — the map is keyed on `keyof LanePlanInput`, so an input added to the kernel
+ * @req FR-NODE-138 AC-6 - the map is keyed on `keyof LanePlanInput`, so an input added to the kernel
  * without a recorded field to pin it fails to compile here rather than making §4.7 digest 3 silently
- * recompute against an input the lock never named.
+ * recompute against an input the lock never named. The waves' write sets come from SDS files or from
+ * declaration entries, so `waves` is pinned by both digest fields (FR-NODE-216 AC-7).
  */
-export const LANE_PLAN_INPUT_PINS: Record<keyof LanePlanInput, LanesLockRecordedField> = {
-  waves: "sds_digests",
-  dependencies: "depends",
-  laneCap: "lane_cap"
+export const LANE_PLAN_INPUT_PINS: Record<keyof LanePlanInput, readonly LanesLockRecordedField[]> = {
+  waves: ["sds_digests", "declaration_digests"],
+  dependencies: ["depends"],
+  laneCap: ["lane_cap"]
 };
 
 /**
@@ -64,10 +66,17 @@ export interface LanesLockSource {
   /** The dependencies as declared — a wave with no key depends on every earlier wave. */
   readonly dependencies: WaveDependencies;
   readonly laneCap: number;
-  /** Each wave's SDS digest, keyed by wave id. */
+  /** Each SDS-scheduled wave's SDS digest, keyed by wave id. */
   readonly sdsDigests: Readonly<Record<string, WaveSdsDigest>>;
-  /** Each wave's SDS path, or its SDS files in `--sds` order, keyed by wave id. */
+  /** Each SDS-scheduled wave's SDS path, or its SDS files in order, keyed by wave id. */
   readonly sdsPaths: Readonly<Record<string, string | readonly string[]>>;
+  /** Present only for a plan read from a wave declaration file (`--waves`). @req FR-NODE-216 AC-7 */
+  readonly declaration?: {
+    /** The declaration file, as the caller named it. */
+    readonly path: string;
+    /** One entry digest per planned wave, keyed by wave id. */
+    readonly digests: Readonly<Record<string, string>>;
+  };
 }
 
 function sortedKeys<T>(record: Readonly<Record<string, T>>, map: (value: T) => T): Record<string, T> {
@@ -93,6 +102,9 @@ export function buildLanesLockBody(source: LanesLockSource): Record<string, unkn
   return {
     lane_cap: source.laneCap,
     depends: sortedKeys(source.dependencies, (list) => [...new Set(list)].sort()),
+    ...(source.declaration === undefined
+      ? {}
+      : { declaration: source.declaration.path, declaration_digests: sortedKeys(source.declaration.digests, (digest) => digest) }),
     sds_digests: sortedKeys(source.sdsDigests, sortedDigest),
     lane_count: source.plan.laneCount,
     stage_count: source.plan.stageCount,
@@ -109,8 +121,9 @@ export function buildLanesLockBody(source: LanesLockSource): Record<string, unkn
 }
 
 export interface LanePlanInputPin {
-  readonly recordedField: LanesLockRecordedField;
-  readonly recordedValue: unknown;
+  readonly recordedFields: readonly LanesLockRecordedField[];
+  /** Each pinned field's recorded value, `undefined` when the lock does not carry it. */
+  readonly recordedValues: Readonly<Partial<Record<LanesLockRecordedField, unknown>>>;
 }
 
 /**
@@ -120,9 +133,12 @@ export interface LanePlanInputPin {
  * available today, and this is the function that reads them back.
  */
 export function reconstructLanePlanInputPins(lanesBody: Record<string, unknown>): Record<keyof LanePlanInput, LanePlanInputPin> {
-  const entries = Object.entries(LANE_PLAN_INPUT_PINS) as Array<[keyof LanePlanInput, LanesLockRecordedField]>;
+  const entries = Object.entries(LANE_PLAN_INPUT_PINS) as Array<[keyof LanePlanInput, readonly LanesLockRecordedField[]]>;
   return Object.fromEntries(
-    entries.map(([input, recordedField]) => [input, { recordedField, recordedValue: lanesBody[recordedField] }])
+    entries.map(([input, recordedFields]) => [
+      input,
+      { recordedFields, recordedValues: Object.fromEntries(recordedFields.map((field) => [field, lanesBody[field]])) }
+    ])
   ) as Record<keyof LanePlanInput, LanePlanInputPin>;
 }
 
@@ -176,7 +192,8 @@ export type FreezeResult = { readonly ok: true; readonly lock: Lock } | { readon
 const REQUIRED_BODY_FIELDS: Record<FreezeLockKind, readonly string[]> = {
   design: ["design_items", "integration_items", "out_of_scope"],
   waves: ["waves", "wave_count"],
-  lanes: [...LANES_LOCK_RECORDED_INPUT_FIELDS, "lane_count", "stage_count", "lanes", "conflicts"],
+  // `declaration_digests` is required only of a lock planned from a declaration; `lanesDigestMismatch` says so.
+  lanes: ["sds_digests", "depends", "lane_cap", "lane_count", "stage_count", "lanes", "conflicts"],
   issues: ["wave", "issues", "counts"],
   postmortem: ["waves"]
 };
@@ -185,23 +202,38 @@ function isFreezeLockKind(value: string): value is FreezeLockKind {
   return (FREEZE_LOCK_KINDS as readonly string[]).includes(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** `field` must name exactly `waves`: a wave without a digest is one digest 3 can never find drifted. */
+function keysMismatch(field: string, digests: Record<string, unknown>, waves: readonly unknown[]): string | null {
+  const keys = new Set(Object.keys(digests));
+  const undigested = waves.filter((wave) => typeof wave !== "string" || !keys.has(wave));
+  const orphaned = [...keys].filter((key) => !waves.includes(key));
+  if (undigested.length === 0 && orphaned.length === 0) return null;
+  return `lanes lock ${field} must name exactly the waves its lanes carry: without a digest [${undigested.map(String).join(", ")}], digest without a lane [${orphaned.join(", ")}]`;
+}
+
 /**
- * @req FR-NODE-138 AC-5 — one SDS digest per wave the lanes carry, and none for a wave they do not.
- * A wave with no digest is a wave digest 3 can never find drifted, which is the one lanes-kind property
- * key presence alone does not establish.
+ * @req FR-NODE-138 AC-2, AC-5 - the digests a lanes lock must carry for the plan it records. A lock
+ * planned from SDS files carries one SDS digest per wave; a lock planned from a declaration file
+ * (marked by `declaration`) carries one declaration-entry digest per wave and SDS digests for exactly
+ * the waves whose lane names SDS files. Key presence alone establishes neither pairing.
  */
-function sdsDigestMismatch(body: Record<string, unknown>): string | null {
-  const digests = body.sds_digests;
+function lanesDigestMismatch(body: Record<string, unknown>): string | null {
   const lanes = body.lanes;
-  if (digests === null || typeof digests !== "object" || Array.isArray(digests) || !Array.isArray(lanes)) {
+  if (!isRecord(body.sds_digests) || !Array.isArray(lanes)) {
     return "lanes lock body needs sds_digests as an object keyed by wave and lanes as an array";
   }
-  const waves = new Set(lanes.map((lane) => (lane !== null && typeof lane === "object" ? (lane as { wave?: unknown }).wave : undefined)));
-  const keys = new Set(Object.keys(digests));
-  const undigested = [...waves].filter((wave) => typeof wave !== "string" || !keys.has(wave));
-  const orphaned = [...keys].filter((key) => !waves.has(key));
-  if (undigested.length === 0 && orphaned.length === 0) return null;
-  return `lanes lock sds_digests must name exactly the waves its lanes carry: without a digest [${undigested.map(String).join(", ")}], digest without a lane [${orphaned.join(", ")}]`;
+  const laneOf = (lane: unknown): { wave?: unknown; sds?: unknown } => (isRecord(lane) ? lane : {});
+  const waves = lanes.map((lane) => laneOf(lane).wave);
+  if (!Object.prototype.hasOwnProperty.call(body, "declaration")) return keysMismatch("sds_digests", body.sds_digests, waves);
+  if (!isRecord(body.declaration_digests)) {
+    return "lanes lock planned from a declaration needs declaration_digests as an object keyed by wave";
+  }
+  const sdsWaves = lanes.filter((lane) => laneOf(lane).sds !== null && laneOf(lane).sds !== undefined).map((lane) => laneOf(lane).wave);
+  return keysMismatch("declaration_digests", body.declaration_digests, waves) ?? keysMismatch("sds_digests", body.sds_digests, sdsWaves);
 }
 
 function sha256Hex(text: string): string {
@@ -232,7 +264,7 @@ export function freezeLock(kind: FreezeLockKind, body: Record<string, unknown>, 
     return { ok: false, code: "lock-body-invalid", detail: `${kind} lock body is missing required field(s): ${missing.join(", ")}` };
   }
   if (kind === "lanes") {
-    const mismatch = sdsDigestMismatch(body);
+    const mismatch = lanesDigestMismatch(body);
     if (mismatch !== null) return { ok: false, code: "lock-body-invalid", detail: mismatch };
   }
 

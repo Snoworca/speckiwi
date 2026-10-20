@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "긴급 버그·운영 이슈에 대해 SRS→SDS→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; Root-cause 사전조사 Sonnet 불변). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
+description: "긴급 버그·운영 이슈에 대해 SRS→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + Sonnet×2 root-cause 사전조사 병렬 + 회귀 테스트 선행 작성(TDD) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; Root-cause 사전조사 Sonnet 불변). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -268,7 +268,7 @@ Normal 비용 ≤ kiwi-coder 단일 task 수준. 사용자 게이트 없이 진�
 }
 ```
 
-`fix_complexity_estimate = large` 일 경우 시니어가 §10 의 "Out of Scope" 안내 후 사용자에게 `/kiwi-srs` → `/kiwi-sds` 풀 파이프라인 권고 (단 본 스킬은 그래도 진행 — 사용자가 hot-fix 를 선택한 책임).
+`fix_complexity_estimate = large` 일 경우 시니어가 §10 의 "Out of Scope" 안내 후 사용자에게 `/kiwi-srs` → `/kiwi-pm` 풀 파이프라인 권고 (단 본 스킬은 그래도 진행 — 사용자가 hot-fix 를 선택한 책임).
 
 ### 4.2 scope analyst
 
@@ -484,7 +484,7 @@ emit 실패는 best-effort.
 |---|---|
 | 신규 요구사항 → SRS 증분 (spec-first) | `/kiwi-srs` |
 | 코드 변경 → SRS 사후 동기화 (단독) | `/kiwi-srs-sync` |
-| SRS 선행 풀 구현 (본문 범위 작업) | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
+| SRS 선행 풀 구현 (본문 범위 작업) | `/kiwi-srs` → `/kiwi-pm` (`--sds` 면 그 사이에 `/kiwi-sds`) |
 | 단일 task TDD 구현 | `/kiwi-coder` |
 | **긴급 버그 fix + 까칠 리뷰 + 회귀 + SRS 사후 동기화** (본 스킬) | `/kiwi-hot-fix` |
 | 이미 머지된 코드 / 외부 PR 셀프 리뷰 | `/kiwi-review-fix-loop` |
@@ -495,8 +495,8 @@ emit 실패는 best-effort.
 
 | 범위 밖 | 담당 스킬 |
 |---|---|
-| 신규 기능 개발 (hot-fix 아닌 normal feature) | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
-| 대규모 refactor / 아키텍처 변경 | `/kiwi-srs` → `/kiwi-sds` 풀 파이프라인 |
+| 신규 기능 개발 (hot-fix 아닌 normal feature) | `/kiwi-srs` → `/kiwi-pm` (`--sds` 면 그 사이에 `/kiwi-sds`) |
+| 대규모 refactor / 아키텍처 변경 | `/kiwi-srs` → `/kiwi-pm` 풀 파이프라인 |
 | 다중 무관 이슈 동시 처리 | 본 스킬 다회 실행 (단일 fix 의미 단위, §0.13) |
 | MCP mutation 직접 호출 | `/kiwi-srs-sync` 위임 (§0.9) |
 | git commit / push | 사용자 결정 또는 `/kiwi-commit-auto-push` |

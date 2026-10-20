@@ -7,7 +7,9 @@ import type {
   AcquireExclusiveLockInput,
   AcquireExclusiveLockResult,
   ExclusiveLockCapability,
+  ExclusiveLockFenceState,
   ExclusiveLockHolder,
+  ExclusiveLockInspection,
   ReleaseExclusiveLockResult
 } from "../lock/exclusive-lock.js";
 
@@ -46,6 +48,9 @@ const RUN_LOCK_FENCE_NAMESPACE = "speckiwi-orchestrator-run";
 const RUN_LOCK_LEASE_MS = 12 * 60 * 60 * 1000;
 
 export const RUN_LOCK_GATE = "orchestrator-run-lock-held";
+
+/** A release refused because a live process other than the caller holds the fence. @req FR-NODE-221 */
+export const RUN_LOCK_LIVE_SESSION_GATE = "run-lock-held-by-live-session";
 
 export interface RunLock {
   readonly commonDir: string;
@@ -95,6 +100,10 @@ interface ExclusiveLockModule {
   readExclusiveLockHolder(lockPath: string): Promise<ExclusiveLockHolder | null>;
   releaseExclusiveLock(capability: ExclusiveLockCapability): Promise<ReleaseExclusiveLockResult>;
   renewExclusiveLock(capability: ExclusiveLockCapability): Promise<boolean>;
+  inspectExclusiveLock(lockPath: string): Promise<ExclusiveLockInspection>;
+  probeExclusiveLockFence(namespace: string, lockPath: string): Promise<ExclusiveLockFenceState>;
+  exclusiveLockFenceName(namespace: string, lockPath: string): string;
+  addCleanupTaskForTest(token: string, task: () => Promise<void>): boolean;
 }
 
 /*
@@ -103,8 +112,27 @@ interface ExclusiveLockModule {
  * extension at runtime without weakening the package's NodeNext build contract.
  */
 async function exclusiveLockModule(): Promise<ExclusiveLockModule> {
+  return lockLayerModule<ExclusiveLockModule>("exclusive-lock");
+}
+
+async function lockLayerModule<T>(name: string): Promise<T> {
   const extension = import.meta.url.endsWith(".ts") ? ".ts" : ".js";
-  return import(new URL(`../lock/exclusive-lock${extension}`, import.meta.url).href) as Promise<ExclusiveLockModule>;
+  return import(new URL(`../lock/${name}${extension}`, import.meta.url).href) as Promise<T>;
+}
+
+interface BusyRetryModule {
+  retryBusy<T>(operation: () => Promise<T>): Promise<T>;
+}
+
+/**
+ * Whether this process is a long-lived session (an MCP server) rather than a one-call CLI process.
+ * Only a session can tell a fence held by another session from one it holds itself. @req FR-NODE-221
+ */
+let sessionProcess = false;
+
+/** Declared by the MCP bridge before it runs a verb. */
+export function declareSessionProcess(): void {
+  sessionProcess = true;
 }
 
 const capabilities = new Map<string, ExclusiveLockCapability>();
@@ -173,30 +201,134 @@ export async function release(lock: RunLock): Promise<void> {
   if (!result.ok) throw new Error(String(result.cleanupDiagnostic.message ?? "Run lock cleanup failed"));
 }
 
+/** The run lock's fence state: `held`, `free`, or `not-applicable` on POSIX. @req IR-CLI-105 */
+export type RunLockFence = ExclusiveLockFenceState;
+
 /**
- * Drops the run lock whoever holds it, and reports the holder that was removed.
- *
- * @req FR-NODE-197 AC-4/AC-7 — `release` above is scoped to a capability this process still holds,
- * and returns doing nothing when it does not. Across processes it never does: the CLI takes the lock
- * in one invocation and drops it in a later one, so `run unlock` and `run abort` were reporting a
- * holder they had not removed. Every test that covered them drove `main()` inside one process, where
- * the capability map is populated and the defect cannot appear.
- *
- * Releasing a lock this process never took is the point rather than a hazard: both callers are an
- * operator deliberately ending a run. The holder is read first so the caller can name whom it
- * displaced, and a torn sentinel - which names nobody - is still removed, because leaving it would
- * wedge the run behind a record no one can act on.
+ * The fence as a caller is told it: a held fence is this session's or another session's when the
+ * process can know, and plain `held` from a one-call CLI process, which cannot tell its own MCP
+ * session from someone else's. @req IR-CLI-105, FR-NODE-221
  */
-export async function releaseHeldRunLock(commonDir: string): Promise<{ readonly owner: string | null }> {
+export type ReportedRunLockFence = "held-by-this-session" | "held-by-another-session" | "held" | "free" | "not-applicable";
+
+export function reportedFence(state: RunLockState): ReportedRunLockFence {
+  if (state.fence !== "held") return state.fence;
+  if (state.heldByThisProcess) return "held-by-this-session";
+  return sessionProcess ? "held-by-another-session" : "held";
+}
+
+/** Everything a refusal or `run status` reports about the run lock, read in one place. @req IR-CLI-105 */
+export interface RunLockState {
+  readonly lockPath: string;
+  readonly present: boolean;
+  readonly holder: RunLockHolder | null;
+  readonly leaseExpiresAt: string | null;
+  /** A sentinel exists and names nobody. */
+  readonly holderUnreadable: boolean;
+  /** What the real acquisition decides for the sentinel, before it asks the fence. */
+  readonly reclaimable: boolean;
+  readonly fence: RunLockFence;
+  /** This process holds the lock's capability: the holder releasing its own lock. */
+  readonly heldByThisProcess: boolean;
+}
+
+/** The fence's pipe name for this repository's run lock. */
+export async function runLockFenceName(commonDir: string): Promise<string> {
+  return (await exclusiveLockModule()).exclusiveLockFenceName(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(commonDir)));
+}
+
+/** Whether a live process holds the run lock's Windows fence. Takes nothing. @req FR-NODE-221 */
+export async function probeRunLockFence(commonDir: string): Promise<RunLockFence> {
+  return (await exclusiveLockModule()).probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(commonDir)));
+}
+
+function ownCapability(lockPath: string): ExclusiveLockCapability | undefined {
+  return [...capabilities.values()].find((entry) => entry.lockPath === lockPath);
+}
+
+function stateFrom(lockPath: string, inspection: ExclusiveLockInspection, fence: RunLockFence): RunLockState {
+  return Object.freeze({
+    lockPath,
+    present: inspection.present,
+    holder: inspection.holder ? runLockHolder(inspection.holder) : null,
+    leaseExpiresAt: inspection.leaseExpiresAt,
+    holderUnreadable: inspection.unreadable,
+    reclaimable: inspection.reclaimable,
+    fence,
+    heldByThisProcess: ownCapability(lockPath) !== undefined
+  });
+}
+
+/** Reads the run lock's sentinel and asks its fence. Pid and host are reported, never judged. @req IR-CLI-105 */
+export async function inspectRunLock(commonDir: string): Promise<RunLockState> {
   const lockPath = runLockPath(path.resolve(commonDir));
-  const holder = await readHolder(commonDir).catch(() => null);
-  const capability = [...capabilities.values()].find((entry) => entry.lockPath === lockPath);
+  const locks = await exclusiveLockModule();
+  const inspection = await locks.inspectExclusiveLock(lockPath);
+  return stateFrom(lockPath, inspection, await locks.probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, lockPath));
+}
+
+/**
+ * Whether a real `acquire` would be refused: the fence is held, or a sentinel stands that it would not
+ * reclaim. The dry run's answer, so it can never differ from the call it previews. @req IR-CLI-105 AC-8
+ */
+export function acquisitionRefused(state: RunLockState): boolean {
+  return state.fence === "held" || (state.present && !state.reclaimable);
+}
+
+/** The state a release by this caller is refused on, or null when the caller may release. @req FR-NODE-221 */
+export async function foreignReleaseBlocker(commonDir: string): Promise<RunLockState | null> {
+  const state = await inspectRunLock(commonDir);
+  return !state.heldByThisProcess && state.fence === "held" ? state : null;
+}
+
+export type RunLockRelease =
+  | { readonly ok: true; readonly owner: string | null }
+  | { readonly ok: false; readonly reason: "live-session" | "changed-hands"; readonly state: RunLockState }
+  | { readonly ok: false; readonly reason: "cleanup-failed"; readonly diagnostic: Readonly<Record<string, unknown>> };
+
+/** Test-only: runs between the fence probe and the re-read of the sentinel. @req FR-NODE-221 AC-6 */
+export interface RunLockReleaseSeams {
+  readonly afterProbe?: () => Promise<void>;
+}
+
+/**
+ * Releases the run lock: the one path `run unlock` and `run abort` share. @req FR-NODE-197 AC-7, FR-NODE-221
+ *
+ * The holder releases through its own capability, and if that fails the sentinel stays: removing the
+ * file while the fence stays open is how the ghost was made, by a holder as much as by a stranger.
+ * Any other caller is refused while a live process holds the fence — the session that took the lock
+ * releases it, or is closed — and otherwise removes the sentinel only if it is still the one it read.
+ * Between that re-read and the `rm` a successor can still publish, but only over a sentinel that was
+ * reclaimable; that window is narrowed to that case, not closed.
+ */
+export async function releaseHeldRunLock(commonDir: string, seams: RunLockReleaseSeams = {}): Promise<RunLockRelease> {
+  const lockPath = runLockPath(path.resolve(commonDir));
+  const locks = await exclusiveLockModule();
+  const capability = ownCapability(lockPath);
   if (capability) {
-    const result = await (await exclusiveLockModule()).releaseExclusiveLock(capability);
-    if (result.ok) capabilities.delete(capability.token);
+    const holder = await readHolder(commonDir).catch(() => null);
+    const result = await locks.releaseExclusiveLock(capability);
+    if (!result.ok) return { ok: false, reason: "cleanup-failed", diagnostic: result.cleanupDiagnostic };
+    capabilities.delete(capability.token);
+    if (result.released) return { ok: true, owner: holder?.owner ?? null };
+    // The sentinel on disk is no longer this capability's: judge it as any other caller would.
   }
-  await rm(lockPath, { force: true });
-  return { owner: holder?.owner ?? null };
+  const read = await locks.inspectExclusiveLock(lockPath);
+  const fence = await locks.probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, lockPath);
+  if (fence === "held") return { ok: false, reason: "live-session", state: stateFrom(lockPath, read, fence) };
+  await seams.afterProbe?.();
+  const reread = await locks.inspectExclusiveLock(lockPath);
+  if (reread.raw !== read.raw) return { ok: false, reason: "changed-hands", state: stateFrom(lockPath, reread, fence) };
+  // @req FR-NODE-221 — a delete-pending sentinel answers EPERM/EBUSY on Windows; retried as the SRS lock is.
+  if (read.present) await (await lockLayerModule<BusyRetryModule>("busy-retry")).retryBusy(() => rm(lockPath, { force: true }));
+  return { ok: true, owner: read.holder?.owner ?? null };
+}
+
+/** Test-only: makes the holder's next capability release fail while `task` throws. @req FR-NODE-221 AC-5 */
+export async function injectCleanupFaultForTest(lock: RunLock, task: () => Promise<void>): Promise<void> {
+  if (!(await exclusiveLockModule()).addCleanupTaskForTest(lock.token, task)) {
+    throw new Error("this process holds no capability for that run lock");
+  }
 }
 
 /**

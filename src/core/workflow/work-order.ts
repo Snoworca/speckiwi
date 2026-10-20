@@ -6,10 +6,22 @@ import { checkSdsFile } from "../sds/check-sds.js";
 import type { Diagnostic, DiagnosticsSummary, ParsedWorkspace, ProjectRoot } from "../types.js";
 import { resolveWorkflowArtifacts, type WorkflowArtifactCandidate } from "./artifacts.js";
 import { parseWorkflowJsonl } from "./jsonl.js";
-import { PIPELINE_STOP_STATUSES, workflowSessionStatus } from "./read.js";
+import { parseJsonFile, PIPELINE_STOP_STATUSES, workflowSessionStatus } from "./read.js";
 
-/** @req FR-NODE-211 AC-4 — the work order speaks SDS: a unit of work is one lite SDS and its kiwi-pm session. */
-export type WorkOrderAction = "create-sds" | "execute-sds" | "resume-session" | "ask-user" | "fix-artifact" | "blocked" | "complete" | "no-action";
+/**
+ * @req FR-NODE-211 AC-4 — a unit of work is a requirement-ID set and its kiwi-pm session; the SDS
+ * actions answer only for an SDS the caller names (`path` / `runId`).
+ */
+export type WorkOrderAction =
+  | "implement-requirements"
+  | "create-sds"
+  | "execute-sds"
+  | "resume-session"
+  | "ask-user"
+  | "fix-artifact"
+  | "blocked"
+  | "complete"
+  | "no-action";
 
 /** The open SDS a work order acts on, as the resolver and `sds check` saw it. */
 export interface WorkOrderSds {
@@ -48,6 +60,8 @@ export interface NextWorkOrder {
   requirementIds: string[];
   artifacts: Array<{ relativePath: string; kind: string; sha256?: string; mtimeMs: number }>;
   sds: WorkOrderSds | null;
+  /** Open SDS files of the target when no SDS is named: information only, never the action. */
+  openSds?: string[];
   nextAction: {
     kind: WorkOrderAction;
     tool: string;
@@ -88,6 +102,7 @@ function unique(values: Iterable<string>): string[] {
  * @req FR-MCP-062 AC-6, FR-NODE-211 AC-4
  */
 export const WORK_ORDER_ACTION_TOOLS: Readonly<Record<WorkOrderAction, string>> = Object.freeze({
+  "implement-requirements": "list_requirements",
   "create-sds": "list_requirements",
   "execute-sds": "check_sds",
   "resume-session": "workflow_session_status",
@@ -113,6 +128,7 @@ function baseOrder(input: {
   requirementIds: string[];
   artifacts: NextWorkOrder["artifacts"];
   sds: WorkOrderSds | null;
+  openSds?: string[];
   reason: string;
   blocking: boolean;
   diagnostics: Diagnostic[];
@@ -125,7 +141,8 @@ function baseOrder(input: {
   const profile = input.options?.profile ?? (input.options?.explain ? "explain" : "default");
   const includeExplain = input.options?.explain === true || profile === "explain";
   const rejectedCandidates: Array<{ action: WorkOrderAction; reason: string }> = [
-    ...(input.action !== "create-sds" ? [{ action: "create-sds" as const, reason: "not selected because the target's work already has an open SDS or nothing to design" }] : []),
+    ...(input.action !== "implement-requirements" ? [{ action: "implement-requirements" as const, reason: "not selected because an SDS was named, a kiwi-pm session decides, or no open requirement is left" }] : []),
+    ...(input.action !== "create-sds" ? [{ action: "create-sds" as const, reason: "not selected because no named SDS is waiting to be agreed" }] : []),
     ...(input.action !== "execute-sds" ? [{ action: "execute-sds" as const, reason: "not selected because no agreed SDS is waiting for its first kiwi-pm run" }] : []),
     ...(input.action !== "resume-session" ? [{ action: "resume-session" as const, reason: "not selected because PM state is absent or unsafe" }] : []),
     ...(input.action !== "ask-user" ? [{ action: "ask-user" as const, reason: "not selected because latest pipeline state does not require user input" }] : []),
@@ -139,6 +156,7 @@ function baseOrder(input: {
     requirementIds: unique(input.requirementIds),
     artifacts: input.artifacts,
     sds: input.sds,
+    ...(input.openSds && input.openSds.length > 0 ? { openSds: input.openSds } : {}),
     nextAction: {
       kind: input.action,
       tool: actionTool(input.action),
@@ -290,6 +308,50 @@ async function decideForSds(root: ProjectRoot, workspace: ParsedWorkspace, candi
   return { action: "resume-session", reason: `kiwi-pm session for ${sdsId} is in progress`, blocking: false, sds, requirementIds, artifacts };
 }
 
+interface RequirementDecision {
+  action: WorkOrderAction;
+  reason: string;
+  blocking: boolean;
+  requirementIds: string[];
+  artifacts: NextWorkOrder["artifacts"];
+}
+
+/**
+ * @req FR-NODE-211 AC-4 — the answer when no SDS is named. kiwi-pm sessions are read in path order;
+ * the first unfinished one whose `req_ids` meet the open requirements resumes, or blocks when it
+ * stopped (NEEDS_USER is recorded as `blocked`, FAILED as `failed`). Finished sessions take their
+ * requirements off the list; what is left is implemented.
+ */
+async function decideForRequirements(root: ProjectRoot, candidates: readonly string[], diagnostics: Diagnostic[]): Promise<RequirementDecision> {
+  const open = new Set(candidates);
+  const covered = new Set<string>();
+  const sessions = await resolveWorkflowArtifacts(root, { kind: "pm-state", allowAmbiguous: true });
+  for (const candidate of [...sessions.candidates].sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
+    const state = await parseJsonFile<{ req_ids?: unknown; run?: { status?: unknown } }>(candidate, diagnostics);
+    const reqIds = Array.isArray(state?.req_ids) ? state.req_ids.filter((id): id is string => typeof id === "string") : [];
+    const overlap = reqIds.filter((id) => open.has(id));
+    if (overlap.length === 0) continue;
+    const status = state?.run?.status;
+    if (status === "done") {
+      overlap.forEach((id) => covered.add(id));
+      continue;
+    }
+    const artifacts = [artifactRef(candidate)];
+    if (typeof status === "string" && STOPPED_RUN_STATUSES.has(status)) {
+      return { action: "blocked", reason: `kiwi-pm session ${candidate.relativePath} is ${status}`, blocking: true, requirementIds: overlap, artifacts };
+    }
+    if (typeof status === "string" && LIVE_RUN_STATUSES.has(status)) {
+      return { action: "resume-session", reason: `kiwi-pm session ${candidate.relativePath} is in progress`, blocking: false, requirementIds: overlap, artifacts };
+    }
+    return { action: "fix-artifact", reason: `kiwi-pm session ${candidate.relativePath} records no run status kiwi-pm writes`, blocking: true, requirementIds: overlap, artifacts };
+  }
+  const remaining = candidates.filter((id) => !covered.has(id));
+  if (remaining.length === 0) {
+    return { action: "no-action", reason: covered.size > 0 ? "finished kiwi-pm sessions cover every open requirement" : "target has no active work candidates", blocking: false, requirementIds: [], artifacts: [] };
+  }
+  return { action: "implement-requirements", reason: "open requirements no finished kiwi-pm session covers; run kiwi-pm --req-filter", blocking: false, requirementIds: remaining, artifacts: [] };
+}
+
 export async function buildNextWorkOrder(root: ProjectRoot, options: NextWorkOrderOptions = {}): Promise<NextWorkOrder> {
   const workspace = await parseWorkspace(root);
   const diagnostics: Diagnostic[] = [...workspace.diagnostics, ...validateWorkspace(workspace).diagnostics];
@@ -356,9 +418,29 @@ export async function buildNextWorkOrder(root: ProjectRoot, options: NextWorkOrd
     .filter((candidate) => options.path !== undefined || ((candidate.target ?? null) === target && (!options.runId || candidate.runId === options.runId)))
     .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
+  const sdsNamed = Boolean(options.path || options.runId);
+  if (!sdsNamed) {
+    // @req FR-NODE-211 AC-4 — an SDS on disk is not an instruction.
+    const targetSummary = summarizeTarget(workspace, { target, diagnostics });
+    const candidates = targetSummary.newWorkCandidates.length > 0 ? targetSummary.newWorkCandidates : targetRecords.map((record) => record.id);
+    const decision = await decideForRequirements(root, candidates, diagnostics);
+    const order = baseOrder({
+      ...decision,
+      target,
+      targetSource,
+      artifacts: [...decision.artifacts, ...pipeline.artifacts],
+      sds: null,
+      openSds: openSds.map((candidate) => candidate.relativePath),
+      diagnostics,
+      pipeline: pipelinePayload,
+      options
+    });
+    return options.measure ? withMeasurement(order, baselineValue) : order;
+  }
+
   // A named SDS that is not there fails closed; widening to the whole target would answer a question
   // the caller did not ask.
-  if ((options.path || options.runId) && openSds.length === 0) {
+  if (openSds.length === 0) {
     const order = baseOrder({
       action: "fix-artifact",
       target,
@@ -377,40 +459,18 @@ export async function buildNextWorkOrder(root: ProjectRoot, options: NextWorkOrd
     return options.measure ? withMeasurement(order, baselineValue) : order;
   }
 
-  let finished: SdsDecision | undefined;
-  const named = new Set<string>();
+  // The first unfinished named SDS decides; when every one is finished, the first finished one does.
+  let chosen: SdsDecision | undefined;
   for (const candidate of openSds) {
     const decision = await decideForSds(root, workspace, candidate, diagnostics);
-    for (const id of decision.requirementIds) named.add(id);
-    if (decision.action === "complete") {
-      finished ??= decision;
-      continue;
+    chosen ??= decision;
+    if (decision.action !== "complete") {
+      chosen = decision;
+      break;
     }
-    const order = baseOrder({ ...decision, target, targetSource, diagnostics, pipeline: { ...pipelinePayload }, options, artifacts: [...decision.artifacts, ...pipeline.artifacts] });
-    return options.measure ? withMeasurement(order, baselineValue) : order;
   }
-  const targetSummary = summarizeTarget(workspace, { target, diagnostics });
-  const candidates = targetSummary.newWorkCandidates.length > 0 ? targetSummary.newWorkCandidates : targetRecords.map((record) => record.id);
-  // Requirements a finished SDS already names are that SDS's work; the rest still need one.
-  const requirementIds = candidates.filter((id) => !named.has(id));
-  if (finished && (requirementIds.length === 0 || options.path || options.runId)) {
-    const order = baseOrder({ ...finished, target, targetSource, diagnostics, pipeline: pipelinePayload, options, artifacts: [...finished.artifacts, ...pipeline.artifacts] });
-    return options.measure ? withMeasurement(order, baselineValue) : order;
-  }
-
-  const action: WorkOrderAction = requirementIds.length > 0 ? "create-sds" : "no-action";
-  const order = baseOrder({
-    action,
-    target,
-    targetSource,
-    requirementIds,
-    artifacts: pipeline.artifacts,
-    sds: null,
-    reason: action === "create-sds" ? "target has active requirements but no open SDS" : "target has no active work candidates",
-    blocking: false,
-    diagnostics,
-    pipeline: pipelinePayload,
-    options
-  });
+  // openSds is non-empty here, so the loop ran at least once.
+  chosen = chosen as SdsDecision;
+  const order = baseOrder({ ...chosen, target, targetSource, diagnostics, pipeline: pipelinePayload, options, artifacts: [...chosen.artifacts, ...pipeline.artifacts] });
   return options.measure ? withMeasurement(order, baselineValue) : order;
 }

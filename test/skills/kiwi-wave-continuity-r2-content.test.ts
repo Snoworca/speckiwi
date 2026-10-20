@@ -174,6 +174,11 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     // @req FR-FLOW-187 AC-3 — parallel-waves.md PW-2's allocation check is a contract gate, so the
     // caller without the orchestrator's 3.c′ hook declares it too.
     "unallocated-req-id",
+    // @req FR-FLOW-195 — `schedule waves --waves` refuses a wave whose requirements[] holds a requirement that is
+    // missing, draft, deprecated or discarded; parallel-waves.md §4 raises it, so the caller declares it.
+    "requirement-not-ready",
+    // @req FR-FLOW-198 AC-4 — parallel-waves.md PW-5 and §6 halt on a worker worktree reported `locked`.
+    "lane-worker-possibly-live",
     // @req FR-NODE-213 AC-2 — resume detects SDS drift against the frozen lanes lock.
     "lane-plan-drift",
     // @req FR-FLOW-188 AC-6
@@ -377,7 +382,7 @@ describe("R2-C1 — wave resume is scoped to the current run", () => {
 describe("R2-C2 — an unapproved damage row blocks the passing verdict", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("adds the preservation condition to the Normal PASS row itself", () => {
+      it("FR-FLOW-057 AC-1: adds the preservation condition to the Normal PASS row itself", () => {
         const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         expect(exit, `${variant}: the termination-condition section must exist`).not.toBe("");
         const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
@@ -394,7 +399,7 @@ describe("R2-C2 — an unapproved damage row blocks the passing verdict", () => 
         expect(HEDGE.test(normalRow), `${variant}: the Normal PASS row must not hedge its conditions`).toBe(false);
       });
 
-      it("applies the same preservation condition to the final run-scope pass", () => {
+      it("FR-FLOW-057 AC-1: applies the same preservation condition to the final run-scope pass", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         expect(final, `${variant}: the final-verification section must exist`).not.toBe("");
         const rule = lineWith(final, /unapproved-damage/);
@@ -570,7 +575,7 @@ describe("R2-H2 — pipeline re-entry accepts a scope and emits a distinguishabl
         ).toBe(0);
       });
 
-      it("FR-FLOW-184 AC-5: forwards both re-entry arguments to the children that consume them", () => {
+      it("FR-FLOW-193 AC-7: forwards the re-entry arguments to the children that consume them", () => {
         const body = skillBody(readPipeline(variant));
         // The hand-off norm lives in §7 (Phase 4), where kiwi-pipeline launches the external skills
         // and decides what it passes them. Pin the section number AND the phase: an earlier scope
@@ -581,13 +586,18 @@ describe("R2-H2 — pipeline re-entry accepts a scope and emits a distinguishabl
         expect(handoff, `${variant}: kiwi-pipeline must have a §7 Phase 4 external-skill hand-off section`).not.toBe(
           ""
         );
-        const rule = lineWith(handoff, /`--req-filter`/);
-        expect(rule, `${variant}: kiwi-pipeline must state where --req-filter is forwarded`).not.toBe("");
+        // FR-FLOW-193 AC-7 (supersedes FR-FLOW-184 AC-5): without --sds the scope goes to kiwi-pm and the review
+        // hop and no child gets --sds-id; under --sds both re-entry arguments go to kiwi-sds together.
+        const plain = lineWith(handoff, /^- `--sds` 가 없으면 `--req-filter`/);
+        expect(plain, `${variant}: kiwi-pipeline must state where --req-filter goes without --sds`).not.toBe("");
+        expect(/`kiwi-pm`/.test(plain) && /`kiwi-review-fix-loop`/.test(plain), `${variant}: the default consumers`).toBe(true);
+        expect(plain, `${variant}: no child gets --sds-id without --sds`).toMatch(/어느 자식에도 `--sds` · `--sds-id` 를 붙이지 않는다/);
+        const rule = lineWith(handoff, /^- `--sds` 사이클에서 `--req-filter` 와 `--sds-id` 는 함께/);
+        expect(rule, `${variant}: kiwi-pipeline must state where --req-filter is forwarded under --sds`).not.toBe("");
         expect(
           /`--sds-id`/.test(rule),
           `${variant}: both re-entry arguments must be forwarded together; dropping one re-authors the SDS`
         ).toBe(true);
-        // FR-FLOW-184 AC-5 / AC-2: the consumers are kiwi-sds and kiwi-pm; kiwi-planner is retired.
         expect(
           /kiwi-sds/.test(rule) && /kiwi-pm/.test(rule),
           `${variant}: the forwarding rule must name kiwi-sds and kiwi-pm as the consumers`
@@ -732,7 +742,7 @@ describe("R2-H3 — the directly invoked kiwi-srs halt is a declared gate", () =
 describe("R2-H4 — final-pass findings have a repair route", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("unifies the requirement-level halt with the carry-forward-first rule", () => {
+      it("FR-FLOW-060 AC-4: unifies the requirement-level halt with the carry-forward-first rule", () => {
         const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         expect(cross, `${variant}: the carry-forward section must exist`).not.toBe("");
         const rule = lineWith(cross, /요구사항을 바꿔야/);
@@ -749,7 +759,7 @@ describe("R2-H4 — final-pass findings have a repair route", () => {
         expect(HEDGE.test(rule), `${variant}: the halt condition must be absolute, not hedged`).toBe(false);
       });
 
-      it("routes a run-scope finding into an appended wave rather than into a halt", () => {
+      it("FR-FLOW-060 AC-3: routes a run-scope finding into an appended wave rather than into a halt", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         const routing = lineWith(final, /run-scope finding/);
         expect(routing, `${variant}: the final pass must define where its own findings go`).not.toBe("");
@@ -767,7 +777,7 @@ describe("R2-H4 — final-pass findings have a repair route", () => {
         ).toBe(true);
       });
 
-      it("reads the wave-head regression clause as a run-head run in the final pass", () => {
+      it("FR-FLOW-060 AC-3: reads the wave-head regression clause as a run-head run in the final pass", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         const rule = lineWith(final, /run head/);
         expect(rule, `${variant}: the final pass must say which head its regression run uses`).not.toBe("");
@@ -777,7 +787,7 @@ describe("R2-H4 — final-pass findings have a repair route", () => {
         ).toBe(true);
       });
 
-      it("notes that the resume predicate re-enters the final pass on its own", () => {
+      it("FR-FLOW-060 AC-3: notes that the resume predicate re-enters the final pass on its own", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         expect(
           /waves-event/.test(final),
@@ -794,7 +804,7 @@ describe("R2-H4 — final-pass findings have a repair route", () => {
 describe("R2-H5 — wave regression is judged against a pinned baseline", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("captures the regression baseline once in preflight and pins it for the run", () => {
+      it("FR-FLOW-057 AC-6: captures the regression baseline once in preflight and pins it for the run", () => {
         const preflight = sectionUnder(skillBody(readWave(variant)), /^##\s*2\.1/);
         expect(preflight, `${variant}: the preflight section must exist`).not.toBe("");
         const rule = lineWith(preflight, /`baseline_failing_tests`/);
@@ -809,7 +819,7 @@ describe("R2-H5 — wave regression is judged against a pinned baseline", () => 
         ).toBe(true);
       });
 
-      it("passes on new failures only, and degrades to exit_code=0 only when capture failed", () => {
+      it("FR-FLOW-057 AC-6 · FR-FLOW-066 AC-7: passes on new failures only, and degrades to exit_code=0 only when capture failed", () => {
         const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
         expect(
@@ -880,7 +890,7 @@ describe("R2-H6 — test weakening is an unconditional halt at the pm layer", ()
 describe("R2-H7 — the receiving wave collects what was carried into it", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("collects carried_into residuals when a wave is entered", () => {
+      it("FR-FLOW-060 AC-5: collects carried_into residuals when a wave is entered", () => {
         const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         expect(target, `${variant}: the target-registration section must exist`).not.toBe("");
         const rule = lineWith(target, /`carried_into`/);
@@ -896,7 +906,7 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
         expect(HEDGE.test(rule), `${variant}: the collection rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("also folds them into the pipeline re-entry scope", () => {
+      it("FR-FLOW-060 AC-5: also folds them into the pipeline re-entry scope", () => {
         const run = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.\s/);
         expect(run, `${variant}: the per-wave pipeline section must exist`).not.toBe("");
         expect(
@@ -905,7 +915,7 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
         ).toBe(true);
       });
 
-      it("gives an appended carry-forward wave a substitute design denominator", () => {
+      it("FR-FLOW-060 AC-6: gives an appended carry-forward wave a substitute design denominator", () => {
         const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /이월/);
         expect(rule, `${variant}: an appended carry-forward wave must have a stated denominator`).not.toBe("");
@@ -1071,7 +1081,7 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
 describe("R2-M1 — the wave diff window is journalled", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("records base and head SHAs and resolves the window from the journal", () => {
+      it("FR-FLOW-060 AC-7: records base and head SHAs and resolves the window from the journal", () => {
         const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         expect(bundle, `${variant}: the evidence-bundle section must exist`).not.toBe("");
         const rule = lineWith(bundle, /`diff_window`/);
@@ -1095,7 +1105,7 @@ describe("R2-M1 — the wave diff window is journalled", () => {
 describe("R2-M2 — the preservation vocabulary is defined, not merely invoked", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("pins 기존 to the captured baseline commit", () => {
+      it("FR-FLOW-057 AC-4: pins 기존 to the captured baseline commit", () => {
         const body = skillBody(readCoder(variant));
         const rule = lineWith(body, /\*\*기존\*\* 의 판정|"기존" 의 판정|`기존` 의 판정/);
         expect(rule, `${variant}: kiwi-coder must define what counts as pre-existing`).not.toBe("");
@@ -1105,7 +1115,7 @@ describe("R2-M2 — the preservation vocabulary is defined, not merely invoked",
         ).toBe(true);
       });
 
-      it("defines the public-symbol surface", () => {
+      it("FR-FLOW-057 AC-4: defines the public-symbol surface", () => {
         const body = skillBody(readCoder(variant));
         const rule = lineWith(body, /public 심볼[^\n]*판정|판정[^\n]*public 심볼/);
         expect(rule, `${variant}: kiwi-coder must define the public symbol surface`).not.toBe("");
@@ -1115,7 +1125,7 @@ describe("R2-M2 — the preservation vocabulary is defined, not merely invoked",
         ).toBe(true);
       });
 
-      it("enumerates what counts as weakening", () => {
+      it("FR-FLOW-057 AC-4: enumerates what counts as weakening", () => {
         const body = skillBody(readCoder(variant));
         const rule = lineWith(body, /\*\*약화\*\*[^\n]*(?:정의|다음|넷|네 가지)/);
         expect(rule, `${variant}: kiwi-coder must enumerate the weakening forms`).not.toBe("");
@@ -1137,7 +1147,7 @@ describe("R2-M2 — the preservation vocabulary is defined, not merely invoked",
 describe("R2-M3 — kiwi-review-fix-loop carries the preservation contract", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("states the preservation prohibition in its own common-convention table", () => {
+      it("FR-FLOW-057 AC-7: states the preservation prohibition in its own common-convention table", () => {
         const common = sectionUnder(skillBody(readReviewFix(variant)), /^##\s*0\.\s/);
         expect(common, `${variant}: kiwi-review-fix-loop must have a common-convention table`).not.toBe("");
         const row = tableRows(common, /기존 테스트/)[0] ?? "";
@@ -1149,7 +1159,7 @@ describe("R2-M3 — kiwi-review-fix-loop carries the preservation contract", () 
         expect(HEDGE.test(row), `${variant}: the preservation rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("declares the three preservation gates", () => {
+      it("FR-FLOW-057 AC-7: declares the three preservation gates", () => {
         const ids = gateIds(skillBody(readReviewFix(variant)));
         for (const id of [
           "existing-test-weakened-or-deleted",
@@ -1160,7 +1170,7 @@ describe("R2-M3 — kiwi-review-fix-loop carries the preservation contract", () 
         }
       });
 
-      it("judges its regression by a captured baseline delta", () => {
+      it("FR-FLOW-057 AC-8: judges its regression by a captured baseline delta", () => {
         const body = skillBody(readReviewFix(variant));
         const regression = sectionUnder(body, /^#{3,4}\s.*회귀 테스트/);
         expect(regression, `${variant}: the regression section must exist`).not.toBe("");
@@ -1180,7 +1190,7 @@ describe("R2-M3 — kiwi-review-fix-loop carries the preservation contract", () 
         ).toBe(true);
       });
 
-      it("cites kiwi-coder §0.20 rather than the tdd route the wave cycle excludes", () => {
+      it("FR-FLOW-057 AC-7: cites kiwi-coder §0.20 rather than the tdd route the wave cycle excludes", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const rule = lineWith(routing, /테스트를 약화하거나 삭제/);
         expect(rule, `${variant}: the fixer prohibition must exist`).not.toBe("");
@@ -1485,7 +1495,7 @@ describe("R2-M11 — the wave-start event is labelled srs-authoring", () => {
 describe("R2-M13 — the recorded existing modules are consumed", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("puts existing_modules into the evidence bundle", () => {
+      it("FR-FLOW-060 AC-8: puts existing_modules into the evidence bundle", () => {
         const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         const cells = rowCells(bundle, /`existing_modules`/);
         expect(
@@ -1494,7 +1504,7 @@ describe("R2-M13 — the recorded existing modules are consumed", () => {
         ).toBe(true);
       });
 
-      it("binds it to verifier 2's cross-wave regression judgement", () => {
+      it("FR-FLOW-060 AC-8: binds it to verifier 2's cross-wave regression judgement", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /`existing_modules`/);
         expect(rule, `${variant}: verifier 2 must be told to use the recorded module list`).not.toBe("");

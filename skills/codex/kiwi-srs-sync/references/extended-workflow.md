@@ -168,7 +168,7 @@ $kiwi-srs-sync TARGET=v1.0.0 --base=develop
 | 신규 요구사항 자연어 → SRS 증분 (spec-first) | `$kiwi-srs` |
 | target 활성 REQ 전수 feasibility + Stability 일괄 | `$kiwi-srs-feasibility` |
 | REQ 또는 연구 질문 deep research | `$kiwi-srs-research` |
-| SRS 선행 구현 설계 (본문 범위 작업) | `$kiwi-srs` → `$kiwi-sds` |
+| SRS 선행 구현 (본문 범위 작업) | `$kiwi-srs` → `$kiwi-pm` (`--sds` 면 그 사이에 `$kiwi-sds`) |
 | SDS 기반 TDD-first 구현 | `$kiwi-coder` |
 | **코드 변경(diff) → 기존 SRS 사후 동기화** (본 스킬) | `$kiwi-srs-sync` |
 
@@ -179,7 +179,7 @@ $kiwi-srs-sync TARGET=v1.0.0 --base=develop
 | 범위 밖 | 담당 스킬 |
 |---|---|
 | target 신규 생성 / scope 자체 신규 등록 | `$kiwi-srs` (사용자 게이트 후) |
-| 구현 설계 (SDS) 작성 | `$kiwi-sds` |
+| 구현 설계 (SDS) 작성 — 사용자가 요청할 때 | `$kiwi-sds` |
 | 코드 구현 자체 | `$kiwi-coder` 또는 외부 도구 |
 | git commit / push | 사용자 결정 (시그니처 금지 §0.8) |
 | 통합 테스트 작성 | `$kiwi-coder` Phase 4 |

@@ -55,7 +55,7 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     role: "current",
     // The heading always carries a version suffix, which is what makes an older one recognisable.
     shape: /# SpecKiwi SRS workflow v(\d+(?:\.\d+)*)/g,
-    value: "1.9"
+    value: "1.10"
   },
   {
     name: "BUNDLED_SRS_RULES_FILENAME",

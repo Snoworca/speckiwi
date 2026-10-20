@@ -363,7 +363,8 @@ describe("FR-FLOW-186 AC-3 — the check runs immediately before every other wri
     // Evidence is recorded from the tool's citations, so the check comes first; and the red-first
     // tests carry the requirement citation, so the fill is not left to write never-red duplicates.
     expect(at, `${rendering}: the check must come before the evidence rows it feeds`).toBeLessThan(promotion.indexOf("Verification Evidence"));
-    const citeAt = promotion.indexOf("<REQ-ID> AC-<m>");
+    // FR-FLOW-196 AC-3 writes the citation as `<REQ-ID> AC-<n>` (was `AC-<m>` beside an SDS-AC).
+    const citeAt = Math.max(promotion.indexOf("<REQ-ID> AC-<m>"), promotion.indexOf("<REQ-ID> AC-<n>"));
     expect(citeAt, `${rendering}: the Phase 3 tests gain the requirement citation`).toBeGreaterThanOrEqual(0);
     expect(citeAt, `${rendering}: the citation is added before the check reads it`).toBeLessThan(at);
     expect(promotion, `${rendering}: a remaining gap stops the promotion`).toMatch(/`test-sufficiency-gap`[^\n]*(?:do not promote|승격하지 않는다)/);
@@ -471,9 +472,9 @@ describe("FR-FLOW-186 AC-4 · FR-FLOW-183 AC-3 — the run-end check passes no S
     // procedure records as a gap and halts the cycle on.
     const end = callerRows(rendering, "kiwi-pipeline").filter((row) => CLOSING_HOP.test(row.when));
     expect(end[0]?.scope, `${rendering}: the cycle-end row says what a split SDS passes`).toMatch(/(?:split|나뉘)[^|]*(?:each|마다)/);
-    const item = numberedItems(sectionAcross(rendering, "kiwi-pipeline", /^#{2,6}\s*2\.5\.4\b/)).find((entry) => /^4\.\s/.test(entry)) ?? "";
-    expect(item, `${rendering}: kiwi-pipeline §2.5.4 item 4 is missing`).not.toBe("");
-    expect(item, `${rendering}: kiwi-pipeline §2.5.4 item 4 passes each file of a split SDS`).toMatch(/(?:split|나뉘)[^.]*(?:each|마다)/);
+    const item = numberedItems(sectionAcross(rendering, "kiwi-pipeline", /^#{2,6}\s*2\.5\.5\b/)).find((entry) => /^4\.\s/.test(entry)) ?? "";
+    expect(item, `${rendering}: kiwi-pipeline §2.5.5 item 4 is missing`).not.toBe("");
+    expect(item, `${rendering}: kiwi-pipeline §2.5.5 item 4 passes each file of a split SDS`).toMatch(/(?:split|나뉘)[^.]*(?:each|마다)/);
   });
 });
 

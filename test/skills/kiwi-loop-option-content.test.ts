@@ -170,7 +170,7 @@ describe("FR-FLOW-035 — orchestrators propagate --mini / --loops to sub-skills
     }
   }
 
-  it("AC-6: kiwi-pm's child-spawn no longer carries a dead MINI= reference to the removed model-swap flag", () => {
+  it("FR-FLOW-035 AC-6: kiwi-pm's child-spawn no longer carries a dead MINI= reference to the removed model-swap flag", () => {
     // The stale `MINI={true if args.mini else false}` leftover must be repurposed. If a `MINI=` token
     // survives, it must sit alongside the new --mini/--loops forwarding (not reference the removed flag).
     for (const variant of VARIANTS) {

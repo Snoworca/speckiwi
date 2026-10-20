@@ -220,7 +220,7 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
   });
 
   // AC-2: the optional fields that make an outcome auditable after the fact.
-  it.each(WAVES_COPIES)("%s adds optional verification fields", (copy) => {
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-2: %s adds optional verification fields", (copy) => {
     const text = read(copy);
     // Split on the h3 sub-headings, not on `## `: the `## 2` chunk contains the REQUIRED table too,
     // so promoting `phase` into the required table stayed green — and a new required field is a
@@ -324,7 +324,7 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
 
   // AC-3 corollary: status stays the only positive completion signal, but the verification record is
   // a necessary precondition — the two statements must not read as a contradiction.
-  it.each(WAVES_COPIES)("%s reconciles status authority with the verification precondition", (copy) => {
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-4: %s reconciles status authority with the verification precondition", (copy) => {
     const text = read(copy);
     expect(
       text,
@@ -333,7 +333,7 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
   });
 
   // AC-4: silence must never read as clean.
-  it.each(WAVES_COPIES)("%s requires a complete residual list and reads absence as unverified", (copy) => {
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-4: %s requires a complete residual list and reads absence as unverified", (copy) => {
     const text = read(copy);
     // The completeness rule and the no-truncation rule must live in ONE sentence: a loose
     // alternation stayed green off the field table's own "전량" cell after the rule was deleted.
@@ -351,7 +351,7 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
   });
 
   // AC-5: persist consumption, never persist approval.
-  it.each(WAVES_COPIES)("%s persists the round counter but not a passing verdict", (copy) => {
+  it.each(WAVES_COPIES)("FR-FLOW-046 AC-5: %s persists the round counter but not a passing verdict", (copy) => {
     const text = read(copy);
     // Bounded distance on purpose: an unbounded `[^\n]*` let the counter clause match the verdict
     // clause's own "영속" later in the same line, so deleting the counter rule stayed green.
@@ -739,7 +739,7 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
 
   // R2-C2: preservation_layer was recorded but wired to nothing, so an honestly recorded
   // unapproved-damage row still produced a passing verdict and an uncancellable complete.
-  it.each(WAVES_COPIES)("%s blocks a passing verdict on an unapproved-damage row", (copy) => {
+  it.each(WAVES_COPIES)("FR-FLOW-057 AC-2: %s blocks a passing verdict on an unapproved-damage row", (copy) => {
     const verification = section(read(copy), /^###\s.*`verification` object/);
     expect(verification, `${copy} must document the verification object`).not.toBe("");
     const rule = line(verification, /`unapproved-damage`[^\n]*`verdict`|`verdict`[^\n]*`unapproved-damage`/);

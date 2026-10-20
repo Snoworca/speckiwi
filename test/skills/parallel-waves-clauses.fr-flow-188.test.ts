@@ -107,18 +107,21 @@ describe("FR-FLOW-187 AC-3 — the allocation check is a non-empty union equal t
     const text = read(copy);
     expect(step(text, 2), `${copy}: PW-2`).toMatch(/그 합집합이 비어 있지 않고 배정 집합과 같은지 확인한다|checks that the union is not empty and equals the allocated set/);
     const predicate = gatePredicate(text, "unallocated-req-id");
-    expect(predicate, `${copy}: gate row`).toMatch(/합집합이 비었거나|union of the wave SDS files' `@req` sets is empty/);
-    expect(predicate).toMatch(/배정 집합 밖의 요구|outside the allocated set/);
-    expect(predicate).toMatch(/배정 집합의 요구를 빠뜨림|misses one of the allocated set/);
+    // FR-FLOW-187 AC-3 (4.1.0): the gate reads the wave entry's requirements[], and the SDS @req union only under --sds.
+    expect(predicate, `${copy}: gate row`).toMatch(/`requirements\[\]` (가 비었거나|is empty)/);
+    expect(predicate).toMatch(/배정 집합과 다름|differs from the wave's allocated set/);
+    expect(predicate).toMatch(/`--sds` 면 wave SDS 들의 `@req` 합집합|under `--sds` the union of the wave SDS files' `@req` sets/);
   });
 
   it.each(BUNDLES)("FR-FLOW-187 AC-3 %s: the orchestrator's 3.c′ check spans every part and requires a non-empty union", (bundle) => {
     const check = lineOf(orchestrator(bundle), /^\*\*3\.c′ 배정 검사\*\*/);
     expect(check).toMatch(/wave 의 SDS 파일마다\(조각으로 나뉘었으면 조각 전부\)/);
-    expect(check).toMatch(/합집합이 비어 있지 않고 그 wave 의 3\.b 배정 집합과 같아야 한다/);
-    expect(gatePredicate(orchestrator(bundle), "unallocated-req-id")).toMatch(/비어 있음/);
-    expect(gatePredicate(waveMaster(bundle), "unallocated-req-id")).toMatch(/합집합이 비었거나/);
-    expect(gatePredicate(orchestrator(bundle), "files-not-grounded")).toMatch(/wave SDS 의 Files · Test Plan 경로/);
+    // FR-FLOW-187 AC-3 (4.1.0): requirements[] equals the allocation; under --sds the SDS union must equal it too.
+    expect(check).toMatch(/`requirements\[\]` 가 비어 있지 않고 그 wave 의 3\.b 배정 집합과 같아야 한다/);
+    expect(check).toMatch(/합집합도 그 배정 집합과 같아야 한다/);
+    expect(gatePredicate(orchestrator(bundle), "unallocated-req-id")).toMatch(/`requirements\[\]` 가 비었거나/);
+    expect(gatePredicate(waveMaster(bundle), "unallocated-req-id")).toMatch(/`requirements\[\]` 가 비었거나/);
+    expect(gatePredicate(orchestrator(bundle), "files-not-grounded")).toMatch(/`files\[\]`\(`--sds` 면 SDS 의 Files · Test Plan 경로도\)/);
   });
 });
 
@@ -142,7 +145,7 @@ describe("FR-FLOW-035 AC-3 — kiwi-wave-master forwards the loop flags to every
     const text = read(copy);
     const calls: Array<[string, string]> = [
       ["PW-2 kiwi-sds", fences(step(text, 2)).find((f) => f.includes('skill: "kiwi-sds"')) ?? ""],
-      ["PW-6 kiwi-pm", fences(step(text, 6)).find((f) => f.includes("/kiwi-pm SDS_PATH=")) ?? ""],
+      ["PW-6 kiwi-pm", fences(step(text, 6)).find((f) => f.includes("/kiwi-pm --req-filter")) ?? ""],
       ["PW-6 worker review", fences(step(text, 6)).find((f) => f.includes('skill: "kiwi-review-fix-loop"')) ?? ""],
       ["PW-12 host review", fences(step(text, 12)).find((f) => f.includes('skill: "kiwi-review-fix-loop"')) ?? ""]
     ];

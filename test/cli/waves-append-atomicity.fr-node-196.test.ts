@@ -34,6 +34,8 @@ function line(seq: number, marker: string): string {
     wave: "wave-1",
     seq,
     marker,
+    // FR-NODE-218 AC-5 - a result line carries its proof.
+    proof: { kind: "digest", ref: "sha256:out" },
     writer: WRITER
   });
 }
@@ -93,7 +95,8 @@ function appendCommand(root: string, marker: string, seq: number, extra: readonl
     event: "result",
     wave: "wave-1",
     seq,
-    marker
+    marker,
+    proof: { kind: "digest", ref: "sha256:out" }
   }, extra);
 }
 

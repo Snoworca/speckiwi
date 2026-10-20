@@ -3,7 +3,8 @@
  *
  * @req FR-NODE-133
  *
- * Charter C2 says every requirement a wave's SDS designs for was allocated at 3.b: the SDS `@req` set
+ * Charter C2 says every requirement a wave declares was allocated at 3.b: its declaration entry's
+ * `requirements[]` (FR-NODE-216), and under `--sds` also its SDS `@req` set
  * (FR-NODE-209 AC-4) is a subset of the 3.b allocation set. `speckiwi sds check` resolves each id
  * against the SRS but cannot tell an id allocated somewhere other than 3.b. This module is C2 as a
  * checked design property. @req FR-FLOW-187 AC-3
@@ -30,8 +31,8 @@ export interface AllocationRecord {
 
 export interface WaveAllocationInput {
   readonly allocation: AllocationRecord;
-  /** The wave SDS's `@req` set, as the lite SDS parser exposes it. */
-  readonly sdsReqIds: readonly string[];
+  /** The wave's declared requirement set: its declaration entry's `requirements[]`, and under `--sds` also its SDS files' `@req` sets. */
+  readonly declaredReqIds: readonly string[];
   /** `{req_id -> [D-nnn]}`, authored by the orchestrator and materialised at `design-item-map.json`. */
   readonly designItemMap: Readonly<Record<string, readonly string[]>>;
   /** `waves.lock.json`'s per-wave `design_items[]` slice. */
@@ -56,11 +57,11 @@ export function checkWaveAllocation(input: WaveAllocationInput): AllocationCheck
   const allocated = new Set(input.allocation.requirementIds);
   const violations: AllocationViolation[] = [];
 
-  for (const reqId of [...new Set(input.sdsReqIds)].sort()) {
+  for (const reqId of [...new Set(input.declaredReqIds)].sort()) {
     if (allocated.has(reqId)) continue;
     violations.push({
       conjunct: "req-id-outside-allocation",
-      detail: `the wave SDS names @req ${reqId}, which is outside allocation.requirement_ids[]`
+      detail: `the wave declares ${reqId}, which is outside allocation.requirement_ids[]`
     });
   }
 

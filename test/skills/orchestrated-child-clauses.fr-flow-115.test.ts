@@ -21,8 +21,8 @@ describe.each(ROOTS)("FR-FLOW-115 AC-2 — %s/kiwi-pm", (root) => {
     const flag = section(read(`${root}/kiwi-pm/SKILL.md`), /^####\s.*`--commit-lane-work`/m);
     expect(flag, `${root}: the --commit-lane-work subsection`).not.toBe("");
     const rule = flag.split("\n").find((line) => line.startsWith("- ") && line.includes("commit 1개")) ?? "";
-    expect(rule, `${root}: the commit-granularity bullet`).toMatch(/SDS 의 kiwi-coder 실행 하나당 commit 1개를 만든다 — 실행이 `done` 으로 끝났을 때만\./);
-    expect(rule, `${root}: the staged set on the same bullet`).toMatch(/stage 대상은 쓰기 집합에서 뽑은 \*\*명시 pathspec\*\* 이며/);
+    expect(rule, `${root}: the commit-granularity bullet`).toMatch(/^- kiwi-coder 실행 하나당 commit 1개를 만든다 — 실행이 `done` 으로 끝났을 때만\./);
+    expect(rule, `${root}: the staged set on the same bullet`).toMatch(/stage 대상은 그 집합에서 뽑은 \*\*명시 pathspec\*\* 이며/);
     expect(rule, `${root}: the whole-tree ban on the same bullet`).toMatch(/\*\*작업 트리 전체를 stage 하지 않는다\*\*\(`git add -A` 금지\)/);
   });
 });

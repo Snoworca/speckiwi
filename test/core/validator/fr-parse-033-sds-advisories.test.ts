@@ -11,8 +11,9 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // absent SDS-W05x advisories) until the step-local pass gains the tdd-mode SDS
 // checks.
 //
-// Contract under test (docs/spec/20.parser-validation.srs.md FR-PARSE-033):
-//   - AC-1: tdd + absent design.md → SDS-W050 warning.
+// Contract under test (docs/spec/20.parser-validation.srs.md FR-PARSE-033, amended in 4.1.0):
+//   - AC-1: tdd + absent design.md → no SDS diagnostic (SDS-W050 and SDS-E054 are retired), with or
+//           without an `## SDS Skip` section; the acceptance check is FR-PARSE-042.
 //   - AC-2: tdd + missing required heading → SDS-W051 naming the heading.
 //   - AC-3: tdd + unmapped SDS-AC → SDS-W052; > 200 lines → SDS-W053.
 //   - AC-4: non-tdd skips the SDS advisories; advisories are warnings only.
@@ -77,15 +78,11 @@ async function scopedDiagnostics(rootPath: string) {
   const root = await resolveProjectRoot(rootPath);
   const workspace = await parseWorkspace(root);
   const design = await loadStepDesign(root, STEP);
-  // FR-PARSE-040 narrowed AC-1: the absence of design.md is a warning only when the step recorded
-  // its skip, so the intent.md the record lives in is loaded here too. The assertions below are
-  // unchanged — AC-1 now writes the record first, which is the precondition under which "SDS-W050 is
-  // a warning" is still the contract.
   const intent = await loadStepIntent(root, STEP);
   return validateWorkspaceScoped(workspace, { step: STEP, design, intent });
 }
 
-/** A complete FR-PARSE-040 skip record, so the AC-1 fixture is a recorded skip rather than a bare absence. */
+/** A 4.0.0 SDS Skip record, which AC-1 says no longer changes the outcome. */
 async function writeSkipRecord(rootPath: string): Promise<void> {
   const stepDir = path.join(rootPath, "docs", "spec", "steps", STEP);
   await mkdir(stepDir, { recursive: true });
@@ -109,17 +106,16 @@ async function writeSkipRecord(rootPath: string): Promise<void> {
 }
 
 describe("FR-PARSE-033 step-local validation covers the SDS design.md", () => {
-  it("FR-PARSE-033 AC-1: tdd mode with an absent design.md emits SDS-W050 as a warning", async () => {
-    const rootPath = await copyFixtureWorkspace("valid-basic");
-    await writeStateMd(rootPath, "tdd", STEP);
-
-    await writeSkipRecord(rootPath);
+  for (const record of [false, true]) {
+    it(`FR-PARSE-033 AC-1: tdd mode with an absent design.md emits no SDS diagnostic (${record ? "with" : "without"} an SDS Skip section)`, async () => {
+      const rootPath = await copyFixtureWorkspace("valid-basic");
+      await writeStateMd(rootPath, "tdd", STEP);
+      if (record) await writeSkipRecord(rootPath);
 
-    const result = await scopedDiagnostics(rootPath);
-    const hit = result.warnings.find((item) => item.code === "SDS-W050");
-    expect(hit).toBeDefined();
-    expect(result.errors).toHaveLength(0);
-  });
+      const result = await scopedDiagnostics(rootPath);
+      expect(result.diagnostics.filter((item) => item.code.startsWith("SDS-"))).toEqual([]);
+    });
+  }
 
   it("FR-PARSE-033 AC-2: tdd mode with a missing required heading emits SDS-W051 naming it", async () => {
     const rootPath = await copyFixtureWorkspace("valid-basic");

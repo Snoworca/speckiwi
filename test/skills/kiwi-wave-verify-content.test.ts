@@ -217,7 +217,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(true);
       });
 
-      it("AC-2: spawns exactly two verifiers over one shared evidence bundle", () => {
+      it("FR-FLOW-044 AC-2: spawns exactly two verifiers over one shared evidence bundle", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(EXACTLY_TWO.test(section), `${variant}: the verifier count must be stated exactly`).toBe(true);
         expect(AT_LEAST_TWO.test(section), `${variant}: the count must be exactly two, never at-least-two`).toBe(false);
@@ -239,7 +239,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(false);
       });
 
-      it("AC-3: differentiates the two verifiers by stance with distinct roll-ups", () => {
+      it("FR-FLOW-044 AC-3: differentiates the two verifiers by stance with distinct roll-ups", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(ALL_MATCH.test(section), `${variant}: the intent verifier must roll up as ALL_MATCH`).toBe(true);
         expect(GAPS_ROLLUP.test(section), `${variant}: the intent verifier must roll up as GAPS on failure`).toBe(true);
@@ -356,7 +356,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(true);
       });
 
-      it("AC-5: sources the intent denominator externally and requires resolvable evidence", () => {
+      it("FR-FLOW-044 AC-5: sources the intent denominator externally and requires resolvable evidence", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(
           windowsAround(section, LIST_REQUIREMENTS, 400).some((w) => /분모|denominator/i.test(w)),
@@ -408,7 +408,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(true);
       });
 
-      it("AC-6: isolates round 1 and re-spawns fresh verifiers for later rounds", () => {
+      it("FR-FLOW-044 AC-6: isolates round 1 and re-spawns fresh verifiers for later rounds", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         // A bare /격리/ presence check was satisfied by the surviving "r1 — 독립·격리" heading while
         // the rule underneath was inverted to hand round 1 the orchestrator's own conclusions.
@@ -433,7 +433,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         );
       });
 
-      it("AC-7: makes the cross-refutation round add-only with a mechanical union merge", () => {
+      it("FR-FLOW-044 AC-7: makes the cross-refutation round add-only with a mechanical union merge", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         // A round is all three steps. Labelling them r1/r2 read as two ROUNDS, which made the
         // cross-refutation step look like something a clean first round could skip — and the Normal
@@ -467,7 +467,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(true);
       });
 
-      it("AC-8: declares per-hunk code review out of scope", () => {
+      it("FR-FLOW-044 AC-8: declares per-hunk code review out of scope", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(OUT_OF_SCOPE_REVIEW.test(section), `${variant}: per-hunk code review must be declared out of scope`).toBe(
           true,
@@ -484,7 +484,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
 describe("FR-FLOW-045 — wave verification convergence and delegated remediation", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: passes only on a round in which no fixes were applied", () => {
+      it("FR-FLOW-045 AC-1: passes only on a round in which no fixes were applied", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         // Anchored to the PASS table row, not the section: the rationale paragraph below repeats the
         // same words in the order NO_FIX_ROUND matches, so deleting the clause from the normative row
@@ -496,7 +496,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         expect(NO_FIX_ROUND.test(section), `${variant}: the pass condition must require a fix-free round`).toBe(true);
       });
 
-      it("AC-2: states the Normal and --max passing conditions", () => {
+      it("FR-FLOW-045 AC-2: states the Normal and --max passing conditions", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(/CRITICAL/.test(section) && /HIGH/.test(section), `${variant}: Normal gate is CRITICAL=0 + HIGH=0`).toBe(
           true,
@@ -540,7 +540,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         }
       });
 
-      it("AC-3: follows the shared loop-option cap contract", () => {
+      it("FR-FLOW-045 AC-3: follows the shared loop-option cap contract", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(MINI_FLAG.test(section), `${variant}: --mini must bind this loop`).toBe(true);
         expect(LOOPS_FLAG.test(section), `${variant}: --loops N must bind this loop`).toBe(true);
@@ -565,7 +565,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(true);
       });
 
-      it("AC-4: never records cap exhaustion as a pass", () => {
+      it("FR-FLOW-045 AC-4: never records cap exhaustion as a pass", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(FAIL_CAP.test(section), `${variant}: cap exhaustion must produce a fail-cap verdict`).toBe(true);
         // Token co-occurrence is not enough: inverting the rule to "그대로 진행한다" stayed green
@@ -590,7 +590,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(false);
       });
 
-      it("AC-5: routes remediation by finding class with an explicit review scope", () => {
+      it("FR-FLOW-045 AC-5: routes remediation by finding class with an explicit review scope", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(REVIEW_FIX_LOOP.test(section), `${variant}: quality findings delegate to kiwi-review-fix-loop`).toBe(true);
         // Anchored to the routing row. A +/-320 window matched the out-of-scope paragraph's own
@@ -612,7 +612,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(true);
       });
 
-      it("AC-6: introduces no fixer of its own", () => {
+      it("FR-FLOW-045 AC-6: introduces no fixer of its own", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(OWN_FIXER_FORBIDDEN.test(section), `${variant}: wave-master must not add its own fixer subagent`).toBe(
           true,
@@ -623,7 +623,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(false);
       });
 
-      it("AC-7: forbids weakening the criterion instead of fixing the defect", () => {
+      it("FR-FLOW-045 AC-7: forbids weakening the criterion instead of fixing the defect", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(
           /AC\s*본문|acceptance[- ]criteria text|AC 텍스트/i.test(section),
@@ -643,7 +643,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(true);
       });
 
-      it("AC-8: does not let the delegated fix loop's own pass close a wave-level finding", () => {
+      it("FR-FLOW-045 AC-8: does not let the delegated fix loop's own pass close a wave-level finding", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(
           windowsAround(section, REVIEW_FIX_LOOP, 420).some(
@@ -675,7 +675,8 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         // 없으면 `*` 글롭으로 대체해도 된다" would leave a token-presence check green while
         // substituting the very glob §5.5.1 forbids.
         expect(
-          /`complete` 이벤트와 `phase=wave-verify` 이벤트에는 그 wave 의 `sds_id` 를 반드시 기록한다/.test(waves),
+          // FR-FLOW-046 AC-6 (4.1.0): the wave's unit id is recorded as sds_id whether or not the wave has an SDS.
+          /`complete` 이벤트와 `phase=wave-verify` 이벤트에는 SDS 유무와 관계없이 그 wave 의 단위 id 를 `sds_id` 로 반드시 기록한다/.test(waves),
           `${variant}: recording sds_id on the complete and wave-verify events must be mandatory, not best-effort`,
         ).toBe(true);
         expect(/글롭|glob/i.test(waves), `${variant}: a glob must never be offered as a substitute here`).toBe(false);
@@ -806,7 +807,7 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         ).toBe(false);
       });
 
-      it("AC-8: halts the whole orchestration under --auto on a residual critical finding", () => {
+      it("FR-FLOW-046 AC-8: halts the whole orchestration under --auto on a residual critical finding", () => {
         const body = skillBody(readWaveSkill(variant));
         const gates = gateSection(body);
         const section = verifySection(body);
@@ -834,7 +835,7 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         );
       });
 
-      it("AC-8: records the --auto activation in the requirement's change notes", () => {
+      it("FR-FLOW-046 AC-8: records the --auto activation in the requirement's change notes", () => {
         // The skill body cannot carry change history (§0.3 forbids it), so the second half of AC-8
         // lives in the SRS Change Notes table and must be asserted there.
         const srs = readFileSync(path.join(REPO_ROOT, "docs", "spec", "60.workflow-release.srs.md"), "utf8");

@@ -4,7 +4,7 @@
 
 관장 요구: `FR-FLOW-122`(본 계약) · `FR-NODE-186`(위상 분류와 role 게이트) · `FR-NODE-185`(재생 승인·체크포인트) · `FR-FLOW-121`(`--defer-srs-mutation`) · `FR-FLOW-188`(wave 당 워커 하나).
 
-**lane 하나는 wave 하나의 워커다.** 이 계약의 레인은 `parallel-waves.md` 가 wave 마다 dispatch 하는 워커 하나이고, wave 안을 다시 lane 으로 나누지 않는다. 레인의 `write_set` 은 그 wave SDS 의 쓰기 집합 — Files 경로 ∪ Test Plan 테스트 파일 — 이다. 레인을 언제 만들고 누가 판정·병합하는지의 순서는 `parallel-waves.md` 가 소유하고, 본 문서는 레인 하나가 지켜야 할 경계를 소유한다.
+**lane 하나는 wave 하나의 워커다.** 이 계약의 레인은 `parallel-waves.md` 가 wave 마다 dispatch 하는 워커 하나이고, wave 안을 다시 lane 으로 나누지 않는다. 레인의 `write_set` 은 stage lanes lock 이 그 lane 에 기록한 `writeSet` 이다 — wave SDS 의 쓰기 집합이 아니다(`--sds` 면 lock 이 선언 항목의 `files[]` 와 SDS Files ∪ Test Plan 테스트 파일의 합집합을 기록한다). 레인을 언제 만들고 누가 판정·병합하는지의 순서는 `parallel-waves.md` 가 소유하고, 본 문서는 레인 하나가 지켜야 할 경계를 소유한다.
 
 ---
 
@@ -113,4 +113,4 @@ add_trace_link · add_verification_evidence · update_status · add_completed_wo
 
 **수확 전에 reap 하지 않는다.** 워크트리를 제거하면 그 안의 gitignore 된 산출물이 함께 증발한다. 순서는 언제나 harvest → verify → integrate → release 다.
 
-레인이 살아 있는 동안(`git worktree list --porcelain` 이 `locked … (pid N)` 을 보고) **재-dispatch 하지 않는다.** 워크트리는 세션 이름과 달리 디스크 아티팩트이므로 재개에 강하다 — 그것이 이 조정 방식의 부수 이점이다.
+`git worktree list --porcelain` 이 그 lane 을 `locked … (pid N)` 로 보고하면 그 워커는 살아 있을 수 있다(FR-FLOW-118: 살아 있을 수 있는 워커는 다시 dispatch 하지 않는다) — 그 lane 을 다시 dispatch 하지 않고 `git worktree unlock` 도 하지 않으며, critical 게이트 `lane-worker-possibly-live` 로 멈춘다(`--auto` 가 결정하지 않는다 — `NEEDS_USER`). 보고에는 워크트리 경로, pid N, 생존 확인 힌트(Windows `tasklist /FI "PID eq N"`, POSIX `kill -0 N`)를 적고, pid N 이 어느 프로세스인지는 확정되지 않았으며 WSL 이나 다른 namespace 의 pid 는 죽은 것처럼 보일 수 있다고 덧붙인다. 다시 dispatch 하거나 잠금을 푸는 것은 사용자의 답이 있을 때만이다. 워크트리는 세션 이름과 달리 디스크 아티팩트이므로 재개에 강하다 — 그것이 이 조정 방식의 부수 이점이다.

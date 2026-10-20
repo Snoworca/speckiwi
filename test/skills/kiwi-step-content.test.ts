@@ -39,7 +39,7 @@ function prohibitionNear(text: string, token: string, window = 48): boolean {
   return after.test(text) || before.test(text);
 }
 
-describe("FR-FLOW-014 kiwi-step SKILL.md content", () => {
+describe("FR-FLOW-014 · FR-FLOW-038 AC-4 kiwi-step SKILL.md content", () => {
   for (const variant of VARIANTS) {
     describe(`variant: ${variant}`, () => {
       it("has frontmatter name=kiwi-step and a description, and no changelog section", () => {

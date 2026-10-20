@@ -12,6 +12,7 @@ import {
   FREEZE_TARGETS,
   ORCHESTRATE_DEFERRED_VERB_ROWS,
   ORCHESTRATE_MUTATION_VERB_ROWS,
+  ORCHESTRATE_LATER_VERB_ROWS,
   ORCHESTRATE_PHASE1_VERB_ROWS,
   ORCHESTRATE_PHASE2_VERB_ROWS,
   ORCHESTRATE_REGISTERED_VERB_ROWS,
@@ -133,6 +134,11 @@ describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
       "validate",
       "auto-gate decide"
     ]);
+
+    // IR-CLI-082 AC-1 (4.1.0) — a row a later requirement registers is declared beside the phase rows,
+    // not inside them: IR-CLI-104 adds `wave status`.
+    expect([...ORCHESTRATE_LATER_VERB_ROWS]).toEqual(["wave status"]);
+    expect(ORCHESTRATE_REGISTERED_VERB_ROWS).toContain("wave status");
 
     const leaves = orchestrateLeafPaths();
     expect(leaves.length, "the namespace must register leaves").toBeGreaterThan(0);
@@ -256,7 +262,7 @@ describe("IR-CLI-082 AC-5 — --json everywhere, --dry-run and an envelope on ev
     const root = await tempRoot();
     const pipes = io();
     const exit = await main(
-      ["--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", verb: "author-design", event: "intent", wave: "wave-1" }), "--dry-run", "--json"],
+      ["--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1", inputs_digest: "sha256:in" }), "--dry-run", "--json"],
       pipes
     );
     const payload = JSON.parse(drain(pipes.stdout)) as Record<string, unknown>;

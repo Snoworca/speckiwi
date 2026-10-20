@@ -46,13 +46,13 @@ describe("FR-NODE-119 — the three disjuncts", () => {
   });
 });
 
-describe("FR-NODE-119 AC-1/AC-2 — the verification_cmd disjunct and its one retry against the same SDS", () => {
-  it("FR-NODE-119 AC-1 refuses when the command exits non-zero, is re-run once against the same SDS, and exits non-zero again", () => {
+describe("FR-NODE-119 AC-1/AC-2 — the verification_cmd disjunct and its one retry as the same unit", () => {
+  it("FR-NODE-119 AC-1 refuses when the command exits non-zero, is re-run once as the same unit, and exits non-zero again", () => {
     const outcome = evaluateSerialUnitGate(input({ verification: { firstExit: 1, retryExit: 1 } }));
     expect(outcome.verdict).toBe("refuse");
     expect(outcome.code).toBe("serial-unit-failed");
     expect(outcome.disjunct).toBe("verification-cmd-failed");
-    expect(outcome.detail).toContain("same SDS");
+    expect(outcome.detail).toContain("same unit");
   });
 
   it("FR-NODE-119 AC-1 asks for the retry rather than refusing when the first run failed and no retry has been made", () => {
@@ -62,7 +62,7 @@ describe("FR-NODE-119 AC-1/AC-2 — the verification_cmd disjunct and its one re
     expect(outcome.retryConsumed).toBe(false);
   });
 
-  it("FR-NODE-119 AC-1 passes when the retry against the same SDS exits zero", () => {
+  it("FR-NODE-119 AC-1 passes when the retry as the same unit exits zero", () => {
     const outcome = evaluateSerialUnitGate(input({ verification: { firstExit: 1, retryExit: 0 } }));
     expect(outcome.verdict).toBe("pass");
     expect(outcome.retryConsumed).toBe(true);

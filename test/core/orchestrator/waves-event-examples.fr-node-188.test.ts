@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseWavesJournal } from "../../../src/core/orchestrator/waves-journal.js";
 import { validateWavesJournal } from "../../../src/core/orchestrator/waves-validate.js";
+import { WAVES_EVENT_REQUIRED_BY_SCOPE, eventScopeOf } from "../../../src/core/orchestrator/journal-schema.js";
+import { JOURNAL_WRITER_STAMP } from "../../../src/cli/commands/orchestrate.js";
 import { journalRoot, type Json } from "./waves-fixtures.js";
 
 // @req FR-NODE-188
@@ -22,17 +24,25 @@ const CONTRACT_COPIES = ["skills/claude", "skills/codex", "skills/etc", ".agents
   (root) => `${root}/_shared/kiwi/waves-event.md`
 );
 
-/** Every `echo '<json>' >> ...` append the contract ships, in document order. */
+/**
+ * Every payload the contract hands to `orchestrate journal append`, in document order: the JSON line
+ * written into `$PAYLOAD` by the `cat > "$PAYLOAD" <<'JSON'` heredoc before each append (FR-NODE-218
+ * AC-4, AC-6 — the shell `echo >>` form left with 4.1.0).
+ */
 function examples(rel: string): Json[] {
-  const text = readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lines = readFileSync(path.join(REPO_ROOT, rel), "utf8").split(/\r?\n/);
   const found: Json[] = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const match = /^echo '(\{.*\})'\s*>>/.exec(raw);
-    const captured = match?.[1];
-    if (captured === undefined) continue;
-    found.push(JSON.parse(captured) as Json);
-  }
+  lines.forEach((raw, index) => {
+    if (!/^cat > "\$PAYLOAD" <<'JSON'\s*$/.test(raw)) return;
+    found.push(JSON.parse(lines[index + 1] as string) as Json);
+  });
   return found;
+}
+
+/** The line as `journal append` writes it: the tool fills `ts` and stamps `writer`. */
+function asAppended(line: Json): Json {
+  const record = line as Record<string, unknown>;
+  return { ts: "2026-10-20T00:00:00.000Z", ...record, writer: JOURNAL_WRITER_STAMP, run_id: "run-a" } as Json;
 }
 
 describe.each(CONTRACT_COPIES)("the shipped emit examples validate (%s)", (copy) => {
@@ -41,8 +51,17 @@ describe.each(CONTRACT_COPIES)("the shipped emit examples validate (%s)", (copy)
     expect(examples(copy)).toHaveLength(3);
   });
 
+  it("FR-NODE-218 AC-5 carries every field its scope requires, so journal append accepts it", () => {
+    for (const line of examples(copy)) {
+      const record = line as Record<string, unknown>;
+      const scope = eventScopeOf(record);
+      const missing = scope === null ? [] : WAVES_EVENT_REQUIRED_BY_SCOPE[scope].filter((field) => record[field] === undefined);
+      expect(missing, JSON.stringify(record).slice(0, 120)).toEqual([]);
+    }
+  });
+
   it("produces no error diagnostic when appended as one run", async () => {
-    const lines = examples(copy).map((line) => ({ ...(line as Record<string, unknown>), run_id: "run-a" }) as Json);
+    const lines = examples(copy).map(asAppended);
     const root = await journalRoot(lines);
     const view = await parseWavesJournal(root, { runId: "run-a", engine: "kiwi-wave-master" });
     const errors = validateWavesJournal(view).filter((entry) => entry.severity === "error");

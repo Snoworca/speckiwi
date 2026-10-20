@@ -33,20 +33,22 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ## 4. Lifecycle Gate (kiwi-pipeline-v1 §4.2)
 
-부팅 T0 단계 — SDS `@req` 집합(`SKILL.md` §2.2 `req_ids`)을 1회 `list_requirements` read 로 일괄 평가. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
+부팅 T0 단계 — 요구 집합(`SKILL.md` §2.2 `req_ids`)을 1회 `list_requirements` read 로 일괄 평가. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
 
 ### 4.1 차단 분류
 
 | 분류 | REQ Stability | 동작 |
 |---|---|---|
 | 진행 가능 | `evolving` / `stable` | OK |
-| 진행 불가 (정상) | `draft` | **차단** + interactive 2지선다 / `--auto` 는 그 SDS 를 실행하지 않고 요구 필터로 돌려보낸다 (`SKILL.md` §3.6) |
-| 진행 불가 (정책) | `deprecated` / `frozen` | **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
+| 진행 불가 (정상) | `draft` | 요구 집합 실행: 요구 집합에서 빼고 보고한다. `--sds` 실행: **차단** + interactive 2지선다 / `--auto` 는 그 SDS 를 실행하지 않고 요구 필터로 돌려보낸다 (`SKILL.md` §3.6) |
+| 진행 불가 (정책) | `deprecated` / `frozen` | 요구 집합 실행: 요구 집합에서 빼고 보고한다. `--sds` 실행: **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
 | target 비어있음 | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
+
+요구 집합 실행에서 남은 요구가 없으면 HALT 한다.
 
 ### 4.2 interactive 2지선다 (draft 차단 시)
 
-SDS 하나는 실행 하나라 요구 하나만 떼어 내 진행할 수 없다. 요구 단위로 나누는 일은 SDS 범위를 정하는 `$kiwi-sds` 의 몫이다.
+아래 2지선다는 `--sds` 실행에만 적용한다 — SDS 하나는 실행 하나라 요구 하나만 떼어 내 진행할 수 없다. 요구 단위로 나누는 일은 SDS 범위를 정하는 `$kiwi-sds` 의 몫이다.
 
 - **(A) HALT** — `$kiwi-srs-feasibility` 로 승급하거나 `$kiwi-sds` 요구 필터로 그 REQ 를 뺀 SDS 를 다시 쓴 뒤 재시도 (권장)
 - **(B) override 진행** — 사용자 책임. worklog `lifecycle_override` 기록 + 보고서에 경고 명시
@@ -65,7 +67,7 @@ SDS 하나는 실행 하나라 요구 하나만 떼어 내 진행할 수 없다.
 ### 4.5 의사코드
 
 ```
-FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
+FUNCTION APPLY_LIFECYCLE_GATE(state, args):
     IF args.skip_lifecycle_gate:
         worklog.append({event: "lifecycle_override", reason: "--skip-lifecycle-gate"})
         RETURN
@@ -77,7 +79,7 @@ FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
     IF target != state.target_slug AND state.target_slug:
         User clarification gate(f"SDS target={state.target_slug} vs 활성 target={target} 불일치 — 진행?")
 
-    # 2. 일괄 read — 대상은 SDS @req 집합
+    # 2. 일괄 read — 대상은 요구 집합(req_ids)
     TRY:
         reqs = MCP_CALL(list_requirements, target=target, projection="compact")
     CATCH mcp_unavailable:
@@ -103,6 +105,13 @@ FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
 
     # 4. 차단 처리
     IF NOT blocked: RETURN
+
+    IF NOT state.sds_path:                       # 요구 집합 실행 — 빼고 보고, 남은 요구가 없으면 HALT
+        state.req_ids = [id FOR id IN state.req_ids IF id NOT IN [r.id FOR r IN blocked]]
+        state.lifecycle_skips = [{req_id: r.id, reason_class: "draft-stability-skip"} FOR r IN blocked]
+        SAVE_STATE(state)
+        IF NOT state.req_ids: HALT("Stability gate 뒤 남은 요구 없음")
+        RETURN
 
     deprecated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated", "frozen"}]
     IF deprecated_or_frozen:
@@ -147,11 +156,11 @@ FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
 - 기존 테스트의 **약화·삭제** 버블업 (§0.G7 `existing-test-weakened-or-deleted`) — 회귀 안전망 제거는 위원회 결정 대상이 아니다
 - MCP mutation ≥10건 batch (kiwi-coder §0.8)
 - T-final dryRun 거부 / transition guard 거부 (§0.G6)
-- SDS SHA256 mismatch on `--resume` (§5.4)
+- `--sds` 실행의 SDS SHA256 mismatch on `--resume` (§5.4)
 
 ### 5.2 NEEDS_USER 재spawn 상한 (§0.G3 재기재)
 
-같은 SDS 실행에서 NEEDS_USER 3회 누적 시 (재spawn 한도) 2지선다:
+같은 실행에서 NEEDS_USER 3회 누적 시 (재spawn 한도) 2지선다:
 
 - **(A) 추가 질문 1회 더 시도** — `attempts` 카운터는 계속 증가, 다음 NEEDS_USER 도착 시 다시 2지선다
 - **(B) 중단 + blocked 기록** — `run.status = "blocked"`, `state.last_question` 보존, SAVE_STATE 후 RETURN (사용자가 `--resume` 으로 재개 가능)
@@ -165,13 +174,13 @@ FUNCTION APPLY_LIFECYCLE_GATE(sds, state, args):
 
 ### 5.4 `--resume` 동작
 
-`.kiwi/sessions/{sds_id}/pm-state.json` 로드 후:
+`.kiwi/sessions/{run_id}/pm-state.json` 로드 후:
 
 1. **`run.status = "done"` → 실행 skip**, T-final 이후 단계만 이어간다
 2. **`run.status = "blocked"` + `last_question` 존재 → 재제시**: 사용자에게 질문 다시 보여주고 답변 받음 → 답변 주입 후 재spawn
 3. **`run.status = "failed"` → 사용자 재시도 게이트**: 재시도/중단 2지선다
 4. **`run.status = "running"` → 비정상 종료 의심**: 이전 세션이 강제 종료된 흔적. `pending` 으로 복구 후 사용자 확인 (interactive). `--auto` 시 자동 `pending` 복구 + 진행
-5. **`sds_sha256` mismatch**: 외부에서 SDS 가 바뀌었다. 사용자 게이트 3지선다:
+5. **`sds_sha256` mismatch** (`--sds` 실행만): 외부에서 SDS 가 바뀌었다. 사용자 게이트 3지선다:
    - (A) 새 SHA 로 갱신 + `check_sds` 재실행 후 계속 진행 (의도적 수정)
    - (B) 중단 (멀티 PM 인스턴스 / 외부 변경 의심)
    - (C) diff 표시 후 재결정 (재귀)
@@ -262,13 +271,15 @@ FUNCTION VERIFY_SHA_ON_RESUME(state, args):
 
 ### 6.1 실행 결과 판정
 
-kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 의 commit 1개를 만든다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
+kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 의 commit 1개를 만든다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
 
 ### 6.2 T-final SRS Status 마무리
 
 `--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (SKILL.md §1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 몫이 되기 때문이다. 보고서 작성(§6.3)은 그대로 수행한다.
 
-**문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SDS `@req` 집합을 일괄 마무리한다.
+**SDS 없는 실행**: `req_ids` 의 요구마다 `speckiwi coverage --tests --ids <그 요구>` (MCP `check_test_sufficiency`) 가 gap 을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 `implemented` 로 올리고, 나머지는 gap 과 함께 보고한다. `add_completed_work` 는 그 집합으로 기록하며 요약 종류는 `req-summary` 다. `--no-final` 이면 종전처럼 건너뛴다. 아래 의사코드가 두 경우를 함께 적는다 — `covered` 가 SDS 없는 실행의 coverage 조건이다.
+
+**문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구 집합(`--sds` 면 SDS `@req` 집합)을 일괄 마무리한다.
 
 **의사코드**:
 
@@ -278,13 +289,14 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
     reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
     reqs_by_id = {r.id: r for r in reqs}
 
-    # 2. proposals 생성 (forward-only) — 대상은 SDS @req 집합
+    # 2. proposals 생성 (forward-only) — 대상은 요구 집합(req_ids)
     STATUS_ORDER = ["planned", "in_progress", "implemented", "verified"]
     all_done = (state.run.status == "done")
+    covered = state.req_ids IF state.sds_path ELSE COVERAGE_CLEAR(state.req_ids)   # SDS 없는 실행: coverage --tests --ids 가 gap 없고 인용 테스트가 통과한 요구
     proposals = []
     FOR req_id IN state.req_ids:
         req = reqs_by_id.get(req_id)
-        IF NOT req: CONTINUE   # SDS @req 가 가리키지만 활성 target 에 없는 REQ — 무시
+        IF NOT req: CONTINUE   # 집합이 가리키지만 활성 target 에 없는 REQ — 무시
         current_idx = STATUS_ORDER.index(req.status) IF req.status IN STATUS_ORDER ELSE -1
         target_idx = STATUS_ORDER.index("implemented")
 
@@ -295,7 +307,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
             all_done: all_done
         }
 
-        IF all_done AND current_idx < target_idx AND current_idx >= 0:
+        IF all_done AND req_id IN covered AND current_idx < target_idx AND current_idx >= 0:
             proposals.append({ req_id: req_id, from: req.status, to: "implemented" })
 
     # 3. 사용자 승인 (--auto 면 자동, 단 backward transition 차단)
@@ -335,9 +347,9 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
                     from: p.from, to: "implemented", dry_run: is_pm_dry_run
                 })
 
-                # sds-summary completed-work entry — REQ 별 1회 호출. speckiwi 표준 필드만 사용.
+                # req-summary / sds-summary completed-work entry — REQ 별 1회 호출. speckiwi 표준 필드만 사용.
                 summary_text = (
-                    f"[sds-summary] sds_id={state.run_id} "
+                    f"[{'sds' if state.sds_path else 'req'}-summary] run_id={state.run_id} "
                     f"sds={state.sds_path} "
                     f"— SDS 구현 완료, coder_run_id={state.run.coder_run_id}"
                 )
@@ -368,22 +380,22 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
 | `update_status` | `id, status` | — | 본 호출에 `dryRun` 옵션 없음. PM 의 --dry-run flag 시 호출 자체를 skip |
 | `add_completed_work` | `date, summary` | `requirementIds, target, scope, reportPaths, allowIncomplete, dryRun` | `requirementIds[]` 로 다중 REQ 묶기 가능하지만, REQ 별 1회 호출로 기록을 요구별로 남긴다 |
 
-**실행이 성공으로 끝나지 않았을 때** (실패·차단) 해당 REQ 의 `all_done == False` → `update_status` 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). `add_completed_work(sds-summary)` 도 skip. 보고서 §6.3 에서 미완료 REQ 목록을 명시.
+**실행이 성공으로 끝나지 않았을 때** (실패·차단) 해당 REQ 의 `all_done == False` → `update_status` 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). `add_completed_work(req-summary)` · `add_completed_work(sds-summary)` 도 skip. 보고서 §6.3 에서 미완료 REQ 목록을 명시.
 
 **Stability 변경 / verified 승급**: PM 권한 아님. Stability 변경은 kiwi-srs-feasibility, verified 전이는 kiwi-review-fix-loop `--close-reqs` 영역.
 
 ### 6.3 종료 보고서 + doculight 표시
 
-`.kiwi/sessions/{sds_id}/reports/pm-{ts}.md` 작성. **8개 섹션**:
+`.kiwi/sessions/{run_id}/reports/pm-{ts}.md` 작성. **8개 섹션**:
 
-1. **요약** — SDS 경로 / 실행 status / attempts / 소요 시간
+1. **요약** — 요구 집합(`--sds` 면 SDS 경로) / 실행 status / attempts / 소요 시간
 2. **실행 결과** — coder_run_id / result_summary / `run.changed` / commit sha (`--commit-lane-work` 일 때)
 3. **req_coverage 표** — REQ-ID / 진입 시 status / 종료 시 status / all_done / verified 여부
 4. **SRS mutation 로그** — `state.final_mutations` 시간순. `pending_mutations` 도 별도 명시 (MCP 미가용으로 보류된 항목, 사용자 수동 처리 안내)
 5. **NEEDS_USER 이력** — severity 분포 + 질문 본문 요약
 6. **`--auto` 자동 해소 항목** (있을 때만)
 7. **lifecycle gate 초기 차단 항목** — `state.lifecycle_gate_state.blocked_req_ids` + 사용자 선택 (A/B) 또는 `--auto` 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 `reason_class` (`draft-stability-skip`) 와 함께 잔여로 열거하며, 잘라내지 않고 **전량** 적는다
-8. **§6.4 hand-off** — 넘긴 인자와 `kiwi-sds --close` 두 호출의 결과(옮긴 결정, 지운 SDS 파일 — 미커밋), 또는 hand-off 하지 않은 사유 (`--no-final` / `--review-hop-owned-by-parent`). 보고서는 hand-off 앞에 쓰이므로 두 `kiwi-sds --close` 결과와 review-fix-loop 의 "후속 close 결과" 는 hand-off 가 끝난 뒤 이 절 끝에 덧붙인다
+8. **§6.4 hand-off** — 넘긴 인자와 (`--sds` 실행이면) `kiwi-sds --close` 두 호출의 결과(옮긴 결정, 지운 SDS 파일 — 미커밋), 또는 hand-off 하지 않은 사유 (`--no-final` / `--review-hop-owned-by-parent`). 보고서는 hand-off 앞에 쓰이므로 두 `kiwi-sds --close` 결과와 review-fix-loop 의 "후속 close 결과" 는 hand-off 가 끝난 뒤 이 절 끝에 덧붙인다
 
 **Stability drift 경고** (§4 종료 시 비교): `lifecycle_gate_state.stability_snapshot` vs 종료 시점 stability 비교. drift 발견 시 §1 또는 §7 섹션 끝에 경고 박스 추가 (의도된 변경일 수도 있어 차단 안 함, 단 보고서에 명시).
 
@@ -426,6 +438,23 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 단독 실행은 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다 — 미루거나 건너뛰는 갈래는 두지 않는다. 끝은 실행이 `done` 또는 `failed` 로 확정된 때다. `blocked` 는 끝이 아니라 멈춤이며 `--resume` 으로 이어간다.
 
 ```
+Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음}{' --close-reqs' if CLOSE_SAFE(state) else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+```
+
+- SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 닫을 SDS 가 없다. 열린 SDS 를 보고만 한 실행(§1.1)도 그 SDS 를 닫지 않는다(FR-FLOW-183 AC-1). `--sds` 실행은 §6.4.1 의 세 호출로 넘긴다.
+- `--req-filter` 는 이 실행의 요구 범위를 넘긴다(`--sds` 실행은 `--sds` 도) — review-fix-loop 의 마지막 단계인 테스트 충분성 확인(`../../_shared/kiwi/test-sufficiency.md`)이 이 실행의 범위를 본다.
+- `--close-reqs` 는 실행이 `done` 으로 끝나 T-final 이 요구를 `implemented` 로 올렸을 때(`CLOSE_SAFE`) — `--sds` 실행은 옮기기도 끝났을 때(`MOVED`) — 만 붙인다. 실행이 `failed` 이거나 critical 로 격상된 NEEDS_USER 가 남은 채로 `--close-reqs` 를 붙이는 것은 §0.G7 `followup-review-fix-loop-close-unsafe` 가 막는다 — 되감을 수 없는 `verified` 를 향하기 때문이며 `--auto` 도 이 멈춤을 덮지 못한다. 그 경우에도 hand-off 는 `--close-reqs` 없이 돈다.
+- `--no-final` 이 있으면 hand-off 하지 않는다 — 워커 실행이며 리뷰는 호출자가 돈다.
+- `--review-hop-owned-by-parent` 를 **명시적 인자로** 받으면 hand-off 하지 않는다 — 부모(`kiwi-pipeline` 사이클)가 이 실행 뒤 리뷰 홉을 직접 돈다. 인자가 없으면 진입 경로를 추론하지 않고 언제나 넘긴다.
+- 부모 PM 의 `--model` / `--max` / `--mini` / `--loops N` 은 args 에 전파한다 (loop-option.md §6).
+- review-fix-loop 의 종료 상태 (`closed_reqs.json`) 는 본 PM 보고서 8번 절 끝의 "후속 close 결과" 에 첨부 (review-fix-loop 종료 직후 갱신, best-effort).
+- PM 자체는 `update_status("verified")` 를 호출하지 않는다 — verified 전이는 review-fix-loop 의 몫이다 (`SKILL.md` §0.12 mutation 분담 SSOT 불변).
+
+#### 6.4.1 `--sds` 실행의 hand-off (FR-FLOW-183)
+
+`--sds` 실행은 리뷰 앞뒤로 `kiwi-sds --close` 를 부른다 — 위 호출 대신 아래 세 호출이다:
+
+```
 Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
 MOVED = CLOSE_SAFE(state) AND check_sds(state.sds_path).status == "closed"
 Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음} --sds {state.sds_path}{' --close-reqs' if MOVED else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
@@ -433,13 +462,6 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 ```
 
 - `$kiwi-sds --close` 는 `CLOSE_SAFE` 일 때, 곧 hand-off 가 `--close-reqs` 를 붙일 때만 위 순서로 두 번 부른다 — 리뷰 앞에서 SDS 의 해석 결정을 SRS 로 옮기고(승급 전이어야 한다, FR-FLOW-183), 리뷰와 그 마지막 단계인 테스트 충분성 확인 뒤에 요구가 모두 승급됐으면 SDS 파일을 지운다 (`$kiwi-sds` §3). 인자는 이 실행의 SDS id(`state.run_id`, `SKILL.md` §0.14)와 리뷰 호출과 같은 `--auto` / `--max` / `--model` / 루프 플래그다. 첫 호출 뒤 `check_sds` 로 SDS Status 를 다시 읽어 `closed` 가 아니면(옮기기가 `sds-close-after-promotion` · `stability-frozen-violation` · `validate-spec-error` 등으로 멈춤) 옮기기가 끝나지 않은 것이다 — 리뷰는 `--close-reqs` 없이 돌고(`MOVED` 거짓), 두 번째 호출은 하지 않으며, 멈춘 gate id 를 보고서 8번 절에 적는다. 승급은 옮기기가 끝난 뒤에만 온다(FR-FLOW-183). `--close-reqs` 없이 넘기는 실행은 승급하지 않으므로 SDS 를 닫지 않는다 — 닫힌 SDS 는 다음 kiwi-pm 실행이 받지 않는다(`SKILL.md` §1.1). 지운 파일은 커밋하지 않으므로 보고서에 그렇게 적는다.
-- `--req-filter` 와 `--sds` 는 이 SDS 의 요구 범위를 넘긴다 — review-fix-loop 의 마지막 단계인 테스트 충분성 확인(`../../_shared/kiwi/test-sufficiency.md`)이 이 실행의 범위를 본다.
-- `--close-reqs` 는 실행이 `done` 으로 끝나 T-final 이 요구를 `implemented` 로 올렸고 (`CLOSE_SAFE`) 옮기기가 끝났을 때(`MOVED`)만 붙인다. 실행이 `failed` 이거나 critical 로 격상된 NEEDS_USER 가 남은 채로 `--close-reqs` 를 붙이는 것은 §0.G7 `followup-review-fix-loop-close-unsafe` 가 막는다 — 되감을 수 없는 `verified` 를 향하기 때문이며 `--auto` 도 이 멈춤을 덮지 못한다. 그 경우에도 hand-off 는 `--close-reqs` 없이 돈다.
-- `--no-final` 이 있으면 hand-off 하지 않는다 — 워커 실행이며 리뷰는 호출자가 돈다.
-- `--review-hop-owned-by-parent` 를 **명시적 인자로** 받으면 hand-off 하지 않는다 — 부모(`kiwi-pipeline` 사이클)가 이 실행 뒤 리뷰 홉을 직접 돈다. 인자가 없으면 진입 경로를 추론하지 않고 언제나 넘긴다.
-- 부모 PM 의 `--model` / `--max` / `--mini` / `--loops N` 은 args 에 전파한다 (loop-option.md §6).
-- review-fix-loop 의 종료 상태 (`closed_reqs.json`) 는 본 PM 보고서 8번 절 끝의 "후속 close 결과" 에 첨부 (review-fix-loop 종료 직후 갱신, best-effort).
-- PM 자체는 `update_status("verified")` 를 호출하지 않는다 — verified 전이는 review-fix-loop 의 몫이다 (`SKILL.md` §0.12 mutation 분담 SSOT 불변).
 
 ---
 
@@ -449,13 +471,14 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 
 | 실패 조건 | 동작 |
 |---|---|
-| `SDS_PATH` 부재 또는 파일 없음 | HALT — "`$kiwi-sds` 로 SDS 를 먼저 작성·합의하십시오" |
+| 요구 집합이 비었음 (§1.1 · §4) | HALT |
+| `--sds <path>` 의 파일 없음 | HALT — "`$kiwi-sds` 로 SDS 를 먼저 작성·합의하십시오" |
 | 경로가 `docs/sds/*.sds.md` 가 아님 | HALT |
 | `Profile ≠ lite` | HALT — tdd step `design.md` 는 `$kiwi-tdd` 몫 |
 | Status ≠ `agreed` | HALT — `$kiwi-sds` 로 합의 |
 | `check_sds` error ≥1 | HALT — 진단 코드와 줄을 보고하고 `$kiwi-sds` 로 수정 |
 | SDS `@req` 집합이 비어 있음 | HALT |
-| `sds_id` 정규식 위반 (`SKILL.md` §0.14) | HALT |
+| `run_id` 정규식 위반 (`SKILL.md` §0.14) | HALT |
 
 ### 7.2 런타임 에러
 
@@ -470,15 +493,15 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 | `update_status` transition guard 거부 (MCP 응답 reject) | catch → `state.pending_mutations[]` 적재 + 보고서 명시 + 사용자 수동 처리 안내. 강제 우회 없음. (`update_status` MCP 에 dryRun 옵션 없음 — 사전 시뮬레이션 불가, 호출 시점에 거부 가능성 catch) |
 | 자식이 `update_status` backward 시도 | kiwi-coder §0.G5 자체 차단. PM 무대응 |
 | `--auto` + business-decision NEEDS_USER | HALT 후 사용자 대화 복귀 |
-| `--auto` + lifecycle gate `draft` | SDS 를 실행하지 않고 요구 필터로 돌려보냄 + 잔여 보고 (`SKILL.md` §3.6). `deprecated`/`frozen` 은 종전대로 HALT |
-| SDS SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
+| `--auto` + lifecycle gate `draft` | 요구 집합 실행은 그 요구를 빼고 진행 + 잔여 보고. `--sds` 실행은 SDS 를 실행하지 않고 요구 필터로 돌려보냄 + 잔여 보고 (`SKILL.md` §3.6). `deprecated`/`frozen` 은 종전대로 HALT |
+| `--sds` 실행의 SDS SHA256 mismatch on `--resume` | 사용자 게이트 3지선다 (§5.4). `--auto` 면 HALT |
 | `pm.lock` 30분 stale | 자동 해제 + 경고 log |
 | `pm.lock` 다른 host 활성 | 명시적 차단 (`--force` 필요) |
 | `run.status="running"` 잔존 on `--resume` | `pending` 으로 복구 + 사용자 확인 (interactive) / `--auto` 자동 복구 |
 
 ### 7.3 Out of Scope (v0.1)
 
-- SRS / feasibility / SDS 작성 스킬 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-sds 영역) — §6.4 의 `kiwi-sds --close` 마감 호출만 예외다. PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
+- SRS / feasibility / SDS 작성 스킬 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-sds 영역) — §6.4.1 의 `kiwi-sds --close` 마감 호출(`--sds` 실행)만 예외다. PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
 - SDS 수정 (kiwi-sds 영역 — 설계가 틀렸으면 NEEDS_USER 로 올린다)
 - 구현 리뷰 (kiwi-review-fix-loop 영역 — kiwi-pm 은 §6.4 에서 그 스킬로 넘길 뿐 직접 리뷰하지 않는다)
 - 풀 파이프라인 오케스트레이션 (kiwi-pipeline 영역)
@@ -494,8 +517,11 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 ## 8. 호출 예시
 
 ```bash
-# 기본 실행 (interactive)
-$kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md
+# 기본 실행 (interactive) — 요구 ID 집합
+$kiwi-pm --req-filter FR-TODO-001,FR-TODO-002
+
+# 사용자가 준 SDS 로 구현
+$kiwi-pm --sds docs/sds/4.0.0-todo-service.sds.md
 
 # 자동 모드 + local-LLM 안정성 우선
 $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto
@@ -514,20 +540,20 @@ $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 
 ## 9. 설계 요약
 
-`$kiwi-pm` v0.1 은 합의된 lite SDS 한 파일을 입력으로 받아 **그 SDS 를 위임 worker 위임으로 kiwi-coder 자식 실행 하나에 격리** 하는 runner. PM 책임 6항:
+`$kiwi-pm` v0.1 은 요구 ID 집합(사용자가 주면 합의된 lite SDS 한 파일)을 입력으로 받아 **그 작업을 위임 worker 위임으로 kiwi-coder 자식 실행 하나에 격리** 하는 runner. PM 책임 6항:
 
-1. **부팅 SDS 검사 + lifecycle gate** — `check_sds` 로 lite SDS 를 검사하고, speckiwi `list_requirements` read 로 SDS `@req` 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
-2. **SDS 하나 = kiwi-coder 실행 하나 + 3상태 프로토콜** — delegated worker child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (`SKILL.md` §3)
+1. **부팅 입력 확정 + lifecycle gate** — 요구 집합을 확정하고(`--sds` 면 `check_sds` 로 lite SDS 를 검사하고), speckiwi `list_requirements` read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+2. **호출 하나 = kiwi-coder 실행 하나 + 3상태 프로토콜** — delegated worker child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (`SKILL.md` §3)
 3. **`--auto` severity 가드레일** — clarification 자동 / business-decision 강제 HALT / rollback-confirmation 자동 승인 (§5.1)
-4. **T-final REQ status 마무리** — 실행이 성공으로 끝났으면 SDS `@req` 집합에 `update_status(id, "implemented")` + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
+4. **T-final REQ status 마무리** — 실행이 성공으로 끝났으면 요구 집합(`--sds` 면 SDS `@req` 집합)에 `update_status(id, "implemented")` + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
 5. **보고서 작성 + doculight MCP 표시** — 8섹션 마크다운 + (가용 시) `open_markdown` (§6.3)
-6. **리뷰 hand-off** — 단독 실행이면 끝에서 항상 `kiwi-review-fix-loop` 로 넘긴다. `--close-reqs` 를 붙이는 실행은 그 앞뒤로 `kiwi-sds --close` 를 부른다 (§6.4)
+6. **리뷰 hand-off** — 단독 실행이면 끝에서 항상 `kiwi-review-fix-loop` 로 넘긴다. `--sds` 실행이 `--close-reqs` 를 붙이면 그 앞뒤로 `kiwi-sds --close` 를 부른다 (§6.4.1)
 
 ### MCP 호출 분담 표 (speckiwi 실제 schema)
 
 | 호출 | 호출자 | 시점 | 시그니처 |
 |---|---|---|---|
-| `check_sds` (read) | **kiwi-pm** | T-1 입력 검사 | `{path}` |
+| `check_sds` (read) | **kiwi-pm** | T-1 입력 검사 (`--sds`) | `{path}` |
 | `get_active_target` (read) | **kiwi-pm** | T0 lifecycle gate | `{}` |
 | `list_requirements` (read) | **kiwi-pm** | T0 / T-final | `{target?, status?, stability?, scope?, tag?, type?}` |
 | `add_trace_link` | kiwi-coder (자식) | 실행 종료 시 (Code anchor) | `{id, type, reference, relation, [notes]}` (flat) |
@@ -535,7 +561,7 @@ $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 | `update_status(in_progress)` | kiwi-coder (자식) | 실행 시작 시 | `{id, status: "in_progress"}` |
 | `add_completed_work` (실행 요약) | kiwi-coder (자식) | 실행 종료 시 — SDS-AC/test 증거 | `{date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun]}` |
 | `update_status("implemented")` | **kiwi-pm** | T-final, 실행이 성공으로 끝났을 때 (조건부, forward-only) | `{id, status: "implemented"}` (dryRun 인자 없음) |
-| `add_completed_work(sds-summary)` | **kiwi-pm** | T-final, SDS 단위 요약 메타 entry |
+| `add_completed_work`(`req-summary` / `sds-summary`) | **kiwi-pm** | T-final, 실행 단위 요약 메타 entry |
 | `open_markdown` / `update_markdown` | **kiwi-pm** | T-final 보고서 작성 직후 (가용 시) |
 
 ---
@@ -549,13 +575,13 @@ $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 **자식 emit 흡수 책임**: kiwi-pm 이 자식(`kiwi-coder`) 을 spawn 하는 경우 자식은 자체 emit 하지 않는다 (§7 자식 컨텍스트 SSOT). 본 스킬이 실행 종료 시 1줄로 통합 emit.
 
 - `skill`: `"kiwi-pm"`
-- `status`: 실행 `done` + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 또는 `--auto` 가 draft REQ 로 SDS 를 돌려보냄(§4.3, `draft-stability-skip`) = `NEEDS_USER`; 실행 `failed` = `FAILED`
-  - **무동작 재진입은 완료가 아니다**: 이번 kiwi-coder 실행이 SDS 쓰기 집합 안에 commit 도 작업 트리 변경도 남기지 않았으면(`run.changed = false`) `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
-- `next_hint`: `CLOSE_SAFE` 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다 (FR-FLOW-183, §6.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). 이벤트는 §6.4 hand-off 앞에 쓴다 — 이미 돈 홉을 가리키지 않는다
+- `status`: 실행 `done` + T-final mutation 성공 = `TASK_DONE`; business-decision 버블업 또는 `--sds` 실행에서 `--auto` 가 draft REQ 로 SDS 를 돌려보냄(§4.3, `draft-stability-skip`) = `NEEDS_USER`; 실행 `failed` = `FAILED`
+  - **무동작 재진입은 완료가 아니다**: 이번 kiwi-coder 실행이 쓰기 집합(워커면 stage lanes lock 이 기록한 lane 쓰기 집합, `--sds` 면 SDS 쓰기 집합) 안에 commit 도 작업 트리 변경도 남기지 않았으면(`run.changed = false`) `TASK_DONE` 이 아니라 `no-op` 사유를 실은 `NEEDS_USER` 를 반환한다 — 아무것도 하지 않은 재진입이 성공으로 기록되면 부모의 개선 루프가 같은 finding 을 상한 소진까지 반복한다.
+- `next_hint`: SDS 없는 실행은 `"kiwi-review-fix-loop"` (`CLOSE_SAFE` 면 `--close-reqs` 와 함께). `--sds` 실행은 `CLOSE_SAFE` 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다 (FR-FLOW-183, §6.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). 이벤트는 §6.4 hand-off 앞에 쓴다 — 이미 돈 홉을 가리키지 않는다
 - `req_ids`: T-final 에서 `update_status("implemented")` 호출한 REQ-ID 배열
-- `artifacts.sds_files`: 입력 SDS 경로 하나를 담은 배열 (`pipeline-event.md` §2 스키마)
-- `artifacts.analysis_dir`: `.kiwi/sessions/{sds_id}/`
-- `notes`: 실행 통계 ("attempts:1 changed:true") + sds-summary entry id 권장
+- `artifacts.sds_files`: `--sds` 실행이면 입력 SDS 경로 하나를 담은 배열, 아니면 빈 배열 (`pipeline-event.md` §2 스키마)
+- `artifacts.analysis_dir`: `.kiwi/sessions/{run_id}/`
+- `notes`: 실행 통계 ("attempts:1 changed:true") + req-summary / sds-summary entry id 권장
 
 `--no-pipeline-emit` 이 명시되면 본 절의 append 를 **수행하지 않는다** (SKILL.md §1.5) — 오케스트레이션된 unit 이 자기 이름으로 남기는 기록은 run 을 **거짓으로 기술**하기 때문이다: 저널에는 `kiwi-pm` run 하나가 완료한 것으로 보이지만 실제로는 한 wave · 한 stage 의 unit 하나가 끝났을 뿐이다.
 

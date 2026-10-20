@@ -9,7 +9,7 @@ describe("FR-MCP-024 AC-3 — the work-order tool fails closed", () => {
   it("FR-MCP-024 AC-3: a per-call workspace identity is refused instead of answered for the server's root", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const { call } = workflowMcp(root);
-    expect(await call("get_next_work_order", {})).toMatchObject({ action: "create-sds", blocking: false });
+    expect(await call("get_next_work_order", {})).toMatchObject({ action: "implement-requirements", blocking: false });
 
     const refused = await call("get_next_work_order", { workspaceRoot: root });
     expect(refused).toMatchObject({ ok: false, error: { code: "MCP_WORKSPACE_ROOT_UNSUPPORTED" }, diagnosticsSummary: { errors: 1 } });

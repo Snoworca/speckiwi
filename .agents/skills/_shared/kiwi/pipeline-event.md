@@ -95,11 +95,11 @@ kiwi-tdd
 |---|---|---|
 | kiwi-srs / kiwi-srs-from-code | TASK_DONE | `kiwi-srs-feasibility` |
 | kiwi-srs-sync | TASK_DONE | `kiwi-pipeline` (재평가) |
-| kiwi-srs-feasibility | TASK_DONE | `kiwi-sds` (stability ≥ evolving 시) 또는 `kiwi-srs-research` (블로커 모호 시) |
+| kiwi-srs-feasibility | TASK_DONE | `kiwi-pm` (stability ≥ evolving 시 — 현재 kiwi-pipeline 호출이 `--sds` 를 실었으면 `kiwi-sds`) 또는 `kiwi-srs-research` (블로커 모호 시) |
 | kiwi-srs-research | TASK_DONE | `kiwi-srs-feasibility` (재평가) |
 | kiwi-sds | TASK_DONE | `kiwi-pm` (작성 실행). `--close` 실행은 자기 `next_hint` 를 직접 정한다(그 스킬의 close-out 절) |
-| kiwi-pm | TASK_DONE | `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
-| kiwi-coder (단독) | TASK_DONE | `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
+| kiwi-pm | TASK_DONE | `kiwi-review-fix-loop` (`--close-reqs` 검증, `--req-filter` 는 그 실행의 `req_ids`). 그 이벤트의 `artifacts.sds_files` 가 비어 있지 않으면 `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
+| kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop` (`--req-filter` 는 그 실행의 요구 ID). 그 이벤트의 `artifacts.sds_files` 가 비어 있지 않으면 `kiwi-sds` (`--close <sds-id>` — 승급 전 옮기기, `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 가 `kiwi-review-fix-loop`(`--close-reqs` 검증)다. `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` (self mode) 또는 `null` (PR mode) |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 `kiwi-pipeline` (sync 후속 검토 필요 시) |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 작업 or 종료) |

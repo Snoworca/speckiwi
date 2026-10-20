@@ -7,14 +7,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
-import {
-  AGENT_INSTRUCTION_HEADING_PREFIX,
-  AGENT_INSTRUCTION_VERSION
-} from "../../src/core/bootstrap/templates.js";
-
-// FR-NODE-086 turned the injected heading English; the expectation follows the shipped constants.
-const CURRENT_AGENT_HEADING = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
-
 const execFileAsync = promisify(execFile);
 
 /** The text of a tools/call result's first content item when that item is text, else "". */
@@ -128,62 +120,40 @@ describe("real stdio MCP server", () => {
     }
   }, 30000);
 
-  it("auto-initializes a missing SRS workspace before handling MCP calls", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-auto-init-"));
-    await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });
+  // @req IR-MCP-001 AC-6 AC-7 @req FR-MCP-011 AC-12 — startup never initialises: a directory with no
+  // docs/spec/00.index.md on the way up stays unbound and nothing is created. HOME is a temporary
+  // directory above the working directory, so the search never reaches the real home (FR-MCP-067).
+  for (const withGit of [false, true]) {
+    it(`IR-MCP-001 AC-6 AC-7 / FR-MCP-011 AC-12 / FR-ARCH-002 AC-5 / FR-NODE-009 AC-12 / IR-CLI-045 AC-6: does not initialise a missing SRS workspace${withGit ? " in an existing git root" : ""}; the server stays unbound`, async () => {
+      const home = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-no-auto-init-"));
+      const root = path.join(home, "project");
+      await mkdir(withGit ? path.join(root, ".git") : root, { recursive: true });
+      await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });
 
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [path.resolve("bin/speckiwi"), "mcp"],
-      cwd: root,
-      stderr: "pipe"
-    });
-    const client = new Client({ name: "speckiwi-auto-init-test", version: "1.0.0" }, { capabilities: {} });
-    await client.connect(transport);
-    try {
-      const result = await client.callTool({ name: "list_requirements", arguments: {} });
-      const text = firstText(result);
-      expect(JSON.parse(text)).toMatchObject({ ok: true, value: { records: [] } });
-      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
-      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain("Agents MUST follow TDD for behavior changes");
-    } finally {
-      await client.close();
-      await rm(root, { recursive: true, force: true });
-    }
-  }, 30000);
+      const parsed = path.parse(home);
+      const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: [path.resolve("bin/speckiwi"), "mcp"],
+        cwd: root,
+        env: { ...(process.env as Record<string, string>), HOME: home, USERPROFILE: home, HOMEDRIVE: parsed.root.replace(/\\$/, ""), HOMEPATH: home.slice(parsed.root.length - 1) },
+        stderr: "pipe"
+      });
+      const client = new Client({ name: "speckiwi-no-auto-init-test", version: "1.0.0" }, { capabilities: {} });
+      await client.connect(transport);
+      try {
+        const result = await client.callTool({ name: withGit ? "validate_spec" : "list_requirements", arguments: {} });
+        expect(JSON.parse(firstText(result))).toMatchObject({ ok: false, error: { code: "MCP_WORKSPACE_UNBOUND" } });
+        for (const created of [path.join("docs", "spec", "00.index.md"), "AGENTS.md", "CLAUDE.md", "kiwi"]) {
+          await expect(readFile(path.join(root, created), "utf8"), created).rejects.toBeDefined();
+        }
+      } finally {
+        await client.close();
+        await rm(home, { recursive: true, force: true });
+      }
+    }, 30000);
+  }
 
-  it("auto-initializes an existing git root when only the SRS index is missing", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-missing-index-"));
-    await mkdir(path.join(root, ".git"));
-    await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });
-
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [path.resolve("bin/speckiwi"), "mcp"],
-      cwd: root,
-      stderr: "pipe"
-    });
-    const client = new Client({ name: "speckiwi-missing-index-test", version: "1.0.0" }, { capabilities: {} });
-    await client.connect(transport);
-    try {
-      const result = await client.callTool({ name: "validate_spec", arguments: {} });
-      const text = firstText(result);
-      expect(JSON.parse(text)).toMatchObject({ ok: true });
-      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("SRS Index");
-      expect(await readFile(path.join(root, "docs", "spec", "00.index.md"), "utf8")).toContain("| Active Target |  |");
-      expect(await readFile(path.join(root, "AGENTS.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
-      expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toContain(CURRENT_AGENT_HEADING);
-    } finally {
-      await client.close();
-      await rm(root, { recursive: true, force: true });
-    }
-  }, 30000);
-
-  it("IR-CLI-045 AC-7: rejects --root with a usage error instead of starting the server", async () => {
+  it("IR-CLI-045 AC-7 / IR-MCP-001 AC-8 / FR-ARCH-002 AC-6: rejects --root with a usage error instead of starting the server", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "speckiwi-mcp-explicit-root-"));
     const missing = path.join(root, "typo");
     await execFileAsync(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.json"], { cwd: process.cwd() });

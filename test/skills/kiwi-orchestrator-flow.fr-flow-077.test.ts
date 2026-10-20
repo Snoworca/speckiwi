@@ -264,7 +264,9 @@ describe("FR-FLOW-094 — the ledger records the wave dispatch base", () => {
       const offsets = orderedOffsets(map, [/^\s+3\.d\s[^\n]*dispatch base/m, /^\s+3\.f\s[^\n]*dispatch/m]);
       expect(offsets.every((offset) => offset >= 0), `${variant.id}: ${JSON.stringify(offsets)}`).toBe(true);
       expect(offsets, `${variant.id}: the base is committed at 3.d, before the 3.f dispatch`).toEqual([...offsets].sort((a, b) => a - b));
-      expect(section(variant.body, /^##\s*9\.\s/m)).toMatch(/워커의 dispatch base 에 SDS 가 있어야 워커가 그것을 읽는다/);
+      // FR-FLOW-094 AC-3 (4.1.0): the input commit carries the declaration entry, and the SDS only under --sds.
+      expect(verb, `${variant.id}: the 3.d commit carries the declaration file`).toMatch(/선언 파일 `waves\/waves\.json`·\(`--sds` 면\) SDS\(/);
+      expect(section(variant.body, /^##\s*9\.\s/m)).toMatch(/선언 파일\(`--sds` 면 SDS 도\)은 3\.d 의 wave 입력 커밋에 함께 실린다 — 워커의 dispatch base 에 있어야 워커가 그것을 읽는다/);
     }
   });
 
@@ -283,9 +285,11 @@ describe("FR-FLOW-102 — one worker per wave, parallel by default, the stage pl
   it("FR-FLOW-102 AC-1 — the worker's executor invocation, run in parallel by default and one at a time under --serial", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*10\.\s/m);
-      const fence = /```\n[/$]kiwi-pm SDS_PATH=[^\n]*\n[\s\S]*?```/.exec(body)?.[0] ?? "";
+      // FR-FLOW-102 AC-1 (4.1.0): the worker runs the wave's requirements[]; the wave SDS replaces it only under --sds.
+      const fence = /```\n[/$]kiwi-pm --req-filter [^\n]*\n[\s\S]*?```/.exec(body)?.[0] ?? "";
       expect(fence, `${variant.id}: §10 carries the worker's executor invocation as a fenced block`).not.toBe("");
-      expect(fence).toContain("SDS_PATH=docs/sds/{run_id}-wave-{n}.sds.md");
+      expect(fence).toContain("--req-filter <그 wave 의 requirements[]> --run-id {run_id}-wave-{n}[-r{m}]");
+      expect(body).toContain("`--sds` 면 `--req-filter` 대신 `--sds docs/sds/{run_id}-wave-{n}.sds.md` 를 준다");
       for (const flag of ["--session-suffix w{n}s{s}l{k}", "--no-final", "--no-pipeline-emit", "--commit-lane-work", "--defer-srs-mutation <queue>"]) {
         expect(fence, `${variant.id}: ${flag}`).toContain(flag);
       }
@@ -319,12 +323,13 @@ describe("FR-FLOW-102 — one worker per wave, parallel by default, the stage pl
       const body = section(variant.body, /^###\s*10\.2\b/m);
       const disjuncts = body.split("\n").filter((line) => /^- /.test(line));
       expect(disjuncts, `${variant.id}: three disjuncts`).toHaveLength(3);
-      expect(disjuncts[0]).toMatch(/`verification_cmd` 가 \*\*같은 SDS 로 1회 재시도한 뒤에도\*\* 비-0/);
+      // FR-FLOW-102 AC-3 (4.1.0): one retry of the same unit (requirement set, or SDS under --sds).
+      expect(disjuncts[0]).toMatch(/`verification_cmd` 가 \*\*같은 단위로 1회 재시도한 뒤에도\*\* 비-0/);
       expect(disjuncts[1]).toMatch(/워커가 \*\*커밋을 하나도 만들지 않았고\*\*[^\n]*`docs\/analysis\/` 번들에 `intentionally_empty` 사유를 선언하지도 않았다/);
       expect(disjuncts[2]).toMatch(/`NEEDS_USER` 또는 `FAILED` 를 반환했다/);
       const row = criticalGateRows(variant.body).find((candidate) => candidate.gateId === "serial-unit-failed");
       expect(row?.location, `${variant.id}: 3.g`).toMatch(/3\.g/);
-      for (const disjunct of [/같은 SDS 로 1회 재시도/, /intentionally_empty/, /`NEEDS_USER` 또는 `FAILED`/]) {
+      for (const disjunct of [/같은 단위로 1회 재시도/, /intentionally_empty/, /`NEEDS_USER` 또는 `FAILED`/]) {
         expect(row?.reason, `${variant.id}: the row names ${disjunct}`).toMatch(disjunct);
       }
     }
@@ -333,9 +338,9 @@ describe("FR-FLOW-102 — one worker per wave, parallel by default, the stage pl
   it("FR-FLOW-102 AC-4 — the intentionally-empty disposition is per wave, with two conjuncts, and enters checked", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*10\.3\b/m);
-      expect(tiedTogether(body, /\*\*wave 단위\*\*/, [/워커의 `docs\/analysis\/kiwi-pm-…` 번들/, /그 wave 의 sds-id/, /\*\*20자 이상의 `reason`\*\*/], 300)).toBe(true);
+      expect(tiedTogether(body, /\*\*wave 단위\*\*/, [/워커의 `docs\/analysis\/kiwi-pm-…` 번들/, /그 wave 의 단위 id/, /\*\*20자 이상의 `reason`\*\*/], 300)).toBe(true);
       expect(
-        tiedTogether(body, /허용 조건은 두 연언이다/, [/그 wave 의 `verification_cmd` 가 0 으로 끝나고/, /SDS 쓰기 집합의 어떤 경로도 워커의 base 와 head 사이에서 \*\*달라지지 않았을 것\*\*/], 500)
+        tiedTogether(body, /허용 조건은 두 연언이다/, [/그 wave 의 `verification_cmd` 가 0 으로 끝나고/, /lane 쓰기 집합\(lock 의 `writeSet`\)의 어떤 경로도 워커의 base 와 head 사이에서 \*\*달라지지 않았을 것\*\*/], 500)
       ).toBe(true);
       expect(body).toMatch(/\*\*워커의 주장이 아니라 호스트가 트리에서 다시 계산한다\*\*/);
       expect(body).toMatch(/wave 는 `expected` 에 남고[^\n]*`checked` 에 들어간다/);
@@ -433,7 +438,7 @@ describe("FR-FLOW-083 — convergence recipes decide lane eligibility", () => {
 });
 
 describe("FR-FLOW-082 — validate then sync-index at 3.k", () => {
-  it("FR-FLOW-082 AC-1 AC-2 — at activity (3), after the merge and the replay, before 3.l, validate first", () => {
+  it("FR-FLOW-082 AC-1 AC-2 · FR-FLOW-102 AC-5 — at activity (3), after the merge and the replay, before 3.l, validate first", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*11\.3\b/m);
       expect(
@@ -451,7 +456,7 @@ describe("FR-FLOW-082 — validate then sync-index at 3.k", () => {
     }
   });
 
-  it("AC-3 — post-merge-index-drift declared with 3.k among its locations and the stated predicate", () => {
+  it("FR-FLOW-082 AC-3 · FR-FLOW-102 AC-5 — post-merge-index-drift declared with 3.k among its locations and the stated predicate", () => {
     for (const variant of VARIANTS) {
       const row = criticalGateRows(variant.body).find((candidate) => candidate.gateId === "post-merge-index-drift");
       expect(row, `${variant.id}: post-merge-index-drift declared`).toBeDefined();
@@ -461,7 +466,7 @@ describe("FR-FLOW-082 — validate then sync-index at 3.k", () => {
     }
   });
 
-  it("FR-FLOW-082 AC-4 AC-5 — the charter C4 obligation attaches to the wave's merge and replay, with no deferral", () => {
+  it("FR-FLOW-082 AC-4 AC-5 · FR-FLOW-102 AC-5 — the charter C4 obligation attaches to the wave's merge and replay, with no deferral", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*11\.3\b/m);
       expect(
@@ -492,8 +497,9 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
       expect(input, `${variant.id}: the audited wave's own commit range must be named`).toMatch(
         /그 wave (?:자신|자기)의 커밋 범위|그 wave 의 커밋 범위(?:와|에 더해)/
       );
-      expect(input, `${variant.id}: each range must be restricted to its own wave's SDS write set`).toMatch(
-        /각 범위는 (?:그 범위의|자기|제|해당) wave 의 SDS 쓰기 집합으로 제한/
+      // FR-FLOW-090 AC-1 (4.1.0): each range is restricted to its wave's write set as the lanes lock records it.
+      expect(input, `${variant.id}: each range must be restricted to its own wave's write set`).toMatch(
+        /각 범위는 lanes lock 이 기록한 (?:그 범위의|자기|제|해당) wave 의 쓰기 집합으로 제한/
       );
       expect(body).toMatch(/비교되는 lane 은 한 stage 의 워커들이다/);
       expect(body).toMatch(/워커 자신의 브랜치에서 입력을 가져오지 않는다/);
@@ -515,7 +521,7 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
     }
   });
 
-  it("AC-5/AC-6 — the gate at 3.k, and the tool checks only that a closed-enum verdict was recorded", () => {
+  it("FR-FLOW-090 AC-5/AC-6 — the gate at 3.k, and the tool checks only that a closed-enum verdict was recorded", () => {
     for (const variant of VARIANTS) {
       const row = criticalGateRows(variant.body).find((candidate) => candidate.gateId === "cross-lane-duplication-unresolved");
       expect(row?.location, `${variant.id}: Phase 3.k`).toMatch(/3\.k/);
@@ -534,7 +540,7 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
         tiedTogether(
           body,
           /예방 절반은 주장하지 않고 부재로 기록한다/,
-          [/한 stage 의 wave 들이 이미 서로소인 SDS 쓰기 집합을 갖고/, /SDS Interfaces 가 선언한 심볼을 비교하는 검사가 \*\*없다\*\*/, /\*\*X-04\*\*/],
+          [/한 stage 의 wave 들이 이미 서로소인 쓰기 집합을 갖고/, /wave 들이 선언한 심볼\(`--sds` 면 SDS Interfaces\)을 wave 사이에서 비교하는 검사가 \*\*없다\*\*/, /\*\*X-04\*\*/],
           500
         ),
         `${variant.id}: both reasons and the escalation`
@@ -546,7 +552,7 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
 });
 
 describe("FR-FLOW-084 — loop P over five denominators with a one-worker unit layer", () => {
-  it("AC-1 — five frozen denominators plus the intent layer", () => {
+  it("FR-FLOW-084 AC-1 — five frozen denominators plus the intent layer", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
       expect(body).toMatch(/\*\*다섯 동결 분모\*\*/);
@@ -580,7 +586,7 @@ describe("FR-FLOW-084 — loop P over five denominators with a one-worker unit l
     }
   });
 
-  it("AC-2/AC-9/AC-10 — the intent layer's two halves, the bundle rows, and both pass preconditions", () => {
+  it("FR-FLOW-084 AC-2/AC-9/AC-10 — the intent layer's two halves, the bundle rows, and both pass preconditions", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
       expect(tiedTogether(body, /\*\*의도 계층\*\*:/, [/loop D 의 열린 질문 집합/, /여전히 그 해소를 지키는/], 300)).toBe(true);
@@ -715,7 +721,7 @@ describe("FR-FLOW-091 — design refutation and the sanctioned mid-wave amendmen
     }
   });
 
-  it("AC-4/AC-5 — a new document and a new lock, never in place, and the pointer moves", () => {
+  it("FR-FLOW-091 AC-4/AC-5 — a new document and a new lock, never in place, and the pointer moves", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*13\.4\b/m);
       expect(body).toMatch(/design\/00\.design\.\{seq\}\.md/);
@@ -730,8 +736,9 @@ describe("FR-FLOW-091 — design refutation and the sanctioned mid-wave amendmen
       const body = section(variant.body, /^###\s*13\.4\b/m);
       expect(tiedTogether(body, /loop \*\*W · P · F\*\*/, [/다시 동결/, /다시 시작/], 300)).toBe(true);
       expect(
-        tiedTogether(body, /SDS 를 `kiwi-sds` 로 \*\*다시 저작\*\*/, [/stage 계획 lock 을 다시 동결/, /워커 하나에 \*\*다시 dispatch\*\*/], 300),
-        `${variant.id}: re-author through kiwi-sds, re-freeze the lanes lock, re-dispatch to one worker`
+        // FR-FLOW-091 AC-7 (4.1.0): revise the declaration entry (re-author the SDS only under --sds).
+        tiedTogether(body, /영향받은 각 wave 의 선언 항목을 고치고\(`--sds` 면 그 SDS 를 `kiwi-sds` 로 \*\*다시 저작\*\*하고\)/, [/stage 계획 lock 을 다시 동결/, /워커 하나에 \*\*다시 dispatch\*\*/], 300),
+        `${variant.id}: revise the declaration entry, re-freeze the lanes lock, re-dispatch to one worker`
       ).toBe(true);
       expect(body).toMatch(/\*\*mid-wave 수정은 wave 당 2회로 제한된다\.\*\*/);
       expect(body).toMatch(/세 번째는 `design-contradiction-at-wave-boundary` 로 분류된다/);

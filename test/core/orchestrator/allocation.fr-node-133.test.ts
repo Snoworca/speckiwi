@@ -14,7 +14,7 @@ import {
 function input(overrides: Partial<WaveAllocationInput> = {}): WaveAllocationInput {
   return {
     allocation: { requirementIds: ["FR-NODE-001", "FR-NODE-002"], preSnapshotDigest: "sha-pre" },
-    sdsReqIds: ["FR-NODE-001", "FR-NODE-002"],
+    declaredReqIds: ["FR-NODE-001", "FR-NODE-002"],
     designItemMap: { "FR-NODE-001": ["D-001"], "FR-NODE-002": ["D-002", "D-003"] },
     waveDesignItems: ["D-001", "D-002", "D-003"],
     ...overrides
@@ -27,11 +27,11 @@ function refusal(result: ReturnType<typeof checkWaveAllocation>) {
 }
 
 describe("FR-NODE-133 AC-5 — the passing case", () => {
-  it("FR-NODE-133 AC-5 passes a wave whose SDS @req set and design item map satisfy every conjunct", () => {
+  it("FR-NODE-133 AC-5 passes a wave whose declared requirement set and design item map satisfy every conjunct", () => {
     expect(checkWaveAllocation(input())).toEqual({ ok: true });
   });
 
-  it("FR-NODE-133 AC-5 declares the three conjuncts the requirement names, and no empty-req-ids conjunct", () => {
+  it("FR-NODE-133 AC-2 declares the three conjuncts the requirement names, and no empty-req-ids conjunct", () => {
     expect([...ALLOCATION_CONJUNCTS]).toEqual([
       "req-id-outside-allocation",
       "allocated-req-id-without-design-item",
@@ -40,23 +40,23 @@ describe("FR-NODE-133 AC-5 — the passing case", () => {
   });
 });
 
-describe("FR-NODE-133 AC-1 — an SDS @req id outside the 3.b allocation set", () => {
+describe("FR-NODE-133 AC-1 — a declared requirement id outside the 3.b allocation set", () => {
   it("FR-NODE-133 AC-1 refuses with unallocated-req-id, naming the offending id", () => {
-    const result = refusal(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-001", "FR-NODE-999"] })));
+    const result = refusal(checkWaveAllocation(input({ declaredReqIds: ["FR-NODE-001", "FR-NODE-999"] })));
     expect(result.code).toBe("unallocated-req-id");
     expect(result.violations.map((violation) => violation.conjunct)).toEqual(["req-id-outside-allocation"]);
     expect(result.violations[0]?.detail).toContain("FR-NODE-999");
   });
 
   it("FR-NODE-133 AC-1 names every offending id, not only the first", () => {
-    const result = refusal(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-900", "FR-NODE-901"] })));
+    const result = refusal(checkWaveAllocation(input({ declaredReqIds: ["FR-NODE-900", "FR-NODE-901"] })));
     const detail = result.violations.map((violation) => violation.detail).join(" ");
     expect(detail).toContain("FR-NODE-900");
     expect(detail).toContain("FR-NODE-901");
   });
 
-  it("FR-NODE-133 AC-1 does not refuse an allocated id merely because the SDS names no other", () => {
-    expect(checkWaveAllocation(input({ sdsReqIds: ["FR-NODE-001"] }))).toEqual({ ok: true });
+  it("FR-NODE-133 AC-1 does not refuse an allocated id merely because the wave declares no other", () => {
+    expect(checkWaveAllocation(input({ declaredReqIds: ["FR-NODE-001"] }))).toEqual({ ok: true });
   });
 });
 
@@ -98,7 +98,7 @@ describe("FR-NODE-133 AC-4 — a wave design item claimed by no req_id", () => {
     const result = refusal(
       checkWaveAllocation(
         input({
-          sdsReqIds: ["FR-NODE-999"],
+          declaredReqIds: ["FR-NODE-999"],
           designItemMap: { "FR-NODE-001": ["D-001"] },
           waveDesignItems: ["D-001", "D-009"]
         })
@@ -137,5 +137,12 @@ describe("FR-NODE-133 AC-6 — deriving the allocation set, and refusing to re-d
     expect(result.code).toBe("allocation-pre-snapshot-drift");
     expect(result.detail).toContain("sha-pre");
     expect(result.detail).toContain("sha-something-else");
+  });
+});
+
+describe("FR-NODE-133 AC-2 — the empty-req_ids conjunct is retired", () => {
+  it("FR-NODE-133 AC-2 does not refuse a wave for declaring no requirement: emptiness was a property of sidecar tasks", () => {
+    const empty = input({ allocation: { requirementIds: [], preSnapshotDigest: "sha-pre" }, declaredReqIds: [], designItemMap: {}, waveDesignItems: [] });
+    expect(checkWaveAllocation(empty)).toEqual({ ok: true });
   });
 });

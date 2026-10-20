@@ -12,7 +12,9 @@ import { BUNDLED_RULES_VERSION, BUNDLED_SDS_RULES_FILENAME, BUNDLED_SRS_RULES_FI
 //   - AC-1: the seven required headings, the metadata table fields, and the
 //           EARS SDS-AC format are defined.
 //   - AC-2: the 200-line cap, the prohibition rules, the lifecycle with
-//           size-scoped approval, and the trivial-change skip-gate are present.
+//           size-scoped approval, and the opt-in rule with the intent.md
+//           acceptance record are present; no skip-gate, `## SDS Skip` or
+//           `SDS-E054` text remains (amended in 4.1.0).
 //   - AC-3: the embedded design.md template contains the metadata table and
 //           all seven required headings.
 
@@ -52,7 +54,7 @@ describe("FR-FLOW-036 SDS-MD Authoring Rules (bundled version)", () => {
     expect(content).toContain("design.md");
   });
 
-  it("FR-FLOW-036 AC-2: states the line cap, prohibitions, lifecycle, and skip-gate", async () => {
+  it("FR-FLOW-036 AC-2: states the line cap, prohibitions, lifecycle, and the opt-in rule with the intent.md acceptance record", async () => {
     const content = await rules();
     // 200-line cap with split guidance.
     expect(content).toContain("200");
@@ -66,9 +68,15 @@ describe("FR-FLOW-036 SDS-MD Authoring Rules (bundled version)", () => {
     for (const token of ["draft", "agreed", "superseded", "self-agreed"]) {
       expect(content).toContain(token);
     }
-    // Trivial-change skip-gate (EARS stub only).
-    expect(content).toMatch(/skip/i);
-    expect(content).toContain("EARS stub");
+    // Opt-in: design.md only when the user asks; otherwise intent.md `## Acceptance` lines.
+    expect(content).toMatch(/written only when the user asks for one/);
+    expect(content).toContain("## Acceptance");
+    expect(content).toMatch(/AC-<n>: WHEN … THE SYSTEM SHALL …/);
+    expect(content).toContain("STEP_ACCEPTANCE_MISSING");
+    // The retired skip record leaves no trace.
+    expect(content).not.toMatch(/skip-gate/i);
+    expect(content).not.toContain("SDS Skip");
+    expect(content).not.toContain("SDS-E054");
   });
 
   it("FR-FLOW-036 AC-4: the SDS rules document is additive — existing SRS-MD rules references stay unchanged", async () => {

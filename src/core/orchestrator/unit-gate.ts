@@ -48,7 +48,7 @@ export interface SerialUnitOutcome {
   readonly code: "serial-unit-failed" | null;
   readonly disjunct: SerialUnitDisjunct | null;
   readonly detail: string;
-  /** True once the one permitted re-run against the same SDS has been made and judged. */
+  /** True once the one permitted re-run as the same unit (the same SDS under `--sds`) has been made and judged. */
   readonly retryConsumed: boolean;
   /** Why this unit's declaration failed a witness, or null. A failed one is treated as never made. */
   readonly illegalDeclaration: string | null;
@@ -112,7 +112,7 @@ export function evaluateSerialUnitGate(input: SerialUnitInput): SerialUnitOutcom
 
   if (input.verification.firstExit !== 0) {
     if (input.verification.retryExit === null) {
-      return { ...base, verdict: "retry-verification", code: null, disjunct: null, detail: "verification_cmd exited non-zero; re-run it once against the same SDS" };
+      return { ...base, verdict: "retry-verification", code: null, disjunct: null, detail: "verification_cmd exited non-zero; re-run it once as the same unit" };
     }
     if (input.verification.retryExit !== 0) {
       return {
@@ -121,10 +121,10 @@ export function evaluateSerialUnitGate(input: SerialUnitInput): SerialUnitOutcom
         verdict: "refuse",
         code: "serial-unit-failed",
         disjunct: "verification-cmd-failed",
-        detail: `verification_cmd exited ${input.verification.firstExit} and ${input.verification.retryExit} on the retry against the same SDS`
+        detail: `verification_cmd exited ${input.verification.firstExit} and ${input.verification.retryExit} on the retry as the same unit`
       };
     }
-    return { ...base, retryConsumed: true, verdict: "pass", code: null, disjunct: null, detail: "verification_cmd passed on the retry against the same SDS" };
+    return { ...base, retryConsumed: true, verdict: "pass", code: null, disjunct: null, detail: "verification_cmd passed on the retry as the same unit" };
   }
 
   return { ...base, verdict: "pass", code: null, disjunct: null, detail: `${lane} landed and verified` };

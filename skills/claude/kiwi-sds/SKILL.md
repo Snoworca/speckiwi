@@ -1,13 +1,13 @@
 ---
 name: kiwi-sds
-description: "구현 직전의 요구 범위에 대해 초경량 SDS(설계 명세, SDS 규칙의 lite 프로필) 하나를 `docs/sds/<sds-id>.sds.md` 에 쓰고 결정적 검사 `speckiwi sds check`(MCP `check_sds`)로 확인한 뒤 스스로 agreed 로 올리는 스킬. SDS 는 코딩 에이전트용(영어, 서사 없음)이며 사용자 승인 게이트가 없다. 기본 모드에는 LLM 검증 루프가 없고 `--max` 가 독립 검증자 1회를 더한다. `--close <sds-id>` 는 구현이 끝난 SDS 의 해석 결정을 SRS AC 명확화로 옮기고, 승급 뒤 파일을 지운다. 트리거 — kiwi sds, SDS 작성, 설계 명세 작성, lite SDS, sds close, SDS 마감, /kiwi-sds. 옵션 — --req-filter, --sds-id, --convergence-registry, --existing-modules, --close, --auto, --max, --mini / --loops N, --model, --no-pipeline-emit."
+description: "사용자가 직접 부르거나 호출자가 opt-in 을 넘길 때만 돈다 — 어느 체인의 기본 단계도 아니다. 구현 직전의 요구 범위에 대해 초경량 SDS(설계 명세, SDS 규칙의 lite 프로필) 하나를 `docs/sds/<sds-id>.sds.md` 에 쓰고 결정적 검사 `speckiwi sds check`(MCP `check_sds`)로 확인한 뒤 스스로 agreed 로 올리는 스킬. SDS 는 코딩 에이전트용(영어, 서사 없음)이며 사용자 승인 게이트가 없다. 기본 모드에는 LLM 검증 루프가 없고 `--max` 가 독립 검증자 1회를 더한다. `--close <sds-id>` 는 구현이 끝난 SDS 의 해석 결정을 SRS AC 명확화로 옮기고, 승급 뒤 파일을 지운다. 트리거 — kiwi sds, SDS 작성, 설계 명세 작성, lite SDS, sds close, SDS 마감, /kiwi-sds. 옵션 — --req-filter, --sds-id, --convergence-registry, --existing-modules, --close, --auto, --max, --mini / --loops N, --model, --no-pipeline-emit."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-sds v0.1
 
-sdd 사슬 `kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop` 의 설계 단계. 구현할 요구 범위에 대해 lite SDS 하나를 쓰고, 결정적 검사로 확인하고, 스스로 합의한다. 구현이 끝나면 `--close` 로 SDS 를 닫는다 — 남길 것은 SRS 로 옮기고 파일은 지운다.
+`--sds` 를 준 sdd 사슬 `kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop` 의 설계 단계 — 기본 사슬에는 이 단계가 없다(FR-FLOW-193). 구현할 요구 범위에 대해 lite SDS 하나를 쓰고, 결정적 검사로 확인하고, 스스로 합의한다. 구현이 끝나면 `--close` 로 SDS 를 닫는다 — 남길 것은 SRS 로 옮기고 파일은 지운다.
 
-근거 요구: FR-FLOW-182(작성), FR-FLOW-183(마감), FR-FLOW-184(사슬).
+근거 요구: FR-FLOW-182(작성), FR-FLOW-183(마감), FR-FLOW-192(opt-in), FR-FLOW-193(사슬).
 
 **SDS 문법 SSOT**: `docs/rule/SDS-MD-Rules-v2.6.0.md` §9 (Lite Profile). 이 스킬은 문법을 다시 적지 않는다 — 위치·메타데이터·절·줄 문법·100 줄 상한·진단 코드는 모두 그 절이 정한다. 작성은 §9.7 템플릿에서 시작한다.
 
@@ -29,6 +29,7 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | §0.6 | **SRS 쓰기는 `--close` 에서만** guarded MCP mutation(`replace_acceptance_criteria`, `add_requirement`)으로 한다. 작성 모드는 SRS 를 쓰지 않는다. 본 스킬은 요구 status 를 바꾸지 않고 `verified` 를 쓰지 않는다. |
 | §0.7 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지.** |
 | §0.8 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. `critical_gates[]` 는 §0.AG. |
+| §0.0 | **요청할 때만 돈다.** 본 스킬은 사용자가 직접 부르거나 호출자가 opt-in 을 넘길 때만 돈다(`/kiwi-sds`, `--sds`, 사용자가 준 `--sds-id`) — 어느 체인의 기본 단계도 아니다. 뒤의 구현 실행은 사용자가 `--sds <path>` 로 넘기거나 요청할 때만 이 SDS 를 쓴다 — `docs/sds/` 에 있다는 것만으로는 쓰이지 않는다. 그 밖의 동작(FR-FLOW-182)은 그대로다. |
 | §0.9 | **`--mini` / `--loops N` 옵션 SSOT**. `_shared/kiwi/loop-option.md` v1.0 을 따른다. 본 스킬의 라운드는 §2.4 의 "검사 → 오류 수정 → 재검사" 한 바퀴다. 기본 상한 5, `--mini` 3, `--loops N` 은 N(동시 지정 시 `--loops` 우선, 경고). `--max` 의 검증자 1회와는 직교한다. |
 
 ### §0.AG — `--auto` critical_gates[] 선언
@@ -37,7 +38,7 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 
 | gate_id | reason | 발생 위치 |
 |---|---|---|
-| `sds-check-errors-unresolved` | 라운드 상한 안에 `check_sds` 오류가 남음 — 오류를 안은 SDS 는 `agreed` 가 될 수 없고, kiwi-pm 은 `agreed` 가 아닌 SDS 를 받지 않는다 | §2.4 |
+| `sds-check-errors-unresolved` | 라운드 상한 안에 `check_sds` 오류가 남음 — 오류를 안은 SDS 는 `agreed` 가 될 수 없고, kiwi-pm 은 `agreed` 가 아닌 SDS 를 받지 않는다 — SDS 가 있는 run 에서만 발동한다 | §2.4 |
 | `sds-close-after-promotion` | `--close` 가 SRS 로 옮겨야 할 해석 결정의 요구가 이미 `verified` — 승급 뒤의 옮기기는 닫힌 요구를 조용히 고치는 일이므로 하지 않는다 | §3.1 3번 |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 옮긴 명확화가 SRS 를 깨뜨렸다 | §3.1 6번 — SRS 를 고친 뒤 |
 | `stability-frozen-violation` | `--close` 가 명확화할 AC 의 요구가 Stability `frozen` — frozen 요구의 본문은 이 경로로 바꾸지 않는다 | §3.1 3번 — SRS 를 쓰기 전 |
@@ -167,9 +168,11 @@ MCP `check_sds` 로 `docs/sds/<sds-id>.sds.md` 의 요약(계약과 그 `(<REQ-I
 
 ### 3.4 호출 순서
 
+close-out 은 그 SDS 로 구현한 실행(`--sds`)만 부른다 — 열린 SDS 를 보고만 한 실행은 닫지 않는다(FR-FLOW-183 AC-1).
+
 | 호출자 | 옮기기(§3.1) | 삭제(§3.2) |
 |---|---|---|
-| `kiwi-pipeline` | `kiwi-pm` 뒤, `kiwi-review-fix-loop --close-reqs` 홉 **앞** — 그 홉이 승급하기 때문이다 | 그 홉과 테스트 충분성 확인 뒤 |
+| `kiwi-pipeline` (`--sds`) | `kiwi-pm` 뒤, `kiwi-review-fix-loop --close-reqs` 홉 **앞** — 그 홉이 승급하기 때문이다 | 그 홉과 테스트 충분성 확인 뒤 |
 | `kiwi-orchestrator` · `kiwi-wave-master` (`_shared/kiwi/parallel-waves.md`) | 테스트 충분성 확인 뒤, 승급 단계 앞 | 승급 뒤 |
 | `kiwi-pm` 단독 실행(`--no-final`·`--review-hop-owned-by-parent` 없이) | §6.4 인계에서 `kiwi-review-fix-loop` 홉 **앞** — CLOSE_SAFE 일 때만 | 그 홉 뒤 — 옮기기가 끝났을 때(MOVED)만 |
 | `kiwi-coder` 단독 실행(`kiwi-pm` 자식이 아닐 때) | §8.4 후속 리뷰 앞 — `state.failed` 도 회귀 실패 잔존도 없을 때만 | 그 리뷰 뒤 — 옮기기가 끝났을 때(MOVED)만 |

@@ -1,13 +1,13 @@
 ---
 name: kiwi-tdd
-description: "tdd work-mode의 step 단위 TDD First 사이클(SDS design.md → red 테스트 → green 구현 → 회귀 → 후행 SRS 승격)을 오케스트레이션하는 스킬. Mode: tdd 확인(아니면 halt) → claim_step 선점 → SDS-MD Rules 기반 design.md 저작(EARS SDS-AC) → SDS-AC를 실패 테스트로 번역(red) → 테스트 약화 없이 green → 회귀 → synthesize + promote_step_requirement(검증 증거 필수). 트리거 — kiwi tdd, tdd 모드, TDD First, tdd step, SDS 작성, /kiwi-tdd."
+description: "tdd work-mode의 step 단위 TDD First 사이클(acceptance 줄 → red 테스트 → green 구현 → 회귀 → 후행 SRS 승격)을 오케스트레이션하는 스킬. Mode: tdd 확인(아니면 halt) → claim_step 선점 → intent.md `## Acceptance` 에 EARS acceptance 줄 기록 + step validate(--sds 면 SDS-MD Rules 기반 design.md 저작) → acceptance 줄을 실패 테스트로 번역(red) → 테스트 약화 없이 green → 회귀 → synthesize + promote_step_requirement(검증 증거 필수). 트리거 — kiwi tdd, tdd 모드, TDD First, tdd step, /kiwi-tdd. 옵션 — --sds (step SDS design.md — 사용자가 요청할 때만)."
 ---
 
 # kiwi-tdd v0.1
 
-tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주시키는 오케스트레이션 스킬. `kiwi-step`(step-local 저작 규약)의 확장으로, SDS(design.md) 저작·red/green 규율·후행 SRS 승격까지를 한 흐름으로 묶는다.
+tdd work-mode에서 step 하나를 **acceptance 선행 TDD First 사이클**로 완주시키는 오케스트레이션 스킬. `kiwi-step`(step-local 저작 규약)의 확장으로, acceptance 줄 기록(`--sds` 면 SDS design.md 저작)·red/green 규율·후행 SRS 승격까지를 한 흐름으로 묶는다.
 
-근거 요구: FR-FLOW-037 (SDS 표준 FR-FLOW-036, 게이트 IR-CLI-072 / FR-NODE-072 / FR-NODE-074, 합성 FR-NODE-073).
+근거 요구: FR-FLOW-037 · FR-FLOW-196 (acceptance 계약 FR-PARSE-042, SDS 표준 FR-FLOW-036, 게이트 IR-CLI-072 / FR-NODE-072 / FR-NODE-074, 합성 FR-NODE-073).
 
 ---
 
@@ -16,16 +16,17 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | 키 | 규칙 |
 |---|---|
 | §0.1 | **모드 확인 우선**. 시작 전 `speckiwi mode`로 현재 work-mode를 읽는다. `Mode: tdd`가 아니면 즉시 halt(중단)하고 사용자에게 `speckiwi mode tdd` 전환 또는 sdd 워크플로(kiwi-srs 계열)를 안내한다. |
-| §0.2 | **claim 우선**. 어떤 산출물(design.md 포함)도 작성하기 전에 `claim_step`(MCP 우선) 또는 CLI `speckiwi step claim`(fallback)으로 대상 step을 선점한다. MCP·CLI 둘 다 부재 시 즉시 halt. |
+| §0.2 | **claim 우선**. 어떤 산출물(intent.md · design.md 포함)도 작성하기 전에 `claim_step`(MCP 우선) 또는 CLI `speckiwi step claim`(fallback)으로 대상 step을 선점한다. MCP·CLI 둘 다 부재 시 즉시 halt. |
 | §0.3 | **step 디렉터리 한정**. 모든 스펙 산출물은 `docs/spec/steps/<task>/` 아래에만 쓴다. body-scope SRS 파일(`docs/spec/*.srs.md`)은 절대 수정하지 않는다 — 승격은 오직 promote 도구로만. |
-| §0.4 | **SDS 선행**. SDS(design.md) 없이 테스트를 먼저 작성하지 않는다 — 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. 유일한 예외는 §2.3 이 정의한 **기록된 생략**(intent.md 의 `## SDS Skip` 절)이며, 기록이 없는 생략은 `speckiwi step validate` 가 `SDS-E054` 오류로 막는다. |
-| §0.5 | **테스트 불가침**. 테스트를 먼저 커밋하고, green 단계에서 테스트를 약화(weaken)·수정해 통과시키는 행위를 절대 금지한다. 계약 변경이 필요하면 SDS를 supersede 하고 red부터 다시 간다. |
+| §0.4 | **acceptance 계약 선행**. step 의 acceptance 계약이 생기기 전에는 테스트를 쓰지 않는다 — `step validate` 가 확인한 intent.md `## Acceptance`, 또는 `--sds` 면 design.md. 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. acceptance 줄이 없으면 `speckiwi step validate` 가 `STEP_ACCEPTANCE_MISSING` 오류로 막는다. |
+| §0.5 | **테스트 불가침**. 테스트를 먼저 커밋하고, green 단계에서 테스트를 약화(weaken)·수정해 통과시키는 행위를 절대 금지한다. 계약 변경이 필요하면 고친 acceptance 줄(`--sds` 면 SDS supersede)로 돌아가 red부터 다시 간다. |
 | §0.6 | **증거 없는 승격 금지**. `promote_step_requirement`는 Verification Evidence(검증 증거) 1건 이상을 가진 블록만 승격한다(FR-NODE-074가 tdd 모드에서 하드 거부). |
-| §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행 — `kiwi-srs` → `kiwi-sds` 사슬)로 리다이렉트한다. |
+| §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행 — `kiwi-srs` → `kiwi-pm` 사슬)로 리다이렉트한다. |
 | §0.8 | **CLAUDE.md §6 시그니처 금지 / §7 변경 이력 금지**. |
 | §0.9 | `--mini` / `--loops N` 수용 — `_shared/kiwi/loop-option.md` 관례. 본 스킬의 자체 검증-개선 루프는 red→green 반복뿐이므로 라운드 캡은 회귀 수정 반복에만 적용된다. |
 | §0.10 | **코드 추적성은 후행(post-promote)·비차단**. 코드 Trace Links(`add_trace_link` Code anchor)·`@req` 태그는 Phase 6 promote가 body REQ ID를 확정한 **뒤에만** 복원한다 — Phase 2/4 부착은 금지한다. Code anchor가 **권위** traceability SSOT, `@req` breadcrumb는 **보조**이며 둘 다 **비차단**이다(누락·stale이 promote를 막지 않고 FR-NODE-074 EVIDENCE_REQUIRED 게이트와 **분리**). FR-FLOW-020 관례를 재사용하고, 태그 형식·면제는 kiwi-coder §0.17만 인용한다(운영 훅 수입 금지). |
 | §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §0.AG (아래) 참조 — 표를 선언했으므로 공용 안전 기본값(`auto-option.md` §1) 에 따른 `--auto` **비활성**은 더 이상 적용되지 않는다. |
+| §0.12 | **step SDS 는 opt-in**. design.md 는 사용자가 `--sds` 를 주거나 말로 요청할 때만 쓴다 — opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. 기본 계약은 intent.md `## Acceptance` 다(§2.3). |
 
 ### §0.AG — `--auto` critical_gates[] 선언
 
@@ -45,7 +46,7 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 
 **`--auto` 가 해결할 수 없는 것**: 위 게이트들. 선언 여부와 무관하게 항상 HALT 하며, 결정 위원회로 넘기지 않는다.
 
-**`--auto` 가 해결할 수 있는 것**: `sds-architecture-decision-approval` — §2.3 체크리스트 6 의 Architecture Decisions 사용자 승인은 severity `business-decision` 이므로 `--auto` 에서 결정 위원회의 **자동 결정** 대상이다 (confidence < 0.7 이면 critical 로 격상). critical 로 선언하지 않는 이유: 실질 결정이 있는 모든 SDS 가 무인 실행에서 죽는 정지점이 되기 때문이다.
+**`--auto` 가 해결할 수 있는 것**: `sds-architecture-decision-approval` — SDS 가 있는 run 에서만 발동한다(`--sds`). §2.3.1 체크리스트 5 의 Architecture Decisions 사용자 승인은 severity `business-decision` 이므로 `--auto` 에서 결정 위원회의 **자동 결정** 대상이다 (confidence < 0.7 이면 critical 로 격상). critical 로 선언하지 않는 이유: 실질 결정이 있는 모든 SDS 가 무인 실행에서 죽는 정지점이 되기 때문이다.
 
 **나머지 두 상호작용 지점**은 올바르게 dispatch 된 실행에서는 발동하지 않으므로 표에 넣지 않는다 — Phase 0 모드 halt (§2.1) 는 mode ≠ `tdd` 일 때만, task 이름 질의 (§1.1) 는 `<task>` 가 없을 때만 발동하는데, 라우팅된 dispatch 는 둘 다 사전에 해소한다.
 
@@ -61,10 +62,12 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 | 작업 개요 | 무엇을 만들지(연구/의도). intent.md의 원천. |
 | `--review-hop-owned-by-parent` | 부모가 이 step 창의 리뷰를 이미 소유한다는 **명시** 신호. 받으면 Phase 5.5 의 자체 홉을 건너뛴다(§2.6.1). |
 | `--no-pipeline-emit` | 위임 실행 표식. 받으면 Phase 7 의 파이프라인 이벤트를 append 하지 않는다(§2.8). |
+| `--sds` | off — 사용자가 step SDS 를 원할 때만 켠다("SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS"). 켜면 design.md 를 SDS 규칙대로 저작하는 §2.3.1 경로로 돈다 |
 
 ### 1.2 출력
 
-- `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v2.6.0 준수)
+- `docs/spec/steps/<task>/intent.md` 의 `## Acceptance` — EARS acceptance 줄 (`step validate` 가 확인)
+- (`--sds` 만) `docs/spec/steps/<task>/design.md` — SDS (SDS-MD Authoring Rules v2.6.0 준수)
 - red→green 테스트 + 구현 코드
 - `docs/spec/steps/<task>/<task>.srs.md` — 합성된 step SRS
 - body scope로 승격된 요구 블록(증거 포함)
@@ -76,8 +79,8 @@ tdd work-mode에서 step 하나를 **SDS 선행 TDD First 사이클**로 완주�
 ```
 Phase 0 : 모드·도구 확인 (Mode: tdd 아니면 halt; MCP 부재 시 step CLI fallback, 둘 다 부재 시 halt — §0.1/§0.2)
 Phase 1 : claim_step 으로 step 선점 + Active Task 설정
-Phase 2 : SDS 저작 — design.md (체크리스트 의무, §3)
-Phase 3 : red — SDS-AC를 실패 테스트로 번역, 실패 확인 후 테스트 먼저 커밋
+Phase 2 : acceptance 줄 기록 — intent.md `## Acceptance` + step validate (--sds 면 design.md SDS 저작, §2.3.1)
+Phase 3 : red — acceptance 줄(--sds 면 SDS-AC)을 실패 테스트로 번역, 실패 확인 후 테스트 먼저 커밋
 Phase 4 : green — 테스트 약화 없이 최소 구현으로 통과
 Phase 5 : 회귀 — 영향 범위 테스트 전체 + `speckiwi vibe-gate check`
 Phase 5.5 : 리뷰 홉 — `kiwi-review-fix-loop` 을 승격 전에 정확히 한 번 (`--review-hop-owned-by-parent` 를 받았으면 건너뛴다)
@@ -93,35 +96,37 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 `claim_step`(MCP 우선) 또는 `speckiwi step claim <task> --touches-scope <scope> --touches-req <id>`(CLI fallback)로 대상 step을 선점한다. write-skew 게이트 거부(동일 REQ 충돌 등) 시 사유를 보고하고 중단. 선점 후 `speckiwi mode tdd` 상태에서 Active Task가 대상 task를 가리키도록 한다(vibe-gate가 이 task를 검사한다).
 
-### 2.3 Phase 2 — SDS 저작 (체크리스트 의무)
+### 2.3 Phase 2 — acceptance 줄 기록
 
-`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 design.md·intent.md 빈 스텁을 생성한 뒤(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작), `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.6.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
+`speckiwi step scaffold <task>`(MCP `scaffold_step`)로 intent.md 빈 스텁을 생성한다(기존 파일은 절대 덮어쓰지 않음 — 스텁은 골격일 뿐, 내용은 직접 저작). 기본 경로는 design.md 를 만들지 않는다. 생략 기록도 쓰지 않는다.
 
-1. **skip-gate 판정 먼저 — 기록된 생략만 성립한다**: trade-off 없는 자명한(trivial) 변경인가? 생략(skip)하려면 `docs/spec/steps/<task>/intent.md` 에 `## SDS Skip` 절을 만들고 세 칸을 채운다 — `| Decision | skipped |` 행, `| Reason | <생략 사유 한 줄> |` 행, 그리고 EARS 형식의 `SDS-AC-n: WHEN … THE SYSTEM SHALL …` 줄 최소 하나. 기록을 남긴 뒤 `speckiwi step validate <task>`(아래 7번)로 대조하고, 통과한 다음에 Phase 3 으로 넘어간다.
+1. `docs/spec/steps/<task>/intent.md` 의 `## Acceptance` 절에 EARS 형식의 acceptance 줄을 하나 이상 쓴다 — `AC-<n>: WHEN … THE SYSTEM SHALL …`. 스캐폴드가 넣은 `<…>` 자리표시 줄은 acceptance 줄이 아니다 — 실제 조건과 동작으로 바꾼다.
+2. `speckiwi step validate <task>` 로 확인한다. `STEP_ACCEPTANCE_MISSING` 이 없을 때만 Phase 3 으로 간다 — 있으면 1번으로 돌아간다.
 
-| 생략 판정 | 기록 | `speckiwi step validate <task>` 결과 |
-| --- | --- | --- |
-| 생략한다 | `recorded` — `intent.md` 의 `## SDS Skip` 절이 있고 세 칸이 게이트가 요구하는 값을 담는다(`Decision` 이 `skipped`, `Reason` 이 비어 있지 않음, `SDS-AC` 줄에 `WHEN` 과 `SHALL`) | `SDS-W050` 경고, `exit 0` — Phase 3 으로 진행한다 |
-| 생략한다 | `unrecorded` — intent.md 나 절이 없거나, 세 칸 중 하나가 없거나 비어 있거나 게이트가 요구하는 값이 아니다(`Decision` 이 `skipped` 가 아니거나 `SDS-AC` 줄에 `WHEN`·`SHALL` 이 없다) | `SDS-E054` 오류, `exit 1` — 생략이 성립하지 않으므로 SDS 를 저작한다 |
+#### 2.3.1 `--sds` — step SDS 저작 (체크리스트 의무)
 
-2. 필수 헤딩 7개 존재: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.
-3. Acceptance Contracts는 **EARS** 문형(`SDS-AC-n: WHEN … THE SYSTEM SHALL …`).
-4. **모든 SDS-AC가 Test Plan 표에 최소 1행으로 매핑**되는지 확인.
-5. 200줄 상한 준수 — 초과 조짐이면 task를 분할.
-6. Architecture Decisions에 실질 결정이 있으면 사용자 승인(agreed) 후 진행, 없으면 self-agreed로 진행.
-7. `speckiwi step validate <task>`로 대조한다 — SDS를 저작한 경로에서는 SDS advisory(SDS-W050~W053) 0건을, 생략 경로에서는 `SDS-E054` 0건을 확인한다. 두 경로 모두 이 검사를 거친다.
+`--sds` 면 `speckiwi step scaffold <task> --sds`(MCP `scaffold_step` 에 `sds: true`)로 design.md 스텁도 만들고, `docs/spec/steps/<task>/design.md`를 SDS-MD Authoring Rules v2.6.0에 맞춰 저작한다. **아래 체크리스트는 의무이며 건너뛸 수 없다**:
+
+1. 필수 헤딩 7개 존재: Context & Scope / Goals / Non-goals / Architecture Decisions / Interfaces / Acceptance Contracts / Test Plan / Open Questions.
+2. Acceptance Contracts는 **EARS** 문형(`SDS-AC-n: WHEN … THE SYSTEM SHALL …`).
+3. **모든 SDS-AC가 Test Plan 표에 최소 1행으로 매핑**되는지 확인.
+4. 200줄 상한 준수 — 초과 조짐이면 task를 분할.
+5. Architecture Decisions에 실질 결정이 있으면 사용자 승인(agreed) 후 진행, 없으면 self-agreed로 진행.
+6. `speckiwi step validate <task>`로 대조해 SDS advisory(SDS-W051~W053) 0건을 확인한다.
+
+이때 Phase 3 의 red 테스트는 `SDS-AC-<n>` 을 인용하고, Phase 6 의 테스트 충분성 확인은 `--sds docs/spec/steps/<task>/design.md` 를 더한다.
 
 ### 2.4 Phase 3 — red
 
-SDS §5의 각 SDS-AC를 실패하는 테스트로 번역하고, 테스트 제목 줄에 그 `SDS-AC-<n>` 을 적는다(SDS-AC당 최소 1 케이스, 인용 규약은 `_shared/kiwi/test-sufficiency.md` §1). 테스트를 실행해 **실패(red)를 확인**한 뒤 테스트를 먼저 커밋한다. red 확인 전 구현 착수 금지.
+`## Acceptance` 의 각 `AC-<n>` 줄을 실패하는 테스트로 번역하고, 테스트 제목 줄에 `<task> AC-<n>` 을 적는다(줄마다 최소 1 케이스, 인용 규약은 `_shared/kiwi/test-sufficiency.md` §1). `--sds` 면 SDS §5의 각 SDS-AC를 같은 방식으로 번역하고 제목 줄에 그 `SDS-AC-<n>` 을 적는다. 테스트를 실행해 **실패(red)를 확인**한 뒤 테스트를 먼저 커밋한다. red 확인 전 구현 착수 금지.
 
 ### 2.5 Phase 4 — green
 
-테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 SDS supersede 후 red부터 재시작. green 동안 새로 정의·수정한 **프로덕션 파일 경로를 touched 목록으로 기록**하고(Phase 6 추적성 스텝이 이 경로들을 인용), 코드에는 FR-FLOW-020 vibe식 active step **task-name** trace 태그를 breadcrumb로 남긴다(canonical REQ-ID는 아직 없음 — Phase 6에서 reconcile).
+테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 acceptance 줄을 고치고(`--sds` 면 SDS supersede) red부터 재시작. green 동안 새로 정의·수정한 **프로덕션 파일 경로를 touched 목록으로 기록**하고(Phase 6 추적성 스텝이 이 경로들을 인용), 코드에는 FR-FLOW-020 vibe식 active step **task-name** trace 태그를 breadcrumb로 남긴다(canonical REQ-ID는 아직 없음 — Phase 6에서 reconcile).
 
 ### 2.6 Phase 5 — 회귀
 
-영향 범위의 기존 테스트 전체를 실행해 0 회귀를 확인하고, `speckiwi vibe-gate check`로 step 게이트(합성·design.md)를 통과시킨다.
+영향 범위의 기존 테스트 전체를 실행해 0 회귀를 확인하고, `speckiwi vibe-gate check`로 step 게이트를 통과시킨다 — 이 게이트는 합성된 step 디렉터리와 step 의 acceptance 계약(intent.md `## Acceptance`, `--sds` 면 design.md)을 검사한다.
 
 ### 2.6.1 Phase 5.5 — 리뷰 홉 (승격 전, 정확히 한 번)
 
@@ -148,8 +153,8 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 
 ### 2.7 Phase 6 — 후행 SRS 승격
 
-1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 design.md의 SDS-AC를 요구 블록의 Acceptance Criteria로 이관한다. 요구 블록의 ID 가 정해지면 Phase 3 테스트 제목 줄의 `SDS-AC-<n>` 옆에 그 AC 의 `<REQ-ID> AC-<m>` 인용을 덧붙인다 — 제목에 인용만 더하고 단언은 바꾸지 않으므로 §0.5 에 걸리지 않으며, red 를 먼저 본 그 테스트가 요구 AC 의 증거가 된다.
-2. **테스트 충분성 확인 (승격 직전)** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <1번 요구 블록의 ID>` · `--sds docs/spec/steps/<task>/design.md` 로 따른다(SDS 생략이 기록된 step 은 `--sds` 없이). gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 승격하지 않는다.
+1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 intent.md 의 `## Acceptance` 줄을 같은 순서와 번호로 요구 블록의 Acceptance Criteria 로 옮긴다(`--sds` 면 design.md 의 SDS-AC 를 이관한다). 요구 블록의 ID 가 정해지면 Phase 3 테스트 제목 줄마다 그 AC 의 `<REQ-ID> AC-<n>` 인용을 덧붙인다 — 제목에 인용만 더하고 단언은 바꾸지 않으므로 §0.5 에 걸리지 않으며, red 를 먼저 본 그 테스트가 요구 AC 의 증거가 된다.
+2. **테스트 충분성 확인 (승격 직전)** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <1번 요구 블록의 ID>` 와 `--sds` 없이 따른다(`--sds` 면 `--sds docs/spec/steps/<task>/design.md` 를 더한다). gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 승격하지 않는다.
 3. 도구가 AC 마다 돌려준 인용 테스트(Phase 3~5 의 테스트와 채우기로 더한 테스트)를 Verification Evidence 행으로 기록한다.
 4. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
 5. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):
@@ -170,7 +175,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 다음은 본 스킬로 진행하지 않는다 — 감지 즉시 중단하고 sdd 모드를 안내한다:
 
 - **기존 body 요구(existing body REQ)의 수정**: step↔body 동일 REQ 충돌은 promote 시점에야 MUTATION_DENIED로 표면화되므로, 시작 전에 sdd로 보낸다.
-- **대형(large) 기능·아키텍처(architecture) 변경**: SDS가 200줄 상한에 근접하는 순간이 신호다 — SRS 선행(sdd)이 더 빠르고 안전한 구간이다.
+- **대형(large) 기능·아키텍처(architecture) 변경**: acceptance 줄이 한 step 에 담기지 않거나 `--sds` 의 SDS가 200줄 상한에 근접하는 순간이 신호다 — SRS 선행(sdd)이 더 빠르고 안전한 구간이다.
 
 ---
 
@@ -180,9 +185,9 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 |---|---|---|
 | `get_work_mode` / `set_work_mode` (MCP, 우선) 또는 `speckiwi mode` (CLI) | 모드 확인·전환 §0.1 | halt |
 | `claim_step` (MCP 우선 / CLI `speckiwi step claim`) | step 선점 §0.2 | 둘 다 부재 시 halt |
-| `scaffold_step` (MCP / CLI `speckiwi step scaffold`) | SDS·intent 스텁 생성 §2.3 | 템플릿 수동 복사 |
-| `speckiwi step validate` / `validate_step` | SDS advisory 검증 §2.3 | CLI fallback, 둘 다 부재 시 체크리스트 수동 수행 |
-| `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | 합성·SDS 존재 게이트 §2.6 | 사용자 안내 |
+| `scaffold_step` (MCP / CLI `speckiwi step scaffold`) | intent 스텁 생성 §2.3 (`--sds` 면 design.md 스텁도, §2.3.1) | 템플릿 수동 복사 |
+| `speckiwi step validate` / `validate_step` | acceptance 줄 검사(`STEP_ACCEPTANCE_MISSING`) §2.3, `--sds` 면 SDS advisory §2.3.1 | CLI fallback, 둘 다 부재 시 체크리스트 수동 수행 |
+| `check_vibe_gate` (MCP) / `speckiwi vibe-gate check` (CLI) | 합성·acceptance 계약 게이트 §2.6 | 사용자 안내 |
 | `synthesize_step_srs` (MCP / CLI `speckiwi step synthesize`) | step SRS 합성 §2.7 | step SRS 직접 정리 |
 | `check_test_sufficiency` (MCP) / `speckiwi coverage --tests` (CLI) | 승격 직전 테스트 충분성 확인 §2.7 (`_shared/kiwi/test-sufficiency.md`) | 둘 다 부재 시 계약 §3 대로 `gap` — 승격하지 않는다 |
 | `promote_step_requirement` (MCP / CLI `speckiwi step promote`) | 후행 SRS 승격 §2.7 | 둘 다 부재 시 halt + 수동 승격 금지 안내 |

@@ -26,7 +26,7 @@ function docs(rendering: string, skill: string): Array<{ relPath: string; text: 
 /** What reading or editing a plan sidecar is spelled as in these skills. */
 const SIDECAR = /sidecar|사이드카|docs\/plans\/|mcp_call_log|tasks\[\]\.pr_url/i;
 
-describe("FR-FLOW-184 AC-6 — the commit skills do not read or edit a plan sidecar", () => {
+describe("FR-FLOW-184 AC-6 · FR-FLOW-193 AC-8 — the commit skills do not read or edit a plan sidecar", () => {
   it("reads every shipped rendering and the mirror", () => {
     expect(RENDERINGS.length).toBeGreaterThanOrEqual(4);
   });

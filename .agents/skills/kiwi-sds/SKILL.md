@@ -1,13 +1,13 @@
 ---
 name: kiwi-sds
-description: "Authors one ultra-light Software Design Spec (the lite profile of the SDS rules) at `docs/sds/<sds-id>.sds.md` for the requirements about to be implemented, checks it with the deterministic `speckiwi sds check` (MCP `check_sds`) and self-agrees it. The SDS is written for coding agents (English, no narrative) and has no user approval gate. The default mode runs no LLM verification loop; `--max` adds exactly one independent verifier pass. `--close <sds-id>` moves the SDS's interpretation decisions into the SRS as acceptance-criterion clarifications and deletes the file after promotion. Triggers — kiwi sds, author SDS, design spec, lite SDS, sds close, SDS close-out, $kiwi-sds. Options — --req-filter, --sds-id, --convergence-registry, --existing-modules, --close, --auto, --max, --mini / --loops N, --model, --no-pipeline-emit."
+description: "Runs only when the user invokes it or a caller passes the opt-in (`--sds`); it is not a default stage of any chain. Authors one ultra-light Software Design Spec (the lite profile of the SDS rules) at `docs/sds/<sds-id>.sds.md` for the requirements about to be implemented, checks it with the deterministic `speckiwi sds check` (MCP `check_sds`) and self-agrees it. The SDS is written for coding agents (English, no narrative) and has no user approval gate. The default mode runs no LLM verification loop; `--max` adds exactly one independent verifier pass. `--close <sds-id>` moves the SDS's interpretation decisions into the SRS as acceptance-criterion clarifications and deletes the file after promotion. Triggers — kiwi sds, author SDS, design spec, lite SDS, sds close, SDS close-out, $kiwi-sds. Options — --req-filter, --sds-id, --convergence-registry, --existing-modules, --close, --auto, --max, --mini / --loops N, --model, --no-pipeline-emit."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-sds v0.1
 
-The design stage of the sdd chain `kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop`. It writes one lite SDS for the requirements in scope, checks it deterministically and agrees it itself. Once the code is implemented, `--close` closes the SDS — what must survive moves into the SRS and the file is deleted.
+The design stage of the sdd chain under `--sds`, `kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop` — the default chain has no such stage (FR-FLOW-193). It writes one lite SDS for the requirements in scope, checks it deterministically and agrees it itself. Once the code is implemented, `--close` closes the SDS — what must survive moves into the SRS and the file is deleted.
 
-Backing requirements: FR-FLOW-182 (authoring), FR-FLOW-183 (close-out), FR-FLOW-184 (chain).
+Backing requirements: FR-FLOW-182 (authoring), FR-FLOW-183 (close-out), FR-FLOW-192 (opt-in), FR-FLOW-193 (chain).
 
 **SDS grammar SSOT**: `docs/rule/SDS-MD-Rules-v2.6.0.md` §9 (Lite Profile). This skill does not restate the grammar — location, metadata, sections, line grammar, the 100-line cap and the diagnostic codes are all that section's. Authoring starts from its §9.7 template.
 
@@ -29,6 +29,7 @@ The normal path for workflow status reads, next-work selection and event recordi
 | §0.6 | **The SRS is written only by `--close`**, through guarded MCP mutations (`replace_acceptance_criteria`, `add_requirement`). Authoring never writes the SRS. This skill changes no requirement status and never writes `verified`. |
 | §0.7 | **No AI signatures anywhere / no changelog section in this skill.** |
 | §0.8 | **`--auto` option SSOT.** This skill follows `../_shared/kiwi/auto-option.md` v1.0. Its `critical_gates[]` are declared in §0.AG. |
+| §0.0 | **Runs only on request.** This skill runs only when the user invokes it or a caller passes the opt-in (`$kiwi-sds`, `--sds`, a user-given `--sds-id`); it is not a default stage of any chain. A later implementation run uses the SDS it writes only when the user passes it (`--sds <path>`) or asks for it in words — an SDS that merely sits in `docs/sds/` is not used. Its other behaviour (FR-FLOW-182) is unchanged. |
 | §0.9 | **`--mini` / `--loops N` option SSOT.** Follows `../_shared/kiwi/loop-option.md` v1.0. A round of this skill is one "check → fix errors → re-check" cycle of §2.4. Default cap 5, `--mini` 3, `--loops N` N (`--loops` wins when both are given, with a warning). Orthogonal to the one verifier pass of `--max`. |
 
 ### §0.AG — `--auto` critical_gates[] declaration
@@ -37,7 +38,7 @@ Each gate below halts **regardless of** `--auto` for a user decision and is neve
 
 | gate_id | reason | location |
 |---|---|---|
-| `sds-check-errors-unresolved` | `check_sds` errors remain at the round cap — an SDS carrying an error cannot become `agreed`, and kiwi-pm accepts no SDS that is not `agreed` | §2.4 |
+| `sds-check-errors-unresolved` | `check_sds` errors remain at the round cap — an SDS carrying an error cannot become `agreed`, and kiwi-pm accepts no SDS that is not `agreed` — raised only on a run that has an SDS | §2.4 |
 | `sds-close-after-promotion` | a requirement whose interpretation `--close` must move into the SRS is already `verified` — moving after promotion would silently edit a closed requirement, so it is not done | §3.1 step 3 |
 | `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — the moved clarification broke the SRS | §3.1 step 6 — after the SRS is written |
 | `stability-frozen-violation` | a requirement whose AC `--close` must clarify has Stability `frozen` — a frozen requirement's body is not changed on this path | §3.1 step 3 — before any SRS write |
@@ -167,9 +168,11 @@ A `--close` run also appends one event as in §2.6 step 3 (omitted under `--no-p
 
 ### 3.4 Call order
 
+Only a run that implemented from the SDS (`--sds`) calls the close-out; a run that only reported an open SDS does not close it (FR-FLOW-183 AC-1).
+
 | Caller | Move (§3.1) | Delete (§3.2) |
 |---|---|---|
-| `kiwi-pipeline` | after `kiwi-pm`, **before** the `kiwi-review-fix-loop --close-reqs` hop — that hop promotes | after that hop and the test-sufficiency check |
+| `kiwi-pipeline` (`--sds`) | after `kiwi-pm`, **before** the `kiwi-review-fix-loop --close-reqs` hop — that hop promotes | after that hop and the test-sufficiency check |
 | `kiwi-orchestrator` · `kiwi-wave-master` (`../_shared/kiwi/parallel-waves.md`) | after the test-sufficiency check, before the promotion step | after promotion |
 | `kiwi-pm` standalone (without `--no-final` or `--review-hop-owned-by-parent`) | in its §6.4 hand-off, **before** the `kiwi-review-fix-loop` hop — only when CLOSE_SAFE | after that hop — only when the move happened (MOVED) |
 | `kiwi-coder` standalone (not a `kiwi-pm` child) | before its §8.4 follow-up review — only when neither `state.failed` nor a remaining regression failure | after that review — only when the move happened (MOVED) |

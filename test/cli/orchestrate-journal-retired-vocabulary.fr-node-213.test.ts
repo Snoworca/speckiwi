@@ -26,7 +26,8 @@ async function rootWithJournal(text: string): Promise<string> {
 }
 
 function payload(schemaVersion: string, extra: Record<string, unknown>): string {
-  return JSON.stringify({ schema_version: schemaVersion, run_id: "run-a", engine: "kiwi-orchestrator", event: "intent", verb: "dispatch-lane", wave: "wave-1", ...extra });
+  // FR-NODE-218 AC-5 — the line carries both the intent and the result scope's required field, so either kind is complete.
+  return JSON.stringify({ schema_version: schemaVersion, run_id: "run-a", engine: "kiwi-orchestrator", event: "intent", verb: "dispatch-lane", wave: "wave-1", inputs_digest: "sha256:in", proof: { kind: "digest", ref: "sha256:out" }, ...extra });
 }
 
 async function append(root: string, line: string): Promise<{ exit: number; payload: Record<string, unknown> }> {

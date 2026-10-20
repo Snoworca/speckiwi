@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to SDS to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
+description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to pm to coder pipeline is too slow. Keeps SpecKiwi governance by requiring TDD/repro evidence, prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -77,7 +77,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 1. Preflight: verify git, test tooling, SpecKiwi MCP availability, active target, and `gh` if a GitHub issue is supplied.
 2. Detect input from issue URL, natural-language symptom, or existing working tree changes.
 3. Run two isolated root-cause passes: symptom/reproduction and scope/REQ impact.
-4. If complexity is large, halt or ask whether to move into the full `$kiwi-srs` -> `$kiwi-sds` flow.
+4. If complexity is large, halt or ask whether to move into the full `$kiwi-srs` -> `$kiwi-pm` flow.
 5. Write a regression test and confirm red. If exempted, record the reason and make the reviewer evaluate the exemption.
 6. Apply the smallest fix within cwd.
 7. Run formal checks and prickly review. Iterate until CRITICAL/HIGH findings are clear.
@@ -92,7 +92,7 @@ Use another skill when:
 
 | Scenario | Skill |
 |---|---|
-| New feature or non-urgent change | `$kiwi-srs` -> `$kiwi-sds` -> `$kiwi-pm` |
+| New feature or non-urgent change | `$kiwi-srs` -> `$kiwi-pm` (`$kiwi-sds` in between under `--sds`) |
 | Code-first SRS catch-up only | `$kiwi-srs-sync` |
 | Review/fix without urgent bug context | `$kiwi-review-fix-loop` |
 | Commit or PR after fix | `$kiwi-commit-auto-push` or `$kiwi-commit-auto-pr` |

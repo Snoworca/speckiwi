@@ -9,8 +9,9 @@ Governing requirements: `FR-FLOW-122` (this contract), `FR-NODE-186` (topology a
 (one worker per wave).
 
 **A lane is one wave's worker.** The lane of this contract is the one worker `parallel-waves.md`
-dispatches for a wave; a wave is never split into further lanes. A lane's `write_set` is its wave SDS's
-write set — the Files paths ∪ the Test Plan test files. When a lane is created and who judges and merges
+dispatches for a wave; a wave is never split into further lanes. A lane's `write_set` is the `writeSet` the
+stage lanes lock records for it — not the wave SDS write set (under `--sds` the lock records the union of
+the entry's `files[]` and the SDS Files ∪ Test Plan test files). When a lane is created and who judges and merges
 it is ordered by `parallel-waves.md`; this document owns the boundaries one lane must keep.
 
 ---
@@ -153,6 +154,6 @@ for the caller to make with the failure in hand.
 **Never reap before harvest.** Removing the worktree evaporates the gitignored artefacts inside it. The
 order is always harvest → verify → integrate → release.
 
-**Never re-dispatch a lane that is still alive** (`git worktree list --porcelain` reporting
-`locked … (pid N)`). Unlike a session name, a worktree is a disk artefact and therefore survives
+When `git worktree list --porcelain` reports the lane as `locked … (pid N)`, its worker may still be live (FR-FLOW-118 forbids re-dispatching a worker that may still be live): the run does not re-dispatch that lane and does not run `git worktree unlock` on it, and halts at critical gate `lane-worker-possibly-live`, which `--auto` does not decide (`NEEDS_USER`). The report names the worktree path, pid N and a liveness hint (`tasklist /FI "PID eq N"` on Windows, `kill -0 N` on POSIX), with the caveat that which process pid N is has not been established and that a WSL or other-namespace pid can look dead. Re-dispatching or unlocking happens only on the user's answer.
+Unlike a session name, a worktree is a disk artefact and therefore survives
 resumption — that is a side benefit of coordinating this way.

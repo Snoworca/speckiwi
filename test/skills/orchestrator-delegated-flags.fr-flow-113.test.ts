@@ -102,7 +102,7 @@ describe("FR-FLOW-113 — kiwi-pm session-suffix and no-final", () => {
   // AC-1 to AC-4 and AC-7 retired with the plan: kiwi-pm runs one agreed SDS as one kiwi-coder run,
   // so no execution set, no start point and no task dependency is left to define. A copy that still
   // documents them tells an orchestrator to pass flags nothing reads.
-  it.each(PM_COPIES)("FR-FLOW-113 AC-1 AC-4 AC-7: %s documents no --handoff, --from-task or task set", (copy) => {
+  it.each(PM_COPIES)("FR-FLOW-113 AC-1 AC-2 AC-3 AC-4 AC-7: %s documents no --handoff, --from-task or task set", (copy) => {
     const text = read(copy);
     for (const retired of ["--handoff", "--from-task", "task_ids[]", "depends_on_task"]) {
       expect(text.includes(retired), `${copy} still documents the retired ${retired}`).toBe(false);
@@ -110,13 +110,13 @@ describe("FR-FLOW-113 — kiwi-pm session-suffix and no-final", () => {
   });
 
   // AC-5: the session relocation, all five artifacts, and the spawn prompt's run-id line. The session
-  // key is the SDS id now that the plan run id is gone.
+  // key is the run id (4.1.0: a run without an SDS has no SDS id; under --sds the run id is the SDS id).
   it.each(PM_COPIES)("FR-FLOW-113 AC-5: %s relocates the whole session directory under --session-suffix", (copy) => {
     const body = flagBlock(copy, "--session-suffix");
     expect(body, `${copy} must define --session-suffix in its own block`).not.toBe("");
     expect(
-      body.includes(".kiwi/sessions/{sds_id}/lanes/{lane}/"),
-      `${copy} the relocated path must be stated literally, keyed on the SDS id`
+      body.includes(".kiwi/sessions/{run_id}/lanes/{lane}/"),
+      `${copy} the relocated path must be stated literally, keyed on the run id`
     ).toBe(true);
     expect(body.includes("{plan_run_id}"), `${copy} the relocated path still names the retired plan run id`).toBe(false);
     for (const artifact of ["pm-state.json", "pm.lock", "worklog.jsonl", "state.json", "reports/"]) {
@@ -274,15 +274,15 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
     );
   });
 
-  // AC-2: one commit per SDS run, explicit pathspec, never the whole tree. `git add -A` inside a unit
+  // AC-2 (4.1.0): one commit per kiwi-coder run, explicit pathspec, never the whole tree. `git add -A` inside a unit
   // stages the orchestrator's own residue and every other unit's uncommitted work.
   it.each(PM_COPIES)("FR-FLOW-115 AC-2: %s commits once per SDS run with an explicit pathspec", (copy) => {
     const body = handoffSection(copy);
     const rule = line(body, /commit 1개/);
     expect(rule, `${copy} must state the commit granularity`).not.toBe("");
     expect(
-      /SDS/.test(rule) && /kiwi-coder 실행/.test(rule),
-      `${copy} the granularity must be the one kiwi-coder run of the SDS, not a plan Task`
+      /kiwi-coder 실행 하나당/.test(rule),
+      `${copy} the granularity must be the one kiwi-coder run, not a plan Task`
     ).toBe(true);
     expect(/Task/.test(rule), `${copy} the granularity still names the retired plan Task`).toBe(false);
     expect(
@@ -299,7 +299,7 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
   // AC-3: trailers carry the run coordinates; the subject carries none. `the charter's standing constraints` forbids
   // phase and step markers in a commit title, and the recovery mechanism must not buy itself by
   // violating a standing constraint.
-  it.each(PM_COPIES)("%s puts the run coordinates in trailers and not in the subject", (copy) => {
+  it.each(PM_COPIES)("FR-FLOW-115 AC-3: %s puts the run coordinates in trailers and not in the subject", (copy) => {
     const body = handoffSection(copy);
     expect(
       /trailer/i.test(body),
@@ -317,7 +317,7 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
   // AC-4: the pathspec file is deliberately not used. Any path under the orchestrator's own state
   // directory is git-ignored and therefore absent from an isolated workspace — pm would ENOENT,
   // commit nothing, and the unit would read as empty.
-  it.each(PM_COPIES)("%s records why a pathspec file is not used", (copy) => {
+  it.each(PM_COPIES)("FR-FLOW-115 AC-4: %s records why a pathspec file is not used", (copy) => {
     const body = handoffSection(copy);
     const rule = line(body, /pathspec 파일|pathspec file/);
     expect(rule, `${copy} must record that a pathspec file is deliberately not used`).not.toBe("");
@@ -347,7 +347,7 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
   });
 
   // AC-6: the kiwi-review-fix-loop half is phase-2 work and must not be authored here.
-  it.each(RFL_COPIES)("%s does not gain --commit-lane-work in this target", (copy) => {
+  it.each(RFL_COPIES)("FR-FLOW-115 AC-6: %s does not gain --commit-lane-work in this target", (copy) => {
     expect(
       read(copy).includes("--commit-lane-work"),
       `${copy} the loop-L half of the flag moves to the next target and must not be documented yet`

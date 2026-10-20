@@ -9,6 +9,7 @@ import {
   assertZeroDriftToolSurface
 } from "../../src/mcp/schemas.js";
 import { createMcpServer, isReadOnlyTool } from "../../src/mcp/server.js";
+import { renderSdsDesignTemplate } from "../../src/core/bootstrap/templates.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 // FR-MCP-054 — vibe-gate check core extraction with the check_vibe_gate MCP read tool.
@@ -21,7 +22,8 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 //
 // Contract under test (docs/spec/40.mcp-stdio-interface.srs.md FR-MCP-054):
 //   - AC-1: blocked=false for wait/sdd or a satisfied vibe/tdd gate.
-//   - AC-2: blocked=true with a blockedReason naming the missing artifact.
+//   - AC-2: blocked=true with a blockedReason naming the missing artifact (the step directory, or
+//           the acceptance contract FR-PARSE-042's predicate requires).
 //   - AC-3: registered read-only with zero-drift and appendix parity.
 
 const TOOL = "check_vibe_gate";
@@ -50,13 +52,11 @@ async function writeStateMd(root: string, options: { mode: string; activeTask?: 
   await writeFile(path.join(stepsDir, "state.md"), lines.join("\n"), "utf8");
 }
 
-async function synthesizeStepDir(root: string, task: string, options: { design?: boolean } = {}): Promise<void> {
+async function synthesizeStepDir(root: string, task: string, options: { acceptance?: string } = {}): Promise<void> {
   const stepDir = path.join(root, "docs", "spec", "steps", task);
   await mkdir(stepDir, { recursive: true });
-  await writeFile(path.join(stepDir, "intent.md"), "# Intent\n", "utf8");
-  if (options.design) {
-    await writeFile(path.join(stepDir, "design.md"), "# SDS: sample\n", "utf8");
-  }
+  const acceptance = options.acceptance === undefined ? [] : ["", "## Acceptance", "", options.acceptance];
+  await writeFile(path.join(stepDir, "intent.md"), ["# Intent", ...acceptance, ""].join("\n"), "utf8");
 }
 
 describe("FR-MCP-054 — check_vibe_gate MCP read tool", () => {
@@ -72,10 +72,10 @@ describe("FR-MCP-054 — check_vibe_gate MCP read tool", () => {
       expect(result.value.blocked).toBe(false);
     }
 
-    // A tdd task with a synthesized step directory and design.md is satisfied.
+    // A tdd task with a synthesized step directory and an acceptance line in intent.md is satisfied.
     const root = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(root, { mode: "tdd", activeTask: "T-TDD-01" });
-    await synthesizeStepDir(root, "T-TDD-01", { design: true });
+    await synthesizeStepDir(root, "T-TDD-01", { acceptance: "- AC-1: WHEN x happens THE SYSTEM SHALL do y." });
     const server = createMcpServer({ root });
     const result = (await server.callTool(TOOL, {})) as {
       ok: boolean;
@@ -100,10 +100,11 @@ describe("FR-MCP-054 — check_vibe_gate MCP read tool", () => {
     expect(noDirResult.value.blocked).toBe(true);
     expect(noDirResult.value.blockedReason).toContain("step directory");
 
-    // tdd + step directory without design.md → blocked, reason names design.md.
+    // tdd + step directory failing the FR-PARSE-042 predicate (placeholder line) → blocked, reason
+    // names the missing acceptance contract.
     const noDesign = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(noDesign, { mode: "tdd", activeTask: "T-TDD-01" });
-    await synthesizeStepDir(noDesign, "T-TDD-01", { design: false });
+    await synthesizeStepDir(noDesign, "T-TDD-01", { acceptance: "- AC-1: WHEN <condition> THE SYSTEM SHALL <behaviour>" });
     const noDesignServer = createMcpServer({ root: noDesign });
     const noDesignResult = (await noDesignServer.callTool(TOOL, {})) as {
       ok: boolean;
@@ -111,12 +112,21 @@ describe("FR-MCP-054 — check_vibe_gate MCP read tool", () => {
     };
     expect(noDesignResult.ok).toBe(true);
     expect(noDesignResult.value.blocked).toBe(true);
-    expect(noDesignResult.value.blockedReason).toContain("design.md");
+    expect(noDesignResult.value.blockedReason).toContain("acceptance contract");
+
+    // tdd + only the scaffolded design.md stub → still blocked (FR-PARSE-042 AC-3).
+    const stub = await copyFixtureWorkspace("valid-basic");
+    await writeStateMd(stub, { mode: "tdd", activeTask: "T-TDD-01" });
+    await synthesizeStepDir(stub, "T-TDD-01");
+    await writeFile(path.join(stub, "docs", "spec", "steps", "T-TDD-01", "design.md"), renderSdsDesignTemplate({ task: "T-TDD-01" }), "utf8");
+    const stubResult = (await createMcpServer({ root: stub }).callTool(TOOL, {})) as { value: { blocked: boolean; blockedReason?: string } };
+    expect(stubResult.value.blocked).toBe(true);
+    expect(stubResult.value.blockedReason).toContain("acceptance contract");
 
     // vibe requires only the step directory: a design-less synthesized dir passes.
     const vibe = await copyFixtureWorkspace("valid-basic");
     await writeStateMd(vibe, { mode: "vibe", activeTask: "T-VIBE-01" });
-    await synthesizeStepDir(vibe, "T-VIBE-01", { design: false });
+    await synthesizeStepDir(vibe, "T-VIBE-01");
     const vibeServer = createMcpServer({ root: vibe });
     const vibeResult = (await vibeServer.callTool(TOOL, {})) as { ok: boolean; value: { blocked: boolean } };
     expect(vibeResult.ok).toBe(true);

@@ -571,7 +571,7 @@ describe("FR-FLOW-049 — all-wave final verification against the whole design b
 describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remediation", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: passes the design baseline to kiwi-srs as a research document path", () => {
+      it("FR-FLOW-050 AC-1: passes the design baseline to kiwi-srs as a research document path", () => {
         const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         expect(register, `${variant}: the target-registration section must exist`).not.toBe("");
         const rule = lineWith(register, /리서치 문서/);
@@ -588,7 +588,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(true);
       });
 
-      it("AC-2: uses the same artifact path recorded on waves.jsonl", () => {
+      it("FR-FLOW-050 AC-2: uses the same artifact path recorded on waves.jsonl", () => {
         const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         expect(
           /`waves\.jsonl` 에 기록한 것과 \*\*같은\*\* 경로/.test(register),
@@ -619,7 +619,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(false);
       });
 
-      it("AC-4: keeps the design-gap row distinct from the unclosable-in-code row", () => {
+      it("FR-FLOW-050 AC-4: keeps the design-gap row distinct from the unclosable-in-code row", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const designRow = tableRows(routing, /설계 기준선에는 있으나/);
         const residualRow = tableRows(routing, /코드로 닫을 수 없는/);
@@ -637,7 +637,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(true);
       });
 
-      it("AC-5: keeps the cross-wave halt in force for the remediation path", () => {
+      it("FR-FLOW-050 AC-5: keeps the cross-wave halt in force for the remediation path", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         expect(
           /증분 저작이[^\n]*(?:이전|완료된) wave[^\n]*`wave-verify-cross-wave-fix-required`/.test(routing),
@@ -645,7 +645,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(true);
       });
 
-      it("AC-6: permits automatic remediation of a design-layer gap under --auto", () => {
+      it("FR-FLOW-050 AC-6: permits automatic remediation of a design-layer gap under --auto", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         const rule = lineWith(routing, /설계 계층 갭의 자동 처리/);
         expect(rule, `${variant}: the auto-remediation permission must be stated`).not.toBe("");
@@ -665,7 +665,7 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
 describe("FR-FLOW-051 — wave target registration and wave-internal resume granularity", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: kiwi-srs registers an unregistered target instead of failing", () => {
+      it("FR-FLOW-051 AC-1: kiwi-srs registers an unregistered target instead of failing", () => {
         const target = sectionUnder(skillBody(readSrs(variant)), /^#{3}\s.*TARGET 확인/);
         expect(target, `${variant}: kiwi-srs must have a target-resolution section`).not.toBe("");
         const rule = lineWith(target, /미등록/);
@@ -682,7 +682,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         ).toBe(true);
       });
 
-      it("AC-2: the CLI fallback row shows the creation option", () => {
+      it("FR-FLOW-051 AC-2: the CLI fallback row shows the creation option", () => {
         const fallback = sectionUnder(skillBody(readSrs(variant)), /^##\s.*(?:MCP \/ CLI fallback|CLI fallback)/i);
         expect(fallback, `${variant}: kiwi-srs must have a CLI fallback table`).not.toBe("");
         // Column-bound: `--create` mentioned in the prose below the table does not make the
@@ -695,7 +695,7 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         ).toBe(true);
       });
 
-      it("AC-3: kiwi-wave-master calls creation-enabled registration the normal path", () => {
+      it("FR-FLOW-051 AC-3: kiwi-wave-master calls creation-enabled registration the normal path", () => {
         const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
         const rule = lineWith(register, /\*\*정상 경로\*\*/);
         expect(rule, `${variant}: registration of an unregistered wave target must be called the normal path`).not.toBe(
@@ -749,7 +749,8 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         ).toBe(true);
         // Revised in 4.0.0: the middle stage is SDS authoring and worker execution under the shared
         // parallel-waves contract (FR-FLOW-188 AC-1), not a per-wave pipeline run.
-        for (const stage of ["target 등록", "SDS 작성과 워커 실행", "wave 검증"]) {
+        // FR-FLOW-051 AC-6 (4.1.0): the middle stage is worker execution, with SDS authoring only under --sds.
+        for (const stage of ["target 등록", "워커 실행(`--sds` 면 SDS 작성 포함)", "wave 검증"]) {
           expect(rule.includes(stage), `${variant}: the resume granularity must name the ${stage} stage`).toBe(true);
         }
         expect(/pipeline/.test(rule), `${variant}: the resume granularity still names a pipeline stage`).toBe(false);
@@ -937,13 +938,13 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
           `${variant}: the row's destination must re-run feasibility on exactly those requirements`,
         ).toBe(true);
         expect(
-          /SDS 작성 단계부터 재진입/.test(handling) && /draft-stability-skip/.test(handling),
+          /스케줄링 단계부터\(`--sds` 면 SDS 작성 단계부터\) 재진입/.test(handling) && /draft-stability-skip/.test(handling),
           `${variant}: the row must re-enter from SDS authoring and record a failed promotion as residual`,
         ).toBe(true);
         expect(/planning|planner|계획/.test(row.join(" ")), `${variant}: the row still names a planning stage`).toBe(false);
       });
 
-      it("AC-3: declares the task-failure escalation halt as a critical gate", () => {
+      it("FR-FLOW-053 AC-3: declares the task-failure escalation halt as a critical gate", () => {
         const gates = gateSection(skillBody(readPm(variant)));
         const cells = rowCells(gates, /task-failure-escalation/);
         expect(cells.length, `${variant}: kiwi-pm critical_gates must declare task-failure-escalation`).toBeGreaterThan(2);
@@ -963,7 +964,7 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
         ).toBe(false);
       });
 
-      it("AC-5: defers a scope-boundary conflict under --auto instead of blocking authoring", () => {
+      it("FR-FLOW-053 AC-5: defers a scope-boundary conflict under --auto instead of blocking authoring", () => {
         const gate = sectionUnder(skillBody(readSrs(variant)), /^#{3}\s.*Scope-boundary impact gate/i);
         expect(gate, `${variant}: kiwi-srs must have a scope-boundary gate section`).not.toBe("");
         const rule = lineWith(gate, /`--auto`/);
@@ -1005,7 +1006,7 @@ describe("FR-FLOW-053 — per-requirement partial progress instead of whole-run 
 describe("FR-FLOW-054 — existing-structure preservation guards across the implementation chain", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: declares existing tests inviolable with all three prohibitions", () => {
+      it("FR-FLOW-054 AC-1: declares existing tests inviolable with all three prohibitions", () => {
         const body = skillBody(readCoder(variant));
         const rule = lineWith(body, /기존 테스트 불가침/);
         expect(rule, `${variant}: kiwi-coder must declare an existing-tests-inviolable rule`).not.toBe("");
@@ -1028,8 +1029,9 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         expect(impl, `${variant}: the implementation-loop flow must exist`).not.toBe("");
         // Scoped to the SDS-code match gate branch of the flow block (FR-FLOW-185 AC-3, which replaced
         // the plan-versus-code gate), so a mention in the review-axis table below cannot satisfy it.
-        const gate = impl.split(/\(d\) SDS-코드 일치 게이트/)[1]?.split(/\(e\)/)[0] ?? "";
-        expect(gate, `${variant}: the SDS-code match gate branch must exist`).not.toBe("");
+        // FR-FLOW-054 AC-2 (4.1.0): the preservation check runs in every run, with or without an SDS (FR-FLOW-194 AC-5).
+        const gate = impl.split(/\(d\) 보존 검사 — SDS 유무와 무관하게 모든 실행에서 돈다/)[1]?.split(/\(d′\)/)[0] ?? "";
+        expect(gate, `${variant}: the preservation check branch must exist`).not.toBe("");
         expect(
           /기존 테스트/.test(gate) && /(?:삭제|제거)/.test(gate) && /약화/.test(gate),
           `${variant}: the gate must detect test-file deletion, test-case removal and assertion weakening in the diff`,
@@ -1040,7 +1042,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         ).toBe(true);
       });
 
-      it("AC-3: declares that detection as a critical gate that --auto cannot resolve", () => {
+      it("FR-FLOW-054 AC-3: declares that detection as a critical gate that --auto cannot resolve", () => {
         const gates = gateSection(skillBody(readCoder(variant)));
         const cells = rowCells(gates, /existing-test-weakened-or-deleted/);
         expect(
@@ -1053,7 +1055,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         ).toBe(true);
       });
 
-      it("AC-4: captures a baseline suite result and judges regression by the delta", () => {
+      it("FR-FLOW-054 AC-4: captures a baseline suite result and judges regression by the delta", () => {
         const body = skillBody(readCoder(variant));
         const regression = sectionUnder(body, /^#{3}\s.*회귀 테스트/);
         expect(regression, `${variant}: the regression section must exist`).not.toBe("");
@@ -1073,7 +1075,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         ).toBe(true);
       });
 
-      it("AC-5: raises a distinct path-independent gate for existing public contract changes", () => {
+      it("FR-FLOW-054 AC-5: raises a distinct path-independent gate for existing public contract changes", () => {
         const gates = gateSection(skillBody(readCoder(variant)));
         const cells = rowCells(gates, /existing-public-contract-change/);
         expect(
@@ -1138,7 +1140,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
 describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry scope", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: decides cross-wave status by a mechanical rule over the file set", () => {
+      it("FR-FLOW-055 AC-1: decides cross-wave status by a mechanical rule over the file set", () => {
         const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         expect(cross, `${variant}: a cross-wave sub-section must exist`).not.toBe("");
         const rule = lineWith(cross, /파일 집합/);
@@ -1162,7 +1164,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
         ).toBe(true);
       });
 
-      it("AC-2: keeps a requirement-level change a halt", () => {
+      it("FR-FLOW-055 AC-2: keeps a requirement-level change a halt", () => {
         const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /요구사항을 바꿔야/);
         expect(rule, `${variant}: a requirement-level cross-wave change must have its own rule`).not.toBe("");
@@ -1191,7 +1193,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
         ).toBe(true);
       });
 
-      it("AC-4: never modifies or reverses the earlier wave's complete event", () => {
+      it("FR-FLOW-055 AC-4: never modifies or reverses the earlier wave's complete event", () => {
         const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /`complete` 이벤트를/);
         expect(rule, `${variant}: the append-only guarantee must be restated for carry-forward`).not.toBe("");
@@ -1202,7 +1204,7 @@ describe("FR-FLOW-055 — cross-wave carry-forward, decision rule and re-entry s
         expect(HEDGE.test(rule), `${variant}: the append-only guarantee must be absolute, not hedged`).toBe(false);
       });
 
-      it("AC-5: reserves the halt for the case where no carry-forward path exists", () => {
+      it("FR-FLOW-055 AC-5: reserves the halt for the case where no carry-forward path exists", () => {
         const cross = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*교차 wave/);
         const rule = lineWith(cross, /양쪽 carry-forward 경로/);
         expect(rule, `${variant}: the halt must be scoped against the carry-forward paths`).not.toBe("");

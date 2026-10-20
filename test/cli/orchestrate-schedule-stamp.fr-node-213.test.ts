@@ -125,23 +125,25 @@ describe("FR-NODE-213 AC-6 — who stamps the schema version", { timeout: 60_000
     expect(lines[0]?.phase, "the first line is the round record").toBe("design");
   });
 
-  it("FR-NODE-213 AC-6: journal append writes the caller's schema_version as given and does not fill a missing one", async () => {
+  it("FR-NODE-213 AC-6: journal append writes the caller's schema_version as given, refuses a missing one rather than filling it, and a line already without one reads as 1.0.0", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "speckiwi-fr-node-213-ac6-append-"));
     await mkdir(path.join(root, "kiwi"), { recursive: true });
-    await writeFile(path.join(root, "kiwi", "waves.jsonl"), "", "utf8");
-    const base = { run_id: "run-a", engine: "kiwi-orchestrator", event: "intent", wave: "wave-1" };
+    // A line written before 4.1.0 without a schema_version stays in the journal and reads as 1.0.0.
+    await writeFile(path.join(root, "kiwi", "waves.jsonl"), `${JSON.stringify({ run_id: "run-a", engine: "kiwi-orchestrator", event: "intent", wave: "wave-1", verb: "execute-unit" })}\n`, "utf8");
+    const base = { run_id: "run-a", engine: "kiwi-orchestrator", event: "intent", wave: "wave-1", inputs_digest: "sha256:in" };
 
-    // No schema_version: the line is written without one and reads as 1.0.0, so a verb retired at 2.0.0
-    // is still admitted on it — a filled-in 2.0.0 would have refused this very append.
-    const unversioned = await orchestrate(root, ["journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ ...base, verb: "execute-unit" })]);
-    expect(unversioned.exit, JSON.stringify(unversioned.payload)).toBe(0);
+    // Since 4.1.0 an intent line without a schema_version is refused (FR-NODE-218 AC-5): filling one in
+    // would have changed which contract the line is judged by, and leaving it out reads as 1.0.0.
+    const unversioned = await orchestrate(root, ["journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ ...base, verb: "author-design" })]);
+    expect(unversioned.exit, JSON.stringify(unversioned.payload)).toBe(2);
+    expect(JSON.stringify(unversioned.payload.violations)).toContain("schema_version");
     // An earlier version the caller names is kept, not raised.
     const earlier = await orchestrate(root, ["journal", "append", "--run-id", "run-a", "--payload", JSON.stringify({ ...base, schema_version: "1.5.0", verb: "author-design" })]);
     expect(earlier.exit, JSON.stringify(earlier.payload)).toBe(0);
 
     const lines = await journalLines(root);
     expect(lines).toHaveLength(2);
-    expect(Object.prototype.hasOwnProperty.call(lines[0], "schema_version"), "a missing schema_version is not filled").toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(lines[0], "schema_version"), "the earlier line was not rewritten").toBe(false);
     expect(lines[1]?.schema_version).toBe("1.5.0");
 
     expect(lines.map((line, index) => schemaVersionOf({ ...line, journalLine: index + 1 } as WavesEvent))).toEqual(["1.0.0", "1.5.0"]);

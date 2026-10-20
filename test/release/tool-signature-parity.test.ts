@@ -325,8 +325,11 @@ describe("FR-NODE-122 gate-id parity", () => {
     // left with the plan rung, the parallel-waves run joined three (`worker-touched-srs`,
     // `test-sufficiency-gap`, `srs-mutation-replay-failed`), and the eight gates only the removed
     // handoff validator, coupling check and task-level conflict reasons raised left with them.
-    expect(GATE_IDS).toHaveLength(63);
-    expect(new Set(GATE_IDS).size).toBe(63);
+    // @req FR-NODE-221 AC-10 · FR-FLOW-198 AC-5 — 65 in 4.1.0: `run-lock-held-by-live-session` (a
+    // foreign release refused while the holder's Windows fence is live) and `lane-worker-possibly-live`
+    // (the critical stop before re-dispatching a lane whose worktree is locked) joined.
+    expect(GATE_IDS).toHaveLength(65);
+    expect(new Set(GATE_IDS).size).toBe(65);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {
@@ -361,6 +364,15 @@ describe("FR-NODE-122 gate-id parity", () => {
     const undeclared = GATE_IDS.filter((gateId) => !declared.has(gateId));
     expect(undeclared.length).toBeGreaterThan(0);
     expect([...declared].every((gateId) => (GATE_IDS as readonly string[]).includes(gateId))).toBe(true);
+  });
+
+  it("FR-NODE-197 AC-6 — every kiwi-orchestrator variant declares the journal contention gate in a gate table", async () => {
+    const variants = await orchestratorVariantBodies();
+    expect(variants.length, "no kiwi-orchestrator rendering was found, so this proves nothing").toBeGreaterThanOrEqual(3);
+    const undeclared = variants
+      .filter((variant) => !variant.body.split(/\r?\n/).some((line) => bareGateId(tableCells(line)?.[0] ?? "") === "journal-artifact-lock-held"))
+      .map((variant) => variant.file);
+    expect(undeclared, "a refusal an operator can see must be one the skill documents").toEqual([]);
   });
 
   it("AC-4 — a variant declaring an id absent from the union is red", () => {

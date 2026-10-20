@@ -67,6 +67,28 @@ function lanesBody(): Record<string, unknown> {
   };
 }
 
+/**
+ * A lanes body planned from a wave declaration file (`--waves`, FR-NODE-216): every wave carries a
+ * declaration-entry digest, and only the wave that named SDS files carries SDS digests.
+ */
+function declarationLanesBody(): Record<string, unknown> {
+  return {
+    lane_cap: 4,
+    depends: { "run-wave-1": [], "run-wave-2": [] },
+    declaration: "waves/waves.json",
+    declaration_digests: { "run-wave-1": "sha-entry-1", "run-wave-2": "sha-entry-2" },
+    sds_digests: { "run-wave-2": "sha-sds-2" },
+    lane_count: 2,
+    stage_count: 1,
+    lanes: [
+      { laneId: "lane-run-wave-1", stage: 1, wave: "run-wave-1", sds: null, writeSet: ["src/a.ts"] },
+      { laneId: "lane-run-wave-2", stage: 1, wave: "run-wave-2", sds: "docs/sds/run-wave-2.sds.md", writeSet: ["src/b.ts"] }
+    ],
+    stages: [{ index: 1, laneIds: ["lane-run-wave-1", "lane-run-wave-2"] }],
+    conflicts: []
+  };
+}
+
 function issuesBody(): Record<string, unknown> {
   return {
     wave: 1,
@@ -190,6 +212,33 @@ describe("FR-NODE-138 AC-2 — one rejected-body fixture per kind", () => {
     }
   });
 
+  it("FR-NODE-138 AC-2 refuses a lanes body planned from a declaration that is missing its declaration-entry digests", () => {
+    const result = freezeLock("lanes", omit(declarationLanesBody(), "declaration_digests"), inputs());
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.code).toBe("lock-body-invalid");
+    expect(result.detail).toContain("declaration_digests");
+  });
+
+  it("FR-NODE-138 AC-2 refuses a declaration-planned lanes body whose entry digests do not name exactly its waves", () => {
+    for (const digests of [{ "run-wave-1": "sha-entry-1" }, { "run-wave-1": "a", "run-wave-2": "b", "run-wave-9": "c" }]) {
+      const result = freezeLock("lanes", { ...declarationLanesBody(), declaration_digests: digests }, inputs());
+      expect(result.ok, JSON.stringify(digests)).toBe(false);
+      if (result.ok) throw new Error("unreachable");
+      expect(result.detail).toContain("declaration_digests");
+    }
+  });
+
+  it("FR-NODE-138 AC-2 refuses a declaration-planned lanes body missing the SDS digests of a wave scheduled with SDS files", () => {
+    const result = freezeLock("lanes", { ...declarationLanesBody(), sds_digests: {} }, inputs());
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.detail).toContain("sds_digests");
+  });
+
+  it("FR-NODE-138 AC-2 accepts a declaration-planned lanes body whose waves without SDS files carry no SDS digest", () => {
+    expect(freezeLock("lanes", declarationLanesBody(), inputs()).ok).toBe(true);
+  });
 });
 
 describe("FR-NODE-138 AC-3/AC-7 — byte-determinism over injected inputs", () => {
@@ -280,9 +329,15 @@ describe("FR-NODE-138 AC-4 — sha256 covers every envelope field above it", () 
 });
 
 describe("FR-NODE-138 AC-5 — lanes.lock.json records SDS digests, the declared dependencies and the lane cap", () => {
-  it("FR-NODE-138 AC-5 declares one digest field, sds_digests, and two literal fields", () => {
-    expect([...LANES_LOCK_DIGEST_FIELDS]).toEqual(["sds_digests"]);
-    expect([...LANES_LOCK_RECORDED_INPUT_FIELDS]).toEqual(["sds_digests", "depends", "lane_cap"]);
+  it("FR-NODE-138 AC-5 declares two digest fields, sds_digests and declaration_digests, and two literal fields", () => {
+    expect([...LANES_LOCK_DIGEST_FIELDS]).toEqual(["sds_digests", "declaration_digests"]);
+    expect([...LANES_LOCK_RECORDED_INPUT_FIELDS]).toEqual(["sds_digests", "declaration_digests", "depends", "lane_cap"]);
+  });
+
+  it("FR-NODE-138 AC-5 carries one declaration-entry digest per wave planned from --waves and SDS digests only for waves with SDS files", () => {
+    const body = freezeOk("lanes", declarationLanesBody(), inputs()).body as Record<string, unknown>;
+    expect(Object.keys(body.declaration_digests as Record<string, string>).sort()).toEqual(["run-wave-1", "run-wave-2"]);
+    expect(Object.keys(body.sds_digests as Record<string, string>)).toEqual(["run-wave-2"]);
   });
 
   it("FR-NODE-138 AC-5 carries one SDS digest per wave, the declared dependencies and lane_cap as a literal", () => {
@@ -311,9 +366,9 @@ describe("FR-NODE-138 AC-5 — lanes.lock.json records SDS digests, the declared
     }
   });
 
-  it("FR-NODE-138 AC-5 refuses a lanes body missing any one of the recorded fields", () => {
+  it("FR-NODE-138 AC-5 refuses a declaration-planned lanes body missing any one of the recorded fields", () => {
     for (const field of LANES_LOCK_RECORDED_INPUT_FIELDS) {
-      const result = freezeLock("lanes", omit(lanesBody(), field), inputs());
+      const result = freezeLock("lanes", omit(declarationLanesBody(), field), inputs());
       expect(result.ok, `${field} is required`).toBe(false);
       if (result.ok) throw new Error("unreachable");
       expect(result.detail).toContain(field);
@@ -325,14 +380,29 @@ describe("FR-NODE-138 AC-6 — the recorded fields pin every computeLanePlan inp
   it("FR-NODE-138 AC-6 maps each of the three declared inputs to a recorded field", () => {
     const pins = reconstructLanePlanInputPins(lanesBody());
     expect(Object.keys(pins).sort()).toEqual(["dependencies", "laneCap", "waves"]);
-    expect(LANE_PLAN_INPUT_PINS).toEqual({ waves: "sds_digests", dependencies: "depends", laneCap: "lane_cap" });
+    expect(LANE_PLAN_INPUT_PINS).toEqual({
+      waves: ["sds_digests", "declaration_digests"],
+      dependencies: ["depends"],
+      laneCap: ["lane_cap"]
+    });
   });
 
   it("FR-NODE-138 AC-6 resolves each pin to the value the lock recorded, the waves through their SDS digests", () => {
     const pins = reconstructLanePlanInputPins(lanesBody());
-    expect(pins.waves).toEqual({ recordedField: "sds_digests", recordedValue: { "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2" } });
-    expect(pins.dependencies).toEqual({ recordedField: "depends", recordedValue: { "run-wave-2": [] } });
-    expect(pins.laneCap).toEqual({ recordedField: "lane_cap", recordedValue: 4 });
+    expect(pins.waves).toEqual({
+      recordedFields: ["sds_digests", "declaration_digests"],
+      recordedValues: { sds_digests: { "run-wave-1": "sha-sds-1", "run-wave-2": "sha-sds-2" }, declaration_digests: undefined }
+    });
+    expect(pins.dependencies).toEqual({ recordedFields: ["depends"], recordedValues: { depends: { "run-wave-2": [] } } });
+    expect(pins.laneCap).toEqual({ recordedFields: ["lane_cap"], recordedValues: { lane_cap: 4 } });
+  });
+
+  it("FR-NODE-138 AC-6 pins the waves of a declaration-planned lock through both digest fields", () => {
+    const pins = reconstructLanePlanInputPins(declarationLanesBody());
+    expect(pins.waves.recordedValues).toEqual({
+      sds_digests: { "run-wave-2": "sha-sds-2" },
+      declaration_digests: { "run-wave-1": "sha-entry-1", "run-wave-2": "sha-entry-2" }
+    });
   });
 
   it("FR-NODE-138 AC-6 reads the recorded value rather than any value available today", () => {
@@ -340,7 +410,7 @@ describe("FR-NODE-138 AC-6 — the recorded fields pin every computeLanePlan inp
     stale.lane_cap = 2;
     stale.sds_digests = { "run-wave-1": "sha-the-lock-was-computed-from", "run-wave-2": "sha-sds-2" };
     const pins = reconstructLanePlanInputPins(stale);
-    expect(pins.laneCap.recordedValue).toBe(2);
-    expect((pins.waves.recordedValue as Record<string, string>)["run-wave-1"]).toBe("sha-the-lock-was-computed-from");
+    expect(pins.laneCap.recordedValues.lane_cap).toBe(2);
+    expect((pins.waves.recordedValues.sds_digests as Record<string, string>)["run-wave-1"]).toBe("sha-the-lock-was-computed-from");
   });
 });

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   AGENT_INSTRUCTION_HEADING_PREFIX,
   AGENT_INSTRUCTION_VERSION,
+  BUNDLED_SDS_RULES_FILENAME,
   renderAgentInstructionSnippet
 } from "../../../src/core/bootstrap/templates.js";
 import { initProject } from "../../../src/core/bootstrap/init-project.js";
@@ -52,7 +53,7 @@ describe("FR-NODE-077 agent instruction snippet v1.6", () => {
 
   it("FR-NODE-077 AC-3: references the installed SDS rules path and keeps the v1.5 tdd content", () => {
     const snippet = renderAgentInstructionSnippet();
-    expect(snippet).toContain("docs/rule/SDS-MD-Rules-v2.6.0.md");
+    expect(snippet).toContain(`docs/rule/${BUNDLED_SDS_RULES_FILENAME}`);
     // v1.5 tdd content retained: cycle, gates, sdd fallback, boundary rule.
     expect(snippet).toContain("design.md");
     expect(snippet).toContain("EARS");

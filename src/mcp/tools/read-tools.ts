@@ -37,6 +37,7 @@ import {
 } from "../../core/mutation/repair-requirement-id.js";
 import { resultToMcp } from "../errors.js";
 import { ORCHESTRATE_TOOL_BINDINGS, orchestrateArgv, type OrchestrateToolBinding } from "../../cli/commands/orchestrate.js";
+import { declareSessionProcess } from "../../core/orchestrator/run-lock.js";
 
 /**
  * The parsed SRS one read answers from. Like {@link projectRoot}, it takes the per-call root from
@@ -143,6 +144,8 @@ export async function callOrchestrateTool(
   context?: McpCallContext
 ): Promise<unknown> {
   const { main } = await import("../../cli/index.js");
+  // @req FR-NODE-221 — this process is a session, so a held run lock fence is this session's or another's.
+  declareSessionProcess();
   const chunks: string[] = [];
   const sink = () => ({ write: (text: string) => { chunks.push(text); return true; } }) as unknown as NodeJS.WriteStream;
   let argv: string[];
@@ -416,9 +419,8 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("validate_step", async (input, context) => {
     const parsed = await workspace(deps, context);
     const stepName = String(input.step);
-    // @req FR-PARSE-040 — intent.md carries the skip record, so this surface loads it beside
-    // design.md. Loading only design.md here would let the MCP caller see a warning where the CLI
-    // sees SDS-E054, and the two surfaces would disagree about whether the step may proceed.
+    // @req FR-PARSE-042 AC-4 — intent.md carries the acceptance lines, so this surface loads it beside
+    // design.md; loading only design.md would let the CLI and MCP judge one step differently.
     const root = await projectRoot(deps, context);
     const design = await loadStepDesign(root, stepName);
     const intent = await loadStepIntent(root, stepName);

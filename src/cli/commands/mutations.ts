@@ -362,7 +362,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
   command
     .command("edit-requirement-table-rows")
     .argument("<id>")
-    .requiredOption("--section <section>", "verification_evidence or trace_links")
+    .requiredOption("--section <section>", "verification_evidence, trace_links or change_notes")
     .requiredOption("--operations <json>", "JSON array of row operations")
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)

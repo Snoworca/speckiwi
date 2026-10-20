@@ -662,12 +662,12 @@ pr_responded: true|false
 
 | 범위 밖 | 담당 스킬 |
 |---|---|
-| 신규 기능 개발 | `/kiwi-srs` → `/kiwi-sds` → `/kiwi-pm` |
+| 신규 기능 개발 | `/kiwi-srs` → `/kiwi-pm` (`--sds` 면 그 사이에 `/kiwi-sds`) |
 | 긴급 fix + SRS sync 위임 | `/kiwi-hot-fix` |
 | MCP mutation 직접 호출 | `/kiwi-srs-sync` 또는 `/kiwi-srs` (본 스킬은 §0.8 으로 금지) |
 | git commit / push | 사용자 결정 또는 `/kiwi-commit-auto-push` |
 | PR 생성 (없는 PR 새로 만들기) | 사용자 또는 `/kiwi-commit-auto-push` |
-| 구현 설계 (SDS) 작성 | `/kiwi-sds` |
+| 구현 설계 (SDS) 작성 — 사용자가 요청할 때 | `/kiwi-sds` |
 | 통합 테스트 | `/kiwi-coder` Phase 4 |
 
 ---

@@ -7,7 +7,6 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { TARGET_TYPES } from "../core/target-types.js";
-import { initProject } from "../core/bootstrap/init-project.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import type { ProjectRoot } from "../core/types.js";
 import { createTestMcpServer, type McpDependencies, type McpRootSource, type McpServerHandle } from "./adapter.js";
@@ -262,7 +261,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   },
   edit_requirement_table_rows: {
     id: z.string(),
-    section: z.enum(["verification_evidence", "trace_links"]),
+    section: z.enum(["verification_evidence", "trace_links", "change_notes"]),
     operations: z.array(z.object({ kind: z.enum(["update", "delete"]), rowId: z.string().optional(), rowIndex: z.number().int().nonnegative().optional(), values: z.record(z.string(), z.string()).optional() })),
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
@@ -564,42 +563,50 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-async function findSrsRootFrom(start: string): Promise<string | null> {
-  const home = await realpath(os.homedir()).catch(() => path.resolve(os.homedir()));
-  let current = path.resolve(start);
-  for (;;) {
-    const resolvedCurrent = await realpath(current).catch(() => current);
-    if (resolvedCurrent === home) return null;
-    const indexPath = path.join(current, "docs", "spec", "00.index.md");
-    const hasIndex = await access(indexPath).then(() => true).catch(() => false);
-    if (hasIndex) {
-      return resolvedCurrent;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return null;
-    current = parent;
-  }
+/**
+ * The internal search seam. @req FR-MCP-067 AC-2 — tests pass a temporary home and ceiling so the
+ * real home and anything above the temporary tree are never reached; production passes the user's
+ * home and the filesystem root. Not a startup surface: neither `startMcpServer` nor
+ * `McpServerOptions` takes it (REL-MCP-005 AC-4).
+ */
+export interface McpStartupSearchBounds {
+  home: string;
+  ceiling: string;
 }
 
-export async function resolveMcpStartupRoot(): Promise<ProjectRoot> {
-  const cwd = await realpath(process.cwd()).catch(() => path.resolve(process.cwd()));
-  const srsRoot = await findSrsRootFrom(process.cwd());
-  return { root: srsRoot ?? cwd };
+/** Bound to the directory that holds the SRS index, or unbound with the directory that was checked. */
+export type McpStartupDecision = { bound: true; root: string } | { bound: false; checkedCwd: string; initHint: boolean };
+
+async function realOrResolved(target: string): Promise<string> {
+  return realpath(target).catch(() => path.resolve(target));
 }
 
 /**
- * The startup root, plus how it came to exist. @req REL-MCP-005 AC-2 — `auto-init` is a source a
- * caller may be told about, so it has to be carried rather than inferred by the reader.
+ * @req IR-CLI-045 AC-5 AC-6 @req REL-MCP-002 AC-2 @req FR-MCP-067 — searches upward from `start` for
+ * docs/spec/00.index.md, stopping at the home directory (never adopting an index there) and at the
+ * ceiling. No index means unbound; nothing is created. While searching it notes whether `start` is
+ * inside a git work tree, which is the only condition under which the refusal may suggest init.
  */
-export async function ensureMcpStartupWorkspace(): Promise<ProjectRoot & { rootSource: McpRootSource }> {
-  const root = await resolveMcpStartupRoot();
-  const indexPath = path.join(root.root, "docs", "spec", "00.index.md");
-  if (await exists(indexPath)) return { ...root, rootSource: "server-cwd-discovery" };
-  const result = await initProject(root, {});
-  if (!result.ok) {
-    throw new Error(result.error?.message ?? "MCP workspace initialization failed");
+export async function decideMcpStartupFrom(start: string, bounds: McpStartupSearchBounds): Promise<McpStartupDecision> {
+  const home = await realOrResolved(bounds.home);
+  const ceiling = await realOrResolved(bounds.ceiling);
+  const checkedCwd = await realOrResolved(start);
+  let current = checkedCwd;
+  let insideGitWorkTree = false;
+  while (current !== home) {
+    if (await exists(path.join(current, "docs", "spec", "00.index.md"))) return { bound: true, root: current };
+    insideGitWorkTree ||= await exists(path.join(current, ".git"));
+    const parent = path.dirname(current);
+    if (current === ceiling || parent === current) break;
+    current = parent;
   }
-  return { ...root, rootSource: "auto-init" };
+  return { bound: false, checkedCwd, initHint: insideGitWorkTree && checkedCwd !== home };
+}
+
+/** The production startup decision: from the process working directory, bounded by home and the filesystem root. */
+export async function resolveMcpStartupRoot(): Promise<McpStartupDecision> {
+  const cwd = process.cwd();
+  return decideMcpStartupFrom(cwd, { home: os.homedir(), ceiling: path.parse(path.resolve(cwd)).root });
 }
 
 /**
@@ -641,8 +648,11 @@ export async function startMcpServer(options: McpServerOptions = {}): Promise<vo
   if (options.transport && options.transport !== "stdio") {
     throw new Error(`Unsupported MCP transport: ${String(options.transport)}`);
   }
-  const root = await ensureMcpStartupWorkspace();
-  const local = createMcpServer({ root: root.root, rootSource: root.rootSource });
+  // @req FR-MCP-067 — startup never initialises; a server that finds no SRS is unbound.
+  const decision = await resolveMcpStartupRoot();
+  const local = decision.bound
+    ? createMcpServer({ root: decision.root, rootSource: "server-cwd-discovery" })
+    : createMcpServer({ unbound: { checkedCwd: decision.checkedCwd, initHint: decision.initHint } });
   const sdk = createSdkServer(local);
   await sdk.connect(new StdioServerTransport());
 }

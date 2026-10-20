@@ -56,6 +56,24 @@ export function verbKey(event: WavesEvent): string {
   return [event.verb ?? "", event.wave ?? "", stage, event.lane ?? ""].join("|");
 }
 
+/**
+ * The run ids the journal holds under `engine`, the run with the most recently written line first.
+ * What `resume` and `wave status` choose from when no `--run-id` is given. @req FR-NODE-217 AC-1
+ */
+export async function listJournalRunIds(root: ProjectRoot, options: Omit<ParseWavesJournalOptions, "runId">): Promise<string[]> {
+  const parsed = await parseWorkflowJsonl(root, options.relativePath ?? WAVES_JOURNAL_PATH, {
+    eventKeying: "none",
+    supportedSchemaVersions: [...WAVES_SCHEMA_VERSIONS]
+  });
+  const lastLine = new Map<string, number>();
+  for (const entry of parsed.entries) {
+    const event = entry.event as WavesEvent;
+    if (typeof event.run_id !== "string" || engineOf(event) !== options.engine) continue;
+    lastLine.set(event.run_id, entry.line);
+  }
+  return [...lastLine.entries()].sort((left, right) => right[1] - left[1]).map(([runId]) => runId);
+}
+
 export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJournalOptions): Promise<WavesJournalView> {
   const relativePath = options.relativePath ?? WAVES_JOURNAL_PATH;
   const parsed = await parseWorkflowJsonl(root, relativePath, {

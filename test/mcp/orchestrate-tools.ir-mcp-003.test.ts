@@ -55,7 +55,7 @@ const DEFERRED_TOOLS = ["orchestrate_lane_audit", "orchestrate_lane_harvest", "o
  * `NAMED_IN_REQUIREMENT` — the twenty-three count is a fact about the phase-1 family and must not
  * drift upward whenever phase 2 lands a row. @req IR-CLI-091
  */
-const REGISTERED_BEYOND_PHASE1 = ["orchestrate_replay_plan", "orchestrate_replay_apply"] as const;
+const REGISTERED_BEYOND_PHASE1 = ["orchestrate_replay_plan", "orchestrate_replay_apply", "orchestrate_wave_status"] as const;
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "speckiwi-orchestrate-mcp-"));
@@ -158,14 +158,14 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
 
     const accepted = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1", inputs_digest: "sha256:in" }
     })) as Record<string, unknown>;
     expect(accepted.applied).toBe(true);
     expect(accepted.exitCode).toBe(0);
 
     const refused = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete", proof: { kind: "digest", ref: "sha256:out" } }
     })) as Record<string, unknown>;
     expect(refused.applied).toBe(false);
     expect(typeof refused.gate).toBe("string");
@@ -181,7 +181,7 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
     const dryAccepted = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
       dryRun: true,
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1", inputs_digest: "sha256:in" }
     })) as Record<string, unknown>;
     expect(dryAccepted.dryRun).toBe(true);
     expect(dryAccepted.exitCode).toBe(0);
@@ -190,7 +190,7 @@ describe("IR-MCP-003 AC-4 / AC-5 — the mutation envelope, refusal, and dry run
     const dryRefused = (await server.callTool("orchestrate_journal_append", {
       runId: "run-a",
       dryRun: true,
-      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete" }
+      payload: { schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete", proof: { kind: "digest", ref: "sha256:out" } }
     })) as Record<string, unknown>;
     expect(dryRefused.applied).toBe(false);
     expect(typeof dryRefused.gate).toBe("string");

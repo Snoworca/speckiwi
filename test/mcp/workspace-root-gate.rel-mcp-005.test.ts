@@ -184,14 +184,14 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("AC-4: startMcpServer and McpServerOptions expose no root parameter", () => {
+  it("REL-MCP-005 AC-4: startMcpServer and McpServerOptions expose no root parameter", () => {
     expect(resolveMcpStartupRoot.length).toBe(0);
     // @ts-expect-error McpServerOptions must not declare a root; `npm run typecheck:test` fails here if it does.
     const rejected: McpServerOptions = { transport: "stdio", root: "/tmp/anywhere" };
     expect(rejected).toBeDefined();
   });
 
-  it("AC-5: a relative workspaceRoot is refused", async () => {
+  it("REL-MCP-005 AC-5: a relative workspaceRoot is refused", async () => {
     const host = await gitWorkspaceRepo("relmcp005-ac5-rel");
     const server = serverFor(host);
     const refused = (await server.callTool("workflow_workspace_info", { workspaceRoot: "../elsewhere" })) as Refusal;
@@ -275,7 +275,7 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
   // The checkbox tools this case probed until 4.0.0 left with the plan tools (FR-NODE-211 AC-1); the
   // refusal is held on the surviving tools that take `path` straight from the caller (FR-NODE-211
   // AC-6), in both the relative and the absolute spelling, and on a read of the same family.
-  it("REL-MCP-005 AC-6: refusal is by destination — an accepting tool refuses a path landing under docs/spec", async () => {
+  it("REL-MCP-005 AC-6 / FR-NODE-211 AC-6: refusal is by destination — an accepting tool refuses a path landing under docs/spec", async () => {
     const host = await gitWorkspaceRepo("relmcp005-ac6");
     const lane = await linkedWorktree(host, "relmcp005-ac6-wt", "lane-ac6");
     const server = serverFor(host);
@@ -302,7 +302,7 @@ describe("REL-MCP-005 — MCP workspace root identity and safety", { timeout: 18
     expect(await readFile(specPath, "utf8"), "no SRS document may be written through a workflow tool").toBe(before);
   });
 
-  it("AC-7: a separate repository is neither read nor mutated", async () => {
+  it("REL-MCP-005 AC-7: a separate repository is neither read nor mutated", async () => {
     const host = await gitWorkspaceRepo("relmcp005-ac7-host");
     const foreign = await gitWorkspaceRepo("relmcp005-ac7-foreign");
     const server = serverFor(host);

@@ -28,7 +28,7 @@ function headingContainsForbiddenMarkdown(title: string): boolean {
   );
 }
 
-function parseSectionTable(section: SectionRange | undefined, file: TextFile, requirementId: string, diagnosticCode?: "SRS-W016" | "SRS-W017", tableLabel = "Markdown"): { table?: ParsedTable; diagnostics: Diagnostic[] } {
+function parseSectionTable(section: SectionRange | undefined, file: TextFile, requirementId: string, diagnosticCode?: "SRS-W016" | "SRS-W017" | "SRS-W075", tableLabel = "Markdown"): { table?: ParsedTable; diagnostics: Diagnostic[] } {
   if (!section) return { diagnostics: [] };
   const options = {
     filePath: file.relativePath,
@@ -161,7 +161,8 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
   diagnostics.push(...traceLinks.diagnostics);
   const evidenceRows = evidenceRowsFromTable(verificationEvidence.table);
   const traceRows = traceLinksFromTable(traceLinks.table);
-  const changeNotes = parseSectionTable(sections["Change Notes"], file, block.heading.id, undefined, "Change Notes");
+  // @req FR-NODE-220 AC-2 — a Change Notes row whose cell count differs from its header.
+  const changeNotes = parseSectionTable(sections["Change Notes"], file, block.heading.id, "SRS-W075", "Change Notes");
   diagnostics.push(...changeNotes.diagnostics);
   if (headingContainsForbiddenMarkdown(block.heading.title)) {
     diagnostics.push(

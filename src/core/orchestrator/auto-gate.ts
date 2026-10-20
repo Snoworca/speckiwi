@@ -32,6 +32,9 @@ export const GATE_IDS = [
   "run-root-preflight-mismatch",
   "invalid-run-scope-option",
   "orchestrator-run-lock-held",
+  // @req FR-NODE-221 — a release from a process other than the holder while the holder's Windows
+  // fence is live. Removing the file there is what left a lock nobody could name or take.
+  "run-lock-held-by-live-session",
   // @req FR-NODE-197 — contention on the run JOURNAL, which is a different artifact from the run
   // lock above. Both were reported as `run-invariant-drift`, which asserts the run's invariants have
   // moved; a busy journal is not that, and an operator reading it goes looking for a corrupted file
@@ -138,6 +141,10 @@ export const GATE_IDS = [
   // pipeline gate cannot cover it. Every sibling child gate is a member; without membership
   // the halt falls to `business-decision` and a committee approves skipping it.
   "child-review-fix-loop-needs-user-or-failed",
+  // @req FR-FLOW-198 AC-5 — skill-declared and critical: a lane whose worktree is locked may still have
+  // a live worker, so neither `--auto` nor a committee re-dispatches it. No tool raises it; it is a
+  // member for the same reason the declared-by-skills group above is.
+  "lane-worker-possibly-live",
 
   // — The 4.0.0 parallel-waves run (@req FR-NODE-122 AC-2) —
   //

@@ -273,7 +273,7 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
         }
       });
 
-      it("makes the wave layer cite the same rule so the two verdicts cannot diverge", () => {
+      it("FR-FLOW-063 AC-4: makes the wave layer cite the same rule so the two verdicts cannot diverge", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         expect(stance, `${variant}: the verifier-stance section must exist`).not.toBe("");
         const rule = lineWith(stance, /kiwi-coder\s*§0\.20\.4/);
@@ -296,7 +296,7 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
 describe("R3-H2 — self-healing is bounded and then bubbles up with its gate id", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("stops healing on the second detection of the same item and bubbles up", () => {
+      it("FR-FLOW-063 AC-2: stops healing on the second detection of the same item and bubbles up", () => {
         const impl = sectionUnder(skillBody(readCoder(variant)), /^##\s*5\.\s/);
         expect(impl, `${variant}: the implementation-loop section must exist`).not.toBe("");
         const rule = lineWith(impl, /2회째/);
@@ -316,7 +316,7 @@ describe("R3-H2 — self-healing is bounded and then bubbles up with its gate id
         expect(HEDGE.test(rule), `${variant}: the escalation must be absolute, not hedged`).toBe(false);
       });
 
-      it("carries the gate id in the NEEDS_USER payload", () => {
+      it("FR-FLOW-063 AC-2: carries the gate id in the NEEDS_USER payload", () => {
         const emit = skillOrRefSection(variant, "kiwi-coder", /^##\s*12\./);
         expect(emit, `${variant}: kiwi-coder must have a pipeline-emit section`).not.toBe("");
         const rule = lineWith(emit, /`gate_id`/);
@@ -327,7 +327,7 @@ describe("R3-H2 — self-healing is bounded and then bubbles up with its gate id
         ).toBe(true);
       });
 
-      it("makes kiwi-pm read that gate id instead of re-classifying by severity", () => {
+      it("FR-FLOW-063 AC-2: makes kiwi-pm read that gate id instead of re-classifying by severity", () => {
         const bubble = sectionUnder(skillBody(readPm(variant)), /^###\s*3\.4/);
         expect(bubble, `${variant}: kiwi-pm must have a bubble-up section`).not.toBe("");
         const rule = lineWith(bubble, /`gate_id`/);
@@ -349,7 +349,7 @@ describe("R3-H2 — self-healing is bounded and then bubbles up with its gate id
 describe("R3-H3 — the diff window and the pipeline run list are produced, not only read", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("captures base_sha when the wave is entered", () => {
+      it("FR-FLOW-060 AC-7: captures base_sha when the wave is entered", () => {
         const record = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.6/);
         expect(record, `${variant}: the recording section must exist`).not.toBe("");
         const rule = lineWith(record, /`base_sha`/);
@@ -365,7 +365,7 @@ describe("R3-H3 — the diff window and the pipeline run list are produced, not 
         expect(HEDGE.test(rule), `${variant}: the capture obligation must be absolute, not hedged`).toBe(false);
       });
 
-      it("captures head_sha at wave-verify round entry and lands both in diff_window", () => {
+      it("FR-FLOW-060 AC-7: captures head_sha at wave-verify round entry and lands both in diff_window", () => {
         const record = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.6/);
         const rule = lineWith(record, /`head_sha`/);
         expect(rule, `${variant}: head_sha must have a capture point`).not.toBe("");
@@ -508,7 +508,8 @@ describe("R3-H5 — resuming the pipeline stage carries its scope", () => {
         expect(/`parallel-waves\.md §6`/.test(rule), `${variant}: the worker resume must follow parallel-waves.md §6`).toBe(
           true
         );
-        expect(/기록된 `sds_id`/.test(rule), `${variant}: the resume must find the wave's SDS and worker by the recorded sds_id`).toBe(
+        // FR-FLOW-064 AC-4 (4.1.0): the recorded unit id (`sds_id`), whether or not the wave has an SDS.
+        expect(/기록된 단위 id\(`sds_id`\)/.test(rule), `${variant}: the resume must find the wave's worker (and SDS) by the recorded sds_id`).toBe(
           true
         );
         expect(
@@ -908,7 +909,7 @@ describe("R3-M2 — kiwi-srs can receive the constraint artifact", () => {
 describe("R3-M3 — the final pass reuses the delegation and carry-forward machinery", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("names §5.5.5 and §5.5.7 in the reuse list", () => {
+      it("FR-FLOW-060 AC-3: names §5.5.5 and §5.5.7 in the reuse list", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         const rule = lineWith(final, /§5\.5 를 그대로 재사용/);
         expect(rule, `${variant}: the reuse sentence must exist`).not.toBe("");
@@ -967,7 +968,7 @@ describe("R3-M4 — integration items are materialised like design items", () =>
 describe("R3-M5 — a carry-forward wave gets a real design baseline", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("converts each carried finding into exactly one design item", () => {
+      it("FR-FLOW-060 AC-6: converts each carried finding into exactly one design item", () => {
         const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
         const rule = lineWith(baseline, /이월 finding 목록/);
         expect(rule, `${variant}: the carry-forward substitute denominator must exist`).not.toBe("");
@@ -1049,7 +1050,7 @@ describe("R3-M6 — the pipeline target is passed explicitly", () => {
 describe("R3-M7 — kiwi-pipeline forwards --force", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("lists --force in the pass-through table", () => {
+      it("FR-FLOW-064 AC-7: lists --force in the pass-through table", () => {
         const passthrough = sectionUnder(skillBody(readPipeline(variant)), /^###\s*7\.4/);
         expect(passthrough, `${variant}: kiwi-pipeline must have a pass-through section`).not.toBe("");
         const cells = rowCells(passthrough, /`--force`/);
@@ -1076,7 +1077,7 @@ describe("R3-M7 — kiwi-pipeline forwards --force", () => {
 describe("R3-M8 — feasibility accepts a requirement filter", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("declares --req-filter as a kiwi-srs-feasibility option", () => {
+      it("FR-FLOW-064 AC-8: declares --req-filter as a kiwi-srs-feasibility option", () => {
         const options = sectionUnder(skillBody(readFeasibility(variant)), /^###\s*1\.2/);
         expect(options, `${variant}: kiwi-srs-feasibility must have an optional-input section`).not.toBe("");
         const cells = rowCells(options, /`--req-filter/);
@@ -1086,7 +1087,7 @@ describe("R3-M8 — feasibility accepts a requirement filter", () => {
         ).toBe(true);
       });
 
-      it("makes the delegation row name that argument", () => {
+      it("FR-FLOW-064 AC-8: makes the delegation row name that argument", () => {
         const routing = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.5/);
         expect(routing, `${variant}: the delegation section must exist`).not.toBe("");
         const row = tableRows(routing, /kiwi-srs-feasibility/)[0] ?? "";
@@ -1200,7 +1201,7 @@ describe("R3-M11 — a resumed run emits under a distinguishable key", () => {
 describe("R3-M12 — weakening is a denominator class and is never an intended improvement", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("adds weakening as its own class of verifier 2's denominator", () => {
+      it("FR-FLOW-063 AC-5: adds weakening as its own class of verifier 2's denominator", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /단언 약화/);
         expect(rule, `${variant}: weakening must appear in the mechanically derived denominator`).not.toBe("");
@@ -1214,7 +1215,7 @@ describe("R3-M12 — weakening is a denominator class and is never an intended i
         ).toBe(true);
       });
 
-      it("forbids resolving a weakening as intended-improvement", () => {
+      it("FR-FLOW-063 AC-5: forbids resolving a weakening as intended-improvement", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         const rule = lineWith(stance, /약화는[^\n]*`unapproved-damage`|`unapproved-damage`[^\n]*약화는/);
         expect(rule, `${variant}: the weakening verdict must be fixed`).not.toBe("");
@@ -1238,7 +1239,7 @@ describe("R3-M12 — weakening is a denominator class and is never an intended i
 describe("R3-M13 — the regression baseline is delivered, not re-captured", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("declares --regression-baseline on kiwi-coder and gives the parent value precedence", () => {
+      it("FR-FLOW-063 AC-6: declares --regression-baseline on kiwi-coder and gives the parent value precedence", () => {
         const options = sectionUnder(skillBody(readCoder(variant)), /^###\s*1\.2/);
         expect(options, `${variant}: kiwi-coder must have an optional-input section`).not.toBe("");
         expect(
@@ -1258,7 +1259,7 @@ describe("R3-M13 — the regression baseline is delivered, not re-captured", () 
         expect(HEDGE.test(rule), `${variant}: the precedence rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("declares the same option on kiwi-review-fix-loop with the same precedence", () => {
+      it("FR-FLOW-063 AC-6: declares the same option on kiwi-review-fix-loop with the same precedence", () => {
         const options = optionSection(skillBody(readReviewFix(variant)));
         expect(options, `${variant}: kiwi-review-fix-loop must have an input table`).not.toBe("");
         expect(
@@ -1276,7 +1277,7 @@ describe("R3-M13 — the regression baseline is delivered, not re-captured", () 
         expect(HEDGE.test(rule), `${variant}: the precedence rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("routes the option through every hop of the chain", () => {
+      it("FR-FLOW-063 AC-6: routes the option through every hop of the chain", () => {
         const wavePass = sectionUnder(skillBody(readWave(variant)), /^###\s*7\.4/);
         expect(
           rowCells(wavePass, /`--regression-baseline`/).length > 3,
@@ -1352,7 +1353,7 @@ describe("R3-M14 — the recorded existing modules reach SRS authoring and SDS a
 describe("R3-M15 — every variant runs the preservation scan at a stated point", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("has a preservation-scan section of its own", () => {
+      it("FR-FLOW-063 AC-8: has a preservation-scan section of its own", () => {
         const scan = sectionUnder(skillBody(readReviewFix(variant)), /^#{2,4}\s.*보존 스캔/);
         expect(
           scan,
@@ -1360,7 +1361,7 @@ describe("R3-M15 — every variant runs the preservation scan at a stated point"
         ).not.toBe("");
       });
 
-      it("runs the scan on the fixer diff before the re-review", () => {
+      it("FR-FLOW-063 AC-8: runs the scan on the fixer diff before the re-review", () => {
         const scan = sectionUnder(skillBody(readReviewFix(variant)), /^#{2,4}\s.*보존 스캔/);
         const rule = lineWith(scan, /fixer/i);
         expect(rule, `${variant}: the scan must name what it scans`).not.toBe("");
@@ -1377,7 +1378,7 @@ describe("R3-M15 — every variant runs the preservation scan at a stated point"
         ).toBe(true);
       });
 
-      it("escalates a detection to CRITICAL through the three declared gates", () => {
+      it("FR-FLOW-063 AC-8: escalates a detection to CRITICAL through the three declared gates", () => {
         const scan = sectionUnder(skillBody(readReviewFix(variant)), /^#{2,4}\s.*보존 스캔/);
         const rule = lineWith(scan, /CRITICAL/);
         expect(rule, `${variant}: a detection must be escalated, not reported`).not.toBe("");
@@ -1482,7 +1483,7 @@ describe("R3-L2 — an invalid loop option is a declared halt", () => {
 describe("R3-H11 — a child's critical gate halts the parent by rule, not by transcription", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("declares the catch-all rule in the kiwi-pm gate section", () => {
+      it("FR-FLOW-066 AC-1 AC-3: declares the catch-all rule in the kiwi-pm gate section", () => {
         const gates = gateSection(skillBody(readPm(variant)));
         expect(gates, `${variant}: kiwi-pm must have a critical_gates section`).not.toBe("");
         // Backticked token only — the section heading and the existing prose both write
@@ -1508,7 +1509,7 @@ describe("R3-H11 — a child's critical gate halts the parent by rule, not by tr
         expect(HEDGE.test(rule), `${variant}: the catch-all rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("adds critical to the severity enum the child returns", () => {
+      it("FR-FLOW-066 AC-2: adds critical to the severity enum the child returns", () => {
         const contract = sectionUnder(skillBody(readPm(variant)), /^##\s*반환 형식/);
         expect(contract, `${variant}: kiwi-pm must document the child's return contract`).not.toBe("");
         const rule = lineWith(contract, /"severity"/);
@@ -1523,7 +1524,7 @@ describe("R3-H11 — a child's critical gate halts the parent by rule, not by tr
         }
       });
 
-      it("gives critical its own row in the severity table", () => {
+      it("FR-FLOW-066 AC-2: gives critical its own row in the severity table", () => {
         const table = sectionUnder(skillBody(readPm(variant)), /^###\s*3\.5/);
         expect(table, `${variant}: kiwi-pm must have a severity enum section`).not.toBe("");
         const cells = rowCells(table, /^\s*\|\s*`critical`/);
@@ -1599,7 +1600,7 @@ describe("R3-M18 — the two child consent gates are reachable through every hop
   const CONSENT_OPTIONS = ["--auto-integration", "--auto-cost-warning"] as const;
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("names the pass-through route in the unattended-completion paragraph", () => {
+      it("FR-FLOW-066 AC-5: names the pass-through route in the unattended-completion paragraph", () => {
         const auto = sectionUnder(skillBody(readWave(variant)), /^###\s*7\.1/);
         expect(auto, `${variant}: the --auto propagation section must exist`).not.toBe("");
         const rule = lineWith(auto, /`--auto` 단독/);
@@ -1610,7 +1611,7 @@ describe("R3-M18 — the two child consent gates are reachable through every hop
         ).toBe(true);
       });
 
-      it("keeps both options declared at every hop of the chain", () => {
+      it("FR-FLOW-066 AC-5: keeps both options declared at every hop of the chain", () => {
         for (const option of CONSENT_OPTIONS) {
           const re = new RegExp("`\\" + option);
           expect(
@@ -1636,7 +1637,7 @@ describe("R3-M18 — the two child consent gates are reachable through every hop
         }
       });
 
-      it("still refuses to grant the consent on the user's behalf", () => {
+      it("FR-FLOW-066 AC-5: still refuses to grant the consent on the user's behalf", () => {
         const passthrough = sectionUnder(skillBody(readWave(variant)), /^###\s*7\.4/);
         expect(passthrough, `${variant}: the pass-through section must exist`).not.toBe("");
         // Polarity guard for the decided branch, scoped to the table that carries the two options —
@@ -1658,7 +1659,7 @@ describe("R3-M18 — the two child consent gates are reachable through every hop
 describe("R3-M19 — the retired lifecycle-gate-draft is out of the shared catalogue", () => {
   for (const copy of AUTO_OPTION_COPIES) {
     describe(copy, () => {
-      it("drops it from the standard catalogue list", () => {
+      it("FR-FLOW-066 AC-6: drops it from the standard catalogue list", () => {
         const text = readShared(copy);
         expect(text, `${copy} must exist`).not.toBe("");
         // The claude copy numbers the catalogue §5.1 under `## 5. critical_gates[] 인터페이스`; the
@@ -1674,7 +1675,7 @@ describe("R3-M19 — the retired lifecycle-gate-draft is out of the shared catal
         ).toBe(false);
       });
 
-      it("drops it from the declaration example too", () => {
+      it("FR-FLOW-066 AC-6: drops it from the declaration example too", () => {
         const text = readShared(copy);
         expect(
           /gate_id:\s*"lifecycle-gate-draft"/.test(text),
@@ -1682,7 +1683,7 @@ describe("R3-M19 — the retired lifecycle-gate-draft is out of the shared catal
         ).toBe(false);
       });
 
-      it("records why it was retired instead of deleting it silently", () => {
+      it("FR-FLOW-066 AC-6: records why it was retired instead of deleting it silently", () => {
         const text = readShared(copy);
         const note = lineWith(text, /lifecycle-gate-draft/);
         expect(

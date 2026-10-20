@@ -30,7 +30,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 **6.1.0 기준선(baseline) 캡처**: 실행이 **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. run 단위 기준선은 §3.5 에서 `state.regression_baseline` 에 이미 고정되어 있으므로, 그것이 존재하고 `head_sha` 가 현재 HEAD 와 같으면 그 값을 그대로 쓴다. 없거나 HEAD 가 다르면 첫 편집 전에 캡처한다.
 
 **6.1.1 영향받는 테스트 (항상 실행)**:
-- SDS Files 의 각 파일이 의존되는 test 파일을 정적 추론 (import graph / require / package 동일성)
+- 바꾼 파일(`--sds` 면 SDS Files)의 각 파일이 의존되는 test 파일을 정적 추론 (import graph / require / package 동일성)
 - 추론 어려운 경우 fallback: 최근 1주일 내 수정된 모든 test 파일
 
 **6.1.2 전체 회귀 스위트 (--skip-regression 부재 시)**:
@@ -52,13 +52,13 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ```
 1. add_trace_link (Code anchor — 선택)
-   args: { id: "FR-X-001",                         # REQ id (SDS @req 집합)
+   args: { id: "FR-X-001",                         # REQ id (요구 집합, --sds 면 SDS @req 집합)
            type: "Code",                            # target type
            reference: "src/x.ts:45-67",             # target reference (path:line_range)
            relation: "implements",                  # 관계
            [notes: "..."] }                         # 선택
    조건: 변경 파일의 line_range 를 확정할 수 있을 때만 호출.
-         REQ 1개당 그 REQ 를 @req 로 지명한 SDS Files 파일별 1건.
+         REQ 1개당 그 REQ 를 구현한 변경 파일별 1건(--sds 면 그 REQ 를 @req 로 지명한 SDS Files 파일별).
 
 2. add_verification_evidence (type=test)
    args (각 PASS 한 테스트 인용별 1건):
@@ -78,10 +78,10 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
    `verified` 전이는 `$kiwi-review-fix-loop --close-reqs` 만 수행한다. `kiwi-coder` 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를 직접 실행하지 않는다. 본 스킬은 `check_acceptance_criteria` 를 부르지 않으므로, `verified` 를 시도하면 `update-status.ts` 의 게이트가 AC 전량 체크를 못 찾아 `MUTATION_DENIED` 를 돌려준다 — 그것이 이 규칙의 목표가 `implemented` 인 이유다.
 
-4. add_completed_work — 실행 종료 시 1건 (SDS 실행 요약)
+4. add_completed_work — 실행 종료 시 1건 (실행 요약, --sds 면 SDS 실행 요약)
    args: { date: "YYYY-MM-DD",                      # 필수 (today)
-           summary: "<SDS id + green 결과 + SDS-AC 결과 요약>",  # 필수, sds_id / files / SDS-AC 정보 인코딩
-           [requirementIds: ["FR-X-001", ...],      # SDS @req 집합
+           summary: "<요구 집합 + green 결과 + AC 결과 요약>",  # 필수 — --sds 면 sds_id / files / SDS-AC 도 인코딩
+           [requirementIds: ["FR-X-001", ...],      # 요구 집합(--sds 면 SDS @req 집합)
             target: "<active target slug>",
             scope: "<scope id>",
             reportPaths: ["<repo-relative POSIX path>"],   # 선택 — 보고서/test log
@@ -89,9 +89,9 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
             dryRun: <--dry-run 플래그 전파>] }
 
    summary 인코딩 예:
-     "[sds] 4.0.0-todo-service — 할 일 저장소 구현. green=PASS (7/7).
+     "[req] FR-X-001,FR-X-002 — 할 일 저장소 구현. green=PASS (7/7).
       files: src/service.ts, test/service.test.ts.
-      SDS-AC: 1..3 PASS"
+      AC: FR-X-001 AC-1..3 PASS"   (--sds 면 머리가 [sds] <sds-id>, 끝 줄이 SDS-AC: …)
 
    ⚠️ speckiwi schema 에 sds_id / req_ids / files_changed / completed_at 같은
       임의 필드 직접 전달 불가. summary 텍스트에 인코딩하거나 reportPaths 로 detail md 첨부.
@@ -257,12 +257,12 @@ skip 시(`--skip-integration` 명시 또는 사용자 거부)에도 **§8.3 최�
 
 ### 8.2 플로우 (snoworca-coder §5 차용)
 
-1. 의도 추출 (target goal + SDS `@req` 집합 요구의 AC 합집합)
+1. 의도 추출 (target goal + 요구 집합(--sds 면 SDS `@req` 집합) 요구의 AC 합집합)
 2. 통합 테스트 작성 (local-LLM max-profile 시니어, 모듈 간 연계 / end-to-end / 경계)
 3. 정형 + 까칠 리뷰 (Phase 2.e/f 동일)
 4. 개선 루프 (심각도 카운터, 통합 시도 단위)
 5. 실행 → 실패 시 관련 Phase 역순 재진입 (최대 3회)
-6. 4회차 진입 직전 4지선다: 중단 / 추가 1회 / REWORK 모드 (`$kiwi-sds` 로 SDS 재작성 권고) / kiwi-srs-research 호출
+6. 4회차 진입 직전 4지선다: 중단 / 추가 1회 / REWORK 모드 (요구 집합 실행이면 `$kiwi-srs` 로 그 요구의 AC 를 다시 쓰도록 권고, --sds 실행이면 `$kiwi-sds` 로 SDS 재작성 권고) / kiwi-srs-research 호출
 
 ### 8.3 최종 보고서
 
@@ -295,7 +295,9 @@ state_ref: ./state.json
 
 `kiwi-pm` 자식(`state.spawn_context == "pm-child"`)이면 이 절 전체를 건너뛴다 — 부모 `kiwi-pm` §6.4 가 후속을 맡는다.
 
-단독 실행이 green + 회귀 PASS 로 끝나고 `state.failed` 가 false 이면(`CLOSE_SAFE`), 후속 close 검증을 3지선다로 권고한다 — (1) 지금 자동 시작, (2) 나중에 수동, (3) skip(verified 로 닫지 않음). (1) 의 순서는 `kiwi-pm` §6.4 와 같은 close-out 순서다 — 옮기기는 승급보다 먼저여야 한다(FR-FLOW-183 AC-1):
+SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 없이 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다: `Use $kiwi-review-fix-loop with --req-filter <요구 집합> [--close-reqs 는 CLOSE_SAFE 일 때만]` 하나만 부른다.
+
+`--sds` 실행의 단독 실행이 green + 회귀 PASS 로 끝나고 `state.failed` 가 false 이면(`CLOSE_SAFE`), 후속 close 검증을 3지선다로 권고한다 — (1) 지금 자동 시작, (2) 나중에 수동, (3) skip(verified 로 닫지 않음). (1) 의 순서는 `kiwi-pm` §6.4 와 같은 close-out 순서다 — 옮기기는 승급보다 먼저여야 한다(FR-FLOW-183 AC-1):
 
 ```text
 Use $kiwi-sds with --close <sds_id>                                         # CLOSE_SAFE 일 때만 — 옮기기
@@ -313,7 +315,8 @@ Use $kiwi-sds with --close <sds_id>                                         # MO
 ## 9. 호출 예시
 
 ```
-$kiwi-coder SDS_PATH=docs/sds/4.0.0-todo-service.sds.md
+$kiwi-coder --req-filter FR-TODO-001,FR-TODO-002
+$kiwi-coder --sds docs/sds/4.0.0-todo-service.sds.md
 $kiwi-coder SDS_PATH=... --max
 $kiwi-coder SDS_PATH=... --reviewer-off --skip-regression
 $kiwi-coder SDS_PATH=... local-LLM max profile
@@ -351,11 +354,11 @@ $kiwi-coder SDS_PATH=... --dry-run
 `../../_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴을 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 정확히 1줄 append. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 **호출 컨텍스트별 정책**:
-- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: `CLOSE_SAFE`(§8.4) 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다(FR-FLOW-183, §8.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). commit 은 review-fix-loop 통과 후 그 `next_hint` 로 진행.
+- **단독 호출 (사용자 직접)**: 본 스킬이 emit. `skill: "kiwi-coder"`, `next_hint`: SDS 없는 실행은 `"kiwi-review-fix-loop"`. `--sds` 실행은 `CLOSE_SAFE`(§8.4) 면 `"kiwi-sds"` — 다음 단계는 승급 전 옮기기 `kiwi-sds --close <sds-id>` 이고 그 뒤가 `kiwi-review-fix-loop --close-reqs` 다(FR-FLOW-183, §8.4). 아니면 `"kiwi-review-fix-loop"` (`--close-reqs` 없이 리뷰). commit 은 review-fix-loop 통과 후 그 `next_hint` 로 진행.
 - **kiwi-pm 자식으로 spawn**: 본 스킬은 emit 하지 않는다 — 부모(`kiwi-pm`) 가 실행 종료 시 일괄 emit. 자식의 결과는 부모의 보고에 인용.
 
-- `req_ids`: 본 실행이 영향을 미친 REQ-ID 배열 (SDS `@req` 집합)
-- `artifacts.sds_files`: 입력 SDS 경로 하나를 담은 배열 (`pipeline-event.md` §2 스키마)
+- `req_ids`: 본 실행이 영향을 미친 REQ-ID 배열 (요구 집합, `--sds` 면 SDS `@req` 집합)
+- `artifacts.sds_files`: `--sds` 실행이면 입력 SDS 경로 하나를 담은 배열, 아니면 빈 배열 (`pipeline-event.md` §2 스키마)
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-coder-{run-id}/` 또는 `.kiwi/sessions/{run-id}/`
 - `status`: TDD green + 회귀 PASS = `TASK_DONE`; business-decision = `NEEDS_USER`; 회귀 실패 = `FAILED`
 - `gate_id`: `NEEDS_USER` 로 종료한 경우 그 중단을 일으킨 §0.G6 게이트의 id. 부모(`kiwi-pm`)는 이 값을 동명 게이트로 매핑한다 — 이 채널이 없으면 어느 게이트가 멈췄는지가 부모에게 전달되지 않는다

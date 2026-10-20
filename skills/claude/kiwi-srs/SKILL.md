@@ -822,7 +822,7 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 | C | 신규 또는 영향 REQ 중 `addition_site` trace 잔존 | "{N}건 REQ 가 구현 증거 부재로 `planned` 상한. 코드 추가 후 evidence 등록 → `update_status` 가능" | §0.14 trace cap |
 | C | 신규 REQ 의 `feasibility.implementability ∈ {medium, low}` OR blocker 모호 | "구현 가능성 모호 — `/kiwi-srs-feasibility` (target 전수 평가) 또는 `/kiwi-srs-research --req-id {NEW-ID}` (블로커 심화)" | pipeline §4.1 |
 | C | 신규 REQ 의 `stability = draft` (초기) | "stability 라이프사이클 진행은 `/kiwi-srs-feasibility` 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-| D | 위 권고 모두 부재 + 신규 REQ status = `planned` + addition_site 없음 | "AC + trace 검토 후 `update_status(in_progress\|implemented)` 진행 가능. 구현은 `/kiwi-coder` (stability ≥ evolving 시)" | pipeline §4.2 |
+| D | 위 권고 모두 부재 + 신규 REQ status = `planned` + addition_site 없음 | "AC + trace 검토 후 `update_status(in_progress\|implemented)` 진행 가능. 구현은 `kiwi-srs` → `/kiwi-pm --req-filter <신규 REQ-ID>` (stability ≥ evolving 시)" | pipeline §4.2 |
 | D | (최종 catch-all, 다른 항목 매칭 시 생략) | "SRS 갱신 완료. 후속 행동 없음 — 다음 요구사항 대기" | — |
 
 각 권고는 1줄로 출력. 중복 제거 후 ≤6개 권장. 사용자 가독성을 위해 우선순위 A 항목은 ⚠️ 마커 부착.

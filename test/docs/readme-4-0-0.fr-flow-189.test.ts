@@ -37,9 +37,6 @@ const REMOVED_PLAN_TOOLS = [
   "preview_legacy_workflow_migration"
 ] as const;
 
-/** The FR-FLOW-184 AC-1 chain, in order, on one line — arrows written either way. */
-const CHAIN = /kiwi-srs`?\s*(?:→|->)\s*`?\(?`?kiwi-srs-feasibility`?\)?`?\s*(?:→|->)\s*`?kiwi-sds`?\s*(?:→|->)\s*`?kiwi-pm`?\s*(?:→|->)\s*`?kiwi-review-fix-loop/;
-
 const LANGUAGES = [
   {
     key: "en" as const,
@@ -63,9 +60,9 @@ const LANGUAGES = [
 
 describe("FR-FLOW-189 AC-1 — the README describes 4.0.0 in both languages", () => {
   for (const language of LANGUAGES) {
-    it(`FR-FLOW-189 AC-1 (${language.key}): names the chain, kiwi-sds, parallel waves with --serial and the test-sufficiency check`, () => {
+    // The chain and the kiwi-sds opt-in are asserted as FR-FLOW-197 states them (readme-4-1-0.fr-flow-197.test.ts).
+    it(`FR-FLOW-189 AC-1 (${language.key}): names kiwi-sds, parallel waves with --serial and the test-sufficiency check`, () => {
       const text = readmeHalves()[language.key];
-      expect(text, "the FR-FLOW-184 chain on one line").toMatch(CHAIN);
       expect(text).toContain("kiwi-sds");
       const serialLines = text.split("\n").filter((line) => line.includes("--serial"));
       expect(serialLines.length, "a line naming --serial").toBeGreaterThan(0);

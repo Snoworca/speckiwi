@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
@@ -96,37 +96,69 @@ describe("IR-CLI-032 / FR-MCP-024 next work-order core", () => {
     await expect(buildNextWorkOrder({ root: fixture.root }, { runId: "no-such-sds" })).resolves.toMatchObject({ action: "fix-artifact", blocking: true, sds: null });
   });
 
-  it("FR-NODE-211 AC-4: once every open SDS is finished, active-target requirements no SDS names still get create-sds", async () => {
+  it("FR-NODE-211 AC-4: a named SDS whose kiwi-pm session finished is complete", async () => {
     const fixture = await createWorkflowFixture();
-    for (const other of [fixture.sdsPath, fixture.freshSdsPath, fixture.draftSdsPath, fixture.invalidSdsPath, fixture.blockedSdsPath]) {
-      await rm(path.join(fixture.root, other));
-    }
-
-    const order = await buildNextWorkOrder({ root: fixture.root }, {});
-
-    expect(order).toMatchObject({ action: "create-sds", sds: null });
-    expect(order.requirementIds).toContain("FR-ARCH-011");
-    expect(order.requirementIds).not.toContain("FR-ARCH-001");
-
-    // Where the finished SDS names every open requirement of the target, the order is complete.
     const onlyNamed = await copyFixtureWorkspace("valid-basic");
     await write(onlyNamed, "docs/sds/done-run.sds.md", await readFile(path.join(fixture.root, fixture.completeSdsPath), "utf8"));
     await write(onlyNamed, ".kiwi/sessions/done-run/pm-state.json", JSON.stringify({ run_id: "done-run", run: { status: "done" } }));
-    await expect(buildNextWorkOrder({ root: onlyNamed }, {})).resolves.toMatchObject({ action: "complete", sds: { sdsId: "done-run" } });
+    await expect(buildNextWorkOrder({ root: onlyNamed }, { path: "docs/sds/done-run.sds.md" })).resolves.toMatchObject({
+      action: "complete",
+      sds: { sdsId: "done-run" }
+    });
   });
 
-  it("FR-NODE-211 AC-4: picks the first open SDS of the target by path when no path is named", async () => {
+  it("FR-NODE-211 AC-4: without an SDS argument open SDS files are listed and do not change the action", async () => {
     const fixture = await createWorkflowFixture();
 
-    // blocked-run sorts first among the fixture's SDS files of v1.0.0.
-    await expect(buildNextWorkOrder({ root: fixture.root }, {})).resolves.toMatchObject({
-      action: "blocked",
-      sds: { relativePath: fixture.blockedSdsPath }
+    const order = await buildNextWorkOrder({ root: fixture.root }, {});
+
+    expect(order).toMatchObject({
+      action: "implement-requirements",
+      nextAction: { kind: "implement-requirements", tool: "list_requirements" },
+      sds: null,
+      blocking: false
     });
+    expect(order.requirementIds).toContain("FR-ARCH-001");
+    expect(order.openSds).toEqual(
+      expect.arrayContaining([fixture.blockedSdsPath, fixture.draftSdsPath, fixture.freshSdsPath, fixture.sdsPath])
+    );
+    // A run id naming an SDS is an explicit SDS argument and keeps the 4.0.0 answer.
     await expect(buildNextWorkOrder({ root: fixture.root }, { runId: "fresh-run" })).resolves.toMatchObject({
       action: "execute-sds",
       sds: { relativePath: fixture.freshSdsPath }
     });
+  });
+
+  it("FR-NODE-211 AC-4: an unfinished kiwi-pm session over open requirements resumes, a stopped one blocks, a done one is excluded", async () => {
+    const root = await copyFixtureWorkspace("valid-basic");
+    const baseline = await buildNextWorkOrder({ root }, {});
+    expect(baseline.action).toBe("implement-requirements");
+    const [first, ...rest] = baseline.requirementIds;
+    expect(first).toBeDefined();
+    const session = (status: string, reqIds: string[]): string => JSON.stringify({ run_id: "req-run", req_ids: reqIds, run: { status } });
+
+    await write(root, ".kiwi/sessions/req-run/pm-state.json", session("running", [first!]));
+    await expect(buildNextWorkOrder({ root }, {})).resolves.toMatchObject({
+      action: "resume-session",
+      nextAction: { kind: "resume-session", tool: "workflow_session_status" },
+      requirementIds: [first],
+      artifacts: expect.arrayContaining([expect.objectContaining({ relativePath: ".kiwi/sessions/req-run/pm-state.json", kind: "pm-state" })]),
+      blocking: false
+    });
+
+    for (const stopped of ["blocked", "failed"]) {
+      await write(root, ".kiwi/sessions/req-run/pm-state.json", session(stopped, [first!]));
+      await expect(buildNextWorkOrder({ root }, {}), stopped).resolves.toMatchObject({ action: "blocked", blocking: true });
+    }
+
+    await write(root, ".kiwi/sessions/req-run/pm-state.json", session("done", [first!]));
+    const afterDone = await buildNextWorkOrder({ root }, {});
+    expect(afterDone.requirementIds).not.toContain(first);
+    expect(afterDone.action).toBe(rest.length > 0 ? "implement-requirements" : "no-action");
+
+    // A session over requirements outside the open set is somebody else's work.
+    await write(root, ".kiwi/sessions/req-run/pm-state.json", session("running", ["FR-NOPE-999"]));
+    await expect(buildNextWorkOrder({ root }, {})).resolves.toMatchObject({ action: "implement-requirements" });
   });
 
   it("FR-NODE-211 AC-4: a named path that is not a docs/sds SDS fails closed instead of reading a plan", async () => {
@@ -138,14 +170,14 @@ describe("IR-CLI-032 / FR-MCP-024 next work-order core", () => {
     expect(order.reason).toContain("docs/sds");
   });
 
-  it("FR-NODE-211 AC-4: returns create-sds when the target has requirements and no open SDS, plus ask-user and measured compact payloads", async () => {
+  it("FR-NODE-211 AC-4: returns implement-requirements when the target has requirements and no SDS is named, plus ask-user and measured compact payloads", async () => {
     const noSdsRoot = await copyFixtureWorkspace("valid-basic");
     const createSds = await buildNextWorkOrder({ root: noSdsRoot }, { target: "v1.0.0", measure: true });
     expect(createSds).toMatchObject({
-      action: "create-sds",
+      action: "implement-requirements",
       target: "v1.0.0",
       sds: null,
-      nextAction: { kind: "create-sds", tool: "list_requirements" },
+      nextAction: { kind: "implement-requirements", tool: "list_requirements" },
       measurement: {
         baselineBytes: expect.any(Number),
         baselineApproxTokens: expect.any(Number),
@@ -170,7 +202,7 @@ describe("IR-CLI-032 / FR-MCP-024 next work-order core", () => {
 
   it("FR-NODE-211 AC-4: the action vocabulary carries no plan action and every action names a tool", () => {
     expect(Object.keys(WORK_ORDER_ACTION_TOOLS).sort()).toEqual(
-      ["ask-user", "blocked", "complete", "create-sds", "execute-sds", "fix-artifact", "no-action", "resume-session"].sort()
+      ["ask-user", "blocked", "complete", "create-sds", "execute-sds", "fix-artifact", "implement-requirements", "no-action", "resume-session"].sort()
     );
   });
 });

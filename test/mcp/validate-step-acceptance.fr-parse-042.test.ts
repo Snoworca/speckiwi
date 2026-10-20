@@ -6,22 +6,10 @@ import { registerReadTools } from "../../src/mcp/tools/read-tools.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 /**
- * FR-PARSE-040 — the MCP surface decides the skip the same way the CLI surface does.
- *
- * The CLI suite pins the exit code, which is the CLI's own observable. `validate_step` has no exit
- * code: its handler always returns `mcpSuccess(...)`, so `ok` is `true` on a step whose SDS skip is
- * unrecorded. What the MCP caller can observe is the diagnostic itself — `SDS-E054` among `errors`
- * with `diagnosticsSummary.errors` counting it — and that is what this file measures.
- *
- * It exists because removing the `intent` argument from the `validate_step` handler left every
- * other suite green, measured over `test/core/validator`, `test/cli`, `test/mcp` and the two
- * FR-PARSE-033 suites: the wiring of the second surface was carried by nothing. The two cases below
- * are the same call over the same step, differing only in whether intent.md carries the record, so
- * a handler that stopped loading intent.md fails the recorded case rather than merely losing a
- * negative assertion.
- *
- * `ok: true` is asserted on purpose in both cases. It is the contract this surface actually has,
- * and the requirement body states it in those terms rather than as a non-zero exit.
+ * FR-PARSE-042 AC-2 / AC-4 (MCP surface) — `validate_step` judges the acceptance contract the way the
+ * CLI does. It has no exit code: the envelope stays `ok: true` and the caller observes
+ * `STEP_ACCEPTANCE_MISSING` among `errors` with `diagnosticsSummary.errors` counting it. The passing
+ * case is the same call with a real EARS line, so a handler that stopped loading intent.md fails it.
  */
 
 const STEP = "tdd-step-mcp";
@@ -37,10 +25,10 @@ interface StepValidationEnvelope {
   diagnosticsSummary?: { errors?: number; warnings?: number };
 }
 
-async function tddWorkspace(): Promise<string> {
+async function tddWorkspace(acceptanceLine: string): Promise<string> {
   const root = await copyFixtureWorkspace("valid-basic");
   const stepsDir = path.join(root, "docs", "spec", "steps");
-  await mkdir(stepsDir, { recursive: true });
+  await mkdir(path.join(stepsDir, STEP), { recursive: true });
   await writeFile(
     path.join(stepsDir, "state.md"),
     [
@@ -51,34 +39,17 @@ async function tddWorkspace(): Promise<string> {
       "",
       "| Step | Status | DependsOn | TouchesScope | TouchesReq | Created | Updated |",
       "| --- | --- | --- | --- | --- | --- | --- |",
-      `| ${STEP} | active | - | ARCH | - | 2026-09-01 | 2026-09-01 |`,
+      `| ${STEP} | active | - | ARCH | - | 2026-10-20 | 2026-10-20 |`,
       ""
     ].join("\n"),
+    "utf8"
+  );
+  await writeFile(
+    path.join(stepsDir, STEP, "intent.md"),
+    [`# Intent: ${STEP}`, "", "## Acceptance", "", acceptanceLine, ""].join("\n"),
     "utf8"
   );
   return root;
-}
-
-async function writeRecord(root: string): Promise<void> {
-  const stepDir = path.join(root, "docs", "spec", "steps", STEP);
-  await mkdir(stepDir, { recursive: true });
-  await writeFile(
-    path.join(stepDir, "intent.md"),
-    [
-      `# Intent: ${STEP}`,
-      "",
-      "## SDS Skip",
-      "",
-      "| Field | Value |",
-      "| --- | --- |",
-      "| Decision | skipped |",
-      "| Reason | Renames one private helper; no interface and no behaviour changes. |",
-      "",
-      "- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.",
-      ""
-    ].join("\n"),
-    "utf8"
-  );
 }
 
 async function callValidateStep(root: string): Promise<StepValidationEnvelope> {
@@ -87,28 +58,23 @@ async function callValidateStep(root: string): Promise<StepValidationEnvelope> {
   return (await server.callTool("validate_step", { step: STEP })) as StepValidationEnvelope;
 }
 
-describe("FR-PARSE-040 AC-2 — MCP validate_step decides the skip on the same record", () => {
-  it("carries SDS-E054 among errors when the SDS is skipped without a record", async () => {
-    const root = await tddWorkspace();
+describe("FR-PARSE-042 AC-2 / AC-4 — MCP validate_step checks the acceptance contract", () => {
+  it("carries STEP_ACCEPTANCE_MISSING among errors for a placeholder acceptance line", async () => {
+    const envelope = await callValidateStep(await tddWorkspace("- AC-1: WHEN <condition> THE SYSTEM SHALL <behaviour>"));
 
-    const envelope = await callValidateStep(root);
-
-    // The envelope stays ok:true — this surface has no exit code, and the requirement says so.
     expect(envelope.ok).toBe(true);
-    expect((envelope.value.errors ?? []).map((item) => item.code)).toContain("SDS-E054");
+    const hit = (envelope.value.errors ?? []).find((item) => item.code === "STEP_ACCEPTANCE_MISSING");
+    expect(hit?.severity).toBe("error");
     expect(envelope.diagnosticsSummary?.errors ?? 0).toBeGreaterThanOrEqual(1);
-    expect((envelope.value.warnings ?? []).map((item) => item.code)).not.toContain("SDS-W050");
   });
 
-  it("carries SDS-W050 as a warning and no error once the record is written", async () => {
-    const root = await tddWorkspace();
-    await writeRecord(root);
-
-    const envelope = await callValidateStep(root);
+  it("carries no STEP_ACCEPTANCE_MISSING and no error once an EARS line is written", async () => {
+    const envelope = await callValidateStep(
+      await tddWorkspace("- AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.")
+    );
 
     expect(envelope.ok).toBe(true);
-    expect((envelope.value.warnings ?? []).map((item) => item.code)).toContain("SDS-W050");
-    expect((envelope.value.errors ?? []).map((item) => item.code)).not.toContain("SDS-E054");
+    expect((envelope.value.errors ?? []).map((item) => item.code)).not.toContain("STEP_ACCEPTANCE_MISSING");
     expect(envelope.diagnosticsSummary?.errors ?? 0).toBe(0);
   });
 });

@@ -826,6 +826,35 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v3.1.0",
     remediation:
       "Point the trace link at a path the repository holds, or remove the row. The path is resolved from the workspace root and never by basename, so a designation that names a directory is judged as written."
+  },
+  {
+    code: "SRS-E077",
+    severity: "error",
+    title: "MCP server unbound",
+    messageTemplate: "The MCP server found no SRS at startup and answers no call",
+    sourceRule: "FR-MCP-067",
+    since: "v4.1.0",
+    remediation:
+      "Start the agent session, or set the MCP server's working directory, in the project directory, then restart the session; run speckiwi init in a project that has no SRS yet."
+  },
+  {
+    code: "SRS-W076",
+    severity: "warning",
+    title: "SRS mutation lock left after its mutation",
+    messageTemplate: "SRS mutation lock could not be released and is left until it expires",
+    sourceRule: "REL-NODE-009",
+    since: "v4.1.0",
+    remediation: "No action is needed: the lock is recovered when it expires. If it recurs, check permissions on kiwi/."
+  },
+  {
+    code: "SRS-W075",
+    severity: "warning",
+    title: "Malformed Change Notes table row",
+    messageTemplate: "Change Notes table row cell count does not match header count",
+    sourceRule: "FR-NODE-220",
+    since: "v4.1.0",
+    remediation:
+      "Rewrite the row so it has exactly the header's cells; a `|` inside a reason splits the cell, so write it as `/` or `-`."
   }
 ];
 

@@ -214,7 +214,7 @@ describe("FR-NODE-137 AC-6 — --dry-run produces the same exit codes and writes
 
     const accepted = await run([
       "--root", root, "orchestrate", "journal", "append", "--run-id", "run-a", "--dry-run",
-      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1" })
+      "--payload", JSON.stringify({ schema_version: "1.4.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1", inputs_digest: "sha256:in" })
     ]);
 
     expect(accepted.exit, JSON.stringify(accepted.payload)).toBe(0);

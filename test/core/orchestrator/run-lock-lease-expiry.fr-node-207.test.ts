@@ -208,8 +208,9 @@ function criterion(block: string, label: string): string {
   return line as string;
 }
 
+// IR-CLI-105 AC-9 — reporting changes no verdict: every verdict below is asserted after the 4.1.0 reporting change.
 describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 }, () => {
-  it("AC-1: a second CLI process is refused while the first process's lease is unexpired", async () => {
+  it("FR-NODE-207 AC-1: a second CLI process is refused while the first process's lease is unexpired", async () => {
     const target = await repository("lease-expiry-two-cli");
 
     const first = await cli(target.root, ["run", "lock", "--owner", "run-a"]);
@@ -231,7 +232,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
     await expect(readHolder(target.commonDir)).resolves.toMatchObject({ owner: "run-a" });
   });
 
-  it("AC-2: the MCP surface answers the same, and asks through the same CLI leaf", async () => {
+  it("FR-NODE-207 AC-2: the MCP surface answers the same, and asks through the same CLI leaf", async () => {
     const target = await repository("lease-expiry-mcp");
 
     const taken = await cli(target.root, ["run", "lock", "--owner", "cli-run"]);
@@ -254,7 +255,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       .toEqual(["--root", target.root, "orchestrate", "run", "lock", "--owner", "mcp-run", "--json"]);
   });
 
-  it("AC-3: a dry run and a real acquisition give one answer for one sentinel", async () => {
+  it("FR-NODE-207 AC-3 / IR-CLI-105 AC-9: a dry run and a real acquisition give one answer for one sentinel", async () => {
     const free = await repository("lease-expiry-parity-free");
     // Both halves agree on a free repository too, so the parity below is not the parity of two
     // refusals that refuse everything.
@@ -284,7 +285,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
     expect(named(real)).toBe("holder-run");
   });
 
-  it("AC-4: an expired lease is reclaimed and an unexpired one is not, decided by the recorded expiry", async () => {
+  it("FR-NODE-207 AC-4 / IR-CLI-105 AC-9: an expired lease is reclaimed and an unexpired one is not, decided by the recorded expiry", async () => {
     // Expired, and its pid is THIS process — alive beyond doubt. Reclaiming it can only be the
     // recorded expiry talking, because liveness says "held".
     const expired = await repository("lease-expiry-expired");
@@ -364,7 +365,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
     held.splice(held.indexOf(own), 1);
   });
 
-  it("AC-5: the workflow artifact lock, which shares this layer, is unchanged", async () => {
+  it("FR-NODE-207 AC-5: the workflow artifact lock, which shares this layer, is unchanged", async () => {
     const workspace = await tempDir("lease-expiry-artifact");
     const artifact = path.join(workspace, "waves.jsonl");
     await writeFile(artifact, "", "utf8");
@@ -391,7 +392,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
     expect(contended.ok, "a live artifact writer's sentinel stopped being honoured").toBe(false);
   });
 
-  it("AC-6: FR-NODE-131 AC-4 is corrected, and its suite's green is shown to be no evidence", async () => {
+  it("FR-NODE-207 AC-6: FR-NODE-131 AC-4 is corrected, and its suite's green is shown to be no evidence", async () => {
     // The measurement first, because a green suite is what has to be distrusted here: against a
     // sentinel that carries an expiry, a dead pid does not make it reclaimable.
     const target = await repository("lease-expiry-131-measure");
@@ -421,7 +422,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       .toMatch(/lease|expir/i);
   });
 
-  it("AC-7: what this does not settle is recorded with what was measured", async () => {
+  it("FR-NODE-207 AC-7: what this does not settle is recorded with what was measured", async () => {
     const block = requirementBlock("FR-NODE-207");
     const notes = block.slice(block.indexOf("#### Implementation Notes"));
     expect(notes.length, "FR-NODE-207 has no Implementation Notes section").toBeGreaterThan(0);

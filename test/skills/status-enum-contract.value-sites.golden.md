@@ -9,7 +9,7 @@ blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | dep
 blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, im
 blocked	-	kiwi-coder/SKILL.md	- 회귀 발생 → "blocked"
 blocked	-	kiwi-pm/SKILL.md	auto] draft REQ {[r.id for r in blocked]} — /kiwi-sds 요구 필터로 뺀 SDS 를 다시
-blocked	-	kiwi-pm/SKILL.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(sd
+blocked	-	kiwi-pm/SKILL.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(re
 blocked	-	kiwi-srs-feasibility/SKILL.md	- quick_block: 명백한 blocked (trace 비존재 + 외부 모듈 의존) → Opus 시
 blocked	-	kiwi-srs-feasibility/SKILL.md	locked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability → deprecate
 blocked	-	kiwi-srs-feasibility/SKILL.md	| FR-TODO-005 | in_progress | blocked | kiwi-coder 중단 검토 |
@@ -35,6 +35,8 @@ blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	: True, req_ids: [r.id FOR r IN block
 blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	IF NOT blocked: RETURN
 blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	blocked_req_ids: [r.id FOR r IN blocked],
 blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	ids IF id NOT IN [r.id FOR r IN blocked]]
 blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	recated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated"
 blocked	pm-pseudocode-ref	kiwi-pm/SKILL.md	rride", req_ids: [r.id FOR r IN blocked]})
 blocked	pm-task-status-literal	kiwi-pm/SKILL.md	+ blocked 기록 — run.status = "blocked", state.last_question 보존, SA
@@ -51,6 +53,8 @@ blocked	task-status	kiwi-pm/SKILL.md	이 done 또는 failed 로 확정된 때다
 deprecated	-	_shared/kiwi/auto-option.md	cle-gate-policy-stop", reason: "deprecated / frozen REQ 구현 정책 차단"},
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
+deprecated	-	_shared/kiwi/parallel-waves.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
+deprecated	-	_shared/kiwi/parallel-waves.md	rements[] 의 요구가 없거나 draft · deprecated · discarded)이며, 거절하면 lock 을
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/SKILL.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -58,17 +62,18 @@ deprecated	-	kiwi-commit-auto-push/SKILL.md	자체는 자동 — clarification),
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
 deprecated	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 /
 deprecated	-	kiwi-pm/SKILL.md	- §4 lifecycle gate deprecated/frozen 차단 (draft 는 §4.3 요구
+deprecated	-	kiwi-pm/SKILL.md	ATE(state, args) # §4 — draft/deprecated/frozen 차단
 deprecated	-	kiwi-pm/SKILL.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id f
 deprecated	-	kiwi-pm/SKILL.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 deprecated	-	kiwi-pm/SKILL.md	IN blocked IF r.stability IN {"deprecated", "frozen"}]
-deprecated	-	kiwi-pm/SKILL.md	ds, state, args) # §4 — draft/deprecated/frozen 차단
-deprecated	-	kiwi-pm/SKILL.md	e-policy-stop | REQ stability=deprecated / frozen 차단 (§4 lifecycle ga
 deprecated	-	kiwi-pm/SKILL.md	kiwi-sds 요구 필터로 돌려보낸다 (§4.3), deprecated / frozen 은 즉시 HALT.
-deprecated	-	kiwi-pm/SKILL.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-deprecated	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
+deprecated	-	kiwi-pm/SKILL.md	stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은
+deprecated	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
+deprecated	-	kiwi-pm/SKILL.md	실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-pm/SKILL.md	않고 요구 필터로 돌려보냄 + 잔여 보고 (§4.3). deprecated/frozen 은 종전대로 HALT |
+deprecated	-	kiwi-pm/SKILL.md	은 그 요구를 빼고 보고한다) REQ stability=deprecated / frozen 차단 (§4 lifecycle ga
 deprecated	-	kiwi-review-fix-loop/references/conditional-sections.md	불일치로 드러난다. 산문 증거 REQ 와 draft·deprecated REQ 는 eligible 에서 빠지지만 sc
 deprecated	-	kiwi-review-fix-loop/references/conditional-sections.md	증거 REQ 와 stability 가 draft·deprecated 인 REQ 를 뺀 것. status 가 impleme
 deprecated	-	kiwi-sds/SKILL.md	4. Stability 가 draft 또는 deprecated 인 요구는 범위에서 빼고 목록을 보고한다(FR-
@@ -85,6 +90,7 @@ deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/dep
 deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) deprecated 처리 |
 deprecated	-	kiwi-srs-sync/SKILL.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/SKILL.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
+deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	alias-deprecated-note	kiwi-commit-auto-pr/SKILL.md	d" // inbound 호환 alias (deprecated). 본 스킬은 반환 시 항상 분리값(gh_cli_not
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
@@ -93,6 +99,8 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
+discarded	-	_shared/kiwi/parallel-waves.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
+discarded	-	_shared/kiwi/parallel-waves.md	가 없거나 draft · deprecated · discarded)이며, 거절하면 lock 을 쓰지 않는다. files
 discarded	-	_shared/kiwi/parallel-waves.md	다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고, 그 삭제를 close-o
 discarded	-	kiwi-orchestrator/SKILL.md	다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고, 그 삭제를 wave 의
 discarded	-	kiwi-sds/SKILL.md	2. 모두 verified 또는 discarded 면 SDS 파일을 작업 트리에서 지운다(git
@@ -121,16 +129,19 @@ discarded	-	kiwi-srs/SKILL.md	]) 적용을 skip — speckiwi Status=discarded + 
 discarded	-	kiwi-srs/SKILL.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/SKILL.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/SKILL.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	_shared/kiwi/auto-option.md	ecycle-gate-draft 는 철회됐다 — draft 차단은 per-REQ skip 으로 대체되었고(FR-FL
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
+draft	-	_shared/kiwi/parallel-waves.md	dy(requirements[] 의 요구가 없거나 draft · deprecated · discarded)이
+draft	-	_shared/kiwi/parallel-waves.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) | PW-1 뒤 · PW-2
+draft	-	_shared/kiwi/parallel-waves.md	가 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
 draft	-	_shared/kiwi/parallel-waves.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — 코드도 테스트도 받지 못한
-draft	-	_shared/kiwi/parallel-waves.md	나, 배정 집합의 요구를 빠뜨림(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) | PW-2 |
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
-draft	-	kiwi-coder/SKILL.md	- draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft
-draft	-	kiwi-coder/SKILL.md	draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
+draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
+draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
 draft	-	kiwi-commit-auto-pr/SKILL.md	| --draft | 신규 PR 을 draft 로 생성 |
 draft	-	kiwi-commit-auto-push/SKILL.md	A+ 게이트 자체는 자동 — clarification), draft/deprecated stability WARN 시 tra
@@ -138,7 +149,7 @@ draft	-	kiwi-commit-auto-push/SKILL.md	raft | WARN + trailer 부착 skip (draft 
 draft	-	kiwi-commit-auto-push/SKILL.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료
 draft	-	kiwi-hot-fix/SKILL.md	명시 시 stability 검사 강제 (§0.12). draft REQ 영향 진입 시 차단 | §0.12 |
-draft	-	kiwi-orchestrator/SKILL.md	S 들의 @req 에서 빠짐(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
 draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
 draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
@@ -149,21 +160,23 @@ draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사�
 draft	-	kiwi-pm/SKILL.md	# draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지
 draft	-	kiwi-pm/SKILL.md	### 4.2 interactive 2지선다 (draft 차단 시)
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
-draft	-	kiwi-pm/SKILL.md	- draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
+draft	-	kiwi-pm/SKILL.md	- 요구 집합 실행은 draft REQ 를 빼고 남은 집합으로 돈다(남은 요구가 없으면
 draft	-	kiwi-pm/SKILL.md	AVE_STATE, 보고서(§6.3, 7번 절에 돌려보낸 draft REQ 목록)를 쓰고, §10 이벤트를 NEEDS_US
 draft	-	kiwi-pm/SKILL.md	DS 범위에서 한다 — /kiwi-sds 요구 필터로 draft REQ 를 SDS 범위에서 뺀 SDS 를 다시 쓰게 돌려
 draft	-	kiwi-pm/SKILL.md	END_NEEDS_USER(f"[auto] draft REQ {[r.id for r in blocked]} —
-draft	-	kiwi-pm/SKILL.md	GATE(sds, state, args) # §4 — draft/deprecated/frozen 차단
 draft	-	kiwi-pm/SKILL.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
+draft	-	kiwi-pm/SKILL.md	YCLE_GATE(state, args) # §4 — draft/deprecated/frozen 차단
 draft	-	kiwi-pm/SKILL.md	choice = AskUserQuestion("draft REQ 차단", options=[
 draft	-	kiwi-pm/SKILL.md	e) — 정책 위반 / 의도된 제거, 자동 우회 금지. draft 는 본 행에 포함되지 않는다 (§4.3 요구 필터로 돌
 draft	-	kiwi-pm/SKILL.md	gate deprecated/frozen 차단 (draft 는 §4.3 요구 필터로 분리 — 예외 아님)
-draft	-	kiwi-pm/SKILL.md	ness-decision 버블업 또는 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
-draft	-	kiwi-pm/SKILL.md	| --auto + lifecycle gate draft | SDS 를 실행하지 않고 요구 필터로 돌려보냄 +
-draft	-	kiwi-pm/SKILL.md	| 진행 불가 (정상) | draft | 차단 + interactive 2지선다 /
-draft	-	kiwi-pm/SKILL.md	가능 = evolving / stable 만. draft 는 interactive 2지선다 / --auto
+draft	-	kiwi-pm/SKILL.md	lving / stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를
+draft	-	kiwi-pm/SKILL.md	| --auto + lifecycle gate draft | 요구 집합 실행은 그 요구를 빼고 진행 + 잔여 보
+draft	-	kiwi-pm/SKILL.md	| 진행 불가 (정상) | draft | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
+draft	-	kiwi-pm/SKILL.md	가 없으면 §4 대로 멈춘다). --sds 실행에서 draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
+draft	-	kiwi-pm/SKILL.md	버블업 또는 --sds 실행에서 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
 draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / f
 draft	-	kiwi-pm/SKILL.md	사용자 선택 (A/B) 또는 --auto 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 reason_clas
+draft	-	kiwi-pm/SKILL.md	없으면 HALT 한다(§4). --sds 실행에서 draft 는 interactive 2지선다 / --auto
 draft	-	kiwi-review-fix-loop/SKILL.md	lose-reqs + 영향 REQ 중 stability=draft 1건 이상 | 해당 REQ skip + 사용자 보고 (d
 draft	-	kiwi-review-fix-loop/SKILL.md	t 1건 이상 | 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
 draft	-	kiwi-review-fix-loop/references/conditional-sections.md	FR-X-002", "reason": "stability=draft" },
@@ -217,8 +230,9 @@ draft	-	kiwi-srs/SKILL.md	용자 미승인은 Status 가 아니라 Stability=dra
 draft	-	kiwi-srs/SKILL.md	증거 없는 기능 작성 금지. 추정은 stability=draft + [INFERRED:high\|med\|low]
 draft	-	kiwi-srs/SKILL.md	진행은 /kiwi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline
 draft	-	kiwi-srs/SKILL.md	하는 Status 값은 존재하지 않으며 status: "draft" 는 update_status 가 USAGE 로
-draft	-	kiwi-wave-master/SKILL.md	나, 배정 집합의 요구를 빠뜨림(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
+draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
 draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
+draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	# USE_DRAFT: 사용자가 --draft 인자 명시했을 때 메인 에이전트가 1 로 설정 (인자 파
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	PR_FLAGS+=(--draft)
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	으로 빈 플래그 제거 (USE_DRAFT=0 일 때 --draft 추가 안 됨)
@@ -226,18 +240,18 @@ draft	pr-draft-flag-ko	kiwi-commit-auto-pr/SKILL.md	DRAFT=${USE_DRAFT:-0} # 기�
 draft	pr-draft-flag-ko	kiwi-commit-auto-pr/SKILL.md	| --draft | 신규 PR 을 draft 로 생성 |
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
-evolving	-	_shared/kiwi/pipeline-event.md	_DONE | kiwi-sds (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
-evolving	-	_shared/kiwi/pipeline-v1.md	ds when stability has reached evolving, otherwise kiwi-srs-research
+evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolving 시 — 현재 kiwi-pipeline 호출이 --sds
+evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/SKILL.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
-evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-sds — stability ≥ evolving REQ 가 있어 SDS 작성 가능
+evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
-evolving	-	kiwi-pm/SKILL.md	d 로 SDS @req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
-evolving	-	kiwi-pm/SKILL.md	heck 와 Stability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의
+evolving	-	kiwi-pm/SKILL.md	, 부팅 시 Stability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi
+evolving	-	kiwi-pm/SKILL.md	ents read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 evolving	-	kiwi-pm/SKILL.md	| 진행 가능 | evolving / stable | OK |
-evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 intera
+evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft
 evolving	-	kiwi-review-fix-loop/references/conditional-sections.md	": "implemented", "stability": "evolving" }
 evolving	-	kiwi-srs-feasibility/SKILL.md	"predicted_stability_range": ["evolving", "stable"], "requires_user_con
 evolving	-	kiwi-srs-feasibility/SKILL.md	"proposed_stability": "evolving",
@@ -247,7 +261,7 @@ evolving	-	kiwi-srs-feasibility/SKILL.md	O-001", "from": "draft", "to": "evolvin
 evolving	-	kiwi-srs-feasibility/SKILL.md	bility 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecated:1") 권장
 evolving	-	kiwi-srs-feasibility/SKILL.md	ealth | 타당성 | 의존 REQ 가 stable/evolving 상태인지, 순환 의존 여부 | 15 |
 evolving	-	kiwi-srs-feasibility/SKILL.md	ient|persistent", "mcp_value": "evolving", "md_value": "draft", "retry_c
-evolving	-	kiwi-srs-feasibility/SKILL.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-sds"; 블로커 모호 다수 →
+evolving	-	kiwi-srs-feasibility/SKILL.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-pm"; 블로커 모호 다수 →
 evolving	-	kiwi-srs-feasibility/SKILL.md	notes: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecate
 evolving	-	kiwi-srs-feasibility/SKILL.md	stability: "evolving",
 evolving	-	kiwi-srs-feasibility/SKILL.md	| high | (default) | evolving | ❌ 자동 |
@@ -256,8 +270,8 @@ evolving	-	kiwi-srs-sync/SKILL.md	6. update_stability — draft→evolving 등 �
 evolving	-	kiwi-srs-sync/SKILL.md	ability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에
 evolving	-	kiwi-srs-sync/SKILL.md	eptance_criteria[], stability: "evolving"}, suggested_id}
 evolving	-	kiwi-srs-sync/SKILL.md	차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-modul
+evolving	-	kiwi-srs/SKILL.md	ilter <신규 REQ-ID> (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/SKILL.md	wi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-evolving	-	kiwi-srs/SKILL.md	구현은 /kiwi-coder (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/SKILL.md	사용자 검토 후 update_stability 로 evolving 승급, 착수 시 update_status 로 in
 frozen	-	_shared/kiwi/auto-option.md	cy-stop", reason: "deprecated / frozen REQ 구현 정책 차단"},
 frozen	-	_shared/kiwi/auto-option.md	stability-frozen-violation — frozen REQ 본문 변경
@@ -296,6 +310,7 @@ frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	rollback-confi
 frozen	-	kiwi-commit-auto-push/references/conditional-sections.md	| frozen REQ → AskUserQuestion 3옵션 | NEE
 frozen	-	kiwi-orchestrator/SKILL.md	, 자연어 요청, 런타임 사유)를 기록한다. 그 값은 frozen 에 들어간다. 조용히 직렬로 내리지 않는다.
 frozen	-	kiwi-orchestrator/SKILL.md	stability 가 deprecated 또는 frozen 인 요구 |
+frozen	-	kiwi-pm/SKILL.md	) REQ stability=deprecated / frozen 차단 (§4 lifecycle gate) — 정책 위반
 frozen	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 / 의도된 제거, §0.
 frozen	-	kiwi-pm/SKILL.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id for r in
 frozen	-	kiwi-pm/SKILL.md	args) # §4 — draft/deprecated/frozen 차단
@@ -303,12 +318,12 @@ frozen	-	kiwi-pm/SKILL.md	ity IN {"draft", "deprecated", "frozen"}:
 frozen	-	kiwi-pm/SKILL.md	le gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_gates lifecy
 frozen	-	kiwi-pm/SKILL.md	r.stability IN {"deprecated", "frozen"}]
 frozen	-	kiwi-pm/SKILL.md	t 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가 자식의 안전 우회 옵
-frozen	-	kiwi-pm/SKILL.md	ted / frozen | 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-frozen	-	kiwi-pm/SKILL.md	| REQ stability=deprecated / frozen 차단 (§4 lifecycle gate) — 정책 위반
-frozen	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — frozen=정책 위반,
+frozen	-	kiwi-pm/SKILL.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
 frozen	-	kiwi-pm/SKILL.md	§4 lifecycle gate deprecated/frozen 차단 (draft 는 §4.3 요구 필터로 분리 —
 frozen	-	kiwi-pm/SKILL.md	냄 + 잔여 보고 (§4.3). deprecated/frozen 은 종전대로 HALT |
 frozen	-	kiwi-pm/SKILL.md	로 돌려보낸다 (§4.3), deprecated / frozen 은 즉시 HALT.
+frozen	-	kiwi-pm/SKILL.md	보고한다. --sds 실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
+frozen	-	kiwi-pm/SKILL.md	합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은 요구가 없으면 HA
 frozen	-	kiwi-sds/SKILL.md	-after-promotion, Stability 가 frozen 인 것이 있으면 stability-frozen-vio
 frozen	-	kiwi-sds/SKILL.md	ose 가 명확화할 AC 의 요구가 Stability frozen — frozen 요구의 본문은 이 경로로 바꾸지 않는다
 frozen	-	kiwi-sds/SKILL.md	를 다시 부른 뒤 다시 verified 로 올리거나(frozen 이면 stability 를 먼저 푼다), 옮기지 못한 결
@@ -334,8 +349,8 @@ frozen	-	kiwi-srs-sync/SKILL.md	d_section_note: REQ 의 Stability=frozen 이면 
 frozen	-	kiwi-srs-sync/SKILL.md	new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions
 frozen	-	kiwi-srs-sync/SKILL.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/SKILL.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
-frozen	card-frozen-block	_shared/kiwi/run-ledger.md	3. invariant_digest 는 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
+frozen	card-frozen-block	_shared/kiwi/run-ledger.md	그 값을 뺀 카드 페이로드에 card write 가 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	frozen 블록에 기록 게이트: integratio
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	은 현재 브랜치) 위에 생성하거나 채택하고 재개 카드의 frozen 블록에 기록한다. 생성도 채택도 불가하면 integr
 frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 는 frozen 안에 있어 invariant_digest 가 이들을
@@ -343,10 +358,16 @@ frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
 frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	_lock · frozen.waves_lock · frozen.constraints · frozen.converge
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ible | git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ints · frozen.convergence · frozen.lane_lock[wave-{n}])는 <path>@
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.constraints · frozen.convergence · frozen.lane_loc
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.design_lock · frozen.waves_lock · frozen.constrain
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	tract · frozen.route.lock · frozen.design_lock · frozen.waves_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| A(k) | frozen.integration_branch 에 대한 정산 여부
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-DESIGN-FROZEN | frozen.design_lock 이 가리키는 lock 의 재계산
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-LANE-PLAN-FROZEN | frozen.lane_lock[wave-{n}] 이 가리키는 sta
@@ -376,7 +397,7 @@ implemented	-	_shared/kiwi/parallel-waves.md	증이 pass 이고 그 요구를 �
 implemented	-	_shared/kiwi/parallel-waves.md	착지하면 planned/in_progress → implemented, 검증이 pass 이고 그 요구를 지명한 잔여가 없
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	- 일부 ac 만 pass → "implemented"
-implemented	-	kiwi-coder/SKILL.md	> "이 SDS 의 REQ status 가 implemented 로 승급되었습니다. verified 로 닫으려면
+implemented	-	kiwi-coder/SKILL.md	> "요구 status 가 implemented 로 승급되었습니다. verified 로 닫으려면
 implemented	-	kiwi-coder/SKILL.md	DENIED 를 돌려준다 — 그것이 이 규칙의 목표가 implemented 인 이유다.
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/SKILL.md	갈래인 (2) 나중에 수동과 (3) skip 은 요구를 implemented 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1)
@@ -384,7 +405,7 @@ implemented	-	kiwi-coder/SKILL.md	의 모든 ac 가 green_evidence 보유 → "i
 implemented	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave
 implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 wave 가 landed |
 implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
-implemented	-	kiwi-pm/SKILL.md	@req 집합에 update_status(id, "implemented") + add_completed_work(date,
+implemented	-	kiwi-pm/SKILL.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
 implemented	-	kiwi-pm/SKILL.md	R = ["planned", "in_progress", "implemented", "verified"]
 implemented	-	kiwi-pm/SKILL.md	al 제안: {len(proposals)} 개 REQ 를 implemented 로 승급?",
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
@@ -394,15 +415,16 @@ implemented	-	kiwi-pm/SKILL.md	ds: T-final 에서 update_status("implemented") �
 implemented	-	kiwi-pm/SKILL.md	forward-only) | {id, status: "implemented"} (dryRun 인자 없음) |
 implemented	-	kiwi-pm/SKILL.md	from: p.from, to: "implemented", dry_run: is_pm_dry_run
 implemented	-	kiwi-pm/SKILL.md	req_id, from: req.status, to: "implemented" })
-implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(sds-summar
-implemented	-	kiwi-pm/SKILL.md	stable 만 진행), 종료 시 SDS @req 요구의 implemented 승급 + add_completed_work(sds-sum
+implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
 implemented	-	kiwi-pm/SKILL.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
-implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(sds-su
-implemented	-	kiwi-pm/SKILL.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸고 (CLOSE_SAFE) 옮기기가 끝났을
-implemented	-	kiwi-pm/SKILL.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SD
+implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
+implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
+implemented	-	kiwi-pm/SKILL.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
+implemented	-	kiwi-pm/SKILL.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
+implemented	-	kiwi-pm/SKILL.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
 implemented	-	kiwi-review-fix-loop/SKILL.md	S + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evid
 implemented	-	kiwi-review-fix-loop/SKILL.md	se-reqs + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / plann
 implemented	-	kiwi-review-fix-loop/SKILL.md	시 시 셀프 모드 한정으로 update_status (implemented→verified, forward-only) + add_
@@ -421,7 +443,7 @@ implemented	-	kiwi-srs-sync/SKILL.md	us 면 backward 차단 (예: verified → i
 implemented	-	kiwi-srs/SKILL.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + AskUserQuestion
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + AskUserQuestion
-implemented	-	kiwi-srs/SKILL.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 /kiwi-coder (sta
+implemented	-	kiwi-srs/SKILL.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → /kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	이다. 전이는 두 단계다 — 착지하면 planned/in_progress → implemented, 검증이 pass 이고
 in_progress	-	kiwi-coder/SKILL.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
@@ -432,6 +454,7 @@ in_progress	-	kiwi-pm/SKILL.md	(자식) | 실행 시작 시 | {id, status: "in_p
 in_progress	-	kiwi-pm/SKILL.md	) / update_status(id, status="in_progress") / add_completed_work(date,
 in_progress	-	kiwi-pm/SKILL.md	: kiwi-coder 는 update_status(in_progress) 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한
 in_progress	-	kiwi-pm/SKILL.md	STATUS_ORDER = ["planned", "in_progress", "implemented", "verified"]
+in_progress	-	kiwi-pm/SKILL.md	st_requirements 의 planned · in_progress 요구)를 집합으로 출력하고 kiwi-coder 를 띄우
 in_progress	-	kiwi-pm/SKILL.md	status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM 측에서 차단 + 경고.
 in_progress	-	kiwi-pm/SKILL.md	| update_status(in_progress) | kiwi-coder (자식) | 실행 시작 시 |
 in_progress	-	kiwi-pm/SKILL.md	→ update_status 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_comple
@@ -440,7 +463,7 @@ in_progress	-	kiwi-srs-feasibility/SKILL.md	ibility=blocked + REQ.status ∈ {in
 in_progress	-	kiwi-srs-feasibility/SKILL.md	s_conflict", "current_status": "in_progress" }
 in_progress	-	kiwi-srs-feasibility/SKILL.md	| FR-TODO-005 | in_progress | blocked | kiwi-coder 중단 검토 |
 in_progress	-	kiwi-srs-feasibility/SKILL.md	| blocked | status ∈ {in_progress, implemented, verified} | keep
-in_progress	-	kiwi-srs/SKILL.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 /kiw
+in_progress	-	kiwi-srs/SKILL.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi
 in_progress	-	kiwi-srs/SKILL.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
 in_progress	-	kiwi-srs/SKILL.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/SKILL.md	_required = status: planned → in_progress 승격 전 사용자 답변 필수. advisory
@@ -460,12 +483,13 @@ in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
-in_progress	waves-event-particle	_shared/kiwi/waves-event.md	거 창을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 SDS 가 아직 없으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 SD
+in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
+in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
 planned	-	_shared/kiwi/parallel-waves.md	_empty 선언이다. 전이는 두 단계다 — 착지하면 planned/in_progress → implemented,
 planned	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
 planned	-	kiwi-pm/SKILL.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
+planned	-	kiwi-pm/SKILL.md	열린 작업 후보(list_requirements 의 planned · in_progress 요구)를 집합으로 출력하고
 planned	-	kiwi-pm/SKILL.md	은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용
 planned	-	kiwi-review-fix-loop/SKILL.md	ented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보고, 나머지 진행.
 planned	-	kiwi-srs-feasibility/SKILL.md	"current_status": "planned",
@@ -496,10 +520,10 @@ stable	-	kiwi-commit-auto-pr/SKILL.md	stability: stable (정상)
 stable	-	kiwi-commit-auto-push/SKILL.md	stability: stable (정상)
 stable	-	kiwi-commit-auto-push/SKILL.md	| evolving / stable | 정상 진행 | 정상 진행 (TASK_DONE 으로
 stable	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "stable"
-stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 interactive 2지선다
-stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의 implem
-stable	-	kiwi-pm/SKILL.md	req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft · deprec
+stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi sds che
 stable	-	kiwi-pm/SKILL.md	| 진행 가능 | evolving / stable | OK |
+stable	-	kiwi-pm/SKILL.md	로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 stable	-	kiwi-srs-feasibility/SKILL.md	"FR-TODO-003", "attempted_to": "stable", "guard_reason": "..." }
 stable	-	kiwi-srs-feasibility/SKILL.md	#### §0.G5 — stable 승급 게이트 (frozen 은 권한 외)
 stable	-	kiwi-srs-feasibility/SKILL.md	- --include-stable 미지정 시 stable/frozen 제외
@@ -550,7 +574,7 @@ verified	-	kiwi-coder/SKILL.md	ceptance_criteria 를 부르지 않으므로, ver
 verified	-	kiwi-coder/SKILL.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
 verified	-	kiwi-coder/SKILL.md	ed 이거나 회귀 fail 잔존 시 (3) 자동 채택 (verified 닫기 부적합).
 verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
-verified	-	kiwi-coder/SKILL.md	tus 가 implemented 로 승급되었습니다. verified 로 닫으려면 /kiwi-sds --close <sds
+verified	-	kiwi-coder/SKILL.md	tus 가 implemented 로 승급되었습니다. verified 로 닫으려면 /kiwi-review-fix-loop
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-coder/SKILL.md	본 §8.4 의 mutation (verified 전이) 은 review-fix-loop §6.6 에 위임
@@ -560,6 +584,7 @@ verified	-	kiwi-hot-fix/SKILL.md	고 위임은 진행한다 — kiwi-srs-sync �
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	"in_progress", "implemented", "verified"]
 verified	-	kiwi-pm/SKILL.md	- PM 자체는 update_status("verified") 를 호출하지 않는다 — verified 전이는 re
@@ -626,7 +651,7 @@ blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | dep
 blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, im
 blocked	-	kiwi-coder/references/extended-workflow.md	- 회귀 발생 → "blocked"
 blocked	-	kiwi-pm/references/extended-workflow.md	auto] draft REQ {[r.id for r in blocked]} — $kiwi-sds 요구 필터로 뺀 SDS 를 다시
-blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(sd
+blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(re
 blocked	-	kiwi-srs-feasibility/SKILL.md	- quick_block: 명백한 blocked (trace 비존재 + 외부 모듈 의존) → high-r
 blocked	-	kiwi-srs-feasibility/SKILL.md	locked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability → deprecate
 blocked	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅
@@ -655,6 +680,8 @@ blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	: True, req_id
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	IF NOT blocked: RETURN
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	blocked_req_ids: [r.id FOR r IN blocked],
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	ids IF id NOT IN [r.id FOR r IN blocked]]
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	recated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated"
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	rride", req_ids: [r.id FOR r IN blocked]})
 blocked	pm-task-status-literal	kiwi-pm/SKILL.md	- (B) 중단 + run.status = "blocked" 기록 (--resume 으로 이어간다)
@@ -671,6 +698,8 @@ blocked	task-status	kiwi-pm/references/extended-workflow.md	이 done 또는 fail
 deprecated	-	MIGRATION_PLAN.md	and remains free of draft or deprecated stability blockers.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
+deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
+deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -678,18 +707,19 @@ deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user exp
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
 deprecated	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 /
-deprecated	-	kiwi-pm/SKILL.md	ds, state, args) # §4 — draft/deprecated/frozen 차단
+deprecated	-	kiwi-pm/SKILL.md	ATE(state, args) # §4 — draft/deprecated/frozen 차단
 deprecated	-	kiwi-pm/SKILL.md	kiwi-sds 요구 필터로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
-deprecated	-	kiwi-pm/SKILL.md	lifecycle-gate-policy-stop | deprecated / frozen lifecycle blocker —
+deprecated	-	kiwi-pm/SKILL.md	stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
+deprecated	-	kiwi-pm/SKILL.md	실행 — 요구 집합 실행은 그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker —
 deprecated	-	kiwi-pm/references/extended-workflow.md	- §4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.
 deprecated	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id f
 deprecated	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 deprecated	-	kiwi-pm/references/extended-workflow.md	IN blocked IF r.stability IN {"deprecated", "frozen"}]
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
+deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서
 deprecated	-	kiwi-pm/references/extended-workflow.md	려보냄 + 잔여 보고 (SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
+deprecated	-	kiwi-pm/references/extended-workflow.md	실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
@@ -708,6 +738,7 @@ deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) depr
 deprecated	-	kiwi-srs-sync/SKILL.md	| deprecated-req-mutation | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.1
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
+deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
@@ -715,6 +746,8 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
+discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
+discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
 discarded	-	_shared/kiwi/parallel-waves.md	requirement is verified or discarded, the SDS file is deleted and t
 discarded	-	kiwi-orchestrator/SKILL.md	다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고, 그 삭제를 wave 의
 discarded	-	kiwi-sds/SKILL.md	2. When all are verified or discarded, delete the SDS file from
@@ -744,24 +777,27 @@ discarded	-	kiwi-srs/references/extended-workflow.md	= update 이면서 영향 R
 discarded	-	kiwi-srs/references/extended-workflow.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/references/extended-workflow.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/references/extended-workflow.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	MIGRATION_PLAN.md	pleted ACs and remains free of draft or deprecated stability bloc
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | PW-2 |
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
+draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
+draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
-draft	-	kiwi-coder/SKILL.md	- draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft
-draft	-	kiwi-coder/SKILL.md	draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
+draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
+draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
 draft	-	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trailer 부착 skip (draft REQ 는 commit 대상 부적합 신호) | 동일 (T
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	S 들의 @req 에서 빠짐(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
 draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
 draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
@@ -770,12 +806,14 @@ draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(k
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
-draft	-	kiwi-pm/SKILL.md	- draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
+draft	-	kiwi-pm/SKILL.md	- 요구 집합 실행은 draft REQ 를 빼고 남은 집합으로 돈다(남은 요구가 없으면
 draft	-	kiwi-pm/SKILL.md	DS 범위에서 한다 — $kiwi-sds 요구 필터로 draft REQ 를 SDS 범위에서 뺀 SDS 를 다시 쓰게 돌려
-draft	-	kiwi-pm/SKILL.md	GATE(sds, state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	YCLE_GATE(state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	lving / stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를
 draft	-	kiwi-pm/SKILL.md	ycle blocker — 정책 위반 / 의도된 제거. draft 는 본 행에 포함되지 않는다 (§3.6 요구 필터로 돌
-draft	-	kiwi-pm/SKILL.md	가능 = evolving / stable 만. draft 는 interactive 2지선다 / --auto
+draft	-	kiwi-pm/SKILL.md	가 없으면 §4 대로 멈춘다). --sds 실행에서 draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
 draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / f
+draft	-	kiwi-pm/SKILL.md	없으면 HALT 한다(§4). --sds 실행에서 draft 는 interactive 2지선다 / --auto
 draft	-	kiwi-pm/references/extended-workflow.md	# draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지
 draft	-	kiwi-pm/references/extended-workflow.md	### 4.2 interactive 2지선다 (draft 차단 시)
 draft	-	kiwi-pm/references/extended-workflow.md	- 4.2 interactive 2지선다 (draft 차단 시)
@@ -784,9 +822,9 @@ draft	-	kiwi-pm/references/extended-workflow.md	END_NEEDS_USER(f"[auto] draft RE
 draft	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 draft	-	kiwi-pm/references/extended-workflow.md	gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6 요구 필터로 분리 —
 draft	-	kiwi-pm/references/extended-workflow.md	ice = Codex clarification gate("draft REQ 차단", options=[
-draft	-	kiwi-pm/references/extended-workflow.md	ness-decision 버블업 또는 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
-draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | SDS 를 실행하지 않고 요구 필터로 돌려보냄 +
-draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 2지선다 /
+draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 요구 집합 실행은 그 요구를 빼고 진행 + 잔여 보
+draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
+draft	-	kiwi-pm/references/extended-workflow.md	버블업 또는 --sds 실행에서 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
 draft	-	kiwi-pm/references/extended-workflow.md	사용자 선택 (A/B) 또는 --auto 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 reason_clas
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
@@ -848,24 +886,25 @@ draft	-	kiwi-step/SKILL.md	rements). A step is an isolated draft workspace that 
 draft	-	kiwi-step/SKILL.md	requirements even while still a draft. |
 draft	-	kiwi-step/SKILL.md	statement + acceptance criteria draft).
 draft	-	kiwi-tdd/SKILL.md	e cap — split the task when the draft approaches it.
-draft	-	kiwi-wave-master/SKILL.md	나, 배정 집합의 요구를 빠뜨림(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
+draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
 draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
+draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	ks. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comm
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	a new PR or --update-pr-body, draft a PR body with Summary, Test pl
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
-evolving	-	_shared/kiwi/pipeline-event.md	_DONE | kiwi-sds (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
-evolving	-	_shared/kiwi/pipeline-v1.md	ds when stability has reached evolving, otherwise kiwi-srs-research
+evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolving 시 — 현재 kiwi-pipeline 호출이 --sds
+evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
-evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-sds — stability ≥ evolving REQ 가 있어 SDS 작성 가능
+evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
-evolving	-	kiwi-pm/SKILL.md	heck 와 Stability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의
-evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 intera
-evolving	-	kiwi-pm/references/extended-workflow.md	d 로 SDS @req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+evolving	-	kiwi-pm/SKILL.md	, 부팅 시 Stability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi
+evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft
+evolving	-	kiwi-pm/references/extended-workflow.md	ents read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 evolving	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
 evolving	-	kiwi-srs-feasibility/SKILL.md	"predicted_stability_range": ["evolving", "stable"], "requires_user_con
 evolving	-	kiwi-srs-feasibility/SKILL.md	ealth | 타당성 | 의존 REQ 가 stable/evolving 상태인지, 순환 의존 여부 | 15 |
@@ -877,19 +916,19 @@ evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	- evolving REQ �
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	O-001", "from": "draft", "to": "evolving", "reason": "...", "ok": true }
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	bility 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecated:1") 권장
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	ient|persistent", "mcp_value": "evolving", "md_value": "draft", "retry_c
-evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-sds"; 블로커 모호 다수 →
+evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-pm"; 블로커 모호 다수 →
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	notes: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecate
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	stability: "evolving",
 evolving	-	kiwi-srs-sync/SKILL.md	eptance_criteria[], stability: "evolving"}, suggested_id}
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	ability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에
+evolving	-	kiwi-srs/references/extended-workflow.md	ilter <신규 REQ-ID> (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	wi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-evolving	-	kiwi-srs/references/extended-workflow.md	구현은 $kiwi-coder (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	사용자 검토 후 update_stability 로 evolving 승급, 착수 시 update_status 로 in
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	- frozen is outside kiwi-srs-feasibili
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	draft, evolving, stable, frozen, deprecated, or keep.
-frozen	-	_shared/kiwi/parallel-waves.md	at SDS, so the new lane is in a frozen plan and the SDS is in the work
-frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that SDS, so the new lane i
+frozen	-	_shared/kiwi/parallel-waves.md	entry, so the new lane is in a frozen plan. On a run that already opt
+frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that entry, so the new lane
 frozen	-	_shared/kiwi/worktree-lane.md	arrying a target other than the frozen
 frozen	-	_shared/kiwi/worktree-lane.md	belongs to the frozen plan. The role is declare
 frozen	-	_shared/kiwi/worktree-lane.md	gistered, lane_id is in the frozen lane plan, and that lane's wri
@@ -915,18 +954,19 @@ frozen	-	kiwi-commit-auto-push/references/extended-workflow.md	| frozen | Codex 
 frozen	-	kiwi-orchestrator/SKILL.md	, 자연어 요청, 런타임 사유)를 기록한다. 그 값은 frozen 에 들어간다. 조용히 직렬로 내리지 않는다.
 frozen	-	kiwi-orchestrator/SKILL.md	stability 가 deprecated 또는 frozen 인 요구 |
 frozen	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 / 의도된 제거, §0.
-frozen	-	kiwi-pm/SKILL.md	-policy-stop | deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	args) # §4 — draft/deprecated/frozen 차단
 frozen	-	kiwi-pm/SKILL.md	le gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_gates lifecy
 frozen	-	kiwi-pm/SKILL.md	t 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가 자식의 안전 우회 옵
+frozen	-	kiwi-pm/SKILL.md	그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
+frozen	-	kiwi-pm/SKILL.md	합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은 요구가 없으면 HA
 frozen	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id for r in
 frozen	-	kiwi-pm/references/extended-workflow.md	SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
 frozen	-	kiwi-pm/references/extended-workflow.md	ity IN {"draft", "deprecated", "frozen"}:
 frozen	-	kiwi-pm/references/extended-workflow.md	r.stability IN {"deprecated", "frozen"}]
-frozen	-	kiwi-pm/references/extended-workflow.md	ted / frozen | 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — frozen=정책 위반,
+frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
 frozen	-	kiwi-pm/references/extended-workflow.md	§4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6
+frozen	-	kiwi-pm/references/extended-workflow.md	보고한다. --sds 실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 frozen	-	kiwi-sds/SKILL.md	lation when one has Stability frozen, and write the SRS for none of
 frozen	-	kiwi-sds/SKILL.md	return it to verified (for a frozen one, lift the stability first),
 frozen	-	kiwi-sds/SKILL.md	rify has Stability frozen — a frozen requirement's body is not chang
@@ -950,8 +990,8 @@ frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
-frozen	card-frozen-block	_shared/kiwi/run-ledger.md	3. invariant_digest 는 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
+frozen	card-frozen-block	_shared/kiwi/run-ledger.md	그 값을 뺀 카드 페이로드에 card write 가 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	frozen 블록에 기록 게이트: integratio
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	은 현재 브랜치) 위에 생성하거나 채택하고 재개 카드의 frozen 블록에 기록한다. 생성도 채택도 불가하면 integr
 frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 는 frozen 안에 있어 invariant_digest 가 이들을
@@ -959,10 +999,16 @@ frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
 frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	_lock · frozen.waves_lock · frozen.constraints · frozen.converge
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ible | git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ints · frozen.convergence · frozen.lane_lock[wave-{n}])는 <path>@
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.constraints · frozen.convergence · frozen.lane_loc
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.design_lock · frozen.waves_lock · frozen.constrain
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	tract · frozen.route.lock · frozen.design_lock · frozen.waves_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| A(k) | frozen.integration_branch 에 대한 정산 여부
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-DESIGN-FROZEN | frozen.design_lock 이 가리키는 lock 의 재계산
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-LANE-PLAN-FROZEN | frozen.lane_lock[wave-{n}] 이 가리키는 sta
@@ -990,6 +1036,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 
 implemented	-	_shared/kiwi/feasibility-policy-schema-v1.md	ed | status is in_progress, implemented, or verified | keep current
 implemented	-	_shared/kiwi/parallel-waves.md	l naming the requirement moves implemented → verified. The evidence is
 implemented	-	_shared/kiwi/parallel-waves.md	oves planned/in_progress → implemented, and a pass with no residual
+implemented	-	_shared/kiwi/parallel-waves.md	s step is skipped — the wave is implemented from its entry's requirements[
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/SKILL.md	갈래인 (2) 나중에 수동과 (3) skip 은 요구를 implemented 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1)
@@ -1003,12 +1050,12 @@ implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented |
 implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
-implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(sds-summar
-implemented	-	kiwi-pm/SKILL.md	stable 만 진행), 종료 시 SDS @req 요구의 implemented 승급 + add_completed_work(sds-sum
+implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
-implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(sds-su
-implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합에 update_status(id, "implemented") + add_completed_work(date,
+implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
+implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
+implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
 implemented	-	kiwi-pm/references/extended-workflow.md	R = ["planned", "in_progress", "implemented", "verified"]
 implemented	-	kiwi-pm/references/extended-workflow.md	al 제안: {len(proposals)} 개 REQ 를 implemented 로 승급?",
 implemented	-	kiwi-pm/references/extended-workflow.md	arget_idx = STATUS_ORDER.index("implemented")
@@ -1018,8 +1065,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
-implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸고 (CLOSE_SAFE) 옮기기가 끝났을
-implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SD
+implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
+implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -1028,6 +1076,7 @@ implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a s
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-sds/SKILL.md	3 AC-1) — a design exists to be implemented, and the pre-implementation sta
 implemented	-	kiwi-sds/SKILL.md	Closes an implemented SDS. It is idempotent and i
+implemented	-	kiwi-sds/SKILL.md	Only a run that implemented from the SDS (--sds) calls th
 implemented	-	kiwi-sds/SKILL.md	ees it itself. Once the code is implemented, --close closes the SDS — wha
 implemented	-	kiwi-sds/SKILL.md	move that requirement down to implemented by the repository's procedure,
 implemented	-	kiwi-sds/SKILL.md	or the requirements about to be implemented, checks it with the determinist
@@ -1044,7 +1093,7 @@ implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차�
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Codex clarificat
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Codex clarificat
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
-implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiwi-coder (sta
+implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
@@ -1052,6 +1101,7 @@ in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requi
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
 in_progress	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "in_progress"
 in_progress	-	kiwi-pm/SKILL.md	) / update_status(id, status="in_progress") / add_completed_work(date,
+in_progress	-	kiwi-pm/SKILL.md	st_requirements 의 planned · in_progress 요구)를 집합으로 출력하고 kiwi-coder 를 띄우
 in_progress	-	kiwi-pm/SKILL.md	status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM 측에서 차단 + 경고.
 in_progress	-	kiwi-pm/SKILL.md	차단 + 경고. forward only (planned/in_progress → implemented) 만 허용.
 in_progress	-	kiwi-pm/references/extended-workflow.md	(자식) | 실행 시작 시 | {id, status: "in_progress"} |
@@ -1067,7 +1117,7 @@ in_progress	-	kiwi-srs-feasibility/references/extended-workflow.md	| FR-TODO-005
 in_progress	-	kiwi-srs/SKILL.md	_required = status: planned → in_progress 승격 전 사용자 답변 필수. advisory
 in_progress	-	kiwi-srs/SKILL.md	ed 상한. 라이브 모드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Cod
 in_progress	-	kiwi-srs/SKILL.md	| 위 상태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Cod
-in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiw
+in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi
 in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
@@ -1084,13 +1134,14 @@ in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
-in_progress	waves-event-particle	_shared/kiwi/waves-event.md	거 창을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 SDS 가 아직 없으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 SD
+in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
+in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
 planned	-	_shared/kiwi/worktree-lane.md	4. The gate — is the difference planned?
 planned	-	_shared/kiwi/worktree-lane.md	ry, including one the run never planned. Membership in the
 planned	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
+planned	-	kiwi-pm/SKILL.md	열린 작업 후보(list_requirements 의 planned · in_progress 요구)를 집합으로 출력하고
 planned	-	kiwi-pm/SKILL.md	은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용
 planned	-	kiwi-pm/references/extended-workflow.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
 planned	-	kiwi-srs-feasibility/SKILL.md	"current_status": "planned",
@@ -1122,10 +1173,10 @@ stable	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	stability: stable (정상)
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TASK_DONE 으로
 stable	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "stable"
-stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 interactive 2지선다
-stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의 implem
-stable	-	kiwi-pm/references/extended-workflow.md	req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft · deprec
+stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi sds che
 stable	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
+stable	-	kiwi-pm/references/extended-workflow.md	로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 stable	-	kiwi-srs-feasibility/SKILL.md	#### §0.G5 — stable 승급 게이트 (frozen 은 권한 외)
 stable	-	kiwi-srs-feasibility/SKILL.md	- --include-stable 미지정 시 stable/frozen 제외
 stable	-	kiwi-srs-feasibility/SKILL.md	Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변.
@@ -1183,6 +1234,7 @@ verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verifie
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]
@@ -1244,7 +1296,7 @@ blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | dep
 blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, im
 blocked	-	kiwi-coder/references/extended-workflow.md	- 회귀 발생 → "blocked"
 blocked	-	kiwi-pm/references/extended-workflow.md	auto] draft REQ {[r.id for r in blocked]} — $kiwi-sds 요구 필터로 뺀 SDS 를 다시
-blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(sd
+blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(re
 blocked	-	kiwi-srs-feasibility/SKILL.md	- quick_block: 명백한 blocked (trace 비존재 + 외부 모듈 의존) → local-
 blocked	-	kiwi-srs-feasibility/SKILL.md	locked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability → deprecate
 blocked	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅
@@ -1272,6 +1324,8 @@ blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	: True, req_id
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	IF NOT blocked: RETURN
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	blocked_req_ids: [r.id FOR r IN blocked],
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	ids IF id NOT IN [r.id FOR r IN blocked]]
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	recated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated"
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	rride", req_ids: [r.id FOR r IN blocked]})
 blocked	pm-task-status-literal	kiwi-pm/SKILL.md	- (B) 중단 + run.status = "blocked" 기록 (--resume 으로 이어간다)
@@ -1287,6 +1341,8 @@ blocked	task-status	kiwi-pm/SKILL.md	running | done | failed | blocked
 blocked	task-status	kiwi-pm/references/extended-workflow.md	이 done 또는 failed 로 확정된 때다. blocked 는 끝이 아니라 멈춤이며 --resume 으로 이어
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
+deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
+deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -1294,18 +1350,19 @@ deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user exp
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
 deprecated	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 /
-deprecated	-	kiwi-pm/SKILL.md	ds, state, args) # §4 — draft/deprecated/frozen 차단
+deprecated	-	kiwi-pm/SKILL.md	ATE(state, args) # §4 — draft/deprecated/frozen 차단
 deprecated	-	kiwi-pm/SKILL.md	kiwi-sds 요구 필터로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
-deprecated	-	kiwi-pm/SKILL.md	lifecycle-gate-policy-stop | deprecated / frozen lifecycle blocker —
+deprecated	-	kiwi-pm/SKILL.md	stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
+deprecated	-	kiwi-pm/SKILL.md	실행 — 요구 집합 실행은 그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker —
 deprecated	-	kiwi-pm/references/extended-workflow.md	- §4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.
 deprecated	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id f
 deprecated	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 deprecated	-	kiwi-pm/references/extended-workflow.md	IN blocked IF r.stability IN {"deprecated", "frozen"}]
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
+deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서
 deprecated	-	kiwi-pm/references/extended-workflow.md	려보냄 + 잔여 보고 (SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
+deprecated	-	kiwi-pm/references/extended-workflow.md	실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
@@ -1323,11 +1380,14 @@ deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) depr
 deprecated	-	kiwi-srs-sync/SKILL.md	| deprecated-req-mutation | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.1
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
+deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시킨다. v0.11 까지의 deprecated --qna 별칭과는 별개인 강제 플래그다(판별 앵커
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
+discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
+discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
 discarded	-	_shared/kiwi/parallel-waves.md	requirement is verified or discarded, the SDS file is deleted and t
 discarded	-	kiwi-orchestrator/SKILL.md	다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고, 그 삭제를 wave 의
 discarded	-	kiwi-sds/SKILL.md	2. When all are verified or discarded, delete the SDS file from
@@ -1357,23 +1417,26 @@ discarded	-	kiwi-srs/references/extended-workflow.md	= update 이면서 영향 R
 discarded	-	kiwi-srs/references/extended-workflow.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/references/extended-workflow.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/references/extended-workflow.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | PW-2 |
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
+draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
+draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
-draft	-	kiwi-coder/SKILL.md	- draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft
-draft	-	kiwi-coder/SKILL.md	draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
+draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
+draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
 draft	-	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trailer 부착 skip (draft REQ 는 commit 대상 부적합 신호) | 동일 (T
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	S 들의 @req 에서 빠짐(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
 draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
 draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
@@ -1382,12 +1445,14 @@ draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(k
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
-draft	-	kiwi-pm/SKILL.md	- draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
+draft	-	kiwi-pm/SKILL.md	- 요구 집합 실행은 draft REQ 를 빼고 남은 집합으로 돈다(남은 요구가 없으면
 draft	-	kiwi-pm/SKILL.md	DS 범위에서 한다 — $kiwi-sds 요구 필터로 draft REQ 를 SDS 범위에서 뺀 SDS 를 다시 쓰게 돌려
-draft	-	kiwi-pm/SKILL.md	GATE(sds, state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	YCLE_GATE(state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	lving / stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를
 draft	-	kiwi-pm/SKILL.md	ycle blocker — 정책 위반 / 의도된 제거. draft 는 본 행에 포함되지 않는다 (§3.6 요구 필터로 돌
-draft	-	kiwi-pm/SKILL.md	가능 = evolving / stable 만. draft 는 interactive 2지선다 / --auto
+draft	-	kiwi-pm/SKILL.md	가 없으면 §4 대로 멈춘다). --sds 실행에서 draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
 draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / f
+draft	-	kiwi-pm/SKILL.md	없으면 HALT 한다(§4). --sds 실행에서 draft 는 interactive 2지선다 / --auto
 draft	-	kiwi-pm/references/extended-workflow.md	# draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지
 draft	-	kiwi-pm/references/extended-workflow.md	### 4.2 interactive 2지선다 (draft 차단 시)
 draft	-	kiwi-pm/references/extended-workflow.md	- 4.2 interactive 2지선다 (draft 차단 시)
@@ -1395,10 +1460,10 @@ draft	-	kiwi-pm/references/extended-workflow.md	AVE_STATE, 보고서(§6.3, 7번
 draft	-	kiwi-pm/references/extended-workflow.md	END_NEEDS_USER(f"[auto] draft REQ {[r.id for r in blocked]} —
 draft	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 draft	-	kiwi-pm/references/extended-workflow.md	gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6 요구 필터로 분리 —
-draft	-	kiwi-pm/references/extended-workflow.md	ness-decision 버블업 또는 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
 draft	-	kiwi-pm/references/extended-workflow.md	oice = User clarification gate("draft REQ 차단", options=[
-draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | SDS 를 실행하지 않고 요구 필터로 돌려보냄 +
-draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 2지선다 /
+draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 요구 집합 실행은 그 요구를 빼고 진행 + 잔여 보
+draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
+draft	-	kiwi-pm/references/extended-workflow.md	버블업 또는 --sds 실행에서 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
 draft	-	kiwi-pm/references/extended-workflow.md	사용자 선택 (A/B) 또는 --auto 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 reason_clas
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
@@ -1458,22 +1523,23 @@ draft	-	kiwi-step/SKILL.md	requirements even while still a draft. |
 draft	-	kiwi-step/SKILL.md	statement + acceptance criteria draft).
 draft	-	kiwi-step/SKILL.md	thoring). A step is an isolated draft workspace later promoted into b
 draft	-	kiwi-tdd/SKILL.md	e cap — split the task when the draft approaches it.
-draft	-	kiwi-wave-master/SKILL.md	나, 배정 집합의 요구를 빠뜨림(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
+draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
 draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
+draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	a new PR or --update-pr-body, draft a PR body with Summary, Test pl
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
-evolving	-	_shared/kiwi/pipeline-event.md	_DONE | kiwi-sds (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
-evolving	-	_shared/kiwi/pipeline-v1.md	ds when stability has reached evolving, otherwise kiwi-srs-research
+evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolving 시 — 현재 kiwi-pipeline 호출이 --sds
+evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
-evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-sds — stability ≥ evolving REQ 가 있어 SDS 작성 가능
+evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
-evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 intera
-evolving	-	kiwi-pm/references/extended-workflow.md	d 로 SDS @req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft
+evolving	-	kiwi-pm/references/extended-workflow.md	ents read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 evolving	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
 evolving	-	kiwi-srs-feasibility/SKILL.md	"predicted_stability_range": ["evolving", "stable"], "requires_user_con
 evolving	-	kiwi-srs-feasibility/SKILL.md	ealth | 타당성 | 의존 REQ 가 stable/evolving 상태인지, 순환 의존 여부 | 15 |
@@ -1484,19 +1550,19 @@ evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	- evolving REQ �
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	O-001", "from": "draft", "to": "evolving", "reason": "...", "ok": true }
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	bility 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecated:1") 권장
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	ient|persistent", "mcp_value": "evolving", "md_value": "draft", "retry_c
-evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-sds"; 블로커 모호 다수 →
+evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-pm"; 블로커 모호 다수 →
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	notes: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecate
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	stability: "evolving",
 evolving	-	kiwi-srs-sync/SKILL.md	eptance_criteria[], stability: "evolving"}, suggested_id}
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	ability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에
+evolving	-	kiwi-srs/references/extended-workflow.md	ilter <신규 REQ-ID> (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	wi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-evolving	-	kiwi-srs/references/extended-workflow.md	구현은 $kiwi-coder (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	사용자 검토 후 update_stability 로 evolving 승급, 착수 시 update_status 로 in
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	- frozen is outside kiwi-srs-feasibili
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	draft, evolving, stable, frozen, deprecated, or keep.
-frozen	-	_shared/kiwi/parallel-waves.md	at SDS, so the new lane is in a frozen plan and the SDS is in the work
-frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that SDS, so the new lane i
+frozen	-	_shared/kiwi/parallel-waves.md	entry, so the new lane is in a frozen plan. On a run that already opt
+frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that entry, so the new lane
 frozen	-	_shared/kiwi/worktree-lane.md	arrying a target other than the frozen
 frozen	-	_shared/kiwi/worktree-lane.md	belongs to the frozen plan. The role is declare
 frozen	-	_shared/kiwi/worktree-lane.md	gistered, lane_id is in the frozen lane plan, and that lane's wri
@@ -1519,18 +1585,19 @@ frozen	-	kiwi-commit-auto-push/references/extended-workflow.md	| frozen | User c
 frozen	-	kiwi-orchestrator/SKILL.md	, 자연어 요청, 런타임 사유)를 기록한다. 그 값은 frozen 에 들어간다. 조용히 직렬로 내리지 않는다.
 frozen	-	kiwi-orchestrator/SKILL.md	stability 가 deprecated 또는 frozen 인 요구 |
 frozen	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 / 의도된 제거, §0.
-frozen	-	kiwi-pm/SKILL.md	-policy-stop | deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	args) # §4 — draft/deprecated/frozen 차단
 frozen	-	kiwi-pm/SKILL.md	le gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_gates lifecy
 frozen	-	kiwi-pm/SKILL.md	t 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가 자식의 안전 우회 옵
+frozen	-	kiwi-pm/SKILL.md	그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
+frozen	-	kiwi-pm/SKILL.md	합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은 요구가 없으면 HA
 frozen	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id for r in
 frozen	-	kiwi-pm/references/extended-workflow.md	SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
 frozen	-	kiwi-pm/references/extended-workflow.md	ity IN {"draft", "deprecated", "frozen"}:
 frozen	-	kiwi-pm/references/extended-workflow.md	r.stability IN {"deprecated", "frozen"}]
-frozen	-	kiwi-pm/references/extended-workflow.md	ted / frozen | 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — frozen=정책 위반,
+frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
 frozen	-	kiwi-pm/references/extended-workflow.md	§4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6
+frozen	-	kiwi-pm/references/extended-workflow.md	보고한다. --sds 실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 frozen	-	kiwi-sds/SKILL.md	lation when one has Stability frozen, and write the SRS for none of
 frozen	-	kiwi-sds/SKILL.md	return it to verified (for a frozen one, lift the stability first),
 frozen	-	kiwi-sds/SKILL.md	rify has Stability frozen — a frozen requirement's body is not chang
@@ -1553,8 +1620,8 @@ frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
-frozen	card-frozen-block	_shared/kiwi/run-ledger.md	3. invariant_digest 는 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
+frozen	card-frozen-block	_shared/kiwi/run-ledger.md	그 값을 뺀 카드 페이로드에 card write 가 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	frozen 블록에 기록 게이트: integratio
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	은 현재 브랜치) 위에 생성하거나 채택하고 재개 카드의 frozen 블록에 기록한다. 생성도 채택도 불가하면 integr
 frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 는 frozen 안에 있어 invariant_digest 가 이들을
@@ -1562,10 +1629,16 @@ frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
 frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	_lock · frozen.waves_lock · frozen.constraints · frozen.converge
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ible | git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ints · frozen.convergence · frozen.lane_lock[wave-{n}])는 <path>@
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.constraints · frozen.convergence · frozen.lane_loc
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.design_lock · frozen.waves_lock · frozen.constrain
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	tract · frozen.route.lock · frozen.design_lock · frozen.waves_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| A(k) | frozen.integration_branch 에 대한 정산 여부
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-DESIGN-FROZEN | frozen.design_lock 이 가리키는 lock 의 재계산
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-LANE-PLAN-FROZEN | frozen.lane_lock[wave-{n}] 이 가리키는 sta
@@ -1593,6 +1666,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 
 implemented	-	_shared/kiwi/feasibility-policy-schema-v1.md	ed | status is in_progress, implemented, or verified | keep current
 implemented	-	_shared/kiwi/parallel-waves.md	l naming the requirement moves implemented → verified. The evidence is
 implemented	-	_shared/kiwi/parallel-waves.md	oves planned/in_progress → implemented, and a pass with no residual
+implemented	-	_shared/kiwi/parallel-waves.md	s step is skipped — the wave is implemented from its entry's requirements[
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/SKILL.md	갈래인 (2) 나중에 수동과 (3) skip 은 요구를 implemented 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1)
@@ -1605,11 +1679,11 @@ implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented |
 implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
-implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(sds-summar
+implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
-implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(sds-su
-implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합에 update_status(id, "implemented") + add_completed_work(date,
+implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
+implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
 implemented	-	kiwi-pm/references/extended-workflow.md	R = ["planned", "in_progress", "implemented", "verified"]
 implemented	-	kiwi-pm/references/extended-workflow.md	al 제안: {len(proposals)} 개 REQ 를 implemented 로 승급?",
 implemented	-	kiwi-pm/references/extended-workflow.md	arget_idx = STATUS_ORDER.index("implemented")
@@ -1619,8 +1693,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
-implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸고 (CLOSE_SAFE) 옮기기가 끝났을
-implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SD
+implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
+implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
 implemented	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -1629,6 +1704,7 @@ implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a s
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-sds/SKILL.md	3 AC-1) — a design exists to be implemented, and the pre-implementation sta
 implemented	-	kiwi-sds/SKILL.md	Closes an implemented SDS. It is idempotent and i
+implemented	-	kiwi-sds/SKILL.md	Only a run that implemented from the SDS (--sds) calls th
 implemented	-	kiwi-sds/SKILL.md	ees it itself. Once the code is implemented, --close closes the SDS — wha
 implemented	-	kiwi-sds/SKILL.md	move that requirement down to implemented by the repository's procedure,
 implemented	-	kiwi-sds/SKILL.md	or the requirements about to be implemented, checks it with the determinist
@@ -1644,7 +1720,7 @@ implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차�
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + User clarificati
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + User clarificati
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
-implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiwi-coder (sta
+implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
@@ -1652,6 +1728,7 @@ in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requi
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
 in_progress	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "in_progress"
 in_progress	-	kiwi-pm/SKILL.md	) / update_status(id, status="in_progress") / add_completed_work(date,
+in_progress	-	kiwi-pm/SKILL.md	st_requirements 의 planned · in_progress 요구)를 집합으로 출력하고 kiwi-coder 를 띄우
 in_progress	-	kiwi-pm/SKILL.md	status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM 측에서 차단 + 경고.
 in_progress	-	kiwi-pm/SKILL.md	차단 + 경고. forward only (planned/in_progress → implemented) 만 허용.
 in_progress	-	kiwi-pm/references/extended-workflow.md	(자식) | 실행 시작 시 | {id, status: "in_progress"} |
@@ -1667,7 +1744,7 @@ in_progress	-	kiwi-srs-feasibility/references/extended-workflow.md	| FR-TODO-005
 in_progress	-	kiwi-srs/SKILL.md	_required = status: planned → in_progress 승격 전 사용자 답변 필수. advisory
 in_progress	-	kiwi-srs/SKILL.md	ed 상한. 라이브 모드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Use
 in_progress	-	kiwi-srs/SKILL.md	| 위 상태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Use
-in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiw
+in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi
 in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
@@ -1684,13 +1761,14 @@ in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
-in_progress	waves-event-particle	_shared/kiwi/waves-event.md	거 창을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 SDS 가 아직 없으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 SD
+in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
+in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
 planned	-	_shared/kiwi/worktree-lane.md	4. The gate — is the difference planned?
 planned	-	_shared/kiwi/worktree-lane.md	ry, including one the run never planned. Membership in the
 planned	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
+planned	-	kiwi-pm/SKILL.md	열린 작업 후보(list_requirements 의 planned · in_progress 요구)를 집합으로 출력하고
 planned	-	kiwi-pm/SKILL.md	은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용
 planned	-	kiwi-pm/references/extended-workflow.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
 planned	-	kiwi-srs-feasibility/SKILL.md	"current_status": "planned",
@@ -1719,9 +1797,9 @@ stable	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	stability: stable (정상)
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TASK_DONE 으로
 stable	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "stable"
-stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 interactive 2지선다
-stable	-	kiwi-pm/references/extended-workflow.md	req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft · deprec
 stable	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
+stable	-	kiwi-pm/references/extended-workflow.md	로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 stable	-	kiwi-srs-feasibility/SKILL.md	#### §0.G5 — stable 승급 게이트 (frozen 은 권한 외)
 stable	-	kiwi-srs-feasibility/SKILL.md	- --include-stable 미지정 시 stable/frozen 제외
 stable	-	kiwi-srs-feasibility/SKILL.md	dency_health | 타당성 | 의존 REQ 가 stable/evolving 상태인지, 순환 의존 여부 | 15 |
@@ -1777,6 +1855,7 @@ verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verifie
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]
@@ -1838,7 +1917,7 @@ blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | dep
 blocked	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, im
 blocked	-	kiwi-coder/references/extended-workflow.md	- 회귀 발생 → "blocked"
 blocked	-	kiwi-pm/references/extended-workflow.md	auto] draft REQ {[r.id for r in blocked]} — $kiwi-sds 요구 필터로 뺀 SDS 를 다시
-blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(sd
+blocked	-	kiwi-pm/references/extended-workflow.md	s 호출 안 함 (REQ 는 in_progress 또는 blocked 그대로 유지). add_completed_work(re
 blocked	-	kiwi-srs-feasibility/SKILL.md	- quick_block: 명백한 blocked (trace 비존재 + 외부 모듈 의존) → high-r
 blocked	-	kiwi-srs-feasibility/SKILL.md	locked + REQ.status ∈ {planned, blocked} | 정책에 따라 stability → deprecate
 blocked	-	kiwi-srs-feasibility/SKILL.md	| blocked | (default) | deprecated | ✅
@@ -1867,6 +1946,8 @@ blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	: True, req_id
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	IF NOT blocked: RETURN
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	blocked_req_ids: [r.id FOR r IN blocked],
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	draft-stability-skip"} FOR r IN blocked]
+blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	ids IF id NOT IN [r.id FOR r IN blocked]]
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	recated_or_frozen = [r FOR r IN blocked IF r.stability IN {"deprecated"
 blocked	pm-pseudocode-ref	kiwi-pm/references/extended-workflow.md	rride", req_ids: [r.id FOR r IN blocked]})
 blocked	pm-task-status-literal	kiwi-pm/SKILL.md	- (B) 중단 + run.status = "blocked" 기록 (--resume 으로 이어간다)
@@ -1882,6 +1963,8 @@ blocked	task-status	kiwi-pm/SKILL.md	running | done | failed | blocked
 blocked	task-status	kiwi-pm/references/extended-workflow.md	이 done 또는 failed 로 확정된 때다. blocked 는 끝이 아니라 멈춤이며 --resume 으로 이어
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
+deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
+deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -1889,18 +1972,19 @@ deprecated	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless the user exp
 deprecated	-	kiwi-hot-fix/SKILL.md	lifecycle-gate-draft | draft/deprecated impacted REQ cannot be implemen
 deprecated	-	kiwi-orchestrator/SKILL.md	({target}) 호출에서 stability 가 deprecated 또는 frozen 인 요구 |
 deprecated	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 /
-deprecated	-	kiwi-pm/SKILL.md	ds, state, args) # §4 — draft/deprecated/frozen 차단
+deprecated	-	kiwi-pm/SKILL.md	ATE(state, args) # §4 — draft/deprecated/frozen 차단
 deprecated	-	kiwi-pm/SKILL.md	kiwi-sds 요구 필터로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
-deprecated	-	kiwi-pm/SKILL.md	lifecycle-gate-policy-stop | deprecated / frozen lifecycle blocker —
+deprecated	-	kiwi-pm/SKILL.md	stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은
 deprecated	-	kiwi-pm/SKILL.md	금지 — lifecycle gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_ga
 deprecated	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가
+deprecated	-	kiwi-pm/SKILL.md	실행 — 요구 집합 실행은 그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker —
 deprecated	-	kiwi-pm/references/extended-workflow.md	- §4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.
 deprecated	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id f
 deprecated	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 deprecated	-	kiwi-pm/references/extended-workflow.md	IN blocked IF r.stability IN {"deprecated", "frozen"}]
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — fro
+deprecated	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서
 deprecated	-	kiwi-pm/references/extended-workflow.md	려보냄 + 잔여 보고 (SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
+deprecated	-	kiwi-pm/references/extended-workflow.md	실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 deprecated	-	kiwi-review-fix-loop/SKILL.md	ed REQ stability is draft or deprecated | skip that REQ |
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded from eligibi
 deprecated	-	kiwi-review-fix-loop/references/extended-workflow.md	whose stability is draft or deprecated; a status other than implemen
@@ -1926,6 +2010,8 @@ deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
+discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
+discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
 discarded	-	_shared/kiwi/parallel-waves.md	requirement is verified or discarded, the SDS file is deleted and t
 discarded	-	kiwi-orchestrator/SKILL.md	다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고, 그 삭제를 wave 의
 discarded	-	kiwi-sds/SKILL.md	2. When all are verified or discarded, delete the SDS file from
@@ -1959,19 +2045,21 @@ draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking 
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | PW-2 |
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
+draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
+draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
-draft	-	kiwi-coder/SKILL.md	- draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft
-draft	-	kiwi-coder/SKILL.md	draft: 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
+draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
+draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
 draft	-	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trailer 부착 skip (draft REQ 는 commit 대상 부적합 신호) | 동일 (T
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	S 들의 @req 에서 빠짐(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
 draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
 draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
@@ -1980,12 +2068,14 @@ draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(k
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
-draft	-	kiwi-pm/SKILL.md	- draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
+draft	-	kiwi-pm/SKILL.md	- 요구 집합 실행은 draft REQ 를 빼고 남은 집합으로 돈다(남은 요구가 없으면
 draft	-	kiwi-pm/SKILL.md	DS 범위에서 한다 — $kiwi-sds 요구 필터로 draft REQ 를 SDS 범위에서 뺀 SDS 를 다시 쓰게 돌려
-draft	-	kiwi-pm/SKILL.md	GATE(sds, state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	YCLE_GATE(state, args) # §4 — draft/deprecated/frozen 차단
+draft	-	kiwi-pm/SKILL.md	lving / stable 만. 요구 집합 실행은 draft · deprecated · frozen 요구를
 draft	-	kiwi-pm/SKILL.md	ycle blocker — 정책 위반 / 의도된 제거. draft 는 본 행에 포함되지 않는다 (§3.6 요구 필터로 돌
-draft	-	kiwi-pm/SKILL.md	가능 = evolving / stable 만. draft 는 interactive 2지선다 / --auto
+draft	-	kiwi-pm/SKILL.md	가 없으면 §4 대로 멈춘다). --sds 실행에서 draft 차단 → 이 SDS 를 실행하지 않는다(자식 spawn
 draft	-	kiwi-pm/SKILL.md	본 절의 완화는 draft 한 종류에 한정한다 — deprecated / f
+draft	-	kiwi-pm/SKILL.md	없으면 HALT 한다(§4). --sds 실행에서 draft 는 interactive 2지선다 / --auto
 draft	-	kiwi-pm/references/extended-workflow.md	# draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지
 draft	-	kiwi-pm/references/extended-workflow.md	### 4.2 interactive 2지선다 (draft 차단 시)
 draft	-	kiwi-pm/references/extended-workflow.md	- 4.2 interactive 2지선다 (draft 차단 시)
@@ -1994,9 +2084,9 @@ draft	-	kiwi-pm/references/extended-workflow.md	END_NEEDS_USER(f"[auto] draft RE
 draft	-	kiwi-pm/references/extended-workflow.md	IF req.stability IN {"draft", "deprecated", "frozen"}:
 draft	-	kiwi-pm/references/extended-workflow.md	gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6 요구 필터로 분리 —
 draft	-	kiwi-pm/references/extended-workflow.md	ice = Codex clarification gate("draft REQ 차단", options=[
-draft	-	kiwi-pm/references/extended-workflow.md	ness-decision 버블업 또는 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
-draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | SDS 를 실행하지 않고 요구 필터로 돌려보냄 +
-draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 차단 + interactive 2지선다 /
+draft	-	kiwi-pm/references/extended-workflow.md	| --auto + lifecycle gate draft | 요구 집합 실행은 그 요구를 빼고 진행 + 잔여 보
+draft	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정상) | draft | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
+draft	-	kiwi-pm/references/extended-workflow.md	버블업 또는 --sds 실행에서 --auto 가 draft REQ 로 SDS 를 돌려보냄(§4.3, draft-s
 draft	-	kiwi-pm/references/extended-workflow.md	사용자 선택 (A/B) 또는 --auto 로 돌려보낸 draft REQ 목록. 돌려보낸 REQ 는 reason_clas
 draft	-	kiwi-review-fix-loop/SKILL.md	| impacted REQ stability is draft or deprecated | skip that RE
 draft	-	kiwi-review-fix-loop/references/extended-workflow.md	draft/deprecated ones are excluded
@@ -2058,17 +2148,17 @@ draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	a new PR or --update-pr-body
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	| high | default | evolving | not required |
-evolving	-	_shared/kiwi/pipeline-event.md	_DONE | kiwi-sds (stability ≥ evolving 시) 또는 kiwi-srs-research (블로커
-evolving	-	_shared/kiwi/pipeline-v1.md	ds when stability has reached evolving, otherwise kiwi-srs-research
+evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolving 시 — 현재 kiwi-pipeline 호출이 --sds
+evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
 evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
-evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-sds — stability ≥ evolving REQ 가 있어 SDS 작성 가능
+evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
-evolving	-	kiwi-pm/SKILL.md	heck 와 Stability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의
-evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 intera
-evolving	-	kiwi-pm/references/extended-workflow.md	d 로 SDS @req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+evolving	-	kiwi-pm/SKILL.md	, 부팅 시 Stability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi
+evolving	-	kiwi-pm/SKILL.md	§4 의 표를 SSOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft
+evolving	-	kiwi-pm/references/extended-workflow.md	ents read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 evolving	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
 evolving	-	kiwi-srs-feasibility/SKILL.md	"predicted_stability_range": ["evolving", "stable"], "requires_user_con
 evolving	-	kiwi-srs-feasibility/SKILL.md	ealth | 타당성 | 의존 REQ 가 stable/evolving 상태인지, 순환 의존 여부 | 15 |
@@ -2080,19 +2170,19 @@ evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	- evolving REQ �
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	O-001", "from": "draft", "to": "evolving", "reason": "...", "ok": true }
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	bility 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecated:1") 권장
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	ient|persistent", "mcp_value": "evolving", "md_value": "draft", "retry_c
-evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-sds"; 블로커 모호 다수 →
+evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	next_hint: 평가 결과 stability ≥ evolving 다수 → "kiwi-pm"; 블로커 모호 다수 →
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	notes: stability 전이 통계 ("draft→evolving:5 evolving→stable:2 → deprecate
 evolving	-	kiwi-srs-feasibility/references/extended-workflow.md	stability: "evolving",
 evolving	-	kiwi-srs-sync/SKILL.md	eptance_criteria[], stability: "evolving"}, suggested_id}
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 evolving	-	kiwi-srs-sync/references/extended-workflow.md	ability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에
+evolving	-	kiwi-srs/references/extended-workflow.md	ilter <신규 REQ-ID> (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	wi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline §3.2 |
-evolving	-	kiwi-srs/references/extended-workflow.md	구현은 $kiwi-coder (stability ≥ evolving 시)" | pipeline §4.2 |
 evolving	-	kiwi-srs/references/extended-workflow.md	사용자 검토 후 update_stability 로 evolving 승급, 착수 시 update_status 로 in
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	- frozen is outside kiwi-srs-feasibili
 frozen	-	_shared/kiwi/feasibility-policy-schema-v1.md	draft, evolving, stable, frozen, deprecated, or keep.
-frozen	-	_shared/kiwi/parallel-waves.md	at SDS, so the new lane is in a frozen plan and the SDS is in the work
-frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that SDS, so the new lane i
+frozen	-	_shared/kiwi/parallel-waves.md	entry, so the new lane is in a frozen plan. On a run that already opt
+frozen	-	_shared/kiwi/parallel-waves.md	ter a stage lock is written and frozen for that entry, so the new lane
 frozen	-	_shared/kiwi/worktree-lane.md	arrying a target other than the frozen
 frozen	-	_shared/kiwi/worktree-lane.md	belongs to the frozen plan. The role is declare
 frozen	-	_shared/kiwi/worktree-lane.md	gistered, lane_id is in the frozen lane plan, and that lane's wri
@@ -2118,18 +2208,19 @@ frozen	-	kiwi-commit-auto-push/references/extended-workflow.md	| frozen | Codex 
 frozen	-	kiwi-orchestrator/SKILL.md	, 자연어 요청, 런타임 사유)를 기록한다. 그 값은 frozen 에 들어간다. 조용히 직렬로 내리지 않는다.
 frozen	-	kiwi-orchestrator/SKILL.md	stability 가 deprecated 또는 frozen 인 요구 |
 frozen	-	kiwi-pm/SKILL.md	- deprecated / frozen → 즉시 HALT (정책 위반 / 의도된 제거, §0.
-frozen	-	kiwi-pm/SKILL.md	-policy-stop | deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	args) # §4 — draft/deprecated/frozen 차단
 frozen	-	kiwi-pm/SKILL.md	le gate 의 정책 차단(deprecated / frozen)은 §0.G7 critical_gates lifecy
 frozen	-	kiwi-pm/SKILL.md	t 한 종류에 한정한다 — deprecated / frozen 의 HALT, --auto 가 자식의 안전 우회 옵
+frozen	-	kiwi-pm/SKILL.md	그 요구를 빼고 보고한다) deprecated / frozen lifecycle blocker — 정책 위반 / 의도
 frozen	-	kiwi-pm/SKILL.md	로 돌려보낸다 (§3.6), deprecated / frozen 은 즉시 HALT.
+frozen	-	kiwi-pm/SKILL.md	합 실행은 draft · deprecated · frozen 요구를 집합에서 빼고 보고하며 남은 요구가 없으면 HA
 frozen	-	kiwi-pm/references/extended-workflow.md	HALT(f"deprecated/frozen REQ 발견 (즉시 차단): {[r.id for r in
 frozen	-	kiwi-pm/references/extended-workflow.md	SKILL.md §3.6). deprecated/frozen 은 종전대로 HALT |
 frozen	-	kiwi-pm/references/extended-workflow.md	ity IN {"draft", "deprecated", "frozen"}:
 frozen	-	kiwi-pm/references/extended-workflow.md	r.stability IN {"deprecated", "frozen"}]
-frozen	-	kiwi-pm/references/extended-workflow.md	ted / frozen | 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
-frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 즉시 HALT — frozen=정책 위반,
+frozen	-	kiwi-pm/references/extended-workflow.md	| 진행 불가 (정책) | deprecated / frozen | 요구 집합 실행: 요구 집합에서 빼고 보고한다.
 frozen	-	kiwi-pm/references/extended-workflow.md	§4 lifecycle gate deprecated/frozen 차단 (draft 는 SKILL.md §3.6
+frozen	-	kiwi-pm/references/extended-workflow.md	보고한다. --sds 실행: 즉시 HALT — frozen=정책 위반, deprecated=의도된 제거 |
 frozen	-	kiwi-sds/SKILL.md	lation when one has Stability frozen, and write the SRS for none of
 frozen	-	kiwi-sds/SKILL.md	return it to verified (for a frozen one, lift the stability first),
 frozen	-	kiwi-sds/SKILL.md	rify has Stability frozen — a frozen requirement's body is not chang
@@ -2153,8 +2244,8 @@ frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
-frozen	card-frozen-block	_shared/kiwi/run-ledger.md	3. invariant_digest 는 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
+frozen	card-frozen-block	_shared/kiwi/run-ledger.md	그 값을 뺀 카드 페이로드에 card write 가 frozen 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	frozen 블록에 기록 게이트: integratio
 frozen	card-frozen-block	kiwi-orchestrator/SKILL.md	은 현재 브랜치) 위에 생성하거나 채택하고 재개 카드의 frozen 블록에 기록한다. 생성도 채택도 불가하면 integr
 frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 는 frozen 안에 있어 invariant_digest 가 이들을
@@ -2162,10 +2253,16 @@ frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
 frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	_lock · frozen.waves_lock · frozen.constraints · frozen.converge
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ible | git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	ints · frozen.convergence · frozen.lane_lock[wave-{n}])는 <path>@
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.constraints · frozen.convergence · frozen.lane_loc
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	lock · frozen.design_lock · frozen.waves_lock · frozen.constrain
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	_shared/kiwi/run-ledger.md	tract · frozen.route.lock · frozen.design_lock · frozen.waves_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| A(k) | frozen.integration_branch 에 대한 정산 여부
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-DESIGN-FROZEN | frozen.design_lock 이 가리키는 lock 의 재계산
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	| P-LANE-PLAN-FROZEN | frozen.lane_lock[wave-{n}] 이 가리키는 sta
@@ -2193,6 +2290,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 
 implemented	-	_shared/kiwi/feasibility-policy-schema-v1.md	ed | status is in_progress, implemented, or verified | keep current
 implemented	-	_shared/kiwi/parallel-waves.md	l naming the requirement moves implemented → verified. The evidence is
 implemented	-	_shared/kiwi/parallel-waves.md	oves planned/in_progress → implemented, and a pass with no residual
+implemented	-	_shared/kiwi/parallel-waves.md	s step is skipped — the wave is implemented from its entry's requirements[
 implemented	-	_shared/kiwi/pipeline-v1.md	re-review, and optionally close implemented REQs with evidence | yes | no |
 implemented	-	kiwi-coder/SKILL.md	Q status 를 backward (verified → implemented 등) 전이 | 차단 + WARN |
 implemented	-	kiwi-coder/SKILL.md	갈래인 (2) 나중에 수동과 (3) skip 은 요구를 implemented 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1)
@@ -2206,12 +2304,12 @@ implemented	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented |
 implemented	-	kiwi-orchestrator/SKILL.md	로 승급했고, 리뷰 루프의 denominator 는 implemented 요구만 담으므로 이미 승급된 step 요구는 애초에 그
 implemented	-	kiwi-pm/SKILL.md	ard only (planned/in_progress → implemented) 만 허용.
 implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) add_comp
-implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(sds-summar
-implemented	-	kiwi-pm/SKILL.md	stable 만 진행), 종료 시 SDS @req 요구의 implemented 승급 + add_completed_work(sds-sum
+implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
-implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(sds-su
-implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합에 update_status(id, "implemented") + add_completed_work(date,
+implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
+implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
+implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
 implemented	-	kiwi-pm/references/extended-workflow.md	R = ["planned", "in_progress", "implemented", "verified"]
 implemented	-	kiwi-pm/references/extended-workflow.md	al 제안: {len(proposals)} 개 REQ 를 implemented 로 승급?",
 implemented	-	kiwi-pm/references/extended-workflow.md	arget_idx = STATUS_ORDER.index("implemented")
@@ -2221,8 +2319,9 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
-implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸고 (CLOSE_SAFE) 옮기기가 끝났을
-implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 SD
+implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
+implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -2231,6 +2330,7 @@ implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	precated; a s
 implemented	-	kiwi-review-fix-loop/references/extended-workflow.md	requirements({ target, status: "implemented" }). What it returns is the
 implemented	-	kiwi-sds/SKILL.md	3 AC-1) — a design exists to be implemented, and the pre-implementation sta
 implemented	-	kiwi-sds/SKILL.md	Closes an implemented SDS. It is idempotent and i
+implemented	-	kiwi-sds/SKILL.md	Only a run that implemented from the SDS (--sds) calls th
 implemented	-	kiwi-sds/SKILL.md	ees it itself. Once the code is implemented, --close closes the SDS — wha
 implemented	-	kiwi-sds/SKILL.md	move that requirement down to implemented by the repository's procedure,
 implemented	-	kiwi-sds/SKILL.md	or the requirements about to be implemented, checks it with the determinist
@@ -2247,7 +2347,7 @@ implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차�
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Codex clarificat
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Codex clarificat
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
-implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiwi-coder (sta
+implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
@@ -2255,6 +2355,7 @@ in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requi
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
 in_progress	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "in_progress"
 in_progress	-	kiwi-pm/SKILL.md	) / update_status(id, status="in_progress") / add_completed_work(date,
+in_progress	-	kiwi-pm/SKILL.md	st_requirements 의 planned · in_progress 요구)를 집합으로 출력하고 kiwi-coder 를 띄우
 in_progress	-	kiwi-pm/SKILL.md	status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM 측에서 차단 + 경고.
 in_progress	-	kiwi-pm/SKILL.md	차단 + 경고. forward only (planned/in_progress → implemented) 만 허용.
 in_progress	-	kiwi-pm/references/extended-workflow.md	(자식) | 실행 시작 시 | {id, status: "in_progress"} |
@@ -2270,7 +2371,7 @@ in_progress	-	kiwi-srs-feasibility/references/extended-workflow.md	| FR-TODO-005
 in_progress	-	kiwi-srs/SKILL.md	_required = status: planned → in_progress 승격 전 사용자 답변 필수. advisory
 in_progress	-	kiwi-srs/SKILL.md	ed 상한. 라이브 모드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Cod
 in_progress	-	kiwi-srs/SKILL.md	| 위 상태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Cod
-in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 $kiw
+in_progress	-	kiwi-srs/references/extended-workflow.md	"AC + trace 검토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi
 in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어야만 planned → in_progress 승급 가능)
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
@@ -2282,12 +2383,13 @@ in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	on 로 영속하
 in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 이벤트를 1줄 append 하며, 해소는 언제나 최
 in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close — in_progress 이벤트가 어느 단계에 있는지. sds(SDS 작성)
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
-in_progress	waves-event-particle	_shared/kiwi/waves-event.md	거 창을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 SDS 가 아직 없으므로 생략한다.
+in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
 planned	-	_shared/kiwi/worktree-lane.md	4. The gate — is the difference planned?
 planned	-	_shared/kiwi/worktree-lane.md	ry, including one the run never planned. Membership in the
 planned	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
+planned	-	kiwi-pm/SKILL.md	열린 작업 후보(list_requirements 의 planned · in_progress 요구)를 집합으로 출력하고
 planned	-	kiwi-pm/SKILL.md	은 PM 측에서 차단 + 경고. forward only (planned/in_progress → implemented) 만 허용
 planned	-	kiwi-pm/references/extended-workflow.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
 planned	-	kiwi-srs-feasibility/SKILL.md	"current_status": "planned",
@@ -2316,10 +2418,10 @@ stable	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	stability: stable (정상)
 stable	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TASK_DONE 으로
 stable	-	kiwi-pm/SKILL.md	"REQ-CORE-002": "stable"
-stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. draft 는 interactive 2지선다
-stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행), 종료 시 SDS @req 요구의 implem
-stable	-	kiwi-pm/references/extended-workflow.md	req 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+stable	-	kiwi-pm/SKILL.md	SOT 로 참조. 진행 가능 = evolving / stable 만. 요구 집합 실행은 draft · deprec
+stable	-	kiwi-pm/SKILL.md	ability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi sds che
 stable	-	kiwi-pm/references/extended-workflow.md	| 진행 가능 | evolving / stable | OK |
+stable	-	kiwi-pm/references/extended-workflow.md	로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 stable	-	kiwi-srs-feasibility/SKILL.md	#### §0.G5 — stable 승급 게이트 (frozen 은 권한 외)
 stable	-	kiwi-srs-feasibility/SKILL.md	- --include-stable 미지정 시 stable/frozen 제외
 stable	-	kiwi-srs-feasibility/SKILL.md	Status 충돌 / Transition guard / stable 승급 / 기본 매핑 fallback) 도 모두 불변.
@@ -2377,6 +2479,7 @@ verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verifie
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
 verified	-	kiwi-pm/references/extended-workflow.md	"in_progress", "implemented", "verified"]

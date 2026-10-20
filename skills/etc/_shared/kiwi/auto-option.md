@@ -228,13 +228,13 @@ Recommended catalog:
 - `stability-stable-promotion`
 - `stability-frozen-violation`
 - `lifecycle-gate-deprecated-or-frozen`
-- `sha-mismatch-on-resume`
+- `sha-mismatch-on-resume` — raised only on a run that has an SDS
 - `t-final-backward-transition`
 - `push-conflict-rebase-merge-choice`
 - `mcp-unavailable`
 - `transition-guard-bypass`
 - `mock-detection`
-- `plan-code-divergence-critical`
+- `plan-code-divergence-critical` — raised only on a run that has an SDS
 - `self-recursive-spawn`
 - `pipeline-event-needs-user-or-failed`
 - `bulk-close-or-finalize`

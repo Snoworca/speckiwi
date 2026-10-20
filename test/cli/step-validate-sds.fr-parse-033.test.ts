@@ -6,9 +6,9 @@ import { main } from "../../src/cli/index.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 // FR-PARSE-033 (CLI surface) — `speckiwi step validate` carries the tdd SDS
-// advisories. One end-to-end case: an absent design.md in tdd mode surfaces
-// SDS-W050 through the CLI JSON envelope without flipping the exit code
-// (warning severity, non-gate-failing).
+// advisories. One end-to-end case: a present design.md missing a required heading
+// surfaces SDS-W051 through the CLI JSON envelope without flipping the exit code
+// (warning severity, non-gate-failing); an absent design.md gets no SDS diagnostic.
 
 function io() {
   return { stdout: new PassThrough(), stderr: new PassThrough() };
@@ -19,7 +19,7 @@ function drain(stream: PassThrough): string {
 }
 
 describe("FR-PARSE-033 — step validate surfaces the SDS advisories", () => {
-  it("emits SDS-W050 for an absent design.md in tdd mode with exit 0", async () => {
+  it("FR-PARSE-033 AC-1 / AC-2: emits SDS-W051 for an incomplete design.md and nothing SDS- for an absent one, exit 0", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const stepsDir = path.join(root, "docs", "spec", "steps");
     await mkdir(stepsDir, { recursive: true });
@@ -40,27 +40,24 @@ describe("FR-PARSE-033 — step validate surfaces the SDS advisories", () => {
     );
     await mkdir(path.join(stepsDir, "tdd-step-x"), { recursive: true });
 
-    // FR-PARSE-040 narrowed this case: an absent design.md is a warning only when the skip is
-    // recorded. The record is written here so the assertions below still read the behaviour they
-    // were written for rather than a weakened version of it.
+    // An absent design.md: no SDS diagnostic at all (FR-PARSE-033 AC-1 as amended). The step carries
+    // an acceptance line so FR-PARSE-042 does not fail the exit code on its own.
     await writeFile(
       path.join(stepsDir, "tdd-step-x", "intent.md"),
-      [
-        "# Intent: tdd-step-x",
-        "",
-        "## SDS Skip",
-        "",
-        "| Field | Value |",
-        "| --- | --- |",
-        "| Decision | skipped |",
-        "| Reason | Renames one private helper; no interface and no behaviour changes. |",
-        "",
-        "- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.",
-        ""
-      ].join("\n"),
+      ["# Intent: tdd-step-x", "", "## Acceptance", "", "- AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.", ""].join("\n"),
       "utf8"
     );
+    const absentStreams = io();
+    expect(await main(["--root", root, "step", "validate", "tdd-step-x", "--json"], absentStreams)).toBe(0);
+    const absent = JSON.parse(drain(absentStreams.stdout));
+    expect([...(absent.errors ?? []), ...(absent.warnings ?? [])].filter((item: { code: string }) => item.code.startsWith("SDS-"))).toEqual([]);
 
+    // A design.md missing the Interfaces heading (but with an authored SDS-AC line).
+    await writeFile(
+      path.join(stepsDir, "tdd-step-x", "design.md"),
+      ["# SDS", "", "## Context & Scope", "", "## Goals / Non-goals", "", "## Architecture Decisions", "", "## Acceptance Contracts", "", "- SDS-AC-1: WHEN X THE SYSTEM SHALL Y.", "", "## Test Plan", "", "| SDS-AC-1 | test/x.test.ts | y |", "", "## Open Questions", ""].join("\n"),
+      "utf8"
+    );
     const streams = io();
     const code = await main(["--root", root, "step", "validate", "tdd-step-x", "--json"], streams);
 
@@ -68,6 +65,6 @@ describe("FR-PARSE-033 — step validate surfaces the SDS advisories", () => {
     expect(code).toBe(0);
     const output = JSON.parse(drain(streams.stdout));
     const warnings: { code: string }[] = output.warnings ?? [];
-    expect(warnings.some((item) => item.code === "SDS-W050")).toBe(true);
+    expect(warnings.some((item) => item.code === "SDS-W051")).toBe(true);
   });
 });

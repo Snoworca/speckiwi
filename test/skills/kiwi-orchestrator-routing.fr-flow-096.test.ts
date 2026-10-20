@@ -43,7 +43,8 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
     for (const variant of VARIANTS) {
       const position = section(variant.body, /^###\s*4\.1\b/m);
       expect(position).toMatch(/1\.d 의 설계 저작 앞\*\*/);
-      expect(position).toMatch(/SRS mutation·target 등록·SDS 저작보다도 앞/);
+      // 4.1.0: SDS authoring exists only under --sds (FR-FLOW-192), so the sentence names it conditionally.
+      expect(position).toMatch(/SRS mutation·target 등록보다도\(`--sds` 면 SDS 저작보다도\) 앞/);
       expect(position, `${variant.id}: plan authoring left with R-PLAN`).not.toMatch(/계획 저작/);
     }
   });
@@ -267,14 +268,14 @@ describe("FR-FLOW-098 — work-mode never removes the step rung", () => {
 });
 
 describe("FR-FLOW-099 — the per-rung route table", () => {
-  it("AC-1 — R-STEP preconditions, including no design document and the reason", () => {
+  it("FR-FLOW-099 AC-1 — R-STEP preconditions, including no design document and the reason", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.1\b/m);
       expect(body).toMatch(/rung = "R-STEP"/);
       expect(body).toMatch(/40자 이하 kebab/);
       expect(body).toMatch(/docs\/research\/\{work\}\/01\.intake\.md/);
       expect(body).toMatch(/`S1\.mode == "tdd"`/);
-      expect(tiedTogether(body, /\*\*설계 문서 없음\*\*/, [/1\.d 는 실행되지 않았고/, /`kiwi-tdd` 가 자기 SDS 를 저작/], 300)).toBe(true);
+      expect(tiedTogether(body, /\*\*설계 문서 없음\*\*/, [/1\.d 는 실행되지 않았고/, /`kiwi-tdd` 가 자기 acceptance 줄을\(`--sds` 면 자기 SDS 를\) 저작/], 300)).toBe(true);
     }
   });
 
@@ -355,7 +356,9 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       for (const child of ["kiwi-srs", "kiwi-srs-feasibility", "kiwi-sds", "kiwi-review-fix-loop"]) {
         expect(new RegExp(`skill: "${child}"`).test(fence), `${variant.id}: ${child} invoked by name`).toBe(true);
       }
-      expect(fence, `${variant.id}: kiwi-pm runs in the wave's worker`).toMatch(/^[/$]kiwi-pm SDS_PATH=/m);
+      // FR-FLOW-099 AC-10 (4.1.0): the worker runs the wave's requirement set; kiwi-sds only under --sds.
+      expect(fence, `${variant.id}: kiwi-pm runs in the wave's worker`).toMatch(/^[/$]kiwi-pm --req-filter <그 wave 의 requirements\[\]>/m);
+      expect(fence, `${variant.id}: kiwi-sds is called only under --sds`).toMatch(/skill: "kiwi-sds"[\s\S]*?\(--sds 일 때만\)/);
       expect(fence, `${variant.id}: kiwi-planner left R-ORCH`).not.toContain("kiwi-planner");
       expect(body).toMatch(/각 wave 의 워커는 자기 창을 `--close-reqs` 없이 스스로 리뷰한다/);
       expect(
@@ -368,7 +371,7 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
     }
   });
 
-  it("AC-11 — the two inherited safety rules on the delegated rungs", () => {
+  it("FR-FLOW-099 AC-11 — the two inherited safety rules on the delegated rungs", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(
@@ -379,7 +382,7 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
 });
 
 describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
-  it("AC-1 — three shared modules and the artifact-root parameter", () => {
+  it("FR-FLOW-100 AC-1 — three shared modules and the artifact-root parameter", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(body).toMatch(/\*\*`R-ORCH` 는 스킬 호출이 아니다\.\*\*/);
@@ -391,7 +394,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
     }
   });
 
-  it("AC-2 — never invokes kiwi-wave-master, with all four grounds", () => {
+  it("FR-FLOW-100 AC-2 — never invokes kiwi-wave-master, with all four grounds", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(body).toMatch(/\*\*`kiwi-orchestrator` 는 `kiwi-wave-master` 를 결코 호출하지 않는다\.\*\* 근거 네 가지/);
@@ -402,7 +405,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
     }
   });
 
-  it("AC-3 — an explicit user request naming the sibling is not intercepted and starts no run", () => {
+  it("FR-FLOW-100 AC-3 — an explicit user request naming the sibling is not intercepted and starts no run", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(
@@ -411,7 +414,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
     }
   });
 
-  it("AC-4 — all thirteen wave-semantic gates are in the orchestrator's own critical_gates[]", () => {
+  it("FR-FLOW-100 AC-4 — all thirteen wave-semantic gates are in the orchestrator's own critical_gates[]", () => {
     for (const variant of VARIANTS) {
       const declared = new Set(criticalGateRows(variant.body).map((row) => row.gateId));
       for (const gateId of WAVE_SEMANTIC_GATE_IDS) {
@@ -422,7 +425,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
     }
   });
 
-  it("AC-5 — the body records why they are declared rather than inherited", () => {
+  it("FR-FLOW-100 AC-5 — the body records why they are declared rather than inherited", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       expect(body).toMatch(/\*\*`_shared` 모듈은 자식이 아니다\.\*\*/);
@@ -438,7 +441,7 @@ describe("FR-FLOW-100 — R-ORCH drives the shared engine directly", () => {
   // `kiwi-pipeline` call is exactly the fixed five-stage sequence this rung must not enter, so a
   // flag-shaped prohibition inverts into a permission while a byte-string check keeps passing. The
   // refusal now names the skill, and says so for every invocation form.
-  it("AC-6 — per-wave delegation calls the four skills individually rather than invoking kiwi-pipeline", () => {
+  it("FR-FLOW-100 AC-6 — per-wave delegation calls the four skills individually rather than invoking kiwi-pipeline", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^####\s*4\.5\.3\b/m);
       // Scoped to wave delegation, not to the skill outright: `wt-delegation-refused` (§0.G) needs a
@@ -492,12 +495,13 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
   it("FR-FLOW-101 AC-4/AC-5 — the carry manifests, the already-implemented seal and its consent gate", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
-      expect(tiedTogether(body, /step 의 `design\.md` 와 `intent\.md`/, [/1\.d 의 연구 입력/, /--research-doc/], 400)).toBe(true);
+      // FR-FLOW-101 AC-4 (4.1.0): intent.md, and design.md only if present.
+      expect(tiedTogether(body, /step 의 `intent\.md`\(와, 있으면 `design\.md`\)/, [/1\.d 의 연구 입력/, /--research-doc/], 400)).toBe(true);
       expect(
         tiedTogether(body, /exclusion_class = "already-implemented"/, [/out_of_scope/, /통합 브랜치에 남고/], 400)
       ).toBe(true);
       expect(
-        tiedTogether(body, /\*\*green 구현은 결코 wave SDS 에 들어가지 않는다\*\*/, [/모든 SDS 는 테스트 먼저 구현되고/, /\*\*의무적 red 확인\*\*/], 200)
+        tiedTogether(body, /\*\*green 구현은 결코 wave 에 들어가지 않는다\*\*/, [/모든 wave 는 테스트 먼저 구현되고/, /\*\*의무적 red 확인\*\*/], 200)
       ).toBe(true);
       expect(body).not.toMatch(/Task 로 다시 계획/);
       expect(body).toMatch(/의무적 red 확인/);
@@ -507,7 +511,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     }
   });
 
-  it("AC-6 — lease hygiene: abandoned, not merged, with the reason", () => {
+  it("FR-FLOW-101 AC-6 — lease hygiene: abandoned, not merged, with the reason", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
       expect(
@@ -516,7 +520,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     }
   });
 
-  it("AC-7/AC-8 — both critical gates declared, the free escalation, and the sole legal downgrade", () => {
+  it("FR-FLOW-101 AC-7/AC-8 — both critical gates declared, the free escalation, and the sole legal downgrade", () => {
     for (const variant of VARIANTS) {
       const declared = new Map(criticalGateRows(variant.body).map((row) => [row.gateId, row]));
       const escalation = declared.get("route-escalation-after-landed-state");
@@ -534,7 +538,7 @@ describe("FR-FLOW-101 — one-way escalation with landed-state gating", () => {
     }
   });
 
-  it("AC-9 — on resume the rung is read from the lock and computeRoute runs once per run", () => {
+  it("FR-FLOW-101 AC-9 — on resume the rung is read from the lock and computeRoute runs once per run", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*4\.7\b/m);
       expect(

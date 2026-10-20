@@ -253,7 +253,7 @@ describe("REL-FLOW-003 AC-3 — MCP tool names are checked against the runtime r
   });
 });
 
-describe("REL-FLOW-003 AC-4 — counts are derived from the set they describe", () => {
+describe("REL-FLOW-003 AC-4 · FR-FLOW-197 AC-4 — counts are derived from the set they describe", () => {
   it("accepts a count that matches its enumerator and rejects one that does not", () => {
     const matching = "**3 tools ship in total.**";
     const drifted = "**4 tools ship in total.**";
@@ -348,9 +348,10 @@ describe("REL-FLOW-003 — the whole document is clean", () => {
     // A clean result is only meaningful once the ground truth is known to be populated: an empty
     // command set, an empty registry, or a missing enumerator each produce the same green.
     // 148 paths and 88 tools since 4.0.0 removed the plan commands and tools (FR-NODE-211 AC-1) and the
-    // `freeze handoff` leaf (FR-NODE-138 AC-1, IR-CLI-082 AC-2).
+    // `freeze handoff` leaf (FR-NODE-138 AC-1, IR-CLI-082 AC-2); 89 tools since 4.1.0 added
+    // `orchestrate_wave_status` (IR-CLI-104).
     expect(truth.commandPaths.size).toBeGreaterThanOrEqual(148);
-    expect(truth.toolNames.size).toBe(88);
+    expect(truth.toolNames.size).toBe(89);
     expect([...truth.counts.values()].every((count) => count > 0)).toBe(true);
 
     expect(lintDocument(readme, truth)).toEqual([]);

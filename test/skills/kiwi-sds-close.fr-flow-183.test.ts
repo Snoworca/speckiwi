@@ -183,9 +183,9 @@ describe("FR-FLOW-183 AC-4 — a closed SDS is never the current design, and no 
 // read here because it is the one that does not commit (AC-3's named exception).
 // ---------------------------------------------------------------------------------------------
 
-/** kiwi-pipeline §2.5.4, the cycle end that calls the close-out twice. */
+/** kiwi-pipeline §2.5.5, the `--sds` cycle end that calls the close-out twice (FR-FLOW-193 AC-2; §2.5.4 is the default end without one). */
 function pipelineEnd(rendering: string): string {
-  return skillSection(rendering, "kiwi-pipeline", /^###\s*2\.5\.4\b/);
+  return skillSection(rendering, "kiwi-pipeline", /^###\s*2\.5\.5\b/);
 }
 
 /** The numbered items of a section, one flattened block each, keyed by their number. */
@@ -243,7 +243,7 @@ describe("FR-FLOW-183 AC-1 — the move ends by closing the SDS, through one ide
   it.each(RENDERINGS)("FR-FLOW-183 AC-1 %s: kiwi-pipeline calls the same entry point before and after promotion", (rendering) => {
     const items = numbered(pipelineEnd(rendering));
     for (const n of [1, 6]) {
-      expect(items.get(n) ?? "", `${rendering}: kiwi-pipeline §2.5.4 item ${n} is not the close-out call`).toMatch(/^\d+\.\s+`kiwi-sds --close <sds-id>`/);
+      expect(items.get(n) ?? "", `${rendering}: kiwi-pipeline §2.5.5 item ${n} is not the close-out call`).toMatch(/^\d+\.\s+`kiwi-sds --close <sds-id>`/);
     }
     const same = pipelineEnd(rendering)
       .split("\n")
@@ -273,7 +273,7 @@ describe("FR-FLOW-183 AC-3 — while a requirement stays unpromoted the file sta
 
   it.each(RENDERINGS)("FR-FLOW-183 AC-3 %s: kiwi-pipeline keeps the file for an unpromoted requirement and reports that the next commit carries the deletion", (rendering) => {
     const last = numbered(pipelineEnd(rendering)).get(6) ?? "";
-    expect(last, `${rendering}: kiwi-pipeline §2.5.4 has no item 6`).not.toBe("");
+    expect(last, `${rendering}: kiwi-pipeline §2.5.5 has no item 6`).not.toBe("");
     expect(
       /승급되지 않은 요구가 남으면 파일은 남고, 보고에 그 요구를 적는다/.test(last),
       `${rendering}: item 6 does not keep the file and report the unpromoted requirement`

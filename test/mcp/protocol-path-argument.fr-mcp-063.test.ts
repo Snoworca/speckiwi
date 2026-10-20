@@ -49,7 +49,8 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
  */
 // 88 since 4.0.0 removed the twelve plan tools (FR-NODE-211 AC-1) and two orchestrate tools
 // (FR-NODE-213 AC-3) and added `check_sds` and `check_test_sufficiency` (FR-MCP-065, FR-MCP-066).
-const REGISTERED_TOOL_COUNT = 88;
+// 89 since 4.1.0 added `orchestrate_wave_status` (IR-CLI-104 AC-5).
+const REGISTERED_TOOL_COUNT = 89;
 
 /**
  * The refusing set is held to names rather than to a size.
@@ -421,7 +422,7 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
   });
 
   // @req FR-MCP-063 AC-3 — the list above cannot shrink, on either axis, without a case going red.
-  it("keeps one near-miss name per loosening it exists to catch, and all three value shapes", () => {
+  it("FR-MCP-063 AC-7: keeps one near-miss name per loosening it exists to catch, and all three value shapes", () => {
     for (const [label, predicate] of LOOSENINGS) {
       expect(NEAR_MISS_KEYS.filter(predicate), `no name left that catches: ${label}`).not.toEqual([]);
     }
@@ -432,7 +433,7 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
   });
 
   // @req FR-MCP-063 AC-3
-  it("drives every inherited name, and the list it drives them from is the computed set", () => {
+  it("FR-MCP-063 AC-7: drives every inherited name, and the list it drives them from is the computed set", () => {
     for (const key of PROTOTYPE_KEYS) {
       expect(key in {}, `${key} must be inherited`).toBe(true);
       expect(Object.prototype.hasOwnProperty.call({}, key), `${key} must not be an own key`).toBe(false);
@@ -465,7 +466,7 @@ describe("FR-MCP-063 a path argument a tool does not accept is refused at the pr
   // handler's own input both leave it green. It is kept as a guard over the composed pipeline,
   // because if that parse ever stopped stripping, `"__proto__" in declared` is true and the widened
   // narrow would assign through it. Recorded in AC-3 as residue rather than as evidence for the seam.
-  it("drops __proto__ when it arrives as a real own key, and writes nothing through it", async () => {
+  it("FR-MCP-063 AC-7: drops __proto__ when it arrives as a real own key, and writes nothing through it", async () => {
     // Built with JSON.parse rather than as an object literal on purpose: a literal `__proto__:`
     // sets the prototype and leaves no own key, so a literal would assert nothing. Parsing is also
     // what the stdio transport does to every request it receives.

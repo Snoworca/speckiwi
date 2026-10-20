@@ -12,13 +12,25 @@ import {
 
 export type MutationToolKind = "req-scoped" | "log-append" | "workspace";
 
-/** Where the root that answered a call came from. @req REL-MCP-005 AC-2 */
-export type McpRootSource = "server-cwd-discovery" | "auto-init" | "per-call-workspace-root";
+/** Where the root that answered a call came from, or `unbound` when none could. @req REL-MCP-005 AC-2 */
+export type McpRootSource = "server-cwd-discovery" | "per-call-workspace-root" | "unbound";
+
+/**
+ * A server whose startup search found no SRS. @req FR-MCP-067 — it answers every call with the
+ * unbound refusal; `initHint` is true only when the checked directory is inside a git work tree and is
+ * not the home directory, the one case where the refusal may suggest `speckiwi init`.
+ */
+export interface McpUnboundStartup {
+  checkedCwd: string;
+  initHint: boolean;
+}
 
 export interface McpDependencies {
   root?: string;
   /** How the startup root was decided; defaults to cwd discovery. @req REL-MCP-005 AC-2 */
   rootSource?: McpRootSource;
+  /** Set when the startup search found no SRS; every call is then refused. @req FR-MCP-067 */
+  unbound?: McpUnboundStartup;
 }
 
 /**
@@ -76,6 +88,18 @@ const UNSUPPORTED_MESSAGE =
 // of a tool this server does not register.
 const UNSUPPORTED_RECOVERY =
   "The workspace root is resolved only from the MCP server process working directory. Start the SpecKiwi MCP server — or the agent session that owns it — in the intended project directory instead of passing root per call.";
+/** @req FR-MCP-067 AC-5 — what an unbound server tells the caller to do. */
+export function unboundRecovery(unbound: McpUnboundStartup): string {
+  const common =
+    `The MCP server checked ${unbound.checkedCwd} and found no SRS there or above it. ` +
+    "The workspace root is resolved only from the MCP server process working directory, so start the MCP server with its working directory set to the project: " +
+    "start the agent session in the project, or set the working directory in the client's MCP server configuration. " +
+    "The server stays unbound until the session or server is restarted";
+  return unbound.initHint
+    ? `${common}; if this project has no SRS yet, run \`speckiwi init\` in the project directory, then restart the session.`
+    : `${common}. It was started outside any project.`;
+}
+
 const REFUSED_RECOVERY =
   "Supply workspaceRoot as the absolute path of a git top level that is a worktree of the MCP server's own repository, and never point a path argument at docs/spec.";
 
@@ -101,6 +125,23 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   const startupSource: McpRootSource = deps.rootSource ?? "server-cwd-discovery";
   const startupIdentity = identityFor(startupRoot, startupSource);
   const startupContext: McpCallContext = { root: deps.root, rootSource: startupSource };
+
+  /**
+   * @req FR-MCP-067 AC-4 AC-5 AC-6 — the answer to every call on an unbound server, decided before the
+   * per-call gate and before any handler exists, so neither a `workspaceRoot` nor `init_project` can
+   * reach a directory the server was never bound to.
+   */
+  const unboundRefusal = (unbound: McpUnboundStartup): unknown => {
+    const message = `This SpecKiwi MCP server is unbound: its startup search found no ${SRS_INDEX_RELATIVE}, so it answers no call.`;
+    return {
+      ok: false,
+      error: { code: "MCP_WORKSPACE_UNBOUND", message },
+      diagnostics: [{ code: "SRS-E077", severity: "error", message, details: { checkedCwd: unbound.checkedCwd, rootSource: "unbound" } }],
+      diagnosticsSummary: { errors: 1, warnings: 0, byCode: { "SRS-E077": 1 } },
+      mcpWorkspace: { workspaceRoot: null, rootSource: "unbound", indexPath: null, packageVersion: PACKAGE_VERSION, checkedCwd: unbound.checkedCwd },
+      recovery: { message: unboundRecovery(unbound) }
+    };
+  };
 
   /**
    * What a caller who named a checkout holding no SRS index is told.
@@ -202,6 +243,7 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   };
 
   const guard = (handler: McpToolHandler, metadata?: McpToolMetadata): McpToolHandler => async (input) => {
+    if (deps.unbound) return unboundRefusal(deps.unbound);
     const admitted = await admit(input, metadata);
     if ("refused" in admitted) return admitted.refused;
     return attachWorkspace(await handler(input, admitted.context), admitted.identity);

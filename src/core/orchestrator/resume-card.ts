@@ -197,6 +197,19 @@ export function readCard(text: string): ReadCardResult {
 }
 
 /**
+ * The stamps the tool computes rather than takes: `written_at` from the caller's clock, always, and
+ * `invariant_digest` when the payload carries none. A supplied digest is kept so `validateCard` can
+ * still refuse one that disagrees with the frozen block. @req FR-NODE-218 AC-1, AC-2
+ */
+export function stampCard(card: ResumeCard, writtenAt: string): ResumeCard {
+  return {
+    ...card,
+    invariant_digest: card.invariant_digest === undefined ? computeInvariantDigest(card.frozen) : card.invariant_digest,
+    written_at: writtenAt
+  };
+}
+
+/**
  * Validates and serialises. A card failing validation produces no `text`, so nothing downstream has
  * bytes to write — the cap and the enums are enforced by the writer, not by convention.
  */

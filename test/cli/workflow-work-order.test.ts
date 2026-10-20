@@ -89,7 +89,7 @@ describe("IR-CLI-032 workflow work-order next command", () => {
     const noSdsRoot = await copyFixtureWorkspace("valid-basic");
     const createSds = await runJson(noSdsRoot, ["workflow", "work-order", "next", "--target", "v1.0.0", "--measure"]);
     expect(createSds).toMatchObject({
-      action: "create-sds",
+      action: "implement-requirements",
       measurement: {
         baselineBytes: expect.any(Number),
         compactBytes: expect.any(Number),

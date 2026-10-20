@@ -169,7 +169,7 @@ async function resolve(root: ProjectRoot, options: WorkflowReadOptions = {}) {
   });
 }
 
-async function parseJsonFile<T>(candidate: WorkflowArtifactCandidate, diagnostics: Diagnostic[]): Promise<T | null> {
+export async function parseJsonFile<T>(candidate: WorkflowArtifactCandidate, diagnostics: Diagnostic[]): Promise<T | null> {
   try {
     return JSON.parse(await readFile(candidate.absolutePath, "utf8")) as T;
   } catch (error) {

@@ -99,7 +99,7 @@ async function heldRunLock(root: string): Promise<string> {
 }
 
 describe("FR-NODE-197 run abort names its cause and never keeps the run lock quietly", () => {
-  it("AC-1 and AC-3 name contention rather than invariant drift, and say the run lock is still held", async () => {
+  it("FR-NODE-197 AC-1 and AC-3 name contention rather than invariant drift, and say the run lock is still held", async () => {
     const { root, journal } = await project(200);
     const lockPath = await heldRunLock(root);
     // Held by a live pid, so the append's bounded wait expires rather than reclaiming it as stale.
@@ -122,7 +122,7 @@ describe("FR-NODE-197 run abort names its cause and never keeps the run lock qui
     expect(JSON.stringify(envelope), "and name it").toContain("orchestrator-run.lock");
   }, 120_000);
 
-  it("AC-2 and AC-3 keep invariant drift for a validation refusal, and still say the run lock is held", async () => {
+  it("FR-NODE-197 AC-2 and AC-3 keep invariant drift for a validation refusal, and still say the run lock is held", async () => {
     const { root, journal } = await project(50);
     const lockPath = await heldRunLock(root);
     // A line carrying no writer stamp is an error at any position, which is what this case needs: an
@@ -154,7 +154,7 @@ describe("FR-NODE-197 run abort names its cause and never keeps the run lock qui
     expect(JSON.stringify(envelope), "every refusal says the run lock is still held").toMatch(/runLockHeld/);
   }, 120_000);
 
-  it("AC-4 releases the run lock when the abort records its line", async () => {
+  it("FR-NODE-197 AC-4 releases the run lock when the abort records its line", async () => {
     const { root } = await project(50);
     const lockPath = await heldRunLock(root);
 
@@ -165,7 +165,7 @@ describe("FR-NODE-197 run abort names its cause and never keeps the run lock qui
     expect(existsSync(lockPath), "a successful abort releases the run lock").toBe(false);
   }, 120_000);
 
-  it("AC-7 unlock releases a lock another process took", async () => {
+  it("FR-NODE-197 AC-7 unlock releases a lock another process took", async () => {
     // Every existing test for this drives `main()` inside the test process, so the acquiring and the
     // releasing share one module instance and the in-memory capability is present. That is not how the
     // CLI is used: the lock is taken by one invocation and dropped by a later one. Across processes
@@ -181,7 +181,7 @@ describe("FR-NODE-197 run abort names its cause and never keeps the run lock qui
     expect(existsSync(lockPath), "unlock reported a holder it did not actually remove").toBe(false);
   }, 120_000);
 
-  it("AC-5 leaves the run lock alone on a dry run, and does not refuse", async () => {
+  it("FR-NODE-197 AC-5 leaves the run lock alone on a dry run, and does not refuse", async () => {
     const { root } = await project(50);
     const lockPath = await heldRunLock(root);
 

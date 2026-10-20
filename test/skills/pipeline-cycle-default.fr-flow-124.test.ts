@@ -113,14 +113,14 @@ const emitOf = (t: string) => section(body(t), /^#{3}\s*8\.2\s/);
 const examplesOf = (t: string) => section(body(t), /^#{2}\s*11\.\s/);
 
 describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", (copy) => {
-  it("AC-1: §1.2 opens by naming the full cycle as the default and --none-cycle as the opt-out", () => {
+  it("FR-FLOW-124 AC-1: §1.2 opens by naming the full cycle as the default and --none-cycle as the opt-out", () => {
     const headline = line(matrixOf(read(copy)), /기본 동작/);
     expect(headline, `${copy}: §1.2 must open with the default-behaviour sentence`).not.toBe("");
     expect(/사이클|§2\.5/.test(headline), `${copy}: the sentence must name the cycle`).toBe(true);
     expect(/--none-cycle/.test(headline), `${copy}: the sentence must name the opt-out`).toBe(true);
   });
 
-  it("AC-2: §1.2 carries a --none-cycle row naming the restored single-next-step behaviour", () => {
+  it("FR-FLOW-124 AC-2: §1.2 carries a --none-cycle row naming the restored single-next-step behaviour", () => {
     const cells = rowCells(matrixOf(read(copy)), /--none-cycle/);
     expect(cells.length, `${copy}: --none-cycle must be a first-class §1.2 row`).toBeGreaterThan(2);
     expect(
@@ -129,7 +129,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     ).toBe(true);
   });
 
-  it("AC-3: the implicit run is no longer keyed on cycle entry", () => {
+  it("FR-FLOW-124 AC-3: the implicit run is no longer keyed on cycle entry", () => {
     const text = body(read(copy));
     expect(
       /`--cycle` 진입 \(`--run` 미지정\)/.test(text),
@@ -139,7 +139,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     expect(cond, `${copy}: the implicit run must be stated as conditional on a work input`).not.toBe("");
   });
 
-  it("AC-4: a closed work-input enumeration is stated, and --target alone is excluded from it", () => {
+  it("FR-FLOW-124 AC-4: a closed work-input enumeration is stated, and --target alone is excluded from it", () => {
     const matrix = matrixOf(read(copy));
     const enumeration = line(matrix, /작업 입력은[^\n]*닫힌다|작업 입력\s*=/);
     expect(enumeration, `${copy}: the enumeration must be stated as closed`).not.toBe("");
@@ -161,13 +161,13 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     expect(/한 단계/.test(runAlone), `${copy}: --run alone keeps its single-next-step meaning`).toBe(true);
   });
 
-  it("AC-5: ambiguity resolves to no work input", () => {
+  it("FR-FLOW-124 AC-5: ambiguity resolves to no work input", () => {
     const tie = line(matrixOf(read(copy)), /갈리면|모호하면/);
     expect(tie, `${copy}: an ambiguity tie-breaker must be stated`).not.toBe("");
     expect(/작업 입력 없음/.test(tie), `${copy}: ambiguity must resolve to no work input`).toBe(true);
   });
 
-  it("AC-6: --cycle is declared inert in exactly one place, with the lagging-copy reason", () => {
+  it("FR-FLOW-124 AC-6: --cycle is declared inert in exactly one place, with the lagging-copy reason", () => {
     const text = body(read(copy));
     const declarations = lines(text, /`--cycle`[^\n]*inert/);
     expect(declarations.length, `${copy}: exactly one inert declaration, not ${declarations.length}`).toBe(1);
@@ -181,7 +181,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-124 — the cycle is the default (%s)", 
     expect(text.split(intent).length - 1, `${copy}: the intent clause must appear once`).toBeLessThanOrEqual(1);
   });
 
-  it("AC-1 (non-auto authority): a work-input run without --auto still states who authorises each stage", () => {
+  it("FR-FLOW-124 AC-1 (non-auto authority): a work-input run without --auto still states who authorises each stage", () => {
     // The --auto half was re-keyed; the non-auto half is the more common invocation and was left
     // between two rules that say opposite things — confirm each hop, and spawn the next hop.
     const six1 = section(body(read(copy)), /^#{3}\s*6\.1\s/);
@@ -482,14 +482,14 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     expect(/테스트 충분성|test-sufficiency/.test(row), `${copy}: §0.2 must name the test-sufficiency check`).toBe(true);
   });
 
-  it("AC-2: the §2.6 worktree exception survives the restatement", () => {
+  it("FR-FLOW-128 AC-2: the §2.6 worktree exception survives the restatement", () => {
     expect(
       /§2\.6/.test(line(body(read(copy)), /§0\.2/)),
       `${copy}: FR-FLOW-027 AC-4 requires the worktree exception to stay stated in §0.2`
     ).toBe(true);
   });
 
-  it("AC-3: the --auto-alone row is not conditioned on the cycle flag", () => {
+  it("FR-FLOW-128 AC-3: the --auto-alone row is not conditioned on the cycle flag", () => {
     const row = line(matrixOf(read(copy)), /`--auto` 단독/);
     expect(row, `${copy}: the --auto-alone row must exist`).not.toBe("");
     expect(
@@ -498,7 +498,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(false);
   });
 
-  it("AC-4: §11's bare-invocation row names the cycle and says it spawns", () => {
+  it("FR-FLOW-128 AC-4: §11's bare-invocation row names the cycle and says it spawns", () => {
     const cells = rowCells(examplesOf(read(copy)), /"[/$]kiwi-pipeline"/).join(" ");
     expect(cells, `${copy}: §11 must still carry a bare-invocation row`).not.toBe("");
     expect(/사이클/.test(cells), `${copy}: the bare call must name the cycle it now enters`).toBe(true);
@@ -517,7 +517,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(true);
   });
 
-  it("AC-5: §8.2's emit shape covers a run that executed the chain, stated once", () => {
+  it("FR-FLOW-128 AC-5: §8.2's emit shape covers a run that executed the chain, stated once", () => {
     const emit = emitOf(read(copy));
     expect(
       /사이클|체인/.test(emit),
@@ -533,7 +533,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(true);
   });
 
-  it("AC-7: no claim above §0.2 still describes an advisory-only skill", () => {
+  it("FR-FLOW-128 AC-7: no claim above §0.2 still describes an advisory-only skill", () => {
     const text = body(read(copy));
     const head = at(text.split("## 0."), 0);
     expect(head, `${copy}: the body preamble must exist`).not.toBe("");
@@ -557,7 +557,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(true);
   });
 
-  it("AC-6 (target): §2.6 itself carries the work-input condition its pointer in §1.2 claims", () => {
+  it("FR-FLOW-128 AC-6 (target): §2.6 itself carries the work-input condition its pointer in §1.2 claims", () => {
     // Fixing the pointer and not the target is worse than fixing neither: the two sections agreed
     // before, and disagreeing now puts the skill's ONLY direct mutation (`git worktree add`) under
     // two rules. §2.6 is the section §1.2 defers to, so the condition has to be stated there.
@@ -569,7 +569,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(true);
   });
 
-  it("AC-6: --wt supplied alone is stated, consistently with the work-input rule", () => {
+  it("FR-FLOW-128 AC-6: --wt supplied alone is stated, consistently with the work-input rule", () => {
     const wt = line(body(read(copy)), /`--wt` 단독/);
     expect(wt, `${copy}: --wt alone is inert today and its meaning changes under the new default`).not.toBe("");
     // `--wt` is not in the closed work-input enumeration, so the line immediately above governs:
@@ -591,7 +591,7 @@ describe.each(PIPELINE_COPIES)("FR-FLOW-128 — no false safety claim survives (
     ).toBe(false);
   });
 
-  it("AC-3 (§6.6): the unattended-completion section applies to the run it actually governs", () => {
+  it("FR-FLOW-128 AC-3 (§6.6): the unattended-completion section applies to the run it actually governs", () => {
     const six6 = section(body(read(copy)), /^#{3}\s*6\.6\s/);
     expect(six6, `${copy}: §6.6 must exist`).not.toBe("");
     expect(

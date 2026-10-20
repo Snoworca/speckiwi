@@ -14,7 +14,7 @@ export interface ParsedTableResult {
   diagnostics: Diagnostic[];
 }
 
-export type TableDiagnosticCode = "SRS-E021" | "SRS-W016" | "SRS-W017";
+export type TableDiagnosticCode = "SRS-E021" | "SRS-W016" | "SRS-W017" | "SRS-W075";
 
 export interface ParseMarkdownTableOptions {
   filePath?: string;

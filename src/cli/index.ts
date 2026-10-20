@@ -42,7 +42,11 @@ function commandNameFromArgv(argv: string[]): string {
 }
 
 function classifyUnhandledError(error: { code?: string; message?: string }): { code: string; exitCode: number; recoveryCommand: string } {
-  if (error.code === "ENOENT" || /docs\/spec|00\.index\.md|Could not resolve SpecKiwi project root/.test(error.message ?? "")) {
+  // @req FR-ARCH-002 AC-3 — no root found exits 2 in every output mode.
+  if ((error.message ?? "").startsWith("Could not resolve SpecKiwi project root")) {
+    return { code: "PROJECT_ROOT_NOT_FOUND", exitCode: 2, recoveryCommand: "init" };
+  }
+  if (error.code === "ENOENT" || /docs\/spec|00\.index\.md/.test(error.message ?? "")) {
     return { code: "WORKSPACE_PARSE_ERROR", exitCode: 4, recoveryCommand: "init" };
   }
   return { code: "CLI_READ_ERROR", exitCode: 2, recoveryCommand: "validate" };

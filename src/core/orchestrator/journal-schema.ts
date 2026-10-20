@@ -443,6 +443,31 @@ export const WAVES_EVENT_FIELDS = {
   ]
 } as const;
 
+/**
+ * @req FR-NODE-218 AC-5 — the fields `journal append` requires, per event scope, as data. `ts` is in
+ * no set because the tool fills it; `wave` is not in the intent set because run-scope verbs have none.
+ * A round record and a run-abort line are composed by `round record` and `run abort` and have no scope
+ * here.
+ */
+export const WAVES_EVENT_REQUIRED_BY_SCOPE = {
+  intent: ["event", "schema_version", "run_id", "engine", "verb", "inputs_digest"],
+  result: ["event", "schema_version", "run_id", "engine", "verb", "proof"],
+  "wave-state": ["schema_version", "run_id", "wave", "order", "target", "status", "summary"]
+} as const;
+
+export type WavesEventScope = keyof typeof WAVES_EVENT_REQUIRED_BY_SCOPE;
+
+/**
+ * The scope whose required set a caller-assembled line must carry, or `null` for a line no set covers:
+ * a round record, a run-abort line, and an `event` outside the two kinds (the validator judges that).
+ * @req FR-NODE-218 AC-5
+ */
+export function eventScopeOf(line: Readonly<Record<string, unknown>>): WavesEventScope | null {
+  if (line.round !== undefined || line.verb === "abort-run") return null;
+  if (line.event === undefined) return "wave-state";
+  return line.event === "intent" || line.event === "result" ? line.event : null;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The two rule tables — 05 §10.1
 // ---------------------------------------------------------------------------------------------

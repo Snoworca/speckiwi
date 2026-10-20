@@ -377,7 +377,7 @@ describe("MCP mutation tools and structured errors", () => {
 // naming it sends an agent after a recovery it cannot perform. REL-MCP-004 AC-3's fail-closed
 // rejection itself must stay byte-for-byte intact.
 describe("FR-MCP-055 — actionable recovery guidance for a rejected per-call workspace root", () => {
-  it("never names an unregistered tool and keeps the fail-closed rejection unchanged", async () => {
+  it("FR-MCP-055 AC-1 AC-2 AC-3 AC-4: on a bound server it never names an unregistered tool and keeps the fail-closed rejection unchanged", async () => {
     const root = await copyFixtureWorkspace("mutation-target");
     const otherRoot = await copyFixtureWorkspace("duplicate-id");
     const server = createTestMcpServer({ root });
@@ -435,5 +435,27 @@ describe("FR-MCP-055 — actionable recovery guidance for a rejected per-call wo
     expect(rejected.error.message, "the rejection message must not point at a restart tool").not.toMatch(
       /restart_mcp_server/
     );
+  });
+
+  it("FR-MCP-055 AC-5: on an unbound server a per-call root or workspaceRoot gets the unbound refusal, whose recovery obeys AC-1 and AC-2", async () => {
+    const home = await mkdtemp(path.join(tmpdir(), "speckiwi-fr-mcp-055-unbound-"));
+    const cwd = path.join(home, "empty");
+    await mkdir(cwd, { recursive: true });
+    const server = createTestMcpServer({ root: cwd, unbound: { checkedCwd: cwd, initHint: false } });
+    registerReadTools(server, { root: cwd });
+    registerMutationTools(server, { root: cwd });
+    const registered = new Set(Object.keys(server.tools));
+    for (const input of [{ root: home }, { workspaceRoot: home }]) {
+      const rejected = (await server.callTool("update_status", { ...input, id: "FR-ARCH-001", status: "verified" })) as {
+        error: { code: string; message: string };
+        recovery?: { tool?: string; message?: string };
+      };
+      expect(rejected.error.code).toBe("MCP_WORKSPACE_UNBOUND");
+      expect(rejected.recovery?.tool === undefined || registered.has(rejected.recovery.tool)).toBe(true);
+      const guidance = rejected.recovery?.message ?? "";
+      expect(guidance).toMatch(/working directory/i);
+      expect(guidance).toMatch(/start .*(server|session)/i);
+      expect(`${guidance} ${rejected.error.message}`).not.toMatch(/restart_mcp_server/);
+    }
   });
 });

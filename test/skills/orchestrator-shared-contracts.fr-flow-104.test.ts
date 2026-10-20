@@ -627,7 +627,7 @@ describe("FR-FLOW-111 — pipeline-event.md registers kiwi-orchestrator and clos
 describe("FR-FLOW-112 — loop-option.md records the orchestrator's propagation targets", () => {
   // AC-1: the row exists in every copy. An orchestrator absent from the propagation table silently
   // propagates nothing, so a user who asked for a reduced cap gets the default in every child.
-  it.each(LOOP_COPIES)("%s carries a kiwi-orchestrator row in section 6", (copy) => {
+  it.each(LOOP_COPIES)("FR-FLOW-112 AC-1: %s carries a kiwi-orchestrator row in section 6", (copy) => {
     const six = section(read(copy), /^##\s*6\./);
     expect(six, `${copy} must have a propagation section`).not.toBe("");
     const row = cells(six, /^\s*\|\s*kiwi-orchestrator\s*\|/);
@@ -636,7 +636,7 @@ describe("FR-FLOW-112 — loop-option.md records the orchestrator's propagation 
 
   // AC-2 (as revised for 4.0.0): the routed child of the one delegated rung is a propagation target
   // too — on that rung the whole run is a delegation. The plan rung is gone (FR-FLOW-187 AC-1).
-  it.each(LOOP_COPIES)("%s names the routed child on the delegated rung", (copy) => {
+  it.each(LOOP_COPIES)("FR-FLOW-112 AC-2: %s names the routed child on the delegated rung", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
     expect(row.length, `${copy} section 6 must carry a kiwi-orchestrator row`).toBeGreaterThan(3);
     const targets = at(row, 2);
@@ -647,18 +647,20 @@ describe("FR-FLOW-112 — loop-option.md records the orchestrator's propagation 
 
   // AC-3 (as revised for 4.0.0): the per-wave set on the orchestrated rung, in full, with kiwi-sds in
   // place of kiwi-planner (FR-FLOW-187 AC-2).
-  it.each(LOOP_COPIES)("%s names the full per-wave propagation set", (copy) => {
+  it.each(LOOP_COPIES)("FR-FLOW-112 AC-3: %s names the full per-wave propagation set", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
     for (const child of ["kiwi-srs", "kiwi-sds", "kiwi-pm", "kiwi-review-fix-loop"]) {
       expect(at(row, 2).includes(child), `${copy} the per-wave set must include ${child}`).toBe(true);
     }
     expect(at(row, 2).includes("kiwi-planner"), `${copy} the per-wave set still names the retired kiwi-planner`).toBe(false);
+    // 4.1.0 (FR-FLOW-112 AC-3 as amended): kiwi-sds joins the per-wave set only under --sds.
+    expect(at(row, 2), `${copy} kiwi-sds must be conditioned on --sds`).toMatch(/`--sds` 면 \+ `kiwi-sds`|plus `kiwi-sds` under `--sds`/);
   });
 
   // AC-4 (as revised for 4.0.0): the propagated options and the orchestrator's OWN cap list. Four:
   // loop H left with the handoff documents (FR-FLOW-187 AC-4), and a lane is one wave's worker, whose
   // loops belong to the children it calls — no per-lane loop is listed.
-  it.each(LOOP_COPIES)("%s names the propagated options and the four own loop caps", (copy) => {
+  it.each(LOOP_COPIES)("FR-FLOW-112 AC-4: %s names the propagated options and the four own loop caps", (copy) => {
     const row = cells(section(read(copy), /^##\s*6\./), /^\s*\|\s*kiwi-orchestrator\s*\|/);
     expect(at(row, 3).includes("--mini"), `${copy} --mini must be named as propagated`).toBe(true);
     expect(at(row, 3).includes("--loops N"), `${copy} --loops N must be named as propagated`).toBe(true);

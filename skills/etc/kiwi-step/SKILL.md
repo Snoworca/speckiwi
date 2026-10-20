@@ -19,6 +19,7 @@ Lightweight skill for authoring **step-local requirement drafts** under `docs/sp
 | §0.4 | **MCP-preferred claim + CLI fallback.** Prefer the `claim_step` MCP tool; if the MCP server is unavailable, fall back to CLI `speckiwi step claim <name> --touches-scope <scope> --touches-req <id>`. If both MCP and CLI are unavailable the skill MUST halt immediately. |
 | §0.5 | **No signatures / no changelog.** Never leave AI-identifying information in outputs or commits; this skill contains no changelog section. |
 | §0.6 | **ID / heading rules.** Step requirements follow the SRS-MD Authoring Rules (heading / ID regex), identical to body-scope requirements even while still a draft. |
+| §0.8 | **The step SDS is opt-in.** The design.md stub is made only when the user asks for a step SDS — then pass `speckiwi step scaffold <name> --sds`. Without the opt-in the run writes no SDS and implements from none. |
 | §0.7 | `--mini` / `--loops N` accepted as a no-op. This skill has no verify/improve loop, so per `_shared/kiwi/loop-option.md` §5 it accepts them as a documented no-op (orchestration uniformity). |
 
 ---
@@ -27,6 +28,10 @@ Lightweight skill for authoring **step-local requirement drafts** under `docs/sp
 
 - Input: the step `<name>` (ask the user if absent) and a requirement outline (statement + acceptance criteria draft).
 - Output: requirement blocks under `docs/spec/steps/<name>/<NN>.<slug>.srs.md`, plus the `validate_step` result.
+
+| Signal | Argument | Default |
+|---|---|---|
+| "SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS" | `--sds` — the scaffold also writes the design.md stub (`speckiwi step scaffold <name> --sds`) | off |
 
 ---
 
@@ -48,7 +53,7 @@ Claim the target step via `claim_step` (MCP) or `speckiwi step claim <name> --to
 ### 2.3 Phase 2 — Author (step directory only)
 Write requirement blocks only under `docs/spec/steps/<name>/<NN>.<slug>.srs.md`. **Never write into body-scope SRS files** (`docs/spec/*.srs.md`); a step is a pre-promotion isolated workspace, so editing the canonical body documents directly is a governance violation. A file directly under `docs/spec/steps/` (without the `<name>/` subdirectory) is not a step file — it falls back to body scope — so always author under the `<name>/` path.
 
-**Scaffold makes stubs; content is authored directly.** `speckiwi step scaffold <name>` (MCP `scaffold_step`) creates only empty design.md/intent.md stubs via writeIfMissing (it never overwrites an existing file). The step requirement content itself is still authored by writing the file directly (Write/Edit) under `docs/spec/steps/<name>/<NN>.<slug>.srs.md`, following the SRS-MD ID/heading rules. Do NOT use `add_requirement` — it writes into body scope and would violate the step-only rule.
+**Scaffold makes stubs; content is authored directly.** `speckiwi step scaffold <name>` (MCP `scaffold_step`) creates only an empty intent.md stub (with an `## Acceptance` heading) via writeIfMissing, and a design.md stub only when called with `--sds` (MCP `sds: true`) (it never overwrites an existing file) — this skill passes `--sds` only when the user asks for a step SDS. The step requirement content itself is still authored by writing the file directly (Write/Edit) under `docs/spec/steps/<name>/<NN>.<slug>.srs.md`, following the SRS-MD ID/heading rules. Do NOT use `add_requirement` — it writes into body scope and would violate the step-only rule.
 
 ### 2.4 Phase 3 — Validate
 Run `validate_step` (MCP tool, or CLI `speckiwi step validate <name>`) to verify step-local integrity. Fix and re-validate on error.
@@ -70,7 +75,7 @@ This skill does not perform promotion. Step -> body promotion / merge is handled
 | Tool | Purpose | If absent |
 |---|---|---|
 | `claim_step` (MCP preferred / CLI `speckiwi step claim`) | Claim the step §0.1 | halt when both are unavailable |
-| `scaffold_step` (MCP / CLI `speckiwi step scaffold <name>`) | Create empty design.md/intent.md stubs (writeIfMissing) | copy the template manually |
+| `scaffold_step` (MCP / CLI `speckiwi step scaffold <name>`) | Create an empty intent.md stub — plus a design.md stub under `--sds` (writeIfMissing) | copy the template manually |
 | `validate_step` (MCP / CLI `speckiwi step validate <name>`) | Step-local verification §0.3 | try CLI fallback, otherwise advise the user |
 
 **Scaffold makes skeletons; authoring stays direct.** `scaffold_step` creates empty stubs only. Write the `docs/spec/steps/<name>/<NN>.<slug>.srs.md` content directly with Write/Edit, following the SRS-MD ID/heading rules. Do NOT use `add_requirement` — it writes into body scope and would violate the step-only rule.

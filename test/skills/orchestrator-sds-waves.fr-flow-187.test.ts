@@ -34,11 +34,13 @@ const PROMOTION = /^##\s+14\./;
 
 describe("FR-FLOW-187 AC-1 — the ladder is R-STEP → R-ORCH", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-187 AC-1 ${bundle}: the selection order has two rungs and R-PLAN is gone`, () => {
+    it(`FR-FLOW-187 AC-1 · FR-FLOW-099 AC-5 AC-6 AC-7 ${bundle}: the selection order has two rungs and R-PLAN is gone`, () => {
       const text = body(bundle, "kiwi-orchestrator");
       expect(text, bundle).toMatch(/order: R-STEP → R-ORCH/);
       expect(text.includes("R-PLAN"), `${bundle}: R-PLAN survives`).toBe(false);
       expect(text.includes("plan-coverage-unclosed"), `${bundle}: plan-coverage-unclosed survives`).toBe(false);
+      // FR-FLOW-099 AC-5: the retired R-PLAN row's kiwi-pm invocation passed PLAN_PATH.
+      expect(text.includes("PLAN_PATH"), `${bundle}: the R-PLAN kiwi-pm invocation survives`).toBe(false);
     });
 
     it(`FR-FLOW-187 AC-1 ${bundle}: probe field S2 and disqualifiers D5–D7 are gone`, () => {
@@ -93,7 +95,7 @@ describe("FR-FLOW-187 AC-3 — allocation and grounding read the SDS", () => {
 
 describe("FR-FLOW-187 AC-4 — no intra-wave partition, no handoff, no loop H, no coupling check", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-187 AC-4 ${bundle}: the removed machinery is absent`, () => {
+    it(`FR-FLOW-187 AC-4 · FR-FLOW-090 AC-7 AC-8 ${bundle}: the removed machinery is absent`, () => {
       const text = body(bundle, "kiwi-orchestrator");
       for (const [name, re] of [
         ["lane handoff document", /lanes\/lane-\{k\}\.md/],

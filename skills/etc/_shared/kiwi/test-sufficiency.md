@@ -20,14 +20,14 @@ The check never chooses its own scope. The caller passes the scope this table na
 | Caller | When | Scope |
 |---|---|---|
 | `kiwi-review-fix-loop` | its last verification step, whenever a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`) | under `--close-reqs` the `eligible` set; otherwise the `--req-filter` IDs; with neither, the IDs the one lite SDS received as `--sds` names with `@req`. Pass `--sds` as well when an SDS is given |
-| `kiwi-tdd` | immediately before `promote_step_requirement` | the step requirement IDs + `--sds docs/spec/steps/<task>/design.md` |
+| `kiwi-tdd` | immediately before `promote_step_requirement` | the step requirement IDs (plus `--sds docs/spec/steps/<task>/design.md` under `--sds`) |
 | `kiwi-srs-sync` | immediately before writing `verified` | the requirements this run is about to write as `verified` |
 | `kiwi-hot-fix` | immediately before it delegates to `kiwi-srs-sync` | the requirements root-cause mapped with `match_confidence=high` |
-| `kiwi-orchestrator` | immediately before a wave's requirement promotion step (`parallel-waves.md` PW-14) | that wave's allocated requirements + `--sds` for each of its SDS files |
-| `kiwi-orchestrator` | after the closing code-review hop of every rung | the rung's requirement scope — the step rung adds `--sds docs/spec/steps/<task>/design.md`. No wave SDS is passed: the close-out has deleted the SDS of every wave whose requirements were all promoted by then (FR-FLOW-183 AC-3) |
-| `kiwi-pipeline` | after the cycle's closing code-review hop, before the SDS is deleted | the cycle's requirement scope + its SDS — when it was split into several files, once for each file with `--sds <that file>` |
-| `kiwi-pipeline` | before the promoting `--close-reqs` hop, when the SDS was split into several files | per file, that file's `Requirements` IDs + `--sds <that file>` |
-| `kiwi-wave-master` | after the design-conformance review, immediately before a wave's promotion (`parallel-waves.md` PW-14) | that wave's allocated requirements + `--sds` for each of its SDS files |
+| `kiwi-orchestrator` | immediately before a wave's requirement promotion step (`parallel-waves.md` PW-14) | that wave's allocated requirements (and, for a wave that has SDS files, `--sds` for each of its SDS files) |
+| `kiwi-orchestrator` | after the closing code-review hop of every rung | the rung's requirement scope — the step rung adds `--sds docs/spec/steps/<task>/design.md` only when the run opted in with `--sds`. No wave SDS is passed: the close-out has deleted the SDS of every wave whose requirements were all promoted by then (FR-FLOW-183 AC-3) |
+| `kiwi-pipeline` | after the cycle's closing code-review hop (under `--sds`, before the SDS is deleted) | the cycle's requirement scope (under `--sds`, + its SDS) — when it was split into several files, once for each file with `--sds <that file>` |
+| `kiwi-pipeline` | before the promoting `--close-reqs` hop, when an `--sds` cycle's SDS was split into several files | per file, that file's `Requirements` IDs + `--sds <that file>` |
+| `kiwi-wave-master` | after the design-conformance review, immediately before a wave's promotion (`parallel-waves.md` PW-14) | that wave's allocated requirements (and, for a wave that has SDS files, `--sds` for each of its SDS files) |
 | `kiwi-wave-master` | after the run's closing code-review hop | the run's requirement scope only — the close-out has deleted the SDS of every wave whose requirements were all promoted by then (FR-FLOW-183 AC-3) |
 
 When the scope holds no requirement ID the check does not run and the result is `no-scope`. `no-scope` is not a pass — report it as it is.

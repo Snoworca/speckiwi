@@ -20,14 +20,14 @@
 | 호출자 | 언제 | 범위 |
 |---|---|---|
 | `kiwi-review-fix-loop` | 마지막 검증 단계 — 요구 범위가 알려졌을 때(`--close-reqs`, `--req-filter`, `--sds`) | `--close-reqs` 면 `eligible`, 아니면 `--req-filter` 의 ID, 둘 다 없으면 `--sds` 로 받은 lite SDS 한 파일이 `@req` 로 지명한 ID. SDS 가 있으면 `--sds` 를 함께 넘긴다 |
-| `kiwi-tdd` | `promote_step_requirement` 직전 | step 요구 ID + `--sds docs/spec/steps/<task>/design.md` |
+| `kiwi-tdd` | `promote_step_requirement` 직전 | step 요구 ID (`--sds` 면 `--sds docs/spec/steps/<task>/design.md` 도) |
 | `kiwi-srs-sync` | `verified` 를 쓰기 직전 | 이번 실행이 `verified` 로 쓰려는 요구 |
 | `kiwi-hot-fix` | `kiwi-srs-sync` 에 위임하기 직전 | root-cause 가 `match_confidence=high` 로 매핑한 요구 |
-| `kiwi-orchestrator` | wave 의 요구 승급 단계 직전(`parallel-waves.md` PW-14) | 그 wave 의 배정 요구 + 그 wave 의 SDS 파일마다 `--sds` |
-| `kiwi-orchestrator` | 모든 rung 의 종료 코드 리뷰 홉 뒤 | 그 rung 의 요구 범위 — step rung 은 `--sds docs/spec/steps/<task>/design.md` 를 더한다. wave SDS 는 넘기지 않는다: 요구가 모두 승급된 wave 의 SDS 는 그때 close-out 이 이미 삭제했다(FR-FLOW-183 AC-3) |
-| `kiwi-pipeline` | 사이클의 종료 코드 리뷰 홉 뒤, SDS 삭제 전 | 그 사이클의 요구 범위 + 그 SDS — 여러 파일로 나뉘었으면 파일마다 `--sds <그 파일>` 로 한 번씩 |
-| `kiwi-pipeline` | SDS 가 여러 파일로 나뉘었을 때 승급하는 `--close-reqs` 홉 앞 | 파일마다 그 파일의 `Requirements` ID + `--sds <그 파일>` |
-| `kiwi-wave-master` | 설계 적합 검증 리뷰 뒤, wave 의 승급 직전(`parallel-waves.md` PW-14) | 그 wave 의 배정 요구 + 그 wave 의 SDS 파일마다 `--sds` |
+| `kiwi-orchestrator` | wave 의 요구 승급 단계 직전(`parallel-waves.md` PW-14) | 그 wave 의 배정 요구 (SDS 파일이 있는 wave 면 그 wave 의 SDS 파일마다 `--sds`) |
+| `kiwi-orchestrator` | 모든 rung 의 종료 코드 리뷰 홉 뒤 | 그 rung 의 요구 범위 — step rung 은 `--sds` 로 시작한 run 이면 `--sds docs/spec/steps/<task>/design.md` 를 더한다. wave SDS 는 넘기지 않는다: 요구가 모두 승급된 wave 의 SDS 는 그때 close-out 이 이미 삭제했다(FR-FLOW-183 AC-3) |
+| `kiwi-pipeline` | 사이클의 종료 코드 리뷰 홉 뒤(`--sds` 면 SDS 삭제 전) | 그 사이클의 요구 범위 (`--sds` 면 + 그 SDS) — 여러 파일로 나뉘었으면 파일마다 `--sds <그 파일>` 로 한 번씩 |
+| `kiwi-pipeline` | `--sds` 사이클에서 SDS 가 여러 파일로 나뉘었을 때 승급하는 `--close-reqs` 홉 앞 | 파일마다 그 파일의 `Requirements` ID + `--sds <그 파일>` |
+| `kiwi-wave-master` | 설계 적합 검증 리뷰 뒤, wave 의 승급 직전(`parallel-waves.md` PW-14) | 그 wave 의 배정 요구 (SDS 파일이 있는 wave 면 그 wave 의 SDS 파일마다 `--sds`) |
 | `kiwi-wave-master` | run 의 종료 코드 리뷰 홉 뒤 | 그 run 의 요구 범위만 — 요구가 모두 승급된 wave 의 SDS 는 그때 close-out 이 이미 삭제했다(FR-FLOW-183 AC-3) |
 
 범위에 요구 ID 가 하나도 없으면 확인은 돌지 않고 결과는 `no-scope` 다. `no-scope` 는 통과가 아니다 — 보고서에 그대로 적는다.

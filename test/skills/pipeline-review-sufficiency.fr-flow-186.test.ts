@@ -19,12 +19,13 @@ const CONTRACT = "_shared/kiwi/test-sufficiency.md";
 describe("FR-FLOW-186 AC-4 — kiwi-pipeline ends with a code-review hop followed by the test-sufficiency check", () => {
   // A split SDS cannot ride the review hop's single `--sds`, so its SDS-AC citations are checked per
   // file BEFORE the promoting hop — otherwise `verified` is written before an SDS-AC gap is seen.
+  // A split SDS exists only on the `--sds` branch, whose cycle end is §2.5.5 (FR-FLOW-193 AC-2).
   it.each(RENDERINGS)("%s: a split SDS is checked per file before the promoting hop", (rendering) => {
-    const items = section(body(rendering), /^###\s*2\.5\.4\s/)
+    const items = section(body(rendering), /^###\s*2\.5\.5\s/)
       .split("\n")
       .filter((line) => /^\d+\.\s/.test(line));
     const hopAt = items.findIndex((item) => item.includes("kiwi-review-fix-loop --close-reqs"));
-    expect(hopAt, `${rendering}: §2.5.4 has no promoting review hop`).toBeGreaterThan(0);
+    expect(hopAt, `${rendering}: §2.5.5 has no promoting review hop`).toBeGreaterThan(0);
     expect(
       items.slice(0, hopAt).some((item) => /여럿|more than one/.test(item) && item.includes(CONTRACT) && /`test-sufficiency-gap`/.test(item) && /\d번으로 가지 않는다/.test(item)),
       `${rendering}: no step before the promoting hop checks a split SDS`
@@ -47,9 +48,11 @@ describe("FR-FLOW-186 AC-4 — kiwi-pipeline ends with a code-review hop followe
     ).toBe(true);
   });
 
-  it.each(RENDERINGS)("%s: the check's scope is the cycle's requirements and its SDS", (rendering) => {
+  it.each(RENDERINGS)("%s: the check's scope is the cycle's requirements, and its SDS under --sds", (rendering) => {
     const end = flat(section(body(rendering), /^###\s*2\.5\.4\s/));
-    expect(/요구 범위|requirement scope/i.test(end) && /--sds/.test(end), `${rendering}: the check's scope is not stated`).toBe(true);
+    expect(/사이클 요구 ID 로, `--sds` 없이|the cycle's requirement IDs, without `--sds`/i.test(end), `${rendering}: the default check's scope is not stated`).toBe(true);
+    const sdsEnd = flat(section(body(rendering), /^###\s*2\.5\.5\s/));
+    expect(/요구 범위|requirement scope/i.test(sdsEnd) && /--sds/.test(sdsEnd), `${rendering}: the --sds check's scope is not stated`).toBe(true);
   });
 
   it.each(RENDERINGS)("%s: the procedure is cited, not restated", (rendering) => {

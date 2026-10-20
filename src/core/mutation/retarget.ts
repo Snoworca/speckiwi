@@ -16,6 +16,7 @@ import type {
 export type { RetargetInput, RetargetItemPlan, RetargetOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
+import { tableCellText } from "./table-cell.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
 import { todayStamp } from "../date-stamp.js";
 
@@ -119,7 +120,7 @@ export async function retarget(
       pushOp(loaded.file, {
         type: "insertLines",
         line: insertLine,
-        lines: [`| ${todayStamp()} | Target -> ${toTarget} | ${reason} |`]
+        lines: [`| ${todayStamp()} | Target -> ${toTarget} | ${tableCellText(reason)} |`]
       });
     }
 

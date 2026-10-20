@@ -161,13 +161,14 @@ describe("FR-FLOW-188 AC-2 — what a worker runs and what it never writes", () 
   for (const bundle of BUNDLES) {
     it(`FR-FLOW-188 AC-2 ${bundle}: kiwi-pm with the four flags, then its own review without --close-reqs, then the test-sufficiency check`, () => {
       const worker = step(contractText(bundle), 6);
-      const pm = fences(worker).find((f) => /\/kiwi-pm SDS_PATH=/.test(f)) ?? "";
+      const pm = fences(worker).find((f) => /\/kiwi-pm --req-filter/.test(f)) ?? "";
       for (const flag of ["--no-final", "--no-pipeline-emit", "--commit-lane-work", "--defer-srs-mutation"]) {
         expect(pm.includes(flag), `${bundle}: worker kiwi-pm lacks ${flag}`).toBe(true);
       }
-      // The worker runs its wave SDS: `<sds_path>` is the lane's file of the wave's SDS files (§3),
-      // `docs/sds/{run_id}-wave-{n}.sds.md` when kiwi-sds did not split it.
-      expect(pm, `${bundle}`).toMatch(/SDS_PATH=<sds_path>/);
+      // FR-FLOW-188 AC-2 (4.1.0): the worker runs its wave's requirement set; under --sds its wave SDS:
+      // `<sds_path>` is the lane's file of the wave's SDS files (§3), `docs/sds/{run_id}-wave-{n}.sds.md` unsplit.
+      expect(pm, `${bundle}`).toMatch(/--req-filter <(그 wave 의|the wave's) requirements\[\]>/);
+      expect(worker, `${bundle}: the --sds branch of the worker call`).toMatch(/`--sds` 면 `--req-filter` 대신 `--sds <sds_path>`|Under `--sds`, give `--sds <sds_path>` in place of `--req-filter`/);
       const stages = numbered(contractText(bundle), 3);
       const files = stages.split("\n").find((line) => line.includes("`<sds_path>`")) ?? "";
       expect(files, `${bundle}: §3 does not define <sds_path>`).not.toBe("");
@@ -177,7 +178,7 @@ describe("FR-FLOW-188 AC-2 — what a worker runs and what it never writes", () 
       expect(review, `${bundle}: worker review fence`).not.toBe("");
       expect(review.includes("--close-reqs"), `${bundle}: worker review carries --close-reqs`).toBe(false);
       expect(review, `${bundle}: worker review is not over its own window`).toMatch(/--base <base_sha> --head HEAD/);
-      const offsets = orderedOffsets(worker, [/\/kiwi-pm SDS_PATH=/, /skill: "kiwi-review-fix-loop"/, /test-sufficiency\.md/]);
+      const offsets = orderedOffsets(worker, [/\/kiwi-pm --req-filter/, /skill: "kiwi-review-fix-loop"/, /test-sufficiency\.md/]);
       expect(offsets.every((o) => o >= 0), `${bundle}: ${JSON.stringify(offsets)}`).toBe(true);
       expect([...offsets].sort((a, b) => a - b)).toEqual(offsets);
     });
@@ -207,9 +208,13 @@ describe("FR-FLOW-188 AC-3 — declared dependencies and write-set-disjoint stag
       const stages = numbered(contractText(bundle), 3);
       expect(/앞 wave 전부에 의존|depends on every earlier wave/.test(stages), `${bundle}`).toBe(true);
       expect(/서로소|pairwise disjoint/.test(stages), `${bundle}: no disjointness`).toBe(true);
-      expect(/Files[^\n]{0,20}∪[^\n]{0,20}Test Plan/.test(stages), `${bundle}: write set is not Files ∪ Test Plan`).toBe(true);
+      // FR-FLOW-188 AC-3 (4.1.0): the write set is the entry's files[], plus the SDS Files ∪ Test Plan under --sds,
+      // and the stage is computed from the declaration file (FR-FLOW-195), not from --sds/--depends.
+      expect(/`files\[\]`/.test(stages), `${bundle}: write set does not name the entry's files[]`).toBe(true);
+      expect(/Files[^\n]{0,20}∪[^\n]{0,20}Test Plan/.test(stages), `${bundle}: the --sds write set is not Files ∪ Test Plan`).toBe(true);
       const call = fences(stages).find((f) => f.includes("orchestrate schedule waves")) ?? "";
-      for (const flag of ["--sds", "--depends", "--lanes", "--out {artifact_root}waves/stage-{s}/lanes.lock.json"]) {
+      expect(call.includes("--sds") || call.includes("--depends"), `${bundle}: schedule waves still takes --sds/--depends`).toBe(false);
+      for (const flag of ["--waves {artifact_root}waves/waves.json", "--run-id {run_id}", "--lanes", "--out {artifact_root}waves/stage-{s}/lanes.lock.json"]) {
         expect(call.includes(flag), `${bundle}: schedule waves call lacks ${flag}`).toBe(true);
       }
     });

@@ -14,7 +14,8 @@ const LANE_LINE = {
   engine: "kiwi-orchestrator",
   verb: "author-design",
   event: "intent",
-  wave: "wave-1"
+  wave: "wave-1",
+  inputs_digest: "sha256:in"
 };
 
 function serverFor(root: string) {

@@ -149,7 +149,7 @@ describe("FR-MCP-035 AC-3 — projections and profiles fail closed", () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const { call } = workflowMcp(root);
     // The control: the same workspace with one active row has work to hand out.
-    expect(await call("get_next_work_order", { profile: "compact" })).toMatchObject({ action: "create-sds", blocking: false });
+    expect(await call("get_next_work_order", { profile: "compact" })).toMatchObject({ action: "implement-requirements", blocking: false });
 
     await editIndex(root, { extraTargetRows: ["| v2.0.0 | release | active | A second active row |"] });
     for (const profile of ["compact", "explain"] as const) {

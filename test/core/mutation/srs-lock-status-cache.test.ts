@@ -80,7 +80,7 @@ async function waitFor<T>(promise: Promise<T>, ms: number, label: string): Promi
 }
 
 describe("SRS mutation lock and status cache", () => {
-  it("REL-NODE-005 denies active locks, recovers stale locks, and preserves ignoreLock safety diagnostics", async () => {
+  it("REL-NODE-005 AC-1 AC-5 AC-8: denies active locks, recovers stale locks, and preserves ignoreLock safety diagnostics", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     const specPath = path.join(rootPath, "docs", "spec", "10.product-architecture.srs.md");
@@ -130,18 +130,18 @@ describe("SRS mutation lock and status cache", () => {
     if (cache.ok) expect(cache.value.lock.active).toBe(false);
   });
 
-  it("REL-NODE-005 rejects symlink locks before writing", async (ctx) => {
+  it("REL-NODE-005 AC-8 / REL-NODE-009 AC-7: rejects symlink locks before writing", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     await mkdir(path.join(rootPath, "kiwi"), { recursive: true });
-    await writeFile(path.join(rootPath, "kiwi", "outside-lock.json"), "{}", "utf8");
-    try {
-      await symlink("outside-lock.json", path.join(rootPath, "kiwi", ".srs.lock"));
-    } catch {
-      // Windows without symlink privilege cannot create the symlink fixture; the source's
-      // symlink-lock rejection (SRS-E065) is verified on POSIX/CI. Skip where unsupported.
-      ctx.skip();
-      return;
+    const lockPath = path.join(rootPath, "kiwi", ".srs.lock");
+    if (process.platform === "win32") {
+      // A file symlink needs a privilege Windows rarely grants; a directory junction needs none, and lstat reports it as a symlink.
+      await mkdir(path.join(rootPath, "kiwi", "outside-lock"));
+      await symlink(path.join(rootPath, "kiwi", "outside-lock"), lockPath, "junction");
+    } else {
+      await writeFile(path.join(rootPath, "kiwi", "outside-lock.json"), "{}", "utf8");
+      await symlink("outside-lock.json", lockPath);
     }
 
     const result = await updateStatus(root, { id: "FR-ARCH-001", status: "blocked" });
@@ -152,7 +152,7 @@ describe("SRS mutation lock and status cache", () => {
     });
   });
 
-  it("REL-NODE-005 permits only one concurrent lock winner", async () => {
+  it("REL-NODE-005 AC-4 AC-8: permits only one concurrent lock winner", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     let entered = 0;
@@ -185,7 +185,7 @@ describe("SRS mutation lock and status cache", () => {
     expect(results.filter((result) => !result.ok && result.error?.code === "SRS_LOCKED").length).toBe(4);
   });
 
-  it("REL-NODE-005 keeps read-only parsing available while an SRS lock is active", async () => {
+  it("REL-NODE-005 AC-3 AC-8: keeps read-only parsing available while an SRS lock is active", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     await writeLock(rootPath);
@@ -212,7 +212,7 @@ describe("SRS mutation lock and status cache", () => {
    * is what produces that situation, so raising the lease would remove the situation rather than
    * stabilise it.
    */
-  it("REL-NODE-005 does not let an expired holder release a newer recovered lock", async () => {
+  it("REL-NODE-005 AC-8: does not let an expired holder release a newer recovered lock", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
     let finishFirst!: () => void;

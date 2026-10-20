@@ -18,7 +18,8 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 //
 // Contract under test (docs/spec/50.nodejs-implementation.srs.md FR-NODE-075):
 //   - AC-1: heading `# SpecKiwi SRS 워크플로 v1.5`, constant "1.5".
-//   - AC-2: work-mode check instruction + tdd cycle + the three tdd gates.
+//   - AC-2: work-mode check instruction + tdd cycle + the tdd gates (in the current snippet's form,
+//           FR-NODE-219, as amended in 4.1.0).
 //   - AC-3: sdd fallback for body-scope work + the boundary rule.
 //   - AC-4: idempotent upsert replaces a v1.4 block with exactly one v1.5 block.
 
@@ -32,16 +33,16 @@ describe("FR-NODE-075 agent instruction snippet v1.5 documents the tdd work-mode
     expect(snippet.startsWith(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`)).toBe(true);
   });
 
-  it("FR-NODE-075 AC-2: documents the work-mode check, the tdd cycle, and the three tdd gates", () => {
+  it("FR-NODE-075 AC-2: documents the work-mode check, the tdd cycle and the tdd gates in the current form (FR-NODE-219)", () => {
     const snippet = renderAgentInstructionSnippet();
     // (a) work-mode check before starting work.
     expect(snippet).toContain("speckiwi mode");
-    // (b) the tdd cycle: SDS design.md → failing tests → green → regression → promote.
+    // (b) the tdd cycle: acceptance lines in intent.md (design.md on request) → failing tests → green → promote.
+    expect(snippet).toContain("intent.md");
     expect(snippet).toContain("design.md");
-    expect(snippet).toContain("SDS");
     expect(snippet).toContain("failing tests");
-    // (c) the three gates.
-    expect(snippet).toMatch(/do not write tests before .*SDS/i);
+    // (c) the gates as FR-NODE-219 AC-3 states them.
+    expect(snippet).toMatch(/no test before the step's acceptance contract exists/i);
     expect(snippet).toContain("never weaken");
     expect(snippet).toContain("verification evidence");
   });

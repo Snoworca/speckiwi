@@ -10,13 +10,13 @@
 
 ## 1. Purpose
 
-The SDS (Software Design Spec) is the lightweight natural-language contract a tdd-mode step writes **before any test or implementation code**. It fixes the architecture decisions, interfaces, and testable acceptance contracts that (a) the red tests are translated from and (b) the post-hoc SRS promotion derives its Acceptance Criteria from. A test suite without an SDS is not a specification — the SDS is the reward-hacking defence and the implementation-bias defence of TDD First mode.
+The SDS (Software Design Spec) is the lightweight natural-language contract a tdd-mode step writes **before any test or implementation code** when the user asks for one. It fixes the architecture decisions, interfaces, and testable acceptance contracts that (a) the red tests are translated from and (b) the post-hoc SRS promotion derives its Acceptance Criteria from. A step without an SDS still writes its acceptance contract before any test — as EARS lines in `intent.md` (§6) — because a test suite without a written contract is not a specification: the written contract is the reward-hacking defence and the implementation-bias defence of TDD First mode.
 
 ## 2. Location and Naming
 
 - The SDS lives at `docs/spec/steps/<task>/design.md`, beside the step's `intent.md`.
 - One step, one SDS. A step whose SDS would need to be split has outgrown the step — split the task instead.
-- `intent.md` states **what/why**; `design.md` states **how**. For small tasks a single combined `intent.md` is acceptable only when the trivial-change skip-gate (§6) applies, and only with the skip record that gate reads.
+- `intent.md` states **what/why** and, when the step has no SDS, its acceptance lines; `design.md` states **how**. A step design.md is written only when the user asks for one (§6).
 
 ## 3. Required Structure
 
@@ -51,38 +51,33 @@ draft ──(approval, size-scoped)──> agreed ──(design change needed)�
 ```
 
 - **draft → agreed** is size-scoped: a small task whose Architecture Decisions section carries no substantive decision is **self-agreed** (the agent proceeds and the SDS is reviewed post-hoc); a task with substantive architecture decisions requires user approval before red tests are written.
-- **agreed** gates implementation: no test or implementation code before the SDS is agreed (or self-agreed).
+- **agreed** gates implementation of a step that has an SDS: no test or implementation code before the SDS is agreed (or self-agreed).
 - **superseded**: a design change replaces the SDS with a new one; the superseding SDS MUST state which SDS-ACs changed and how existing red tests are affected.
-- **Trivial-change skip-gate**: a change with no trade-off (typo, comment, mechanical rename, obvious one-line fix) may skip the SDS entirely, provided the skip is **recorded** in `intent.md` under a `## SDS Skip` heading. `speckiwi step validate` reads that record and refuses an unrecorded skip with `SDS-E054`, which is an error rather than an advisory — so an EARS stub on its own does not clear the gate. The skip decision is the first checklist item of the tdd cycle: skipping MUST be an explicit decision, never a default.
+- **Step SDS opt-in**: a step design.md is written only when the user asks for one (`--sds`, or in words). Without it, the step's acceptance contract is recorded in `intent.md` under an `## Acceptance` heading, as EARS lines of the form `AC-<n>: WHEN … THE SYSTEM SHALL …`, before any test is written. `speckiwi step validate` checks the record and refuses a tdd step that has neither an authored design.md nor such a line with `STEP_ACCEPTANCE_MISSING`, which is an error rather than an advisory.
 
-The `## SDS Skip` section of `intent.md` MUST carry all three of:
+A `##` section of `intent.md` whose heading contains `Acceptance` (any such section, not only the first) MUST carry at least one acceptance line that:
 
-1. a `Decision` row whose value is `skipped`. Backticks are stripped and case is ignored; any other value is refused.
-2. a `Reason` row whose value is neither empty nor a bare `-`.
-3. at least one EARS stub line carrying an `SDS-AC-n` id and naming both `WHEN` and `SHALL` — one to three `SDS-AC` statements, in the form §3 requires of the Acceptance Contracts.
+1. starts, after an optional list marker, with `AC-<n>:`;
+2. names both `WHEN` and `SHALL`;
+3. carries no template placeholder — a `<…>` token outside inline code whose content is only letters and spaces, such as the scaffold's `<condition>`. A `<task>` inside backticks and a comparison such as `n < 5 … m > 2` are not placeholders.
 
-An absent `intent.md`, an absent section, an absent or wrongly valued row, and an absent EARS stub are each refused by `SDS-E054`, and each refusal names the part that failed. Copy this record:
+An absent `intent.md`, an absent section, and a section without such a line are each refused by `STEP_ACCEPTANCE_MISSING`, and each refusal names the part that failed. A design.md switches the check off only when its Acceptance Contracts section carries an `SDS-AC-<n>:` line of the same shape; the scaffolded design.md stub does not. Copy this record:
 
 ```markdown
 # Intent: <task>
 
-<what this change does, and why it carries no trade-off>
+<what this change does, and why>
 
-## SDS Skip
+## Acceptance
 
-| Field | Value |
-| --- | --- |
-| Decision | skipped |
-| Reason | Renames one private helper; no interface and no behaviour change. |
-
-- SDS-AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.
+- AC-1: WHEN the helper is renamed THE SYSTEM SHALL keep every caller resolving.
 ```
 
 ## 7. Relation to Tests and the Post-hoc SRS
 
-- Red tests are translated from §5 Acceptance Contracts — one failing test per SDS-AC at minimum, before any implementation.
+- Red tests are translated from the acceptance contract — the §3 Acceptance Contracts of a design.md, or the `intent.md` acceptance lines (§6) — one failing test per contract line at minimum, before any implementation.
 - Tests are committed before implementation and MUST NOT be weakened to reach green.
-- At promotion time (`promote_step_requirement`), the SDS-ACs become the promoted requirement's Acceptance Criteria and the tests become its Verification Evidence. A promotion without evidence is refused in tdd mode.
+- At promotion time (`promote_step_requirement`), the contract lines become the promoted requirement's Acceptance Criteria and the tests become its Verification Evidence. A promotion without evidence is refused in tdd mode.
 
 ## 8. design.md Template
 
@@ -173,7 +168,7 @@ A lite SDS MUST NOT exceed **100 lines** (a trailing newline is not a line). Spl
 
 ### 9.6 Checks
 
-`speckiwi sds check <path> [--json]` (MCP `check_sds`) checks one file, prints its diagnostics and parsed summary, and exits non-zero when any error remains. `speckiwi validate` (MCP `validate_spec`) checks every `docs/sds/*.sds.md` in every work-mode. The full-profile checks (`SDS-W050` through `SDS-W053`, `SDS-E054`) are unchanged and never run on a lite file.
+`speckiwi sds check <path> [--json]` (MCP `check_sds`) checks one file, prints its diagnostics and parsed summary, and exits non-zero when any error remains. `speckiwi validate` (MCP `validate_spec`) checks every `docs/sds/*.sds.md` in every work-mode. The full-profile step checks (`SDS-W051` through `SDS-W053`) are unchanged and never run on a lite file.
 
 | Code | Severity | Meaning |
 |---|---|---|

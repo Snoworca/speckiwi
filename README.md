@@ -12,7 +12,7 @@
 
 SpecKiwi keeps your requirements as Markdown SRS (Software Requirements Specification) documents inside your Git repository, and gives people and coding agents the same view of them through a **CLI** and a **stdio MCP server**.
 
-**Kiwi skills** are coding-agent skills built on SpecKiwi. They carry a request from requirement to commit: write the requirement, check that it is feasible, write a short design, implement it test-first, review the code, confirm the tests cover every acceptance criterion, and commit.
+**Kiwi skills** are coding-agent skills built on SpecKiwi. They carry a request from requirement to commit: write the requirement, check that it is feasible, implement it test-first (after a short design, when you ask for one), review the code, confirm the tests cover every acceptance criterion, and commit.
 
 - Requirements live in `docs/spec/**/*.srs.md` (GitHub-Flavored Markdown). There is no YAML, no database and no requirements server.
 - The CLI and the MCP server share one parser, validator, query engine and mutation engine.
@@ -62,7 +62,7 @@ With the MCP server connected, ask for work in plain language. The Kiwi skills t
 
 > *Use kiwi-pipeline: a user can reset their password by email.*
 
-`kiwi-pipeline` runs the whole chain for that request, asking you before each step; add `--auto` to let it run to the end unattended. `kiwi-srs` allocates a Requirement ID and writes the requirement into a scope document such as `docs/spec/01.app.srs.md`; `kiwi-srs-feasibility` (when needed), `kiwi-sds`, `kiwi-pm` and `kiwi-review-fix-loop` then carry it to reviewed, verified code. §8 explains each step.
+`kiwi-pipeline` runs the whole chain for that request, asking you before each step; add `--auto` to let it run to the end unattended. `kiwi-srs` allocates a Requirement ID and writes the requirement into a scope document such as `docs/spec/01.app.srs.md`; `kiwi-srs-feasibility` (when needed), `kiwi-pm` and `kiwi-review-fix-loop` then carry that Requirement ID to reviewed, verified code. §8 explains each step.
 
 To write only the requirement and stop there, ask for `kiwi-srs` instead:
 
@@ -95,7 +95,7 @@ Find your situation, then ask your agent in plain language or call the skill by 
 
 | Your situation | Ask for | What happens |
 | --- | --- | --- |
-| A feature or change you can describe in a sentence or two | `kiwi-pipeline`: *"Use kiwi-pipeline: users can export reports as CSV."* | Runs the whole chain: requirement, design, test-first implementation, code review and test-sufficiency check. It asks before each step; add `--auto` to run it unattended. |
+| A feature or change you can describe in a sentence or two | `kiwi-pipeline`: *"Use kiwi-pipeline: users can export reports as CSV."* | Runs the whole chain: requirement, test-first implementation, code review and test-sufficiency check. It asks before each step; add `--auto` to run it unattended. |
 | Work that may split into several parts, or that you cannot size | `kiwi-orchestrator`: *"Use kiwi-orchestrator: add SSO login."* | Sizes the work and picks the path itself: a single step (`kiwi-tdd`) for small work, parallel waves for large work. Resumable. |
 | An epic, a roadmap, or long research | `kiwi-wave-master` | Splits the work into ordered waves with a target each, and runs the waves whose dependencies are done in parallel. Resumable. |
 | Record a requirement only | `kiwi-srs` | Writes the requirement and its acceptance criteria into the SRS, then stops. |
@@ -115,6 +115,7 @@ Every requirement-driven path ends with a code review, then a check that each ac
 | Option | Effect |
 | --- | --- |
 | `--serial` | Runs the parallel steps of `kiwi-orchestrator` and `kiwi-wave-master` one at a time. Saying "one at a time" works too. |
+| `--sds` | Writes a lite SDS (a short design for the coding agent) before implementing, in `kiwi-pipeline`, `kiwi-orchestrator`, `kiwi-wave-master`, `kiwi-tdd` and `kiwi-step`. Off by default; saying "use SDS" works too. On existing code an SDS can help a weaker implementer model, but nothing turns it on for you. |
 | `--auto` | Decides the user gates for you. Critical gates, such as a failure or a question only you can answer, still stop. |
 | `--max` | Verifies more strictly: more independent evaluators and a stricter pass gate. |
 | `--mini` / `--loops N` | Caps each verify-and-fix loop at 3 rounds, or at N rounds. |
@@ -125,7 +126,7 @@ Every requirement-driven path ends with a code review, then a check that each ac
 - **Scope**: a functional area with an ID prefix. `App:APP` produces IDs such as `FR-APP-001`.
 - **Status**: implementation and verification progress (`planned`, `in_progress`, `blocked`, `implemented`, `verified`, `discarded`).
 - **Stability**: change-control maturity (`draft` → `evolving` → `stable` → `frozen`, plus `deprecated`). Status and Stability are independent of each other.
-- **SDS** (Software Design Specification): a short design document an agent writes right before coding. The lite SDS at `docs/sds/<sds-id>.sds.md` is written for agents, not people, and is deleted once the requirements it covers are verified. Orchestrated runs commit it before that, so git history keeps it; in a `kiwi-pipeline` run it survives only if you committed it yourself. In the `tdd` work mode, a step SDS lives at `docs/spec/steps/<name>/design.md` instead.
+- **SDS** (Software Design Specification): a short design document an agent writes right before coding, only when you ask for one (see [the SDS on request](#en-sds-opt-in)). The lite SDS at `docs/sds/<sds-id>.sds.md` is written for agents, not people, and is deleted once the requirements it covers are verified. Orchestrated runs commit it before that, so git history keeps it; in a `kiwi-pipeline` run it survives only if you committed it yourself. In the `tdd` work mode, `--sds` writes a step SDS at `docs/spec/steps/<name>/design.md` instead.
 
 <a id="en-requirements"></a>
 
@@ -272,6 +273,7 @@ speckiwi mcp
 Run it by hand only for debugging: it waits on stdio and can look as if it hangs.
 
 - **The server does not accept `--root`.** It resolves the project root by searching upward from its own working directory, so set the client's working directory (cwd) to the project root. Started with `--root`, the server exits with an error.
+- **A server started outside a project stays unbound.** When the search finds no `docs/spec/00.index.md` (it stops at your home directory), the server creates no file and refuses every tool call and resource read with `MCP_WORKSPACE_UNBOUND`, naming the directory it checked. Start the agent session in the project, or set the server's working directory in the client's MCP configuration, then restart the session: an unbound server stays unbound until it is restarted. If the project has no SRS yet, run `speckiwi init` in the project directory first.
 - **Git worktrees.** The root is bound to the server process, so a running server does not follow a worktree switch in the middle of a session; restart the agent inside the worktree instead. A session rooted in a worktree must **not allocate new Requirement IDs** and cannot edit the host repository's `docs/spec/`. Do both from the host root.
 
 ### MCP tools
@@ -291,10 +293,10 @@ The Kiwi skills use MCP tools for every read and every safe SRS mutation. The ma
 | Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info` |
 | SDS & test sufficiency | `check_sds`, `check_test_sufficiency` |
 | Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
-| Orchestrator run surface | 25 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
+| Orchestrator run surface | 26 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**88 tools ship in total.** 4.0.0 removed the twelve plan tools along with `kiwi-planner`, and two orchestrate tools along with the handoff validator and the coupling check; it added `check_sds` and `check_test_sufficiency`. The table names every tool a skill calls directly; the last two rows are families whose members are documented in the skills that drive them. After an upgrade, trust the count `speckiwi doctor` reports, because that is what the server actually registered.
+**89 tools ship in total.** 4.0.0 removed the twelve plan tools along with `kiwi-planner`, and two orchestrate tools along with the handoff validator and the coupling check; it added `check_sds` and `check_test_sufficiency`. 4.1.0 added `orchestrate_wave_status`. The table names every tool a skill calls directly; the last two rows are families whose members are documented in the skills that drive them. After an upgrade, trust the count `speckiwi doctor` reports, because that is what the server actually registered.
 
 #### Per-call `workspaceRoot`
 
@@ -304,7 +306,7 @@ The MCP server resolves its root from the directory it was started in, and that 
 | --- | --- |
 | `workflow_*` (all 15) | accepted |
 | `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS mutation replays only at the host root) and `orchestrate_preflight` (it already takes `--mcp-root` and `--git-root`) |
-| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | accepted; each reads the named checkout and writes nothing. Under a per-call root the test-sufficiency check refuses an SDS path under docs/spec (a step design.md), so check a step inside its worktree with `speckiwi coverage --tests` |
+| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | accepted; each reads the named checkout and writes nothing. Under a per-call root the test-sufficiency check refuses a step SDS path under docs/spec (a step design.md, written under `--sds`), so check a step inside its worktree with `speckiwi coverage --tests` |
 | Every tool that writes under `docs/spec` or allocates a Requirement ID — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` and the rest | refused |
 | `mcp_workspace_info` and `get_next_work_order` | refused: the first reports which root answered, so it cannot take that root as an argument; the second assembles a work order rather than querying a checkout's SRS |
 
@@ -312,7 +314,7 @@ Refusal is the default. A tool accepts the argument only by declaring the worksp
 
 An accepted root must be an absolute path to an existing directory, a git top level rather than a subdirectory of one, and a worktree that shares the startup root's git common directory. Each failure is refused with its own `workspace-root-*` reason before the tool runs, so a path that does not exist is refused rather than created. An SRS query is also refused when the named checkout holds no `docs/spec/00.index.md`, and the refusal names the checkout it examined. A path argument that lands under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path at all; that declaration is what lets an SRS query filter on a `docs/spec` reference.
 
-**Confirm workspace identity from the envelope before any target-scoped read or mutation.** Every result carries `mcpWorkspace`, with `workspaceRoot`, `rootSource`, `indexPath` and `packageVersion`. `rootSource` is `server-cwd-discovery`, `auto-init` or `per-call-workspace-root`. It is `per-call-workspace-root` exactly when the call supplied a `workspaceRoot` that passed every gate, so every answer names the root it came from.
+**Confirm workspace identity from the envelope before any target-scoped read or mutation.** Every result carries `mcpWorkspace`, with `workspaceRoot`, `rootSource`, `indexPath` and `packageVersion`. `rootSource` is `server-cwd-discovery`, `per-call-workspace-root` or `unbound`. It is `per-call-workspace-root` exactly when the call supplied a `workspaceRoot` that passed every gate, so every answer names the root it came from. It is `unbound` when the server found no `docs/spec/00.index.md` at startup: such a server refuses every call with `MCP_WORKSPACE_UNBOUND`, a call with a `workspaceRoot` included, before any gate runs (see [Connect the MCP server](#en-mcp)).
 
 <a id="en-skill-types"></a>
 
@@ -333,10 +335,10 @@ An accepted root must be an absolute path to an existing directory, a git top le
 
 | Skill | What it does |
 | --- | --- |
-| `kiwi-sds` | Writes the lite SDS (`docs/sds/<sds-id>.sds.md`) for the requirements in scope: the files and symbols to touch, one contract per interpretation decision, and the test that proves each contract. `speckiwi sds check` gates it, and it is agreed without a user approval gate. `--close` later moves its decisions into the SRS and deletes the file. |
-| `kiwi-pm` | Runs one agreed SDS through `kiwi-coder`, then hands off to `kiwi-review-fix-loop`. When it runs on its own, it also closes the SDS around that review. |
-| `kiwi-coder` | Implements one agreed SDS: tests first (red), the smallest implementation (green), review, regression, and MCP evidence. `kiwi-pm` calls it; you rarely call it directly. |
-| `kiwi-tdd` | Drives one step through the `tdd` work mode's TDD First cycle: writes the step SDS (`design.md`), turns its EARS acceptance contracts into failing tests, implements to green, runs regression, then synthesizes and promotes the step requirement with evidence. |
+| `kiwi-sds` | Runs only when you invoke it (`/kiwi-sds`) or pass `--sds`; it is not a stage of any default chain. Writes the lite SDS (`docs/sds/<sds-id>.sds.md`) for the requirements in scope: the files and symbols to touch, one contract per interpretation decision, and the test that proves each contract. `speckiwi sds check` gates it, and it is agreed without a user approval gate. `--close` later moves its decisions into the SRS and deletes the file. |
+| `kiwi-pm` | Runs a set of requirements, given as `--req-filter <REQ-ID,...>`, through one `kiwi-coder` run, then hands off to `kiwi-review-fix-loop`. Without `--req-filter` it proposes the Active Target's open work and asks you to confirm it. With `--sds <path>` (alias `SDS_PATH=<path>`) it runs that agreed SDS instead, and when it runs on its own it also closes the SDS around the review. |
+| `kiwi-coder` | Implements that requirement set against its acceptance criteria (or one agreed SDS under `--sds`): tests first (red), the smallest implementation (green), review, regression, and MCP evidence. `kiwi-pm` calls it; you rarely call it directly. |
+| `kiwi-tdd` | Drives one step through the `tdd` work mode's TDD First cycle: records EARS acceptance lines in the step's `intent.md` under `## Acceptance` and checks them with `speckiwi step validate`, turns them into failing tests, implements to green, runs regression, then synthesizes and promotes the step requirement with evidence. With `--sds` it writes the step SDS (`design.md`) as the contract instead. |
 | `kiwi-hot-fix` | Fixes an urgent bug with TDD and regression checks, then syncs the SRS afterward. |
 
 **Reviewing and shipping**
@@ -351,9 +353,9 @@ An accepted root must be an absolute path to an existing directory, a git top le
 
 | Skill | What it does |
 | --- | --- |
-| `kiwi-pipeline` | Reads `kiwi/pipeline.jsonl` and runs the next steps. By default it runs the full cycle from `kiwi-srs` to `kiwi-review-fix-loop`; `--none-cycle` recommends a single next step instead. The cycle runs only when the call carries a work input, so a status question stays a status question. |
-| `kiwi-orchestrator` | Takes one work item from a single entry point, probes it, routes it to the rung it needs (step or orchestrated), and runs that rung to a recorded close. It owns the run journal (`kiwi/waves.jsonl`), the `--auto` gate table and resume. On the orchestrated rung each wave gets its own SDS and worker, and the waves run in parallel; `--serial` runs every parallel branch (workers, SDS authors, investigators, verifiers) one at a time (see [parallel waves](#en-waves)). Options: `--auto`, `--max`, `--mini` / `--loops N`, `--work`, `--base-branch`, `--lanes N`, `--serial`. |
-| `kiwi-wave-master` | Splits an epic, a roadmap or long research into ordered waves, registers a target per wave, and runs the waves under the same parallel contract as `kiwi-orchestrator`; `--serial` runs them one at a time instead of in parallel. Resumable through `kiwi/waves.jsonl`. Options: `--auto`, `--max`, `--mini` / `--loops N`, `--serial`, and `--drive`, which also opens the integration-test and cost gates that `--auto` alone stops at. |
+| `kiwi-pipeline` | Reads `kiwi/pipeline.jsonl` and runs the next steps. By default it runs the full cycle from `kiwi-srs` to `kiwi-review-fix-loop` over Requirement IDs, and `--sds` adds `kiwi-sds` before `kiwi-pm`; `--none-cycle` recommends a single next step instead. The cycle runs only when the call carries a work input, so a status question stays a status question. |
+| `kiwi-orchestrator` | Takes one work item from a single entry point, probes it, routes it to the rung it needs (step or orchestrated), and runs that rung to a recorded close. It owns the run journal (`kiwi/waves.jsonl`), the `--auto` gate table and resume. On the orchestrated rung each wave gets its own entry in the wave declaration file and its own worker (and its own SDS only under `--sds`), and the waves run in parallel; `--serial` runs every parallel branch (workers, SDS authors, investigators, verifiers) one at a time (see [parallel waves](#en-waves)). Options: `--auto`, `--max`, `--mini` / `--loops N`, `--work`, `--base-branch`, `--lanes N`, `--serial`, `--sds`. |
+| `kiwi-wave-master` | Splits an epic, a roadmap or long research into ordered waves, registers a target per wave, and runs the waves under the same parallel contract as `kiwi-orchestrator`; `--serial` runs them one at a time instead of in parallel. Resumable through `kiwi/waves.jsonl`. Options: `--auto`, `--max`, `--mini` / `--loops N`, `--serial`, `--sds`, and `--drive`, which also opens the integration-test and cost gates that `--auto` alone stops at. |
 
 The same skill set ships in three source trees, one per agent family: **`skills/claude`** (the Claude skill environment), **`skills/codex`** (Codex invocation and clarification-gate wording), and **`skills/etc`** (the Agent Skills format for OpenCode, Hermes and local LLMs, defaulting to a single evaluator/sub-agent profile).
 
@@ -406,15 +408,14 @@ speckiwi skills mirror --write         # regenerate it
 
 ## 8. How work flows
 
-A new feature or change request goes through five skills: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-sds` → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`. `kiwi-pipeline` runs this chain for you.
+A new feature or change request goes through four skills: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`, working from the Requirement IDs that `kiwi-srs` wrote. `kiwi-pipeline` runs this chain for you.
 
 1. **`kiwi-srs`** writes or updates the requirement and its acceptance criteria (AC) in the SRS.
-2. **`kiwi-srs-feasibility`** checks feasibility and stability. It runs only when a requirement is still `draft` or its implementability is unverified; otherwise the chain goes straight to `kiwi-sds`. A blocker or an ambiguity can send the work to `kiwi-srs-research`; since that leaves two possible next steps, the pipeline asks you which way to go.
-3. **`kiwi-sds`** writes the lite SDS: which files to touch, which interpretation decisions to make, and which test proves each. `speckiwi sds check` validates it, with no user approval gate.
-4. **`kiwi-pm`** runs the SDS through `kiwi-coder`, which works test-first: a failing test, the smallest change that passes it, then refactoring.
-5. **`kiwi-review-fix-loop --close-reqs`** reviews the code, fixes what the review finds, and promotes the requirements to `verified` once regression passes with no open findings.
+2. **`kiwi-srs-feasibility`** checks feasibility and stability. It runs only when a requirement is still `draft` or its implementability is unverified; otherwise the chain goes straight to `kiwi-pm`. A blocker or an ambiguity can send the work to `kiwi-srs-research`; since that leaves two possible next steps, the pipeline asks you which way to go.
+3. **`kiwi-pm --req-filter <REQ-ID,...>`** runs those requirements through one `kiwi-coder` run, which works test-first against their acceptance criteria: a failing test citing `<REQ-ID> AC-<n>`, the smallest change that passes it, then refactoring.
+4. **`kiwi-review-fix-loop --close-reqs`** reviews the code, fixes what the review finds, and promotes the requirements to `verified` once regression passes with no open findings.
 
-**Every workflow ends the same way: a code review, then a test-sufficiency check.** The check runs `speckiwi coverage --tests` (MCP `check_test_sufficiency`): every acceptance criterion in scope needs a test whose line cites `<REQ-ID> AC-<n>`. One subagent adds the missing tests once; a gap that remains stops the requirement from being written `verified` (`test-sufficiency-gap`). Around that check, `kiwi-sds --close` runs twice: before the promoting review it moves the SDS's decisions into the SRS, and after the check it deletes the SDS file.
+**Every workflow ends the same way: a code review, then a test-sufficiency check.** The check runs `speckiwi coverage --tests` (MCP `check_test_sufficiency`): every acceptance criterion in scope needs a test whose line cites `<REQ-ID> AC-<n>`. One subagent adds the missing tests once; a gap that remains stops the requirement from being written `verified` (`test-sufficiency-gap`). Under `--sds`, `kiwi-sds --close` runs twice around that check: before the promoting review it moves the SDS's decisions into the SRS, and after the check it deletes the SDS file.
 
 ```mermaid
 flowchart TD
@@ -425,7 +426,7 @@ flowchart TD
     B -->|Urgent bug| Q["kiwi-hot-fix: Urgent TDD fix"]
 
     C -->|draft or unverified| F["kiwi-srs-feasibility: Evaluate feasibility/stability"]
-    C -->|otherwise| I
+    C -->|otherwise| J
     D --> F
     E --> F
     Q --> M
@@ -433,15 +434,18 @@ flowchart TD
     F --> G{"Blocker or ambiguity?"}
     G -->|Yes| H["kiwi-srs-research: Research risk/blocker"]
     H --> F
-    G -->|No| I["kiwi-sds: Write the lite SDS (docs/sds)"]
+    G -->|No| J["kiwi-pm --req-filter: Run the Requirement IDs"]
+    G -.->|"--sds"| I["kiwi-sds: Write the lite SDS (docs/sds)"]
+    I -.-> J
 
-    I --> J["kiwi-pm: Run the agreed SDS"]
-    J --> K["kiwi-coder: TDD implementation of the SDS"]
-    K --> X["kiwi-sds --close: Move the SDS decisions into the SRS"]
-    X --> R["kiwi-review-fix-loop --close-reqs: Review/fix/re-review, promote"]
+    J --> K["kiwi-coder: TDD implementation against the ACs"]
+    K --> R["kiwi-review-fix-loop --close-reqs: Review/fix/re-review, promote"]
+    K -.->|"--sds"| X["kiwi-sds --close: Move the SDS decisions into the SRS"]
+    X -.-> R
     R --> V["Test sufficiency: speckiwi coverage --tests"]
-    V --> Y["kiwi-sds --close: Delete the SDS"]
-    Y --> M["SpecKiwi MCP: Record evidence/status/completed-work"]
+    V --> M["SpecKiwi MCP: Record evidence/status/completed-work"]
+    V -.->|"--sds"| Y["kiwi-sds --close: Delete the SDS"]
+    Y -.-> M
     M --> S{"PR needed?"}
     S -->|No| N["kiwi-commit-auto-push: Commit + push"]
     S -->|Yes| T["kiwi-commit-auto-pr: Commit + push + PR"]
@@ -450,16 +454,19 @@ flowchart TD
 
     P["kiwi-pipeline: Run the next step (full cycle by default)"] -.-> B
     P -.-> F
-    P -.-> I
     P -.-> J
     P -.-> N
 ```
 
-Inside `kiwi-coder`, the SDS runs as a TDD loop:
+<a id="en-sds-opt-in"></a>
+
+**The SDS runs only on request.** `kiwi-sds` runs only when you invoke `/kiwi-sds`, pass `--sds` to `kiwi-pipeline`, `kiwi-orchestrator`, `kiwi-wave-master`, `kiwi-tdd` or `kiwi-step`, give an `--sds-id <id>` yourself, hand `kiwi-pm` an SDS with `--sds <path>` (alias `SDS_PATH=<path>`), or ask in words such as "use SDS". It then writes the lite SDS before `kiwi-pm`, `kiwi-coder` implements from it, and the SDS is closed out as above. An SDS that merely sits in `docs/sds/` is not a request: `kiwi-pm` reports its path and leaves it alone. On existing code an SDS can help a weaker implementer model (research 35), which is why it stays available.
+
+Inside `kiwi-coder`, the work runs as a TDD loop:
 
 ```mermaid
 flowchart TD
-    A["kiwi-sds output: an agreed lite SDS"] --> B["kiwi-coder reads its Interfaces, contracts and Test Plan"]
+    A["kiwi-pm input: Requirement IDs (or an agreed lite SDS under --sds)"] --> B["kiwi-coder reads their ACs (and, under --sds, the SDS contracts and Test Plan)"]
     B --> C["Read related REQ/AC: speckiwi MCP"]
     C --> D["Write failing test"]
     D --> E["Confirm red"]
@@ -473,7 +480,7 @@ flowchart TD
     K --> L["Update kiwi/ state and worklog"]
 ```
 
-**Step-scoped work** takes a different path. In the `tdd` work mode, `kiwi-tdd` runs the TDD First cycle (step SDS → red → green → regression → `promote_step_requirement`) instead of going through `kiwi-sds` and `kiwi-pm`. See *Work modes and steps* in §9.
+**Step-scoped work** takes a different path. In the `tdd` work mode, `kiwi-tdd` runs the TDD First cycle (acceptance lines in `intent.md` → red → green → regression → `promote_step_requirement`) instead of going through `kiwi-pm`. See *Work modes and steps* in §9.
 
 To choose between `kiwi-pipeline`, `kiwi-orchestrator` and `kiwi-wave-master`, see [What to ask your agent](#en-entry).
 
@@ -481,12 +488,13 @@ To choose between `kiwi-pipeline`, `kiwi-orchestrator` and `kiwi-wave-master`, s
 
 ### Parallel waves and `--serial`
 
-`kiwi-orchestrator` (on its orchestrated rung) and `kiwi-wave-master` split the work into **waves** and group the waves into **stages**:
+`kiwi-orchestrator` (on its orchestrated rung) and `kiwi-wave-master` split the work into **waves**, write them to a wave declaration file (`waves/waves.json` under the run's artifact folder), and group the waves into **stages**:
 
-- Each wave gets its own SRS requirements, its own SDS and **one worker in its own git worktree**. The worker runs `kiwi-pm` for that SDS and reviews its own commits.
-- The waves of a stage, whose dependencies are done and whose SDS write sets do not overlap, **run in parallel**.
+- Each declaration entry names its `wave` (`wave-1`, `wave-2`, …), the waves it `depends_on`, the `files` it expects to write and its `requirements`; under `--sds` it also lists the wave's `sds` files. Each wave gets its own SRS requirements and **one worker in its own git worktree**. The worker runs `kiwi-pm --req-filter` over the wave's requirements and reviews its own commits.
+- `speckiwi orchestrate wave status --waves <file>` reports the ready waves: not yet complete, with every dependency complete. `speckiwi orchestrate schedule waves --waves <file>` plans one lane per ready wave, and the waves of a stage whose `files` do not overlap **run in parallel**. A wave that declares no `files` runs alone in its stage.
 - Only the host writes the SRS, one wave at a time. After the workers finish, the host merges, verifies and promotes each wave in turn, then moves on to the next stage.
 - `--serial`, or simply asking for it in words such as "one at a time", turns every parallel step into a serial one: workers, SDS authors, investigators and verifiers all run one after another, on the same code path.
+- An interrupted run picks up again from `speckiwi orchestrate resume`, which reads the git state itself and, without `--run-id`, chooses the latest run that is neither complete nor aborted.
 
 **Every boundary that records a pass owes a review.** Both orchestrating skills must run `kiwi-review-fix-loop` over the commit window that each boundary judges, exactly once and with no rung exempt, and record the result on the journal line that closes the run. `speckiwi orchestrate validate` refuses a close that reports completion without that review, so the guarantee can be checked rather than merely claimed.
 
@@ -582,16 +590,17 @@ The work mode is stored in `docs/spec/steps/state.md`; a new project starts in `
 - **`wait`**: the default. No Active Task; the SRS-first rules apply.
 - **`sdd`**: spec-driven body work. Write or adjust body-scope requirements first, then implement.
 - **`vibe`**: code-first. Write code against an Active Task, then synthesize the SRS afterward; `vibe-gate` blocks commits that were never synthesized.
-- **`tdd`**: the step-scoped **TDD First** cycle through `kiwi-tdd`. Write a step SDS (`design.md`) with EARS acceptance contracts, turn them into failing tests, implement to green, run regression, then synthesize and promote the step requirement.
+- **`tdd`**: the step-scoped **TDD First** cycle through `kiwi-tdd`. Record EARS acceptance lines in the step's `intent.md` under `## Acceptance` and check them with `speckiwi step validate`, turn them into failing tests, implement to green, run regression, then synthesize and promote the step requirement. A step without acceptance lines fails validation with `STEP_ACCEPTANCE_MISSING`. A step SDS (`design.md`) is written only under `--sds`.
 
 ```sh
 speckiwi mode                                    # show the current work mode (sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # switch mode (sdd, vibe, wait, or tdd)
 speckiwi step claim <name> --touches-scope APP   # claim a step before writing it
-speckiwi step scaffold <name>                    # create design.md + intent.md stubs
+speckiwi step scaffold <name>                    # create the intent.md stub with its ## Acceptance section
+speckiwi step scaffold <name> --sds              # also create the step SDS stub (design.md)
 speckiwi step validate <name>                    # validate a step-local draft under docs/spec/steps/<name>/
 speckiwi step sds-status <name> agreed           # advance the step SDS (draft -> agreed -> superseded)
-speckiwi step synthesize <name>                  # synthesize the step SRS from design.md
+speckiwi step synthesize <name>                  # synthesize the step SRS from intent.md (and design.md under --sds)
 speckiwi step promote <id> --from-step <name> --to-scope APP   # promote into a body scope (evidence required in tdd)
 speckiwi step update-state <name> --status merged              # move the step through the completion gate
 speckiwi vibe-gate check                         # CI gate that blocks unsynthesized vibe/tdd commits
@@ -682,7 +691,11 @@ speckiwi orchestrate validate --run-id <id> --json          # refuse a journal t
 speckiwi orchestrate validate --run-id <id> --strict        # also fail an unstamped or downgraded line
 speckiwi orchestrate validate --run-id <id> \
   --engine kiwi-wave-master                                 # read the other producer's lines
+speckiwi orchestrate wave status --run-id <id> --json       # each wave's latest status
+speckiwi orchestrate wave status --run-id <id> \
+  --waves <file> --json                                     # also the declared waves ready to plan
 speckiwi orchestrate resume --run-id <id> --json            # what a resume would pick up
+speckiwi orchestrate resume --json                          # the same for the latest unfinished run
 ```
 
 `--engine` selects which producer's lines are read: the two engines share one file, and a reader sees only its own lines. An unrecognized value is refused rather than defaulted, because a silent fallback would validate a journal it never opened and report it clean.
@@ -754,6 +767,11 @@ Reach for `--global` right after `npm i -g speckiwi@latest`: that is when the bu
 - **The planning step is gone.** 4.0.0 removed `kiwi-planner`, its plan sidecar and the twelve plan tools that served it; `kiwi-sds` now sits where the planner was, and the lite SDS it writes is deleted once its requirements are verified.
 - `speckiwi init` and `speckiwi upgrade` remove a project copy of `kiwi-planner` that they installed and nobody edited, but `init -g` and `upgrade -g` never remove a globally installed `kiwi-planner`, so delete that global directory by hand (such as `~/.claude/skills/kiwi-planner` or `${CODEX_HOME:-~/.codex}/skills/kiwi-planner`).
 - Orchestrated runs split the work into waves, one SDS and one worker per wave, and run the waves of a stage in parallel (see [parallel waves](#en-waves)); `--serial` runs them one at a time instead.
+
+### Upgrading from 4.0 to 4.1
+
+- **The SDS is now on request.** The default chain no longer calls `kiwi-sds`, and an SDS left in `docs/sds/` by a 4.0 run is not used. To implement from one, pass it to `kiwi-pm` with `--sds <path>`.
+- A `tdd` step without an authored `design.md` now needs acceptance lines in `intent.md` under `## Acceptance`; the `design.md` stub that 4.0 scaffolded into every step does not count (`--sds` writes a real one).
 
 <a id="en-remove"></a>
 
@@ -867,10 +885,17 @@ skills/etc/
 
 The behavior this document describes maps to these SpecKiwi requirements. The Target Map in `docs/spec/00.index.md` has the full list.
 
+**Workflow (4.1.0)**
+
+- `FR-FLOW-192` / `FR-FLOW-193` / `FR-FLOW-194`: the SDS only on request, the chain over Requirement IDs, and `kiwi-pm --req-filter`.
+- `FR-FLOW-195` / `FR-NODE-216` / `FR-NODE-217` / `IR-CLI-104`: the wave declaration file, `orchestrate schedule waves --waves`, `orchestrate resume` reading its own git state, and `orchestrate wave status`.
+- `FR-FLOW-196` / `FR-PARSE-042`: `kiwi-tdd` acceptance lines in `intent.md`, and `STEP_ACCEPTANCE_MISSING`.
+- `FR-FLOW-197`: this README describes 4.1.0.
+
 **Workflow (4.0.0)**
 
 - `FR-FLOW-182` / `FR-FLOW-183`: `kiwi-sds` writes one lite SDS and checks it deterministically; the SDS is disposable, and close-out moves its lasting content into the SRS before deleting the file.
-- `FR-FLOW-184` / `FR-FLOW-185`: the chain `kiwi-srs` → `kiwi-srs-feasibility` → `kiwi-sds` → `kiwi-pm` → `kiwi-review-fix-loop`, `kiwi-planner` removed from it, and `kiwi-pm` / `kiwi-coder` running one agreed SDS as a unit.
+- `FR-FLOW-184` / `FR-FLOW-185`: the 4.0.0 chain, which ran `kiwi-sds` before `kiwi-pm`, `kiwi-planner` removed from it, and `kiwi-pm` / `kiwi-coder` running one agreed SDS as a unit (superseded in 4.1.0 by `FR-FLOW-193` / `FR-FLOW-194`).
 - `FR-FLOW-186`: every workflow ends with a code review and a test-sufficiency check.
 - `FR-FLOW-187` / `FR-FLOW-188`: one SDS per wave on the orchestrated rung, parallel waves by default, and `--serial`.
 - `FR-FLOW-189`: this README and the packaged documents describe 4.0.0.
@@ -883,7 +908,7 @@ The behavior this document describes maps to these SpecKiwi requirements. The Ta
 - `FR-FLOW-012`: the Kiwi skills require the SpecKiwi MCP for normal operation.
 - `FR-FLOW-124` … `FR-FLOW-130`: the `kiwi-pipeline` default cycle and its single `--none-cycle` opt-out (2.9.0).
 - `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: the terminal review on every rung, and the `terminal_review` journal record without which the run-close validator refuses completion (2.10.0).
-- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: the `tdd` work mode, the step SDS (`design.md`), the `kiwi-tdd` skill, and `get_work_mode` / `set_work_mode`.
+- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: the `tdd` work mode, the step SDS (`design.md`, only under `--sds` since 4.1.0), the `kiwi-tdd` skill, and `get_work_mode` / `set_work_mode`.
 - Targets `2.5.2-phase1-target-lifecycle`, `2.6.0-phase2-parallel-lanes` and the `kiwi-orchestrator` requirement set: the target status lifecycle, the worktree contract and the orchestrator run surface.
 - `FR-NODE-207`: the orchestrator run lock is held by lease expiry, not by the lifetime of the process that wrote it. `REL-NODE-008` is its neighbor: a concurrency test that waits for the signal it needs rather than for a clock.
 
@@ -921,7 +946,7 @@ The behavior this document describes maps to these SpecKiwi requirements. The Ta
 
 SpecKiwi는 요구사항을 Git 저장소 안의 Markdown SRS(Software Requirements Specification) 문서로 관리하는 도구입니다. **CLI**와 **stdio MCP 서버**를 함께 제공하므로, 사람과 코딩 에이전트가 같은 요구사항을 같은 방식으로 읽고 고칠 수 있습니다.
 
-**Kiwi 스킬**은 SpecKiwi 위에서 동작하는 코딩 에이전트용 스킬입니다. 요청 하나를 요구사항에서 커밋까지 이어서 처리합니다. 요구사항을 쓰고, 구현할 수 있는지 확인하고, 짧은 설계를 쓰고, 테스트를 먼저 쓰는 방식으로 구현하고, 코드를 리뷰하고, 모든 인수 조건을 테스트가 덮는지 확인한 뒤 커밋합니다.
+**Kiwi 스킬**은 SpecKiwi 위에서 동작하는 코딩 에이전트용 스킬입니다. 요청 하나를 요구사항에서 커밋까지 이어서 처리합니다. 요구사항을 쓰고, 구현할 수 있는지 확인하고, 테스트를 먼저 쓰는 방식으로 구현하고(요청하면 그 전에 짧은 설계를 쓰고), 코드를 리뷰하고, 모든 인수 조건을 테스트가 덮는지 확인한 뒤 커밋합니다.
 
 - 요구사항은 `docs/spec/**/*.srs.md`(GitHub-Flavored Markdown)에 저장됩니다. YAML도, 데이터베이스도, 별도의 요구사항 서버도 없습니다.
 - CLI와 MCP 서버는 같은 파서, 검증기, 조회 엔진, 변경 엔진을 공유합니다.
@@ -973,7 +998,7 @@ MCP 서버가 연결되면 평소 말하듯이 작업을 요청합니다. Kiwi �
 
 > *kiwi-pipeline으로 진행해줘: 사용자가 이메일로 비밀번호를 재설정할 수 있다.*
 
-`kiwi-pipeline`은 이 요청에 대해 전체 사슬을 실행하며, 단계마다 계속할지 묻습니다. `--auto`를 주면 묻지 않고 끝까지 진행합니다. `kiwi-srs`가 Requirement ID를 발급해 `docs/spec/01.app.srs.md` 같은 scope 문서에 요구사항을 기록하고, 이어서 `kiwi-srs-feasibility`(필요할 때), `kiwi-sds`, `kiwi-pm`, `kiwi-review-fix-loop`가 리뷰와 검증을 마친 코드까지 이어 갑니다. 단계별 설명은 §8에 있습니다.
+`kiwi-pipeline`은 이 요청에 대해 전체 사슬을 실행하며, 단계마다 계속할지 묻습니다. `--auto`를 주면 묻지 않고 끝까지 진행합니다. `kiwi-srs`가 Requirement ID를 발급해 `docs/spec/01.app.srs.md` 같은 scope 문서에 요구사항을 기록하고, 이어서 `kiwi-srs-feasibility`(필요할 때), `kiwi-pm`, `kiwi-review-fix-loop`가 그 Requirement ID를 리뷰와 검증을 마친 코드까지 이어 갑니다. 단계별 설명은 §8에 있습니다.
 
 요구사항만 기록하고 멈추려면 `kiwi-srs`를 지정합니다.
 
@@ -1006,7 +1031,7 @@ speckiwi doctor
 
 | 상황 | 요청할 스킬 | 일어나는 일 |
 | --- | --- | --- |
-| 한두 문장으로 설명되는 기능이나 변경 | `kiwi-pipeline`: *"kiwi-pipeline으로 진행해줘: 보고서를 CSV로 내보낼 수 있다."* | 요구사항, 설계, 테스트 우선 구현, 코드 리뷰, 테스트 충분성 확인까지 이어서 실행합니다. 단계마다 계속할지 묻고, `--auto`를 주면 묻지 않고 끝까지 진행합니다. |
+| 한두 문장으로 설명되는 기능이나 변경 | `kiwi-pipeline`: *"kiwi-pipeline으로 진행해줘: 보고서를 CSV로 내보낼 수 있다."* | 요구사항, 테스트 우선 구현, 코드 리뷰, 테스트 충분성 확인까지 이어서 실행합니다. 단계마다 계속할지 묻고, `--auto`를 주면 묻지 않고 끝까지 진행합니다. |
 | 여러 갈래로 나뉠 수 있거나 규모를 가늠하기 어려운 작업 | `kiwi-orchestrator`: *"kiwi-orchestrator로 진행해줘: SSO 로그인 추가."* | 작업 규모를 스스로 판단해 경로를 고릅니다. 작은 작업은 step 하나(`kiwi-tdd`)로, 큰 작업은 병렬 wave로 처리합니다. 재개할 수 있습니다. |
 | 에픽, 로드맵, 긴 연구 | `kiwi-wave-master` | 작업을 순서 있는 wave로 나누고 wave마다 target을 둔 뒤, 의존이 끝난 wave끼리 병렬로 실행합니다. 재개할 수 있습니다. |
 | 요구사항만 기록 | `kiwi-srs` | 요구사항과 인수 조건을 SRS에 쓰고 멈춥니다. |
@@ -1026,6 +1051,7 @@ speckiwi doctor
 | 옵션 | 효과 |
 | --- | --- |
 | `--serial` | `kiwi-orchestrator`와 `kiwi-wave-master`에서 병렬로 도는 단계를 하나씩 실행합니다. "하나씩 해줘"라고 말해도 됩니다. |
+| `--sds` | `kiwi-pipeline`, `kiwi-orchestrator`, `kiwi-wave-master`, `kiwi-tdd`, `kiwi-step`에서 구현 전에 lite SDS(코딩 에이전트용 짧은 설계)를 씁니다. 기본은 꺼져 있고, "SDS로 해줘"라고 말해도 됩니다. 기존 코드에서는 SDS가 약한 구현 모델에 도움이 될 수 있지만, 저절로 켜지지는 않습니다. |
 | `--auto` | 사용자 확인 게이트를 대신 결정합니다. 실패나 사용자만 답할 수 있는 질문 같은 중요한 게이트에서는 여전히 멈춥니다. |
 | `--max` | 더 엄격하게 검증합니다. 독립 평가자를 늘리고 통과 기준을 높입니다. |
 | `--mini` / `--loops N` | 각 검증·수정 루프의 반복 횟수를 최대 3회, 또는 최대 N회로 제한합니다. |
@@ -1036,7 +1062,7 @@ speckiwi doctor
 - **Scope**: ID 접두사를 가진 기능 영역입니다. `App:APP`이면 `FR-APP-001` 같은 ID가 만들어집니다.
 - **Status**: 구현과 검증의 진행 상태입니다(`planned`, `in_progress`, `blocked`, `implemented`, `verified`, `discarded`).
 - **Stability**: 변경 통제의 성숙도입니다(`draft` → `evolving` → `stable` → `frozen`, 그리고 `deprecated`). Status와 Stability는 서로 독립적입니다.
-- **SDS**(Software Design Specification): 에이전트가 코딩 직전에 쓰는 짧은 설계 문서입니다. `docs/sds/<sds-id>.sds.md`에 두는 lite SDS는 사람이 아니라 에이전트가 읽도록 쓰며, 다루는 요구사항이 검증되면 삭제됩니다. 오케스트레이션 실행은 삭제 전에 커밋하므로 git 기록에 남지만, `kiwi-pipeline` 실행에서는 그 전에 직접 커밋한 경우에만 남습니다. `tdd` 작업 모드에서는 step SDS를 `docs/spec/steps/<name>/design.md`에 둡니다.
+- **SDS**(Software Design Specification): 에이전트가 코딩 직전에 쓰는 짧은 설계 문서이며, 요청할 때만 씁니다([요청할 때만 쓰는 SDS](#ko-sds-opt-in) 참조). `docs/sds/<sds-id>.sds.md`에 두는 lite SDS는 사람이 아니라 에이전트가 읽도록 쓰며, 다루는 요구사항이 검증되면 삭제됩니다. 오케스트레이션 실행은 삭제 전에 커밋하므로 git 기록에 남지만, `kiwi-pipeline` 실행에서는 그 전에 직접 커밋한 경우에만 남습니다. `tdd` 작업 모드에서는 `--sds`를 주면 step SDS를 `docs/spec/steps/<name>/design.md`에 씁니다.
 
 <a id="ko-requirements"></a>
 
@@ -1183,6 +1209,7 @@ speckiwi mcp
 이 명령을 손으로 실행하는 것은 디버깅할 때뿐입니다. stdio 입력을 기다리므로 멈춘 것처럼 보일 수 있습니다.
 
 - **서버는 `--root`를 받지 않습니다.** 서버 프로세스의 작업 디렉터리에서 상위로 탐색해 프로젝트 루트를 정하므로, MCP 클라이언트 설정에서 작업 디렉터리(cwd)를 프로젝트 루트로 지정하십시오. `--root`를 주고 실행하면 서버를 시작하지 않고 오류로 종료합니다.
+- **프로젝트 밖에서 시작한 서버는 루트 없이(unbound) 남습니다.** 상위 탐색(홈 디렉터리에서 멈춥니다)에서 `docs/spec/00.index.md`를 찾지 못하면, 서버는 파일을 하나도 만들지 않고 모든 도구 호출과 리소스 읽기를 `MCP_WORKSPACE_UNBOUND`로 거부하며 확인한 디렉터리를 알려 줍니다. 에이전트 세션을 프로젝트 안에서 시작하거나 클라이언트의 MCP 설정에서 서버의 작업 디렉터리를 프로젝트로 지정한 뒤 세션을 재시작하십시오. 루트 없는 서버는 재시작하기 전까지 그대로입니다. 프로젝트에 아직 SRS가 없다면 먼저 그 프로젝트 디렉터리에서 `speckiwi init`을 실행하십시오.
 - **Git worktree.** 루트는 서버 프로세스에 고정되므로, 이미 실행 중인 서버는 세션 도중의 worktree 전환을 따라가지 않습니다. 에이전트를 worktree 안에서 다시 시작하십시오. worktree를 루트로 삼은 세션은 **새 Requirement ID를 발급하면 안 되고**, 호스트 저장소의 `docs/spec/`를 고칠 수도 없습니다. 두 작업은 호스트 루트에서 하십시오.
 
 ### MCP 도구
@@ -1202,10 +1229,10 @@ Kiwi 스킬은 모든 조회와 안전한 SRS 변경을 MCP 도구로 수행합�
 | 작업 공간 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info` |
 | SDS와 테스트 충분성 | `check_sds`, `check_test_sufficiency` |
 | 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
-| 오케스트레이터 실행 | `orchestrate_*` 25개: 실행 잠금과 저널, 라우팅 탐색과 고정, wave 일정, 검증 라운드, wave 종료, 재개와 재생, `--auto` 게이트 결정을 다룹니다. |
+| 오케스트레이터 실행 | `orchestrate_*` 26개: 실행 잠금과 저널, 라우팅 탐색과 고정, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 게이트 결정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 기록·상태·꼬리 읽기, 작업 로그, 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 88개 도구가 배포됩니다.** 4.0.0에서 `kiwi-planner`와 함께 계획 도구 12개가 제거되었고, handoff 검증기와 coupling 검사와 함께 orchestrate 도구 2개가 제거되었으며, `check_sds`와 `check_test_sufficiency`가 추가되었습니다. 위 표에는 스킬이 직접 부르는 도구를 모두 이름으로 적었고, 마지막 두 행은 도구 묶음이라 각 구성원은 그 묶음을 쓰는 스킬 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 서버가 실제로 등록한 개수입니다.
+**총 89개 도구가 배포됩니다.** 4.0.0에서 `kiwi-planner`와 함께 계획 도구 12개가 제거되었고, handoff 검증기와 coupling 검사와 함께 orchestrate 도구 2개가 제거되었으며, `check_sds`와 `check_test_sufficiency`가 추가되었습니다. 4.1.0에서는 `orchestrate_wave_status`가 추가되었습니다. 위 표에는 스킬이 직접 부르는 도구를 모두 이름으로 적었고, 마지막 두 행은 도구 묶음이라 각 구성원은 그 묶음을 쓰는 스킬 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 서버가 실제로 등록한 개수입니다.
 
 #### 호출마다 넘기는 `workspaceRoot`
 
@@ -1215,7 +1242,7 @@ MCP 서버는 자신이 시작된 디렉터리에서 루트를 정하며, SRS를
 | --- | --- |
 | `workflow_*` (15개 전부) | 받습니다 |
 | `orchestrate_*` | 받습니다. 단 `orchestrate_replay_apply`(미뤄 둔 SRS 변경은 호스트 루트에서만 재생합니다)와 `orchestrate_preflight`(이미 `--mcp-root`와 `--git-root`를 받습니다)는 제외합니다 |
-| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | 받습니다. 각 도구는 지정된 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다. 호출마다 넘긴 루트에서는 테스트 충분성 확인이 docs/spec 아래의 SDS 경로(step의 design.md)를 거부하므로, step은 그 worktree 안에서 `speckiwi coverage --tests`로 확인합니다 |
+| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | 받습니다. 각 도구는 지정된 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다. 호출마다 넘긴 루트에서는 테스트 충분성 확인이 docs/spec 아래의 step SDS 경로(`--sds`로 쓴 step의 design.md)를 거부하므로, step은 그 worktree 안에서 `speckiwi coverage --tests`로 확인합니다 |
 | `docs/spec` 아래에 쓰거나 Requirement ID를 발급하는 모든 도구 — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` 등 | 거부합니다 |
 | `mcp_workspace_info`와 `get_next_work_order` | 거부합니다. 앞의 도구는 어느 루트가 답했는지 알려 주는 도구이므로 그 루트를 인자로 받을 수 없고, 뒤의 도구는 체크아웃의 SRS를 조회하는 대신 작업 지시를 조립합니다 |
 
@@ -1223,7 +1250,7 @@ MCP 서버는 자신이 시작된 디렉터리에서 루트를 정하며, SRS를
 
 받아들여지는 루트는 절대 경로여야 하고, 존재하는 디렉터리여야 하며, 하위 디렉터리가 아닌 git 최상위여야 하고, 시작 루트와 git common 디렉터리를 공유하는 worktree여야 합니다. 조건을 하나라도 어기면 도구가 실행되기 전에 조건마다 다른 `workspace-root-*` 사유로 거부되므로, 존재하지 않는 경로는 만들어지지 않고 거부됩니다. SRS 조회는 지정된 체크아웃에 `docs/spec/00.index.md`가 없을 때에도 거부되며, 거부 메시지는 검사한 체크아웃을 밝힙니다. 루트를 받는 도구라도 `docs/spec` 아래를 가리키는 경로 인자는 거부합니다. 다만 호출자가 넘기는 경로 인자를 아예 받지 않는다고 선언한 도구는 예외이며, SRS 조회가 `docs/spec` 참조로 결과를 거를 수 있는 것은 이 선언 덕분입니다.
 
-**target 범위의 조회나 변경 전에는 결과에 담긴 작업 공간 정보로 루트를 확인하십시오.** 모든 결과에는 `workspaceRoot`, `rootSource`, `indexPath`, `packageVersion`을 담은 `mcpWorkspace`가 함께 옵니다. `rootSource`는 `server-cwd-discovery`, `auto-init`, `per-call-workspace-root` 중 하나입니다. 모든 게이트를 통과한 `workspaceRoot`를 넘긴 호출일 때만 정확히 `per-call-workspace-root`가 되므로, 답이 어느 루트에서 왔는지 언제나 알 수 있습니다.
+**target 범위의 조회나 변경 전에는 결과에 담긴 작업 공간 정보로 루트를 확인하십시오.** 모든 결과에는 `workspaceRoot`, `rootSource`, `indexPath`, `packageVersion`을 담은 `mcpWorkspace`가 함께 옵니다. `rootSource`는 `server-cwd-discovery`, `per-call-workspace-root`, `unbound` 중 하나입니다. 모든 게이트를 통과한 `workspaceRoot`를 넘긴 호출일 때만 정확히 `per-call-workspace-root`가 되므로, 답이 어느 루트에서 왔는지 언제나 알 수 있습니다. 서버가 시작할 때 `docs/spec/00.index.md`를 찾지 못했으면 `unbound`이며, 그런 서버는 `workspaceRoot`를 넘긴 호출까지 포함해 모든 호출을 게이트보다 먼저 `MCP_WORKSPACE_UNBOUND`로 거부합니다([MCP 서버 연결](#ko-mcp) 참조).
 
 <a id="ko-skill-types"></a>
 
@@ -1244,10 +1271,10 @@ MCP 서버는 자신이 시작된 디렉터리에서 루트를 정하며, SRS를
 
 | 스킬 | 하는 일 |
 | --- | --- |
-| `kiwi-sds` | 범위 안 요구사항의 lite SDS(`docs/sds/<sds-id>.sds.md`)를 씁니다. 고칠 파일과 심볼, 해석 결정마다 계약 하나, 그 계약을 증명할 테스트를 적습니다. `speckiwi sds check`가 검사하며, 사용자 승인 없이 합의(agreed) 상태로 올라갑니다. 나중에 `--close`가 결정 내용을 SRS로 옮기고 파일을 삭제합니다. |
-| `kiwi-pm` | 합의된 SDS 하나를 `kiwi-coder`로 실행한 뒤 `kiwi-review-fix-loop`로 넘깁니다. 단독으로 실행되면 그 리뷰의 앞뒤에서 SDS 마감도 처리합니다. |
-| `kiwi-coder` | 합의된 SDS 하나를 구현합니다. 테스트를 먼저 쓰고(red), 최소한으로 구현하고(green), 리뷰와 회귀 테스트를 거쳐 MCP로 검증 증거를 남깁니다. `kiwi-pm`이 부르므로 직접 부를 일은 드뭅니다. |
-| `kiwi-tdd` | step 하나를 `tdd` 작업 모드의 TDD First 사이클로 진행합니다. step SDS(`design.md`)를 쓰고, 그 EARS 인수 계약을 실패하는 테스트로 바꾸고, green까지 구현하고, 회귀 테스트를 돌린 뒤, step 요구사항을 합성해 검증 증거와 함께 승격합니다. |
+| `kiwi-sds` | 사용자가 직접 부르거나(`/kiwi-sds`) `--sds`를 줄 때만 실행되며, 어떤 기본 사슬의 단계도 아닙니다. 범위 안 요구사항의 lite SDS(`docs/sds/<sds-id>.sds.md`)를 씁니다. 고칠 파일과 심볼, 해석 결정마다 계약 하나, 그 계약을 증명할 테스트를 적습니다. `speckiwi sds check`가 검사하며, 사용자 승인 없이 합의(agreed) 상태로 올라갑니다. 나중에 `--close`가 결정 내용을 SRS로 옮기고 파일을 삭제합니다. |
+| `kiwi-pm` | `--req-filter <REQ-ID,...>`로 받은 요구사항 집합을 `kiwi-coder` 실행 하나로 구현시킨 뒤 `kiwi-review-fix-loop`로 넘깁니다. `--req-filter`가 없으면 Active Target의 열린 작업을 제안하고 확인을 받습니다. `--sds <path>`(별칭 `SDS_PATH=<path>`)를 주면 그 합의된 SDS를 대신 실행하며, 단독으로 실행되면 그 리뷰의 앞뒤에서 SDS 마감도 처리합니다. |
+| `kiwi-coder` | 그 요구사항 집합을 인수 조건에 맞춰 구현합니다(`--sds`면 합의된 SDS 하나). 테스트를 먼저 쓰고(red), 최소한으로 구현하고(green), 리뷰와 회귀 테스트를 거쳐 MCP로 검증 증거를 남깁니다. `kiwi-pm`이 부르므로 직접 부를 일은 드뭅니다. |
+| `kiwi-tdd` | step 하나를 `tdd` 작업 모드의 TDD First 사이클로 진행합니다. step의 `intent.md`에 `## Acceptance` 절을 두고 EARS 인수 줄을 기록해 `speckiwi step validate`로 확인한 뒤, 그 줄을 실패하는 테스트로 바꾸고, green까지 구현하고, 회귀 테스트를 돌린 뒤, step 요구사항을 합성해 검증 증거와 함께 승격합니다. `--sds`를 주면 계약으로 step SDS(`design.md`)를 대신 씁니다. |
 | `kiwi-hot-fix` | 긴급 버그를 TDD와 회귀 테스트로 고치고, 이어서 SRS를 맞춥니다. |
 
 **리뷰와 배포**
@@ -1262,9 +1289,9 @@ MCP 서버는 자신이 시작된 디렉터리에서 루트를 정하며, SRS를
 
 | 스킬 | 하는 일 |
 | --- | --- |
-| `kiwi-pipeline` | `kiwi/pipeline.jsonl`을 읽고 다음 단계를 실행합니다. 기본으로 `kiwi-srs`부터 `kiwi-review-fix-loop`까지 전체 사이클을 돌리며, `--none-cycle`을 주면 다음 단계 하나만 추천합니다. 사이클은 호출에 작업 입력이 있을 때만 돌기 때문에, 상태를 묻는 질문은 상태 조회로 끝납니다. |
-| `kiwi-orchestrator` | 작업 하나를 받아 규모를 살피고, 필요한 실행 경로(step 또는 orchestrated)로 라우팅한 뒤, 그 경로를 기록된 종료까지 실행합니다. 실행 저널(`kiwi/waves.jsonl`), `--auto` 게이트 표, 재개를 관리합니다. orchestrated 경로에서는 wave마다 SDS와 워커를 하나씩 두고 wave를 병렬로 실행하며, `--serial`을 주면 병렬로 도는 모든 분기(워커, SDS 작성, 조사, 검증)를 하나씩 실행합니다([병렬 wave](#ko-waves) 참조). 옵션: `--auto`, `--max`, `--mini` / `--loops N`, `--work`, `--base-branch`, `--lanes N`, `--serial` |
-| `kiwi-wave-master` | 에픽, 로드맵, 긴 연구처럼 큰 작업을 순서 있는 wave로 나누고, wave마다 target을 등록한 뒤, `kiwi-orchestrator`와 같은 병렬 계약으로 실행합니다. `--serial`을 주면 병렬 대신 하나씩 실행합니다. `kiwi/waves.jsonl`로 재개할 수 있습니다. 옵션: `--auto`, `--max`, `--mini` / `--loops N`, `--serial`, 그리고 `--auto`만으로는 멈추는 통합 테스트·비용 게이트까지 여는 `--drive` |
+| `kiwi-pipeline` | `kiwi/pipeline.jsonl`을 읽고 다음 단계를 실행합니다. 기본으로 `kiwi-srs`부터 `kiwi-review-fix-loop`까지 전체 사이클을 Requirement ID로 돌리고(`--sds`를 주면 `kiwi-pm` 앞에 `kiwi-sds`가 들어갑니다), `--none-cycle`을 주면 다음 단계 하나만 추천합니다. 사이클은 호출에 작업 입력이 있을 때만 돌기 때문에, 상태를 묻는 질문은 상태 조회로 끝납니다. |
+| `kiwi-orchestrator` | 작업 하나를 받아 규모를 살피고, 필요한 실행 경로(step 또는 orchestrated)로 라우팅한 뒤, 그 경로를 기록된 종료까지 실행합니다. 실행 저널(`kiwi/waves.jsonl`), `--auto` 게이트 표, 재개를 관리합니다. orchestrated 경로에서는 wave마다 wave 선언 파일의 항목과 워커를 하나씩 두고(SDS는 `--sds`일 때만) wave를 병렬로 실행하며, `--serial`을 주면 병렬로 도는 모든 분기(워커, SDS 작성, 조사, 검증)를 하나씩 실행합니다([병렬 wave](#ko-waves) 참조). 옵션: `--auto`, `--max`, `--mini` / `--loops N`, `--work`, `--base-branch`, `--lanes N`, `--serial`, `--sds` |
+| `kiwi-wave-master` | 에픽, 로드맵, 긴 연구처럼 큰 작업을 순서 있는 wave로 나누고, wave마다 target을 등록한 뒤, `kiwi-orchestrator`와 같은 병렬 계약으로 실행합니다. `--serial`을 주면 병렬 대신 하나씩 실행합니다. `kiwi/waves.jsonl`로 재개할 수 있습니다. 옵션: `--auto`, `--max`, `--mini` / `--loops N`, `--serial`, `--sds`, 그리고 `--auto`만으로는 멈추는 통합 테스트·비용 게이트까지 여는 `--drive` |
 
 같은 스킬 묶음이 에이전트 계열별로 세 소스 트리에 들어 있습니다. **`skills/claude`**는 Claude 스킬 환경용이고, **`skills/codex`**는 Codex 호출 방식과 확인 게이트 문구에 맞춘 것이며, **`skills/etc`**는 OpenCode, Hermes, 로컬 LLM을 위한 Agent Skills 형식입니다(기본으로 평가자·서브에이전트를 하나만 씁니다).
 
@@ -1317,15 +1344,14 @@ speckiwi skills mirror --write         # 다시 생성
 
 ## 8. 작업이 흘러가는 방식
 
-새 기능이나 변경 요청은 다섯 스킬을 거칩니다: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-sds` → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`. `kiwi-pipeline`이 이 사슬을 대신 실행합니다.
+새 기능이나 변경 요청은 `kiwi-srs`가 쓴 Requirement ID를 기준으로 네 스킬을 거칩니다: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`. `kiwi-pipeline`이 이 사슬을 대신 실행합니다.
 
 1. **`kiwi-srs`**가 SRS에 요구사항과 인수 조건(AC)을 쓰거나 갱신합니다.
-2. **`kiwi-srs-feasibility`**가 구현 가능성과 안정성을 평가합니다. 요구사항이 아직 `draft`이거나 구현 가능성이 확인되지 않았을 때만 실행되며, 그렇지 않으면 사슬이 곧바로 `kiwi-sds`로 넘어갑니다. 차단 요인이나 모호한 점이 있으면 `kiwi-srs-research`로 조사할 수도 있는데, 이때는 다음 단계 후보가 둘이 되므로 파이프라인이 어느 쪽으로 갈지 묻습니다.
-3. **`kiwi-sds`**가 lite SDS를 씁니다. 어느 파일을 고칠지, 어떤 해석 결정을 내릴지, 무슨 테스트로 각 결정을 증명할지를 적습니다. `speckiwi sds check`가 검사하며, 사용자 승인 단계는 없습니다.
-4. **`kiwi-pm`**이 SDS를 `kiwi-coder`로 실행합니다. `kiwi-coder`는 실패하는 테스트를 먼저 쓰고, 그 테스트를 통과하는 최소한의 변경을 한 뒤, 리팩터링합니다.
-5. **`kiwi-review-fix-loop --close-reqs`**가 코드를 리뷰하고, 리뷰에서 나온 문제를 고치고, 회귀 테스트가 통과하고 남은 지적이 없으면 요구사항을 `verified`로 승격합니다.
+2. **`kiwi-srs-feasibility`**가 구현 가능성과 안정성을 평가합니다. 요구사항이 아직 `draft`이거나 구현 가능성이 확인되지 않았을 때만 실행되며, 그렇지 않으면 사슬이 곧바로 `kiwi-pm`으로 넘어갑니다. 차단 요인이나 모호한 점이 있으면 `kiwi-srs-research`로 조사할 수도 있는데, 이때는 다음 단계 후보가 둘이 되므로 파이프라인이 어느 쪽으로 갈지 묻습니다.
+3. **`kiwi-pm --req-filter <REQ-ID,...>`**이 그 요구사항들을 `kiwi-coder` 실행 하나로 구현시킵니다. `kiwi-coder`는 인수 조건에 맞춰 `<REQ-ID> AC-<n>`을 인용한 실패하는 테스트를 먼저 쓰고, 그 테스트를 통과하는 최소한의 변경을 한 뒤, 리팩터링합니다.
+4. **`kiwi-review-fix-loop --close-reqs`**가 코드를 리뷰하고, 리뷰에서 나온 문제를 고치고, 회귀 테스트가 통과하고 남은 지적이 없으면 요구사항을 `verified`로 승격합니다.
 
-**모든 워크플로는 같은 방식으로 끝납니다. 코드 리뷰를 하고, 이어서 테스트 충분성을 확인합니다.** 확인은 `speckiwi coverage --tests`(MCP `check_test_sufficiency`)로 합니다. 범위 안의 모든 인수 조건에는 그 줄에 `<REQ-ID> AC-<n>`을 인용한 테스트가 있어야 합니다. 빠진 테스트는 서브에이전트 하나가 한 번 채우고, 그래도 남은 공백이 있으면 그 요구사항은 `verified`로 올라가지 못합니다(`test-sufficiency-gap`). 이 확인의 앞뒤로 `kiwi-sds --close`가 두 번 실행됩니다. 승격하는 리뷰 전에는 SDS의 결정 내용을 SRS로 옮기고, 확인이 끝난 뒤에는 SDS 파일을 삭제합니다.
+**모든 워크플로는 같은 방식으로 끝납니다. 코드 리뷰를 하고, 이어서 테스트 충분성을 확인합니다.** 확인은 `speckiwi coverage --tests`(MCP `check_test_sufficiency`)로 합니다. 범위 안의 모든 인수 조건에는 그 줄에 `<REQ-ID> AC-<n>`을 인용한 테스트가 있어야 합니다. 빠진 테스트는 서브에이전트 하나가 한 번 채우고, 그래도 남은 공백이 있으면 그 요구사항은 `verified`로 올라가지 못합니다(`test-sufficiency-gap`). `--sds`로 실행했다면 이 확인의 앞뒤로 `kiwi-sds --close`가 두 번 실행됩니다. 승격하는 리뷰 전에는 SDS의 결정 내용을 SRS로 옮기고, 확인이 끝난 뒤에는 SDS 파일을 삭제합니다.
 
 ```mermaid
 flowchart TD
@@ -1336,7 +1362,7 @@ flowchart TD
     B -->|긴급 버그| Q["kiwi-hot-fix: 긴급 TDD 수정"]
 
     C -->|draft 또는 미확인| F["kiwi-srs-feasibility: 구현 가능성/안정성 평가"]
-    C -->|그 밖의 경우| I
+    C -->|그 밖의 경우| J
     D --> F
     E --> F
     Q --> M
@@ -1344,15 +1370,18 @@ flowchart TD
     F --> G{"차단 요인 또는 모호함?"}
     G -->|예| H["kiwi-srs-research: 위험/차단 요인 조사"]
     H --> F
-    G -->|아니오| I["kiwi-sds: lite SDS 작성 (docs/sds)"]
+    G -->|아니오| J["kiwi-pm --req-filter: Requirement ID 실행"]
+    G -.->|"--sds"| I["kiwi-sds: lite SDS 작성 (docs/sds)"]
+    I -.-> J
 
-    I --> J["kiwi-pm: 합의된 SDS 실행"]
-    J --> K["kiwi-coder: SDS를 TDD로 구현"]
-    K --> X["kiwi-sds --close: SDS 결정 내용을 SRS로 이동"]
-    X --> R["kiwi-review-fix-loop --close-reqs: 리뷰/수정/재리뷰, 승격"]
+    J --> K["kiwi-coder: AC 기준 TDD 구현"]
+    K --> R["kiwi-review-fix-loop --close-reqs: 리뷰/수정/재리뷰, 승격"]
+    K -.->|"--sds"| X["kiwi-sds --close: SDS 결정 내용을 SRS로 이동"]
+    X -.-> R
     R --> V["테스트 충분성: speckiwi coverage --tests"]
-    V --> Y["kiwi-sds --close: SDS 삭제"]
-    Y --> M["SpecKiwi MCP: 검증 증거/상태/완료 작업 기록"]
+    V --> M["SpecKiwi MCP: 검증 증거/상태/완료 작업 기록"]
+    V -.->|"--sds"| Y["kiwi-sds --close: SDS 삭제"]
+    Y -.-> M
     M --> S{"PR 필요?"}
     S -->|아니오| N["kiwi-commit-auto-push: 커밋 + push"]
     S -->|예| T["kiwi-commit-auto-pr: 커밋 + push + PR"]
@@ -1361,16 +1390,19 @@ flowchart TD
 
     P["kiwi-pipeline: 다음 단계 실행 (기본은 전체 사이클)"] -.-> B
     P -.-> F
-    P -.-> I
     P -.-> J
     P -.-> N
 ```
 
-`kiwi-coder` 안에서는 SDS가 다음 TDD 반복으로 실행됩니다.
+<a id="ko-sds-opt-in"></a>
+
+**SDS는 요청할 때만 씁니다.** `kiwi-sds`는 사용자가 `/kiwi-sds`를 부르거나, `kiwi-pipeline`·`kiwi-orchestrator`·`kiwi-wave-master`·`kiwi-tdd`·`kiwi-step`에 `--sds`를 주거나, `--sds-id <id>`를 직접 주거나, `kiwi-pm`에 `--sds <path>`(별칭 `SDS_PATH=<path>`)로 SDS를 넘기거나, "SDS로 해줘"처럼 말로 요청할 때만 실행됩니다. 그러면 `kiwi-pm` 앞에서 lite SDS를 쓰고, `kiwi-coder`가 그 SDS로 구현하며, 위에서 설명한 대로 SDS를 마감합니다. `docs/sds/`에 SDS가 있다는 것만으로는 요청이 아닙니다. `kiwi-pm`은 그 경로를 알리기만 하고 쓰지 않습니다. 기존 코드에서는 SDS가 약한 구현 모델에 도움이 될 수 있어서(연구 35) 이 기능을 남겨 두었습니다.
+
+`kiwi-coder` 안에서는 작업이 다음 TDD 반복으로 실행됩니다.
 
 ```mermaid
 flowchart TD
-    A["kiwi-sds 결과: 합의된 lite SDS"] --> B["kiwi-coder가 Interfaces, 계약, Test Plan을 읽음"]
+    A["kiwi-pm 입력: Requirement ID (--sds면 합의된 lite SDS)"] --> B["kiwi-coder가 그 AC를 읽음 (--sds면 SDS 계약과 Test Plan도)"]
     B --> C["관련 REQ/AC 조회: speckiwi MCP"]
     C --> D["실패하는 테스트 작성"]
     D --> E["red 확인"]
@@ -1384,7 +1416,7 @@ flowchart TD
     K --> L["kiwi/ 상태와 작업 로그 갱신"]
 ```
 
-**step 범위의 작업**은 다른 경로를 탑니다. `tdd` 작업 모드에서는 `kiwi-sds`와 `kiwi-pm`을 거치지 않고 `kiwi-tdd`가 TDD First 사이클(step SDS → red → green → 회귀 → `promote_step_requirement`)을 실행합니다. §9의 *작업 모드와 step*을 참고하십시오.
+**step 범위의 작업**은 다른 경로를 탑니다. `tdd` 작업 모드에서는 `kiwi-pm`을 거치지 않고 `kiwi-tdd`가 TDD First 사이클(`intent.md`의 인수 줄 → red → green → 회귀 → `promote_step_requirement`)을 실행합니다. §9의 *작업 모드와 step*을 참고하십시오.
 
 `kiwi-pipeline`, `kiwi-orchestrator`, `kiwi-wave-master` 가운데 무엇을 쓸지는 [에이전트에게 무엇을 요청할까](#ko-entry)를 참고하십시오.
 
@@ -1392,12 +1424,13 @@ flowchart TD
 
 ### 병렬 wave와 `--serial`
 
-`kiwi-orchestrator`(orchestrated 경로)와 `kiwi-wave-master`는 작업을 **wave**로 나누고, wave를 다시 **stage**로 묶습니다.
+`kiwi-orchestrator`(orchestrated 경로)와 `kiwi-wave-master`는 작업을 **wave**로 나누어 wave 선언 파일(실행 산출물 폴더 아래 `waves/waves.json`)에 적고, wave를 다시 **stage**로 묶습니다.
 
-- wave마다 자기 SRS 요구사항과 SDS를 가지며, **별도의 git worktree에서 워커 하나**가 실행합니다. 워커는 그 SDS로 `kiwi-pm`을 실행하고 자기 커밋을 스스로 리뷰합니다.
-- 한 stage 안에서 의존하는 wave가 모두 끝났고 SDS의 쓰기 대상 파일이 서로 겹치지 않는 wave들은 **병렬로 실행됩니다**.
+- 선언 항목마다 `wave`(`wave-1`, `wave-2`, …), 의존하는 wave(`depends_on`), 쓸 것으로 예상하는 파일(`files`), 요구사항(`requirements`)을 적으며, `--sds`면 그 wave의 SDS 파일(`sds`)도 적습니다. wave마다 자기 SRS 요구사항을 가지며, **별도의 git worktree에서 워커 하나**가 실행합니다. 워커는 그 wave의 요구사항으로 `kiwi-pm --req-filter`를 실행하고 자기 커밋을 스스로 리뷰합니다.
+- `speckiwi orchestrate wave status --waves <file>`가 준비된 wave, 곧 아직 끝나지 않았고 의존한 wave가 모두 끝난 wave를 알려 줍니다. `speckiwi orchestrate schedule waves --waves <file>`가 준비된 wave마다 lane 하나를 계획하며, 한 stage 안에서 `files`가 서로 겹치지 않는 wave들은 **병렬로 실행됩니다**. `files`를 선언하지 않은 wave는 자기 stage에서 홀로 실행됩니다.
 - SRS는 호스트만 쓰며, wave 하나씩 차례로 씁니다. 워커가 끝나면 호스트가 wave를 하나씩 병합하고 검증하고 승격한 뒤 다음 stage로 넘어갑니다.
 - `--serial`을 주거나 "하나씩 해줘"처럼 말로 요청하면 병렬로 돌던 모든 단계가 직렬로 바뀝니다. 워커, SDS 작성 에이전트, 조사 에이전트, 검증 에이전트가 모두 같은 코드 경로에서 하나씩 차례로 실행됩니다.
+- 중단된 실행은 `speckiwi orchestrate resume`으로 이어 갑니다. 이 명령은 git 상태를 스스로 읽고, `--run-id`가 없으면 끝나지도 중단되지도 않은 가장 최근 실행을 고릅니다.
 
 **통과를 기록하는 모든 경계에는 리뷰가 따라야 합니다.** 두 오케스트레이션 스킬은 각 경계가 판정하는 커밋 범위에 대해 `kiwi-review-fix-loop`를 정확히 한 번씩, 예외 없이 실행하고, 그 결과를 실행을 닫는 저널 줄에 기록해야 합니다. 리뷰 없이 완료를 보고하는 종료는 `speckiwi orchestrate validate`가 거부하므로, 이 보장은 말로만 하는 약속이 아니라 검사할 수 있는 사실입니다.
 
@@ -1492,16 +1525,17 @@ speckiwi links check                         # 추적 링크 무결성 (워크�
 - **`wait`**: 기본값입니다. Active Task가 없고 SRS 우선 규칙을 따릅니다.
 - **`sdd`**: 명세가 이끄는 본문 작업입니다. 본문 scope 요구사항을 먼저 쓰거나 고친 뒤 구현합니다.
 - **`vibe`**: 코드를 먼저 쓰는 방식입니다. Active Task에 맞춰 코드를 쓰고 나중에 SRS를 합성하며, 합성하지 않은 커밋은 `vibe-gate`가 막습니다.
-- **`tdd`**: `kiwi-tdd`로 진행하는 step 범위의 **TDD First** 사이클입니다. EARS 인수 계약을 담은 step SDS(`design.md`)를 쓰고, 그 계약을 실패하는 테스트로 바꾸고, green까지 구현하고, 회귀 테스트를 돌린 뒤, step 요구사항을 합성해 승격합니다.
+- **`tdd`**: `kiwi-tdd`로 진행하는 step 범위의 **TDD First** 사이클입니다. step의 `intent.md`에 `## Acceptance` 절을 두고 EARS 인수 줄을 기록해 `speckiwi step validate`로 확인하고, 그 줄을 실패하는 테스트로 바꾸고, green까지 구현하고, 회귀 테스트를 돌린 뒤, step 요구사항을 합성해 승격합니다. 인수 줄이 없는 step은 `STEP_ACCEPTANCE_MISSING` 오류로 검증에 실패합니다. step SDS(`design.md`)는 `--sds`일 때만 씁니다.
 
 ```sh
 speckiwi mode                                    # 현재 작업 모드 표시 (sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # 모드 전환 (sdd, vibe, wait, tdd)
 speckiwi step claim <name> --touches-scope APP   # step을 쓰기 전에 선점
-speckiwi step scaffold <name>                    # design.md와 intent.md 초안 생성
+speckiwi step scaffold <name>                    # ## Acceptance 절이 있는 intent.md 초안 생성
+speckiwi step scaffold <name> --sds              # step SDS 초안(design.md)도 생성
 speckiwi step validate <name>                    # docs/spec/steps/<name>/ 아래 step 초안 검증
 speckiwi step sds-status <name> agreed           # step SDS 상태 진행 (draft -> agreed -> superseded)
-speckiwi step synthesize <name>                  # design.md에서 step SRS 합성
+speckiwi step synthesize <name>                  # intent.md(--sds면 design.md도)에서 step SRS 합성
 speckiwi step promote <id> --from-step <name> --to-scope APP   # 본문 scope로 승격 (tdd에서는 검증 증거 필수)
 speckiwi step update-state <name> --status merged              # 완료 게이트를 거쳐 step 상태 전환
 speckiwi vibe-gate check                         # 합성되지 않은 vibe/tdd 커밋을 막는 CI 게이트
@@ -1592,7 +1626,11 @@ speckiwi orchestrate validate --run-id <id> --json          # 실행 불변식�
 speckiwi orchestrate validate --run-id <id> --strict        # 버전 표시가 없거나 낮아진 줄도 실패 처리
 speckiwi orchestrate validate --run-id <id> \
   --engine kiwi-wave-master                                 # 다른 생산자의 줄을 읽음
+speckiwi orchestrate wave status --run-id <id> --json       # 각 wave의 최신 상태
+speckiwi orchestrate wave status --run-id <id> \
+  --waves <file> --json                                     # 선언된 wave 가운데 계획할 수 있는 wave도 표시
 speckiwi orchestrate resume --run-id <id> --json            # 재개하면 이어받을 지점
+speckiwi orchestrate resume --json                          # 끝나지 않은 가장 최근 실행에 대해 같은 정보
 ```
 
 `--engine`은 어느 생산자의 줄을 읽을지 고릅니다. 두 엔진이 파일 하나를 함께 쓰고, 읽는 쪽은 자기 줄만 봅니다. 알 수 없는 값은 기본값으로 바꾸지 않고 거부합니다. 조용히 기본값으로 돌아가면 열어 보지도 않은 저널을 검증하고 깨끗하다고 보고하게 되기 때문입니다.
@@ -1664,6 +1702,11 @@ speckiwi upgrade --json           # 표준 변경 결과 형식으로 출력
 - **계획 단계가 없어졌습니다.** 4.0.0에서 `kiwi-planner`와 계획 사이드카, 그리고 이를 위한 계획 도구 12개가 제거되었습니다. 사슬에서 계획 단계가 있던 곳은 이제 `kiwi-sds`가 맡으며, `kiwi-sds`가 쓰는 lite SDS는 요구사항이 검증되면 삭제됩니다.
 - `speckiwi init`과 `speckiwi upgrade`는 자신이 설치했고 아무도 고치지 않은 프로젝트의 `kiwi-planner` 사본을 제거하지만, 전역으로 설치된 `kiwi-planner`(예: `~/.claude/skills/kiwi-planner`, `${CODEX_HOME:-~/.codex}/skills/kiwi-planner`)는 `init -g`도 `upgrade -g`도 제거하지 않으므로 그 디렉터리를 직접 삭제하십시오.
 - 오케스트레이션 실행은 작업을 wave로 나누고, wave마다 SDS와 워커를 하나씩 두어 한 stage의 wave를 병렬로 실행합니다([병렬 wave](#ko-waves) 참조). `--serial`을 주면 하나씩 실행합니다.
+
+### 4.0에서 4.1로 올릴 때
+
+- **SDS는 이제 요청할 때만 씁니다.** 기본 사슬은 더 이상 `kiwi-sds`를 부르지 않고, 4.0 실행이 `docs/sds/`에 남긴 SDS도 쓰지 않습니다. 그 SDS로 구현하려면 `kiwi-pm`에 `--sds <path>`로 넘기십시오.
+- 작성된 `design.md`가 없는 `tdd` step에는 이제 `intent.md`의 `## Acceptance` 절에 인수 줄이 있어야 합니다. 4.0이 모든 step에 만들어 둔 `design.md` 초안은 작성된 것으로 치지 않습니다(`--sds`를 주면 실제 SDS를 씁니다).
 
 <a id="ko-remove"></a>
 
@@ -1777,10 +1820,17 @@ skills/etc/
 
 이 문서가 설명하는 동작은 다음 SpecKiwi 요구사항에 대응합니다. 전체 목록은 `docs/spec/00.index.md`의 Target Map에 있습니다.
 
+**워크플로 (4.1.0)**
+
+- `FR-FLOW-192` / `FR-FLOW-193` / `FR-FLOW-194`: 요청할 때만 쓰는 SDS, Requirement ID로 도는 사슬, `kiwi-pm --req-filter`
+- `FR-FLOW-195` / `FR-NODE-216` / `FR-NODE-217` / `IR-CLI-104`: wave 선언 파일, `orchestrate schedule waves --waves`, git 상태를 스스로 읽는 `orchestrate resume`, `orchestrate wave status`
+- `FR-FLOW-196` / `FR-PARSE-042`: `intent.md`에 쓰는 `kiwi-tdd` 인수 줄과 `STEP_ACCEPTANCE_MISSING`
+- `FR-FLOW-197`: 이 README가 4.1.0을 설명합니다.
+
 **워크플로 (4.0.0)**
 
 - `FR-FLOW-182` / `FR-FLOW-183`: `kiwi-sds`가 lite SDS 하나를 쓰고 결정적으로 검사합니다. SDS는 일회용이며, 마감할 때 남겨야 할 내용을 SRS로 옮긴 뒤 파일을 삭제합니다.
-- `FR-FLOW-184` / `FR-FLOW-185`: `kiwi-srs` → `kiwi-srs-feasibility` → `kiwi-sds` → `kiwi-pm` → `kiwi-review-fix-loop` 사슬, `kiwi-planner` 제거, 그리고 `kiwi-pm`과 `kiwi-coder`가 합의된 SDS 하나를 한 단위로 실행하는 방식
+- `FR-FLOW-184` / `FR-FLOW-185`: `kiwi-pm` 앞에서 `kiwi-sds`를 실행하던 4.0.0 사슬, `kiwi-planner` 제거, 그리고 `kiwi-pm`과 `kiwi-coder`가 합의된 SDS 하나를 한 단위로 실행하는 방식(4.1.0에서 `FR-FLOW-193` / `FR-FLOW-194`로 대체)
 - `FR-FLOW-186`: 모든 워크플로가 코드 리뷰와 테스트 충분성 확인으로 끝납니다.
 - `FR-FLOW-187` / `FR-FLOW-188`: orchestrated 경로의 wave마다 SDS 하나, 기본 병렬 wave, 그리고 `--serial`
 - `FR-FLOW-189`: 이 README와 패키지 문서가 4.0.0을 설명합니다.
@@ -1793,7 +1843,7 @@ skills/etc/
 - `FR-FLOW-012`: Kiwi 스킬이 정상 동작하려면 SpecKiwi MCP가 필요합니다.
 - `FR-FLOW-124` … `FR-FLOW-130`: `kiwi-pipeline`의 기본 사이클과 유일한 제외 옵션 `--none-cycle` (2.9.0)
 - `FR-FLOW-131` … `FR-FLOW-135` / `FR-NODE-188`: 모든 실행 경로의 종료 리뷰, 그리고 이 기록 없이는 실행 종료 검증기가 완료를 거부하는 `terminal_review` 저널 기록 (2.10.0)
-- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: `tdd` 작업 모드, step SDS(`design.md`), `kiwi-tdd` 스킬, `get_work_mode` / `set_work_mode`
+- `FR-PARSE-032` / `FR-FLOW-036` / `FR-FLOW-037` / `FR-MCP-052`: `tdd` 작업 모드, step SDS(`design.md`, 4.1.0부터 `--sds`일 때만), `kiwi-tdd` 스킬, `get_work_mode` / `set_work_mode`
 - target `2.5.2-phase1-target-lifecycle`, `2.6.0-phase2-parallel-lanes`와 `kiwi-orchestrator` 요구사항 묶음: target 상태 수명 주기, worktree 계약, 오케스트레이터 실행 도구
 - `FR-NODE-207`: 오케스트레이터 실행 잠금은 잠금을 쓴 프로세스의 수명이 아니라 임대 만료로 유지됩니다. 이웃한 `REL-NODE-008`은 시계가 아니라 필요한 신호를 기다리는 동시성 테스트입니다.
 

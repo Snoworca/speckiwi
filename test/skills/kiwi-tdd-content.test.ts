@@ -30,7 +30,7 @@ function prohibitionNear(text: string, token: string, window = 64): boolean {
   return after.test(text) || before.test(text);
 }
 
-describe("FR-FLOW-037 kiwi-tdd SKILL.md content", () => {
+describe("FR-FLOW-037 · FR-FLOW-038 AC-4 kiwi-tdd SKILL.md content", () => {
   for (const variant of VARIANTS) {
     describe(`variant: ${variant}`, () => {
       it("has frontmatter name=kiwi-tdd and a description, and no changelog section", () => {
@@ -40,7 +40,7 @@ describe("FR-FLOW-037 kiwi-tdd SKILL.md content", () => {
         expect(text).not.toMatch(/^#+\s*(변경 이력|Changelog|Change Log)\b/im);
       });
 
-      it("AC-1: mandates the work-mode check with halt guidance, claim-before-author, and steps confinement", () => {
+      it("FR-FLOW-037 AC-1: mandates the work-mode check with halt guidance, claim-before-author, and steps confinement", () => {
         const text = readSkill(variant);
         // Work-mode check + halt guidance when the mode is not tdd.
         expect(text).toMatch(/speckiwi mode|Mode:\s*tdd/);
@@ -66,8 +66,12 @@ describe("FR-FLOW-037 kiwi-tdd SKILL.md content", () => {
 
       it("AC-2: carries the mandatory SDS checklist and the red-before-green order with the weakening prohibition", () => {
         const text = readSkill(variant);
-        // SDS checklist: trivial-change skip-gate, EARS contracts, SDS-AC↔Test Plan mapping, line cap.
-        expect(text).toMatch(/(trivial|자명)[\s\S]{0,80}(skip|생략)|(skip|생략)[\s\S]{0,80}(trivial|자명)/i);
+        // FR-FLOW-037 AC-2 (4.1.0): the acceptance-lines step with its `step validate` check, and the --sds SDS
+        // checklist (EARS contracts, SDS-AC↔Test Plan mapping, line cap). The trivial-change skip-gate is gone
+        // with the SDS Skip record (FR-FLOW-196 AC-5).
+        expect(text).toContain("`step validate`");
+        expect(text).toMatch(/## Acceptance/);
+        expect(text).not.toMatch(/SDS Skip|SDS-E054/);
         expect(text).toContain("EARS");
         expect(text).toContain("SDS-AC");
         expect(text).toContain("Test Plan");
@@ -83,7 +87,7 @@ describe("FR-FLOW-037 kiwi-tdd SKILL.md content", () => {
         expect(prohibitionNear(text, "(weaken|약화)")).toBe(true);
       });
 
-      it("AC-3: states the promote-with-evidence obligation and the sdd redirect boundary", () => {
+      it("FR-FLOW-037 AC-3: states the promote-with-evidence obligation and the sdd redirect boundary", () => {
         const text = readSkill(variant);
         expect(text).toMatch(/promote_step_requirement/);
         expect(text).toMatch(/(verification evidence|검증 증거)/i);
@@ -95,7 +99,7 @@ describe("FR-FLOW-037 kiwi-tdd SKILL.md content", () => {
     });
   }
 
-  it("AC-4: kiwi-tdd is registered in the package-doctor expected kiwi skills set", () => {
+  it("FR-FLOW-037 AC-4: kiwi-tdd is registered in the package-doctor expected kiwi skills set", () => {
     const doctor = readFileSync(path.join(REPO_ROOT, "src", "doctor", "package-doctor.ts"), "utf8");
     expect(doctor).toMatch(/"kiwi-tdd"/);
   });

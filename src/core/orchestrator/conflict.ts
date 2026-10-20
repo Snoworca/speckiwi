@@ -2,12 +2,13 @@
 // reachable.
 //
 // A lane is one wave's worker (FR-NODE-213 AC-1), so the only facts that keep two waves apart are the
-// dependencies the decomposition declared and an overlap between their SDS write sets. The function is
+// dependencies the decomposition declared, an overlap between their write sets, and a write set that
+// was never declared. The function is
 // pure: the write sets arrive injected, and nothing here reads the filesystem, because drift digest 3
 // recomputes the plan's inputs from what `lanes.lock.json` records.
 
 /** The closed `conflict_reason` enum: wave-level reasons only. @req FR-NODE-147 */
-export const CONFLICT_REASONS = ["wave-dependency", "write-set-overlap"] as const;
+export const CONFLICT_REASONS = ["wave-dependency", "write-set-overlap", "undeclared-write-set"] as const;
 
 export type ConflictReason = (typeof CONFLICT_REASONS)[number];
 
@@ -24,8 +25,14 @@ export type RecipeKind = (typeof RECIPE_KINDS)[number];
 export interface WaveInput {
   /** The wave's SDS id: the SDS file name without `.sds.md`. */
   waveId: string;
-  /** The SDS write set — Files paths ∪ Test Plan test files (FR-NODE-209 AC-4). Injected, never read. */
+  /** The declared write set — `files[]` ∪ SDS Files and Test Plan files (FR-NODE-209 AC-4). Injected, never read. */
   writeSet: string[];
+  /**
+   * `false` when the wave declared no write set at all (empty `files[]` and no SDS, FR-NODE-216 AC-4).
+   * Absent means declared. An empty set is disjoint from everything, so without this flag such a wave
+   * would share a stage with any other. @req FR-NODE-147 AC-1
+   */
+  declared?: boolean;
 }
 
 /**
@@ -104,9 +111,14 @@ export function analyzeConflicts(waves: readonly WaveInput[], dependencies: Wave
     for (let j = i + 1; j < waves.length; j += 1) {
       const left = waves[i] as WaveInput;
       const right = waves[j] as WaveInput;
+      const [a, b] = compareStrings(left.waveId, right.waveId) <= 0 ? [left.waveId, right.waveId] : [right.waveId, left.waveId];
+      // @req FR-NODE-147 AC-9 — a wave that declared nothing may write anywhere, so it meets every other.
+      if (left.declared === false || right.declared === false) {
+        edges.push({ a, b, reason: "undeclared-write-set" });
+        continue;
+      }
       const paths = sharedPaths(left.writeSet, right.writeSet);
       if (paths.length === 0) continue;
-      const [a, b] = compareStrings(left.waveId, right.waveId) <= 0 ? [left.waveId, right.waveId] : [right.waveId, left.waveId];
       edges.push({ a, b, reason: "write-set-overlap", paths });
     }
   }

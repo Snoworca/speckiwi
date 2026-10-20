@@ -240,8 +240,11 @@ export function declaredName(signature: string): { name: string; dotted: string 
   return { name: dotted.split(".").pop() as string, dotted };
 }
 
-/** A repository-relative path with `/` separators and no empty, `.` or trailing segment, or why it is not one. */
-function normalisedPath(raw: string): { path: string } | { reason: string } {
+/**
+ * A repository-relative path with `/` separators and no empty, `.` or trailing segment, or why it is not one.
+ * Shared with the wave declaration's `files[]` (FR-NODE-216 AC-1), so both spell one path one way.
+ */
+export function normalisedPath(raw: string): { path: string } | { reason: string } {
   const value = raw.trim().replace(/\\/g, "/");
   if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return { reason: `'${raw}' is absolute; write a repository-relative path` };
   const segments = value.split("/").filter((segment) => segment !== "" && segment !== ".");

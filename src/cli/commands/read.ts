@@ -775,14 +775,14 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   // @req IR-CLI-049 @req IR-CLI-072 — CI-wireable work-mode gate. Wire as a remote required status
-  // check to block unsynthesized vibe/tdd commits (and SDS-less tdd commits) where local hooks can
-  // be bypassed.
+  // check to block unsynthesized vibe/tdd commits (and tdd commits with no written acceptance
+  // contract, FR-PARSE-042) where local hooks can be bypassed.
   const vibeGate = command
     .command("vibe-gate")
     .description("Vibe/tdd-synthesis gate for CI. Wire `vibe-gate check` as a remote required status check to block unsynthesized vibe/tdd commits.");
   vibeGate
     .command("check")
-    .description("Exit non-zero when an active vibe/tdd task has no synthesized step directory, or a tdd task has no design.md; use as a remote required status check.")
+    .description("Exit non-zero when an active vibe/tdd task has no synthesized step directory, or a tdd task has no written acceptance contract; use as a remote required status check.")
     .option("--json", "JSON output")
     .action(async (options) => {
       const json = Boolean(options.json) || command.opts().json;
@@ -934,8 +934,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .action(async (name, options) => {
       const json = Boolean(options.json) || command.opts().json;
       const workspace = await workspaceFrom(command.opts());
-      // @req FR-PARSE-033 @req FR-PARSE-040 — design.md and intent.md are outside ParsedWorkspace,
-      // so the surface loads both: the skip record lives in intent.md and decides SDS-W050 vs SDS-E054.
+      // @req FR-PARSE-033 @req FR-PARSE-042 — design.md and intent.md are outside ParsedWorkspace,
+      // so the surface loads both: without an authored design.md the acceptance lines live in intent.md.
       const root = await resolveProjectRoot(process.cwd(), command.opts().root);
       const result = validateWorkspaceScoped(workspace, {
         step: name,
@@ -1009,11 +1009,12 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
-  // @req FR-NODE-080 — writeIfMissing SDS/intent stub scaffold (content stays directly authored).
+  // @req FR-NODE-080 — writeIfMissing intent stub scaffold, plus the SDS stub with --sds (content stays directly authored).
   step
     .command("scaffold")
     .argument("<task>", "step name under docs/spec/steps/<task>/")
     .option("--target <target>", "target stamped into the SDS metadata table")
+    .option("--sds", "also scaffold the step SDS design.md")
     .option("--dry-run", "evaluate without writing")
     .option("--json", "JSON output")
     .action(async (task, options) => {
@@ -1022,6 +1023,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       const result = await scaffoldStep(root, {
         task,
         ...(typeof options.target === "string" ? { target: options.target } : {}),
+        ...(options.sds === true ? { sds: true } : {}),
         ...(options.dryRun === true ? { dryRun: true } : {})
       });
       output(context, { json }, result);

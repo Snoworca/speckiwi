@@ -61,7 +61,7 @@ const ROUTE = /route|라우팅|라우트|대신|instead|redirect|분기/i;
 const KEEP_SDD = /\bsdd\b/i;
 const KEEP = /유지|keep|retain|그대로|stays?\b|remains?\b/i;
 
-describe("FR-FLOW-039 — kiwi-pipeline work-mode routing gate", () => {
+describe("FR-FLOW-039 AC-4 — kiwi-pipeline work-mode routing gate", () => {
   for (const variant of VARIANTS) {
     describe(`variant: ${variant}`, () => {
       it("AC-1: authors a Phase-0 work-mode gate — get_work_mode (MCP-first), speckiwi mode (CLI fallback), fail-open wait", () => {

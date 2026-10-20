@@ -497,7 +497,7 @@ describe("FR-NODE-086 AC-7 — an already-English block is recognised by the exi
 });
 
 describe("FR-NODE-086 AC-8 — this repository's own agent files carry the English block", () => {
-  it.each(["AGENTS.md", "CLAUDE.md"])("FR-NODE-086 AC-8: %s carries the English block and no Hangul", async (agentFile) => {
+  it.each(["AGENTS.md", "CLAUDE.md"])("FR-NODE-086 AC-8 / FR-FLOW-009 AC-1: %s carries the current English block and no Hangul", async (agentFile) => {
     // The on-disk casing is authoritative: this repository stores the agents file lower-cased, and a
     // case-insensitive file system would otherwise hide a mismatch.
     const entries = await readdir(REPO_ROOT);

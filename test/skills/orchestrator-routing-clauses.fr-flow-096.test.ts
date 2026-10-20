@@ -165,12 +165,14 @@ describe("FR-FLOW-101 — the misroute record and the carry manifests are stated
       expect(carry, `${variant.id}: the carry-manifest paragraph`).not.toBe("");
       const parts = sentences(carry);
       const research = parts.find((s) => s.includes("`design.md`")) ?? "";
-      expect(research).toMatch(/step 의 `design\.md` 와 `intent\.md` 는 1\.d 의 연구 입력이 되고 그 뒤 wave 마다 `--research-doc` 인자가 된다/);
+      // FR-FLOW-101 AC-4 (4.1.0): the step's intent.md, and design.md only if the step had one.
+      expect(research).toMatch(/step 의 `intent\.md`\(와, 있으면 `design\.md`\)는 1\.d 의 연구 입력이 되고 그 뒤 wave 마다 `--research-doc` 인자가 된다/);
       const sealed = parts.find((s) => s.includes("already-implemented") && s.includes("out_of_scope")) ?? "";
       expect(sealed, `${variant.id}: the seal is scoped to the post-green trigger`).toMatch(/^green 이후 trigger 에서는 병합된 테스트와 구현이 \*\*통합 브랜치에 남고\*\*/);
       expect(sealed).toMatch(/`out_of_scope` 와 `exclusion_class = "already-implemented"` 로 봉인된다/);
-      const never = parts.find((s) => s.includes("결코 wave SDS 에 들어가지 않는다")) ?? "";
-      expect(never).toMatch(/모든 SDS 는 테스트 먼저 구현되고 \*\*의무적 red 확인\*\*을 거치는데 옮겨온 green 코드는 그것을 통과하지 못한다/);
+      // FR-FLOW-101 AC-4 (4.1.0): a wave, not a wave SDS — every wave is implemented test-first.
+      const never = parts.find((s) => s.includes("결코 wave 에 들어가지 않는다")) ?? "";
+      expect(never).toMatch(/모든 wave 는 테스트 먼저 구현되고 \*\*의무적 red 확인\*\*을 거치는데 옮겨온 green 코드는 그것을 통과하지 못한다/);
     });
   }
 });

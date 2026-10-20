@@ -6,7 +6,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 describe("set active target mutation", () => {
-  it("updates Active Target metadata and Target Map status rows", async () => {
+  it("FR-NODE-009 AC-16: updates Active Target metadata and Target Map status rows", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const result = await setActiveTarget(await resolveProjectRoot(rootPath), { target: "v1.1.0" });
 
@@ -39,7 +39,7 @@ describe("set active target mutation", () => {
     expect(result).toMatchObject({ ok: true, value: { activeTarget: "v1.1.0", written: true } });
   });
 
-  it("rejects unknown targets without changing the index", async () => {
+  it("FR-NODE-009 AC-16: rejects unknown targets without changing the index", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const indexPath = path.join(rootPath, "docs", "spec", "00.index.md");
     const before = await readFile(indexPath, "utf8");

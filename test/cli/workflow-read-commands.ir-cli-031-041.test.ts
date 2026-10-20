@@ -120,7 +120,7 @@ describe("IR-CLI-041 AC-3 — the CLI projections and profiles fail closed", () 
   it("IR-CLI-041 AC-3: an ambiguous target state — two active Target Map rows — blocks the profiles", async () => {
     const root = await copyFixtureWorkspace("valid-basic");
     const control = await runCli(root, ["workflow", "work-order", "next", "--explain"]);
-    expect(control.json).toMatchObject({ action: "create-sds", blocking: false });
+    expect(control.json).toMatchObject({ action: "implement-requirements", blocking: false });
 
     await editIndex(root, { extraTargetRows: ["| v2.0.0 | release | active | A second active row |"] });
     const ambiguous = await runCli(root, ["workflow", "work-order", "next", "--explain"]);

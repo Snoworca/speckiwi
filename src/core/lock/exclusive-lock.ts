@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:net";
+import { connect, createServer, type Server } from "node:net";
 import { hostname } from "node:os";
 import path from "node:path";
 
@@ -152,6 +152,37 @@ function fenceName(namespace: string, lockPath: string): string {
   return `\\\\.\\pipe\\${namespace}-${digest}`;
 }
 
+/** The fence's pipe name for one lock path, for a probe and for a test standing in for a holder. */
+export function exclusiveLockFenceName(namespace: string, lockPath: string): string {
+  return fenceName(namespace, path.resolve(lockPath));
+}
+
+/** `held`: a live process holds (or is taking) the fence. `free`: none does. `not-applicable`: POSIX. */
+export type ExclusiveLockFenceState = "held" | "free" | "not-applicable";
+
+/**
+ * Whether a live process holds the lock's Windows fence, asked by connecting to it.
+ *
+ * Only "no such pipe" (`ENOENT`) means free; a connection, a busy pipe, a refused access or any other
+ * answer means a process is listening, and reading those as free would let a release remove the file
+ * of a live holder. Connecting never takes the pipe name, so the probe cannot refuse an acquisition.
+ * On POSIX the fence is a stub and there is nothing to ask. @req FR-NODE-221
+ */
+export async function probeExclusiveLockFence(namespace: string, lockPath: string): Promise<ExclusiveLockFenceState> {
+  if (process.platform !== "win32") return "not-applicable";
+  return new Promise((resolve) => {
+    const socket = connect(fenceName(namespace, path.resolve(lockPath)));
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve("held");
+    });
+    socket.once("error", (error: NodeJS.ErrnoException) => {
+      socket.destroy();
+      resolve(error.code === "ENOENT" ? "free" : "held");
+    });
+  });
+}
+
 async function closeServer(server: Server): Promise<void> {
   if (!server.listening) return;
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
@@ -217,16 +248,18 @@ async function publishExclusive(filePath: string, contents: string): Promise<voi
   }
 }
 
-async function readSentinel(lockPath: string): Promise<{ record: SentinelRecord | null; ageMs: number }> {
+async function readSentinel(lockPath: string): Promise<{ record: SentinelRecord | null; ageMs: number; raw: string | null }> {
   const metadata = await stat(lockPath);
   let record: SentinelRecord | null = null;
+  let raw: string | null = null;
   try {
-    const parsed = JSON.parse(await readFile(lockPath, "utf8")) as unknown;
+    raw = await readFile(lockPath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
     if (validRecord(parsed)) record = parsed;
   } catch {
     // A new or crashed writer can leave an empty/torn sentinel. Its grace period prevents theft.
   }
-  return { record, ageMs: Math.max(0, Date.now() - metadata.mtimeMs) };
+  return { record, ageMs: Math.max(0, Date.now() - metadata.mtimeMs), raw };
 }
 
 async function removeOwnedSentinel(lockPath: string, token: string): Promise<void> {
@@ -713,4 +746,53 @@ export async function renewExclusiveLock(capability: ExclusiveLockCapability): P
 
 export async function readExclusiveLockHolder(lockPath: string): Promise<ExclusiveLockHolder | null> {
   return readHolderAt(path.resolve(lockPath));
+}
+
+/** What a sentinel on disk says, and whether an acquisition would reclaim it. */
+export interface ExclusiveLockInspection {
+  readonly present: boolean;
+  readonly holder: ExclusiveLockHolder | null;
+  readonly leaseExpiresAt: string | null;
+  /** A sentinel exists and names nobody: torn, empty or unparseable. */
+  readonly unreadable: boolean;
+  /** The decision `acquireExclusiveLock` takes for this sentinel, before its fence is asked. */
+  readonly reclaimable: boolean;
+  /** The bytes read, so a caller can tell the sentinel it judged from a successor's. */
+  readonly raw: string | null;
+}
+
+/**
+ * Reads a sentinel the way an acquisition judges it, so a dry run gives the real call's answer rather
+ * than a second rule of its own. @req IR-CLI-105 AC-8, FR-NODE-207 AC-3
+ */
+export async function inspectExclusiveLock(lockPath: string): Promise<ExclusiveLockInspection> {
+  const resolved = path.resolve(lockPath);
+  let observed: Awaited<ReturnType<typeof readSentinel>>;
+  try {
+    observed = await readSentinel(resolved);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return { present: false, holder: null, leaseExpiresAt: null, unreadable: false, reclaimable: true, raw: null };
+  }
+  return {
+    present: true,
+    holder: observed.record ? holderFrom(observed.record) : null,
+    leaseExpiresAt: observed.record?.lease_expires_at ?? null,
+    unreadable: observed.record === null,
+    reclaimable: isReclaimable(observed.record, observed.ageMs),
+    // The bytes the holder was parsed from, not a second read: a successor published between two
+    // reads must not be removed under the previous holder's name. @req FR-NODE-221 AC-6
+    raw: observed.raw
+  };
+}
+
+/**
+ * Test-only seam: queues a cleanup task on a held capability, so a suite can make the holder's own
+ * fence release fail. Returns false when this process holds no such capability. @req FR-NODE-221 AC-5
+ */
+export function addCleanupTaskForTest(token: string, task: () => Promise<void>): boolean {
+  const active = activeCapabilities.get(token);
+  if (!active) return false;
+  active.cleanupTasks.push(task);
+  return true;
 }

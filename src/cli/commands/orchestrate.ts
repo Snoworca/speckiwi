@@ -32,16 +32,45 @@ import {
 } from "../../core/workflow/artifact-lock.js";
 import { appendUtf8LineAndSync } from "../../core/workflow/mutation.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
-import { computeInvariantDigest, readCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
+import { computeInvariantDigest, readCard, stampCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
 import { computeResumeState, retiredRunMarkers, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { computeRoute } from "../../core/orchestrator/route.js";
 import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
-import { acquire, readHolder, releaseHeldRunLock, resolveGitCommonDir, RunLockHeldError, runLockPath } from "../../core/orchestrator/run-lock.js";
+import {
+  acquire,
+  acquisitionRefused,
+  foreignReleaseBlocker,
+  inspectRunLock,
+  readHolder,
+  releaseHeldRunLock,
+  resolveGitCommonDir,
+  RUN_LOCK_GATE,
+  RunLockHeldError,
+  reportedFence,
+  runLockPath,
+  type RunLockRelease,
+  type RunLockState
+} from "../../core/orchestrator/run-lock.js";
 import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
-import { engineOf, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
-import { validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
-import { CURRENT_WAVES_SCHEMA_VERSION, ENGINES, type Engine, type WavesEvent } from "../../core/orchestrator/journal-schema.js";
+import { engineOf, listJournalRunIds, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
+import { computeRunProgress, isRunAborted, validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
+import {
+  declarationEntryDigest,
+  parseWaveDeclaration,
+  waveReadiness,
+  type WaveDeclaration,
+  type WaveDeclarationEntry
+} from "../../core/orchestrator/wave-declaration.js";
+import { collectResumeFacts, filePointer, trackedPathsAtHead } from "./orchestrate-facts.js";
+import {
+  CURRENT_WAVES_SCHEMA_VERSION,
+  ENGINES,
+  WAVES_EVENT_REQUIRED_BY_SCOPE,
+  eventScopeOf,
+  type Engine,
+  type WavesEvent
+} from "../../core/orchestrator/journal-schema.js";
 import { LITE_SDS_SUFFIX, checkSdsFile } from "../../core/sds/check-sds.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 
@@ -112,13 +141,20 @@ export const ORCHESTRATE_PHASE2_VERB_ROWS = [
 export const ORCHESTRATE_DEFERRED_VERB_ROWS = ["lane audit", "lane harvest", "lane release", "lane status"] as const;
 
 /**
+ * Rows a requirement after the two phases registers. Declared apart from the phase rows so neither
+ * phase's census grows when one lands. @req IR-CLI-082 AC-1, IR-CLI-104
+ */
+export const ORCHESTRATE_LATER_VERB_ROWS = ["wave status"] as const;
+
+/**
  * Every row the CLI actually registers: the phase-1 surface plus each phase-2 row already landed.
  * Derived rather than restated, so a row cannot be registered without leaving the deferred list.
  * @req IR-CLI-091
  */
 export const ORCHESTRATE_REGISTERED_VERB_ROWS: readonly string[] = [
   ...ORCHESTRATE_PHASE1_VERB_ROWS,
-  ...ORCHESTRATE_PHASE2_VERB_ROWS.filter((row) => !(ORCHESTRATE_DEFERRED_VERB_ROWS as readonly string[]).includes(row))
+  ...ORCHESTRATE_PHASE2_VERB_ROWS.filter((row) => !(ORCHESTRATE_DEFERRED_VERB_ROWS as readonly string[]).includes(row)),
+  ...ORCHESTRATE_LATER_VERB_ROWS
 ];
 
 /** The freeze targets of 05 §3.3a — five since `handoff` left in 4.0.0. @req IR-CLI-082 AC-2 */
@@ -218,6 +254,7 @@ const DRY_RUN_OPTION = o("--dry-run", "dryRun", "boolean");
 const RUN_ID_OPTION = o("--run-id", "runId");
 const JOURNAL_OPTION = o("--journal", "journal");
 const LEDGER_OPTION = o("--ledger", "ledger");
+const ENGINE_OPTION = o("--engine", "engine");
 
 /**
  * The `orchestrate_*` family. The CLI namespace is the authority and every binding names the leaf it
@@ -225,7 +262,7 @@ const LEDGER_OPTION = o("--ledger", "ledger");
  * than by inspection. @req IR-MCP-003
  */
 export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
-  { tool: "orchestrate_resume", description: "Rebuilds the resume state of an orchestrator run from its journal and resume card — which wave and lane it stopped in, and whether anything drifted since. The git facts and drift inputs it compares against are an argument and both have to be supplied; the tool never invents them, and a call omitting either one fails. Read-only.", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
+  { tool: "orchestrate_resume", description: "Rebuilds the resume state of an orchestrator run from its journal and resume card — which wave and lane it stopped in, and whether anything drifted since. Without run_id it resumes the most recent run under the engine (kiwi-orchestrator by default) that is neither complete nor aborted. Without facts it reads the git facts and drift inputs from the repository itself, and then reports the intent-digest comparison as unchecked with a warning; a facts file, when given, must carry both halves. Read-only.", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
   // @req IR-MCP-005 — the role declaration is bound too. Without it the binding could only ever
   // produce the default host role, and the role-aware gate refuses a linked worktree claiming to be
   // a host, which leaves the topology gate unreachable from the surface a worktree session uses.
@@ -245,7 +282,7 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_route_freeze", description: "Commits the run to one routing rung and records the gate ballot behind it. Writes the route lock together with the resume card's frozen route entry and invariant digest, so a later byte change to the lock surfaces as drift on resume; re-freezing over a different probe rewrites both rather than refusing.", path: ["route", "freeze"], kind: "mutation", options: [o("--probe", "probe"), o("--gate", "gate"), o("--out", "out"), o("--auto", "auto", "boolean"), DRY_RUN_OPTION] },
   { tool: "orchestrate_route_show", description: "Reads the frozen routing lock and reports the rung this run is committed to. Read-only.", path: ["route", "show"], kind: "read", options: [o("--lock", "lock")] },
   {
-    tool: "orchestrate_run_lock", description: "Takes, releases or reports the repository-wide orchestrator run lock, keyed on the git common directory so linked worktrees contend for one lock. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all.",
+    tool: "orchestrate_run_lock", description: "Takes, releases or reports the repository-wide orchestrator run lock, keyed on the git common directory so linked worktrees contend for one lock. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all. While the session that took the lock is alive, only that session can release it (unlock here, or orchestrate_run_abort); any other caller is refused and nothing is removed. A refusal and the status answer name the lease, the fence state and the release step that can work.",
     path: ["run", "lock"],
     kind: "mutation",
     options: [o("--owner", "owner"), DRY_RUN_OPTION],
@@ -263,10 +300,10 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   },
   { tool: "orchestrate_readiness_check", description: "Derives whether the requirements you name are ready to be worked, from a requirement snapshot rather than any self-attestation, and fails closed on dependency cycles or duplicate ids. That allowlist of requirement ids is mandatory in practice: an empty one is an error, never a sweep of the whole target. Read-only.", path: ["readiness", "check"], kind: "read", options: [o("--target", "target", "string", true), o("--snapshot", "snapshot", "string", true), o("--req", "req", "array")] },
   {
-    tool: "orchestrate_schedule_waves", description: "Computes the stage schedule for a set of waves from their SDS files: one lane per wave, every wave in a stage after the waves it depends on, the waves of one stage writing disjoint paths, and at most the lane cap per stage. An sds entry is one SDS file, which is one wave named after the file, or <waveId>=<file>,<file>, which makes several SDS files one wave named waveId and keys that wave's dependencies by waveId. A wave the dependency map leaves out depends on every wave listed before it. Writes the lanes lock unless the call is a dry run, and, when strict grounding is asked for beside a run id, a freeze-lane-plan line into the run journal — which lands before the grounding verdict, so a call refused for ungrounded files has journalled itself all the same.",
+    tool: "orchestrate_schedule_waves", description: "Computes the stage schedule for a set of waves: one lane per wave, every wave in a stage after the waves it depends on, the waves of one stage writing disjoint paths, and at most the lane cap per stage. Give exactly one of waves or sds. waves is a wave declaration file ({schema_version, waves: [{wave: \"wave-<n>\", depends_on?, files, requirements, sds?}]}) read with run_id: only the entries whose dependencies the run journal shows complete are planned, the rest are reported as deferred, and a wave declaring no files and no SDS is planned alone with a warning. sds is the older form, which needs depends: an sds entry is one SDS file, which is one wave named after the file, or <waveId>=<file>,<file>, which makes several SDS files one wave named waveId and keys that wave's dependencies by waveId; a wave the dependency map leaves out depends on every wave listed before it. Writes the lanes lock unless the call is a dry run, and, when strict grounding is asked for beside a run id, a freeze-lane-plan line into the run journal — which lands before the grounding verdict, so a call refused for ungrounded files has journalled itself all the same.",
     path: ["schedule", "waves"],
     kind: "mutation",
-    options: [o("--sds", "sds", "array", true), o("--depends", "depends", "json", true), o("--lanes", "lanes"), o("--strict-grounding", "strictGrounding", "boolean"), o("--existing-paths", "existingPaths"), o("--out", "out"), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION]
+    options: [o("--waves", "waves"), o("--sds", "sds", "array"), o("--depends", "depends", "json"), o("--lanes", "lanes"), o("--strict-grounding", "strictGrounding", "boolean"), o("--existing-paths", "existingPaths"), o("--out", "out"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION]
   },
   { tool: "orchestrate_schedule_show", description: "Reads a lanes lock and reports the stages it fixed and the one lane per wave in each. Read-only.", path: ["schedule", "show"], kind: "read", options: [o("--lock", "lock")] },
   // @req IR-MCP-004 AC-1 — `--proof` is mandatory on the leaf, so it has to be declared here too:
@@ -279,6 +316,8 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_issue_defer", description: "Records a closed-vocabulary deferral reason against one issue, with no resolution. The row stays in its wave and the wave-close judge still weighs it, so deferring does not clear the way to close. Writes the ledger row.", path: ["issue", "defer"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--reason", "reason", "string", true), DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_list", description: "Lists the wave issue ledger's rows, optionally for one wave, each with its classification and disposition. Read-only.", path: ["issue", "list"], kind: "read", options: [LEDGER_OPTION, o("--wave", "wave")] },
   { tool: "orchestrate_wave_close", description: "Judges whether a wave may close, by the evidence each issue's classification demands: a local defect or a missing task needs a resolution proof that resolves against the facts you supply, a design gap needs a fresh design-lock digest, an out-of-run or new-wave issue needs a recorded user decision, and a design contradiction needs a valid classification and nothing more. The supplied set is what proofs are checked against, never a list of outcomes the caller declares acceptable. Read-only.", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
+  // @req IR-CLI-104 — the wave-state reader; `engine` is bound so a kiwi-wave-master journal is readable over MCP.
+  { tool: "orchestrate_wave_status", description: "Reports, for every wave of one run, its latest status, phase, sds_id, stage, lane and time by the same predicate resume uses — a round record or a statusless verb line never changes a wave's status — and whether the run is complete, needs its final verification, or was aborted. With a wave declaration file it also lists the waves schedule waves would plan now. Without run_id it reads the most recent run under the engine that is neither complete nor aborted. Read-only.", path: ["wave", "status"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--waves", "waves")] },
   { tool: "orchestrate_duplication_plan", description: "Audits lane diffs against the lanes' declared write sets, which bound each lane's candidates to the paths it said it would touch, and proposes the duplication candidates a reviewer should look at. Which wave that is comes from how the caller assembled the diff file; this tool applies no wave filter of its own. Read-only.", path: ["duplication", "plan"], kind: "read", options: [o("--diffs", "diffs", "string", true), o("--write-sets", "writeSets", "string", true), o("--wave", "wave")] },
   { tool: "orchestrate_validate", description: "Validates a kiwi-orchestrator run journal against the waves-event contract and reports each violation by its named code; the strict flag additionally fails an unstamped 1.4.0 line and a run-scoped version downgrade. This binding declares no engine, so a journal another engine wrote is read as zero lines and answers clean without having been judged. Read-only.", path: ["validate"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--strict", "strict", "boolean")] },
   { tool: "orchestrate_auto_gate", description: "Applies the --auto decision rule to one gate ballot the caller supplies and returns the verdict: adopt the recommended option, adopt the default-if-auto option, adopt a majority over the votes already in the payload, or escalate and halt for the user. It convenes nobody and gathers no votes of its own, and a critical gate, a degraded quorum and an absent majority each escalate. Read-only.", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] },
@@ -764,6 +803,11 @@ function deferredMutationsFromQueue(entries: Array<{ value: unknown; line: numbe
   });
 }
 
+function jsonObject(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new OperationalError(`${label} must be a JSON object`);
+  return value as Record<string, unknown>;
+}
+
 function parseInlineJson(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== "string" || value.length === 0) throw new OperationalError(`${label} is required`);
   let parsed: unknown;
@@ -861,11 +905,11 @@ async function writeUnderRoot(root: string, relativePath: string, text: string):
   return absolute;
 }
 
-/** One wave the scheduler reads from its SDS files: the kernel's input plus what the lock records beside it. */
+/** One wave the scheduler places: the kernel's input plus what the lock records beside it. */
 interface ScheduledWave extends WaveInput {
-  /** The wave's SDS path, or its SDS files in `--sds` order when the entry grouped several. */
-  readonly sds: string | string[];
-  readonly sdsDigest: WaveSdsDigest;
+  /** The wave's SDS path, or its SDS files in order when it has several; `null` for a wave with none. */
+  readonly sds: string | string[] | null;
+  readonly sdsDigest: WaveSdsDigest | null;
 }
 
 /** One SDS file that passed `speckiwi sds check`. */
@@ -907,11 +951,15 @@ function parseSdsEntry(entry: string): { readonly waveId: string | null; readonl
     throw new OperationalError(`--sds ${entry} must be <waveId>=<file>[,<file>...] with a wave id and no empty file`);
   }
   // The wave id becomes a lane id and a branch segment, which a resume matches as `lane-[^/]+`.
-  if (!GROUP_WAVE_ID.test(waveId)) throw new OperationalError(`--sds ${entry}: the wave id must match ${GROUP_WAVE_ID.source}`);
+  if (!LANE_ID_SEGMENT.test(waveId)) throw new OperationalError(`--sds ${entry}: the wave id must match ${LANE_ID_SEGMENT.source}`);
   return { waveId, paths };
 }
 
-const GROUP_WAVE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+/**
+ * An id that becomes part of a lane id and a branch segment: the `--sds` group wave id, and with
+ * `--waves` the run id (`lane-{run_id}-wave-{n}`, FR-NODE-216 AC-11).
+ */
+const LANE_ID_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** Whether this file system treats two spellings that differ only in case as one file. */
 const CASE_INSENSITIVE_PATHS = process.platform === "win32" || process.platform === "darwin";
@@ -920,10 +968,10 @@ const CASE_INSENSITIVE_PATHS = process.platform === "win32" || process.platform 
  * The SDS files one call names more than once — twice in a group, or in two waves. A design scheduled
  * twice cannot sit in exactly one lane, which is what `lane-plan-incomplete` refuses. @req FR-NODE-213 AC-1
  */
-function sdsNamedTwice(waves: readonly ScheduledWave[]): Array<{ sds: string; waves: string[] }> {
+function sdsNamedTwice(waves: ReadonlyArray<Pick<ScheduledWave, "waveId" | "sds">>): Array<{ sds: string; waves: string[] }> {
   const owners = new Map<string, { sds: string; waves: string[] }>();
   for (const wave of waves) {
-    for (const sds of typeof wave.sds === "string" ? [wave.sds] : wave.sds) {
+    for (const sds of wave.sds === null ? [] : typeof wave.sds === "string" ? [wave.sds] : wave.sds) {
       const key = CASE_INSENSITIVE_PATHS ? sds.toLowerCase() : sds;
       const entry = owners.get(key) ?? { sds, waves: [] };
       entry.waves.push(wave.waveId);
@@ -973,17 +1021,239 @@ function waveDependenciesFrom(value: Record<string, unknown>, waveIds: ReadonlyS
   return dependencies;
 }
 
+/** What either `schedule waves` form hands the shared planning tail. */
+interface ScheduleInput {
+  readonly waves: readonly ScheduledWave[];
+  readonly dependencies: WaveDependencies;
+  readonly existingPaths: readonly string[];
+  readonly declaration?: { readonly path: string; readonly digests: Readonly<Record<string, string>> };
+  /** Extra output fields the form reports beside the lock. */
+  readonly report: Record<string, unknown>;
+}
+
 /**
- * Releases a run lock this process may not have acquired.
- *
- * @req FR-NODE-197 AC-4/AC-7 — this used to read the sentinel's token here and hand it to the
- * module's `release`, which is scoped to a capability the calling process still holds and returns
- * silently when it does not. Across processes it never holds one, so both `run unlock` and `run
- * abort` reported a holder they had not removed. The sentinel's format is that module's business
- * anyway; the release-by-path entry point an older comment here asked for now exists.
+ * Which `schedule waves` form a call uses, refusing every mixed or incomplete one before anything is
+ * read: `--waves` excludes `--sds` and `--depends` and needs `--run-id`; `--sds` needs `--depends`.
+ * @req FR-NODE-216 AC-8, AC-11, FR-NODE-213 AC-1
  */
-async function releaseRunLock(commonDir: string): Promise<{ owner: string | null }> {
-  return releaseHeldRunLock(commonDir);
+function scheduleForm(options: Record<string, unknown>): "waves" | "sds" {
+  if (options.waves !== undefined) {
+    if (options.sds !== undefined) throw new OperationalError("--waves cannot be combined with --sds");
+    if (options.depends !== undefined) throw new OperationalError("--waves cannot be combined with --depends");
+    // @req FR-NODE-216 AC-11 — the run id is spelled into every wave, lane, branch and worktree name.
+    if (!LANE_ID_SEGMENT.test(requireOption(options.runId, "--run-id"))) {
+      throw new OperationalError(`--run-id ${JSON.stringify(options.runId)} must match ${LANE_ID_SEGMENT.source}: it becomes part of every lane id`);
+    }
+    return "waves";
+  }
+  if (options.sds === undefined) throw new OperationalError("schedule waves needs --waves <file> or --sds <path...>");
+  if (options.depends === undefined) throw new OperationalError("--depends is required with --sds");
+  return "sds";
+}
+
+/** The `--existing-paths` list, read as given. */
+async function existingPathsOption(root: string, value: unknown): Promise<string[]> {
+  return (await readJsonFile(path.resolve(root, value as string), "--existing-paths")) as string[];
+}
+
+/** The `--sds` form, as 4.0.0 shipped it. @req FR-NODE-213 AC-1 */
+async function sdsSchedule(root: string, options: Record<string, unknown>): Promise<ScheduleInput | GateRefusal> {
+  const declaredDependencies = parseInlineJson(options.depends, "--depends");
+  const waves = await loadScheduledWaves(root, options.sds as string[]);
+  const dependencies = waveDependenciesFrom(declaredDependencies, new Set(waves.map((wave) => wave.waveId)));
+  const namedTwice = sdsNamedTwice(waves);
+  if (namedTwice.length > 0) return refuse("lane-plan-incomplete", namedTwice);
+  const existingPaths = options.existingPaths ? await existingPathsOption(root, options.existingPaths) : [];
+  return { waves, dependencies, existingPaths, report: {} };
+}
+
+/** The lock's wave id for a declaration entry `wave-<n>`: the unit id. @req FR-NODE-216 AC-11 */
+function declaredWaveId(runId: string, entry: WaveDeclarationEntry): string {
+  return `${runId}-${entry.wave}`;
+}
+
+/**
+ * The planned entries' requirements that are not ready: absent from the SRS, `draft` or `deprecated`,
+ * or `discarded`. @req FR-NODE-216 AC-10
+ */
+function requirementsNotReady(workspace: ParsedWorkspace, entries: readonly WaveDeclarationEntry[]): Array<Record<string, string>> {
+  const byId = new Map(workspace.records.map((record) => [record.id, record]));
+  const notReady: Array<Record<string, string>> = [];
+  for (const entry of entries) {
+    for (const requirement of entry.requirements) {
+      const record = byId.get(requirement);
+      const reason =
+        record === undefined
+          ? "missing"
+          : record.status === "discarded"
+            ? "status-discarded"
+            : record.stability === "draft" || record.stability === "deprecated"
+              ? `stability-${record.stability}`
+              : null;
+      if (reason !== null) notReady.push({ wave: entry.wave, requirement, reason });
+    }
+  }
+  return notReady;
+}
+
+/** The SDS files a declaration entry names, checked as `--sds` checks them. @req FR-NODE-216 AC-5 */
+async function declaredSdsFiles(root: string, workspace: ParsedWorkspace, entry: WaveDeclarationEntry): Promise<CheckedSds[]> {
+  const files: CheckedSds[] = [];
+  for (const sdsPath of entry.sds ?? []) files.push(await checkScheduledSds(root, workspace, sdsPath));
+  return files;
+}
+
+/**
+ * The `--waves` form: the ready entries of the declaration, judged against the run's journal, each
+ * written as `files[]` ∪ its SDS write sets. @req FR-NODE-216
+ */
+async function declaredSchedule(command: Command, root: string, options: Record<string, unknown>): Promise<ScheduleInput | GateRefusal> {
+  const runId = options.runId as string;
+  const declarationPath = options.waves as string;
+  const declaration = await readWaveDeclaration(root, declarationPath);
+  // @req FR-NODE-216 AC-1 — the `--sds` form's rule: one SDS file belongs to one wave, across every entry.
+  const namedTwice = sdsNamedTwice(declaration.waves.map((entry) => ({ waveId: entry.wave, sds: entry.sds === undefined ? null : [...entry.sds] })));
+  if (namedTwice.length > 0) return refuse("lane-plan-incomplete", namedTwice);
+
+  const view = await readJournalView(projectRoot(command), runId, options.journal as string, requireEngine(options.engine));
+  const readiness = waveReadiness(declaration, computeRunProgress(view).waveStatuses);
+  const unallocated = readiness.ready.find((entry) => entry.requirements.length === 0);
+  if (unallocated !== undefined) throw new OperationalError(`${unallocated.wave} is ready to plan but declares no requirements`);
+
+  const workspace = await parseWorkspace({ root });
+  const notReady = requirementsNotReady(workspace, readiness.ready);
+  if (notReady.length > 0) return refuse("requirement-not-ready", notReady);
+
+  const waves: ScheduledWave[] = [];
+  for (const entry of readiness.ready) {
+    const sdsFiles = await declaredSdsFiles(root, workspace, entry);
+    const [single] = sdsFiles;
+    waves.push({
+      waveId: declaredWaveId(runId, entry),
+      writeSet: [...new Set([...entry.files, ...sdsFiles.flatMap((file) => file.writeSet)])].sort(),
+      ...(entry.files.length === 0 && sdsFiles.length === 0 ? { declared: false } : {}),
+      sds: sdsFiles.length === 0 ? null : sdsFiles.length === 1 ? (single as CheckedSds).path : sdsFiles.map((file) => file.path),
+      sdsDigest:
+        sdsFiles.length === 0
+          ? null
+          : sdsFiles.length === 1
+            ? (single as CheckedSds).digest
+            : Object.fromEntries(sdsFiles.map((file) => [file.path, file.digest]))
+    });
+  }
+
+  let existingPaths: string[];
+  if (options.existingPaths) existingPaths = await existingPathsOption(root, options.existingPaths);
+  else {
+    const tracked = await trackedPathsAtHead(root);
+    if (tracked === null) throw new OperationalError("cannot read the paths tracked at HEAD here; pass --existing-paths <file>");
+    existingPaths = tracked;
+  }
+
+  // @req FR-NODE-216 AC-4 — the isolation is a recorded conflict and a warning, never silent.
+  const diagnostics = readiness.ready
+    .filter((entry) => entry.files.length === 0 && (entry.sds ?? []).length === 0)
+    .map((entry) => ({
+      code: "undeclared-write-set",
+      severity: "warning",
+      wave: entry.wave,
+      message: `${entry.wave} declares no files and no SDS, so it is planned alone in its stage`
+    }));
+  return {
+    waves,
+    // Every dependency of a ready entry is complete, so no planned wave waits on another planned one.
+    dependencies: Object.fromEntries(waves.map((wave) => [wave.waveId, []])),
+    existingPaths,
+    declaration: {
+      path: declarationPath,
+      digests: Object.fromEntries(readiness.ready.map((entry) => [declaredWaveId(runId, entry), declarationEntryDigest(entry)]))
+    },
+    report: {
+      deferred: readiness.deferred.map((entry) => entry.wave),
+      complete: readiness.complete.map((entry) => entry.wave),
+      diagnostics
+    }
+  };
+}
+
+/** The release a lease left by an abandoned run may take: `run unlock` only, never `run abort`. @req IR-CLI-105 AC-2 */
+const RELEASE_IF_ABANDONED = Object.freeze({
+  cli: "speckiwi orchestrate run unlock --json",
+  mcp: 'orchestrate_run_lock with action: "unlock"',
+  condition: "use this only if the holding run has been abandoned",
+  warning: "unlocking a live run lets two runs share the repository without either being told"
+});
+
+/** A held fence with a readable lease: the session that took it releases it. @req IR-CLI-105 AC-3 */
+const SESSION_RELEASES = 'the session holding the lock releases it through MCP orchestrate_run_lock with action: "unlock" or orchestrate_run_abort, or must be closed';
+
+/** A held fence with no readable lease: the ghost an earlier release left, or a brief acquisition. @req IR-CLI-105 AC-4 */
+const OPEN_SESSION_HOLDS = "if this lasts more than a few seconds, an open session holds the lock: release it from that session or close it";
+
+/** The fence this very session holds: it releases the lock itself. @req FR-NODE-221 */
+const THIS_SESSION_HOLDS = 'this session holds the lock: release it here with MCP orchestrate_run_lock action: "unlock" or orchestrate_run_abort';
+
+/**
+ * POSIX has no fence, so nothing establishes that no live process holds the lock and the release
+ * offer, which says exactly that, is not made. @req IR-CLI-105 AC-2
+ */
+const NO_FENCE_TO_ASK = "this platform has no fence to tell whether the holding run is alive; if it has been abandoned, speckiwi orchestrate run unlock --json releases it, and unlocking a live run lets two runs share the repository without either being told";
+
+/** What the run lock state tells a caller to do, or nothing beyond the release offer. */
+function runLockGuidance(state: RunLockState): string | null {
+  if (state.fence === "not-applicable") return NO_FENCE_TO_ASK;
+  if (state.fence !== "held") return null;
+  if (state.heldByThisProcess) return THIS_SESSION_HOLDS;
+  return state.holder === null ? OPEN_SESSION_HOLDS : SESSION_RELEASES;
+}
+
+/**
+ * What a refusal and `run status` say about the run lock: the lease, the fence, and the one release
+ * step that can work in that state. Pid and host are reported, never judged. @req IR-CLI-105
+ */
+export function runLockReport(state: RunLockState): Record<string, unknown> {
+  const fields = {
+    owner: state.holder?.owner ?? null,
+    pid: state.holder?.pid ?? null,
+    host: state.holder?.host ?? null,
+    acquiredAt: state.holder?.acquiredAt ?? null,
+    leaseExpiresAt: state.leaseExpiresAt,
+    fence: reportedFence(state),
+    holderUnreadable: state.holderUnreadable,
+    lockPath: state.lockPath
+  };
+  const guidance = runLockGuidance(state);
+  return guidance === null ? { ...fields, releaseIfAbandoned: RELEASE_IF_ABANDONED } : { ...fields, guidance };
+}
+
+/** A release refused because another live process holds the fence. @req FR-NODE-221 AC-1 */
+function liveSessionRefusal(state: RunLockState, extra: Record<string, unknown> = {}): GateRefusal {
+  return refuse("run-lock-held-by-live-session", [{
+    code: "run-lock-held-by-live-session",
+    message: "the run lock is held by a live process: the MCP server of the session that took it, which may be the caller's own session",
+    release: 'that session releases it with MCP orchestrate_run_lock action: "unlock" or orchestrate_run_abort, or by being closed',
+    ...runLockReport(state),
+    ...extra
+  }]);
+}
+
+/**
+ * A release that did not happen, as the verb's answer. A failed fence release by the holder is an
+ * operational failure whose diagnostic is reported; the sentinel stays. @req FR-NODE-221 AC-5, AC-6
+ */
+function unreleased(outcome: Exclude<RunLockRelease, { ok: true }>, extra: Record<string, unknown> = {}): GateRefusal {
+  if (outcome.reason === "cleanup-failed") {
+    // @req FR-NODE-197 AC-3 — and an abort says its line is already recorded, so a retry only releases.
+    const recorded = extra.journalWritten === true ? "; the abort line was recorded, so a retry only releases the lock" : "";
+    throw new OperationalError(`the run lock could not be released and stays held${recorded}: ${JSON.stringify(outcome.diagnostic)}`);
+  }
+  if (outcome.reason === "live-session") return liveSessionRefusal(outcome.state, extra);
+  return refuse(RUN_LOCK_GATE, [{
+    code: "run-lock-changed-hands",
+    message: "the run lock changed hands while it was being released; the new holder was left in place",
+    ...runLockReport(outcome.state),
+    ...extra
+  }]);
 }
 
 // --- the journal --------------------------------------------------------------------------------
@@ -1192,6 +1462,30 @@ async function readJournalView(
 }
 
 /**
+ * The run a verb reads: `--run-id` as given, or else the most recent run under the engine whose
+ * run-scope state is neither complete nor aborted. None left is a usage error, not a gate.
+ * @req FR-NODE-217 AC-1, IR-CLI-104 AC-6
+ */
+async function selectRunId(root: ProjectRoot, runId: unknown, engine: Engine, relativePath: string): Promise<string> {
+  if (typeof runId === "string" && runId.length > 0) return runId;
+  if ((await readJournalBytes(path.resolve(root.root, relativePath))).length === 0) {
+    throw new OperationalError(`no run journal at ${relativePath} (missing or empty): nothing to resume`);
+  }
+  for (const candidate of await listJournalRunIds(root, { engine, relativePath })) {
+    const view = await readJournalView(root, candidate, relativePath, engine);
+    if (!computeRunProgress(view).runComplete && !isRunAborted(view)) return candidate;
+  }
+  throw new OperationalError(`no resumable run: every ${engine} run in ${relativePath} is complete or aborted; pass --run-id`);
+}
+
+/** A wave declaration file, parsed or refused as an operational error naming what is wrong. @req FR-NODE-216 AC-1 */
+async function readWaveDeclaration(root: string, declarationPath: string): Promise<WaveDeclaration> {
+  const parsed = parseWaveDeclaration(await readJsonFile(path.resolve(root, declarationPath), "--waves"));
+  if (!parsed.ok) throw new OperationalError(`--waves ${declarationPath}: ${parsed.gate === null ? "" : `${parsed.gate}: `}${parsed.message}`);
+  return parsed.declaration;
+}
+
+/**
  * The card bytes a `freeze-route` must leave behind, or `null` when there are none to write.
  *
  * `null` covers the two cases that are not defects: a run that has not written its first card yet —
@@ -1252,15 +1546,18 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
 
   // ---- resume -------------------------------------------------------------------------------------
   addCommonOptions(orchestrate.command("resume"))
-    .option("--run-id <id>", "the run whose lines are read")
+    .option("--run-id <id>", "the run whose lines are read; defaults to the most recent resumable run")
+    // @req FR-NODE-217 AC-1 — kiwi-orchestrator by default: only that engine writes resume cards.
+    .option("--engine <engine>", "journal engine (kiwi-orchestrator | kiwi-wave-master)", "kiwi-orchestrator")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .option("--card <path>", "resume card path")
-    .option("--facts <path>", "collected git facts and drift inputs, as JSON")
+    .option("--facts <path>", "git facts and drift inputs, as JSON; collected from the repository when absent")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
         const root = projectRoot(command);
-        const runId = requireOption(options.runId, "--run-id");
-        const view = await readJournalView(root, runId, options.journal as string);
+        const engine = requireEngine(options.engine);
+        const runId = await selectRunId(root, options.runId, engine, options.journal as string);
+        const view = await readJournalView(root, runId, options.journal as string, engine);
         // @req FR-NODE-127 AC-3 — an invalid journal refuses before any resume state is computed.
         // @req FR-NODE-213 AC-6 — a retired term is a warning on history only so that appends into the
         // run are not blocked; resume refuses it at any severity, or the retired verb comes back as the
@@ -1312,24 +1609,44 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             { code: "run-root-moved", pinned: pinnedToplevel, observed: observed ?? null, resumedRoot: root.root }
           ]);
         }
-        const facts = options.facts
-          ? ((await readJsonFile(path.resolve(root.root, options.facts as string), "--facts")) as {
+        // @req FR-NODE-217 AC-2, AC-4 — a facts file keeps its 4.0.0 meaning; without one the facts are
+        // read from the repository here, and the kernel stays pure.
+        const collected = options.facts === undefined;
+        const facts = collected
+          ? await collectResumeFacts(root.root, runId, parsed.card, view)
+          : ((await readJsonFile(path.resolve(root.root, options.facts as string), "--facts")) as {
               gitFacts?: GitFacts;
               driftInputs?: DriftInputs;
-            })
-          : {};
+            });
         if (!facts.gitFacts || !facts.driftInputs) {
           throw new OperationalError("--facts must supply both gitFacts and driftInputs; the tool never invents them");
         }
         const state = computeResumeState(view, parsed.card, facts.gitFacts, facts.driftInputs);
         if (state.blocking !== null) return refuse(state.blocking, state.drift.digests.filter((entry) => entry.gate !== null));
+        // @req FR-NODE-217 AC-3 — with self-collected facts digest 2 had no comparand, so it is reported
+        // as not checked rather than as a match.
+        const reported = collected
+          ? {
+              ...state,
+              drift: {
+                digests: state.drift.digests.map((entry) =>
+                  entry.index === 2
+                    ? { index: 2, outcome: "unchecked", gate: null, detail: "intent inputs were not re-digested: no per-verb declared-input list exists" }
+                    : entry
+                )
+              }
+            }
+          : state;
+        const warnings = collected
+          ? [{ code: "intent-digest-unchecked", severity: "warning", message: "drift digest 2 (intent inputs) was not checked; pass --facts with freshIntentDigests to check it" }]
+          : [];
         // @req FR-NODE-113 AC-5 — 09 §9.5 step 2: the rung is READ off the card. `computeRoute` is
         // reachable from this file, so the read is written out here rather than left implicit — a
         // resumed session has no conversation and no investigators, and several probe fields are not
         // reproducible across a compaction, so a recomputation could legally switch ladders mid-run.
         // Reported only past the drift gate above: a refused resume dispatches nothing.
         const route = parsed.card.frozen?.route;
-        return { resume: state, rung: route === undefined ? null : resumeRung(route) };
+        return { runId, resume: reported, rung: route === undefined ? null : resumeRung(route), warnings };
       });
     });
 
@@ -1434,9 +1751,11 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       await mutate(options, async () => {
         const commonDir = await resolveGitCommonDir(runRoot(command));
         if (options.dryRun === true) {
-          const holder = await readHolder(commonDir);
-          if (holder) return refuse("orchestrator-run-lock-held", [holder]);
-          return { lockPath: runLockPath(commonDir) };
+          // @req IR-CLI-105 AC-8 — the acquisition's own decision, not a second rule: an expired lease
+          // or a dead legacy holder is reclaimed by both, an unexpired lease refused by both.
+          const state = await inspectRunLock(commonDir);
+          if (acquisitionRefused(state)) return refuse(RUN_LOCK_GATE, [runLockReport(state)]);
+          return { lockPath: state.lockPath };
         }
         try {
           const lock = await acquire({ commonDir, owner: options.owner as string });
@@ -1445,7 +1764,8 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           // it the response named only the path, which every run shares, and so did `--owner`.
           return { lockPath: lock.lockPath, holder: lock.holder };
         } catch (error) {
-          if (error instanceof RunLockHeldError) return refuse(error.gate, [{ owner: error.owner, lockPath: error.lockPath }]);
+          // @req IR-CLI-105 AC-1 — the refusal names the lease and the release step that can work.
+          if (error instanceof RunLockHeldError) return refuse(error.gate, [runLockReport(await inspectRunLock(commonDir))]);
           throw error;
         }
       });
@@ -1457,17 +1777,31 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       // @req FR-NODE-197 AC-7 — the holder reported is the one the release itself saw, not one read
       // a moment earlier by a second call. Two reads over one sentinel can disagree, and the answer
       // that matters is what was there when it was removed.
+      // @req FR-NODE-221 AC-9 — the dry run refuses exactly where the real call would, and releases nothing.
       if (options.dryRun === true) {
+        const blocker = await foreignReleaseBlocker(commonDir);
+        if (blocker) return liveSessionRefusal(blocker);
         return { lockPath: runLockPath(commonDir), heldBy: (await readHolder(commonDir))?.owner ?? null };
       }
-      return { lockPath: runLockPath(commonDir), heldBy: (await releaseRunLock(commonDir)).owner };
+      const outcome = await releaseHeldRunLock(commonDir);
+      if (!outcome.ok) return unreleased(outcome);
+      return { lockPath: runLockPath(commonDir), heldBy: outcome.owner };
     });
   });
 
   addCommonOptions(run.command("status")).action(async (options) => {
     await read(orchestrate, options, async () => {
       const commonDir = await resolveGitCommonDir(runRoot(command));
-      return { lockPath: runLockPath(commonDir), holder: await readHolder(commonDir) };
+      // @req IR-CLI-105 AC-7 — `holder` keeps its four keys (FR-NODE-204); the lease and fence sit beside it.
+      const state = await inspectRunLock(commonDir);
+      return {
+        lockPath: state.lockPath,
+        holder: state.holder,
+        leaseExpiresAt: state.leaseExpiresAt,
+        fence: reportedFence(state),
+        holderUnreadable: state.holderUnreadable,
+        ...(state.fence === "held" ? { guidance: runLockGuidance(state) } : {})
+      };
     });
   });
 
@@ -1482,7 +1816,17 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
         const commonDir = await resolveGitCommonDir(root.root);
-        const outcome = await appendWavesLine(
+        // @req FR-NODE-221 AC-3, FR-NODE-197 AC-3/AC-4 — refused before the journal is touched while
+        // another live process holds the fence; the refusal still says the lock is held and names it.
+        const blocker = await foreignReleaseBlocker(commonDir);
+        if (blocker) return liveSessionRefusal(blocker, { runLockHeld: true, lockPath: blocker.lockPath });
+        // @req FR-NODE-197 AC-3 — a retry after a failed release finds its own abort line (same run, same
+        // gate) and only releases; appending again would record the run's end twice.
+        const alreadyRecorded = (await readJournalView(root, runId, options.journal as string)).lines.some(
+          (line) => line.verb === "abort-run" && line.event === "result" && line.abort_gate === options.reason
+        );
+        let outcome: JournalAppendOutcome = { written: true, diagnostics: [] };
+        if (!alreadyRecorded) outcome = await appendWavesLine(
           root,
           options.journal as string,
           runId,
@@ -1503,8 +1847,11 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             { runLockHeld: true, lockPath: runLockPath(commonDir) }
           ]);
         }
-        if (options.dryRun !== true) await releaseRunLock(commonDir);
-        return { reason: options.reason, journalWritten: outcome.written };
+        if (options.dryRun !== true) {
+          const released = await releaseHeldRunLock(commonDir);
+          if (!released.ok) return unreleased(released, { runLockHeld: true, journalWritten: outcome.written });
+        }
+        return { reason: options.reason, journalWritten: outcome.written, ...(alreadyRecorded ? { alreadyRecorded: true } : {}) };
       });
     });
 
@@ -1514,13 +1861,31 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   addMutationOptions(journal.command("append"))
     .option("--run-id <id>", "the run the line belongs to")
     .option("--payload <json>", "the journal line, inline")
+    .option("--payload-file <path>", "the journal line, as a JSON file; instead of --payload")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .action(async (options) => {
       await mutate(options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const payload = parseInlineJson(options.payload, "--payload");
-        const outcome = await appendWavesLine(root, options.journal as string, runId, payload, options.dryRun === true);
+        // @req FR-NODE-218 AC-4 — exactly one of the two sources.
+        if ((options.payload === undefined) === (options.payloadFile === undefined)) {
+          throw new OperationalError("give exactly one of --payload and --payload-file");
+        }
+        const payload =
+          options.payloadFile === undefined
+            ? parseInlineJson(options.payload, "--payload")
+            : jsonObject(await readJsonFile(path.resolve(root.root, options.payloadFile as string), "--payload-file"), "--payload-file");
+        // @req FR-NODE-218 AC-5 — a line missing a field of its scope is refused before any byte is written.
+        const scope = eventScopeOf(payload);
+        const missing = scope === null ? [] : WAVES_EVENT_REQUIRED_BY_SCOPE[scope].filter((field) => payload[field] === undefined || payload[field] === null);
+        if (scope !== null && missing.length > 0) {
+          return refuse("run-invariant-drift", [
+            { code: "journal-required-field-missing", scope, fields: missing, message: `${scope === "intent" ? "an" : "a"} ${scope} line needs ${missing.join(", ")}` }
+          ]);
+        }
+        // @req FR-NODE-218 AC-3 — the tool's clock fills `ts`; a supplied one is kept.
+        const line = payload.ts === undefined ? { ...payload, ts: new Date().toISOString() } : payload;
+        const outcome = await appendWavesLine(root, options.journal as string, runId, line, options.dryRun === true);
         // @req FR-NODE-127 AC-1 — a write that would leave the journal invalid is refused, and the
         // journal is byte-identical after the attempt.
         if (outcome.diagnostics.some((entry) => entry.severity === "error")) {
@@ -1542,12 +1907,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       await mutate(options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const payload = parseInlineJson(options.payload, "--payload") as unknown as ResumeCard;
+        // @req FR-NODE-218 AC-1, AC-2 — the digest and the time are the tool's to compute.
+        const payload = stampCard(parseInlineJson(options.payload, "--payload") as unknown as ResumeCard, new Date().toISOString());
         const view = await readJournalView(root, runId, options.journal as string);
         const written = writeCard(payload, view);
         if (!written.ok) return refuse("resume-card-missing-or-invalid", written.violations);
         if (options.dryRun !== true) await writeUnderRoot(root.root, written.relativePath, written.text);
-        return { path: written.relativePath };
+        return { path: written.relativePath, writtenAt: payload.written_at };
       });
     });
 
@@ -1582,8 +1948,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           const frozen = freezeLock(target, body, { runId, gitBlobOid, writtenAt: new Date().toISOString(), declaredInputs });
           if (!frozen.ok) return refuse("design-not-frozen", [{ code: frozen.code, detail: frozen.detail }]);
           const out = (options.out as string | undefined) ?? `kiwi/orchestrator/${runId}/${target}.lock.json`;
-          if (options.dryRun !== true) await writeUnderRoot(root, out, serializeLock(frozen.lock));
-          return { lock: frozen.lock, out };
+          const text = serializeLock(frozen.lock);
+          if (options.dryRun !== true) await writeUnderRoot(root, out, text);
+          // @req FR-NODE-217 AC-2 — the card records this pointer; resume recomputes it the same way.
+          return { lock: frozen.lock, out, pointer: filePointer(out, text) };
         });
       });
   }
@@ -1613,32 +1981,33 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   // ---- schedule -------------------------------------------------------------------------------------------
   const schedule = orchestrate.command("schedule").description("the wave schedule");
 
-  // @req FR-NODE-213 AC-1 — one lane per wave, from the wave SDS files.
+  // @req FR-NODE-213 AC-1, FR-NODE-216 — one lane per wave, from a wave declaration file or SDS files.
   addMutationOptions(schedule.command("waves"))
-    .requiredOption("--sds <path...>", "the wave SDS files, in wave order; <waveId>=<file>,<file> makes several SDS files one wave")
-    .requiredOption("--depends <json>", "declared dependencies {waveId: [waveId, ...]}; a wave with no key depends on every earlier wave")
+    .option("--waves <path>", "a wave declaration file; plans its ready waves from the run journal (needs --run-id)")
+    .option("--sds <path...>", "the wave SDS files, in wave order; <waveId>=<file>,<file> makes several SDS files one wave")
+    .option("--depends <json>", "with --sds: declared dependencies {waveId: [waveId, ...]}; a wave with no key depends on every earlier wave")
     .option("--lanes <n>", `per-stage lane cap, 1 to ${MAX_LANE_CAP}`, laneCapOption, 4)
     // @req IR-CLI-084 AC-6 — off by default, and journalled when used.
-    .option("--strict-grounding", "require every SDS path to exist at the dispatch base")
-    .option("--existing-paths <path>", "the dispatch base path list, as JSON")
+    .option("--strict-grounding", "require every declared path to exist at the dispatch base")
+    .option("--existing-paths <path>", "the dispatch base path list, as JSON; with --waves, defaults to the paths tracked at HEAD")
     .option("--out <path>", "where the lanes lock is written", "waves/lanes.lock.json")
-    .option("--run-id <id>", "the run whose journal records the option use")
+    .option("--run-id <id>", "the run whose journal records the option use, and with --waves the run whose waves are read")
+    .option("--engine <engine>", "with --waves: the journal engine read for readiness (kiwi-orchestrator | kiwi-wave-master)", "kiwi-orchestrator")
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .action(async (options) => {
       await mutate(options, async () => {
         const root = runRoot(command);
-        const declaredDependencies = parseInlineJson(options.depends, "--depends");
-        const waves = await loadScheduledWaves(root, options.sds as string[]);
-        const dependencies = waveDependenciesFrom(declaredDependencies, new Set(waves.map((wave) => wave.waveId)));
-        const namedTwice = sdsNamedTwice(waves);
-        if (namedTwice.length > 0) return refuse("lane-plan-incomplete", namedTwice);
-        const existingPaths = options.existingPaths
-          ? ((await readJsonFile(path.resolve(root, options.existingPaths as string), "--existing-paths")) as string[])
-          : [];
-        // @req IR-CLI-084 AC-4, AC-5 — every Files path and test file the SDS declares, judged by the pure
-        // detector over the paths the command collected, BEFORE the planner is called.
+        const input = scheduleForm(options) === "waves" ? await declaredSchedule(command, root, options) : await sdsSchedule(root, options);
+        if (isRefusal(input)) return input;
+        const { waves, dependencies } = input;
+        // @req FR-NODE-216 AC-2 — nothing ready is a report, not a lock: a zero-lane lock would read as a
+        // stage that ran.
+        if (waves.length === 0) return { lock: null, out: null, ...input.report };
+        const engine = requireEngine(options.engine);
+        // @req IR-CLI-084 AC-4, AC-5 — every declared path, judged by the pure detector over the paths the
+        // command collected, BEFORE the planner is called.
         const declared = [...new Set(waves.flatMap((wave) => wave.writeSet))].sort();
-        const grounding = groundFiles(declared, existingPaths, options.strictGrounding === true);
+        const grounding = groundFiles(declared, input.existingPaths, options.strictGrounding === true);
         const ungrounded = grounding
           .filter((entry) => isGroundingRefusal(entry.verdict))
           .map((entry) => ({ ...entry, waves: waves.filter((wave) => wave.writeSet.includes(entry.path)).map((wave) => wave.waveId) }));
@@ -1654,7 +2023,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             {
               schema_version: CURRENT_WAVES_SCHEMA_VERSION,
               run_id: options.runId,
-              engine: "kiwi-orchestrator",
+              engine,
               verb: "freeze-lane-plan",
               event: "intent",
               wave: "all",
@@ -1668,16 +2037,23 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         if (ungrounded.length > 0) return refuse("files-not-grounded", ungrounded);
         try {
           const laneCap = options.lanes as number;
-          const plan = computeLanePlan({ waves: waves.map(({ waveId, writeSet }) => ({ waveId, writeSet })), dependencies, laneCap });
+          const plan = computeLanePlan({
+            waves: waves.map(({ waveId, writeSet, declared: isDeclared }) => ({ waveId, writeSet, ...(isDeclared === false ? { declared: false } : {}) })),
+            dependencies,
+            laneCap
+          });
+          const withSds = waves.filter((wave) => wave.sds !== null);
           const lock = buildLanesLockBody({
             plan,
             dependencies,
             laneCap,
-            sdsDigests: Object.fromEntries(waves.map((wave) => [wave.waveId, wave.sdsDigest])),
-            sdsPaths: Object.fromEntries(waves.map((wave) => [wave.waveId, wave.sds]))
+            sdsDigests: Object.fromEntries(withSds.map((wave) => [wave.waveId, wave.sdsDigest as WaveSdsDigest])),
+            sdsPaths: Object.fromEntries(withSds.map((wave) => [wave.waveId, wave.sds as string | string[]])),
+            ...(input.declaration === undefined ? {} : { declaration: input.declaration })
           });
-          if (options.dryRun !== true) await writeUnderRoot(root, options.out as string, `${JSON.stringify(lock, null, 2)}\n`);
-          return { lock, grounding, out: options.out, journalWritten };
+          const text = `${JSON.stringify(lock, null, 2)}\n`;
+          if (options.dryRun !== true) await writeUnderRoot(root, options.out as string, text);
+          return { lock, grounding, out: options.out, pointer: filePointer(options.out as string, text), journalWritten, ...input.report };
         } catch (error) {
           if (error instanceof LanePlanError) return refuse(error.code, [{ message: error.message }]);
           throw new OperationalError((error as Error).message, { cause: error });
@@ -1835,6 +2211,46 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
 
   // ---- wave close ---------------------------------------------------------------------------------------------
   const wave = orchestrate.command("wave").description("wave boundaries");
+
+  // @req IR-CLI-104 — read-only: the journal and the declaration are read, nothing is written.
+  addCommonOptions(wave.command("status"))
+    .option("--run-id <id>", "the run whose waves are reported; defaults to the most recent resumable run")
+    .option("--engine <engine>", "journal engine (kiwi-orchestrator | kiwi-wave-master)", "kiwi-orchestrator")
+    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
+    .option("--waves <path>", "a wave declaration file; also lists the waves schedule waves --waves would plan")
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        const root = projectRoot(command);
+        const engine = requireEngine(options.engine);
+        const relativePath = options.journal as string;
+        const runId = await selectRunId(root, options.runId, engine, relativePath);
+        const view = await readJournalView(root, runId, relativePath, engine);
+        // A run the journal does not hold is an error, not an empty report that reads as "no waves yet".
+        if (view.lines.length === 0) throw new OperationalError(`run ${runId} has no ${engine} line in ${relativePath}`);
+        const progress = computeRunProgress(view);
+        const field = (value: unknown, type: "string" | "number"): unknown => (typeof value === type ? value : null);
+        const waves = [...view.latestPerWave.entries()]
+          .sort(([left], [right]) => left - right)
+          .map(([n, event]) => ({
+            wave: `wave-${n}`,
+            status: progress.waveStatuses.get(n) ?? null,
+            phase: field(event.phase, "string"),
+            sds_id: field(event.sds_id, "string"),
+            stage: field(event.stage, "number"),
+            lane: field(event.lane, "string"),
+            ts: field(event.ts, "string")
+          }));
+        const ready =
+          typeof options.waves === "string"
+            ? { ready: waveReadiness(await readWaveDeclaration(root.root, options.waves), progress.waveStatuses).ready.map((entry) => entry.wave) }
+            : {};
+        return {
+          waves,
+          run: { runId, engine, complete: progress.runComplete, needsFinalVerify: progress.needsFinalVerify, aborted: isRunAborted(view) },
+          ...ready
+        };
+      });
+    });
 
   addCommonOptions(wave.command("close"))
     .requiredOption("--wave <n>", "the wave being closed")

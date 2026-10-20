@@ -65,6 +65,8 @@ function closeLine(engine: string, terminalReview?: TerminalReview): Record<stri
     status: "complete",
     verification: { verdict: "pass" },
     run_diff_window: { base_sha: BASE_SHA, head_sha: HEAD_SHA },
+    // FR-NODE-218 AC-5 — a result line carries its proof.
+    proof: { kind: "digest", ref: "sha256:out" },
     ...(terminalReview ? { terminal_review: terminalReview } : {})
   };
 }
@@ -218,8 +220,11 @@ describe("FR-FLOW-155 AC-2 — the resolution is `engineOf`, so both engines kee
     // would let an unstamped close through — and kiwi-wave-master writes no `engine` field on some
     // shapes, so this is the field's ordinary state rather than a hypothetical.
     const root = await seededRoot();
-    const withoutEngine = closeLine("kiwi-wave-master");
+    // FR-NODE-218 AC-5 — an intent or result line must name its engine, so the absence that reaches
+    // `engineOf` is a wave-state line: no `event`, the shape kiwi-wave-master writes its close in.
+    const withoutEngine: Record<string, unknown> = { ...closeLine("kiwi-wave-master"), order: 1, target: "4.1.0", summary: "run closed" };
     delete withoutEngine.engine;
+    delete withoutEngine.event;
     const before = await journal(root);
 
     const result = await append(root, withoutEngine);

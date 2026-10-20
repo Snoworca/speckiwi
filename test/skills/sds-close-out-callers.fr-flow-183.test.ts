@@ -46,8 +46,13 @@ describe("FR-FLOW-183 AC-1 — standalone kiwi-coder moves the SDS before it pro
     it(`FR-FLOW-183 AC-1 ${bundle}: §8.4 calls kiwi-sds --close, then the review with --close-reqs only when moved, then kiwi-sds --close again`, () => {
       const handoff = section(docs(bundle, "kiwi-coder"), /^###\s*8\.4\s/);
       expect(handoff, `${bundle}: kiwi-coder has no §8.4 in any of its documents`).not.toBe("");
+      // FR-FLOW-183 AC-1 (4.1.0): only a run that implemented from an SDS closes it; a run without one calls the review alone.
+      const noSds = handoff.split("\n").find((l) => l.trimStart().startsWith("SDS 없는 실행은")) ?? "";
+      expect(noSds, `${bundle}: §8.4 does not say what a run without an SDS calls`).toMatch(/`kiwi-sds --close` 를 부르지 않는다/);
+      expect(noSds.match(/kiwi-[a-z-]+(?= with|", args)/g), `${bundle}: the no-SDS call`).toEqual(["kiwi-review-fix-loop"]);
+      const sdsOrder = handoff.split(/```/)[1] ?? "";
       // claude writes `Skill(skill="…", args="…")`; codex and etc write `Use $kiwi-… with …`.
-      const calls = [...handoff.matchAll(/Skill\(skill="(kiwi-[a-z-]+)", args="([^"]*)"|Use \$(kiwi-[a-z-]+) with ([^\n]*)/g)].map((m) => ({
+      const calls = [...sdsOrder.matchAll(/Skill\(skill="(kiwi-[a-z-]+)", args="([^"]*)"|Use \$(kiwi-[a-z-]+) with ([^\n]*)/g)].map((m) => ({
         skill: (m[1] ?? m[3]) as string,
         args: (m[2] ?? m[4]) as string
       }));
@@ -65,11 +70,12 @@ describe("FR-FLOW-183 AC-1 — standalone kiwi-coder moves the SDS before it pro
       expect(row, `${bundle}: §3.4 has no kiwi-coder row`).toBeDefined();
     });
 
-    it(`FR-FLOW-184 AC-1 ${bundle}: every routing table sends standalone kiwi-coder to the move before the promoting hop`, () => {
+    // FR-FLOW-193 AC-1 (supersedes FR-FLOW-184 AC-1): the default chain has no SDS move, so kiwi-coder goes straight to the review.
+    it(`FR-FLOW-193 AC-1 ${bundle}: every routing table sends standalone kiwi-coder to the review hop`, () => {
       for (const [name, table] of routingTables(bundle)) {
         const row = [...hints(table).entries()].find(([last]) => /^kiwi-coder\b/.test(last));
         expect(row, `${bundle} ${name}: no kiwi-coder row`).toBeDefined();
-        expect(row?.[1][0], `${bundle} ${name}: kiwi-coder's first hint`).toBe("kiwi-sds");
+        expect(row?.[1][0], `${bundle} ${name}: kiwi-coder's first hint`).toBe("kiwi-review-fix-loop");
       }
     });
   }
@@ -77,9 +83,9 @@ describe("FR-FLOW-183 AC-1 — standalone kiwi-coder moves the SDS before it pro
 
 describe("FR-FLOW-184 AC-1 — kiwi-pm's next_hint and the routing tables name the same next step", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-184 AC-1 ${bundle}: the kiwi-pm row's first hint is the kiwi-sds move`, () => {
+    it(`FR-FLOW-193 AC-1 ${bundle}: the kiwi-pm row's first hint is the review hop`, () => {
       for (const [name, table] of routingTables(bundle)) {
-        expect(hints(table).get("kiwi-pm")?.[0], `${bundle} ${name}`).toBe("kiwi-sds");
+        expect(hints(table).get("kiwi-pm")?.[0], `${bundle} ${name}`).toBe("kiwi-review-fix-loop");
       }
     });
 
@@ -129,10 +135,10 @@ describe("FR-FLOW-182 — kiwi-sds options the callers pass", () => {
 
 describe("FR-FLOW-184 AC-1 — cross references inside the cycle and the chain", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-184 AC-1 ${bundle}: §2.5.4 points the review hop at item 3`, () => {
+    it(`FR-FLOW-193 AC-1 ${bundle}: §2.5.4 points the review hop at item 1`, () => {
       const intro = section(skill(bundle, "kiwi-pipeline"), /^###\s*2\.5\.4\s/).split("\n").find((l) => l.includes("--review-hop-owned-by-parent")) ?? "";
       expect(intro, `${bundle}`).not.toBe("");
-      expect(/아래 3번/.test(intro), `${bundle}: ${intro.slice(0, 120)}`).toBe(true);
+      expect(/아래 1번/.test(intro), `${bundle}: ${intro.slice(0, 120)}`).toBe(true);
     });
 
     for (const name of ["kiwi-pm", "kiwi-coder"]) {

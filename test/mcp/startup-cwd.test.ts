@@ -56,13 +56,12 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
 
     const result = await resolveMcpStartupRoot();
 
-    const resolvedCwd = await realpathSafe(cwd);
-    const resolvedHome = await realpathSafe(home);
-    expect(result.root).toBe(resolvedCwd);
-    expect(result.root).not.toBe(resolvedHome);
+    // REL-MCP-002 AC-1: the home index is never adopted; with nothing else on the way up the server
+    // is unbound (REL-MCP-002 AC-2, FR-MCP-067).
+    expect(result).toMatchObject({ bound: false, checkedCwd: await realpathSafe(cwd) });
   });
 
-  it("AC-2: cwd 와 사용자 홈 사이에 SRS index 가 없으면 cwd 가 project root 로 선택된다", async () => {
+  it("REL-MCP-002 AC-2: cwd 와 사용자 홈 사이에 SRS index 가 없으면 어떤 디렉터리도 project root 가 되지 않고 미결속이다", async () => {
     const home = path.join(scratch, "home2");
     await mkdir(home, { recursive: true });
     const cwd = path.join(home, "projects", "proj-b");
@@ -73,10 +72,10 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
 
     const result = await resolveMcpStartupRoot();
 
-    expect(result.root).toBe(await realpathSafe(cwd));
+    expect(result).toMatchObject({ bound: false, checkedCwd: await realpathSafe(cwd) });
   });
 
-  it("AC-3: 홈 외부 cwd 에서 홈 내부의 stray SRS index 가 project root 로 치환되지 않는다", async () => {
+  it("REL-MCP-002 AC-3: 홈 외부 cwd 에서 홈 내부의 stray SRS index 가 project root 로 치환되지 않는다", async () => {
     const home = path.join(scratch, "home3");
     await mkdir(path.join(home, "docs", "spec"), { recursive: true });
     await writeFile(path.join(home, "docs", "spec", "00.index.md"), "# stray home index\n", "utf8");
@@ -89,11 +88,12 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
     const result = await resolveMcpStartupRoot();
 
     const resolvedHome = await realpathSafe(home);
-    expect(result.root).not.toBe(resolvedHome);
-    expect(result.root.startsWith(resolvedHome + path.sep)).toBe(false);
+    const root = result.bound ? result.root : "";
+    expect(root).not.toBe(resolvedHome);
+    expect(root.startsWith(resolvedHome + path.sep)).toBe(false);
   });
 
-  it("IR-CLI-045 AC-5 / REL-MCP-004 AC-4: resolveMcpStartupRoot 는 explicit root 인자를 받지 않고 cwd 탐색만 사용한다", async () => {
+  it("IR-CLI-045 AC-5 AC-6 / IR-MCP-001 AC-5 / FR-ARCH-002 AC-4 / REL-MCP-002 AC-4 / REL-MCP-004 AC-4: resolveMcpStartupRoot 는 explicit root 인자를 받지 않고 cwd 탐색만 사용한다", async () => {
     const home = path.join(scratch, "home4");
     await mkdir(home, { recursive: true });
     const cwd = path.join(home, "projects", "proj-explicit-removed");
@@ -105,7 +105,8 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
     expect(resolveMcpStartupRoot.length).toBe(0);
     const result = await resolveMcpStartupRoot();
 
-    expect(result.root).toBe(await realpathSafe(cwd));
+    // IR-CLI-045 AC-6: no index found, so no root and nothing created.
+    expect(result).toMatchObject({ bound: false, checkedCwd: await realpathSafe(cwd) });
   });
 
   it("AC-1 보강: cwd 와 홈 사이의 중간 디렉터리에 SRS index 가 있으면 그 디렉터리가 project root 로 채택된다", async () => {
@@ -121,6 +122,6 @@ describe("REL-MCP-002 — MCP startup workspace user home 경계 격리", () => 
 
     const result = await resolveMcpStartupRoot();
 
-    expect(result.root).toBe(await realpathSafe(projectRoot));
+    expect(result).toMatchObject({ bound: true, root: await realpathSafe(projectRoot) });
   });
 });

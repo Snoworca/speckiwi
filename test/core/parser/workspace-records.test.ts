@@ -62,7 +62,7 @@ describe("workspace parser", () => {
     expect(empty.records.find((item) => item.id === "FR-ARCH-001")?.changeNotes).toEqual([]);
   });
 
-  it("preserves explicit empty Active Target and only falls back for missing legacy rows", async () => {
+  it("FR-NODE-009 AC-15: preserves explicit empty Active Target and only falls back for missing legacy rows", async () => {
     const emptyRoot = await copyFixtureWorkspace("valid-basic");
     const emptyIndexPath = path.join(emptyRoot, "docs", "spec", "00.index.md");
     await writeFile(emptyIndexPath, (await readFile(emptyIndexPath, "utf8")).replace("| Active Target | v1.0.0 |", "| Active Target |  |"), "utf8");

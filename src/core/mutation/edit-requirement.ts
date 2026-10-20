@@ -7,8 +7,9 @@ import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } 
 import { mutationFail, mutationOk } from "./guards.js";
 import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
-import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { assertSafeMarkdownTableCells, tableCellText } from "./table-cell.js";
 import { todayStamp } from "../date-stamp.js";
+import { splitTableRow } from "../parser/table.js";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
@@ -36,13 +37,15 @@ export interface ReplaceAcceptanceCriteriaInput {
   skipLock?: boolean;
 }
 
-export type RequirementTableSection = "verification_evidence" | "trace_links";
+export type RequirementTableSection = "verification_evidence" | "trace_links" | "change_notes";
 
 // @req FR-NODE-093 — the columns a row update may set, per section. An evidence row's id is absent
 // deliberately: the renderer always writes the existing id, so accepting `id` would silently drop it.
+// @req FR-NODE-222 — Change Notes rows are editable too, so a row split by a pipe can be repaired.
 const SETTABLE_ROW_COLUMNS: Record<RequirementTableSection, readonly string[]> = {
   verification_evidence: ["type", "reference", "covers", "notes"],
-  trace_links: ["type", "reference", "relation", "notes"]
+  trace_links: ["type", "reference", "relation", "notes"],
+  change_notes: ["date", "change", "reason"]
 };
 
 export interface RequirementTableRowOperation {
@@ -255,6 +258,37 @@ function traceReplacement(values: Record<string, string>, fallback: { type: stri
   return `| ${values.type ?? fallback.type} | ${values.reference ?? fallback.reference} | ${values.relation ?? fallback.relation} | ${values.notes ?? fallback.notes} |`;
 }
 
+/**
+ * @req FR-NODE-222 AC-1 AC-2 — the Change Notes data rows straight from the source lines, placeholder
+ * rows included (the parsed record drops a row whose cells are all placeholders, which would leave it
+ * undeletable), with every cell of a row a pipe split: the fragments after the second are joined back
+ * into the reason, so a partial update keeps them (review r1 L5).
+ */
+function changeNoteSourceRows(file: TextFile, record: RequirementRecord): Array<{ line: number; date: string; change: string; reason: string }> {
+  const range = sectionContentRange(file, record, "Change Notes");
+  if (!range) return [];
+  const rows: Array<{ line: number; date: string; change: string; reason: string }> = [];
+  let seenHeader = false;
+  for (let line = range.startLine; line <= range.endLine; line += 1) {
+    const text = (file.lines[line - 1] ?? "").trim();
+    if (!text.startsWith("|")) continue;
+    if (!seenHeader) {
+      seenHeader = true;
+      continue;
+    }
+    if (/^\|\s*:?-{3,}/.test(text)) continue;
+    const cells = splitTableRow(text);
+    rows.push({ line, date: cells[0] ?? "", change: cells[1] ?? "", reason: cells.slice(2).join(" / ") });
+  }
+  return rows;
+}
+
+// @req FR-NODE-222 AC-2 AC-4 — rebuilt as exactly three cells, every one through tableCellText.
+function changeNoteReplacement(values: Record<string, string>, fallback: { date: string; change: string; reason: string }): string {
+  const cell = (key: "date" | "change" | "reason"): string => tableCellText(values[key] ?? fallback[key]);
+  return `| ${cell("date")} | ${cell("change")} | ${cell("reason")} |`;
+}
+
 export async function editRequirementTableRows(root: ProjectRoot, input: EditRequirementTableRowsInput): Promise<MutationResult<GranularRequirementEditOutput>> {
   return withSrsMutationLock(root, { operation: "edit_requirement_table_rows", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () =>
     editRequirementTableRowsUnlocked(root, input)
@@ -262,7 +296,7 @@ export async function editRequirementTableRows(root: ProjectRoot, input: EditReq
 }
 
 async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRequirementTableRowsInput): Promise<MutationResult<GranularRequirementEditOutput>> {
-  if (input.section !== "verification_evidence" && input.section !== "trace_links") return mutationFail("USAGE", "section must be verification_evidence or trace_links");
+  if (!Object.hasOwn(SETTABLE_ROW_COLUMNS, input.section)) return mutationFail("USAGE", "section must be verification_evidence, trace_links or change_notes");
   if (!Array.isArray(input.operations)) return mutationFail("USAGE", "operations must be an array");
   if (input.operations.length === 0) return mutationFail("USAGE", "operations must not be empty");
   const loaded = await loadRecordWithWorkspace(root, input.id);
@@ -271,7 +305,12 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
   if (editable) return editable as MutationResult<GranularRequirementEditOutput>;
 
   const operations: PatchOperation[] = [];
-  const rows = input.section === "verification_evidence" ? loaded.record.verificationEvidence : loaded.record.traceLinks;
+  const rows: ReadonlyArray<{ line?: number }> =
+    input.section === "verification_evidence"
+      ? loaded.record.verificationEvidence
+      : input.section === "trace_links"
+        ? loaded.record.traceLinks
+        : changeNoteSourceRows(loaded.file, loaded.record);
   for (const rowOperation of input.operations) {
     if (rowOperation.kind !== "update" && rowOperation.kind !== "delete") return mutationFail("USAGE", "operation kind must be update or delete");
     if (rowOperation.values !== undefined && (typeof rowOperation.values !== "object" || rowOperation.values === null || Array.isArray(rowOperation.values))) {
@@ -301,6 +340,11 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
       continue;
     }
     const values = rowOperation.values ?? {};
+    if (input.section === "change_notes") {
+      const note = row as { date: string; change: string; reason: string };
+      operations.push({ type: "replaceLine", line, original, replacement: changeNoteReplacement(values, note) });
+      continue;
+    }
     const unsafe = assertSafeMarkdownTableCells(Object.fromEntries(Object.entries(values).map(([field, value]) => [`${input.section} ${field}`, value])));
     if (unsafe) return forwardFailure(unsafe);
     if (input.section === "verification_evidence") {

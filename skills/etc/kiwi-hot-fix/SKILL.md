@@ -1,6 +1,6 @@
 ---
 name: kiwi-hot-fix
-description: "OpenCode/Hermes local-LLM variant for urgent Kiwi hot fixes, production bugs, GitHub issues, or reported regressions when the full SRS to SDS to coder pipeline is too slow. Requires TDD/repro evidence, isolated review, regression checks, and post-fix SRS sync through speckiwi mcp. Defaults to --max with one evaluator/worker and three clean evaluations. Triggers: kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 빠르게 고쳐줘."
+description: "OpenCode/Hermes local-LLM variant for urgent Kiwi hot fixes, production bugs, GitHub issues, or reported regressions when the full SRS to pm to coder pipeline is too slow. Requires TDD/repro evidence, isolated review, regression checks, and post-fix SRS sync through speckiwi mcp. Defaults to --max with one evaluator/worker and three clean evaluations. Triggers: kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 빠르게 고쳐줘."
 ---
 
 # kiwi-hot-fix
@@ -82,7 +82,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 3. Run root-cause analysis and scope/REQ impact sequentially, using at most one
    delegated worker or evaluator at a time.
 4. If complexity is large, halt or ask whether to move into the full
-   `kiwi-srs` -> `kiwi-sds` flow.
+   `kiwi-srs` -> `kiwi-pm` flow.
 5. Write a regression test and confirm red. If exempted, record the reason and
    make the reviewer evaluate the exemption.
 6. Apply the smallest fix within cwd.
@@ -103,7 +103,7 @@ Use another skill when:
 
 | Scenario | Skill |
 |---|---|
-| New feature or non-urgent change | `kiwi-srs` -> `kiwi-sds` -> `kiwi-pm` |
+| New feature or non-urgent change | `kiwi-srs` -> `kiwi-pm` (`kiwi-sds` in between under `--sds`) |
 | Code-first SRS catch-up only | `kiwi-srs-sync` |
 | Review/fix without urgent bug context | `kiwi-review-fix-loop` |
 | Commit or PR after fix | `kiwi-commit-auto-push` or `kiwi-commit-auto-pr` |

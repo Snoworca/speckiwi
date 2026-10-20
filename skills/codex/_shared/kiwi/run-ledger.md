@@ -63,7 +63,7 @@
 }
 ```
 
-카드를 지탱하는 네 가지 성질:
+카드를 지탱하는 다섯 가지 성질:
 
 1. **`next_action.verb` 는 닫힌 enum(§3) 에서 나오고 `preconditions[]` 도 닫힌 enum 이다.** 재개한 에이전트는 무엇을 할지 **정하지 않고 verb 를 읽는다**. precondition 어휘는 정확히 네 값이며 각각 평가자가 명시되어 있다.
 
@@ -77,8 +77,9 @@
    `P-HANDOFF-VERIFIED` 는 4.0.0 에서 handoff 문서와 함께 빠졌다 — 이 값을 `preconditions[]` 에 실은 카드는 기록·검증에서 거부된다(`unknown-precondition`, FR-NODE-151 AC-2).
 
 2. **`done[]` 의 모든 항목은 proof 를 지니며, 모든 항목의 증거는 저널 없이도 재계산 가능하다**(§4). 항목은 `witness` 를 추가로 지닐 수 있다. **`proof.kind` 가 `journal` 인 `done[]` 항목에는 `witness` 가 필수이고 그 `kind` 는 `journal` 일 수 없다** — 저널이 잘렸을 때 그 항목을 재계산 가능하게 유지하는 것이 witness 이고, 저널 절단이야말로 카드가 살아남으라고 존재하는 사건이다.
-3. **`invariant_digest`** 는 `frozen` 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만든다 — 디스크의 lock 파일에서 재계산하며, 불일치는 `run-invariant-drift` 다.
+3. **`invariant_digest`** 는 그 값을 뺀 카드 페이로드에 `card write` 가 `frozen` 블록 위에서 계산해 조용한 설계 드리프트를 시끄럽게 만든다 — 디스크의 lock 파일에서 재계산하며, 불일치는 `run-invariant-drift` 다.
 4. **`isolation_profile` · `engine` · `work_root` · `run_root` · `base_branch` · `integration_branch` · `route` 는 `frozen` 안에 있어 `invariant_digest` 가 이들을 덮는다.** 재개 시 rung 은 **lock 에서 읽고 재계산하지 않는다** — 재개한 세션에는 대화도 조사자도 없고 probe 필드 일부는 서브에이전트 산출이라 컴팩션을 가로질러 재현되지 않으므로, 재계산은 합법적으로 다른 rung 을 낼 수 있다.
+5. **카드의 포인터**(`run_contract` · `frozen.route.lock` · `frozen.design_lock` · `frozen.waves_lock` · `frozen.constraints` · `frozen.convergence` · `frozen.lane_lock[wave-{n}]`)는 `<path>@sha256:<그 파일 바이트의 sha256>` 이다. 에이전트는 `freeze` · `schedule waves` 가 돌려준 `pointer` 를 그대로 옮겨 적고 직접 계산하지 않는다 — `orchestrate resume` 이 같은 함수로 다시 계산해 대조한다. freeze lock 안의 `sha256` 필드는 그 lock 의 봉인이지 카드 포인터가 아니다.
 
 카드는 **파생물**이다. 카드가 저널과 어긋나고 저널이 상위집합이면 카드를 재생성하고 run 을 계속한다(`card-stale`). 그 밖의 모든 불일치는 중단한다(§5).
 
@@ -89,11 +90,21 @@
 verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 결과(result) 1줄**이다.
 
 ```
-1. journal append  {event:"intent", verb, run_id, engine, wave, lane?, inputs_digest}
+1. journal append  {event:"intent", schema_version, verb, run_id, engine, wave, lane?, inputs_digest}
 2. …verb 수행…
-3. journal append  {event:"result", verb, …, outputs, proof, card_digest}
+3. journal append  {event:"result", schema_version, verb, run_id, engine, …, outputs, proof, card_digest}
 4. card write      (전체 재작성, 상한 검사, 검증)
 ```
+
+`journal append` 는 줄을 쓰기 전에 그 줄의 범위가 요구하는 필드를 검사하고, 빠진 필드를 이름으로 대며 거절한다:
+
+| 범위 | 필수 필드 |
+|---|---|
+| `intent` (`event = "intent"`) | `event` · `schema_version` · `run_id` · `engine` · `verb` · `inputs_digest` |
+| `result` (`event = "result"`) | `event` · `schema_version` · `run_id` · `engine` · `verb` · `proof` |
+| `wave-state` (`event` · `round` 없음) | `schema_version` · `run_id` · `wave` · `order` · `target` · `status` · `summary` |
+
+`round` 를 실은 줄은 `round record` 가, run 중단 줄은 `run abort` 가 지으므로 이 검사 대상이 아니다. `ts` 는 `journal append` 가 채운다 — 준 값은 그대로 둔다. 줄은 `--payload` 대신 `--payload-file <path>` 로 넘길 수 있다. `invariant_digest` 와 `written_at` 은 카드 페이로드에서 빼고 `card write` 가 채운다 — 이전 카드에서 옮겨 적지 않는다. 도구는 받은 `invariant_digest` 를 그대로 두고 대조하므로 옮겨 적은 옛 값은 `invariant-digest-mismatch` 로 거절된다.
 
 재개한 세션이 가장 먼저 평가하는 불변식:
 
@@ -132,18 +143,18 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 | `author-wave-design` | pure-reauthor | 다시 수행 |
 | `verify-wave-design` | idempotent-by-key | 라운드 재수행 |
 | `register-wave-srs` | externally-visible | `$kiwi-srs` 가 요구사항을 저작했을 수 있다. `list_requirements --target wave-{n}` 와 `srs_authored` 표식(`wave-srs-registration.md §2`)을 먼저 확인 |
-| `sds-wave` | externally-visible | `$kiwi-sds` 가 `docs/sds/{sds_id}.sds.md` 를 썼을 수 있다. 그 파일이 있고 Status 가 `agreed` 면 재사용하고, 없거나 `draft` 면 그 wave 만 다시 부른다 |
+| `sds-wave` | externally-visible | `--sds` 일 때만 도는 verb — `$kiwi-sds` 가 `docs/sds/{sds_id}.sds.md` 를 썼을 수 있다. 그 파일이 있고 Status 가 `agreed` 면 재사용하고, 없거나 `draft` 면 그 wave 만 다시 부른다 |
 | `derive-readiness` | idempotent-by-key | 새 스냅샷 위의 순수 재계산 |
 | `commit-wave-inputs` | externally-visible | `Orch-Run` + `Orch-Verb: commit-wave-inputs` + `Orch-Wave` trailer 커밋 확인 |
 | `freeze-lane-plan` | idempotent-by-key | 재계산. 바이트 동일하지 않으면 `lane-plan-drift` |
 | `review-partition` | pure-reauthor | 다시 수행. 이전 verdict 는 입력이지 반복이 아니다 |
-| `dispatch-lane` | externally-visible | 워커를 워크트리 격리로 띄운다(`parallel-waves.md` PW-5). `git worktree list --porcelain` 이 그 lane 을 `locked … (pid N)` 로 보고하면 살아 있는 워커이므로 **다시 dispatch 하지 않는다**. 워커 브랜치에 `Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane` trailer 커밋이 있거나 매니페스트가 있으면 `collect-lane` 으로 넘어간다 — 재실행은 중복 구현을 만든다 |
+| `dispatch-lane` | externally-visible | 워커를 워크트리 격리로 띄운다(`parallel-waves.md` PW-5). `git worktree list --porcelain` 이 그 lane 을 `locked … (pid N)` 로 보고하면 그 워커는 살아 있을 수 있다(FR-FLOW-118: 살아 있을 수 있는 워커는 다시 dispatch 하지 않는다) — 그 lane 을 다시 dispatch 하지 않고 `git worktree unlock` 도 하지 않으며, critical 게이트 `lane-worker-possibly-live` 로 멈춘다(`--auto` 가 결정하지 않는다 — `NEEDS_USER`). 보고에는 워크트리 경로, pid N, 생존 확인 힌트(Windows `tasklist /FI "PID eq N"`, POSIX `kill -0 N`)를 적고, pid N 이 어느 프로세스인지는 확정되지 않았으며 WSL 이나 다른 namespace 의 pid 는 죽은 것처럼 보일 수 있다고 덧붙인다. 다시 dispatch 하거나 잠금을 푸는 것은 사용자의 답이 있을 때만이다. 워커 브랜치에 `Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane` trailer 커밋이 있거나 매니페스트가 있으면 `collect-lane` 으로 넘어간다 — 재실행은 중복 구현을 만든다 |
 | `collect-lane` | idempotent-by-key | 매니페스트와 큐를 다시 수확한다 |
 | `verify-lane` | idempotent-by-key | 호스트 판정을 다시 낸다 — 워크트리에서 `verification_cmd` 를 다시 실행한다 |
-| `remediate-lane` | externally-visible | 같은 SDS 로 새 워커를 한 번 더 띄운다. `-r2` 브랜치와 그 워크트리가 이미 있으면 살아 있는지 먼저 확인 |
+| `remediate-lane` | externally-visible | 같은 단위로 새 워커를 한 번 더 띄운다. `-r2` 브랜치와 그 워크트리가 이미 있으면 살아 있는지 먼저 확인 |
 | `integrate-lane` | externally-visible | `git merge-base --is-ancestor <워커 head> <integration_head>` — 이미 조상이면 병합된 것이다 |
 | `replay-deferred-mutations` | idempotent-by-key | `replay-applied.jsonl` 의 시도 기록에서 남은 호출만 환원한다. 실패로 기록된 호출은 조용히 재시도하지 않는다 |
-| `release-lane` | externally-visible | 수확이 끝났는지 먼저 확인한 뒤 `git worktree remove` 를 다시 한다 |
+| `release-lane` | externally-visible | 수확이 끝났는지 먼저 확인한 뒤 `git worktree remove` 를 다시 한다. 반납이 실패하면: `Permission denied` 면 lane 안을 작업 디렉터리로 둔 프로세스(셸, vitest, 편집기)를 끝낸 뒤 다시 시도한다. `is not a working tree` 면 Windows 에서 반쯤 지워진 상태다 — 남은 디렉터리를 지우고 `git worktree prune` 을 돈다. 그래도 계속 실패하면 run 리포트에 적고 run 은 멈추지 않는다. 워크트리가 `locked` 면 `lane-worker-possibly-live` 절차가 먼저이고, `git worktree remove -f -f` 는 사용자의 결정 없이 쓰지 않는다. |
 | `post-merge-verify` | idempotent-by-key | 라운드 재수행 |
 | `wave-issue-triage` | pure-reauthor | 다시 수행. 이슈 문서는 재생성된다 |
 | `resolve-wave-issues` | externally-visible | `$kiwi-review-fix-loop` 또는 wave 재진입으로 라우팅된다. 그 저널을 먼저 확인 |
@@ -154,6 +165,8 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 | `abort-run` | externally-visible | 종결. `halt` 의 동의어가 **아니다** — 사용자가 남겨받는 저장소 상태를 호명해 run 보고서에 쓴다 |
 
 `halt` 는 이 enum 의 **유일한 종결 항목**이며 recovery class 를 선언하지 않는다 — 아무 동작도 하지 않으므로 중단될 수 없다. 위 표의 모든 verb 는 종결 항목이 아니며 각각 세 class 중 하나를 정확히 하나 선언한다.
+
+**남은 git `index.lock`**: `.git/index.lock` 이 남아 git 명령이 거절되면, git 프로세스가 돌고 있지 않음을 확인한 뒤에만 그 파일을 지운다 — Windows `tasklist /FI "IMAGENAME eq git.exe"`, POSIX `pgrep -x git`. 돌고 있으면 기다렸다가 다시 시도한다. WSL 안의 git 은 Windows `tasklist` 에 보이지 않으므로, WSL 을 쓰고 있을 수 있으면 사용자에게 묻는다.
 
 **enum 밖의 verb 는 재개 시 하드 스톱(hard stop)이다.** 재개한 세션은 모르는 verb 를 해석하지 않는다.
 
@@ -172,7 +185,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 | `git-ancestor` | `git merge-base --is-ancestor <head> <integration_head>` | 병합됨. 가장 강하다 |
 | `git-ref` | `git rev-parse <branch>` | 커밋이 생산됨 |
 | `git-trailer` | `git log --format='…%(trailers:key=Orch-Verb,valueonly)…'` | `(run, wave, stage)` 의 커밋이 존재함 |
-| `digest` | lock 파일의 sha256 대 카드 | 설계 · waves · lanes · SDS · registry 고정 |
+| `digest` | lock 파일의 sha256 대 카드 | 설계 · waves · lanes · (있으면) SDS · registry 고정 |
 | `mcp-state` | `get_requirement(id).status` | REQ 승급 |
 | `fs-exists` | 기록된 경로에 파일 존재 | 보고서, 이슈 문서 |
 | `journal` | `waves.jsonl` 의 줄 번호 + 술어 | 검증 verdict — 외부 증인이 없는 유일한 주장 |
@@ -210,8 +223,8 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 
 1. `invariant_digest` 대 lock 파일 재계산 → `run-invariant-drift`.
 2. 각 intent 줄의 `inputs_digest` 대 그 입력들의 현재 다이제스트. intent 와 result 사이에 입력이 바뀌었으면 그 result 는 더 이상 존재하지 않는 것에서 파생된 것이므로 그 verb 는 **신뢰하지 않고 다시 수행한다**.
-3. lane plan lock 대 지금 재계산한 계획 → `lane-plan-drift`. 재계산은 **lock 이 스스로 기록한 입력**을 쓰고 오늘 구할 수 있는 입력을 쓰지 않는다 — 이것이 이 검사를 잡음이 아니라 의미 있게 만든다. lock 이 기록한 입력은 wave 의존 · stage 상한 · wave SDS 의 digest 다. close-out 이 SDS 를 지운 wave 는 **낡았을 뿐 틀린 것이 아니므로** 드리프트로 읽지 않는다.
-4. wave SDS 파일 대 stage lock 이 기록한 그 SDS 의 digest → `lane-plan-drift`. 동결 뒤 손으로 고친 SDS 는 워커가 무엇을 하라고 들었는지를 조용히 바꾼다. close-out 이 이미 손댄 SDS — Status 가 `closed` 이거나 지워진 것 — 는 비교하지 않는다.
+3. lane plan lock 대 지금 재계산한 계획 → `lane-plan-drift`. 재계산은 **lock 이 스스로 기록한 입력**을 쓰고 오늘 구할 수 있는 입력을 쓰지 않는다 — 이것이 이 검사를 잡음이 아니라 의미 있게 만든다. lock 이 기록한 입력은 wave 의존 · stage 상한 · 선언 항목 digest(`declaration_digests`)와, SDS 파일이 있는 wave 면 그 SDS 의 digest 다. close-out 이 SDS 를 지운 wave 는 **낡았을 뿐 틀린 것이 아니므로** 드리프트로 읽지 않는다.
+4. 선언 항목과 (있으면) wave SDS 파일 대 stage lock 이 기록한 선언 항목 digest · SDS digest → `lane-plan-drift`. 동결 뒤 손으로 고친 선언이나 SDS 는 워커가 무엇을 하라고 들었는지를 조용히 바꾼다. close-out 이 이미 손댄 SDS — Status 가 `closed` 이거나 지워진 것 — 는 비교하지 않는다.
 
 **정당한 수정(amendment)은 append-new-artifact 규칙으로 드리프트와 구분한다** — 후발 제약, remediation 뒤의 SDS 재저작, 접어 넣은 이슈, wave 도중의 설계 수정은 **새 아티팩트 + 새 저널 줄**로 쓰고 **제자리에서 고치지 않으며**, 해소는 언제나 최신 포인터를 읽는다. 그래서 `freeze-lane-plan` 은 **새로 저널된** lock 을 현재 것으로 받아들이고, `lane-plan-drift` 는 디스크의 lock 이 그 lock 이 스스로 호명한 입력 위의 재계산과 어긋날 때에만 발동한다.
 
@@ -225,7 +238,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 
 - `run_id`, work root, 저널 경로, pin 된 run root, 고정된 격리 프로파일, **`base_branch` 와 `integration_branch`**;
 - **P.5 pin** — Preflight P.5 의 lock 취득이 돌려준 holder 넷. Phase 0 의 생성 시점에 적으며, 종료 해제 앞에서 그 lease 가 이 run 의 것인지 판정하는 대조의 입력이다;
-- run 의 **고정 경로 규약** — 설계 lock, 제약, 수렴 레지스트리, waves lock, stage lock 과 wave SDS 경로. 현재 wave 의 해소된 포인터는 카드의 `frozen.lane_lock` 에 있으므로 wave 마다 수정하지 않는다;
+- run 의 **고정 경로 규약** — 설계 lock, 제약, 수렴 레지스트리, waves lock, 선언 파일 `waves/waves.json`, stage lock 과 (`--sds` 면) wave SDS 경로. 현재 wave 의 해소된 포인터는 카드의 `frozen.lane_lock` 에 있으므로 wave 마다 수정하지 않는다;
 - **불변 wave 순서**;
 - **`intake_autonomy` 블록** — `--auto` 가 설계 질문에 답했는지, 몇 건인지, 결정별 감사 기록이 어디 있는지. 재개한 세션과 사용자가 설계가 자기들 없이 결정되었음을 볼 수 있게 한다;
 - **금지 동작의 닫힌 목록**: 재분해하지 않는다; Phase 3.b 밖에서 Requirement ID 를 할당하지 않는다; **살아 있을 수 있는 lane 을 다시 dispatch 하지 않는다 — 사용자에게 묻는다**; 완료된 lane 을 고치지 않는다; 테스트를 약화하거나 삭제하지 않는다; lease 밖에 쓰지 않는다; `kiwi/waves.jsonl` 에 손으로 append 하지 않는다; **`git add -A` 나 `git commit -a` 를 절대 실행하지 않는다 — 모든 커밋은 명시 pathspec 을 stage 한다**; **`integration_branch` 를 `base_branch` 에 병합하지 않고 PR 도 열지 않는다**(§10);
@@ -241,14 +254,14 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 
 | 걸린 지점의 `recipe.kind` | 효과 |
 |---|---|
-| `exclusive-lane` | **lane 적격**. 단 wave 전체에서 유일해야 한다 — 그 경로를 건드리는 wave 는 모두 그것을 SDS 쓰기 집합에 적으므로 쓰기 집합 겹침이 그 wave 들을 서로 다른 stage 로 가르고, 한 stage 에서 그 단위를 소유하는 lane(wave 의 워커)은 최대 하나다 |
-| `orchestrator-only` | **lane 부적격** → wave SDS 의 Files 에 적지 않고 호스트가 병합 뒤 처리한다 |
-| `regenerate` | **lane 부적격** → wave SDS 의 Files 에 적지 않고 호스트가 병합 뒤 생성기를 돌린다 |
-| `replay` | **lane 부적격** → wave SDS 의 Files 에 적지 않고 호스트 root 의 재생이 적용한다 |
+| `exclusive-lane` | **lane 적격**. 단 wave 전체에서 유일해야 한다 — 그 경로를 건드리는 wave 는 모두 그것을 쓰기 집합(`files[]`, `--sds` 면 SDS 쓰기 집합도)에 적으므로 쓰기 집합 겹침이 그 wave 들을 서로 다른 stage 로 가르고, 한 stage 에서 그 단위를 소유하는 lane(wave 의 워커)은 최대 하나다 |
+| `orchestrator-only` | **lane 부적격** → wave 항목의 `files[]` 에도 (`--sds` 면) wave SDS 의 Files 에도 적지 않고 호스트가 병합 뒤 처리한다 |
+| `regenerate` | **lane 부적격** → wave 항목의 `files[]` 에도 (`--sds` 면) wave SDS 의 Files 에도 적지 않고 호스트가 병합 뒤 생성기를 돌린다 |
+| `replay` | **lane 부적격** → wave 항목의 `files[]` 에도 (`--sds` 면) wave SDS 의 Files 에도 적지 않고 호스트 root 의 재생이 적용한다 |
 
 이 규칙이 없으면 `exclusive-lane` 은 **도달 불가능**하다 — 레지스트리에 걸리기만 하면 전부 호스트 처리로 보내면, enum 멤버는 존재하되 죽은 값이 된다.
 
-**지점은 정당하게 겹치므로 우선순위가 필요하다.** 전순서는 **`orchestrator-only` > `replay` > `regenerate` > `exclusive-lane`** 이며 가장 제한적인 것이 먼저다. 이 순서는 SDS 작성 시점의 Files 판정과 병합 뒤 호스트 처리에 **동일하게** 적용한다 — 같은 파일을 두 시점이 다르게 읽으면 SDS 가 허용한 것을 병합 뒤 처리가 되돌린다.
+**지점은 정당하게 겹치므로 우선순위가 필요하다.** 전순서는 **`orchestrator-only` > `replay` > `regenerate` > `exclusive-lane`** 이며 가장 제한적인 것이 먼저다. 이 순서는 분해 시점의 `files[]` 판정(`--sds` 면 SDS 작성 시점의 Files 판정도)과 병합 뒤 호스트 처리에 **동일하게** 적용한다 — 같은 파일을 두 시점이 다르게 읽으면 선언이 허용한 것을 병합 뒤 처리가 되돌린다.
 
 경로 매칭: `*` 는 한 세그먼트 안에서만 맞고 `/` 를 넘지 않으며, `**` 는 0개 이상의 온전한 세그먼트에 맞는다. 중괄호·문자클래스 문법은 없다. 경로는 저장소 상대 · POSIX 구분자 · 선행 `./` 없음 · Windows 에서는 대소문자 무시로 정규화한다.
 
@@ -276,7 +289,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 
 `kiwi/waves.jsonl` 은 `CP-07` 에서 **제외한다** — 정책상 추적되지 않으므로 어느 트리와도 맞을 수 없고, 포함하면 복원 단계 전체가 중단된다.
 
-이 기본값은 두 곳이 읽는다: `kiwi-sds` 가 wave SDS 의 Files 에서 빼는 경로(SDS 경로가 `orchestrator-only` 인 근거가 `CP-07` 이다), 그리고 호스트가 병합 뒤 처리하는 레시피 어휘. `CP-02` 와 `CP-07` 이 보편 기본값이므로 **모든 저장소에 호스트 처리 경로가 존재한다**.
+이 기본값은 두 곳이 읽는다: 분해가 wave 항목의 `files[]` 에서 빼는 경로(`--sds` 면 `kiwi-sds` 가 wave SDS 의 Files 에서 빼는 경로도 — SDS 경로가 `orchestrator-only` 인 근거가 `CP-07` 이다), 그리고 호스트가 병합 뒤 처리하는 레시피 어휘. `CP-02` 와 `CP-07` 이 보편 기본값이므로 **모든 저장소에 호스트 처리 경로가 존재한다**.
 
 그 밖의 지점(소비 저장소 고유 경로)은 각 저장소가 자기 것을 저작한다 — 스킬이 배포하는 것은 **모양**이지 남의 경로가 아니다.
 

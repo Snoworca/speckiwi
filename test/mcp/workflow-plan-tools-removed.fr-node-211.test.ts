@@ -86,7 +86,7 @@ describe("FR-NODE-211 AC-1 — the plan-mode tools and their CLI commands are ab
     }
   });
 
-  it("FR-NODE-211 AC-1: no removed tool is registered on the MCP server", () => {
+  it("FR-NODE-211 AC-1 / FR-MCP-062 AC-1 AC-3: no removed tool is registered on the MCP server", () => {
     const root = REPO_ROOT;
     const server = createTestMcpServer({ root });
     registerReadTools(server, { root });

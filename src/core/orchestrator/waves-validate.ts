@@ -691,6 +691,11 @@ export function validateWavesJournal(view: WavesJournalView): WavesDiagnostic[] 
   return diagnostics;
 }
 
+/** Whether the run recorded its own end: an `abort-run` result line. @req FR-NODE-217 AC-1, IR-CLI-104 AC-1 */
+export function isRunAborted(view: WavesJournalView): boolean {
+  return view.lines.some((event) => event.verb === "abort-run" && event.event === "result");
+}
+
 export interface RunProgress {
   /** Every wave of the run and its latest recorded status. `wave="all"` is excluded. */
   waveStatuses: Map<number, EventStatus>;

@@ -81,6 +81,47 @@ describe("FR-NODE-095 AC-1/AC-2 — the eleven codes are gone from both surfaces
   });
 });
 
+describe("FR-NODE-095 AC-6 — the reason for each retraction lives on the requirement, not in the document", () => {
+  /** The `Per-code reason.` paragraph of the FR-NODE-095 Requirement Block, as the SRS records it. */
+  async function perCodeReason(): Promise<string> {
+    const text = (await readFile(path.join("docs", "spec", "50.nodejs-implementation.srs.md"), "utf8")).replace(/\r\n/g, "\n");
+    const start = text.indexOf("### FR-NODE-095 ");
+    expect(start, "FR-NODE-095 is no longer in 50.nodejs-implementation.srs.md").toBeGreaterThanOrEqual(0);
+    const end = text.indexOf("\n### ", start + 1);
+    const block = text.slice(start, end < 0 ? undefined : end);
+    const paragraph = block.split("\n").find((line) => line.startsWith("Per-code reason."));
+    expect(paragraph, "FR-NODE-095 records no per-code reason paragraph").toBeDefined();
+    return paragraph as string;
+  }
+
+  /** The retracted codes a reason paragraph accounts for, a `X`-`Y` range naming every code between. */
+  function codesWithReason(paragraph: string): string[] {
+    return RETRACTED.filter((code) => {
+      if (paragraph.includes(`\`${code}\``)) return true;
+      return [...paragraph.matchAll(/`(SRS-[EW])(\d+)`-`\1(\d+)`/g)].some((range) => {
+        const member = new RegExp(`^${range[1] as string}(\\d+)$`).exec(code);
+        return member !== null && Number(member[1]) >= Number(range[2]) && Number(member[1]) <= Number(range[3]);
+      });
+    });
+  }
+
+  it("FR-NODE-095 AC-6: every one of the eleven retracted codes has its reason recorded on the requirement", async () => {
+    expect(codesWithReason(await perCodeReason())).toEqual([...RETRACTED]);
+  });
+
+  it("FR-NODE-095 AC-6: dropping one code's reason from the paragraph is caught (the check is not vacuous)", async () => {
+    const paragraph = await perCodeReason();
+    const dropped = paragraph.replace(/`SRS-W007`:[^.]*\./, "");
+    expect(dropped).not.toBe(paragraph);
+    expect(codesWithReason(dropped)).not.toContain("SRS-W007");
+  });
+
+  it("FR-NODE-095 AC-6: the shipped document carries none of those reasons, because it names none of the codes", async () => {
+    const text = await rulesText();
+    expect(RETRACTED.filter((code) => text.includes(code))).toEqual([]);
+  });
+});
+
 describe("FR-NODE-095 AC-3 — the two emitted step codes are registered and explainable", () => {
   const STEP_CODES = ["SRS-W044", "SRS-W045"] as const;
 
@@ -126,14 +167,18 @@ describe("FR-NODE-095 AC-4 — the table says what it contains and where the res
     // still fails here, which is what the sentence literal was standing in for.
     expect(validation).toMatch(/^- Release readiness /m);
     expect(validation).toMatch(/^- Step validation /m);
-    for (const code of ["SRS-W044", "SRS-W045", "STEP_DIRECT_CONFLICT", "SDS-W050", "SDS-E054", "STEP_PROMOTE_NO_EVIDENCE"]) {
+    for (const code of ["SRS-W044", "SRS-W045", "STEP_DIRECT_CONFLICT", "SDS-W051", "STEP_ACCEPTANCE_MISSING", "STEP_PROMOTE_NO_EVIDENCE"]) {
       expect(validation, `the section names ${code}`).toContain(code);
     }
-    // Not all of what step validation reports is an advisory: SDS-E054 carries error severity and
-    // fails the step-validate exit code. A reader told "advisories" would take a refusal that stops
-    // the command for a note, so the section has to say which one is not one.
-    expect(validation, "the section gives SDS-E054 its error severity").toMatch(/`SDS-E054`[\s\S]{0,200}?`error` severity/);
-    expect(validation, "the section says SDS-E054 turns the exit code").toMatch(/`SDS-E054`[\s\S]{0,400}?exit code/);
+    // Not all of what step validation reports is an advisory: STEP_ACCEPTANCE_MISSING carries error
+    // severity and fails the step-validate exit code (FR-NODE-095 AC-4 as amended in 4.1.0). A reader
+    // told "advisories" would take a refusal that stops the command for a note, so the section has
+    // to say which one is not one.
+    expect(validation, "the section gives STEP_ACCEPTANCE_MISSING its error severity").toMatch(/`STEP_ACCEPTANCE_MISSING`[\s\S]{0,200}?`error` severity/);
+    expect(validation, "the section says STEP_ACCEPTANCE_MISSING turns the exit code").toMatch(/`STEP_ACCEPTANCE_MISSING`[\s\S]{0,400}?exit code/);
+    // SDS-E054 and SDS-W050 are retracted in 4.1.0 (FR-PARSE-042 AC-6), so the section no longer names them.
+    expect(validation).not.toContain("SDS-E054");
+    expect(validation).not.toContain("SDS-W050");
     // The registered pair and the unregistered rest must be distinguished, or a reader cannot tell
     // which codes `explain` will resolve.
     expect(validation).toContain("are `SRS-` codes and so are registered");

@@ -238,7 +238,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect((first.holder as Record<string, unknown>).pid).toBe(first.pid);
   });
 
-  it("AC-2: two runs over one lease decide oppositely, and the procedure is not always-false", async () => {
+  it("FR-NODE-204 AC-2: two runs over one lease decide oppositely, and the procedure is not always-false", async () => {
     const target = await repository("lease-identity-discriminate");
     const runA = await acquireInDeadProcess(target.commonDir, "run-a");
 
@@ -257,7 +257,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect(isOwnLease(runB.holder as unknown as Record<string, unknown>, now), "B must recognise the lease it took").toBe(true);
   });
 
-  it("AC-2: two leases one process takes in succession are told apart, which is the MCP path's shape", async () => {
+  it("FR-NODE-204 AC-2: two leases one process takes in succession are told apart, which is the MCP path's shape", async () => {
     // The MCP bridge runs the CLI inside the server process, so both leases of a repository carry
     // that server's pid and host and the CLI's one default owner. Measured over 99 consecutive
     // pairs: 0 landed in the same millisecond, minimum gap 3 ms, so `acquiredAt` is the only field
@@ -319,15 +319,18 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     }
   });
 
-  it("AC-4: run lock --dry-run over a torn sentinel names no holder", async () => {
+  it("FR-NODE-204 AC-4: run lock --dry-run over a torn sentinel names no holder", async () => {
     const target = await repository("lease-identity-torn-lock");
     await tornSentinel(target.commonDir);
     const envelope = await cli(target.root, ["run", "lock", "--dry-run"]);
     expect(envelope.payload).not.toHaveProperty("holder");
-    expect(envelope.payload.violations).toEqual([]);
+    // Since IR-CLI-105 AC-8 the preview refuses inside the torn grace as the real call does; its
+    // refusal still names nobody.
+    const named = (envelope.payload.violations as Array<Record<string, unknown>>).map((entry) => [entry.owner, entry.pid, entry.host, entry.acquiredAt]);
+    expect(named).toEqual([[null, null, null, null]]);
   });
 
-  it("AC-4: run unlock --dry-run over a torn sentinel names no holder", async () => {
+  it("FR-NODE-204 AC-4: run unlock --dry-run over a torn sentinel names no holder", async () => {
     const target = await repository("lease-identity-torn-unlock");
     await tornSentinel(target.commonDir);
     const envelope = await cli(target.root, ["run", "unlock", "--dry-run"]);
@@ -335,7 +338,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect(envelope.payload.heldBy).toBeNull();
   });
 
-  it("AC-4: run status over a torn sentinel names no holder, and the procedure calls it not-mine", async () => {
+  it("FR-NODE-204 AC-4: run status over a torn sentinel names no holder, and the procedure calls it not-mine", async () => {
     const target = await repository("lease-identity-torn-status");
     await tornSentinel(target.commonDir);
     const envelope = await cli(target.root, ["run", "status"]);
@@ -346,7 +349,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect(isOwnLease(recorded, envelope.payload.holder as null), "an unnameable holder must never read as mine").toBe(false);
   });
 
-  it("AC-4: readHolder documents null as absent, torn or unreadable", async () => {
+  it("FR-NODE-204 AC-4: readHolder documents null as absent, torn or unreadable", async () => {
     const source = readFileSync(RUN_LOCK_MODULE, "utf8");
     // `(?:(?!\*\/)[\s\S])*` rather than `[\s\S]*?`, which matched from the FILE's first block
     // comment and reported that one's text: a lazy quantifier still starts at the earliest opening
@@ -357,13 +360,13 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect(doc.toLowerCase()).toMatch(/unreadable|could not be read|cannot be read/);
   });
 
-  it("AC-5: lock --dry-run and the real lock disagree over one torn sentinel, and the gap stays measured", async () => {
+  it("FR-NODE-204 AC-5 (as superseded by IR-CLI-105 AC-8): lock --dry-run and the real lock both refuse one torn sentinel", async () => {
     const target = await repository("lease-identity-dry-run-gap");
     await tornSentinel(target.commonDir);
 
     const preview = await cli(target.root, ["run", "lock", "--dry-run"]);
-    expect(preview.exit, "the preview reports the lock as takeable").toBe(0);
-    expect(preview.payload.ok).toBe(true);
+    expect(preview.exit, "the preview refuses as the real acquisition does").toBe(2);
+    expect(preview.payload.gate).toBe("orchestrator-run-lock-held");
 
     const real = await cli(target.root, ["run", "lock"]);
     expect(real.exit, "the real acquisition refuses the same sentinel inside the torn grace").toBe(2);

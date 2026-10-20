@@ -53,6 +53,8 @@ export interface GitFacts {
 export interface RecordedLaneInputs {
   /** One SDS digest per wave, keyed by wave id — one per file for a wave made of several SDS files. */
   sdsDigests: Record<string, WaveSdsDigest>;
+  /** One declaration-entry digest per wave planned from `--waves`, keyed by wave id. @req FR-NODE-216 AC-7 */
+  declarationDigests?: Record<string, string>;
   depends: Record<string, string[]>;
   laneCap: number;
 }
@@ -65,6 +67,11 @@ export interface RecordedLaneInputs {
 export interface RecomputedLaneInputDigests {
   sdsDigests: Record<string, WaveSdsDigest>;
   closedOutWaves: string[];
+  /**
+   * The declaration entries re-digested now. A planned wave with no digest here lost its entry, which
+   * is drift; the declaration file outlives the run, so no wave is skipped as closed out.
+   */
+  declarationDigests?: Record<string, string>;
 }
 
 export interface LockDigests {
@@ -322,6 +329,12 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
   const driftedWaves = Object.entries(driftInputs.recordedLaneInputs.sdsDigests)
     .filter(([wave]) => !closedOut.has(wave))
     .flatMap(([wave, recorded]) => driftedSdsFiles(wave, recorded, now.sdsDigests[wave]))
+    // @req FR-NODE-150 AC-5, FR-NODE-216 AC-7 — and every planned wave's declaration entry.
+    .concat(
+      Object.entries(driftInputs.recordedLaneInputs.declarationDigests ?? {})
+        .filter(([wave, recorded]) => now.declarationDigests?.[wave] !== recorded)
+        .map(([wave]) => `${wave} (declaration entry)`)
+    )
     .sort();
   const planDrift = driftedWaves.length > 0;
   digests.push({
@@ -329,7 +342,7 @@ function computeDrift(view: WavesJournalView, card: ResumeCard, driftInputs: Dri
     outcome: planDrift ? "drift" : "match",
     gate: planDrift ? "lane-plan-drift" : null,
     detail: planDrift
-      ? `the SDS of ${driftedWaves.join(", ")} no longer digests as the lanes lock recorded`
+      ? `the declared inputs of ${driftedWaves.join(", ")} no longer digest as the lanes lock recorded`
       : "every recorded SDS of a wave not yet closed out still digests the same"
   });
 

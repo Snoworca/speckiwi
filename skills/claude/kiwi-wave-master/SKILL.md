@@ -1,11 +1,11 @@
 ---
 name: kiwi-wave-master
-description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로드맵·장기 연구 결과)을 의존을 선언한 wave 로 분해하고, wave 마다 전용 target 을 /kiwi-srs 로 등록하고 SDS 를 쓴 뒤, 공용 병렬 계약으로 wave 당 워커 하나를 워크트리에서 실행·병합·검증하는 멀티-웨이브 오케스트레이터 v0.1. 의존이 없는 wave 는 병렬로 돌고 --serial 이면 모든 단계를 하나씩 돈다. ./kiwi/waves.jsonl 로 진행을 추적하여 재개 가능(첫 미완료 wave 부터). 트리거 — kiwi wave master, 웨이브 오케스트레이션, 멀티 웨이브, 대형 작업 분해, wave 별 병렬 실행, 에픽 실행, 여러 단계로 나눠서 진행. 옵션 — --auto (모든 wave 를 끝까지 자율 완주, 안전 게이트 유지), --max (모든 wave 의 하위 스킬로 전파), --serial (모든 단계를 하나씩), --drive (무인 완주 + 경계 있는 자가 복구, §7.5)."
+description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로드맵·장기 연구 결과)을 의존을 선언한 wave 로 분해하고, wave 마다 전용 target 을 /kiwi-srs 로 등록하고 wave 선언 파일에 적은 뒤(--sds 면 SDS 도 쓴 뒤), 공용 병렬 계약으로 wave 당 워커 하나를 워크트리에서 실행·병합·검증하는 멀티-웨이브 오케스트레이터 v0.1. 의존이 없는 wave 는 병렬로 돌고 --serial 이면 모든 단계를 하나씩 돈다. ./kiwi/waves.jsonl 로 진행을 추적하여 재개 가능(첫 미완료 wave 부터). 트리거 — kiwi wave master, 웨이브 오케스트레이션, 멀티 웨이브, 대형 작업 분해, wave 별 병렬 실행, 에픽 실행, 여러 단계로 나눠서 진행. 옵션 — --auto (모든 wave 를 끝까지 자율 완주, 안전 게이트 유지), --max (모든 wave 의 하위 스킬로 전파), --serial (모든 단계를 하나씩), --drive (무인 완주 + 경계 있는 자가 복구, §7.5)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-wave-master v0.1
 
-하나의 크고 긴 작업(에픽·로드맵·대형 연구 산출물)을 **여러 개의 wave 로 나누어 완주**시키는 멀티-웨이브 오케스트레이터. 각 wave 는 독립된 SRS target 과 wave SDS 하나로 처리되고, **wave 하나를 워커 하나가** 자기 워크트리에서 구현하며, 호스트가 판정·병합·재생·검증한다. 의존이 모두 끝난 wave 들은 **기본이 병렬**이고 `--serial` 이면 하나씩이다. 전체 진행은 `./kiwi/waves.jsonl` 에 영속되어 세션이 초기화돼도 재개할 수 있다.
+하나의 크고 긴 작업(에픽·로드맵·대형 연구 산출물)을 **여러 개의 wave 로 나누어 완주**시키는 멀티-웨이브 오케스트레이터. 각 wave 는 독립된 SRS target 과 wave 선언 항목 하나(`--sds` 면 wave SDS 도)로 처리되고, **wave 하나를 워커 하나가** 자기 워크트리에서 구현하며, 호스트가 판정·병합·재생·검증한다. 의존이 모두 끝난 wave 들은 **기본이 병렬**이고 `--serial` 이면 하나씩이다. 전체 진행은 `./kiwi/waves.jsonl` 에 영속되어 세션이 초기화돼도 재개할 수 있다.
 
 이 스킬은 *직접 요구사항을 저작하거나 코드를 구현하지 않는다* — wave 경계와 의존을 정하고, 각 wave 의 target 을 `/kiwi-srs` 로 등록하고, `_shared/kiwi/parallel-waves.md` 의 절차로 wave 를 워커에 맡기고 결과를 검증하는 상위 오케스트레이터다. wave 를 `/kiwi-pipeline` 에 위임하지 않는다.
 
@@ -34,6 +34,7 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | §0.11 | **wave target 등록 계약 SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/wave-srs-registration.md` v1.0.0 을 따른다 — `--research-doc` / `--constraints-doc` / `existing_modules` 저작 입력과 `srs_authored` 멱등 표식 |
 | §0.12 | **워크트리 레인 SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/worktree-lane.md` v1.0.0 을 따른다 — run root 와 lane workspace 의 분리, 명시 checkout 의무, 레인이 하지 않는 세 가지, role 게이트, 호스트 판정, 재생 승인. 각 wave 의 워커는 그 계약 아래 자기 워크트리에서 돈다. 본 스킬(호스트)은 워크트리로 **옮겨 가지 않는다** — MCP root 가 세션을 따라가지 못하기 때문이다(§2.1). |
 | §0.13 | **병렬 wave 실행 SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/parallel-waves.md` v1.0.0 을 따른다 — 역할과 쓰기 소유, 동시성과 `--serial`, wave 의존과 stage, 계약이 올리는 게이트, stage 한 번의 순서(PW-1 ~ PW-17), 재개. 본 스킬은 그 절차를 다시 적지 않고 자기 분모(§5.5)와 기록(§6)만 적는다. |
+| §0.15 | **SDS 는 opt-in**. 사용자가 `--sds` 를 주거나 말로 요청할 때만 wave 마다 SDS 를 쓴다(`parallel-waves.md` PW-2) — opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. wave 는 선언 파일 `waves/waves.json` 의 항목(`requirements[]`)으로 구현되고, `--sds` 는 `parallel-waves.md` 의 wave 마다의 호출로 그대로 넘긴다. `docs/sds/` 에 SDS 가 있다는 것만으로는 요청이 아니다 |
 | §0.14 | **테스트 충분성 SSOT**. 본 스킬은 `~/.claude/skills/_shared/kiwi/test-sufficiency.md` 를 따른다 — wave 승급 직전(PW-14)과 run 창 종료 리뷰 뒤(§5.55)에 부르고, 절차를 다시 적지 않는다. |
 | §7 참고 | `--mini`/`--loops N` 를 per-wave `kiwi-srs` 와 `parallel-waves.md` 가 wave 마다 부르는 호출에 전파 (loop-option.md §6) |
 
@@ -48,7 +49,7 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | gate_id | reason | 발생 위치 |
 |---|---|---|
 | `run-root-preflight-mismatch` | MCP workspace root ↔ run git root 불일치 또는 조회 실패 | §2.1 |
-| `child-pipeline-needs-user-or-failed` | 호스트가 wave 마다 부른 `/kiwi-sds`, 또는 개선 위임이 부른 `/kiwi-review-fix-loop` 가 `NEEDS_USER` / `FAILED` 반환, 또는 워커 매니페스트의 `review_outcome` 이 중단이거나 잔여 CRITICAL·HIGH | §5 / §5.5.5 |
+| `child-pipeline-needs-user-or-failed` | 호스트가 wave 마다 부른 `/kiwi-sds`(`--sds`), 또는 개선 위임이 부른 `/kiwi-review-fix-loop` 가 `NEEDS_USER` / `FAILED` 반환, 또는 워커 매니페스트의 `review_outcome` 이 중단이거나 잔여 CRITICAL·HIGH | §5 / §5.5.5 |
 | `wave-verify-residual-critical` | 웨이브 종료 상호검증 종료 시 잔여 CRITICAL/HIGH, 검증자 1 의 `GAPS`, 또는 cap 소진(`fail-cap`). `fail-residual` 은 이 행이 아니라 **별도 행** `wave-verify-fail-residual` 이다 | §5.5 |
 | `wave-verify-cross-wave-fix-required` | 이전 wave 의 **요구사항**을 바꿔야 하고, carry-forward 경로가 양쪽 다 불가능함 — `complete` 는 취소 불가 (§0.5 / §5.5.7) | §5.5 |
 | `wave-decomposition-coverage-gap` | 입력의 최상위 섹션이 어느 wave 에도 배정되지 않았고 out-of-scope 사유도 기록되지 않음 — target 등록 진입 불가 | §3.2 |
@@ -64,12 +65,14 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 | `out-of-scope-user-consent` | 설계 항목을 `out_of_scope` 로 배제 — 배제된 항목은 모든 계층의 분모에서 빠지므로 `--auto` 라도 사용자 확인을 받는다 | §3.2 |
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 — 무인 실행의 종료를 보장하는 유일한 경계 | §5.6 |
 | `invalid-loop-option` | `--loops N` 이 정수 ≥1 이 아님 — `loop-option.md` §1 이 명령하는 HALT 를 게이트로 전사 | §0.7 / loop-option.md |
-| `unallocated-req-id` | wave SDS 들의 `@req` 합집합이 비었거나, 그 wave 의 배정 집합 밖의 요구를 담거나, 배정 집합의 요구를 빠뜨림(`kiwi-sds` 가 `draft` 등으로 범위에서 뺀 요구) — `parallel-waves.md` PW-2 | §5 |
+| `unallocated-req-id` | wave 선언 항목의 `requirements[]` 가 비었거나 그 wave 의 배정 집합과 다름(선언을 손으로 고친 경우 포함), 또는 `--sds` 면 wave SDS 들의 `@req` 합집합이 배정 집합과 다름(`kiwi-sds` 가 `draft` 등으로 범위에서 뺀 요구) — `parallel-waves.md` PW-1 · PW-2 | §5 |
+| `requirement-not-ready` | `orchestrate schedule waves` 가 wave 선언 항목 `requirements[]` 의 요구(없음 · `draft` · `deprecated` · `discarded`)로 거절 — 그 wave 는 dispatch 전에 멈춘다(`parallel-waves.md` PW-4) | §5 |
+| `lane-worker-possibly-live` | 워커 워크트리가 `locked` 로 보고되어 그 워커가 살아 있을 수 있음 — 다시 dispatch 하지 않는다(FR-FLOW-118). `--auto` 가 결정하지 않는다 — `NEEDS_USER`(`parallel-waves.md` PW-5 · §6) | §5 / §6 |
 | `schedule-cycle` | wave 의존 사이클 때문에 `orchestrate schedule waves` 가 stage 를 계산하지 못함 | §5 |
-| `files-not-grounded` | wave SDS 의 Files · Test Plan 경로가 기존 경로의 오타로 판정됨 | §5 |
-| `lane-plan-drift` | 재개 때 stage 계획을 다시 계산한 결과가 `lanes.lock.json` 과 다름 — close-out 이 아직 손대지 않은 wave SDS 의 digest 가 달라짐 | §6 |
+| `files-not-grounded` | wave 선언 항목의 `files[]`(`--sds` 면 SDS 의 Files · Test Plan 경로도)가 기존 경로의 오타로 판정됨 | §5 |
+| `lane-plan-drift` | 재개 때 stage 계획을 다시 계산한 결과가 `lanes.lock.json` 과 다름 — 선언 항목 digest, 또는 close-out 이 아직 손대지 않은 wave SDS 의 digest 가 달라짐 | §6 |
 | `worker-touched-srs` | dispatch 전후 run root 의 `git status --porcelain docs/spec docs/sds` 가 다름 — 워커가 SRS 나 SDS 를 건드림 | §5 |
-| `serial-unit-failed` | wave 의 `verification_cmd` 가 같은 SDS 로 1회 재시도한 뒤에도 비-0, 워커가 커밋도 `intentionally_empty` 사유도 남기지 않음, 또는 워커의 `/kiwi-pm` 이 `NEEDS_USER` / `FAILED` 반환 | §5 |
+| `serial-unit-failed` | wave 의 `verification_cmd` 가 같은 단위로 1회 재시도한 뒤에도 비-0, 워커가 커밋도 `intentionally_empty` 사유도 남기지 않음, 또는 워커의 `/kiwi-pm` 이 `NEEDS_USER` / `FAILED` 반환 | §5 |
 | `lane-design-refuted` | 워커가 설계 항목을 기술대로 구현할 수 없다고 매니페스트로 보고 | §5 |
 | `srs-mutation-replay-failed` | `orchestrate replay apply` 가 워커의 유예 mutation 재생을 거절하거나 실패를 기록 | §5 |
 | `post-merge-index-drift` | 재생 뒤 `sync_index` 를 돌린 뒤에도 `validate --fail-on-warning` 이 드리프트를 보고 | §5 |
@@ -103,7 +106,8 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 |---|---|---|
 | "자동", "auto", "끝까지 알아서", "묻지 말고" | `--auto` (모든 wave 자율 완주, SSOT: auto-option.md v1.0) | off |
 | "max 모드", "고강도", "최대로" | `--max` (모든 wave 의 하위 스킬로 전파) | off |
-| "직렬로", "하나씩", "순서대로", "serially", "one at a time" | `--serial` (모든 서브에이전트 분기 — 워커, SDS 작성, 조사자, 검증자 — 를 하나씩, `parallel-waves.md §2`) | off (병렬) |
+| "SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS" | `--sds` (wave 마다 SDS 를 써서 구현 — `parallel-waves.md` PW-2. wave 마다의 호출로 그대로 넘긴다) | off (wave 선언 항목의 요구 ID 로 구현) |
+| "직렬로", "하나씩", "순서대로", "serially", "one at a time" | `--serial` (모든 서브에이전트 분기 — 워커, SDS 작성(`--sds`), 조사자, 검증자 — 를 하나씩, `parallel-waves.md §2`) | off (병렬) |
 | "N 번째 wave 부터", "이어서" | `--resume` (첫 미완료 wave 부터 재개) | 자동 감지 |
 | "에픽 이슈", "이슈 #123 를 wave 로" | 에픽 이슈 번호 (§8 진입 모드) | (없음) |
 | "미니 모드", "빠른 모드", "3라운드" | `--mini` (per-wave kiwi-srs 와 계약의 호출로 전파 §7.3) | off (스킬 기본 상한) |
@@ -133,9 +137,9 @@ Phase 0 : 입력 문서 해석 + waves.jsonl 경로 해석 (재개 감지)
 Phase 1 : Wave 분해 (§3) — wave 목록과 depends_on[] 확정 + 설계 기준선 물질화(§3.1) · 분해 커버리지 게이트(§3.2)
 stage 마다 — 의존한 wave 가 모두 complete 인 준비 집합 위에서:
   Phase 2 : Wave 별 target 등록 (§4) — /kiwi-srs, wave 하나씩 직렬 (PW-1)
-  Phase 3 : stage 실행 (§5) — SDS 작성 → stage 계획 → 워커 병렬 → 판정 → 병합 → 재생 (PW-2 ~ PW-12)
+  Phase 3 : stage 실행 (§5) — 선언 갱신(--sds 면 SDS 작성) → stage 계획 → 워커 병렬 → 판정 → 병합 → 재생 (PW-2 ~ PW-12)
   Phase 3.5 : 웨이브 종료 상호검증 (§5.5) — 검증자 2 기 교차반박 루프 — 엔진 SSOT verify-loop.md (PW-13)
-  Phase 3.6 : wave 승급 (§5.5.8) — 테스트 충분성 → SDS close-out → 승급 → SDS 삭제 (PW-14 ~ PW-17)
+  Phase 3.6 : wave 승급 (§5.5.8) — 테스트 충분성 → (--sds) SDS close-out → 승급 → (--sds) SDS 삭제 (PW-14 ~ PW-17)
   Phase 4 : waves.jsonl 갱신 (§6) — 통과한 wave 만 완료 표시
 Phase 4.4 : run 창 종료 리뷰 (§5.55) → 테스트 충분성 확인
 Phase 4.5 : 전체 wave 최종 검증 (§5.6) — 설계 기준선 전체 대비 최종 패스, 통과해야 오케스트레이션 완료
@@ -217,15 +221,15 @@ Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=wave-{n} [--auto] [--max] [
 
 ## 5. Phase 3 — stage 실행 (FR-FLOW-188)
 
-본 스킬은 wave 를 `/kiwi-pipeline` 에 위임하지 않는다. stage 마다 `~/.claude/skills/_shared/kiwi/parallel-waves.md` §5 의 PW-2 ~ PW-12 를 artifact root `docs/analysis/kiwi-wave-master-{run_id}/` 로 돈다 — wave 마다 SDS 하나를 쓰고(`/kiwi-sds`, sds-id `{run_id}-wave-{n}`), stage 계획을 동결·공개하고, wave 하나를 워커 하나가 자기 워크트리에서 구현하고, 호스트가 판정·병합·재생한다. `--serial` 이면 모든 분기가 하나씩이다. 각 호출의 인자와 `[--auto] [--max] [--mini|--loops N]` 은 그 계약이 적는 자리에 있다.
+본 스킬은 wave 를 `/kiwi-pipeline` 에 위임하지 않는다. stage 마다 `~/.claude/skills/_shared/kiwi/parallel-waves.md` §5 의 PW-3 ~ PW-12(`--sds` 면 PW-2 부터)를 artifact root `docs/analysis/kiwi-wave-master-{run_id}/` 로 돈다 — (`--sds` 면) wave 마다 SDS 하나를 쓰고(`/kiwi-sds`, sds-id `{run_id}-wave-{n}`), stage 계획을 동결·공개하고, wave 하나를 워커 하나가 자기 워크트리에서 구현하고, 호스트가 판정·병합·재생한다. `--serial` 이면 모든 분기가 하나씩이다. 각 호출의 인자와 `[--auto] [--max] [--mini|--loops N]` 은 그 계약이 적는 자리에 있다. 그 계약의 `speckiwi orchestrate wave status` · `speckiwi orchestrate schedule waves` 호출에는 언제나 `--engine kiwi-wave-master` 를 더한다 — 두 도구의 기본 엔진은 `kiwi-orchestrator` 라, 빠뜨리면 이 스킬의 저널 줄을 읽지 못해 `complete` 인 wave 도 보지 못한다.
 
 wave 는 자기가 의존한 wave 가 모두 §5.5 **웨이브 종료 상호검증**까지 통과해 `complete` 로 기록된 뒤에야 준비 집합에 든다 — 병합만으로는 부족하다. 검증 중인 wave 위에 의존한 wave 를 쌓으면 §0.G 의 halt 게이트가 무의미해진다.
 
 `/kiwi-srs` 저작은 §4 에서 한 번 끝났다. SDS 작성과 워커는 그 저작을 다시 돌리지 않는다 — 다시 SRS 를 쓰는 것은 개선 위임의 증분 `/kiwi-srs` 재진입과 SDS close-out 의 AC 명확화뿐이다.
 
-target 은 인자로 `wave-{n}` 을 **명시 전달**한다 — `/kiwi-sds` 에는 `TARGET=wave-{n}`, 워커 카드에는 `target` 으로. 활성 target 이 `/kiwi-srs` 의 `set_active_target` **부수효과**로만 정해지면, §4 를 건너뛰는 재개(§6)에서 그 호출 지점이 사라져 다음 단계가 이전 wave 의 target 위에서 돈다.
+target 은 인자로 `wave-{n}` 을 **명시 전달**한다 — (`--sds` 면) `/kiwi-sds` 에는 `TARGET=wave-{n}`, 워커 카드에는 `target` 으로. 활성 target 이 `/kiwi-srs` 의 `set_active_target` **부수효과**로만 정해지면, §4 를 건너뛰는 재개(§6)에서 그 호출 지점이 사라져 다음 단계가 이전 wave 의 target 위에서 돈다.
 
-그 wave 로 `carried_into` 된 residual 은 그 wave 의 SDS 범위와 재진입 범위에도 포함한다 — 저작만으로는 코드 수준 이월이 어느 워커에도 배정되지 않는다.
+그 wave 로 `carried_into` 된 residual 은 그 wave 의 요구 범위(`--sds` 면 SDS 범위)와 재진입 범위에도 포함한다 — 저작만으로는 코드 수준 이월이 어느 워커에도 배정되지 않는다.
 
 ---
 
@@ -246,9 +250,10 @@ wave 의 워커가 병합되고 그 유예 SRS mutation 이 재생된 뒤(`paral
 | 증거 | 내용 |
 |---|---|
 | `kiwi/waves.jsonl` (해당 wave) | order · target · scope · `sds_id` · `in_progress` 타임스탬프 |
-| wave SDS `docs/sds/{sds_id}.sds.md` | 그 wave 가 *하기로 한* 것 — §5.5.8 의 close-out 이 지우기 전에 읽는다 |
+| wave 선언 항목 (`waves/waves.json` 의 `wave-{n}`) | 그 wave 의 `files[]` · `requirements[]` |
+| (있으면) wave SDS `docs/sds/{sds_id}.sds.md` | 그 wave 가 *하기로 한* 것 — §5.5.8 의 close-out 이 지우기 전에 읽는다 |
 | 워커 매니페스트 `docs/analysis/kiwi-wave-master-{run_id}/waves/stage-{s}/{laneId}/manifest.json` | commits · `intentionally_empty` · `design_refuted` · `out_of_lease_paths` · 테스트 충분성 결과 · 보고서 경로 |
-| 워커의 세션 worklog | 매니페스트의 `reports[]` 가 가리키는, sds-id 로 키잉된 `kiwi-pm` 세션의 `worklog.jsonl` — TDD 단계, skip / override 기록 |
+| 워커의 세션 worklog | 매니페스트의 `reports[]` 가 가리키는, 단위 id(`sds_id`)로 키잉된 `kiwi-pm` 세션의 `worklog.jsonl` — TDD 단계, skip / override 기록 |
 | `{review_fix_loop_analysis_dir}/report.md` | 워커가 자기 창을 돈 리뷰의 finding · severity · 라운드 · 회귀 결과 |
 | speckiwi `list_requirements` / `summarize_target` (wave target) | 외부에서 고정된 AC **분모** |
 | wave 창의 git diff | 최종 결과물 |
@@ -300,7 +305,7 @@ verify-loop.md §3 이 요구하는 **외부 고정 분모**를 본 스킬은 �
 
 wave 시작 시의 첫 `in_progress` 에는 `phase="srs-authoring"` 을 싣는다 — §4 저작이 SDS 작성과 워커 실행보다 앞서므로 그 뒤 단계의 라벨은 실제 단계와 어긋나고, `phase` 가 부재하는 줄을 소비자가 추측으로 해석하게 둘 수도 없다.
 
-SDS 작성에 들어갈 때 `phase="sds"`, 워커를 dispatch 할 때 `phase="worker"` 인 `in_progress` 를 1줄씩 append 한다 — 워커 줄에는 `lane`(laneId) · `stage` · `isolation.base_sha`(그 wave 의 dispatch base) · `sds_id` 를 싣는다. 카드가 없는 본 스킬의 재개가 이 줄에서 lane 상태를 읽는다(`parallel-waves.md §6`) — 그래야 그 enum 멤버가 실제 이벤트로 생산된다.
+(`--sds` 면) SDS 작성에 들어갈 때 `phase="sds"`, 워커를 dispatch 할 때 `phase="worker"` 인 `in_progress` 를 1줄씩 append 한다 — 워커 줄에는 `lane`(laneId) · `stage` · `isolation.base_sha`(그 wave 의 dispatch base) · `sds_id`(단위 id) 를 싣는다. 카드가 없는 본 스킬의 재개는 이 줄들을 `speckiwi orchestrate wave status` 로 읽는다(`parallel-waves.md §6`) — 그래야 그 enum 멤버가 실제 이벤트로 생산된다.
 
 | verdict | 후속 |
 |---|---|
@@ -320,7 +325,7 @@ SDS 작성에 들어갈 때 `phase="sds"`, 워커를 dispatch 할 때 `phase="wo
 
 ### 5.5.8 통과한 wave 의 승급 (Phase 3.6)
 
-§5.5 가 `pass` 로 끝난 wave 는 호스트가 **wave 하나씩** `parallel-waves.md` PW-14 ~ PW-17 을 돈다 — 테스트 충분성 확인(`~/.claude/skills/_shared/kiwi/test-sufficiency.md`, 범위는 그 wave 의 배정 집합이고, wave 의 SDS 파일마다 `--sds <그 파일>` 을 준다 — 조각으로 나뉘었으면 조각마다다, `parallel-waves.md §3`) → `kiwi-sds --close` 로 해석 결정을 SRS 로 옮김 → 승급(집합·전이·증거는 그 계약의 PW-16) → 같은 `kiwi-sds --close` 로 SDS 삭제. 두 `kiwi-sds --close` 는 그 wave 의 sds-id 마다 — 기본 id 와 재진입 id `{run_id}-wave-{n}-r{m}` 각각 — 부른다(PW-15 · PW-17). 재진입 SDS 파일도 그 wave 의 SDS 파일이므로 테스트 충분성 확인도 그 파일마다 돈다. 공백이 남으면 `test-sufficiency-gap` 으로 멈추고 그 wave 의 요구를 `verified` 로 쓰지 않는다. 그 뒤 §6 의 `complete` 를 append 한다.
+§5.5 가 `pass` 로 끝난 wave 는 호스트가 **wave 하나씩** `parallel-waves.md` PW-14 ~ PW-17 을 돈다 — 테스트 충분성 확인(`~/.claude/skills/_shared/kiwi/test-sufficiency.md`, 범위는 그 wave 의 배정 집합이고, SDS 파일이 있는 wave 면 그 wave 의 SDS 파일마다 `--sds <그 파일>` 을 준다 — 조각으로 나뉘었으면 조각마다다, `parallel-waves.md §3`) → (`--sds` 만) `kiwi-sds --close` 로 해석 결정을 SRS 로 옮김 → 승급(집합·전이·증거는 그 계약의 PW-16) → (`--sds` 만) 같은 `kiwi-sds --close` 로 SDS 삭제. 두 `kiwi-sds --close` 는 그 wave 의 sds-id 마다 — 기본 id 와 재진입 id `{run_id}-wave-{n}-r{m}` 각각 — 부른다(PW-15 · PW-17). 재진입 SDS 파일도 그 wave 의 SDS 파일이므로 테스트 충분성 확인도 그 파일마다 돈다. 공백이 남으면 `test-sufficiency-gap` 으로 멈추고 그 wave 의 요구를 `verified` 로 쓰지 않는다. 그 뒤 §6 의 `complete` 를 append 한다.
 
 ---
 
@@ -389,11 +394,11 @@ wave 추가는 run 당 **3** 회를 상한으로 한다 — 상한에 닿으면 
 
 세션이 초기화되어 **다시 시작**(resume)해도, `./kiwi/waves.jsonl` 을 읽어 **첫 번째 미완료(first incomplete) wave** 부터 **재개**한다. 이미 완료로 표시된 앞 wave 들은 건너뛰고, 첫 미완료 wave 가 든 stage 의 준비 집합을 다시 계산해 이어서 진행한다. 이 덕분에 장시간 멀티-웨이브 작업이 중단되어도 안전하게 이어갈 수 있다.
 
-`complete` 이벤트와 `phase=wave-verify` 이벤트에는 그 wave 의 `sds_id` 를 반드시 기록한다 — 그 wave 의 SDS 와 워커 세션과 증거 창을 여는 키다. 스킬별 **분석 산출물**은 각 스킬 자신의 분석 디렉터리에서 해석한다(§5.5.1). wave 시작 시의 첫 `in_progress` **에서는 그 필드를** 생략한다 — 그 시점에는 SDS 가 아직 존재하지 않는다. 생략되는 것은 필드이지 이벤트가 아니다: 그 줄은 `phase="srs-authoring"` 을 달고 반드시 append 된다(§5.5.6). `complete` 기록은 §5.5 상호검증을 통과한 뒤에만 append 하며, 통과 기록이 없는 `complete` 는 무효다.
+`complete` 이벤트와 `phase=wave-verify` 이벤트에는 SDS 유무와 관계없이 그 wave 의 단위 id 를 `sds_id` 로 반드시 기록한다 — 그 wave 의 워커 세션과 증거 창(있으면 SDS)을 여는 키다. 스킬별 **분석 산출물**은 각 스킬 자신의 분석 디렉터리에서 해석한다(§5.5.1). wave 시작 시의 첫 `in_progress` **에서는 그 필드를** 생략한다 — 그 시점에는 아직 dispatch 하지 않았다. 생략되는 것은 필드이지 이벤트가 아니다: 그 줄은 `phase="srs-authoring"` 을 달고 반드시 append 된다(§5.5.6). `complete` 기록은 §5.5 상호검증을 통과한 뒤에만 append 하며, 통과 기록이 없는 `complete` 는 무효다.
 
-wave 안의 **재개 단위**는 **3단계**다 — target 등록 / SDS 작성과 워커 실행 / wave 검증. 완료된 단계는 다시 돌지 않는다 — wave 전체를 한 덩어리로만 되돌리면 이미 저작된 SRS 를 다시 저작하고, `srs_authored` 표식(§4)이 존재할 이유가 사라진다.
+wave 안의 **재개 단위**는 **3단계**다 — target 등록 / 워커 실행(`--sds` 면 SDS 작성 포함) / wave 검증. 완료된 단계는 다시 돌지 않는다 — wave 전체를 한 덩어리로만 되돌리면 이미 저작된 SRS 를 다시 저작하고, `srs_authored` 표식(§4)이 존재할 이유가 사라진다.
 
-**워커 단계 재개**는 `parallel-waves.md §6` 을 따른다 — SRS 저작도 SDS 작성도 다시 돌리지 않고, 기록된 `sds_id` 로 그 wave 의 SDS 와 워커를 찾아 이어간다. §5.5.5 재진입은 `--sds-id` 와 `--req-filter` 를 **반드시 함께** 쓴다 — 범위 없이 재진입하면 stability mutation 이 재적용되고 끝난 작업이 중복 실행된다.
+**워커 단계 재개**는 `parallel-waves.md §6` 을 따른다 — wave 상태는 `speckiwi orchestrate wave status` 로 읽고, SRS 저작도 SDS 작성도 다시 돌리지 않으며, 기록된 단위 id(`sds_id`)로 그 wave 의 워커(와 있으면 SDS)를 찾아 이어간다. §5.5.5 재진입은 `--req-filter` 와 kiwi-pm `--run-id {run_id}-wave-{n}-r{m}` 을 **반드시 함께** 쓰고, `--sds-id` 는 이미 `--sds` 로 opt-in 한 run 에서만 더한다 — 범위 없이 재진입하면 stability mutation 이 재적용되고 끝난 작업이 중복 실행된다.
 
 그 값은 `sds_id` 필드로 `waves.jsonl` 에 기록한다 — 재개 세션에는 대화가 없으므로 저널에서 해소하지 못하면 위 두 인자를 만들 수 없다.
 
@@ -423,7 +428,7 @@ per-wave 자식 스킬로의 `--auto` 자동 전파는 `~/.claude/skills/_shared
 
 ### 7.2 --max — 하위 스킬 전파
 
-`--max` 활성 시 **모든 wave** 에서 `parallel-waves.md` 가 부르는 **하위 스킬(sub-skill)** — `kiwi-srs-feasibility` · `kiwi-sds` · 워커의 `kiwi-pm` 과 `kiwi-review-fix-loop` — 에 `--max` 를 그대로 **전파(propagate)** 한다. 각 호출의 `[--max]` 는 그 계약이 그 호출을 적는 자리에 있다. 하위 스킬의 `--max` 의미는 각자의 SSOT 를 따른다.
+`--max` 활성 시 **모든 wave** 에서 `parallel-waves.md` 가 부르는 **하위 스킬(sub-skill)** — `kiwi-srs-feasibility` · (`--sds` 면) `kiwi-sds` · 워커의 `kiwi-pm` 과 `kiwi-review-fix-loop` — 에 `--max` 를 그대로 **전파(propagate)** 한다. 각 호출의 `[--max]` 는 그 계약이 그 호출을 적는 자리에 있다. 하위 스킬의 `--max` 의미는 각자의 SSOT 를 따른다.
 
 `--max` 는 **§4 가 직접 호출하는** per-wave `kiwi-srs` 에도 전파한다 — §4 의 호출 형태가 `[--max]` 를 싣는다.
 
@@ -516,13 +521,13 @@ wave 를 추출한 뒤부터는 **FR-FLOW-029 와 동일(identical)** 하게 진
 
 - 각 wave 는 §4 처럼 `/kiwi-srs` 로 전용 `wave-{n}` target 을 그 wave 의 **범위(scope)** 로 한정해 등록한다.
 - 진행은 §6 처럼 `./kiwi/waves.jsonl` 에 기록하고, 성공한 wave 만 완료로 표시하며, 첫 미완료 wave 부터 재개한다.
-- 실행은 §5 처럼 `parallel-waves.md` 로 wave 마다 SDS 를 쓰고 워커를 띄우고, 병합은 **wave 순서대로** 한다.
+- 실행은 §5 처럼 `parallel-waves.md` 로 wave 마다(`--sds` 면 SDS 를 쓰고) 워커를 띄우고, 병합은 **wave 순서대로** 한다.
 
 ### 8.3 스킵되는 것은 사전 wave-split 연구뿐 + 구조 가드 (AC-3)
 
 에픽 진입에서 **생략(skip)** 되는 것은 오직 §3 의 **사전(up-front)** **wave 분할 연구(wave-split research)** 분석 한 단계뿐이다 — 에픽이 이미 wave 경계를 구조로 제공하므로, 앞단에서 문서 흐름을 다시 연구(research)할 필요가 없다.
 
-그러나 각 wave 의 feasibility 와 SDS 작성은 **자체 연구(own research)** 를 필요한 만큼 그대로 수행한다 — wave 마다 자기 자신의 per-wave 리서치를 공용 계약 안에서 돌린다. 생략되는 것은 상위의 사전 wave-split 연구 한 단계뿐이고, wave 별 자체 연구는 유지된다.
+그러나 각 wave 의 feasibility(와 `--sds` 면 SDS 작성)는 **자체 연구(own research)** 를 필요한 만큼 그대로 수행한다 — wave 마다 자기 자신의 per-wave 리서치를 공용 계약 안에서 돌린다. 생략되는 것은 상위의 사전 wave-split 연구 한 단계뿐이고, wave 별 자체 연구는 유지된다.
 
 **구조 가드** — 사전 연구 생략은 에픽이 **추출 가능한 구조(extractable structure)** 를 가질 때만 확정된다:
 
@@ -567,7 +572,9 @@ wave 를 추출한 뒤부터는 **FR-FLOW-029 와 동일(identical)** 하게 진
 
    그 밖의 `orchestrate_*` 도구와 `workflow_*` 계열 전부는 선택적 인자 `workspaceRoot` (absolute path) 를 받는다. 호스트에 고정된 MCP 서버로도 레인 워크트리의 세션 상태·파이프라인·워크로그를 그 root 기준으로 다룰 수 있다는 뜻이다. `orchestrate_replay_apply` 는 거부한다 — 유예된 SRS mutation 은 호스트 root 에서만 재생되며, 그것이 유예가 존재하는 이유다. 어느 체크아웃의 SRS 를 읽되 아무것도 쓰지 않는 조회 계열도 같은 인자를 받아 그 체크아웃의 SRS 로 답하므로, 레인의 요구 상태를 호스트 세션에서 그대로 물을 수 있다. 그 계열은 지명된 체크아웃에 `docs/spec/00.index.md` 가 없으면 거부하며, 거부는 수리 명령이 아니라 검사한 체크아웃을 이름으로 밝힌다. `docs/spec` 아래에 쓰거나 Requirement ID 를 발급하는 도구는 전부 거부하고, 자기가 어느 root 에 결속되었는지 답하는 도구도 거부한다 — 그 답을 인자로 받으면 P.1 대조의 두 변이 한 출처에서 나온다. 수용된 root 라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부된다. 다만 호출자가 넘기는 경로 인자를 아예 받지 않는다고 선언한 도구는 예외이고, SRS 조회가 `docs/spec` 참조로 필터링할 수 있는 것이 그 선언 덕분이다. 계열마다 어느 도구가 인자를 받는지는 README 의 per-call `workspaceRoot` 표가 이름으로 싣는다. **`workspaceRoot` 를 빠뜨린 SRS 쓰기는 거부되지 않고 호스트 root 에 조용히 떨어진다** — `worker-touched-srs` 비교가 그 경로를 잡는다.
 
-   **target 범위의 조회·mutation 전에 응답의 `mcpWorkspace.workspaceRoot` 와 `mcpWorkspace.rootSource` 로 워크스페이스 정체를 확인한다** — `rootSource` 가 `per-call-workspace-root` 인 호출만 넘긴 root 에서 답한 것이고, `server-cwd-discovery` 나 `auto-init` 이면 기동 root 가 답한 것이다.
+   **target 범위의 조회·mutation 전에 응답의 `mcpWorkspace.workspaceRoot` 와 `mcpWorkspace.rootSource` 로 워크스페이스 정체를 확인한다** — `rootSource` 가 `per-call-workspace-root` 인 호출만 넘긴 root 에서 답한 것이고, `server-cwd-discovery` 면 기동 root 가 답한 것이다. 기동 때 `docs/spec/00.index.md` 를 찾지 못한 서버는 미결속 상태로 남아 모든 호출을 `MCP_WORKSPACE_UNBOUND`(SRS-E077) 로 거절하고 아무것도 쓰지 않는다.
+
+   `MCP_WORKSPACE_UNBOUND` 을 받으면 멈추고, 사용자에게 프로젝트 안에서 세션을 다시 시작하라고 알린다 — 그 프로젝트에 SRS 가 없으면 먼저 그곳에서 `speckiwi init` 을 실행한 뒤 다시 시작한다. 다른 도구로 재시도하지 않는다.
 
 3. **부트스트랩** — 레인에서 1회.
 

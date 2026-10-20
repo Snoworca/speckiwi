@@ -81,3 +81,31 @@ describe("FR-NODE-145 computeLanePlan purity and determinism", () => {
     expect(stagesOf(roomy)).toEqual([["w1", "w2"], ["w3"]]);
   });
 });
+
+// The three criteria FR-NODE-145 retired in 4.0.0 each state a property the wave planner must keep
+// having; these cases hold it to them.
+describe("FR-NODE-145 retired criteria hold in the wave planner", () => {
+  it("FR-NODE-145 AC-3 takes no design item map: its declared inputs are the waves, their dependencies and the lane cap", async () => {
+    const { LANE_PLAN_INPUT_PINS } = await import("../../../src/core/orchestrator/freeze.js");
+    expect(Object.keys(LANE_PLAN_INPUT_PINS).sort()).toEqual(["dependencies", "laneCap", "waves"]);
+    const plain = input([wave("w1", "src/a.ts"), wave("w2", "src/b.ts")], { w2: [] });
+    const withMap = { ...plain, designItemMap: { "FR-X-001": ["D-001"] } } as LanePlanInput;
+    expect(JSON.stringify(computeLanePlan(withMap))).toBe(JSON.stringify(computeLanePlan(plain)));
+  });
+
+  it("FR-NODE-145 AC-4 applies no prefix-directory rule: a directory path and a file under it are different paths", () => {
+    const plan = computeLanePlan(input([wave("w1", "src/core/"), wave("w2", "src/core/a.ts")], { w2: [] }));
+    expect(stagesOf(plan)).toEqual([["w1", "w2"]]);
+    expect(plan.conflicts).toEqual([]);
+  });
+
+  it("FR-NODE-145 AC-5 places no two waves in one lane, overlapping waves included", () => {
+    const plan = computeLanePlan(input([wave("w1", "src/a.ts"), wave("w2", "src/a.ts"), wave("w3", "src/b.ts")], { w2: [], w3: [] }));
+    expect(new Set(plan.lanes.map((lane) => lane.laneId)).size).toBe(3);
+    expect(plan.lanes.map((lane) => [lane.laneId, lane.wave])).toEqual([
+      ["lane-w1", "w1"],
+      ["lane-w3", "w3"],
+      ["lane-w2", "w2"]
+    ]);
+  });
+});

@@ -609,8 +609,9 @@ describe("FR-FLOW-167 the triage table", () => {
   // from the code, the exclusions from the requirement's note with AC-1's rename applied, and the
   // rows plus the tools AC-1 names as departed from the notes and AC-1.
   it("FR-FLOW-167 AC-1: the denominator is the binding array, the exclusion set is the requirement's own, and a tool leaves the judged set only as AC-1 names it", () => {
-    expect(EXCLUSIONS.leaves, "the denominator note must name the eight excluded CLI leaves").toHaveLength(8);
-    expect(EXCLUSIONS.tools, "eight leaves plus orchestrate_validate is nine exclusions").toHaveLength(9);
+    // 4.1.0 added the read-only `orchestrate wave status` leaf (IR-CLI-104), so eight became nine.
+    expect(EXCLUSIONS.leaves, "the denominator note must name the nine excluded CLI leaves").toHaveLength(9);
+    expect(EXCLUSIONS.tools, "nine leaves plus orchestrate_validate is ten exclusions").toHaveLength(10);
     expect(renamedLeaves().size, "AC-1 must name the excluded leaf 4.0.0 renamed").toBeGreaterThan(0);
     for (const [from, to] of renamedLeaves()) {
       expect(EXCLUSIONS.leaves, `the rename AC-1 states must reach the exclusion set: ${from} → ${to}`).toContain(to);

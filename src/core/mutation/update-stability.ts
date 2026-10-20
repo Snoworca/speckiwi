@@ -6,6 +6,7 @@ import { renderHeadingLine } from "../parser/heading-render.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
+import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { classifyStabilityTransition, type StabilityTransitionWarning } from "./stability-transition.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
@@ -151,7 +152,7 @@ async function updateStabilityUnlocked(
     if (!insertLine) {
       return mutationFail("MUTATION_DENIED", "Change Notes section not found for reason append");
     }
-    const row = `| ${todayStamp()} | ${stabilityChangeLabel(input.stability)} | ${input.reason} |`;
+    const row = `| ${todayStamp()} | ${stabilityChangeLabel(input.stability)} | ${tableCellText(input.reason)} |`;
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
 

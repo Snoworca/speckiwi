@@ -35,11 +35,11 @@ const WRITER = "speckiwi-orchestrate/test";
 const PRIOR = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "intent", wave: "wave-1", writer: WRITER };
 
 /** Two independent errors on one line: a retired verb at 2.0.0 and a `complete` with no passing verify. */
-const INVALID = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "execute-unit", event: "result", wave: "wave-1", status: "complete", writer: WRITER };
+const INVALID = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "execute-unit", event: "result", wave: "wave-1", status: "complete", proof: { kind: "digest", ref: "sha256:out" }, writer: WRITER };
 
 /** A line that passes with a warning only: `complete-without-verification` rides on a passing verify. */
 const VERIFY = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "author-design", event: "result", wave: "wave-1", phase: "wave-verify", status: "in_progress", verification: { verdict: "pass" }, writer: WRITER };
-const WARNED = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete", writer: WRITER };
+const WARNED = { schema_version: "2.0.0", run_id: "run-a", engine: "kiwi-orchestrator", verb: "emit-and-finish", event: "result", wave: "wave-1", status: "complete", proof: { kind: "digest", ref: "sha256:out" }, writer: WRITER };
 
 const shape = (entries: unknown): Diagnostic[] =>
   (entries as Diagnostic[]).map(({ code, message, severity }) => ({ code, message, severity })).sort((a, b) => a.code.localeCompare(b.code));

@@ -46,7 +46,8 @@ const INVALIDATING_LINE = {
   verb: "emit-and-finish",
   event: "result",
   wave: "wave-1",
-  status: "complete"
+  status: "complete",
+  proof: { kind: "digest", ref: "sha256:out" }
 };
 
 const VALID_LINE = {
@@ -55,7 +56,8 @@ const VALID_LINE = {
   engine: "kiwi-orchestrator",
   verb: "author-design",
   event: "intent",
-  wave: "wave-1"
+  wave: "wave-1",
+  inputs_digest: "sha256:in"
 };
 
 function leaf(...segments: string[]): Command {
@@ -134,8 +136,10 @@ describe("FR-NODE-127 AC-4 — no invocation form skips validation", () => {
 
     // The whole declared option set, so a later addition is a conscious change rather than a silent
     // one. Both leaves carry exactly these and nothing else.
-    expect([...appendOptions].sort()).toEqual(["--dry-run", "--journal", "--json", "--payload", "--run-id"]);
-    expect([...resumeOptions].sort()).toEqual(["--card", "--facts", "--journal", "--json", "--run-id"]);
+    // FR-NODE-218 AC-4 added --payload-file, another way to give the line, not a way past the check.
+    expect([...appendOptions].sort()).toEqual(["--dry-run", "--journal", "--json", "--payload", "--payload-file", "--run-id"]);
+    // FR-NODE-217 AC-1 added --engine, which selects whose journal is read, not whether it is validated.
+    expect([...resumeOptions].sort()).toEqual(["--card", "--engine", "--facts", "--journal", "--json", "--run-id"]);
   });
 });
 

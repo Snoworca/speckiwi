@@ -6,6 +6,7 @@ import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
+import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
@@ -171,7 +172,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     if (!insertLine) {
       return mutationFail("MUTATION_DENIED", "Change Notes section not found for reason append");
     }
-    const row = `| ${todayStamp()} | ${statusChangeLabel(input.status)} | ${input.reason} |`;
+    const row = `| ${todayStamp()} | ${statusChangeLabel(input.status)} | ${tableCellText(input.reason)} |`;
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
   const plan = createPatchPlan(loaded.file, operations);

@@ -3,23 +3,25 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { REPO_ROOT, section, stripFrontmatter, tableRows } from "./kiwi-orchestrator-variants.js";
-import { RENDERINGS, flat, markdownFiles, readRepoFile } from "./kiwi-renderings.js";
+import { RENDERINGS, flat, markdownFiles, readRepoFile, skillDirs } from "./kiwi-renderings.js";
 
-// @req FR-FLOW-184 — the sdd chain is kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm →
-// kiwi-review-fix-loop, and kiwi-planner is retired.
+// @req FR-FLOW-193 — the default sdd chain is kiwi-srs → (kiwi-srs-feasibility) → kiwi-pm →
+// kiwi-review-fix-loop over a requirement-ID set; kiwi-sds and its close-out run only under --sds;
+// kiwi-planner stays retired. Supersedes FR-FLOW-184 (this file was sdd-chain.fr-flow-184).
 //
-// AC-1, AC-3 and the kiwi-pipeline half of AC-5 are read from the pipeline skill, the two pipeline
-// contracts and kiwi-srs-feasibility. AC-2's directory absence is read from every rendering; its
-// "no skill names kiwi-planner" half is asserted here for the files this suite's owner edits —
-// FR-FLOW-160's resolution sweep holds every other shipped body, because a name whose directory is
-// gone does not resolve. AC-4 is held by body-scope-chain-redirect.fr-flow-184 and AC-6 by the
-// commit-skill suites.
+// AC-1 and AC-2 are read from kiwi-pipeline §2.5 (the default chain and §2.4's end steps) and §2.5.5
+// (the --sds branch), and from pipeline-v1.md; AC-3 from kiwi-srs-feasibility; AC-5, AC-6 carry the
+// FR-FLOW-184 planner-retirement assertions unchanged; AC-7 reads the four files that re-enter a
+// run. AC-4 is held by body-scope-chain-redirect.fr-flow-193 and AC-8 by the commit-skill suite.
 
 const ARROW = String.raw`\s*(?:→|->)\s*`;
-/** The chain in the order AC-1 fixes, feasibility parenthesised as the conditional stage. */
-const CHAIN = new RegExp(
-  String.raw`kiwi-srs(?!-)${ARROW}\((?:조건부\)\s*|conditional\)\s*)?kiwi-srs-feasibility\)?${ARROW}kiwi-sds${ARROW}kiwi-pm\b${ARROW}kiwi-review-fix-loop --close-reqs`
+const FEAS = String.raw`kiwi-srs(?!-)${ARROW}\((?:조건부\)\s*|conditional\)\s*)?kiwi-srs-feasibility\)?${ARROW}`;
+/** The default chain AC-1 fixes, over the cycle's requirement IDs. */
+const DEFAULT_CHAIN = new RegExp(
+  String.raw`${FEAS}kiwi-pm --req-filter <[^>]+> --review-hop-owned-by-parent${ARROW}kiwi-review-fix-loop --close-reqs --req-filter <[^>]+>`
 );
+/** The --sds chain AC-2 fixes. */
+const SDS_CHAIN = new RegExp(String.raw`${FEAS}kiwi-sds${ARROW}kiwi-pm\b[^→]*?${ARROW}kiwi-review-fix-loop --close-reqs`);
 
 function text(relPath: string): string {
   return readRepoFile(relPath).replace(/\r\n/g, "\n");
@@ -29,58 +31,56 @@ function pipelineBody(rendering: string): string {
   return stripFrontmatter(text(`${rendering}/kiwi-pipeline/SKILL.md`));
 }
 
+function plain(value: string): string {
+  return flat(value).replace(/`/g, "");
+}
+
+function items(sectionText: string): string[] {
+  return sectionText.split("\n").filter((line) => /^\d+\.\s/.test(line));
+}
+
 /** `last skill → the kiwi-* names its success row hints at`, read from every table row of `table`. */
-function hints(table: string): Map<string, string[]> {
-  const out = new Map<string, string[]>();
+function hints(table: string): Map<string, string> {
+  const out = new Map<string, string>();
   for (const row of tableRows(table)) {
     const last = (row.cells[0] ?? "").replace(/`/g, "").trim();
     if (!/TASK_DONE/.test(row.cells[1] ?? "")) continue;
-    out.set(last, (row.cells[2] ?? "").match(/kiwi-[a-z-]+/g) ?? []);
+    out.set(last, row.cells[2] ?? "");
   }
   return out;
 }
 
-describe("FR-FLOW-184 AC-1 — the cycle is kiwi-srs → (feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop --close-reqs", () => {
-  it.each(RENDERINGS)("%s/kiwi-pipeline: §2.5 states the chain", (rendering) => {
+describe("FR-FLOW-193 AC-1 — the default cycle runs kiwi-pm on the cycle's requirement IDs, with no kiwi-sds call", () => {
+  it("reads every shipped rendering and the mirror", () => {
+    expect(RENDERINGS.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(RENDERINGS)("%s/kiwi-pipeline: §2.5 states the default chain followed by the test-sufficiency check", (rendering) => {
     const cycle = section(pipelineBody(rendering), /^##\s*2\.5\s/);
     expect(cycle, `${rendering}: kiwi-pipeline has no §2.5`).not.toBe("");
-    expect(CHAIN.test(flat(cycle).replace(/`/g, "")), `${rendering}: §2.5 does not state the sdd chain`).toBe(true);
+    const at = plain(cycle).search(DEFAULT_CHAIN);
+    expect(at, `${rendering}: §2.5 does not state the default chain`).toBeGreaterThan(-1);
+    expect(plain(cycle).indexOf("_shared/kiwi/test-sufficiency.md", at), `${rendering}: no test-sufficiency check after the chain`).toBeGreaterThan(at);
   });
 
-  it.each(RENDERINGS)("%s/kiwi-pipeline: the chain is followed by the test-sufficiency check and the SDS close-out", (rendering) => {
-    const cycle = flat(section(pipelineBody(rendering), /^##\s*2\.5\s/));
-    const chainAt = cycle.replace(/`/g, "").search(CHAIN);
-    const plain = cycle.replace(/`/g, "");
-    const sufficiency = plain.indexOf("_shared/kiwi/test-sufficiency.md", chainAt);
-    const closeOut = plain.indexOf("kiwi-sds --close", chainAt);
-    expect(sufficiency, `${rendering}: §2.5 does not name the test-sufficiency contract after the chain`).toBeGreaterThan(chainAt);
-    expect(closeOut, `${rendering}: §2.5 does not name the SDS close-out after the chain`).toBeGreaterThan(chainAt);
-    // The close-out's last call — the one that deletes the SDS — follows the check (FR-FLOW-183 AC-3).
-    const items = section(pipelineBody(rendering), /^###\s*2\.5\.4\s/)
-      .split("\n")
-      .filter((line) => /^\d+\.\s/.test(line));
-    const checkAt = items.findIndex((item) => item.includes("_shared/kiwi/test-sufficiency.md"));
-    expect(checkAt, `${rendering}: §2.5.4 has no step running the test-sufficiency check`).toBeGreaterThanOrEqual(0);
-    expect(
-      items.slice(checkAt + 1).some((item) => /^\d+\.\s+`kiwi-sds --close <sds-id>`/.test(item)),
-      `${rendering}: no §2.5.4 step after the check closes the SDS out`
-    ).toBe(true);
-    // The move precedes the promoting hop (FR-FLOW-183: before the run promotes).
-    const moveAt = items.findIndex((item) => /^\d+\.\s+`kiwi-sds --close <sds-id>`/.test(item));
-    const hopAt = items.findIndex((item) => item.includes("kiwi-review-fix-loop --close-reqs"));
-    expect(moveAt, `${rendering}: §2.5.4 does not move the SDS decisions before the review hop`).toBeGreaterThanOrEqual(0);
-    expect(moveAt, `${rendering}: the move runs after the promoting hop`).toBeLessThan(hopAt);
+  it.each(RENDERINGS)("%s/kiwi-pipeline: the default end steps (§2.5.4) call no kiwi-sds and no close-out", (rendering) => {
+    const end = items(section(pipelineBody(rendering), /^###\s*2\.5\.4\s/));
+    expect(end.length, `${rendering}: §2.5.4 has no numbered steps`).toBeGreaterThan(0);
+    expect(end.filter((item) => item.includes("kiwi-sds")), `${rendering}: a default end step still calls kiwi-sds`).toEqual([]);
+    const hop = end.findIndex((item) => item.includes("kiwi-review-fix-loop --close-reqs") && item.includes("--req-filter"));
+    const check = end.findIndex((item) => item.includes("_shared/kiwi/test-sufficiency.md"));
+    expect(hop, `${rendering}: §2.5.4 has no --close-reqs hop scoped by --req-filter`).toBeGreaterThanOrEqual(0);
+    expect(check, `${rendering}: §2.5.4 does not run the check after the hop`).toBeGreaterThan(hop);
   });
 
-  it.each(RENDERINGS)("%s/_shared/kiwi/pipeline-v1.md: the shared contract states the same chain", (rendering) => {
+  it.each(RENDERINGS)("%s/_shared/kiwi/pipeline-v1.md states the same default chain", (rendering) => {
     const contract = text(`${rendering}/_shared/kiwi/pipeline-v1.md`);
     expect(contract, `${rendering}: pipeline-v1.md is missing`).not.toBe("");
-    expect(CHAIN.test(flat(contract).replace(/`/g, "")), `${rendering}: pipeline-v1.md does not state the sdd chain`).toBe(true);
+    expect(DEFAULT_CHAIN.test(plain(contract)), `${rendering}: pipeline-v1.md does not state the default chain`).toBe(true);
     expect(contract).toContain("test-sufficiency.md");
-    expect(contract).toContain("kiwi-sds --close");
   });
 
-  it.each(RENDERINGS)("%s: the next-step tables follow the chain order", (rendering) => {
+  it.each(RENDERINGS)("%s: the next-step and next_hint tables follow the default order", (rendering) => {
     const tables: Array<[string, string]> = [
       ["kiwi-pipeline §5.1 T1", section(pipelineBody(rendering), /^###\s*5\.1\s/)],
       ["pipeline-event.md §4", section(text(`${rendering}/_shared/kiwi/pipeline-event.md`), /^##\s*4\.\s/)],
@@ -88,16 +88,66 @@ describe("FR-FLOW-184 AC-1 — the cycle is kiwi-srs → (feasibility) → kiwi-
     ];
     for (const [name, table] of tables) {
       const next = hints(table);
-      expect(next.get("kiwi-srs-feasibility") ?? [], `${rendering} ${name}: feasibility does not hint kiwi-sds`).toContain("kiwi-sds");
-      expect(next.get("kiwi-sds") ?? [], `${rendering} ${name}: kiwi-sds does not hint kiwi-pm`).toContain("kiwi-pm");
-      expect(next.get("kiwi-pm") ?? [], `${rendering} ${name}: the step after kiwi-pm skips the close-out move`).toContain("kiwi-sds");
+      expect(next.get("kiwi-srs-feasibility") ?? "", `${rendering} ${name}: feasibility does not hint kiwi-pm`).toMatch(/kiwi-pm/);
+      expect(next.get("kiwi-sds") ?? "", `${rendering} ${name}: kiwi-sds does not hint kiwi-pm`).toMatch(/kiwi-pm/);
+      expect(next.get("kiwi-pm") ?? "", `${rendering} ${name}: kiwi-pm does not hint the review`).toMatch(/kiwi-review-fix-loop/);
       expect(next.has("kiwi-planner"), `${rendering} ${name}: still carries a kiwi-planner row`).toBe(false);
-      expect([...next.values()].flat(), `${rendering} ${name}: still hints kiwi-planner`).not.toContain("kiwi-planner");
+      expect([...next.values()].join(" "), `${rendering} ${name}: still hints kiwi-planner`).not.toContain("kiwi-planner");
     }
   });
 });
 
-describe("FR-FLOW-184 AC-2 — kiwi-planner is gone", () => {
+describe("FR-FLOW-193 AC-2 — under --sds the cycle adds kiwi-sds before kiwi-pm and the close-out around the promoting hop", () => {
+  it.each(RENDERINGS)("%s/kiwi-pipeline: §2.5.5 is the --sds branch and states the --sds chain", (rendering) => {
+    const branch = section(pipelineBody(rendering), /^###\s*2\.5\.5\s/);
+    expect(branch, `${rendering}: kiwi-pipeline has no §2.5.5`).not.toBe("");
+    expect(branch.split("\n")[0], `${rendering}: §2.5.5's heading does not name --sds`).toMatch(/--sds/);
+    expect(SDS_CHAIN.test(plain(branch)), `${rendering}: §2.5.5 does not state the --sds chain`).toBe(true);
+  });
+
+  it.each(RENDERINGS)("%s/kiwi-pipeline: the move runs after kiwi-pm and before the --close-reqs hop; the delete after the hop and the check", (rendering) => {
+    const steps = items(section(pipelineBody(rendering), /^###\s*2\.5\.5\s/));
+    const closes = steps.map((item, index) => (/^\d+\.\s+`kiwi-sds --close <sds-id>`/.test(item) ? index : -1)).filter((index) => index >= 0);
+    const hop = steps.findIndex((item) => item.includes("kiwi-review-fix-loop --close-reqs"));
+    const check = steps.findIndex((item, index) => index > hop && item.includes("_shared/kiwi/test-sufficiency.md"));
+    expect(closes.length, `${rendering}: §2.5.5 must call kiwi-sds --close twice`).toBe(2);
+    expect(hop, `${rendering}: §2.5.5 has no --close-reqs hop`).toBeGreaterThan(-1);
+    expect(closes[0], `${rendering}: the move does not precede the promoting hop`).toBeLessThan(hop);
+    expect(check, `${rendering}: no check after the hop`).toBeGreaterThan(hop);
+    expect(closes[1], `${rendering}: the delete does not follow the hop and the check`).toBeGreaterThan(check);
+  });
+
+  it.each(RENDERINGS)("%s/_shared/kiwi/pipeline-v1.md: the --sds chain and its close-out are stated as the --sds branch", (rendering) => {
+    const contract = plain(text(`${rendering}/_shared/kiwi/pipeline-v1.md`));
+    const at = contract.search(SDS_CHAIN);
+    expect(at, `${rendering}: pipeline-v1.md does not state the --sds chain`).toBeGreaterThan(-1);
+    expect(contract.slice(Math.max(0, at - 160), at), `${rendering}: the --sds chain is not introduced as the --sds branch`).toMatch(/--sds/);
+    expect(contract).toContain("kiwi-sds --close");
+  });
+});
+
+describe("FR-FLOW-193 AC-3 — kiwi-srs-feasibility hints kiwi-pm and shows kiwi-sds only as the --sds branch", () => {
+  it.each(RENDERINGS.filter((rendering) => rendering.startsWith("skills/")))("%s/kiwi-srs-feasibility: the emit's next_hint names kiwi-pm", (rendering) => {
+    const lines = markdownFiles(rendering, "kiwi-srs-feasibility")
+      .flatMap((relPath) => text(relPath).split("\n"))
+      .filter((line) => /`next_hint`/.test(line) && /stability/.test(line));
+    expect(lines.length, `${rendering}: no next_hint emit line found`).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(line, `${rendering}: feasibility does not hint kiwi-pm`).toContain('"kiwi-pm"');
+      expect(line, `${rendering}: feasibility still hints kiwi-sds by default`).not.toContain('"kiwi-sds"');
+    }
+  });
+
+  it.each(RENDERINGS.filter((rendering) => rendering.startsWith("skills/")))("%s/kiwi-srs-feasibility: every kiwi-sds mention is the --sds branch", (rendering) => {
+    const lines = markdownFiles(rendering, "kiwi-srs-feasibility")
+      .flatMap((relPath) => text(relPath).split("\n"))
+      .filter((line) => line.includes("kiwi-sds"));
+    expect(lines.length, `${rendering}: the chain diagram no longer shows the --sds branch`).toBeGreaterThan(0);
+    for (const line of lines) expect(line, `${rendering}: kiwi-sds shown outside the --sds branch`).toMatch(/--sds/);
+  });
+});
+
+describe("FR-FLOW-193 AC-5 · FR-FLOW-180 AC-1 AC-2 — kiwi-planner is gone (carried from FR-FLOW-184 AC-2)", () => {
   it.each(RENDERINGS)("%s carries no kiwi-planner directory", (rendering) => {
     expect(existsSync(path.join(REPO_ROOT, rendering, "kiwi-planner")), `${rendering}/kiwi-planner still exists`).toBe(false);
   });
@@ -112,8 +162,6 @@ describe("FR-FLOW-184 AC-2 — kiwi-planner is gone", () => {
     "_shared/kiwi/auto-option.md"
   ];
 
-  // Open answer 26: the work-mode → plan tdd_policy derivation left with the plan and FR-FLOW-040 is
-  // discarded, so the contract that held it is removed rather than left with no consumer.
   it.each(RENDERINGS)("%s carries no workmode-policy.md", (rendering) => {
     expect(existsSync(path.join(REPO_ROOT, rendering, "_shared/kiwi/workmode-policy.md")), `${rendering}: workmode-policy.md survives`).toBe(false);
   });
@@ -131,7 +179,7 @@ describe("FR-FLOW-184 AC-2 — kiwi-planner is gone", () => {
   });
 });
 
-describe("FR-FLOW-184 AC-3 — the event contract enumerates kiwi-sds, and feasibility hints it", () => {
+describe("FR-FLOW-193 AC-6 — the event contract enumerates kiwi-sds and not kiwi-planner (carried from FR-FLOW-184 AC-3)", () => {
   it.each(RENDERINGS)("%s/_shared/kiwi/pipeline-event.md: the skill enum lists kiwi-sds and not kiwi-planner", (rendering) => {
     const enumBlock = section(text(`${rendering}/_shared/kiwi/pipeline-event.md`), /^##\s*3\.\s/);
     const fenced = /```[^\n]*\n([\s\S]*?)```/.exec(enumBlock)?.[1] ?? "";
@@ -140,52 +188,31 @@ describe("FR-FLOW-184 AC-3 — the event contract enumerates kiwi-sds, and feasi
     expect(members).toContain("kiwi-sds");
     expect(members).not.toContain("kiwi-planner");
   });
-
-  it.each(RENDERINGS.filter((rendering) => rendering.startsWith("skills/")))(
-    "%s/kiwi-srs-feasibility: the emit's next_hint names kiwi-sds",
-    (rendering) => {
-      const lines = markdownFiles(rendering, "kiwi-srs-feasibility")
-        .flatMap((relPath) => text(relPath).split("\n"))
-        .filter((line) => /`next_hint`/.test(line) && /stability/.test(line));
-      expect(lines.length, `${rendering}: no next_hint emit line found`).toBeGreaterThan(0);
-      for (const line of lines) {
-        expect(line, `${rendering}: feasibility does not hint kiwi-sds`).toContain('"kiwi-sds"');
-      }
-    }
-  );
 });
 
-// @req FR-FLOW-184 AC-1 — step by step, the hop after the close-out move is still the promoting hop.
-describe("FR-FLOW-184 AC-1 — the review hop after the close-out move keeps --close-reqs", () => {
-  it.each(RENDERINGS)("%s/kiwi-pipeline: the --close-reqs attach rule covers a kiwi-sds --close predecessor", (rendering) => {
-    const handoff = section(pipelineBody(rendering), /^##\s*7\.\s/);
-    const rule = handoff.split("\n").find((line) => line.includes("`--close-reqs` 를 부착한다")) ?? "";
-    expect(rule, `${rendering}: §7 has no --close-reqs attach rule`).not.toBe("");
-    expect(rule, `${rendering}: the attach rule drops --close-reqs after the close-out move`).toContain("kiwi-sds --close");
-  });
-});
+describe("FR-FLOW-193 AC-7 — re-entry carries --req-filter and kiwi-pm --run-id, never --plan-run-id, and --sds-id only on an opted-in run", () => {
+  const FILES = (rendering: string): string[] => [
+    ...(skillDirs(rendering).includes("kiwi-pipeline") ? markdownFiles(rendering, "kiwi-pipeline") : []),
+    ...(skillDirs(rendering).includes("kiwi-wave-master") ? markdownFiles(rendering, "kiwi-wave-master") : []),
+    ...(skillDirs(rendering).includes("kiwi-orchestrator") ? markdownFiles(rendering, "kiwi-orchestrator") : []),
+    `${rendering}/_shared/kiwi/verify-loop.md`
+  ];
 
-describe("FR-FLOW-184 AC-5 — kiwi-pipeline re-enters with --sds-id, not --plan-run-id", () => {
-  it.each(RENDERINGS)("%s/kiwi-pipeline: --plan-run-id is gone", (rendering) => {
-    expect(pipelineBody(rendering)).not.toContain("--plan-run-id");
+  it.each(RENDERINGS)("%s: --plan-run-id is gone from the four files", (rendering) => {
+    for (const relPath of FILES(rendering)) expect(text(relPath), `${relPath} still names --plan-run-id`).not.toContain("--plan-run-id");
   });
 
-  it.each(RENDERINGS)("%s/kiwi-pipeline: --sds-id is an option, a work input and forwarded to kiwi-sds and kiwi-pm", (rendering) => {
+  it.each(RENDERINGS)("%s/_shared/kiwi/verify-loop.md: the re-entry unit id is kiwi-pm --run-id {run_id}-wave-{n}-r{m}", (rendering) => {
+    const loop = flat(text(`${rendering}/_shared/kiwi/verify-loop.md`));
+    expect(loop).toMatch(/--run-id \{run_id\}-wave-\{n\}-r\{m\}/);
+  });
+
+  it.each(RENDERINGS)("%s/kiwi-pipeline: a user-given --sds-id is an SDS instruction that implies --sds", (rendering) => {
     const options = section(pipelineBody(rendering), /^###\s*1\.2\s/);
-    expect(
-      tableRows(options).some((row) => (row.cells[1] ?? "").includes("`--sds-id")),
-      `${rendering}: §1.2 has no --sds-id option row`
-    ).toBe(true);
+    const row = tableRows(options).find((entry) => (entry.cells[1] ?? "").includes("`--sds-id"));
+    expect(row, `${rendering}: §1.2 has no --sds-id option row`).toBeDefined();
+    expect(row?.cells.join(" | "), `${rendering}: --sds-id does not imply --sds`).toMatch(/`--sds` 를 함의|implies `--sds`/);
     const enumeration = options.split("\n").find((line) => /작업 입력은[^\n]*닫힌다/.test(line)) ?? "";
-    expect(enumeration, `${rendering}: the work-input enumeration does not list --sds-id`).toContain("`--sds-id`");
-    const handoff = section(pipelineBody(rendering), /^##\s*7\.\s/);
-    const rule = handoff.split("\n").find((line) => /`--req-filter` 와 `--sds-id` 는 함께/.test(line)) ?? "";
-    expect(rule, `${rendering}: §7 does not forward --req-filter and --sds-id together`).not.toBe("");
-    // The consumers are named in the clause that states the forwarding, before its explanation.
-    const clause = rule.split(" — ")[0] ?? "";
-    expect(/kiwi-sds/.test(clause) && /kiwi-pm/.test(clause), `${rendering}: the forwarding clause does not name kiwi-sds and kiwi-pm`).toBe(true);
-    // kiwi-pm takes only SDS_PATH: the requirement filter goes to kiwi-sds and to the review hop, never to kiwi-pm.
-    expect(/`--req-filter`[^—]*kiwi-review-fix-loop/.test(clause), `${rendering}: the requirement filter does not reach the review hop`).toBe(true);
-    expect(/`kiwi-pm` 에는 `--sds-id` 가 가리키는 `SDS_PATH`/.test(clause), `${rendering}: kiwi-pm is not handed the SDS path alone`).toBe(true);
+    expect(enumeration, `${rendering}: the work-input enumeration (FR-FLOW-124) lost --sds-id`).toContain("`--sds-id`");
   });
 });

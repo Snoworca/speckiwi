@@ -137,7 +137,9 @@ describe("FR-FLOW-144 AC-1 — each restated axis names, on its own line, the de
   it.each(COPIES)("FR-FLOW-144 AC-1: %s reuses the preceding SDS-code match result for the mapping axis", (_label, relPath) => {
     const line = ruleLine(body(relPath), "SDS-코드 매핑:");
     expect(line, "the SDS-code mapping axis line was not found").not.toBe("");
-    expect(line).toMatch(/앞선 \(d\) ZERO TOLERANCE 게이트\(§0\.7\)가 이미 계산한 결과를 \*\*재사용\*\*/);
+    // FR-FLOW-144 AC-1 (4.1.0): only under --sds; the gate is now (d′), and without an SDS the axis is not applicable.
+    expect(line).toMatch(/`--sds` 면 앞선 \(d′\) ZERO TOLERANCE 게이트\(§0\.7\)가 이미 계산한 결과를 \*\*재사용\*\*/);
+    expect(line).toMatch(/SDS 없는 실행은 이 축을 not applicable 로 기록한다/);
   });
 });
 
@@ -145,7 +147,8 @@ describe("FR-FLOW-144 AC-2 — the coverage rule, on its own line: every Test Pl
   it.each(COPIES)("FR-FLOW-144 AC-2: %s states the coverage rule over Test Plan rows and executed tests", (_label, relPath) => {
     const line = ruleLine(body(relPath), "테스트 커버리지:");
     expect(line, "the coverage axis line was not found").not.toBe("");
-    expect(line).toMatch(/SDS Test Plan 행마다 \*\*실제로 실행된 테스트\*\*가 대응하는가/);
+    // FR-FLOW-144 AC-2 (4.1.0): every AC of the run's requirement set, and under --sds every Test Plan row.
+    expect(line).toMatch(/요구 집합의 AC 마다\(`--sds` 면 SDS Test Plan 행마다도\) \*\*실제로 실행된, 그것을 인용한 테스트\*\*가 대응하는가/);
     expect(line, "the rule was replaced by a global percentage").toMatch(/전역 커버리지 %가 아니라/);
   });
 });

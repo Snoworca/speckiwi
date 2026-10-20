@@ -9,15 +9,17 @@ import type { MutationResult, ProjectRoot } from "../types.js";
 /**
  * FR-NODE-080 — step scaffold mutation.
  *
- * Creates docs/spec/steps/<task>/ with a design.md stub (SDS-MD Rules §8 template,
- * Status=draft, headings synced with the validator set) and an intent.md stub using
- * writeIfMissing semantics: an existing file is never overwritten (reported as
- * skipped) while missing siblings are still created. The stubs are empty skeletons —
- * SDS and step content remain directly authored.
+ * Creates docs/spec/steps/<task>/ with an intent.md stub (an `## Acceptance` section with one EARS
+ * placeholder line) and, only with `sds: true`, a design.md stub (SDS-MD Rules §8 template,
+ * Status=draft, headings synced with the validator set), using writeIfMissing semantics: an existing
+ * file is never overwritten (reported as skipped) while missing siblings are still created. The stubs
+ * are empty skeletons — step content remains directly authored.
  */
 export interface ScaffoldStepInput {
   task: string;
   target?: string;
+  /** Also scaffold the step SDS design.md; the step SDS is opt-in (FR-FLOW-196). */
+  sds?: boolean;
   dryRun?: boolean;
 }
 
@@ -49,10 +51,14 @@ export async function scaffoldStep(root: ProjectRoot, input: ScaffoldStepInput):
     if (targetCell) return targetCell;
   }
   const stubs: Array<{ relPath: string; content: string }> = [
-    {
-      relPath: path.join("docs", "spec", "steps", input.task, "design.md"),
-      content: renderSdsDesignTemplate({ task: input.task, ...(input.target !== undefined ? { target: input.target } : {}) })
-    },
+    ...(input.sds === true
+      ? [
+          {
+            relPath: path.join("docs", "spec", "steps", input.task, "design.md"),
+            content: renderSdsDesignTemplate({ task: input.task, ...(input.target !== undefined ? { target: input.target } : {}) })
+          }
+        ]
+      : []),
     {
       relPath: path.join("docs", "spec", "steps", input.task, "intent.md"),
       content: renderStepIntentTemplate(input.task)
