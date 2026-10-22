@@ -194,7 +194,7 @@ The whole run holds the SRS mutation lock and is **idempotent**. A file that alr
 | 4 | **Agent instructions** | Inserts or updates the *SpecKiwi SRS workflow* block in `AGENTS.md` and `CLAUDE.md`. A block whose content differs from the shipped text is replaced in place; a block that already matches is left untouched. |
 | 5 | **Hooks** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}` and `docs/.kiwi/trace/`; a `.git/hooks/pre-commit` gate that delegates to the runner; `.claude/settings.json` (PostToolUse trace hook); `.codex/hooks.json` (apply_patch trace hook). An existing `.git/hooks/pre-commit` is never overwritten: it is reported as `skipped` if it already delegates to the runner, and otherwise left as it is with a warning that tells you how to connect it. The two agent hook files are reported as `skipped` when they exist, and `--force` overwrites them like every other scaffolded file. |
 | 6 | **MCP registration** | Registers the SpecKiwi stdio MCP server at user scope by running each agent's own CLI (see [Connect the MCP server](#en-mcp)). A server that is already registered is reported as `skipped`. SpecKiwi writes no agent config file itself and no `.mcp.json`. A CLI that is not on PATH, a registration that fails and a command that times out each become a warning naming the command to run by hand. With `--project-install`, the server goes into `.mcp.json` instead (`skipped` if already there) and no agent CLI runs. Turn off with `--no-mcp`. |
-| 7 | **Skills** | Installs the bundled Kiwi skills into each agent's global skills directory: Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`. An agent whose home directory (`~/.claude`, `${CODEX_HOME:-~/.codex}`) does not exist is skipped with a warning. Nothing is pruned at global scope, because the shared home may hold skills other projects use. With `--project-install`, the skills go to the project instead, for **Claude** (`.claude/skills`) and **Codex** (`.agents/skills`), and orphaned `kiwi-*` skill directories that SpecKiwi installed earlier and nobody edited are pruned. Turn off with `--no-skills`. |
+| 7 | **Skills** | Installs the bundled Kiwi skills into each agent's global skills directory: Claude `~/.claude/skills`, Codex `~/.agents/skills`. An agent whose home directory (`~/.claude`, `${CODEX_HOME:-~/.codex}`) does not exist is skipped with a warning. Nothing is pruned at global scope, because the shared home may hold skills other projects use; the one exception is Codex's old `${CODEX_HOME:-~/.codex}/skills`, from which the copies of the skills just installed that SpecKiwi wrote and nobody edited are removed (see [Upgrading from 4.1.0 to 4.1.1](#en-upgrade-411)). With `--project-install`, the skills go to the project instead, for **Claude** (`.claude/skills`) and **Codex** (`.agents/skills`), and orphaned `kiwi-*` skill directories that SpecKiwi installed earlier and nobody edited are pruned. Turn off with `--no-skills`. |
 
 In a checkout of SpecKiwi itself, steps 6 and 7 always run at project scope and no agent CLI runs, with or without `--project-install`; the report says so.
 
@@ -221,7 +221,7 @@ docs/
    └─ steps/state.md
 ```
 
-The Kiwi skills are not in the project: they are in `~/.claude/skills` and `${CODEX_HOME:-~/.codex}/skills`. With `--project-install` they go into the project instead (and into the global directories too when `--global` is added), along with the MCP registration:
+The Kiwi skills are not in the project: they are in `~/.claude/skills` and `~/.agents/skills`. With `--project-install` they go into the project instead (and into the global directories too when `--global` is added), along with the MCP registration:
 
 ```text
 .mcp.json                     # speckiwi MCP server registration
@@ -399,7 +399,7 @@ speckiwi skills install codex all --dry-run --json   # preview the plan, copy no
 
 | Agent | Package source | Project destination | Global destination |
 | --- | --- | --- | --- |
-| Codex | `skills/codex` | `.agents/skills/<skill>` | `${CODEX_HOME:-$HOME/.codex}/skills/<skill>` |
+| Codex | `skills/codex` | `.agents/skills/<skill>` | `$HOME/.agents/skills/<skill>` |
 | Claude | `skills/claude` | `.claude/skills/<skill>` | `$HOME/.claude/skills/<skill>` |
 | OpenCode | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
 | Hermes | `skills/etc` | requires `--dest <dir>` | `$HOME/.hermes/skills/<category>/<skill>` |
@@ -609,12 +609,13 @@ The work mode is stored in `docs/spec/steps/state.md`; a new project starts in `
 
 - **`wait`**: the default. No Active Task; the SRS-first rules apply.
 - **`sdd`**: spec-driven body work. Write or adjust body-scope requirements first, then implement.
-- **`vibe`**: code-first. Write code against an Active Task, then synthesize the SRS afterward; `vibe-gate` blocks commits that were never synthesized.
+- **`vibe`**: code-first. Write code against an Active Task, then synthesize the SRS afterward. `vibe-gate check` fails while the Active Task has no step directory under `docs/spec/steps/` (in `tdd`, also while that step has no written acceptance contract); it does not check that the synthesis ran, and with no Active Task it never fails.
 - **`tdd`**: the step-scoped **TDD First** cycle through `kiwi-tdd`. Record EARS acceptance lines in the step's `intent.md` under `## Acceptance` and check them with `speckiwi step validate`, turn them into failing tests, implement to green, run regression, then synthesize and promote the step requirement. A step without acceptance lines fails validation with `STEP_ACCEPTANCE_MISSING`. A step SDS (`design.md`) is written only under `--sds`.
 
 ```sh
 speckiwi mode                                    # show the current work mode (sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # switch mode (sdd, vibe, wait, or tdd)
+speckiwi mode vibe --task <name>                 # vibe or tdd with the Active Task the vibe gate checks
 speckiwi step claim <name> --touches-scope APP   # claim a step before writing it
 speckiwi step scaffold <name>                    # create the intent.md stub with its ## Acceptance section
 speckiwi step scaffold <name> --sds              # also create the step SDS stub (design.md)
@@ -623,7 +624,7 @@ speckiwi step sds-status <name> agreed           # advance the step SDS (draft -
 speckiwi step synthesize <name>                  # synthesize the step SRS from intent.md (and design.md under --sds)
 speckiwi step promote <id> --from-step <name> --to-scope APP   # promote into a body scope (evidence required in tdd)
 speckiwi step update-state <name> --status merged              # move the step through the completion gate
-speckiwi vibe-gate check                         # CI gate that blocks unsynthesized vibe/tdd commits
+speckiwi vibe-gate check                         # CI check: fails when the Active Task's step directory (tdd: or its acceptance contract) is missing
 ```
 
 <a id="en-mutations"></a>
@@ -787,7 +788,7 @@ What it deliberately does **not** do, and says so in its report: it never renumb
 | `--ignore-lock` | Bypass a stale SRS mutation lock. |
 | `--json` | Write the result as JSON. |
 
-The default already refreshes the global skills, so `--global` matters only beside `--project-install`. There, without it, `upgrade` refreshes only the project copies while each agent keeps loading any older global ones. It means the same as on `init`, *in addition to* the project and never instead of it. The global refresh never deletes: a global skill this release no longer ships is left alone, because the same home may serve another project still pinned to the version that ships it. `speckiwi remove --global` is what removes those.
+The default already refreshes the global skills, so `--global` matters only beside `--project-install`. There, without it, `upgrade` refreshes only the project copies while each agent keeps loading any older global ones. It means the same as on `init`, *in addition to* the project and never instead of it. The global refresh deletes nothing at the global destinations, with one exception: the Codex refresh removes, from the old `${CODEX_HOME:-~/.codex}/skills`, the copies of the skills it just installed that SpecKiwi wrote and nobody edited. A global skill this release no longer ships is left alone, because the same home may serve another project still pinned to the version that ships it. `speckiwi remove --global` is what removes those.
 
 **Exit codes:** `0` success · `5` failure (such as a held mutation lock, or `--apply` together with `--dry-run`; nothing is written).
 
@@ -816,6 +817,7 @@ The default already refreshes the global skills, so `--global` matters only besi
 
 - **Onboarding moved out of the project.** `init` and `upgrade` now install the Kiwi skills into each agent's global skills directory and register the MCP server at user scope through `claude mcp add` and `codex mcp add` (see [Connect the MCP server](#en-mcp)). A new project gets no `.claude/skills`, `.agents/skills` or `.mcp.json`.
 - **`upgrade` then moves the project off the copies the global install replaces.** For each agent, and only after that agent's global skill pass completed, it removes the project `kiwi-*` copies that pass the same install-metadata and checksum proof `speckiwi remove` uses, and only the skills that pass placed. A copy you edited, or one with no global counterpart, stays. It removes the `speckiwi` key from `.mcp.json` only once the Claude user-scope registration is confirmed (`claude mcp get` or `claude mcp add` exited `0`), and only if the key holds exactly the launcher SpecKiwi writes; a value you set by hand is kept with a warning, and the rest of the file stays. These removals are listed in the result's top-level `removed`. `--dry-run` lists what a run would remove once the global install is confirmed, and runs no agent CLI.
+- **Codex global skills moved to `~/.agents/skills`**, the directory Codex reads user skills from: Codex still reads the old `${CODEX_HOME:-~/.codex}/skills` as a deprecated location and lists a skill found in both twice, so a Codex global install now removes from the old directory the copies of the skills it just installed that SpecKiwi wrote and nobody edited, and keeps any other copy with a warning naming both paths.
 - **A copy is kept, with a warning, when its replacement is in doubt**: the agent's home directory is missing, a skill conflicted or failed to install, or `CLAUDE_CONFIG_DIR` points somewhere other than `<home>/.claude`, so Claude may not load the skills the global pass wrote.
 - **Commit the removals.** `upgrade` warns when a file it removed or edited is tracked by git. Commit the change; each collaborator then needs `speckiwi init` on their own machine to get the global install.
 - **To keep the 4.1.0 layout**, pass `--project-install` to `init` and `upgrade`: project skill copies, `.mcp.json`, no agent CLI run, and nothing removed by this migration (the orphan prune of 4.1.0 still runs). Add `--global` to refresh the global skills as well. The option is not remembered, so pass it on every `upgrade`: a plain `upgrade` moves the project to the global layout. A checkout of SpecKiwi itself is always handled this way.
@@ -1187,7 +1189,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 | 4 | **에이전트 지시문** | `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 넣거나 갱신합니다. 내용이 배포본과 다른 블록은 그 위치에서 교체하고, 이미 같은 블록은 그대로 둡니다. |
 | 5 | **훅** | `docs/.kiwi/hooks/{pre-commit.mjs,trace.mjs}`와 `docs/.kiwi/trace/`, 러너에 처리를 넘기는 `.git/hooks/pre-commit` 게이트, `.claude/settings.json`(PostToolUse trace 훅), `.codex/hooks.json`(apply_patch trace 훅)을 둡니다. 이미 있는 `.git/hooks/pre-commit`은 어떤 경우에도 덮어쓰지 않습니다. 이미 러너에 넘기고 있으면 `skipped`로 보고하고, 그렇지 않으면 연결 방법을 알려 주는 경고와 함께 그대로 둡니다. 에이전트 훅 파일 둘은 이미 있으면 `skipped`로 보고하지만, `--force`를 주면 다른 뼈대 파일처럼 덮어씁니다. |
 | 6 | **MCP 등록** | 각 에이전트의 CLI를 직접 실행해 SpecKiwi stdio MCP 서버를 사용자 범위에 등록합니다([MCP 서버 연결](#ko-mcp) 참조). 이미 등록되어 있으면 `skipped`로 보고합니다. SpecKiwi가 에이전트 설정 파일을 직접 쓰지 않으며 `.mcp.json`도 만들지 않습니다. CLI가 PATH에 없거나, 등록이 실패하거나, 명령이 시간 안에 끝나지 않으면 직접 실행할 명령을 적은 경고를 남깁니다. `--project-install`을 주면 대신 `.mcp.json`에 등록하고(이미 있으면 `skipped`) 에이전트 CLI는 실행하지 않습니다. `--no-mcp`로 끌 수 있습니다. |
-| 7 | **스킬 설치** | 번들된 Kiwi 스킬을 각 에이전트의 전역 스킬 디렉터리(Claude `~/.claude/skills`, Codex `${CODEX_HOME:-~/.codex}/skills`)에 설치합니다. 홈 디렉터리(`~/.claude`, `${CODEX_HOME:-~/.codex}`)가 없는 에이전트는 경고와 함께 건너뜁니다. 공유 홈에는 다른 프로젝트가 쓰는 스킬이 있을 수 있으므로 전역에서는 아무것도 정리하지 않습니다. `--project-install`을 주면 대신 프로젝트의 **Claude**(`.claude/skills`)와 **Codex**(`.agents/skills`)에 설치하고, SpecKiwi가 예전에 설치했고 아무도 고치지 않은 `kiwi-*` 스킬 디렉터리 가운데 더는 배포되지 않는 것을 정리합니다. `--no-skills`로 끌 수 있습니다. |
+| 7 | **스킬 설치** | 번들된 Kiwi 스킬을 각 에이전트의 전역 스킬 디렉터리(Claude `~/.claude/skills`, Codex `~/.agents/skills`)에 설치합니다. 홈 디렉터리(`~/.claude`, `${CODEX_HOME:-~/.codex}`)가 없는 에이전트는 경고와 함께 건너뜁니다. 공유 홈에는 다른 프로젝트가 쓰는 스킬이 있을 수 있으므로 전역에서는 아무것도 정리하지 않습니다. 예외는 Codex의 예전 `${CODEX_HOME:-~/.codex}/skills` 하나로, 방금 설치한 스킬의 사본 가운데 SpecKiwi가 썼고 아무도 고치지 않은 것을 거기서 지웁니다([4.1.0에서 4.1.1로 올릴 때](#ko-upgrade-411) 참조). `--project-install`을 주면 대신 프로젝트의 **Claude**(`.claude/skills`)와 **Codex**(`.agents/skills`)에 설치하고, SpecKiwi가 예전에 설치했고 아무도 고치지 않은 `kiwi-*` 스킬 디렉터리 가운데 더는 배포되지 않는 것을 정리합니다. `--no-skills`로 끌 수 있습니다. |
 
 SpecKiwi 저장소 자체를 체크아웃한 곳에서는 `--project-install` 여부와 관계없이 6단계와 7단계를 항상 프로젝트 범위로 수행하고 에이전트 CLI를 실행하지 않으며, 보고서에 그 사실을 적습니다.
 
@@ -1214,7 +1216,7 @@ docs/
    └─ steps/state.md
 ```
 
-Kiwi 스킬은 프로젝트가 아니라 `~/.claude/skills`와 `${CODEX_HOME:-~/.codex}/skills`에 있습니다. `--project-install`을 주면 스킬과 MCP 등록이 대신 프로젝트에 생깁니다(`--global`을 더하면 전역에도 설치합니다).
+Kiwi 스킬은 프로젝트가 아니라 `~/.claude/skills`와 `~/.agents/skills`에 있습니다. `--project-install`을 주면 스킬과 MCP 등록이 대신 프로젝트에 생깁니다(`--global`을 더하면 전역에도 설치합니다).
 
 ```text
 .mcp.json                     # speckiwi MCP 서버 등록
@@ -1392,7 +1394,7 @@ speckiwi skills install codex all --dry-run --json   # 복사하지 않고 설�
 
 | 에이전트 | 패키지 소스 | 프로젝트 설치 위치 | 전역 설치 위치 |
 | --- | --- | --- | --- |
-| Codex | `skills/codex` | `.agents/skills/<skill>` | `${CODEX_HOME:-$HOME/.codex}/skills/<skill>` |
+| Codex | `skills/codex` | `.agents/skills/<skill>` | `$HOME/.agents/skills/<skill>` |
 | Claude | `skills/claude` | `.claude/skills/<skill>` | `$HOME/.claude/skills/<skill>` |
 | OpenCode | `skills/etc` | `.opencode/skills/<skill>` | `$HOME/.config/opencode/skills/<skill>` |
 | Hermes | `skills/etc` | `--dest <dir>` 필요 | `$HOME/.hermes/skills/<category>/<skill>` |
@@ -1601,12 +1603,13 @@ speckiwi links check                         # 추적 링크 무결성 (워크�
 
 - **`wait`**: 기본값입니다. Active Task가 없고 SRS 우선 규칙을 따릅니다.
 - **`sdd`**: 명세가 이끄는 본문 작업입니다. 본문 scope 요구사항을 먼저 쓰거나 고친 뒤 구현합니다.
-- **`vibe`**: 코드를 먼저 쓰는 방식입니다. Active Task에 맞춰 코드를 쓰고 나중에 SRS를 합성하며, 합성하지 않은 커밋은 `vibe-gate`가 막습니다.
+- **`vibe`**: 코드를 먼저 쓰는 방식입니다. Active Task에 맞춰 코드를 쓰고 나중에 SRS를 합성합니다. `vibe-gate check`는 Active Task의 step 디렉터리가 `docs/spec/steps/` 아래에 없으면 실패하고, `tdd`에서는 그 step에 작성된 acceptance 계약이 없을 때도 실패합니다. 합성을 실제로 했는지는 확인하지 않으며, Active Task가 없으면 실패하지 않습니다.
 - **`tdd`**: `kiwi-tdd`로 진행하는 step 범위의 **TDD First** 사이클입니다. step의 `intent.md`에 `## Acceptance` 절을 두고 EARS 인수 줄을 기록해 `speckiwi step validate`로 확인하고, 그 줄을 실패하는 테스트로 바꾸고, green까지 구현하고, 회귀 테스트를 돌린 뒤, step 요구사항을 합성해 승격합니다. 인수 줄이 없는 step은 `STEP_ACCEPTANCE_MISSING` 오류로 검증에 실패합니다. step SDS(`design.md`)는 `--sds`일 때만 씁니다.
 
 ```sh
 speckiwi mode                                    # 현재 작업 모드 표시 (sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # 모드 전환 (sdd, vibe, wait, tdd)
+speckiwi mode vibe --task <name>                 # vibe 또는 tdd로 전환하며 vibe 게이트가 확인할 Active Task 지정
 speckiwi step claim <name> --touches-scope APP   # step을 쓰기 전에 선점
 speckiwi step scaffold <name>                    # ## Acceptance 절이 있는 intent.md 초안 생성
 speckiwi step scaffold <name> --sds              # step SDS 초안(design.md)도 생성
@@ -1615,7 +1618,7 @@ speckiwi step sds-status <name> agreed           # step SDS 상태 진행 (draft
 speckiwi step synthesize <name>                  # intent.md(--sds면 design.md도)에서 step SRS 합성
 speckiwi step promote <id> --from-step <name> --to-scope APP   # 본문 scope로 승격 (tdd에서는 검증 증거 필수)
 speckiwi step update-state <name> --status merged              # 완료 게이트를 거쳐 step 상태 전환
-speckiwi vibe-gate check                         # 합성되지 않은 vibe/tdd 커밋을 막는 CI 게이트
+speckiwi vibe-gate check                         # Active Task의 step 디렉터리(tdd는 acceptance 계약도)가 없으면 실패하는 CI 검사
 ```
 
 <a id="ko-mutations"></a>
@@ -1779,7 +1782,7 @@ speckiwi upgrade --json           # 표준 변경 결과 형식으로 출력
 | `--ignore-lock` | 남아 있는 오래된 SRS 변경 잠금을 무시합니다. |
 | `--json` | 결과를 JSON으로 출력합니다. |
 
-기본 동작이 이미 전역 스킬을 갱신하므로 `--global`은 `--project-install`과 함께 쓸 때만 의미가 있습니다. 그 경우 이 옵션이 없으면 `upgrade`는 프로젝트 사본만 갱신하고, 각 에이전트는 남아 있는 옛 전역 스킬을 계속 읽습니다. 의미는 `init`에서와 같습니다. 프로젝트 *대신*이 아니라 프로젝트에 *더해서* 갱신합니다. 전역 갱신은 아무것도 삭제하지 않습니다. 같은 홈을 아직 옛 버전에 머문 다른 프로젝트가 쓸 수 있으므로, 이번 릴리스가 더는 배포하지 않는 전역 스킬도 그대로 둡니다. 그런 스킬을 지우는 명령은 `speckiwi remove --global`입니다.
+기본 동작이 이미 전역 스킬을 갱신하므로 `--global`은 `--project-install`과 함께 쓸 때만 의미가 있습니다. 그 경우 이 옵션이 없으면 `upgrade`는 프로젝트 사본만 갱신하고, 각 에이전트는 남아 있는 옛 전역 스킬을 계속 읽습니다. 의미는 `init`에서와 같습니다. 프로젝트 *대신*이 아니라 프로젝트에 *더해서* 갱신합니다. 전역 갱신은 전역 설치 위치에서 아무것도 삭제하지 않습니다. 예외는 하나로, Codex 갱신은 예전 `${CODEX_HOME:-~/.codex}/skills`에서 방금 설치한 스킬의 사본 가운데 SpecKiwi가 썼고 아무도 고치지 않은 것을 지웁니다. 같은 홈을 아직 옛 버전에 머문 다른 프로젝트가 쓸 수 있으므로, 이번 릴리스가 더는 배포하지 않는 전역 스킬도 그대로 둡니다. 그런 스킬을 지우는 명령은 `speckiwi remove --global`입니다.
 
 **종료 코드:** `0` 성공 · `5` 실패(예: 다른 프로세스가 변경 잠금을 잡고 있음, 또는 `--apply`와 `--dry-run`을 함께 줌. 이때는 아무것도 쓰지 않습니다)
 
@@ -1808,6 +1811,7 @@ speckiwi upgrade --json           # 표준 변경 결과 형식으로 출력
 
 - **설정이 프로젝트 밖으로 옮겨졌습니다.** 이제 `init`과 `upgrade`는 Kiwi 스킬을 각 에이전트의 전역 스킬 디렉터리에 설치하고, `claude mcp add`와 `codex mcp add`로 MCP 서버를 사용자 범위에 등록합니다([MCP 서버 연결](#ko-mcp) 참조). 새 프로젝트에는 `.claude/skills`, `.agents/skills`, `.mcp.json`이 생기지 않습니다.
 - **`upgrade`는 이어서 전역 설치가 대신하게 된 프로젝트 사본을 정리합니다.** 에이전트별로, 그 에이전트의 전역 스킬 설치가 문제없이 끝난 뒤에만, `speckiwi remove`와 같은 설치 메타데이터·체크섬 검사를 통과한 프로젝트 `kiwi-*` 사본을 지우며, 그중에서도 전역 설치가 실제로 둔 스킬만 지웁니다. 사용자가 고친 사본이나 전역에 대응하는 스킬이 없는 사본은 남습니다. `.mcp.json`의 `speckiwi` 키는 Claude 사용자 범위 등록이 확인된 뒤에만(`claude mcp get`이나 `claude mcp add`가 `0`으로 끝남), 그리고 그 값이 SpecKiwi가 쓰는 실행 명령과 정확히 같을 때만 지웁니다. 직접 설정한 값은 경고와 함께 남기고, 파일의 나머지 부분도 그대로 둡니다. 지운 항목은 결과의 최상위 `removed`에 나옵니다. `--dry-run`은 전역 설치가 확인되면 지울 항목을 나열하고, 에이전트 CLI는 실행하지 않습니다.
+- **Codex 전역 스킬이 `~/.agents/skills`로 옮겨졌습니다.** Codex가 사용자 스킬을 읽는 곳이 여기이고, 예전 `${CODEX_HOME:-~/.codex}/skills`는 더 이상 쓰지 않는 위치로만 계속 읽어 두 곳에 같은 스킬이 있으면 두 번 나열하므로, Codex 전역 설치는 방금 설치한 스킬의 예전 사본 가운데 SpecKiwi가 썼고 아무도 고치지 않은 것을 예전 디렉터리에서 지우고, 그 밖의 사본은 두 경로를 모두 적은 경고와 함께 남깁니다.
 - **대신할 것이 확실하지 않으면 사본을 남기고 경고합니다.** 에이전트의 홈 디렉터리가 없거나, 스킬이 충돌하거나 설치에 실패했거나, `CLAUDE_CONFIG_DIR`이 `<home>/.claude`가 아닌 곳을 가리켜 Claude가 전역 설치한 스킬을 읽지 못할 수 있는 경우입니다.
 - **지운 내용을 커밋하십시오.** 지우거나 고친 파일이 git이 추적하는 파일이면 `upgrade`가 경고합니다. 변경을 커밋하고, 함께 일하는 사람은 각자 자기 컴퓨터에서 `speckiwi init`을 실행해 전역 설치를 받아야 합니다.
 - **4.1.0 구성을 유지하려면** `init`과 `upgrade`에 `--project-install`을 주십시오. 프로젝트 스킬 사본과 `.mcp.json`을 쓰고, 에이전트 CLI는 실행하지 않으며, 이 정리로 지우는 것도 없습니다(4.1.0의 남은 스킬 정리는 그대로 수행합니다). 전역 스킬도 갱신하려면 `--global`을 더하십시오. 이 옵션은 저장되지 않으므로 `upgrade`를 실행할 때마다 주어야 합니다. 옵션 없이 `upgrade`를 실행하면 프로젝트가 전역 구성으로 옮겨집니다. SpecKiwi 저장소 자체를 체크아웃한 곳은 항상 이 방식으로 처리합니다.
