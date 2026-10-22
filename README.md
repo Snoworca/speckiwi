@@ -606,6 +606,8 @@ speckiwi step update-state <name> --status merged              # move the step t
 speckiwi vibe-gate check                         # CI gate that blocks unsynthesized vibe/tdd commits
 ```
 
+<a id="en-mutations"></a>
+
 ### Mutations (MCP is the normal path; the CLI is for manual work and diagnostics)
 
 `--reason` records a Change Notes row, and `--dry-run` previews the result without writing it.
@@ -617,6 +619,9 @@ speckiwi check-ac FR-APP-001 AC-1 AC-2
 speckiwi add-evidence FR-APP-001 --type command --reference "npm test" --covers all --notes "regression passed"
 speckiwi add-trace FR-APP-001 --type code --reference "src/app.ts:42" --relation implements
 speckiwi append-note FR-APP-001 --section rationale --text "record decision background"
+speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewritten rationale"
+speckiwi edit-requirement-table-rows FR-APP-001 --section change_notes \
+  --operations '[{"kind":"update","rowIndex":0,"values":{"reason":"corrected reason"}}]'
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
 speckiwi set-active-target v0.2.0
 speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
@@ -624,6 +629,8 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 ```
 
 Most mutation commands accept `--json`, `--dry-run` and `--ignore-lock`. A failed mutation exits with `5`. Discarding a protected requirement (Status `verified`, Stability `stable` or `frozen`, or `implemented` with verification evidence) is refused unless `update-status` also receives `--confirm-discard-verified`.
+
+**Existing text can be corrected, not only appended to.** `append-note --mode replace` (MCP `append_section_note` with `mode: "replace"`) rewrites the whole body of the Rationale, Research or Implementation Notes section. `edit-requirement-table-rows` (MCP `edit_requirement_table_rows`) updates or deletes rows of the Verification Evidence, Trace Links and Change Notes tables; a row is addressed by its zero-based `rowIndex`, and a Change Notes row takes the values `date`, `change` and `reason`. A `|` or a line break in a Change Notes value, or in the `--reason` of `update-status` or `update-stability`, is rewritten so that it cannot split the row.
 
 **`Status` is checked on the way in.** `add_requirement` (and `speckiwi add-requirement`) refuses a `Status` outside `planned`, `in_progress`, `blocked`, `implemented`, `verified` and `discarded` with a `USAGE` failure, and writes nothing. Older versions wrote the value and left `validate` to report `SRS-E005` afterwards; the rule is the same, only the point of enforcement moved. The usual way to hit it is to run `npm i -g speckiwi@latest` without a following `speckiwi upgrade --global`: the package is current, but each agent still loads an older global skill that dictates the old value. Refresh the global skills and the calls pass again.
 
@@ -682,6 +689,8 @@ The set of commands with this channel is derived from the commands actually regi
 
 **The channel is top-level only.** A subcommand inside a group (anything written as `workflow <sub>`, `step <sub>`, `orchestrate <sub>`, `repair <sub>`, `skills <sub>`, `links <sub>` or `vibe-gate <sub>`) does not have it, including the ones that write: `workflow worklog-emit`, `step promote`, `orchestrate journal append`, `repair rules-references apply`, `skills install`. For those, keep every value on one line, or drive them through MCP, which never touches a command line. Passing `--input-json` to one of them is refused as `unknown option` rather than ignored, so this gap announces itself. `speckiwi <command> --help --json` tells you in advance for any single command: a JSON description means the channel is there, and commander's plain-text help means it is not.
 
+<a id="en-orchestrate-inspect"></a>
+
 ### Inspect an orchestrated run
 
 `kiwi-orchestrator` and `kiwi-wave-master` keep their state in `kiwi/waves.jsonl`. These read-only commands check a run without driving it:
@@ -696,7 +705,10 @@ speckiwi orchestrate wave status --run-id <id> \
   --waves <file> --json                                     # also the declared waves ready to plan
 speckiwi orchestrate resume --run-id <id> --json            # what a resume would pick up
 speckiwi orchestrate resume --json                          # the same for the latest unfinished run
+speckiwi orchestrate run status --json                      # who holds the run lock, and until when
 ```
+
+**On Windows, a run lock held by a live session cannot be released from outside it.** The session that takes the run lock keeps a named pipe open until it releases the lock or its MCP server exits. While that pipe is open, `speckiwi orchestrate run unlock` and `run abort` refuse with `run-lock-held-by-live-session` instead of deleting the lock under a running worker. The session releases the lock itself with MCP `orchestrate_run_lock` (`action: "unlock"`) or `orchestrate_run_abort`, or by being closed. `run status` names the holder's pid and the lease expiry, says whether the pipe is held, and, while it is, how to release the lock. Only MCP `orchestrate_run_lock` with `action: "status"` also tells whether the holder is the calling session or another one.
 
 `--engine` selects which producer's lines are read: the two engines share one file, and a reader sees only its own lines. An unrecognized value is refused rather than defaulted, because a silent fallback would validate a journal it never opened and report it clean.
 
@@ -772,6 +784,10 @@ Reach for `--global` right after `npm i -g speckiwi@latest`: that is when the bu
 
 - **The SDS is now on request.** The default chain no longer calls `kiwi-sds`, and an SDS left in `docs/sds/` by a 4.0 run is not used. To implement from one, pass it to `kiwi-pm` with `--sds <path>`.
 - A `tdd` step without an authored `design.md` now needs acceptance lines in `intent.md` under `## Acceptance`; the `design.md` stub that 4.0 scaffolded into every step does not count (`--sds` writes a real one).
+- **An MCP server started outside a project no longer creates one.** 4.0 initialized an SRS workspace in whatever directory the server started in when it found none; 4.1 stays unbound and refuses every call with `MCP_WORKSPACE_UNBOUND` (see [Connect the MCP server](#en-mcp)). If your agent starts the server from your home directory, set the server's working directory in its MCP configuration. The search never adopts an index in your home directory, so a `docs/spec/00.index.md` that 4.0 created there is no longer used; delete it if nothing else needs it.
+- A CLI command run with `--json` outside any project now exits `2` with `PROJECT_ROOT_NOT_FOUND`.
+- `validate` now warns `SRS-W075` about a Change Notes row whose cell count does not match the table header. 4.0 split a row this way when a `--reason` held a `|`, so an older SRS can start warning, and `validate --fail-on-warning` fails on it. Repair the row with `edit-requirement-table-rows --section change_notes` (see [Mutations](#en-mutations)).
+- On Windows, `orchestrate run unlock` and `run abort` refuse a run lock that a live session holds (see [Inspect an orchestrated run](#en-orchestrate-inspect)).
 
 <a id="en-remove"></a>
 
@@ -1541,6 +1557,8 @@ speckiwi step update-state <name> --status merged              # 완료 게이�
 speckiwi vibe-gate check                         # 합성되지 않은 vibe/tdd 커밋을 막는 CI 게이트
 ```
 
+<a id="ko-mutations"></a>
+
 ### 변경 명령 (정상 경로는 MCP이며, CLI는 수동 작업과 진단용입니다)
 
 `--reason`은 Change Notes 행을 남기고, `--dry-run`은 결과를 쓰지 않고 미리 보여 줍니다.
@@ -1552,6 +1570,9 @@ speckiwi check-ac FR-APP-001 AC-1 AC-2
 speckiwi add-evidence FR-APP-001 --type command --reference "npm test" --covers all --notes "regression passed"
 speckiwi add-trace FR-APP-001 --type code --reference "src/app.ts:42" --relation implements
 speckiwi append-note FR-APP-001 --section rationale --text "record decision background"
+speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewritten rationale"
+speckiwi edit-requirement-table-rows FR-APP-001 --section change_notes \
+  --operations '[{"kind":"update","rowIndex":0,"values":{"reason":"corrected reason"}}]'
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
 speckiwi set-active-target v0.2.0
 speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
@@ -1559,6 +1580,8 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 ```
 
 대부분의 변경 명령은 `--json`, `--dry-run`, `--ignore-lock`을 받습니다. 변경이 실패하면 종료 코드 `5`로 끝납니다. 보호되는 요구사항(Status가 `verified`이거나, Stability가 `stable`·`frozen`이거나, 검증 증거가 있는 `implemented`)을 `discarded`로 바꾸려면 `update-status`에 `--confirm-discard-verified`를 함께 주어야 하며, 없으면 거부됩니다.
+
+**이미 쓴 내용은 덧붙이기만 하는 것이 아니라 고칠 수도 있습니다.** `append-note --mode replace`(MCP에서는 `append_section_note`에 `mode: "replace"`)는 Rationale, Research, Implementation Notes 절의 본문 전체를 새로 씁니다. `edit-requirement-table-rows`(MCP `edit_requirement_table_rows`)는 Verification Evidence, Trace Links, Change Notes 표의 행을 고치거나 지웁니다. 행은 0부터 세는 `rowIndex`로 가리키며, Change Notes 행에는 `date`, `change`, `reason` 값을 줍니다. Change Notes 값이나 `update-status`·`update-stability`의 `--reason`에 `|`나 줄바꿈이 들어 있으면, 행이 갈라지지 않도록 바꿔서 기록합니다.
 
 **`Status` 값은 쓰는 시점에 검사합니다.** `add_requirement`(그리고 `speckiwi add-requirement`)는 `planned`, `in_progress`, `blocked`, `implemented`, `verified`, `discarded` 밖의 `Status`를 `USAGE` 실패로 거부하고 아무것도 쓰지 않습니다. 예전 버전은 그 값을 기록한 뒤 `validate`가 나중에 `SRS-E005`로 보고하게 두었습니다. 규칙은 같고 검사하는 시점만 앞당겨졌습니다. 이 거부를 만나는 흔한 경우는 `npm i -g speckiwi@latest` 뒤에 `speckiwi upgrade --global`을 실행하지 않은 경우입니다. 패키지는 최신이지만 각 에이전트가 옛 값을 쓰라고 지시하는 옛 전역 스킬을 계속 읽기 때문입니다. 전역 스킬을 갱신하면 호출이 다시 통과합니다.
 
@@ -1617,6 +1640,8 @@ Get-Content payload.json -Raw | speckiwi edit-requirement --input-json -
 
 **이 입력 경로는 최상위 명령에만 있습니다.** 그룹 안의 하위 명령(`workflow <sub>`, `step <sub>`, `orchestrate <sub>`, `repair <sub>`, `skills <sub>`, `links <sub>`, `vibe-gate <sub>` 형태로 쓰는 명령)에는 없으며, 파일을 쓰는 `workflow worklog-emit`, `step promote`, `orchestrate journal append`, `repair rules-references apply`, `skills install`도 마찬가지입니다. 이런 명령에는 모든 값을 한 줄로 넘기거나, 명령줄을 거치지 않는 MCP로 실행하십시오. 이런 명령에 `--input-json`을 주면 무시되지 않고 `unknown option`으로 거부되므로, 이 공백은 스스로 드러납니다. 어떤 명령이든 `speckiwi <command> --help --json`으로 미리 확인할 수 있습니다. JSON 설명이 나오면 입력 경로가 있고, commander의 일반 텍스트 도움말이 나오면 없습니다.
 
+<a id="ko-orchestrate-inspect"></a>
+
 ### 오케스트레이션 실행 조회
 
 `kiwi-orchestrator`와 `kiwi-wave-master`는 상태를 `kiwi/waves.jsonl`에 기록합니다. 다음 명령은 읽기 전용이라 실행을 움직이지 않고 상태만 확인합니다.
@@ -1631,7 +1656,10 @@ speckiwi orchestrate wave status --run-id <id> \
   --waves <file> --json                                     # 선언된 wave 가운데 계획할 수 있는 wave도 표시
 speckiwi orchestrate resume --run-id <id> --json            # 재개하면 이어받을 지점
 speckiwi orchestrate resume --json                          # 끝나지 않은 가장 최근 실행에 대해 같은 정보
+speckiwi orchestrate run status --json                      # run 락을 누가 언제까지 쥐고 있는지
 ```
+
+**Windows에서는 살아 있는 세션이 쥔 run 락을 그 세션 밖에서 풀 수 없습니다.** run 락을 잡은 세션은 락을 풀거나 MCP 서버가 끝날 때까지 named pipe를 열어 둡니다. 그 pipe가 열려 있으면 `speckiwi orchestrate run unlock`과 `run abort`는 실행 중인 워커의 락을 지우지 않고 `run-lock-held-by-live-session`으로 거부합니다. 락은 그 세션이 MCP `orchestrate_run_lock`(`action: "unlock"`)이나 `orchestrate_run_abort`로 직접 풀거나, 세션이 닫히면 풀립니다. `run status`는 락을 쥔 프로세스의 pid와 리스 만료 시각, pipe가 쥐어져 있는지를 알려 주고, 쥐어져 있는 동안에는 해제 방법도 알려 줍니다. 락을 쥔 쪽이 호출한 세션인지 다른 세션인지는 MCP `orchestrate_run_lock`에 `action: "status"`를 줄 때만 알 수 있습니다.
 
 `--engine`은 어느 생산자의 줄을 읽을지 고릅니다. 두 엔진이 파일 하나를 함께 쓰고, 읽는 쪽은 자기 줄만 봅니다. 알 수 없는 값은 기본값으로 바꾸지 않고 거부합니다. 조용히 기본값으로 돌아가면 열어 보지도 않은 저널을 검증하고 깨끗하다고 보고하게 되기 때문입니다.
 
@@ -1707,6 +1735,10 @@ speckiwi upgrade --json           # 표준 변경 결과 형식으로 출력
 
 - **SDS는 이제 요청할 때만 씁니다.** 기본 사슬은 더 이상 `kiwi-sds`를 부르지 않고, 4.0 실행이 `docs/sds/`에 남긴 SDS도 쓰지 않습니다. 그 SDS로 구현하려면 `kiwi-pm`에 `--sds <path>`로 넘기십시오.
 - 작성된 `design.md`가 없는 `tdd` step에는 이제 `intent.md`의 `## Acceptance` 절에 인수 줄이 있어야 합니다. 4.0이 모든 step에 만들어 둔 `design.md` 초안은 작성된 것으로 치지 않습니다(`--sds`를 주면 실제 SDS를 씁니다).
+- **프로젝트 밖에서 시작한 MCP 서버는 더 이상 프로젝트를 만들지 않습니다.** 4.0은 서버가 시작된 디렉터리에서 SRS를 찾지 못하면 그곳에 SRS 작업 공간을 초기화했습니다. 4.1은 unbound 상태로 남아 모든 호출을 `MCP_WORKSPACE_UNBOUND`로 거부합니다([MCP 서버 연결](#ko-mcp) 참조). 에이전트가 홈 디렉터리에서 서버를 띄운다면 그 에이전트의 MCP 설정에서 서버의 작업 디렉터리를 지정하십시오. 탐색은 홈 디렉터리의 인덱스를 받아들이지 않으므로, 4.0이 홈에 만든 `docs/spec/00.index.md`는 이제 쓰이지 않습니다. 다른 곳에서 쓰지 않는다면 지워도 됩니다.
+- 프로젝트 밖에서 `--json`으로 실행한 CLI 명령은 이제 `PROJECT_ROOT_NOT_FOUND`와 함께 종료 코드 `2`로 끝납니다.
+- `validate`는 이제 셀 개수가 표 머리글과 맞지 않는 Change Notes 행에 `SRS-W075` 경고를 냅니다. 4.0은 `--reason`에 `|`가 들어 있으면 행을 이렇게 쪼개 기록했으므로, 예전 SRS에서 이 경고가 새로 나올 수 있고 `validate --fail-on-warning`은 그 경고로 실패합니다. 그 행은 `edit-requirement-table-rows --section change_notes`로 고치십시오([변경 명령](#ko-mutations) 참조).
+- Windows에서 `orchestrate run unlock`과 `run abort`는 살아 있는 세션이 쥔 run 락을 거부합니다([오케스트레이션 실행 조회](#ko-orchestrate-inspect) 참조).
 
 <a id="ko-remove"></a>
 
