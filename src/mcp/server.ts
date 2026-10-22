@@ -8,8 +8,7 @@ import path from "node:path";
 import { z } from "zod";
 import { TARGET_TYPES } from "../core/target-types.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
-import type { ProjectRoot } from "../core/types.js";
-import { createTestMcpServer, type McpDependencies, type McpRootSource, type McpServerHandle } from "./adapter.js";
+import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
 import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // @req FR-MCP-060 — imported for its side-effect-free projection only, and read inside a function
 // body: `schemas.ts` imports this module back for `toolSchemas` and `isReadOnlyTool`, so a top-level

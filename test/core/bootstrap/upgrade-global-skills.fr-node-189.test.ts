@@ -97,7 +97,7 @@ async function scenario(agents: ReadonlyArray<"claude" | "codex">) {
     base,
     home,
     claudeGlobal: path.join(home, ".claude", "skills", "kiwi-keep"),
-    codexGlobal: path.join(home, ".codex", "skills", "kiwi-keep")
+    codexGlobal: path.join(home, ".agents", "skills", "kiwi-keep")
   };
 }
 
@@ -131,7 +131,7 @@ describe("FR-NODE-189 AC-2 — under project install, without the option the glo
     const s = await scenario(["claude", "codex"]);
     await runUpgrade(s.root, { apply: true, projectInstall: true, skillSourceBaseDir: s.base, globalHomeDir: s.home, globalCodexHome: path.join(s.home, ".codex") });
     expect(await exists(path.join(s.home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
   });
 
   it("FR-NODE-189 AC-2: reports no path under the home in any result array", async () => {
@@ -169,7 +169,7 @@ describe("FR-NODE-189 AC-4 — an absent agent home is skipped, not fatal", () =
     const s = await scenario(["claude"]); // codex home absent
     const value = await runUpgrade(s.root, { apply: true, ...globalSeam(s.home, s.base) });
     expect(await exists(path.join(s.claudeGlobal, "SKILL.md"))).toBe(true);
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
     expect((value.init.warnings ?? []).some((w) => /codex/i.test(w) && /global/i.test(w))).toBe(true);
     // `applied` only echoes the input, so it says nothing here. What shows the migration still ran
     // past the skipped agent is its own repair landing on disk.
@@ -182,9 +182,9 @@ describe("FR-NODE-189 AC-5 — dry-run plans the global destinations and writes 
     const s = await scenario(["claude", "codex"]);
     const value = await runUpgrade(s.root, { ...globalSeam(s.home, s.base) }); // apply omitted -> plan
     expect(await exists(path.join(s.home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
     expect(value.init.created.some((entry) => entry.startsWith(path.join(s.home, ".claude", "skills")))).toBe(true);
-    expect(value.init.created.some((entry) => entry.startsWith(path.join(s.home, ".codex", "skills")))).toBe(true);
+    expect(value.init.created.some((entry) => entry.startsWith(path.join(s.home, ".agents", "skills")))).toBe(true);
   });
 
   it("reports the same project-scope findings as the plan without the option", async () => {

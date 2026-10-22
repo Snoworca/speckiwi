@@ -9,6 +9,7 @@ import {
   runLockPath,
   type RunLock
 } from "../../../src/core/orchestrator/run-lock.js";
+import { TYPE_STRIPPING_ARGS } from "../../support/node-type-stripping.js";
 import { cleanupFixtures, commitAll, initRepo, rawGit, tempDir } from "./support/git-fixture.js";
 import { recordHarvestCwd } from "./support/harvest-cwd.js";
 
@@ -26,7 +27,7 @@ function spawnContender(commonDir: string, owner: string): {
   child: ChildProcessWithoutNullStreams;
   firstLine: Promise<string>;
 } {
-  const child = spawn(process.execPath, [CHILD_SCRIPT, RUN_LOCK_MODULE, commonDir, owner], {
+  const child = spawn(process.execPath, [...TYPE_STRIPPING_ARGS, CHILD_SCRIPT, RUN_LOCK_MODULE, commonDir, owner], {
     cwd: REPO_ROOT,
     windowsHide: true,
     stdio: ["pipe", "pipe", "pipe"]

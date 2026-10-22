@@ -6,6 +6,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { evaluateVibeGate } from "../../../src/core/query/vibe-gate.js";
 import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../../src/core/validator/validate-scoped.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
+import type * as StepAcceptanceModule from "../../../src/core/validator/step-acceptance.js";
 
 /**
  * FR-PARSE-042 AC-5 — one predicate decides the step validation and the vibe gate's tdd branch.
@@ -15,7 +16,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
  */
 
 vi.mock("../../../src/core/validator/step-acceptance.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/core/validator/step-acceptance.js")>();
+  const actual = await importOriginal<typeof StepAcceptanceModule>();
   return { ...actual, stepAcceptanceFailure: () => "mutant predicate" };
 });
 

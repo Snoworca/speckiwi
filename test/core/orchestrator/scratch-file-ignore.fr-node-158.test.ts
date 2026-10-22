@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -48,20 +49,24 @@ describe("FR-NODE-158 — scratch files are ignored wherever a patch can write o
   // AC-3 is the one that reproduces the original incident: `check-ignore` answers about a rule, but
   // what committed the two files was `git add -A` over a real working tree. Real files, then.
   it("AC-3: real scratch files on disk are invisible to git status and to git add -A", () => {
+    // A fresh repository carrying this repository's tracked .gitignore, not this working tree: files
+    // written here were seen by the leak guard of every test file running in parallel.
+    const sandbox = mkdtempSync(path.join(tmpdir(), "fr-node-158-"));
+    execFileSync("git", ["init", "-q"], { cwd: sandbox, stdio: "pipe" });
+    copyFileSync(path.join(REPO_ROOT, ".gitignore"), path.join(sandbox, ".gitignore"));
+    // Only the tracked rule may decide; a developer's global excludes file must not.
+    const git = (args: string[]): string =>
+      execFileSync("git", ["-c", "core.excludesFile=", ...args], { cwd: sandbox, stdio: "pipe" }).toString();
     const token = "11111111-2222-3333-4444-555555555555";
     const sites = [
-      path.join(REPO_ROOT, `.speckiwi-${token}.tmp`),
-      path.join(REPO_ROOT, "docs/spec", `.speckiwi-${token}.tmp`),
-      path.join(REPO_ROOT, "docs/spec/steps", `.speckiwi-${token}.tmp`),
-      path.join(REPO_ROOT, `.speckiwi-merge-journal.json.${token}.tmp`)
+      path.join(sandbox, `.speckiwi-${token}.tmp`),
+      path.join(sandbox, "docs/spec", `.speckiwi-${token}.tmp`),
+      path.join(sandbox, "docs/spec/steps", `.speckiwi-${token}.tmp`),
+      path.join(sandbox, `.speckiwi-merge-journal.json.${token}.tmp`)
     ];
-    // `docs/spec/steps/` is a real patch site — a step SRS lives there — but this repository has no
-    // steps yet, so the directory has to be made and taken away again rather than assumed.
-    const control = path.join(REPO_ROOT, "not-a-scratch-file.fr-node-158.tmpcheck");
-    const stepsDir = path.join(REPO_ROOT, "docs/spec/steps");
-    const stepsDirExisted = existsSync(stepsDir);
+    const control = path.join(sandbox, "not-a-scratch-file.fr-node-158.tmpcheck");
     try {
-      if (!stepsDirExisted) mkdirSync(stepsDir, { recursive: true });
+      mkdirSync(path.join(sandbox, "docs/spec/steps"), { recursive: true });
       for (const site of sites) writeFileSync(site, "scratch", "utf8");
       // The control. Without it the assertions below pass just as well against a `git status` that
       // reports nothing at all — and a first version of this case guarded that by requiring the
@@ -73,14 +78,12 @@ describe("FR-NODE-158 — scratch files are ignored wherever a patch can write o
       expect(status.includes("not-a-scratch-file.fr-node-158.tmpcheck"), "the control must be reported, or the assertions below are vacuous").toBe(true);
       expect(staged.includes("not-a-scratch-file.fr-node-158.tmpcheck"), "the control must be stageable, or the add check is vacuous").toBe(true);
       for (const site of sites) {
-        const relative = path.relative(REPO_ROOT, site).replace(/\\/g, "/");
+        const relative = path.relative(sandbox, site).replace(/\\/g, "/");
         expect(status.includes(relative), `git status reported ${relative}`).toBe(false);
         expect(staged.includes(relative), `git add -A would stage ${relative}`).toBe(false);
       }
     } finally {
-      for (const site of sites) rmSync(site, { force: true });
-      rmSync(control, { force: true });
-      if (!stepsDirExisted) rmSync(stepsDir, { force: true, recursive: true });
+      rmSync(sandbox, { force: true, recursive: true });
     }
   });
 

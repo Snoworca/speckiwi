@@ -113,7 +113,7 @@ describe("IR-CLI-095 AC-2 — the flag decides whether a global destination is t
     expect(code, stdout).toBe(0);
     const reported = reportedPaths(parse(stdout));
     expect(reported.some((entry) => entry.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
-    expect(reported.some((entry) => entry.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
+    expect(reported.some((entry) => entry.startsWith(path.join(home, ".agents", "skills")))).toBe(true);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(true);
   }, 60000);
 
@@ -126,7 +126,7 @@ describe("IR-CLI-095 AC-2 — the flag decides whether a global destination is t
     expect(code, stdout).toBe(0);
     expect(reportedPaths(parse(stdout)).filter((entry) => entry.startsWith(home))).toEqual([]);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
   }, 60000);
 });
 
@@ -139,7 +139,7 @@ describe("IR-CLI-095 AC-3 — --global composes with --dry-run", () => {
     expect(envelope.value?.applied).toBe(false);
     expect(reportedPaths(envelope).some((entry) => entry.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
   }, 60000);
 });
 

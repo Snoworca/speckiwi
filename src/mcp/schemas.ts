@@ -283,7 +283,11 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("summary", mcp("summarize_target", "Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only."), "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
   // FR-MCP-052 — the mode node hosts the get_work_mode read tool (the argument-less CLI read).
-  readSpec("mode", mcp("get_work_mode", "Reports the persisted work mode (`sdd`, `vibe`, `tdd` or `wait`) and the Active Task recorded beside it, falling open to `wait` when the state document is absent or unreadable rather than failing the call. Read-only."), "workMode", { args: { value: { type: "string", optional: true } } }),
+  readSpec("mode", mcp("get_work_mode", "Reports the persisted work mode (`sdd`, `vibe`, `tdd` or `wait`) and the Active Task recorded beside it, falling open to `wait` when the state document is absent or unreadable rather than failing the call. Read-only."), "workMode", {
+    args: { value: { type: "string", optional: true } },
+    // IR-CLI-107 AC-4 — CLI-side only: the get_work_mode input schema lives in server.ts and does not take it.
+    options: [opt("--task <name>", "task")]
+  }),
   // Container command with no own handler; hosts the v3 add-compatibility-check MCP tool.
   mutationSpec("vibe-gate", mcp("add_compatibility_check", "Records a first compatibility claim between two requirements, creating the edge on whichever of the two sorts lower, and refuses a requirement paired with itself, a discarded or deprecated endpoint, a frozen holding block, and a pair already recorded. Writes a trace-link row into the holding requirement block."), "req-scoped", "addCompatibilityCheck", [DRY_RUN]),
   // vibe-gate check: CLI-only gate leaf (duplicate cliName "check" — see links check below); hosts the
@@ -348,9 +352,8 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--target <target>", "target"),
     opt("--scope <scope>", "scope"),
     opt("--force", "force"),
-    // IR-CLI-106 AC-5 — declared so the catalogue reports it; it only matters beside the CLI-side skill
-    // and MCP steps, which init_project never sets.
-    opt("--project-install", "projectInstall"),
+    // IR-CLI-106 AC-5 — `--project-install` is absent like `-g`, `--no-skills` and `--no-mcp`: this
+    // row also describes init_project, which never runs the steps it selects.
     IGNORE_LOCK
   ]),
   // IR-CLI-076 — upgrade is CLI-only on purpose: init_project is exposed over MCP because it touches

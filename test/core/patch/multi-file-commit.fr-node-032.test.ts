@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, open, readFile, readdir, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, open, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -25,6 +25,26 @@ async function seedFile(root: string, relativePath: string, contents: string): P
   const filePath = path.join(root, relativePath);
   await writeFile(filePath, contents, "utf8");
   return filePath;
+}
+
+/**
+ * Makes the outstanding rename onto `target` fail with a real, non-ENOENT error while `target` stays a
+ * regular file the roll-back can overwrite in place; the returned function lifts the fault.
+ *
+ * Windows refuses to rename onto a file that has an open handle. POSIX does not, so a handle there
+ * proves nothing (the rename lands and the merge rolls forward); it refuses the rename instead when
+ * the target's directory is not writable, which still lets `copyFile` restore the existing target.
+ * Directory permissions do not bind root, so the POSIX fault needs an ordinary user.
+ */
+async function failRenameOnto(target: string): Promise<() => Promise<void>> {
+  if (process.platform === "win32") {
+    const handle = await open(target, "r");
+    return () => handle.close();
+  }
+  expect(process.getuid?.(), "directory permissions do not bind root, so this fault needs an ordinary user").not.toBe(0);
+  const directory = path.dirname(target);
+  await chmod(directory, 0o555);
+  return () => chmod(directory, 0o755);
 }
 
 async function buildCommitFile(filePath: string, replacement: string): Promise<MergeCommitFile> {
@@ -144,9 +164,11 @@ describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journ
   it("FR-NODE-047 AC-3: a real rename failure during recovery rolls the merge back to pre-merge state", async () => {
     const root = await makeWorkspace();
     // Pre-merge ("original") contents. step.md was already renamed forward before the crash;
-    // body.md still holds its original content with the new content staged in a tmp file.
+    // body.md still holds its original content with the new content staged in a tmp file. body.md
+    // sits in a directory of its own so the POSIX fault below can close just that directory.
     const stepPath = await seedFile(root, "step.md", "# step committed\n");
-    const bodyPath = await seedFile(root, "body.md", "# body original\n");
+    await mkdir(path.join(root, "held"));
+    const bodyPath = await seedFile(root, path.join("held", "body.md"), "# body original\n");
 
     // Backups captured before the crash: each holds the pre-merge content of its target.
     const stepBackup = path.join(root, `.speckiwi-${randomUUID()}.bak`);
@@ -182,15 +204,15 @@ describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journ
     };
     await writeFile(path.join(root, ".speckiwi-merge-journal.json"), JSON.stringify(journal), "utf8");
 
-    // Force the outstanding body rename to fail with a REAL error (EPERM, not ENOENT) while
-    // keeping body.md a regular, restorable file: hold an open handle on the destination so
-    // the OS refuses the rename. This faithfully models a lock/permission crash mid-recovery.
-    const lock = await open(bodyPath, "r");
+    // Force the outstanding body rename to fail with a REAL error (EPERM or EACCES, not ENOENT)
+    // while keeping body.md a regular, restorable file, so the OS itself refuses the rename. This
+    // faithfully models a lock/permission crash mid-recovery.
+    const liftFault = await failRenameOnto(bodyPath);
     let recovery: Awaited<ReturnType<typeof recoverMerge>>;
     try {
       recovery = await recoverMerge(root);
     } finally {
-      await lock.close();
+      await liftFault();
     }
 
     // The merge is rolled BACK rather than reported as a forward success.
@@ -211,7 +233,8 @@ describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journ
     const root = await makeWorkspace();
     // step.md was already renamed forward before the crash; body.md still holds its original content.
     const stepPath = await seedFile(root, "step.md", "# step committed\n");
-    const bodyPath = await seedFile(root, "body.md", "# body original\n");
+    await mkdir(path.join(root, "held"));
+    const bodyPath = await seedFile(root, path.join("held", "body.md"), "# body original\n");
 
     const stepBackup = path.join(root, `.speckiwi-${randomUUID()}.bak`);
     const bodyBackup = path.join(root, `.speckiwi-${randomUUID()}.bak`);
@@ -245,14 +268,14 @@ describe("FR-NODE-047 MultiFileCommit four-phase engine with durable merge-journ
     };
     await writeFile(path.join(root, ".speckiwi-merge-journal.json"), JSON.stringify(journal), "utf8");
 
-    // First recovery: the outstanding body rename fails with a REAL error (open handle → EPERM),
+    // First recovery: the outstanding body rename fails with a REAL error (EPERM or EACCES),
     // forcing a roll-back to the pre-merge state.
-    const lock = await open(bodyPath, "r");
+    const liftFault = await failRenameOnto(bodyPath);
     let firstRecovery: Awaited<ReturnType<typeof recoverMerge>>;
     try {
       firstRecovery = await recoverMerge(root);
     } finally {
-      await lock.close();
+      await liftFault();
     }
     expect(firstRecovery.recovered).toBe(true);
     expect(firstRecovery.outcome).toBe("rolled-back");

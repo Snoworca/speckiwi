@@ -13,7 +13,9 @@ import {
 } from "../bootstrap/templates.js";
 import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
 import { agentInstructionBlockWrittenByNewer, isAgentInstructionBlockCurrent } from "../bootstrap/init-project.js";
-import { PACKAGE_VERSION } from "../package-version.js";
+import { NODE_FLOOR, PACKAGE_VERSION, engineFloorVersion, parseNodeFloor, type NodeFloor, type NodeVersionTuple } from "../package-version.js";
+import { removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
+import type { SkillInstallOptions } from "../skills/types.js";
 
 // @req IR-CLI-065
 // IR-CLI-065 — `speckiwi doctor` consolidated environment health diagnosis.
@@ -452,6 +454,37 @@ async function listSharedContractNames(sourceRoot: string): Promise<string[]> {
   return entries.filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
 }
 
+/** The installer options naming a Codex global install for this home; doctor asks the installer where that lands. */
+function codexGlobalOptions(rootPath: string, homeDir: string, codexHome: string | undefined): SkillInstallOptions {
+  return {
+    projectRoot: { root: rootPath },
+    agent: "codex",
+    selector: "all",
+    scope: "global",
+    homeDir,
+    ...(codexHome ? { env: { CODEX_HOME: codexHome } } : {})
+  };
+}
+
+// @req IR-CLI-080 AC-10 @req FR-NODE-228
+/**
+ * The SpecKiwi-owned copies of bundled Codex skills still in the deprecated `${CODEX_HOME:-~/.codex}/skills`,
+ * as one finding, or undefined. Ownership is the removal verdict run as a dry-run, so a copy somebody
+ * edited or wrote is not counted: that one is theirs, not a leftover the install would take away.
+ */
+async function deprecatedCodexLeftovers(rootPath: string, homeDir: string, codexHome: string | undefined, codexSource: string): Promise<string | undefined> {
+  const root = await resolveDeprecatedCodexSkillsRoot(codexGlobalOptions(rootPath, homeDir, codexHome));
+  if (root === undefined) return undefined;
+  const bundled = await listSkillNames(codexSource);
+  const probe = await removeManagedKiwiSkills({ destinationRoot: root, agent: "codex", keepNames: [], onlyNames: bundled, dryRun: true });
+  // @req FR-NODE-228 AC-10 — an unlistable root is this check's warning, not the whole report's failure.
+  const unreadable = probe.kept.find((entry) => entry.path === root);
+  if (unreadable !== undefined) return `deprecated codex root ${root} — ${unreadable.detail ?? "could not be read"}`;
+  if (probe.removed.length === 0) return undefined;
+  const names = probe.removed.map((entry) => path.basename(entry)).sort();
+  return `deprecated codex root ${root} — SpecKiwi copies Codex lists a second time: ${names.join(", ")}`;
+}
+
 // @req IR-CLI-080
 /**
  * IR-CLI-080 — drift between the bundled skills and the copies an agent actually loads.
@@ -482,7 +515,10 @@ async function checkInstalledSkillDrift(
       label: "project .claude/skills",
       destinationRoot: path.join(rootPath, ".claude", "skills"),
       sourceRoot: claudeSource,
-      refresh: "`speckiwi init`"
+      // @req IR-CLI-080 AC-2 — since 4.1.1 a plain `speckiwi init` installs globally and leaves project
+      // copies alone, and `--project-install` alone would re-add the `.mcp.json` key a global project dropped.
+      refresh:
+        "`speckiwi upgrade` (a globally onboarded project: moves it off these project copies and the `.mcp.json` key) or `speckiwi init --project-install` (a project that keeps project-scope onboarding: refreshes them)"
     },
     ...(homeDir
       ? [
@@ -494,19 +530,16 @@ async function checkInstalledSkillDrift(
           },
           {
             label: "global codex skills",
-            // The install resolves `${CODEX_HOME}/skills` when that variable is set, so comparing
-            // `~/.codex/skills` unconditionally would report on a directory nobody installs into. An
-            // audit measured exactly that: a stale install under CODEX_HOME read as "nothing is
-            // provisioned", which is the blind spot this check exists to remove.
-            destinationRoot: options.codexHome
-              ? path.join(path.resolve(options.codexHome), "skills")
-              : path.join(homeDir, ".codex", "skills"),
+            // @req IR-CLI-080 AC-9 — asked of the installer, so doctor compares the directory the install
+            // writes to; a second resolution here once compared a directory nobody installed into.
+            destinationRoot: await resolveSkillDestinationRoot(codexGlobalOptions(rootPath, homeDir, options.codexHome)),
             sourceRoot: codexSource,
             refresh: "`speckiwi init --global`"
           }
         ]
       : [])
   ];
+  const leftovers = homeDir ? await deprecatedCodexLeftovers(rootPath, homeDir, options.codexHome, codexSource) : undefined;
 
   const present: InstalledSkillLocation[] = [];
   for (const candidate of candidates) {
@@ -514,7 +547,7 @@ async function checkInstalledSkillDrift(
       present.push(candidate);
     }
   }
-  if (present.length === 0) {
+  if (present.length === 0 && leftovers === undefined) {
     return {
       topic,
       label,
@@ -576,6 +609,11 @@ async function checkInstalledSkillDrift(
     refreshes.add(location.refresh);
   }
 
+  if (leftovers !== undefined) {
+    findings.push(leftovers);
+    refreshes.add("`speckiwi init --global`");
+  }
+
   const scope = `${present.length} installed location${present.length === 1 ? "" : "s"}`;
   if (findings.length > 0) {
     return {
@@ -583,7 +621,7 @@ async function checkInstalledSkillDrift(
       label,
       state: "warn",
       message: `installed skills drifted from the bundled source (${scope} compared) — ${findings.join(" | ")}`,
-      remediation: `Run ${[...refreshes].join(" and ")} to reinstall the drifted skills, then review the diff.`
+      remediation: `Run ${[...refreshes].join(" and ")} to reinstall the drifted skills${leftovers === undefined ? "" : " and take SpecKiwi's copies out of the deprecated Codex root"}, then review the diff.`
     };
   }
   return {
@@ -747,38 +785,53 @@ function checkScopeTargetConsistency(workspace: ParsedWorkspace): DoctorCheck {
 
 // @req IR-CLI-065
 /**
- * Node version: the running Node major version must meet the supported floor. Below the floor is a
- * fail; an unparseable process.version warns; at or above the floor is ok.
+ * Node version: the running Node version must meet the supported floor, which is the package's own
+ * `engines.node` (IR-CLI-065 AC-5). Below the floor is a fail; an unparseable process.version warns; at
+ * or above the floor is ok.
  */
-function checkNodeVersion(nodeVersion: string): DoctorCheck {
+function checkNodeVersion(nodeVersion: string, floor: NodeFloor): DoctorCheck {
   const topic = "Node version";
-  const floorMajor = 18;
-  const major = Number(/^v?(\d+)/.exec(nodeVersion)?.[1]);
-  if (!Number.isInteger(major)) {
+  const floorText = floorLabel(floor.version);
+  const running = engineFloorVersion(/^v?(\d+(?:\.\d+){0,2})/.exec(nodeVersion)?.[1] ?? "");
+  if (running === undefined) {
     return {
       topic,
       label: "Node version",
       state: "warn",
       message: `could not parse the running Node version (${nodeVersion})`,
-      remediation: `Verify the Node runtime is version ${floorMajor} or newer.`
+      remediation: `Verify the Node runtime is version ${floorText} or newer.`
     };
   }
-  if (major < floorMajor) {
+  if (compareVersions(running, floor.version) < 0) {
     return {
       topic,
       label: "Node version",
       state: "fail",
-      message: `Node ${nodeVersion} is below the supported floor (>= ${floorMajor})`,
-      remediation: `Upgrade Node to version ${floorMajor} or newer.`
+      message: `Node ${nodeVersion} is below the supported floor (>= ${floorText})`,
+      remediation: `Upgrade Node to version ${floorText} or newer.`
     };
   }
   return {
     topic,
     label: "Node version",
     state: "ok",
-    message: `Node ${nodeVersion} meets the supported floor (>= ${floorMajor})`,
+    message: `Node ${nodeVersion} meets the supported floor (>= ${floorText})`,
     remediation: "No action needed; the Node runtime is supported."
   };
+}
+
+/** `22`, `22.12` or `20.5.1`: the floor as a range would spell it, without trailing zero parts. */
+function floorLabel([major, minor, patch]: NodeVersionTuple): string {
+  if (patch !== 0) return `${major}.${minor}.${patch}`;
+  return minor !== 0 ? `${major}.${minor}` : `${major}`;
+}
+
+function compareVersions(left: NodeVersionTuple, right: NodeVersionTuple): number {
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (left[index] ?? 0) - (right[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
 }
 
 // @req IR-CLI-065
@@ -790,6 +843,8 @@ export async function diagnoseHealth(
   workspace: ParsedWorkspace,
   options: {
     nodeVersion?: string;
+    /** IR-CLI-065 AC-5 — an `engines.node` range standing in for the package's own; absent means the package's. */
+    nodeEnginesRange?: string;
     codexSkillsSourceRoot?: string;
     claudeSkillsSourceRoot?: string;
     /** IR-CLI-080 — the home whose global skill installs are compared. Absent means global is skipped. */
@@ -823,7 +878,7 @@ export async function diagnoseHealth(
     await checkProjectRootIsGitToplevel(workspace.root.root, options.gitToplevelResolver),
     checkActiveTarget(workspace),
     checkScopeTargetConsistency(workspace),
-    checkNodeVersion(nodeVersion)
+    checkNodeVersion(nodeVersion, options.nodeEnginesRange === undefined ? NODE_FLOOR : parseNodeFloor(options.nodeEnginesRange))
   ];
   return { checks };
 }

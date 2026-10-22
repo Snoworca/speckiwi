@@ -4,6 +4,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { main } from "../../src/cli/index.js";
+import type * as FsPromises from "node:fs/promises";
 
 const sandbox = vi.hoisted(() => ({ dir: "" }));
 
@@ -13,7 +14,7 @@ const sandbox = vi.hoisted(() => ({ dir: "" }));
  * are made to look absent, so the search runs to the filesystem root and finds nothing.
  */
 vi.mock("node:fs/promises", async (original) => {
-  const actual = await original<typeof import("node:fs/promises")>();
+  const actual = await original<typeof FsPromises>();
   return {
     ...actual,
     access: (async (file: Parameters<typeof actual.access>[0], mode?: number) => {

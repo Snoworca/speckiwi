@@ -57,7 +57,7 @@ describe("speckiwi init --global CLI (IR-CLI-075)", () => {
     const parsed = readJson(streams.stdout);
     expect(parsed.ok).toBe(true);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
-    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".agents", "skills")))).toBe(true);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".claude", "skills")))).toBe(true);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".agents", "skills")))).toBe(true);
   }, 60000);
@@ -125,7 +125,7 @@ describe("speckiwi init --global CLI (IR-CLI-075)", () => {
     const streams = io();
     await withHome(home, () => main(["--root", root, "init", "--global", "--no-mcp", "--dry-run", "--json"], streams));
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
   }, 60000);
 
   it("AC-5: --json output includes created/updated/skipped/removed/warnings arrays", async () => {
@@ -151,7 +151,7 @@ describe("speckiwi init --global CLI (IR-CLI-075)", () => {
     await withHome(home, () => main(["--root", root, "init", "--global", "--no-mcp", "--dry-run", "--json"], streams));
     const parsed = readJson(streams.stdout);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
-    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(false);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".agents", "skills")))).toBe(false);
     expect((parsed.value.warnings ?? []).some((w) => /codex/i.test(w) && /global/i.test(w))).toBe(true);
   }, 60000);
 });

@@ -68,8 +68,14 @@ async function waitForFile(filePath: string, timeoutMs = 20_000): Promise<void> 
   throw new Error(`Timed out waiting for ${filePath}`);
 }
 
+/**
+ * Starts the holder in a vitest whose test runs on a worker THREAD, so the process that writes the
+ * lock is the one `child.kill()` ends. Under the default fork pool the lock belongs to a forked
+ * worker that, on Linux, outlives a SIGTERM to its parent; the "after process death" case then
+ * met a holder that was still alive.
+ */
 function startHolder(root: string, artifactPath: string): Worker {
-  const child = spawn(process.execPath, [VITEST_BIN, "run", THIS_TEST, "--no-file-parallelism", "--testTimeout", "30000", "-t", "artifact lock child holder"], {
+  const child = spawn(process.execPath, [VITEST_BIN, "run", THIS_TEST, "--pool", "threads", "--no-file-parallelism", "--testTimeout", "30000", "-t", "artifact lock child holder"], {
     cwd: process.cwd(),
     env: { ...process.env, [CHILD_MARKER]: "1", SPECKIWI_LOCK_ARTIFACT: artifactPath, SPECKIWI_LOCK_ROOT: root },
     stdio: ["ignore", "pipe", "pipe"]
@@ -143,6 +149,8 @@ if (process.env[CHILD_MARKER] === "1") {
       try {
         await waitForFile(path.join(root, "holder.ready"));
         const identity = await module.resolveArtifactLockIdentity(artifactPath);
+        const sentinel = JSON.parse(await readFile(identity.lockPath, "utf8")) as { pid?: number };
+        expect(sentinel.pid, "the process this case kills is the one that holds the lock").toBe(worker.child.pid);
         const old = new Date("2000-01-01T00:00:00.000Z");
         await utimes(identity.lockPath, old, old);
         await expect(module.acquireArtifactLock({ artifactPath, owner: "live-contender" })).resolves.toMatchObject({ ok: false, reason: "held" });

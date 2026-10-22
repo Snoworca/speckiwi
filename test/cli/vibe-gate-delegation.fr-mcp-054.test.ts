@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { main } from "../../src/cli/index.js";
 import type { VibeGateStatus } from "../../src/core/query/vibe-gate.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import type * as VibeGateModule from "../../src/core/query/vibe-gate.js";
 
 /**
  * FR-MCP-054 AC-4 — `speckiwi vibe-gate check` delegates to the extracted core function.
@@ -15,7 +16,7 @@ import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 const answer = vi.hoisted(() => ({ current: undefined as VibeGateStatus | undefined }));
 
 vi.mock("../../src/core/query/vibe-gate.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/query/vibe-gate.js")>();
+  const actual = await importOriginal<typeof VibeGateModule>();
   return { ...actual, evaluateVibeGate: async () => answer.current as VibeGateStatus };
 });
 

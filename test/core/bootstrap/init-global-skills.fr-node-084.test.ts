@@ -60,7 +60,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     await mkdir(path.join(home, ".codex"));
     const value = await runInit(root, globalInput(home, base));
     const claudeGlobal = path.join(home, ".claude", "skills", "kiwi-keep");
-    const codexGlobal = path.join(home, ".codex", "skills", "kiwi-keep");
+    const codexGlobal = path.join(home, ".agents", "skills", "kiwi-keep");
     expect(await exists(path.join(claudeGlobal, "SKILL.md"))).toBe(true);
     expect(await exists(path.join(codexGlobal, "SKILL.md"))).toBe(true);
     expect(value.created).toContain(claudeGlobal);
@@ -77,7 +77,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     await mkdir(path.join(home, ".claude")); // only claude present
     const value = await runInit(root, globalInput(home, base));
     expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep", "SKILL.md"))).toBe(true);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
     expect((value.warnings ?? []).some((w) => /codex/i.test(w) && /global/i.test(w))).toBe(true);
   });
 
@@ -88,7 +88,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     const home = await tempHome();
     await mkdir(path.join(home, ".codex")); // only codex present
     const value = await runInit(root, globalInput(home, base));
-    expect(await exists(path.join(home, ".codex", "skills", "kiwi-keep", "SKILL.md"))).toBe(true);
+    expect(await exists(path.join(home, ".agents", "skills", "kiwi-keep", "SKILL.md"))).toBe(true);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
     expect((value.warnings ?? []).some((w) => /claude/i.test(w) && /global/i.test(w))).toBe(true);
   });
@@ -100,7 +100,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     const home = await tempHome(); // empty home, no agent dirs
     const value = await runInit(root, globalInput(home, base));
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
     expect((value.warnings ?? []).filter((w) => /global/i.test(w)).length).toBeGreaterThanOrEqual(2);
     // project scope still done
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-keep"))).toBe(true);
@@ -130,7 +130,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     await mkdir(path.join(home, ".codex"));
     const value = await runInit(root, globalInput(home, base, { projectInstall: false, installSkillsGlobal: false }));
     expect(value.created).toContain(path.join(home, ".claude", "skills", "kiwi-keep"));
-    expect(value.created).toContain(path.join(home, ".codex", "skills", "kiwi-keep"));
+    expect(value.created).toContain(path.join(home, ".agents", "skills", "kiwi-keep"));
     expect(await exists(path.join(root, ".claude", "skills"))).toBe(false);
     expect(await exists(path.join(root, ".agents", "skills"))).toBe(false);
   });
@@ -178,9 +178,9 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     await mkdir(path.join(home, ".codex"));
     const value = await runInit(root, globalInput(home, base, { dryRun: true }));
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
     expect(value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
-    expect(value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
+    expect(value.created.some((p) => p.startsWith(path.join(home, ".agents", "skills")))).toBe(true);
   });
 
   it("FR-NODE-068 AC-5: under project install, nothing is provisioned globally unless installSkillsGlobal is set", async () => {
@@ -192,6 +192,6 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     await mkdir(path.join(home, ".codex"));
     await runInit(root, { projectInstall: true, installSkills: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base });
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
   });
 });

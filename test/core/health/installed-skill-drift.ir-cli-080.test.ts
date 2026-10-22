@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { diagnoseHealth } from "../../../src/core/health/doctor.js";
+import { installSkill } from "../../../src/core/skills/install-skill.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
@@ -95,7 +96,7 @@ describe("IR-CLI-080 AC-1 — a drifted global skill is reported", () => {
 
   it("compares the codex global destination too", async () => {
     const fixtures = await setup();
-    await installSkillAt(path.join(fixtures.homeDir, ".codex", "skills"), "stale codex global\n");
+    await installSkillAt(path.join(fixtures.homeDir, ".agents", "skills"), "stale codex global\n");
 
     const check = await driftCheck(fixtures);
 
@@ -113,7 +114,14 @@ describe("IR-CLI-080 AC-2 — a drifted project-local skill is reported", () => 
 
     expect(check.state).toBe("warn");
     expect(check.message).toContain("kiwi-demo");
-    expect(check.remediation).toContain("speckiwi init");
+    // IR-CLI-080 AC-2 — both commands, each with the onboarding it applies to: upgrade moves a globally
+    // onboarded project off its copies, --project-install refreshes them for a project that keeps them.
+    expect(check.remediation).toContain("speckiwi upgrade");
+    expect(check.remediation).toMatch(/speckiwi upgrade`[^`]*global/);
+    expect(check.remediation).toContain(".mcp.json");
+    expect(check.remediation).toContain("speckiwi init --project-install");
+    expect(check.remediation).toMatch(/speckiwi init --project-install`[^`]*project-scope/);
+    expect(check.remediation).not.toContain("speckiwi init --global");
   });
 });
 
@@ -237,17 +245,81 @@ describe("IR-CLI-080 — the bundled source is what the released package ships",
   });
 });
 
-describe("IR-CLI-080 — the codex global destination honours CODEX_HOME", () => {
-  it("compares the directory init writes to when CODEX_HOME is set, not ~/.codex", async () => {
-    // Found by audit: the check hardcoded `<home>/.codex/skills` while `speckiwi init --global`
-    // resolves `${CODEX_HOME}/skills` when that variable is set. A user who sets it got
-    // `state: ok — nothing is provisioned` over a genuinely stale install: the very failure this
-    // requirement exists to prevent, reproduced inside it.
+describe("IR-CLI-080 AC-9 — the codex global install is compared at <home>/.agents/skills", () => {
+  // FR-NODE-228: Codex reads user skills from `<home>/.agents/skills`; `${CODEX_HOME:-~/.codex}/skills`
+  // is the deprecated root, so CODEX_HOME no longer moves the install this check compares.
+  async function driftWithCodexHome(fixtures: Fixtures, codexHome: string) {
+    const workspace = await parseWorkspace(await resolveProjectRoot(fixtures.rootPath));
+    const report = await diagnoseHealth(workspace, {
+      installedSkillsHomeDir: fixtures.homeDir,
+      installedSkillsCodexHome: codexHome,
+      claudeSkillsSourceRoot: fixtures.claudeSource,
+      codexSkillsSourceRoot: fixtures.codexSource
+    });
+    return report.checks.find((entry) => entry.topic === TOPIC)!;
+  }
+
+  it("IR-CLI-080 AC-9: a stale copy at <home>/.agents/skills is reported even when CODEX_HOME is set", async () => {
+    const fixtures = await setup();
+    await installSkillAt(path.join(fixtures.homeDir, ".agents", "skills"), "stale codex body\n");
+    const codexHome = await mkdtemp(path.join(tmpdir(), "speckiwi-codex-home-"));
+
+    const check = await driftWithCodexHome(fixtures, codexHome);
+
+    expect(check.state).toBe("warn");
+    expect(check.message).toContain("kiwi-demo");
+  });
+
+  it("IR-CLI-080 AC-9: a stale copy under CODEX_HOME/skills is not compared as the codex global install", async () => {
     const fixtures = await setup();
     const codexHome = await mkdtemp(path.join(tmpdir(), "speckiwi-codex-home-"));
     await installSkillAt(path.join(codexHome, "skills"), "stale codex body\n");
 
+    expect((await driftWithCodexHome(fixtures, codexHome)).state).toBe("ok");
+  });
+
+  it("IR-CLI-080 AC-9: a stale copy under ~/.codex/skills is not compared when CODEX_HOME is absent", async () => {
+    const fixtures = await setup();
+    await installSkillAt(path.join(fixtures.homeDir, ".codex", "skills"), "stale codex body\n");
+
+    expect((await driftCheck(fixtures)).state).toBe("ok");
+  });
+});
+
+describe("IR-CLI-080 AC-10 — SpecKiwi copies left in the deprecated codex root are reported", () => {
+  async function ownedCopyAt(fixtures: Fixtures, destination: string): Promise<void> {
+    // The installer validates the entrypoint, so the bundled body needs frontmatter here.
+    await writeSource(fixtures.codexSource, ["---", "name: kiwi-demo", "description: demo", "---", "", "bundled demo skill", ""].join("\n"));
+    const placed = await installSkill({
+      projectRoot: { root: fixtures.rootPath },
+      sourceBaseDir: path.dirname(fixtures.codexSource),
+      agent: "codex",
+      selector: "kiwi-demo",
+      scope: "custom",
+      dest: destination
+    });
+    if (!placed.ok) throw new Error(placed.error.message);
+  }
+
+  it("IR-CLI-080 AC-10: warns, naming the skill, the deprecated root and `speckiwi init --global`", async () => {
+    const fixtures = await setup();
+    const deprecated = path.join(fixtures.homeDir, ".codex", "skills");
+    await ownedCopyAt(fixtures, deprecated);
+
+    const check = await driftCheck(fixtures);
+
+    expect(check.state).toBe("warn");
+    expect(check.message).toContain("kiwi-demo");
+    expect(check.message).toContain(deprecated);
+    expect(check.remediation).toContain("speckiwi init --global");
+  });
+
+  it("IR-CLI-080 AC-10: follows CODEX_HOME to find the deprecated root", async () => {
+    const fixtures = await setup();
+    const codexHome = await mkdtemp(path.join(tmpdir(), "speckiwi-codex-home-"));
+    await ownedCopyAt(fixtures, path.join(codexHome, "skills"));
     const workspace = await parseWorkspace(await resolveProjectRoot(fixtures.rootPath));
+
     const report = await diagnoseHealth(workspace, {
       installedSkillsHomeDir: fixtures.homeDir,
       installedSkillsCodexHome: codexHome,
@@ -257,32 +329,15 @@ describe("IR-CLI-080 — the codex global destination honours CODEX_HOME", () =>
     const check = report.checks.find((entry) => entry.topic === TOPIC)!;
 
     expect(check.state).toBe("warn");
-    expect(check.message).toContain("kiwi-demo");
+    expect(check.message).toContain(path.join(codexHome, "skills"));
   });
 
-  it("falls back to ~/.codex/skills when CODEX_HOME is absent", async () => {
+  it("IR-CLI-080 AC-10: a copy that fails the ownership proof is not counted", async () => {
     const fixtures = await setup();
-    await installSkillAt(path.join(fixtures.homeDir, ".codex", "skills"), "stale codex body\n");
+    const deprecated = path.join(fixtures.homeDir, ".codex", "skills");
+    await ownedCopyAt(fixtures, deprecated);
+    await writeFile(path.join(deprecated, "kiwi-demo", "SKILL.md"), "edited by hand\n", "utf8");
 
-    expect((await driftCheck(fixtures)).state).toBe("warn");
-  });
-
-  it("does not report the default location when CODEX_HOME points elsewhere", async () => {
-    // With CODEX_HOME set, `~/.codex` is not where init writes, so a stale copy there is not the
-    // installed surface and reporting it would send the reader to the wrong directory.
-    const fixtures = await setup();
-    await installSkillAt(path.join(fixtures.homeDir, ".codex", "skills"), "stale in the default place\n");
-    const codexHome = await mkdtemp(path.join(tmpdir(), "speckiwi-codex-home-"));
-    await installSkillAt(path.join(codexHome, "skills"), "bundled demo skill\n");
-
-    const workspace = await parseWorkspace(await resolveProjectRoot(fixtures.rootPath));
-    const report = await diagnoseHealth(workspace, {
-      installedSkillsHomeDir: fixtures.homeDir,
-      installedSkillsCodexHome: codexHome,
-      claudeSkillsSourceRoot: fixtures.claudeSource,
-      codexSkillsSourceRoot: fixtures.codexSource
-    });
-
-    expect(report.checks.find((entry) => entry.topic === TOPIC)!.state).toBe("ok");
+    expect((await driftCheck(fixtures)).state).toBe("ok");
   });
 });

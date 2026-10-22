@@ -67,6 +67,20 @@ export interface SkillInstallPlan {
   mcpPreflight: McpPreflight;
   dryRun: boolean;
   results: SkillInstallItemResult[];
+  /** @req FR-NODE-228 — present on a Codex global install; what it did (or, in a dry-run, would do) in the deprecated root. */
+  deprecatedRootCleanup?: DeprecatedRootCleanup;
+}
+
+/**
+ * @req FR-NODE-228 — Codex reads `${CODEX_HOME:-<home>/.codex}/skills` as a deprecated root beside
+ * `<home>/.agents/skills` and lists a skill found in both twice, so a global install takes SpecKiwi's
+ * own copies out of the old root.
+ */
+export interface DeprecatedRootCleanup {
+  root: string;
+  removed: string[];
+  kept: Array<{ path: string; reason: string; detail?: string }>;
+  warnings: string[];
 }
 
 export interface SkillPackageFile {

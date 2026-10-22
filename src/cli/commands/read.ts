@@ -756,10 +756,18 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     // is declared here among the read commands for discoverability. It marks itself rather than
     // being named in a list somewhere else, which is the drift IR-CLI-101 closes. @req IR-CLI-101
     .argument("[value]", "switch target: sdd, vibe, wait, or tdd")
+    .option("--task <name>", "with vibe or tdd, the Active Task the vibe gate evaluates")
     .option("--json", "JSON output")
     .action(async (value, options) => {
       const json = Boolean(options.json) || command.opts().json;
       const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      const task = typeof options.task === "string" ? options.task : undefined;
+      // @req IR-CLI-107 AC-2 — a task only means something beside vibe or tdd; elsewhere it would be dropped silently.
+      if (task !== undefined && (task === "" || (value !== "vibe" && value !== "tdd"))) {
+        output(context, { json }, mutationFail("USAGE", "--task needs a non-empty name and the mode vibe or tdd"));
+        command.setOptionValue("exitCode", 2);
+        return;
+      }
       if (value === undefined) {
         output(context, { json }, mutationOk(await getWorkMode(root)));
         return;
@@ -769,7 +777,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         command.setOptionValue("exitCode", 2);
         return;
       }
-      const result = await setWorkMode(root, { mode: value as StepStateMode });
+      // @req IR-CLI-107 AC-1
+      const result = await setWorkMode(root, { mode: value as StepStateMode, ...(task !== undefined ? { activeTask: task } : {}) });
       output(context, { json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });

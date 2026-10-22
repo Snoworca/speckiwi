@@ -5,9 +5,11 @@ import { access, chmod, copyFile, lstat, mkdir, mkdtemp, readdir, readFile, rena
 import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { isSameDirectory } from "../fs/canonical-path.js";
 import { fail, ok, type Result } from "../result.js";
 import {
   SKILL_AGENTS,
+  type DeprecatedRootCleanup,
   type McpPreflight,
   type SkillAgent,
   type SkillIdentity,
@@ -67,23 +69,26 @@ export async function planSkillInstall(options: SkillInstallOptions): Promise<Re
     const normalized = normalizeOptions(options);
     const sourceRoot = await resolveSourceRoot(normalized);
     const names = await resolveSkillNames(sourceRoot, normalized.selector, normalized.agent);
-    const destinationRoot = await resolveDestinationRoot(normalized, names);
+    const destinationRoot = await resolveDestinationRoot(normalized);
     await assertDestinationRootSafe(destinationRoot);
     const results: SkillInstallItemResult[] = [];
     for (const name of names) {
       const sourcePackage = await readSourcePackage(sourceRoot, name, normalized.agent);
       results.push(await planOne(sourcePackage, normalized, sourceRoot, destinationRoot));
     }
-    return ok({
+    const plan: SkillInstallPlan = {
       agent: normalized.agent,
       scope: normalized.scope,
       sourceRoot,
       destinationRoot,
       requiresMcp: true,
-      mcpPreflight: await resolveMcpPreflight(normalized.projectRoot?.root),
+      mcpPreflight: await resolveMcpPreflight(normalized),
       dryRun: Boolean(normalized.dryRun),
       results
-    });
+    };
+    // @req FR-NODE-228 AC-4 — a dry-run lists what the install would take out of the deprecated root.
+    const cleanup = normalized.dryRun ? await retireDeprecatedCodexCopies(normalized, plan, true) : undefined;
+    return ok(cleanup ? { ...plan, deprecatedRootCleanup: cleanup } : plan);
   } catch (error) {
     if (error instanceof SkillInstallError) return fail(error.code, error.message);
     throw error;
@@ -124,7 +129,10 @@ export async function installSkill(options: SkillInstallOptions): Promise<Result
       executedResults.push(result);
     }
     await syncSharedMirror(planned.value.sourceRoot, planned.value.destinationRoot);
-    return ok({ ...planned.value, results: executedResults });
+    const installed = { ...planned.value, results: executedResults };
+    // @req FR-NODE-228 AC-2 — only after the new copies exist, so a failed install never strands Codex without one.
+    const cleanup = await retireDeprecatedCodexCopies(options, installed, false);
+    return ok(cleanup ? { ...installed, deprecatedRootCleanup: cleanup } : installed);
   } catch (error) {
     if (error instanceof SkillInstallError) return fail(error.code, error.message);
     throw error;
@@ -146,6 +154,8 @@ export interface ManagedSkillRemovalOptions {
    * from existing twice.
    */
   keepNames: string[];
+  /** The only names this call may touch; absent, every `kiwi-*` name not kept is a candidate. */
+  onlyNames?: readonly string[];
   dryRun?: boolean;
   /**
    * Reconcile the `_shared` mirror once the directories are gone, dropping files no surviving skill
@@ -195,10 +205,17 @@ export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOption
     kept.push({ path: candidate, reason, detail: message });
     warnings.push(`Skipped ${candidate}: ${message}`);
   };
-  const entries = await readdir(options.destinationRoot, { withFileTypes: true });
+  // @req FR-NODE-228 AC-10 — a root that exists but cannot be listed is reported as kept, not thrown: this
+  // runs over directories SpecKiwi does not own, after an install has already written its copies.
+  const entries = await readdir(options.destinationRoot, { withFileTypes: true }).catch((error: Error) => {
+    hold(options.destinationRoot, "error", `could not list this directory (${error.message}); nothing in it was removed.`);
+    return undefined;
+  });
+  if (entries === undefined) return { removed, kept, warnings };
   for (const entry of entries) {
     if (!entry.name.startsWith("kiwi-")) continue;
     if (keep.has(entry.name)) continue;
+    if (options.onlyNames !== undefined && !options.onlyNames.includes(entry.name)) continue;
     const candidate = path.join(options.destinationRoot, entry.name);
     try {
       const stats = await lstat(candidate);
@@ -395,10 +412,10 @@ async function resolveSkillNames(sourceRoot: string, selector: string, agent: Sk
  * about where a global install lands. A removal that disagrees deletes nothing and reports success.
  */
 export async function resolveSkillDestinationRoot(options: SkillInstallOptions): Promise<string> {
-  return resolveDestinationRoot(options, []);
+  return resolveDestinationRoot(options);
 }
 
-async function resolveDestinationRoot(options: SkillInstallOptions, names: string[]): Promise<string> {
+async function resolveDestinationRoot(options: SkillInstallOptions): Promise<string> {
   if (options.dest) return path.resolve(options.projectRoot.root, options.dest);
   if (options.scope === "custom") {
     throw new SkillInstallError("SKILL_INSTALL_INVALID_OPTIONS", "custom scope requires --dest");
@@ -415,12 +432,12 @@ async function resolveDestinationRoot(options: SkillInstallOptions, names: strin
         throw new SkillInstallError("SKILL_INSTALL_UNSUPPORTED_SCOPE", "Hermes project installs require --dest");
     }
   }
-  const homeDir = options.homeDir ? path.resolve(options.homeDir) : process.env.HOME ?? process.env.USERPROFILE ?? "";
+  const homeDir = resolveHomeDir(options);
   if (!homeDir) throw new SkillInstallError("SKILL_INSTALL_INVALID_OPTIONS", "home directory is unavailable");
   switch (options.agent) {
     case "codex":
-      await rejectAmbiguousCodexGlobal(options, homeDir, names);
-      return path.join(options.env?.CODEX_HOME ? path.resolve(options.env.CODEX_HOME) : path.join(homeDir, ".codex"), "skills");
+      // @req FR-NODE-228 — the root Codex reads user skills from; CODEX_HOME locates only the deprecated one.
+      return path.join(homeDir, ".agents", "skills");
     case "claude":
       return path.join(homeDir, ".claude", "skills");
     case "opencode":
@@ -430,15 +447,73 @@ async function resolveDestinationRoot(options: SkillInstallOptions, names: strin
   }
 }
 
-async function rejectAmbiguousCodexGlobal(options: SkillInstallOptions, homeDir: string, names: string[]): Promise<void> {
-  const codexHomeRoot = path.join(options.env?.CODEX_HOME ? path.resolve(options.env.CODEX_HOME) : path.join(homeDir, ".codex"), "skills");
-  const agentsRoot = path.join(homeDir, ".agents", "skills");
-  if (path.resolve(codexHomeRoot) === path.resolve(agentsRoot)) return;
-  for (const name of names) {
-    if (await directoryExists(path.join(codexHomeRoot, name)) && await directoryExists(path.join(agentsRoot, name))) {
-      throw new SkillInstallError("SKILL_INSTALL_AMBIGUOUS_DESTINATION", `Codex skill ${name} exists in multiple global roots; use --dest`);
-    }
+function resolveHomeDir(options: SkillInstallOptions): string {
+  return options.homeDir ? path.resolve(options.homeDir) : process.env.HOME ?? process.env.USERPROFILE ?? "";
+}
+
+/**
+ * The deprecated Codex user skills root, `${CODEX_HOME:-<home>/.codex}/skills`, for a Codex global
+ * install; undefined for any other install, when it is the same directory as the destination, and when
+ * it is not one SpecKiwi may treat as Codex's old root (see {@link locateDeprecatedCodexSkillsRoot}).
+ *
+ * @req FR-NODE-228 — exported so removal and doctor reach this root in the installer's terms
+ * (FR-NODE-192 AC-9) instead of resolving CODEX_HOME a second time.
+ */
+export async function resolveDeprecatedCodexSkillsRoot(options: SkillInstallOptions): Promise<string | undefined> {
+  const located = await locateDeprecatedCodexSkillsRoot(options);
+  return located?.refused === undefined ? located?.root : undefined;
+}
+
+/** The deprecated root, and why SpecKiwi will not clean it when it will not. */
+async function locateDeprecatedCodexSkillsRoot(options: SkillInstallOptions): Promise<{ root: string; refused?: string } | undefined> {
+  if (options.agent !== "codex" || options.dest || options.scope !== "global") return undefined;
+  const homeDir = resolveHomeDir(options);
+  if (!homeDir) return undefined;
+  const codexHome = options.env?.CODEX_HOME ? path.resolve(options.env.CODEX_HOME) : path.join(homeDir, ".codex");
+  const root = path.join(codexHome, "skills");
+  // @req FR-NODE-228 AC-9 — a CODEX_HOME that names `<home>/.agents` by another spelling (case, a junction,
+  // a symlink) makes the "deprecated" root the destination itself, and cleaning it deleted the fresh install.
+  if (await isSameDirectory(root, await resolveSkillDestinationRoot(options))) return undefined;
+  // @req FR-NODE-228 AC-11 — `<dir>/.agents/skills` is the shape of a project's own Codex skill directory,
+  // and a CODEX_HOME pointed into a project made every global install delete that project's copies.
+  if (path.basename(codexHome).toLowerCase() === ".agents") {
+    return { root, refused: `${root} was not cleaned: CODEX_HOME names a directory called .agents, which is where a project keeps its own Codex skills, so SpecKiwi does not treat it as Codex's old user skills directory.` };
   }
+  return { root };
+}
+
+/**
+ * @req FR-NODE-228 — takes SpecKiwi's own copies of the skills just installed out of the deprecated
+ * Codex root, under the verdict `speckiwi remove` uses, so Codex does not list them twice. A copy
+ * that fails that verdict is somebody's, so it stays and the warning names both places Codex reads.
+ */
+async function retireDeprecatedCodexCopies(options: SkillInstallOptions, plan: SkillInstallPlan, dryRun: boolean): Promise<DeprecatedRootCleanup | undefined> {
+  const located = await locateDeprecatedCodexSkillsRoot(options);
+  if (located === undefined) return undefined;
+  const { root } = located;
+  if (located.refused !== undefined) return { root, removed: [], kept: [], warnings: [located.refused] };
+  const outcome = await removeManagedKiwiSkills({
+    destinationRoot: root,
+    agent: "codex",
+    keepNames: [],
+    // @req FR-NODE-228 AC-2 — named rather than derived from a listing of the root, so a listing that
+    // fails cannot widen the candidates to every SpecKiwi copy there.
+    onlyNames: plan.results.map((result) => result.name),
+    dryRun,
+    reconcileSharedMirror: true,
+    sourceRoot: plan.sourceRoot
+  });
+  const warnings = outcome.kept.flatMap((entry) => {
+    // @req FR-NODE-228 AC-10 — the root itself is kept only when it could not be listed.
+    if (entry.path === root) {
+      return [`Could not clean ${root}: ${entry.detail ?? entry.reason} Codex may list some skills twice until the old copies there are removed.`];
+    }
+    if (path.dirname(entry.path) !== root) return [];
+    return [
+      `Kept ${entry.path} (${entry.reason}): Codex also reads this deprecated root, so it lists this skill beside ${path.join(plan.destinationRoot, path.basename(entry.path))}; remove the old copy by hand once you no longer need it.`
+    ];
+  });
+  return { root, removed: outcome.removed, kept: outcome.kept, warnings };
 }
 
 async function planOne(sourcePackage: SkillPackage, options: SkillInstallOptions, sourceRoot: string, destinationRoot: string): Promise<SkillInstallItemResult> {
@@ -1093,20 +1168,67 @@ function toPosix(value: string): string {
  * @req IR-CLI-086 AC-3 — this used to return `not_checked` unconditionally, with no other writer, so
  * two of the three declared statuses were unreachable while `IR-CLI-027` AC-7 and `FR-NODE-016` AC-5
  * enumerate all three as though a check runs. The cheap check that makes them reachable is the one
- * `init` already performs: whether the project's `.mcp.json` registers the SpecKiwi server. That is
- * registration rather than liveness, which is why `not_checked` survives — an unreadable or absent
- * project root is not evidence either way.
+ * `init` already performs: whether the SpecKiwi server is registered. That is registration rather than
+ * liveness, which is why `not_checked` survives — an unreadable source is not evidence either way.
+ *
+ * @req IR-CLI-086 AC-6 — since 4.1.1 `init` registers at user scope, so the project `.mcp.json` alone
+ * reported `missing` for every project onboarded the default way. Home and environment come from the
+ * options, never the process, so a test never reads the developer's own configuration.
  */
-async function resolveMcpPreflight(projectRoot: string | undefined): Promise<McpPreflight> {
-  const remediation = "Run speckiwi mcp and ensure the coding agent is connected before normal Kiwi skill workflows.";
-  if (!projectRoot) return { status: "not_checked", remediation };
+async function resolveMcpPreflight(options: SkillInstallOptions): Promise<McpPreflight> {
+  const remediation = "Run speckiwi init to register the SpecKiwi MCP server, then ensure the coding agent is connected before normal Kiwi skill workflows.";
+  const answers = [
+    options.projectRoot?.root ? await projectMcpRegistration(options.projectRoot.root) : "unknown",
+    await userScopeMcpRegistration(options)
+  ];
+  if (answers.includes("registered")) return { status: "satisfied", remediation };
+  return { status: answers.includes("unknown") && !answers.includes("absent") ? "not_checked" : "missing", remediation };
+}
+
+type McpRegistration = "registered" | "absent" | "unknown";
+
+async function projectMcpRegistration(projectRoot: string): Promise<McpRegistration> {
   const raw = await readFile(path.join(projectRoot, ".mcp.json"), "utf8").catch(() => undefined);
-  if (raw === undefined) return { status: "missing", remediation };
-  try {
-    const parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> };
-    const registered = Boolean(parsed.mcpServers && Object.prototype.hasOwnProperty.call(parsed.mcpServers, "speckiwi"));
-    return { status: registered ? "satisfied" : "missing", remediation };
-  } catch {
-    return { status: "not_checked", remediation };
+  if (raw === undefined) return "absent";
+  const parsed = parseJsonObject(raw);
+  if (parsed === undefined) return "unknown";
+  return hasSpeckiwiServer(parsed.mcpServers) ? "registered" : "absent";
+}
+
+/** Claude keeps user-scope servers in the top-level `mcpServers` of `.claude.json`; Codex in `config.toml`. */
+async function userScopeMcpRegistration(options: SkillInstallOptions): Promise<McpRegistration> {
+  const env = options.env ?? {};
+  const home = options.homeDir ?? env.HOME ?? env.USERPROFILE;
+  if (options.agent === "claude") {
+    const configDir = env.CLAUDE_CONFIG_DIR ? path.resolve(env.CLAUDE_CONFIG_DIR) : home;
+    if (!configDir) return "unknown";
+    const raw = await readFile(path.join(configDir, ".claude.json"), "utf8").catch(() => undefined);
+    if (raw === undefined) return "absent";
+    const parsed = parseJsonObject(raw);
+    if (parsed === undefined) return "unknown";
+    return hasSpeckiwiServer(parsed.mcpServers) ? "registered" : "absent";
   }
+  if (options.agent === "codex") {
+    const codexHome = env.CODEX_HOME ? path.resolve(env.CODEX_HOME) : home ? path.join(home, ".codex") : undefined;
+    if (!codexHome) return "unknown";
+    const raw = await readFile(path.join(codexHome, "config.toml"), "utf8").catch(() => undefined);
+    if (raw === undefined) return "absent";
+    // No TOML parser is bundled; `codex mcp add` writes the server as its own table, so its header is enough.
+    return /^[ \t]*\[[ \t]*mcp_servers\.(?:speckiwi|"speckiwi")[ \t]*\][ \t]*(?:#.*)?$/m.test(raw) ? "registered" : "absent";
+  }
+  return "absent";
+}
+
+function parseJsonObject(raw: string): { mcpServers?: unknown } | undefined {
+  try {
+    // An editor that saves with a byte order mark puts U+FEFF first, which JSON.parse refuses.
+    const parsed: unknown = JSON.parse(raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw);
+    return typeof parsed === "object" && parsed !== null ? (parsed as { mcpServers?: unknown }) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasSpeckiwiServer(servers: unknown): boolean {
+  return typeof servers === "object" && servers !== null && Object.prototype.hasOwnProperty.call(servers, "speckiwi");
 }

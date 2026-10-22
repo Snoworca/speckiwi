@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as FsPromises from "node:fs/promises";
 
 /**
  * @req FR-NODE-221 AC-6, FR-NODE-197 AC-7 — the release reads a sentinel once and acts on those bytes:
@@ -22,7 +23,7 @@ const faults = vi.hoisted(() => ({
 }));
 
 vi.mock("node:fs/promises", async (original) => {
-  const actual = await original<typeof import("node:fs/promises")>();
+  const actual = await original<typeof FsPromises>();
   const key = (target: unknown): string => path.resolve(String(target)).toLowerCase();
   return {
     ...actual,

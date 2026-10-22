@@ -14,6 +14,7 @@ import {
   runLockPath,
   type RunLock
 } from "../../../src/core/orchestrator/run-lock.js";
+import { TYPE_STRIPPING_ARGS } from "../../support/node-type-stripping.js";
 import { cleanupFixtures, commitAll, initRepo } from "./support/git-fixture.js";
 
 /**
@@ -124,7 +125,7 @@ async function cli(root: string, args: readonly string[]): Promise<Envelope> {
 /** Spawns the child, waits for it to report AND to exit, and returns what its acquisition named. */
 function acquireInDeadProcess(commonDir: string, owner: string): Promise<{ pid: number; holder: Record<string, unknown> | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [CHILD_SCRIPT, RUN_LOCK_MODULE, commonDir, owner], {
+    const child = spawn(process.execPath, [...TYPE_STRIPPING_ARGS, CHILD_SCRIPT, RUN_LOCK_MODULE, commonDir, owner], {
       cwd: REPO_ROOT,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"]

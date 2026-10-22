@@ -4,11 +4,12 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { initProject } from "../../../src/core/bootstrap/init-project.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
+import type * as ChildProcess from "node:child_process";
 
 const spawned = vi.hoisted(() => ({ calls: [] as string[] }));
 
 vi.mock("node:child_process", async (original) => {
-  const actual = await original<typeof import("node:child_process")>();
+  const actual = await original<typeof ChildProcess>();
   const record = <T extends (...args: never[]) => unknown>(name: string, fn: T): T =>
     Object.assign(((...args: Parameters<T>) => {
       spawned.calls.push(`${name} ${String(args[0])}`);

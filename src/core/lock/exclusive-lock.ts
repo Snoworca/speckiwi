@@ -262,6 +262,22 @@ async function readSentinel(lockPath: string): Promise<{ record: SentinelRecord 
   return { record, ageMs: Math.max(0, Date.now() - metadata.mtimeMs), raw };
 }
 
+/**
+ * The sentinel an acquisition refused by `EEXIST` goes on to judge, or null when its holder released
+ * it before the read. The acquisition answers null as held: the lock was held when the exclusive
+ * create was refused, and a waiting caller retries. Outside Windows the kernel fence is always
+ * granted, so contenders meet at the sentinel and a release lands between the two at once.
+ * @req REL-NODE-011
+ */
+async function readSentinelUnlessReleased(lockPath: string): Promise<Awaited<ReturnType<typeof readSentinel>> | null> {
+  try {
+    return await readSentinel(lockPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 async function removeOwnedSentinel(lockPath: string, token: string): Promise<void> {
   let current: unknown;
   try {
@@ -516,7 +532,8 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
         published = true;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        let observed = await readSentinel(lockPath);
+        let observed = await readSentinelUnlessReleased(lockPath);
+        if (observed === null) return { ok: false, reason: "held" };
         if (!isReclaimable(observed.record, observed.ageMs)) {
           return observed.record
             ? { ok: false, reason: "held", holder: holderFrom(observed.record) }
@@ -531,12 +548,13 @@ export async function acquireExclusiveLock(input: AcquireExclusiveLockInput): Pr
 
         // The sentinel may have changed before this contender won the recovery guard.
         // Re-read it under the guard and never quarantine a live successor.
-        observed = await readSentinel(lockPath);
-        if (!isReclaimable(observed.record, observed.ageMs)) {
-          const held: AcquireExclusiveLockResult = observed.record
+        observed = await readSentinelUnlessReleased(lockPath);
+        if (observed === null || !isReclaimable(observed.record, observed.ageMs)) {
+          const held: AcquireExclusiveLockResult = observed?.record
             ? { ok: false, reason: "held", holder: holderFrom(observed.record) }
             : { ok: false, reason: "held" };
-          // The answer is already decided and correct: a live successor holds the lock. Releasing
+          // The answer is already decided and correct: a live successor holds the lock, or the
+          // holder released it while this contender took the guard (REL-NODE-011). Releasing
           // our own recovery guard is housekeeping that happens AFTER that decision, so a fault in
           // it must not replace an accurate `held` — carrying the holder a caller needs in order to
           // report or wait on it — with an exception the caller cannot act on. The guard left

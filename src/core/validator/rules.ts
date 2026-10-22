@@ -733,7 +733,9 @@ export function registerDefaultRules(): void {
         const record = recordsById.get(id);
         if (!record) {
           diagnostics.push(diagnostic("SRS-W014", "warning", `Completed Work Log requirement does not exist: ${id}`, entryLocation));
-        } else if (record.status !== "implemented" && record.status !== "verified") {
+        } else if (record.status !== "implemented" && record.status !== "verified" && record.status !== "discarded") {
+          // @req FR-PARSE-041 — the log is append-only and no tool edits its rows, so a requirement
+          // discarded after it was logged would leave a warning with no remedy.
           diagnostics.push(diagnostic("SRS-W015", "warning", `Completed Work Log requirement is not completed: ${id}`, entryLocation));
         }
       }

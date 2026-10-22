@@ -3,11 +3,12 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createMcpServer } from "../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
+import type * as ChildProcess from "node:child_process";
 
 const childCalls = vi.hoisted(() => ({ calls: [] as Array<{ fn: string; file: string; shell: unknown }> }));
 
 vi.mock("node:child_process", async (original) => {
-  const actual = await original<typeof import("node:child_process")>();
+  const actual = await original<typeof ChildProcess>();
   const { promisify } = await import("node:util");
   const wrap = <T extends (...args: never[]) => unknown>(fn: string, real: T): T => {
     const wrapped = ((...args: unknown[]) => {

@@ -31,20 +31,29 @@ export interface Pause {
   nth?: number;
 }
 
+/** The fields of an `lstat` answer a rewrite may replace, as the bigint or number form it came in. */
+export type StatsOverride = Partial<Record<"dev" | "ino" | "mtimeMs" | "mtimeNs", bigint | number>>;
+
 interface State {
   faults: Fault[];
   pauses: Array<Pause & { seen: number }>;
   calls: Array<{ op: FaultOp; path: string; failed?: string }>;
   afterRename: Array<(source: string, destination: string) => Promise<void> | void>;
+  /**
+   * Rewrites what `lstat` reports for a path, so a test can make two different files look like one
+   * (a file system that hands a freed inode number to the next file). Each sees the real answer.
+   */
+  lstatRewrites: Array<(filePath: string, stats: Readonly<Record<string, unknown>>) => StatsOverride | undefined>;
 }
 
-export const fsFaults: State = { faults: [], pauses: [], calls: [], afterRename: [] };
+export const fsFaults: State = { faults: [], pauses: [], calls: [], afterRename: [], lstatRewrites: [] };
 
 export function resetFsFaults(): void {
   fsFaults.faults = [];
   fsFaults.pauses = [];
   fsFaults.calls = [];
   fsFaults.afterRename = [];
+  fsFaults.lstatRewrites = [];
 }
 
 /** A promise pair a test uses to hold one operation until it says go. */
@@ -109,7 +118,17 @@ export function wrapFsPromises(actual: typeof FsPromises): typeof FsPromises {
     link: (async (existing: Parameters<typeof actual.link>[0], newPath: Parameters<typeof actual.link>[1]) => {
       await gate("link", toPath(newPath));
       return actual.link(existing, newPath);
-    }) as typeof actual.link
+    }) as typeof actual.link,
+    lstat: (async (file: Parameters<typeof actual.lstat>[0], ...rest: unknown[]) => {
+      const stats = await (actual.lstat as (...args: unknown[]) => Promise<object>)(file, ...rest);
+      let answer = stats;
+      for (const rewrite of fsFaults.lstatRewrites) {
+        const override = rewrite(toPath(file), answer as Readonly<Record<string, unknown>>);
+        // Keep the prototype, so isSymbolicLink() and the rest still answer for the rewritten value.
+        if (override) answer = Object.assign(Object.create(Object.getPrototypeOf(answer) as object) as object, answer, override);
+      }
+      return answer;
+    }) as typeof actual.lstat
   };
 }
 

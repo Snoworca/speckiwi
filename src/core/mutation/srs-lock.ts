@@ -142,13 +142,18 @@ function parseJson(text: string): { value: unknown } | undefined {
 }
 
 /**
- * Which file on disk a state was read from: `dev` + `ino` of the stat taken when it was judged.
- * A rename keeps them, so the file a quarantine captured can be compared with the file that was judged
- * stale. (Review r1 H1: comparing bytes cannot tell an empty torn file from a fresh one not yet written.)
+ * Which file on disk a state was read from: `dev` + `ino` + `mtimeNs` of the stat taken when it was
+ * judged. A rename keeps all three, so the file a quarantine captured can be compared with the file
+ * that was judged stale. (Review r1 H1: comparing bytes cannot tell an empty torn file from a fresh
+ * one not yet written.) `ino` alone is not enough: Linux ext4 gives a new file the inode number just
+ * freed, so a successor created after the judgment can share `dev` + `ino`, and within one timestamp
+ * tick its mtime as well. That is why `isJudgedFile` adds what a successor cannot share: the 5 s age
+ * a torn file must have, and the bytes (a fresh request id) of a valid one.
  */
 interface FileIdentity {
   dev: bigint;
   ino: bigint;
+  mtimeNs: bigint;
 }
 
 /** What a lock or guard file holds, read once. */
@@ -182,7 +187,7 @@ async function readLockFileState(root: ProjectRoot, relativePath: string): Promi
     return { kind: "unreadable", error: (error as Error).message };
   }
   const parsed = parseJson(raw);
-  const id: FileIdentity = { dev: stats.dev, ino: stats.ino };
+  const id: FileIdentity = { dev: stats.dev, ino: stats.ino, mtimeNs: stats.mtimeNs };
   if (!parsed) return { kind: "torn", raw, ageMs: Date.now() - Number(stats.mtimeMs), id };
   if (!isLockMetadata(parsed.value)) {
     const version = (parsed.value as { schemaVersion?: unknown } | null)?.schemaVersion;
@@ -226,13 +231,19 @@ function blockingRefusal(state: LockFileState, relativePath: string, operation: 
 }
 
 /**
- * Whether the file a quarantine captured is the file that was judged. By `dev` + `ino` where the file
- * system reports an inode; where it reports none (0), by the bytes and, for a torn file, by the
- * captured file's own age, so a file younger than the grace is never taken for a torn one.
+ * Whether the file a quarantine captured is the file that was judged. By `dev` + `ino` + `mtimeNs`
+ * where the file system reports an inode; where it reports none (0), by the bytes and, for a torn
+ * file, by the captured file's own age, so a file younger than the grace is never taken for a torn
+ * one. A valid file is compared by its bytes as well: it is judged by its expiry rather than its age,
+ * so a short-TTL file and a successor written within one timestamp tick could share an mtime, never
+ * a request id. @req REL-NODE-010
  */
 async function isJudgedFile(quarantine: string, judged: Extract<LockFileState, { kind: "torn" | "valid" }>): Promise<boolean> {
   const stats = await retryBusy(() => lstat(quarantine, { bigint: true }));
-  if (judged.id.ino !== 0n && stats.ino !== 0n) return stats.dev === judged.id.dev && stats.ino === judged.id.ino;
+  if (judged.id.ino !== 0n && stats.ino !== 0n) {
+    if (stats.dev !== judged.id.dev || stats.ino !== judged.id.ino || stats.mtimeNs !== judged.id.mtimeNs) return false;
+    if (judged.kind === "torn") return true;
+  }
   const raw = await retryBusy(() => readFile(quarantine, "utf8"));
   if (raw !== judged.raw) return false;
   return judged.kind === "valid" || Date.now() - Number(stats.mtimeMs) > TORN_GRACE_MS;

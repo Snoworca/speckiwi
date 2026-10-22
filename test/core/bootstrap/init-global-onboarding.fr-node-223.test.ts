@@ -85,7 +85,7 @@ describe("FR-NODE-223 AC-1 — default options provision globally and write noth
     const { runner } = fakeRunner();
     const value = await runInit(s.root, defaults(s, runner));
     const claudeGlobal = path.join(s.home, ".claude", "skills", "kiwi-keep");
-    const codexGlobal = path.join(s.home, ".codex", "skills", "kiwi-keep");
+    const codexGlobal = path.join(s.home, ".agents", "skills", "kiwi-keep");
     expect(await exists(path.join(claudeGlobal, "SKILL.md"))).toBe(true);
     expect(await exists(path.join(codexGlobal, "SKILL.md"))).toBe(true);
     expect(value.created).toContain(claudeGlobal);
@@ -100,7 +100,7 @@ describe("FR-NODE-223 AC-1 — default options provision globally and write noth
     const s = await scenario(["claude"]);
     const { runner } = fakeRunner();
     const first = await runInit(s.root, defaults(s, runner));
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
     expect((first.warnings ?? []).some((w) => /codex/i.test(w) && /global/i.test(w))).toBe(true);
     const second = await runInit(s.root, defaults(s, runner));
     expect(second.skipped).toContain(path.join(s.home, ".claude", "skills", "kiwi-keep"));
@@ -190,7 +190,7 @@ describe("FR-NODE-223 AC-5 — project install is the 4.1.0 onboarding", () => {
     expect(value.created).toContain(path.join(s.root, ".agents", "skills", "kiwi-keep"));
     expect(value.created).toContain(path.join(s.root, ".mcp.json"));
     expect(await exists(path.join(s.home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
     expect(value.onboarding?.scope).toBe("project");
   });
 
@@ -201,7 +201,7 @@ describe("FR-NODE-223 AC-5 — project install is the 4.1.0 onboarding", () => {
     expect(calls).toEqual([]);
     expect(value.created).toContain(path.join(s.root, ".claude", "skills", "kiwi-keep"));
     expect(value.created).toContain(path.join(s.home, ".claude", "skills", "kiwi-keep"));
-    expect(value.created).toContain(path.join(s.home, ".codex", "skills", "kiwi-keep"));
+    expect(value.created).toContain(path.join(s.home, ".agents", "skills", "kiwi-keep"));
   });
 });
 
@@ -232,7 +232,7 @@ describe("FR-NODE-223 AC-7 — dry-run names the commands and runs none", () => 
     expect(value.onboarding?.agentCommands).toEqual([CLAUDE_GET, CLAUDE_ADD, CODEX_GET, CODEX_ADD]);
     expect(await readdir(s.root)).toEqual([".git"]);
     expect(await exists(path.join(s.home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(s.home, ".agents", "skills"))).toBe(false);
   });
 });
 

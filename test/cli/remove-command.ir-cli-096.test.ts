@@ -169,7 +169,7 @@ describe("IR-CLI-096 AC-4/AC-5 — -g selects the global scope instead of the pr
 
     expect(code, stdout).toBe(0);
     expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills", "kiwi-keep")), "only one agent's global skills were removed").toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills", "kiwi-keep")), "only one agent's global skills were removed").toBe(false);
     // If `-g` were additive, every assertion below would fail — which is the whole point of the flag
     // reading the other way on a destructive command.
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-keep")), "the project skills were removed too").toBe(true);

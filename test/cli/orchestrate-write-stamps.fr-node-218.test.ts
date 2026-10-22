@@ -192,7 +192,8 @@ describe("FR-NODE-218 AC-5 journal append refuses a line missing a field its sco
 
   it("FR-NODE-218 AC-5 names the scope in a grammatical message", async () => {
     const root = await tempRoot();
-    const { inputs_digest: _omitted, ...line } = INTENT;
+    const line: Partial<typeof INTENT> = { ...INTENT };
+    delete line.inputs_digest;
     const run = await append(root, line);
     expect(JSON.stringify(run.payload.violations)).toContain("an intent line needs inputs_digest");
   });

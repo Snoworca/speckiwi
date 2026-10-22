@@ -117,14 +117,17 @@ function buildVersionedHeadingPattern(headingPrefix: string): RegExp {
   const escaped = headingPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // `\r?` so a CRLF agent file — which this repository's own files are — is still recognised;
   // JS multiline `$` matches only before `\n`.
-  return new RegExp(`^${escaped}(?<version>[0-9]+(?:\\.[0-9]+)*)\\r?$`, "gm");
+  // @req FR-NODE-226 — the lookbehind admits a byte order mark at the line start without making it part
+  // of the match, so the block starts after the mark and a replacement can keep it.
+  return new RegExp(`(?:^|(?<=^\\uFEFF))${escaped}(?<version>[0-9]+(?:\\.[0-9]+)*)\\r?$`, "gm");
 }
 
 const VERSIONED_AGENT_HEADING_PATTERN = buildVersionedHeadingPattern(AGENT_INSTRUCTION_HEADING_PREFIX);
 // @req FR-NODE-086 — the Korean heading init injected up to v1.6, matched with the same marker-pair
 // discipline as the current one so a migration can never swallow consumer prose.
 const LEGACY_KOREAN_AGENT_HEADING_PATTERN = buildVersionedHeadingPattern(LEGACY_KOREAN_AGENT_HEADING_PREFIX);
-const LEGACY_AGENT_HEADING_PATTERN = /^# SpecKiwi SRS workflow$/m;
+// @req FR-NODE-226 AC-5 — the same byte-order-mark allowance as the versioned headings.
+const LEGACY_AGENT_HEADING_PATTERN = /(?:^|(?<=^\uFEFF))# SpecKiwi SRS workflow$/m;
 
 // FND-001 / FR-NODE-050 — scaffold docs/spec/steps/state.md at the reader SSOT
 // path with a parseable `Mode: wait` metadata block above an empty FR-PARSE-026
@@ -535,9 +538,11 @@ function appendAgentInstructionBlock(existing: string, snippet: string): string 
 }
 
 function replaceAgentInstructionBlock(existing: string, block: AgentInstructionBlock, snippet: string): string {
-  const before = existing.slice(0, block.start).trimEnd();
+  // @req FR-NODE-226 — `trimEnd` counts U+FEFF as whitespace, so the mark is set aside before trimming.
+  const bom = existing.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const before = existing.slice(bom.length, block.start).trimEnd();
   const after = existing.slice(block.end).trimStart();
-  return [before, snippet, after].filter(Boolean).join("\n\n") + "\n";
+  return bom + [before, snippet, after].filter(Boolean).join("\n\n") + "\n";
 }
 
 /**
@@ -868,4 +873,7 @@ function foldSkillResults(plan: SkillInstallPlan, output: InitProjectOutput, war
         break;
     }
   }
+  // @req FR-NODE-228 — the old copies a Codex global install took out of the deprecated root.
+  output.removed.push(...(plan.deprecatedRootCleanup?.removed ?? []));
+  warnings.push(...(plan.deprecatedRootCleanup?.warnings ?? []).map((warning) => `skills(${plan.agent}) global: ${warning}`));
 }

@@ -281,7 +281,10 @@ describe("FR-FLOW-136 AC-3 — an append-only JSONL ledger under kiwi/, pruned o
     ).toBe("dirty");
   });
 
-  it("keys a document by one spelling, so a Windows-style path does not open a second ledger", async () => {
+  // Windows only: `\` is a separator there, while on Linux `docs\guide.md` is a different, legal file
+  // name that this workspace does not hold. The case below proves the same one-key property on every
+  // platform from the reading side.
+  it.runIf(process.platform === "win32")("keys a document by one spelling, so a Windows-style path does not open a second ledger", async () => {
     // The skill runs on whatever separator the caller typed. Keyed verbatim, `docs\guide.md` and
     // `docs/guide.md` would be two disjoint documents and every section would read dirty forever —
     // fail-open, so silent: the ledger would simply never save anything and nothing would report it.
@@ -295,6 +298,20 @@ describe("FR-FLOW-136 AC-3 — an append-only JSONL ledger under kiwi/, pruned o
     expect(recorded.ok, recorded.error?.message ?? "").toBe(true);
     expect(verdictOf(await plan(root), INSTALL).classification).toBe("clean");
     expect(String((await ledgerLines(root))[0]!.doc)).toBe(DOC_PATH);
+  });
+
+  it("reads a ledger line spelled with Windows separators under the one key, on every platform", async () => {
+    // The ledger under kiwi/ travels with the checkout, so a line spelled `docs\guide.md` may be read
+    // on a platform where `\` is not a separator. Folded verbatim it would be a second document and
+    // the section would read dirty forever — the same silent fail-open as above.
+    const root = await workspace();
+    const recorded = await recordSectionVerified(root, { doc: DOC_PATH, key: INSTALL, verifier: "prickly-reviewer#1", round: 1 });
+    expect(recorded.ok, recorded.error?.message ?? "").toBe(true);
+    const ledger = path.join(root.root, VERIFICATION_LEDGER_PATH);
+    const respelled = (await readFile(ledger, "utf8")).replace(JSON.stringify(DOC_PATH), JSON.stringify(DOC_PATH.replace(/\//g, "\\")));
+    expect(respelled, "the planted line carries the Windows spelling").toContain(JSON.stringify("docs\\guide.md"));
+    await writeFile(ledger, respelled, "utf8");
+    expect(verdictOf(await plan(root), INSTALL).classification).toBe("clean");
   });
 
   it("refuses to record a section the document does not carry, so no hash is invented", async () => {

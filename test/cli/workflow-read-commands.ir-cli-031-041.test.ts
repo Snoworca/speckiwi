@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -34,6 +34,13 @@ describe("IR-CLI-031 AC-5 — CLI workflow reads cover a target mismatch", () =>
   it("IR-CLI-031 AC-5: a target selector prefers the matching artifact and scores the mismatching one below it", async () => {
     const fixture = await createWorkflowFixture();
     const otherPath = await writeSdsForTarget(fixture.root, "other-target", "v2.0.0");
+    // Distinct mtimes, written rather than left to the clock: the fixture writes its SDS files within
+    // one timestamp tick on a coarse-clock file system (ext4 on Linux), and an exact tie in score and
+    // mtime is ambiguous by design (SRS-E051), so `selected` would be null for a reason this case
+    // does not test. The mismatching SDS stays the newest, so recency alone would still pick it.
+    const now = Date.now() / 1000;
+    await utimes(path.join(fixture.root, fixture.freshSdsPath), now + 30, now + 30);
+    await utimes(path.join(fixture.root, otherPath), now + 60, now + 60);
 
     const forOther = await runCli(fixture.root, ["workflow", "latest", "--kind", "sds", "--target", "v2.0.0"]);
     expect(forOther.code).toBe(0);

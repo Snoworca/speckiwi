@@ -4,7 +4,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
-import { findSpecByCliName } from "../../src/mcp/schemas.js";
+import { findSpecByCliName, renderToolSchemas } from "../../src/mcp/schemas.js";
 
 // @req IR-CLI-106 — `--project-install` on init and upgrade selects the 4.1.0 project-scope onboarding;
 // without it both commands onboard globally. These run the real CLI, so the agent CLIs they reach are
@@ -202,14 +202,21 @@ describe("IR-CLI-106 AC-4 — --no-skills and --no-mcp still skip their step in 
   }, 120000);
 });
 
-describe("IR-CLI-106 AC-5 — the registry declares the flag", () => {
-  it.each([["init"], ["upgrade"]])("IR-CLI-106 AC-5: the `%s` registry entry and the commands catalogue carry --project-install", async (name) => {
-    expect(findSpecByCliName(name)!.options.map((option) => option.flag)).toContain("--project-install");
+describe("IR-CLI-106 AC-5 — the registry declares the flag on upgrade only", () => {
+  it("IR-CLI-106 AC-5: the `upgrade` registry entry and the commands catalogue carry --project-install", async () => {
+    expect(findSpecByCliName("upgrade")!.options.map((option) => option.flag)).toContain("--project-install");
     const { code, stdout } = await run(["--root", await emptyRepo(), "commands", "--json"]);
     expect(code).toBe(0);
-    const entry = (JSON.parse(stdout) as { commands: Array<{ name: string; options: Array<{ flag: string }> }> }).commands.find((candidate) => candidate.name === name);
+    const entry = (JSON.parse(stdout) as { commands: Array<{ name: string; options: Array<{ flag: string }> }> }).commands.find((candidate) => candidate.name === "upgrade");
     expect(entry?.options.map((option) => option.flag)).toContain("--project-install");
   }, 60000);
+
+  it("IR-CLI-106 AC-5: the `init` registry entry and the MCP init_project input schema do not carry it", () => {
+    expect(findSpecByCliName("init")!.options.map((option) => option.flag)).not.toContain("--project-install");
+    expect(Object.keys(renderToolSchemas().init_project ?? {})).not.toContain("projectInstall");
+    // The schema is read, not absent: the flags init_project does take are still there.
+    expect(Object.keys(renderToolSchemas().init_project ?? {})).toContain("force");
+  });
 });
 
 describe("IR-CLI-106 AC-6 — exit codes are unchanged", () => {

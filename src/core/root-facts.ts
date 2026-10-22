@@ -34,14 +34,15 @@ export interface GitAnswer {
 
 /**
  * Runs one git command in `root`. A non-zero exit is an answer, not a failure — `merge-base
- * --is-ancestor` reports its verdict that way — so nothing here throws.
+ * --is-ancestor` reports its verdict that way — so nothing here throws. `env` replaces the inherited
+ * environment for this one call; callers that pass none get the process environment, as always.
  */
-export function git(root: string, args: readonly string[]): Promise<GitAnswer> {
+export function git(root: string, args: readonly string[], env?: NodeJS.ProcessEnv): Promise<GitAnswer> {
   return new Promise((resolve) => {
     execFile(
       "git",
       ["-C", root, ...args],
-      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS },
+      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, ...(env ? { env } : {}) },
       (error, stdout, stderr) => {
         const code = error === null ? 0 : typeof error.code === "number" ? error.code : null;
         resolve({ code, stdout, stderr });
@@ -51,12 +52,26 @@ export function git(root: string, args: readonly string[]): Promise<GitAnswer> {
 }
 
 /**
+ * The variables by which an environment points git at a repository other than the one `-C` finds.
+ * Git exports GIT_DIR while running hooks, and these outrank discovery. @req FR-NODE-227
+ */
+const REPOSITORY_LOCATING_VARIABLES = ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"] as const;
+
+function environmentWithoutRepositoryLocation(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const name of REPOSITORY_LOCATING_VARIABLES) delete env[name];
+  return env;
+}
+
+/**
  * The files git tracks at or under `paths` (absolute, inside `root`), relative to `root`. Empty when
  * `root` is in no repository, since nothing is tracked there. @req FR-NODE-224 AC-5
+ *
+ * @req FR-NODE-227 — the question is about `root`'s repository, so an inherited GIT_DIR must not answer it.
  */
 export async function gitTrackedPaths(root: string, paths: readonly string[]): Promise<string[]> {
   if (paths.length === 0) return [];
-  const answer = await git(root, ["ls-files", "-z", "--", ...paths.map((entry) => path.relative(root, entry))]);
+  const answer = await git(root, ["ls-files", "-z", "--", ...paths.map((entry) => path.relative(root, entry))], environmentWithoutRepositoryLocation());
   if (answer.code !== 0) return [];
   return answer.stdout.split("\0").filter((entry) => entry.length > 0);
 }

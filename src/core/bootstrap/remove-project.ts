@@ -1,10 +1,12 @@
-import { lstat, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { lstat, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isSameDirectory } from "../fs/canonical-path.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationFail, mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import {
   removeManagedKiwiSkills,
+  resolveDeprecatedCodexSkillsRoot,
   resolveSkillDestinationRoot,
   resolveSkillSourceRoot,
   type ManagedSkillRemovalResult,
@@ -23,6 +25,7 @@ import {
   renderCodexHooks,
   renderGitPreCommitHook,
   resolveGlobalSkillContext,
+  type GlobalSkillContext,
   type AgentFileMode
 } from "./init-project.js";
 
@@ -197,37 +200,11 @@ export async function findGlobalDestinationCollision(
       homeDir: context.homeDir,
       ...(context.codexHome ? { env: { CODEX_HOME: context.codexHome } } : {})
     });
-    if ((await canonicalPath(projectDestination)) === (await canonicalPath(globalDestination))) {
+    if (await isSameDirectory(projectDestination, globalDestination)) {
       return { agent, destination: globalDestination };
     }
   }
   return undefined;
-}
-
-/**
- * A path reduced to the form two spellings of the same location share.
- *
- * `path.resolve` alone is not enough here, and the asymmetry is silent: the project root arrives
- * already realpath'd (`resolveProjectRoot` calls it), while the home directory does not — it is the
- * raw `HOME`/`USERPROFILE`/seam value. A home reached through a junction, a symlink, or a redirected
- * folder therefore produces two different strings for one directory, the equality below never holds,
- * and the guard waves through exactly the run it exists to stop. Measured on a junction fixture: the
- * managed global skills were deleted by a project-scope call.
- *
- * A destination that does not exist yet cannot be realpath'd, so this resolves the nearest ancestor
- * that does and reattaches the rest — the links are always in the ancestors.
- */
-async function canonicalPath(target: string): Promise<string> {
-  let current = path.resolve(target);
-  const trailing: string[] = [];
-  for (;;) {
-    const resolved = await realpath(current).catch(() => undefined);
-    if (resolved !== undefined) return path.join(resolved, ...trailing.reverse());
-    const parent = path.dirname(current);
-    if (parent === current) return path.resolve(target);
-    trailing.push(path.basename(current));
-    current = parent;
-  }
 }
 
 async function removeProjectSkills(rootPath: string, input: RemoveProjectInput, apply: boolean, state: RemoveProjectOutput): Promise<void> {
@@ -271,20 +248,37 @@ async function removeGlobalSkills(rootPath: string, input: RemoveProjectInput, a
     return;
   }
   for (const agent of SKILL_PROVISION_AGENTS) {
-    if (!(await isAgentHomePresent(agent, context))) {
-      state.warnings.push(`skills(${agent}) global: ${agent} home directory not found — skipped`);
-      continue;
+    const { roots, homePresent } = await globalSkillRoots(rootPath, agent, context);
+    if (!homePresent) state.warnings.push(`skills(${agent}) global: ${agent} home directory not found — only ${roots[0]} was checked`);
+    const sourceRoot = await bundledSourceRoot(rootPath, agent, input);
+    for (const destinationRoot of roots) {
+      await removeSkillsAt(destinationRoot, agent, apply, state, sourceRoot);
     }
-    const destinationRoot = await resolveSkillDestinationRoot({
-      projectRoot: { root: rootPath },
-      agent,
-      selector: "all",
-      scope: "global",
-      homeDir: context.homeDir,
-      ...(context.codexHome ? { env: { CODEX_HOME: context.codexHome } } : {})
-    });
-    await removeSkillsAt(destinationRoot, agent, apply, state, await bundledSourceRoot(rootPath, agent, input));
   }
+}
+
+/**
+ * Every global directory an agent loads SpecKiwi's skills from: the install destination, and for Codex
+ * the deprecated `${CODEX_HOME:-~/.codex}/skills` it still reads (FR-NODE-228). Both come from the
+ * installer, so this module resolves neither itself (FR-NODE-192 AC-9).
+ *
+ * @req FR-NODE-228 AC-6 — the destination is visited even when the agent's home is absent: Codex's
+ * `<home>/.agents/skills` lies outside the Codex home, so uninstalling Codex leaves its copies there,
+ * while Claude's destination lies inside its own home and an absent home holds nothing. Only the
+ * deprecated root lives in the Codex home, so only it waits on that home.
+ */
+async function globalSkillRoots(rootPath: string, agent: SkillAgent, context: GlobalSkillContext): Promise<{ roots: string[]; homePresent: boolean }> {
+  const options = {
+    projectRoot: { root: rootPath },
+    agent,
+    selector: "all",
+    scope: "global" as const,
+    homeDir: context.homeDir,
+    ...(context.codexHome ? { env: { CODEX_HOME: context.codexHome } } : {})
+  };
+  const homePresent = await isAgentHomePresent(agent, context);
+  const deprecated = homePresent ? await resolveDeprecatedCodexSkillsRoot(options) : undefined;
+  return { roots: [await resolveSkillDestinationRoot(options), ...(deprecated === undefined ? [] : [deprecated])], homePresent };
 }
 
 /**
@@ -316,20 +310,13 @@ async function reportGlobalLeftovers(rootPath: string, input: RemoveProjectInput
   const context = resolveGlobalSkillContext(input);
   if (!context.homeDir) return;
   for (const agent of SKILL_PROVISION_AGENTS) {
-    if (!(await isAgentHomePresent(agent, context))) continue;
-    const destinationRoot = await resolveSkillDestinationRoot({
-      projectRoot: { root: rootPath },
-      agent,
-      selector: "all",
-      scope: "global",
-      homeDir: context.homeDir,
-      ...(context.codexHome ? { env: { CODEX_HOME: context.codexHome } } : {})
-    });
-    const probe = await removeManagedKiwiSkills({ destinationRoot, agent, keepNames: [], dryRun: true });
-    if (probe.removed.length === 0) continue;
-    state.notes.push(
-      `${probe.removed.length} managed kiwi skill(s) remain at ${destinationRoot} — this run removed only this project's. Run \`speckiwi remove --global --apply\` to remove those.`
-    );
+    for (const destinationRoot of (await globalSkillRoots(rootPath, agent, context)).roots) {
+      const probe = await removeManagedKiwiSkills({ destinationRoot, agent, keepNames: [], dryRun: true });
+      if (probe.removed.length === 0) continue;
+      state.notes.push(
+        `${probe.removed.length} managed kiwi skill(s) remain at ${destinationRoot} — this run removed only this project's. Run \`speckiwi remove --global --apply\` to remove those.`
+      );
+    }
   }
 }
 
@@ -558,7 +545,12 @@ async function removeAgentInstructionBlocks(rootPath: string, apply: boolean, st
         });
         break;
       }
-      existing = `${existing.slice(0, block.start).trimEnd()}\n${existing.slice(block.end).trimStart()}`;
+      // @req FR-NODE-226 AC-4 — `trimEnd` counts U+FEFF as whitespace, so the mark is set aside first, and
+      // a block with nothing before it leaves no blank first line.
+      const bom: string = existing.startsWith("\uFEFF") ? "\uFEFF" : "";
+      const before = existing.slice(bom.length, block.start).trimEnd();
+      const after = existing.slice(block.end).trimStart();
+      existing = bom + (before ? `${before}\n${after}` : after);
       removedAny = true;
     }
     if (!removedAny) continue;

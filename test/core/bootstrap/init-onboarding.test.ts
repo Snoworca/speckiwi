@@ -103,7 +103,7 @@ describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-keep"))).toBe(true);
     expect(await exists(path.join(root, ".agents", "skills", "kiwi-keep"))).toBe(true);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
-    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".agents", "skills"))).toBe(false);
     await runInit(root, { projectInstall: true, installSkills: true, installSkillsGlobal: true, ...seam });
     expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep"))).toBe(true);
   });
@@ -117,7 +117,7 @@ describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
     await mkdir(path.join(home, ".codex"));
     await runInit(root, { installSkills: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base });
     expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep"))).toBe(true);
-    expect(await exists(path.join(home, ".codex", "skills", "kiwi-keep"))).toBe(true);
+    expect(await exists(path.join(home, ".agents", "skills", "kiwi-keep"))).toBe(true);
     expect(await exists(path.join(root, ".claude", "skills"))).toBe(false);
     expect(await exists(path.join(root, ".agents", "skills"))).toBe(false);
   });

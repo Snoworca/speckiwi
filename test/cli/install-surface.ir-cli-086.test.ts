@@ -43,17 +43,18 @@ async function writeSourceSkill(root: string, variant: string, name: string): Pr
 }
 
 describe("IR-CLI-086 — the install surface agrees with the run", () => {
-  it("AC-1: the service honours CODEX_HOME for a global codex install", async () => {
+  it("IR-CLI-086 AC-1: a global codex install lands in <home>/.agents/skills, which CODEX_HOME does not move", async () => {
+    // FR-NODE-228 — `${CODEX_HOME:-~/.codex}/skills` is Codex's deprecated root; the one it reads is `~/.agents/skills`.
     const root = await tempRoot();
     const codexHome = path.join(root, "codex-home");
     await writeSourceSkill(root, "codex", "kiwi-pm");
 
-    const planned = await planSkillInstall(
-      options(root, { agent: "codex", scope: "global", dryRun: true, env: { CODEX_HOME: codexHome } })
-    );
-    expect(planned.ok, planned.ok ? "" : planned.error.message).toBe(true);
-    if (!planned.ok) return;
-    expect(planned.value.destinationRoot, "the global install ignored CODEX_HOME").toBe(path.join(codexHome, "skills"));
+    for (const env of [{ CODEX_HOME: codexHome }, {}]) {
+      const planned = await planSkillInstall(options(root, { agent: "codex", scope: "global", dryRun: true, env }));
+      expect(planned.ok, planned.ok ? "" : planned.error.message).toBe(true);
+      if (!planned.ok) return;
+      expect(planned.value.destinationRoot).toBe(path.join(root, "home", ".agents", "skills"));
+    }
   });
 
   it("AC-1: the install CLI hands the service its environment", async () => {

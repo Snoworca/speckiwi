@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -115,6 +115,29 @@ describe("FR-NODE-224 AC-1 — an agent whose global pass completed loses its pr
     expect(await exists(path.join(s.claudeCopy, "SKILL.md"))).toBe(true);
     expect(value.removed.filter((entry) => entry.includes("skills"))).toEqual([]);
     expect(value.warnings.some((w) => /global skill directory/i.test(w))).toBe(true);
+  });
+
+  it("FR-NODE-228 AC-7: a project whose .agents is the home's .agents keeps its Codex copies, which are the global ones", async (ctx) => {
+    // Only the Codex destination is shared — `<root>/.agents` links to `<home>/.agents` and `.claude` does
+    // not — so this passes only if the guard compares the Codex destinations themselves.
+    const home = await mkdtemp(path.join(tmpdir(), "speckiwi-upg-mig-cxhome-"));
+    for (const dir of [".agents", ".claude", ".codex"]) await mkdir(path.join(home, dir), { recursive: true });
+    const root = await mkdtemp(path.join(tmpdir(), "speckiwi-upg-mig-cxroot-"));
+    await mkdir(path.join(root, ".git"));
+    const linked = await symlink(path.join(home, ".agents"), path.join(root, ".agents"), process.platform === "win32" ? "junction" : "dir").then(() => true, () => false);
+    if (!linked) ctx.skip();
+    const base = await mkdtemp(path.join(tmpdir(), "speckiwi-upg-mig-cxsrc-"));
+    await writeFixtureSkill(base, "claude", "kiwi-keep");
+    await writeFixtureSkill(base, "codex", "kiwi-keep");
+    const seeded = await initProject(await resolveProjectRoot(root), { projectInstall: true, installSkills: true, registerMcp: true, skillSourceBaseDir: base });
+    expect(seeded.ok).toBe(true);
+    const codexCopy = path.join(root, ".agents", "skills", "kiwi-keep");
+
+    const value = await runUpgrade(root, seam({ base, home }, fakeRunner().runner));
+
+    expect(await exists(path.join(codexCopy, "SKILL.md"))).toBe(true);
+    expect(value.removed).not.toContain(codexCopy);
+    expect(value.warnings.some((w) => /codex/.test(w) && /global skill directory/i.test(w))).toBe(true);
   });
 });
 
