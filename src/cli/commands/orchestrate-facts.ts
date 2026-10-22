@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -10,39 +9,12 @@ import { routeLockDigest, type RouteLock } from "../../core/orchestrator/route-l
 import { declarationEntryDigest, parseWaveDeclaration } from "../../core/orchestrator/wave-declaration.js";
 import type { WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { computeRunProgress } from "../../core/orchestrator/waves-validate.js";
+import { git } from "../../core/root-facts.js";
 
 // @req FR-NODE-216 AC-6, FR-NODE-217 AC-2 — the git facts the orchestrate verbs collect themselves.
 //
 // Collection lives here, in the CLI layer; the kernels under `src/core/orchestrator/` take what this
 // reads as values and stay pure (FR-NODE-150).
-
-/** How long one git call is given before it is abandoned. */
-const GIT_TIMEOUT_MS = 10_000;
-
-interface GitAnswer {
-  /** The exit status; `null` when git could not be started or was killed. */
-  readonly code: number | null;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
-/**
- * Runs one git command in `root`. A non-zero exit is an answer, not a failure — `merge-base
- * --is-ancestor` reports its verdict that way — so nothing here throws.
- */
-export function git(root: string, args: readonly string[]): Promise<GitAnswer> {
-  return new Promise((resolve) => {
-    execFile(
-      "git",
-      ["-C", root, ...args],
-      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS },
-      (error, stdout, stderr) => {
-        const code = error === null ? 0 : typeof error.code === "number" ? error.code : null;
-        resolve({ code, stdout, stderr });
-      }
-    );
-  });
-}
 
 /**
  * The paths tracked at HEAD, which is the dispatch base at scheduling time. `null` when git cannot

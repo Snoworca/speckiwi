@@ -1,4 +1,4 @@
-import { lstat, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationFail, mutationOk } from "../mutation/guards.js";
@@ -7,6 +7,7 @@ import {
   removeManagedKiwiSkills,
   resolveSkillDestinationRoot,
   resolveSkillSourceRoot,
+  type ManagedSkillRemovalResult,
   type SkillKeepReason
 } from "../skills/install-skill.js";
 import type { SkillAgent } from "../skills/types.js";
@@ -180,9 +181,9 @@ async function removeUnlocked(root: ProjectRoot, input: RemoveProjectInput, appl
  * installer answers it — a second opinion about where a global install lands is how IR-CLI-086's three
  * entry points came to disagree.
  */
-async function findGlobalDestinationCollision(
+export async function findGlobalDestinationCollision(
   rootPath: string,
-  input: RemoveProjectInput
+  input: Pick<RemoveProjectInput, "globalHomeDir" | "globalCodexHome">
 ): Promise<{ agent: SkillAgent; destination: string } | undefined> {
   const context = resolveGlobalSkillContext(input);
   if (!context.homeDir) return undefined;
@@ -231,9 +232,36 @@ async function canonicalPath(target: string): Promise<string> {
 
 async function removeProjectSkills(rootPath: string, input: RemoveProjectInput, apply: boolean, state: RemoveProjectOutput): Promise<void> {
   for (const agent of SKILL_PROVISION_AGENTS) {
-    const destinationRoot = await resolveSkillDestinationRoot({ projectRoot: { root: rootPath }, agent, selector: "all", scope: "project" });
-    await removeSkillsAt(destinationRoot, agent, apply, state, await bundledSourceRoot(rootPath, agent, input));
+    const outcome = await removeProjectSkillCopies(rootPath, agent, input, apply);
+    state.removed.push(...outcome.removed);
+    state.kept.push(...outcome.kept);
   }
+}
+
+/**
+ * One agent's project `kiwi-*` copies, removed under the same proof as every other removal here.
+ *
+ * @req FR-NODE-224 AC-1 — exported so upgrade's migration off project copies deletes by this verdict
+ * and not by a second one. The caller owns the FR-NODE-192 guard ({@link findGlobalDestinationCollision}).
+ * `onlyNames` narrows the candidates to the skills a global copy now replaces; every other name is
+ * passed to the verdict as one to keep, so the proof itself is unchanged.
+ */
+export async function removeProjectSkillCopies(
+  rootPath: string,
+  agent: SkillAgent,
+  input: Pick<RemoveProjectInput, "skillSourceBaseDir">,
+  apply: boolean,
+  onlyNames?: readonly string[]
+): Promise<ManagedSkillRemovalResult> {
+  const destinationRoot = await resolveSkillDestinationRoot({ projectRoot: { root: rootPath }, agent, selector: "all", scope: "project" });
+  let keepNames: string[] = [];
+  if (onlyNames !== undefined) {
+    // Unreadable means nothing is narrowed to, so nothing is removed: an empty keep set would remove all.
+    const present = await readdir(destinationRoot).catch(() => undefined);
+    if (present === undefined) return { removed: [], kept: [], warnings: [] };
+    keepNames = present.filter((name) => !onlyNames.includes(name));
+  }
+  return removeManagedAt(destinationRoot, agent, apply, await bundledSourceRoot(rootPath, agent, input), keepNames);
 }
 
 async function removeGlobalSkills(rootPath: string, input: RemoveProjectInput, apply: boolean, state: RemoveProjectOutput): Promise<void> {
@@ -266,7 +294,7 @@ async function removeGlobalSkills(rootPath: string, input: RemoveProjectInput, a
  * without its skills still removes everything else, which is why this degrades to undefined rather
  * than failing the run.
  */
-async function bundledSourceRoot(rootPath: string, agent: SkillAgent, input: RemoveProjectInput): Promise<string | undefined> {
+async function bundledSourceRoot(rootPath: string, agent: SkillAgent, input: Pick<RemoveProjectInput, "skillSourceBaseDir">): Promise<string | undefined> {
   return resolveSkillSourceRoot({
     projectRoot: { root: rootPath },
     agent,
@@ -312,18 +340,28 @@ async function removeSkillsAt(
   state: RemoveProjectOutput,
   sourceRoot: string | undefined
 ): Promise<void> {
-  // An empty keep set: every managed mirror is a candidate. Everything else about the verdict — the
+  const outcome = await removeManagedAt(destinationRoot, agent, apply, sourceRoot);
+  state.removed.push(...outcome.removed);
+  state.kept.push(...outcome.kept);
+}
+
+function removeManagedAt(
+  destinationRoot: string,
+  agent: SkillAgent,
+  apply: boolean,
+  sourceRoot: string | undefined,
+  keepNames: string[] = []
+): Promise<ManagedSkillRemovalResult> {
+  // `remove` passes an empty keep set: every managed mirror is a candidate. Everything else about the verdict — the
   // metadata, the identity fields, the checksum, the symlink refusal — is the installer's, unchanged.
-  const outcome = await removeManagedKiwiSkills({
+  return removeManagedKiwiSkills({
     destinationRoot,
     agent,
-    keepNames: [],
+    keepNames,
     dryRun: !apply,
     reconcileSharedMirror: true,
     ...(sourceRoot ? { sourceRoot } : {})
   });
-  state.removed.push(...outcome.removed);
-  state.kept.push(...outcome.kept);
 }
 
 async function removeMcpRegistration(rootPath: string, apply: boolean, state: RemoveProjectOutput): Promise<void> {

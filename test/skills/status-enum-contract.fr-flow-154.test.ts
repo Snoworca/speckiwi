@@ -1585,10 +1585,10 @@ function packagedDocumentSites(): string[] {
 }
 
 /** How many sites the shipped documents carry, measured. An emptied block cannot read as clean. */
-const PACKAGED_DOCUMENT_SITE_FLOOR = 143;
+const PACKAGED_DOCUMENT_SITE_FLOOR = 138;
 
 /** How many lines of the SRS rules document name a lifecycle value, measured. */
-const PACKAGED_RULES_LINE_FLOOR = 101;
+const PACKAGED_RULES_LINE_FLOOR = 95;
 
 // ---------------------------------------------------------------------------------------------
 // The FOURTH copy — the contract as it lives in this package's own code.

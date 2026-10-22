@@ -19,10 +19,9 @@ function item(snippet: string, number: number): string {
   return line ?? "";
 }
 
-describe("FR-NODE-219 — agent instruction snippet 1.10", () => {
-  it("FR-NODE-219 AC-1: the heading carries version 1.10", () => {
-    expect(AGENT_INSTRUCTION_VERSION).toBe("1.10");
-    expect(renderAgentInstructionSnippet().startsWith(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.10\n`)).toBe(true);
+describe("FR-NODE-219 — agent instruction snippet, raised from 1.9", () => {
+  it("FR-NODE-219 AC-1: the heading carries the current AGENT_INSTRUCTION_VERSION", () => {
+    expect(renderAgentInstructionSnippet().startsWith(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}\n`)).toBe(true);
   });
 
   it("FR-NODE-219 AC-2: the tdd cycle item records acceptance lines in intent.md and writes the step SDS only on request", () => {
@@ -54,7 +53,7 @@ describe("FR-NODE-219 — agent instruction snippet 1.10", () => {
     expect(coverage).toMatch(/satisfied for step-scoped work by the step's acceptance lines plus the mandatory post-hoc promotion/);
   });
 
-  describe("FR-NODE-219 AC-5: re-init replaces a 1.9 block with exactly one 1.10 block", () => {
+  describe("FR-NODE-219 AC-1/AC-5: re-init replaces a 1.9 block with exactly one current block", () => {
     let root: string;
 
     beforeEach(async () => {
@@ -74,7 +73,7 @@ describe("FR-NODE-219 — agent instruction snippet 1.10", () => {
 
       const claude = await readFile(path.join(root, "CLAUDE.md"), "utf8");
       expect(claude.split(AGENT_INSTRUCTION_HEADING_PREFIX).length - 1).toBe(1);
-      expect(claude).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.10\n`);
+      expect(claude).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}\n`);
       expect(claude).not.toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.9\n`);
     });
   });

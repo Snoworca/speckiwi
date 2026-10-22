@@ -46,7 +46,23 @@ async function withHome<T>(home: string, fn: () => Promise<T>): Promise<T> {
 }
 
 describe("speckiwi init --global CLI (IR-CLI-075)", () => {
-  it("AC-1: init --global plans global skills for each present agent (claude + codex)", async () => {
+  it("IR-CLI-075 AC-1: init --project-install --global plans the project skills and global skills for each present agent (claude + codex)", async () => {
+    const root = await emptyRepo();
+    const home = await tempHome();
+    await mkdir(path.join(home, ".claude"));
+    await mkdir(path.join(home, ".codex"));
+    const streams = io();
+    const code = await withHome(home, () => main(["--root", root, "init", "--project-install", "--global", "--no-mcp", "--dry-run", "--json"], streams));
+    expect(code).toBe(0);
+    const parsed = readJson(streams.stdout);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".claude", "skills")))).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".agents", "skills")))).toBe(true);
+  }, 60000);
+
+  it("IR-CLI-075 AC-1: init --global without --project-install is the default global onboarding", async () => {
     const root = await emptyRepo();
     const home = await tempHome();
     await mkdir(path.join(home, ".claude"));
@@ -55,30 +71,30 @@ describe("speckiwi init --global CLI (IR-CLI-075)", () => {
     const code = await withHome(home, () => main(["--root", root, "init", "--global", "--no-mcp", "--dry-run", "--json"], streams));
     expect(code).toBe(0);
     const parsed = readJson(streams.stdout);
-    expect(parsed.ok).toBe(true);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
-    expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".claude", "skills")))).toBe(false);
+    expect(parsed.value.created.some((p) => p.startsWith(path.join(root, ".agents", "skills")))).toBe(false);
   }, 60000);
 
-  it("AC-1b: -g short alias is accepted", async () => {
+  it("IR-CLI-075 AC-1: the -g short alias is accepted with --project-install", async () => {
     const root = await emptyRepo();
     const home = await tempHome();
     await mkdir(path.join(home, ".claude"));
     await mkdir(path.join(home, ".codex"));
     const streams = io();
-    const code = await withHome(home, () => main(["--root", root, "init", "-g", "--no-mcp", "--dry-run", "--json"], streams));
+    const code = await withHome(home, () => main(["--root", root, "init", "--project-install", "-g", "--no-mcp", "--dry-run", "--json"], streams));
     expect(code).toBe(0);
     const parsed = readJson(streams.stdout);
     expect(parsed.value.created.some((p) => p.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
   }, 60000);
 
-  it("AC-2: without --global, no global skills directory is planned or touched", async () => {
+  it("IR-CLI-075 AC-2: --project-install without --global plans only project skills and plans or touches no global skills directory", async () => {
     const root = await emptyRepo();
     const home = await tempHome();
     await mkdir(path.join(home, ".claude"));
     await mkdir(path.join(home, ".codex"));
     const streams = io();
-    const code = await withHome(home, () => main(["--root", root, "init", "--no-mcp", "--dry-run", "--json"], streams));
+    const code = await withHome(home, () => main(["--root", root, "init", "--project-install", "--no-mcp", "--dry-run", "--json"], streams));
     expect(code).toBe(0);
     const parsed = readJson(streams.stdout);
     // project skills still planned...

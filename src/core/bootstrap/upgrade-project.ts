@@ -3,7 +3,10 @@ import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
-import { initProject, type InitProjectOutput } from "./init-project.js";
+import { initProject, type InitOnboardingReport, type InitProjectOutput } from "./init-project.js";
+import { unregisterSpeckiwiMcp, type AgentCliRunner } from "./mcp-registration.js";
+import { findGlobalDestinationCollision, removeProjectSkillCopies } from "./remove-project.js";
+import { gitTrackedPaths } from "../root-facts.js";
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
 import { BUNDLED_SDS_RULES_FILENAME, BUNDLED_SRS_RULES_FILENAME, renderIndexRulesRow } from "./templates.js";
 import { bundledVersionFor, rewriteRulesReferences, scanRulesReferences } from "./rules-references.js";
@@ -54,9 +57,14 @@ export interface UpgradeProjectInput {
    * reported as success.
    */
   installSkillsGlobal?: boolean;
+  /** @req FR-NODE-224 AC-6 — handed to init: the 4.1.0 project-scope refresh, and no migration off it. */
+  projectInstall?: boolean;
+  /** Handed to init, the only way either command reaches an agent CLI (FR-NODE-223 AC-8). */
+  agentCli?: AgentCliRunner;
   /** Test/DI seams, passed straight through to init so a global run can be made hermetic. */
   globalHomeDir?: string;
   globalCodexHome?: string;
+  globalClaudeConfigDir?: string;
   skillSourceBaseDir?: string;
 }
 
@@ -82,6 +90,11 @@ export interface UpgradeProjectOutput {
   /** Hook state before the refresh: a `pre-existing` file is one init leaves alone. */
   hooks: Array<{ filePath: string; state: "pre-existing" | "absent" }>;
   boundaries: readonly string[];
+  /**
+   * What the migration off project copies removed (FR-NODE-224), or under a plan would remove. Init's
+   * own orphan prune stays in `init.removed`.
+   */
+  removed: string[];
   /** This command's own warnings; init's are in `init.warnings`. */
   warnings: string[];
 }
@@ -116,8 +129,11 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
     // Spread rather than passed as `false`, so a run without the flag hands init exactly the input it
     // received before this option existed.
     ...(input.installSkillsGlobal ? { installSkillsGlobal: true } : {}),
+    ...(input.projectInstall ? { projectInstall: true } : {}),
+    ...(input.agentCli ? { agentCli: input.agentCli } : {}),
     ...(input.globalHomeDir ? { globalHomeDir: input.globalHomeDir } : {}),
     ...(input.globalCodexHome ? { globalCodexHome: input.globalCodexHome } : {}),
+    ...(input.globalClaudeConfigDir ? { globalClaudeConfigDir: input.globalClaudeConfigDir } : {}),
     ...(input.skillSourceBaseDir ? { skillSourceBaseDir: input.skillSourceBaseDir } : {})
   });
   if (!initResult.ok || !initResult.value) {
@@ -136,6 +152,10 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
     };
   }
 
+  const removed: string[] = [];
+  const onboarding = initResult.value.onboarding;
+  if (onboarding?.scope === "global") await migrateOffProjectCopies(root.root, input, onboarding, apply, removed, warnings);
+
   return mutationOk({
     applied: apply,
     init: initResult.value,
@@ -143,8 +163,80 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
     references,
     hooks,
     boundaries: BOUNDARIES,
+    removed,
     warnings
   });
+}
+
+/**
+ * Moves a project off the copies a global install replaces. @req FR-NODE-224
+ *
+ * Measured (research 40): a project `.mcp.json` key shadows a user-scope registration of the same name,
+ * and Codex loads a project skill copy beside the global one rather than instead of it, so leaving the
+ * copies keeps the old version in front. Each removal waits for confirmation that its replacement
+ * exists, and deletes only what the `speckiwi remove` proofs show SpecKiwi wrote. Under a plan it lists
+ * what the run would remove once the global install is confirmed.
+ */
+async function migrateOffProjectCopies(
+  rootPath: string,
+  input: UpgradeProjectInput,
+  onboarding: InitOnboardingReport,
+  apply: boolean,
+  removed: string[],
+  warnings: string[]
+): Promise<void> {
+  const removedPaths: string[] = [];
+  // An empty list means the skill step did not run at all (`--no-skills`).
+  if (onboarding.globalSkills.length > 0) {
+    // FR-NODE-192 — where the project skill directory is the global one, its copies ARE the global install.
+    const collision = await findGlobalDestinationCollision(rootPath, input);
+    if (collision) {
+      warnings.push(
+        `project skills kept: this project's ${collision.agent} skill directory ${collision.destination} is also its global skill directory, so removing the project copies would remove the global install.`
+      );
+    } else {
+      for (const outcome of onboarding.globalSkills) {
+        if (!outcome.completed) {
+          warnings.push(`skills(${outcome.agent}): project copies kept — the global skill pass did not complete (${outcome.reason ?? "no reason reported"}).`);
+          continue;
+        }
+        // Only the skills the global pass placed: a project copy with no global counterpart is the agent's only copy.
+        const result = await removeProjectSkillCopies(rootPath, outcome.agent, input, apply, outcome.names);
+        removed.push(...result.removed);
+        removedPaths.push(...result.removed);
+        warnings.push(...result.warnings);
+      }
+    }
+  }
+  if (input.registerMcp !== false) {
+    // A plan cannot run the agent CLI, so it lists the key a confirmed registration would remove.
+    const confirmed = !apply || onboarding.mcpConfirmed.includes("claude");
+    const mcpJson = path.join(rootPath, ".mcp.json");
+    // A failed write (read-only, locked by an editor) must not discard the report of the copies already
+    // removed above — the same hazard `remove` guards each of its steps against.
+    const key = await unregisterSpeckiwiMcp(rootPath, { dryRun: !apply || !confirmed, ownedOnly: true }).catch((error: Error) => {
+      warnings.push(`${mcpJson}: kept the speckiwi key — it could not be rewritten (${error.message}); remove the key by hand.`);
+      return undefined;
+    });
+    if (key === undefined) {
+      // reported above
+    } else if (key.status === "unreadable") {
+      warnings.push(`${key.filePath}: left untouched — it is not readable as a JSON object with an mcpServers map, so a speckiwi key in it may still shadow the user-scope registration.`);
+    } else if (key.status === "removed" && confirmed) {
+      removed.push(`${key.filePath}#mcpServers.speckiwi`);
+      removedPaths.push(key.filePath);
+    } else if (key.status === "removed") {
+      warnings.push(`${key.filePath}: kept the speckiwi key — the Claude user-scope registration was not confirmed, so the project key is still the only one Claude has.`);
+    } else if (key.status === "foreign") {
+      warnings.push(`${key.filePath}: kept the speckiwi key — its value is not the launcher SpecKiwi writes for this project, so it was set by hand; remove it yourself once the user-scope registration serves you.`);
+    }
+  }
+  const tracked = await gitTrackedPaths(rootPath, removedPaths);
+  if (tracked.length > 0) {
+    warnings.push(
+      `${tracked.length} file(s) this run ${apply ? "removed or edited" : "would remove or edit"} are tracked by git (first: ${tracked[0]}): commit the change, and each collaborator then needs the global install — run \`speckiwi init\` on their machine.`
+    );
+  }
 }
 
 /**

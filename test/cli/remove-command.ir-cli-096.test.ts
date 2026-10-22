@@ -63,6 +63,8 @@ async function initialised(): Promise<{ root: string; home: string }> {
   await mkdir(path.join(home, ".claude"));
   await mkdir(path.join(home, ".codex"));
   const result = await initProject(await resolveProjectRoot(root), {
+    // The 4.1.0 project-scope install is what removal undoes.
+    projectInstall: true,
     installSkills: true,
     installSkillsGlobal: true,
     registerMcp: true,

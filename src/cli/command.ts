@@ -1,15 +1,12 @@
-import { createRequire } from "node:module";
 import { Command } from "commander";
 import type { CliIo } from "./index.js";
+import { PACKAGE_VERSION } from "../core/package-version.js";
 
 export interface CliContext {
   io: CliIo;
 }
 
 export type CliCommandRegistrar = (command: Command, context: CliContext) => void;
-
-const requirePackage = createRequire(import.meta.url);
-const { version: PACKAGE_VERSION } = requirePackage("../../package.json") as { version: string };
 
 const INHERITED_OPTIONS_HELP = [
   "",

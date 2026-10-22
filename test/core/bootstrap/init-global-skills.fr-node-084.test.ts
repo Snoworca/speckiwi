@@ -46,11 +46,12 @@ async function runInit(root: string, input: Parameters<typeof initProject>[1]) {
 // Pin BOTH the home dir and the codex home to the hermetic temp home so an ambient CODEX_HOME env var can
 // never redirect the global pass at the developer's real ~/.codex.
 function globalInput(home: string, base: string, extra: Partial<Parameters<typeof initProject>[1]> = {}): Parameters<typeof initProject>[1] {
-  return { installSkills: true, installSkillsGlobal: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base, ...extra };
+  // Project install: these cases pin the global pass as the addition to the 4.1.0 onboarding (FR-NODE-084 AC-5).
+  return { projectInstall: true, installSkills: true, installSkillsGlobal: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base, ...extra };
 }
 
 describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
-  it("AC-1: both agent homes present -> installs global skills for claude and codex", async () => {
+  it("FR-NODE-084 AC-1: both agent homes present -> installs global skills for claude and codex, in addition to the project installs", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
@@ -64,6 +65,8 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     expect(await exists(path.join(codexGlobal, "SKILL.md"))).toBe(true);
     expect(value.created).toContain(claudeGlobal);
     expect(value.created).toContain(codexGlobal);
+    expect(value.created).toContain(path.join(root, ".claude", "skills", "kiwi-keep"));
+    expect(value.created).toContain(path.join(root, ".agents", "skills", "kiwi-keep"));
   });
 
   it("AC-2: codex home absent -> codex global skipped with warning, claude global still installed", async () => {
@@ -90,7 +93,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     expect((value.warnings ?? []).some((w) => /claude/i.test(w) && /global/i.test(w))).toBe(true);
   });
 
-  it("AC-4: neither home present -> no global dirs created, warnings for both, project still provisioned", async () => {
+  it("FR-NODE-084 AC-4: neither home present -> no global dirs created, warnings for both, project install still provisioned", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
@@ -103,7 +106,7 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-keep"))).toBe(true);
   });
 
-  it("AC-5: global pass is additive - project scope provisioning still runs and is reported", async () => {
+  it("FR-NODE-084 AC-5: under project install the global pass is additive - project scope provisioning still runs and is reported", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
@@ -116,6 +119,20 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     expect(value.created).toContain(projectClaude);
     expect(value.created).toContain(projectCodex);
     expect(await exists(path.join(projectClaude, "SKILL.md"))).toBe(true);
+  });
+
+  it("FR-NODE-084 AC-5: without project install the global pass runs alone, by default", async () => {
+    const root = await emptyRepo();
+    const base = path.join(root, "skills");
+    await fixtureSource(base);
+    const home = await tempHome();
+    await mkdir(path.join(home, ".claude"));
+    await mkdir(path.join(home, ".codex"));
+    const value = await runInit(root, globalInput(home, base, { projectInstall: false, installSkillsGlobal: false }));
+    expect(value.created).toContain(path.join(home, ".claude", "skills", "kiwi-keep"));
+    expect(value.created).toContain(path.join(home, ".codex", "skills", "kiwi-keep"));
+    expect(await exists(path.join(root, ".claude", "skills"))).toBe(false);
+    expect(await exists(path.join(root, ".agents", "skills"))).toBe(false);
   });
 
   it("AC-6: reuses update/skip classification; never prunes at global scope (managed orphan survives)", async () => {
@@ -166,14 +183,14 @@ describe("speckiwi init global skill provisioning (FR-NODE-084)", () => {
     expect(value.created.some((p) => p.startsWith(path.join(home, ".codex", "skills")))).toBe(true);
   });
 
-  it("does not provision globally when installSkillsGlobal is not set (MCP init_project parity)", async () => {
+  it("FR-NODE-068 AC-5: under project install, nothing is provisioned globally unless installSkillsGlobal is set", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
     const home = await tempHome();
     await mkdir(path.join(home, ".claude"));
     await mkdir(path.join(home, ".codex"));
-    await runInit(root, { installSkills: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base });
+    await runInit(root, { projectInstall: true, installSkills: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base });
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
     expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
   });

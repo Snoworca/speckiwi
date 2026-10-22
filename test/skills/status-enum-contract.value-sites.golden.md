@@ -2542,11 +2542,9 @@ blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	blocked -> in_progress
 blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	in_progress -> blocked
 blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	plementation or verification is blocked |
 blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	plemented while another part is blocked.
-blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	r status=in_progress, status=blocked, and status=implemented; CLI
 blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| blocked | Implementation or verificati
 blocked	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| error | Workflow dependency blocked |
 deprecated	-	docs/rule/SRS-MD-Rules-v2.5.0.md	0.1 and §30.2 — [OBSOLETE], [deprecated], an empty strikethrough, and
-deprecated	-	docs/rule/SRS-MD-Rules-v2.5.0.md	Stability=draft or Stability=deprecated unless the user explicitly ove
 deprecated	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ing a non-discarded draft or deprecated requirement unless the user ex
 deprecated	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| deprecated | Can still be looked up expli
 discarded	-	docs/rule/SDS-MD-Rules-v2.6.0.md	y structural note outside it is discarded with the file.
@@ -2554,7 +2552,6 @@ discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- update_status to discarded fails 
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	2. Do not reuse a discarded ID.
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	2026-05-07 | Changed Status to discarded | Merged into FR-AUTH-001 |
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ement arrived at it. Unlike the discarded marker, no strikethrough is app
-discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	equirements should be merged or discarded, first repair IDs to uniqueness
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ked [OBSOLETE] by hand is not discarded, and every query and gate will
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	moves a requirement to Status=discarded, the following marker is appli
 discarded	-	docs/rule/SRS-MD-Rules-v2.5.0.md	nt deletion as a change to the discarded status rather than as physical
@@ -2577,7 +2574,6 @@ draft	-	docs/rule/SDS-MD-Rules-v2.6.0.md	| Status | draft |
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- When a non-discarded draft requirement is in an active or
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	Any requirement at Stability=draft carries this marker, whether i
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	When the stability leaves draft, the mutation removes the [DRA
-draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ded requirement with Stability=draft or Stability=deprecated unle
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	is marker and is subject to the draft gates in §14 and §30.2.
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	one whose Stability is still draft.
 draft	-	docs/rule/SRS-MD-Rules-v2.5.0.md	s stability the tool applies draft, so a requirement created with
@@ -2597,13 +2593,11 @@ frozen	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| frozen | Frozen within the target sc
 frozen	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| frozen | The scope is frozen. Changin
 frozen	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| frozen | The scope is frozen. Changing it requires an explic
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	### 14.3 implemented Conditions
-implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	, status=blocked, and status=implemented; CLI fallback is speckiwi lis
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- update_status to implemented is not gated: none of the §14.
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	3. Among the implemented requirements, is there any tha
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	3. When the code is implemented but verification evidence is in
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	5. List of implemented but not verified requirements
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	7. One part is implemented while another part is blocked.
-implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	7. When implemented runtime CLI or MCP repair tooli
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	To change to implemented, at least one of the following
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ation Evidence | required for implemented, verified | Implementation o
 implemented	-	docs/rule/SRS-MD-Rules-v2.5.0.md	distinguish the parts that are implemented from the parts that are not.
@@ -2624,7 +2618,6 @@ in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	implemented -> in_progress
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	in_progress
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	in_progress -> blocked
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	in_progress -> implemented
-in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	list_requirements for status=in_progress, status=blocked, and status
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	planned -> in_progress
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	scripts/spec/list-by-status.js in_progress
 in_progress	-	docs/rule/SRS-MD-Rules-v2.5.0.md	verified -> in_progress
@@ -2653,7 +2646,6 @@ stable	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| Status | stable |
 stable	-	docs/rule/SRS-MD-Rules-v2.5.0.md	| stable | Stable enough to be implemen
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	### 14.4 verified Conditions
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- A verified requirement must not be Stabi
-verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- Mark requirements as verified without evidence.
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	- update_status to verified fails with MUTATION_DENIED u
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	3. On the transition to verified, validate the Acceptance Crite
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	3. The verified conditions are not satisfied.
@@ -2668,7 +2660,6 @@ verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	To mark a requirement as verified, t
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	act that a requirement has been verified. These rules separate the impl
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	dence reference. So planned -> verified succeeds only for a requiremen
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	e exists, it may be changed to verified.
-verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	flips multiple requirements to verified or empties Active Target witho
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	granular edits are refused on a verified requirement, so trimming its ta
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	implemented -> verified
 verified	-	docs/rule/SRS-MD-Rules-v2.5.0.md	ing an AC in order to meet the verified conditions is forbidden. When

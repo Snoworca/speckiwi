@@ -348,6 +348,9 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--target <target>", "target"),
     opt("--scope <scope>", "scope"),
     opt("--force", "force"),
+    // IR-CLI-106 AC-5 — declared so the catalogue reports it; it only matters beside the CLI-side skill
+    // and MCP steps, which init_project never sets.
+    opt("--project-install", "projectInstall"),
     IGNORE_LOCK
   ]),
   // IR-CLI-076 — upgrade is CLI-only on purpose: init_project is exposed over MCP because it touches
@@ -363,6 +366,8 @@ export const toolSpecs: readonly ToolSpec[] = [
     // IR-CLI-095 — spelled as `init` spells it, and additive as init's is: the project migration still
     // runs. The destructive counterpart is where that symmetry stops (IR-CLI-096).
     opt("-g, --global", "installSkillsGlobal"),
+    // IR-CLI-106 AC-5 — the 4.1.0 project-scope refresh, and no migration off it.
+    opt("--project-install", "projectInstall"),
     IGNORE_LOCK
   ]),
   // IR-CLI-096 — CLI-only for the same reason `upgrade` is, only more so: this one deletes. No agent

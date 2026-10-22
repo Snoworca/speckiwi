@@ -107,9 +107,9 @@ describe("IR-CLI-095 AC-1 — the flag is declared and both spellings parse", ()
 });
 
 describe("IR-CLI-095 AC-2 — the flag decides whether a global destination is touched at all", () => {
-  it("reports the global destinations when the flag is passed", async () => {
+  it("IR-CLI-095 AC-2: reports the global destinations when the flag is passed", async () => {
     const home = await homeWithBothAgents();
-    const { code, stdout } = await runUpgrade(await legacyProject(), home, ["--global", "--json"]);
+    const { code, stdout } = await runUpgrade(await legacyProject(), home, ["--project-install", "--global", "--json"]);
     expect(code, stdout).toBe(0);
     const reported = reportedPaths(parse(stdout));
     expect(reported.some((entry) => entry.startsWith(path.join(home, ".claude", "skills")))).toBe(true);
@@ -117,12 +117,12 @@ describe("IR-CLI-095 AC-2 — the flag decides whether a global destination is t
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(true);
   }, 60000);
 
-  it("touches and reports nothing under the home when the flag is absent", async () => {
+  it("IR-CLI-095 AC-2: with --project-install and no --global, touches and reports nothing under the home", async () => {
     // The same fixture as the case above, so the only difference is the flag. Asserting the
     // filesystem alone would miss a report that claims global work it never did — and a caller
     // reading `created` is exactly who would then believe the global skills are current.
     const home = await homeWithBothAgents();
-    const { code, stdout } = await runUpgrade(await legacyProject(), home, ["--json"]);
+    const { code, stdout } = await runUpgrade(await legacyProject(), home, ["--project-install", "--json"]);
     expect(code, stdout).toBe(0);
     expect(reportedPaths(parse(stdout)).filter((entry) => entry.startsWith(home))).toEqual([]);
     expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);

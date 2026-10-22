@@ -22,7 +22,8 @@ export default defineConfig({
     // leaks SpecKiwi init/skill artifacts into the repo working tree instead of an
     // isolated temp root. setupFiles catches it per-test; globalSetup teardown is the
     // after-suite backstop for out-of-band (e.g. spawned-child) leaks.
-    setupFiles: ["./test/support/hermeticity-guard.ts"],
+    // The agent CLI sandbox does the same for the real home and the real `claude`/`codex` (FR-NODE-223 AC-8).
+    setupFiles: ["./test/support/hermeticity-guard.ts", "./test/support/agent-cli-sandbox.ts"],
     globalSetup: ["./test/support/hermeticity-global.ts"],
     // A subagent git worktree under .claude/worktrees carries a full copy of this suite. Without this
     // exclusion a run picks up those copies, so another agent's in-flight probe is reported as a

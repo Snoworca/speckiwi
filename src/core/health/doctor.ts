@@ -6,14 +6,14 @@ import { splitDiagnostics } from "../diagnostic.js";
 import { gitToplevelOf, realpathProbe } from "../root-facts.js";
 import { normaliseRoot } from "../orchestrator/preflight.js";
 import {
-  AGENT_INSTRUCTION_END_MARKER,
-  AGENT_INSTRUCTION_HEADING_PREFIX,
   AGENT_INSTRUCTION_VERSION,
   BUNDLED_RULES_VERSION,
   BUNDLED_SDS_RULES_FILENAME,
   BUNDLED_SRS_RULES_FILENAME
 } from "../bootstrap/templates.js";
 import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
+import { agentInstructionBlockWrittenByNewer, isAgentInstructionBlockCurrent } from "../bootstrap/init-project.js";
+import { PACKAGE_VERSION } from "../package-version.js";
 
 // @req IR-CLI-065
 // IR-CLI-065 — `speckiwi doctor` consolidated environment health diagnosis.
@@ -106,20 +106,32 @@ function checkSpecPresence(workspace: ParsedWorkspace): DoctorCheck {
 }
 
 // @req IR-CLI-065
+// @req FR-NODE-225 AC-7
 /**
  * Agent workflow block version currency: each agent file (CLAUDE.md / AGENTS.md) should carry the
- * current versioned workflow heading plus its end marker. A missing file or a stale/markerless block
- * warns (repairable with --fix); all present and current is ok.
+ * block exactly as this package renders it, the same test init uses to skip the file. A missing file
+ * or a block that differs in any line warns (repairable with --fix); all present and current is ok.
  */
 async function checkWorkflowCurrency(root: string): Promise<DoctorCheck> {
   const topic = "agent workflow block version currency";
-  const currentHeading = `${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`;
   const stale: string[] = [];
+  const newer: string[] = [];
   for (const agentFile of AGENT_FILES) {
     const body = await readOrUndefined(path.join(root, agentFile));
-    if (body === undefined || !body.includes(currentHeading) || !body.includes(AGENT_INSTRUCTION_END_MARKER)) {
-      stale.push(agentFile);
-    }
+    if (body !== undefined && isAgentInstructionBlockCurrent(body)) continue;
+    const writer = body === undefined ? undefined : agentInstructionBlockWrittenByNewer(body);
+    if (writer !== undefined) newer.push(`${agentFile} (speckiwi ${writer})`);
+    else stale.push(agentFile);
+  }
+  // @req FR-NODE-225 AC-10 — --fix would rewrite these with this older version, so it is not offered.
+  if (newer.length > 0) {
+    return {
+      topic,
+      label: "Agent workflow block current",
+      state: "warn",
+      message: `workflow block written by a newer SpecKiwi than this ${PACKAGE_VERSION} in: ${newer.join(", ")}`,
+      remediation: "Update the CLI with `npm install -g speckiwi@latest`; the workflow block is left as the newer version wrote it."
+    };
   }
   if (stale.length > 0) {
     return {

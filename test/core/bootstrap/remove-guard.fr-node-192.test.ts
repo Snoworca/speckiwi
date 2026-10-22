@@ -51,6 +51,8 @@ async function initialisedProject(): Promise<{ root: string; home: string }> {
   await writeFixtureSkill(base, "codex", "kiwi-keep");
   const home = await mkdtemp(path.join(tmpdir(), "speckiwi-guard-home-"));
   const result = await initProject(await resolveProjectRoot(root), {
+    // The 4.1.0 project-scope install is what removal undoes.
+    projectInstall: true,
     installSkills: true,
     registerMcp: true,
     skillSourceBaseDir: base,

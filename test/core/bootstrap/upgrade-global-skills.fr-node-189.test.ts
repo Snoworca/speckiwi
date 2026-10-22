@@ -126,19 +126,19 @@ describe("FR-NODE-189 AC-1 — the global refresh happens and the project migrat
   });
 });
 
-describe("FR-NODE-189 AC-2 — without the option the global footprint is empty", () => {
-  it("creates no global skills directory", async () => {
+describe("FR-NODE-189 AC-2 — under project install, without the option the global footprint is empty", () => {
+  it("FR-NODE-189 AC-2: creates no global skills directory", async () => {
     const s = await scenario(["claude", "codex"]);
-    await runUpgrade(s.root, { apply: true, skillSourceBaseDir: s.base, globalHomeDir: s.home, globalCodexHome: path.join(s.home, ".codex") });
+    await runUpgrade(s.root, { apply: true, projectInstall: true, skillSourceBaseDir: s.base, globalHomeDir: s.home, globalCodexHome: path.join(s.home, ".codex") });
     expect(await exists(path.join(s.home, ".claude", "skills"))).toBe(false);
     expect(await exists(path.join(s.home, ".codex", "skills"))).toBe(false);
   });
 
-  it("reports no path under the home in any result array", async () => {
+  it("FR-NODE-189 AC-2: reports no path under the home in any result array", async () => {
     // Asserting only on the filesystem would miss a report that claims global work it did not do —
     // and a caller reading `created` is exactly who would then believe the global skills are current.
     const s = await scenario(["claude", "codex"]);
-    const value = await runUpgrade(s.root, { apply: true, skillSourceBaseDir: s.base, globalHomeDir: s.home, globalCodexHome: path.join(s.home, ".codex") });
+    const value = await runUpgrade(s.root, { apply: true, projectInstall: true, skillSourceBaseDir: s.base, globalHomeDir: s.home, globalCodexHome: path.join(s.home, ".codex") });
     const everyPath = [...value.init.created, ...value.init.updated, ...value.init.skipped, ...value.init.removed];
     expect(everyPath.filter((entry) => entry.startsWith(s.home))).toEqual([]);
   });

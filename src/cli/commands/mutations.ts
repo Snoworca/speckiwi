@@ -32,8 +32,13 @@ import { validateReportPathToken } from "../../core/completed-work/report-paths.
 import type { CliContext } from "../command.js";
 import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
+import { runAgentCli } from "../agent-cli-runner.js";
 import { todayStamp } from "../../core/date-stamp.js";
 import { markMutationCommands } from "../input-json.js";
+
+/** @req IR-CLI-106 AC-1 — one description for the flag on `init` and on `upgrade`. */
+const PROJECT_INSTALL_HELP =
+  "onboard at project scope as 4.1.0 did: kiwi skill copies in .claude/skills and .agents/skills, and the MCP server in .mcp.json, with no agent CLI run (the default is global skills and a user-scope registration)";
 
 async function rootFrom(options: { root?: string }) {
   return resolveProjectRoot(process.cwd(), options.root);
@@ -102,9 +107,10 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--target <target>")
     .option("--scope <scope>")
     .option("--force", SAFETY_BYPASS_OPTION_HELP.initOverwrite)
-    .option("--no-skills", "skip installing the bundled kiwi skills into the project")
-    .option("--no-mcp", "skip registering the SpecKiwi MCP server in .mcp.json")
-    .option("-g, --global", "also install/update the bundled kiwi skills into each present agent's global skills directory")
+    .option("--no-skills", "skip installing the bundled kiwi skills")
+    .option("--no-mcp", "skip registering the SpecKiwi MCP server (user scope, or .mcp.json under --project-install)")
+    .option("--project-install", PROJECT_INSTALL_HELP)
+    .option("-g, --global", "with --project-install, also install/update the bundled kiwi skills in each present agent's global skills directory")
     .option("--dry-run", "preview all init steps without writing to the filesystem")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
@@ -117,6 +123,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
         installSkills: options.skills !== false,
         installSkillsGlobal: Boolean(options.global),
         registerMcp: options.mcp !== false,
+        ...(options.projectInstall ? { projectInstall: true } : {}),
+        agentCli: runAgentCli,
         ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
@@ -133,10 +141,11 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--dry-run", "print the plan and write nothing")
     .option("--apply", "perform the plan; the default, accepted so callers written against IR-CLI-076 keep working")
     .option("--no-skills", "skip refreshing the bundled kiwi skills")
-    .option("--no-mcp", "skip refreshing the SpecKiwi MCP registration in .mcp.json")
+    .option("--no-mcp", "skip refreshing the SpecKiwi MCP registration (user scope, or .mcp.json under --project-install)")
+    .option("--project-install", PROJECT_INSTALL_HELP)
     // @req IR-CLI-095 — additive, exactly as on `init`: the project migration still runs and the
     // global skills are refreshed as well. `remove` deliberately reads `-g` the other way, and says so.
-    .option("-g, --global", "also refresh the bundled kiwi skills in each present agent's global skills directory")
+    .option("-g, --global", "with --project-install, also refresh the bundled kiwi skills in each present agent's global skills directory")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
@@ -159,6 +168,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
         installSkills: options.skills !== false,
         registerMcp: options.mcp !== false,
         ...(options.global ? { installSkillsGlobal: true } : {}),
+        ...(options.projectInstall ? { projectInstall: true } : {}),
+        agentCli: runAgentCli,
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);

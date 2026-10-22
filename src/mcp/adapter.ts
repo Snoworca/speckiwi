@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import path from "node:path";
 import {
   decideWorkspaceRoot,
@@ -9,6 +8,7 @@ import {
   type WorkspaceRootReason,
   type WorkspaceScope
 } from "./workspace-root.js";
+import { PACKAGE_VERSION } from "../core/package-version.js";
 
 export type MutationToolKind = "req-scoped" | "log-append" | "workspace";
 
@@ -79,8 +79,6 @@ export interface McpServerHandle {
 }
 
 const VALID_KINDS: readonly MutationToolKind[] = ["req-scoped", "log-append", "workspace"];
-const requirePackage = createRequire(import.meta.url);
-const PACKAGE_VERSION = (requirePackage("../../package.json") as { version?: string }).version ?? "unknown";
 
 const UNSUPPORTED_MESSAGE =
   "Per-call workspace root override is not supported; start a server for the intended workspace root.";

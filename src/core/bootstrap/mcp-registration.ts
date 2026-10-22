@@ -12,6 +12,26 @@ import path from "node:path";
 
 export type McpRegistrationStatus = "created" | "updated" | "skipped" | "warning";
 
+/** The coding agents whose own CLI registers an MCP server at user scope. @req FR-NODE-223 */
+export type AgentCli = "claude" | "codex";
+
+/** What one agent CLI invocation answered. `found: false` means the binary is not on PATH. */
+export interface AgentCliOutcome {
+  found: boolean;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  /** Killed at the runner's deadline: says nothing about whether the server is registered. */
+  timedOut?: boolean;
+}
+
+/**
+ * The only way the core reaches an agent CLI. @req FR-NODE-223 AC-8 — the core owns this type and the
+ * CLI passes the implementation, so no core path spawns a binary of its own and a test can answer for
+ * the agent without one.
+ */
+export type AgentCliRunner = (agent: AgentCli, args: readonly string[]) => Promise<AgentCliOutcome>;
+
 export interface McpRegistrationResult {
   status: McpRegistrationStatus;
   filePath: string;
@@ -43,7 +63,7 @@ const SELF_HOSTED_LAUNCHER: McpLauncher = { command: "node", args: ["bin/speckiw
  * built entrypoint, and pointing those at `bin/speckiwi` would register a launcher that cannot
  * start. @req FR-NODE-187
  */
-async function isSelfHostingCheckout(root: string): Promise<boolean> {
+export async function isSelfHostingCheckout(root: string): Promise<boolean> {
   let manifest: unknown;
   try {
     manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
@@ -71,8 +91,74 @@ async function speckiwiServerEntry(root: string): Promise<McpLauncher> {
 function codexRemediation(entry: McpLauncher): string {
   return (
     "Codex MCP registration is not written automatically (the global ~/.codex/config.toml is left " +
-    `untouched). To register speckiwi for Codex run: codex mcp add speckiwi -- ${entry.command} ${entry.args.join(" ")}`
+    `untouched). To register speckiwi for Codex run: ${commandLine("codex", userScopeCommands("codex", entry).add)}`
   );
+}
+
+/**
+ * The detect and register commands for each agent's own CLI. @req FR-NODE-223 AC-2/AC-3 — measured:
+ * `claude mcp add` refuses an existing name while `codex mcp add` silently overwrites one, so the
+ * `get` always comes first and is what decides "already registered".
+ */
+function userScopeCommands(agent: AgentCli, entry: McpLauncher): { get: string[]; add: string[] } {
+  const launcher = ["--", entry.command, ...entry.args];
+  return agent === "claude"
+    ? { get: ["mcp", "get", SERVER_KEY], add: ["mcp", "add", "-s", "user", SERVER_KEY, ...launcher] }
+    : { get: ["mcp", "get", SERVER_KEY, "--json"], add: ["mcp", "add", SERVER_KEY, ...launcher] };
+}
+
+function commandLine(agent: AgentCli, args: readonly string[]): string {
+  return [agent, ...args].join(" ");
+}
+
+export type UserScopeRegistrationStatus = "created" | "skipped" | "planned" | "warning";
+
+export interface UserScopeRegistrationResult {
+  status: UserScopeRegistrationStatus;
+  /** The entry a report lists under created or skipped. */
+  label: string;
+  /** The command lines run, in order; under dry-run, the ones a real run would issue. */
+  commands: string[];
+  warning?: string;
+}
+
+/**
+ * Registers the SpecKiwi server at user scope through the agent's own CLI, so the agent writes its own
+ * config file and SpecKiwi never edits `~/.claude.json` or `~/.codex/config.toml`. @req FR-NODE-223
+ *
+ * Always the published launcher: a SpecKiwi checkout never reaches this (it is onboarded at project
+ * scope), and its relative `node bin/speckiwi` would resolve against every other project's directory.
+ */
+export async function registerSpeckiwiMcpForUser(
+  agent: AgentCli,
+  runner: AgentCliRunner | undefined,
+  options: { dryRun?: boolean } = {}
+): Promise<UserScopeRegistrationResult> {
+  const { get, add } = userScopeCommands(agent, PUBLISHED_LAUNCHER);
+  const label = `${agent} mcp (user scope): ${SERVER_KEY}`;
+  const manual = commandLine(agent, add);
+  if (options.dryRun) return { status: "planned", label, commands: [commandLine(agent, get), manual] };
+  const commands: string[] = [];
+  const byHand = (reason: string): UserScopeRegistrationResult => ({
+    status: "warning",
+    label,
+    commands,
+    warning: `${agent} MCP registration: ${reason}. To register speckiwi for ${agent} run: ${manual}`
+  });
+  if (runner === undefined) return byHand("no agent CLI runner was given");
+  commands.push(commandLine(agent, get));
+  const existing = await runner(agent, get);
+  if (!existing.found) return byHand(`the ${agent} CLI was not found on PATH`);
+  // A `get` killed at the deadline proves nothing either way, and an `add` after it would at best fail.
+  if (existing.timedOut) return byHand(`\`${commandLine(agent, get)}\` timed out`);
+  if (existing.exitCode === 0) return { status: "skipped", label, commands };
+  commands.push(manual);
+  const added = await runner(agent, add);
+  if (!added.found) return byHand(`the ${agent} CLI was not found on PATH`);
+  if (added.exitCode === 0) return { status: "created", label, commands };
+  if (added.timedOut) return byHand(`\`${manual}\` timed out`);
+  const detail = added.stderr.trim().split(/\r?\n/)[0] ?? "";
+  return byHand(`\`${manual}\` exited ${added.exitCode}${detail ? ` (${detail})` : ""}`);
 }
 
 function unparseableWarning(filePath: string, entry: McpLauncher): string {
@@ -96,6 +182,13 @@ async function readExisting(filePath: string): Promise<ExistingConfig> {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Whether `value` is exactly `entry` as registration writes it — no other field, the same args. */
+function isLauncher(value: unknown, entry: McpLauncher): boolean {
+  if (!isPlainObject(value) || Object.keys(value).length !== 2 || value.command !== entry.command) return false;
+  const args = value.args;
+  return Array.isArray(args) && args.length === entry.args.length && args.every((arg, index) => arg === entry.args[index]);
 }
 
 /** Writes `content` to `filePath` atomically via a sibling temp file + rename; cleans up on failure. */
@@ -158,7 +251,8 @@ export async function registerSpeckiwiMcp(
   return { status: "updated", filePath, warnings };
 }
 
-export type McpUnregistrationStatus = "removed" | "absent" | "unreadable";
+/** `foreign`: the key holds something other than the launcher SpecKiwi writes, under `ownedOnly`. */
+export type McpUnregistrationStatus = "removed" | "absent" | "unreadable" | "foreign";
 
 export interface McpUnregistrationResult {
   status: McpUnregistrationStatus;
@@ -174,7 +268,7 @@ export interface McpUnregistrationResult {
  * therefore be a guess with the operator's other servers riding on it; an empty `mcpServers` map is a
  * valid configuration and is what an undone registration looks like.
  */
-export async function unregisterSpeckiwiMcp(root: string, options: { dryRun?: boolean } = {}): Promise<McpUnregistrationResult> {
+export async function unregisterSpeckiwiMcp(root: string, options: { dryRun?: boolean; ownedOnly?: boolean } = {}): Promise<McpUnregistrationResult> {
   const filePath = path.join(root, MCP_CONFIG_FILE);
   const existing = await readExisting(filePath);
   if (existing.kind === "absent") return { status: "absent", filePath };
@@ -190,6 +284,10 @@ export async function unregisterSpeckiwiMcp(root: string, options: { dryRun?: bo
 
   const servers = parsed.mcpServers;
   if (!Object.prototype.hasOwnProperty.call(servers, SERVER_KEY)) return { status: "absent", filePath };
+  // @req FR-NODE-224 AC-4 — `speckiwi remove` is asked to undo the wiring and takes the key whatever it
+  // holds. An upgrade is not asked that: it takes the key only as the launcher this project's
+  // registration writes, so an entry the operator customised (env, args) survives the migration.
+  if (options.ownedOnly && !isLauncher(servers[SERVER_KEY], await speckiwiServerEntry(root))) return { status: "foreign", filePath };
 
   const remaining = Object.fromEntries(Object.entries(servers).filter(([key]) => key !== SERVER_KEY));
   const next = { ...parsed, mcpServers: remaining };

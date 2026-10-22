@@ -15,6 +15,7 @@ import {
   RULES_DOCUMENT_FILENAME_PATTERN,
   loadBundledRulesDocument,
   loadBundledSdsRulesDocument,
+  newerAgentInstructionWriter,
   parseScopeOption,
   nextScopeDocumentNumber,
   scopeDocumentName,
@@ -28,7 +29,8 @@ import {
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
 import { installSkill, planSkillInstall, removeManagedKiwiSkills } from "../skills/install-skill.js";
 import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
-import { registerSpeckiwiMcp } from "./mcp-registration.js";
+import { isSelfHostingCheckout, registerSpeckiwiMcp, registerSpeckiwiMcpForUser, type AgentCli, type AgentCliRunner } from "./mcp-registration.js";
+import { PACKAGE_VERSION } from "../package-version.js";
 
 export type AgentFileMode = "AGENTS.md" | "CLAUDE.md";
 
@@ -36,7 +38,8 @@ const REQUIRED_AGENT_FILES: readonly AgentFileMode[] = ["AGENTS.md", "CLAUDE.md"
 
 // FR-NODE-068 — init provisions the bundled kiwi skills for the fixed Claude + Codex agent pair,
 // matching init's existing dual AGENTS.md/CLAUDE.md + dual-hook policy.
-export const SKILL_PROVISION_AGENTS: readonly SkillAgent[] = ["claude", "codex"];
+// FR-NODE-223 — the same pair is onboarded at user scope through each agent's own CLI.
+export const SKILL_PROVISION_AGENTS: readonly AgentCli[] = ["claude", "codex"];
 
 export interface InitProjectInput {
   product?: string;
@@ -49,8 +52,14 @@ export interface InitProjectInput {
   // never sets them) is unaffected; the CLI init path enables them (opt-out via --no-mcp/--no-skills).
   registerMcp?: boolean;
   installSkills?: boolean;
-  // FR-NODE-084 — when set (CLI --global/-g), init also provisions skills into each present agent's global skills dir.
+  // FR-NODE-084 — when set (CLI --global/-g) with projectInstall, init also provisions skills into each present agent's global skills dir.
   installSkillsGlobal?: boolean;
+  // FR-NODE-223 / IR-CLI-106 — the 4.1.0 project-scope onboarding (project skills with the prune, .mcp.json,
+  // no agent CLI). Without it the skills go only to the global destinations and the MCP server is
+  // registered at user scope through the agents' own CLIs.
+  projectInstall?: boolean;
+  /** @req FR-NODE-223 AC-8 — the only way init reaches an agent CLI. Absent, registration degrades to a warning. */
+  agentCli?: AgentCliRunner;
   dryRun?: boolean;
   /** Test/DI seam — overrides the bundled skills source root used by skill provisioning. */
   skillSourceBaseDir?: string;
@@ -58,6 +67,8 @@ export interface InitProjectInput {
   globalHomeDir?: string;
   /** Test/DI seam — overrides CODEX_HOME for the codex global destination (default: process.env.CODEX_HOME). */
   globalCodexHome?: string;
+  /** Test/DI seam — overrides CLAUDE_CONFIG_DIR (default: process.env.CLAUDE_CONFIG_DIR unless globalHomeDir is given). */
+  globalClaudeConfigDir?: string;
 }
 
 export interface InitProjectOutput {
@@ -66,6 +77,30 @@ export interface InitProjectOutput {
   updated: string[];
   removed: string[];
   warnings?: string[];
+  /** Present when skills or the MCP registration were requested. @req FR-NODE-223 */
+  onboarding?: InitOnboardingReport;
+}
+
+/** Where the agent onboarding went, and what a caller acting on it (upgrade, FR-NODE-224) must know. */
+export interface InitOnboardingReport {
+  scope: "global" | "project";
+  /** Why the scope is not what the options asked for: set for a SpecKiwi checkout (FR-NODE-223 AC-6). */
+  note?: string;
+  /** Agent CLI command lines in run order; under dry-run, the ones a real run would issue. */
+  agentCommands: string[];
+  /** One entry per agent the global skill pass considered; empty when no global pass ran. */
+  globalSkills: GlobalSkillOutcome[];
+  /** Agents whose user-scope registration a `get` or `add` exiting 0 confirmed. */
+  mcpConfirmed: AgentCli[];
+}
+
+export interface GlobalSkillOutcome {
+  agent: AgentCli;
+  /** True only when the agent's home was present and every skill installed, updated or was skipped. */
+  completed: boolean;
+  reason?: string;
+  /** The skills now present at the global destination (installed, updated or already current). */
+  names: string[];
 }
 
 export interface AgentInstructionBlock {
@@ -401,22 +436,37 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     fileExists = false;
   }
-  const block = findAgentInstructionBlock(existing);
-  // @req FR-NODE-089 AC-1/AC-2 — the skip condition is the block content, not its version. A block
-  // whose body drifted keeps its heading and so its version, and a version-only comparison would
-  // leave that drift in place forever. Line endings are transport, not content: comparing them
-  // would rewrite every CRLF checkout on every init.
-  const normalizeEol = (text: string): string => text.split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10));
-  if (
-    block?.hasEndMarker === true &&
-    normalizeEol(existing.slice(block.start, block.end)) === normalizeEol(snippet.trimEnd())
-  ) {
+  if (isAgentInstructionBlockCurrent(existing)) {
     output.skipped.push(filePath);
     return;
   }
+  const newer = agentInstructionBlockWrittenByNewer(existing);
+  if (newer !== undefined) {
+    output.skipped.push(filePath);
+    output.warnings?.push(`${filePath}: kept the workflow block — speckiwi ${newer} wrote it, newer than this ${PACKAGE_VERSION}; update with \`npm install -g speckiwi@latest\`.`);
+    return;
+  }
+  const block = findAgentInstructionBlock(existing);
   const next = block ? replaceAgentInstructionBlock(existing, block, snippet) : appendAgentInstructionBlock(existing, snippet);
   if (!dryRun) await writeFile(filePath, next, "utf8");
   (fileExists ? output.updated : output.created).push(filePath);
+}
+
+// @req FR-NODE-089 AC-1/AC-2 @req FR-NODE-225 AC-7 — current means the block content, not its version.
+// A block whose body drifted keeps its heading and so its version, and a version-only comparison would
+// leave that drift in place forever. Line endings are transport, not content: comparing them would
+// rewrite every CRLF checkout on every init.
+export function isAgentInstructionBlockCurrent(content: string): boolean {
+  const block = findAgentInstructionBlock(content);
+  if (block?.hasEndMarker !== true) return false;
+  const normalizeEol = (text: string): string => text.split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10));
+  return normalizeEol(content.slice(block.start, block.end)) === normalizeEol(renderAgentInstructionSnippet().trimEnd());
+}
+
+/** The newer SpecKiwi version that wrote the file's block, or undefined. @req FR-NODE-225 AC-10 */
+export function agentInstructionBlockWrittenByNewer(content: string): string | undefined {
+  const block = findAgentInstructionBlock(content);
+  return block?.hasEndMarker === true ? newerAgentInstructionWriter(content.slice(block.start, block.end)) : undefined;
 }
 
 export function findAgentInstructionBlock(content: string): AgentInstructionBlock | undefined {
@@ -552,7 +602,10 @@ async function listScopeDocuments(rootPath: string): Promise<ScopeTemplateInfo[]
 }
 
 export async function initProject(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
-  return withSrsMutationLock(root, { operation: "init_project", ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => initProjectUnlocked(root, input));
+  // `dryRun` reaches the lock too, as upgrade's does: a plan that takes a real lock writes its bookkeeping (FR-NODE-223 AC-7).
+  return withSrsMutationLock(root, { operation: "init_project", ignoreLock: input.ignoreLock, skipLock: input.skipLock, dryRun: input.dryRun }, () =>
+    initProjectUnlocked(root, input)
+  );
 }
 
 async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
@@ -615,13 +668,45 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
     await upsertAgentInstruction(root.root, agentFile, output, dryRun);
   }
   await installHooks(root.root, output, warnings, Boolean(input.force), dryRun);
-  if (input.registerMcp) await registerMcpStep(root.root, output, warnings, dryRun);
-  if (input.installSkills) {
-    await provisionSkills(root.root, input, output, warnings, dryRun, "project");
-    // FR-NODE-084 — --global adds a global-scope pass, gated per agent by agent-home presence.
-    if (input.installSkillsGlobal) await provisionSkills(root.root, input, output, warnings, dryRun, "global");
-  }
+  if (input.registerMcp || input.installSkills) output.onboarding = await onboardAgents(root.root, input, output, warnings, dryRun);
   return mutationOk(output);
+}
+
+const SELF_HOSTING_NOTE =
+  "SpecKiwi checkout: onboarded at project scope (project skills and .mcp.json) whatever the options say, and no agent CLI was run.";
+
+// @req FR-NODE-223 — global by default; project scope when asked for, and always in a SpecKiwi checkout,
+// whose launcher is a relative `node bin/speckiwi` that resolves only inside the checkout itself.
+async function onboardAgents(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean): Promise<InitOnboardingReport> {
+  const selfHosting = await isSelfHostingCheckout(root);
+  const report: InitOnboardingReport = {
+    scope: input.projectInstall || selfHosting ? "project" : "global",
+    ...(selfHosting ? { note: SELF_HOSTING_NOTE } : {}),
+    agentCommands: [],
+    globalSkills: [],
+    mcpConfirmed: []
+  };
+  if (report.scope === "project") {
+    if (input.registerMcp) await registerMcpStep(root, output, warnings, dryRun);
+    if (input.installSkills) {
+      await provisionSkills(root, input, output, warnings, dryRun, "project");
+      // FR-NODE-084 — --global adds a global-scope pass, gated per agent by agent-home presence.
+      if (input.installSkillsGlobal) report.globalSkills = await provisionSkills(root, input, output, warnings, dryRun, "global");
+    }
+    return report;
+  }
+  if (input.registerMcp) {
+    for (const agent of SKILL_PROVISION_AGENTS) {
+      const registration = await registerSpeckiwiMcpForUser(agent, input.agentCli, { dryRun });
+      report.agentCommands.push(...registration.commands);
+      if (registration.status === "created") output.created.push(registration.label);
+      if (registration.status === "skipped") output.skipped.push(registration.label);
+      if (registration.status === "created" || registration.status === "skipped") report.mcpConfirmed.push(agent);
+      if (registration.warning) warnings.push(registration.warning);
+    }
+  }
+  if (input.installSkills) report.globalSkills = await provisionSkills(root, input, output, warnings, dryRun, "global");
+  return report;
 }
 
 // FR-NODE-067 — register the SpecKiwi stdio MCP server into the project (.mcp.json), idempotent.
@@ -654,6 +739,7 @@ type SkillProvisionScope = "project" | "global";
 export interface GlobalSkillContext {
   homeDir: string;
   codexHome?: string;
+  claudeConfigDir?: string;
 }
 
 // FR-NODE-084 — resolve the home dir + CODEX_HOME used to locate global skill destinations. Test/DI seams
@@ -661,7 +747,20 @@ export interface GlobalSkillContext {
 export function resolveGlobalSkillContext(input: InitProjectInput): GlobalSkillContext {
   const homeDir = input.globalHomeDir ?? process.env.HOME ?? process.env.USERPROFILE ?? "";
   const codexHome = input.globalCodexHome ?? process.env.CODEX_HOME;
-  return codexHome ? { homeDir, codexHome } : { homeDir };
+  // A caller that names the home is describing another home, which the ambient Claude config dir is not about.
+  const claudeConfigDir = input.globalClaudeConfigDir ?? (input.globalHomeDir === undefined ? process.env.CLAUDE_CONFIG_DIR : undefined);
+  return { homeDir, ...(codexHome ? { codexHome } : {}), ...(claudeConfigDir ? { claudeConfigDir } : {}) };
+}
+
+// @req FR-NODE-224 AC-8 — the global pass writes under `<home>/.claude`; a Claude pointed elsewhere by
+// CLAUDE_CONFIG_DIR may not load what it placed, so the pass cannot count as replacing the project copies.
+function claudeConfigElsewhere(ctx: GlobalSkillContext): string | undefined {
+  if (ctx.claudeConfigDir === undefined) return undefined;
+  const written = path.resolve(ctx.homeDir, ".claude");
+  // Windows paths are case-insensitive, so a case-only difference names the same directory.
+  const same = process.platform === "win32" ? (a: string, b: string) => a.toLowerCase() === b.toLowerCase() : (a: string, b: string) => a === b;
+  if (same(path.resolve(ctx.claudeConfigDir), written)) return undefined;
+  return `CLAUDE_CONFIG_DIR is ${ctx.claudeConfigDir}, but the global skills were written under ${written}, so Claude may not load them`;
 }
 
 async function directoryExists(dir: string): Promise<boolean> {
@@ -682,20 +781,23 @@ export async function isAgentHomePresent(agent: SkillAgent, ctx: GlobalSkillCont
 
 // FR-NODE-068/069/084 — provision the bundled kiwi skills for Claude + Codex at the given scope, then prune
 // orphaned kiwi-* skill directories. The global scope is additionally gated per agent by agent-home presence.
-// Skill degradation (missing source, conflicts, absent agent) warns without aborting.
-async function provisionSkills(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean, scope: SkillProvisionScope): Promise<void> {
+// Skill degradation (missing source, conflicts, absent agent) warns without aborting. Returns one outcome per
+// agent so a caller can act only on an agent whose pass completed (FR-NODE-224).
+async function provisionSkills(root: string, input: InitProjectInput, output: InitProjectOutput, warnings: string[], dryRun: boolean, scope: SkillProvisionScope): Promise<GlobalSkillOutcome[]> {
   const label = scope === "global" ? " global" : "";
+  const outcomes: GlobalSkillOutcome[] = [];
   let globalCtx: GlobalSkillContext | undefined;
   if (scope === "global") {
     globalCtx = resolveGlobalSkillContext(input);
     if (!globalCtx.homeDir) {
       warnings.push("skills global: home directory is unavailable — global skill provisioning skipped");
-      return;
+      return SKILL_PROVISION_AGENTS.map((agent) => ({ agent, completed: false, reason: "home directory is unavailable", names: [] }));
     }
   }
   for (const agent of SKILL_PROVISION_AGENTS) {
     if (scope === "global" && globalCtx && !(await isAgentHomePresent(agent, globalCtx))) {
       warnings.push(`skills(${agent}) global: ${agent} home directory not found — skipped`);
+      outcomes.push({ agent, completed: false, reason: `${agent} home directory not found`, names: [] });
       continue;
     }
     try {
@@ -713,6 +815,7 @@ async function provisionSkills(root: string, input: InitProjectInput, output: In
       const provisioned = dryRun ? await planSkillInstall(options) : await installSkill(options);
       if (!provisioned.ok) {
         warnings.push(`skills(${agent})${label}: ${provisioned.error.message}`);
+        outcomes.push({ agent, completed: false, reason: provisioned.error.message, names: [] });
         continue;
       }
       foldSkillResults(provisioned.value, output, warnings);
@@ -731,12 +834,21 @@ async function provisionSkills(root: string, input: InitProjectInput, output: In
         output.removed.push(...prune.removed);
         warnings.push(...prune.warnings);
       }
+      const conflicts = provisioned.value.results.filter((result) => result.operation === "conflict").length;
+      const names = provisioned.value.results.filter((result) => result.operation !== "conflict").map((result) => result.name);
+      const elsewhere = scope === "global" && agent === "claude" && globalCtx ? claudeConfigElsewhere(globalCtx) : undefined;
+      if (elsewhere !== undefined) warnings.push(`skills(${agent})${label}: ${elsewhere}`);
+      if (conflicts > 0) outcomes.push({ agent, completed: false, reason: `${conflicts} skill(s) conflicted`, names });
+      else if (elsewhere !== undefined) outcomes.push({ agent, completed: false, reason: elsewhere, names });
+      else outcomes.push({ agent, completed: true, names });
     } catch (error) {
       // The skills step degrades non-fatally: any per-agent failure (Result error or raw throw, e.g. an
       // fs error against a read-only home) is recorded as a warning and init proceeds.
       warnings.push(`skills(${agent})${label}: ${(error as Error).message}`);
+      outcomes.push({ agent, completed: false, reason: (error as Error).message, names: [] });
     }
   }
+  return outcomes;
 }
 
 function foldSkillResults(plan: SkillInstallPlan, output: InitProjectOutput, warnings: string[]): void {

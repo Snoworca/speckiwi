@@ -42,11 +42,11 @@ async function runInit(root: string, input: Parameters<typeof initProject>[1]) {
 }
 
 describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
-  it("AC-1: installs bundled kiwi skills into .claude/skills and .agents/skills", async () => {
+  it("FR-NODE-068 AC-1: under project install, installs bundled kiwi skills into .claude/skills and .agents/skills and reports them as created", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    const value = await runInit(root, { installSkills: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: base });
     const claudeDest = path.join(root, ".claude", "skills", "kiwi-keep");
     const codexDest = path.join(root, ".agents", "skills", "kiwi-keep");
     expect(await exists(path.join(claudeDest, "SKILL.md"))).toBe(true);
@@ -59,8 +59,8 @@ describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    await runInit(root, { installSkills: true, skillSourceBaseDir: base });
-    const second = await runInit(root, { installSkills: true, skillSourceBaseDir: base });
+    await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: base });
+    const second = await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: base });
     const claudeDest = path.join(root, ".claude", "skills", "kiwi-keep");
     expect(second.skipped).toContain(claudeDest);
     expect(second.created).not.toContain(claudeDest);
@@ -76,7 +76,7 @@ describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
     const claudeDest = path.join(root, ".claude", "skills", "kiwi-keep");
     await mkdir(claudeDest, { recursive: true });
     await writeFile(path.join(claudeDest, "notes.txt"), "foreign directory\n", "utf8");
-    const value = await runInit(root, { installSkills: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: base });
     // init still succeeds and still scaffolds the agent files.
     expect(await exists(path.join(root, "AGENTS.md"))).toBe(true);
     expect((value.warnings ?? []).some((w) => /conflict/i.test(w))).toBe(true);
@@ -86,18 +86,40 @@ describe("speckiwi init skill provisioning (FR-NODE-068)", () => {
     const root = await emptyRepo();
     const emptyBase = path.join(root, "no-skills-here");
     await mkdir(emptyBase, { recursive: true });
-    const value = await runInit(root, { installSkills: true, skillSourceBaseDir: emptyBase });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: emptyBase });
     expect(await exists(path.join(root, "AGENTS.md"))).toBe(true);
     expect((value.warnings ?? []).some((w) => /skills\((claude|codex)\)/.test(w))).toBe(true);
   });
 
-  it("AC-5: skills are provisioned at project scope, never the global home skills dir", async () => {
+  it("FR-NODE-068 AC-5: under project install, skills go to project scope and the global home only with the global option", async () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    await runInit(root, { installSkills: true, skillSourceBaseDir: base });
+    const home = await mkdtemp(path.join(tmpdir(), "speckiwi-init-onb-home-"));
+    await mkdir(path.join(home, ".claude"));
+    await mkdir(path.join(home, ".codex"));
+    const seam = { globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base };
+    await runInit(root, { projectInstall: true, installSkills: true, ...seam });
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-keep"))).toBe(true);
     expect(await exists(path.join(root, ".agents", "skills", "kiwi-keep"))).toBe(true);
+    expect(await exists(path.join(home, ".claude", "skills"))).toBe(false);
+    expect(await exists(path.join(home, ".codex", "skills"))).toBe(false);
+    await runInit(root, { projectInstall: true, installSkills: true, installSkillsGlobal: true, ...seam });
+    expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep"))).toBe(true);
+  });
+
+  it("FR-NODE-068 AC-5: without project install, init provisions at global scope and writes no project skill directory", async () => {
+    const root = await emptyRepo();
+    const base = path.join(root, "skills");
+    await fixtureSource(base);
+    const home = await mkdtemp(path.join(tmpdir(), "speckiwi-init-onb-home-"));
+    await mkdir(path.join(home, ".claude"));
+    await mkdir(path.join(home, ".codex"));
+    await runInit(root, { installSkills: true, globalHomeDir: home, globalCodexHome: path.join(home, ".codex"), skillSourceBaseDir: base });
+    expect(await exists(path.join(home, ".claude", "skills", "kiwi-keep"))).toBe(true);
+    expect(await exists(path.join(home, ".codex", "skills", "kiwi-keep"))).toBe(true);
+    expect(await exists(path.join(root, ".claude", "skills"))).toBe(false);
+    expect(await exists(path.join(root, ".agents", "skills"))).toBe(false);
   });
 
   it("does not provision skills when installSkills is not requested (MCP init_project parity)", async () => {
@@ -115,7 +137,7 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    const value = await runInit(root, { installSkills: true, registerMcp: true, dryRun: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, registerMcp: true, dryRun: true, skillSourceBaseDir: base });
     expect(await exists(path.join(root, "docs", "spec", "00.index.md"))).toBe(false);
     expect(await exists(path.join(root, "AGENTS.md"))).toBe(false);
     expect(await exists(path.join(root, ".mcp.json"))).toBe(false);
@@ -138,7 +160,7 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     // Now init with a source that does NOT contain kiwi-gone -> it becomes an orphan and is pruned.
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    const value = await runInit(root, { installSkills: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, skillSourceBaseDir: base });
     expect(value.removed).toContain(path.join(root, ".claude", "skills", "kiwi-gone"));
     expect(await exists(path.join(root, ".claude", "skills", "kiwi-gone"))).toBe(false);
   });
@@ -147,8 +169,8 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    await runInit(root, { installSkills: true, registerMcp: true, skillSourceBaseDir: base });
-    const second = await runInit(root, { installSkills: true, registerMcp: true, skillSourceBaseDir: base });
+    await runInit(root, { projectInstall: true, installSkills: true, registerMcp: true, skillSourceBaseDir: base });
+    const second = await runInit(root, { projectInstall: true, installSkills: true, registerMcp: true, skillSourceBaseDir: base });
     expect(second.removed).toEqual([]);
     expect(second.skipped).toContain(path.join(root, ".mcp.json"));
     expect(second.skipped).toContain(path.join(root, ".claude", "skills", "kiwi-keep"));
@@ -159,7 +181,7 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    const value = await runInit(root, { installSkills: true, registerMcp: true, dryRun: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, installSkills: true, registerMcp: true, dryRun: true, skillSourceBaseDir: base });
     expect(Array.isArray(value.created)).toBe(true);
     expect(Array.isArray(value.updated)).toBe(true);
     expect(Array.isArray(value.skipped)).toBe(true);
@@ -171,7 +193,7 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    await runInit(root, { installSkills: true, registerMcp: true, skillSourceBaseDir: base });
+    await runInit(root, { projectInstall: true, installSkills: true, registerMcp: true, skillSourceBaseDir: base });
     expect(await exists(path.join(root, "docs", "spec", ".srs.lock"))).toBe(false);
   });
 
@@ -179,7 +201,7 @@ describe("speckiwi init dry-run + reporting envelope (FR-NODE-070)", () => {
     const root = await emptyRepo();
     const base = path.join(root, "skills");
     await fixtureSource(base);
-    const value = await runInit(root, { registerMcp: true, skillSourceBaseDir: base });
+    const value = await runInit(root, { projectInstall: true, registerMcp: true, skillSourceBaseDir: base });
     expect(await exists(path.join(root, ".mcp.json"))).toBe(true);
     expect(value.created).toContain(path.join(root, ".mcp.json"));
     expect((value.warnings ?? []).some((w) => /codex/i.test(w))).toBe(true);

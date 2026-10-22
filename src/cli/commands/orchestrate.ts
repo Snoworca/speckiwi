@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import type { CliContext } from "../command.js";
@@ -73,15 +72,13 @@ import {
 } from "../../core/orchestrator/journal-schema.js";
 import { LITE_SDS_SUFFIX, checkSdsFile } from "../../core/sds/check-sds.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
+import { PACKAGE_VERSION } from "../../core/package-version.js";
 
 // @req IR-CLI-082 / IR-CLI-083 / IR-CLI-084 / IR-MCP-003 / FR-NODE-127 / FR-NODE-137
 //
 // The impure shell over `src/core/orchestrator/`'s pure kernels. Every judgment lives in a kernel;
 // this file collects the facts a kernel needs from disk, calls it, and maps its answer onto the one
 // exit-code table 05 §10.6 states for the whole namespace.
-
-const requirePackage = createRequire(import.meta.url);
-const { version: PACKAGE_VERSION } = requirePackage("../../../package.json") as { version: string };
 
 /** 05 §4.2's writer stamp, required on every `schema_version >= 1.4.0` line this tool writes. */
 export const JOURNAL_WRITER_STAMP = `speckiwi-orchestrate/${PACKAGE_VERSION}`;

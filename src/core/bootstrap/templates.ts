@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { REQUIRED_SDS_HEADINGS } from "../validator/validate-scoped.js";
 import { todayStamp } from "../date-stamp.js";
+import { PACKAGE_VERSION } from "../package-version.js";
 
 export interface InitTemplateInput {
   product?: string;
@@ -32,7 +33,9 @@ export interface AgentInstructionOptions {
 // and moves the SDS rules citation onto the 2.5.0 document. From this version the skip condition is
 // the block's content rather than its version, so drift inside a block no longer survives an init.
 // @req FR-NODE-219 — v1.10 records the tdd acceptance lines in intent.md and makes the step SDS opt-in.
-export const AGENT_INSTRUCTION_VERSION = "1.10";
+// @req FR-NODE-225 — v1.11 adds the tool check that installs and version-checks SpecKiwi, now that a
+// project carries no MCP setting or skills of its own.
+export const AGENT_INSTRUCTION_VERSION = "1.11";
 // @req FR-NODE-087 — 2.5.0 is the first bundled version whose document covers every syntax the
 // runtime writes: the `checked_compatible` relation and its Notes grammar (§23.5) and the
 // [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5).
@@ -477,14 +480,38 @@ export function renderStepIntentTemplate(task: string): string {
   ].join("\n");
 }
 
+/**
+ * The `Written by` version of a rendered block when it is newer than this package, else undefined.
+ * @req FR-NODE-225 AC-10 — an older CLI must not rewrite a block a newer one wrote.
+ */
+export function newerAgentInstructionWriter(block: string): string | undefined {
+  const written = /^Written by speckiwi (\S+)\.\r?$/m.exec(block)?.[1];
+  const parsed = written === undefined ? undefined : parseLeadingSemver(written);
+  const running = parseLeadingSemver(PACKAGE_VERSION);
+  if (parsed === undefined || running === undefined) return undefined;
+  return compareSemver(parsed, running) > 0 ? written : undefined;
+}
+
 export function renderAgentInstructionSnippet(options: AgentInstructionOptions = {}): string {
   const version = options.version ?? AGENT_INSTRUCTION_VERSION;
   return [
     `${AGENT_INSTRUCTION_HEADING_PREFIX}${version}`,
+    // @req FR-NODE-225 AC-1 — the rendering package, which the tool check below compares against.
+    `Written by speckiwi ${PACKAGE_VERSION}.`,
     "",
     "This repository uses `docs/spec/` as the required source of truth for requirements.",
     "",
-    "Before making any code, test, CLI, MCP, or documentation change, agents MUST:",
+    // @req FR-NODE-225 AC-2/AC-3 — with global onboarding a project carries no MCP setting or skills
+    // of its own, so an agent arriving here has to find and check the tool before anything else.
+    "SpecKiwi tool check (once per session, before the first SpecKiwi call):",
+    "1. Run `speckiwi --version`. If the command is not found, check `node --version`: SpecKiwi needs Node.js 22 or newer, so below 22 stop and report rather than changing the Node installation. Otherwise install the CLI with `npm install -g speckiwi@latest` and run `speckiwi --version` again; if the global install is refused, report it instead of retrying with elevated rights.",
+    "2. Compare the installed version with the `Written by` version above.",
+    "   - If the CLI is older, read `npm view speckiwi version` and run `npm install -g speckiwi@latest` only when that version is newer than the installed CLI; never install an older version over it. If npm has nothing newer, keep the installed CLI, report the difference, and run neither `speckiwi init` nor `speckiwi upgrade` with it: an older CLI rewrites this block, the rules documents and the agent setup back to its own version.",
+    "   - If the CLI is newer, this block, the rules documents and the skills are out of date: tell the user and propose `speckiwi upgrade`, show `speckiwi upgrade --dry-run` first, and upgrade only when the user agrees. It never edits requirements, but it rewrites AGENTS.md, CLAUDE.md and other tool-owned files and may remove the project's own skill copies and its `.mcp.json` speckiwi key. Those removals are changes to commit, after which each collaborator needs `speckiwi init` on their machine; `speckiwi upgrade --project-install` keeps the project copies instead.",
+    "3. If no directory from the working directory up to the git top level holds `docs/spec/00.index.md` and none exists elsewhere in the repository, the project has no SRS yet: propose `speckiwi init` at the git top level and run it only when the user agrees, showing `speckiwi init --dry-run` first, because init creates the SRS there, rewrites AGENTS.md and CLAUDE.md, writes git and agent hooks, installs the global skills and registers the MCP server at user scope. If no SpecKiwi MCP tools are listed in the session, propose the same `speckiwi init` — it registers the MCP server at user scope for Claude Code and Codex — run it only when the user agrees, then ask the user to restart the agent session; if init reports that registration as already present (`skipped`) while the SpecKiwi MCP tools are still missing, stop and report instead of running init again.",
+    "4. Every SpecKiwi MCP reply carries `mcpWorkspace.packageVersion`. If it differs from `speckiwi --version`, ask the user to restart the session once; if they still differ, report both versions before relying on behavior this block describes.",
+    "",
+    "Before making any code, test, or documentation change, agents MUST:",
     "1. Read `docs/spec/00.index.md`.",
     "2. Find the relevant Requirement ID in the scope SRS files.",
     "3. Mention the Requirement ID in the work summary.",
@@ -502,11 +529,14 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "",
     "Work-mode and the TDD First (tdd) workflow:",
     "1. Before starting work, read the persisted work-mode with the MCP `get_work_mode` tool, or CLI `speckiwi mode` when MCP is unavailable (stored in `docs/spec/steps/state.md`). When no mode is set the mode is wait and the sdd (SRS-first) rules in this document apply.",
-    "2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; switching to sdd or wait drops a stale Active Task line, and an out-of-enum value is rejected with INVALID_MODE.",
+    "2. Switch modes with the MCP `set_work_mode` tool (mode plus an optional activeTask for vibe/tdd) or CLI `speckiwi mode <value>`. Any mode may switch to any other of sdd, vibe, wait, and tdd; a switch drops the Active Task line unless it moves to vibe or tdd naming a task, and an out-of-enum value is rejected with INVALID_MODE.",
     `3. When the mode is \`tdd\`, step-scoped work follows the TDD First cycle: record EARS acceptance lines (\`AC-<n>: WHEN … THE SYSTEM SHALL …\`) in \`docs/spec/steps/<task>/intent.md\` under \`## Acceptance\` and check them with \`speckiwi step validate\`, translate them into failing tests and confirm they fail, implement the smallest change to green, run regression, then synthesize the step SRS and promote the step requirement with verification evidence. A step SDS (\`design.md\` per the installed SDS-MD Authoring Rules, \`docs/rule/${BUNDLED_SDS_RULES_FILENAME}\`) is written only when the user asks for one.`,
     "4. tdd gates (all mandatory): no test before the step's acceptance contract exists — `STEP_ACCEPTANCE_MISSING` refuses a step without it; commit tests first and never weaken a test to reach green; never promote a step requirement without verification evidence.",
-    "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the step's acceptance lines plus the mandatory post-hoc promotion; body-scope work keeps the sdd rules in this document.",
+    "5. In tdd mode the rule \"do not implement behavior not covered by an SRS requirement\" is satisfied for step-scoped work by the step's acceptance lines plus the mandatory post-hoc promotion, and in vibe mode by the step SRS synthesized before the commit (item 7); body-scope work keeps the sdd rules in this document.",
     "6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.",
+    // @req FR-NODE-225 AC-5 — vibe was listed as a mode but never defined, so an agent in it either
+    // refused to work or broke the "not covered by an SRS requirement" rule below.
+    "7. When the mode is `vibe`, code may come first for the Active Task, so the TDD principle and the stop-and-ask rule above do not hold that task back; the step SRS MUST still be synthesized (MCP `synthesize_step_srs`, or CLI `speckiwi step synthesize <task>` when MCP is unavailable) before the commit that lands the task; `check_vibe_gate` (CLI `speckiwi vibe-gate check`) only confirms that the Active Task's step directory exists, not that the synthesis ran. Switch to vibe only when the user asks for it.",
     "",
     // @req FR-NODE-088 — without this the block is the whole instruction set for an agent that runs no
     // kiwi-* skill, and it carried no allocation rule at all. An agent then picks a number by copying
@@ -518,26 +548,28 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.",
     "",
     "Agents MUST NOT:",
-    "- Implement behavior that is not covered by an SRS requirement.",
+    "- Implement behavior that is not covered by an SRS requirement (the tdd and vibe items above say how step-scoped work is covered).",
     "- Create an alternate requirements source outside `docs/spec/`.",
     "- Change requirement IDs manually.",
     "- Mark requirements as verified without evidence.",
-    "- Introduce or invoke bulk-archive / bulk-finalize tooling that flips multiple requirements to `verified` or empties Active Target without per-requirement evidence and stability gate checks.",
+    "- Flip several requirements to `verified`, or empty the Active Target, in one operation without per-requirement evidence and stability gate checks.",
     "",
     // @req FR-FLOW-179 AC-6 — this block is installed into a consumer's own instructions, so a
     // blanket "if MCP is unavailable, use the CLI" shipped every consumer the opposite of what the
     // bundled skills say three lines into their own banner. Reads stay; mutations do not.
-    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration and guides MCP recovery, and is not a normal replacement for an MCP mutation. Registering an unregistered target is the single exception, and the target workflow below names it. CLI reads remain available for lookup while MCP is being repaired.",
+    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Registering an unregistered target is the single exception among target-scoped SRS mutations, and the target workflow below names it; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.",
     "",
     // @req REL-MCP-005 AC-8 — the argument is useless to an agent that is never told which families
     // take it, and dangerous to one that assumes the answer came from the root it meant.
     "Per-call workspace root:",
-    "1. The MCP server resolves its root from its own process working directory, and SRS is written only there.",
-    "2. The `workflow_*` family accepts an optional absolute `workspaceRoot` on every tool, and the `orchestrate_*` family accepts it on every tool except `orchestrate_replay_apply` and `orchestrate_preflight`.",
-    "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds` and `check_test_sufficiency` — each reading the named checkout and writing nothing. They are refused when that checkout holds no `docs/spec/00.index.md`, and `check_test_sufficiency` refuses there an `sds` path under `docs/spec` (a step `design.md`), so that check runs through `speckiwi coverage --tests` inside the worktree.",
-    "4. Every tool that writes under `docs/spec` or allocates a Requirement ID refuses `workspaceRoot` fail-closed, and so do `mcp_workspace_info` and `get_next_work_order`. Refusal is the default, so a tool not named here refuses it.",
-    "5. An accepted `workspaceRoot` MUST be an absolute path to an existing git top level that is a worktree of the startup root's repository; a path argument landing under `docs/spec` is refused even on a tool that accepts the root, unless the tool declares that it takes no caller-supplied path — which is what lets an SRS query filter on a `docs/spec` reference.",
-    "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, `server-cwd-discovery` when the server found the SRS from its working directory, and `unbound` when it found none. An unbound server answers every call with `MCP_WORKSPACE_UNBOUND` and creates nothing: start the agent session (or set the MCP server's working directory) in the project directory, run `speckiwi init` there first if the project has no SRS yet, then restart the session.",
+    // @req FR-NODE-225 AC-4 — one user-scope registration serves every project, so the walk-up is
+    // the rule an agent needs: a subdirectory still binds, the home directory never does.
+    "1. The MCP server binds once, at startup, to the nearest directory at or above its working directory that holds `docs/spec/00.index.md` — never the home directory — and writes SRS only there.",
+    "2. The `workflow_*` family accepts an optional absolute `workspaceRoot` on every tool, and the `orchestrate_*` family on every tool except `orchestrate_replay_apply` and `orchestrate_preflight`.",
+    "3. The SRS query tools also accept it: `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds` and `check_test_sufficiency` — each reading the named checkout and writing nothing.",
+    "4. Every other tool refuses `workspaceRoot`, including every tool that writes under `docs/spec` or allocates a Requirement ID; run those from a session started in that checkout.",
+    "5. An accepted `workspaceRoot` MUST be the absolute git top level of a worktree of the same repository; a refused call names its reason.",
+    "6. Agents MUST confirm workspace identity from the `mcpWorkspace` envelope — `workspaceRoot` plus `rootSource` — before any target-scoped read or mutation. `rootSource` reads `per-call-workspace-root` exactly when a supplied `workspaceRoot` passed every gate, `server-cwd-discovery` when the server found the SRS from its working directory, and `unbound` when it found none. An unbound server answers every call with `MCP_WORKSPACE_UNBOUND` and creates nothing: start the agent session (or set the MCP server's working directory) in the project directory, propose `speckiwi init` there first if the project has no SRS yet (tool check item 3), then restart the session.",
     "",
     "Current work status workflow:",
     "1. Read the active target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
@@ -549,11 +581,11 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "",
     "Next target authoring workflow:",
     "1. If the user asks to set the next target, first read the current Active Target and Target Map.",
-    "2. If the target is not registered, use a supported target-registration mutation such as MCP `set_active_target` with creation support, or CLI `speckiwi set-active-target <target> --create` when that option is available.",
+    "2. If the target is not registered, register it with MCP `set_active_target` (`create: true`) or CLI `speckiwi set-active-target <target> --create`.",
     "3. If the configured MCP/CLI cannot register the target, stop before target-scoped SRS changes and report the tool gap, unless the user explicitly authorizes a minimal SRS-MD patch.",
     "4. After target assignment, confirm the resolved Active Target with MCP `get_active_target`, or CLI `speckiwi active-target --json` if MCP is unavailable.",
     "5. When the user provides a target goal, record it with MCP `set_target_goal`. Recording a goal is a mutation, so it waits for MCP rather than moving to the command line; if MCP cannot be repaired, report the gap instead.",
-    "6. For later SRS creation, omit the target only when the tool supports Active Target defaulting; otherwise pass the confirmed Active Target explicitly.",
+    "6. `add_requirement` files a new requirement under the Active Target when `target` is omitted; pass the target explicitly when in doubt.",
     "7. If the user provides an explicit different target for a requirement, the explicit target wins over Active Target.",
     "",
     "Merge-time duplicate Requirement ID repair workflow:",
@@ -563,10 +595,10 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "4. Create a dry-run plan with MCP `plan_requirement_id_collision_repair` or CLI `speckiwi repair requirement-id-collisions plan --duplicate-id <id> --keep <file:line:blockHash> --rename <file:line:blockHash> [--replacement-id <id>|--allocate-next] --write-plan <path> --json`.",
     "5. Apply only from the explicit plan or equivalent explicit mapping with MCP `apply_requirement_id_collision_repair` or CLI `speckiwi repair requirement-id-collisions apply --plan <path> --json`. `--ignore-lock` is allowed only on apply and bypasses only the SRS mutation lock.",
     "6. Do not use collision repair for general renumbering, gap filling, ID beautification, bulk archive, bulk finalize, or Status/Stability changes. When two duplicate logical requirements should be merged or discarded, first repair IDs to uniqueness, then use separate guarded SRS mutations for discard, supersedes, Status, Stability, AC, or evidence changes.",
-    "7. When implemented runtime CLI or MCP repair tooling is available, do not hand-edit Requirement IDs. If tooling is unavailable and the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.",
-    "8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json`, and `speckiwi links check --json` or MCP equivalents. Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.",
+    "7. Do not hand-edit Requirement IDs. If the user explicitly authorizes a degraded SRS-MD patch, limit it to the selected occurrence and explicitly mapped references.",
+    "8. Finish with `speckiwi validate --fail-on-warning --json`, `speckiwi summary --target <target> --json` (MCP `summarize_target`), and `speckiwi links check --json` (CLI only). Evidence must show duplicate IDs are zero and ambiguous references were reported or explicitly mapped.",
     "",
-    "The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
+    "The Completed Work Log — inline in `docs/spec/00.index.md` §7 and its split history file `docs/spec/91.completed-work-log.md` — is a read-only summary for agents; add rows only with MCP `add_completed_work`, never by hand. Requirement Block status, Acceptance Criteria, Verification Evidence, and Change Notes remain the source of truth for completion.",
     "",
     AGENT_INSTRUCTION_END_MARKER
   ].join("\n");

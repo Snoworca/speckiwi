@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
+import path from "node:path";
 import { promisify } from "node:util";
 
 // Facts about a root that only the filesystem can answer, kept in one place so the pure comparison
@@ -22,6 +23,42 @@ export class GitUnavailableError extends Error {
     super(message, options);
     this.name = "GitUnavailableError";
   }
+}
+
+export interface GitAnswer {
+  /** The exit status; `null` when git could not be started or was killed. */
+  readonly code: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+/**
+ * Runs one git command in `root`. A non-zero exit is an answer, not a failure — `merge-base
+ * --is-ancestor` reports its verdict that way — so nothing here throws.
+ */
+export function git(root: string, args: readonly string[]): Promise<GitAnswer> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["-C", root, ...args],
+      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS },
+      (error, stdout, stderr) => {
+        const code = error === null ? 0 : typeof error.code === "number" ? error.code : null;
+        resolve({ code, stdout, stderr });
+      }
+    );
+  });
+}
+
+/**
+ * The files git tracks at or under `paths` (absolute, inside `root`), relative to `root`. Empty when
+ * `root` is in no repository, since nothing is tracked there. @req FR-NODE-224 AC-5
+ */
+export async function gitTrackedPaths(root: string, paths: readonly string[]): Promise<string[]> {
+  if (paths.length === 0) return [];
+  const answer = await git(root, ["ls-files", "-z", "--", ...paths.map((entry) => path.relative(root, entry))]);
+  if (answer.code !== 0) return [];
+  return answer.stdout.split("\0").filter((entry) => entry.length > 0);
 }
 
 /**
