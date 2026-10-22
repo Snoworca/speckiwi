@@ -341,3 +341,30 @@ describe("IR-CLI-080 AC-10 — SpecKiwi copies left in the deprecated codex root
     expect((await driftCheck(fixtures)).state).toBe("ok");
   });
 });
+
+// @req FR-NODE-228 AC-12 — a retired skill (kiwi-planner, 4.0.0) an earlier release left in the deprecated
+// root is the leftover a Codex global install now removes, so doctor names it too.
+describe("FR-NODE-228 AC-12 — a retired SpecKiwi skill left in the deprecated codex root is reported", () => {
+  it("FR-NODE-228 AC-12: warns naming the retired skill and the deprecated root", async () => {
+    const fixtures = await setup();
+    const oldSource = path.join(path.dirname(fixtures.rootPath), `old-release-${path.basename(fixtures.rootPath)}`, "skills", "codex");
+    await mkdir(path.join(oldSource, "kiwi-planner"), { recursive: true });
+    await writeFile(path.join(oldSource, "kiwi-planner", "SKILL.md"), ["---", "name: kiwi-planner", "description: planner", "---", "", "retired", ""].join("\n"), "utf8");
+    const deprecated = path.join(fixtures.homeDir, ".codex", "skills");
+    const placed = await installSkill({
+      projectRoot: { root: fixtures.rootPath },
+      sourceBaseDir: path.dirname(oldSource),
+      agent: "codex",
+      selector: "kiwi-planner",
+      scope: "custom",
+      dest: deprecated
+    });
+    if (!placed.ok) throw new Error(placed.error.message);
+
+    const check = await driftCheck(fixtures);
+
+    expect(check.state).toBe("warn");
+    expect(check.message).toContain("kiwi-planner");
+    expect(check.message).toContain(deprecated);
+  });
+});

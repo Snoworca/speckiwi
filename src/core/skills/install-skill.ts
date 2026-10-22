@@ -483,22 +483,38 @@ async function locateDeprecatedCodexSkillsRoot(options: SkillInstallOptions): Pr
 }
 
 /**
- * @req FR-NODE-228 — takes SpecKiwi's own copies of the skills just installed out of the deprecated
- * Codex root, under the verdict `speckiwi remove` uses, so Codex does not list them twice. A copy
- * that fails that verdict is somebody's, so it stays and the warning names both places Codex reads.
+ * The `kiwi-*` skills an earlier release bundled and a later one removed. Absence from the bundle is not
+ * enough to call a name retired: a name this release does not know may be somebody's own skill.
+ */
+const RETIRED_KIWI_SKILLS: readonly string[] = ["kiwi-planner"];
+
+/**
+ * @req FR-NODE-228 AC-2, AC-12 — the only names a Codex global install may take out of the deprecated root:
+ * the ones it placed, and the retired ones. Exported so doctor reports exactly what the install removes.
+ */
+export function deprecatedCodexCandidates(placed: readonly string[]): string[] {
+  return [...new Set([...placed, ...RETIRED_KIWI_SKILLS])];
+}
+
+/**
+ * @req FR-NODE-228 — takes SpecKiwi's own copies of the skills just installed, and of retired skills, out
+ * of the deprecated Codex root, under the verdict `speckiwi remove` uses, so Codex neither lists a skill
+ * twice nor keeps listing one SpecKiwi retired. A copy that fails that verdict is somebody's, so it stays
+ * with a warning.
  */
 async function retireDeprecatedCodexCopies(options: SkillInstallOptions, plan: SkillInstallPlan, dryRun: boolean): Promise<DeprecatedRootCleanup | undefined> {
   const located = await locateDeprecatedCodexSkillsRoot(options);
   if (located === undefined) return undefined;
   const { root } = located;
   if (located.refused !== undefined) return { root, removed: [], kept: [], warnings: [located.refused] };
+  const placed = plan.results.map((result) => result.name);
   const outcome = await removeManagedKiwiSkills({
     destinationRoot: root,
     agent: "codex",
     keepNames: [],
     // @req FR-NODE-228 AC-2 — named rather than derived from a listing of the root, so a listing that
     // fails cannot widen the candidates to every SpecKiwi copy there.
-    onlyNames: plan.results.map((result) => result.name),
+    onlyNames: deprecatedCodexCandidates(placed),
     dryRun,
     reconcileSharedMirror: true,
     sourceRoot: plan.sourceRoot
@@ -509,6 +525,11 @@ async function retireDeprecatedCodexCopies(options: SkillInstallOptions, plan: S
       return [`Could not clean ${root}: ${entry.detail ?? entry.reason} Codex may list some skills twice until the old copies there are removed.`];
     }
     if (path.dirname(entry.path) !== root) return [];
+    if (!placed.includes(path.basename(entry.path))) {
+      return [
+        `Kept ${entry.path} (${entry.reason}): SpecKiwi no longer ships this skill, but Codex still lists it from this deprecated root; remove it by hand once you no longer need it.`
+      ];
+    }
     return [
       `Kept ${entry.path} (${entry.reason}): Codex also reads this deprecated root, so it lists this skill beside ${path.join(plan.destinationRoot, path.basename(entry.path))}; remove the old copy by hand once you no longer need it.`
     ];

@@ -14,7 +14,7 @@ import {
 import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
 import { agentInstructionBlockWrittenByNewer, isAgentInstructionBlockCurrent } from "../bootstrap/init-project.js";
 import { NODE_FLOOR, PACKAGE_VERSION, engineFloorVersion, parseNodeFloor, type NodeFloor, type NodeVersionTuple } from "../package-version.js";
-import { removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
+import { deprecatedCodexCandidates, removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
 import type { SkillInstallOptions } from "../skills/types.js";
 
 // @req IR-CLI-065
@@ -468,7 +468,7 @@ function codexGlobalOptions(rootPath: string, homeDir: string, codexHome: string
 
 // @req IR-CLI-080 AC-10 @req FR-NODE-228
 /**
- * The SpecKiwi-owned copies of bundled Codex skills still in the deprecated `${CODEX_HOME:-~/.codex}/skills`,
+ * The SpecKiwi-owned copies of bundled or retired Codex skills still in the deprecated `${CODEX_HOME:-~/.codex}/skills`,
  * as one finding, or undefined. Ownership is the removal verdict run as a dry-run, so a copy somebody
  * edited or wrote is not counted: that one is theirs, not a leftover the install would take away.
  */
@@ -476,13 +476,13 @@ async function deprecatedCodexLeftovers(rootPath: string, homeDir: string, codex
   const root = await resolveDeprecatedCodexSkillsRoot(codexGlobalOptions(rootPath, homeDir, codexHome));
   if (root === undefined) return undefined;
   const bundled = await listSkillNames(codexSource);
-  const probe = await removeManagedKiwiSkills({ destinationRoot: root, agent: "codex", keepNames: [], onlyNames: bundled, dryRun: true });
+  const probe = await removeManagedKiwiSkills({ destinationRoot: root, agent: "codex", keepNames: [], onlyNames: deprecatedCodexCandidates(bundled), dryRun: true });
   // @req FR-NODE-228 AC-10 — an unlistable root is this check's warning, not the whole report's failure.
   const unreadable = probe.kept.find((entry) => entry.path === root);
   if (unreadable !== undefined) return `deprecated codex root ${root} — ${unreadable.detail ?? "could not be read"}`;
   if (probe.removed.length === 0) return undefined;
   const names = probe.removed.map((entry) => path.basename(entry)).sort();
-  return `deprecated codex root ${root} — SpecKiwi copies Codex lists a second time: ${names.join(", ")}`;
+  return `deprecated codex root ${root} — SpecKiwi copies a Codex global install removes: ${names.join(", ")}`;
 }
 
 // @req IR-CLI-080
