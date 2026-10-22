@@ -227,7 +227,7 @@ describe("SRS mutation lock and status cache", () => {
       signalSecondEntry = resolve;
     });
 
-    const first = withSrsMutationLock(root, { operation: "slow-first", ttlMs: 5 }, async () => {
+    const first = withSrsMutationLock(root, { operation: "slow-first", ttlMs: 200 }, async () => {
       const held = new Promise<void>((resolve) => {
         finishFirst = resolve;
       });
@@ -237,6 +237,10 @@ describe("SRS mutation lock and status cache", () => {
     });
 
     await waitFor(firstEntry, 10_000, "expired holder critical-section entry");
+    // The second call does not retry a refusal, so it must start after the first lock has expired; a fast
+    // runner entered the first callback inside the TTL and the second call was refused (CI, 2026-10-23).
+    const firstLock = JSON.parse(await readFile(path.join(rootPath, "kiwi", ".srs.lock"), "utf8")) as { expiresAt: string };
+    await delay(Math.max(0, Date.parse(firstLock.expiresAt) - Date.now()) + 1);
 
     const second = withSrsMutationLock(root, { operation: "second-after-stale", ttlMs: 60_000 }, async () => {
       const held = new Promise<void>((resolve) => {
