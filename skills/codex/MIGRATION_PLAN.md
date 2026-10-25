@@ -8,6 +8,8 @@ Requirement IDs: `MIG-FLOW-001`, `MIG-FLOW-002`, `FR-FLOW-012`, `FR-NODE-016`, `
 
 As of 4.0.0 (2026-09-28) the planning skill, its plan sidecar and its validator script are removed from every rendering (FR-FLOW-184 AC-2), and `kiwi-sds` is added: it writes the lite SDS (`docs/sds/<sds-id>.sds.md`) that `kiwi-pm` executes, checked by `speckiwi sds check` instead of a skill-local script.
 
+As of 4.2.0, `kiwi-bug-repro` is added in English with `agents/openai.yaml` (FR-FLOW-199): it confirms a reported bug and reproduces it as a failing test before any fix, and `kiwi-hot-fix` and `kiwi-orchestrator` call it instead of running root-cause analysis of their own (FR-FLOW-200, FR-FLOW-201).
+
 As of 2026-05-26, the delta described in `docs/research/08.claude-skill-delta-to-codex-opencode-research.md` has been applied to `skills/codex/`: shared `--auto` decision policy is available at `_shared/kiwi/auto-option.md`, the existing Kiwi Codex skills reference the shared policy and declare `critical_gates[]`, and the Codex skill set now includes `kiwi-commit-auto-pr`, `kiwi-hot-fix`, and `kiwi-review-fix-loop`.
 
 Inventory copied from `skills/claude/`:
@@ -29,6 +31,7 @@ Inventory copied from `skills/claude/`:
 | `_shared/kiwi/auto-option.md` | `_shared/kiwi/auto-option.md` | Shared `--auto` policy rewritten as Codex-neutral decision worker and critical gate guidance. |
 | `kiwi-commit-auto-pr/SKILL.md` | `kiwi-commit-auto-pr/SKILL.md` | Added Codex PR workflow skill with MCP evidence, protected-branch handling, and `--auto` critical gates. |
 | `kiwi-hot-fix/SKILL.md` | `kiwi-hot-fix/SKILL.md` | Added Codex urgent-fix workflow skill with TDD, stability gates, sync delegation, and `--auto` critical gates. |
+| `kiwi-bug-repro/SKILL.md` | `kiwi-bug-repro/SKILL.md` | Added in 4.2.0 in English with `agents/openai.yaml`; the bug reproduction `kiwi-hot-fix` and `kiwi-orchestrator` delegate to. |
 | `kiwi-review-fix-loop/SKILL.md` | `kiwi-review-fix-loop/SKILL.md` | Added Codex review-fix-review loop skill with safe `--close-reqs` MCP evidence handling. |
 
 ## Migration Disposition List
@@ -56,6 +59,7 @@ Every original `skills/claude/` source item has the following current Codex disp
 | `_shared/kiwi/auto-option.md` | Added at `_shared/kiwi/auto-option.md` | Shared `--auto` source of truth for Codex Kiwi skills, including confidence policy and critical gate handling. |
 | `kiwi-commit-auto-pr/SKILL.md` | Added at `kiwi-commit-auto-pr/SKILL.md` | New Codex workflow skill for commit, push, PR creation, PR review, and MCP PR evidence. |
 | `kiwi-hot-fix/SKILL.md` | Added at `kiwi-hot-fix/SKILL.md` | New Codex workflow skill for urgent fixes with hot-fix triage, TDD, review, and SRS sync delegation. |
+| n/a | Added `kiwi-bug-repro/SKILL.md` and `kiwi-bug-repro/agents/openai.yaml` (4.2.0) | Confirms and reproduces a reported bug before any fix; replaces the root-cause passes `kiwi-hot-fix` used to run itself (FR-FLOW-201). |
 | `kiwi-review-fix-loop/SKILL.md` | Added at `kiwi-review-fix-loop/SKILL.md` | New Codex workflow skill for review, fix, re-review, and guarded self-mode requirement closing. |
 
 ## Codex Target Shape
@@ -152,6 +156,7 @@ Apply these rules to every copied skill before validating it as Codex-compatible
 | 12 | `kiwi-review-fix-loop` | New post-implementation gate; depends on coder, MCP evidence, and regression semantics. |
 | 13 | `kiwi-hot-fix` | New urgent-fix flow; depends on SRS sync, coder, reviewer, and stability gate vocabulary. |
 | 14 | `kiwi-commit-auto-pr` | New commit/PR flow; depends on commit-auto-push and PR evidence semantics. |
+| 15 | `kiwi-bug-repro` | Added in 4.2.0; `kiwi-hot-fix` and `kiwi-orchestrator` call it, so its outcome vocabulary must be settled before theirs. |
 
 ## Validation Commands
 

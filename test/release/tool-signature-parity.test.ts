@@ -328,8 +328,13 @@ describe("FR-NODE-122 gate-id parity", () => {
     // @req FR-NODE-221 AC-10 · FR-FLOW-198 AC-5 — 65 in 4.1.0: `run-lock-held-by-live-session` (a
     // foreign release refused while the holder's Windows fence is live) and `lane-worker-possibly-live`
     // (the critical stop before re-dispatching a lane whose worktree is locked) joined.
-    expect(GATE_IDS).toHaveLength(65);
-    expect(new Set(GATE_IDS).size).toBe(65);
+    // @req FR-FLOW-200 AC-4 — 67 in 4.2.0: `bug-not-reproduced` and `bug-not-a-bug`, the two stops of
+    // a bug input that kiwi-bug-repro could not reproduce or found to be specified behaviour, joined;
+    // 68 with `bug-input-dirty-tree`, the stop before a bug is reproduced in a run root holding
+    // uncommitted changes; 70 with `bug-test-unskippable` and `bug-repro-test-unresolved`, the stops
+    // that keep a wave-route reproduction test from being committed red or left skipped.
+    expect(GATE_IDS).toHaveLength(70);
+    expect(new Set(GATE_IDS).size).toBe(70);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {

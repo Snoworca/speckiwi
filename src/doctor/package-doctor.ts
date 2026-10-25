@@ -60,6 +60,8 @@ export interface PackageDoctorOptions {
  * the real expectation set rather than a copy of it. @req FR-NODE-130
  */
 export const EXPECTED_KIWI_SKILLS = [
+  // @req FR-FLOW-199 AC-1 — the bug-reproduction skill kiwi-hot-fix and kiwi-orchestrator call.
+  "kiwi-bug-repro",
   "kiwi-coder",
   "kiwi-commit-auto-pr",
   "kiwi-commit-auto-push",

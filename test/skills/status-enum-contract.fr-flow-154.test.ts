@@ -61,6 +61,8 @@ const RENDERINGS: readonly string[] = [
  */
 const SKILL_DIRECTORIES = [
   "_shared",
+  // @req FR-FLOW-199 AC-1 — the bug-reproduction skill ships in every rendering and in the mirror.
+  "kiwi-bug-repro",
   "kiwi-coder",
   "kiwi-commit-auto-pr",
   "kiwi-commit-auto-push",
@@ -1006,9 +1008,9 @@ const TOOL_AXIS_FLOOR: Record<string, number> = {
 
 /**
  * The axis surfaces each rendering actually writes a value beside, measured. `search_requirements`
- * is in the axis because its schema takes a status and a stability, and no rendering currently
- * writes a value beside it — recorded here rather than asserted away, so that the day one does the
- * list has to be updated and read.
+ * is in the axis because its schema takes a status and a stability; no rendering wrote a value
+ * beside it until kiwi-bug-repro (FR-FLOW-199), and it was recorded here rather than asserted away
+ * so that the day one did, the list had to be updated and read.
  *
  * Per rendering, because the renderings differ on exactly this: `skills/claude` ships a CLI
  * fallback and writes values beside `speckiwi update-status` / `speckiwi update-stability`, while
@@ -1021,10 +1023,12 @@ const TOOL_AXIS_SURFACES_IN_USE: Record<string, readonly string[]> = {
   // the CLI is diagnostic, so no value stands beside those three any more. `speckiwi list` stays —
   // it is a read, and it is still cited. The remaining difference from codex and etc is that one
   // read command, which is the difference the per-rendering shape of this record exists to show.
-  "skills/claude": ["add_requirement", "list_requirements", "speckiwi list", "update_stability", "update_status"],
-  "skills/codex": ["add_requirement", "list_requirements", "update_stability", "update_status"],
-  "skills/etc": ["add_requirement", "list_requirements", "update_stability", "update_status"],
-  ".agents/skills": ["add_requirement", "list_requirements", "update_stability", "update_status"]
+  // `search_requirements` joined with FR-FLOW-199 AC-3 · AC-7: kiwi-bug-repro looks up the requirements
+  // a reported symptom touches, so it can tell a bug from specified behaviour.
+  "skills/claude": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+  "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
+  "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
+  ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"]
 };
 
 /**
@@ -3463,10 +3467,10 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       ".agents/skills": 297
     });
     expect(TOOL_AXIS_SURFACES_IN_USE, "the lifecycle surfaces the shipped text writes a value beside").toEqual({
-      "skills/claude": ["add_requirement", "list_requirements", "speckiwi list", "update_stability", "update_status"],
-      "skills/codex": ["add_requirement", "list_requirements", "update_stability", "update_status"],
-      "skills/etc": ["add_requirement", "list_requirements", "update_stability", "update_status"],
-      ".agents/skills": ["add_requirement", "list_requirements", "update_stability", "update_status"]
+      "skills/claude": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+      "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
+      "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
+      ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"]
     });
     // Derived, and derived to something: a CLI whose subcommand names stopped declaring a
     // requirement status would leave the CLI half of the axis anchored on nothing at all.

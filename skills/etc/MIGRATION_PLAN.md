@@ -39,6 +39,7 @@ Do not edit `skills/codex` or `skills/claude` during this migration.
 | `skills/codex/kiwi-commit-auto-push` | `skills/etc/kiwi-commit-auto-push` | Copy and rewrite commit evaluator topology |
 | `skills/codex/kiwi-commit-auto-pr` | `skills/etc/kiwi-commit-auto-pr` | Copy and rewrite PR workflow for single-evaluator local-LLM topology |
 | `skills/codex/kiwi-hot-fix` | `skills/etc/kiwi-hot-fix` | Copy and rewrite urgent hot-fix workflow for MCP-required sync and single evaluator |
+| `skills/codex/kiwi-bug-repro` | `skills/etc/kiwi-bug-repro` | Added in 4.2.0: copy and rewrite for the local-LLM profile (the `--max` cause-analysis subagent runs after the main analysis, one at a time) |
 | `skills/codex/kiwi-review-fix-loop` | `skills/etc/kiwi-review-fix-loop` | Copy and rewrite review/fix/close-REQ workflow with per-REQ MCP evidence gates |
 | `skills/codex/kiwi-pipeline` | `skills/etc/kiwi-pipeline` | Copy and rewrite invocation/clarification wording |
 | `skills/codex/kiwi-srs-from-code` | `skills/etc/kiwi-srs-from-code` | Copy and rewrite scope/evaluator fanout policy |

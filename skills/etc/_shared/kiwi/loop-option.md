@@ -59,7 +59,7 @@ ESLint extends override). Unanimous 3-subagent decision —
 
 ## 5. No-loop skills
 
-Skills without a round-capped loop (kiwi-step, kiwi-srs-research) accept `--mini` / `--loops` as a
+Skills without a round-capped loop (kiwi-step, kiwi-srs-research, kiwi-bug-repro) accept `--mini` / `--loops` as a
 **documented no-op** (orchestration uniformity). There is no loop to cap, so behavior is unaffected.
 
 ## 6. Orchestrator propagation (FR-FLOW-035)

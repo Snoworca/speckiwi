@@ -109,12 +109,13 @@ If your situation differs:
 | Your situation | Ask for | What happens |
 | --- | --- | --- |
 | A feature or change you can describe in a sentence or two | `kiwi-pipeline`: *"Use kiwi-pipeline: users can export reports as CSV."* | Writes the requirement, implements it test-first, reviews the code and checks test coverage. Asks before each step. |
-| Work that spans several scopes, or arrives as a list of parts | `kiwi-orchestrator`: *"Use kiwi-orchestrator: add SSO login."* | Proposes a path and asks you to confirm it: one `kiwi-tdd` step, or a run split into parallel waves. Resumable. |
+| Work that spans several scopes, or arrives as a list of parts | `kiwi-orchestrator`: *"Use kiwi-orchestrator: add SSO login."* | Proposes a path and asks you to confirm it: one `kiwi-tdd` step, or a run split into parallel waves. A bug report is reproduced with `kiwi-bug-repro` first. Resumable. |
 | An epic, a roadmap or long research | `kiwi-wave-master` | Splits the work into ordered waves with a target each. Runs the waves whose dependencies are done in parallel. Resumable. |
 | Record a requirement only | `kiwi-srs` | Writes the requirement and its acceptance criteria, then stops. |
 | An existing codebase with no SRS | `kiwi-srs-from-code` | Drafts SRS documents from the code, one per scope. |
 | You already changed the code | `kiwi-srs-sync` | Reads `git diff` and brings the SRS up to date. |
-| An urgent bug | `kiwi-hot-fix` | Fixes it test-first and runs regression. Then hands the SRS update to `kiwi-srs-sync`. |
+| A bug you want confirmed before it is fixed | `kiwi-bug-repro` | Reads the bug report, narrows down likely causes in the code, and reproduces the bug as a failing test, from the smallest test up to a build run in a temporary directory. It fixes nothing. If it cannot reproduce the bug, it asks you for what is missing. |
+| An urgent bug | `kiwi-hot-fix` | Reproduces it first with `kiwi-bug-repro`, fixes it until that test passes, and runs regression. Then hands the SRS update to `kiwi-srs-sync`. |
 | Review local changes or PR comments | `kiwi-review-fix-loop` | Reviews, fixes and reviews again. |
 | Commit and push, or open a PR | `kiwi-commit-auto-push` or `kiwi-commit-auto-pr` | Commits and pushes, then records the commit as evidence on the matching requirements. `kiwi-commit-auto-pr` also creates or updates the PR. |
 | "What should I do next?" | `kiwi-pipeline --none-cycle` | Recommends the next step without running anything. |
@@ -497,7 +498,8 @@ Each skill's `SKILL.md` lists all of its options.
 | `kiwi-pm` | Runs the requirements given as `--req-filter <REQ-ID,...>` through one `kiwi-coder` run, then hands off to `kiwi-review-fix-loop`. Without `--req-filter`, it proposes the Active Target's open work and asks you to confirm it. |
 | `kiwi-coder` | Implements a set of requirements test-first: failing test, smallest change, review, regression, MCP evidence. `kiwi-pm` calls it; you rarely call it directly. |
 | `kiwi-tdd` | Takes one step through the `tdd` work mode's TDD First cycle. See [Step-scoped work](#en-tdd-steps). |
-| `kiwi-hot-fix` | Fixes an urgent bug test-first, with review and regression. Then hands the SRS update to `kiwi-srs-sync`, unless you pass `--no-sync`. |
+| `kiwi-bug-repro` | Confirms a reported bug and reproduces it before anything is fixed: static analysis first, then a failing test from the smallest scope outward, and at most a build run in a temporary directory. It ends with the reproduction test, a "not a bug" verdict that points to `kiwi-srs`, or a question for you. It never changes product code. |
+| `kiwi-hot-fix` | Fixes an urgent bug test-first, with review and regression. It first calls `kiwi-bug-repro` and uses its reproduction test as the regression test. If the bug does not reproduce, is not a bug, or reproduces only without an automated test, it stops without a fix; with `TDD_EXEMPT_REASON` it goes on without the test. Given an issue or a symptom while your working tree has uncommitted changes, it first asks you to commit them or set them aside. Then hands the SRS update to `kiwi-srs-sync`, unless you pass `--no-sync`. |
 
 **Reviewing and shipping**
 
@@ -512,7 +514,7 @@ Each skill's `SKILL.md` lists all of its options.
 | Skill | What it does |
 | --- | --- |
 | `kiwi-pipeline` | Runs the chain in [How work flows](#en-pipeline), asking before each step. It reads the skills' journal, `kiwi/pipeline.jsonl`. A call without a work request, such as a status question, runs no chain. `--none-cycle` recommends a single next step. |
-| `kiwi-orchestrator` | Takes one work item, probes it and proposes a route: one `kiwi-tdd` step, or an orchestrated run in [parallel waves](#en-waves). A step route needs the `tdd` work mode; otherwise it asks whether to switch, and recommends the orchestrated run. Resumable. |
+| `kiwi-orchestrator` | Takes one work item, probes it and proposes a route: one `kiwi-tdd` step, or an orchestrated run in [parallel waves](#en-waves). A step route needs the `tdd` work mode; otherwise it asks whether to switch, and recommends the orchestrated run. When the input reports a bug, it first reproduces it with `kiwi-bug-repro`, and stops if the bug does not reproduce. Resumable. |
 | `kiwi-wave-master` | Splits an epic, a roadmap or long research into ordered waves, registers a target per wave, and runs them under the same parallel rules as `kiwi-orchestrator`. Resumable. |
 
 `kiwi-orchestrator` also takes `--work`, `--base-branch` and `--lanes N`. `kiwi-wave-master` also takes `--drive`, which also opens the integration-test and cost gates that `--auto` alone stops at.
@@ -1096,12 +1098,13 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 | 상황 | 요청할 스킬 | 일어나는 일 |
 | --- | --- | --- |
 | 한두 문장으로 설명할 수 있는 기능이나 변경 | `kiwi-pipeline`: *"kiwi-pipeline으로 진행해줘: 사용자가 보고서를 CSV로 내보낼 수 있다."* | 요구사항을 쓰고, 테스트를 먼저 쓰는 방식으로 구현하고, 코드를 리뷰한 뒤 테스트 커버리지를 확인합니다. 각 단계 전에 사용자에게 묻습니다. |
-| 여러 scope에 걸치거나, 여러 부분의 목록으로 주어지는 작업 | `kiwi-orchestrator`: *"kiwi-orchestrator로 진행해줘: SSO 로그인 추가."* | 경로를 제안하고 사용자의 확인을 받습니다. 경로는 `kiwi-tdd` step 하나이거나, 병렬 wave로 나눈 실행입니다. 재개할 수 있습니다. |
+| 여러 scope에 걸치거나, 여러 부분의 목록으로 주어지는 작업 | `kiwi-orchestrator`: *"kiwi-orchestrator로 진행해줘: SSO 로그인 추가."* | 경로를 제안하고 사용자의 확인을 받습니다. 경로는 `kiwi-tdd` step 하나이거나, 병렬 wave로 나눈 실행입니다. 버그 보고는 먼저 `kiwi-bug-repro`로 재현합니다. 재개할 수 있습니다. |
 | 에픽, 로드맵, 긴 연구 | `kiwi-wave-master` | 작업을 순서 있는 wave로 나누고 wave마다 대상을 하나씩 둡니다. 의존하는 wave가 끝난 wave들을 병렬로 실행합니다. 재개할 수 있습니다. |
 | 요구사항만 기록 | `kiwi-srs` | 요구사항과 수용 기준을 쓰고 멈춥니다. |
 | SRS가 없는 기존 코드베이스 | `kiwi-srs-from-code` | 코드를 읽고 scope마다 SRS 문서 초안을 하나씩 만듭니다. |
 | 코드를 이미 고친 경우 | `kiwi-srs-sync` | `git diff`를 읽고 SRS를 최신 상태로 맞춥니다. |
-| 긴급 버그 | `kiwi-hot-fix` | 테스트를 먼저 쓰는 방식으로 고치고 회귀 테스트를 실행합니다. 그다음 SRS 갱신을 `kiwi-srs-sync`에 넘깁니다. |
+| 고치기 전에 확인하고 싶은 버그 | `kiwi-bug-repro` | 버그 보고를 읽고 코드에서 원인 후보를 좁힌 뒤, 가장 작은 테스트부터 임시 디렉터리에서의 빌드 실행까지 넓혀 가며 버그를 실패하는 테스트로 재현합니다. 아무것도 고치지 않습니다. 재현하지 못하면 무엇이 더 필요한지 사용자에게 묻습니다. |
+| 긴급 버그 | `kiwi-hot-fix` | 먼저 `kiwi-bug-repro`로 버그를 재현하고, 그 테스트가 통과하도록 고친 뒤 회귀 테스트를 실행합니다. 그다음 SRS 갱신을 `kiwi-srs-sync`에 넘깁니다. |
 | 로컬 변경이나 PR 코멘트 리뷰 | `kiwi-review-fix-loop` | 리뷰하고, 고치고, 다시 리뷰합니다. |
 | 커밋과 push, 또는 PR 생성 | `kiwi-commit-auto-push` 또는 `kiwi-commit-auto-pr` | 커밋하고 push한 뒤, 그 커밋을 해당 요구사항의 검증 증거로 기록합니다. `kiwi-commit-auto-pr`은 PR도 만들거나 갱신합니다. |
 | "다음에 뭘 하면 되지?" | `kiwi-pipeline --none-cycle` | 아무것도 실행하지 않고 다음 단계를 추천합니다. |
@@ -1484,7 +1487,8 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | `kiwi-pm` | `--req-filter <REQ-ID,...>`로 받은 요구사항들을 `kiwi-coder` 실행 하나로 처리한 뒤 `kiwi-review-fix-loop`에 넘깁니다. `--req-filter`가 없으면 Active Target의 열린 작업을 제안하고 사용자의 확인을 받습니다. |
 | `kiwi-coder` | 요구사항 집합을 테스트 우선 방식으로 구현합니다. 실패하는 테스트, 최소한의 변경, 리뷰, 회귀 테스트, MCP 증거 기록 순서로 진행합니다. `kiwi-pm`이 부르므로 직접 부를 일은 드뭅니다. |
 | `kiwi-tdd` | step 하나를 `tdd` 작업 모드의 TDD First 주기로 처리합니다. [step 단위 작업](#ko-tdd-steps)을 참조하십시오. |
-| `kiwi-hot-fix` | 긴급 버그를 테스트 우선 방식으로 고치고, 리뷰와 회귀 테스트를 거칩니다. 그다음 `--no-sync`를 주지 않았다면 SRS 갱신을 `kiwi-srs-sync`에 넘깁니다. |
+| `kiwi-bug-repro` | 보고된 버그를 고치기 전에 확인하고 재현합니다. 먼저 코드를 정적으로 분석하고, 가장 작은 범위의 실패하는 테스트에서 시작해 범위를 넓혀 가며, 마지막에는 임시 디렉터리에서 빌드해 실행합니다. 결과는 재현 테스트, `kiwi-srs`로 안내하는 "버그가 아님" 판정, 사용자에게 하는 질문 가운데 하나입니다. 제품 코드는 고치지 않습니다. |
+| `kiwi-hot-fix` | 긴급 버그를 테스트 우선 방식으로 고치고, 리뷰와 회귀 테스트를 거칩니다. 먼저 `kiwi-bug-repro`를 불러 그 재현 테스트를 회귀 테스트로 씁니다. 버그가 재현되지 않거나, 버그가 아니거나, 자동 테스트 없이 재현되기만 하면 고치지 않고 멈춥니다. `TDD_EXEMPT_REASON`을 주면 테스트 없이 진행합니다. 작업 트리에 커밋하지 않은 변경이 있는 상태에서 이슈나 증상을 주면, 먼저 그 변경을 커밋하거나 치워 달라고 묻습니다. 그다음 `--no-sync`를 주지 않았다면 SRS 갱신을 `kiwi-srs-sync`에 넘깁니다. |
 
 **리뷰와 배포**
 
@@ -1499,7 +1503,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | 스킬 | 하는 일 |
 | --- | --- |
 | `kiwi-pipeline` | [작업이 진행되는 방식](#ko-pipeline)의 흐름을 실행하며, 각 단계 전에 사용자에게 묻습니다. 스킬의 저널인 `kiwi/pipeline.jsonl`을 읽습니다. 상태 질문처럼 작업 요청이 없는 호출은 흐름을 실행하지 않습니다. `--none-cycle`은 다음 단계 하나를 추천합니다. |
-| `kiwi-orchestrator` | 작업 하나를 받아 살펴본 뒤 경로를 제안합니다. 경로는 `kiwi-tdd` step 하나이거나 [병렬 wave](#ko-waves)로 진행하는 오케스트레이션 실행입니다. step 경로에는 `tdd` 작업 모드가 필요합니다. 그 모드가 아니면 모드를 바꿀지 묻고, 오케스트레이션 실행을 권합니다. 재개할 수 있습니다. |
+| `kiwi-orchestrator` | 작업 하나를 받아 살펴본 뒤 경로를 제안합니다. 경로는 `kiwi-tdd` step 하나이거나 [병렬 wave](#ko-waves)로 진행하는 오케스트레이션 실행입니다. step 경로에는 `tdd` 작업 모드가 필요합니다. 그 모드가 아니면 모드를 바꿀지 묻고, 오케스트레이션 실행을 권합니다. 입력이 버그 보고이면 먼저 `kiwi-bug-repro`로 재현하고, 재현되지 않으면 멈춥니다. 재개할 수 있습니다. |
 | `kiwi-wave-master` | 에픽, 로드맵, 긴 연구를 순서 있는 wave로 나누고, wave마다 대상을 등록한 뒤, `kiwi-orchestrator`와 같은 병렬 규칙으로 실행합니다. 재개할 수 있습니다. |
 
 `kiwi-orchestrator`는 `--work`, `--base-branch`, `--lanes N`도 받습니다. `kiwi-wave-master`는 `--drive`도 받습니다. `--drive`를 주면 `--auto`만으로는 멈추는 통합 테스트 검사 단계와 비용 검사 단계도 넘어갑니다.

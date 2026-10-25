@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Bug Repro"
+  short_description: "Confirm a reported bug and reproduce it as a failing test"
+  default_prompt: "Use $kiwi-bug-repro to read this bug report, find its likely causes by static analysis, and reproduce it as a failing test before anything is fixed."

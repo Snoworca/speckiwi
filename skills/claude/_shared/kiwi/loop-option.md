@@ -39,7 +39,7 @@ kiwi-* 스킬의 **검증-개선 루프(verify → improve → re-verify) 라운
 
 ## 5. 무-루프 스킬
 
-검증-개선 루프가 없는 스킬(kiwi-step, kiwi-srs-research)은 `--mini` / `--loops` 를 **문서화된 no-op** 으로 수용한다(오케스트레이터 전파 균일성). 상한을 적용할 루프가 없으므로 동작에 영향 없음.
+검증-개선 루프가 없는 스킬(kiwi-step, kiwi-srs-research, kiwi-bug-repro)은 `--mini` / `--loops` 를 **문서화된 no-op** 으로 수용한다(오케스트레이터 전파 균일성). 상한을 적용할 루프가 없으므로 동작에 영향 없음.
 
 ## 6. 오케스트레이터 전파 (FR-FLOW-035)
 

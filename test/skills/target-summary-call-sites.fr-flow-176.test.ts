@@ -62,11 +62,6 @@ const REFUSES_THE_CALL = /(부르지 않는다|Do not call)/;
  */
 const EXEMPT: ReadonlyArray<{ skill: string; text: string; reason: string }> = [
   {
-    skill: "kiwi-hot-fix",
-    text: "입력: 영향 가능 파일 목록 + 코드베이스 import graph + 활성 target REQ 인벤토리 (`list_requirements` 또는 `summarize_target`)",
-    reason: "서브에이전트 입력의 출처를 열거하는 줄이고, 호출을 지시하지 않는다"
-  },
-  {
     skill: "kiwi-orchestrator",
     text: "스냅샷 파일은 이 wave target 의 `list_requirements` 응답과 `summarize_target` 응답을 한 JSON 문서로 합친 것이며, 레코드는 요약 투영이 아니라 전체 투영으로 받는다 — 기본 투영은 요구마다의 수용 기준과 검증 증거를 빼고 답하므로 그 응답으로 만든 문서는 게이트에 닿지 못한 채 스냅샷 해석 오류로 끝난다.",
     reason: "요약할 대상을 같은 문장이 wave target 으로 지명하고, 이 줄은 산출물의 구성을 설명한다"

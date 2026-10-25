@@ -154,7 +154,21 @@ export const GATE_IDS = [
   "test-sufficiency-gap",
   // @req IR-CLI-092 — `replay-apply.ts` already raises it; a refusal the union omits cannot reach
   // `refuse()` and is enforced nowhere a reader can see.
-  "srs-mutation-replay-failed"
+  "srs-mutation-replay-failed",
+
+  // @req FR-FLOW-200 AC-4 — a bug input that kiwi-bug-repro could not reproduce, or found to be
+  // specified behaviour. Skill-declared and critical; no tool raises them. They are members for the
+  // reason the declared-by-skills group gives: the orchestrator's `critical_gates[]` must be a
+  // subset of this union.
+  "bug-not-reproduced",
+  "bug-not-a-bug",
+  // The stop before a bug input is reproduced in a run root holding uncommitted changes, which can
+  // hide the symptom and which the Phase 1 commit could carry.
+  "bug-input-dirty-tree",
+  // The wave route commits the reproduction test skipped; these stop a test tool with no skip marker,
+  // and a reproduction test that no single wave owns or that is still skipped or red at the run's end.
+  "bug-test-unskippable",
+  "bug-repro-test-unresolved"
 ] as const;
 
 export type GateId = (typeof GATE_IDS)[number];

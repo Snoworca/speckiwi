@@ -16,9 +16,9 @@ Backing requirements: FR-FLOW-037 · FR-FLOW-196 (acceptance contract FR-PARSE-0
 | Key | Rule |
 |---|---|
 | §0.1 | **Mode check first.** Before starting, read the persisted work-mode with `speckiwi mode`. When it is not `Mode: tdd`, halt immediately and guide the user to either switch with `speckiwi mode tdd` or use the sdd workflow (kiwi-srs family). |
-| §0.2 | **Claim first.** Never author any artifact (including intent.md and design.md) before claiming the step via `claim_step` (MCP preferred) or the CLI fallback `speckiwi step claim`. Halt immediately when both MCP and CLI are unavailable. |
+| §0.2 | **Claim first.** Never author any artifact (including intent.md and design.md) before claiming the step via `claim_step` (MCP preferred) or the CLI fallback `speckiwi step claim`. Halt immediately when both MCP and CLI are unavailable. A bug reproduction test a caller hands over (the §0.4 exception) was written by another skill before the claim, so it is not an artifact of this step; it is adopted after the claim, in §2.4. |
 | §0.3 | **Step-directory confinement.** All spec artifacts are written only under `docs/spec/steps/<task>/`. Never edit body-scope SRS files (`docs/spec/*.srs.md`) — promotion happens only through the promote tool. |
-| §0.4 | **Acceptance contract first.** No test is written before the step's acceptance contract exists — intent.md `## Acceptance` checked by `step validate`, or design.md under `--sds`. The moment tests are the only spec, the flow is exposed to reward hacking. Without an acceptance line `speckiwi step validate` stops the step with the error `STEP_ACCEPTANCE_MISSING`. |
+| §0.4 | **Acceptance contract first.** No test is written before the step's acceptance contract exists — intent.md `## Acceptance` checked by `step validate`, or design.md under `--sds`. The moment tests are the only spec, the flow is exposed to reward hacking. Without an acceptance line `speckiwi step validate` stops the step with the error `STEP_ACCEPTANCE_MISSING`. **One exception**: a bug reproduction test a caller hands over (`kiwi-orchestrator` on R-STEP) is adopted as the test of the step's acceptance line after that line is written (§2.4). It came from the reported symptom and is cited only once the acceptance line exists, so the test is never the only spec. |
 | §0.5 | **Tests are inviolable.** Commit tests first, and never weaken or edit a test during the green phase to make it pass. When the contract itself is wrong, go back to a revised acceptance line (a superseded SDS under `--sds`) and restart from red. |
 | §0.6 | **No promotion without evidence.** `promote_step_requirement` promotes only blocks carrying at least one Verification Evidence entry (FR-NODE-074 hard-refuses in tdd mode). |
 | §0.7 | **Boundary (sdd redirect).** Edits to existing body REQs and large / architecture changes are out of scope — redirect them to sdd mode (SRS-first — the `kiwi-srs` → `kiwi-pm` chain). |
@@ -125,6 +125,8 @@ On this path the Phase 3 red tests cite `SDS-AC-<n>`, and the Phase 6 test-suffi
 ### 2.4 Phase 3 — red
 
 Translate each `AC-<n>` line of `## Acceptance` into a failing test whose title line cites `<task> AC-<n>` (at least one case per line; citation convention in `_shared/kiwi/test-sufficiency.md` §1). Under `--sds`, translate each SDS-AC of SDS §5 the same way, citing that `SDS-AC-<n>` on the title line. Run the tests and **confirm they fail (red)**, then commit the tests first. Never start implementation before red is confirmed.
+
+**A reproduction test from the caller**: when the task overview carries a bug reproduction test, write the acceptance line that fixes that symptom first (Phase 2) and adopt that reproduction test as the line's test. Cite that `<task> AC-<n>` on the reproduction test's title line. Run it again and confirm it is still red. It is used instead of writing a new test for the same symptom.
 
 ### 2.5 Phase 4 — green
 

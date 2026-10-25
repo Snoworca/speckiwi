@@ -127,6 +127,47 @@ export function flat(text: string): string {
 }
 
 /**
+ * Whitespace-flattened prose cut at sentence ends and at table-cell borders.
+ *
+ * The unit a rule and its condition have to share: "the next stage only when the current one has
+ * not reproduced" holds only when the stage, the condition and "only" sit in one sentence. Checked
+ * across a whole section, the condition can come from one sentence and the verb from another, and
+ * deleting or inverting the rule leaves the check green.
+ */
+export function proseSentences(text: string): string[] {
+  return flat(text)
+    .split(/(?<=[.!?]\**)\s+|\s\|\s/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+}
+
+/** The first sentence of `text` that matches every pattern, or `undefined`. */
+export function sentenceWith(text: string, ...patterns: RegExp[]): string | undefined {
+  return proseSentences(text).find((sentence) => patterns.every((pattern) => pattern.test(sentence)));
+}
+
+/**
+ * A negation in either language — what turns "run against real data" into the prohibition. `no` and
+ * `not` count only as words of their own: inside an identifier such as `reproduced-no-test` they
+ * negate nothing.
+ */
+export const NEGATION = /않|없|금지|never|(?<![\w-])not(?![\w-])|(?<![\w-])no(?![\w-])|n't|without/i;
+
+/** What carves an exception out of a rule: "stop, except under `--auto`" is the rule inverted. */
+export const EXCEPTION = /except|unless|제외|빼고|말고/i;
+
+/**
+ * Every sentence of `text` that matches all `patterns`.
+ *
+ * `sentenceWith` proves a rule is stated somewhere; it cannot see a second statement of the same rule
+ * that says the opposite, nor a sentence that kept the words and flipped the polarity. Asserting on
+ * every sentence that names the subject closes both.
+ */
+export function sentencesWith(text: string, ...patterns: RegExp[]): string[] {
+  return proseSentences(text).filter((sentence) => patterns.every((pattern) => pattern.test(sentence)));
+}
+
+/**
  * The block scanner FR-FLOW-164 introduced, shared so one block boundary does not become two.
  *
  * FR-FLOW-164 reads a declaring section for cancellations and polarity inversions; FR-FLOW-158

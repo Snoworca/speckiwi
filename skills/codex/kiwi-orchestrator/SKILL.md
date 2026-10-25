@@ -29,7 +29,7 @@ wave 의 실행 절차 — SRS 저작, (`--sds` 면) SDS 작성, stage 계산, �
 | §0.1 | **이벤트 SSOT**: `../_shared/kiwi/waves-event.md` v2.0.0 가 `./kiwi/waves.jsonl` 의 schema·파일위치·`complete` 규칙 SSOT. 본 문서는 오케스트레이션 로직만 담당한다. |
 | §0.2 | **/snoworca-\* 호출 절대 금지**. kiwi-* 시리즈만 `Skill` 도구로 호출한다. |
 | §0.3 | **CLAUDE.md §6 시그니처 금지** + **§7 변경 이력 금지**. 본 스킬 본문에 변경 이력 섹션 없음 — git history 가 SSOT. |
-| §0.4 | **--auto 안전 게이트**: 어떤 자식(`$kiwi-srs` · `$kiwi-srs-feasibility` · `$kiwi-sds` · `$kiwi-pm` · `$kiwi-review-fix-loop` · `$kiwi-tdd`)이 `NEEDS_USER` 또는 `FAILED` 를 반환하면 `--auto` 라도 부모가 중단하고 사용자 결정을 받는다. 자식이 **자기 게이트 표**의 `gate_id` 를 bubble 하면 §0.G 에 같은 이름의 행이 없어도 무조건 중단한다. |
+| §0.4 | **--auto 안전 게이트**: 어떤 자식(`$kiwi-srs` · `$kiwi-srs-feasibility` · `$kiwi-sds` · `$kiwi-pm` · `$kiwi-review-fix-loop` · `$kiwi-tdd` · `$kiwi-bug-repro`)이 `NEEDS_USER` 또는 `FAILED` 를 반환하면 `--auto` 라도 부모가 중단하고 사용자 결정을 받는다. 자식이 **자기 게이트 표**의 `gate_id` 를 bubble 하면 §0.G 에 같은 이름의 행이 없어도 무조건 중단한다. |
 | §0.5 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` 를 따른다. 중단 게이트 선언은 §0.G, `business-decision` 게이트 선언은 §0.S 를 본다. |
 | §0.6 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` 를 따른다. 상한은 라우팅된 자식과 본 스킬의 D/W/P/F 루프 cap 양쪽에 전파된다. |
 | §0.7 | **상호검증 엔진 SSOT**. 본 스킬은 `../_shared/kiwi/verify-loop.md` v1.0.0 을 따른다 — 증거 번들, 두 stance, 외부 동결 분모, 라운드 구조, 종료 조건, **진동 감지**, 개선 위임. 본 스킬 고유의 분모 표는 §12.1. |
@@ -71,6 +71,11 @@ wave 의 실행 절차 — SRS 저작, (`--sds` 면) SDS 작성, stage 계산, �
 | `run-invariant-drift` | 재계산한 `invariant_digest` 가 카드가 **현재 지시하는** lock 들과 불일치 | Phase 0 |
 | `interrupted-external-action` | externally-visible 동사의 `intent` 에 `result` 가 없고, 그 동사가 선언한 점검으로도 외부 효과가 해소되지 않음 | Phase 0 / 3.f ~ 3.j |
 | `integration-branch-unavailable` | run 의 통합 브랜치를 `--base-branch` 에서 생성하거나 채택할 수 없음 | Phase 0.b |
+| `bug-not-reproduced` | 버그 입력을 `kiwi-bug-repro` 가 세 단계 끝까지 재현하지 못했거나 자동 테스트 없이만 재현함. 그 스킬의 질문(환경·버전·입력 데이터·재현 절차)을 사용자에게 그대로 낸다. 모자란 정보는 사용자만 갖고 있으므로 `--auto` 도 넘기지 못한다. 자동 테스트 없이 재현됐으면 질문에 재현 스크립트를 근거로 계속하는 선택지를 더한다 | Phase 1.a |
+| `bug-not-a-bug` | `kiwi-bug-repro` 가 재현한 동작이 SRS 나 문서화된 계약이 정한 그대로라고 보고함. 고칠 버그가 없다. 요구사항 변경으로 계속할지 사용자에게 묻는다 | Phase 1.a |
+| `bug-input-dirty-tree` | 버그 입력인데 run root 에 run 과 그 `kiwi-bug-repro` 가 쓴 것 밖의 추적되는 파일에 커밋하지 않은 변경이 있음. 그 변경이 증상을 가리거나 Phase 1 커밋에 섞일 수 있고, 커밋할지 치울지는 사용자만 정한다. 재현이 git 이 추적하지 않던 기존 파일을 고쳤을 때도 Phase 1 커밋 전에 이 게이트로 멈춘다 | Phase 1.a · Phase 1 끝 |
+| `bug-test-unskippable` | R-ORCH 로 가는 버그 입력인데 테스트 도구에 건너뛰기 표시가 없음. 빨간 재현 테스트를 커밋하면 버그를 맡지 않은 wave 의 회귀가 모두 깨지므로, 어떻게 할지는 사용자가 정한다 | Phase 1 끝 |
+| `bug-repro-test-unresolved` | 재현 테스트 파일이 정확히 한 wave 의 `files[]` 에 있지 않거나(3.c′), Phase 4 전에 아직 건너뛰기 표시가 남았거나 green 이 아님. 버그가 고쳐지지 않은 채 run 이 완료로 끝나지 않게 한다 | Phase 3.c′ · Phase 4 |
 | `route-probe-unreadable` | MCP 불가로 `list_requirements` 와 `get_active_target` 을 모두 읽을 수 없어 D8 이 step rung 을 제거 | Phase 1.c′ |
 | `route-escalation-after-landed-state` | 승격이 통합 브랜치의 커밋 뒤에 오거나, 요구의 `status` 또는 `stability` 를 움직인 SRS mutation 뒤에 옴 | any, on escalation |
 | `route-deescalation-refused` | Phase 3.b 이후 rung 을 내리려는 모든 시도 | after 3.b |
@@ -241,7 +246,12 @@ Phase 0  재개 / run 생성
        frozen 블록에 기록          게이트: integration-branch-unavailable           C
 
 Phase 1  intake → route → design                                  [loop D]
-  1.a  소스 분류: 얇은 의도 | 연구·설계 문서 | GitHub 이슈
+  1.a  소스 분류: 얇은 의도 | 연구·설계 문서 | GitHub 이슈, 그리고 버그 보고인지 판정 (§5.3)
+       버그 입력이면 Skill(kiwi-bug-repro) 로 먼저 재현하고, 자동 테스트로 재현되거나 사용자가 재현 스크립트로 계속하기로 해야 1.b 로 간다 (§5.3)
+                                     게이트: bug-not-reproduced                     C
+                                            bug-not-a-bug                           C
+                                            bug-input-dirty-tree                    C
+                                            bug-test-unskippable                    C
   1.b  조사자 3 기 병렬 (intent / code-context / architecture-fit) — --serial 이면 하나씩
   1.c  갭 열거 → 조사자가 닫지 못한 갭은 전부 사용자 QnA
   1.c′ 라우팅 분류 (§4)
@@ -279,7 +289,8 @@ Phase 3  stage 마다 — 준비된 wave(의존한 wave 가 모두 complete)들�
   3.c  $kiwi-sds 로 wave 마다 SDS 하나 — --sds 일 때만; 그 전에 선언 항목 갱신   PW-2
   3.c′ readiness 파생 + 배정 검사 (requirements[] = 3.b 배정, --sds 면 SDS @req 도)
                                      게이트: unallocated-req-id                     C
-                                            requirement-not-ready                   C
+                                            requirement-not-ready ·
+                                            bug-repro-test-unresolved               C
   3.d  wave 입력 커밋 (명시 pathspec) — 그 sha 가 그 wave 의 dispatch base            PW-3
   3.e  freeze-lane-plan — orchestrate schedule waves --waves docs/research/{work}/waves/waves.json --run-id {run_id} --lanes N --out docs/research/{work}/waves/stage-{s}/lanes.lock.json  PW-4
                                      게이트: schedule-cycle · files-not-grounded ·
@@ -320,7 +331,8 @@ Phase 3  stage 마다 — 준비된 wave(의존한 wave 가 모두 complete)들�
 Phase 4  run 최종: run 창 종료 코드 리뷰 → 테스트 충분성 확인 → loop F   [loop F]
                                      게이트: test-sufficiency-gap ·
                                             final-verify-residual-critical ·
-                                            wave-append-cap-exhausted               C
+                                            wave-append-cap-exhausted ·
+                                            bug-repro-test-unresolved               C
 Phase 5  MCP workflow_pipeline_emit 으로 pipeline 이벤트 1건 emit
 Phase 6  run 처분 (§15): 통합 브랜치는 그대로 두고 run 리포트에 지명한다.
 ```
@@ -575,7 +587,7 @@ SRS 저작의 두 호출은 호스트가 wave 하나씩 직렬로 하고(`parall
 
 ### 5.1 세 단계
 
-1. **소스 분류** — **닫힌 분류**다. **얇은 의도**, **연구 또는 설계 문서**, **GitHub 이슈** 셋뿐이고 각각 자기 동사를 갖는다: `intake-qna` · `intake-document` · `intake-issue`.
+1. **소스 분류** — **닫힌 분류**다. **얇은 의도**, **연구 또는 설계 문서**, **GitHub 이슈** 셋뿐이고 각각 자기 동사를 갖는다: `intake-qna` · `intake-document` · `intake-issue`. 같은 단계에서 소스와 무관하게 **입력이 버그를 보고하는지** 판정한다 — 판정 기준과 버그 입력의 처리는 §5.3 이다.
 2. **조사** — **조사자 3 기를 병렬로** 실행한다(`--serial` 이면 하나씩). stance 는 **intent** · **code-context** · **architecture-fit** 셋이며 동사는 `intake-investigate` 다.
 3. **갭 열거** — **조사자가 닫지 못한 갭은 전부 사용자에게 QnA** 로 낸다.
 
@@ -590,6 +602,39 @@ intake 기록은 `01.intake.md` 에 쓴다. **loop D** 의 열린 질문 **분�
 3. 위원회가 결정한 intake 행마다 `kiwi/waves.jsonl` 한 줄 — v1.4.0 `decision` 필드 위에 `question` · `options` · `decision` · `rule` · `committee_size` · `confidence` 와 `origin: "intake"` **일곱 키를 전부** 운반한다.
 
 이 라우팅은 **기록된 이탈**이지 **사용자가 수락한 저하가 아니다**. 어떤 사용자도 수락하지 않았고 설계가 선택했다. 세 기록은 이 이탈의 격상이 어떻게 판정되든 그대로 유지된다. `design-intake-insufficient` 는 loop D 의 **cap 소진**에 `needs-decision` 또는 `contradicts-existing` 행이 열려 있을 때 그대로 발화한다 — 기록은 기존 게이트를 대체하지 않고 보완한다.
+
+### 5.3 버그 입력: 라우팅과 설계보다 재현이 먼저다
+
+**버그 판정** (1.a). 입력이 아래 표지 가운데 하나라도 분명히 지니면 버그 입력이다:
+
+- 이슈에 버그 라벨이나 버그 이슈 유형이 붙어 있다;
+- 입력이 기대 동작과 실제 동작을 대비해 증상을 서술한다;
+- 사용자가 그것을 버그라고 부른다.
+
+셋 다 없으면 버그가 아닌 입력이다. 표지가 애매하면(기대 동작 없이 이상하다고만 하거나, 증상과 기능 요청이 섞여 있거나, 라벨과 본문이 어긋나면) **서브에이전트 1개**가 입력만 받아 판정한다. 메인의 짐작은 주지 않는다. 판정과 그 이유는 분명한 경우에도 `01.intake.md` 에 적고, 서브에이전트가 판정했으면 그 사실도 함께 적는다.
+
+**버그가 아닌 입력**은 `kiwi-bug-repro` 를 부르지 않고 Phase 1 을 지금까지와 그대로 돈다.
+
+**버그 입력**인데 run root 에서 run 자신이 쓴 경로(`docs/research/{work}/`, `kiwi/` 등)와 이 run 이 부른 `kiwi-bug-repro` 가 남긴 파일(그 보고서 디렉토리와 그 `state.json` 에 적힌 파일) 밖의 추적되는 파일에 커밋하지 않은 변경이 있으면 `kiwi-bug-repro` 를 부르지 않고 멈춰서 사용자에게 묻는다(`bug-input-dirty-tree`, `--auto` 에서도). 그 변경이 증상을 가릴 수 있고, Phase 1 의 명시 pathspec 커밋이 재현이 건드린 파일에 섞인 사용자의 수정까지 담을 수 있기 때문이다. Phase 1 커밋은 재현 테스트 파일과 보고서 디렉토리를 경로로 지명해 담으므로, 추적되지 않는 다른 파일은 그 커밋에 섞이지 않는다. 다만 재현이 git 이 추적하지 않던 기존 파일을 고쳤으면 그 파일에는 사용자의 커밋하지 않은 내용이 있을 수 있으므로, Phase 1 커밋 전에 멈춰서 묻는다(`bug-input-dirty-tree`, `--auto` 에서도). 사용자가 그 파일을 함께 커밋해도 된다고 답하면 그대로 커밋하고, 아니라고 답하면 그 파일을 커밋하지 않은 채 사용자가 재현 케이스를 정리한 뒤 재개하게 한다. 재개하면 `01.intake.md` 의 재현 기록을 지우고 `kiwi-bug-repro` 를 다시 부른다.
+
+**버그 입력**이면 1.b 조사자와 1.c′ 라우팅보다 먼저, 1.a 가 읽은 입력 그대로 `kiwi-bug-repro` 를 부른다:
+
+```
+Skill({ skill: "kiwi-bug-repro", args: "<1.a 가 읽은 입력 그대로> --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--model <name>]" })
+```
+
+돌아온 결과로 가른다:
+
+- **재현됨**(`reproduced`): 재현 테스트(파일, 테스트 이름, red 출력), 가장 유력한 원인과 `file:line`, 관련 요구 ID, 보고서 경로를 `01.intake.md` 에 기록하고 1.b 로 간다. 재현 결과로 1.b 에 가는 것은 자동 테스트가 있는 재현을 돌려받았을 때만이고, 그 밖에는 아래 질문에서 사용자가 계속하기로 고른 때뿐이다. 조사자들은 이 기록을 입력으로 읽는다. 재현 테스트 파일과 보고서 디렉토리는 Phase 1 끝의 intake 커밋에 들어간다(§15). 이 재현 테스트가 run 이 구현하는 요구의 **실패하는 테스트**이며, 같은 증상을 단언하는 테스트를 새로 쓰지 않는다:
+  - `R-STEP`: `kiwi-tdd` 에 넘기는 작업 개요 문단에 재현 테스트와 그 red 출력을 적는다. `kiwi-tdd` 는 버그를 고치는 acceptance 줄을 먼저 쓴 뒤 이 재현 테스트를 그 줄의 테스트로 채택하고(제목 줄에 그 `AC-<n>` 을 달고 red 를 다시 확인한다), 새 테스트를 쓰지 않는다(`kiwi-tdd` §0.4 의 예외).
+  - `R-ORCH`: 재현 테스트는 Phase 1 끝에 그 테스트 도구의 **건너뛰기 표시**(예: `it.skip`, `@Disabled`, `#[ignore]`, `@pytest.mark.skip`)를 단 채로 커밋한다. 건너뛴 테스트는 실패로 세지 않으므로, 버그를 맡지 않은 wave 의 워커 회귀, wave 판정, loop P, stage 병합 회귀와 검증 도구가 그 테스트 때문에 실패하지 않고, P.4 기준선과 공용 계약도 그대로 쓴다. 건너뛰기 표시는 재현 케이스 하나에만 달고, 파일이나 묶음 전체에 달지 않는다. 커밋 전에 그 재현 테스트 제목 줄의 기존 요구 인용은 걷어 `01.intake.md` 에 옮겨 적는다: 건너뛴 테스트가 그 AC 의 테스트 충분성 근거로 잡히지 않게 하기 위해서다. 테스트 도구에 건너뛰기 표시가 없으면 빨간 테스트를 커밋하지 않고 멈춰서 사용자에게 묻는다(`bug-test-unskippable`, `--auto` 에서도). 질문에는 그 테스트를 건너뛰게 할 다른 방법(조건부 실행, 별도 테스트 파일 등)을 적고, 사용자가 고른 방법으로 Phase 1 커밋을 다시 한다. 그 버그를 맡는 wave 의 선언 항목 `files[]` 에 그 재현 테스트 파일을 넣어 그 wave 의 쓰기 집합에 들이고, 그 wave 의 `waves/wave-{n}/excerpt.md` 와 3.b 가 저작하는 요구의 Implementation Notes 에 재현 테스트 경로와 red 출력을 적어 그 요구의 실패하는 테스트로 지정한다. 테스트 파일은 Phase 1 커밋으로 이미 모든 dispatch base 에 있으므로 3.d 에서 다시 커밋하지 않는다. 그 wave 의 워커는 같은 증상의 테스트를 새로 쓰지 않고 그 재현 테스트를 채택한다: 워커가 건너뛰기 표시를 걷고 제목 줄에 그 요구의 `<REQ-ID> AC-<n>` 을 단 뒤 red 를 확인하고, 고쳐서 green 으로 끝낸다. 승급(§14) 전에 그 재현 테스트에 건너뛰기 표시가 남아 있으면 그 요구를 승급하지 않는다. 3.c′ 배정 검사는 그 재현 테스트 파일이 정확히 한 wave 의 `files[]` 에 있는지도 보고, 아니면 멈춰서 묻는다(`bug-repro-test-unresolved`, `--auto` 에서도). 재현 케이스가 든 기존 테스트 파일을 두 wave 이상이 고쳐야 하면 3.c′ 는 같은 게이트로 멈추고, 질문에 그 케이스를 새 테스트 파일로 떼어 낼지 적는다. Phase 4 의 run 최종 검사 전에 그 재현 테스트에 건너뛰기 표시가 남아 있거나 green 이 아니면, run 을 완료로 끝내지 않고 멈춰서 보고한다(`bug-repro-test-unresolved`, `--auto` 에서도). 질문에는 원인(어느 wave 에도 배정되지 않음, 소유 wave 의 실패)을 적고, 사용자가 바로잡은 뒤 재개하면 같은 검사를 다시 한다. run 이 이 게이트나 다른 이유로 멈추거나 중단되면 리포트에 그 재현 테스트가 아직 건너뛰어진 채라고 적는다.
+- **재현하지 못함**(`not-reproduced`): `kiwi-bug-repro` 의 질문을 그대로 사용자에게 내고 멈춘다(`bug-not-reproduced`, `--auto` 에서도). 사용자가 모자란 것을 답하면 이 run 이 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+- **자동 테스트 없이 재현됨**(`reproduced-no-test`): 실패하는 테스트가 아니므로 멈추고(`bug-not-reproduced`, `--auto` 에서도) 재현 스크립트와 관찰을 보여 주며 사용자에게 두 가지 중에서 고르게 한다. 하나는 자동 테스트에 모자란 것(환경, 테스트 도구)을 답하는 것이고, 그러면 위처럼 `kiwi-bug-repro` 를 다시 부른다. 다른 하나는 재현 스크립트를 근거로 계속하는 것이다. 계속하기로 하면 그 결정과 재현 스크립트 경로를 `01.intake.md` 에 적고 1.b 로 간다. 이때 실패하는 테스트는 R-STEP 이면 `kiwi-tdd` 가, R-ORCH 면 3.b 와 워커가 평소대로 쓰고, 재현 스크립트는 fix 전과 뒤에 `kiwi-bug-repro` §0.2 의 격리된 임시 사본에서 다시 돌려 확인한다.
+- **입력 부족**(`input-insufficient`): 자식이 올린 `repro-input-insufficient` 이므로 §0.4 대로 `--auto` 에서도 멈추고 그 질문을 그대로 내며, 사용자가 답하면 이 run 이 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+- **그 밖의 질문**: `kiwi-bug-repro` 가 결과 대신 질문(`repro-restore-conflict` 등)으로 멈추면 §0.4 대로 `--auto` 에서도 멈추고 그 질문을 그대로 내며, 사용자가 답하면 이 run 이 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+- **버그가 아님**(`not-a-bug`): 멈추고, 요구사항 변경으로 계속할지 사용자에게 묻는다(`bug-not-a-bug`). 계속하면 그 결정(요구사항 변경으로 계속)을 `01.intake.md` 에 적고, 그 입력을 요구사항 변경으로 다시 적은 뒤 Phase 1 을 1.b 부터 그대로 돈다. `kiwi-bug-repro` 보고서가 그 근거로 함께 간다.
+
+재개한 세션은 이 절이 아니라 1.a 동사의 §V 항목(`intake-qna` · `intake-document` · `intake-issue`)을 읽으므로, 버그 판정과 재현의 재개 규칙은 그 항목들에 적혀 있다.
 
 ---
 
@@ -913,7 +958,7 @@ run 은 이름 있는 통합 브랜치 `kiwi/orch/{run_id}/integration` 을 갖�
 
 **오케스트레이터는 그 브랜치를 base 브랜치로 결코 병합하지 않고 pull request 를 결코 열지 않는다.** 이 문장은 본문과 `00.run-contract.md` 의 금지 행동 닫힌 목록 양쪽에 있다. run 리포트에는 **오케스트레이터가 이행할 수 없는 의무** 하나를 적는다: 나중에 통합 브랜치를 **base 브랜치**로 병합하는 사람이 그 직후 base 브랜치에서 `validate` 다음 `sync-index` 를 실행해야 한다.
 
-run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `commit-run-artifacts` 동사 아래 선언된 일정으로 커밋한다. 커밋 지점은 Phase 0(run contract 생성), Phase 1 끝(intake·라우팅·설계와 그 lock), Phase 2 끝(waves lock·제약·레지스트리), 3.d(wave 입력과 SDS), 3.e(stage lock), 3.k activity (4)(검증 라운드·중복 감사·이슈 문서와 lock·postmortem), 3.n(wave 의 close-out — SDS 삭제 포함), Phase 6(run 리포트)이다. 이 일정의 모든 지점은 **명시 pathspec** 을 stage 한다. 이유는 `git clean -fd` 가 동결된 설계와 재개 카드의 `invariant_digest` 가 지시하는 lock 들을 파괴하지 못하게 하는 것이다.
+run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `commit-run-artifacts` 동사 아래 선언된 일정으로 커밋한다. 커밋 지점은 Phase 0(run contract 생성), Phase 1 끝(intake·라우팅·설계와 그 lock, 버그 입력이면 재현 테스트 파일과 `kiwi-bug-repro` 보고서 디렉토리), Phase 2 끝(waves lock·제약·레지스트리), 3.d(wave 입력과 SDS), 3.e(stage lock), 3.k activity (4)(검증 라운드·중복 감사·이슈 문서와 lock·postmortem), 3.n(wave 의 close-out — SDS 삭제 포함), Phase 6(run 리포트)이다. 이 일정의 모든 지점은 **명시 pathspec** 을 stage 한다. 이유는 `git clean -fd` 가 동결된 설계와 재개 카드의 `invariant_digest` 가 지시하는 lock 들을 파괴하지 못하게 하는 것이다.
 
 **`abort-run` 은 `halt` 와 구별되는 동사다.** 병합을 되돌리는 일이 없으므로 `frozen.integration_branch` 를 **있는 그대로** 둔다. `docs/research/{work}/00.run-report.md` 를 쓰고 Preflight P.5 의 run lock 을 해제한다. run 리포트의 내용은 다음과 같다.
 
@@ -974,23 +1019,26 @@ recovery class **externally-visible**. Phase 0.b. `--base-branch` 위에 `kiwi/o
 
 ### §V.commit-run-artifacts
 
-recovery class **externally-visible**. §15 의 일정대로 `docs/research/{work}/` 아래 아티팩트를 명시 pathspec 으로 커밋한다.
+recovery class **externally-visible**. §15 의 일정대로 `docs/research/{work}/` 아래 아티팩트를 명시 pathspec 으로 커밋한다. 버그 입력이면 Phase 1 커밋에 재현 테스트 파일과 `kiwi-bug-repro` 보고서 디렉토리를 넣고, R-ORCH 면 그 전에 §5.3 대로 재현 케이스 하나에만 건너뛰기 표시를 달고 기존 요구 인용을 걷는다(테스트 도구에 표시가 없으면 `bug-test-unskippable` 로 멈춘다). 재현이 git 이 추적하지 않던 기존 파일을 고쳤으면 커밋하지 않고 `bug-input-dirty-tree` 로 멈춘다(`--auto` 에서도). 사용자가 그 파일을 함께 커밋해도 된다고 답하면 그대로 커밋하고, 아니라고 답하면 그 파일을 커밋하지 않은 채 사용자가 재현 케이스를 정리한 뒤 재개하게 한다. 재개하면 `01.intake.md` 의 재현 기록을 지우고 `kiwi-bug-repro` 를 다시 부른다.
 복구: `git log` 에서 `Orch-Run: {run_id}` 와 `Orch-Verb: commit-run-artifacts` 와 `Orch-Artifacts` 의 아티팩트 집합 digest 를 운반하는 커밋을 점검한다.
 
 ### §V.intake-qna
 
-recovery class **pure-reauthor**. Phase 1.c, 그리고 loop D 가 `needs-decision` 행을 되돌려 보낼 때마다. 갭을 사용자 질문으로 낸다.
-복구: 그냥 다시 한다. 이미 `01.intake.md` 에 있는 답은 반복이 아니라 입력이다.
+recovery class **pure-reauthor**. Phase 1.a 의 얇은 의도 분기, Phase 1.c, 그리고 loop D 가 `needs-decision` 행을 되돌려 보낼 때마다. 갭을 사용자 질문으로 낸다.
+1.a 분기에서는: **버그 판정과 재현**(§5.3): 입력이 버그 보고인지 판정하고, 애매하면 서브에이전트 1개가 입력만 받아 판정하며, 판정과 이유를 `01.intake.md` 에 적는다. 버그 입력이면 1.b 전에, run 과 그 `kiwi-bug-repro` 가 쓴 것 밖의 추적되는 파일에 커밋하지 않은 변경이 없을 때 `kiwi-bug-repro` 를 `--no-pipeline-emit` 과 함께 부르고(있으면 `bug-input-dirty-tree` 로 멈춘다) 결과를 `01.intake.md` 에 기록한다. `01.intake.md` 에 자동 테스트가 있는 재현, 재현 스크립트로 계속한다는 사용자 결정, 또는 요구사항 변경으로 계속한다는 사용자 결정이 이미 기록되어 있으면 버그 판정을 다시 하지 않고 `kiwi-bug-repro` 도 다시 부르지 않는다. 사용자가 `bug-not-reproduced` 나 `repro-input-insufficient` 질문, 또는 `kiwi-bug-repro` 의 그 밖의 질문(`repro-restore-conflict` 등)에 답한 뒤 재개한 run 이면 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+복구: 그냥 다시 한다. 이미 `01.intake.md` 에 있는 답은 반복이 아니라 입력이다. `01.intake.md` 의 버그 판정과 재현 기록도 지우지 않고 입력으로 읽는다.
 
 ### §V.intake-document
 
 recovery class **pure-reauthor**. Phase 1.a 의 문서 소스 분기. `--design-doc` 를 읽어 `01.intake.md` 를 만든다.
-복구: 그냥 다시 한다.
+**버그 판정과 재현**(§5.3): 입력이 버그 보고인지 판정하고, 애매하면 서브에이전트 1개가 입력만 받아 판정하며, 판정과 이유를 `01.intake.md` 에 적는다. 버그 입력이면 1.b 전에, run 과 그 `kiwi-bug-repro` 가 쓴 것 밖의 추적되는 파일에 커밋하지 않은 변경이 없을 때 `kiwi-bug-repro` 를 `--no-pipeline-emit` 과 함께 부르고(있으면 `bug-input-dirty-tree` 로 멈춘다) 결과를 `01.intake.md` 에 기록한다. `01.intake.md` 에 자동 테스트가 있는 재현, 재현 스크립트로 계속한다는 사용자 결정, 또는 요구사항 변경으로 계속한다는 사용자 결정이 이미 기록되어 있으면 버그 판정을 다시 하지 않고 `kiwi-bug-repro` 도 다시 부르지 않는다. 사용자가 `bug-not-reproduced` 나 `repro-input-insufficient` 질문, 또는 `kiwi-bug-repro` 의 그 밖의 질문(`repro-restore-conflict` 등)에 답한 뒤 재개한 run 이면 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+복구: 그냥 다시 한다. `01.intake.md` 의 버그 판정과 재현 기록은 지우지 않고 입력으로 읽는다.
 
 ### §V.intake-issue
 
 recovery class **externally-visible**. Phase 1.a 의 GitHub 이슈 분기. `gh issue view {N} --json title,body,comments` 로 이슈를 읽어 `01.intake.md` 를 만든다. 그 명령은 읽기 전용이지만 `$kiwi-srs-research` 가 노트를 영속시켰을 수 있다.
-복구: `docs/research/` 와 그 스킬 자신의 이벤트를 먼저 점검한다.
+**버그 판정과 재현**(§5.3): 입력이 버그 보고인지 판정하고, 애매하면 서브에이전트 1개가 입력만 받아 판정하며, 판정과 이유를 `01.intake.md` 에 적는다. 버그 입력이면 1.b 전에, run 과 그 `kiwi-bug-repro` 가 쓴 것 밖의 추적되는 파일에 커밋하지 않은 변경이 없을 때 `kiwi-bug-repro` 를 `--no-pipeline-emit` 과 함께 부르고(있으면 `bug-input-dirty-tree` 로 멈춘다) 결과를 `01.intake.md` 에 기록한다. `01.intake.md` 에 자동 테스트가 있는 재현, 재현 스크립트로 계속한다는 사용자 결정, 또는 요구사항 변경으로 계속한다는 사용자 결정이 이미 기록되어 있으면 버그 판정을 다시 하지 않고 `kiwi-bug-repro` 도 다시 부르지 않는다. 사용자가 `bug-not-reproduced` 나 `repro-input-insufficient` 질문, 또는 `kiwi-bug-repro` 의 그 밖의 질문(`repro-restore-conflict` 등)에 답한 뒤 재개한 run 이면 그 답을 입력에 더해 `kiwi-bug-repro` 를 다시 부른다.
+복구: `docs/research/` 와 그 스킬 자신의 이벤트를 먼저 점검한다. `01.intake.md` 의 버그 판정과 재현 기록은 지우지 않는다.
 
 ### §V.intake-investigate
 
@@ -1045,7 +1093,7 @@ recovery class **idempotent-by-key**. Phase 1.e. `design/00.design.lock.json` �
 
 ### §V.decompose-waves
 
-recovery class **pure-reauthor**. Phase 2.a. `wave-decomposition.md` 의 두 갈래 split 휴리스틱을 artifact root `docs/research/{work}/` 로 실행한다.
+recovery class **pure-reauthor**. Phase 2.a. `wave-decomposition.md` 의 두 갈래 split 휴리스틱을 artifact root `docs/research/{work}/` 로 실행한다. 버그 입력의 R-ORCH 면 재현 테스트 파일을 그 버그를 맡는 wave 하나의 `files[]` 에만 넣는다(§5.3).
 복구: 그냥 다시 한다.
 게이트: `wave-decomposition-coverage-gap` · `out-of-scope-user-consent`.
 
@@ -1062,7 +1110,7 @@ recovery class **idempotent-by-key**. Phase 2.c. 모든 선언된 수렴점이 �
 
 ### §V.author-wave-design
 
-recovery class **pure-reauthor**. Phase 3.a. `waves/wave-{n}/design.md` 를 영문으로, run 설계와 같은 표시 규칙으로 저작한다.
+recovery class **pure-reauthor**. Phase 3.a. `waves/wave-{n}/design.md` 를 영문으로, run 설계와 같은 표시 규칙으로 저작한다. 버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 `excerpt.md` 에 재현 테스트 경로와 red 출력을 적는다(§5.3).
 복구: 그냥 다시 한다.
 
 ### §V.verify-wave-design
@@ -1073,7 +1121,7 @@ recovery class **idempotent-by-key**. loop W 의 라운드. 동결 분모는 그
 
 ### §V.register-wave-srs
 
-recovery class **externally-visible**. Phase 3.b. `$kiwi-srs` 가 요구를 저작했을 수 있다.
+recovery class **externally-visible**. Phase 3.b. `$kiwi-srs` 가 요구를 저작했을 수 있다. 버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 요구 Implementation Notes 에 재현 테스트 경로와 red 출력을 적어 그 요구의 실패하는 테스트로 지정한다(§5.3, `kiwi-coder` §0.20.5).
 복구: `list_requirements --target wave-{n}` 과 `srs_authored` 표식을 점검한 뒤 재진입한다.
 게이트: `child-srs-needs-user-or-failed`.
 같은 phase 의 stability 승급 홉(`$kiwi-srs-feasibility`, 3.b′)도 이 동사가 덮는다 — 그 홉이 요구의 stability 를 움직였을 수 있어 recovery class 가 같고 재진입 점검도 같은 조회이므로, `§V` 동사를 새로 만들지 않는다.
@@ -1086,7 +1134,7 @@ recovery class **externally-visible**. Phase 3.c, `--sds` 일 때만. wave 마�
 
 ### §V.derive-readiness
 
-recovery class **idempotent-by-key**. Phase 3.c′. 새 스냅샷 위의 순수 재계산이며 3.b 배정 집합에 대한 배정 검사를 함께 수행한다.
+recovery class **idempotent-by-key**. Phase 3.c′. 새 스냅샷 위의 순수 재계산이며 3.b 배정 집합에 대한 배정 검사를 함께 수행한다. 버그 입력의 R-ORCH 면 재현 테스트 파일이 정확히 한 wave 의 `files[]` 에 있는지도 보고, 아니면 `bug-repro-test-unresolved` 로 멈춘다(`--auto` 에서도).
 readiness 는 MCP `orchestrate_readiness_check` 에 `target`·`snapshot`·`req` 를 주어 파생하고, MCP 가 없으면 CLI `speckiwi orchestrate readiness check --target <t> --snapshot <path> --req <id> --json` 이며 `--target` 은 이 wave 의 target 이다. `--req` 에는 3.b 배정 집합을 그대로 준다 — 빈 목록은 target 전수 훑기가 아니라 오류다. 이 도구가 올리는 게이트는 `requirement-not-ready` 하나이고, 스냅샷이 담지 않은 id 도 그 게이트로 온다. 같은 절의 `unallocated-req-id` 는 배정 검사의 게이트이며 이 도구가 내는 값이 아니다 — 그 검사는 wave 선언 항목의 `requirements[]` 가 — `--sds` 면 wave SDS 파일들의 `speckiwi sds check <path> --json` 요약 요구 ID 합집합도 — 3.b 배정 집합 밖의 요구를 담거나, 비어 있거나, 배정 집합의 요구를 빠뜨린 경우를 잡고, 배정된 요구와 wave 설계 항목이 서로 짝이 없는 자리까지 네 연언으로 본다.
 스냅샷 파일은 이 wave target 의 `list_requirements` 응답과 `summarize_target` 응답을 한 JSON 문서로 합친 것이며, 레코드는 요약 투영이 아니라 전체 투영으로 받는다 — 기본 투영은 요구마다의 수용 기준과 검증 증거를 빼고 답하므로 그 응답으로 만든 문서는 게이트에 닿지 못한 채 스냅샷 해석 오류로 끝난다.
 머리줄은 최상위 키 이름이고, 이어지는 두 줄은 판별자 값마다 그 문서가 함께 실어야 하는 것을 적는다 — `target` 은 이 wave 의 target 이며 마지막 칸에 적힌 이름들이 그대로 최상위 키다. 판별자가 없거나 그 줄의 키를 빠뜨린 문서는 게이트가 아니라 스냅샷 해석 오류로 끝난다. 빈 줄 뒤의 마지막 줄은 그 전체 투영의 이름과, 그것을 지정하는 MCP 인자 이름과 CLI 플래그다.
@@ -1104,7 +1152,7 @@ speckiwi-list-json      <t>     list summary
 
 ### §V.commit-wave-inputs
 
-recovery class **externally-visible**. Phase 3.d. wave 설계·excerpt·선언 파일 `waves/waves.json`·(`--sds` 면) SDS(`docs/sds/{run_id}-wave-{n}.sds.md`)·3.b 가 바꾼 SRS·제약·레지스트리를 명시 pathspec 으로 wave 마다 커밋한다. 그 커밋의 sha 가 그 wave 의 dispatch base 이며, 저널의 `isolation.base_sha` 와 재개 카드의 `open[].base_sha` 에 기록한다.
+recovery class **externally-visible**. Phase 3.d. wave 설계·excerpt·선언 파일 `waves/waves.json`·(`--sds` 면) SDS(`docs/sds/{run_id}-wave-{n}.sds.md`)·3.b 가 바꾼 SRS·제약·레지스트리를 명시 pathspec 으로 wave 마다 커밋한다. 버그 입력의 재현 테스트 파일은 Phase 1 끝의 커밋으로 이미 dispatch base 에 있으므로 여기서 다시 커밋하지 않는다. 그 커밋의 sha 가 그 wave 의 dispatch base 이며, 저널의 `isolation.base_sha` 와 재개 카드의 `open[].base_sha` 에 기록한다.
 복구: `git log` 에서 `Orch-Run` 과 `Orch-Verb: commit-wave-inputs` 와 `Orch-Wave: {n}` trailer 를 점검한다.
 
 ### §V.freeze-lane-plan
@@ -1191,7 +1239,7 @@ recovery class **externally-visible**. §13.4 의 승인된 mid-wave 수정. 새
 
 ### §V.promote-requirements
 
-recovery class **externally-visible**. Phase 3.n. §14 의 네 단계 — 테스트 충분성 확인, SDS close-out(옮김), 승급, SDS close-out(삭제), close-out 은 `--sds` 만 — 를 host root 에서 wave 하나씩 적용한다.
+recovery class **externally-visible**. Phase 3.n. §14 의 네 단계 — 테스트 충분성 확인, SDS close-out(옮김), 승급, SDS close-out(삭제), close-out 은 `--sds` 만 — 를 host root 에서 wave 하나씩 적용한다. 버그 입력의 R-ORCH 면 재현 테스트에 건너뛰기 표시가 남아 있으면 그 요구를 승급하지 않는다(§5.3).
 복구: `get_requirement` 를 먼저 점검한다. `kiwi-sds --close` 는 멱등이므로 다시 부른다.
 게이트: `test-sufficiency-gap`.
 
@@ -1199,7 +1247,7 @@ recovery class **externally-visible**. Phase 3.n. §14 의 네 단계 — 테스
 
 #### run 창 종료 리뷰 홉 — 이 절이 진술하는 규칙은 `FR-FLOW-131` 이 소유한다
 
-recovery class **idempotent-by-key**. Phase 4 의 loop F 라운드. 분모는 모든 `design_items` 와 `integration_items` 의 합집합이다.
+recovery class **idempotent-by-key**. Phase 4 의 loop F 라운드. 분모는 모든 `design_items` 와 `integration_items` 의 합집합이다. 버그 입력의 R-ORCH 면 이 라운드 전에 재현 테스트에 건너뛰기 표시가 남아 있거나 green 이 아니면 run 을 완료로 끝내지 않고 `bug-repro-test-unresolved` 로 멈춘다(`--auto` 에서도).
 
 **run 창 종료 리뷰** (§4.5 가 선언한 의무의 R-ORCH 쪽 이행) — loop F 가 pass 를 기록하기 **전에** run 전체 커밋 창을 1회 리뷰한다. wave 별 홉의 분모는 그 wave 창 하나이므로, 어느 wave 창에도 온전히 들어가지 않는 결함은 여기서만 보인다:
 

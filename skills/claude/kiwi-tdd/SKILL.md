@@ -16,9 +16,9 @@ tdd work-mode에서 step 하나를 **acceptance 선행 TDD First 사이클**로 
 | 키 | 규칙 |
 |---|---|
 | §0.1 | **모드 확인 우선**. 시작 전 `speckiwi mode`로 현재 work-mode를 읽는다. `Mode: tdd`가 아니면 즉시 halt(중단)하고 사용자에게 `speckiwi mode tdd` 전환 또는 sdd 워크플로(kiwi-srs 계열)를 안내한다. |
-| §0.2 | **claim 우선**. 어떤 산출물(intent.md · design.md 포함)도 작성하기 전에 `claim_step`(MCP 우선) 또는 CLI `speckiwi step claim`(fallback)으로 대상 step을 선점한다. MCP·CLI 둘 다 부재 시 즉시 halt. |
+| §0.2 | **claim 우선**. 어떤 산출물(intent.md · design.md 포함)도 작성하기 전에 `claim_step`(MCP 우선) 또는 CLI `speckiwi step claim`(fallback)으로 대상 step을 선점한다. MCP·CLI 둘 다 부재 시 즉시 halt. 호출자가 넘긴 버그 재현 테스트(§0.4 의 예외)는 claim 전에 다른 스킬이 쓴 것이라 이 step 의 산출물이 아니다. claim 뒤 §2.4 에서 채택한다. |
 | §0.3 | **step 디렉터리 한정**. 모든 스펙 산출물은 `docs/spec/steps/<task>/` 아래에만 쓴다. body-scope SRS 파일(`docs/spec/*.srs.md`)은 절대 수정하지 않는다 — 승격은 오직 promote 도구로만. |
-| §0.4 | **acceptance 계약 선행**. step 의 acceptance 계약이 생기기 전에는 테스트를 쓰지 않는다 — `step validate` 가 확인한 intent.md `## Acceptance`, 또는 `--sds` 면 design.md. 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. acceptance 줄이 없으면 `speckiwi step validate` 가 `STEP_ACCEPTANCE_MISSING` 오류로 막는다. |
+| §0.4 | **acceptance 계약 선행**. step 의 acceptance 계약이 생기기 전에는 테스트를 쓰지 않는다 — `step validate` 가 확인한 intent.md `## Acceptance`, 또는 `--sds` 면 design.md. 테스트만이 스펙이 되는 순간 reward-hacking에 노출된다. acceptance 줄이 없으면 `speckiwi step validate` 가 `STEP_ACCEPTANCE_MISSING` 오류로 막는다. **예외 하나**: 호출자(`kiwi-orchestrator` 의 R-STEP)가 넘긴 버그 재현 테스트는 acceptance 줄을 먼저 쓴 뒤 그 줄의 테스트로 채택한다(§2.4). 그 테스트는 보고된 증상에서 나왔고 acceptance 줄이 생긴 뒤에야 인용되므로, 테스트만이 스펙이 되지 않는다. |
 | §0.5 | **테스트 불가침**. 테스트를 먼저 커밋하고, green 단계에서 테스트를 약화(weaken)·수정해 통과시키는 행위를 절대 금지한다. 계약 변경이 필요하면 고친 acceptance 줄(`--sds` 면 SDS supersede)로 돌아가 red부터 다시 간다. |
 | §0.6 | **증거 없는 승격 금지**. `promote_step_requirement`는 Verification Evidence(검증 증거) 1건 이상을 가진 블록만 승격한다(FR-NODE-074가 tdd 모드에서 하드 거부). |
 | §0.7 | **경계 준수(sdd redirect)**. 기존 body 요구(existing body REQ)의 수정과 대형(large)·아키텍처 변경은 본 스킬 범위 밖이다 — sdd 모드(SRS 선행 — `kiwi-srs` → `kiwi-pm` 사슬)로 리다이렉트한다. |
@@ -119,6 +119,8 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 ### 2.4 Phase 3 — red
 
 `## Acceptance` 의 각 `AC-<n>` 줄을 실패하는 테스트로 번역하고, 테스트 제목 줄에 `<task> AC-<n>` 을 적는다(줄마다 최소 1 케이스, 인용 규약은 `_shared/kiwi/test-sufficiency.md` §1). `--sds` 면 SDS §5의 각 SDS-AC를 같은 방식으로 번역하고 제목 줄에 그 `SDS-AC-<n>` 을 적는다. 테스트를 실행해 **실패(red)를 확인**한 뒤 테스트를 먼저 커밋한다. red 확인 전 구현 착수 금지.
+
+**호출자가 넘긴 재현 테스트**: 작업 개요에 버그 재현 테스트가 있으면 그 증상을 고치는 acceptance 줄을 먼저 쓰고(Phase 2) 그 재현 테스트를 이 줄의 테스트로 채택한다. 재현 테스트의 제목 줄에 그 `<task> AC-<n>` 을 단다. 그 테스트를 다시 돌려 red 를 다시 확인한다. 같은 증상을 단언하는 새 테스트를 쓰지 않는다.
 
 ### 2.5 Phase 4 — green
 

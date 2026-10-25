@@ -18,6 +18,7 @@ orchestration, or final event emission rules.
 | `kiwi-commit-auto-push` | Commit and push verified changes with issue/SRS trailers | no | no |
 | `kiwi-commit-auto-pr` | Commit, push, and create or update a GitHub PR with issue/SRS trailers | no | no |
 | `kiwi-hot-fix` | Urgent TDD bug fix with review and delegated SRS sync | no | no |
+| `kiwi-bug-repro` | Confirm a reported bug and reproduce it as a failing test before any fix; never changes product code | no | no |
 | `kiwi-review-fix-loop` | Review, fix, re-review, and optionally close implemented REQs with evidence | yes | no |
 | `kiwi-pipeline` | Orchestrate the end-to-end cycle by default; recommend a single next step under `--none-cycle` | transitive, via its children | transitive, via `kiwi-srs-feasibility` |
 
@@ -36,6 +37,7 @@ routing summary is:
 | `kiwi-pm` | `TASK_DONE` | `kiwi-review-fix-loop --close-reqs --req-filter <the run's req_ids>`; when the event's `artifacts.sds_files` is non-empty, first `kiwi-sds --close <sds-id>` (the move before promotion, when the run is close-safe), whose close event hints `kiwi-review-fix-loop --close-reqs`, otherwise `kiwi-review-fix-loop` without `--close-reqs` |
 | `kiwi-review-fix-loop` | `TASK_DONE` | `kiwi-commit-auto-push` or none for PR mode |
 | `kiwi-hot-fix` | `TASK_DONE` | `kiwi-commit-auto-push` or `kiwi-pipeline` |
+| `kiwi-bug-repro` | `TASK_DONE` | standalone: `kiwi-hot-fix` when reproduced with a failing test (`reproduced`), `kiwi-srs` when not a bug, none for `reproduced-no-test` (kiwi-hot-fix stops on it); none when a caller (`kiwi-hot-fix`, `kiwi-orchestrator`) invoked it |
 | `kiwi-commit-auto-push` | `TASK_DONE` | `kiwi-pipeline` |
 | `kiwi-commit-auto-pr` | `TASK_DONE` | `kiwi-pipeline` |
 | any | `NEEDS_USER` or `FAILED` | none |

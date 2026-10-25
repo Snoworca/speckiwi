@@ -338,6 +338,7 @@ tail -n "$N" "$PIPE_FILE"
 | kiwi-coder (단독) | TASK_DONE | `kiwi-review-fix-loop --req-filter <그 이벤트의 req_ids>`. 그 이벤트의 `artifacts.sds_files` 가 비어 있지 않으면(`--sds` 실행) 먼저 `kiwi-sds --close <sds-id>` (승급 전 옮기기 — `CLOSE_SAFE` 일 때) — 그 close 이벤트의 `next_hint` 로 `kiwi-review-fix-loop --close-reqs` 가 오고, `CLOSE_SAFE` 가 아니면 `kiwi-review-fix-loop` (`--close-reqs` 없이) |
 | kiwi-review-fix-loop | TASK_DONE | `kiwi-commit-auto-push` 또는 PR mode 에서는 종료 — `--sds` 사이클은 먼저 §2.5.5 4~6번 |
 | kiwi-hot-fix | TASK_DONE | `kiwi-commit-auto-push` 또는 sync 후속 검토가 필요하면 `kiwi-pipeline` |
+| kiwi-bug-repro | TASK_DONE | 단독 실행이면 재현됨(`reproduced`) → `kiwi-hot-fix`, 버그가 아님 → `kiwi-srs`. 자동 테스트 없이 재현됨(`reproduced-no-test`)은 `null` 이다: `kiwi-hot-fix` 는 `TDD_EXEMPT_REASON` 없이 그 결과에서 멈춘다. 호출자(`kiwi-hot-fix` · `kiwi-orchestrator`)가 부른 실행은 `null` — 다음 단계는 호출자가 정한다 |
 | kiwi-commit-auto-push | TASK_DONE | `kiwi-pipeline` (다음 작업 or 종료, 사용자 결정) |
 | kiwi-commit-auto-pr | TASK_DONE | `kiwi-pipeline` (다음 작업 or 종료, 사용자 결정) |
 | any | NEEDS_USER | (없음 — 사용자 결정 강제) |
