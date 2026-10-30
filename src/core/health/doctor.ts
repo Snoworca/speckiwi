@@ -1,6 +1,5 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ParsedWorkspace } from "../types.js";
 import { splitDiagnostics } from "../diagnostic.js";
 import { gitToplevelOf, realpathProbe } from "../root-facts.js";
@@ -14,7 +13,7 @@ import {
 import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
 import { agentInstructionBlockWrittenByNewer, isAgentInstructionBlockCurrent } from "../bootstrap/init-project.js";
 import { NODE_FLOOR, PACKAGE_VERSION, engineFloorVersion, parseNodeFloor, type NodeFloor, type NodeVersionTuple } from "../package-version.js";
-import { deprecatedCodexCandidates, removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
+import { bundledSkillsBaseDir, deprecatedCodexCandidates, removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
 import type { SkillInstallOptions } from "../skills/types.js";
 
 // @req IR-CLI-065
@@ -301,11 +300,12 @@ async function checkSdsRulesPresence(rootPath: string): Promise<DoctorCheck> {
 // @req FR-NODE-083
 /** The bundled codex skills source tree shipped inside this package. */
 function bundledCodexSkillsRoot(): string {
-  return fileURLToPath(new URL("../../../skills/codex", import.meta.url));
+  return path.join(bundledSkillsBaseDir(), "codex");
 }
 
+// @req FR-NODE-229 — the installer's own answer, so the drift check and the install it recommends agree.
 function bundledClaudeSkillsRoot(): string {
-  return fileURLToPath(new URL("../../../skills/claude", import.meta.url));
+  return path.join(bundledSkillsBaseDir(), "claude");
 }
 
 // @req FR-NODE-083

@@ -27,7 +27,7 @@ import {
   renderIndexTemplate
 } from "./templates.js";
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
-import { installSkill, planSkillInstall, removeManagedKiwiSkills } from "../skills/install-skill.js";
+import { installSkill, removeManagedKiwiSkills } from "../skills/install-skill.js";
 import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
 import { isSelfHostingCheckout, registerSpeckiwiMcp, registerSpeckiwiMcpForUser, type AgentCli, type AgentCliRunner } from "./mcp-registration.js";
 import { PACKAGE_VERSION } from "../package-version.js";
@@ -817,9 +817,13 @@ async function provisionSkills(root: string, input: InitProjectInput, output: In
           : {}),
         ...(input.skillSourceBaseDir ? { sourceBaseDir: input.skillSourceBaseDir } : {})
       };
-      const provisioned = dryRun ? await planSkillInstall(options) : await installSkill(options);
+      // @req FR-NODE-230 AC-2 — the dry-run passes the same conflict refusal as the real run, so it can
+      // never plan as created a skill the real run will not write.
+      const provisioned = await installSkill(options);
       if (!provisioned.ok) {
         warnings.push(`skills(${agent})${label}: ${provisioned.error.message}`);
+        // @req FR-NODE-230 AC-1 — the per-skill reasons name the skill and its destination; the summary alone names neither.
+        warnings.push(...provisioned.diagnostics.map((diagnostic) => `skills(${agent})${label}: ${diagnostic.message}`));
         outcomes.push({ agent, completed: false, reason: provisioned.error.message, names: [] });
         continue;
       }
@@ -839,12 +843,10 @@ async function provisionSkills(root: string, input: InitProjectInput, output: In
         output.removed.push(...prune.removed);
         warnings.push(...prune.warnings);
       }
-      const conflicts = provisioned.value.results.filter((result) => result.operation === "conflict").length;
-      const names = provisioned.value.results.filter((result) => result.operation !== "conflict").map((result) => result.name);
+      const names = provisioned.value.results.map((result) => result.name);
       const elsewhere = scope === "global" && agent === "claude" && globalCtx ? claudeConfigElsewhere(globalCtx) : undefined;
       if (elsewhere !== undefined) warnings.push(`skills(${agent})${label}: ${elsewhere}`);
-      if (conflicts > 0) outcomes.push({ agent, completed: false, reason: `${conflicts} skill(s) conflicted`, names });
-      else if (elsewhere !== undefined) outcomes.push({ agent, completed: false, reason: elsewhere, names });
+      if (elsewhere !== undefined) outcomes.push({ agent, completed: false, reason: elsewhere, names });
       else outcomes.push({ agent, completed: true, names });
     } catch (error) {
       // The skills step degrades non-fatally: any per-agent failure (Result error or raw throw, e.g. an
@@ -867,9 +869,6 @@ function foldSkillResults(plan: SkillInstallPlan, output: InitProjectOutput, war
         break;
       case "skip":
         output.skipped.push(result.destination);
-        break;
-      case "conflict":
-        warnings.push(`skills(${plan.agent}) ${result.name}: ${result.conflicts.join("; ") || "conflict"}`);
         break;
     }
   }

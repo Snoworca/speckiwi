@@ -354,7 +354,7 @@ export async function resolveSkillSourceRoot(options: SkillInstallOptions): Prom
 
 async function resolveSourceRoot(options: SkillInstallOptions): Promise<string> {
   const sourceSubdir = SOURCE_ROOT_BY_AGENT[options.agent];
-  const sourceBaseDir = options.sourceBaseDir ? path.resolve(options.sourceBaseDir) : await locateBundledSkillsRoot(options.projectRoot.root, sourceSubdir);
+  const sourceBaseDir = options.sourceBaseDir ? path.resolve(options.sourceBaseDir) : bundledSkillsBaseDir();
   if (isDeprecatedLlmSourceBaseDir(sourceBaseDir)) {
     throw new SkillInstallError("SKILL_INSTALL_DEPRECATED_SOURCE", "skills/llm is not a canonical source root");
   }
@@ -366,27 +366,15 @@ async function resolveSourceRoot(options: SkillInstallOptions): Promise<string> 
   return sourceRoot;
 }
 
-async function locateBundledSkillsRoot(projectRoot: string, sourceSubdir: string): Promise<string> {
-  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  const starts = [projectRoot, process.cwd(), moduleDir];
-  for (const start of starts) {
-    const found = await findAncestorWithSkills(start, sourceSubdir);
-    if (found) return found;
-  }
-  throw new SkillInstallError("SKILL_SOURCE_UNAVAILABLE", "bundled skills source roots are unavailable");
-}
-
-async function findAncestorWithSkills(start: string, sourceSubdir: string): Promise<string | undefined> {
-  let current = path.resolve(start);
-  for (;;) {
-    const candidate = path.join(current, "skills");
-    if (await directoryExists(path.join(candidate, sourceSubdir))) {
-      return candidate;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return undefined;
-    current = parent;
-  }
+/**
+ * The `skills/` tree of the speckiwi package whose code is running, from `src/` and `dist/` alike.
+ *
+ * @req FR-NODE-229 — never a `skills/` found in the project, the working directory or an ancestor:
+ * a project with its own `skills/claude` became the source, so init installed that project's skills
+ * instead of the kiwi skills and `--project-install` pruned every managed kiwi copy.
+ */
+export function bundledSkillsBaseDir(): string {
+  return fileURLToPath(new URL("../../../skills", import.meta.url));
 }
 
 async function resolveSkillNames(sourceRoot: string, selector: string, agent: SkillAgent): Promise<string[]> {
@@ -580,7 +568,7 @@ async function classifyExistingDestination(destination: string, sourcePackage: S
   if (!await pathExists(destination)) return { operation: "install", changed: true, removedFiles: 0, conflicts: [], validationFindings: [] };
   const stat = await lstat(destination);
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
-    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination is not a normal directory"], validationFindings: [] };
+    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: [`destination is not a normal directory: ${destination}`], validationFindings: [] };
   }
   const symlink = await findFirstSymlink(destination);
   if (symlink) {
@@ -599,12 +587,12 @@ async function classifyExistingDestination(destination: string, sourcePackage: S
     };
   }
   if (path.basename(destination) !== sourcePackage.name || destinationPackage.name !== identity.name) {
-    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination skill identity does not match source skill"], validationFindings: [] };
+    return { operation: "conflict", changed: false, removedFiles: 0, conflicts: [`destination skill identity does not match source skill: ${destination}`], validationFindings: [] };
   }
   const metadata = await readInstallMetadata(destination);
   if (metadata) {
     if (metadata.name !== identity.name || metadata.agent !== identity.agent || (metadata.category ?? "") !== (identity.category ?? "")) {
-      return { operation: "conflict", changed: false, removedFiles: 0, conflicts: ["destination install metadata identity does not match source skill"], validationFindings: [] };
+      return { operation: "conflict", changed: false, removedFiles: 0, conflicts: [`destination install metadata identity does not match source skill: ${destination}`], validationFindings: [] };
     }
   } else {
     // @req FR-NODE-173 AC-1 — this guard used to run for `custom` alone, so the two scopes that

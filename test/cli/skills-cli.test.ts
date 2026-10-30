@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 
@@ -23,6 +24,10 @@ async function writeSkill(root: string, source: "codex" | "claude" | "etc", name
   );
 }
 
+// @req FR-NODE-229 — the CLI has no source seam, so it installs the package's own skills; a skills/
+// folder in the project root is not a source.
+const PACKAGE_SKILLS = fileURLToPath(new URL("../../skills", import.meta.url));
+
 describe("skills CLI commands", () => {
   it("prints dry-run JSON with install/update semantics and MCP preflight", async () => {
     const root = await tempRoot();
@@ -33,7 +38,7 @@ describe("skills CLI commands", () => {
       ok: true,
       value: {
         agent: "opencode",
-        sourceRoot: path.join(root, "skills", "etc"),
+        sourceRoot: path.join(PACKAGE_SKILLS, "etc"),
         destinationRoot: path.join(root, ".opencode", "skills"),
         requiresMcp: true,
         mcpPreflight: { status: "missing" },
@@ -42,15 +47,15 @@ describe("skills CLI commands", () => {
     });
   });
 
-  it("supports skills add alias and install-time Claude entrypoint normalization", async () => {
+  // The legacy skill.md normalization is covered through the source seam in test/core/skills/install-skill.test.ts.
+  it("supports the skills add alias", async () => {
     const root = await tempRoot();
-    await writeSkill(root, "claude", "kiwi-pm", "skill.md");
     const destinationRoot = path.join(root, "claude-dest");
     const commandIo = io();
     expect(await main(["--root", root, "skills", "add", "claude", "kiwi-pm", "--dest", destinationRoot, "--json"], commandIo)).toBe(0);
     expect(JSON.parse(commandIo.stdout.read()?.toString() ?? "")).toMatchObject({
       ok: true,
-      value: { results: [{ name: "kiwi-pm", operation: "install", entrypointNormalized: true }] }
+      value: { sourceRoot: path.join(PACKAGE_SKILLS, "claude"), results: [{ name: "kiwi-pm", operation: "install" }] }
     });
     await expect(readFile(path.join(destinationRoot, "kiwi-pm", "SKILL.md"), "utf8")).resolves.toContain("name: kiwi-pm");
   });

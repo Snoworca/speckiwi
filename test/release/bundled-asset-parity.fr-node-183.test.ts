@@ -101,10 +101,10 @@ describe("FR-NODE-183 AC-1 — the asset list is derived from the source, not ha
     const dirs = bundledAssetDirs().map((entry) => entry.dir);
     // A floor, so a regex that silently stopped matching cannot leave the suite vacuously green.
     expect(dirs.length, "no package-relative asset reads were found; the scan is broken").toBeGreaterThanOrEqual(3);
-    // The three that were already correct before this requirement, as a self-check on the scanner.
+    // Known reads, as a self-check on the scanner. The skills tree is read whole since FR-NODE-229
+    // gave the installer and the doctor one package-relative root.
     expect(dirs).toContain("docs/rule");
-    expect(dirs).toContain("skills/codex");
-    expect(dirs).toContain("skills/claude");
+    expect(dirs).toContain("skills");
   });
 });
 
