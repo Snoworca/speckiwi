@@ -1,6 +1,6 @@
 ---
 name: kiwi-review-fix-loop
-description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Code only: prose such as SKILL.md, README, SRS documents and research notes is neither reviewed nor edited. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, CRITICAL/HIGH-zero exit, optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
+description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Code only: prose such as SKILL.md, README, SRS documents and research notes is neither reviewed nor edited. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, kept-finding-zero exit (keep/drop termination), optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 
@@ -33,7 +33,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | §0.4 | Mock shortcuts, cwd-external edits, and signature text are critical violations. |
 | §0.5 | Normal mode does not mutate SRS. `--close-reqs` is the only opt-in SRS mutation path and it is self-mode only. |
 | §0.6 | `--close-reqs` allows exactly three mutations and only in self mode: `add_verification_evidence` (type=test), `check_acceptance_criteria` (per criterion, after the test that passed it is named), and `update_status` (`implemented` to `verified`, forward-only). It may only move high-confidence impacted requirements. No bulk finalize, archive, or target-emptying behavior is allowed. |
-| §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Finding classification remains local policy; `--auto` only governs user-decision gates. |
+| §0.7 | `--auto` follows `../_shared/kiwi/auto-option.md`. Finding classification remains local policy (kept→auto-fix / dropped→auto-report / residual→user decision); `--auto` only governs user-decision gates. |
 | §0.8 | Emit pipeline events through `../_shared/kiwi/pipeline-event.md`. |
 | §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
 | §0.10 | **Test sufficiency.** Whenever a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`), the last verification step runs the check of `../_shared/kiwi/test-sufficiency.md` (Test Sufficiency section). |
@@ -44,9 +44,10 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | gate_id | reason | location |
 |---|---|---|
 | `classifier-fix-hypothesis-fail-fallback` | classifier cannot produce a safe fix hypothesis | classification |
+| `residual-finding-user-decision` | a residual finding (an unproven functional-defect claim) stays for user decision; the `--auto` decision subagent cannot resolve it (FR-FLOW-203) | classification |
 | `close-reqs-with-pr-mode` | PR mode cannot close requirements directly | close gate |
 | `close-reqs-with-regression-fail` | verified transition requires passing regression evidence | close gate |
-| `close-reqs-critical-or-high-residual` | unresolved CRITICAL/HIGH findings block verified transition | close gate |
+| `close-reqs-critical-or-high-residual` | unresolved kept or residual findings block verified transition (gate id kept for compatibility) | close gate |
 | `external-module-impact` | cwd-external edits need explicit approval | fix gate |
 | `improvement-loop-divergence-4opt` | repeated loop failure needs user decision | review loop |
 | `mock-detection` | mock shortcut is a critical violation | fix scan |
@@ -70,7 +71,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | PR mode | `--pr`, `-pr`, `--PR`, `-PR`, or `--pr=<url>` | off |
 | file scope | `--files=a,b` | working tree |
 | commit/range scope | `--commits=HEAD~3`, `--since=YYYY-MM-DD`, `--base=main --head=HEAD` | working tree |
-| precision | `--max` | off |
+| verification intensity (one reviewer in every mode) | `--max` | off |
 | verification model | `--model <name>` | current session model |
 | auto gates | `--auto` | off |
 | dry run | `--dry-run` | off |
@@ -101,13 +102,31 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 9. Run a fresh prickly re-review with isolated input. Prose never enters that input
    (파일 부류 경계 section); the prose delta protocol belongs to
    `../_shared/kiwi/verify-loop.md` §10 and is not this skill's to run.
-10. Iterate until CRITICAL/HIGH findings are clear.
+10. Iterate until no kept finding remains (Keep/Drop 종료 판정 section).
     **커버리지 대조를 통과한 라운드만 PASS 가 된다** — finding 개수만으로는 PASS 가 나오지 않는다. 대조 결과는 리뷰 커버리지 분모 section 이 정하며, 무효 라운드는 어느 행에도 해당하지 않는다.
 11. Run regression and affected tests.
 12. In PR mode, write a response comment unless `--no-respond`.
 13. Test sufficiency, the last verification step: when a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`), run the check of `../_shared/kiwi/test-sufficiency.md` (Test Sufficiency section).
 14. If `--close-reqs`, register per-REQ test evidence and move eligible REQs from `implemented` to `verified`.
 15. Write report and emit pipeline event.
+
+### Keep/Drop 종료 판정 (심각도 라벨 대체)
+
+심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)로 종료를 판정하지 않고, 실행 증거로 finding 을 가른다.
+
+- finding 은 **실행이 입증할 때만 keep** 한다 — 실패하는 테스트·재현 절차·반례가 그 실패를 보이고 그 실패가 의도를 깨뜨릴 때다.
+- 실행으로 입증하지 못한 것과 스타일·명명·순서·주석류는 **drop** 하며, 심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)은 종료 판정에 쓰지 않는다.
+- 기능 결함이라 **주장**했으나 실행으로 입증하지 못한 finding 은 drop 하지 않고 **residual 로 사용자 결정**에 올린다.
+- residual finding 이 하나라도 남으면 이 실행은 `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝난다 — 상위 오케스트레이터는 그 residual 을 사용자가 결정하기 전까지 step 승급·lane 병합으로 넘어가지 않는다.
+- keep/drop 판정과 3분류는 고정 매핑이다: kept→`immediate_fix`, residual→`discussion_needed`(`rejected` 로 보낼 수 없다), dropped→`rejected`.
+- keep 의 증거로 제출한 테스트는 현재 코드에서 **red 임을 실행으로 확인**한 뒤에만 인정하고, 그 테스트가 회귀 테스트가 되어 fix 후 green·뮤테이션으로 확인한다.
+- 까칠 리뷰어는 **전 모드에서 1개**이며, `--max` 는 리뷰어 수가 아니라 검증 강도(뮤테이션·적대적 실행)만 올린다.
+- 종료 게이트는 **kept(surviving) finding 이 0** 일 때만 통과한다 — 이것이 기존 `CRITICAL=0 + HIGH=0` 게이트를 대체한다.
+- 종료는 리뷰 커버리지 대조(FR-FLOW-171)가 kept 0 게이트와 **함께** 통과할 때만 허용한다.
+- 기본 라운드 상한은 **Normal 5 / `--max` 8 / `--mini` 3** 이며, 상한 소진은 통과가 아니라 잔여 보고다. `--loops N` 이 주어지면 상한은 N 이다.
+- 수렴 가드는 finding-hash 일치가 아니라 **새로 해소된 kept 가 0 인 라운드가 2회 연속**이면 종료한다.
+- drop 한 finding 은 **사유와 함께** 보고하고 residual 은 **목록으로** 보고한다 — silent truncation 은 하지 않는다.
+- `--auto` 에서는 **kept→자동 수정 / dropped→자동 보고 / residual→사용자 결정**으로 가른다.
 
 ### 보존 스캔 (fixer diff, §0.17)
 
@@ -155,7 +174,7 @@ Skip or halt when:
 | `--close-reqs` absent | no SRS mutation |
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
-| CRITICAL/HIGH finding remains | halt |
+| kept or residual finding remains | halt |
 | the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
@@ -212,7 +231,7 @@ For each eligible REQ:
 3. 앞의 세 처분(포함 · `excluded_prose` · `refused_artifacts`) 어디에도 들지 않는 것(바이너리·에셋 등)은 `unclassified_files[]` 에 싣는다. 버킷을 늘리는 것이 항등식을 포기하는 것보다 낫다 — 분류되지 않은 파일이 조용히 사라지면 항등식이 그것을 숨긴다.
 4. 남은 것이 리뷰 대상이다.
 
-**범위 결정과의 관계** — 본 절은 Inputs 절의 범위 결정이 산출한 후보 목록에 붙는 **후처리**이며 그 범위 결정을 대체하지 않는다. 부류 필터는 후보 목록이 만들어진 **직후**, 까칠 리뷰어를 spawn 하기 **전**에 적용한다. 뒤에 두면 고칠 수 없는 finding 이 심각도 게이트의 `CRITICAL=0 + HIGH=0` 카운터에 들어가, 루프가 영원히 통과하지 못하거나 게이트를 맞추려고 결국 그 문서를 고치게 된다.
+**범위 결정과의 관계** — 본 절은 Inputs 절의 범위 결정이 산출한 후보 목록에 붙는 **후처리**이며 그 범위 결정을 대체하지 않는다. 부류 필터는 후보 목록이 만들어진 **직후**, 까칠 리뷰어를 spawn 하기 **전**에 적용한다. 뒤에 두면 고칠 수 없는 finding 이 kept 카운터에 들어가, 루프가 영원히 통과하지 못하거나 게이트를 맞추려고 결국 그 문서를 고치게 된다.
 
 **커밋 창은 사람의 지목이 아니다** — `--base`/`--head` · `--commits` · `--since` 는 부류 필터를 **면제하지 않는다.** `kiwi-orchestrator` 는 §15 일정에 따라 `docs/research/{work}/` 아래 run 아티팩트를 커밋한 **다음** 그 커밋 범위를 이 스킬에 창으로 넘긴다. 연구·설계 산문이 실제로 리뷰에 들어온 경로가 이것이며, 창을 지목으로 인정하면 주 경로가 그대로 필터를 면제받는다. **`--files` 만** 사람이 파일을 지목한 것으로 인정하고, 그 목록에 든 산문은 제외 사실과 사유를 **보고**한 뒤 코드만 진행한다. 지목이 전부 산문이면 진행하지 않는다.
 

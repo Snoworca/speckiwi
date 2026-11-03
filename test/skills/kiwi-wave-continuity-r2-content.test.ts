@@ -291,7 +291,10 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     // cap while looking like nothing happening. The second consecutive one halts here.
     "review-coverage-mismatch",
     // @req FR-FLOW-186 AC-2 — the test-sufficiency check is the loop's last phase when a scope is known.
-    "test-sufficiency-gap"
+    "test-sufficiency-gap",
+    // @req FR-FLOW-203 AC-12 — a residual finding is an unproven functional-defect claim; --auto's
+    // decision subagent cannot resolve it, so it stays for the user.
+    "residual-finding-user-decision"
   ]
 };
 

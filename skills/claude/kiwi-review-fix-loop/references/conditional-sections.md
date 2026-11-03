@@ -134,7 +134,7 @@
 ### Rejected (with rationale)
 - FND-007 [external_library] — 사유: ...
 
-(각 항목은 `[rejection_category]` prefix 사용. enum 은 §0.G5 의 `out_of_scope|already_intended|external_library|misunderstanding` 4종)
+(각 항목은 `[rejection_category]` prefix 사용. enum 은 §5 분류기 스키마의 `dropped|out_of_scope|already_intended|external_library|misunderstanding` 5종)
 
 Regression tests: PASS (N tests)
 ```

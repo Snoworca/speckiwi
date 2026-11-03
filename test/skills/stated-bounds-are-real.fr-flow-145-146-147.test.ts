@@ -127,19 +127,22 @@ describe("FR-FLOW-146 — one question, one answer", () => {
     expect(offenders, "a re-spawn is granted with no stated ceiling").toEqual([]);
   });
 
-  it("the mode multiplier says which of the two things it means", () => {
-    // "×2" alone leaves a reader to choose between two concurrent instances and a strengthened
-    // exit condition. The cheaper reading wins by default, which is not a decision anyone made.
-    const carriers = filesContaining(/^\|\s*`--max`\s*\|\s*×\s*2\s*/m);
+  it("review-fix-loop runs one reviewer in every mode, so --max states no reviewer multiplier", () => {
+    // A "×2" would leave a reader to choose between two concurrent instances and a strengthened
+    // exit condition. FR-FLOW-203 removes the question: one reviewer in every mode, and `--max`
+    // raises verification intensity only, so the row must say ×1 and must say intensity.
+    const carriers = filesContaining(/^\|\s*`--max`\s*\|/m).filter(([rel]) => rel.includes("kiwi-review-fix-loop"));
     expect(carriers.length, "no shipped file carries the review-fix-loop --max row").toBeGreaterThan(0);
     const offenders: string[] = [];
     for (const [rel, text] of carriers) {
       for (const line of text.split(/\r?\n/)) {
-        if (!/^\|\s*`--max`\s*\|\s*×\s*2/.test(line)) continue;
-        if (!/동시|병렬|순차/.test(line)) offenders.push(`${rel}: ${line.trim().slice(0, 90)}`);
+        if (!/^\|\s*`--max`\s*\|/.test(line)) continue;
+        const reviewerCell = line.split("|")[2] ?? "";
+        const oneReviewerIntensityOnly = /^\s*×\s*1\b/.test(reviewerCell) && /강도/.test(reviewerCell);
+        if (!oneReviewerIntensityOnly) offenders.push(`${rel}: ${line.trim().slice(0, 90)}`);
       }
     }
-    expect(offenders, "a --max multiplier is left undefined between its two readings").toEqual([]);
+    expect(offenders, "a --max reviewer multiplier is stated, or intensity-only is not said").toEqual([]);
   });
 
   it("the round-cap options name the counters they replace", () => {

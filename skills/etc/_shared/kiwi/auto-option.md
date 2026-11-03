@@ -369,5 +369,6 @@ absent field is silence.
 - `kiwi-srs-sync`: `--auto-apply` and `--yes-all` skip the dry-run approval gate
   only when the user explicitly supplied them. Parent `--auto` must not create
   those flags.
-- `kiwi-review-fix-loop`: finding severity classification is separate from
-  `--auto` gate decisions.
+- `kiwi-review-fix-loop`: the keep/drop mapping (kept -> auto-fix, dropped ->
+  auto-report, residual -> user decision) is separate from `--auto` gate
+  decisions.

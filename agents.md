@@ -17,7 +17,7 @@ The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics
 When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
 
 # SpecKiwi SRS workflow v1.11
-Written by speckiwi 4.1.1.
+Written by speckiwi 4.2.1.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 

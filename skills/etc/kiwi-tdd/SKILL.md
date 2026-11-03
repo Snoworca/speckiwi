@@ -157,7 +157,7 @@ The table below is the whole decision. The entry path, any trace of a parent and
 | Yes | skip it |
 | No | run it |
 
-When the review ends with a residual CRITICAL or HIGH finding, do not report `TASK_DONE` — name the remaining findings and stop.
+When the review hop ends in any status other than `TASK_DONE` (`NEEDS_USER` or `FAILED`), do not enter Phase 6 promotion — name the residual and remaining findings and stop.
 
 ### 2.7 Phase 6 — post-hoc SRS promotion
 

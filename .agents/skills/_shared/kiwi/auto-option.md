@@ -363,5 +363,6 @@ absent field is silence.
   gate only when the user explicitly supplied them; parent `--auto` must not
   create those flags. `--auto` uses decision workers for gates and may choose
   apply-all, apply-selected, dry-run-only, or abandon.
-- `kiwi-review-fix-loop`: finding severity classification is separate from
-  `--auto` gate decisions.
+- `kiwi-review-fix-loop`: the keep/drop mapping (kept -> auto-fix, dropped ->
+  auto-report, residual -> user decision) is separate from `--auto` gate
+  decisions.

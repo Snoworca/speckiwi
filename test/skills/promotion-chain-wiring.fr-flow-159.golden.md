@@ -26,7 +26,7 @@ Skip or halt when:
 | `--close-reqs` absent | no SRS mutation |
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
-| CRITICAL/HIGH finding remains | halt |
+| kept or residual finding remains | halt |
 | the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
@@ -130,7 +130,7 @@ Skip or halt when:
 | `--close-reqs` absent | no SRS mutation |
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
-| CRITICAL/HIGH finding remains | halt |
+| kept or residual finding remains | halt |
 | the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
@@ -234,7 +234,7 @@ Skip or halt when:
 | `--close-reqs` absent | no SRS mutation |
 | PR mode | halt; close after merge or in self mode |
 | regression failed or skipped without evidence | halt |
-| CRITICAL/HIGH finding remains | halt |
+| kept or residual finding remains | halt |
 | the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |

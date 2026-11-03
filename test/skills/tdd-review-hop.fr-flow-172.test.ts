@@ -970,15 +970,23 @@ describe("FR-FLOW-172 — kiwi-tdd review hop and its start gate", () => {
         ).toBe(true);
       });
 
-      it(`${copy}: a residual CRITICAL or HIGH forbids TASK_DONE`, () => {
+      // FR-FLOW-203 AC-11: the review loop no longer assigns severity, so the stop keys on its return status.
+      it(`${copy}: a review hop that does not end TASK_DONE forbids Phase 6 promotion`, () => {
         const text = body(copy, "kiwi-tdd");
         expect(
-          orderedWithin(text, ["CRITICAL", "HIGH"], 40),
-          `${copy}: the terminal condition must name both severities`
+          orderedWithin(text, ["NEEDS_USER", "FAILED"], 40),
+          `${copy}: the terminal condition must name both non-done statuses`
         ).toBe(true);
         expect(
-          new RegExp(`CRITICAL[\\s\\S]{0,240}TASK_DONE`).test(text),
-          `${copy}: the terminal condition must tie the severities to TASK_DONE`
+          new RegExp(`TASK_DONE[\\s\\S]{0,120}NEEDS_USER[\\s\\S]{0,200}Phase 6`).test(text),
+          `${copy}: the terminal condition must tie the statuses to Phase 6 promotion`
+        ).toBe(true);
+        // Pin the exact stop sentence: a proximity check alone passes an inverted sentence
+        // ("do not skip Phase 6 promotion"), which would mean the opposite.
+        expect(
+          text.includes("리뷰 hop 이 `TASK_DONE` 이 아닌 상태(`NEEDS_USER` · `FAILED`)로 끝나면 Phase 6 승격으로 넘어가지 않는다") ||
+            text.includes("When the review hop ends in any status other than `TASK_DONE` (`NEEDS_USER` or `FAILED`), do not enter Phase 6 promotion"),
+          `${copy}: the stop sentence must forbid entering Phase 6, word for word`
         ).toBe(true);
         expect(
           prohibitionNear(text, "TASK_DONE", 80),

@@ -416,7 +416,7 @@ SSOT 가 요구하는 것은 `critical_gates[]` **존재** 와 **gate_id / reaso
 | 스킬 | 기존 시맨틱 | SSOT 도입 시 변환 |
 |---|---|---|
 | `kiwi-pm` | 3종 severity enum (clarification/business-decision/rollback-confirmation), business-decision = HALT | severity enum 유지, **business-decision = 서브에이전트 자동 결정** (사용자 사양에 따라 변경, **kiwi-pm §5.1 / §0.G7 / description / 관련 본문 6+ 위치 갱신 의무**), 기존 business-decision 중 비가역/외부영향 큰 항목은 `critical_gates[]` 로 인라인 |
-| `kiwi-review-fix-loop` | severity → 액션 매핑 표 (CRITICAL/HIGH/MEDIUM → fix, LOW → reject) | finding 분류용 매핑은 별개 정책으로 유지. `--auto` 게이트 결정만 SSOT 적용 |
+| `kiwi-review-fix-loop` | keep/drop → 액션 매핑 (kept → 자동 수정, dropped → 자동 보고, residual → 사용자 결정) | finding 분류용 매핑은 별개 정책으로 유지. `--auto` 게이트 결정만 SSOT 적용 |
 | `kiwi-hot-fix` | `--auto` 는 사용자 게이트 자동 결정. sync 위임 시 `--auto` 만 전파하고 `--auto-apply` / `--yes-all` 는 사용자가 직접 지정한 경우에만 전파 | SSOT §7.1 전파 표에 명시. 본 스킬 게이트 결정은 SSOT |
 | `kiwi-srs` | `--auto` = AskUserQuestion 발동 대신 **차단** | 차단 대상 게이트(외부 모듈/scope-boundary)를 `critical_gates[]` 로 인라인. 나머지는 SSOT |
 | `kiwi-pipeline` | NEEDS_USER/FAILED/자기호출/다지선다 차단 | 4개 모두 `critical_gates[]` 인라인. `--auto --run` 단독 spawn 시맨틱은 유지 |

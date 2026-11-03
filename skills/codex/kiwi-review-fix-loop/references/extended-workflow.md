@@ -45,7 +45,9 @@ Normalize findings to:
 {
   "id": "FND-001",
   "axis": "intent|security|edge|concurrency|refactor|error-handling|test-quality|comment-claim",
-  "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+  "verdict": "keep|drop|residual",
+  "evidence": "failing test id, reproduction, or command output (required for keep)",
+  "drop_reason": "why it was dropped (required for drop)",
   "title": "short",
   "location": { "file": "src/x.ts", "line_range": "45-67" },
   "description": "body",
@@ -65,12 +67,12 @@ Classification must account for every finding exactly once:
 | Class | Action |
 |---|---|
 | `immediate_fix` | fix automatically after TDD gate when applicable |
-| `discussion_needed` | ask the user unless `--auto` can safely reclassify |
+| `discussion_needed` | ask the user unless `--auto` can safely reclassify it; a residual is never reclassified (critical gate `residual-finding-user-decision`) |
 | `rejected` | record reason; include in PR response when applicable |
 
-In `--auto`, CRITICAL/HIGH/MEDIUM discussion findings may be converted to
-`immediate_fix` only when the classifier supplies a concrete fix hypothesis.
-LOW discussion findings may be rejected with a reason.
+In `--auto`, kept findings are fixed automatically, dropped findings are
+reported with their reason, and residual findings go to user decision. Severity
+labels are not used to route findings (FR-FLOW-203).
 
 ## Regression And Review Loop
 
@@ -79,8 +81,7 @@ comment, and doc-only fixes may be TDD-exempt.
 
 Exit criteria:
 
-- CRITICAL=0
-- HIGH=0
+- no kept finding remains (SKILL.md Keep/Drop 종료 판정 section)
 - the preservation scan over the fixer diff found no violation (SKILL.md
   보존 스캔 section); a detection is CRITICAL and halts through its gate
 - the review coverage comparison passed (SKILL.md 리뷰 커버리지 분모 section);
@@ -90,7 +91,8 @@ Exit criteria:
 - regression has no new failures against the captured baseline (SKILL.md
   regression baseline section); pre-existing failures are reported, not
   attributed to this fix
-- in `--max`, two consecutive MEDIUM-zero rechecks when practical
+- two consecutive rounds that resolve no new kept finding end the loop with a
+  residual report, not a pass (the convergence guard)
 
 Repeated failure gates:
 

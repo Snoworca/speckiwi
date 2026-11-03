@@ -25,7 +25,7 @@ User-approved relaxation (2026-08-17), grounded in `docs/research/19.verificatio
 - Verification stops on **evidence completeness, not round count**. Recorded history shows every CRITICAL/HIGH catch came from mutation testing or adversarial execution, never from a 5th–6th uniform review round, while a 6-round prose loop introduced 8 new defects of its own.
 
 # SpecKiwi SRS workflow v1.11
-Written by speckiwi 4.1.1.
+Written by speckiwi 4.2.1.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 

@@ -151,7 +151,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 | 예 | 건너뛴다 |
 | 아니오 | 돌린다 |
 
-리뷰가 CRITICAL 또는 HIGH 를 남긴 채 끝나면 `TASK_DONE` 으로 보고하지 않는다 — 잔여 finding 을 지명해 중단한다.
+리뷰 hop 이 `TASK_DONE` 이 아닌 상태(`NEEDS_USER` · `FAILED`)로 끝나면 Phase 6 승격으로 넘어가지 않는다 — residual 과 남은 finding 을 지명해 중단한다.
 
 ### 2.7 Phase 6 — 후행 SRS 승격
 

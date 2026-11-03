@@ -342,9 +342,10 @@ describe.each(COPIES)("FR-FLOW-171 AC-6 — the termination condition is a conju
   it("names the coverage comparison at every place that grants a pass", () => {
     // Anchored on the pass grants themselves rather than on the section heading: a conjunction
     // written only in the coverage section leaves the table that actually decides untouched.
-    // Measured: `Normal PASS` 1 + `Max PASS` 1 in skills/claude, and the English exit line 1 in each
-    // of the other three, so no rendering contributes an empty window set.
-    const windows = windowsAround(flat(bodyOf(copy)), /Normal PASS|Max PASS|Iterate until CRITICAL\/HIGH findings are clear/, 400);
+    // The pass grant is the zero-kept-findings gate (FR-FLOW-203), which replaced the severity
+    // counters. Anchors: the gate sentence `kept(surviving) finding 이 0` (1 in each rendering) and,
+    // in skills/claude, the PASS row of the §6.4 table, so no rendering contributes an empty window set.
+    const windows = windowsAround(flat(bodyOf(copy)), /\*\*kept\(surviving\) finding 이 0\*\*|kept 0 \(resolved 제외한/, 400);
     expect(windows.length, `${copy} states no termination condition`).toBeGreaterThan(0);
     for (const window of windows) {
       expect(window, `a pass is granted without the coverage comparison in ${copy}`).toMatch(/커버리지 대조/);
