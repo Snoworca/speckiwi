@@ -1,23 +1,35 @@
 # SpecKiwi Agent Notes
 
-This repository stores requirements as Markdown SRS documents under `docs/spec/`.
+Requirements are Markdown SRS documents under `docs/spec/`, entered through `docs/spec/00.index.md`. Use the SpecKiwi MCP tools; fall back to the `speckiwi` CLI only when MCP is unavailable. Never bypass the SRS-MD rules, keep a second requirements source, or edit generated JSON as if it were the requirements.
 
-Prefer the SpecKiwi MCP tools when configured. Use the `speckiwi` CLI fallback when MCP is unavailable. Never bypass SRS-MD rules, create an alternate requirements source of truth, or edit generated JSON as canonical requirements.
-
-For detailed SRS structure and authoring rules, read [SRS-MD-Rules-v2.5.0.md](docs/rule/SRS-MD-Rules-v2.5.0.md).
+Rules: [SRS-MD-Rules-v2.5.0.md](docs/rule/SRS-MD-Rules-v2.5.0.md). An SDS, written only when the user asks for one, follows [SDS-MD-Rules-v2.6.0.md](docs/rule/SDS-MD-Rules-v2.6.0.md).
 
 `AGENTS.md` and `CLAUDE.md` are the canonical root instruction files. Lowercase `agents.md` is kept as a compatibility mirror for tools that still discover it.
 
-## Current Project Target
+## Releases
 
-The next SpecKiwi target is `v2.3.0`.
+This file does not track the active target: read it with MCP `get_active_target` (CLI `speckiwi active-target --json`).
 
-The target goal is tool improvement: prioritize CLI, MCP, validation diagnostics, install/update tooling, and agent-facing workflow reliability discovered during real project use before expanding non-tool surface area.
+- **5.0.0** (shipped 2026-11-03): `kiwi-review-fix-loop` keeps a finding only when a run proves it — a failing test, a reproduction, or command output — drops the rest, and passes when no kept finding remains (FR-FLOW-203).
+- **5.1.0** (next): the requirement-analysis loops (`kiwi-srs`, `kiwi-srs-feasibility`, `kiwi-srs-sync`) move from severity labels to the same pass/fail model. A user's request is usually short and states only the core need, so authoring fills the gaps it leaves into explicit acceptance criteria, and checks the result for duplication of and conflict with existing requirements and implemented behaviour by narrowing to candidate requirements first.
+- **5.2.0**: tool improvements — ranked search (BM25, Korean-aware), SRS root merge and scope rename or renumber, smaller MCP read diagnostics, target rename and requirement retarget (IR-CLI-112).
 
-When current tools lack a documented capability, record the gap as `v2.3.0` SRS work before relying on manual workarounds.
+When a tool lacks a capability the work needs, record the gap as SRS work under the next tool-improvement target (currently 5.2.0) before relying on a manual workaround.
+
+## Verification
+
+Code, contracts, SRS acceptance criteria and safety boundaries get the full bar: a failing test before the change, a mutation that turns each new assertion red, and verification by an independent subagent.
+
+- **Code review** (`kiwi-review-fix-loop`): passes at zero kept findings; a finding counts only when a run proves it.
+- **Requirement-authoring loops** keep their zero-CRITICAL, zero-HIGH gate until 5.1.0 replaces it.
+- **Agent instructions** (`SKILL.md`, shared contracts): mechanical drift checks always (`speckiwi skills mirror --check`, the skill tests). LLM review is delta-scoped, at most 2 rounds, and stops at zero HIGH-or-above on one independent pass. A section that gates a safety boundary or a contract gets the full bar.
+- **Human prose** (README and similar): mechanical checks, then one delta-scoped LLM round; LOW findings may remain. A paragraph documenting a destructive command such as `--force` gets safety-boundary review.
+- **Research notes** (`docs/research/**`): never LLM-reviewed. They are unverified working notes and say so at the top; a claim is re-checked against code when it becomes a requirement. Mechanical checks (the notice, links) still apply.
+- **Comments**: `@req` references must resolve (mechanical); a why-comment on a safety gate is checked once at write time; a comment that restates the code is deleted.
+- Stop on evidence, not round count: recorded CRITICAL and HIGH catches came from mutation testing and adversarial execution, not from extra uniform review rounds (research 19).
 
 # SpecKiwi SRS workflow v1.11
-Written by speckiwi 4.2.1.
+Written by speckiwi 5.0.0.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
