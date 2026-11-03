@@ -10,18 +10,18 @@ Rules: [SRS-MD-Rules-v2.5.0.md](docs/rule/SRS-MD-Rules-v2.5.0.md). An SDS, writt
 
 This file does not track the active target: read it with MCP `get_active_target` (CLI `speckiwi active-target --json`).
 
-- **5.0.0** (shipped 2026-11-03): `kiwi-review-fix-loop` keeps a finding only when a run proves it — a failing test, a reproduction, or command output — drops the rest, and passes when no kept finding remains (FR-FLOW-203).
-- **5.1.0** (next): the requirement-analysis loops (`kiwi-srs`, `kiwi-srs-feasibility`, `kiwi-srs-sync`) move from severity labels to the same pass/fail model. A user's request is usually short and states only the core need, so authoring fills the gaps it leaves into explicit acceptance criteria, and checks the result for duplication of and conflict with existing requirements and implemented behaviour by narrowing to candidate requirements first.
+- **5.0.0** (shipped 2026-11-03): `kiwi-review-fix-loop` keeps a finding only when a run proves it — a failing test, a reproduction, or command output. It drops observations that are not functional defects, carries an unproven functional defect as a residual for the user, and passes when no kept finding remains (FR-FLOW-203).
+- **5.1.0** (next): `kiwi-prd` records the user's request in a PRD file under `docs/prd/`: the user's words verbatim, at least one intent item, and in-scope and exclusion items that each quote their source (FR-FLOW-204). When `kiwi-srs`, `kiwi-orchestrator`, `kiwi-wave-master`, `kiwi-tdd` or `kiwi-step` gets no PRD path and its input is not a PRD, it calls `kiwi-prd` first, and no SRS is changed until the user approves the PRD; only `--auto` may go on with a PRD marked unapproved. `kiwi-srs` then judges the SRS against the PRD: an in-scope item that no requirement accepts, or that one contradicts, fails; an ungrounded expansion is dropped or left to the user; filling a hole, resolving a contradiction or fixing a defect in the request is accepted with its basis recorded. The loop ends pass or fail instead of on severity labels, and ends `NEEDS_USER` while a residual or an unpassed round cap remains (FR-FLOW-205). `kiwi-review-fix-loop` adds at most 3 clean-code rounds that never block its pass; they are skipped when the user confirms a request for speed (under `--auto` without asking), or when the run has no regression test command (FR-FLOW-206).
 - **5.2.0**: tool improvements — ranked search (BM25, Korean-aware), SRS root merge and scope rename or renumber, smaller MCP read diagnostics, target rename and requirement retarget (IR-CLI-112).
 
 When a tool lacks a capability the work needs, record the gap as SRS work under the next tool-improvement target (currently 5.2.0) before relying on a manual workaround.
 
-## Verification
+## Verification intensity policy
 
-Code, contracts, SRS acceptance criteria and safety boundaries get the full bar: a failing test before the change, a mutation that turns each new assertion red, and verification by an independent subagent.
+Code, contracts, SRS acceptance criteria and safety boundaries get the full bar: a failing test before the change, a mutation that turns each new assertion red, and verification by an independent subagent. That verification ends where the loop below says; work no loop below covers ends at zero CRITICAL and zero HIGH findings.
 
 - **Code review** (`kiwi-review-fix-loop`): passes at zero kept findings; a finding counts only when a run proves it.
-- **Requirement-authoring loops** keep their zero-CRITICAL, zero-HIGH gate until 5.1.0 replaces it.
+- **Requirement-authoring loops**: from 5.1.0 `kiwi-srs` passes on its PRD verdict plus zero kept findings backed by evidence; `kiwi-srs-feasibility` and `kiwi-srs-sync` keep their zero-CRITICAL, zero-HIGH gate.
 - **Agent instructions** (`SKILL.md`, shared contracts): mechanical drift checks always (`speckiwi skills mirror --check`, the skill tests). LLM review is delta-scoped, at most 2 rounds, and stops at zero HIGH-or-above on one independent pass. A section that gates a safety boundary or a contract gets the full bar.
 - **Human prose** (README and similar): mechanical checks, then one delta-scoped LLM round; LOW findings may remain. A paragraph documenting a destructive command such as `--force` gets safety-boundary review.
 - **Research notes** (`docs/research/**`): never LLM-reviewed. They are unverified working notes and say so at the top; a claim is re-checked against code when it becomes a requirement. Mechanical checks (the notice, links) still apply.
