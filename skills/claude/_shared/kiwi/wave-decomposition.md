@@ -65,6 +65,8 @@ wave-split **서브에이전트**에는 **기존 모듈**과 그 **의존** 방�
 
 wave 별 설계 **본문 발췌**를 `{artifact_root}design-baseline/wave-{n}.md` 로 함께 물질화하고, 그 경로를 `design_baseline` 의 `excerpt_path` 에 기록한다 — 증거 번들과 저작 입력이 같은 아티팩트를 가리키게 한다.
 
+PRD 가 있는 run 이면 각 wave 발췌의 맨 위에 `PRD items: PRD-<n>, …` 한 줄로 그 wave 가 맡는 PRD 항목 ID 를 적는다 — 모든 `intent` · `goal` · `in-scope` 항목이 어느 한 wave 의 이 줄에 나와야 wave 분해가 끝난다(FR-FLOW-204 AC-9). `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 이 줄에 나와야 한다.
+
 사용자 제약은 판정하기 전에 **수집한다** — wave 분해 입력(사용자 프롬프트 · 대화 로그 · `--constraint` 인자)에서 선언된 **제약을 추출**해 호명 단위로 아티팩트에 적는다. 수집 단계가 없으면 배열은 언제나 비고, 그때 `constraint_layer.expected=0` 이라 어떤 판정도 실패시키지 못한다.
 
 추출 단위는 선언된 **제약 문장 1건 = 1 항목**이며, 각 항목은 `id` · `statement` · `source` 를 갖는다 — `source` 는 그 제약이 선언된 위치(프롬프트 / 대화 / `--constraint`)다.

@@ -438,13 +438,15 @@ doculight 호출은 best-effort. 실패해도 PM 정상 종료 흐름 유지 (�
 단독 실행은 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다 — 미루거나 건너뛰는 갈래는 두지 않는다. 끝은 실행이 `done` 또는 `failed` 로 확정된 때다. `blocked` 는 끝이 아니라 멈춤이며 `--resume` 으로 이어간다.
 
 ```
-Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음}{' --close-reqs' if CLOSE_SAFE(state) else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음}{' --close-reqs' if CLOSE_SAFE(state) else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}{' --skip-clean-code' if state.clean_code_skip is True else ' --keep-clean-code' if state.clean_code_skip is False else ''}
 ```
 
 - SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 닫을 SDS 가 없다. 열린 SDS 를 보고만 한 실행(§1.1)도 그 SDS 를 닫지 않는다(FR-FLOW-183 AC-1). `--sds` 실행은 §6.4.1 의 세 호출로 넘긴다.
 - `--req-filter` 는 이 실행의 요구 범위를 넘긴다(`--sds` 실행은 `--sds` 도) — review-fix-loop 의 마지막 단계인 테스트 충분성 확인(`../../_shared/kiwi/test-sufficiency.md`)이 이 실행의 범위를 본다.
 - `--close-reqs` 는 실행이 `done` 으로 끝나 T-final 이 요구를 `implemented` 로 올렸을 때(`CLOSE_SAFE`) — `--sds` 실행은 옮기기도 끝났을 때(`MOVED`) — 만 붙인다. 실행이 `failed` 이거나 critical 로 격상된 NEEDS_USER 가 남은 채로 `--close-reqs` 를 붙이는 것은 §0.G7 `followup-review-fix-loop-close-unsafe` 가 막는다 — 되감을 수 없는 `verified` 를 향하기 때문이며 `--auto` 도 이 멈춤을 덮지 못한다. 그 경우에도 hand-off 는 `--close-reqs` 없이 돈다.
 - `--no-final` 이 있으면 hand-off 하지 않는다 — 워커 실행이며 리뷰는 호출자가 돈다.
+- 빠른 처리 신호(`kiwi-review-fix-loop` 클린 코드 라운드 블록)가 있으면 부팅 때 클린 코드 검사를 건너뛸지 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다) 답을 받은 즉시 `pm-state.json` 의 `clean_code_skip` 에 `true` 또는 `false` 로 기록한다 — `true` 면 위 hand-off 호출과 §6.4.1 의 리뷰 호출에 `--skip-clean-code` 를, `false` 면 `--keep-clean-code` 를 더하고, `--resume` 은 다시 묻지 않고 기록된 값을 따른다. `--no-final` 이나 `--review-hop-owned-by-parent` 로 hand-off 하지 않는 실행은 묻지 않는다 — 리뷰 hop 과 그 질문은 호출자의 것이다.
+- 부모(호출자)가 `--skip-clean-code` 나 `--keep-clean-code` 를 넘겼으면 묻지 않고 그 답을 부팅 때 `pm-state.json` 의 `clean_code_skip` 에 기록하고, 위 hand-off 호출과 §6.4.1 의 리뷰 호출에 그 인자를 그대로 더한다 — 리뷰 hop 을 넘겨받지 않는 부모(예: `kiwi-pipeline` 의 단일 단계 `--run`)가 받은 답도 이렇게 리뷰 hop 에 닿는다(`kiwi-review-fix-loop` 클린 코드 라운드 블록).
 - `--review-hop-owned-by-parent` 를 **명시적 인자로** 받으면 hand-off 하지 않는다 — 부모(`kiwi-pipeline` 사이클)가 이 실행 뒤 리뷰 홉을 직접 돈다. 인자가 없으면 진입 경로를 추론하지 않고 언제나 넘긴다.
 - 부모 PM 의 `--model` / `--max` / `--mini` / `--loops N` 은 args 에 전파한다 (loop-option.md §6).
 - review-fix-loop 의 종료 상태 (`closed_reqs.json`) 는 본 PM 보고서 8번 절 끝의 "후속 close 결과" 에 첨부 (review-fix-loop 종료 직후 갱신, best-effort).
@@ -457,7 +459,7 @@ Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음}
 ```
 Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
 MOVED = CLOSE_SAFE(state) AND check_sds(state.sds_path).status == "closed"
-Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음} --sds {state.sds_path}{' --close-reqs' if MOVED else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
+Use $kiwi-review-fix-loop with --req-filter {state.req_ids 를 쉼표로 이음} --sds {state.sds_path}{' --close-reqs' if MOVED else ''}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}{' --skip-clean-code' if state.clean_code_skip is True else ' --keep-clean-code' if state.clean_code_skip is False else ''}
 Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --max' if args.max else ''}{' --model ' + args.model if args.model else ''}{LOOP_FLAGS}
 ```
 
@@ -501,7 +503,7 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 
 ### 7.3 Out of Scope (v0.1)
 
-- SRS / feasibility / SDS 작성 스킬 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-sds 영역) — §6.4.1 의 `kiwi-sds --close` 마감 호출(`--sds` 실행)만 예외다. PRD 저작을 선언하는 스킬은 없다 — 사이클은 kiwi-srs 에서 시작한다
+- SRS / feasibility / SDS / PRD 작성 스킬 자체 호출 (각각 kiwi-srs, kiwi-srs-feasibility, kiwi-sds, kiwi-prd 영역) — §6.4.1 의 `kiwi-sds --close` 마감 호출(`--sds` 실행)만 예외다. 사이클은 kiwi-srs 에서 시작한다(PRD 가 없으면 kiwi-srs 가 kiwi-prd 를 먼저 부른다)
 - SDS 수정 (kiwi-sds 영역 — 설계가 틀렸으면 NEEDS_USER 로 올린다)
 - 구현 리뷰 (kiwi-review-fix-loop 영역 — kiwi-pm 은 §6.4 에서 그 스킬로 넘길 뿐 직접 리뷰하지 않는다)
 - 풀 파이프라인 오케스트레이션 (kiwi-pipeline 영역)

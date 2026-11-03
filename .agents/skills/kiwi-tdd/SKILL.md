@@ -9,6 +9,12 @@ Orchestration skill that drives one step through the **acceptance-first TDD Firs
 
 Backing requirements: FR-FLOW-037 · FR-FLOW-196 (acceptance contract FR-PARSE-042, SDS standard FR-FLOW-036, gates IR-CLI-072 / FR-NODE-072 / FR-NODE-074, synthesis FR-NODE-073).
 
+## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-204 AC-10 AC-12)
+
+이 블록은 아래 본문보다 앞선다. 판정할 PRD 는 `PRD_PATH` 로 받은 PRD 이고, 없으면 입력이 가리키는 `docs/prd/` 의 PRD 다. 둘 다 없으면 Phase 2 보다 먼저 `kiwi-prd` 를 불러 입력(작업 개요·연구 문서·이슈)을 `U-1` 의 원천으로 PRD 를 만들고 그 PRD 로 판정한다 — PRD 없이 acceptance 줄을 쓰는 경로는 없다. `--auto` 는 `kiwi-prd` 에 그대로 넘긴다. `Status` 행이 승인 값이 아닌 PRD 로는 판정하지 않고 `NEEDS_USER` 로 끝난다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-unapproved-user-decision`). 예외는 `kiwi-prd` 가 `--auto` 로 만든 PRD(`Status` 행이 `unapproved` 이고 승인 행에 `--auto` 가 적힌 PRD) 하나이며, 그 PRD 로 판정했으면 완료 보고에 `Status` 행 값을 그대로 싣는다.
+
+Phase 2 에서 쓴 acceptance 줄은 Phase 3 에서 테스트로 옮기기 전에 그 PRD 로 판정한다. 줄마다 근거를 intent.md 의 설명 문단에 `AC-<n> ← PRD-<m>` 또는 `AC-<n> fills: PRD-<m> / <hole|contradiction|defect> / <reason>` 으로 적는다. (a) `intent` · `goal` · `in-scope` 항목을 근거로 인용한 줄이 없거나 그 항목과 반대로 말하는 줄이 있으면 fail 이고, 줄을 고쳐 다시 판정해 통과하기 전에는 Phase 3 으로 가지 않는다. `State` 가 `rejected` 인 항목은 이 fail 검사에서 빠진다. `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목처럼 이 fail 검사를 받는다. (b) 근거가 없거나 exclusion 항목에 걸리는 줄은 지우고 사유를 보고한다 — 필요하다는 주장이 메우는 구멍을 대지 못하면 지우지 않고 `NEEDS_USER` 로 멈춘다 — `--auto` 에서도 멈추며 결정 위원회가 정하지 않는다(critical gate `prd-residual-user-decision`). `State` 가 `rejected` 인 항목은 근거가 되지 못하므로, 거절된 항목만 인용한 줄도 지운다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로 작동하므로, 그 proposal 에 걸리는 줄도 지운다. (c) `fills:` 근거가 있는 줄만 메우기로 받아들이고, 항목 사이의 모순은 의도 항목에 맞는 쪽으로 직접 풀어 `kiwi-prd` 를 통해 PRD 에 `Reason` 이 `contradiction resolved:` 로 시작하는 proposal 로 기록한다 — 그 해소가 in-scope 항목을 없애거나 exclusion 을 좁혀도 그렇게 한다. 해소 proposal 은 확정되지 않은 채 `State` 를 바꾸지 않고, `State` 가 아니라 기록된 해소로서 효력을 가진다. 기록된 해소가 없앤 in-scope 항목은 (a) 의 fail 로 세지 않고, exclusion 을 좁힌 해소가 허용한 줄은 그 exclusion 항목에 걸리지 않는 것으로 보고 (b) 로 지우지 않는다. PRD 는 `kiwi-prd` 만 고친다. 요청에 관한 질문(`NEEDS_USER` 로 멈춘 질문 포함)에 사용자가 답하면 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다(FR-FLOW-204 AC-11) — 답이 더한 범위는 그래야 PRD 에 근거를 갖는다.
+
 ---
 
 ## 0. Rules (SSOT)
@@ -40,6 +46,8 @@ Each one halts **regardless of** `--auto` and cannot be routed to the decision c
 | `step-completion-gate-blocked` | `update_step_state(merged)` refuses with `COMPLETION_GATE_BLOCKED` (FR-NODE-078) — acknowledging a non-clean compatibility edge is an irreversible judgement | Phase 7 (§2.8) |
 | `test-sufficiency-gap` | citation gaps remain after the one fill attempt of the pre-promotion test-sufficiency check — a requirement whose gaps remain is not promoted (`_shared/kiwi/test-sufficiency.md`) | Phase 6 — before `promote_step_requirement` (§2.7) |
 | `validate-spec-error` | `validate_spec` returns at least one error-severity diagnostic — evidence and promotion stacked on a requirement that carries an error cannot be read back to what admitted them | Phase 6 — before `promote_step_requirement` |
+| `prd-residual-user-decision` | the PRD verdict (b) before Phase 3 leaves an acceptance line whose necessity claim names no hole it fills — the line is not deleted, the run stops `NEEDS_USER`, and under `--auto` the decision committee does not settle it (FR-FLOW-205) | core-rule block — before Phase 3 |
+| `prd-unapproved-user-decision` | the PRD to judge against has a `Status` row other than the value `kiwi-prd` writes on approval and is not an `--auto` PRD (`Status` row `unapproved` with `--auto` in its approval row) — the run does not judge against it, stops `NEEDS_USER`, and under `--auto` the decision committee does not settle it (FR-FLOW-205) | core-rule block — before the PRD verdict |
 
 **Where this gate is observed**: at the hop this row's third cell names, run MCP `validate_spec` — the CLI fallback is `speckiwi validate --json`. While any error-severity diagnostic remains, do not proceed with that hop: halt at `validate-spec-error`, which `--auto` does not lift. Never record a pass without having run it.
 
@@ -65,7 +73,8 @@ query (§1.1) fires only when `<task>` is absent, and a routed dispatch discharg
 | Signal | Meaning |
 |---|---|
 | task name `<task>` | Target step. Ask the user when absent. |
-| work outline | What to build (research/intent). Source of intent.md. |
+| work outline | The task description (research/intent). The PRD, not this outline, decides what to build — without `PRD_PATH`, `kiwi-prd` turns it into the PRD's `U-1` (core rule). intent.md is judged against that PRD. |
+| `PRD_PATH` | The PRD to judge against. Given or not (without it `kiwi-prd` writes one first), the acceptance lines are judged against the PRD before they become tests (core rule). |
 | `--review-hop-owned-by-parent` | The parent's **explicit** signal that it already owns the review of this step window. Skips the Phase 5.5 hop of its own (§2.6.1). |
 | `--no-pipeline-emit` | Delegated-run marker. Suppresses the Phase 7 pipeline event (§2.8). |
 | `--sds` | off — set only when the user wants a step SDS ("SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS"); the run then authors design.md per the SDS rules on the §2.3.1 path |
@@ -141,8 +150,10 @@ Run the full impacted existing test set and confirm zero regressions, then pass 
 Review this step's commit window **before** promoting. `promote_step_requirement` is where the requirement is closed, so a review that runs after that has to overturn a verdict already on record.
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>] [--skip-clean-code | --keep-clean-code]" })
 ```
+
+On a speed signal (`kiwi-review-fix-loop` 클린 코드 라운드 block), ask once in Phase 0 whether to skip the clean-code check (`--auto` skips it without asking). When the parent passed `--skip-clean-code` or `--keep-clean-code`, do not ask and add that flag to the args above unchanged; otherwise add `--skip-clean-code` when the user confirmed or `--keep-clean-code` when the user declined. This skill keeps no resume state file, so the answer is recorded by this hop's `kiwi-review-fix-loop` in its own `state.json` `clean_code_skip`. A run that received `--review-hop-owned-by-parent` does not ask — the review hop and its question belong to the parent.
 
 Take the window from the commits this step made: `{step_window_base}` is the commit just before Phase 3 committed the tests first, and `{step_window_head}` is the current HEAD. Without an explicit range the review loop falls back to the last five commits and judges someone else's window.
 

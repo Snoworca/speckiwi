@@ -293,14 +293,16 @@ state_ref: ./state.json
 
 ### 8.4 후속 review-fix-loop handoff
 
+단독 실행이 빠른 처리 신호(`kiwi-review-fix-loop` 클린 코드 라운드 블록)를 받으면 Phase 0 에서 클린 코드 검사를 건너뛸지 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다) 답을 받은 즉시 `state.json` 의 `clean_code_skip` 에 `true` 또는 `false` 로 기록한다. `true` 면 이 절의 모든 `kiwi-review-fix-loop` 호출에 `--skip-clean-code` 를, `false` 면 `--keep-clean-code` 를 더하고, `--resume` 은 다시 묻지 않고 기록된 값을 따른다. `pm-child` 실행은 묻지 않는다 — 리뷰 hop 과 그 질문은 부모 `kiwi-pm` 의 것이다. 부모가 `--skip-clean-code` 나 `--keep-clean-code` 를 넘긴 단독 실행은 묻지 않고 그 답을 `state.json` 의 `clean_code_skip` 에 기록하고, 이 절의 모든 `kiwi-review-fix-loop` 호출에 그 인자를 그대로 더한다.
+
 단독 실행이 green + 회귀 PASS 로 끝나고 `state.failed` 가 false 이면(`CLOSE_SAFE`), 후속 close 검증을 권고한다. 순서는 `kiwi-pm` §6.4 와 같은 close-out 순서다 — 옮기기는 승급보다 먼저여야 한다(FR-FLOW-183 AC-1):
 
-SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 없이 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다: `Use $kiwi-review-fix-loop with --req-filter <요구 집합> [--close-reqs 는 CLOSE_SAFE 일 때만]` 하나만 부른다. 아래 세 호출은 `--sds` 실행의 순서다:
+SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 없이 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다: `Use $kiwi-review-fix-loop with --req-filter <요구 집합> [--close-reqs 는 CLOSE_SAFE 일 때만] [--skip-clean-code | --keep-clean-code]` 하나만 부른다. 아래 세 호출은 `--sds` 실행의 순서다:
 
 ```text
 Use $kiwi-sds with --close <sds_id>                                         # CLOSE_SAFE 일 때만 — 옮기기
 MOVED = CLOSE_SAFE AND check_sds(SDS_PATH).status == "closed"
-Use $kiwi-review-fix-loop with --req-filter <SDS @req 집합> --sds <SDS_PATH> [--close-reqs 는 MOVED 일 때만]
+Use $kiwi-review-fix-loop with --req-filter <SDS @req 집합> --sds <SDS_PATH> [--close-reqs 는 MOVED 일 때만] [--skip-clean-code | --keep-clean-code]
 Use $kiwi-sds with --close <sds_id>                                         # MOVED 일 때만 — 삭제
 ```
 

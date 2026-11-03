@@ -16,6 +16,22 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 
 ---
 
+## 클린 코드 라운드 — 컴팩션 뒤에도 남는 규칙 (FR-FLOW-206)
+
+이 블록은 아래 본문보다 앞선다. 본문의 어느 절도 이 블록의 규칙을 건너뛰게 하지 않는다.
+
+**분류.** 리뷰어는 중복·과도 추상화·명명·함수나 클래스 크기·책임 혼재·죽은 코드 지적을 keep/drop 판정과 따로 `clean-code` 분류로 보고하고, 지적마다 어긴 원칙과 코드 위치(파일·줄)를 적는다. `clean-code` 지적은 kept finding 수에 들어가지 않고 keep/drop 종료 게이트(kept finding 0)를 막지 않으며, `dismissed` 나 `unresolved` 가 남아도 실행의 종료 상태를 바꾸지 않는다.
+
+**라운드.** fixer 는 `clean-code` 지적을 한 실행에서 클린 코드 라운드 **최대 3회** 안에서 고친다 — 라운드 하나는 리뷰어의 `clean-code` 지적, 분류기의 `dismissed` 표시, fixer 의 수정, 보존 스캔, 회귀 테스트 확인을 이 순서로 한 번씩 거친다. 클린 코드 라운드는 기능 결함 루프가 끝난 뒤에 돌고, 라운드를 시작하는 리뷰가 `clean-code` 지적을 하나도 내지 않으면 그 라운드에서 바로 끝난다. 리뷰어에게는 앞선 라운드에서 `dismissed` 된 지적 목록을 함께 넘기고, 이미 `dismissed` 된 지적과 같은 원칙·같은 위치를 다시 낸 지적은 그 라운드의 지적으로 세지 않는다 — 그런 지적만 나온 라운드도 그 라운드에서 바로 끝난다. 클린 코드 라운드 번호와 `dismissed` 지적은 실행 상태 `state.json` 의 `clean_code_round` 와 `clean_code_dismissed` 에 기록하고, 재개된 실행은 기록된 번호에서 이어 세며 기록된 `dismissed` 지적을 계속 세지 않는다.
+
+**표시.** 분류기는 어긴 원칙이나 위치를 적지 않은 지적, 프로젝트의 기존 관례와 충돌하는 지적, 타당하지 않다고 판단한 지적을 `dismissed` 로 표시하고 사유를 적으며, fixer 는 그 지적을 고치지 않는다. 세 번째 클린 코드 라운드가 끝나도 고쳐지지 않은 지적은 `unresolved` 로 표시해 보고하고 더 고치지 않는다 — `dismissed` 지적은 보고서에서 계속 `dismissed` 이고 `unresolved` 가 되지 않는다.
+
+**테스트.** 모든 클린 코드 수정은 그 실행의 회귀 테스트 명령을 통과해야 유지한다 — 통과는 회귀 기준선 대비 신규 실패 0 이다. 수정이 회귀 테스트 명령을 통과하지 못하면 그 수정을 되돌리고, 그 지적을 실패 출력과 함께 `unresolved` 로 표시한다. 보존 스캔(보존 스캔 절, §0.17)과 그 밖에 fixer diff 를 검사하는 게이트도 모든 클린 코드 수정을 검사한다 — 클린 코드 수정이 기존 public 심볼을 지우거나 시그니처를 바꾸거나, 기존 테스트 케이스를 지우거나 약화하거나, 비-테스트 기존 파일을 지우거나 옮기거나(`existing-public-contract-change` · `existing-test-weakened-or-deleted` · `existing-file-deleted-or-moved`), Mock 탐지(`mock-detection`)나 cwd 외부 path 검사(`external-module-impact`)에 걸리면 그 수정을 되돌리고, 그 지적을 걸린 게이트와 스캔 사유와 함께 `unresolved` 로 표시하며, 그 게이트를 올리지 않고 실행을 멈추지 않는다. 되돌린 클린 코드 수정은 kept finding 이 아니므로 개선 루프 발산 게이트(`improvement-loop-divergence-4opt`)의 횟수에 세지 않는다. 회귀 테스트를 돌리지 않는 실행(`--skip-regression`)이나 회귀 기준선을 잡지 못한 실행(`regression_baseline = null`)은 클린 코드 수정을 유지할 수 없으므로 클린 코드 라운드를 돌지 않고 그 사실을 보고한다.
+
+**빠른 처리.** 호출 인자나 사용자 요청이 클린 코드 원칙을 지키지 않아도 된다고 하거나 빠른 처리를 요구하면(예: `ASAP`, `아삽`, `최대한 빨리`), 시작할 때 클린 코드 검사를 건너뛸지 한 번만 묻고 사용자가 확인하면 클린 코드 라운드를 모두 건너뛴다. `--auto` 이면 같은 신호가 있을 때 묻지 않고 건너뛴다. 건너뛰었으면 보고서에 클린 코드 검사를 건너뛴 사실과 그 이유(신호가 된 인자나 요청 문구)를 적는다. `--mini`, `--loops` 같은 라운드 상한 옵션은 빠른 처리 신호가 아니다. 사용자의 답이나 `--auto` 의 건너뛰기는 답을 받은 즉시, 다음 phase 가 돌기 전에 실행 상태 `state.json` 의 `clean_code_skip` 에 기록하고, 재개된 실행은 다시 묻지 않고 기록된 답을 따른다 — 건너뛰기로 기록됐으면 클린 코드 라운드를 돌지 않는다. `--skip-clean-code` 는 이 스킬을 부른 스킬이 이미 확인한 건너뛰기다 — 이 인자를 받으면 다시 묻지 않고 클린 코드 라운드를 모두 건너뛰며, Phase 0 에서 `clean_code_skip` 에 `true` 로 기록하고 보고서의 이유에 그 인자를 적는다. `--keep-clean-code` 는 이 스킬을 부른 스킬이 이미 받은 유지 답이다 — 이 인자를 받으면 다시 묻지 않고 클린 코드 라운드를 돌며, Phase 0 에서 `clean_code_skip` 에 `false` 로 기록한다. `--skip-clean-code` 나 `--keep-clean-code` 가 `--auto` 와 함께 오면 그 인자가 `--auto` 의 건너뛰기보다 우선한다. `--skip-clean-code` 와 `--keep-clean-code` 를 함께 받으면 어느 답인지 알 수 없으므로 시작하지 않고 거부한다. 이 스킬을 리뷰 hop 으로 부르는 스킬은 같은 신호를 받으면 자기 시작 시점에 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다) 그 답을 자기 실행 상태에 기록하며, 자기가 부르는 모든 리뷰 hop 에 사용자가 확인했으면 `--skip-clean-code` 를, 거절했으면 `--keep-clean-code` 를 넘긴다 — 사용자 요청을 보지 못하는 wave 워커의 리뷰 hop 에는 dispatch 카드로 넘긴다. 사용자가 `--auto` 로 돌리지 않은 리뷰 hop 에 `--auto` 를 붙이는 스킬(예: 단독 실행 끝의 kiwi-coder)도 그런 호출자로서 먼저 묻는다. 리뷰 hop 을 부르는 스킬이 부모에게서 `--skip-clean-code` 나 `--keep-clean-code` 를 받으면 묻지 않고 그 답을 자기 실행 상태에 기록하며, 자기가 부르는 모든 리뷰 hop 과 리뷰 hop 에 이르는 자식에 그 인자를 그대로 넘긴다 — 스킬 본문의 호출 예시에 적힌 `[--skip-clean-code | --keep-clean-code]` 자리가 그 답이다.
+
+---
+
 ## Workflow 도구 정책
 
 세션 상태 조회의 정상 경로는 공식 workflow 읽기 도구다 — `--resume` 이 읽는 `.kiwi/sessions/{run-id}/state.json` 은 MCP `workflow_resolve_artifact` 에 그 실행의 `runId` 와 함께 `kind` 를 `coder-state` 로, `includeBody` 를 `true` 로 주어 읽고, 실행 기록 `worklog.jsonl` 은 `workflow_worklog_tail` 로 조회한다. 파일을 직접 읽는 것은 그 도구를 쓸 수 없을 때의 degraded 폴백이며, 그 실행은 도구 진단·산출물 경로·active target·후속 요구 또는 후보 ID 를 사용자 보고에 함께 남긴다.
@@ -28,7 +44,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 |---|---|
 | §0.1 | **서브에이전트 강제 (메인 직접 작업 금지)**. 코드 리뷰는 까칠 리뷰어 서브에이전트만 수행 (kiwi-coder Phase 2.f 8축 차용). 코드 수정은 시니어 fixer 서브에이전트만 수행. 메인은 오케스트레이션 + 사용자 게이트 + 산출물 통합 외 어떤 코드 판단·수정도 직접 하지 않는다. 본 §0.1 위반은 본 스킬 설계의 근본 우회 — 발견 즉시 메인이 self-abort + 사용자 보고 |
 | §0.2 | **검증자 입력 격리** (CLAUDE.md §5). 까칠 리뷰어 재검증 라운드에 시니어 fixer 의 결론·정당화 텍스트 전달 금지. 원본 diff + 직전 finding + 적용된 fix 의 파일/라인 메타데이터만 |
-| §0.3 | **TDD 의무 (조건부)**. Finding 이 `is_behavioral=true` 또는 `tags ∈ {bug, regression, security, performance}` 인 항목은 회귀 테스트 선행 작성 (상세 트리거 §6.1 참조). "style_only" / "naming" finding 은 TDD 면제 (회귀 가능성 없음). 시니어 fixer 가 면제 판정 시 worklog `tdd_exempted { finding_id, reason_enum }` |
+| §0.3 | **TDD 의무 (조건부)**. Finding 이 `is_behavioral=true` 또는 `tags ∈ {bug, regression, security, performance}` 인 항목은 회귀 테스트 선행 작성 (상세 트리거 §6.1 참조). "style_only" / "naming" finding 과 클린 코드 라운드의 `clean-code` 지적은 회귀 테스트 선행 작성을 면제한다 — 동작을 바꾸지 않는 수정이며, 대신 그 수정은 회귀 테스트 명령을 통과해야 유지된다 (클린 코드 라운드 블록). 시니어 fixer 가 면제 판정 시 worklog `tdd_exempted { finding_id, reason_enum }` |
 | §0.4 | **Mock 금지** (regex 자동 탐지). 탐지는 기계 검사이므로 곧바로 kept finding. kiwi-coder §0.6 계승 |
 | §0.5 | **외부 모듈 수정 금지**. cwd 외부 path 가 fix diff 에 진입 시 §0.G4 발동 |
 | §0.6 | **시그니처 금지** (CLAUDE.md §6). 커밋·코드 주석·PR 응답 코멘트·산출물 어디에도 AI 식별 정보 금지 |
@@ -167,6 +183,8 @@ self_scope.source enum 매핑 (§3.1):
 
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
+**클린 코드 수정은 이 표의 게이트를 올리지 않는다**: 클린 코드 수정이 `existing-public-contract-change` · `existing-test-weakened-or-deleted` · `existing-file-deleted-or-moved` · `mock-detection` · `external-module-impact` · `improvement-loop-divergence-4opt` 에 걸리면 클린 코드 라운드 블록의 **테스트.** 규칙대로 되돌리고 `unresolved` 로 표시하며 실행을 멈추지 않는다. 기능 결함 수정과 채우기 서브에이전트의 diff 에는 이 표가 그대로 적용된다.
+
 **finding 분류 매핑 (§0.G5) 와 keep/drop 가드레일 (§0.12) 은 본 critical_gates 와 별개 채널**: discussion_needed/immediate_fix/rejected 의 자동 액션 매핑은 keep/drop 가드레일(kept→자동 수정 / dropped→자동 보고 / residual→사용자 결정)의 적용 대상이며, 본 §0.G8 는 그 매핑이 실패하거나 critical 영역에 진입할 때의 HALT 게이트만 선언한다.
 
 ---
@@ -202,6 +220,8 @@ self_scope.source enum 매핑 (§3.1):
 | "루프 N회", "N라운드", "N번 돌려" | `--loops N` | off (스킬 기본 상한) |
 | 부모 기준선 | `--regression-baseline <path>` | off (자기 시점 캡처) |
 | "파이프라인 이벤트 억제" (오케스트레이터 전달) | `--no-pipeline-emit` (인자 없음 — `kiwi/pipeline.jsonl` append 를 수행하지 않는다, §7.3) | off (emit 수행) |
+| 호출 스킬이 확인한 클린 코드 건너뛰기 (오케스트레이터 전달) | `--skip-clean-code` (인자 없음 — 다시 묻지 않고 클린 코드 라운드를 건너뛴다, 클린 코드 라운드 블록) | off (빠른 처리 신호면 Phase 0 에서 한 번 묻는다) |
+| 호출 스킬이 받은 클린 코드 유지 답 (오케스트레이터 전달) | `--keep-clean-code` (인자 없음 — 다시 묻지 않고 클린 코드 라운드를 돈다, 클린 코드 라운드 블록) | off (빠른 처리 신호면 Phase 0 에서 한 번 묻는다) |
 
 ### 1.3 모드 매트릭스
 
@@ -248,7 +268,7 @@ self_scope.source enum 매핑 (§3.1):
 ## 2. Phase 흐름
 
 ```
-Phase 0 : Bootstrap (preflight, 모드 결정, 범위 결정, .kiwi init/resume)
+Phase 0 : Bootstrap (preflight, 모드 결정, 범위 결정, .kiwi init/resume, 빠른 처리 신호면 클린 코드 건너뛰기를 한 번 묻고 답을 받은 즉시 `clean_code_skip` 기록)
 Phase 1 : 리뷰 인벤토리 수집
   1.s (셀프): 까칠 리뷰어 서브에이전트 → working tree diff 리뷰
   1.p (PR)  : gh pr view --comments + reviews → 정규화
@@ -257,6 +277,7 @@ Phase 3 : 즉시수정 항목에 회귀 테스트 작성 (TDD 조건부, §0.3)
 Phase 4 : 시니어 fixer 적용 (서브에이전트)
 Phase 5 : 까칠 리뷰어 재검증 (서브에이전트, 입력 격리 §0.2)
 Phase 6 : 미해결 시 Phase 4-5 반복 (kept 카운터)
+Phase 6.5 : 클린 코드 라운드 (최대 3회, 클린 코드 라운드 블록 — 빠른 처리 신호면 건너뜀)
 Phase 7 : 회귀 테스트 실행
 Phase 7.4 : 테스트 충분성 확인 — 요구 범위가 알려졌을 때(`--close-reqs` · `--req-filter` · `--sds`) `_shared/kiwi/test-sufficiency.md` 를 따른다 (§6.5.1)
 Phase 7.5 : (`--close-reqs` 활성 시) 영향 REQ verified 일괄 승급 (§6.6, §0.G7 게이트)
@@ -312,6 +333,9 @@ state.json 초기 스키마:
   "finding_queue": [],
   "fix_iter": 0,
   "recheck_iter": 0,
+  "clean_code_round": 0,
+  "clean_code_dismissed": [],
+  "clean_code_skip": null,
   "regression_baseline": null,
   "regression_pass": false,
   "pr_responded": false,
@@ -324,6 +348,8 @@ resume 알고리즘 (`--resume` 활성 시):
 2. git diff 검증 — working tree 가 직전 실행 후 변경되었으면 사용자 확인 게이트 (계속 / 새 run 시작 / HALT)
 3. finding_queue / fix_iter / recheck_iter 누적 (리셋 안 함)
 4. 까칠 리뷰어 / 시니어 fixer 재호출 카운터 누적 (§0.G6 발산 가드 유지)
+5. `state.json.clean_code_skip` 이 기록돼 있으면 클린 코드 검사를 건너뛸지 다시 묻지 않고 기록된 답을 따른다 — `true` 면 클린 코드 라운드를 돌지 않는다 (Phase 0 에서 답을 받은 즉시 기록한다 — 사용자가 확인했거나 `--auto` 가 건너뛰면 `true`, 신호가 없거나 사용자가 거절하면 `false`, 클린 코드 라운드 블록)
+6. `state.json.clean_code_round` 와 `state.json.clean_code_dismissed` 는 리셋하지 않는다 — 클린 코드 라운드는 기록된 번호에서 이어 세어 3회를 넘지 않고, 기록된 `dismissed` 지적(원칙·위치·사유)은 다음 라운드 리뷰어에게 다시 넘겨 그 라운드의 지적으로 세지 않는다 (클린 코드 라운드 블록)
 
 ---
 
@@ -358,6 +384,7 @@ resume 알고리즘 (`--resume` 활성 시):
       "tags": ["bug", "performance", "security", "style", "naming", "doc"]
     }
   ],
+  "clean_code": [ { "id": "CC-001", "principle": "어긴 원칙", "location": { "file": "src/x.ts", "line_range": "45-67" }, "description": "본문" } ],
   "coverage_rows": [
     {
       "file": "src/x.ts",
@@ -378,6 +405,7 @@ resume 알고리즘 (`--resume` 활성 시):
 
 - finding 은 **실행이 입증할 때만 keep** 한다 — 실패하는 테스트·재현 절차·반례가 그 실패를 보이고 그 실패가 의도를 깨뜨릴 때다.
 - 실행으로 입증하지 못한 것과 스타일·명명·순서·주석류는 **drop** 하며, 심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)은 종료 판정에 쓰지 않는다.
+- 이 drop 은 기능 결함 finding 의 keep/drop 판정에 대한 것이다 — 중복·과도 추상화·명명 같은 클린 코드 지적은 이 판정에 넣지 않고 `clean-code` 분류로 따로 모아 클린 코드 라운드(클린 코드 라운드 블록)가 다룬다.
 - 기능 결함이라 **주장**했으나 실행으로 입증하지 못한 finding 은 drop 하지 않고 **residual 로 사용자 결정**에 올린다.
 - residual finding 이 하나라도 남으면 이 실행은 `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝난다 — 상위 오케스트레이터는 그 residual 을 사용자가 결정하기 전까지 step 승급·lane 병합으로 넘어가지 않는다.
 - keep/drop 판정과 3분류는 고정 매핑이다: kept→`immediate_fix`, residual→`discussion_needed`(`rejected` 로 보낼 수 없다), dropped→`rejected`.
@@ -446,7 +474,7 @@ resume 알고리즘 (`--resume` 활성 시):
 - **기준선 캡처**: **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. 캡처 시점은 Phase 3 회귀 테스트 작성 이전 (§3.0 preflight 4번) 이며, 결과는 `state.regression_baseline` 에 고정한다
 - **델타 판정**: 회귀 여부는 기준선 대비 **델타로 판정**한다 — 기준선에서 pass 였는데 이번 실행에서 fail 한 test 만 이 fix 가 만든 **신규 실패**다
 - **기존 실패 귀속 금지**: 기준선에 이미 있던 **기존 실패**는 그대로 **보고하고** 현재 fix 의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 스킬의 개선 루프가 발산한다
-- **캡처 실패 격하**: 캡처 자체가 실패하면 (스위트 명령 미검출 등) `state.json.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며 그 사실을 보고서에 명시한다
+- **캡처 실패 격하**: 테스트 명령은 있는데 캡처 자체가 실패하면 `state.json.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며, 클린 코드 라운드는 돌지 않는다(클린 코드 라운드 블록). 두 사실을 보고서에 명시한다. 테스트 명령이 없으면 이 격하가 아니라 `--skip-regression` 자동 활성이 적용된다
 - **부모 기준선 우선**: `--regression-baseline` 으로 상위 오케스트레이터가 pin 한 기준선을 받으면 그 값이 자기 시점 캡처보다 **우선한다** — 값이 주어지면 자체 캡처를 수행하지 않고 전달된 기준선을 `state.regression_baseline` 에 그대로 고정한다. 방금 만들어진 실패를 "기존 실패"로 분류해 `TASK_DONE` 을 반환하는 것이 wave 게이트와 정면으로 어긋나기 때문이다.
 
 ### 6.1 Phase 3 — 회귀 테스트 작성 (TDD 조건부, §0.3)
@@ -460,7 +488,7 @@ resume 알고리즘 (`--resume` 활성 시):
 2. 테스트 실행 → red (의도된 fail) 확인
 3. red 시그니처를 `state.json.finding_queue[i].red_signature` 에 저장
 
-면제 finding 은 worklog `tdd_exempted { finding_id, reason_enum: style_only|naming|formatting_only|comment_only }` append + Phase 4 직행.
+면제 finding 은 worklog `tdd_exempted { finding_id, reason_enum: style_only|naming|formatting_only|comment_only|clean_code }` append + Phase 4 직행.
 
 ### 6.2 Phase 4 — 시니어 fixer 적용 (서브에이전트)
 
@@ -494,9 +522,13 @@ Mock 금지 (§0.4) regex 자동 탐지 — 위반 시 kept finding → Phase 4 
 
 cwd 외부 path 편집 시도 (§0.5 / §0.G4) — 즉시 중단.
 
+클린 코드 수정이 위 두 검사에 걸리면 중단하지 않는다 — §0.G8 의 클린 코드 예외(클린 코드 라운드 블록의 **테스트.**)를 따른다.
+
 ### 보존 스캔 (fixer diff, §0.17)
 
 fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동** 중 하나라도 검출되면 **CRITICAL** 로 올리고 §0.G8 의 대응 게이트(`existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved`)로 중단한다. 판정 기준은 `kiwi-coder §0.20.1~§0.20.3`.
+
+클린 코드 수정에서 검출된 경우만 예외다 — 게이트로 중단하지 않고 클린 코드 라운드 블록의 **테스트.** 규칙대로 그 수정을 되돌리고 `unresolved` 로 표시한다. 기능 결함 수정과 채우기 서브에이전트의 diff 에는 위 중단이 그대로 적용된다.
 
 스캔은 까칠 리뷰어 **재검증(re-review)보다 먼저** 수행한다 — 뒤에 두면 약화된 테스트가 먼저 clean 판정을 받는다.
 
@@ -604,6 +636,7 @@ pr_responded: true|false
 13. 리뷰 커버리지 대조 결과 (§12) — 라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total` 과 앵커 개수 · 무효 판정이 있었다면 어긋난 앵커 문자열
 14. 테스트 충분성 확인 결과 (§6.5.1) — `test_sufficiency.json` 의 verdict · 넘긴 범위 · 처음과 마지막 gap · 채우기로 더한 테스트
 15. 메타 (실측 토큰, 시간)
+16. 클린 코드 라운드 결과 — 돈 라운드 수 · 고친 지적 · `dismissed`(사유) · `unresolved`(되돌린 수정의 실패 출력 포함 — `dismissed` 지적은 넣지 않는다) · 건너뛰었으면 그 사실과 이유
 
 ### 7.2 PR 응답 코멘트 — PR 모드 전용 (`references/conditional-sections.md`)
 

@@ -108,7 +108,11 @@ const TDD_CRITICAL_GATES = [
   "validate-spec-error",
   // @req FR-FLOW-186 AC-3 — kiwi-tdd runs the test-sufficiency check immediately before
   // `promote_step_requirement`, and a gap that survives the one fill halts the promotion.
-  "test-sufficiency-gap"
+  "test-sufficiency-gap",
+  // @req FR-FLOW-205 AC-7 — the PRD verdict (b) stop on an unnamed hole stays with the user under --auto.
+  "prd-residual-user-decision",
+  // @req FR-FLOW-205 AC-1 — a PRD that is neither approved nor an --auto PRD ends NEEDS_USER, --auto too.
+  "prd-unapproved-user-decision"
 ] as const;
 
 /** The fourth surviving interaction point. It is NOT critical — a substantive architecture decision

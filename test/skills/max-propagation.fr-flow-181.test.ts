@@ -237,7 +237,7 @@ describe("FR-FLOW-181 AC-3 — kiwi-orchestrator call sites that already carried
 
     it(`FR-FLOW-181 AC-3 ${rendering.id}: the R-ORCH row defers the worker kiwi-pm to §10, whose invocation block carries [--max]`, () => {
       // FR-FLOW-194 (4.1.0): the worker runs its wave's requirement set; the wave SDS only under --sds.
-      expect(sectionOf(rendering.relPath, R_ORCH)).toMatch(/kiwi-pm --req-filter <그 wave 의 requirements\[\]> --run-id \{run_id\}-wave-\{n\} …\s*\(wave 의 워커가 — §10; --sds 면 --sds docs\/sds\/\{run_id\}-wave-\{n\}\.sds\.md\)/);
+      expect(sectionOf(rendering.relPath, R_ORCH)).toMatch(/kiwi-pm --req-filter <그 wave 의 requirements\[\]> --run-id \{run_id\}-wave-\{n\} --no-final …\s*\(wave 의 워커가 — §10; --sds 면 --sds docs\/sds\/\{run_id\}-wave-\{n\}\.sds\.md\)/);
       const block = fencedBlockContaining(sectionOf(rendering.relPath, PHASE_3F), "kiwi-pm --req-filter");
       expect(block).toContain("--commit-lane-work");
       expect(block).toContain("[--max]");

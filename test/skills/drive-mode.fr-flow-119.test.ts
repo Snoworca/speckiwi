@@ -46,7 +46,14 @@ const REFUSED_GATES = [
   "tdd-bypass-attempt",
   "out-of-scope-user-consent",
   "unsafe-option-refused",
-  "wave-append-cap-exhausted"
+  "wave-append-cap-exhausted",
+  // @req FR-FLOW-205 AC-7 — the kiwi-srs PRD stops stay closed under --drive: self-repair does not
+  // keep, drop, or rewrite what they hold.
+  "prd-record-tampered",
+  "prd-unapproved-user-decision",
+  "prd-residual-user-decision",
+  // @req FR-FLOW-205 AC-8 — the round-cap stop is a declared critical gate and stays closed too.
+  "prd-cap-unpassed-user-decision"
 ] as const;
 
 const RESIDUAL_GATES = [

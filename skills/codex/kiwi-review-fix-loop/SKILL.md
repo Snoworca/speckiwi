@@ -16,6 +16,20 @@ accepted fixes with optional response comments.
 The main session orchestrates only. Code review and code modification must be
 performed by separate delegated workers or clearly separated passes.
 
+## 클린 코드 라운드 — 컴팩션 뒤에도 남는 규칙 (FR-FLOW-206)
+
+이 블록은 아래 본문보다 앞선다. 본문의 어느 절도 이 블록의 규칙을 건너뛰게 하지 않는다.
+
+**분류.** 리뷰어는 중복·과도 추상화·명명·함수나 클래스 크기·책임 혼재·죽은 코드 지적을 keep/drop 판정과 따로 `clean-code` 분류로 보고하고, 지적마다 어긴 원칙과 코드 위치(파일·줄)를 적는다. `clean-code` 지적은 kept finding 수에 들어가지 않고 keep/drop 종료 게이트(kept finding 0)를 막지 않으며, `dismissed` 나 `unresolved` 가 남아도 실행의 종료 상태를 바꾸지 않는다.
+
+**라운드.** fixer 는 `clean-code` 지적을 한 실행에서 클린 코드 라운드 **최대 3회** 안에서 고친다 — 라운드 하나는 리뷰어의 `clean-code` 지적, 분류기의 `dismissed` 표시, fixer 의 수정, 보존 스캔, 회귀 테스트 확인을 이 순서로 한 번씩 거친다. 클린 코드 라운드는 기능 결함 루프가 끝난 뒤에 돌고, 라운드를 시작하는 리뷰가 `clean-code` 지적을 하나도 내지 않으면 그 라운드에서 바로 끝난다. 리뷰어에게는 앞선 라운드에서 `dismissed` 된 지적 목록을 함께 넘기고, 이미 `dismissed` 된 지적과 같은 원칙·같은 위치를 다시 낸 지적은 그 라운드의 지적으로 세지 않는다 — 그런 지적만 나온 라운드도 그 라운드에서 바로 끝난다. 클린 코드 라운드 번호와 `dismissed` 지적은 실행 상태 `state.json` 의 `clean_code_round` 와 `clean_code_dismissed` 에 기록하고, 재개된 실행은 기록된 번호에서 이어 세며 기록된 `dismissed` 지적을 계속 세지 않는다.
+
+**표시.** 분류기는 어긴 원칙이나 위치를 적지 않은 지적, 프로젝트의 기존 관례와 충돌하는 지적, 타당하지 않다고 판단한 지적을 `dismissed` 로 표시하고 사유를 적으며, fixer 는 그 지적을 고치지 않는다. 세 번째 클린 코드 라운드가 끝나도 고쳐지지 않은 지적은 `unresolved` 로 표시해 보고하고 더 고치지 않는다 — `dismissed` 지적은 보고서에서 계속 `dismissed` 이고 `unresolved` 가 되지 않는다.
+
+**테스트.** 모든 클린 코드 수정은 그 실행의 회귀 테스트 명령을 통과해야 유지한다 — 통과는 회귀 기준선 대비 신규 실패 0 이다. 수정이 회귀 테스트 명령을 통과하지 못하면 그 수정을 되돌리고, 그 지적을 실패 출력과 함께 `unresolved` 로 표시한다. 보존 스캔(보존 스캔 절, §0.17)과 그 밖에 fixer diff 를 검사하는 게이트도 모든 클린 코드 수정을 검사한다 — 클린 코드 수정이 기존 public 심볼을 지우거나 시그니처를 바꾸거나, 기존 테스트 케이스를 지우거나 약화하거나, 비-테스트 기존 파일을 지우거나 옮기거나(`existing-public-contract-change` · `existing-test-weakened-or-deleted` · `existing-file-deleted-or-moved`), Mock 탐지(`mock-detection`)나 cwd 외부 path 검사(`external-module-impact`)에 걸리면 그 수정을 되돌리고, 그 지적을 걸린 게이트와 스캔 사유와 함께 `unresolved` 로 표시하며, 그 게이트를 올리지 않고 실행을 멈추지 않는다. 되돌린 클린 코드 수정은 kept finding 이 아니므로 개선 루프 발산 게이트(`improvement-loop-divergence-4opt`)의 횟수에 세지 않는다. 회귀 테스트를 돌리지 않는 실행(`--skip-regression`)이나 회귀 기준선을 잡지 못한 실행(`regression_baseline = null`)은 클린 코드 수정을 유지할 수 없으므로 클린 코드 라운드를 돌지 않고 그 사실을 보고한다.
+
+**빠른 처리.** 호출 인자나 사용자 요청이 클린 코드 원칙을 지키지 않아도 된다고 하거나 빠른 처리를 요구하면(예: `ASAP`, `아삽`, `최대한 빨리`), 시작할 때 클린 코드 검사를 건너뛸지 한 번만 묻고 사용자가 확인하면 클린 코드 라운드를 모두 건너뛴다. `--auto` 이면 같은 신호가 있을 때 묻지 않고 건너뛴다. 건너뛰었으면 보고서에 클린 코드 검사를 건너뛴 사실과 그 이유(신호가 된 인자나 요청 문구)를 적는다. `--mini`, `--loops` 같은 라운드 상한 옵션은 빠른 처리 신호가 아니다. 사용자의 답이나 `--auto` 의 건너뛰기는 답을 받은 즉시, 다음 phase 가 돌기 전에 실행 상태 `state.json` 의 `clean_code_skip` 에 기록하고, 재개된 실행은 다시 묻지 않고 기록된 답을 따른다 — 건너뛰기로 기록됐으면 클린 코드 라운드를 돌지 않는다. `--skip-clean-code` 는 이 스킬을 부른 스킬이 이미 확인한 건너뛰기다 — 이 인자를 받으면 다시 묻지 않고 클린 코드 라운드를 모두 건너뛰며, Phase 0 에서 `clean_code_skip` 에 `true` 로 기록하고 보고서의 이유에 그 인자를 적는다. `--keep-clean-code` 는 이 스킬을 부른 스킬이 이미 받은 유지 답이다 — 이 인자를 받으면 다시 묻지 않고 클린 코드 라운드를 돌며, Phase 0 에서 `clean_code_skip` 에 `false` 로 기록한다. `--skip-clean-code` 나 `--keep-clean-code` 가 `--auto` 와 함께 오면 그 인자가 `--auto` 의 건너뛰기보다 우선한다. `--skip-clean-code` 와 `--keep-clean-code` 를 함께 받으면 어느 답인지 알 수 없으므로 시작하지 않고 거부한다. 이 스킬을 리뷰 hop 으로 부르는 스킬은 같은 신호를 받으면 자기 시작 시점에 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다) 그 답을 자기 실행 상태에 기록하며, 자기가 부르는 모든 리뷰 hop 에 사용자가 확인했으면 `--skip-clean-code` 를, 거절했으면 `--keep-clean-code` 를 넘긴다 — 사용자 요청을 보지 못하는 wave 워커의 리뷰 hop 에는 dispatch 카드로 넘긴다. 사용자가 `--auto` 로 돌리지 않은 리뷰 hop 에 `--auto` 를 붙이는 스킬(예: 단독 실행 끝의 kiwi-coder)도 그런 호출자로서 먼저 묻는다. 리뷰 hop 을 부르는 스킬이 부모에게서 `--skip-clean-code` 나 `--keep-clean-code` 를 받으면 묻지 않고 그 답을 자기 실행 상태에 기록하며, 자기가 부르는 모든 리뷰 hop 과 리뷰 hop 에 이르는 자식에 그 인자를 그대로 넘긴다 — 스킬 본문의 호출 예시에 적힌 `[--skip-clean-code | --keep-clean-code]` 자리가 그 답이다.
+
 ## Official Workflow Tool Policy
 
 For covered workflow artifact flows, use official SpecKiwi workflow tools before raw file reads:
@@ -64,6 +78,8 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 
 **Where this gate is observed**: at the hop this row's third cell names, run MCP `validate_spec` — the CLI fallback is `speckiwi validate --json`. While any error-severity diagnostic remains, do not proceed with that hop: halt at `validate-spec-error`, which `--auto` does not lift. Never record a pass without having run it.
 
+**클린 코드 수정은 이 표의 게이트를 올리지 않는다**: 클린 코드 수정이 `existing-public-contract-change` · `existing-test-weakened-or-deleted` · `existing-file-deleted-or-moved` · `mock-detection` · `external-module-impact` · `improvement-loop-divergence-4opt` 에 걸리면 클린 코드 라운드 블록의 **테스트.** 규칙대로 되돌리고 `unresolved` 로 표시하며 실행을 멈추지 않는다. 기능 결함 수정과 채우기 서브에이전트의 diff 에는 이 표가 그대로 적용된다.
+
 ## Inputs
 
 | Signal | Argument | Default |
@@ -75,6 +91,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | verification model | `--model <name>` | current session model |
 | auto gates | `--auto` | off |
 | dry run | `--dry-run` | off |
+| skip regression (turned on automatically, and reported, when no test command is detected) | `--skip-regression` | off |
 | skip PR response | `--no-respond` | off |
 | close implemented REQs | `--close-reqs` | off |
 | requirement scope of the test-sufficiency check | `--req-filter <id,...>` | off |
@@ -84,12 +101,14 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | loop round cap | `--loops N` | off (skill default cap) |
 | 부모 기준선 | `--regression-baseline <path>` | off (자기 시점 캡처) |
 | suppress pipeline event | `--no-pipeline-emit` (takes no argument — suppresses the `kiwi/pipeline.jsonl` append) | off (emit as usual) |
+| clean-code skip already confirmed by the calling skill | `--skip-clean-code` (takes no argument — skips the clean-code rounds without asking; 클린 코드 라운드 block) | off (a speed signal asks once in Phase 0) |
+| clean-code check kept by the user when the calling skill asked | `--keep-clean-code` (takes no argument — runs the clean-code rounds without asking; 클린 코드 라운드 block) | off (a speed signal asks once in Phase 0) |
 
 ## Workflow
 
 1. Preflight git; for PR mode, verify `gh --version` and authentication; capture
    the regression baseline before any code change (regression baseline section).
-2. Decide mode and review scope.
+2. Decide mode and review scope. On a speed signal, ask once whether to skip the clean-code check and write the answer to `state.json` `clean_code_skip` as soon as it is given (클린 코드 라운드 block).
 3. Fix the review denominator before spawning the reviewer: carry the included
    bucket into `review_denominator[]` and count each file's `hunks_total`
    yourself (리뷰 커버리지 분모 section).
@@ -104,6 +123,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
    `../_shared/kiwi/verify-loop.md` §10 and is not this skill's to run.
 10. Iterate until no kept finding remains (Keep/Drop 종료 판정 section).
     **커버리지 대조를 통과한 라운드만 PASS 가 된다** — finding 개수만으로는 PASS 가 나오지 않는다. 대조 결과는 리뷰 커버리지 분모 section 이 정하며, 무효 라운드는 어느 행에도 해당하지 않는다.
+    Then run the clean-code rounds (at most 3; 클린 코드 라운드 block).
 11. Run regression and affected tests.
 12. In PR mode, write a response comment unless `--no-respond`.
 13. Test sufficiency, the last verification step: when a requirement scope is known (`--close-reqs`, `--req-filter`, `--sds`), run the check of `../_shared/kiwi/test-sufficiency.md` (Test Sufficiency section).
@@ -116,6 +136,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 
 - finding 은 **실행이 입증할 때만 keep** 한다 — 실패하는 테스트·재현 절차·반례가 그 실패를 보이고 그 실패가 의도를 깨뜨릴 때다.
 - 실행으로 입증하지 못한 것과 스타일·명명·순서·주석류는 **drop** 하며, 심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)은 종료 판정에 쓰지 않는다.
+- 이 drop 은 기능 결함 finding 의 keep/drop 판정에 대한 것이다 — 중복·과도 추상화·명명 같은 클린 코드 지적은 이 판정에 넣지 않고 `clean-code` 분류로 따로 모아 클린 코드 라운드(클린 코드 라운드 블록)가 다룬다.
 - 기능 결함이라 **주장**했으나 실행으로 입증하지 못한 finding 은 drop 하지 않고 **residual 로 사용자 결정**에 올린다.
 - residual finding 이 하나라도 남으면 이 실행은 `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝난다 — 상위 오케스트레이터는 그 residual 을 사용자가 결정하기 전까지 step 승급·lane 병합으로 넘어가지 않는다.
 - keep/drop 판정과 3분류는 고정 매핑이다: kept→`immediate_fix`, residual→`discussion_needed`(`rejected` 로 보낼 수 없다), dropped→`rejected`.
@@ -132,6 +153,8 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 
 fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일 삭제 · 기존 테스트 케이스 제거 · 기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동** 중 하나라도 검출되면 **CRITICAL** 로 올리고 `--auto` critical_gates[] 의 대응 게이트(`existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved`)로 중단한다. 판정 기준은 `kiwi-coder §0.20.1~§0.20.3`.
 
+클린 코드 수정에서 검출된 경우만 예외다 — 게이트로 중단하지 않고 클린 코드 라운드 블록의 **테스트.** 규칙대로 그 수정을 되돌리고 `unresolved` 로 표시한다. 기능 결함 수정과 채우기 서브에이전트의 diff 에는 위 중단이 그대로 적용된다.
+
 스캔은 까칠 리뷰어 **재검증(re-review)보다 먼저** 수행한다 — 뒤에 두면 약화된 테스트가 먼저 clean 판정을 받는다.
 
 ### 회귀 테스트 기준선 캡처 (델타 판정 SSOT)
@@ -141,7 +164,7 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 - **기준선 캡처**: **코드를 바꾸기 전에** 전체 회귀 스위트를 1회 실행해 기준선 결과를 저장한다. 캡처 시점은 회귀 테스트 작성 이전 (preflight) 이며, 결과는 `state.regression_baseline` 에 고정한다
 - **델타 판정**: 회귀 여부는 기준선 대비 **델타로 판정**한다 — 기준선에서 pass 였는데 이번 실행에서 fail 한 test 만 이 fix 가 만든 **신규 실패**다
 - **기존 실패 귀속 금지**: 기준선에 이미 있던 **기존 실패**는 그대로 **보고하고** 현재 fix 의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 스킬의 개선 루프가 발산한다
-- **캡처 실패 격하**: 캡처 자체가 실패하면 (스위트 명령 미검출 등) `state.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며 그 사실을 보고서에 명시한다
+- **캡처 실패 격하**: 테스트 명령은 있는데 캡처 자체가 실패하면 `state.regression_baseline = null` 로 두고, 이 run 의 회귀 판정은 델타 없이 실패 전량 보고로 격하하며, 클린 코드 라운드는 돌지 않는다(클린 코드 라운드 블록). 두 사실을 보고서에 명시한다. 테스트 명령이 없으면 이 격하가 아니라 `--skip-regression` 자동 활성이 적용된다
 - **부모 기준선 우선**: `--regression-baseline` 으로 상위 오케스트레이터가 pin 한 기준선을 받으면 그 값이 자기 시점 캡처보다 **우선한다** — 값이 주어지면 자체 캡처를 수행하지 않고 전달된 기준선을 `state.regression_baseline` 에 그대로 고정한다. 방금 만들어진 실패를 "기존 실패"로 분류해 `TASK_DONE` 을 반환하는 것이 wave 게이트와 정면으로 어긋나기 때문이다.
 
 ## Test Sufficiency (last verification step)

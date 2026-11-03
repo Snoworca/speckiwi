@@ -71,6 +71,8 @@ export const EXPECTED_KIWI_SKILLS = [
   "kiwi-orchestrator",
   "kiwi-pipeline",
   "kiwi-pm",
+  // @req FR-FLOW-204 AC-8 — the PRD skill kiwi-srs and kiwi-orchestrator call when no PRD is given.
+  "kiwi-prd",
   "kiwi-review-fix-loop",
   // @req FR-NODE-211 AC-7 — kiwi-sds replaces the retired kiwi-planner in every bundled variant.
   "kiwi-sds",

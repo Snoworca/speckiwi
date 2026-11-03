@@ -772,11 +772,13 @@ state_ref: ./state.json
 
 (가드: `state.spawn_context == "pm-child"` 인 경우 본 §8.4 전체 skip — Skill 호출 자체 시도 금지. PM 컨텍스트 격리 정책 준수)
 
+단독 실행이 빠른 처리 신호(`kiwi-review-fix-loop` 클린 코드 라운드 블록)를 받으면 Phase 0 에서 클린 코드 검사를 건너뛸지 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다) 답을 받은 즉시 `state.json` 의 `clean_code_skip` 에 `true` 또는 `false` 로 기록한다 — 아래 리뷰 호출은 사용자가 주지 않은 `--auto` 를 붙이므로, 묻지 않으면 빠른 처리 요청이 확인 없이 클린 코드 건너뛰기가 된다. `true` 면 이 절의 모든 `kiwi-review-fix-loop` 호출에 `--skip-clean-code` 를, `false` 면 `--keep-clean-code` 를 더하고, `--resume` 은 다시 묻지 않고 기록된 값을 따른다. `pm-child` 실행은 묻지 않는다 — 리뷰 hop 과 그 질문은 부모 `kiwi-pm` 의 것이다. 부모가 `--skip-clean-code` 나 `--keep-clean-code` 를 넘긴 단독 실행은 묻지 않고 그 답을 `state.json` 의 `clean_code_skip` 에 기록하고, 이 절의 모든 `kiwi-review-fix-loop` 호출에 그 인자를 그대로 더한다.
+
 단독 실행 시: §8.3 최종 보고서 작성 직후, 사용자에게 다음 안내:
 
 > "요구 status 가 `implemented` 로 승급되었습니다. `verified` 로 닫으려면 `/kiwi-review-fix-loop --close-reqs --req-filter <요구 집합>` 을 호출하십시오. `--sds` 실행이면 그 앞에 `/kiwi-sds --close <sds-id>` 로 SDS 의 해석 결정을 SRS 로 옮기고, 그 뒤 `/kiwi-sds --close <sds-id>` 를 한 번 더 불러 SDS 를 지우십시오."
 
-SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 없이 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다: `Skill(skill="kiwi-review-fix-loop", args="--req-filter <요구 집합> [--close-reqs 는 CLOSE_SAFE 일 때만] --auto")` 하나만 부르고, 본 스킬의 `--model` / `--max` / `--mini` / `--loops N` 을 args 에 전파한다.
+SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 없이 끝에서 **항상** `kiwi-review-fix-loop` 로 넘긴다: `Skill(skill="kiwi-review-fix-loop", args="--req-filter <요구 집합> [--close-reqs 는 CLOSE_SAFE 일 때만] --auto")` 하나만 부르고, 본 스킬의 `--model` / `--max` / `--mini` / `--loops N` 과 위 클린 코드 답(`--skip-clean-code` 또는 `--keep-clean-code`)을 args 에 전파한다.
 
 `--sds` 실행은 `AskUserQuestion` 3지선다:
 - `(1) 지금 자동 시작` — 메인 세션에서 아래 순서로 부른다. `kiwi-pm` §6.4 와 같은 close-out 순서다 — 옮기기는 승급보다 먼저여야 한다(FR-FLOW-183 AC-1). 본 스킬의 `--model` / `--max` / `--mini` / `--loops N` 이 활성이면 세 호출의 args 에 전파한다(loop-option.md §6):
@@ -786,7 +788,7 @@ SDS 없는 실행은 `kiwi-sds --close` 를 부르지 않는다 — 3지선다 �
   ```
   Skill(skill="kiwi-sds", args="--close <sds_id>")                        # CLOSE_SAFE 일 때만 — 옮기기
   MOVED = CLOSE_SAFE AND check_sds(SDS_PATH).status == "closed"
-  Skill(skill="kiwi-review-fix-loop", args="--req-filter <SDS @req 집합> --sds <SDS_PATH> [--close-reqs 는 MOVED 일 때만] --auto")
+  Skill(skill="kiwi-review-fix-loop", args="--req-filter <SDS @req 집합> --sds <SDS_PATH> [--close-reqs 는 MOVED 일 때만] --auto [--skip-clean-code | --keep-clean-code]")
   Skill(skill="kiwi-sds", args="--close <sds_id>")                        # MOVED 일 때만 — 삭제
   ```
 

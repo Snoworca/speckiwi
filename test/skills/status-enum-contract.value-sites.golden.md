@@ -95,9 +95,8 @@ deprecated	alias-deprecated-note	kiwi-commit-auto-pr/SKILL.md	d" // inbound 호�
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시킨다. v0.11 까지의 deprecated --qna 별칭과는 별개인 강제 플래그다(판별 앵커
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
+deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	그대로 넘긴다)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	_shared/kiwi/parallel-waves.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 discarded	-	_shared/kiwi/parallel-waves.md	가 없거나 draft · deprecated · discarded)이며, 거절하면 lock 을 쓰지 않는다. files
@@ -129,6 +128,7 @@ discarded	-	kiwi-srs/SKILL.md	]) 적용을 skip — speckiwi Status=discarded + 
 discarded	-	kiwi-srs/SKILL.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/SKILL.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/SKILL.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-srs/SKILL.md	— 이번 실행이 추가한 요구는 update_status(discarded) 로, 이번 실행이 더한 AC 는 그 AC 를 뺀 목록
 discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	_shared/kiwi/auto-option.md	ecycle-gate-draft 는 철회됐다 — draft 차단은 per-REQ skip 으로 대체되었고(FR-FL
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
@@ -555,8 +555,8 @@ stable	-	kiwi-srs-from-code/SKILL.md	- draft → stable 승격은 사용자가 �
 stable	-	kiwi-srs-from-code/SKILL.md	path:line + AC 코드 검증 가능 | 없음 | stable |
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requireme
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
-stable	-	kiwi-srs/SKILL.md	CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림; 필수 MCP
 stable	-	kiwi-srs/SKILL.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+stable	-	kiwi-srs/SKILL.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	se 를 한 번 더 부른다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	_shared/kiwi/parallel-waves.md	구를 지명한 잔여가 없으면 implemented → verified. 증거는 type="test" 와 type="co
@@ -641,7 +641,7 @@ verified	-	kiwi-srs/SKILL.md	ict 이면서 기존 REQ {X} 의 status = verified 
 verified	-	kiwi-srs/SKILL.md	ict 이면서 기존 REQ {X} 의 status ≠ verified | "기존 REQ {X} 는 draft 로 demo
 verified	-	kiwi-srs/SKILL.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/SKILL.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
-verified	-	kiwi-srs/SKILL.md	| CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림;
+verified	-	kiwi-srs/SKILL.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
@@ -742,9 +742,8 @@ deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · d
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시킨다. v0.11 까지의 deprecated --qna 별칭과는 별개인 강제 플래그다(판별 앵커
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
+deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	그대로 넘긴다)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
 discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
@@ -777,6 +776,7 @@ discarded	-	kiwi-srs/references/extended-workflow.md	= update 이면서 영향 R
 discarded	-	kiwi-srs/references/extended-workflow.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/references/extended-workflow.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/references/extended-workflow.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-srs/references/extended-workflow.md	— 이번 실행이 추가한 요구는 update_status(discarded) 로, 이번 실행이 더한 AC 는 그 AC 를 뺀 목록
 discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	MIGRATION_PLAN.md	pleted ACs and remains free of draft or deprecated stability bloc
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
@@ -1207,8 +1207,8 @@ stable	-	kiwi-srs-from-code/SKILL.md	path:line + AC 코드 검증 가능 | 없�
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requireme
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
 stable	-	kiwi-srs-from-code/references/extended-workflow.md	- draft → stable 승격은 사용자가 코드 확정 후 수동 수행
-stable	-	kiwi-srs/references/extended-workflow.md	CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림; 필수 MCP
 stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
@@ -1286,7 +1286,7 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status ≠ verified | "기존 REQ {X} 는 draft 로 demo
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
-verified	-	kiwi-srs/references/extended-workflow.md	| CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림;
+verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
@@ -1384,8 +1384,7 @@ deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · d
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시킨다. v0.11 까지의 deprecated --qna 별칭과는 별개인 강제 플래그다(판별 앵커
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
+deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	그대로 넘긴다)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
 discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
 discarded	-	_shared/kiwi/parallel-waves.md	requirement is verified or discarded, the SDS file is deleted and t
@@ -1417,6 +1416,7 @@ discarded	-	kiwi-srs/references/extended-workflow.md	= update 이면서 영향 R
 discarded	-	kiwi-srs/references/extended-workflow.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/references/extended-workflow.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/references/extended-workflow.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-srs/references/extended-workflow.md	— 이번 실행이 추가한 요구는 update_status(discarded) 로, 이번 실행이 더한 AC 는 그 AC 를 뺀 목록
 discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는 dispatch 전에 멈춘
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
@@ -1828,8 +1828,8 @@ stable	-	kiwi-srs-from-code/SKILL.md	path:line + AC 코드 검증 가능 | 없�
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requireme
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
 stable	-	kiwi-srs-from-code/references/extended-workflow.md	- draft → stable 승격은 사용자가 코드 확정 후 수동 수행
-stable	-	kiwi-srs/references/extended-workflow.md	CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림; 필수 MCP
 stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
@@ -1907,7 +1907,7 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status ≠ verified | "기존 REQ {X} 는 draft 로 demo
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
-verified	-	kiwi-srs/references/extended-workflow.md	| CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림;
+verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
@@ -2006,9 +2006,8 @@ deprecated	-	kiwi-srs-sync/references/extended-workflow.md	로 update_stability 
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	qna 루프를 강제 진입시킨다. v0.11 까지의 deprecated --qna 별칭과는 별개인 강제 플래그다(판별 앵커
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	| "--qna", "질문하며 작성" | --qna (deprecated alias) | — — 본 인자는 v0.11 까지 QnA
-deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	래그(§5.2)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
+deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	그대로 넘긴다)이고, --qna 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	무옵션 동작과 등가). --qna 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전
 discarded	-	_shared/kiwi/parallel-waves.md	issing, draft, deprecated, discarded) — the wave stops before dispa
 discarded	-	_shared/kiwi/parallel-waves.md	or is draft, deprecated or discarded); a refusal writes no lock. A
@@ -2041,6 +2040,7 @@ discarded	-	kiwi-srs/references/extended-workflow.md	= update 이면서 영향 R
 discarded	-	kiwi-srs/references/extended-workflow.md	equirement + 기존 update_status(discarded) (SRS-MD §11.4)
 discarded	-	kiwi-srs/references/extended-workflow.md	tatus = discarded | "기존 REQ {X} discarded. NEW-ID 가 SoT — 의존 REQ trace 갱신
 discarded	-	kiwi-srs/references/extended-workflow.md	te_status { id: REQ-X, status: "discarded" } — Change Notes에 NEW-ID 참조 (
+discarded	-	kiwi-srs/references/extended-workflow.md	— 이번 실행이 추가한 요구는 update_status(discarded) 로, 이번 실행이 더한 AC 는 그 AC 를 뺀 목록
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
@@ -2452,8 +2452,8 @@ stable	-	kiwi-srs-from-code/SKILL.md	path:line + AC 코드 검증 가능 | 없�
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requireme
 stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
 stable	-	kiwi-srs-from-code/references/extended-workflow.md	- draft → stable 승격은 사용자가 코드 확정 후 수동 수행
-stable	-	kiwi-srs/references/extended-workflow.md	CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림; 필수 MCP
 stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
+stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
@@ -2531,7 +2531,7 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status ≠ verified | "기존 REQ {X} 는 draft 로 demo
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
-verified	-	kiwi-srs/references/extended-workflow.md	| CRITICAL | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림;
+verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
 ## packaged-documents

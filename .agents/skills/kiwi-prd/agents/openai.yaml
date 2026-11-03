@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi PRD"
+  short_description: "Record the user's request verbatim and turn it into an approved PRD"
+  default_prompt: "Use $kiwi-prd to write this request to a PRD verbatim, ask what is missing one question at a time, and get the PRD approved."

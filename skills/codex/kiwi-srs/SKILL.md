@@ -1,6 +1,6 @@
 ---
 name: kiwi-srs
-description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데이터베이스와 교차 분석하여 conflict/update/new-feature/new-scope 4방향 분류 → 구현 가능성 판정 → speckiwi MCP를 SSOT로 SRS 증분 작성·갱신. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — SRS 업데이트, 요구사항 추가, kiwi srs 써줘, 기존 SRS에 반영해줘, 새 기능 요구사항 SRS, SRS 충돌 감지, 충돌 SRS 확인, 증분 SRS authoring, 신규 기능 SRS, 요구사항 명세 갱신, speckiwi 요구사항 등록, srs conflict 분석, kiwi srs 작성, incremental srs, add requirement to srs, update existing SRS, new feature spec, kiwi requirement authoring. **기본 QnA 활성** (reviewer dropout, 무제한 qna 루프, Phase 1 모호성 0건 시 skip). **--auto 로 질문 없이 진행** (현재의 무옵션 동작과 등가). `--qna` 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 2연속 MEDIUM-zero 종료). 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변). 종료 시 `workflow_pipeline_emit` 으로 이벤트 1줄 기록 (kiwi-pipeline 메타 스킬용)."
+description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데이터베이스와 교차 분석하여 conflict/update/new-feature/new-scope 4방향 분류 → 구현 가능성 판정 → speckiwi MCP를 SSOT로 SRS 증분 작성·갱신. 3 standard 사전조사 병렬 + high-reasoning 시니어 작성자 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + pass/fail 게이트(PRD 판정 통과 + 증거가 붙은 kept finding 0). 트리거 — SRS 업데이트, 요구사항 추가, kiwi srs 써줘, 기존 SRS에 반영해줘, 새 기능 요구사항 SRS, SRS 충돌 감지, 충돌 SRS 확인, 증분 SRS authoring, 신규 기능 SRS, 요구사항 명세 갱신, speckiwi 요구사항 등록, srs conflict 분석, kiwi srs 작성, incremental srs, add requirement to srs, update existing SRS, new feature spec, kiwi requirement authoring. **PRD 가 아닌 입력(인라인 요청·이슈·요구 파일)이면 $kiwi-prd 가 먼저 그 입력을 원문 그대로 PRD 에 기록·승인**하고, 검증은 PRD 항목을 하나씩 대조해 원문 미수용은 fail, 근거 없는 확장은 drop·residual, 구멍 메우기는 fills: 근거로 허용한다. **--auto 로 질문 없이 진행** (현재의 무옵션 동작과 등가). `--qna` 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 같은 pass/fail 종료). 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변). 종료 시 `workflow_pipeline_emit` 으로 이벤트 1줄 기록 (kiwi-pipeline 메타 스킬용)."
 ---
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
 # kiwi-srs v0.11
@@ -11,6 +11,31 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 ## Official Workflow Tool Policy
 
 Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로는 MCP `workflow_pipeline_tail`, `workflow_pipeline_status`, `get_next_work_order`, `workflow_pipeline_emit` 또는 동일 기능의 `speckiwi workflow ...` CLI 이다. Raw file append/read 는 degraded mode 에서만 허용하며, 반드시 capturing tool diagnostics, affected artifact paths, active target, follow-up requirement or candidate ID 를 사용자 보고와 pipeline notes 에 남긴다.
+
+## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)
+
+이 블록은 아래 본문보다 앞선다. 본문의 어느 절도 이 블록의 판정을 건너뛰게 하지 않는다.
+
+**입력.** `PRD_PATH` 가 없고 입력이 PRD 가 아니면 — 인라인 요청(`REQ_TEXT`)·이슈·`REQ_PATH` 문서 — 조사보다 먼저 `kiwi-prd` 를 불러 그 입력을 `U-1` 의 원천으로 PRD 를 만들고, 그 PRD 로 판정한다. 이슈 입력이면 `U-1` 은 입력이 가리키는 이슈에서 읽은 제목과 본문 원문이다 — 이슈에서 파생된 발췌본(`issue-excerpt.md`)은 `U-1` 의 원천이 아니라 참고 자료이고 근거가 되지 못한다. `kiwi-prd` 가 이슈 원문을 읽지 못했다고 돌려주면 완료 보고에 그대로 싣는다. 입력이 없으면 `kiwi-prd` 가 사용자에게 요청부터 받는다. `PRD_PATH` 가 있으면 그 PRD 로 판정하고 `REQ_PATH` 는 받은 입력 그대로 둔다. `REQ_PATH` 가 `docs/prd/` 의 PRD 이면 그것이 판정할 PRD 다. 판정할 PRD 없이 저작하는 경로는 없다. kiwi-srs 는 질문 루프를 따로 돌리지 않는다 — 요구를 묻고 기록하는 일은 `kiwi-prd` 의 몫이다. `--auto` 와 `--qna-force` 는 `kiwi-prd` 에 그대로 넘긴다. `Status` 행이 승인 값(`kiwi-prd` 가 승인 때 쓰는 값)이 아닌 PRD 로는 저작하지 않고 `NEEDS_USER` 로 끝난다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-unapproved-user-decision`). 예외는 `kiwi-prd` 가 `--auto` 로 만든 PRD(`Status` 행이 `unapproved` 이고 승인 행에 `--auto` 가 적힌 PRD) 하나이며, 그 PRD 로 저작했으면 완료 보고에 `Status` 행 값을 그대로 싣는다.
+
+**기록 보존.** PRD 는 요약하지 않고 경로로 모든 저작·검증·개선 서브에이전트에 넘긴다. 라운드를 시작할 때마다, 그리고 재개할 때 아래 `prd-hash` 명령으로 줄 끝을 LF 로 맞춘 PRD 해시를 다시 계산하고, `Request SHA256` 행과 다르면(종료 코드 1) critical gate `prd-record-tampered` 로 멈춘다 — `--auto` 에서도 멈춘다. kiwi-srs 는 PRD 를 고치지 않고 `Request SHA256` 행도 쓰지 않는다.
+
+```bash
+# prd-hash: 줄 끝을 LF 로 맞춘 User Request 절의 sha256 을 출력하고, Request SHA256 행과 다르면 종료 코드 1
+node -e "const f=require('fs').readFileSync(process.argv[1],'latin1').replace(/\r\n/g,'\n');const a=f.indexOf('\n## 1. User Request')+1;const b=f.indexOf('\n## ',a)+1;if(a<1||b<=a)process.exit(2);const h=require('crypto').createHash('sha256').update(f.slice(a,b),'latin1').digest('hex');console.log(h);const r=f.split('\n').find(l=>l.startsWith('| Request SHA256 |'));process.exit(r&&r.includes(h)?0:1)" docs/prd/<file>.prd.md
+```
+
+**판정 기록.** 검증 라운드마다 `eval_iter{N}.json` 의 `prd_items[]` 에 PRD 항목마다 판정 하나를 항목 순서대로 적고, `srs_items[]` 에는 이번 실행이 추가하거나 바꾼 요구와 AC 마다 판정 하나를 적는다. 이번 실행이 건드리지 않은 기존 요구는 PRD 와 대조하지 않는다 — (b)·(c) 판정도 이번 실행이 추가하거나 바꾼 요구와 AC 에만 한다. `prd_items[]` 의 길이가 PRD 항목 수와 다른 라운드는 통과하지 않는다. PRD 항목 수는 `### PRD-` 로 시작하는 줄의 수다. 요구가 PRD 항목을 인용하는 곳은 그 요구의 Rationale 이다(예: `AC-3 ← PRD-4`).
+
+**판정 셋.**
+- (a) `intent` · `goal` · `in-scope` 항목을 근거로 인용한 요구나 AC 가 없거나, 요구나 AC 가 그 항목과 반대로 말하면 그 항목의 판정은 fail 이고 루프는 통과하지 않는다. `State` 가 `rejected` 인 항목은 이 fail 검사에서도 빠진다. `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목처럼 이 fail 검사를 받는다. `REQ_PATH` 가 PRD 항목 ID 를 지명한 wave excerpt 이면 (a) 는 그 excerpt 가 지명한 항목만 검사하고, 지명되지 않은 항목은 `prd_items[]` 에 `other-wave` 로 적는다.
+- (b) 아무 PRD 항목도 인용하지 않고 `fills:` 근거도 없는 요구나 AC, 또는 exclusion 항목에 걸리는 요구나 AC 는 drop 하고 사유를 보고한다. 검증자가 그것이 필요하다고 주장하면서 메우는 구멍을 대지 못하면 drop 하지 않고 residual 로 남긴다. `State` 가 `rejected` 인 항목은 근거가 되지 못한다 — 거절된 항목만 인용한 요구나 AC 도 drop 한다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로 작동한다 — 그 proposal 에 걸리는 요구나 AC 도 drop 한다.
+- (c) 요청의 구멍·모순·결함을 메우는 추가는 그 요구의 Rationale 에 `fills: PRD-<n> / <hole|contradiction|defect> / <reason>` 이 있을 때만 받아들인다. 메우기는 그 항목의 경계 안에서 가장 작게 한다. 항목 사이의 모순은 루프가 직접 푼다 — 의도(`intent`) 항목에 맞는 쪽을 고르고, 그 해소가 in-scope 항목을 없애거나 exclusion 을 좁혀도 그렇게 하며, 해소는 `kiwi-prd` 를 통해 PRD 에 `Reason` 이 `contradiction resolved:` 로 시작하는 proposal 로 기록하고 완료 보고에 나열한다. 해소 proposal 은 확정되지 않은 채 `State` 를 바꾸지 않고, `State` 가 아니라 기록된 해소로서 효력을 가진다. 그 해소로 빠진 in-scope 항목은 `prd_items[]` 에 그 proposal 을 가리켜 `resolved` 로 적고 (a) 의 fail 로 세지 않는다. exclusion 을 좁힌 해소가 허용한 요구나 AC 는 그 exclusion 항목에 걸리지 않는 것으로 보고 (b) 로 drop 하지 않는다. kiwi-srs 가 만든 리서치 문서는 근거가 되지 못한다 — 요구를 더할 근거는 PRD 항목 인용과 `fills:` 뿐이다.
+- (b)·(c) 는 wave run 에서도 PRD 전체를 기준으로 판정한다 — exclusion 항목은 모든 wave 에 걸린다.
+
+**종료.** 라운드는 PRD 판정((a) fail 0 · `prd_items[]` 길이 일치 · exclusion 항목과 `Effect` 가 exclusion 인 확정 proposal 의 `violated` 0 · 반영된 (b) 0 · 모든 (c) 에 `fills:`)이 통과하고 kept finding 이 0 일 때만 통과한다 — 심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)은 종료 판정에 쓰지 않는다. 검증자 finding 은 증거 — 도구 진단, 실패한 검사, 서로 모순되는 두 문장의 인용 — 가 붙을 때만 keep 하고, 증거가 없으면 drop 하고 사유를 보고한다. (b) 로 drop 된 요구·AC 는 개선 단계가 SRS 에서 제거한다(§11.3). residual 이 하나라도 남으면 kiwi-srs 는 `NEEDS_USER` 로 끝난다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-residual-user-decision`). 루프의 통과 조건(통과 라운드 1회, etc 단일 워커 프로필은 3회 연속 통과)을 채우기 전에 라운드 상한에 닿으면 kiwi-srs 는 `TASK_DONE` 으로 끝내지 않고 `NEEDS_USER` 로 끝나며, 아직 fail 인 PRD 항목과 아직 열린 kept finding 을 모두 이름으로 적는다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-cap-unpassed-user-decision`). 사용자가 답하면 `kiwi-prd` 가 그 답을 `U-<n>` 으로 덧붙이고 해시를 다시 쓴다 — 범위는 사용자의 말로만 늘어난다.
+
+---
 
 신규 요구사항을 받아 **기존 코드 + 기존 speckiwi SRS**와 교차 분석하여 **4-way 분류** → **feasibility 판정** → **speckiwi MCP를 SSOT로 SRS 증분 작성·갱신**하는 스킬.
 
@@ -38,11 +63,11 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | §0.14 | **Trace intent 분리**. `add_trace_link` 에는 `trace_intent` 인자가 없다. 스키마가 받는 것은 `id` · `type` · `reference` · `relation` · `notes` · `dryRun` · `ignoreLock` 이며, 이 일곱에 없는 인자는 조용히 버려진다. intent 는 `notes` 안에 `trace_intent=<값>` 으로 적는다. Code 타입 trace entry 에만 적용 — Requirement 타입 trace_link 의 `notes` 에는 `trace_intent` 미부착. Code trace `trace_intent` enum: `verifies` (기존 코드가 statement 동작 수행) / `addition_site` (해당 위치에 구현 추가 예정) / `negative` (의도된 부재). **Dual-intent split**: 동일 file:line-range 가 두 intent 를 동시에 가지면 범위 폭이 다른 별도 entry로 분리 등록. **Status cap**: 어느 trace 라도 `trace_intent=addition_site` 잔존 시 해당 REQ 의 status 는 `planned` 상한. 라이브 모드에서 `update_status(in_progress\|implemented)` 호출 시도 → 차단 + Codex clarification gate "구현 증거가 있습니까? (코드 path:line)" |
 | §0.15 | **Fabricated AC → OQ 강제**. AC 항목에 코드 증거 없거나 사용자 prompt 에 명시 없는 구체 값(예: 400-error body shape, 특정 timeout 초)이 포함되면 AC 라인에 포함 금지 — 대신 §6 Open Questions 에 `[NEEDS-USER]` 라벨로 등재. AC는 결정 가능 명제만. **Canonical placeholder grammar**: AC 본문이 OQ 결정을 참조하면 `{{OQ-N}}` 형식만 허용. `<default per OQ-1>`, `pending decision`, `TBD` 등 자유 형식 금지 |
 | §0.16 | **Discarded/Draft 마커 정책**. kiwi-srs 는 본문 마커(strikethrough / `[DISCARDED]` / `[DRAFT]`) 적용을 skip — speckiwi `Status=discarded` + `add_completed_work` Change Notes 기록을 SSOT 로 간주. 인덱스 (`00.index.md`) `(discarded)`/`(draft)` 접미사도 speckiwi mutation 이 자동 처리 |
-| §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}|{severity}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11|HIGH")` = `a5c02377715e12f316cec087d202cb76315c734c`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
+| §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11")` = `29430d304a3a6670c054ab111dca51e5b27fed3d`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
 | §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + Codex clarification gate. 상세는 §0.G2 결정표 |
-| §0.20 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가자·QnA 라운드 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 심각도 게이트·라운드 상한·QnA 라운드 수는 불변 |
-| §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 QnA skip 의미는 유지하되 외부 모듈, scope boundary, combined conflict, `--auto`+`--qna` 상호 배타, implementability=blocked, MCP 부재, 사실 위조 게이트는 §0.G6 critical_gates[] 로 자동 우회하지 않는다. |
+| §0.20 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가자 등 평가·검증은 **단일(single) 검증 서브에이전트(verification subagent)**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 high-reasoning×1+standard×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 pass/fail 게이트·라운드 상한은 불변 |
+| §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto` 면 `kiwi-prd` 가 질문 없이 PRD 를 만드는 의미는 유지하되 외부 모듈, scope boundary, combined conflict, `--auto`+`--qna` 상호 배타, implementability=blocked, MCP 부재, 사실 위조 게이트는 §0.G6 critical_gates[] 로 자동 우회하지 않는다. |
 | §0.22 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.23 | **요구가 설계도다 — 요구가 설계를 담는다**. 구현이 다음 넷 중 하나에 의존하면 리서치 문서가 아니라 **요구 블록 안에** 적는다: (1) **측정된 사실** — 값과 함께 **어떻게 측정했는지**를 적어 읽는 이가 믿는 대신 재측정할 수 있게 한다, (2) **ground truth 결정** — 그럴듯해 보이는 다른 기준값이 있는 선택은 측정 근거와 함께 결정으로 명시한다, (3) **함정** — 구현자가 밟게 될 자리에서 이름을 붙인다, (4) **기각된 대안** — 사유와 **재개봉 조건**을 함께 적어 다음 세션이 처음부터 다시 다투거나 조용히 뒤집지 않게 한다. **담을 설계가 없는 요구는 그대로 만족한다** — 검사는 섹션이 비어 있지 않은지가 아니라 구현자가 필요로 한 것이 적혔는지다 |
 
@@ -114,6 +139,10 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 | `implementability-blocked` | Phase 3 feasibility 결과 `implementability=blocked` — Phase 4 진행 불가, 사용자 결정 필요 | §8.2 |
 | `mcp-cli-both-unavailable` | SpecKiwi MCP 부재. CLI 진단 가능 여부와 무관하게 정상 SRS read/mutation 대체 금지 | §3.0 |
 | `fact-fabrication-risk` | 존재하지 않는 함수/CVE/파일 추가 요구 거절 (§0.9) + 코드/요구사항 텍스트에 증거 없는 기능·AC 작성 (§0.4 / §0.15) — 사실 위조 | §0.9 / §0.4 / §0.15 |
+| `prd-record-tampered` | 라운드 시작·재개 때 다시 계산한 PRD 해시가 `Request SHA256` 행과 다름 — 사용자 원문 기록이 바뀌었다. `--auto` 에서도 멈추며 결정 위원회가 정리하지 못한다 | 핵심 규칙 블록 |
+| `prd-residual-user-decision` | PRD 판정에서 residual(검증자가 필요하다고 주장하지만 메우는 구멍을 대지 못한 요구나 AC)이 남음 — `NEEDS_USER` 로 끝나며 `--auto` 에서도 결정 위원회가 정하지 않는다. 범위는 사용자의 말로만 늘어난다 (FR-FLOW-205) | 핵심 규칙 블록 |
+| `prd-unapproved-user-decision` | 판정할 PRD 의 `Status` 행이 승인 값이 아니고 `--auto` PRD(`Status` 행이 `unapproved` 이고 승인 행에 `--auto` 가 적힌 PRD)도 아님 — 저작하지 않고 `NEEDS_USER` 로 끝나며 `--auto` 에서도 결정 위원회가 정하지 않는다. 사용자가 승인하지 않은 범위로 저작하지 않는다 (FR-FLOW-205) | 핵심 규칙 블록 |
+| `prd-cap-unpassed-user-decision` | 루프의 통과 조건(통과 라운드 1회, etc 단일 워커 프로필은 3회 연속 통과)을 채우기 전에 라운드 상한(`--mini`·`--loops N` 이 정한 상한 포함)에 닿음 — `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝나며 `--auto` 에서도 결정 위원회가 정하지 않는다. 아직 fail 인 PRD 항목과 열린 kept finding 이 남은 실행을 완료로 바꾸지 않는다 (FR-FLOW-205) | 핵심 규칙 블록 · §11.2 |
 
 ---
 
@@ -123,7 +152,11 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 
 - `REQ_TEXT` — 자연어 인라인 (positional)
 - `REQ_PATH` — 요구사항 파일 경로
-- 이슈 진입에서는 `kiwi-srs-research` 가 쓴 요구 진술 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 받는다. 연구 보고서 자체를 `REQ_PATH` 로 받지 않는다 — 그 문서의 자리는 §9.6 이 A/B 검증 루프의 입력으로 규정한 `--research-doc` 다.
+- 입력이 PRD 가 아니고 `PRD_PATH` 도 없으면 Phase 0.5 에서 `kiwi-prd` 가 그 입력을 `U-1` 로 삼아 PRD 를 먼저 만든다(핵심 규칙 블록). 입력이 없으면 `kiwi-prd` 가 요청부터 받는다.
+
+선택 입력 `PRD_PATH` — 판정 기준이 되는 승인된 PRD(`docs/prd/*.prd.md`). `REQ_PATH` 가 PRD 가 아닐 때(예: 오케스트레이터의 wave excerpt) 함께 받는다.
+
+- 이슈 진입에서는 `kiwi-srs-research` 가 쓴 요구 진술 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 받는다. 이 발췌본은 참고 자료이고 `U-1` 의 원천이 아니다 — `kiwi-prd` 가 `gh issue view {N} --json title,body,comments` 로 이슈 원문을 읽어 `U-1` 에 쓴다(핵심 규칙 블록). 이슈 번호는 발췌본 첫 줄 `Issue: https://github.com/{owner}/{repo}/issues/{N}` 에서 읽는다. 연구 보고서 자체를 `REQ_PATH` 로 받지 않는다 — 그 문서의 자리는 §9.6 이 A/B 검증 루프의 입력으로 규정한 `--research-doc` 다.
 
 ### 1.2 선택 입력 + 자연어 매핑
 
@@ -142,10 +175,10 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 
 **옵션 의미 (v0.11 이후 SSOT)**:
 - `--auto` 와 `--qna` 동시 명시 → ERROR ("두 옵션은 상호 배타. --auto 만 사용하십시오.").
-- `--auto` 부재 (기본) → Phase 1.5 QnA loop 활성 (단, Phase 1 `intent.json.ambiguities` 가 빈 배열이면 자동 skip).
-- `--auto` 명시 → Phase 1.5 QnA loop skip + 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *Codex clarification gate 발동 대신 차단* 으로 동작 (사용자 결정 보류, 자동 우회 아님). scope-boundary 게이트 (§0.G4) 의 차단 단위는 **그 REQ** 이며, 나머지 요구사항의 저작은 계속한다 (§6.4).
+- `--auto` 부재 (기본) → `PRD_PATH` 가 없고 입력이 PRD 가 아니면 `kiwi-prd` 가 사용자에게 물으며 PRD 를 만든다 (핵심 규칙 블록).
+- `--auto` 명시 → `kiwi-prd` 가 질문 없이 PRD 를 만든다(`Status` 행은 `unapproved`) + 외부/scope-boundary 게이트 (§0.G2/§0.G4/§0.G5) 도 *Codex clarification gate 발동 대신 차단* 으로 동작 (사용자 결정 보류, 자동 우회 아님). scope-boundary 게이트 (§0.G4) 의 차단 단위는 **그 REQ** 이며, 나머지 요구사항의 저작은 계속한다 (§6.4).
 - `--qna` 명시 → `--auto` 의 역으로 동작 (기본과 등가). stderr 에 DEPRECATED 경고 1줄.
-- **`--qna-force` (강제) ≠ `--qna` (deprecated alias)**: `--qna-force` 는 모호성이 없어 보여도 무제한 qna 루프를 **강제 진입**시키는 플래그(§5.2)이고, `--qna` 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED 경고)다. `--qna-force` 는 `--qna` 를 **접두 부분문자열**로 포함하므로 파싱을 **fail-closed 앵커 규칙**으로 고정한다: `--qna-force`(강제)는 정확히 `--qna-force` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna-force\b`. `--qna`(deprecated)는 뒤에 `-force` 가 붙지 않은 정확한 `--qna` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna(?![-\w])` (즉 `--qna-force` 를 `--qna` 로 오탐하지 않는다). **substring/prefix 매칭 금지.** **fail-closed 규약**: 위 두 정규식 중 어느 것과도 정확히 일치하지 않는 토큰 — 미인식 플래그, 단일 대시 변형(`-qna`·`-qna-force` 등), 오탈자 — 은 silent no-op 도 silent 반대 동작도 아닌 **hard-error 로 거부**하고 사용자에게 오류를 보고한 뒤 중단한다(관례 역전으로 인한 무성 오동작 원천 차단). (플래그 이름은 SRS FR-FLOW-024 가 고정하므로 변경하지 않는다.)
+- **`--qna-force` (강제) ≠ `--qna` (deprecated alias)**: `--qna-force` 는 모호성이 없어 보여도 `kiwi-prd` 의 질문 루프를 **강제 진입**시키는 플래그(`kiwi-prd` 에 그대로 넘긴다)이고, `--qna` 는 v0.11 까지의 deprecated alias(기본 동작 + stderr DEPRECATED 경고)다. `--qna-force` 는 `--qna` 를 **접두 부분문자열**로 포함하므로 파싱을 **fail-closed 앵커 규칙**으로 고정한다: `--qna-force`(강제)는 정확히 `--qna-force` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna-force\b`. `--qna`(deprecated)는 뒤에 `-force` 가 붙지 않은 정확한 `--qna` 토큰일 때만 매칭 — 정규식 `(?<![-\w])--qna(?![-\w])` (즉 `--qna-force` 를 `--qna` 로 오탐하지 않는다). **substring/prefix 매칭 금지.** **fail-closed 규약**: 위 두 정규식 중 어느 것과도 정확히 일치하지 않는 토큰 — 미인식 플래그, 단일 대시 변형(`-qna`·`-qna-force` 등), 오탈자 — 은 silent no-op 도 silent 반대 동작도 아닌 **hard-error 로 거부**하고 사용자에게 오류를 보고한 뒤 중단한다(관례 역전으로 인한 무성 오동작 원천 차단). (플래그 이름은 SRS FR-FLOW-024 가 고정하므로 변경하지 않는다.)
 
 ### 1.3 출력
 
@@ -156,7 +189,8 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
   - `classification.json` / `feasibility.json`
   - `srs_delta.json` (MCP 호출 로그 + before/after)
   - `eval_iter{N}.json` / `improvement_iter{N}.json`
-  - `qna_log.json` (--qna 시) / `rejected_findings.log`
+  - `rejected_findings.log`
+- **PRD**: `docs/prd/<YYYY-MM-DD>.<slug>.prd.md` — `kiwi-prd` 가 쓰고 kiwi-srs 는 읽기만 한다
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{req-slug}`
 - `req-slug` = 새 요구사항의 최대 3-token kebab 요약 (메인 세션이 `intent.json.summary` 에서 결정적 생성)
@@ -203,14 +237,15 @@ Codex clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제�
 
 ```
 Phase 0   : Bootstrap (preflight, TARGET 확인, summarize_target 로드)
+Phase 0.5 : PRD 확보 (PRD_PATH 가 없고 입력이 PRD 가 아니면 kiwi-prd, Phase 1 조사 전)
 Phase 1   : Pre-investigation (standard × 3 병렬: intent / code / existing-SRS)
-Phase 1.5 : QnA loop (기본 활성, --auto 시 skip, standard, reviewer dropout)
+Phase 1.5 : 요구사항 수집 리서치 (PRD 를 받은 뒤에도 요청이 막연할 때만)
 Phase 2   : Classification (standard, SCOPE 제공 + 모호성 없으면 skip)
 Phase 2.5 : Scope gate (new-scope 시 Codex clarification gate)
 Phase 3   : Feasibility (standard)
 Phase 4   : SRS write/update (high-reasoning × 1, 분류별 §9 MCP 시퀀스)
 Phase 5   : Verification (단일 현재 세션 모델 검증 서브에이전트; Max: + 독립 2차 검증 패스)
-Phase 6   : Severity gate + loop → Phase 4 또는 Phase 7
+Phase 6   : Pass/fail gate + loop → Phase 4 또는 Phase 7
 Phase 7   : Finalize (validate_spec + summarize_target + 사용자 보고)
 ```
 
@@ -262,6 +297,10 @@ dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 - `summarize_target { target: TARGET }` — 기존 REQ 총수/scope 분포
 - `list_requirements { target: TARGET }` — Phase 1 SRS reader에 전달
 - `docs/spec/00.index.md` file read — Scope Map 추출
+
+### 3.3 PRD 확보 (Phase 0.5)
+
+Phase 1 조사보다 먼저 핵심 규칙 블록의 **입력** 규칙을 적용한다. `PRD_PATH` 가 없고 입력이 PRD 가 아니면 그 입력(인라인 요청·`REQ_PATH` 문서, 이슈면 이슈 번호)을 넘겨 `kiwi-prd` 를 부르고(`--auto` · `--qna-force` 는 그대로 넘긴다), 돌려받은 PRD 경로를 이 run 의 `PRD_PATH` 로 쓴다. 그 뒤 `prd-hash` 명령이 종료 코드 0 인지 확인하고 Phase 1 로 간다.
 
 ---
 
@@ -317,49 +356,17 @@ dry-run 모드(`--dry-run`)에서도 동일 점검 적용.
 
 ---
 
-## 5. Phase 1.5 — QnA loop (기본 활성; --auto 시 skip)
+## 5. Phase 1.5 — 요구사항 수집 리서치 (막연한 요청일 때만)
 
-reviewer dropout 패턴 (snoworca-srs-qna 로직 차용, 직접 구현 — §0.8).
+질문은 이 Phase 에 없다 — 묻고 기록하는 일은 Phase 0.5 의 `kiwi-prd` 가 끝냈다.
 
-**활성화 조건**:
-- `--auto` 부재 (기본) → 본 Phase 진입
-- `--auto` 명시 → 본 Phase 전체 skip
-- `--qna` 명시 → 본 Phase 진입 + stderr DEPRECATED 경고
+### 5.1 요구사항 수집 리서치 서브에이전트 (FR-FLOW-024 AC-4)
 
-**자동 skip 조건** (활성 모드에서도 적용):
-- Phase 1 `intent.json.ambiguities` 가 빈 배열 → "질문할 모호성 0건. QnA skip." 안내 후 Phase 2 로 진행
-- Phase 1 `intent.json.semantic_equivalences` 가 모든 ambiguity 를 해소했다고 표시 → skip
+PRD 를 받은 뒤에도 리서치 문서가 없고 요청이 막연해 요구사항을 확정하기 어려우면, kiwi-srs 는 **요구사항 수집**(requirement-gathering) 리서치 **서브에이전트 3개**를 병렬 투입한다. 이 세 서브에이전트는 대상 도메인의 **아키텍처**·**알고리즘**·**구현 방안**(implementation plan)을 조사하고, 각자의 조사 결과를 `docs/research/` 아래에 리서치 문서로 **저장**한다. 저장된 리서치 문서를 확보한 뒤 kiwi-srs 는 그대로 **FR-FLOW-023** 검증/개선(A/B) 루프(§9.6)로 진행하여, 수집된 리서치 문서를 프로세스 A 입력으로 삼는다.
 
-본 QnA 루프는 유한 라운드가 아니라 **무제한 qna 루프**로 운영된다(§5.2). 각 라운드:
-1. standard QnA agent가 Phase 1 출력의 `ambiguities` + 충돌/누락 후보를 질문으로 나열
-2. 사용자 답변 → agent 재평가
-3. `satisfied=true` 면 종료
-4. 동일 질문 2회 → 사용자에게 "잔존 모호성 기록 후 진행할까?" 확인
+---
 
-산출물: `qna_log.json`.
-
-### 5.1 리서치 문서 부재 시 모호성 처리 (FR-FLOW-024 AC-1)
-
-리서치 문서가 **없을** 때(§9.6 A/B 루프의 `--research-doc` 인자·프롬프트 참조 경로가 **미 제공**된 경우), 본 Phase 는 요구사항의 **모호성**(ambiguity)을 자체 탐지한다. 이때 kiwi-srs 는 **합리적인 기본값**이 존재하는 통상적 선택지는 스스로 결정하고, **합리적 기본값이 없는** 진정한 **비표준 모호성**(genuinely non-standard ambiguity)에 대해서**만** 사용자에게 질문한다 — 표준 관행으로 해소되는 사항까지 물어 사용자를 피로하게 만들지 않는다.
-
-사용자가 내린 **결정**(답변·선택) 자체도 새로운 모호성을 낳을 수 있으므로, kiwi-srs 는 그 결정을 다시 **재검사**하여 남은 비표준 모호성이 있으면 **재질문**한다(결정 → 재검사 → 재질문 순환).
-
-### 5.2 무제한 qna 루프 + 막연한 요청 자동 트리거 (FR-FLOW-024 AC-2)
-
-기존의 유한 3/7 라운드 QnA 를 **무제한 qna 루프**(unbounded qna loop)로 대체한다 — 미해결 모호성이 남아 있는 한 라운드 상한 없이 계속 질문한다.
-
-- **막연한 요청 자동 트리거**: 요청이 충분히 **막연**(vague)하여 요구사항을 특정할 수 없으면 — 예컨대 "**게임**(game)을 하나 만들어줘"처럼 범위가 지나치게 넓은 few-shot 예시 — 별도 플래그 없이도 무제한 qna 루프를 **자동 활성**한다.
-- **`--qna-force` 강제**: `--qna-force` 플래그는 모호성이 없어 보여도 무제한 qna 루프를 **강제** 진입시킨다. v0.11 까지의 deprecated `--qna` 별칭과는 별개인 강제 플래그다(판별 앵커 규칙은 §1.2 — 정확히 `--qna-force` 토큰만 매칭하고 `--qna` 접두 부분문자열로 오탐하지 않으며, 미인식·단일 대시 변형은 fail-closed hard-error).
-- **`--auto` 억제 → 위원회 위임**: `--auto` 명시 시 대화형 qna 루프와 `--qna-force` 강제 진입을 모두 **억제**(suppress)하고, 잔여 모호성 판단을 **FR-FLOW-025** `--auto` 결정 위원회로 **위임**한다(사용자 질문 없이 위원회가 조사 후 결정).
-- **진동/반복 감지 가드**: 무제한 루프라도 동일 미해결 모호성이 반복(§5 각 라운드 step 4 의 "동일 질문 2회")되면 자동 진행하지 않고 사용자에게 "잔존 모호성 기록 후 진행할까?"를 확인한다 — 무제한이되 진동 시 사용자 호출로 보호한다(구 Max 모드의 "진동 감지 시 사용자 호출" 안전장치를 무제한 루프에 유지). 이 가드는 **대화형 루프 전용**이며 `--auto`/`--qna-force` 위원회 위임 경로(FR-FLOW-025)에는 적용하지 않는다(§5.3 사용자 종료 신호와 함께 대화형 루프의 이중 안전장치).
-
-### 5.3 비-auto 루프 종료 시 자동 결정 (FR-FLOW-024 AC-3)
-
-이 경로는 §5.2 의 `--auto`/`--qna-force` 위원회 위임과 **구별된다**. `--auto` 가 **없는** 대화형 무제한 qna 루프가 도는 도중, 사용자가 명시적으로 **종료 신호**(end-signal — 예: "이제 그만", "여기서 종료")를 보내 루프를 끝내면, kiwi-srs 는 더 이상 질문하지 않고 **남은 미해결 모호성**(remaining unresolved ambiguities)을 스스로 **자동 결정**(자동으로 결정)한다 — 각 잔여 모호성에 합리적 기본값을 적용해 결정하고 근거를 `qna_log.json` 에 기록한다. (`--auto` 초기 지정 시의 FR-FLOW-025 위원회 위임과 달리, 여기서는 대화 도중 사용자의 종료 신호가 트리거다.)
-
-### 5.4 요구사항 수집 리서치 서브에이전트 (FR-FLOW-024 AC-4)
-
-리서치 문서도 없고 요청도 막연해 자체 모호성 해소만으로 요구사항을 확정하기 어려우면, kiwi-srs 는 **요구사항 수집**(requirement-gathering) 리서치 **서브에이전트 3개**를 병렬 투입한다. 이 세 서브에이전트는 대상 도메인의 **아키텍처**·**알고리즘**·**구현 방안**(implementation plan)을 조사하고, 각자의 조사 결과를 `docs/research/` 아래에 리서치 문서로 **저장**한다. 저장된 리서치 문서를 확보한 뒤 kiwi-srs 는 그대로 **FR-FLOW-023** 검증/개선(A/B) 루프(§9.6)로 진행하여, 수집된 리서치 문서를 프로세스 A 입력으로 삼는다.
+이 리서치 문서는 kiwi-srs 가 만든 것이므로 요구를 더할 근거가 되지 못한다(핵심 규칙 블록 (c)). 방법을 고르는 참고로만 쓰고, 리서치에만 있는 요구는 PRD 항목 인용이나 `fills:` 가 없으면 (b) 로 drop 한다.
 
 ---
 
@@ -484,6 +491,6 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
 ## Extended References
 
 - Read `references/extended-workflow.md` when executing or validating
-SRS mutation sequences, evaluation, severity loop, finalization, fallback, and convergence criteria
+SRS mutation sequences, evaluation, pass/fail loop, finalization, fallback, and convergence criteria
 .
 - Keep `SKILL.md` as the core trigger and workflow map; load the reference file only after the relevant phase is reached.

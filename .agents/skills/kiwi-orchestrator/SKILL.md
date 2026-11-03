@@ -8,6 +8,18 @@ description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → �
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `high-reasoning`, `standard`, and `lightweight` map to the current Codex model and effort options available in the session.
 
+## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)
+
+intake 가 받은 요청에 PRD 경로가 없으면 조사보다 먼저 `kiwi-prd` 를 불러 승인된 PRD 를 만든다. wave 를 나눌 때 각 `waves/wave-{n}/excerpt.md` 에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다 — intake 기록(`01.intake.md`)이 요청을 요약하더라도 판정 기준은 PRD 다.
+
+`R-STEP` 으로 라우팅하면 `kiwi-tdd` 호출에도 그 PRD 경로를 `PRD_PATH` 로 넘긴다 — `kiwi-tdd` 는 step 의 acceptance 줄을 그 PRD 로 판정한 뒤에야 테스트로 옮기며, 작업 개요(`01.intake.md`)는 무엇을 만들지 정하지 않는다.
+
+설계를 동결할 때(1.d 의 run 설계와 loop D, 3.a 의 wave 설계와 loop W) 설계 항목(`[D-nnn]` · `[I-nnn]`)마다 행 끝에 근거 `← PRD-<n>` 또는 `fills: PRD-<n> / <hole|contradiction|defect> / <reason>` 을 적고, 근거가 없거나 exclusion 항목에 걸리는 설계 항목은 loop D·W 가 동결 전에 지운다. `State` 가 `rejected` 인 PRD 항목은 근거가 되지 못하므로, 거절된 항목만 가리키는 설계 항목도 지운다. 거절된 `intent` · `goal` · `in-scope` 항목은 wave 지명과 사후 검증에서도 fail 로 세지 않는다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로, `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목으로 본다 — 설계 동결과 사후 검증에서도 그렇다. 설계 항목과 PRD 판정이 어긋나면(예: 그 설계 항목에서 나온 요구를 `kiwi-srs` 가 PRD 판정으로 drop 하면) PRD 판정이 이기고, 그 설계 항목은 사후 검증(loop P · F)의 설계 항목 분모에서 빠지며 `design-gap` 으로 되돌아가지 않는다 — 빠진 id 와 그 PRD 판정은 run 보고에 적는다. 기록된 `contradiction resolved:` 해소는 `kiwi-srs` · `kiwi-tdd` 와 같은 방식으로 따른다 — 그 해소가 없앤 in-scope 항목은 wave 지명과 사후 검증에서 fail 로 세지 않고, exclusion 을 좁힌 해소가 허용한 설계 항목은 그 exclusion 항목에 걸리지 않는 것으로 보고 지우지 않는다.
+
+요청에 관한 질문에 사용자가 답하면(1.c 의 QnA, loop D 가 되돌린 `needs-decision` 질문 포함) 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다 — 답이 더한 범위는 그래야 PRD 에 근거를 갖는다.
+
+---
+
 하나의 작업 의도를 받아 **설계를 먼저 저작하고 동결한 뒤** wave 로 분해해 선언 파일에 적고, wave 마다 SRS 를(`--sds` 면 SDS 도) 저작하고, stage 계획을 공개한 뒤 **wave 하나를 워커 하나에 맡겨** 워크트리에서 실행하고, 호스트가 판정·병합·재생한 결과를 동결된 분모에 대해 검증하고, 요구를 승급시키는 오케스트레이터. 한 stage 의 wave 워커는 **기본이 병렬**이고 `--serial` 이면 하나씩이다. 모든 진행은 `./kiwi/waves.jsonl` 과 재개 카드에 영속되어 세션이 컴팩션되어도 이어진다.
 
 이 스킬은 *직접 코드를 구현하지 않는다* — 의도를 판정하고, 설계를 동결하고, 작업을 wave 로 나누고, 각 wave 를 워커의 `$kiwi-pm` 에 위임하고, 결과를 검증한다. 자체 fixer 를 두지 않는다.
@@ -170,6 +182,7 @@ Phase 0 에 만들고 **정확히 두 지점**에서만 수정한다 — Phase 1
 
 - `run_id`, `work_root`, 저널 경로, 고정된 run root, 동결된 `isolation_profile` 값(`worktree-parallel` 또는 `worktree-serial`)과 그 `isolation.reason`, **`base_branch` 와 `integration_branch`**;
 - **P.5 pin** — Preflight P.5 의 `lock` 이 돌려준 holder 넷(`owner` · `pid` · `host` · `acquiredAt`). Phase 0 의 생성 시점에 적으며, 종료 해제 앞의 대조가 이 값을 입력으로 쓴다(§3.1);
+- **`clean_code_skip`** — 사용자 요청이나 호출 인자가 빠른 처리를 요구하거나 클린 코드 원칙을 지키지 않아도 된다고 하면(`kiwi-review-fix-loop` 클린 코드 라운드 블록의 신호) Phase 0 에서 이 파일을 만들기 전에 클린 코드 검사를 건너뛸지 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다), 그 답을 생성 시점에 `true` 또는 `false` 로 적는다. `true` 면 `--skip-clean-code` 를, `false` 면 `--keep-clean-code` 를 이 run 이 부르는 모든 리뷰 hop — R-STEP 리뷰 hop(§4.5.1), 3.k 호스트 hop, 3.m 과 `verify-loop.md` §7 의 위임, run 창 종료 리뷰(§V.final-verify), 그리고 dispatch 카드로 받는 워커의 자기 창 리뷰(`parallel-waves.md` PW-6) — 의 args 에 더한다. 재개는 다시 묻지 않고 이 값을 따른다;
 - run 의 **고정 경로 규약** — `design/00.design.lock.json`, `design/constraints.json`, `design/convergence-registry.json`, `waves/waves.lock.json`, `docs/research/{work}/waves/stage-{s}/lanes.lock.json`(stage lock 은 도구 인자로 넘기고 도구는 경로를 run root 기준으로 풀므로 전체 경로로 적는다), 그리고 wave SDS 경로 `docs/sds/{run_id}-wave-{n}.sds.md`;
 - **불변 wave 순서** — 2.d 수정에서 기록. `R-STEP` 에는 없다(wave 를 나누지 않는다);
 - **`intake_autonomy` 블록** — Phase 1 끝 수정에서 기록(§5.2);
@@ -465,10 +478,10 @@ order: R-STEP → R-ORCH        첫 생존 rung 이 이긴다
 
 #### 4.5.1 `R-STEP` → `kiwi-tdd`
 
-**호출 전에 존재해야 하는 것**: 동결된 `routing/probe.json` 과 `rung = "R-STEP"` 인 `routing/route.lock.json`; intake 요약에서 결정론적으로 파생한 **40자 이하 kebab** `<task>` 이름; 1.c 에서 이미 쓴 작업 개요 문단 `docs/research/{work}/01.intake.md`; `S1.mode == "tdd"`; 그리고 **설계 문서 없음** — 1.d 는 실행되지 않았고 실행되어서도 안 된다. `kiwi-tdd` 가 자기 acceptance 줄을(`--sds` 면 자기 SDS 를) 저작하기 때문이다.
+**호출 전에 존재해야 하는 것**: 동결된 `routing/probe.json` 과 `rung = "R-STEP"` 인 `routing/route.lock.json`; intake 요약에서 결정론적으로 파생한 **40자 이하 kebab** `<task>` 이름; 1.c 에서 이미 쓴 작업 개요 문단 `docs/research/{work}/01.intake.md`; 핵심 규칙이 만든 PRD `docs/prd/{prd}.prd.md`; `S1.mode == "tdd"`; 그리고 **설계 문서 없음** — 1.d 는 실행되지 않았고 실행되어서도 안 된다. `kiwi-tdd` 가 자기 acceptance 줄을(`--sds` 면 자기 SDS 를) 저작하기 때문이다.
 
 ```
-Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--max] [--mini | --loops N] [--model <name>]" })
+Skill({ skill: "kiwi-tdd", args: "<task> PRD_PATH=docs/prd/{prd}.prd.md --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--max] [--mini | --loops N] [--model <name>]" })
 ```
 
 run 이 `--sds` 로 시작했으면 위 args 에 `--sds` 를 더한다 — `kiwi-tdd` 는 그때만 step SDS(design.md)를 쓴다.
@@ -478,7 +491,7 @@ run 이 `--sds` 로 시작했으면 위 args 에 `--sds` 를 더한다 — `kiwi
 **리뷰 hop** — 승급 여부와 무관하게, 아래 close-out 보다 **먼저** 이 step 의 커밋 창을 리뷰한다:
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--model <name>]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--model <name>] [--skip-clean-code | --keep-clean-code]" })
 ```
 
 `--close-reqs` 는 **주지 않는다** — `kiwi-tdd` 가 이미 `promote_step_requirement` 로 승급했고, 리뷰 루프의 `denominator` 는 `implemented` 요구만 담으므로 이미 승급된 step 요구는 애초에 그 안에 없고, 따라서 `scoped` 가 비어 `TASK_DONE` 이 정당하다 — 스킵이 아니라 셀 것이 없는 것이다. 창을 명시하는 이유도 같다: 범위를 주지 않으면 커밋이 끝난 깨끗한 트리에서 직전 5커밋으로 폴백한다.
@@ -513,7 +526,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 
 ```
 Skill({ skill: "kiwi-srs",
-        args: "REQ_PATH=waves/wave-{n}/excerpt.md
+        args: "REQ_PATH=waves/wave-{n}/excerpt.md PRD_PATH=docs/prd/{prd}.prd.md
                --research-doc waves/wave-{n}/design.md --research-doc waves/wave-{n}/excerpt.md
                --constraints-doc design/constraints.json TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })
 Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })   (조건부)
@@ -521,9 +534,9 @@ waves/waves.json 의 wave-{n} 항목 갱신 — requirements[] = 3.b 배정 집�
 Skill({ skill: "kiwi-sds", args: "TARGET=wave-{n} --req-filter <3.b 배정 집합> --sds-id {run_id}-wave-{n}
         --convergence-registry design/convergence-registry.json --existing-modules design-baseline.json --no-pipeline-emit
         [--auto] [--max] [--mini|--loops N] [--model <name>]" })   (--sds 일 때만)
-$kiwi-pm --req-filter <그 wave 의 requirements[]> --run-id {run_id}-wave-{n} …   (wave 의 워커가 — §10; --sds 면 --sds docs/sds/{run_id}-wave-{n}.sds.md)
+$kiwi-pm --req-filter <그 wave 의 requirements[]> --run-id {run_id}-wave-{n} --no-final …   (wave 의 워커가 — §10; --sds 면 --sds docs/sds/{run_id}-wave-{n}.sds.md)
 Skill({ skill: "kiwi-review-fix-loop", args: "--base {last_merge_commit} --head {host_tip}
-        --no-pipeline-emit [--auto] [--max] [--mini|--loops N]" })   (3.k — 병합 뒤 호스트가 만든 커밋)
+        --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--skip-clean-code | --keep-clean-code]" })   (3.k — 병합 뒤 호스트가 만든 커밋)
 ```
 
 SRS 저작의 두 호출은 호스트가 wave 하나씩 직렬로 하고(`parallel-waves.md` PW-1), `--sds` 면 SDS 작성은 wave 마다 독립 서브에이전트가 병렬로 한다 — `--serial` 이면 하나씩(`parallel-waves.md §2`). `kiwi-sds` 가 크기 상한 때문에 SDS 를 조각으로 나눠도(`--sds`) wave 하나 = lane 하나 = 워커 하나이고, 그 워커가 조각 순서대로 `kiwi-pm` 을 한 번씩 부른다(`parallel-waves.md §3`). 각 wave 의 워커는 자기 창을 `--close-reqs` 없이 스스로 리뷰한다(§10). 호스트의 `$kiwi-review-fix-loop` 교정 hop 은 **병합 뒤 호스트가 만든 커밋**에 대해서만 실행하며 **`--commit-lane-work` 도 `--close-reqs` 도 전달하지 않는다** — 워커의 창을 호스트가 다시 리뷰하지 않는다.
@@ -1252,7 +1265,7 @@ recovery class **idempotent-by-key**. Phase 4 의 loop F 라운드. 분모는 �
 **run 창 종료 리뷰** (§4.5 가 선언한 의무의 R-ORCH 쪽 이행) — loop F 가 pass 를 기록하기 **전에** run 전체 커밋 창을 1회 리뷰한다. wave 별 홉의 분모는 그 wave 창 하나이므로, 어느 wave 창에도 온전히 들어가지 않는 결함은 여기서만 보인다:
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {P.4 pin} [--auto] [--max] [--mini|--loops N]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {P.4 pin} [--auto] [--max] [--mini|--loops N] [--skip-clean-code | --keep-clean-code]" })
 ```
 
 `--close-reqs` 는 주지 않는다 — run 스코프에서 그것은 모든 wave target 의 status 를 한 호출로 뒤집는 bulk-finalize 다. `--regression-baseline` 은 P.4 가 run 시작에 고정한 값을 준다: 주지 않으면 자식이 run 끝에서 스스로 baseline 을 잡아 wave 1..N 이 만든 실패를 전부 "기존"으로 승격시킨다.

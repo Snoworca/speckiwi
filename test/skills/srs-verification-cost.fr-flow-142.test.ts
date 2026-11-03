@@ -38,12 +38,15 @@ function processALine(text: string): string {
   return text.split(/\r?\n/).find((line) => line.startsWith("**프로세스 A — 검증.**")) ?? "";
 }
 
-describe("FR-FLOW-142 AC-1 — the loop exits on severity, not on the absence of findings", () => {
-  it.each(CARRIERS)("%s names a severity floor as the exit", (_label, relPath) => {
+// @req FR-FLOW-205 AC-8 — the floor FR-FLOW-142 AC-1 requires is now evidence, not a severity:
+// an improvement is kept only with a tool diagnostic, a failing check or two contradicting quotes.
+describe("FR-FLOW-142 AC-1 — the loop exits on an evidence floor, not on the absence of findings", () => {
+  it.each(CARRIERS)("%s names a kept-evidence floor as the exit", (_label, relPath) => {
     const line = processALine(body(relPath));
     expect(line, "the process A paragraph was not found").not.toBe("");
-    expect(line, "the exit condition names no severity floor").toMatch(/CRITICAL/);
-    expect(line, "the exit condition names no severity floor").toMatch(/HIGH/);
+    expect(line, "the exit condition names no kept floor").toContain("kept 개선사항이 없으면");
+    expect(line, "the exit condition names no evidence").toContain("증거(도구 진단·실패한 검사·서로 모순되는 두 문장의 인용)");
+    expect(line, "the exit condition still names a severity floor").not.toMatch(/CRITICAL|HIGH|MEDIUM/);
   });
 
   it.each(CARRIERS)("%s no longer exits only when nothing at all is reported", (_label, relPath) => {
@@ -81,11 +84,13 @@ describe("FR-FLOW-142 AC-2/AC-4 — the fan-out is not multiplied by document co
 
 describe("FR-FLOW-142 AC-3 — the bar on the requirements themselves is untouched", () => {
   it.each(["skills/claude/kiwi-srs/SKILL.md", "skills/codex/kiwi-srs/SKILL.md"])(
-    "%s keeps its requirement-level severity gate",
+    "%s keeps its requirement-level gate",
     (relPath) => {
       // This requirement removes rounds spent comparing prose against prose. An acceptance criterion
       // is a contract and keeps the full policy; a change that relaxed it would be a different one.
-      expect(body(relPath), "the requirement-level severity gate was relaxed too").toMatch(/CRITICAL=0\s*\+\s*HIGH=0/);
+      // @req FR-FLOW-205 AC-8 — that gate is now pass/fail (PRD verdicts plus zero kept findings).
+      expect(body(relPath), "the requirement-level gate was relaxed too").toContain("pass/fail 게이트(PRD 판정 통과 + 증거가 붙은 kept finding 0)");
+      expect(body(relPath), "the severity gate is still stated").not.toMatch(/CRITICAL=0\s*\+\s*HIGH=0/);
     }
   );
 

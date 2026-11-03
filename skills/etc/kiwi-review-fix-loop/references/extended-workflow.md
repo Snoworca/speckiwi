@@ -18,7 +18,7 @@ Write under `docs/analysis/kiwi-review-fix-loop-{run-id}/`:
 - `closed_reqs.json` and `mcp_call_log.jsonl` when `--close-reqs` is active
 - `report.md`
 
-Use `.kiwi/sessions/{run-id}/state.json` for resumable state.
+Use `.kiwi/sessions/{run-id}/state.json` for resumable state. Record the clean-code skip answer in `state.json` as `clean_code_skip` (`true` when the user confirmed the skip or `--auto` skipped it, `false` when there was no signal or the user declined) in Phase 0, as soon as the answer is given and before any further phase runs; a resumed run follows the recorded value instead of asking again (SKILL.md 클린 코드 라운드 block). Record the clean-code round number in `state.json` as `clean_code_round` when each round starts, and each `dismissed` finding (principle, location, reason) in `clean_code_dismissed` as soon as the classifier marks it; a resumed run continues the count from the recorded round, never past 3, and still passes the recorded `dismissed` findings to the reviewer without counting them (SKILL.md 클린 코드 라운드 block).
 
 ## Mode And Scope
 
@@ -62,6 +62,8 @@ The reviewer also returns `coverage_rows[]`, one row per file of
 three comparisons the loop runs over those anchors are in the SKILL.md
 리뷰 커버리지 분모 section; do not restate them here.
 
+The reviewer also returns `clean_code[]`, one entry per clean-code finding with `principle` and `location`; these entries are not findings of the keep/drop verdict (SKILL.md 클린 코드 라운드 block). Each later clean-code round passes the reviewer the findings already `dismissed`; a re-raised one (same principle, same location) is not a finding of that round, and a `dismissed` finding is never reported `unresolved` (same block).
+
 Classification must account for every finding exactly once:
 
 | Class | Action |
@@ -78,12 +80,14 @@ labels are not used to route findings (FR-FLOW-203).
 
 Behavioral fixes require a regression test. Style-only, naming-only, formatting,
 comment, and doc-only fixes may be TDD-exempt.
+Clean-code round fixes are TDD-exempt as well, and each is kept only when the run's regression test command passes (SKILL.md 클린 코드 라운드 block).
 
 Exit criteria:
 
 - no kept finding remains (SKILL.md Keep/Drop 종료 판정 section)
 - the preservation scan over the fixer diff found no violation (SKILL.md
   보존 스캔 section); a detection is CRITICAL and halts through its gate
+  (a clean-code fix that trips it is reverted and marked `unresolved` instead, without halting; SKILL.md 클린 코드 라운드 block)
 - the review coverage comparison passed (SKILL.md 리뷰 커버리지 분모 section);
   a round whose anchors do not check out is invalid, spends the cap and
   records no pass, and two consecutive invalid rounds halt at
@@ -101,6 +105,8 @@ Repeated failure gates:
 | fixer retries reach 3 for one finding | user decision |
 | same finding remains after 2 rechecks | user decision |
 | same regression file fails twice | user decision |
+
+A reverted clean-code fix does not count toward these gates (SKILL.md 클린 코드 라운드 block).
 
 ## PR Response
 

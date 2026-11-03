@@ -97,8 +97,10 @@ const RUN_SCOPED_TEMP =
 // generic 종료/end token near a recurring "Process A" cannot false-satisfy the assertion.
 const TERMINATES_CLEAN =
   /no\s+(?:more\s+)?improvements?[^\n]{0,60}(?:terminate|stop|halt|end|complete|exit)|(?:terminate|stop|halt|exit)[^\n]{0,50}no\s+(?:more\s+)?improvements?|(?:zero|0)\s+improvements?[^\n]{0,50}(?:terminate|stop|halt|end|complete|exit)|개선(?:사항|점)?[^\n]{0,8}(?:이\s*)?없[^\n]{0,40}(?:종료|중단|끝|완료)|개선(?:사항|점)?[^\n]{0,6}0\s*건[^\n]{0,30}(?:종료|중단|끝|완료)|(?:종료|중단|완료)[^\n]{0,30}개선(?:사항|점)?[^\n]{0,8}(?:이\s*)?없/i;
-/** The severity floor FR-FLOW-142 put in place of the exhaustion exit. */
+/** The severity floor FR-FLOW-142 put in place of the exhaustion exit; FR-FLOW-205 AC-8 retired it. */
 const SEVERITY_FLOOR = /CRITICAL[^\n]{0,20}HIGH|HIGH[^\n]{0,20}CRITICAL/;
+/** The evidence floor FR-FLOW-205 AC-8 puts in its place: only an improvement carrying evidence is kept. */
+const KEPT_FLOOR = /kept 개선사항이 없으면[^\n]*증거\(도구 진단·실패한 검사·서로 모순되는 두 문장의 인용\)/;
 const APPLY = /appl(?:y|ies|ied)|반영|적용/i;
 // Korean gap widened so an inline recipient ("제어권을 Process A로 반환") does not false-red the claude
 // variant; the surrounding assertion also independently requires PROCESS_A in the same window.
@@ -197,7 +199,9 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
         `FR-FLOW-023 AC-2: ${variant} Process A must terminate when no improvements are found`,
       ).toBe(true);
 
-      // AC-2 amended by FR-FLOW-142: the floor is a SEVERITY, not the exhaustion of findings.
+      // AC-2 amended by FR-FLOW-142: the floor is not the exhaustion of findings. FR-FLOW-205 AC-8
+      // (@req FR-FLOW-205 AC-8) then moved that floor from a severity to evidence: the loop ends when
+      // no improvement carrying a tool diagnostic, a failing check or two contradicting quotes remains.
       //
       // TERMINATES_CLEAN alone cannot see that change — it matches "개선…없…종료", which the amended
       // sentence still contains, so reverting §9.6 to unconditional exhaustion left this case green.
@@ -206,9 +210,13 @@ describe("FR-FLOW-023 — kiwi-srs research-document-driven SRS verify/improve (
       const clause = text.split(/\r?\n/).filter((line) => TERMINATES_CLEAN.test(line));
       expect(clause, "no line states the termination condition").not.toEqual([]);
       expect(
-        clause.every((line) => SEVERITY_FLOOR.test(line)),
-        `FR-FLOW-023 AC-2: ${variant} the termination must be conditioned on CRITICAL/HIGH, not on the exhaustion of findings`,
+        clause.every((line) => KEPT_FLOOR.test(line)),
+        `FR-FLOW-023 AC-2: ${variant} the termination must be conditioned on kept (evidenced) improvements, not on the exhaustion of findings`,
       ).toBe(true);
+      expect(
+        clause.some((line) => SEVERITY_FLOOR.test(line)),
+        `FR-FLOW-023 AC-2: ${variant} the termination still names a severity floor (FR-FLOW-205 AC-8)`,
+      ).toBe(false);
     });
 
     it(`FR-FLOW-023 red :: AC-3 [${variant}] — Process B applies improvements and returns control, bounded by a 5/8 divergence guard`, () => {
@@ -351,6 +359,18 @@ function srsSkillText(variant: Variant): string {
   );
 }
 
+// @req FR-FLOW-204 — FR-FLOW-204 supersedes FR-FLOW-024 AC-1..AC-3: the question loop moved out of
+// kiwi-srs Phase 1.5 into kiwi-prd. Those three ACs are therefore asserted on kiwi-prd, with the same
+// patterns, so the behaviour they guarded is still guarded where it now lives. AC-4 (the
+// requirement-gathering research subagents) stays in kiwi-srs and keeps reading srsSkillText().
+function prdSkillText(variant: Variant): string {
+  try {
+    return readFileSync(path.join(REPO_ROOT, "skills", variant, "kiwi-prd", "SKILL.md"), "utf8");
+  } catch {
+    return "";
+  }
+}
+
 // --- AC-1: no-research-document ambiguity, ask-only-non-standard, re-check ------
 const AMBIGUITY = /ambiguit|모호/i;
 // The no-research-document branch (distinct from the FR-FLOW-023 research intake).
@@ -401,8 +421,8 @@ const PROCEED_LOOP =
 
 describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna, auto-decision, requirement-gathering research", () => {
   for (const variant of VARIANTS) {
-    it(`FR-FLOW-024 red :: AC-1 [${variant}] — no-research-document ambiguity: ask only genuinely non-standard, re-check decisions`, () => {
-      const text = srsSkillText(variant);
+    it(`FR-FLOW-024 (moved to kiwi-prd by FR-FLOW-204) :: AC-1 [${variant}] — no-research-document ambiguity: ask only genuinely non-standard, re-check decisions`, () => {
+      const text = prdSkillText(variant);
 
       // Primary red driver: the no-research-document ambiguity branch is net-new.
       expect(
@@ -426,8 +446,8 @@ describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna
       ).toBe(true);
     });
 
-    it(`FR-FLOW-024 red :: AC-2 [${variant}] — vague-request auto-trigger, unbounded qna, --qna-force, --auto suppresses to FR-FLOW-025 committee`, () => {
-      const text = srsSkillText(variant);
+    it(`FR-FLOW-024 (moved to kiwi-prd by FR-FLOW-204) :: AC-2 [${variant}] — vague-request auto-trigger, unbounded qna, --qna-force, --auto suppresses to FR-FLOW-025 committee`, () => {
+      const text = prdSkillText(variant);
 
       // The unbounded qna loop replaces the prior bounded 3/7-round QnA.
       expect(
@@ -464,8 +484,8 @@ describe("FR-FLOW-024 — kiwi-srs no-research-document ambiguity, unbounded qna
       ).toBe(true);
     });
 
-    it(`FR-FLOW-024 red :: AC-3 [${variant}] — non-auto loop ends on user end-signal, then auto-decides remaining ambiguities`, () => {
-      const text = srsSkillText(variant);
+    it(`FR-FLOW-024 (moved to kiwi-prd by FR-FLOW-204) :: AC-3 [${variant}] — non-auto loop ends on user end-signal, then auto-decides remaining ambiguities`, () => {
+      const text = prdSkillText(variant);
 
       // Primary red driver: auto-decision mode is net-new.
       expect(

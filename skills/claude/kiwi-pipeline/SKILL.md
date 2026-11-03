@@ -42,6 +42,8 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.10 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. `--auto` / `--auto --run` 의 본 스킬 고유 spawn 시맨틱(§0.4 / §0.5 / §0.9 / §6.1~§6.5) 은 보존되며, SSOT 는 게이트 결정 채널만 정규화한다. 본 스킬의 `critical_gates[]` 는 §0.AG (아래) 참조 |
 | §0.11 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.12 | **SDS 는 opt-in**. 사이클이 `kiwi-sds` 를 부르고 SDS 로 구현하는 것은 사용자가 `--sds` 를 주거나(`--from=sds` · 사용자가 준 `--sds-id` 포함, §1.2) 말로 요청할 때뿐이다 — opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. `docs/sds/` 에 SDS 가 있다는 것만으로는 요청이 아니다 (§2.5.5) |
+| §0.13 | **클린 코드 답은 멈춘 사이클을 넘어 이어진다**: 빠른 처리 신호로 받은 클린 코드 답은 자기 이벤트 `notes` 에 `clean_code_skip=true` 또는 `clean_code_skip=false` 로 남고, 리뷰 홉 전에 멈춘 사이클을 잇는 호출(`--from=<stage>` · 자식 `--resume` 뒤 T1 추천)은 그 값을 읽어 다시 묻지 않고 같은 플래그를 리뷰 홉에 넘긴다 (§2.5.3) |
+| §0.14 | **클린 코드 답은 한 단계만 부르는 자식에도 간다**: 작업 입력 없는 단일 단계 `--run` 이나 T1 추천으로 리뷰 홉에 이르는 자식(`kiwi-pm` · 단독 `kiwi-coder` · `kiwi-tdd` · `kiwi-review-fix-loop`)을 부를 때도 §0.13 의 답을 `--skip-clean-code` 또는 `--keep-clean-code` 로 넘긴다 (§7) |
 | §7 참고 | `--mini`/`--loops N` 를 spawn 하는 모든 kiwi 하위 스킬에 전파 (loop-option.md §6) |
 
 ### §0.AG — `--auto` critical_gates[] 선언
@@ -171,6 +173,7 @@ SRS 가 이미 저작되어 있으면 `--from=feasibility` 또는 `--from=sds` �
 - `--auto` 위원회 자동 결정 + 완주 규약: §6.6.
 - `--max` 하위 스킬 전파: §7.1.
 - 연구 문서 `/kiwi-srs` passthrough: §7.2.
+- 클린 코드 건너뛰기: 빠른 처리 신호(`kiwi-review-fix-loop` 클린 코드 라운드 블록)가 있으면 Phase 0 에서 한 번만 묻고(`--auto` 면 묻지 않고 건너뛴다), 사용자가 확인했으면 사이클의 리뷰 홉(§2.5.4 1번 · §2.5.5 3번)과 자체 리뷰 홉을 도는 `kiwi-tdd`(§2.8.2)에 `--skip-clean-code` 를, 거절했으면 `--keep-clean-code` 를 넘긴다. 이 스킬에는 재개 상태 파일이 없으므로 그 답은 리뷰 홉이 자기 `state.json` 의 `clean_code_skip` 에 기록하고, 이 호출이 끝에 쓰는 `pipeline.jsonl` 이벤트의 `notes` 에도 `clean_code_skip=true` 또는 `clean_code_skip=false` 로 적는다 — 사이클이 리뷰 홉 전에 멈춰도 이 이벤트는 쓰인다(§8.2). 리뷰 홉 전에 멈춘 사이클을 잇는 호출 — `--from=<stage>` 진입, 또는 자식 `--resume` 뒤 T1 추천을 따르는 호출 — 은 리뷰 홉을 부르기 전에 저널에서 가장 최근의 `kiwi-pipeline` 이벤트를 읽고, 그 이벤트가 리뷰 홉 전 중단을 적었고 `notes` 에 `clean_code_skip` 값이 있으면 다시 묻지 않고 기록된 답을 따라 같은 플래그를 넘기며, 자기 이벤트 `notes` 에도 같은 값을 적는다. 그런 값이 없으면 이 호출이 받은 신호로 위 규칙을 따른다.
 
 ### 2.5.4 사이클 끝 — 코드 리뷰 홉과 테스트 충분성 확인 (FR-FLOW-186 AC-4 · FR-FLOW-193)
 
@@ -237,7 +240,7 @@ GitHub 이슈 번호(github issue number, "이슈 #123", "이슈 번호")가 진
 
 이슈 본문은 `gh issue view {N} --json title,body,comments` 로 읽는다. 저장소에서 같은 일을 하는 다른 자리도 같은 필드 목록을 쓰므로, 여기에 다른 필드를 적으면 같은 이슈가 스킬마다 다른 내용으로 읽힌다.
 
-`kiwi-srs-research` 가 끝나면 그 연구가 따로 쓴 요구 진술 발췌본을 `kiwi-srs` 로 넘긴다. 넘기는 인자는 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 이고, 연구 보고서 자체는 `--research-doc` 자리에 함께 넘겨 `kiwi-srs` §9.6 의 A/B 검증 루프를 돌린다. 즉 발췌본이 무엇을 만들지를 정하고 보고서가 그것을 검증한다. 이슈 본문을 `REQ_TEXT` 로 인라인하지 않는다 — `REQ_TEXT` 는 positional 이라 본문의 줄바꿈과 따옴표와 코드 블록이 인자 자리에 그대로 들어가고, 길이 상한도 정해져 있지 않다.
+`kiwi-srs-research` 가 끝나면 그 연구가 따로 쓴 요구 진술 발췌본을 `kiwi-srs` 로 넘긴다. 넘기는 인자는 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 이고, 연구 보고서 자체는 `--research-doc` 자리에 함께 넘겨 `kiwi-srs` §9.6 의 A/B 검증 루프를 돌린다. 즉 발췌본이 무엇을 만들지를 정하고 보고서가 그것을 검증한다. 다만 무엇을 만들지의 범위는 `kiwi-srs` 가 `kiwi-prd` 로 이슈 원문에서 만든 PRD 가 최종으로 정하고, 발췌본은 그 PRD 의 초안이자 참고 자료다 — `U-1` 은 이슈 원문이다. 이슈 본문을 `REQ_TEXT` 로 인라인하지 않는다 — `REQ_TEXT` 는 positional 이라 본문의 줄바꿈과 따옴표와 코드 블록이 인자 자리에 그대로 들어가고, 길이 상한도 정해져 있지 않다.
 
 이 흐름에서 등록되는 요구는 그 이슈의 링크를 요구 블록에 남긴다. 등록 호출에 어떤 필드로 싣는지와 값 형식은 `kiwi-srs` §9.2 의 new-feature 절이 정한다 — 값은 `https://github.com/{owner}/{repo}/issues/{N}` 형식의 URL 이고, 번호만 적으면 `speckiwi links check` 가 `SRS-W004` 로 경고한다.
 
@@ -399,7 +402,7 @@ tail -n $N "$PIPE_FILE"
 `Skill` 도구로 선택된 kiwi-* 스킬 호출:
 
 ```
-Skill({ skill: "kiwi-<chosen>", args: "<inherited or empty>" })
+Skill({ skill: "kiwi-<chosen>", args: "<inherited or empty> [--skip-clean-code | --keep-clean-code]" })
 ```
 
 추가 인자 인계:
@@ -407,6 +410,7 @@ Skill({ skill: "kiwi-<chosen>", args: "<inherited or empty>" })
 - `--model <name>` (kiwi-pipeline 본 스킬에는 정의 안 됨; 그러나 사용자가 명시한 경우 자식에 전파)
 - 선택 스킬이 `kiwi-sds` 이고 직전 skill 이 `kiwi-pm` 또는 standalone `kiwi-coder` 이며 그 이벤트의 `artifacts.sds_files` 가 비어 있지 않으면(`--sds` 실행) `--close <그 이벤트의 run_id — 곧 sds-id>` 를 붙인다(승급 전 옮기기). 붙이지 않으면 `kiwi-sds` 가 작성 모드로 돌아 새 SDS 를 쓴다.
 - 선택 스킬이 `kiwi-review-fix-loop` 이고 직전 이벤트가 `kiwi-pm` 또는 standalone `kiwi-coder` 뒤의 `kiwi-sds --close`(옮기기) 실행이면 `--close-reqs` 를 부착한다. `--auto` 활성 시 `--close-reqs --auto` 로 호출한다. 그때 그 SDS 의 요구 ID(`check_sds` 요약 — 조각이면 조각들 `Requirements` 의 합집합)를 요구 필터 인자로 함께 넘긴다(§2.5.4 3번). 직전 skill 이 `kiwi-pm` · `kiwi-coder` 자신이면 붙이지 않는다(§5.2).
+- 선택 스킬이 리뷰 홉에 이르는 자식(`kiwi-pm` · 단독 `kiwi-coder` · `kiwi-tdd` · `kiwi-review-fix-loop`)이면 — 작업 입력 없는 단일 단계 `--run` 이나 T1 추천으로 spawn 해도 — 클린 코드 답(§2.5.3 이 저널에서 읽은 `clean_code_skip`, 없으면 이 호출이 받은 답)이 건너뛰기면 `--skip-clean-code` 를, 유지면 `--keep-clean-code` 를 붙인다. 답이 없으면 둘 다 붙이지 않는다 — 신호를 받은 자식이 스스로 한 번 묻는다.
 - `--sds` 가 없으면 `--req-filter` 를 `kiwi-pm` 과 리뷰 홉 `kiwi-review-fix-loop` 에(그 테스트 충분성 범위, `kiwi-review-fix-loop` §6.5.1) 넘기고, 어느 자식에도 `--sds` · `--sds-id` 를 붙이지 않는다 — 재진입도 마찬가지다(§7.5).
 - `--sds` 면 `kiwi-tdd`(§2.8.2) 에 `--sds` 를, `kiwi-pm` 에 SDS 파일마다 `--sds <그 파일>` 을, 리뷰 홉에 `--sds <그 파일>`(SDS 가 하나일 때) 을 넘긴다(§2.5.5).
 - `--sds` 사이클에서 `--req-filter` 와 `--sds-id` 는 함께 `kiwi-sds` 에 넘기고, `--req-filter` 는 리뷰 홉 `kiwi-review-fix-loop` 에도(그 테스트 충분성 범위, `kiwi-review-fix-loop` §6.5.1) 넘기며, `kiwi-pm` 에는 `--sds-id` 가 가리키는 `--sds docs/sds/{sds-id}.sds.md` 만 넘긴다 — `kiwi-sds` 는 `--req-filter` 로 SDS 범위를 좁히고 `--sds-id` 의 SDS 가 이미 `agreed` 면 다시 쓰지 않고 그대로 쓰며(`kiwi-sds` §2.1), `kiwi-pm` 은 그 경로를 고정해 다른 SDS 를 추정하지 않는다. `--req-filter` 만 흘리면 `kiwi-sds` 가 새 id 로 SDS 를 새로 쓰고, `--sds-id` 만 흘리면 범위가 좁혀지지 않는다 (§7.5)

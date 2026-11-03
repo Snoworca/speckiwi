@@ -292,8 +292,10 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       // the five-member committee for its business-decision gate. The earlier pins said the child
       // ignores `--auto` and received no `--max`; both were false, and the second silently shrank
       // that committee to three on this rung. The assertions now pin the opposite direction.
+      // @req FR-FLOW-204 AC-10 — contract growth, not a weakening: the call now also hands kiwi-tdd the
+      // run's PRD, which it judges the step's acceptance lines against before they become tests.
       expect(body).toContain(
-        'Skill({ skill: "kiwi-tdd", args: "<task> --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--max] [--mini | --loops N] [--model <name>]" })'
+        'Skill({ skill: "kiwi-tdd", args: "<task> PRD_PATH=docs/prd/{prd}.prd.md --review-hop-owned-by-parent --no-pipeline-emit [--auto] [--max] [--mini | --loops N] [--model <name>]" })'
       );
       expect(
         tiedTogether(body, /`--auto` 와 `--max` 는 \*\*`kiwi-tdd` 자신에게도 전달한다\*\*/, [/auto-option\.md/, /§0\.AG/, /\*\*활성\*\*이다/, /5인/], 500)

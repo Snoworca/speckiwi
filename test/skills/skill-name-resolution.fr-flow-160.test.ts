@@ -148,7 +148,10 @@ describe("FR-FLOW-160 AC-2 — the exemptions are checked, not merely consulted"
 });
 
 describe("FR-FLOW-160 AC-3 — the three fictional owners are gone", () => {
-  it.each(["kiwi-reviewer", "kiwi-prd", "kiwi-srs-reviewer"])("%s appears nowhere in any rendering", (name) => {
+  // `kiwi-prd` was the third fictional owner. FR-FLOW-204 later shipped a real `kiwi-prd` skill in
+  // every rendering, so the name is no longer fictional and AC-1 above now holds it: every rendering
+  // that names `kiwi-prd` must carry the directory. The two names below remain fictional.
+  it.each(["kiwi-reviewer", "kiwi-srs-reviewer"])("%s appears nowhere in any rendering", (name) => {
     const where = OCCURRENCES.filter((occurrence) => occurrence.token === name).map((occurrence) => occurrence.relPath);
     expect(where.sort(), `\`${name}\` is still named as an owner. It has never existed as a directory in any rendering.`).toEqual([]);
   });

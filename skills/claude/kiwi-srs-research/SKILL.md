@@ -167,7 +167,7 @@ JSON 구조가 아닌 평문 prompt 일 때만:
 
 ### 1.3 출력 — standalone 모드
 
-- **이슈 진입 발췌본**: 이슈에서 출발한 실행은 `docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 를 함께 쓴다. `issue-excerpt.md` 는 이슈 본문과 연구 결과에서 뽑아낸 요구 진술만 담고 연구 요약이나 목차를 담지 않는다 — 그렇게 되면 `kiwi-srs` 가 만든 요구가 연구 문서의 목차를 닮는다. 이 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 `kiwi-srs` 에 넘기고, 연구 보고서 `report.md` 는 `--research-doc` 자리에 따로 넘긴다.
+- **이슈 진입 발췌본**: 이슈에서 출발한 실행은 `docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 를 함께 쓴다. `issue-excerpt.md` 는 이슈 본문과 연구 결과에서 뽑아낸 요구 진술만 담고 연구 요약이나 목차를 담지 않는다 — 그렇게 되면 `kiwi-srs` 가 만든 요구가 연구 문서의 목차를 닮는다. 발췌본의 첫 줄에는 `Issue: https://github.com/{owner}/{repo}/issues/{N}` 를 적는다 — `kiwi-prd` 가 이 줄로 이슈 원문을 읽어 `U-1` 을 쓰고, 발췌본은 그 PRD 의 초안이자 참고 자료로 남는다. 이 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 `kiwi-srs` 에 넘기고, 연구 보고서 `report.md` 는 `--research-doc` 자리에 따로 넘긴다.
 - **speckiwi mutation**: `append_section_note { id: REQ_ID, section: "research", text: ..., mode: "append" }` (다중 호출 시 mode 동일 유지)
 - **분석 로그**: `docs/analysis/kiwi-srs-research-{run-id}/`
   - `triage.json` / `run-mode.json`

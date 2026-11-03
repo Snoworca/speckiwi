@@ -115,7 +115,7 @@ Skill({ skill: "kiwi-sds", args: "TARGET=wave-{n} --req-filter <배정 집합> -
 
 **PW-4 · stage 계획 동결과 공개 — 호스트.** §3 의 명령으로 lock 을 쓰고, 그 lock 을 명시 pathspec 으로 커밋한 뒤(`commit-run-artifacts`) `orchestrate freeze lanes --body <그 lock> --document <그 lock> --head <그 커밋 sha> --run-id {run_id} --out {artifact_root}waves/stage-{s}/lanes.freeze.json` 으로 동결한다(`freeze-lane-plan`) — 동결은 커밋된 문서를 git blob 으로 고정하므로 커밋이 먼저다. lock 과 `{artifact_root}waves/stage-{s}/partition.md` 를 공개하고 `review-partition` 결과를 기록한다.
 
-**PW-5 · dispatch — 워커, stage 의 wave 전부를 한 번에.** dispatch 직전에 호스트는 자기가 만든 `docs/spec` · `docs/sds` 변경을 전부 커밋해 두 경로를 깨끗하게 하고, run root 에서 `git status --porcelain docs/spec docs/sds` 가 비어 있음을 기록한다 — 비어 있지 않으면 dispatch 하지 않는다. 이미 바뀐 파일을 다시 고친 쓰기는 status 줄이 같아 비교에 보이지 않기 때문이다. 워커 입력은 대화가 아니라 파일 `{artifact_root}waves/stage-{s}/{laneId}.dispatch.json` 로 준다 — 서브에이전트 반환이 비는 일이 반복됐다. 카드는 `run_id` · `wave` · 단위 id `{run_id}-wave-{n}` · `stage` · `laneId` · `target` · 배정 집합(`requirements[]`) · (`--sds` 면) `sds_paths`(lock 의 그 lane `sds` 값 — 선언 항목 `sds[]` 순서) · `base_sha` · 브랜치 `kiwi/orch/{run_id}/{laneId}` · `write_set`(lock 의 그 lane `writeSet`) · `verification_cmd` · 회귀 기준선 pin · 큐와 매니페스트 경로 · 금지 목록 · 전파 플래그(`--auto` `--max` `--mini`/`--loops N` `--model` `--auto-integration` `--auto-cost-warning` `--drive`)를 싣는다. 런타임이 허락하면 `Agent` 를 워크트리 격리로 띄운다(`dispatch-lane`).
+**PW-5 · dispatch — 워커, stage 의 wave 전부를 한 번에.** dispatch 직전에 호스트는 자기가 만든 `docs/spec` · `docs/sds` 변경을 전부 커밋해 두 경로를 깨끗하게 하고, run root 에서 `git status --porcelain docs/spec docs/sds` 가 비어 있음을 기록한다 — 비어 있지 않으면 dispatch 하지 않는다. 이미 바뀐 파일을 다시 고친 쓰기는 status 줄이 같아 비교에 보이지 않기 때문이다. 워커 입력은 대화가 아니라 파일 `{artifact_root}waves/stage-{s}/{laneId}.dispatch.json` 로 준다 — 서브에이전트 반환이 비는 일이 반복됐다. 카드는 `run_id` · `wave` · 단위 id `{run_id}-wave-{n}` · `stage` · `laneId` · `target` · 배정 집합(`requirements[]`) · (`--sds` 면) `sds_paths`(lock 의 그 lane `sds` 값 — 선언 항목 `sds[]` 순서) · `base_sha` · 브랜치 `kiwi/orch/{run_id}/{laneId}` · `write_set`(lock 의 그 lane `writeSet`) · `verification_cmd` · 회귀 기준선 pin · 큐와 매니페스트 경로 · 금지 목록 · 전파 플래그(`--auto` `--max` `--mini`/`--loops N` `--model` `--auto-integration` `--auto-cost-warning` `--drive` `--skip-clean-code` `--keep-clean-code`)를 싣는다. 런타임이 허락하면 `Agent` 를 워크트리 격리로 띄운다(`dispatch-lane`).
 
 `git worktree list --porcelain` 이 그 lane 을 `locked … (pid N)` 로 보고하면 그 워커는 살아 있을 수 있다(FR-FLOW-118: 살아 있을 수 있는 워커는 다시 dispatch 하지 않는다) — 그 lane 을 다시 dispatch 하지 않고 `git worktree unlock` 도 하지 않으며, critical 게이트 `lane-worker-possibly-live` 로 멈춘다(`--auto` 가 결정하지 않는다 — `NEEDS_USER`). 보고에는 워크트리 경로, pid N, 생존 확인 힌트(Windows `tasklist /FI "PID eq N"`, POSIX `kill -0 N`)를 적고, pid N 이 어느 프로세스인지는 확정되지 않았으며 WSL 이나 다른 namespace 의 pid 는 죽은 것처럼 보일 수 있다고 덧붙인다. 다시 dispatch 하거나 잠금을 푸는 것은 사용자의 답이 있을 때만이다.
 
@@ -136,10 +136,10 @@ Skill({ skill: "kiwi-sds", args: "TARGET=wave-{n} --req-filter <배정 집합> -
 
    ```
    Skill({ skill: "kiwi-review-fix-loop", args: "--base <base_sha> --head HEAD --req-filter <배정 집합>
-           [--sds <sds_path>] --no-pipeline-emit [--auto] [--max] [--mini|--loops N]" })
+           [--sds <sds_path>] --no-pipeline-emit [--auto] [--max] [--mini|--loops N] [--skip-clean-code | --keep-clean-code]" })
    ```
 
-   고친 것은 쓰기 집합 pathspec 으로 커밋한다. 리뷰는 조각 수와 관계없이 워커의 창 전체에 한 번 돈다 — `--sds` 는 `--sds` run 에서 SDS 파일이 하나일 때만 넘긴다.
+   고친 것은 쓰기 집합 pathspec 으로 커밋한다. 리뷰는 조각 수와 관계없이 워커의 창 전체에 한 번 돈다 — `--sds` 는 `--sds` run 에서 SDS 파일이 하나일 때만 넘긴다. 호출자가 실행 상태에 클린 코드 건너뛰기를 확인으로 기록했으면 dispatch 카드의 전파 플래그에 `--skip-clean-code` 가, 건너뛰지 않기로 기록했으면 `--keep-clean-code` 가 실리고, 워커는 위 args 에 그것을 더한다 — 워커는 사용자 요청을 보지 못하므로 빠른 처리 신호를 스스로 판정하거나 묻지 않고, `--skip-clean-code` 가 없으면 클린 코드 라운드를 돈다(`kiwi-review-fix-loop` 클린 코드 라운드 블록).
 6. 테스트 충분성 확인은 따로 한 번 더 돌지 않는다 — 위 리뷰가 `--req-filter`(`--sds` 면 `--sds` 도)로 범위를 받았으므로 그 리뷰의 마지막 단계가 wave 범위의 이 확인이다(`test-sufficiency.md`). `--sds` run 에서 조각으로 나뉘었으면 리뷰 뒤에 조각마다 그 조각의 `Requirements` ID 와 `--sds <그 조각>` 으로 `test-sufficiency.md` 를 한 번씩 돈다. 확인은 **워커의 워크트리**를 읽는다 — `test-sufficiency.md` §3 1번의 워크트리 규칙이다. 결과는 매니페스트의 `test_sufficiency` 에 싣는다.
 7. 매니페스트를 쓰고 돌아온다: `{branch, head_sha, commits[], deferred_queue, reports[], red_evidence[], review_outcome, intentionally_empty, design_refuted[], out_of_lease_paths[], test_sufficiency}`. `review_outcome` 은 5 단계 리뷰의 반환(`TASK_DONE` · `NEEDS_USER` · `FAILED`)과 잔여 CRITICAL/HIGH 수다. `/kiwi-pm` 이 커밋을 하나도 만들지 않은 wave 에서 워커는 `intentionally_empty` 선언 — `{sds_id, reason}`, reason 은 20자 이상 — 을 그 `/kiwi-pm` 실행의 `docs/analysis/kiwi-pm-…` 번들에 `intentionally-empty.json` 으로 쓰고 매니페스트에 같은 값을 싣는다. 호스트가 판정에 쓰는 것은 수확한 번들의 사본이다. `red_evidence[]` 는 red 단계의 **기대 실패 서명**이다 — 구현 전에 실패한 테스트마다 `{test_id, failure}`(테스트 식별자와 실패 메시지 요약). run 당 커밋이 하나라 커밋 순서로는 테스트가 먼저였음을 보일 수 없으므로(FR-FLOW-115 AC-2), red 증거는 이 필드에만 남는다.
 
@@ -172,10 +172,10 @@ run root 의 git status --porcelain docs/spec docs/sds 가 dispatch 전과 같�
 
 ```
 Skill({ skill: "kiwi-review-fix-loop", args: "--base <마지막 병합 커밋> --head <호스트 tip> --no-pipeline-emit
-        [--auto] [--max] [--mini|--loops N]" })
+        [--auto] [--max] [--mini|--loops N] [--skip-clean-code | --keep-clean-code]" })
 ```
 
-`--commit-lane-work` 도 `--close-reqs` 도 주지 않는다. 호스트가 만든 커밋이 없으면 창이 비고 `not-applicable-empty-window` 다.
+`--commit-lane-work` 도 `--close-reqs` 도 주지 않는다. 호출자가 클린 코드 건너뛰기를 확인으로 기록한 run 이면 위 args 에 `--skip-clean-code` 를, 건너뛰지 않기로 기록한 run 이면 `--keep-clean-code` 를 더한다 — PW-6 5단계와 같다. 호스트가 만든 커밋이 없으면 창이 비고 `not-applicable-empty-window` 다.
 
 부르기 전에 `git diff --name-only <마지막 병합 커밋>..<호스트 tip>` 을 `kiwi-review-fix-loop` §11 의 파일 부류 표로 거른다. 코드 파일이 하나도 남지 않으면 — 수렴 레시피·재생·인덱스 동기화가 만든 `docs/spec/` · 인덱스 · README · 스킬 미러 커밋뿐이면 — hop 을 부르지 않고 `no-host-code-commits`(호스트 코드 커밋 없음)를 그 stage 마감을 기록하는 저널 줄의 `notes` 와 최종 보고에 적는다. 그 스킬은 코드 전용이라 불러도 `empty-code-scope` 로 멈출 뿐이다. 워커의 창은 그 워커가 리뷰했고, run 창 종료 리뷰가 run 전체를 본다. 코드 파일이 하나라도 있으면 위 호출을 그대로 돈다.
 

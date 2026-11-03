@@ -198,7 +198,8 @@ const ARGUMENT_MENTION = new RegExp(
 const HOP_SUPPRESSED = new RegExp(
   // The particle is part of the vocabulary: `홉을` alone missed "Phase 5.5 의 홉은 돌리지 않는다",
   // an inversion written in another section, and it stayed green in all four renderings.
-  String.raw`홉[은는이가을를]?[*_\s]*(?:돌리지|돌지|실행하지|수행하지)[*_\s]*(?:않|말)|건너뛰|건너뛴|건너뛸|건너뜀|억제|생략하|생략한|\bskip(?:s|ped|ping)?\b|\bsuppress(?:es|ing|ed)?\b|\b(?:does not|do not|never|will not|cannot) runs?\b`,
+  // `--skip-clean-code` is the name of the clean-code answer the hop call carries (FR-FLOW-206 AC-5), not a skip of the hop.
+  String.raw`홉[은는이가을를]?[*_\s]*(?:돌리지|돌지|실행하지|수행하지)[*_\s]*(?:않|말)|건너뛰|건너뛴|건너뛸|건너뜀|억제|생략하|생략한|\bskip(?:s|ped|ping)?\b(?!-clean-code)|\bsuppress(?:es|ing|ed)?\b|\b(?:does not|do not|never|will not|cannot) runs?\b`,
   "gi"
 );
 

@@ -70,6 +70,8 @@ const SKILL_DIRECTORIES = [
   "kiwi-orchestrator",
   "kiwi-pipeline",
   "kiwi-pm",
+  // @req FR-FLOW-204 AC-8 — the PRD skill ships in every rendering and in the mirror.
+  "kiwi-prd",
   "kiwi-review-fix-loop",
   "kiwi-sds",
   "kiwi-srs",
@@ -337,6 +339,17 @@ const ALLOWED_LIFECYCLE_PROSE: Array<[string, RegExp]> = [["proposed", /^\s+chan
  * constant an exception that has to be named rather than one granted by accident.
  */
 const ALLOWED_LIFECYCLE_SPELLINGS = ["APPROVED", "OBSOLETE"] as const;
+
+/**
+ * The PRD's own state machine, which FR-FLOW-204 fixes: a PRD item's `State` is one of `confirmed` ·
+ * `proposed` · `rejected` (AC-2) and a PRD's `Status` row is `unapproved` until the user approves it
+ * (AC-5). Those words are the vocabulary of kiwi-prd's input record, not of the requirement
+ * lifecycle, so they are owned by the files of the kiwi-prd skill directory and by nothing else:
+ * kiwi-srs and kiwi-orchestrator speak about the PRD without naming them, and `proposed` written
+ * anywhere outside kiwi-prd still fails here. Scoped by directory rather than by sentence shape so the
+ * exemption cannot reach a requirement document or another skill.
+ */
+const PRD_OWNED_WORDS = { directory: "/kiwi-prd/", words: ["proposed", "approved"] } as const;
 
 /**
  * A decision-table column whose header NAMES one of the two axes. `THEN (stability)` in
@@ -2354,9 +2367,10 @@ function nearMissViolations(files: string[]): string[] {
  * deleted: the tool axis anchors on a tool name and this one needs no anchor at all, so a sentence
  * naming `approved` with no call beside it is read here and nowhere else.
  */
-function forbiddenLifecycleHits(text: string): Array<{ line: number; excerpt: string }> {
+function forbiddenLifecycleHits(text: string, owned: readonly string[] = []): Array<{ line: number; excerpt: string }> {
   const hits: Array<{ line: number; excerpt: string }> = [];
   for (const word of FORBIDDEN_LIFECYCLE_WORDS) {
+    if (owned.includes(word)) continue;
     const allowed = ALLOWED_LIFECYCLE_PROSE.filter(([name]) => name === word).map(([, rule]) => rule);
     // Case-insensitive: a value written `Proposed` reaches an agent exactly as `proposed` does, and
     // outside a slot shape nothing else reads it. The spellings another machine owns are named in
@@ -3053,7 +3067,9 @@ describe("FR-FLOW-154 AC-1 — every slot names a value the code defines", () =>
       // shape still tells an agent what to send. Identifier fragments (`proposed_rung`) and path
       // segments (`outputs/proposed-plan/`) are excluded by the boundaries.
       const stray = corpusFiles(rendering).flatMap((file) =>
-        forbiddenLifecycleHits(readCorpus(file)).map((hit) => `${file}:${hit.line}  ${hit.excerpt}`)
+        forbiddenLifecycleHits(readCorpus(file), file.includes(PRD_OWNED_WORDS.directory) ? PRD_OWNED_WORDS.words : []).map(
+          (hit) => `${file}:${hit.line}  ${hit.excerpt}`
+        )
       );
       expect(stray).toEqual([]);
     });

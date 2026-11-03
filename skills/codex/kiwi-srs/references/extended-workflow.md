@@ -13,8 +13,8 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 10.2 검증 축 (10개)
 - 10.3 출력 스키마
 - 10.4 토폴로지
-- 11. Phase 6 — Severity gate + loop
-- 11.1 심각도
+- 11. Phase 6 — Pass/fail gate + loop
+- 11.1 keep / drop
 - 11.2 종료 조건
 - 11.3 개선 라우팅 (Improvement agent, high-reasoning)
 - 11.4 사실 위조 거절 (§0.9)
@@ -38,6 +38,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 ### 9.1 작성자 컨텍스트
 
 작성자 high-reasoning 서브에이전트에게 전달:
+- PRD 경로(요약 금지) — 요구마다 Rationale 에 인용한 PRD 항목(`AC-n ← PRD-m`)이나 `fills:` 근거를 적는다(SKILL.md 핵심 규칙 블록)
 - Phase 1/2/3 산출물
 - `existing_srs_context.json` (관련 REQ 전체 내용)
 - 신규 REQ 초안 (Phase 2의 proposed_*)
@@ -146,7 +147,9 @@ speckiwi 보장 사항:
 
 이 루프는 두 개의 독립 서브에이전트 — **프로세스 A**(검증)와 **프로세스 B**(적용) — 가 번갈아 도는 A/B 구조다.
 
-**프로세스 A — 검증.** 프로세스 A 는 리서치 문서를 이미 작성된 SRS 와 대조하여 다음을 보고한다: (i) 리서치에는 있으나 SRS 에 **누락된 요구**사항, (ii) **잘못 작성**된(요구 의도와 어긋나게 기술된) 부정확 요구사항, (iii) 각 요구사항의 현재 아키텍처상 **구현 가능성**(feasibility) — feasibility-policy-schema-v1 의 인라인 feasibility 휴리스틱을 재사용한다(새 dual-mode 인터페이스 없음). 또한 프로세스 A 는 제안된 SRS 변경이 **기존 제품 기능**을 **회귀**(손상)시키는지 플래그한다. 프로세스 A 는 **개선사항 문서**를 run-scoped **임시 디렉터리**(실행 단위 임시 경로, run-id 로 키된 OS temp 경로)에 기록한다. 프로세스 A 가 **CRITICAL·HIGH 개선사항이 없으면** 루프를 **종료**한다 — 잔여 MEDIUM·LOW 는 종료를 막지 않고 보고만 한다. 리서치 문서는 미검증 작업 노트(`FR-FLOW-137`)이므로, 어떤 등급의 finding 도 0 이 될 때까지 도는 종료 조건은 아무도 세우지 않은 기준으로 수렴하는 것이며 실제로는 언제나 발산 가드까지 돈다.
+**프로세스 A — 검증.** 프로세스 A 는 리서치 문서를 이미 작성된 SRS 와 대조하여 다음을 보고한다: (i) 리서치에는 있으나 SRS 에 **누락된 요구**사항, (ii) **잘못 작성**된(요구 의도와 어긋나게 기술된) 부정확 요구사항, (iii) 각 요구사항의 현재 아키텍처상 **구현 가능성**(feasibility) — feasibility-policy-schema-v1 의 인라인 feasibility 휴리스틱을 재사용한다(새 dual-mode 인터페이스 없음). 또한 프로세스 A 는 제안된 SRS 변경이 **기존 제품 기능**을 **회귀**(손상)시키는지 플래그한다. 프로세스 A 는 **개선사항 문서**를 run-scoped **임시 디렉터리**(실행 단위 임시 경로, run-id 로 키된 OS temp 경로)에 기록한다. 프로세스 A 가 **kept 개선사항이 없으면** 루프를 **종료**한다 — 개선사항은 증거(도구 진단·실패한 검사·서로 모순되는 두 문장의 인용)가 붙을 때만 keep 하고, 증거 없는 개선사항은 drop 하여 종료를 막지 않고 보고만 한다. 리서치 문서는 미검증 작업 노트(`FR-FLOW-137`)이므로, 어떤 finding 도 0 이 될 때까지 도는 종료 조건은 아무도 세우지 않은 기준으로 수렴하는 것이며 실제로는 언제나 발산 가드까지 돈다.
+
+**리서치에만 있는 요구는 근거가 없다.** 프로세스 A 가 "리서치에는 있으나 SRS 에 없다"고 보고한 요구도 PRD 항목 인용이나 `fills:` 가 없으면 핵심 규칙 블록의 (b) 로 drop 한다. kiwi-srs 가 만든 리서치 문서(SKILL.md §5.1)는 근거가 되지 못하고, 사용자가 넘긴 문서는 `kiwi-prd` 가 그 경로와 sha256 을 `U` 블록에 적은 뒤에만 PRD 항목의 출처가 된다.
 
 **리서치 문서는 고치지 않는다.** 프로세스 A 는 리서치 문서를 **입력으로 읽을 뿐**이며, 대조에서 나온 지적을 그 문서에 반영하지 않는다 — 반영은 SRS 쪽에만 한다.
 
@@ -169,6 +172,7 @@ speckiwi 보장 사항:
 
 **허용 — 평가자가 보는 사실 입력**:
 - 원본 `REQ_TEXT`/`REQ_PATH` 내용
+- PRD 경로(`REQ_PATH` 또는 `PRD_PATH`) — 요약하지 않고 경로로 넘긴다. 평가자는 파일을 직접 읽고 핵심 규칙 블록의 판정을 `prd_items[]` · `srs_items[]` 에 적는다
 - `intent.json.summary` + `intent.json.ambiguities` 만
 - `existing_srs_context.json.candidate_matches[]`
 - `classification.json.classification` (라벨만) + `affected_existing_reqs[]`
@@ -203,29 +207,11 @@ speckiwi 보장 사항:
    - (d) **타입/제약 자가 모순**: `type=functional` 인데 statement가 "성능"만 기술, `priority=critical` 인데 rationale 이 "nice-to-have"
    - (e) **trace ↔ statement 모순**: trace 가 가리키는 코드 동작이 statement 와 정반대 (코드 1초 timeout, statement 무한 대기)
 
-   Severity:
-   - (b)/(c)/(e) → **CRITICAL** (자체 모순; 검증 불가능)
-   - (a) 다수 / (d) → **HIGH**
-   - (a) 단일 어휘 / 경미한 wording → **MEDIUM**
+   판정 (keep / drop):
+   - (b)/(c)/(e) → 서로 모순되는 두 문장(또는 trace 가 가리키는 코드 줄과 statement)을 인용하면 **keep**, 인용하지 못하면 drop
+   - (a)/(d) → **drop** (사유와 함께 보고) — 단 statement 나 AC 의 `{{OQ-N}}` 자리표시가 §6 에 없거나, §6 의 `[NEEDS-USER]` OQ 를 아무 요구도 가리키지 않으면 그 대조가 실패한 검사이므로 **keep**
 
-   **HIGH inflation guard** — 평가자 finding 출력 시 다음 필드 모두 필수:
-   - `vague_terms: [string, ...]` — 검출 모호 어휘
-   - `linked_oq: ["OQ-2", ...]` — 명시적으로 연결된 [NEEDS-USER] OQ id
-
-   **모호 어휘 keyword set** (정규식 기반 일차 검출):
-   ```
-   적절한|빠른|빠르게|적당한|충분한|user-friendly|사용자 친화적|consistent|일관된|chosen|선택된|relevant|관련된|적당히|reasonable|합리적
-   appropriate|fast|adequate|sufficient|seamless|smoothly|effective|효율적|user 친화
-   ```
-
-   강등 조건 (모두 만족 시 HIGH → MEDIUM):
-   1. `linked_oq.length ≥ 1`
-   2. REQ statement 또는 AC 라인이 placeholder `{{OQ-N}}` 사용
-   3. 해당 OQ entry 가 §6 에 실제 등재 (bidirectionality)
-
-   강등 불가: keyword 매칭 있으나 OQ 연결 없거나 placeholder 미사용 → HIGH 유지.
-
-10. **Golden rule violation (§0.G1)** — speckiwi MCP mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 흔적 검출. `srs_delta.json.scope_doc_edits` 또는 운영 로그에서 mutation 직후 동일 path `apply_patch` manual edit = **CRITICAL**. 예외: §0.G1 표의 허용 행만.
+10. **Golden rule violation (§0.G1)** — speckiwi MCP mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 흔적 검출. `srs_delta.json.scope_doc_edits` 또는 운영 로그에서 mutation 직후 동일 path `apply_patch` manual edit = **keep** (mutation 로그와 git diff 대조가 증거). 예외: §0.G1 표의 허용 행만.
 
 ### 10.3 출력 스키마
 
@@ -236,22 +222,27 @@ speckiwi 보장 사항:
   "findings": [
     {
       "id": "{axis}-{iter}-{seq}",
-      "finding_hash": "sha1(f\"{req_id or '_'}|{axis}|{evidence_path or '_'}|{severity}\")",
-      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "finding_hash": "sha1(f\"{req_id or '_'}|{axis}|{evidence_path or '_'}\")",
+      "disposition": "keep|drop",
+      "evidence": { "kind": "tool-diagnostic|failing-check|contradicting-quotes|none", "detail": "명령과 출력 | 검사 결과 | file:line 두 인용" },
       "axis": "classification|conflict|trace|ac|scope|delta|feasibility|mcp_srsmd|internal_coherence|golden_rule",
       "req_id": "FR-TODO-004 | null",
       "evidence_path": "src/...:L45-67 | null",
       "description": "...",
-      "suggested_action": "fix_via_mcp|reclassify|discard|escalate",
-      "vague_terms": [],
-      "linked_oq": []
+      "suggested_action": "fix_via_mcp|reclassify|discard|escalate"
     }
   ],
-  "summary": { "CRITICAL": N, "HIGH": N, "MEDIUM": N, "LOW": N }
+  "prd_items": [
+    { "id": "PRD-1", "kind": "intent|user|goal|in-scope|exclusion|proposal", "verdict": "accepted|fail|respected|violated|other-wave|not-applicable|resolved", "refs": ["FR-X-001#AC-2"], "note": "..." }
+  ],
+  "srs_items": [
+    { "id": "FR-X-001 | FR-X-001#AC-2", "verdict": "grounded|fills|drop|residual", "basis": "PRD-4 | fills: PRD-4 / hole / ...", "note": "..." }
+  ],
+  "summary": { "kept": N, "dropped": N }
 }
 ```
 
-메인이 병합 (동일 `finding_hash` MAX severity, OR 합집합).
+메인이 병합 (동일 `finding_hash` 는 하나로 합치고 증거가 붙은 쪽을 keep, OR 합집합).
 
 ### 10.4 토폴로지
 
@@ -264,35 +255,37 @@ speckiwi 보장 사항:
 
 ---
 
-## 11. Phase 6 — Severity gate + loop
+## 11. Phase 6 — Pass/fail gate + loop
 
-### 11.1 심각도
+### 11.1 keep / drop
 
-| Level | 정의 |
-|---|---|
-| **CRITICAL** | 신규 REQ가 verified/stable REQ와 명백히 모순; 분류 명백히 틀림; 필수 MCP 호출 누락; REQ-ID 중복; trace path 비존재; REQ 자체 내부 모순(axis 9 b/c/e); 황금률 위반 (axis 10) |
-| **HIGH** | feasibility 근거 없음; AC 검증 불가; 신규 REQ가 기존과 사실상 동일한데 update 아님; trace 부재 (코드 증거 있음); update인데 Change Notes diff 없음; REQ 본문 모호 어휘 다수 또는 타입/제약 자가 모순 (axis 9 a다수/d) |
-| **MEDIUM** | 분류 rationale 약함; trace 약함 (file-only); scope 추정 근거 약함; REQ 모호 (비모순); priority 미설정 |
-| **LOW** | 제목 스타일; tag 불일치; Change Notes 포맷; 미미한 wording |
+finding 은 증거가 붙을 때만 keep 한다(핵심 규칙 블록 **종료**). 심각도 라벨은 쓰지 않는다.
+
+| 처분 | 증거 | 예 |
+|---|---|---|
+| **keep** | 도구 진단 — `validate_spec` · `links check` 가 이번 변경으로 새로 낸 진단 | REQ-ID 중복, trace path 비존재 |
+| **keep** | 실패한 검사 — 입력만 있으면 답이 하나로 정해지는 대조 | 필수 MCP 호출 누락(`srs_delta.json` ↔ §9.2), 황금률 위반(axis 10), conflict 인데 `conflicts_with` 없음, update 인데 supersede·Change Notes 없음, `{{OQ-N}}` ↔ §6 불일치 |
+| **keep** | 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e) |
+| **drop** | 증거 없음 — 사유와 함께 보고만 한다 | 분류 rationale 약함, 모호 어휘, 제목·tag·Change Notes 형식, wording |
 
 ### 11.2 종료 조건
 
 #### Normal
-- CRITICAL = 0 AND HIGH = 0 → 통과 (즉시 Phase 7)
+- PRD 판정 통과(핵심 규칙 블록) AND kept finding = 0 → 통과 (즉시 Phase 7)
 - 미충족 → Phase 4 재spawn (개선 agent로 라우팅)
 - 최대 **5회**
-- 진동: 동일 `finding_hash` 3회 연속 → 사용자 에스컬레이션
-- MEDIUM/LOW는 보고만, 블록 안 함
+- 루프의 통과 조건(통과 라운드 1회, etc 단일 워커 프로필은 3회 연속 통과)을 채우기 전에 라운드 상한(`--mini`·`--loops N` 이 정한 상한 포함)에 닿으면 통과가 아니다 — `TASK_DONE` 으로 끝내지 않고 `NEEDS_USER` 로 끝나며, 아직 fail 인 PRD 항목과 아직 열린 kept finding 을 모두 이름으로 완료 보고에 적는다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-cap-unpassed-user-decision`, 핵심 규칙 블록). Max 도 같다.
+- 진동: 같은 `finding_hash` 의 kept finding 이 3회 연속 → 사용자 에스컬레이션
+- drop 한 finding 은 사유와 함께 보고만, 블록 안 함
 
 #### Max
-- 2회 연속 `findings.filter(s ∈ {CRITICAL, HIGH, MEDIUM}).length === 0` → 통과
-- 첫 iter PASS여도 다음 iter도 PASS 필요
+- 통과 조건은 Normal 과 같다 — `--max` 는 독립 2차 검증 패스로 검증 강도만 올리고 연속 통과를 요구하지 않는다.
 - 최대 **15회**
-- 진동: 동일 `finding_hash` 2회 연속 → 사용자 에스컬레이션
+- 진동: 같은 `finding_hash` 의 kept finding 이 2회 연속 → 사용자 에스컬레이션
 
 ### 11.3 개선 라우팅 (Improvement agent, high-reasoning)
 
-CRITICAL/HIGH 우선, MEDIUM 후순위 (Max 한정). 처리:
+kept finding 만 고친다 — drop 한 finding 은 고치지 않는다. 처리:
 
 - **classification 축**: 메인이 Phase 2 복귀 결정. 사용자 확인.
 - **trace/ac/scope/delta/feasibility/mcp_srsmd**: 개선 agent가 §9 MCP 보강
@@ -302,6 +295,7 @@ CRITICAL/HIGH 우선, MEDIUM 후순위 (Max 한정). 처리:
   - status 변경 → `update_status`
   - statement 변경 필요 → 신규 `add_requirement` + 기존 `update_status(discarded)` (SRS-MD §11.4)
 - **golden_rule 축**: 작성자 재spawn, mutation only 강제
+- **PRD 판정 (b) drop**: 개선 단계가 drop 된 요구·AC 를 SRS 에서 제거한다 — 이번 실행이 추가한 요구는 `update_status(discarded)` 로, 이번 실행이 더한 AC 는 그 AC 를 뺀 목록의 `replace_acceptance_criteria` 로 지우고, 이번 실행이 바꾼 기존 AC 는 바꾸기 전 문장으로 되돌린다.
 
 산출물: `improvement_iter{N}.json`.
 
@@ -325,7 +319,7 @@ CRITICAL/HIGH 우선, MEDIUM 후순위 (Max 한정). 처리:
 공식 workflow tools 가 모두 실패한 degraded mode 에서만 raw `./kiwi/pipeline.jsonl` append 를 허용한다. 이때 사용자 보고와 event notes 에 capturing tool diagnostics, affected artifact paths, active target, follow-up requirement or candidate ID 를 반드시 포함한다.
 
 - `skill`: `"kiwi-srs"`
-- `status`: 정상 종료 = `TASK_DONE`; 사용자 결정 보류로 종료 = `NEEDS_USER`; 실패 = `FAILED`; dry-run = `DRY_RUN`
+- `status`: 정상 종료 = `TASK_DONE`; 사용자 결정 보류로 종료 = `NEEDS_USER`(PRD 판정 residual 이 남은 경우 포함); 루프의 통과 조건(통과 라운드 1회, etc 단일 워커 프로필은 3회 연속 통과)을 채우기 전에 라운드 상한에 닿아 종료 = `NEEDS_USER`(§11.2, `TASK_DONE` 아님, `--auto` 에서도 critical gate `prd-cap-unpassed-user-decision`); 실패 = `FAILED`; dry-run = `DRY_RUN`
 - `next_hint`: 분류 결과 + 신규 REQ stability 기준 — 보통 `"kiwi-srs-feasibility"`. conflict/draft 잔존 시 `null` (사용자 결정 우선)
 - `req_ids`: 본 호출에서 신규/갱신한 REQ-ID 배열
 - `artifacts.spec_files`: 갱신된 SRS Markdown 경로
@@ -345,7 +339,8 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 - 영향 받은 기존 REQ: [{ id, status_before, status_after }, ...]
 - Feasibility: {implementability} / {product_fit}
 - 평가 루프: {N} iter
-- 잔존 finding: CRITICAL {0} / HIGH {0} / MEDIUM {n} / LOW {n}
+- finding: kept {n} / drop {n}(사유 목록)
+- PRD: {path} (`Status` 행 값 그대로) — (a) fail {n} / drop {n}(사유 목록) / residual {n}(목록) / 모순 해소 {n}(`contradiction resolved:` proposal 목록)
 - validate_spec: PASS / FAIL
 
 ### MCP 호출 로그
@@ -373,7 +368,7 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 
 | 우선 | IF (조건) | THEN (권고) | 근거 |
 |---|---|---|---|
-| A | 잔존 finding 에 CRITICAL/HIGH > 0 또는 `validate_spec: FAIL` | "수렴 미달 — 평가 loop 재개 또는 사용자 결정 후 재실행 필요" | §11.2 수렴 기준 |
+| A | kept finding > 0, PRD 판정 (a) fail > 0 또는 `validate_spec: FAIL` | "수렴 미달 — 평가 loop 재개 또는 사용자 결정 후 재실행 필요" | §11.2 수렴 기준 |
 | A | Unresolved user_required OQ ≥ 1 | "{N}건 OQ 미해결로 `planned → in_progress` 차단. OQ 표 참조 후 답변 제공" | §0.G3 trace 보호 |
 | A | §0.G2 외부 모듈 감지 + 사용자 미결정 | "외부 모듈 변경 신호 감지. 작업장 분리 또는 cwd 한정 결정 필요" | §0.G2 |
 | B | 분류 = `conflict` 이면서 기존 REQ {X} 의 status ≠ `verified` | "기존 REQ {X} 는 `draft` 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
@@ -422,8 +417,7 @@ they are not normal fallback mutation paths.
 
 - `validate_spec` PASS
 - Normal: 루프 ≤ 5 iter; Max: ≤ 15 iter
-- Normal 종료: CRITICAL = 0 ∧ HIGH = 0
-- Max 종료: 2 consec iter 에서 CRITICAL/HIGH/MEDIUM 합산 = 0
+- 종료: PRD 판정 통과 ∧ kept finding = 0 (Normal·Max 공통)
 - update 분류 시 discarded REQ에 NEW-ID 참조 명시
 - 신규 REQ trace path 실존 확인
 
@@ -435,6 +429,6 @@ they are not normal fallback mutation paths.
 - conflict 시 자동 discard 금지 — `draft` demote + 사용자 결정
 - update 시 기존 REQ는 `discarded` (재사용 금지)
 - Phase 1 분석가 결론은 평가자에게 전달 금지 (§0.2)
-- 잔존 모호성은 `qna_log.json` 명시 기록 후 진행
+- 잔존 모호성은 `kiwi-prd` 가 PRD 의 proposal 로 기록한 뒤 진행
 - `/snoworca-*` 호출 절대 금지 (§0.8)
-- 검증자 출력은 파일(`eval_iter{N}.json`)로 저장, 메인에는 summary count + top 3 CRITICAL/HIGH만 로드 (컨텍스트 보호)
+- 검증자 출력은 파일(`eval_iter{N}.json`)로 저장, 메인에는 summary count + kept finding 상위 3개만 로드 (컨텍스트 보호)

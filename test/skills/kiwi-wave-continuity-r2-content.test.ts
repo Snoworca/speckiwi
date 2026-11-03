@@ -254,7 +254,15 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "auto-qna-mutual-exclusion",
     "implementability-blocked",
     "mcp-cli-both-unavailable",
-    "fact-fabrication-risk"
+    "fact-fabrication-risk",
+    // @req FR-FLOW-205 AC-2 — a PRD whose recomputed hash differs from `Request SHA256` halts, --auto too.
+    "prd-record-tampered",
+    // @req FR-FLOW-205 AC-7 — a PRD-verdict residual ends NEEDS_USER; --auto's committee does not settle it.
+    "prd-residual-user-decision",
+    // @req FR-FLOW-205 AC-1 — a PRD that is neither approved nor an --auto PRD ends NEEDS_USER, --auto too.
+    "prd-unapproved-user-decision",
+    // @req FR-FLOW-205 AC-8 — the round cap reached before a passing round ends NEEDS_USER, --auto too.
+    "prd-cap-unpassed-user-decision"
   ],
   // FR-FLOW-061 AC-3 retired in 4.0.0: kiwi-planner is removed from every rendering (FR-FLOW-184 AC-2),
   // so no planner gate set remains to compare. kiwi-sds is the skill that took its place in the chain.

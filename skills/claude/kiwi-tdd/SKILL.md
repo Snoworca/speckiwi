@@ -9,6 +9,12 @@ tdd work-mode에서 step 하나를 **acceptance 선행 TDD First 사이클**로 
 
 근거 요구: FR-FLOW-037 · FR-FLOW-196 (acceptance 계약 FR-PARSE-042, SDS 표준 FR-FLOW-036, 게이트 IR-CLI-072 / FR-NODE-072 / FR-NODE-074, 합성 FR-NODE-073).
 
+## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-204 AC-10 AC-12)
+
+이 블록은 아래 본문보다 앞선다. 판정할 PRD 는 `PRD_PATH` 로 받은 PRD 이고, 없으면 입력이 가리키는 `docs/prd/` 의 PRD 다. 둘 다 없으면 Phase 2 보다 먼저 `kiwi-prd` 를 불러 입력(작업 개요·연구 문서·이슈)을 `U-1` 의 원천으로 PRD 를 만들고 그 PRD 로 판정한다 — PRD 없이 acceptance 줄을 쓰는 경로는 없다. `--auto` 는 `kiwi-prd` 에 그대로 넘긴다. `Status` 행이 승인 값이 아닌 PRD 로는 판정하지 않고 `NEEDS_USER` 로 끝난다 — `--auto` 에서도 그렇게 끝나며 결정 위원회가 정하지 않는다(critical gate `prd-unapproved-user-decision`). 예외는 `kiwi-prd` 가 `--auto` 로 만든 PRD(`Status` 행이 `unapproved` 이고 승인 행에 `--auto` 가 적힌 PRD) 하나이며, 그 PRD 로 판정했으면 완료 보고에 `Status` 행 값을 그대로 싣는다.
+
+Phase 2 에서 쓴 acceptance 줄은 Phase 3 에서 테스트로 옮기기 전에 그 PRD 로 판정한다. 줄마다 근거를 intent.md 의 설명 문단에 `AC-<n> ← PRD-<m>` 또는 `AC-<n> fills: PRD-<m> / <hole|contradiction|defect> / <reason>` 으로 적는다. (a) `intent` · `goal` · `in-scope` 항목을 근거로 인용한 줄이 없거나 그 항목과 반대로 말하는 줄이 있으면 fail 이고, 줄을 고쳐 다시 판정해 통과하기 전에는 Phase 3 으로 가지 않는다. `State` 가 `rejected` 인 항목은 이 fail 검사에서 빠진다. `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목처럼 이 fail 검사를 받는다. (b) 근거가 없거나 exclusion 항목에 걸리는 줄은 지우고 사유를 보고한다 — 필요하다는 주장이 메우는 구멍을 대지 못하면 지우지 않고 `NEEDS_USER` 로 멈춘다 — `--auto` 에서도 멈추며 결정 위원회가 정하지 않는다(critical gate `prd-residual-user-decision`). `State` 가 `rejected` 인 항목은 근거가 되지 못하므로, 거절된 항목만 인용한 줄도 지운다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로 작동하므로, 그 proposal 에 걸리는 줄도 지운다. (c) `fills:` 근거가 있는 줄만 메우기로 받아들이고, 항목 사이의 모순은 의도 항목에 맞는 쪽으로 직접 풀어 `kiwi-prd` 를 통해 PRD 에 `Reason` 이 `contradiction resolved:` 로 시작하는 proposal 로 기록한다 — 그 해소가 in-scope 항목을 없애거나 exclusion 을 좁혀도 그렇게 한다. 해소 proposal 은 확정되지 않은 채 `State` 를 바꾸지 않고, `State` 가 아니라 기록된 해소로서 효력을 가진다. 기록된 해소가 없앤 in-scope 항목은 (a) 의 fail 로 세지 않고, exclusion 을 좁힌 해소가 허용한 줄은 그 exclusion 항목에 걸리지 않는 것으로 보고 (b) 로 지우지 않는다. PRD 는 `kiwi-prd` 만 고친다. 요청에 관한 질문(`NEEDS_USER` 로 멈춘 질문 포함)에 사용자가 답하면 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다(FR-FLOW-204 AC-11) — 답이 더한 범위는 그래야 PRD 에 근거를 갖는다.
+
 ---
 
 ## 0. 공통 규약 (SSOT)
@@ -39,6 +45,8 @@ tdd work-mode에서 step 하나를 **acceptance 선행 TDD First 사이클**로 
 | `step-completion-gate-blocked` | `update_step_state(merged)` 가 `COMPLETION_GATE_BLOCKED` 로 거부 (FR-NODE-078) — 비-clean 호환 엣지를 `acknowledged` 로 명시 승인하는 것은 비가역 판단이다 | Phase 7 (§2.8) |
 | `test-sufficiency-gap` | 승격 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 이 남음 — gap 이 남은 요구는 승격하지 않는다 (`_shared/kiwi/test-sufficiency.md`) | Phase 6 — `promote_step_requirement` 직전 (§2.7) |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | Phase 6 — `promote_step_requirement` 직전 |
+| `prd-residual-user-decision` | Phase 3 이전 PRD 판정 (b) 에서 필요하다는 주장이 메우는 구멍을 대지 못한 acceptance 줄이 남음 — 지우지 않고 `NEEDS_USER` 로 멈추며 `--auto` 에서도 결정 위원회가 정하지 않는다 (FR-FLOW-205) | 핵심 규칙 블록 — Phase 3 이전 |
+| `prd-unapproved-user-decision` | 판정할 PRD 의 `Status` 행이 승인 값이 아니고 `--auto` PRD(`Status` 행이 `unapproved` 이고 승인 행에 `--auto` 가 적힌 PRD)도 아님 — 판정하지 않고 `NEEDS_USER` 로 끝나며 `--auto` 에서도 결정 위원회가 정하지 않는다 (FR-FLOW-205) | 핵심 규칙 블록 — PRD 판정 이전 |
 
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
@@ -59,7 +67,8 @@ tdd work-mode에서 step 하나를 **acceptance 선행 TDD First 사이클**로 
 | 신호 | 의미 |
 |---|---|
 | task 이름 `<task>` | 작업 대상 step. 부재 시 사용자에게 질의. |
-| 작업 개요 | 무엇을 만들지(연구/의도). intent.md의 원천. |
+| 작업 개요 | 작업 설명(연구/의도). 무엇을 만들지는 이것이 아니라 PRD 가 정한다 — `PRD_PATH` 가 없으면 `kiwi-prd` 가 이것을 `U-1` 로 PRD 를 만든다(핵심 규칙). intent.md 는 그 PRD 로 판정한다. |
+| `PRD_PATH` | 판정할 PRD 경로. 받으면 그 PRD 로, 없으면 `kiwi-prd` 가 먼저 만든 PRD 로 acceptance 줄을 테스트로 옮기기 전에 판정한다(핵심 규칙). |
 | `--review-hop-owned-by-parent` | 부모가 이 step 창의 리뷰를 이미 소유한다는 **명시** 신호. 받으면 Phase 5.5 의 자체 홉을 건너뛴다(§2.6.1). |
 | `--no-pipeline-emit` | 위임 실행 표식. 받으면 Phase 7 의 파이프라인 이벤트를 append 하지 않는다(§2.8). |
 | `--sds` | off — 사용자가 step SDS 를 원할 때만 켠다("SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS"). 켜면 design.md 를 SDS 규칙대로 저작하는 §2.3.1 경로로 돈다 |
@@ -135,8 +144,10 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 승격보다 **먼저** 이 step 의 커밋 창을 리뷰한다. `promote_step_requirement` 가 요구를 닫는 지점이므로, 닫힌 뒤에 도는 리뷰는 이미 기록된 판정을 뒤집어야 한다.
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {step_window_head} [--auto] [--max] [--mini | --loops N] [--model <name>] [--skip-clean-code | --keep-clean-code]" })
 ```
+
+빠른 처리 신호(`kiwi-review-fix-loop` 클린 코드 라운드 블록)가 있으면 Phase 0 에서 클린 코드 검사를 건너뛸지 한 번만 묻는다(`--auto` 면 묻지 않고 건너뛴다). 부모가 `--skip-clean-code` 나 `--keep-clean-code` 를 넘겼으면 묻지 않고 그 인자를 위 args 에 그대로 더하고, 그렇지 않으면 사용자가 확인했을 때 `--skip-clean-code` 를, 거절했을 때 `--keep-clean-code` 를 더한다. 이 스킬에는 재개 상태 파일이 없으므로 그 답의 기록은 이 홉의 `kiwi-review-fix-loop` 가 자기 `state.json` 의 `clean_code_skip` 에 남긴다. `--review-hop-owned-by-parent` 를 받은 실행은 묻지 않는다 — 리뷰 홉과 그 질문은 부모의 것이다.
 
 창은 이 step 이 만든 커밋으로 잡는다 — `{step_window_base}` 는 Phase 3 이 테스트를 먼저 커밋하기 직전의 커밋이고, `{step_window_head}` 는 현재 HEAD 다. 범위를 명시하지 않으면 리뷰 루프가 직전 5커밋으로 폴백해 남의 창을 심판한다.
 

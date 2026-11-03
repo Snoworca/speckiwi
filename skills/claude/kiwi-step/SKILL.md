@@ -23,6 +23,7 @@ description: "step-local(docs/spec/steps/<name>/) 요구 초안을 authoring 하
 | §0.6 | **ID·heading 규칙 준수**. step 요구도 SRS-MD Authoring Rules(heading/ID 정규식)를 따른다. body 로 승격되기 전 초안이라도 형식은 정규 규칙과 동일하다. |
 | §0.8 | **step SDS 는 opt-in**. design.md 스텁은 사용자가 step SDS 를 요청할 때만 만든다 — 그때 `speckiwi step scaffold <name> --sds` 를 넘긴다. opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. |
 | §0.7 | `--mini` / `--loops N` 수용(no-op). 본 스킬은 검증-개선 루프가 없어 `_shared/kiwi/loop-option.md` §5 에 따라 문서화된 no-op 으로 수용(오케스트레이터 전파 균일성). |
+| §0.9 | **PRD 판정 선행**(FR-FLOW-204 AC-12). 판정할 PRD 는 `PRD_PATH` 로 받은 PRD 이고, 없으면 입력이 가리키는 `docs/prd/` 의 PRD 다. 둘 다 없으면 Phase 2 보다 먼저 `kiwi-prd` 를 불러 입력(작성할 요구 개요)을 `U-1` 의 원천으로 PRD 를 만든다 — PRD 없이 step 요구를 쓰는 경로는 없다. `Status` 행이 승인 값이 아닌 PRD 로는 쓰지 않고 멈춘다. Phase 3 전에 쓴 요구와 AC 를 그 PRD 로 판정한다 — 판정 (a)·(b)·(c) 와 기록된 `contradiction resolved:` 해소의 처리는 `kiwi-tdd` 핵심 규칙과 같다. PRD 는 `kiwi-prd` 만 고친다. 요청에 관한 질문에 사용자가 답하면 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다(FR-FLOW-204 AC-11). |
 
 ---
 
@@ -34,6 +35,7 @@ description: "step-local(docs/spec/steps/<name>/) 요구 초안을 authoring 하
 |---|---|
 | step 이름 `<name>` | 작업 대상 step. 부재 시 사용자에게 질의. |
 | 작성할 요구 개요 | statement + acceptance criteria 초안. |
+| `PRD_PATH` | 판정할 PRD 경로. 없으면 §0.9 대로 `kiwi-prd` 가 먼저 PRD 를 만든다. |
 | `--sds` | off — 사용자가 step SDS 를 원할 때만 켠다("SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS"). 켜면 스캐폴드가 design.md 스텁도 만든다(`speckiwi step scaffold <name> --sds`) |
 
 ### 1.2 출력

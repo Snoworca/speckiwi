@@ -21,6 +21,7 @@ Lightweight skill for authoring **step-local requirement drafts** under `docs/sp
 | §0.6 | **ID / heading rules.** Step requirements follow the SRS-MD Authoring Rules (heading / ID regex), identical to body-scope requirements even while still a draft. |
 | §0.8 | **The step SDS is opt-in.** The design.md stub is made only when the user asks for a step SDS — then pass `speckiwi step scaffold <name> --sds`. Without the opt-in the run writes no SDS and implements from none. |
 | §0.7 | `--mini` / `--loops N` accepted as a no-op. This skill has no verify/improve loop, so per `_shared/kiwi/loop-option.md` §5 it accepts them as a documented no-op (orchestration uniformity). |
+| §0.9 | **PRD verdict first** (FR-FLOW-204 AC-12). The PRD to judge against is the one given as `PRD_PATH`, else the `docs/prd/` PRD the input points to. With neither, invoke `kiwi-prd` before Phase 2 with the input (the requirement outline) as the source of block `U-1`, and judge against that PRD — no path writes step requirements without a PRD. Do not author from a PRD unless its `Status` row holds the value `kiwi-prd` writes when the user signs off; stop instead. Before Phase 3, judge the written requirements and acceptance criteria against that PRD — verdicts (a), (b), (c) and the handling of a recorded `contradiction resolved:` resolution are the same as in the `kiwi-tdd` core rule. Only `kiwi-prd` edits the PRD. When the user answers a question about the request, append that answer verbatim to the PRD as the next `U-<n>` block through `kiwi-prd` before acting on it (FR-FLOW-204 AC-11). |
 
 ---
 
@@ -31,6 +32,7 @@ Lightweight skill for authoring **step-local requirement drafts** under `docs/sp
 
 | Signal | Argument | Default |
 |---|---|---|
+| PRD path | `PRD_PATH` — the PRD to judge against; without it `kiwi-prd` writes the PRD first (§0.9) | none |
 | "SDS 로", "SDS 써서", "SDS 를 써", "use SDS", "with an SDS" | `--sds` — the scaffold also writes the design.md stub (`speckiwi step scaffold <name> --sds`) | off |
 
 ---

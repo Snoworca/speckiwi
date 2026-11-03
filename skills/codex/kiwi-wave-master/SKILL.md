@@ -8,6 +8,14 @@ description: "여러 wave 로 나뉘는 대형 작업(에픽·멀티-스텝 로�
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.
 > Model tier terms are role guidance, not provider names: `high-reasoning`, `standard`, and `lightweight` map to the current Codex model and effort options available in the session.
 
+## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)
+
+입력 문서에 PRD 경로가 없으면 wave 분해보다 먼저 `kiwi-prd` 를 불러 그 입력 문서를 `U-1` 의 원천으로 승인된 PRD 를 만든다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. wave 를 나눌 때 각 wave 의 `excerpt_path` 발췌에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다.
+
+요청에 관한 질문에 사용자가 답하면 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다 — 답이 더한 범위는 그래야 PRD 에 근거를 갖는다.
+
+---
+
 하나의 크고 긴 작업(에픽·로드맵·대형 연구 산출물)을 **여러 개의 wave 로 나누어 완주**시키는 멀티-웨이브 오케스트레이터. 각 wave 는 독립된 SRS target 과 wave 선언 항목 하나(`--sds` 면 wave SDS 도)로 처리되고, **wave 하나를 워커 하나가** 자기 워크트리에서 구현하며, 호스트가 판정·병합·재생·검증한다. 의존이 모두 끝난 wave 들은 **기본이 병렬**이고 `--serial` 이면 하나씩이다. 전체 진행은 `./kiwi/waves.jsonl` 에 영속되어 세션이 초기화돼도 재개할 수 있다.
 
 이 스킬은 *직접 요구사항을 저작하거나 코드를 구현하지 않는다* — wave 경계와 의존을 정하고, 각 wave 의 target 을 `$kiwi-srs` 로 등록하고, `_shared/kiwi/parallel-waves.md` 의 절차로 wave 를 워커에 맡기고 결과를 검증하는 상위 오케스트레이터다. wave 를 `$kiwi-pipeline` 에 위임하지 않는다.
@@ -211,7 +219,7 @@ wave 분해(두 갈래 split 휴리스틱) · wave 의존 선언 · 설계 기�
 `$kiwi-srs` 는 이 문서 절(§3 에서 확정된 wave 경계)의 내용을 입력으로 받아 해당 wave-{n} target 의 SRS 를 저작한다. 준비 집합에 wave 가 여럿이어도 **wave 하나씩 직렬로** 부른다 — 요구 ID 발급과 SRS 락과 활성 target 이 run root 하나의 전역 상태이기 때문이다(`parallel-waves.md` PW-1). 저작 뒤 그 wave 의 요구 중 `stability` 가 `draft` 이거나 implementability 가 미검증인 것이 있으면 `$kiwi-srs-feasibility TARGET=wave-{n}` 을 이어서 부른다.
 
 ```
-Skill({ skill: "kiwi-srs", args: "REQ_PATH=<그 wave 의 excerpt_path> --research-doc <excerpt_path> --research-doc <source_file>
+Skill({ skill: "kiwi-srs", args: "REQ_PATH=<그 wave 의 excerpt_path> PRD_PATH=<run 의 PRD 경로> --research-doc <excerpt_path> --research-doc <source_file>
         --constraints-doc <constraints_path> TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })
 Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=wave-{n} [--auto] [--max] [--mini|--loops N]" })   (조건부)
 ```
@@ -338,7 +346,7 @@ wave 시작 시의 첫 `in_progress` 에는 `phase="srs-authoring"` 을 싣는�
 **마지막 wave 의 `complete` 뒤, §5.6 최종 검증 앞에** run 전체의 커밋 창을 1회 리뷰한다. 이 순서여야 hop 의 보고가 최종 검증의 증거 안에 든다.
 
 ```
-Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {§2.1 이 pin 한 값} [--auto] [--max] [--mini|--loops N]" })
+Skill({ skill: "kiwi-review-fix-loop", args: "--base {run_diff_window.base_sha} --head {run_diff_window.head_sha} --no-pipeline-emit --regression-baseline {§2.1 이 pin 한 값} [--auto] [--max] [--mini|--loops N] [--skip-clean-code | --keep-clean-code]" })
 ```
 
 **각 워커가 자기 창을 도는 리뷰가 이것을 대신하지 않는다.** wave 별 리뷰의 분모는 그 wave 의 `diff_window` 하나이고, 여기의 분모는 run 전체다 — §5.6 이 자기 존재 이유로 드는 논거("wave 별 검증은 각 wave 의 scope 안만 보므로 어느 wave 의 scope 에도 속하지 않은 항목은 끝까지 검증되지 않는다")가 리뷰에도 그대로 성립한다. run 창은 모든 wave 창의 **상위집합**이므로 두 분모는 당연히 겹친다 — 중복이 아닌 이유는 서로소여서가 아니라 **심판 단위**가 다르기 때문이다: wave 별 리뷰는 각 wave 안만 보므로 wave 를 **가로지르는** 상호작용, 즉 §5.6 이 최종 패스 분모에 더하는 `integration_items`(wave 경계를 가로지르는 통합 항목)가 걸리는 자리는 어느 wave 리뷰의 시야에도 들어오지 않는다. 개별 커밋이 두 번 읽히는 비용은 치르고, 그 대신 아무도 보지 않던 교차면을 얻는다.
@@ -487,6 +495,12 @@ per-wave 자식 스킬로의 `--auto` 자동 전파는 `../_shared/kiwi/auto-opt
 | `out-of-scope-user-consent` | 설계 항목이 모든 계층의 분모에서 빠진다 — 범위가 조용히 줄어든다 |
 | `unsafe-option-refused` | 회귀와 리뷰가 꺼진 채 wave 가 누적된다 |
 | `wave-append-cap-exhausted` | 무인 실행의 종료를 보장하는 유일한 경계가 사라진다 |
+| `prd-record-tampered` | 바뀐 사용자 원문 기록을 다시 해시해 맞추면 사용자가 하지 않은 요청으로 저작이 이어진다 |
+| `prd-unapproved-user-decision` | 사용자가 승인하지 않은 PRD 로 저작한다 — 범위를 사용자 대신 정한다 |
+| `prd-residual-user-decision` | residual 요구를 남기거나 지운다 — 범위가 사용자의 말 없이 늘거나 준다 |
+| `prd-cap-unpassed-user-decision` | 라운드 상한까지 통과하지 못한 SRS 를 완료로 넘긴다 — 사용자 요청을 받아들이지 못한 채 다음 wave 가 쌓인다 |
+
+네 PRD 정지는 `/kiwi-srs`·`/kiwi-tdd` 가 `child-srs-needs-user-or-failed` 나 자식 정지로 올려도 이 목록에 든다. 자가 복구는 그 정지가 지키는 PRD 기록·승인 여부·residual·아직 fail 인 PRD 항목을 남기거나 지우거나 다시 쓰지 않는다.
 
 이 목록을 여는 것은 목표를 향해 가는 것이 아니라 **목표를 낮추는 것**이다. 테스트를 약화시키거나 설계 항목을 배제하면 실행은 끝까지 가고 게이트는 통과하지만 실제로 한 일은 줄어든다. 무인 실행에서 가장 위험한 실패는 실패가 아니라 성공처럼 보이는 축소이며, 그것은 아무도 보지 않는 시간에 일어난다.
 
@@ -496,11 +510,15 @@ per-wave 자식 스킬로의 `--auto` 자동 전파는 `../_shared/kiwi/auto-opt
 
 #### 7.5.3 결정과 중단은 저널에서 읽을 수 있어야 한다
 
-`--drive` 로 중단할 때는 그 게이트의 id 를 `waves.jsonl` 의 `abort_gate` 필드에 **지명**한다. 단 `abort_gate` 의 값 공간은 오케스트레이터 게이트 어휘(`GateId`)이므로, 자식 스킬이 소유한 게이트 — `existing-test-weakened-or-deleted` · `existing-public-contract-change` · `existing-file-deleted-or-moved` · `mock-detection` · `tdd-bypass-attempt` — 는 자기 이름으로 적지 않고 `serial-unit-failed` 로 버블업해 적는다 — 그 게이트들은 워커의 kiwi-coder 가 소유하고, 워커 실패는 그 게이트로 온다. 자식 게이트 이름을 그대로 쓰면 `abort-gate-outside-vocabulary` 오류가 난다.
+`--drive` 로 중단할 때는 그 게이트의 id 를 `waves.jsonl` 의 `abort_gate` 필드에 **지명**한다. 단 `abort_gate` 의 값 공간은 오케스트레이터 게이트 어휘(`GateId`)이므로, 자식 스킬이 소유한 게이트 — `existing-test-weakened-or-deleted` · `existing-public-contract-change` · `existing-file-deleted-or-moved` · `mock-detection` · `tdd-bypass-attempt` — 는 자기 이름으로 적지 않고 `serial-unit-failed` 로 버블업해 적는다 — 그 게이트들은 워커의 kiwi-coder 가 소유하고, 워커 실패는 그 게이트로 온다. §7.5.1 의 네 PRD 정지 — `prd-record-tampered` · `prd-unapproved-user-decision` · `prd-residual-user-decision` · `prd-cap-unpassed-user-decision` — 도 `GateId` 가 아니므로 `abort_gate: child-srs-needs-user-or-failed` 로 적는다(`orchestrate run abort --reason child-srs-needs-user-or-failed`). `--reason` 은 `abort_gate` 값 그 자체라 원래 정지 이름을 담지 못한다. 원래 정지 이름은 §9 의 종료 emit 이 `pipeline.jsonl` 에 남기는 `FAILED` 이벤트의 `notes` 에 적는다. 자식 게이트 이름을 그대로 쓰면 `abort-gate-outside-vocabulary` 오류가 난다.
 
 자동으로 해소한 게이트는 그 게이트를 지명하는 `decision` 객체를 1건 기록한다 (`{ question, options, decision, rule, committee_size, confidence, origin }`).
 
 산문으로만 "critical 게이트에서 중단했다"고 적으면 다음 세션이 어떤 게이트였는지 알 수 없다. 무인으로 밤새 돌린 뒤 아침에 읽을 수 없는 기록은 없는 기록과 같다.
+
+### 7.6 클린 코드 건너뛰기 — 리뷰 hop 전달 (FR-FLOW-206)
+
+사용자 요청이나 호출 인자가 빠른 처리를 요구하거나 클린 코드 원칙을 지키지 않아도 된다고 하면(`kiwi-review-fix-loop` 클린 코드 라운드 블록의 신호) Phase 0 에서 클린 코드 검사를 건너뛸지 한 번만 묻는다 — `--auto` 면 묻지 않고 건너뛴다. 그 답은 이 run 이 `waves.jsonl` 에 쓰는 첫 줄에 `decision` 객체(`question` 은 `clean-code-skip`, `decision` 은 `skip` 또는 `keep`, `origin` 은 `user` 또는 `auto`)로 기록하고, 재개는 다시 묻지 않고 그 기록을 따른다 — 그 줄보다 앞서 도는 리뷰 hop 은 없다. `skip` 이면 `--skip-clean-code` 를, `keep` 이면 `--keep-clean-code` 를 이 run 이 부르는 모든 리뷰 hop — 워커의 자기 창 리뷰(dispatch 카드, `parallel-waves.md` PW-6), 호스트 hop(PW-12), 개선 위임(§5.5.5), run 창 종료 리뷰(§5.55) — 의 args 에 더한다.
 
 ---
 
