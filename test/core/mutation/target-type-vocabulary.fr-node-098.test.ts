@@ -17,7 +17,7 @@ import { at } from "../../support/at.js";
 // is the point of the requirement: hardcoding six values in the test would leave the same silent
 // divergence one row later, the next time the table changes.
 
-const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.5.0.md");
+const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.6.0.md");
 const APPENDIX = path.join("docs", "spec", "90.appendix.md");
 const CORE_SITE = path.join("src", "core", "mutation", "set-active-target.ts");
 const CLI_SITE = path.join("src", "cli", "commands", "mutations.ts");

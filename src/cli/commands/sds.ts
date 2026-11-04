@@ -5,19 +5,18 @@ import { checkSdsFile, type SdsCheckReport } from "../../core/sds/check-sds.js";
 import type { Diagnostic } from "../../core/types.js";
 import type { CliContext } from "../command.js";
 import { writeCliStructuredError } from "../errors.js";
+import { exitCodeFor } from "../exit.js";
 import { writeJson } from "../formatters.js";
 
 // @req IR-CLI-102 — `speckiwi sds check <path> [--json]`: one lite SDS file's diagnostics and parsed
 // summary, exiting non-zero while an error-level diagnostic remains.
 
-const FAILURE_EXIT: Readonly<Record<string, number>> = { NOT_FOUND: 5, TARGET_NOT_FOUND: 5, USAGE: 2 };
-
 /**
  * Ends a read command on a refused input: a structured error under `--json`, a commander error
- * otherwise, with the exit code the read family uses for that refusal (2 usage, 5 not found).
+ * otherwise, with the exit code the CLI exit-code table gives that refusal (IR-CLI-018).
  */
 export function failRead(command: Command, context: CliContext, json: boolean, error: { code: string; message: string }): void {
-  const exitCode = FAILURE_EXIT[error.code] ?? 1;
+  const exitCode = exitCodeFor(error.code);
   if (!json) command.error(error.message, { exitCode });
   writeCliStructuredError(context.io, error.code, error.message);
   command.setOptionValue("exitCode", exitCode);

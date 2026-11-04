@@ -152,9 +152,12 @@ describe("FR-NODE-209 AC-3 — speckiwi validate includes the lite SDS diagnosti
     const cli = await validate(root);
     const server = createTestMcpServer({ root });
     registerReadTools(server, { root });
-    const answer = (await server.callTool("validate_spec", {})) as { value: { errors: Diagnostic[]; warnings: Diagnostic[] } };
-    expect(sdsCodes([...answer.value.errors, ...answer.value.warnings])).toEqual(sdsCodes([...cli.errors, ...cli.warnings]));
-    expect(sdsCodes(answer.value.errors)).toContain("SDS-E062");
+    // FR-MCP-070 AC-1 — MCP validate_spec lists every entry once in `diagnostics`, each with its severity.
+    const answer = (await server.callTool("validate_spec", {})) as { value: { diagnostics: Diagnostic[] } };
+    const errors = answer.value.diagnostics.filter((item) => item.severity === "error");
+    const warnings = answer.value.diagnostics.filter((item) => item.severity === "warning");
+    expect(sdsCodes([...errors, ...warnings])).toEqual(sdsCodes([...cli.errors, ...cli.warnings]));
+    expect(sdsCodes(errors)).toContain("SDS-E062");
   });
 });
 

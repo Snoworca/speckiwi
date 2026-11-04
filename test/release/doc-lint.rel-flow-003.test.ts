@@ -351,7 +351,9 @@ describe("REL-FLOW-003 — the whole document is clean", () => {
     // `freeze handoff` leaf (FR-NODE-138 AC-1, IR-CLI-082 AC-2); 89 tools since 4.1.0 added
     // `orchestrate_wave_status` (IR-CLI-104).
     expect(truth.commandPaths.size).toBeGreaterThanOrEqual(148);
-    expect(truth.toolNames.size).toBe(89);
+    // 91 since 5.2.0 added `rename_scope` (IR-MCP-006) and `expire_acceptance_criterion` (FR-NODE-243 AC-6).
+    // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
+    expect(truth.toolNames.size).toBe(97);
     expect([...truth.counts.values()].every((count) => count > 0)).toBe(true);
 
     expect(lintDocument(readme, truth)).toEqual([]);

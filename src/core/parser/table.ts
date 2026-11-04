@@ -1,4 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
+import { fail, ok, type Result } from "../result.js";
 import type { Diagnostic, DiagnosticSeverity } from "../types.js";
 
 export interface ParsedTable {
@@ -36,6 +37,27 @@ export function isTableLine(line: string): boolean {
 export function splitTableRow(line: string): string[] {
   const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
   return trimmed.split("|").map((cell) => cell.trim());
+}
+
+const ROW_BREAKING_CELL = /[|\r\n]/;
+
+/**
+ * @req FR-PARSE-043 — renders one table row by column name. Two tables that share column names do
+ * not share column order (the index's SRS Documents and Scope Map sections), so a row assembled by
+ * position lands values under the wrong heading without any error. A name the header does not list,
+ * or a value that would split into extra cells or rows, is refused instead of emitted misaligned.
+ * Header columns with no supplied value are left empty.
+ */
+export function renderRowByHeader(headers: readonly string[], values: Readonly<Record<string, string>>): Result<string> {
+  const unknown = Object.keys(values).filter((column) => !headers.includes(column));
+  if (unknown.length > 0) {
+    return fail("UNKNOWN_COLUMN", `Table header [${headers.join(", ")}] has no column named ${unknown.join(", ")}`);
+  }
+  const unsafe = Object.entries(values).filter(([, value]) => ROW_BREAKING_CELL.test(value)).map(([column]) => column);
+  if (unsafe.length > 0) {
+    return fail("UNSAFE_CELL", `Value for column ${unsafe.join(", ")} contains a pipe or line break`);
+  }
+  return ok(`| ${headers.map((column) => (Object.hasOwn(values, column) ? values[column] : "")).join(" | ")} |`);
 }
 
 function severityForTableDiagnostic(code: TableDiagnosticCode): DiagnosticSeverity {
@@ -149,16 +171,20 @@ export function parseMetadataRows(
   lines: string[],
   startLine: number,
   options: Omit<ParseMarkdownTableOptions, "diagnosticCode" | "tableLabel"> = {}
-): { metadata: Record<string, string>; endLine: number; diagnostics: Diagnostic[] } {
+): { metadata: Record<string, string>; fieldLines: Record<string, number>; endLine: number; diagnostics: Diagnostic[] } {
   const result = parseMarkdownTableResult(lines, startLine, { ...options, diagnosticCode: "SRS-E021", tableLabel: "Metadata" });
   const table = result.table;
-  if (!table) return { metadata: {}, endLine: startLine + 1, diagnostics: result.diagnostics };
+  if (!table) return { metadata: {}, fieldLines: {}, endLine: startLine + 1, diagnostics: result.diagnostics };
   const metadata: Record<string, string> = {};
-  for (const row of table.rows) {
+  // The 1-based line each kept value came from, so a writer edits the row this reader reads.
+  const fieldLines: Record<string, number> = {};
+  table.rows.forEach((row, index) => {
     const field = row.Field;
     if (field) {
       metadata[field] = row.Value ?? "";
+      const line = table.rowLines[index];
+      if (line !== undefined) fieldLines[field] = line;
     }
-  }
-  return { metadata, endLine: table.endLine, diagnostics: result.diagnostics };
+  });
+  return { metadata, fieldLines, endLine: table.endLine, diagnostics: result.diagnostics };
 }

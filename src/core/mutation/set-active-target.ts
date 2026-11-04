@@ -10,6 +10,8 @@ import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } 
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { findHeadingMatching } from "../parser/index-parser.js";
+import { planIndexMetadataWrite, planTableRowInsert, planTableRowUpdate, readIndexMetadataValue, type TableRowPlan } from "./internal.js";
 
 export interface SetActiveTargetInput {
   target: string;
@@ -19,23 +21,6 @@ export interface SetActiveTargetInput {
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
-}
-
-function findHeadingMatching(lines: string[], pattern: RegExp): number {
-  return lines.findIndex((line) => pattern.test(line.trim()));
-}
-
-function findMetadataRowLine(file: TextFile, field: string): number | undefined {
-  for (let index = 0; index < file.lines.length; index += 1) {
-    const line = file.lines[index] ?? "";
-    if (line.startsWith(`| ${field} |`)) return index + 1;
-    if (index > 0 && line.startsWith("## ")) break;
-  }
-  return undefined;
-}
-
-function renderTargetRow(row: TargetEntry, status: string): string {
-  return `| ${row.target} | ${row.type} | ${status} | ${row.description} |`;
 }
 
 function normalizeTargetType(value: string | undefined): string {
@@ -93,14 +78,17 @@ async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTarget
 
   const previousActiveTarget = findExistingActiveTarget(file, rows);
   const operations: PatchOperation[] = [];
-  const metadataLine = findMetadataRowLine(file, "Active Target");
-  if (metadataLine) {
-    const original = file.lines[metadataLine - 1];
-    if (original === undefined) return mutationFail("MUTATION_DENIED", "Active Target metadata row is outside file");
-    const replacement = `| Active Target | ${target} |`;
-    if (original !== replacement) operations.push({ type: "replaceLine", line: metadataLine, original, replacement });
-  } else {
-    operations.push({ type: "insertLines", line: metadataTable.endLine, lines: [`| Active Target | ${target} |`] });
+  // Both tables are written through the shared row writer, by header name, at the rows the index
+  // parser reads; a row it cannot rewrite whole is a refusal, never a second row the parser reads instead.
+  const push = (planned: TableRowPlan): MutationResult | undefined => {
+    if (!planned.ok) return mutationFail("MUTATION_DENIED", planned.message);
+    const operation = planned.operation;
+    if (operation.type !== "replaceLine" || operation.original !== operation.replacement) operations.push(operation);
+    return undefined;
+  };
+  if (readIndexMetadataValue(file, "Active Target")?.trim() !== target) {
+    const refused = push(planIndexMetadataWrite(file, "Active Target", target, { insertWhenMissing: true }));
+    if (refused) return refused;
   }
 
   // @req FR-NODE-099 — the departing target's status is derived from its own requirements. Fixing it
@@ -117,23 +105,21 @@ async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTarget
         ? deriveStatusFor(row.target, derivable)
         : row.status;
     if (nextStatus === row.status) continue;
-    const line = targetTable.startLine + 2 + index;
-    const original = file.lines[line - 1];
-    if (original === undefined) return mutationFail("MUTATION_DENIED", "Target Map row is outside file");
-    operations.push({ type: "replaceLine", line, original, replacement: renderTargetRow(row, nextStatus) });
+    const refused = push(planTableRowUpdate(file, targetTable, index, { Status: nextStatus }));
+    if (refused) return refused;
   }
   if (createdRow) {
-    const line = targetTable.endLine + 1;
-    const operation: PatchOperation = {
-      type: "insertLines",
-      line,
-      lines: [renderTargetRow(createdRow, "active")]
-    };
-    const expectedBefore = file.lines[line - 2];
-    if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
-    const expectedAfter = file.lines[line - 1];
-    if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
-    operations.push(operation);
+    const refused = push(
+      // Target and Status are what the index reads a target by; Type is the caller's classification and
+      // has to land, but Description is a note a Target Map may leave out, so it is dropped there.
+      planTableRowInsert(
+        file,
+        targetTable,
+        { Target: createdRow.target, Type: createdRow.type, Status: TARGET_STATUS_ACTIVE, Description: createdRow.description },
+        { optional: ["Description"] }
+      )
+    );
+    if (refused) return refused;
   }
 
   if (operations.length === 0) {
@@ -205,10 +191,7 @@ function deriveStatusFor(departingTarget: string, records: RequirementRecord[] |
 }
 
 function findExistingActiveTarget(file: TextFile, rows: TargetEntry[]): string {
-  const metadataLine = findMetadataRowLine(file, "Active Target");
-  if (metadataLine) {
-    const cells = (file.lines[metadataLine - 1] ?? "").trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-    if (cells[1]) return cells[1];
-  }
+  const value = readIndexMetadataValue(file, "Active Target")?.trim();
+  if (value) return value;
   return rows.find((row) => row.status === TARGET_STATUS_ACTIVE)?.target ?? rows[0]?.target ?? "";
 }

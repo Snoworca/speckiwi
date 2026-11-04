@@ -124,6 +124,8 @@ export interface LiteSdsParse {
 /** The slice of a requirement record the reference and coverage checks read. */
 export type LiteSdsRequirement = Pick<RequirementRecord, "id" | "target" | "status"> & {
   readonly acceptanceCriteria: ReadonlyArray<Pick<AcceptanceCriterion, "id">>;
+  /** @req FR-PARSE-044 AC-1 — so a contract on an expired criterion is told it is expired, not missing. */
+  readonly expiredAcceptanceCriteria?: ReadonlyArray<Pick<AcceptanceCriterion, "id">>;
 };
 
 const REQUIRED_METADATA = ["Document Type", "Profile", "Target", "Status", "Date"] as const;
@@ -658,9 +660,9 @@ export function liteSdsReferenceDiagnostics(document: LiteSdsDocument, requireme
         liteSdsDiagnostic("SDS-E063", `${contract.id} interprets ${contract.requirementId} ${contract.acId}, but ${contract.requirementId} does not exist`, document.path, contract.line, contract.requirementId)
       );
     } else if (!requirement.acceptanceCriteria.some((criterion) => criterion.id === contract.acId)) {
-      diagnostics.push(
-        liteSdsDiagnostic("SDS-E063", `${contract.id} interprets ${contract.requirementId} ${contract.acId}, but ${contract.requirementId} has no ${contract.acId}`, document.path, contract.line, contract.requirementId)
-      );
+      const expired = (requirement.expiredAcceptanceCriteria ?? []).some((criterion) => criterion.id === contract.acId);
+      const reason = expired ? `${contract.requirementId} ${contract.acId} is expired` : `${contract.requirementId} has no ${contract.acId}`;
+      diagnostics.push(liteSdsDiagnostic("SDS-E063", `${contract.id} interprets ${contract.requirementId} ${contract.acId}, but ${reason}`, document.path, contract.line, contract.requirementId));
     }
   }
   return diagnostics;

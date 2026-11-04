@@ -1,7 +1,8 @@
 import path from "node:path";
 import { readUtf8File } from "../fs/read-text.js";
-import { applyPatchPlan } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { findHeadingMatching, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import type {
   MutationResult,
@@ -17,8 +18,9 @@ export type { RetargetInput, RetargetItemPlan, RetargetOutput } from "../types.j
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
-import { findMetadataLine, findSectionTableInsertionLine, loadRecord } from "./internal.js";
+import { findSectionTableInsertionLine, loadRecord, planMetadataWrite } from "./internal.js";
 import { todayStamp } from "../date-stamp.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 // @req FR-NODE-059
 /**
@@ -28,7 +30,8 @@ import { todayStamp } from "../date-stamp.js";
  */
 async function readRegisteredTargets(root: ProjectRoot): Promise<Set<string>> {
   const file = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
-  const headingLine = file.lines.findIndex((line) => /^##\s+\d+\.\s+Target Map$/.test(line.trim()));
+  // The index parser's own lookup, so a fenced example of the Target Map is not read as the table.
+  const headingLine = findHeadingMatching(file.lines, TARGET_MAP_HEADING);
   const table = headingLine >= 0 ? parseMarkdownTable(file.lines, headingLine + 1) : undefined;
   const registered = new Set<string>();
   for (const row of table?.rows ?? []) {
@@ -48,10 +51,13 @@ async function readRegisteredTargets(root: ProjectRoot): Promise<Set<string>> {
  * target-not-registered / frozen-needs-change-note). Writes happen only when dry-run is
  * disabled, and the patch pipeline preserves each file's existing newline style.
  */
-export async function retarget(
-  root: ProjectRoot,
-  input: RetargetInput
-): Promise<MutationResult<RetargetOutput>> {
+export async function retarget(root: ProjectRoot, input: RetargetInput): Promise<MutationResult<RetargetOutput>> {
+  return withSrsMutationLock(root, { operation: "retarget", dryRun: input.dryRun ?? true, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () =>
+    retargetUnlocked(root, input)
+  );
+}
+
+async function retargetUnlocked(root: ProjectRoot, input: RetargetInput): Promise<MutationResult<RetargetOutput>> {
   const toTarget = input.toTarget.trim();
   if (!toTarget) return mutationFail("USAGE", "toTarget is required");
   // FR-NODE-174 AC-9 — the reason lands in a Change Notes row inside the block, so a newline in it
@@ -77,7 +83,9 @@ export async function retarget(
     plansByFile.set(file.relativePath, entry);
   };
 
-  for (const id of input.ids) {
+  // A repeated id would plan the same Target line twice and the second operation's precondition goes
+  // stale, so each id is planned once.
+  for (const id of new Set(input.ids)) {
     if (excluded.has(id)) {
       items.push({ id, skipReason: "excluded" satisfies RetargetSkipReason });
       continue;
@@ -90,6 +98,12 @@ export async function retarget(
     }
 
     const fromTarget = loaded.record.target;
+    // Moving a requirement to the target it already has changes nothing, so it writes nothing either:
+    // no Target rewrite and no `Target X -> X` Change Notes row.
+    if (fromTarget === toTarget) {
+      items.push({ id, fromTarget, skipReason: "already-in-target" satisfies RetargetSkipReason });
+      continue;
+    }
     if (!registered.has(toTarget)) {
       items.push({ id, fromTarget, skipReason: "target-not-registered" satisfies RetargetSkipReason });
       continue;
@@ -102,36 +116,28 @@ export async function retarget(
       continue;
     }
 
-    const targetLine = findMetadataLine(loaded.file, loaded.record, "Target");
-    if (!targetLine) {
-      return mutationFail("MUTATION_DENIED", `Target metadata row not found for ${id}`);
+    const write = planMetadataWrite(loaded.file, loaded.record, "Target", toTarget);
+    if (!write.ok) return mutationFail("MUTATION_DENIED", `${write.message} for ${id}`);
+    pushOp(loaded.file, write.operation);
+    // @req IR-CLI-112 AC-3 — every retarget leaves a row naming both targets, reason or not: the
+    // Target cell alone no longer says where the requirement came from.
+    const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
+    if (!insertLine) {
+      return mutationFail("MUTATION_DENIED", `Change Notes section not found for ${id}`);
     }
-    const original = loaded.file.lines[targetLine - 1];
-    if (original === undefined) {
-      return mutationFail("MUTATION_DENIED", `Target metadata row is outside file for ${id}`);
-    }
-
-    pushOp(loaded.file, { type: "replaceLine", line: targetLine, original, replacement: `| Target | ${toTarget} |` });
-    if (reason.length > 0) {
-      const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
-      if (!insertLine) {
-        return mutationFail("MUTATION_DENIED", `Change Notes section not found for ${id}`);
-      }
-      pushOp(loaded.file, {
-        type: "insertLines",
-        line: insertLine,
-        lines: [`| ${todayStamp()} | Target -> ${toTarget} | ${tableCellText(reason)} |`]
-      });
-    }
+    pushOp(loaded.file, {
+      type: "insertLines",
+      line: insertLine,
+      lines: [`| ${todayStamp()} | Target ${fromTarget} -> ${toTarget} | ${reason.length > 0 ? tableCellText(reason) : "-"} |`]
+    });
 
     items.push({ id, fromTarget, toTarget });
   }
 
-  // Every item validated; apply each file's accumulated plan exactly once.
-  for (const { file, operations } of plansByFile.values()) {
-    if (operations.length === 0) continue;
-    await applyPatchPlan(createPatchPlan(file, operations), { dryRun });
-  }
+  // Every item validated; the shared transaction writes each file's plan once, all files or none.
+  const plans = [...plansByFile.values()].filter(({ operations }) => operations.length > 0).map(({ file, operations }) => createPatchPlan(file, operations));
+  const { written } = await applyPatchPlans(plans, { dryRun });
 
-  return mutationOk({ dryRun, items });
+  // `written` is what lets the lock wrapper refresh the status cache after a real write.
+  return mutationOk({ dryRun, written, items });
 }

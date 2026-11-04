@@ -1,8 +1,8 @@
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
-import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { createPatchPlan } from "../patch/patch-plan.js";
 import type { MutationResult, PatchSummary, ProjectRoot } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
+import { loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
 // @req FR-NODE-061
@@ -42,15 +42,10 @@ export async function addRelatedDoc(
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
 
-  const metadataLine = findMetadataLine(loaded.file, loaded.record, "Related Docs");
-  if (!metadataLine) return mutationFail("MUTATION_DENIED", "Related Docs metadata row not found");
-  const original = loaded.file.lines[metadataLine - 1];
-  if (original === undefined) return mutationFail("MUTATION_DENIED", "Related Docs metadata row is outside file");
-
-  const current = parseMetadataValue(original);
-  const replacement = `| Related Docs | ${appendReference(current, input.reference)} |`;
-  const operations: PatchOperation[] = [{ type: "replaceLine", line: metadataLine, original, replacement }];
-  const plan = createPatchPlan(loaded.file, operations);
+  const write = planMetadataWrite(loaded.file, loaded.record, "Related Docs", (current) => appendReference(current, input.reference));
+  if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
+  const replacement = write.operation.type === "replaceLine" ? write.operation.replacement : "";
+  const plan = createPatchPlan(loaded.file, [write.operation]);
   const dryRun = input.dryRun ?? false;
 
   try {
@@ -65,11 +60,6 @@ export async function addRelatedDoc(
     }
     throw error;
   }
-}
-
-function parseMetadataValue(line: string): string {
-  const match = line.match(/^\|\s*Related Docs\s*\|\s*(.*?)\s*\|\s*$/);
-  return match?.[1]?.trim() ?? "";
 }
 
 function appendReference(current: string, reference: string): string {

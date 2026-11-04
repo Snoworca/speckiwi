@@ -67,7 +67,7 @@ description: "보고된 버그를 고치기 전에 확인하고 재현하는 스
 2. 원인 후보마다 적는다: 무엇이 잘못됐는지 한 문장, 근거 `file:line`(하나 이상), 확신도(`high` / `medium` / `low`)와 그 이유, 그 원인이 맞다면 실패해야 할 가장 작은 단위(함수·클래스·모듈).
 3. 근거 `file:line` 이 없는 후보는 목록에 넣지 않는다. 그것은 추측이다.
 4. 확신도 순서로 정렬한다. 같은 확신도 안에서는 증상에 더 가까운(호출 경로에서 더 안쪽인) 후보를 앞에 둔다.
-5. 관련 요구와 계약을 찾는다: MCP `search_requirements` · `get_requirement` 로 증상과 관련된 요구와 AC 를, 그리고 README·docs·공개 API 문서에서 이 동작을 정한 문장을 찾는다. §4.2 의 판정과 재현 테스트 제목의 요구 인용(§3)에 쓴다.
+5. 관련 요구와 계약을 찾는다: MCP `search_requirements` · `get_requirement` 로 증상과 관련된 요구와 AC 를, 그리고 README·docs·공개 API 문서에서 이 동작을 정한 문장을 찾는다. §4.2 의 판정과 재현 테스트 제목의 요구 인용(§3)에 쓴다. Search in both languages: put the words you would search for and their equivalents in the other language into the same query string (add English words to a Korean request; add Korean words to an English request or to a requirement you are writing in English).
 6. `--max` 면 독립 서브에이전트 1개가 `input.md` 와 저장소 경로만 받아 같은 규칙으로 원인 후보를 따로 추린다. 메인의 목록은 주지 않는다. 두 목록을 합쳐 중복을 지우고 다시 정렬한다.
 
 결과는 `causes.md` 에 적는다. 근거 있는 후보가 하나도 없으면 1·2단계를 건너뛰고 바로 3단계로 간다.

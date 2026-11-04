@@ -43,6 +43,8 @@ export interface SpecRequirementRecord {
   readonly status: RequirementStatus;
   readonly stability: Stability;
   readonly acceptanceCriteria: readonly { readonly id: string; readonly checked: boolean }[];
+  /** @req FR-PARSE-044 AC-3 — ids of expired criteria; a `Covers` cell naming one is history, not stale. */
+  readonly expiredAcceptanceCriterionIds?: readonly string[];
   readonly verificationEvidence: readonly {
     readonly id: string;
     readonly type?: string;
@@ -196,6 +198,10 @@ function parseRecord(value: unknown): SpecRequirementRecord {
   const filePath = optionalString(raw.filePath, "requirement filePath");
   const headingLine = optionalInteger(raw.headingLine, "requirement headingLine");
   const blockEndLine = optionalInteger(raw.blockEndLine, "requirement blockEndLine");
+  const expiredIds = raw.expiredAcceptanceCriteria === undefined
+    ? []
+    : arrayOf(raw.expiredAcceptanceCriteria, "expiredAcceptanceCriteria").map((entry) =>
+      stringOf(objectOf(entry, "expired acceptance criterion").id, "expired acceptance criterion id"));
 
   return {
     id: stringOf(raw.id, "requirement id"),
@@ -227,6 +233,7 @@ function parseRecord(value: unknown): SpecRequirementRecord {
         relation: stringOf(row.relation, "trace link relation")
       };
     }),
+    ...(expiredIds.length === 0 ? {} : { expiredAcceptanceCriterionIds: expiredIds }),
     ...(filePath === undefined ? {} : { filePath }),
     ...(headingLine === undefined ? {} : { headingLine }),
     ...(blockEndLine === undefined ? {} : { blockEndLine })
@@ -423,16 +430,19 @@ function authoritativeEvidence(record: SpecRequirementRecord): SpecRequirementRe
 
 function hasLegacyOrStaleEvidence(
   evidence: SpecRequirementRecord["verificationEvidence"],
-  acceptanceCriteria: SpecRequirementRecord["acceptanceCriteria"]
+  acceptanceCriteria: SpecRequirementRecord["acceptanceCriteria"],
+  expiredIds: readonly string[] = []
 ): boolean {
   if (evidence.length === 0) return false;
   const current = new Set(acceptanceCriteria.map((criterion) => criterion.id.trim().toLowerCase()));
+  // @req FR-PARSE-044 AC-3 — an expired id is still a known id: the row predates the expiry.
+  const known = new Set([...current, ...expiredIds.map((id) => id.trim().toLowerCase())]);
   return evidence.some((row) => {
     if (legacyEvidenceMarker(row)) return true;
     const acceptanceTokens = evidenceCoverTokens(row.covers)
       .filter((value) => value === "all" || value.startsWith("ac-"));
     if (acceptanceTokens.length === 0 || current.size === 0) return true;
-    return acceptanceTokens.some((value) => value !== "all" && !current.has(value));
+    return acceptanceTokens.some((value) => value !== "all" && !known.has(value));
   });
 }
 
@@ -440,7 +450,7 @@ function hasLegacyOrStaleEvidence(
 function recordEvidenceDrift(record: SpecRequirementRecord, snapshotInvalid: boolean): boolean {
   if (snapshotInvalid) return true;
   const evidence = authoritativeEvidence(record);
-  if (hasLegacyOrStaleEvidence(evidence, record.acceptanceCriteria)) return true;
+  if (hasLegacyOrStaleEvidence(evidence, record.acceptanceCriteria, record.expiredAcceptanceCriterionIds)) return true;
   if (rawMissingEvidence(record)) return true;
   if ((record.status === "planned" || record.status === "in_progress") && record.verificationEvidence.length > 0) {
     return !evidence.some((row) => isSubstantiveEvidence(row) && evidenceCoverTokens(row.covers).includes("all"));

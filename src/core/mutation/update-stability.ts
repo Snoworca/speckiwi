@@ -3,7 +3,7 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { isCanonicalStability } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
-import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
+import { findSectionTableInsertionLine, loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
@@ -124,10 +124,8 @@ async function updateStabilityUnlocked(
   const warning = classifyStabilityTransition(loaded.record.stability, input.stability);
   const warnings: StabilityTransitionWarning[] = warning ? [warning] : [];
 
-  const stabilityLine = findMetadataLine(loaded.file, loaded.record, "Stability");
-  if (!stabilityLine) return mutationFail("MUTATION_DENIED", "Stability metadata row not found");
-  const original = loaded.file.lines[stabilityLine - 1];
-  if (original === undefined) return mutationFail("MUTATION_DENIED", "Stability metadata row is outside file");
+  const stabilityWrite = planMetadataWrite(loaded.file, loaded.record, "Stability", input.stability);
+  if (!stabilityWrite.ok) return mutationFail("MUTATION_DENIED", stabilityWrite.message);
 
   const operations: PatchOperation[] = [];
   const headingParsed = parseRequirementHeading(loaded.file.lines[loaded.record.headingLine - 1] ?? "");
@@ -141,12 +139,7 @@ async function updateStabilityUnlocked(
     headingParsed?.marker
   );
   if (headingOp) operations.push(headingOp);
-  operations.push({
-    type: "replaceLine",
-    line: stabilityLine,
-    original,
-    replacement: `| Stability | ${input.stability} |`
-  });
+  operations.push(stabilityWrite.operation);
   if (input.reason !== undefined && input.reason.length > 0) {
     const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
     if (!insertLine) {

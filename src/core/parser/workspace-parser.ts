@@ -1,4 +1,4 @@
-import { discoverSrsFiles } from "./discover.js";
+import { discoverSrsFiles, srsDocumentFiles } from "./discover.js";
 import { extractTargetGoals, parseCompletedWork, parseIndexDocument } from "./index-parser.js";
 import { scanRequirementBlocks } from "./block-scanner.js";
 import { toRequirementRecord } from "../query/records.js";
@@ -84,7 +84,7 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
     const scanned = scanRequirementBlocks(file.lines, file.relativePath);
     diagnostics.push(...scanned.diagnostics);
     for (const block of scanned.blocks) {
-      const parsed = toRequirementRecord(file, block);
+      const parsed = toRequirementRecord(file, block, scanned.lines);
       records.push(parsed.record);
       diagnostics.push(...parsed.diagnostics);
     }
@@ -95,13 +95,13 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
     const scanned = scanRequirementBlocks(file.lines, file.relativePath);
     diagnostics.push(...scanned.diagnostics);
     for (const block of scanned.blocks) {
-      const parsed = toRequirementRecord(file, block);
+      const parsed = toRequirementRecord(file, block, scanned.lines);
       stepRecords.push(stepName ? { ...parsed.record, stepName } : parsed.record);
       diagnostics.push(...parsed.diagnostics);
     }
   }
 
-  const files = [discovered.index, ...discovered.scopeFiles, ...(discovered.completedWork ? [discovered.completedWork] : []), ...(discovered.appendix ? [discovered.appendix] : [])];
+  const files = srsDocumentFiles(discovered);
   return {
     root,
     index,

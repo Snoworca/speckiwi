@@ -1,9 +1,10 @@
-import type { MutationResult, ProjectRoot, RequirementRecord, RequirementType } from "../types.js";
+import type { Diagnostic, MutationResult, ProjectRoot, RequirementRecord, RequirementType, RollupSyncFailure } from "../types.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { addRequirement, type AddRequirementInput } from "./add-requirement.js";
-import { updateStatus } from "./update-status.js";
+import { discardSupersededRequirement, updateStatus } from "./update-status.js";
 import { revokeCompatibilityCheck } from "./add-compatibility-check.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { dedupeDiagnostics } from "../diagnostic.js";
 
 // FR-NODE-045 — supersede_requirement strict two-call mutation with guards and A1
 // invalidation.
@@ -180,8 +181,37 @@ export async function supersedeRequirement(
     ) as MutationResult<SupersedeRequirementOutput>;
   }
 
+  // Each step is first run as a dry run, which judges every refusal a step has (the discard guard, a
+  // compatibility row that cannot be revoked, ...) without writing; only when all of them would go
+  // through are they run for real. A refusal therefore comes before the successor is minted, and a dry
+  // run of the supersede reports what the real run would.
+  const steps = (dryRun: boolean) => runSupersedeSteps(root, input, { resuming, peers: compatibilityPeers(workspace.records, oldId) }, dryRun);
+  if (!(input.dryRun ?? false)) {
+    const rehearsal = await steps(true);
+    if (!rehearsal.ok) return rehearsal;
+  }
+  return steps(input.dryRun ?? false);
+}
+
+/** T1, T2 and the compatibility revocations of a supersede, in order, each stopping the run on a refusal. */
+async function runSupersedeSteps(
+  root: ProjectRoot,
+  input: SupersedeRequirementInput,
+  plan: { resuming: boolean; peers: readonly string[] },
+  dryRun: boolean
+): Promise<MutationResult<SupersedeRequirementOutput>> {
+  const { oldId } = input;
+  const { resuming } = plan;
   let newId: string | undefined;
   let written = false;
+  // What each step that went through reports besides its value (warnings, a failed follow-up rollup
+  // sync) is the supersede's to report too; the first failed rollup sync is the one surfaced.
+  const diagnostics: Diagnostic[] = [];
+  let rollupSync: RollupSyncFailure | undefined;
+  const keep = (step: MutationResult) => {
+    diagnostics.push(...step.diagnostics);
+    rollupSync ??= step.rollupSync;
+  };
 
   // T1 — add_requirement minting the successor with a `supersedes oldId` trace row.
   if (!resuming) {
@@ -194,7 +224,7 @@ export async function supersedeRequirement(
       statement: input.statement,
       acceptanceCriteria: input.acceptanceCriteria,
       trace: [{ type: "Requirement", reference: oldId, relation: SUPERSEDES_RELATION }],
-      dryRun: input.dryRun ?? false
+      dryRun
     };
     const added = await addRequirement(root, addInput);
     if (!added.ok) {
@@ -205,6 +235,7 @@ export async function supersedeRequirement(
         diagnosticsSummary: added.diagnosticsSummary
       };
     }
+    keep(added);
     newId = added.value?.requirementId;
     written = written || (added.value?.written ?? false);
   }
@@ -215,11 +246,12 @@ export async function supersedeRequirement(
   const discardInput: Parameters<typeof updateStatus>[1] = {
     id: oldId,
     status: "discarded",
-    dryRun: input.dryRun ?? false
+    dryRun
   };
   if (!resuming && input.reason !== undefined) discardInput.reason = input.reason;
   if (input.confirmDiscardVerified !== undefined) discardInput.confirmDiscardVerified = input.confirmDiscardVerified;
-  const discarded = await updateStatus(root, discardInput);
+  // @req FR-NODE-243 AC-7 — expired markers naming oldId as successor move to the new requirement.
+  const discarded = newId === undefined ? await updateStatus(root, discardInput) : await discardSupersededRequirement(root, discardInput, newId);
   if (!discarded.ok) {
     return {
       ok: false,
@@ -228,16 +260,16 @@ export async function supersedeRequirement(
       diagnosticsSummary: discarded.diagnosticsSummary
     };
   }
+  keep(discarded);
   written = written || ((discarded.value as { written?: boolean } | undefined)?.written ?? false);
 
   // A1 invalidation (AC-5) — revoke every compatibility check touching oldId so no
   // `checked_compatible` row referencing it survives the supersede.
-  const peers = compatibilityPeers(workspace.records, oldId);
-  for (const peerId of peers) {
+  for (const peerId of plan.peers) {
     const revoked = await revokeCompatibilityCheck(root, {
       aReqId: oldId,
       bReqId: peerId,
-      dryRun: input.dryRun ?? false
+      dryRun
     });
     if (!revoked.ok) {
       return {
@@ -247,10 +279,11 @@ export async function supersedeRequirement(
         diagnosticsSummary: revoked.diagnosticsSummary
       };
     }
+    keep(revoked);
     written = written || ((revoked.value as { written?: boolean } | undefined)?.written ?? false);
   }
 
   const value: SupersedeRequirementOutput = { oldId, written };
   if (newId !== undefined) value.newId = newId;
-  return mutationOk(value);
+  return { ...mutationOk(value, dedupeDiagnostics(diagnostics)), ...(rollupSync ? { rollupSync } : {}) };
 }

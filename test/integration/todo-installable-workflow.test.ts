@@ -75,7 +75,7 @@ function renderIndex(options: { omitScopeMap?: boolean } = {}): string {
     `| Product | ${PRODUCT_NAME} |`,
     "| Version | 1.0.0 |",
     "| Last Updated | 2026-05-08 |",
-    "| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/SRS-MD-Rules-v2.5.0.md) |",
+    "| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md) |",
     "",
     "## 1. Purpose",
     "",
@@ -126,7 +126,7 @@ function renderIndex(options: { omitScopeMap?: boolean } = {}): string {
     "",
     "## 9. Reference Documents",
     "",
-    "- [SRS-MD Authoring Rules v2.5.0](../rule/SRS-MD-Rules-v2.5.0.md)",
+    "- [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md)",
     "",
     "## 10. Change Notes",
     "",
@@ -327,8 +327,8 @@ async function createTodoWorkspace(options: { omitScopeMap?: boolean } = {}): Pr
     "utf8"
   );
   await writeFile(
-    path.join(ruleDir, "SRS-MD-Rules-v2.5.0.md"),
-    ["# SRS-MD Authoring Rules v2.5.0", "", "Fixture copy for integration testing.", ""].join("\n"),
+    path.join(ruleDir, "SRS-MD-Rules-v2.6.0.md"),
+    ["# SRS-MD Authoring Rules v2.6.0", "", "Fixture copy for integration testing.", ""].join("\n"),
     "utf8"
   );
 
@@ -422,13 +422,13 @@ describe("todo installable SRS workflow", () => {
     const indexPath = path.join(rootPath, "docs", "spec", "00.index.md");
     const serverPath = path.join(rootPath, "docs", "spec", "10.server.srs.md");
     const webPath = path.join(rootPath, "docs", "spec", "20.web-page.srs.md");
-    const rulePath = path.join(rootPath, "docs", "rule", "SRS-MD-Rules-v2.5.0.md");
+    const rulePath = path.join(rootPath, "docs", "rule", "SRS-MD-Rules-v2.6.0.md");
     const indexText = await readFile(indexPath, "utf8");
 
     expect(rootPath).toContain("speckiwi-todo-installable-");
     await expect(readFile(serverPath, "utf8")).resolves.toContain("### FR-SRV-001 — Todo 서버 CRUD 제공");
     await expect(readFile(webPath, "utf8")).resolves.toContain("### FR-WEB-001 — Todo 목록과 생성 UI 제공");
-    await expect(readFile(rulePath, "utf8")).resolves.toContain("# SRS-MD Authoring Rules v2.5.0");
+    await expect(readFile(rulePath, "utf8")).resolves.toContain("# SRS-MD Authoring Rules v2.6.0");
     expect(indexText).toContain(PRODUCT_NAME);
     expect(serverPath.endsWith(".srs.md")).toBe(true);
     expect(webPath.endsWith(".srs.md")).toBe(true);
@@ -543,8 +543,9 @@ describe("todo installable SRS workflow", () => {
     const shown = expectMcpSuccess<RequirementRecord>(await server.callTool("get_requirement", { id: "FR-WEB-001", includeMarkdown: true }));
     expect(shown.markdown).toContain("Todo 목록과 생성 UI 제공");
 
-    const validation = expectMcpSuccess<ValidationResult>(await server.callTool("validate_spec", {}));
-    expect(validation.errors).toHaveLength(0);
+    // FR-MCP-070 AC-1 — MCP validate_spec lists its entries once; errors are those of error severity.
+    const validation = expectMcpSuccess<{ diagnostics: ValidationResult["diagnostics"] }>(await server.callTool("validate_spec", {}));
+    expect(validation.diagnostics.filter((item) => item.severity === "error")).toHaveLength(0);
 
     const initialSummary = expectMcpSuccess<{ total: number }>(await server.callTool("summarize_target", { target: TODO_TARGET }));
     expect(initialSummary.total).toBe(3);

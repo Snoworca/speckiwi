@@ -22,41 +22,10 @@ import type {
 export type { ScaffoldScopeInput, ScaffoldScopeOutput } from "../types.js";
 import { assertSingleLine } from "./block-prose.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { readScopeIndexTable, renderScopeIndexRow, type ScopeRowFields } from "./scope-index-table.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
 // @req FR-NODE-065
-
-/**
- * FR-NODE-065 — render an index row for the new scope. Both the §2 SRS Documents and the §4
- * Scope Map sections share the `| Scope | Document | Prefix | Description |` shape, so the Document
- * cell is a markdown link to the bare file name (matching the init scaffold rows) and the row names
- * the document once with its prefix.
- * @req FR-NODE-065
- */
-function renderScopeRow(scope: ScopeTemplateInfo, document: string): string {
-  return `| ${scope.name} | [${document}](./${document}) | ${scope.prefix} | ${scope.name} |`;
-}
-
-/**
- * FR-NODE-065 — locate the line after the last table row of an index section so a new row is
- * appended without disturbing any existing line. Scans from the `## N. <heading>` line for the
- * table rows and returns the line just past the final consecutive table row.
- * @req FR-NODE-065
- */
-function findSectionInsertionLine(file: TextFile, heading: RegExp): number | undefined {
-  const headingLine = file.lines.findIndex((line) => heading.test(line.trim()));
-  if (headingLine < 0) return undefined;
-  let lastTableLine: number | undefined;
-  for (let i = headingLine + 1; i < file.lines.length; i += 1) {
-    const text = file.lines[i] ?? "";
-    if (/^##\s/.test(text)) break;
-    if (text.trim().startsWith("|")) lastTableLine = i + 1;
-  }
-  return lastTableLine === undefined ? undefined : lastTableLine + 1;
-}
-
-const SRS_DOCUMENTS_HEADING = /^##\s+\d+\.\s+SRS Documents$/;
-const SCOPE_MAP_HEADING = /^##\s+\d+\.\s+Scope Map$/;
 
 /**
  * FR-NODE-065 — scaffoldScope core mutation. Creates a new numbered scope srs.md file from the
@@ -119,17 +88,27 @@ async function scaffoldScopeUnlocked(
   );
   const documentScope: ScopeTemplateInfo = { name: scope.name, prefix: scope.prefix, document };
   const filePreview = renderEmptyScopeTemplate(documentScope);
-  const srsDocumentsRow = renderScopeRow(documentScope, document);
-  const scopeMapRow = renderScopeRow(documentScope, document);
-
-  const output: ScaffoldScopeOutput = { dryRun, document, filePreview, srsDocumentsRow, scopeMapRow };
-  if (dryRun) return mutationOk(output);
-
-  const documentsInsertLine = findSectionInsertionLine(indexFile, SRS_DOCUMENTS_HEADING);
-  const scopeMapInsertLine = findSectionInsertionLine(indexFile, SCOPE_MAP_HEADING);
-  if (documentsInsertLine === undefined || scopeMapInsertLine === undefined) {
+  const documentsTable = readScopeIndexTable(indexFile, "srs-documents");
+  const scopeMapTable = readScopeIndexTable(indexFile, "scope-map");
+  if (documentsTable === undefined || scopeMapTable === undefined) {
     return mutationFail("MUTATION_DENIED", "SRS Documents or Scope Map table not found in 00.index.md");
   }
+  // @req FR-NODE-233 AC-1 — each section's row follows that section's own header.
+  const fields: ScopeRowFields = { scope: scope.name, document: `[${document}](./${document})`, prefix: scope.prefix, description: scope.name };
+  const srsDocumentsRow = renderScopeIndexRow(documentsTable.headers, fields);
+  const scopeMapRow = renderScopeIndexRow(scopeMapTable.headers, fields);
+  if (!srsDocumentsRow.ok) return mutationFail("MUTATION_DENIED", `SRS Documents row: ${srsDocumentsRow.error.message}`);
+  if (!scopeMapRow.ok) return mutationFail("MUTATION_DENIED", `Scope Map row: ${scopeMapRow.error.message}`);
+
+  const output: ScaffoldScopeOutput = {
+    dryRun,
+    document,
+    filePreview,
+    srsDocumentsRow: srsDocumentsRow.value,
+    scopeMapRow: scopeMapRow.value,
+    written: false
+  };
+  if (dryRun) return mutationOk(output);
 
   const newDocumentPath = path.join(path.dirname(indexFile.path), document);
   // The template is joined with LF; write it in the workspace's own line ending so the new document
@@ -140,11 +119,11 @@ async function scaffoldScopeUnlocked(
   // Both rows insert into the same index file. The patch planner applies operations in
   // descending line order, so the two insertions do not shift each other's target line.
   const operations: PatchOperation[] = [
-    { type: "insertLines", line: documentsInsertLine, lines: [srsDocumentsRow] },
-    { type: "insertLines", line: scopeMapInsertLine, lines: [scopeMapRow] }
+    { type: "insertLines", line: documentsTable.insertLine, lines: [srsDocumentsRow.value] },
+    { type: "insertLines", line: scopeMapTable.insertLine, lines: [scopeMapRow.value] }
   ];
   const plan = createPatchPlan(indexFile, operations);
   await applyPatchPlan(plan, { dryRun: false });
 
-  return mutationOk(output);
+  return mutationOk({ ...output, written: true });
 }

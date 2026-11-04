@@ -1,5 +1,5 @@
 import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
-import { InvalidArgumentError, type Command } from "commander";
+import { InvalidArgumentError, Option, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { TARGET_STATUSES_SENTENCE, TARGET_TYPES_SENTENCE } from "../../core/target-types.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
@@ -24,6 +24,9 @@ import { retarget } from "../../core/mutation/retarget.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
 import { registerScopes } from "../../core/mutation/register-scopes.js";
+import { renameScope } from "../../core/mutation/rename-scope.js";
+import { renameTarget } from "../../core/mutation/rename-target.js";
+import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
 import { addChangeNote } from "../../core/mutation/add-change-note.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
@@ -94,6 +97,15 @@ function parseDate(value: string): string {
 
 function parseRequirementIds(value?: string): string[] {
   return typeof value === "string" ? value.split(",").map((id) => id.trim()).filter(Boolean) : [];
+}
+
+/**
+ * `--dry-run` for a command that writes only under `--apply`. The two contradict each other, so
+ * commander refuses the pair as a usage error before the mutation runs, rather than one silently
+ * winning. @req IR-CLI-110 AC-1 / IR-CLI-112 AC-4
+ */
+function dryRunAgainstApply(): Option {
+  return new Option("--dry-run", "preview only; the default unless --apply is given").conflicts("apply");
 }
 
 export function registerMutationCommands(command: Command, context: CliContext): void {
@@ -699,7 +711,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
 
   command
     .command("retarget")
-    .requiredOption("--from <target>", "source target whose requirements are moved")
+    .option("--from <target>", "source target whose requirements are moved; required unless --id names them")
     .requiredOption("--to <target>", "destination target")
     .requiredOption("--reason <text>")
     .option("--scope <scope>", "limit the move set to a scope prefix")
@@ -708,29 +720,55 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--id <id>", "explicit requirement id to move; repeatable", pushOption, [])
     .option("--exclude <id>", "requirement id to exclude; repeatable", pushOption, [])
     .option("--apply")
+    .addOption(dryRunAgainstApply())
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
-    .action(async (options) => {
-      const root = await rootFrom(command.opts());
+    .action(async (options, sub: Command) => {
       const explicitIds = collect(options.id);
-      let ids: string[];
-      if (explicitIds.length > 0) {
-        ids = explicitIds;
-      } else {
-        const workspace = await parseWorkspace(root);
-        const filter: RequirementFilter = {
-          target: options.from,
-          ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
-          ...(typeof options.status === "string" ? { status: options.status as RequirementStatus } : {}),
-          ...(typeof options.type === "string" ? { type: options.type as RequirementType } : {})
-        };
-        ids = listRequirements(workspace, filter).map((record) => record.id);
+      // @req IR-CLI-112 AC-3 — a single requirement is named by --id alone; --from selects a set.
+      if (explicitIds.length === 0 && typeof options.from !== "string") {
+        sub.error("error: retarget needs --from <target> or at least one --id <id>", { exitCode: 2, code: "commander.missingMandatoryOptionValue" });
       }
+      const root = await rootFrom(command.opts());
+      const workspace = await parseWorkspace(root);
+      const filter: RequirementFilter = {
+        ...(typeof options.from === "string" ? { target: options.from } : {}),
+        ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
+        ...(typeof options.status === "string" ? { status: options.status as RequirementStatus } : {}),
+        ...(typeof options.type === "string" ? { type: options.type as RequirementType } : {})
+      };
+      const selected = listRequirements(workspace, filter).map((record) => record.id);
+      // @req IR-CLI-112 AC-3 — an id the caller named is checked against the selection before any
+      // write: one that names no requirement, or one the --from/--scope/--status/--type selection
+      // excludes, refuses the whole move rather than being skipped while the rest is applied.
+      const excluded = new Set(collect(options.exclude));
+      const named = explicitIds.filter((id) => !excluded.has(id));
+      const unknown = named.filter((id) => !workspace.records.some((record) => record.id === id));
+      const outside = named.filter((id) => !unknown.includes(id) && !selected.includes(id));
+      // An unregistered --from selects nothing, which would otherwise report a successful empty move;
+      // it is refused like rename-target --from and an unregistered --to.
+      const unregisteredFrom =
+        typeof options.from === "string" && !workspace.index.targets.some((entry) => entry.target === options.from);
+      const refusal = unregisteredFrom
+        ? mutationFail("NOT_FOUND", `Target is not registered in the Target Map: ${options.from}; nothing was moved`)
+        : unknown.length > 0
+          ? mutationFail("NOT_FOUND", `no requirement holds ${unknown.join(", ")}; nothing was moved`)
+          : outside.length > 0
+            ? mutationFail("MUTATION_DENIED", `${outside.join(", ")} is outside the --from/--scope/--status/--type selection; nothing was moved`)
+            : undefined;
+      if (refusal) {
+        output(context, { json: options.json || command.opts().json }, refusal);
+        command.setOptionValue("exitCode", 5);
+        return;
+      }
+      const ids = explicitIds.length > 0 ? explicitIds : selected;
       const result = await retarget(root, {
         ids,
         toTarget: options.to,
         reason: options.reason,
         exclude: collect(options.exclude),
-        dryRun: options.apply !== true
+        dryRun: options.apply !== true,
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) {
@@ -840,6 +878,70 @@ export function registerMutationCommands(command: Command, context: CliContext):
         apply: Boolean(options.apply) && options.dryRun !== true,
         // @req IR-CLI-078 — the mutation reads ignoreLock but nothing supplied it, so a held lock left
         // this one mutation with no way through where it previously took no lock at all.
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-110 — moves a scope document and rewrites both index sections. Like scaffold-scope it
+  // previews unless --apply is given.
+  command
+    .command("rename-scope")
+    .requiredOption("--from <document>", "scope document file name under docs/spec, `.srs.md` optional")
+    .requiredOption("--to <NN.slug>", "new file name as NN.slug, `.srs.md` optional")
+    .option("--apply", "move the document and rewrite the index")
+    .addOption(dryRunAgainstApply())
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (options) => {
+      const result = await renameScope(await rootFrom(command.opts()), {
+        from: options.from,
+        to: options.to,
+        apply: options.apply === true,
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-112 AC-1 / AC-2 / AC-4 — a rename touches many files, so writing is the --apply choice.
+  command
+    .command("rename-target")
+    .requiredOption("--from <target>", "registered target to rename")
+    .requiredOption("--to <target>", "new target name, not yet registered")
+    .option("--apply", "rewrite every site that names the old target")
+    .addOption(dryRunAgainstApply())
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (options) => {
+      const result = await renameTarget(await rootFrom(command.opts()), {
+        from: options.from,
+        to: options.to,
+        dryRun: options.apply !== true,
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req FR-NODE-243 AC-6
+  command
+    .command("expire-ac")
+    .argument("<id>")
+    .argument("<acId>", "the live criterion to expire, e.g. AC-2")
+    .requiredOption("--reason <text>", "why the criterion no longer holds; recorded in Change Notes")
+    .option("--successor <id>", "an existing requirement that now carries the behaviour")
+    .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (id, acId, options) => {
+      const result = await expireAcceptanceCriterion(await rootFrom(command.opts()), {
+        id,
+        acId,
+        reason: options.reason,
+        ...(typeof options.successor === "string" ? { successor: options.successor } : {}),
+        ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);

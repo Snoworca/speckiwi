@@ -26,6 +26,7 @@ type McpResultLike<T> = {
   patch?: unknown;
   mutation?: unknown;
   indexSync?: unknown;
+  rollupSync?: unknown;
   error?: {
     code: string;
     message: string;
@@ -62,16 +63,25 @@ function diagnosticNextActions(diagnostics: Diagnostic[]): unknown[] {
     .filter((item): item is unknown => item !== undefined);
 }
 
-function envelopeExtras(result: { patch?: unknown; mutation?: unknown; indexSync?: unknown }): Record<string, unknown> {
+function envelopeExtras(result: { patch?: unknown; mutation?: unknown; indexSync?: unknown; rollupSync?: unknown }): Record<string, unknown> {
   const extras: Record<string, unknown> = {};
   if ("patch" in result && result.patch !== undefined) extras.patch = result.patch;
   if ("mutation" in result && result.mutation !== undefined) extras.mutation = result.mutation;
   if ("indexSync" in result && result.indexSync !== undefined) extras.indexSync = result.indexSync;
+  if ("rollupSync" in result && result.rollupSync !== undefined) extras.rollupSync = result.rollupSync;
   return extras;
 }
 
+function carriesDiagnostics(value: unknown): boolean {
+  return typeof value === "object" && value !== null && Array.isArray((value as { diagnostics?: unknown }).diagnostics);
+}
+
 export function mcpSuccess<T>(value: T, diagnostics: Diagnostic[] = [], metadata: Record<string, unknown> = {}): unknown {
-  return { ok: true, value, diagnostics, diagnosticsSummary: summarizeDiagnostics(diagnostics), ...metadata };
+  const diagnosticsSummary = summarizeDiagnostics(diagnostics);
+  // @req FR-MCP-070 AC-1 — a value that already lists the entries is their one copy; repeating them at
+  // top level made a read response carry them three times.
+  if (carriesDiagnostics(value)) return { ok: true, value, diagnosticsSummary, ...metadata };
+  return { ok: true, value, diagnostics, diagnosticsSummary, ...metadata };
 }
 
 export function mcpFailure(

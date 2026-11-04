@@ -133,7 +133,7 @@ describe("FR-NODE-225 — agent instruction block 1.11", () => {
   });
 
   it("FR-NODE-225 AC-8: the rules document points to the block instead of carrying a copy", async () => {
-    const rules = await readFile(repo("docs/rule/SRS-MD-Rules-v2.5.0.md"), "utf8");
+    const rules = await readFile(repo("docs/rule/SRS-MD-Rules-v2.6.0.md"), "utf8");
     expect(rules).not.toContain(AGENT_INSTRUCTION_HEADING_PREFIX);
     expect(rules).not.toContain(AGENT_INSTRUCTION_END_MARKER);
     expect(rules).toMatch(/AGENTS\.md[^\n]*CLAUDE\.md|CLAUDE\.md[^\n]*AGENTS\.md/);

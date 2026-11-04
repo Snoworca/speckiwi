@@ -14,6 +14,7 @@ import type {
   TextFile
 } from "../types.js";
 import { parseMarkdownTable, parseMarkdownTableResult, parseMetadataRows, splitTableRow } from "./table.js";
+import { classifyDocumentLines, type ClassifyOptions } from "./document-lines.js";
 
 const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abandoned"]);
 const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait", "tdd"]);
@@ -74,13 +75,57 @@ export function parseStepState(lines: readonly string[]): StepStateParseResult {
   }) as StepStateParseResult;
 }
 
+/**
+ * Column names of a scope row by field. The init template names the Scope Map columns like the SRS
+ * Documents ones, while older indexes (this repository's own) use `Primary Document` and `Notes`;
+ * the first name is the canonical one. The index reader and the scope-row writers share this table.
+ */
+export const SCOPE_ROW_COLUMNS = {
+  scope: ["Scope"],
+  document: ["Document", "Primary Document"],
+  prefix: ["Prefix"],
+  description: ["Description", "Notes"]
+} as const satisfies Record<string, readonly [string, ...string[]]>;
+
+export type ScopeRowField = keyof typeof SCOPE_ROW_COLUMNS;
+
+function scopeCell(row: Record<string, string>, field: ScopeRowField): string {
+  for (const name of SCOPE_ROW_COLUMNS[field]) {
+    const value = row[name];
+    if (value !== undefined) return value;
+  }
+  return "";
+}
+
 function extractLinkTarget(value: string): string {
   const match = /\[[^\]]+]\(([^)]+)\)/.exec(value);
   return match?.[1] ?? value;
 }
 
-function findHeadingMatching(lines: string[], pattern: RegExp): number {
-  return lines.findIndex((line) => pattern.test(line.trim()));
+export const TARGET_MAP_HEADING = /^##\s+\d+\.\s+Target Map$/;
+export const COMPLETED_WORK_LOG_HEADING = /^##\s+\d+\.\s+Completed Work Log$/;
+/** Up to three leading spaces, because CommonMark permits them and every renderer draws the heading. */
+export const RELEASE_RESIDUE_HEADING = /^ {0,3}##\s+(?:\d+\.\s+)?Release Residue\s*$/;
+
+// @req FR-PARSE-044 AC-6
+/**
+ * For each line, whether it is document text (classifyDocumentLines): false for fenced and indented
+ * code and for a line wholly inside an HTML comment. A heading or a table there is an example an
+ * author shows, not the document's own structure.
+ */
+export function linesOutsideFences(lines: readonly string[], options: ClassifyOptions = {}): boolean[] {
+  return classifyDocumentLines(lines, options).map((line) => line.body);
+}
+
+/**
+ * The first body line that is an unindented ATX heading matching `pattern` (tested with trailing
+ * blanks removed), or -1. An indented `## …` line is not taken for a heading.
+ */
+export function findHeadingMatching(lines: readonly string[], pattern: RegExp, options: ClassifyOptions = {}): number {
+  const classified = classifyDocumentLines(lines, options);
+  return classified.findIndex(
+    (line) => line.body && line.text.startsWith("#") && pattern.test(line.text.trimEnd())
+  );
 }
 
 function hasMetadataField(metadata: Record<string, string>, field: string): boolean {
@@ -93,7 +138,7 @@ function legacyActiveTarget(targets: TargetEntry[]): string {
 
 // @req FR-PARSE-021
 export function parseCompletedWork(file: Pick<TextFile, "lines" | "relativePath">): CompletedWorkEntry[] {
-  const heading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
+  const heading = findHeadingMatching(file.lines, COMPLETED_WORK_LOG_HEADING);
   const table = heading >= 0 ? parseMarkdownTable(file.lines, heading + 1) : undefined;
   if (!table) return [];
   return table.rows.map((row, index) => {
@@ -140,7 +185,7 @@ function parseStatusSummary(lines: string[]): StatusSummaryEntry[] | undefined {
   return table.rows.map((row, index) => ({
     status: row.Status ?? "",
     count: parseCount(row.Count ?? ""),
-    line: table.startLine + 2 + index
+    line: table.rowLines[index] ?? table.startLine + 2 + index
   }));
 }
 
@@ -152,14 +197,14 @@ function parseRequirementTypeSummary(lines: string[]): RequirementTypeSummaryEnt
     type: row.Type ?? "",
     prefix: row.Prefix ?? "",
     count: parseCount(row.Count ?? ""),
-    line: table.startLine + 2 + index
+    line: table.rowLines[index] ?? table.startLine + 2 + index
   }));
 }
 
 export function parseIndexDocument(file: TextFile): { index: IndexDocument; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
   const { metadata } = parseMetadataRows(file.lines, 1);
-  const targetStart = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Target Map$/);
+  const targetStart = findHeadingMatching(file.lines, TARGET_MAP_HEADING);
   const scopeStart = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Scope Map$/);
   const targetTable = targetStart >= 0 ? parseMarkdownTable(file.lines, targetStart + 1) : undefined;
   const scopeTable = scopeStart >= 0 ? parseMarkdownTable(file.lines, scopeStart + 1) : undefined;
@@ -179,10 +224,10 @@ export function parseIndexDocument(file: TextFile): { index: IndexDocument; diag
     ...(typeof targetTable?.rowLines[index] === "number" ? { line: targetTable.rowLines[index] } : {})
   }));
   const scopes: ScopeEntry[] = (scopeTable?.rows ?? []).map((row, index) => ({
-    scope: row.Scope ?? "",
-    document: extractLinkTarget(row.Document ?? row["Primary Document"] ?? ""),
-    prefix: row.Prefix ?? "",
-    description: row.Description ?? row.Notes ?? "",
+    scope: scopeCell(row, "scope"),
+    document: extractLinkTarget(scopeCell(row, "document")),
+    prefix: scopeCell(row, "prefix"),
+    description: scopeCell(row, "description"),
     ...(typeof scopeTable?.rowLines[index] === "number" ? { line: scopeTable.rowLines[index] } : {})
   }));
   const activeTarget = hasMetadataField(metadata, "Active Target") ? (metadata["Active Target"] ?? "").trim() : legacyActiveTarget(targets);

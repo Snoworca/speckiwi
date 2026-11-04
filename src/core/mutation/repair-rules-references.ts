@@ -1,12 +1,13 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
+import { isStalePatchError } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
-import type { MutationResult, ProjectRoot } from "../types.js";
+import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { rewriteRulesReferences } from "../bootstrap/rules-references.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
+import { findMetadataLine, findSectionTableInsertionLine, metadataRowText, planMetadataRowEdit } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { todayStamp } from "../date-stamp.js";
 
@@ -68,27 +69,29 @@ async function repairUnlocked(
   input: RepairRulesReferencesInput,
   apply: boolean
 ): Promise<MutationResult<RepairRulesReferencesOutput>> {
-  const findings = await collectFindings(root);
+  const repairs = await planRepairs(root);
+  const findings = repairs.flatMap((repair) => repair.findings);
   if (!apply || findings.length === 0) return mutationOk({ applied: apply, findings, repaired: [] });
 
-  const repaired: string[] = [];
-  // One requirement at a time, re-reading the file each round: appending a Change Note shifts the
-  // lines below it, so a plan computed against a stale snapshot would patch the wrong rows.
-  for (const requirementId of [...new Set(findings.map((finding) => finding.requirementId))]) {
-    const result = await repairOne(root, requirementId, input.date ?? todayStamp());
-    if (!result.ok) {
-      // A failed write is the whole command's failure, reported verbatim. Requirements repaired
-      // before it stay repaired: each is one atomic patch, and a partial run is visible in `repaired`.
-      return {
-        ok: false,
-        error: result.error ?? { code: "REPAIR_FAILED", message: `repair failed for ${requirementId}` },
-        diagnostics: result.diagnostics,
-        diagnosticsSummary: result.diagnosticsSummary
-      };
-    }
-    repaired.push(requirementId);
+  // All or nothing: every requirement's patch is planned against one snapshot before anything is
+  // written, and the shared transaction writes every file or restores them all.
+  const date = input.date ?? todayStamp();
+  const plansByFile = new Map<string, { file: TextFile; operations: PatchOperation[] }>();
+  for (const repair of repairs) {
+    const planned = planOne(repair, date);
+    if (!planned.ok) return mutationFail("MUTATION_DENIED", `${planned.message}; nothing was written`);
+    const entry = plansByFile.get(repair.file.relativePath) ?? { file: repair.file, operations: [] };
+    entry.operations.push(...planned.operations);
+    plansByFile.set(repair.file.relativePath, entry);
   }
-  return mutationOk({ applied: true, findings, repaired });
+  const plans = [...plansByFile.values()].map(({ file, operations }) => createPatchPlan(file, operations));
+  try {
+    await applyPatchPlans(plans, { dryRun: false });
+  } catch (error) {
+    if (isStalePatchError(error)) return mutationFail("STALE_PATCH", "a requirement file changed before the repair was written");
+    throw error;
+  }
+  return mutationOk({ applied: true, findings, repaired: repairs.map((repair) => repair.record.id) });
 }
 
 /** Whether a rules document is installed under `docs/rule`. */
@@ -98,12 +101,23 @@ async function isInstalled(root: ProjectRoot, document: string): Promise<boolean
     .catch(() => false);
 }
 
+interface PlannedRepair {
+  record: RequirementRecord;
+  file: TextFile;
+  broken: ReadonlySet<string>;
+  findings: RulesReferenceRepairFinding[];
+}
+
 /**
  * Every requirement whose `Related Docs` row cites a rules document that is not installed. The
  * decision is presence on disk: unlike the migration, this command runs no refresh, so what is on
  * disk now is exactly what the link resolves against — which is also what `links check` reports.
+ *
+ * The row is read as text, not as the parsed cell value: the parser cuts a value at an escaped `\|`,
+ * so a document named after one would be invisible to the diagnosis while the repair rewrote it.
+ * Diagnosis and repair both use this one plan, so they cannot disagree.
  */
-async function collectFindings(root: ProjectRoot): Promise<RulesReferenceRepairFinding[]> {
+async function planRepairs(root: ProjectRoot): Promise<PlannedRepair[]> {
   const workspace = await parseWorkspace(root);
   const installed = new Map<string, boolean>();
   const brokenDocument = async (document: string): Promise<boolean> => {
@@ -114,76 +128,39 @@ async function collectFindings(root: ProjectRoot): Promise<RulesReferenceRepairF
     return !present;
   };
 
-  const findings: RulesReferenceRepairFinding[] = [];
+  const repairs: PlannedRepair[] = [];
   for (const record of workspace.records) {
-    const value = record.metadata[RELATED_DOCS_FIELD];
-    if (typeof value !== "string" || value === "" || value === "-") continue;
+    const file = workspace.files.find((candidate) => candidate.relativePath === record.filePath);
+    const row = file ? metadataRowText(file, record, RELATED_DOCS_FIELD) : undefined;
+    const line = file ? findMetadataLine(file, record, RELATED_DOCS_FIELD) : undefined;
+    if (!file || row === undefined || line === undefined) continue;
 
     // Resolve the presence of every document the row names before rewriting, so the rewrite itself
     // stays synchronous and the predicate is a plain lookup.
     const broken = new Set<string>();
-    for (const match of value.matchAll(/(SRS|SDS)-MD-Rules-v\d+\.\d+\.\d+\.md/g)) {
+    for (const match of row.matchAll(/(SRS|SDS)-MD-Rules-v\d+\.\d+\.\d+\.md/g)) {
       if (await brokenDocument(match[0])) broken.add(match[0]);
     }
     if (broken.size === 0) continue;
 
-    const rewritten = rewriteRulesReferences(value, (document) => broken.has(document));
+    const rewritten = rewriteRulesReferences(row, (document) => broken.has(document));
     if (rewritten.changes.length === 0) continue;
-
-    const loaded = await loadRecordWithWorkspace(root, record.id);
-    const line = loaded ? findMetadataLine(loaded.file, loaded.record, RELATED_DOCS_FIELD) : undefined;
-    if (loaded === undefined || line === undefined) continue;
-    for (const change of rewritten.changes) {
-      findings.push({
-        requirementId: record.id,
-        filePath: record.filePath,
-        line,
-        from: change.from,
-        to: change.to
-      });
-    }
+    const findings = rewritten.changes.map((change) => ({ requirementId: record.id, filePath: record.filePath, line, from: change.from, to: change.to }));
+    repairs.push({ record, file, broken, findings });
   }
-  return findings;
+  return repairs;
 }
 
-/** Rewrites one requirement's `Related Docs` row and appends the Change Note recording it. */
-async function repairOne(root: ProjectRoot, id: string, date: string): Promise<MutationResult<{ id: string }>> {
-  const loaded = await loadRecordWithWorkspace(root, id);
-  if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${id}`);
-
-  const metadataLine = findMetadataLine(loaded.file, loaded.record, RELATED_DOCS_FIELD);
-  if (metadataLine === undefined) return mutationFail("MUTATION_DENIED", `${RELATED_DOCS_FIELD} metadata row not found: ${id}`);
-  const original = loaded.file.lines[metadataLine - 1];
-  if (original === undefined) return mutationFail("MUTATION_DENIED", `${RELATED_DOCS_FIELD} metadata row is outside file: ${id}`);
-
-  const broken = new Set<string>();
-  for (const match of original.matchAll(/(SRS|SDS)-MD-Rules-v\d+\.\d+\.\d+\.md/g)) {
-    if (!(await isInstalled(root, match[0]))) broken.add(match[0]);
-  }
-  const rewritten = rewriteRulesReferences(original, (document) => broken.has(document));
-  if (rewritten.changes.length === 0) return mutationOk({ id });
-
-  const noteLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
-  if (noteLine === undefined) return mutationFail("MUTATION_DENIED", `Change Notes section not found: ${id}`);
-
+/** One requirement's `Related Docs` row rewrite and the Change Note recording it. */
+function planOne(repair: PlannedRepair, date: string): { ok: true; operations: PatchOperation[] } | { ok: false; message: string } {
+  const { record, file, broken } = repair;
+  const write = planMetadataRowEdit(file, record, RELATED_DOCS_FIELD, (row) => rewriteRulesReferences(row, (document) => broken.has(document)).next);
+  if (!write.ok) return { ok: false, message: `${write.message}: ${record.id}` };
+  if ("unchanged" in write) return { ok: true, operations: [] };
+  const metadataLine = findMetadataLine(file, record, RELATED_DOCS_FIELD) ?? 0;
+  const noteLine = findSectionTableInsertionLine(file, record, "Change Notes");
+  if (noteLine === undefined) return { ok: false, message: `Change Notes section not found: ${record.id}` };
+  if (noteLine <= metadataLine) return { ok: false, message: `Change Notes table precedes the metadata row in ${record.id}; refusing to patch` };
   const note = `| ${date} | Related Docs reference repaired | rules document renamed; path corrected by repair rules-references |`;
-  // The Change Notes table always sits below the metadata table, so the insert is the later line and
-  // applying it first leaves the metadata row's own line number untouched.
-  const operations: PatchOperation[] = [
-    { type: "insertLines", line: noteLine, lines: [note] },
-    { type: "replaceLine", line: metadataLine, original, replacement: rewritten.next }
-  ];
-  if (noteLine <= metadataLine) {
-    return mutationFail("MUTATION_DENIED", `Change Notes table precedes the metadata row in ${id}; refusing to patch`);
-  }
-
-  try {
-    const applied = await applyPatchPlan(createPatchPlan(loaded.file, operations), { dryRun: false });
-    return applied.written ? mutationOk({ id }) : mutationFail("MUTATION_DENIED", `no write performed for ${id}`);
-  } catch (error) {
-    if (isStalePatchError(error)) {
-      return mutationFail("STALE_PATCH", `target file changed before write: ${loaded.file.relativePath}`);
-    }
-    throw error;
-  }
+  return { ok: true, operations: [{ type: "insertLines", line: noteLine, lines: [note] }, write.operation] };
 }

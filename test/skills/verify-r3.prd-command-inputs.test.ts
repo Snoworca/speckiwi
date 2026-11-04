@@ -43,7 +43,7 @@ function withProposalLine(line: string): string {
 
 // @req FR-FLOW-204 AC-7 — the PRD carries no Requirement ID or acceptance criterion line. The
 // command's ID pattern is `-[A-Z0-9]+-[0-9]{3}\b`, narrower than the SRS-MD ID grammar
-// (`-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4}`, docs/rule/SRS-MD-Rules-v2.5.0.md), and its AC pattern
+// (`-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4}`, docs/rule/SRS-MD-Rules-v2.6.0.md), and its AC pattern
 // does not match the SRS checkbox form `- [ ] AC-<n>:`.
 describe("verify-r3 — prd-quote passes requirement grammar written by the agent", () => {
   const cases: ReadonlyArray<readonly [string, string]> = [

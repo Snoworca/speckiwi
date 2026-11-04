@@ -1,5 +1,15 @@
 import type { RequirementFilter, RequirementRecord } from "../types.js";
 import { matchesRequirementFilter } from "./filter.js";
+import {
+  buildRequirementSearchIndex,
+  phraseSnippets,
+  rankedSnippets,
+  rankRequirements,
+  type RequirementSearchIndex,
+  type RequirementSnippet
+} from "./search-index.js";
+
+export type { RequirementSnippet } from "./search-index.js";
 
 export type RequirementProjection = "ids" | "compact" | "full";
 
@@ -11,9 +21,13 @@ export interface RequirementDiscoveryOptions {
   offset?: number;
 }
 
+/** `ranked` (default): phrase matches, then word matches by score. `exact`: phrase matches only, in ID order. */
+export type RequirementSearchMatch = "ranked" | "exact";
+
 export interface RequirementSearchOptions extends RequirementDiscoveryOptions {
   query: string;
   filter?: RequirementFilter;
+  match?: RequirementSearchMatch;
 }
 
 export interface PageInfo {
@@ -23,11 +37,6 @@ export interface PageInfo {
   returned: number;
   nextOffset: number | null;
   truncated: boolean;
-}
-
-export interface RequirementSnippet {
-  field: string;
-  text: string;
 }
 
 const COMPACT_FIELDS = [
@@ -53,6 +62,7 @@ const FIELD_ALLOWLIST = new Set([
   "risk",
   "metadata",
   "acceptanceCriteria",
+  "expiredAcceptanceCriteria",
   "verificationEvidence",
   "traceLinks",
   "changeNotes",
@@ -84,7 +94,7 @@ export function normalizeDiscoveryFields(value: string[] | string | undefined): 
   return [...new Set(normalized)];
 }
 
-function pageSlice<T>(items: readonly T[], options: RequirementDiscoveryOptions): { items: T[]; page: PageInfo } {
+export function pageSlice<T>(items: readonly T[], options: RequirementDiscoveryOptions): { items: T[]; page: PageInfo } {
   const offset = Math.max(0, Math.trunc(options.offset ?? 0));
   const limit = options.limit === undefined ? null : Math.max(0, Math.trunc(options.limit));
   const end = limit === null ? items.length : offset + limit;
@@ -135,61 +145,57 @@ export function projectRequirementRecords(records: readonly RequirementRecord[],
   };
 }
 
-function textEntries(record: RequirementRecord): Array<{ field: string; text: string }> {
-  return [
-    { field: "id", text: record.id },
-    { field: "title", text: record.title },
-    { field: "requirement", text: record.requirement ?? "" },
-    { field: "rationale", text: record.rationale ?? "" },
-    { field: "research", text: record.research ?? "" },
-    { field: "acceptanceCriteria", text: record.acceptanceCriteria.map((criterion) => `${criterion.id}: ${criterion.text}`).join("\n") },
-    { field: "verificationEvidence", text: record.verificationEvidence.map((row) => `${row.id} ${row.type} ${row.reference} ${row.covers} ${row.notes}`).join("\n") },
-    { field: "traceLinks", text: record.traceLinks.map((row) => `${row.type} ${row.reference} ${row.relation} ${row.notes}`).join("\n") },
-    { field: "relatedDocs", text: (record.relatedDocs ?? []).join("\n") },
-    { field: "changeNotes", text: record.changeNotes.map((row) => `${row.date} ${row.change} ${row.reason}`).join("\n") }
-  ];
+// @req FR-CLI-001 AC-1 — ranked results can be many; exact keeps the pre-ranking unlimited page.
+export const RANKED_DEFAULT_LIMIT = 20;
+
+function searchRecordFields(record: RequirementRecord, snippets: RequirementSnippet[]): Record<string, unknown> {
+  return {
+    id: record.id,
+    title: record.title,
+    snippets,
+    filePath: record.filePath,
+    headingLine: record.headingLine,
+    target: record.target,
+    status: record.status,
+    stability: record.stability,
+    scope: record.scope
+  };
 }
 
-function snippetFor(text: string, index: number): string {
-  const start = Math.max(0, index - 60);
-  const end = Math.min(text.length, index + 100);
-  const prefix = start > 0 ? "..." : "";
-  const suffix = end < text.length ? "..." : "";
-  return `${prefix}${text.slice(start, end).replace(/\s+/g, " ").trim()}${suffix}`;
-}
-
-function snippetsFor(record: RequirementRecord, query: string): RequirementSnippet[] {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return [];
-  const snippets: RequirementSnippet[] = [];
-  for (const entry of textEntries(record)) {
-    const haystack = entry.text.toLowerCase();
-    const index = haystack.indexOf(needle);
-    if (index >= 0) {
-      snippets.push({ field: entry.field, text: snippetFor(entry.text, index) });
-    }
-  }
-  return snippets.slice(0, 3);
-}
-
-export function searchRequirementRecords(records: readonly RequirementRecord[], options: RequirementSearchOptions): Record<string, unknown> {
+// @req FR-NODE-239 AC-7 — the search as it was before ranking: phrase matches in ID order.
+function exactSearch(records: readonly RequirementRecord[], options: RequirementSearchOptions): Record<string, unknown> {
   const filtered = records.filter((record) => matchesRequirementFilter(record, options.filter ?? {}));
   const matches = filtered
-    .map((record) => ({ record, snippets: snippetsFor(record, options.query) }))
+    .map((record) => ({ record, snippets: phraseSnippets(record, options.query) }))
     .filter((match) => match.snippets.length > 0)
     .sort((a, b) => a.record.id.localeCompare(b.record.id));
   const { items, page } = pageSlice(matches, options);
   return {
-    records: items.map(({ record, snippets }) => ({
-      id: record.id,
-      title: record.title,
-      snippets,
-      filePath: record.filePath,
-      headingLine: record.headingLine,
-      target: record.target,
-      status: record.status,
-      stability: record.stability,
-      scope: record.scope
+    records: items.map(({ record, snippets }) => searchRecordFields(record, snippets)),
+    projection: "search",
+    page
+  };
+}
+
+export function searchRequirementRecords(records: readonly RequirementRecord[], options: RequirementSearchOptions): Record<string, unknown> {
+  // Exact matching needs no index; returning here skips building one.
+  if (options.match === "exact") return exactSearch(records, options);
+  return searchRequirementIndex(buildRequirementSearchIndex(records), options);
+}
+
+/** Same as `searchRequirementRecords`, over an index built once and reused across queries. */
+export function searchRequirementIndex(index: RequirementSearchIndex, options: RequirementSearchOptions): Record<string, unknown> {
+  if (options.match === "exact") return exactSearch(index.records, options);
+  const filter = options.filter ?? {};
+  // Filters apply after scoring so document frequencies always come from the whole corpus.
+  const hits = rankRequirements(index, options.query).filter((hit) => matchesRequirementFilter(hit.record, filter));
+  const { items, page } = pageSlice(hits, { ...options, limit: options.limit ?? RANKED_DEFAULT_LIMIT });
+  return {
+    records: items.map((hit) => ({
+      ...searchRecordFields(hit.record, rankedSnippets(index, hit, options.query)),
+      match: hit.match,
+      matchedTerms: hit.matchedTerms,
+      score: hit.score
     })),
     projection: "search",
     page

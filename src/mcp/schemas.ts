@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { isReadOnlyTool, toolSchemas } from "./server.js";
+import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../core/bootstrap/templates.js";
+import { MCP_READ_DIAGNOSTICS_SENTENCE } from "./read-diagnostics.js";
 import {
   ORCHESTRATE_TOOL_BINDINGS,
   ORCHESTRATE_CONTAINER_PATHS,
@@ -245,6 +247,13 @@ function orchestrateSpecs(): ToolSpec[] {
   return specs;
 }
 
+/**
+ * How the requirement search answers, said once for the MCP description and the CLI help so the two
+ * surfaces cannot describe different searches. @req FR-CLI-001 AC-5
+ */
+export const SEARCH_BEHAVIOR =
+  "Results are ranked: records holding the whole query as a phrase come first, then records holding enough of its words, each group ordered by a BM25 score. The phrase match reads ID, title, statement, rationale, research, acceptance criteria, evidence, trace links, related docs and Change Notes; the word match reads only ID, title, tags, statement and acceptance criteria. In those word-matched fields Korean words are matched by in-word character bigrams, so spacing differences and attached particles still match there; text that lives only in rationale, research or Change Notes is found by its exact phrase only. Without a limit at most 20 records are returned, and `page` reports `total`, `nextOffset` and `truncated`. Exact mode (MCP `match: \"exact\"`, CLI `--exact`) keeps only records holding the whole query as a phrase, in ID order, with no default limit.";
+
 export const toolSpecs: readonly ToolSpec[] = [
   // ---- read commands (registerReadCommands) ----
   readSpec("validate", mcp("validate_spec", "Runs the SRS-MD rule set over every document under `docs/spec`, and the lite SDS checks over `docs/sds`, and returns each diagnostic with its code, severity, file and line. Ask it before trusting any rollup; a target summary counts blocks and never re-parses them for rule violations. Read-only."), "validateWorkspace", {
@@ -252,15 +261,15 @@ export const toolSpecs: readonly ToolSpec[] = [
     resultExitMap: { ok: 0, fail: 1 }
   }),
   readSpec("extract", undefined, "extractRequirements"),
-  readSpec("list", mcp("list_requirements", "Enumerates requirement records filtered structurally — by target, status, type, scope, tag, stability, priority, missing evidence, related document, evidence or trace reference, or new-work candidacy — in identifier order, with paging and field projection. Reach for it when the filter is metadata; free text belongs to the query reader beside it. Read-only."), "listRequirements"),
-  readSpec("search", mcp("search_requirements", "Finds requirement records whose text matches a free-text query, over the subset those same structural filters admit, and answers in a fixed shape: identifier, title, matching snippets and location, never the block body and never a projection you choose. Reach for it when you remember a phrase but no identifier. Read-only."), "searchRequirements", { args: { query: { type: "string" } } }),
-  readSpec("show", mcp("get_requirement", "Returns one requirement block by identifier — metadata, statement, acceptance criteria, evidence and trace rows — optionally with its raw Markdown. Ask it once you hold an id; the enumerating readers answer which ones exist, this answers what one of them says. Read-only."), "getRequirement", { args: { id: { type: "string" } } }),
+  readSpec("list", mcp("list_requirements", `Enumerates requirement records filtered structurally — by target, status, type, scope, tag, stability, priority, missing evidence, related document, evidence or trace reference, or new-work candidacy — in identifier order, with paging and field projection. Reach for it when the filter is metadata; free text belongs to the query reader beside it. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "listRequirements"),
+  readSpec("search", mcp("search_requirements", `Finds requirement records whose text matches a free-text query, over the subset those same structural filters admit, and answers in a fixed shape: identifier, title, matching snippets and location, never the block body and never a projection you choose. Reach for it when you remember a phrase but no identifier. ${SEARCH_BEHAVIOR} ${BILINGUAL_SEARCH_RULE} Example query: "${BILINGUAL_SEARCH_EXAMPLE}". Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "searchRequirements", { args: { query: { type: "string" } } }),
+  readSpec("show", mcp("get_requirement", `Returns one requirement block by identifier — metadata, statement, acceptance criteria, evidence and trace rows — optionally with its raw Markdown. Ask it once you hold an id; the enumerating readers answer which ones exist, this answers what one of them says. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "getRequirement", { args: { id: { type: "string" } } }),
   readSpec("targets", undefined, "listTargets"),
-  readSpec("active-target", mcp("get_active_target", "Names the Active Target the SRS index records, together with its goal, its status and stability rollups, its blockers and the workspace diagnostics as they stand — those are counted over every document, not narrowed to this target. Ask it when you do not yet know which target is current. Read-only."), "getActiveTarget"),
-  readSpec("completed-work", mcp("list_completed_work", "Pages the Completed Work Log — date, target, scope, requirement ids, summary and report paths — newest first by default and filterable by target, scope or a since date. This log is a derived summary; requirement blocks remain the authority on completion. Read-only."), "listCompletedWork"),
+  readSpec("active-target", mcp("get_active_target", `Names the Active Target the SRS index records, together with its goal, its status and stability rollups, its blockers and the workspace diagnostics as they stand — those are counted over every document, not narrowed to this target. Ask it when you do not yet know which target is current. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "getActiveTarget"),
+  readSpec("completed-work", mcp("list_completed_work", `Pages the Completed Work Log — date, target, scope, requirement ids, summary and report paths — newest first by default and filterable by target, scope or a since date. This log is a derived summary; requirement blocks remain the authority on completion. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "listCompletedWork"),
   readSpec("completed-work-migration-plan", undefined, "planCompletedWorkMigration"),
   // Container command with no own handler; hosts the MCP workspace-info probe (no dedicated CLI).
-  readSpec("workflow", mcp("mcp_workspace_info", "Reports which repository this MCP server bound to at startup — the root, how that root was discovered, the index path and the package version. Ask it when a call answered about somewhere unexpected. Read-only."), "mcpWorkspaceInfo"),
+  readSpec("workflow", mcp("mcp_workspace_info", `Reports which repository this MCP server bound to at startup — the root, how that root was discovered, the index path and the package version. Ask it when a call answered about somewhere unexpected. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "mcpWorkspaceInfo"),
   readSpec("workspace", mcp("workflow_workspace_info", "Reports the run workspace for the root you pass and the Active Target it carries, so a session inside a linked worktree can address its own tree. Read-only."), "workflowWorkspaceInfo"),
   readSpec("artifacts", mcp("workflow_artifacts_list", "Lists every run artifact a selector admits — sds, pipeline, pm-state, worklog, waves, resume-card and the remaining run-artifact kinds — with paging and an optional body, and reports an ambiguous selection as a diagnostic instead of choosing for you. Read-only."), "workflowArtifactsList"),
   readSpec("latest", mcp("workflow_latest_artifact", "Returns the single run artifact a selector best matches, breaking ties by generation time and then by file time. This spelling and the resolve reader run one lookup and reach the same row; which name you use says only which reading you meant. Read-only."), "workflowLatestArtifact"),
@@ -280,7 +289,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("worklog-tail", mcp("workflow_worklog_tail", "Pages the worklog entries a run appended, which are per-task progress notes and not skill handoffs, in append order from the offset given, twenty at a time by default. Read-only."), "workflowWorklogTail"),
   readSpec("next", mcp("get_next_work_order", "Names the action a run should take next — by default `implement-requirements` for the open requirement IDs no finished kiwi-pm session covers, resuming or reporting a blocked kiwi-pm session over them, asking the user, or stopping — beside the requirements that action covers and the context it needs. SDS files on disk are only listed; the SDS actions (author or finish an SDS, execute an agreed one) answer only when the caller names an SDS by `path` or `runId`. Read-only."), "getNextWorkOrder"),
   readSpec("scopes", undefined, "listScopes"),
-  readSpec("summary", mcp("summarize_target", "Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only."), "summarizeTarget"),
+  readSpec("summary", mcp("summarize_target", `Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
   // FR-MCP-052 — the mode node hosts the get_work_mode read tool (the argument-less CLI read).
   readSpec("mode", mcp("get_work_mode", "Reports the persisted work mode (`sdd`, `vibe`, `tdd` or `wait`) and the Active Task recorded beside it, falling open to `wait` when the state document is absent or unreadable rather than failing the call. Read-only."), "workMode", {
@@ -346,6 +355,36 @@ export const toolSpecs: readonly ToolSpec[] = [
   // list_dirty_edges.
   readSpec("sds", mcp("check_test_sufficiency", "Reports, for every acceptance criterion of the requirements in a target or an id list, the test lines that cite the requirement id together with that criterion, and for a lite SDS whether each contract's planned test file exists and cites it — the same answer `speckiwi coverage --tests` prints. Gaps are listed; a gap never fails the call. Read-only."), "checkTestSufficiency"),
   readSpec("check", mcp("check_sds", "Parses one lite-profile SDS file under `docs/sds` and returns its structural and reference diagnostics beside a summary of the files, test files, requirement ids, acceptance contracts and dependency chains it declares — the same answer `speckiwi sds check` prints. Run it before marking an SDS agreed. Read-only."), "checkSds", { args: { path: { type: "string" } } }),
+  // FR-NODE-240 / FR-NODE-241 / FR-NODE-242 — the `prd` container (no own handler) and its six leaves,
+  // one MCP tool each: a check, an item list, an item read, a search, the verdict cursor and coverage.
+  // The cursor is one tool with an `action` argument because its five actions are one position over
+  // one ledger; five tools would be five entry points to that one concept.
+  readSpec("prd", undefined, "prdCommands"),
+  readSpec("check", mcp("check_prd", "Checks one PRD file under `docs/prd` against the kiwi-prd grammar: gaps and duplicates in `PRD-<n>` numbering, a Kind or Exclusion Class outside its list, a Source naming no `U-<n>` block, a quote absent from its source, a Request SHA256 mismatch, and requirement grammar that has no place in a PRD. Each diagnostic is listed once with its own PRD code, beside the file's `<path>@sha256:<hex>` pointer — the same answer `speckiwi prd check` prints. Read-only."), "checkPrdFile", { args: { path: { type: "string" } } }),
+  readSpec("items", mcp("list_prd_items", "Pages the items of one PRD file in document order, each with its title, kind, state, quote, source and the PRD pointer, under the page fields the requirement list uses (`total`, `offset`, `returned`, `nextOffset`). Read-only."), "listPrdFileItems", {
+    args: { path: { type: "string" } },
+    options: [opt("--offset <n>", "offset", { encoding: "number", zod: z.number() }), opt("--limit <n>", "limit", { encoding: "number", zod: z.number() })]
+  }),
+  readSpec("show", mcp("get_prd_item", "Returns one item of a PRD file by its `PRD-<n>` ID with its kind, state, quote, source, body and the `<path>@sha256:<hex>` pointer of the PRD as read, and refuses an ID the file does not hold with PRD_ITEM_NOT_FOUND. Read-only."), "readPrdFileItem", {
+    args: { path: { type: "string" }, id: { type: "string" } }
+  }),
+  readSpec("search", mcp("search_prd_items", "Ranks PRD items for a free-text query on the BM25 index requirement search uses, so a mixed Korean and English query ranks them the way it ranks requirements. It reads every `docs/prd/*.prd.md` unless `path` names one file, and returns at most 20 hits unless a limit is given. Read-only."), "searchPrdFiles", {
+    args: { query: { type: "string" } },
+    options: [opt("--file <path>", "path"), opt("--offset <n>", "offset", { encoding: "number", zod: z.number() }), opt("--limit <n>", "limit", { encoding: "number", zod: z.number() })]
+  }),
+  mutationSpec("cursor", mcp("prd_cursor", "Walks the items of a PRD, or under `direction: srs-to-prd` the requirements and criteria of a target, one verdict at a time for a verification run. `count`, `current` and `seek` take the position from the run's ledger; `next` records the verdict for the current item, and skipping one needs the verdict `deferred` with a note; `reset` opens a new round. The position is computed from the ledger, so a run resumes after compaction at the first item it has not judged, and a changed PRD voids the round. Writes the ledger `kiwi/prd/<runId>.jsonl` on next and reset."), "workspace", "runPrdCursor", [
+    opt("--run-id <id>", "runId"),
+    opt("--direction <direction>", "direction"),
+    opt("--target <target>", "target"),
+    opt("--verdict <verdict>", "verdict"),
+    opt("--note <text>", "note"),
+    opt("--ref <ref>", "refs", { repeatable: true }),
+    opt("--index <n>", "index", { encoding: "number", zod: z.number() })
+  ]),
+  readSpec("coverage", mcp("check_prd_coverage", "Compares one PRD file with the SRS of a target by string only: the intent, goal and in-scope items no requirement or criterion of the target cites, the requirements that cite no PRD item, and the criteria with neither a PRD citation nor a `fills:` basis. Whether an addition stays within its item, or the SRS contradicts one, is left to the verifier. Read-only."), "prdFileCoverage", {
+    args: { path: { type: "string" } },
+    options: [opt("--target <target>", "target")]
+  }),
 
   // ---- mutation commands (registerMutationCommands) ----
   mutationSpec("init", mcp("init_project", "Lays down the SRS scaffold a project needs — index, first scope document, appendix, step state — skipping each one that already exists, while the tool-owned files are rewritten on every run: the bundled rules documents, whose stale versioned copies are deleted, and the managed block inside `AGENTS.md` and `CLAUDE.md`. Passing `force` turns that skip off and overwrites the author-owned files with fresh templates, discarding whatever requirements they held. Over MCP it provisions files only: registering the server and installing the agent skills are CLI-side opt-ins this tool never sets. Writes the scaffold files."), "workspace", "initProject", [
@@ -536,7 +575,10 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--type <type>", "type"),
     opt("--id <id>", "id", { repeatable: true }),
     opt("--exclude <id>", "exclude", { repeatable: true }),
-    opt("--apply", "apply")
+    opt("--apply", "apply"),
+    // IR-CLI-112 AC-4 — the preview flag and the lock bypass every comparable mutation exposes.
+    DRY_RUN,
+    IGNORE_LOCK
   ]),
   mutationSpec("supersede", mcp("supersede_requirement", "Creates the successor of one requirement carrying a `supersedes` trace link back to it, then moves the original to `discarded`, overriding the guard that protects a verified, frozen or stable requirement from discard — an override this surface hard-codes and no argument can switch off. Every `checked_compatible` edge touching the original is revoked in the same call. Writes the new requirement block, the original's status row, and the block holding each revoked edge."), "workspace", "supersedeRequirement", [
     opt("--old <id>", "old"),
@@ -574,6 +616,30 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     // IR-CLI-078 — the mutation takes the SRS lock since v2.5.0, so it needs the bypass every
     // comparable mutation exposes.
+    IGNORE_LOCK
+  ]),
+  // @req IR-CLI-110 / IR-MCP-006 — scope rename; workspace-kind like scaffold_scope, since it moves a
+  // document and rewrites the index rather than acting on one requirement id.
+  mutationSpec("rename-scope", mcp("rename_scope", "Renames a scope SRS document to `NN.slug` and rewrites its rows in both index sections and every index link to it; a new number is accepted only to repair two scope documents sharing one number, and only as the number a new document would get. A refusal names its condition — an invalid name, an unknown or unregistered source, an existing target file, a prefix or document another scope already registers — and changes nothing. It previews by default and changes nothing on disk until `apply` is passed; `apply` with `dryRun` is refused. Writes the renamed document, the index, and every other docs/spec file holding a reference to it that links check resolves (a Related Docs entry, a Trace Link path or a markdown link), all or nothing."), "workspace", "renameScope", [
+    opt("--from <document>", "from"),
+    opt("--to <NN.slug>", "to"),
+    opt("--apply", "apply"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
+  // @req IR-CLI-112 — CLI-only: renaming a release is an author decision, like set-target-status.
+  mutationSpec("rename-target", undefined, "workspace", "renameTarget", [
+    opt("--from <target>", "from"),
+    opt("--to <target>", "to"),
+    opt("--apply", "apply"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
+  // @req FR-NODE-243 AC-6 — acts on one requirement id, so req-scoped.
+  mutationSpec("expire-ac", mcp("expire_acceptance_criterion", "Marks one live acceptance criterion of a requirement expired: the line keeps its number and checkbox, its text is struck through and stamped with today's local date and an optional successor requirement, and the mandatory `reason` lands in a Change Notes row of the same patch. Unlike `replace_acceptance_criteria`, it renumbers nothing and leaves every other criterion as written, and it does not ask the requirement to change its lifecycle field first. It refuses, changing nothing, an empty reason, a criterion already expired, the last live criterion of the block, and a successor that does not exist, is the requirement itself, or has been withdrawn by a discard. Once a marker names a successor, a status change that would discard that successor is refused; supersede_requirement moves the marker to the new requirement instead. Writes the requirement block."), "req-scoped", "expireAcceptanceCriterion", [
+    opt("--reason <text>", "reason"),
+    opt("--successor <id>", "successor"),
+    DRY_RUN,
     IGNORE_LOCK
   ]),
   // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).

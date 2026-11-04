@@ -5,7 +5,8 @@ import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, ty
 import { assertOpensNoBlockBoundary, assertSingleLine } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, loadRecordWithWorkspace } from "./internal.js";
+import { loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
+import { refuseExpiredMarker } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells, tableCellText } from "./table-cell.js";
 import { todayStamp } from "../date-stamp.js";
@@ -122,10 +123,6 @@ function sectionContentRange(file: TextFile, record: RequirementRecord, heading:
   return { startLine: start + 1, endLine: nextHeading - 1 };
 }
 
-function metadataValueLine(field: string, value: string): string {
-  return `| ${field} | ${value} |`;
-}
-
 async function applyGranularPlan(
   root: ProjectRoot,
   id: string,
@@ -210,10 +207,9 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
     updatedFields.push("statement");
   }
   for (const [field, value] of Object.entries(tableCells)) {
-    const line = findMetadataLine(loaded.file, loaded.record, field);
-    if (!line) return mutationFail("MUTATION_DENIED", `${field} metadata row not found`);
-    const original = loaded.file.lines[line - 1] ?? "";
-    operations.push({ type: "replaceLine", line, original, replacement: metadataValueLine(field, value) });
+    const write = planMetadataWrite(loaded.file, loaded.record, field, value);
+    if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
+    operations.push(write.operation);
     updatedFields.push(field);
   }
 
@@ -226,6 +222,24 @@ export async function replaceAcceptanceCriteria(root: ProjectRoot, input: Replac
   );
 }
 
+/**
+ * @req FR-NODE-243 AC-5 — the new items are numbered from 1, skipping every number an expired
+ * criterion holds, and each expired line is carried over byte-for-byte; lines are ordered by number.
+ * Reusing an expired number would bind its old test citations and `Covers` cells to the new item.
+ */
+function acceptanceCriteriaLines(file: TextFile, record: RequirementRecord, items: ReplaceAcceptanceCriteriaInput["items"]): string[] {
+  const numberOf = (acId: string): number => Number(acId.slice("AC-".length));
+  const numbered = (record.expiredAcceptanceCriteria ?? []).map((criterion) => ({ number: numberOf(criterion.id), line: file.lines[criterion.line - 1] ?? "" }));
+  const held = new Set(numbered.map((entry) => entry.number));
+  let next = 1;
+  for (const item of items) {
+    while (held.has(next)) next += 1;
+    numbered.push({ number: next, line: `- [${item.checked ? "x" : " "}] AC-${next}: ${item.text}` });
+    next += 1;
+  }
+  return numbered.sort((left, right) => left.number - right.number).map((entry) => entry.line);
+}
+
 async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: ReplaceAcceptanceCriteriaInput): Promise<MutationResult<GranularRequirementEditOutput>> {
   if (!Array.isArray(input.items)) return mutationFail("USAGE", "items must be an array");
   if (input.items.length === 0) return mutationFail("USAGE", "items must contain at least one acceptance criterion");
@@ -235,17 +249,15 @@ async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: Repla
     const opensSection = assertOpensNoBlockBoundary<GranularRequirementEditOutput>("acceptance criterion", item.text);
     if (opensSection) return opensSection;
   }
+  const forged = refuseExpiredMarker<GranularRequirementEditOutput>("acceptance criterion", input.items.map((item) => item.text));
+  if (forged) return forged;
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const editable = assertEditable(loaded.record);
   if (editable) return editable as MutationResult<GranularRequirementEditOutput>;
   const range = sectionContentRange(loaded.file, loaded.record, "Acceptance Criteria");
   if (!range) return mutationFail("MUTATION_DENIED", "Acceptance Criteria section not found");
-  const lines = [
-    "",
-    ...input.items.map((item, index) => `- [${item.checked ? "x" : " "}] AC-${index + 1}: ${item.text}`),
-    ""
-  ];
+  const lines = ["", ...acceptanceCriteriaLines(loaded.file, loaded.record, input.items), ""];
   const operation: PatchOperation = { type: "replaceRange", startLine: range.startLine, endLine: range.endLine, lines };
   return applyGranularPlan(root, input.id, loaded.file, [operation], "replace_acceptance_criteria", input.dryRun ?? false, ["acceptanceCriteria"]);
 }

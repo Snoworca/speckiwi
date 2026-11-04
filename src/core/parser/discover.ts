@@ -46,9 +46,16 @@ async function walk(dir: string): Promise<string[]> {
 }
 
 export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
+  const index = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
+  return { index, ...(await discoverSrsDocuments(root)) };
+}
+
+/**
+ * @req FR-PARSE-044 AC-6 — everything {@link discoverSrsFiles} reads except the index, by the same
+ * rules, so a migration can read the SRS documents of a project whose index is still missing.
+ */
+export async function discoverSrsDocuments(root: ProjectRoot): Promise<Omit<SrsFileSet, "index">> {
   const specDir = path.join(root.root, "docs", "spec");
-  const indexPath = path.join(specDir, "00.index.md");
-  const index = await readUtf8File(indexPath, root.root);
   const all = await walk(specDir);
   const srsFiles = all
     .filter((file) => file.endsWith(".srs.md"))
@@ -99,7 +106,6 @@ export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
     .sort();
 
   return {
-    index,
     scopeFiles,
     stepFiles,
     specDocuments,
@@ -108,4 +114,17 @@ export async function discoverSrsFiles(root: ProjectRoot): Promise<SrsFileSet> {
     ...(completedWorkLog ? { completedWorkLog } : {}),
     ...(appendix ? { appendix } : {})
   };
+}
+
+/**
+ * The SRS documents of a discovered set, in the order the parser reports them: the index when there is
+ * one, the scope documents, the completed-work sidecar and the appendix. Step documents are not in it.
+ */
+export function srsDocumentFiles(set: Omit<SrsFileSet, "index"> & { index?: TextFile }): TextFile[] {
+  return [
+    ...(set.index ? [set.index] : []),
+    ...set.scopeFiles,
+    ...(set.completedWork ? [set.completedWork] : []),
+    ...(set.appendix ? [set.appendix] : [])
+  ];
 }

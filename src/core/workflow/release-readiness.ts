@@ -12,6 +12,7 @@ import type {
   RequirementRecord,
   ValidationResult
 } from "../types.js";
+import { findHeadingMatching, RELEASE_RESIDUE_HEADING, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { resolveTargetSelection } from "../query/summary.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
 
@@ -280,11 +281,13 @@ export function collectStabilityWarnings(records: RequirementRecord[]): string[]
   return records.filter((record) => isNonDiscarded(record) && (record.stability === "deprecated" || record.stability === "volatile")).map((record) => record.id);
 }
 
-interface ResidueRow {
+export interface ResidueRow {
   target: string;
   requirementId: string;
   criterion: string;
   reason: string;
+  /** 1-based line of the row in the index. */
+  line: number;
 }
 
 const RESIDUE_COLUMNS = ["Target", "Requirement", "Criterion", "Reason"] as const;
@@ -296,7 +299,7 @@ const RESIDUE_COLUMNS = ["Target", "Requirement", "Criterion", "Reason"] as cons
  * cell `a \| b` renders as `a | b` and was reported as `a \`. A register whose report differs from
  * its own text is worse than one that refuses the row.
  */
-function splitResidueCells(line: string): string[] {
+export function splitResidueCells(line: string): string[] {
   let body = line.trim();
   if (body.startsWith("|")) body = body.slice(1);
   if (body.endsWith("|") && !body.endsWith("\\|")) body = body.slice(0, -1);
@@ -319,8 +322,6 @@ function splitResidueCells(line: string): string[] {
   return cells;
 }
 
-/** Up to three leading spaces, because CommonMark permits them and every renderer draws the heading. */
-const RESIDUE_HEADING = /^ {0,3}##\s+(?:\d+\.\s+)?Release Residue\s*$/;
 const FENCE_DELIMITER = /^ {0,3}(`{3,}|~{3,})/;
 
 
@@ -428,7 +429,7 @@ function normalizeHeadingTitle(text: string): string {
  * row a human wrote is either honoured or REPORTED, never both unread and unmentioned — and what
  * counts as a row is what a renderer draws, which is what `classifyIndexLines` above establishes.
  */
-function readResidueRows(workspace: ParsedWorkspace): { rows: ResidueRow[]; problems: string[] } {
+export function readResidueRows(workspace: ParsedWorkspace): { rows: ResidueRow[]; problems: string[] } {
   const indexBody = workspace.files.find((file) => file.relativePath.endsWith("00.index.md"))?.lines ?? [];
   const problems: string[] = [];
   const { classified, unclosedFence } = classifyIndexLines(indexBody);
@@ -443,7 +444,7 @@ function readResidueRows(workspace: ParsedWorkspace): { rows: ResidueRow[]; prob
     // Two questions, deliberately separate. "Is this the register?" is answered STRICTLY, because the
     // register is a named structure and a case variant is a typo rather than a synonym. "Did somebody
     // mean the register?" is answered loosely, because that decides whether they are told.
-    const isRegister = RESIDUE_HEADING.test(line.text) || (!/^ {0,3}#/.test(line.text) && line.text.trim() === "Release Residue");
+    const isRegister = RELEASE_RESIDUE_HEADING.test(line.text) || (!/^ {0,3}#/.test(line.text) && line.text.trim() === "Release Residue");
     if (isRegister) {
       headings.push(index);
       continue;
@@ -515,7 +516,7 @@ function readResidueRows(workspace: ParsedWorkspace): { rows: ResidueRow[]; prob
       problems.push(`residue row carries no content and was not read: ${line.text.trim()}`);
       continue;
     }
-    rows.push({ target: cells[0]!, requirementId: cells[1]!, criterion: cells[2]!, reason: cells[3]! });
+    rows.push({ target: cells[0]!, requirementId: cells[1]!, criterion: cells[2]!, reason: cells[3]!, line: index + 1 });
   }
   const inTable = phase === "rows";
   // The section exists, so somebody meant to excuse something. If no table under the declared column
@@ -535,7 +536,8 @@ function readResidueRows(workspace: ParsedWorkspace): { rows: ResidueRow[]; prob
 function declaredTargetNames(workspace: ParsedWorkspace): Set<string> {
   const names = new Set(workspace.records.map((record) => record.target).filter((value): value is string => Boolean(value)));
   const indexLines = workspace.files.find((file) => file.relativePath.endsWith("00.index.md"))?.lines ?? [];
-  const headingIndex = indexLines.findIndex((line) => /^##\s+\d+\.\s+Target Map\s*$/.test(line.trim()));
+  // The index parser's own lookup, so a fenced example of the Target Map is not read as the table.
+  const headingIndex = findHeadingMatching(indexLines, TARGET_MAP_HEADING);
   if (headingIndex < 0) return names;
   for (const line of indexLines.slice(headingIndex + 1)) {
     if (/^#{1,6}\s/.test(line)) break;
@@ -621,7 +623,9 @@ function partitionResidue(
     }
     const criterion = record.acceptanceCriteria.find((entry) => entry.id === row.criterion);
     if (!criterion) {
-      problems.push(`${row.requirementId}: names ${row.criterion}, which the requirement does not declare`);
+      // @req FR-PARSE-044 AC-1 — an expired criterion is not undeclared; say which it is.
+      const expired = (record.expiredAcceptanceCriteria ?? []).some((entry) => entry.id === row.criterion);
+      problems.push(`${row.requirementId}: names ${row.criterion}, which ${expired ? "is expired" : "the requirement does not declare"}`);
       continue;
     }
     if (criterion.checked) {

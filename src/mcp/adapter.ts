@@ -40,9 +40,19 @@ export interface McpDependencies {
  * mutation-tools has 38 call sites and only 9 are `workflow_*`, so teaching that shared helper to
  * honour `input.workspaceRoot` would open the whole SRS family. @req REL-MCP-005 AC-3
  */
+/** The `mcpWorkspace` block every answer carries, naming the root that answered it. */
+export interface McpWorkspaceIdentity {
+  readonly workspaceRoot: string;
+  readonly rootSource: McpRootSource;
+  readonly indexPath: string;
+  readonly packageVersion: string;
+}
+
 export interface McpCallContext {
   readonly root: string | undefined;
   readonly rootSource: McpRootSource;
+  /** What the server attaches as `mcpWorkspace`, for a handler that must measure its whole answer. */
+  readonly workspace?: McpWorkspaceIdentity;
 }
 
 /**
@@ -114,7 +124,7 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   const resourceTemplates: string[] = [];
   const toolKinds: Record<string, MutationToolKind> = {};
   const startupRoot = deps.root ? path.resolve(deps.root) : path.resolve(process.cwd());
-  const identityFor = (workspaceRoot: string, rootSource: McpRootSource) => ({
+  const identityFor = (workspaceRoot: string, rootSource: McpRootSource): McpWorkspaceIdentity => ({
     workspaceRoot,
     rootSource,
     indexPath: path.posix.join("docs", "spec", "00.index.md"),
@@ -122,7 +132,7 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
   });
   const startupSource: McpRootSource = deps.rootSource ?? "server-cwd-discovery";
   const startupIdentity = identityFor(startupRoot, startupSource);
-  const startupContext: McpCallContext = { root: deps.root, rootSource: startupSource };
+  const startupContext: McpCallContext = { root: deps.root, rootSource: startupSource, workspace: startupIdentity };
 
   /**
    * @req FR-MCP-067 AC-4 AC-5 AC-6 — the answer to every call on an unbound server, decided before the
@@ -234,10 +244,8 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
         )
       };
     }
-    return {
-      context: { root: decision.root, rootSource: "per-call-workspace-root" },
-      identity: identityFor(decision.root, "per-call-workspace-root")
-    };
+    const identity = identityFor(decision.root, "per-call-workspace-root");
+    return { context: { root: decision.root, rootSource: "per-call-workspace-root", workspace: identity }, identity };
   };
 
   const guard = (handler: McpToolHandler, metadata?: McpToolMetadata): McpToolHandler => async (input) => {

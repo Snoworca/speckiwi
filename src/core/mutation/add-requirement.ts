@@ -5,16 +5,19 @@ import { resolveInsideRoot } from "../fs/safe-path.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
+import { SRS_RECORD_LINES } from "../parser/document-lines.js";
+import { parseTopLevelSectionTitle } from "../parser/block-scanner.js";
+import { linesOutsideFences } from "../parser/index-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementStatus, isRequirementType } from "../schema.js";
 import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
-import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
+import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, refuseExpiredMarker, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
 import { assertOpensNoBlockBoundary, assertPromotableBlock, assertSingleLine } from "./block-prose.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
-import { syncIndexRollups } from "./sync-index.js";
+import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
@@ -74,6 +77,9 @@ function assertProseOpensNoSection(input: ResolvedAddRequirementInput): Mutation
     const opensBoundary = assertOpensNoBlockBoundary<AddRequirementOutput>(`acceptanceCriteria[${index}]`, criterion);
     if (opensBoundary) return opensBoundary;
   }
+  // supersede_requirement writes its successor through this call, so this one guard covers both.
+  const forged = refuseExpiredMarker<AddRequirementOutput>("acceptanceCriteria", input.acceptanceCriteria);
+  if (forged) return forged;
   // `title` is the fifth caller-supplied string on this call and was the only one left open. It is
   // written into `### ID — <title>`, so a newline in it puts the remainder at column zero; measured,
   // that landed a body `| Status | verified |` row whose evidence pointed outside the checkout, and
@@ -89,11 +95,19 @@ function canBeVerified(input: AddRequirementInput): boolean {
   return acCount > 0 && input.acceptanceCriteria.every((criterion, index) => checked.has(`AC-${index + 1}`) || checked.has(criterion)) && (input.evidence ?? []).some((row) => (row.reference ?? "").trim() !== "");
 }
 
+const REQUIREMENTS_SECTION_TITLE = "4. Requirements";
+
 function findRequirementsAppendLine(lines: string[]): number {
-  const heading = lines.findIndex((line) => line.trim() === "## 4. Requirements");
-  if (heading < 0) return lines.length + 1;
-  for (let index = heading + 1; index < lines.length; index += 1) {
-    if (lines[index]?.startsWith("## ") && index !== heading) return index + 1;
+  // Headings are read outside code fences, as the parser reads them: a fenced example can neither be
+  // the section nor end it, which would put the new block inside the fence. Section boundaries are the
+  // scanner's own (parseTopLevelSectionTitle), so the block lands where the scanner will read it.
+  const outside = linesOutsideFences(lines, SRS_RECORD_LINES);
+  let inRequirements = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const title = outside[index] === true ? parseTopLevelSectionTitle(lines[index] ?? "") : undefined;
+    if (title === undefined) continue;
+    if (inRequirements) return index + 1;
+    inRequirements = title === REQUIREMENTS_SECTION_TITLE;
   }
   return lines.length + 1;
 }
@@ -334,6 +348,10 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
     diagnostics.push(diagnostic("SRS-W065", "warning", `SRS status cache ignored: cached Requirement ID already exists: ${id}`, { filePath: "kiwi/.status.json" }, { reason: "cached-id-collision", requirementId: id, fallback: "full-workspace-parse" }));
     id = generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
   }
+  // The rollup sync runs after the write; whether it can be written is settled first, so a refusal
+  // leaves nothing written instead of failing after the requirement block is already in the document.
+  const rollupRefusal = await checkIndexRollupsWritableAt(root);
+  if (rollupRefusal) return mutationFail("MUTATION_DENIED", rollupRefusal);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const latestWorkspace = await parseWorkspace(root);
     const relativePath = path.relative(root.root, filePath).replace(/\\/g, "/");
@@ -352,9 +370,8 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
     try {
       const dryRun = input.dryRun ?? false;
       const applied = await applyPatchPlan(plan, { dryRun });
-      const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
-      if (indexSync && !indexSync.ok) return indexSync as unknown as MutationResult<AddRequirementOutput>;
-      const mergedDiagnostics = [...diagnostics, ...(indexSync?.diagnostics ?? [])];
+      const rollup = applied.written ? await syncIndexRollupsAfterWrite(root) : undefined;
+      const mergedDiagnostics = [...diagnostics, ...(rollup?.diagnostics ?? [])];
       return {
         ok: true,
         value: {
@@ -368,7 +385,7 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
         diagnosticsSummary: summarizeDiagnostics(mergedDiagnostics),
         patch: summarizePatch(plan, dryRun),
         mutation: mutationEnvelopeFromPlan("add_requirement", plan, dryRun, applied.written),
-        ...(indexSync?.value ? { indexSync: indexSync.value } : {})
+        ...rollup?.fields
       };
     } catch (error) {
       const staleFailure = stalePatchMutationFailure<AddRequirementOutput>(error, file.relativePath);
@@ -462,6 +479,9 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
 
   const promotable = assertPromotableBlock<AddRequirementOutput>("the step requirement block", stepRecord.markdown);
   if (promotable) return promotable;
+  // Same order as add_requirement: the rollup sync's feasibility is settled before the promotion writes.
+  const rollupRefusal = await checkIndexRollupsWritableAt(root);
+  if (rollupRefusal) return mutationFail("MUTATION_DENIED", rollupRefusal) as MutationResult<AddRequirementOutput>;
 
   const file = findWorkspaceFile(workspace, root, filePath) ?? (await readUtf8File(filePath, root.root));
   const block = stepRecord.markdown.split(/\r?\n/);
@@ -471,8 +491,7 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   try {
     const dryRun = input.dryRun ?? false;
     const applied = await applyPatchPlan(plan, { dryRun });
-    const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
-    if (indexSync && !indexSync.ok) return indexSync as unknown as MutationResult<AddRequirementOutput>;
+    const rollup = applied.written ? await syncIndexRollupsAfterWrite(root) : undefined;
     return {
       ...mutationOk<AddRequirementOutput>(
         {
@@ -482,11 +501,11 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
           targetSource: "explicit",
           record: stepRecord
         },
-        advisories
+        [...advisories, ...(rollup?.diagnostics ?? [])]
       ),
       patch: summarizePatch(plan, dryRun),
       mutation: mutationEnvelopeFromPlan("promote_step_requirement", plan, dryRun, applied.written),
-      ...(indexSync?.value ? { indexSync: indexSync.value } : {})
+      ...rollup?.fields
     };
   } catch (error) {
     const staleFailure = stalePatchMutationFailure<AddRequirementOutput>(error, file.relativePath);

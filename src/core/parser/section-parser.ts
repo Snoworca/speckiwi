@@ -1,4 +1,5 @@
 import type { RequirementBlockRange } from "./block-scanner.js";
+import type { DocumentLine } from "./document-lines.js";
 import { diagnostic } from "../diagnostic.js";
 import type { Diagnostic } from "../types.js";
 
@@ -8,6 +9,11 @@ export interface SectionRange {
   contentStartLine: number;
   endLine: number;
   lines: string[];
+  /**
+   * For each of `lines`, whether it is document text, from the document's one classification; absent
+   * on a section built by hand, whose reader then classifies its lines itself.
+   */
+  bodyLines?: boolean[];
 }
 
 export interface ParsedRequirementSections {
@@ -27,13 +33,6 @@ const CANONICAL_SECTIONS = new Map(
     "Change Notes"
   ].map((name) => [normalizeSectionName(name), name])
 );
-const FENCE_RE = /^(?: {0,3})(`{3,}|~{3,})/;
-const CLOSING_FENCE_RE = /^(?: {0,3})(`{3,}|~{3,}) *$/;
-
-interface FenceState {
-  marker: "`" | "~";
-  length: number;
-}
 
 function normalizeSectionName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -43,36 +42,20 @@ function canonicalSectionName(name: string): string {
   return CANONICAL_SECTIONS.get(normalizeSectionName(name)) ?? name.trim();
 }
 
-function parseFence(line: string): FenceState | undefined {
-  const match = FENCE_RE.exec(line);
-  if (!match) return undefined;
-  const fence = match[1]!;
-  return { marker: fence[0] as FenceState["marker"], length: fence.length };
-}
-
-function isClosingFence(line: string, fence: FenceState): boolean {
-  const match = CLOSING_FENCE_RE.exec(line);
-  if (!match) return false;
-  const closing = match[1]!;
-  const next = { marker: closing[0] as FenceState["marker"], length: closing.length };
-  return Boolean(next && next.marker === fence.marker && next.length >= fence.length);
-}
-
-export function parseRequirementSections(block: RequirementBlockRange, lines: string[], filePath = ""): ParsedRequirementSections {
+export function parseRequirementSections(
+  block: RequirementBlockRange,
+  lines: string[],
+  documentLines: readonly DocumentLine[],
+  filePath = ""
+): ParsedRequirementSections {
   const diagnostics: Diagnostic[] = [];
   const headings: Array<{ name: string; line: number }> = [];
-  let fence: FenceState | undefined;
+  // The block scanner's classification of the document: a `####` line in code or an HTML comment is
+  // an example, not a section.
+  const isBody = (line: number): boolean => documentLines[line - 1]?.body === true;
   for (let line = block.startLine; line <= block.endLine; line += 1) {
     const text = lines[line - 1] ?? "";
-    if (fence) {
-      if (isClosingFence(text, fence)) fence = undefined;
-      continue;
-    }
-    const openingFence = parseFence(text);
-    if (openingFence) {
-      fence = openingFence;
-      continue;
-    }
+    if (!isBody(line)) continue;
     if (text.startsWith("#### ")) {
       headings.push({ name: text.replace(/^####\s+/, "").trim(), line });
     }
@@ -96,7 +79,8 @@ export function parseRequirementSections(block: RequirementBlockRange, lines: st
       startLine: heading.line,
       contentStartLine: heading.line + 1,
       endLine,
-      lines: lines.slice(heading.line, endLine)
+      lines: lines.slice(heading.line, endLine),
+      bodyLines: documentLines.slice(heading.line, endLine).map((line) => line.body)
     };
   });
   return { sections, diagnostics };

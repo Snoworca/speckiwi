@@ -17,7 +17,7 @@ import { DIAGNOSTIC_DEFINITIONS } from "../../src/core/diagnostic-registry.js";
 // emitted by step validation and were absent from the registry, so `explain` reported unknown for a
 // code a user can see in output.
 
-const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.5.0.md");
+const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.6.0.md");
 
 const RETRACTED = [
   "SRS-E009",

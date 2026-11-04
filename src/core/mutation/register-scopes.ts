@@ -15,6 +15,7 @@ import type {
 
 export type { RegisterScopesInput, RegisterScopesItemPlan, RegisterScopesOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { readScopeIndexTable, renderScopeIndexRow } from "./scope-index-table.js";
 
 // @req FR-NODE-064
 
@@ -31,36 +32,6 @@ function inferPrefix(records: readonly RequirementRecord[]): string | undefined 
     if (token) return token;
   }
   return undefined;
-}
-
-/**
- * FR-NODE-064 — render the Scope Map row for a newly registered scope document. The Document
- * cell is the bare relative file name (the basename of the docs/spec-relative path), which the
- * index parser's extractLinkTarget accepts as-is, so the row names the document exactly once
- * with its inferred prefix.
- * @req FR-NODE-064
- */
-function renderScopeMapRow(relativePath: string, prefix: string): string {
-  const fileName = relativePath.slice(relativePath.lastIndexOf("/") + 1);
-  return `| ${prefix} | ./${fileName} | ${prefix} | - |`;
-}
-
-/**
- * FR-NODE-064 — locate the line after the last Scope Map table row so a new row is appended
- * without disturbing any existing line. Scans from the `## N. Scope Map` heading for the
- * table header + separator, then returns the line just past the final consecutive table row.
- * @req FR-NODE-064
- */
-function findScopeMapInsertionLine(file: TextFile): number | undefined {
-  const headingLine = file.lines.findIndex((line) => /^##\s+\d+\.\s+Scope Map$/.test(line.trim()));
-  if (headingLine < 0) return undefined;
-  let lastTableLine: number | undefined;
-  for (let i = headingLine + 1; i < file.lines.length; i += 1) {
-    const text = file.lines[i] ?? "";
-    if (/^##\s/.test(text)) break;
-    if (text.trim().startsWith("|")) lastTableLine = i + 1;
-  }
-  return lastTableLine === undefined ? undefined : lastTableLine + 1;
 }
 
 /**
@@ -96,6 +67,9 @@ export async function registerScopes(
     (file) => file.relativePath.endsWith(".srs.md") && !registered.has(file.relativePath)
   );
 
+  const scopeMapTable = readScopeIndexTable(indexFile, "scope-map");
+  if (scopeMapTable === undefined) return mutationFail("MUTATION_DENIED", "Scope Map table not found in 00.index.md");
+
   const items: RegisterScopesItemPlan[] = [];
   const insertions: string[] = [];
   // Track prefixes claimed within this run so a second non-colliding document cannot reuse a
@@ -113,19 +87,21 @@ export async function registerScopes(
       items.push({ document: file.relativePath, prefix, skipReason: "prefix-conflict" satisfies RegisterScopesSkipReason });
       continue;
     }
+    // @req FR-NODE-233 AC-1 — the Document cell is the bare relative file name, which the index
+    // parser's extractLinkTarget accepts as-is.
+    const fileName = file.relativePath.slice(file.relativePath.lastIndexOf("/") + 1);
+    const row = renderScopeIndexRow(scopeMapTable.headers, { scope: prefix, document: `./${fileName}`, prefix, description: "-" });
+    if (!row.ok) return mutationFail("MUTATION_DENIED", `Scope Map row: ${row.error.message}`);
     claimedPrefixes.add(prefix);
     items.push({ document: file.relativePath, prefix });
-    insertions.push(renderScopeMapRow(file.relativePath, prefix));
+    insertions.push(row.value);
   }
 
   if (dryRun || insertions.length === 0) {
     return mutationOk({ dryRun, items });
   }
 
-  const insertLine = findScopeMapInsertionLine(indexFile);
-  if (insertLine === undefined) return mutationFail("MUTATION_DENIED", "Scope Map table not found in 00.index.md");
-
-  const operations: PatchOperation[] = [{ type: "insertLines", line: insertLine, lines: insertions }];
+  const operations: PatchOperation[] = [{ type: "insertLines", line: scopeMapTable.insertLine, lines: insertions }];
   const plan = createPatchPlan(indexFile, operations);
   await applyPatchPlan(plan, { dryRun: false });
 

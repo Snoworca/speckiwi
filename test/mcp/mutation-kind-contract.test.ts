@@ -31,6 +31,10 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   // requirement id, so neither is req-scoped.
   scaffold_scope: "workspace",
   register_scopes: "workspace",
+  // @req IR-MCP-006 — a scope rename moves a document and rewrites the index: workspace, not one id.
+  rename_scope: "workspace",
+  // @req FR-NODE-243 AC-6 — expiring a criterion acts on one requirement id.
+  expire_acceptance_criterion: "req-scoped",
   // @req IR-MCP-003 — every `orchestrate_*` mutation acts on run artifacts (the journal, the resume
   // card, a lock, the issue ledger), never on one requirement id, so all of them are workspace-kind.
   ...Object.fromEntries(

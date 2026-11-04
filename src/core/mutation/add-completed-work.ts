@@ -14,6 +14,8 @@ import { describePatchOperation, mutationEnvelopeFromPlan, withMutationEnvelope 
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { findHeadingMatching } from "../parser/index-parser.js";
+import { planTableRowsInsert } from "./internal.js";
 
 export const HISTORY_BANNER =
   "> This file is an append-only Completed Work Log summary. It is NOT a source of truth for completion; see each Requirement Block (Status, Acceptance Criteria, Verification Evidence, Change Notes).";
@@ -29,10 +31,6 @@ export interface AddCompletedWorkInput {
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
-}
-
-function findHeadingMatching(lines: string[], pattern: RegExp): number {
-  return lines.findIndex((line) => pattern.test(line.trim()));
 }
 
 function renderRow(
@@ -127,32 +125,29 @@ function tableHasMisplacedReportPaths(table: ParsedTable): boolean {
   return index >= 0 && index !== table.headers.length - 1;
 }
 
-function renderExistingRowWithReportPaths(row: Record<string, string>): string {
-  return renderRow(
-    {
-      date: row.Date ?? "",
-      target: row.Target ?? "",
-      scope: row.Scope ?? "",
-      requirementIds: (row["Requirement IDs"] ?? "")
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean),
-      summary: row.Summary ?? "",
-      reportPaths: []
-    },
-    true
-  );
+/**
+ * The line with one more cell, `cell`, after its last one; the existing cells are kept byte for byte.
+ * `cell` carries its own padding, so the separator stays unpadded (`---|`) like the rest of its row.
+ */
+function withTrailingCell(line: string, cell: string): string {
+  const trimmed = line.trimEnd();
+  return `${trimmed}${trimmed.endsWith("|") ? "" : "|"}${cell}|`;
 }
 
-function upgradeCompletedWorkTableOperations(file: TextFile, table: ParsedTable): PatchOperation[] {
-  return [
-    replaceLineOperation(table.startLine, file.lines[table.startLine - 1], tableHeader(true)),
-    replaceLineOperation(table.startLine + 1, file.lines[table.startLine], tableSeparator(true)),
-    ...table.rows.map((row, index): PatchOperation => {
-      const line = table.rowLines[index] ?? table.startLine + 2 + index;
-      return replaceLineOperation(line, file.lines[line - 1], renderExistingRowWithReportPaths(row));
-    })
-  ];
+/**
+ * Adds the Report Paths column at the end of the log as it stands: the header, the separator and every
+ * row each get one trailing cell (empty in a row), so every other column, its order and its values stay
+ * as they were. The new row is then rendered by that extended header.
+ */
+function upgradeCompletedWorkTableOperations(file: TextFile, table: ParsedTable, values: Readonly<Record<string, string>>): PatchOperation[] | { ok: false; message: string } {
+  const lines = [table.startLine, table.startLine + 1, ...table.rowLines];
+  const appended = lines.map((line, index): PatchOperation => {
+    const original = file.lines[line - 1] ?? "";
+    const cell = index === 0 ? ` ${REPORT_PATHS_COLUMN} ` : index === 1 ? "---" : "  ";
+    return replaceLineOperation(line, original, withTrailingCell(original, cell));
+  });
+  const insert = planTableRowsInsert(file, { ...table, headers: [...table.headers, REPORT_PATHS_COLUMN] }, [values]);
+  return insert.ok ? [...appended, insert.operation] : insert;
 }
 
 function validateCompletedWorkTableForMutation(file: TextFile, table: ParsedTable, includeReportPaths: boolean): MutationResult | undefined {
@@ -171,13 +166,24 @@ function validateCompletedWorkTableForMutation(file: TextFile, table: ParsedTabl
   return undefined;
 }
 
-function planCompletedWorkPatch(file: TextFile, row: string, includeReportPaths: boolean, defaultSectionNumber = 7): PatchOperation[] {
+function planCompletedWorkPatch(
+  file: TextFile,
+  row: string,
+  values: Readonly<Record<string, string>>,
+  includeReportPaths: boolean,
+  defaultSectionNumber = 7
+): PatchOperation[] | { ok: false; message: string } {
   const completedHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Completed Work Log$/);
   if (completedHeading >= 0) {
     const table = parseMarkdownTable(file.lines, completedHeading + 1);
     if (table) {
-      const needsMigration = includeReportPaths && !tableHasReportPaths(table);
-      return [...(needsMigration ? upgradeCompletedWorkTableOperations(file, table) : []), insertLinesOperation(file, table.endLine + 1, [row])];
+      if (includeReportPaths && !tableHasReportPaths(table)) return upgradeCompletedWorkTableOperations(file, table, values);
+      // Otherwise the row goes into the table as it stands, by its own header: the shared index-table
+      // writer, so a log whose columns are in another order still reads each value under its name.
+      // Every value is passed; the shared writer drops an optional column the log lacks (Report Paths)
+      // and refuses any other, so a value is never reported recorded while the log has nowhere for it.
+      const insert = planTableRowsInsert(file, table, [values], { optional: [REPORT_PATHS_COLUMN] });
+      return insert.ok ? [insert.operation] : insert;
     }
     return [insertLinesOperation(file, completedHeading + 2, tableBlock(row, includeReportPaths))];
   }
@@ -361,7 +367,10 @@ async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWo
   const tableFailure = table ? validateCompletedWorkTableForMutation(file, table, includeReportPaths) : undefined;
   if (tableFailure) return tableFailure;
   const row = renderRow({ date, summary, target, scope, requirementIds, reportPaths }, includeReportPaths);
-  const operations = planCompletedWorkPatch(file, row, includeReportPaths, external ? 1 : 7);
+  const values = { Date: date, Target: target, Scope: scope, "Requirement IDs": requirementIds.join(", "), Summary: summary, [REPORT_PATHS_COLUMN]: reportPaths.join(", ") };
+  const planned = planCompletedWorkPatch(file, row, values, includeReportPaths, external ? 1 : 7);
+  if (!Array.isArray(planned)) return mutationFail("MUTATION_DENIED", `Completed Work Log row: ${planned.message}`);
+  const operations = planned;
   const dryRun = input.dryRun ?? false;
   try {
     const plan = createPatchPlan(file, operations);

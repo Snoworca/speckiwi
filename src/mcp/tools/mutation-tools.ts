@@ -22,12 +22,16 @@ import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
 import { registerScopes } from "../../core/mutation/register-scopes.js";
+import { renameScope } from "../../core/mutation/rename-scope.js";
+import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
+import { z } from "zod";
 import { mcpFailure, resultToMcp } from "../errors.js";
+import { missingRequiredArguments } from "../required-args.js";
 import { registerOrchestrateTools } from "./read-tools.js";
 
 /**
@@ -176,6 +180,25 @@ function repairApplyInput(input: Record<string, unknown>): RequirementIdCollisio
   };
 }
 
+/** @req IR-MCP-006 — the inputs of the `rename-scope` CLI command; server.ts lists it, the handler checks it. */
+export const RENAME_SCOPE_SCHEMA = {
+  from: z.string().describe("scope document file name under docs/spec, `.srs.md` optional"),
+  to: z.string().describe("new name as NN.slug, `.srs.md` optional"),
+  apply: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
+/** @req FR-NODE-243 AC-6 — server.ts lists it, the handler checks it. */
+export const EXPIRE_ACCEPTANCE_CRITERION_SCHEMA = {
+  id: z.string(),
+  acId: z.string().describe("the live criterion to expire, e.g. AC-2"),
+  reason: z.string(),
+  successor: z.string().optional(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
   registerOrchestrateTools(server, deps, "mutation");
   server.registerTool("sync_index", async (input) =>
@@ -208,6 +231,36 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       })
     ),
     { kind: "workspace" }
+  );
+  // @req IR-MCP-006 — the CLI refuses `--apply` with `--dry-run` at parse time; the tool refuses the
+  // same pair, so one input never means a write on one surface and a preview on the other.
+  server.registerTool("rename_scope", async (input) =>
+    missingRequiredArguments("rename_scope", RENAME_SCOPE_SCHEMA, input) ??
+    (input.apply === true && input.dryRun === true
+      ? mcpFailure("USAGE", "apply and dryRun contradict each other; pass one of them")
+      : resultToMcp(
+          await renameScope(await root(deps, input), {
+            from: String(input.from ?? ""),
+            to: String(input.to ?? ""),
+            apply: input.apply === true,
+            ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+          })
+        )),
+    { kind: "workspace" }
+  );
+  // @req FR-NODE-243 AC-6
+  server.registerTool("expire_acceptance_criterion", async (input) =>
+    missingRequiredArguments("expire_acceptance_criterion", EXPIRE_ACCEPTANCE_CRITERION_SCHEMA, input) ??
+    resultToMcp(
+      await expireAcceptanceCriterion(await root(deps, input), {
+        id: String(input.id),
+        acId: String(input.acId),
+        reason: typeof input.reason === "string" ? input.reason : "",
+        ...(typeof input.successor === "string" ? { successor: input.successor } : {}),
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
   );
   server.registerTool("update_status", async (input) =>
     resultToMcp(

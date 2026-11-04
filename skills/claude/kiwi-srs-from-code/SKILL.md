@@ -7,7 +7,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 
 코드베이스를 역분석하여 **speckiwi MCP 도구**로 scope별 SRS Markdown 문서를 자동 생성하는 스킬.
 
-본체 `snoworca-srs-from-code`와 달리 단일 md/jsonl 직접 관리 대신 **speckiwi가 정의한 SRS-MD Authoring Rules v2.5.0**과 **speckiwi MCP 도구**를 사용하여 scope별 다중 `docs/spec/{NN}.{slug}.srs.md` 문서를 작성한다.
+본체 `snoworca-srs-from-code`와 달리 단일 md/jsonl 직접 관리 대신 **speckiwi가 정의한 SRS-MD Authoring Rules v2.6.0**과 **speckiwi MCP 도구**를 사용하여 scope별 다중 `docs/spec/{NN}.{slug}.srs.md` 문서를 작성한다.
 
 ---
 
@@ -21,7 +21,7 @@ description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdo
 | §0.2 | **검증자 입력 격리**. 작성자(Phase 3 scope agent) 결론 JSON·정당화 전달 금지. 원본 코드 + 생성된 SRS 파일 + 필터링된 `scope_assignments_view.json` 만 전달 |
 | §0.3 | **코드 증거 우선**. 모든 요구사항은 `add_requirement` 호출 시 `trace` 배열에 source 첨부 필수. raw Edit으로 사후 보강 금지 (단, NFR/PERF/REL 예외 §6.1) |
 | §0.4 | **할루시네이션·임의 요구사항 금지**. 코드에 존재 증거 없는 기능 작성 금지. 추정 항목은 `Stability=draft` + Rationale `[INFERRED:high\|med\|low]` 명시 |
-| §0.5 | **SRS-MD Authoring Rules v2.5.0 절대 준수**. `docs/rule/SRS-MD-Rules-v2.5.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
+| §0.5 | **SRS-MD Authoring Rules v2.6.0 절대 준수**. `docs/rule/SRS-MD-Rules-v2.6.0.md` 의 heading 형식, ID 정규식, prefix-type 매핑(§11.3) 위반 금지 |
 | §0.6 | **speckiwi MCP 도구 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 대체 경로가 아니다. status 변경은 항상 `update_status` MCP 로만 수행한다. raw Edit 금지 |
 | §0.7 | **scope 분할은 반드시 사용자 확인**. AskUserQuestion 호출은 §5.1 처럼 N개 단일 질문으로 분해. 자동 분할만으로 진행 금지 |
 | §0.8 | **type prefix(FR/NFR/IR/DR/SEC/PERF/REL/OBS/OPS/MIG/CON) 와 동일한 scope prefix 자동 제외**. 사용자가 명시 선택해도 재질문 |
@@ -248,7 +248,7 @@ prefix 규칙:
 
 각 scope 마다 `docs/spec/{NN}.{slug}.srs.md` 를 다음 템플릿으로 Write:
 
-**참고**: SRS-MD-Rules v2.5.0 §8.1 의 필수 필드는 `Document Type` / `Scope` / `Scope Name` / `Version` / `Last Updated` 5종. 아래 템플릿의 `Product` · `Product Version` · `Rules` 는 speckiwi 자체 spec 8개 문서에서 사용되는 **확장 필드(권장)** 이며 외부 코드베이스에서는 선택 사항. 외부 프로젝트의 SRS-MD 호환성을 엄격히 유지하려면 확장 3행을 생략 가능.
+**참고**: SRS-MD-Rules v2.6.0 §8.1 의 필수 필드는 `Document Type` / `Scope` / `Scope Name` / `Version` / `Last Updated` 5종. 아래 템플릿의 `Product` · `Product Version` · `Rules` 는 speckiwi 자체 spec 8개 문서에서 사용되는 **확장 필드(권장)** 이며 외부 코드베이스에서는 선택 사항. 외부 프로젝트의 SRS-MD 호환성을 엄격히 유지하려면 확장 3행을 생략 가능.
 
 ```markdown
 # {Name} SRS
@@ -262,7 +262,7 @@ prefix 규칙:
 | Last Updated | {YYYY-MM-DD} |
 | Product | {project_slug} <!-- 확장(선택) --> |
 | Product Version | {version} <!-- 확장(선택) --> |
-| Rules | SRS-MD Authoring Rules v2.5.0 (`docs/rule/SRS-MD-Rules-v2.5.0.md`) <!-- 확장(선택) --> |
+| Rules | SRS-MD Authoring Rules v2.6.0 (`docs/rule/SRS-MD-Rules-v2.6.0.md`) <!-- 확장(선택) --> |
 
 ## 1. Scope Overview
 

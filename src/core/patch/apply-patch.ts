@@ -1,4 +1,5 @@
-import { readFile, rename, stat, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { retryBusy } from "../lock/busy-retry.js";
 import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -45,11 +46,19 @@ export async function assertFreshSnapshot(plan: PatchPlan): Promise<void> {
   }
 }
 
-export async function applyPatchPlan(plan: PatchPlan, options: { dryRun: boolean; staleCheck?: boolean }): Promise<PatchResult> {
+/** The document text a plan renders, and whether it differs from the text the plan was made from. */
+export function renderPlanText(plan: PatchPlan): { lines: string[]; text: string; changed: boolean } {
   const lines = renderPatchedLines(plan);
   const text = `${lines.join(plan.file.newline)}${plan.file.text.endsWith(plan.file.newline) ? plan.file.newline : ""}`;
+  return { lines, text, changed: text !== plan.file.text };
+}
+
+export async function applyPatchPlan(plan: PatchPlan, options: { dryRun: boolean; staleCheck?: boolean }): Promise<PatchResult> {
+  const { lines, text, changed } = renderPlanText(plan);
   const preview = lines.slice(0, 20);
-  if (options.dryRun) {
+  // A plan that renders the text it was made from changes nothing, so the document is not replaced
+  // and the write is reported as not done.
+  if (options.dryRun || !changed) {
     return { written: false, filePath: plan.file.path, preview };
   }
   if (options.staleCheck !== false) {
@@ -57,6 +66,13 @@ export async function applyPatchPlan(plan: PatchPlan, options: { dryRun: boolean
   }
   const tmp = path.join(dirname(plan.file.path), `.speckiwi-${randomUUID()}.tmp`);
   await writeFile(tmp, text, "utf8");
-  await rename(tmp, plan.file.path);
+  try {
+    // Windows reports a target a scanner briefly holds as EPERM/EBUSY; the shared short retry absorbs it.
+    await retryBusy(() => rename(tmp, plan.file.path));
+  } catch (error) {
+    // The target was not replaced, so the temporary copy must not stay beside it.
+    await rm(tmp, { force: true });
+    throw error;
+  }
   return { written: true, filePath: plan.file.path, preview };
 }

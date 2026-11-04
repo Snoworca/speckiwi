@@ -62,7 +62,7 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/bootstrap/templates.ts",
     role: "current",
     shape: /SRS-MD-Rules-v(\d+(?:\.\d+)*)\.md/g,
-    value: "2.5.0"
+    value: "2.6.0"
   },
   {
     name: "BUNDLED_SDS_RULES_FILENAME",
@@ -111,6 +111,12 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     reason: "Covered through the SDS rules filename, whose shape carries it."
   },
   {
+    name: "SPEC_TO_SRS_RULES_LINK",
+    module: "src/core/bootstrap/templates.ts",
+    role: "unshaped",
+    reason: "The link is `../rule/` plus the SRS rules filename, whose shape already carries the value that can go stale."
+  },
+  {
     name: "CODEX_APPLY_PATCH_HOOK_FLOOR",
     module: "src/core/bootstrap/templates.ts",
     role: "unshaped",
@@ -128,6 +134,18 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/bootstrap/templates.ts",
     role: "not-an-ssot",
     reason: "A list of reserved names. A criterion naming one is naming it, not quoting a value that can go stale."
+  },
+  {
+    name: "BILINGUAL_SEARCH_RULE",
+    module: "src/core/bootstrap/templates.ts",
+    role: "unshaped",
+    reason: "A prose rule with no version or path shape; FR-FLOW-207 keeps its wording identical by importing it."
+  },
+  {
+    name: "BILINGUAL_SEARCH_EXAMPLE",
+    module: "src/core/bootstrap/templates.ts",
+    role: "not-an-ssot",
+    reason: "An example query shown to people; no criterion quotes it as a value."
   },
 
   // ── src/core/bootstrap/init-project.ts ─────────────────────────────────────────────────────

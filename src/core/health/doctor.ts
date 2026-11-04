@@ -10,7 +10,7 @@ import {
   BUNDLED_SDS_RULES_FILENAME,
   BUNDLED_SRS_RULES_FILENAME
 } from "../bootstrap/templates.js";
-import { scanAgentFileRulesReferences } from "../bootstrap/rules-references.js";
+import { scanAgentFileRulesReferences, scanSpecRulesPointers, specDocumentRole } from "../bootstrap/rules-references.js";
 import { agentInstructionBlockWrittenByNewer, isAgentInstructionBlockCurrent } from "../bootstrap/init-project.js";
 import { NODE_FLOOR, PACKAGE_VERSION, engineFloorVersion, parseNodeFloor, type NodeFloor, type NodeVersionTuple } from "../package-version.js";
 import { bundledSkillsBaseDir, deprecatedCodexCandidates, removeManagedKiwiSkills, resolveDeprecatedCodexSkillsRoot, resolveSkillDestinationRoot } from "../skills/install-skill.js";
@@ -159,17 +159,36 @@ async function checkWorkflowCurrency(root: string): Promise<DoctorCheck> {
  * rules document exists on disk (FR-NODE-085 AC-8) rather than trusting the index pointer alone.
  * A missing document, a mismatch, or an index that declares no rules version warns; otherwise ok.
  *
- * Every remediation names a plain `speckiwi init`, never the force flag (AC-7): init owns the rules
- * documents and refreshes them in place, while the force flag would overwrite the requirements index
- * and the scope SRS documents from templates.
+ * Every remediation names `speckiwi upgrade`, never the force flag (AC-7), which would overwrite the
+ * requirements index and the scope SRS documents from templates. Not a plain init either: init may
+ * change only the index's own Rules row (FR-NODE-085 AC-4/AC-5), so the scope documents' Rules rows
+ * would stay on the old version (FR-PARSE-044 AC-6).
  */
 async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck> {
   const topic = "bundled versus installed rules version drift";
   const label = "Rules version drift";
   const relPath = `docs/rule/${BUNDLED_SRS_RULES_FILENAME}`;
-  const remediation = `Run \`speckiwi init\` to refresh the bundled rules document at ${relPath}; it leaves the requirements index and the scope SRS documents untouched.`;
+  const remediation = `Run \`speckiwi upgrade\` to install the bundled rules document at ${relPath} and point the Rules row of every SRS document and the agent instruction block at it; it rewrites no requirement.`;
   const rulesMeta = workspace.index.metadata.Rules ?? workspace.index.metadata.rules;
-  const installed = typeof rulesMeta === "string" ? extractVersion(rulesMeta) : undefined;
+  const pointers = scanSpecRulesPointers(workspace.files);
+  // @req FR-PARSE-044 AC-6 — the index Rules row says which rules are installed only when it is the
+  // pointer the tool writes. A row written as a reference-style link is author text: doctor does not
+  // read a version from it or report it (validate's SRS-W073 tells the author to fix it by hand).
+  const authorRow =
+    typeof rulesMeta === "string" && !pointers.some((pointer) => specDocumentRole(pointer.filePath) === "index" && pointer.kind === "metadata-row");
+  const installed = typeof rulesMeta === "string" && !authorRow ? extractVersion(rulesMeta) : undefined;
+  // @req FR-PARSE-044 AC-6 — a declared older version is reported before the missing file. A project
+  // on the previous release never holds the new file, so checking presence first would answer every
+  // such project with "missing" and never name the version it is actually on.
+  if (installed !== undefined && installed !== BUNDLED_RULES_VERSION) {
+    return {
+      topic,
+      label,
+      state: "warn",
+      message: `installed rules v${installed} differs from bundled rules v${BUNDLED_RULES_VERSION}`,
+      remediation
+    };
+  }
   const present = await stat(path.join(workspace.root.root, "docs", "rule", BUNDLED_SRS_RULES_FILENAME))
     .then((entry) => entry.isFile())
     .catch(() => false);
@@ -182,7 +201,7 @@ async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck>
       remediation
     };
   }
-  if (installed === undefined) {
+  if (installed === undefined && !authorRow) {
     return {
       topic,
       label,
@@ -193,12 +212,20 @@ async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck>
       remediation: `Add a Rules row to docs/spec/00.index.md pointing at ${relPath}.`
     };
   }
-  if (installed !== BUNDLED_RULES_VERSION) {
+  // @req FR-PARSE-044 AC-6 — the index row is not the only pointer. A plain init raises that row alone
+  // (FR-NODE-085 AC-5), so the scope documents' rows and the index reference entry can still name a
+  // pruned version while the index reads current. These are tool-written pointers, not requirement
+  // bodies, so this does not overlap the reference-presence check below (IR-CLI-077 AC-5).
+  // The verdict is upgrade's own (pointerNeedsRefresh), so every pointer named here is one upgrade rewrites.
+  const stale = pointers
+    .filter((pointer) => pointer.needsRefresh)
+    .map((pointer) => `${pointer.filePath}:${pointer.line} (${pointer.text.trim()})`);
+  if (stale.length > 0) {
     return {
       topic,
       label,
       state: "warn",
-      message: `installed rules v${installed} differs from bundled rules v${BUNDLED_RULES_VERSION}`,
+      message: `${stale.length} SRS rules pointer(s) do not point at the bundled rules v${BUNDLED_RULES_VERSION}: ${stale.join(", ")}`,
       remediation
     };
   }
@@ -206,7 +233,7 @@ async function checkRulesDrift(workspace: ParsedWorkspace): Promise<DoctorCheck>
     topic,
     label,
     state: "ok",
-    message: `installed rules v${installed} matches bundled rules v${BUNDLED_RULES_VERSION} (${relPath})`,
+    message: `installed rules ${installed === undefined ? "document" : `v${installed}`} matches bundled rules v${BUNDLED_RULES_VERSION} (${relPath})`,
     remediation: "No action needed; the installed rules document matches the bundled version."
   };
 }

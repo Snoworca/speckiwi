@@ -4,8 +4,13 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, patchSummaryFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
-import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, TYPE_PREFIX, type MutationResult, type ProjectRoot, type RequirementType, type TextFile } from "../types.js";
+import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, TYPE_PREFIX, type Diagnostic, type MutationResult, type ProjectRoot, type RequirementType, type RollupSyncFailure, type TextFile } from "../types.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { findHeadingMatching } from "../parser/index-parser.js";
+import path from "node:path";
+import { readUtf8File } from "../fs/read-text.js";
+import { parseMarkdownTable, type ParsedTable } from "../parser/table.js";
+import { planTableRowsInsert, planTableRowUpdate } from "./internal.js";
 
 export interface SyncIndexRollupsInput {
   dryRun?: boolean;
@@ -44,74 +49,106 @@ function staleFailure<T>(filePath: string, expectedSha256?: string, actualSha256
   return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun sync-index" } }) as MutationResult<T>;
 }
 
-interface TableLocation {
-  headingLine: number;
-  insertLine: number;
+/** The two rollup tables: the columns that hold the rollup itself, and the one a table may leave out. */
+const ROLLUP_TABLES = {
+  status: { title: "Status Summary", keyColumn: "Status", required: ["Status", "Count"], optional: [] as string[] },
+  type: { title: "Requirement Type Summary", keyColumn: "Type", required: ["Type", "Count"], optional: ["Prefix"] }
+} as const;
+
+type RollupSpec = (typeof ROLLUP_TABLES)[keyof typeof ROLLUP_TABLES];
+
+function rollupTable(file: TextFile, title: string): ParsedTable | undefined {
+  const heading = findHeadingMatching(file.lines, new RegExp(`^##\\s+\\d+\\.\\s+${title}$`));
+  return heading >= 0 ? parseMarkdownTable(file.lines, heading + 1) : undefined;
 }
 
-function findHeading(lines: readonly string[], title: string): number | undefined {
-  const pattern = new RegExp(`^##\\s+\\d+\\.\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
-  const index = lines.findIndex((line) => pattern.test(line.trim()));
-  return index >= 0 ? index + 1 : undefined;
-}
-
-function findTableLocation(file: TextFile, title: string, rowLines: Array<{ line?: number }>): TableLocation | undefined {
-  const headingLine = findHeading(file.lines, title);
-  if (!headingLine) return undefined;
-  const lastRowLine = Math.max(0, ...rowLines.map((row) => row.line ?? 0));
-  if (lastRowLine > 0) return { headingLine, insertLine: lastRowLine + 1 };
-  for (let line = headingLine + 1; line <= file.lines.length; line += 1) {
-    const text = file.lines[line - 1] ?? "";
-    if (line > headingLine + 1 && !text.trim().startsWith("|")) return { headingLine, insertLine: line };
+/**
+ * Whether the index rollups can be synced at all, decided from the tables alone, before any mutation
+ * writes: every rollup table that exists has its key and Count columns. Only what makes the sync refuse
+ * whatever the counts are is checked here; a refusal that depends on the counts (a cut row the sync
+ * would have to rewrite) is left to the sync, which a mutation runs after its write through
+ * {@link syncIndexRollupsAfterWrite}.
+ */
+export function checkIndexRollupsWritable(indexFile: TextFile): string | undefined {
+  for (const spec of Object.values(ROLLUP_TABLES)) {
+    const table = rollupTable(indexFile, spec.title);
+    if (!table) continue;
+    const missing = spec.required.filter((column) => !table.headers.includes(column));
+    if (missing.length > 0) return `${spec.title} table has no ${missing.join(", ")} column, so the index rollups cannot be synced; nothing was written`;
   }
-  return { headingLine, insertLine: file.lines.length + 1 };
+  return undefined;
 }
 
-function replaceLine(file: TextFile, line: number, replacement: string): PatchOperation | undefined {
-  const original = file.lines[line - 1];
-  if (original === undefined || original === replacement) return undefined;
-  return { type: "replaceLine", line, original, replacement };
+/** Reads the index and applies {@link checkIndexRollupsWritable}. */
+export async function checkIndexRollupsWritableAt(root: ProjectRoot): Promise<string | undefined> {
+  return checkIndexRollupsWritable(await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root));
 }
 
-function insertLines(file: TextFile, line: number, lines: string[]): PatchOperation | undefined {
-  if (lines.length === 0) return undefined;
-  const operation: PatchOperation = { type: "insertLines", line, lines };
-  const expectedBefore = file.lines[line - 2];
-  if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
-  const expectedAfter = file.lines[line - 1];
-  if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
-  return operation;
-}
-
-function statusOperations(file: TextFile, entries: NonNullable<Awaited<ReturnType<typeof parseWorkspace>>["index"]["statusSummary"]>, actual: Map<string, number>): PatchOperation[] {
+/**
+ * One rollup table, rewritten through the shared row writer: each row by the table's own header at
+ * the line the parser read it from, and each missing key appended after the last row. Only a row whose
+ * count (or empty Prefix) is wrong is rewritten, so an already correct row keeps its own spelling.
+ */
+function rollupOperations(
+  file: TextFile,
+  spec: RollupSpec,
+  keys: readonly string[],
+  actual: Map<string, number>,
+  extraCells: (key: string) => Record<string, string> = () => ({})
+): { ok: true; operations: PatchOperation[] } | { ok: false; message: string } {
+  const { keyColumn, optional } = spec;
+  const table = rollupTable(file, spec.title);
+  if (!table) return { ok: true, operations: [] };
   const operations: PatchOperation[] = [];
-  const existing = new Set(entries.map((entry) => entry.status));
-  for (const entry of entries) {
-    if (typeof entry.line !== "number") continue;
-    const operation = replaceLine(file, entry.line, `| ${entry.status} | ${actual.get(entry.status) ?? 0} |`);
-    if (operation) operations.push(operation);
+  const present = new Set<string>();
+  for (const [index, row] of table.rows.entries()) {
+    const key = (row[keyColumn] ?? "").trim();
+    present.add(key);
+    const updates: Record<string, string> = {};
+    const count = String(actual.get(key) ?? 0);
+    if ((row.Count ?? "").trim() !== count) updates.Count = count;
+    // An empty cell is filled only when there is a value to fill it with; an unknown key has none.
+    for (const [column, value] of Object.entries(extraCells(key))) {
+      if (value && !(row[column] ?? "").trim()) updates[column] = value;
+    }
+    if (Object.keys(updates).length === 0) continue;
+    const write = planTableRowUpdate(file, table, index, updates, { optional });
+    if (!write.ok) return write;
+    if (write.operation.type !== "replaceLine" || write.operation.replacement !== write.operation.original) operations.push(write.operation);
   }
-  const missing = REQUIREMENT_STATUSES.filter((status) => !existing.has(status) && (actual.get(status) ?? 0) > 0).map((status) => `| ${status} | ${actual.get(status) ?? 0} |`);
-  const location = findTableLocation(file, "Status Summary", entries);
-  const insert = location ? insertLines(file, location.insertLine, missing) : undefined;
-  if (insert) operations.push(insert);
-  return operations;
+  const missing = keys.filter((key) => !present.has(key) && (actual.get(key) ?? 0) > 0);
+  if (missing.length > 0) {
+    const insert = planTableRowsInsert(file, table, missing.map((key) => ({ [keyColumn]: key, ...extraCells(key), Count: String(actual.get(key) ?? 0) })), { optional });
+    if (!insert.ok) return insert;
+    operations.push(insert.operation);
+  }
+  return { ok: true, operations };
 }
 
-function typeOperations(file: TextFile, entries: NonNullable<Awaited<ReturnType<typeof parseWorkspace>>["index"]["requirementTypeSummary"]>, actual: Map<string, number>): PatchOperation[] {
-  const operations: PatchOperation[] = [];
-  const existing = new Set(entries.map((entry) => entry.type));
-  for (const entry of entries) {
-    if (typeof entry.line !== "number") continue;
-    const prefix = entry.prefix || TYPE_PREFIX[entry.type as RequirementType] || "";
-    const operation = replaceLine(file, entry.line, `| ${entry.type} | ${prefix} | ${actual.get(entry.type) ?? 0} |`);
-    if (operation) operations.push(operation);
-  }
-  const missing = REQUIREMENT_TYPES.filter((type) => !existing.has(type) && (actual.get(type) ?? 0) > 0).map((type) => `| ${type} | ${TYPE_PREFIX[type]} | ${actual.get(type) ?? 0} |`);
-  const location = findTableLocation(file, "Requirement Type Summary", entries);
-  const insert = location ? insertLines(file, location.insertLine, missing) : undefined;
-  if (insert) operations.push(insert);
-  return operations;
+/** The rollup sync a mutation runs after its own write, as the mutation reports it. */
+export interface RollupSyncAfterWrite {
+  /** The result fields to spread into the mutation's result: `indexSync` on success, `rollupSync` on failure. */
+  fields: { indexSync?: SyncIndexRollupsOutput; rollupSync?: RollupSyncFailure };
+  diagnostics: Diagnostic[];
+}
+
+/**
+ * Runs the rollup sync after a mutation has written. The mutation's change is already in the document,
+ * so a sync that fails (the index changed underneath, or a row it has to rewrite is cut) does not turn
+ * the mutation into a failure: it is reported as `rollupSync` with a warning saying how to catch up.
+ */
+export async function syncIndexRollupsAfterWrite(root: ProjectRoot): Promise<RollupSyncAfterWrite> {
+  const synced = await syncIndexRollups(root, { skipLock: true });
+  if (synced.ok) return { fields: synced.value ? { indexSync: synced.value } : {}, diagnostics: synced.diagnostics };
+  const code = synced.error?.code ?? "MUTATION_DENIED";
+  const message = synced.error?.message ?? "index rollup sync failed";
+  const warning: Diagnostic = {
+    code: "INDEX_ROLLUP_SYNC_FAILED",
+    severity: "warning",
+    message: `The change was written, but the index rollups were not updated (${code}: ${message}). Run speckiwi sync-index to update them.`,
+    filePath: "docs/spec/00.index.md"
+  };
+  return { fields: { rollupSync: { ok: false, code, message } }, diagnostics: [warning] };
 }
 
 export async function syncIndexRollups(root: ProjectRoot, input: SyncIndexRollupsInput = {}): Promise<MutationResult<SyncIndexRollupsOutput>> {
@@ -127,8 +164,12 @@ async function syncIndexRollupsUnlocked(root: ProjectRoot, input: SyncIndexRollu
   }
   const statusCounts = countBy(workspace.records.map((record) => record.status));
   const typeCounts = countBy(workspace.records.map((record) => record.type));
-  const statusSummaryOps = workspace.index.statusSummary ? statusOperations(file, workspace.index.statusSummary, statusCounts) : [];
-  const typeSummaryOps = workspace.index.requirementTypeSummary ? typeOperations(file, workspace.index.requirementTypeSummary, typeCounts) : [];
+  const status = rollupOperations(file, ROLLUP_TABLES.status, REQUIREMENT_STATUSES, statusCounts);
+  if (!status.ok) return mutationFail("MUTATION_DENIED", `Status Summary: ${status.message}`);
+  const type = rollupOperations(file, ROLLUP_TABLES.type, REQUIREMENT_TYPES, typeCounts, (key) => ({ Prefix: TYPE_PREFIX[key as RequirementType] ?? "" }));
+  if (!type.ok) return mutationFail("MUTATION_DENIED", `Requirement Type Summary: ${type.message}`);
+  const statusSummaryOps = status.operations;
+  const typeSummaryOps = type.operations;
   const operations = [...statusSummaryOps, ...typeSummaryOps];
   const dryRun = input.dryRun ?? false;
   const valueBase = {

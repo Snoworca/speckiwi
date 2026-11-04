@@ -50,7 +50,9 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
 // 88 since 4.0.0 removed the twelve plan tools (FR-NODE-211 AC-1) and two orchestrate tools
 // (FR-NODE-213 AC-3) and added `check_sds` and `check_test_sufficiency` (FR-MCP-065, FR-MCP-066).
 // 89 since 4.1.0 added `orchestrate_wave_status` (IR-CLI-104 AC-5).
-const REGISTERED_TOOL_COUNT = 89;
+// 91 since 5.2.0 added `rename_scope` (IR-MCP-006) and `expire_acceptance_criterion` (FR-NODE-243 AC-6).
+// 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
+const REGISTERED_TOOL_COUNT = 97;
 
 /**
  * The refusing set is held to names rather than to a size.

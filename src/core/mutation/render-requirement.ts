@@ -1,6 +1,9 @@
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { TYPE_PREFIX, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
 import { todayStamp } from "../date-stamp.js";
+import { isExpiredCriterionText } from "../parser/ac-parser.js";
+import type { MutationResult } from "../types.js";
+import { mutationFail } from "./guards.js";
 
 export const DEFAULT_REQUIREMENT_STABILITY = "draft";
 
@@ -26,6 +29,19 @@ export interface RenderRequirementInput {
   changeNotes?: string;
   evidence?: Array<Partial<EvidenceRow>>;
   trace?: Array<Partial<TraceLink>>;
+}
+
+/**
+ * @req FR-NODE-243 AC-1 — the guard every acceptance-criterion text writer calls. Text in the expired
+ * grammar would expire the criterion with any date, no Change Notes reason and possibly no live
+ * criterion left; only expire_acceptance_criterion may write the marker.
+ */
+export function refuseExpiredMarker<T = void>(label: string, texts: readonly string[]): MutationResult<T> | undefined {
+  if (!texts.some(isExpiredCriterionText)) return undefined;
+  return mutationFail(
+    "USAGE",
+    `${label} is written in the expired-criterion grammar; expire a criterion with expire_acceptance_criterion instead`
+  ) as MutationResult<T>;
 }
 
 function linesOrDash(value?: string): string[] {

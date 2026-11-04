@@ -36,15 +36,28 @@ export interface AgentInstructionOptions {
 // @req FR-NODE-225 — v1.11 adds the tool check that installs and version-checks SpecKiwi, now that a
 // project carries no MCP setting or skills of its own.
 export const AGENT_INSTRUCTION_VERSION = "1.11";
+// @req FR-FLOW-207 AC-1/AC-2/AC-3/AC-4 — the one wording of the bilingual search rule. The agent
+// instruction block, the shipped skills, the MCP tool description and the CLI help all state it, so a
+// search for a requirement written in the other language still finds it; one constant keeps them equal.
+// The rule carries no Hangul because the block must stay English (FR-NODE-086 AC-3); the example that
+// pairs the two languages is a separate constant for the surfaces a person reads.
+export const BILINGUAL_SEARCH_RULE =
+  "Search in both languages: put the words you would search for and their equivalents in the other language into the same query string (add English words to a Korean request; add Korean words to an English request or to a requirement you are writing in English).";
+// @req FR-FLOW-207 AC-1/AC-3 — one query that carries Korean and English words together.
+export const BILINGUAL_SEARCH_EXAMPLE = "리뷰 루프 옵션 거부 review loop option rejected";
 // @req FR-NODE-087 — 2.5.0 is the first bundled version whose document covers every syntax the
 // runtime writes: the `checked_compatible` relation and its Notes grammar (§23.5) and the
 // [DISCARDED] / [DRAFT] heading markers (§30.1–§30.5).
-export const BUNDLED_RULES_VERSION = "2.5.0";
+// @req FR-PARSE-044 AC-6 — 2.6.0 adds the expired-criterion grammar. It is a new version rather than
+// an edit of 2.5.0 because doctor compares versions, not content: only a raised version tells a
+// project that installed 2.5.0 to upgrade and receive the grammar.
+export const BUNDLED_RULES_VERSION = "2.6.0";
 
 // @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
 // from one constant per rules document, so raising a version cannot leave a filename or a pointer behind.
 // @req FR-NODE-087 AC-7 — the SDS document moves to 2.6.0 alone, raised for the lite profile
-// (FR-NODE-209 AC-5); the SRS document stays at 2.5.0.
+// (FR-NODE-209 AC-5). The SRS document later reaches 2.6.0 on its own (FR-PARSE-044 AC-6); the two
+// versions match by coincidence, not by contract.
 export const BUNDLED_SDS_RULES_VERSION = "2.6.0";
 export const BUNDLED_SRS_RULES_FILENAME = `SRS-MD-Rules-v${BUNDLED_RULES_VERSION}.md`;
 export const BUNDLED_SDS_RULES_FILENAME = `SDS-MD-Rules-v${BUNDLED_SDS_RULES_VERSION}.md`;
@@ -55,9 +68,20 @@ export const BUNDLED_SDS_RULES_FILENAME = `SDS-MD-Rules-v${BUNDLED_SDS_RULES_VER
  */
 export const RULES_DOCUMENT_FILENAME_PATTERN = /^(?:SRS|SDS)-MD-Rules-v\d+\.\d+\.\d+\.md$/;
 
-/** The index metadata row that points at the bundled SRS-MD rules document. */
-export function renderIndexRulesRow(): string {
-  return `| Rules | [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](../rule/${BUNDLED_SRS_RULES_FILENAME}) |`;
+/** The link from a document directly under `docs/spec` to the bundled SRS-MD rules document. */
+export const SPEC_TO_SRS_RULES_LINK = `../rule/${BUNDLED_SRS_RULES_FILENAME}`;
+
+/**
+ * The metadata Rules row that points at the bundled SRS-MD rules document. The default link is right
+ * for a document directly under `docs/spec`; a deeper document passes the link from its own directory.
+ */
+export function renderIndexRulesRow(rulesLink: string = SPEC_TO_SRS_RULES_LINK): string {
+  return `| Rules | [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](${rulesLink}) |`;
+}
+
+/** The Reference Documents entry that points at the bundled SRS-MD rules document; the link as above. */
+export function renderRulesReferenceEntry(rulesLink: string = SPEC_TO_SRS_RULES_LINK): string {
+  return `- [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](${rulesLink})`;
 }
 
 /**
@@ -221,7 +245,7 @@ export function renderIndexTemplate(input: InitTemplateInput = {}): string {
     "",
     "## 10. Reference Documents",
     "",
-    `- [SRS-MD Authoring Rules v${BUNDLED_RULES_VERSION}](../rule/${BUNDLED_SRS_RULES_FILENAME})`,
+    renderRulesReferenceEntry(),
     "",
     "## 11. Change Notes",
     "",
@@ -513,7 +537,8 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "",
     "Before making any code, test, or documentation change, agents MUST:",
     "1. Read `docs/spec/00.index.md`.",
-    "2. Find the relevant Requirement ID in the scope SRS files.",
+    // @req FR-FLOW-207 AC-2 — the lookup step sends the agent to search, so the rule sits on the same line.
+    `2. Find the relevant Requirement ID in the scope SRS files (MCP \`search_requirements\`, CLI \`speckiwi search\`). ${BILINGUAL_SEARCH_RULE}`,
     "3. Mention the Requirement ID in the work summary.",
     "4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.",
     "",

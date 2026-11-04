@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { parseReportPathCell } from "../completed-work/report-paths.js";
 import { TARGET_STATUS_ACTIVE, TARGET_STATUS_RELEASED } from "../target-types.js";
@@ -14,8 +15,18 @@ import {
   type ParsedWorkspace,
   type RequirementRecord
 } from "../types.js";
+import { successorProblem } from "../parser/ac-parser.js";
 import { registerValidationRule } from "./rule-registry.js";
-import { collectSsotLiteralDrift, type SsotTextSpan } from "./ssot-literal-drift.js";
+import { collectSsotLiteralDrift, type SsotLiteralFinding, type SsotTextSpan } from "./ssot-literal-drift.js";
+import {
+  findReferenceStyleRulesLines,
+  findRulesPointers,
+  pointerNeedsRefresh,
+  referenceStyleRulesLinePointsAtBundled,
+  rulesPointerLines,
+  specDocumentRole
+} from "../bootstrap/rules-references.js";
+import { BUNDLED_RULES_VERSION, BUNDLED_SRS_RULES_FILENAME } from "../bootstrap/templates.js";
 
 function includes(values: readonly string[], value: string): boolean {
   return values.includes(value);
@@ -287,6 +298,84 @@ export function isVerifiedRequirementValid(record: RequirementRecord): boolean {
   );
 }
 
+/**
+ * @req FR-PARSE-044 AC-4 — an AC number names one criterion for life: a test line or a `Covers` cell
+ * that names it must not silently bind to another criterion, so a number held twice in one block,
+ * live or expired, is an error. A successor an expired marker names is a requirement reference and
+ * fails the way a dangling trace link does.
+ */
+function acceptanceCriterionNumberDiagnostics(record: RequirementRecord, records: readonly RequirementRecord[]): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const expired = record.expiredAcceptanceCriteria ?? [];
+  const seen = new Set<string>();
+  for (const criterion of [...record.acceptanceCriteria, ...expired].sort((left, right) => left.line - right.line)) {
+    if (seen.has(criterion.id)) {
+      diagnostics.push(
+        diagnostic("SRS-E078", "error", `Duplicate acceptance criterion number ${criterion.id} in ${record.id}`, {
+          filePath: record.filePath,
+          line: criterion.line,
+          requirementId: record.id
+        })
+      );
+    }
+    seen.add(criterion.id);
+  }
+  for (const criterion of expired) {
+    const unusable = criterion.successor ? successorProblem(record.id, criterion.successor, records) : undefined;
+    if (unusable) {
+      diagnostics.push(
+        diagnostic("SRS-E012", "error", `Trace target does not exist: ${unusable} (successor of expired ${criterion.id} of ${record.id})`, {
+          filePath: record.filePath,
+          line: criterion.line,
+          requirementId: record.id
+        })
+      );
+    }
+  }
+  return diagnostics;
+}
+
+// @req FR-PARSE-044 AC-6
+/**
+ * How to clear a stale SRS rules file name, which depends on who owns the line. `speckiwi upgrade`
+ * rewrites only the tool-owned rules pointers, so naming it for an author's line would promise a fix
+ * the command never makes.
+ */
+// @req FR-PARSE-044 AC-6
+/**
+ * A reference-style Rules row or Reference Documents entry is author text the tool does not manage and
+ * upgrade leaves alone, so validate reports it on the row's own line, asking the author to check it,
+ * unless the line already leads to the bundled rules. A drift finding on its definition line stays as is.
+ */
+function staleReferenceStyleRulesFindings(workspace: ParsedWorkspace): SsotLiteralFinding[] {
+  return workspace.files.flatMap((file) =>
+    findReferenceStyleRulesLines(file.lines.join("\n"), specDocumentRole(file.relativePath))
+      .filter((found) => !referenceStyleRulesLinePointsAtBundled(found, file.relativePath))
+      .map((found) => ({
+        filePath: file.relativePath,
+        line: found.line,
+        constantName: "BUNDLED_SRS_RULES_FILENAME",
+        expected: BUNDLED_SRS_RULES_FILENAME,
+        found: path.posix.basename(found.destination ?? ""),
+        message: `BUNDLED_SRS_RULES_FILENAME is ${BUNDLED_SRS_RULES_FILENAME}, but this reference-style link is not managed by the tool and does not lead to it (${found.destination ?? "no definition"}); check by hand that it points at v${BUNDLED_RULES_VERSION}`
+      }))
+  );
+}
+
+function rulesFileGuidance(workspace: ParsedWorkspace, finding: SsotLiteralFinding): string {
+  if (finding.constantName !== "BUNDLED_SRS_RULES_FILENAME") return "";
+  const file = workspace.files.find((entry) => entry.relativePath === finding.filePath);
+  // "Upgrade rewrites this line" is pointerNeedsRefresh, the verdict upgrade itself applies, so this
+  // guidance names upgrade for exactly the lines upgrade rewrites.
+  const rewritten =
+    file !== undefined &&
+    findRulesPointers(file.lines.join("\n"), specDocumentRole(file.relativePath)).some(
+      (pointer) => rulesPointerLines(pointer).includes(finding.line) && pointerNeedsRefresh(pointer, file.relativePath)
+    );
+  return rewritten
+    ? ". This line is a rules pointer the tool writes: run `speckiwi upgrade` to point it at the bundled rules."
+    : `. This line is author text, which \`speckiwi upgrade\` does not rewrite: change it by hand to ${BUNDLED_SRS_RULES_FILENAME}, in the link target as well.`;
+}
 
 /**
  * @req FR-PARSE-039 — the stretches of text that say what is true now.
@@ -682,6 +771,7 @@ export function registerDefaultRules(): void {
           }));
         }
       }
+      diagnostics.push(...acceptanceCriterionNumberDiagnostics(record, workspace.records));
       if (record.target && !targets.has(record.target)) {
         diagnostics.push(diagnostic("SRS-W002", "warning", `Target is not registered: ${record.target}`, { filePath: record.filePath, line: record.headingLine }));
       }
@@ -758,12 +848,13 @@ export function registerDefaultRules(): void {
   // and leave the sections that describe what was true then alone.
   registerValidationRule((workspace) => {
     const spans: SsotTextSpan[] = collectSsotSpans(workspace);
+    const drift = collectSsotLiteralDrift(spans);
 
-    return collectSsotLiteralDrift(spans).map((finding) =>
+    return [...drift, ...staleReferenceStyleRulesFindings(workspace)].map((finding) =>
       diagnostic(
         "SRS-W073",
         "warning",
-        `Stale constant value in ${finding.requirementId ?? finding.filePath}: ${finding.message}`,
+        `Stale constant value in ${finding.requirementId ?? finding.filePath}: ${finding.message}${rulesFileGuidance(workspace, finding)}`,
         {
           filePath: finding.filePath,
           line: finding.line,

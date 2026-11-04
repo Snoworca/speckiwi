@@ -8,6 +8,8 @@ import type { MutationResult, ProjectRoot, TargetEntry, TextFile } from "../type
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { findHeadingMatching, TARGET_MAP_HEADING } from "../parser/index-parser.js";
+import { planTableRowUpdate, readIndexMetadataValue } from "./internal.js";
 
 export interface SetTargetStatusInput {
   target: string;
@@ -31,24 +33,6 @@ export async function setTargetStatus(root: ProjectRoot, input: SetTargetStatusI
   return withSrsMutationLock(root, { operation: "set_target_status", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => setTargetStatusUnlocked(root, input));
 }
 
-function renderTargetRow(row: TargetEntry, status: string): string {
-  return `| ${row.target} | ${row.type} | ${status} | ${row.description} |`;
-}
-
-/**
- * The `Active Target` value, read with the same table parser the rest of the tool uses.
- *
- * A hand-rolled `line.startsWith("| Active Target |")` scan is not equivalent: `parseMarkdownTable`
- * trims the line and every cell, so `|Active Target|v1.0.0|` and an indented row are both valid to the
- * parser and both invisible to the naive form. The guard below refuses a write on this value, so a
- * scanner stricter than the parser silently lets the write through on a document the tool reads fine.
- */
-function findActiveTargetValue(file: TextFile): string | undefined {
-  const metadata = parseMarkdownTable(file.lines, 1);
-  const row = metadata?.rows.find((entry) => (entry.Field ?? "").trim() === "Active Target");
-  return (row?.Value ?? "").trim() || undefined;
-}
-
 async function setTargetStatusUnlocked(root: ProjectRoot, input: SetTargetStatusInput): Promise<MutationResult> {
   const target = input.target.trim();
   if (!target) return mutationFail("USAGE", "target is required");
@@ -57,7 +41,7 @@ async function setTargetStatusUnlocked(root: ProjectRoot, input: SetTargetStatus
   if (!isTargetStatus(status)) return mutationFail("USAGE", `target status must be ${TARGET_STATUSES_SENTENCE}`);
 
   const file = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
-  const heading = file.lines.findIndex((line) => /^##\s+\d+\.\s+Target Map$/.test(line.trim()));
+  const heading = findHeadingMatching(file.lines, TARGET_MAP_HEADING);
   const table = heading >= 0 ? parseMarkdownTable(file.lines, heading + 1) : undefined;
   if (!table) return mutationFail("MUTATION_DENIED", "Target Map table is missing");
 
@@ -84,7 +68,8 @@ async function setTargetStatusUnlocked(root: ProjectRoot, input: SetTargetStatus
   // succeeds, reports no diagnostic, and leaves the repository failing its own
   // `validate --fail-on-warning` with SRS-W010. This mutation deliberately does not touch the Active
   // Target metadata row, so it cannot repair what it would break.
-  const activeTarget = findActiveTargetValue(file);
+  // The value the index parser reads, so `|Active Target|v1.0.0|` or an indented row is not missed.
+  const activeTarget = readIndexMetadataValue(file, "Active Target")?.trim() || undefined;
   if (status !== TARGET_STATUS_ACTIVE && activeTarget === target) {
     return mutationFail("MUTATION_DENIED", `${target} is the Active Target; move the Active Target with set-active-target first, then record this status`);
   }
@@ -96,10 +81,10 @@ async function setTargetStatusUnlocked(root: ProjectRoot, input: SetTargetStatus
     );
   }
 
-  const line = table.startLine + 2 + index;
-  const original = file.lines[line - 1];
-  if (original === undefined) return mutationFail("MUTATION_DENIED", "Target Map row is outside file");
-  const operations: PatchOperation[] = [{ type: "replaceLine", line, original, replacement: renderTargetRow(row, status) }];
+  // The shared row writer, by header name, at the row the parser read.
+  const write = planTableRowUpdate(file, table, index, { Status: status });
+  if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
+  const operations: PatchOperation[] = [write.operation];
 
   const plan = createPatchPlan(file, operations);
   const dryRun = input.dryRun ?? false;

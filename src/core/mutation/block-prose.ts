@@ -1,4 +1,5 @@
 import type { MutationResult } from "../types.js";
+import { classifyDocumentLines, openStructureAfter, SRS_RECORD_LINES, type ClassifyOptions, type DocumentLineKind } from "../parser/document-lines.js";
 import { mutationFail } from "./guards.js";
 
 /**
@@ -25,29 +26,29 @@ import { mutationFail } from "./guards.js";
 const OPENS_SECTION = /^\s*#{1,6}\s/;
 
 /**
- * Copied from `FENCE_RE` in `parser/block-scanner.ts` rather than approximated, for the reason
- * the paragraph above gives: the parser decides what a requirement block is, so the guard follows
- * it exactly. Both markers, three or more, up to three leading spaces.
+ * The other boundary movers are the structures that hide the lines after them from every reader: a
+ * code fence (at the top level, after a list marker, inside a block quote) and an HTML comment block.
+ * Which lines open one is the shared classifier's to say, not a pattern copied here, so when the
+ * classifier learns a new structure this guard refuses it without a change of its own.
  *
- * A fence is the parser's SECOND record boundary and the one a guard named for headings does not
- * see. `scanRequirementBlocks` enters fence state on this pattern and returns on every line after
- * it, so a single unclosed ``` in a prose field makes each later `### FR-…` start and each `## `
- * boundary stop existing. Measured on a three-requirement workspace: a note of
- * "Implementation detail.\n```" left one record in the parsed model, took `ready` from false to
- * true, and the validator reported NOTHING — no heading was harmed, so nothing looked wrong.
- *
- * A balanced pair is inert to a parity-based scanner and is refused anyway. That is stricter than
- * this parser needs, and deliberately so: no requirement block in `docs/spec/*.srs.md` carries a
- * fence today, so the strictness costs nothing, while matching the parity model would leave the
- * guard correct only until the parser learned to match fence widths. When a requirement genuinely
- * needs fenced prose, both sides have to learn balance in the same change.
+ * The prose is classified on its own, with every opener taken as open even if nothing in the prose
+ * closes it: a closer may be anywhere later in the document, and an opener that meets one swallows
+ * everything between. A balanced pair is refused too. It is inert to the parsers, so that is stricter
+ * than they need; it is kept because no requirement block carries such a structure today, so the rule
+ * costs nothing, while an author who genuinely needs one in a block can relax this in the same change
+ * as the parsers are taught where such a block may live.
  */
-const OPENS_FENCE = /^(?: {0,3})(`{3,}|~{3,})/;
+const PROSE_LINES: ClassifyOptions = { ...SRS_RECORD_LINES, unclosedOpens: true };
+
+const MOVER_REASONS: Partial<Record<DocumentLineKind, string>> = {
+  fence: "a code fence, which ends the requirement block for the parser and hides every block after it",
+  comment: "an HTML comment block, which hides every block after it until a later `-->`"
+};
 
 /**
  * Refuses caller-supplied prose that would move a boundary of the requirement block it is written
- * into — by opening a section the block does not declare, or by opening a fenced region that
- * swallows the blocks after it.
+ * into — by opening a section the block does not declare, or by opening a fenced or commented region
+ * that swallows the blocks after it.
  */
 export function assertOpensNoBlockBoundary<T = void>(label: string, value: string | undefined): MutationResult<T> | undefined {
   if (typeof value !== "string") return undefined;
@@ -59,12 +60,11 @@ export function assertOpensNoBlockBoundary<T = void>(label: string, value: strin
       `${label} contains a Markdown heading and would open a section the requirement block does not declare: ${heading.trim()}`
     ) as MutationResult<T>;
   }
-  const fence = lines.find((line) => OPENS_FENCE.test(line));
-  if (fence !== undefined) {
-    return mutationFail(
-      "USAGE",
-      `${label} contains a code fence, which ends the requirement block for the parser and hides every block after it: ${fence.trim()}`
-    ) as MutationResult<T>;
+  const classified = classifyDocumentLines(lines, PROSE_LINES);
+  const mover = classified.findIndex((line) => MOVER_REASONS[line.kind] !== undefined);
+  if (mover >= 0) {
+    const reason = MOVER_REASONS[classified[mover]!.kind];
+    return mutationFail("USAGE", `${label} contains ${reason}: ${(lines[mover] ?? "").trim()}`) as MutationResult<T>;
   }
   return undefined;
 }
@@ -109,12 +109,10 @@ export function assertPromotableBlock<T = void>(label: string, markdown: string)
       `${label} opens a top-level section, which would end the Requirements section it is promoted into: ${topLevel.trim()}`
     ) as MutationResult<T>;
   }
-  const fences = lines.filter((line) => OPENS_FENCE.test(line));
-  if (fences.length % 2 !== 0) {
-    return mutationFail(
-      "MUTATION_DENIED",
-      `${label} leaves a code fence open, which hides every requirement written after it: ${fences[fences.length - 1]?.trim() ?? ""}`
-    ) as MutationResult<T>;
+  const open = openStructureAfter(lines, PROSE_LINES);
+  if (open !== undefined) {
+    const what = open === "comment" ? "an HTML comment block" : "a code fence";
+    return mutationFail("MUTATION_DENIED", `${label} leaves ${what} open, which hides every requirement written after it`) as MutationResult<T>;
   }
   return undefined;
 }

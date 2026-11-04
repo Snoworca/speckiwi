@@ -275,7 +275,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 1. **SRS scaffold.** Creates `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log) and `docs/spec/90.appendix.md`. When the project has no scope document yet, it also creates an empty one from `--scope`, such as `docs/spec/01.app.srs.md`. Existing scope documents are registered under their own names instead.
 2. **Step state.** Creates `docs/spec/steps/state.md`, in the `wait` work mode.
-3. **Authoring rules.** Writes the bundled `docs/rule/SRS-MD-Rules-v2.5.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`.
+3. **Authoring rules.** Writes the bundled `docs/rule/SRS-MD-Rules-v2.6.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`.
 4. **Agent instructions.** Adds or updates the *SpecKiwi SRS workflow* block in `AGENTS.md` and `CLAUDE.md`.
 5. **Hooks.** Installs the runners `docs/.kiwi/hooks/pre-commit.mjs` and `docs/.kiwi/hooks/trace.mjs`, a `.git/hooks/pre-commit` that delegates to the first, a PostToolUse trace hook in `.claude/settings.json` and an apply_patch trace hook in `.codex/hooks.json`.
 6. **MCP registration.** Registers the MCP server at user scope through each agent's own CLI. See [Connect the MCP server](#en-mcp).
@@ -318,7 +318,7 @@ docs/
 ├─ .kiwi/hooks/               # bundled hook runners
 ├─ .kiwi/trace/               # trace output written by trace.mjs
 ├─ rule/
-│  ├─ SRS-MD-Rules-v2.5.0.md
+│  ├─ SRS-MD-Rules-v2.6.0.md
 │  └─ SDS-MD-Rules-v2.6.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
@@ -439,17 +439,18 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 | Read | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status & stability | `update_status`, `update_stability` |
 | Evidence & trace | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| Authoring & editing | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `supersede_requirement` |
+| Authoring & editing | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `expire_acceptance_criterion`, `supersede_requirement` |
 | Work mode | `get_work_mode`, `set_work_mode` |
 | Steps & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | Duplicate-ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
-| Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info` |
+| Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
 | SDS & test sufficiency | `check_sds`, `check_test_sufficiency` |
+| PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
 | Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | Orchestrator run surface | 26 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**89 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
+**97 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
 #### Per-call `workspaceRoot`
 
@@ -985,7 +986,7 @@ The npm package ships:
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v2.5.0.md
+docs/rule/SRS-MD-Rules-v2.6.0.md
 docs/rule/SDS-MD-Rules-v2.6.0.md
 docs/.kiwi/hooks
 skills/codex/
@@ -1264,7 +1265,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 1. **SRS 뼈대.** `docs/spec/00.index.md`(Target Map, Scope Map, Completed Work Log)와 `docs/spec/90.appendix.md`를 만듭니다. 프로젝트에 scope 문서가 아직 없으면 `--scope`로 빈 scope 문서(예: `docs/spec/01.app.srs.md`)도 만듭니다. 기존 scope 문서가 있으면 새로 만들지 않고, 기존 문서를 원래 이름으로 등록합니다.
 2. **Step 상태.** `wait` 작업 모드로 `docs/spec/steps/state.md`를 만듭니다.
-3. **작성 규칙.** 패키지에 포함된 `docs/rule/SRS-MD-Rules-v2.5.0.md`와 `docs/rule/SDS-MD-Rules-v2.6.0.md`를 씁니다.
+3. **작성 규칙.** 패키지에 포함된 `docs/rule/SRS-MD-Rules-v2.6.0.md`와 `docs/rule/SDS-MD-Rules-v2.6.0.md`를 씁니다.
 4. **에이전트 지침.** `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 추가하거나 갱신합니다.
 5. **훅.** 실행기 `docs/.kiwi/hooks/pre-commit.mjs`와 `docs/.kiwi/hooks/trace.mjs`를 설치합니다. 또한 첫 번째 실행기에 위임하는 `.git/hooks/pre-commit`, `.claude/settings.json`의 PostToolUse 추적 훅, `.codex/hooks.json`의 apply_patch 추적 훅을 설치합니다.
 6. **MCP 등록.** 각 에이전트의 CLI로 MCP 서버를 사용자 범위에 등록합니다. [MCP 서버 연결](#ko-mcp)을 참조하십시오.
@@ -1307,7 +1308,7 @@ docs/
 ├─ .kiwi/hooks/               # 패키지에 포함된 훅 실행기
 ├─ .kiwi/trace/               # trace.mjs가 쓰는 추적 출력
 ├─ rule/
-│  ├─ SRS-MD-Rules-v2.5.0.md
+│  ├─ SRS-MD-Rules-v2.6.0.md
 │  └─ SDS-MD-Rules-v2.6.0.md
 └─ spec/
    ├─ 00.index.md             # 대상, scope, 완료한 작업 기록
@@ -1428,17 +1429,18 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | 조회 | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status와 Stability | `update_status`, `update_stability` |
 | 증거와 추적 | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| 작성과 편집 | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `supersede_requirement` |
+| 작성과 편집 | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `expire_acceptance_criterion`, `supersede_requirement` |
 | 작업 모드 | `get_work_mode`, `set_work_mode` |
 | Step과 TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | 중복 ID 복구 | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
-| 작업 공간 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `mcp_workspace_info` |
+| 작업 공간 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
 | SDS와 테스트 충분성 | `check_sds`, `check_test_sufficiency` |
+| PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
 | 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | 오케스트레이터 실행 | `orchestrate_*` 26개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 89개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
+**총 97개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
 #### 호출마다 넘기는 `workspaceRoot`
 
@@ -1974,7 +1976,7 @@ npm 패키지에는 다음이 들어 있습니다.
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v2.5.0.md
+docs/rule/SRS-MD-Rules-v2.6.0.md
 docs/rule/SDS-MD-Rules-v2.6.0.md
 docs/.kiwi/hooks
 skills/codex/

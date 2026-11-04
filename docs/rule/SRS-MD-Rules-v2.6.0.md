@@ -1,4 +1,4 @@
-# SRS-MD Authoring Rules v2.5.0
+# SRS-MD Authoring Rules v2.6.0
 
 Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC/IEEE 29148**
 
@@ -15,7 +15,7 @@ Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC
 | Audience | developers, reviewers, maintainers, AI coding agents |
 | Primary Use | SRS authoring, review, search, status updates, implementation verification |
 | Source Format | GitHub Flavored Markdown |
-| Canonical Location | `docs/rule/SRS-MD-Rules-v2.5.0.md` |
+| Canonical Location | `docs/rule/SRS-MD-Rules-v2.6.0.md` |
 | Last Updated | 2026-05-10 |
 
 ---
@@ -104,7 +104,7 @@ To mark a requirement as `verified`, the acceptance criteria must be satisfied a
 ```text
 docs/
 ├─ rule/
-│  └─ SRS-MD-Rules-v2.5.0.md
+│  └─ SRS-MD-Rules-v2.6.0.md
 │
 ├─ spec/
 │  ├─ 00.index.md
@@ -141,7 +141,7 @@ The responsibility of each path is as follows.
 
 | Path | Responsibility |
 |---|---|
-| `docs/rule/SRS-MD-Rules-v2.5.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
+| `docs/rule/SRS-MD-Rules-v2.6.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
 | `docs/spec/00.index.md` | Entry point for the whole SRS document set, target list, scope document links, summary |
 | `docs/spec/*.srs.md` | Source of truth for requirements per functional scope |
 | `docs/spec/90.appendix.md` | Common terms, enums, status definitions, cross-scope map, supplementary rules |
@@ -250,7 +250,7 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 | Document Type | srs_index |
 | Version | 1.0.0 |
 | Active Target |  |
-| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/SRS-MD-Rules-v2.5.0.md) |
+| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md) |
 | Last Updated | YYYY-MM-DD |
 
 ## 1. Purpose
@@ -1001,7 +1001,7 @@ Acceptance Criteria must be written as a task list.
 
 1. The `AC-{N}:` format is recommended for each item.
 2. Numbers increase from 1 within a Requirement Block.
-3. When an item in the middle is deleted, renumbering is allowed.
+3. AC numbers are never renumbered or reused. A test line or a `Covers` cell that names `AC-{N}` would otherwise bind to whatever criterion takes the number next. A criterion that stops describing intended behaviour is expired (§21.7), not deleted, and `replace_acceptance_criteria` skips every number an expired criterion holds. Validation reports two criteria with the same number in one block, live or expired, as `SRS-E078`.
 4. AC IDs may be referenced from the `Covers` column of Verification Evidence.
 
 ### 21.3 Authoring Rules
@@ -1011,7 +1011,7 @@ Acceptance Criteria must be written as a task list.
 3. Where possible, include the condition, the input, and the expected result.
 4. A non-functional requirement includes a measurable criterion.
 5. In the `verified` status, every AC must be `- [x]`.
-6. Deleting an AC in order to meet the `verified` conditions is forbidden. When the criterion has changed, record the reason in `Change Notes`.
+6. Deleting an AC in order to meet the `verified` conditions is forbidden. When the criterion has changed, record the reason in `Change Notes`. Expiring an AC for that purpose is forbidden as well: expire a criterion only when it no longer describes intended behaviour.
 
 ### 21.4 Functional Requirement AC Example
 
@@ -1035,6 +1035,23 @@ Acceptance Criteria must be written as a task list.
 - [ ] AC-2: Only hashed or encrypted values are stored in the refresh token store.
 - [ ] AC-3: When token rotation fails, the existing token becomes unusable for reuse.
 ```
+
+### 21.7 Expired Acceptance Criteria
+
+A criterion whose behaviour moved to another requirement, or was dropped, keeps its number and its text and is marked expired with the date it stopped applying:
+
+```md
+- [x] AC-1: The status can be updated.
+- [x] AC-2: ~~Evidence can be added.~~ [EXPIRED 2026-11-04 → FR-ARCH-002]
+- [ ] AC-3: ~~The legacy flag is honoured.~~ [EXPIRED 2026-11-04]
+```
+
+1. The expired marker is written and removed only by the tool: the `expire_acceptance_criterion` mutation (MCP tool `expire_acceptance_criterion`, CLI `speckiwi expire-ac <id> <acId> --reason <text> [--successor <REQ-ID>]`) writes it with the writer's local date and appends a Change Notes row `Expired AC-{N}` carrying the required reason in the same patch. No tool removes a marker, so there is no command to look for: an expired criterion stays expired. A marker typed by hand has the same grammar and is read the same way, so a hand edit bypasses the reason record; do not type one. To revive the behaviour, add a criterion with a new number and say so in `Change Notes`.
+2. The grammar is `AC-{N}: ~~<text>~~ [EXPIRED <YYYY-MM-DD>]`, or `[EXPIRED <YYYY-MM-DD> → <REQ-ID>]` naming the requirement that carries the behaviour now. The id stays in front of the strikethrough. The parser allows any spacing after `AC-{N}:`, one or more spaces between the closing `~~` and `[`, and trailing spaces; inside the brackets it requires `EXPIRED`, one space and the date, and for a successor one space, `→`, one space and the id. The date must be a real calendar day. A line that does not meet these rules is a live criterion.
+3. An expired criterion counts nowhere: not in the status conditions of §21.3, release readiness coverage or test sufficiency. A requirement always keeps at least one live criterion, so the last live criterion cannot be expired; discard or supersede the requirement instead. Expiring a criterion never requires a status change first.
+4. Its checkbox stays as it was: checking it, unchecking it or editing its text is refused.
+5. A test line that still cites an expired criterion is listed by test sufficiency as an expired citation, and is not coverage. A `Covers` cell that names one is history, not stale evidence.
+6. A successor named in the marker must be another requirement that exists and has not been withdrawn under §30. The tool refuses to write any other successor, and validation reports one found in a document as `SRS-E012`, like a dangling trace link.
 
 ---
 
@@ -1671,6 +1688,7 @@ Validation items:
 | `SRS-E075` | error | MCP workspace root override rejected |
 | `SRS-E076` | error | Ambiguous Requirement ID reference |
 | `SRS-E077` | error | MCP server unbound |
+| `SRS-E078` | error | Duplicate acceptance criterion number |
 | `SRS-W001` | warning | Rationale section missing |
 | `SRS-W002` | warning | Target is not registered |
 | `SRS-W003` | warning | Related Docs local link missing |
@@ -1723,6 +1741,7 @@ Validation items:
 | `SRS-W074` | warning | Trace link path missing |
 | `SRS-W075` | warning | Malformed Change Notes table row |
 | `SRS-W076` | warning | SRS mutation lock left after its mutation |
+| `SRS-W079` | warning | PRD reference names a missing file or item |
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 
@@ -2083,4 +2102,4 @@ This document carries no copy of the block, because a copy drifts from the tool.
 
 ## 41. Document End
 
-This document is the reference document for SRS-MD Authoring Rules v2.5.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.
+This document is the reference document for SRS-MD Authoring Rules v2.6.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.

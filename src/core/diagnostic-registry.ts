@@ -815,7 +815,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-PARSE-039",
     since: "v3.0.0",
     remediation:
-      "Name the constant instead of its value, or state the value in force. A criterion that spells out a value keeps saying it after the constant moves, and stays checked while becoming false."
+      "Name the constant instead of its value, or state the value in force. A criterion that spells out a value keeps saying it after the constant moves, and stays checked while becoming false. For a stale SRS rules file name: a document's metadata Rules row and the index's Reference Documents entry are pointers the tool writes, so run `speckiwi upgrade`; any other line is author text that upgrade does not rewrite, so change it by hand to the bundled file name, in the link target as well."
   },
   {
     code: "SRS-W074",
@@ -828,6 +828,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
       "Point the trace link at a path the repository holds, or remove the row. The path is resolved from the workspace root and never by basename, so a designation that names a directory is judged as written."
   },
   {
+    code: "SRS-W079",
+    severity: "warning",
+    title: "PRD reference names a missing file or item",
+    messageTemplate: "PRD reference names a missing file or item: {reference}",
+    sourceRule: "FR-NODE-242",
+    since: "v5.2.0",
+    remediation:
+      "Point the reference at a PRD file under docs/prd and an item it holds, as docs/prd/<file>.prd.md#PRD-<n>, or remove it. A Trace path whose PRD file is missing is reported as SRS-W074 instead."
+  },
+  {
     code: "SRS-E077",
     severity: "error",
     title: "MCP server unbound",
@@ -836,6 +846,15 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v4.1.0",
     remediation:
       "Start the agent session, or set the MCP server's working directory, in the project directory, then restart the session; run speckiwi init in a project that has no SRS yet."
+  },
+  {
+    code: "SRS-E078",
+    severity: "error",
+    title: "Duplicate acceptance criterion number",
+    messageTemplate: "Duplicate acceptance criterion number {acId} in {requirementId}",
+    sourceRule: "FR-PARSE-044",
+    since: "v5.2.0",
+    remediation: "Give each acceptance criterion in the block its own number; never reuse a number an expired criterion holds."
   },
   {
     code: "SRS-W076",

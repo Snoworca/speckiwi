@@ -4,7 +4,7 @@ import path from "node:path";
 // The shipped authoring rules document is the contract for the Target Map vocabularies. Tests derive
 // the expected values from it rather than restating them, so that widening or narrowing a table fails
 // a test instead of silently diverging from the runtime. See FR-NODE-098 AC-5.
-const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.5.0.md");
+const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.6.0.md");
 
 /**
  * Read a `… values:` table from the rules document and return its first column, which the document

@@ -1,0 +1,1719 @@
+{
+  "id": "FR-X-001",
+  "title": "probe value",
+  "diagnostics": [
+    {
+      "code": "SRS-E001",
+      "severity": "error",
+      "message": "Malformed requirement heading",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 63
+    },
+    {
+      "code": "SRS-E018",
+      "severity": "error",
+      "message": "Duplicate requirement section: Requirement for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 53,
+      "requirementId": "FR-PARSE-707"
+    },
+    {
+      "code": "SRS-E019",
+      "severity": "error",
+      "message": "Nested acceptance criterion is not allowed: (unnumbered) for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 60,
+      "requirementId": "FR-PARSE-707"
+    },
+    {
+      "code": "SRS-W016",
+      "severity": "warning",
+      "message": "Verification Evidence table row cell count does not match header count for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 95,
+      "requirementId": "FR-PARSE-713"
+    },
+    {
+      "code": "SRS-W017",
+      "severity": "warning",
+      "message": "Trace Links table row cell count does not match header count for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 101,
+      "requirementId": "FR-PARSE-713"
+    },
+    {
+      "code": "SRS-E021",
+      "severity": "error",
+      "message": "Metadata table row cell count does not match header count for FR-NODE-714",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 69,
+      "requirementId": "FR-NODE-714"
+    },
+    {
+      "code": "SRS-E020",
+      "severity": "error",
+      "message": "Requirement heading contains forbidden Markdown content: FR-FLOW-715",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 97,
+      "requirementId": "FR-FLOW-715"
+    },
+    {
+      "code": "SRS-E018",
+      "severity": "error",
+      "message": "Duplicate requirement section: Requirement for FR-NODE-813",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 20,
+      "requirementId": "FR-NODE-813"
+    },
+    {
+      "code": "SRS-E019",
+      "severity": "error",
+      "message": "Nested acceptance criterion is not allowed: (unnumbered) for FR-NODE-814",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 60,
+      "requirementId": "FR-NODE-814"
+    },
+    {
+      "code": "SRS-E021",
+      "severity": "error",
+      "message": "Metadata table row cell count does not match header count for FR-NODE-815",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 77,
+      "requirementId": "FR-NODE-815"
+    },
+    {
+      "code": "SRS-E001",
+      "severity": "error",
+      "message": "Malformed requirement heading",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-E020",
+      "severity": "error",
+      "message": "Requirement heading contains forbidden Markdown content: FR-CLI-816",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 5,
+      "requirementId": "FR-CLI-816"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/70.unregistered-extra.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/71.stress-targets.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/72.stress-metadata.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/73.stress-lifecycle.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/74.stress-trace-evidence.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/75.stress-table-shape.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/76.stress-headings.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/77.stress-duplicates.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/78.stress-unregistered-scopes.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for planned",
+      "filePath": "docs/spec/00.index.md",
+      "line": 47,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "planned",
+        "expectedCount": 1,
+        "actualCount": 33,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for planned."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for verified",
+      "filePath": "docs/spec/00.index.md",
+      "line": 48,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "verified",
+        "expectedCount": 1,
+        "actualCount": 4,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for verified."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for done",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "done",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for done."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for implemented",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "implemented",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for implemented."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for functional",
+      "filePath": "docs/spec/00.index.md",
+      "line": 54,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "functional",
+        "expectedCount": 1,
+        "actualCount": 30,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for functional."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for reliability",
+      "filePath": "docs/spec/00.index.md",
+      "line": 55,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "reliability",
+        "expectedCount": 1,
+        "actualCount": 5,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for reliability."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for interface",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "interface",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for interface."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for security",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "security",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for security."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for observability",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "observability",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for observability."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for performance",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "performance",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for performance."
+        }
+      }
+    },
+    {
+      "code": "SRS-E002",
+      "severity": "error",
+      "message": "Duplicate requirement ID: REL-NODE-820",
+      "filePath": "docs/spec/77.stress-duplicates.srs.md",
+      "line": 5,
+      "requirementId": "REL-NODE-820",
+      "details": {
+        "duplicateId": "REL-NODE-820",
+        "occurrences": [
+          {
+            "filePath": "docs/spec/77.stress-duplicates.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate node requirement first occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "62084b645c3972db59e86779c1c1bdbf07b7369ad57f185f42b0648141b78f6e",
+            "stability": "evolving"
+          },
+          {
+            "filePath": "docs/spec/77.stress-duplicates.srs.md",
+            "headingLine": 42,
+            "title": "Duplicate node requirement second occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "d1838c8c6095cb142b9b36772d9be24f0c104d01d88ad44ce0c19f233e4bc3f9",
+            "stability": "stable"
+          }
+        ],
+        "nextAction": {
+          "kind": "select-duplicate-occurrence",
+          "requiresSelectedOccurrence": true,
+          "message": "Select one duplicate occurrence before repair planning can modify SRS Markdown."
+        }
+      }
+    },
+    {
+      "code": "SRS-E002",
+      "severity": "error",
+      "message": "Duplicate requirement ID: REL-PARSE-701",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 5,
+      "requirementId": "REL-PARSE-701",
+      "details": {
+        "duplicateId": "REL-PARSE-701",
+        "occurrences": [
+          {
+            "filePath": "docs/spec/20.parser-validation.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate parser requirement first occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "565c692c50b0118ce44670010a466415f2e3a2e98a7102c60d523073cb047ce5",
+            "stability": "evolving"
+          },
+          {
+            "filePath": "docs/spec/60.workflow-release.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate parser requirement second occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "f8aca67501baf3e9e5f7bb2c62bd4f6b1940ef73dd3a5c32fc905163be148e6b",
+            "stability": "stable"
+          }
+        ],
+        "nextAction": {
+          "kind": "select-duplicate-occurrence",
+          "requiresSelectedOccurrence": true,
+          "message": "Select one duplicate occurrence before repair planning can modify SRS Markdown."
+        }
+      }
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-ARCH-701",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E010",
+      "severity": "error",
+      "message": "Verified requirement lacks checked AC or evidence: FR-ARCH-705",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-ARCH-705",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-PARSE-701",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W002",
+      "severity": "warning",
+      "message": "Target is not registered: v9.9.9",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-MISSING-TRACE-999",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 101
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Type",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Target",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Status",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-CLI-702",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W009",
+      "severity": "warning",
+      "message": "Frozen target requirement changed without Change Notes: FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-E004",
+      "severity": "error",
+      "message": "Type does not match ID prefix for REL-MCP-703",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-MCP-703",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W023",
+      "severity": "warning",
+      "message": "Draft requirement is not ready as an implementation contract: FR-MCP-710",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-MCP-710",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-E005",
+      "severity": "error",
+      "message": "Invalid status for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E006",
+      "severity": "error",
+      "message": "Invalid priority for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E007",
+      "severity": "error",
+      "message": "Invalid risk for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E011",
+      "severity": "error",
+      "message": "Invalid stability for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E033",
+      "severity": "error",
+      "message": "Verified requirement uses draft stability: FR-NODE-711",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-711",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-714",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 64
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-PARSE-701",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-NOPE-999",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 66
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-706",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W022",
+      "severity": "warning",
+      "message": "Legacy volatile stability should be migrated: FR-FLOW-712",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 68
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-712",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 68
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-715",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 97
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: EXTRA",
+      "filePath": "docs/spec/70.unregistered-extra.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-EXTRA-708",
+      "filePath": "docs/spec/70.unregistered-extra.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-ARCH-802",
+      "filePath": "docs/spec/71.stress-targets.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-W002",
+      "severity": "warning",
+      "message": "Target is not registered: v9.9.9",
+      "filePath": "docs/spec/71.stress-targets.srs.md",
+      "line": 75
+    },
+    {
+      "code": "SRS-E008",
+      "severity": "error",
+      "message": "Acceptance Criteria missing for REL-PARSE-804",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E004",
+      "severity": "error",
+      "message": "Type does not match ID prefix for FR-PARSE-805",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Type",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Target",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Status",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-W023",
+      "severity": "warning",
+      "message": "Draft requirement is not ready as an implementation contract: FR-MCP-807",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E033",
+      "severity": "error",
+      "message": "Verified requirement uses draft stability: FR-MCP-808",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W009",
+      "severity": "warning",
+      "message": "Frozen target requirement changed without Change Notes: FR-MCP-809",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-MCP-809",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-NOPE-810",
+      "filePath": "docs/spec/74.stress-trace-evidence.srs.md",
+      "line": 37
+    },
+    {
+      "code": "SRS-E010",
+      "severity": "error",
+      "message": "Verified requirement lacks checked AC or evidence: FR-FLOW-811",
+      "filePath": "docs/spec/74.stress-trace-evidence.srs.md",
+      "line": 39
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-813",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E008",
+      "severity": "error",
+      "message": "Acceptance Criteria missing for FR-CLI-817",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: SEC",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: OBS",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: PERF",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 75
+    },
+    {
+      "code": "SRS-W041",
+      "severity": "warning",
+      "message": "Completed Work Log rows exist in both 00.index.md and 05.completed-work.md",
+      "filePath": "docs/spec/05.completed-work.md",
+      "line": 7,
+      "details": {
+        "kind": "duplicate-completed-work-source",
+        "sources": [
+          "docs/spec/00.index.md",
+          "docs/spec/05.completed-work.md"
+        ],
+        "nextAction": {
+          "recommendedTool": "migrate-completed-work-log",
+          "message": "Keep Completed Work Log rows in one source before continuing."
+        }
+      }
+    },
+    {
+      "code": "SRS-W011",
+      "severity": "warning",
+      "message": "Completed Work Log date is not YYYY-MM-DD: 2026/06/29",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W012",
+      "severity": "warning",
+      "message": "Completed Work Log target is not registered: v9.9.9",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W013",
+      "severity": "warning",
+      "message": "Completed Work Log scope is not registered: UNKNOWN",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W014",
+      "severity": "warning",
+      "message": "Completed Work Log requirement does not exist: FR-MISSING-999",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W015",
+      "severity": "warning",
+      "message": "Completed Work Log requirement is not completed: FR-ARCH-701",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W024",
+      "severity": "warning",
+      "message": "Completed Work Log report path is malformed: ../bad.md",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61,
+      "details": {
+        "kind": "malformed-completed-work-report-path",
+        "token": "../bad.md",
+        "reason": "paths must not start with ../",
+        "nextAction": {
+          "recommendedTool": "fix-completed-work-report-path",
+          "message": "Replace the malformed Completed Work Log report path with a repository-relative POSIX path."
+        }
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": "SRS-E001",
+      "severity": "error",
+      "message": "Malformed requirement heading",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 63
+    },
+    {
+      "code": "SRS-E018",
+      "severity": "error",
+      "message": "Duplicate requirement section: Requirement for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 53,
+      "requirementId": "FR-PARSE-707"
+    },
+    {
+      "code": "SRS-E019",
+      "severity": "error",
+      "message": "Nested acceptance criterion is not allowed: (unnumbered) for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 60,
+      "requirementId": "FR-PARSE-707"
+    },
+    {
+      "code": "SRS-E021",
+      "severity": "error",
+      "message": "Metadata table row cell count does not match header count for FR-NODE-714",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 69,
+      "requirementId": "FR-NODE-714"
+    },
+    {
+      "code": "SRS-E020",
+      "severity": "error",
+      "message": "Requirement heading contains forbidden Markdown content: FR-FLOW-715",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 97,
+      "requirementId": "FR-FLOW-715"
+    },
+    {
+      "code": "SRS-E018",
+      "severity": "error",
+      "message": "Duplicate requirement section: Requirement for FR-NODE-813",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 20,
+      "requirementId": "FR-NODE-813"
+    },
+    {
+      "code": "SRS-E019",
+      "severity": "error",
+      "message": "Nested acceptance criterion is not allowed: (unnumbered) for FR-NODE-814",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 60,
+      "requirementId": "FR-NODE-814"
+    },
+    {
+      "code": "SRS-E021",
+      "severity": "error",
+      "message": "Metadata table row cell count does not match header count for FR-NODE-815",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 77,
+      "requirementId": "FR-NODE-815"
+    },
+    {
+      "code": "SRS-E001",
+      "severity": "error",
+      "message": "Malformed requirement heading",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-E020",
+      "severity": "error",
+      "message": "Requirement heading contains forbidden Markdown content: FR-CLI-816",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 5,
+      "requirementId": "FR-CLI-816"
+    },
+    {
+      "code": "SRS-E002",
+      "severity": "error",
+      "message": "Duplicate requirement ID: REL-NODE-820",
+      "filePath": "docs/spec/77.stress-duplicates.srs.md",
+      "line": 5,
+      "requirementId": "REL-NODE-820",
+      "details": {
+        "duplicateId": "REL-NODE-820",
+        "occurrences": [
+          {
+            "filePath": "docs/spec/77.stress-duplicates.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate node requirement first occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "62084b645c3972db59e86779c1c1bdbf07b7369ad57f185f42b0648141b78f6e",
+            "stability": "evolving"
+          },
+          {
+            "filePath": "docs/spec/77.stress-duplicates.srs.md",
+            "headingLine": 42,
+            "title": "Duplicate node requirement second occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "d1838c8c6095cb142b9b36772d9be24f0c104d01d88ad44ce0c19f233e4bc3f9",
+            "stability": "stable"
+          }
+        ],
+        "nextAction": {
+          "kind": "select-duplicate-occurrence",
+          "requiresSelectedOccurrence": true,
+          "message": "Select one duplicate occurrence before repair planning can modify SRS Markdown."
+        }
+      }
+    },
+    {
+      "code": "SRS-E002",
+      "severity": "error",
+      "message": "Duplicate requirement ID: REL-PARSE-701",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 5,
+      "requirementId": "REL-PARSE-701",
+      "details": {
+        "duplicateId": "REL-PARSE-701",
+        "occurrences": [
+          {
+            "filePath": "docs/spec/20.parser-validation.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate parser requirement first occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "565c692c50b0118ce44670010a466415f2e3a2e98a7102c60d523073cb047ce5",
+            "stability": "evolving"
+          },
+          {
+            "filePath": "docs/spec/60.workflow-release.srs.md",
+            "headingLine": 5,
+            "title": "Duplicate parser requirement second occurrence",
+            "target": "v2.3.0",
+            "status": "planned",
+            "blockHash": "f8aca67501baf3e9e5f7bb2c62bd4f6b1940ef73dd3a5c32fc905163be148e6b",
+            "stability": "stable"
+          }
+        ],
+        "nextAction": {
+          "kind": "select-duplicate-occurrence",
+          "requiresSelectedOccurrence": true,
+          "message": "Select one duplicate occurrence before repair planning can modify SRS Markdown."
+        }
+      }
+    },
+    {
+      "code": "SRS-E010",
+      "severity": "error",
+      "message": "Verified requirement lacks checked AC or evidence: FR-ARCH-705",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-MISSING-TRACE-999",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 101
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Type",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Target",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Status",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E004",
+      "severity": "error",
+      "message": "Type does not match ID prefix for REL-MCP-703",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E005",
+      "severity": "error",
+      "message": "Invalid status for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E006",
+      "severity": "error",
+      "message": "Invalid priority for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E007",
+      "severity": "error",
+      "message": "Invalid risk for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E011",
+      "severity": "error",
+      "message": "Invalid stability for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E033",
+      "severity": "error",
+      "message": "Verified requirement uses draft stability: FR-NODE-711",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-NOPE-999",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 66
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: EXTRA",
+      "filePath": "docs/spec/70.unregistered-extra.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E008",
+      "severity": "error",
+      "message": "Acceptance Criteria missing for REL-PARSE-804",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E004",
+      "severity": "error",
+      "message": "Type does not match ID prefix for FR-PARSE-805",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Type",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Target",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-E003",
+      "severity": "error",
+      "message": "Missing required metadata field: Status",
+      "filePath": "docs/spec/72.stress-metadata.srs.md",
+      "line": 67
+    },
+    {
+      "code": "SRS-E033",
+      "severity": "error",
+      "message": "Verified requirement uses draft stability: FR-MCP-808",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-E012",
+      "severity": "error",
+      "message": "Trace target does not exist: FR-NOPE-810",
+      "filePath": "docs/spec/74.stress-trace-evidence.srs.md",
+      "line": 37
+    },
+    {
+      "code": "SRS-E010",
+      "severity": "error",
+      "message": "Verified requirement lacks checked AC or evidence: FR-FLOW-811",
+      "filePath": "docs/spec/74.stress-trace-evidence.srs.md",
+      "line": 39
+    },
+    {
+      "code": "SRS-E008",
+      "severity": "error",
+      "message": "Acceptance Criteria missing for FR-CLI-817",
+      "filePath": "docs/spec/76.stress-headings.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: SEC",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: OBS",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-E015",
+      "severity": "error",
+      "message": "Scope prefix is not registered: PERF",
+      "filePath": "docs/spec/78.stress-unregistered-scopes.srs.md",
+      "line": 75
+    }
+  ],
+  "warnings": [
+    {
+      "code": "SRS-W016",
+      "severity": "warning",
+      "message": "Verification Evidence table row cell count does not match header count for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 95,
+      "requirementId": "FR-PARSE-713"
+    },
+    {
+      "code": "SRS-W017",
+      "severity": "warning",
+      "message": "Trace Links table row cell count does not match header count for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 101,
+      "requirementId": "FR-PARSE-713"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/70.unregistered-extra.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/71.stress-targets.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/72.stress-metadata.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/73.stress-lifecycle.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/74.stress-trace-evidence.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/75.stress-table-shape.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/76.stress-headings.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/77.stress-duplicates.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W018",
+      "severity": "warning",
+      "message": "Scope SRS document is not registered in Scope Map: docs/spec/78.stress-unregistered-scopes.srs.md",
+      "filePath": "docs/spec/00.index.md"
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for planned",
+      "filePath": "docs/spec/00.index.md",
+      "line": 47,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "planned",
+        "expectedCount": 1,
+        "actualCount": 33,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for planned."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for verified",
+      "filePath": "docs/spec/00.index.md",
+      "line": 48,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "verified",
+        "expectedCount": 1,
+        "actualCount": 4,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for verified."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for done",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "done",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for done."
+        }
+      }
+    },
+    {
+      "code": "SRS-W019",
+      "severity": "warning",
+      "message": "Status Summary count drift for implemented",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Status Summary",
+        "key": "implemented",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Status Summary row for implemented."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for functional",
+      "filePath": "docs/spec/00.index.md",
+      "line": 54,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "functional",
+        "expectedCount": 1,
+        "actualCount": 30,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for functional."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for reliability",
+      "filePath": "docs/spec/00.index.md",
+      "line": 55,
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "reliability",
+        "expectedCount": 1,
+        "actualCount": 5,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for reliability."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for interface",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "interface",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for interface."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for security",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "security",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for security."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for observability",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "observability",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for observability."
+        }
+      }
+    },
+    {
+      "code": "SRS-W020",
+      "severity": "warning",
+      "message": "Requirement Type Summary count drift for performance",
+      "filePath": "docs/spec/00.index.md",
+      "details": {
+        "kind": "rollup-drift",
+        "summary": "Requirement Type Summary",
+        "key": "performance",
+        "expectedCount": 0,
+        "actualCount": 1,
+        "nextAction": {
+          "recommendedTool": "update-index-rollup",
+          "message": "Recalculate the Requirement Type Summary row for performance."
+        }
+      }
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-ARCH-701",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-ARCH-705",
+      "filePath": "docs/spec/10.product-architecture.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-PARSE-701",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W002",
+      "severity": "warning",
+      "message": "Target is not registered: v9.9.9",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-PARSE-707",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-PARSE-713",
+      "filePath": "docs/spec/20.parser-validation.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-CLI-702",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W009",
+      "severity": "warning",
+      "message": "Frozen target requirement changed without Change Notes: FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-CLI-709",
+      "filePath": "docs/spec/30.cli-interface.srs.md",
+      "line": 31
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-MCP-703",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W023",
+      "severity": "warning",
+      "message": "Draft requirement is not ready as an implementation contract: FR-MCP-710",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-MCP-710",
+      "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-704",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-711",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 34
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-714",
+      "filePath": "docs/spec/50.nodejs-implementation.srs.md",
+      "line": 64
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for REL-PARSE-701",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-706",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 38
+    },
+    {
+      "code": "SRS-W022",
+      "severity": "warning",
+      "message": "Legacy volatile stability should be migrated: FR-FLOW-712",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 68
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-712",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 68
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-FLOW-715",
+      "filePath": "docs/spec/60.workflow-release.srs.md",
+      "line": 97
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-EXTRA-708",
+      "filePath": "docs/spec/70.unregistered-extra.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-ARCH-802",
+      "filePath": "docs/spec/71.stress-targets.srs.md",
+      "line": 42
+    },
+    {
+      "code": "SRS-W002",
+      "severity": "warning",
+      "message": "Target is not registered: v9.9.9",
+      "filePath": "docs/spec/71.stress-targets.srs.md",
+      "line": 75
+    },
+    {
+      "code": "SRS-W023",
+      "severity": "warning",
+      "message": "Draft requirement is not ready as an implementation contract: FR-MCP-807",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W009",
+      "severity": "warning",
+      "message": "Frozen target requirement changed without Change Notes: FR-MCP-809",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-W008",
+      "severity": "warning",
+      "message": "High risk requirement lacks Research / Analysis: FR-MCP-809",
+      "filePath": "docs/spec/73.stress-lifecycle.srs.md",
+      "line": 72
+    },
+    {
+      "code": "SRS-W001",
+      "severity": "warning",
+      "message": "Rationale section missing for FR-NODE-813",
+      "filePath": "docs/spec/75.stress-table-shape.srs.md",
+      "line": 5
+    },
+    {
+      "code": "SRS-W041",
+      "severity": "warning",
+      "message": "Completed Work Log rows exist in both 00.index.md and 05.completed-work.md",
+      "filePath": "docs/spec/05.completed-work.md",
+      "line": 7,
+      "details": {
+        "kind": "duplicate-completed-work-source",
+        "sources": [
+          "docs/spec/00.index.md",
+          "docs/spec/05.completed-work.md"
+        ],
+        "nextAction": {
+          "recommendedTool": "migrate-completed-work-log",
+          "message": "Keep Completed Work Log rows in one source before continuing."
+        }
+      }
+    },
+    {
+      "code": "SRS-W011",
+      "severity": "warning",
+      "message": "Completed Work Log date is not YYYY-MM-DD: 2026/06/29",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W012",
+      "severity": "warning",
+      "message": "Completed Work Log target is not registered: v9.9.9",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W013",
+      "severity": "warning",
+      "message": "Completed Work Log scope is not registered: UNKNOWN",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W014",
+      "severity": "warning",
+      "message": "Completed Work Log requirement does not exist: FR-MISSING-999",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W015",
+      "severity": "warning",
+      "message": "Completed Work Log requirement is not completed: FR-ARCH-701",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61
+    },
+    {
+      "code": "SRS-W024",
+      "severity": "warning",
+      "message": "Completed Work Log report path is malformed: ../bad.md",
+      "filePath": "docs/spec/00.index.md",
+      "line": 61,
+      "details": {
+        "kind": "malformed-completed-work-report-path",
+        "token": "../bad.md",
+        "reason": "paths must not start with ../",
+        "nextAction": {
+          "recommendedTool": "fix-completed-work-report-path",
+          "message": "Replace the malformed Completed Work Log report path with a repository-relative POSIX path."
+        }
+      }
+    }
+  ],
+  "diagnosticsSummary": {
+    "errors": 37,
+    "warnings": 56,
+    "byCode": {
+      "SRS-E001": 2,
+      "SRS-E018": 2,
+      "SRS-E019": 2,
+      "SRS-W016": 1,
+      "SRS-W017": 1,
+      "SRS-E021": 2,
+      "SRS-E020": 2,
+      "SRS-W018": 9,
+      "SRS-W019": 4,
+      "SRS-W020": 6,
+      "SRS-E002": 2,
+      "SRS-W001": 18,
+      "SRS-E010": 2,
+      "SRS-W002": 2,
+      "SRS-E012": 3,
+      "SRS-E003": 6,
+      "SRS-W009": 2,
+      "SRS-W008": 3,
+      "SRS-E004": 2,
+      "SRS-W023": 2,
+      "SRS-E005": 1,
+      "SRS-E006": 1,
+      "SRS-E007": 1,
+      "SRS-E011": 1,
+      "SRS-E033": 2,
+      "SRS-W022": 1,
+      "SRS-E015": 4,
+      "SRS-E008": 2,
+      "SRS-W041": 1,
+      "SRS-W011": 1,
+      "SRS-W012": 1,
+      "SRS-W013": 1,
+      "SRS-W014": 1,
+      "SRS-W015": 1,
+      "SRS-W024": 1
+    }
+  }
+}

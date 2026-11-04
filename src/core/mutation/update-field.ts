@@ -1,4 +1,5 @@
 import { applyPatchPlan } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
@@ -13,7 +14,8 @@ import type {
 } from "../types.js";
 import { generateNextRequirementId } from "./add-requirement.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine } from "./internal.js";
+import { planMetadataWrite } from "./internal.js";
+import { requirementReferenceRewrites } from "./requirement-references.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
 /**
@@ -75,19 +77,6 @@ function loadRecordWithFile(
   return { record, file };
 }
 
-function replaceMetadataLine(
-  file: TextFile,
-  record: RequirementRecord,
-  label: string,
-  value: string
-): PatchOperation | undefined {
-  const line = findMetadataLine(file, record, label);
-  if (!line) return undefined;
-  const original = file.lines[line - 1];
-  if (original === undefined) return undefined;
-  return { type: "replaceLine", line, original, replacement: `| ${label} | ${value} |` };
-}
-
 function replaceTitleLine(file: TextFile, record: RequirementRecord, value: string): PatchOperation | undefined {
   const line = record.headingLine;
   const original = file.lines[line - 1];
@@ -99,10 +88,15 @@ async function updateLineReplaceField(
   input: UpdateFieldInput,
   loaded: { record: RequirementRecord; file: TextFile }
 ): Promise<MutationResult<UpdateFieldOutput>> {
-  const operation =
-    input.field === "title"
-      ? replaceTitleLine(loaded.file, loaded.record, input.value)
-      : replaceMetadataLine(loaded.file, loaded.record, METADATA_LABEL[input.field] ?? "", input.value);
+  let operation: PatchOperation | undefined;
+  if (input.field === "title") {
+    operation = replaceTitleLine(loaded.file, loaded.record, input.value);
+  } else {
+    // The shared writer's refusal carries its reason (a missing row, or one it cannot rewrite whole).
+    const write = planMetadataWrite(loaded.file, loaded.record, METADATA_LABEL[input.field] ?? "", input.value);
+    if (!write.ok) return mutationFail("MUTATION_DENIED", `${write.message} (field ${input.field})`) as MutationResult<UpdateFieldOutput>;
+    operation = write.operation;
+  }
   if (!operation) {
     return mutationFail("MUTATION_DENIED", `Field row not found for ${input.field}`) as MutationResult<UpdateFieldOutput>;
   }
@@ -170,53 +164,22 @@ async function migrateTypeOrScope(
     replacement: renderHeadingLine({ id: newId, title: loaded.record.title })
   });
   if (input.field === "type") {
-    const typeOp = replaceMetadataLine(loaded.file, loaded.record, "Type", input.value);
-    if (typeOp) pushOp(loaded.file, typeOp);
+    // A migration that cannot also write the Type row is refused, never reported as done with a stale type.
+    const typeWrite = planMetadataWrite(loaded.file, loaded.record, "Type", input.value);
+    if (!typeWrite.ok) return mutationFail("MUTATION_DENIED", `${typeWrite.message} (field type)`) as MutationResult<UpdateFieldOutput>;
+    pushOp(loaded.file, typeWrite.operation);
   }
 
-  collectInboundTraceRewrites(workspace, oldId, newId, pushOp);
-
-  let written = false;
-  for (const { file, operations } of operationsByFile.values()) {
-    if (operations.length === 0) continue;
-    const plan = createPatchPlan(file, operations);
-    const applied = await applyPatchPlan(plan, { dryRun: false });
-    written = written || applied.written;
+  for (const rewrite of requirementReferenceRewrites(workspace, workspace.records, oldId, newId)) {
+    pushOp(rewrite.file, { type: "replaceLine", line: rewrite.line, original: rewrite.original, replacement: rewrite.replacement });
   }
+
+  // The new id lands in several documents at once (the block, and every inbound reference), so they
+  // are written as one transaction: a failed write restores every document already written.
+  const plans = [...operationsByFile.values()].filter(({ operations }) => operations.length > 0).map(({ file, operations }) => createPatchPlan(file, operations));
+  const { written } = await applyPatchPlans(plans, { dryRun: false });
 
   return mutationOk({ id: newId, field: input.field, written, oldId, newId, dryRun: false, plannedMove });
-}
-
-/**
- * FR-NODE-060 AC-4 — for a confirmed migration, queue a line-replacement for every inbound Trace
- * Links row whose Type is Requirement and whose Reference is the old id, rewriting it to the new
- * id. Operations are pushed onto the shared per-file map so all edits land in one write per file.
- */
-function collectInboundTraceRewrites(
-  workspace: ParsedWorkspace,
-  oldId: string,
-  newId: string,
-  pushOp: (file: TextFile, operation: PatchOperation) => void
-): void {
-  const oldIdReference = new RegExp(`(\\|\\s*Requirement\\s*\\|\\s*)${escapeRegExp(oldId)}(\\s*\\|)`);
-  for (const record of workspace.records) {
-    for (const link of record.traceLinks) {
-      if (link.type !== "Requirement") continue;
-      if (link.reference !== oldId) continue;
-      if (link.line === undefined) continue;
-      const file = workspace.files.find((candidate) => record.filePath.endsWith(candidate.relativePath));
-      if (!file) continue;
-      const original = file.lines[link.line - 1];
-      if (original === undefined) continue;
-      const replacement = original.replace(oldIdReference, `$1${newId}$2`);
-      if (replacement === original) continue;
-      pushOp(file, { type: "replaceLine", line: link.line, original, replacement });
-    }
-  }
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // @req FR-NODE-060

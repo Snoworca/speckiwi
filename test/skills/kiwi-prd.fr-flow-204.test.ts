@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { BILINGUAL_SEARCH_RULE } from "../../src/core/bootstrap/templates.js";
 import { EXPECTED_KIWI_SKILLS } from "../../src/doctor/package-doctor.js";
 import { COMPACTION_TOKEN_BUDGET, estimateTokens, tokensThrough } from "./skill-token-estimate.js";
 
@@ -131,7 +132,8 @@ describe("FR-FLOW-204 — kiwi-prd pinned rules", () => {
     "## 1. 순서",
     "",
     `1. ${PINNED[0][2]} ${PINNED[1][2]} ${PINNED[2][2]} ${PINNED[3][2]}`,
-    `2. ${PINNED[4][2]} 맥락이 답하는 것은 묻지 않는다.`,
+    // FR-FLOW-207 AC-2: the step that sends a search states the bilingual search rule beside it.
+    `2. ${PINNED[4][2]} 맥락이 답하는 것은 묻지 않는다. ${BILINGUAL_SEARCH_RULE}`,
     "3. 첫 메시지는 하나다: 요청을 자기 말로 짧게 되짚고, in-scope · exclusion 초안과 proposal 목록을 보인 뒤, 만들 것을 가장 크게 바꾸는 질문 하나로 끝낸다. \"이대로 진행하라고 하셔도 됩니다\" 한 줄을 붙인다.",
     `4. ${PINNED[5][2]} 답을 덧붙일 때 에이전트가 한 질문은 \`> 질문:\` 줄에, 사용자의 답은 그 아래 \`> 답:\` 줄에 적는다. 답을 반영해 항목을 고친다. 호출자가 요청에 관한 질문의 사용자 답을 넘기면 그 답도 다음 \`U-<n>\` 으로 원문 그대로 덧붙인다. \`kiwi-srs\` · \`kiwi-tdd\` · \`kiwi-step\` 이 항목 사이의 모순을 푼 해소를 넘기면 다음 번호의 \`Kind=proposal\` 항목으로 덧붙이고 \`Reason\` 을 \`contradiction resolved:\` 로 시작한다. 해소 proposal 은 \`State=proposed\` 를 유지하고, \`State\` 가 아니라 기록된 해소로서 효력을 가진다.`,
     "5. 경계를 바꾸는 미해결 질문이 0개이거나 사용자가 진행하라고 하면 묻기를 멈추고, PRD 를 보여 주어 승인을 받는다. 승인 문장은 `## 3. Approval` 에 그대로 옮기고 `Status` 행을 `approved` 로 바꾼다. 사용자가 PRD 를 승인하면 사용자에게 보여 주었고 그 답에서 거절되지 않은 proposal 은 모두 `State` 를 `confirmed` 로 바꾼다 — `Reason` 이 `contradiction resolved:` 로 시작하는 proposal 만 `proposed` 로 남긴다.",

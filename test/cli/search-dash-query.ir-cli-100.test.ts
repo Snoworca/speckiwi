@@ -1,3 +1,6 @@
+import { randomBytes } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
@@ -20,7 +23,15 @@ async function run(argv: string[]): Promise<{ code: number; stdout: string; stde
 }
 
 const FLAG_QUERY = "--force";
-const ABSENT_QUERY = "--zzz-no-such-flag-anywhere";
+// Made at run time, never written down: a fixed probe ends up quoted in the SRS (its own evidence
+// once did), and then it matches. The AC-5 test first proves the probe is absent from every SRS file.
+const ABSENT_QUERY = `--zq${randomBytes(8).toString("hex")}`;
+
+async function srsText(): Promise<string> {
+  const specRoot = path.resolve(__dirname, "../../docs/spec");
+  const files = (await readdir(specRoot, { recursive: true })).filter((file) => file.endsWith(".md"));
+  return (await Promise.all(files.map((file) => readFile(path.join(specRoot, file), "utf8")))).join("\n");
+}
 
 describe("IR-CLI-100 — search takes a dash-leading query", () => {
   // AC-1: it searches, and it succeeds.
@@ -131,6 +142,7 @@ describe("IR-CLI-100 — search takes a dash-leading query", () => {
   });
   // AC-5: absence reads as absence, not as rejection.
   it("AC-5: a dash-leading query that matches nothing returns an empty result", async () => {
+    expect((await srsText()).toLowerCase()).not.toContain(ABSENT_QUERY.slice(2).toLowerCase());
     const result = await run(["search", "--json", ABSENT_QUERY]);
     expect(result.stderr).not.toMatch(/unknown option/);
     expect(result.code).toBe(0);

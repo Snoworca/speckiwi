@@ -28,12 +28,47 @@ export function resolveTargetSelection(workspace: ParsedWorkspace, options: Targ
   };
 }
 
-export function buildReadEnvelope<T extends object>(workspace: ParsedWorkspace, value: T, diagnostics: Diagnostic[] = workspace.diagnostics): ReadEnvelope<T> {
+export interface ReadEnvelopeOptions {
+  /** Most diagnostic entries to include. Omitted means every entry, exactly as before the limit existed. */
+  diagnosticsLimit?: number;
+}
+
+export interface DiagnosticsTruncation {
+  total: number;
+  returned: number;
+  limit: number;
+}
+
+export type BoundedReadEnvelope<T extends object> = ReadEnvelope<T> & { diagnosticsTruncation?: DiagnosticsTruncation };
+
+// @req FR-NODE-231
+export function buildReadEnvelope<T extends object>(
+  workspace: ParsedWorkspace,
+  value: T,
+  diagnostics: Diagnostic[] = workspace.diagnostics,
+  options: ReadEnvelopeOptions = {}
+): BoundedReadEnvelope<T> {
+  const limit = options.diagnosticsLimit;
+  if (limit !== undefined && !(Number.isInteger(limit) && limit > 0)) {
+    throw new RangeError(`diagnosticsLimit must be a positive integer, got ${limit}`);
+  }
+  const split = splitDiagnostics(diagnostics);
+  const diagnosticsSummary = summarizeDiagnostics(diagnostics);
+  if (limit === undefined || split.diagnostics.length <= limit) {
+    return { ...value, ...split, diagnosticsSummary } as BoundedReadEnvelope<T>;
+  }
+  // Errors are what a bounded reader most needs, so they fill the budget before warnings; the
+  // kept entries stay in their original order so the list still reads like the unbounded one.
+  const kept = new Set([...split.errors, ...split.diagnostics.filter((item) => item.severity !== "error")].slice(0, limit));
+  const bounded = split.diagnostics.filter((item) => kept.has(item));
   return {
     ...value,
-    ...splitDiagnostics(diagnostics),
-    diagnosticsSummary: summarizeDiagnostics(diagnostics)
-  } as ReadEnvelope<T>;
+    diagnostics: bounded,
+    errors: bounded.filter((item) => item.severity === "error"),
+    warnings: bounded.filter((item) => item.severity === "warning"),
+    diagnosticsTruncation: { total: split.diagnostics.length, returned: bounded.length, limit },
+    diagnosticsSummary
+  } as BoundedReadEnvelope<T>;
 }
 
 export function isNewWorkCandidate(record: RequirementRecord): boolean {

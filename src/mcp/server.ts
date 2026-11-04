@@ -15,8 +15,10 @@ import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // read here would run against a half-initialised module.
 import { renderToolDescriptions } from "./schemas.js";
 import { perCallWorkspaceRootTools, registerReadTools } from "./tools/read-tools.js";
-import { registerMutationTools } from "./tools/mutation-tools.js";
+import { EXPIRE_ACCEPTANCE_CRITERION_SCHEMA, RENAME_SCOPE_SCHEMA, registerMutationTools } from "./tools/mutation-tools.js";
+import { PRD_TOOL_SCHEMAS, registerPrdTools } from "./tools/prd-tools.js";
 import { registerResources } from "./resources.js";
+import { MCP_READ_DIAGNOSTICS_LIMIT } from "./read-diagnostics.js";
 import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
@@ -31,6 +33,7 @@ export function createMcpServer(deps: McpDependencies): McpServerHandle {
   const server = createTestMcpServer(deps);
   registerReadTools(server, deps);
   registerMutationTools(server, deps);
+  registerPrdTools(server, deps);
   registerResources(server, deps);
   return server;
 }
@@ -43,6 +46,9 @@ const WORKSPACE_ROOT_SCHEMA = z
   .string()
   .describe("absolute path of a git top level that is a worktree of the MCP server's own repository")
   .optional();
+
+/** @req FR-MCP-070 AC-3 — the explicit path to every diagnostic entry of a bounded read. */
+const INCLUDE_ALL_DIAGNOSTICS_SCHEMA = z.boolean().describe(`return every diagnostic entry instead of the first ${MCP_READ_DIAGNOSTICS_LIMIT}`).optional();
 
 const reportPathSchema = z
   .string()
@@ -102,7 +108,7 @@ function withPerCallWorkspaceRoot(
 }
 
 export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPerCallWorkspaceRoot({
-  mcp_workspace_info: {},
+  mcp_workspace_info: { includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
   list_requirements: {
     target: z.string().optional(),
     status: z.string().optional(),
@@ -120,7 +126,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     fields: z.array(z.string()).or(z.string()).optional(),
     includeMarkdown: z.boolean().optional(),
     limit: z.number().int().positive().optional(),
-    offset: z.number().int().nonnegative().optional()
+    offset: z.number().int().nonnegative().optional(),
+    includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA
   },
   search_requirements: {
     query: z.string(),
@@ -137,19 +144,23 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     traceReference: z.string().optional(),
     newWorkCandidate: z.boolean().optional(),
     limit: z.number().int().positive().optional(),
-    offset: z.number().int().nonnegative().optional()
+    offset: z.number().int().nonnegative().optional(),
+    // @req FR-CLI-001 AC-2
+    match: z.enum(["ranked", "exact"]).optional(),
+    includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA
   },
-  get_requirement: { id: z.string(), includeMarkdown: z.boolean().optional() },
+  get_requirement: { id: z.string(), includeMarkdown: z.boolean().optional(), includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
   validate_spec: { strict: z.boolean().optional(), failOnWarning: z.boolean().optional() },
-  summarize_target: { target: z.string().optional() },
-  get_active_target: {},
+  summarize_target: { target: z.string().optional(), includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
+  get_active_target: { includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
   list_completed_work: {
     target: z.string().optional(),
     scope: z.string().optional(),
     since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     limit: z.number().int().positive().optional(),
     offset: z.number().int().nonnegative().optional(),
-    order: z.enum(["latest", "file"]).optional()
+    order: z.enum(["latest", "file"]).optional(),
+    includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA
   },
   diagnose_requirement_id_collisions: { dryRun: z.boolean().optional() },
   plan_requirement_id_collision_repair: {
@@ -219,6 +230,10 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     ignoreLock: z.boolean().optional()
   },
   register_scopes: { apply: z.boolean().optional(), dryRun: z.boolean().optional() },
+  // @req IR-MCP-006 — the inputs of the `rename-scope` CLI command.
+  rename_scope: RENAME_SCOPE_SCHEMA,
+  // @req FR-NODE-243 AC-6
+  expire_acceptance_criterion: EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
   update_status: { id: z.string(), status: z.string(), reason: z.string().max(500).optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   update_stability: {
     id: z.string(),
@@ -456,6 +471,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     reason: z.string().optional(),
     dryRun: z.boolean().optional()
   },
+  // FR-NODE-240 / FR-NODE-241 / FR-NODE-242 — the PRD tools own their input schemas (prd-tools.ts).
+  ...PRD_TOOL_SCHEMAS,
   promote_step_requirement: { id: z.string(), fromStep: z.string(), toScope: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   ...orchestrateToolSchemas()
 });
@@ -549,7 +566,12 @@ export function isReadOnlyTool(name: string): boolean {
     "get_work_mode",
     "check_vibe_gate",
     "check_sds",
-    "check_test_sufficiency"
+    "check_test_sufficiency",
+    "check_prd",
+    "list_prd_items",
+    "get_prd_item",
+    "search_prd_items",
+    "check_prd_coverage"
   ].includes(name);
 }
 

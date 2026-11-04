@@ -42,11 +42,20 @@ export interface ContractCoverage {
   readonly testFiles: Array<{ path: string; exists: boolean; citations: TestCitation[] }>;
 }
 
+/** @req FR-PARSE-044 AC-3 — test lines naming an expired criterion: history to clean up, never coverage. */
+export interface ExpiredCitation {
+  readonly requirementId: string;
+  readonly acId: string;
+  readonly citations: TestCitation[];
+}
+
 export interface TestSufficiencyReport {
   readonly scope: { target: string | null; ids: string[] | null; sds: string | null; testGlobs: string[] };
   readonly testFileCount: number;
   readonly requirements: RequirementCoverage[];
   readonly sdsContracts: ContractCoverage[];
+  /** Listed apart from `requirements` and never a gap or a pass. */
+  readonly expiredCitations: ExpiredCitation[];
   readonly gaps: {
     requirements: Array<{ requirementId: string; acIds: string[] }>;
     sdsContracts: Array<{ sdsAcId: string; reason: string }>;
@@ -118,6 +127,13 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
     })
   }));
 
+  const expiredCitations: ExpiredCitation[] = resolved.value.records.flatMap((record) =>
+    (record.expiredAcceptanceCriteria ?? []).flatMap((criterion) => {
+      const citations = index.acCitations(record.id, criterion.id);
+      return citations.length > 0 ? [{ requirementId: record.id, acId: criterion.id, citations }] : [];
+    })
+  );
+
   const sdsContracts: ContractCoverage[] = (contracts?.contracts ?? []).map((contract) => {
     const files = [...new Set(contracts?.testPlan.filter((row) => row.sdsAcId === contract.id).flatMap((row) => row.testFiles) ?? [])];
     const testFileCoverage = files.map((file) => {
@@ -153,6 +169,7 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
     testFileCount: testFiles.length,
     requirements,
     sdsContracts,
+    expiredCitations,
     gaps: { requirements: requirementGaps, sdsContracts: contractGaps },
     passed: requirementGaps.length === 0 && contractGaps.length === 0
   });

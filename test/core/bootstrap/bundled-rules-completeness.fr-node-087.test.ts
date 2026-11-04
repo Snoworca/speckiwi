@@ -150,8 +150,8 @@ describe("FR-NODE-087 AC-6 — marker policy and version identification are stat
 });
 
 describe("FR-NODE-087 AC-7 — the shipped version derives from one constant per document", () => {
-  it("declares the SRS rules at 2.5.0 and the SDS rules at 2.6.0, raised for the lite profile", () => {
-    expect(BUNDLED_RULES_VERSION).toBe("2.5.0");
+  it("declares the SRS rules at 2.6.0, raised for the expired-criterion grammar, and the SDS rules at 2.6.0, raised for the lite profile", () => {
+    expect(BUNDLED_RULES_VERSION).toBe("2.6.0");
     expect(BUNDLED_SDS_RULES_VERSION).toBe("2.6.0");
   });
 

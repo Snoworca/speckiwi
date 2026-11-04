@@ -23,10 +23,9 @@ import {
   renderAgentInstructionSnippet,
   renderAppendixTemplate,
   renderEmptyScopeTemplate,
-  renderIndexRulesRow,
   renderIndexTemplate
 } from "./templates.js";
-import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
+import { refreshRulesMetadataRow } from "./rules-references.js";
 import { installSkill, removeManagedKiwiSkills } from "../skills/install-skill.js";
 import type { SkillAgent, SkillInstallPlan } from "../skills/types.js";
 import { isSelfHostingCheckout, registerSpeckiwiMcp, registerSpeckiwiMcpForUser, type AgentCli, type AgentCliRunner } from "./mcp-registration.js";
@@ -389,8 +388,8 @@ async function pruneStaleRulesDocuments(rulesDir: string, keep: ReadonlySet<stri
 
 // @req FR-NODE-085
 /**
- * Raises a stale rules pointer in the index metadata to the bundled version (AC-5). The edit is
- * surgical — only the Rules row is replaced — so authored index content survives (AC-4).
+ * Raises the stale rules pointers in the index to the bundled version (AC-5). The edit is surgical —
+ * only the tool-written pointers are replaced — so authored index content survives (AC-4).
  */
 async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
   let existing: string | undefined;
@@ -399,28 +398,9 @@ async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOu
   } catch {
     return; // No index to point anywhere; the scaffold step already reported that.
   }
-  const desiredRow = renderIndexRulesRow();
-  const lines = existing.split("\n");
-  // The row is located by position as well as by shape. Shape alone is not enough: a two-cell
-  // `| Rules | ... |` row is also what an author's glossary entry looks like, and replacing one
-  // destroys it silently — measured, with validation still clean afterwards. Anchoring to the
-  // `| Field | Value |` metadata table is what makes "the metadata Rules row" a well-defined target.
-  const range = findMetadataTableRange(lines);
-  if (range === undefined) return;
-  let changed = false;
-  const next = lines
-    .map((line, index) => {
-      if (index < range.first || index > range.last) return line;
-      if (!isRulesMetadataRow(line) || line.includes(BUNDLED_SRS_RULES_FILENAME)) return line;
-      changed = true;
-      // The split is on "\n" alone, so a CRLF line carries its CR as trailing content. Returning the
-      // row without it would leave that one line LF-terminated in an otherwise CRLF file — a refresh
-      // that silently produces mixed endings.
-      return line.endsWith("\r") ? `${desiredRow}\r` : desiredRow;
-    })
-    .join("\n");
-  if (!changed) return;
-  if (!dryRun) await writeFile(indexPath, next, "utf8");
+  const refreshed = refreshRulesMetadataRow(existing);
+  if (refreshed.changes.length === 0) return;
+  if (!dryRun) await writeFile(indexPath, refreshed.next, "utf8");
   // The scaffold step above reported the existing index as skipped; the pointer refresh supersedes
   // that verdict, so the report never claims the same file was both skipped and updated.
   const skippedAt = output.skipped.indexOf(indexPath);

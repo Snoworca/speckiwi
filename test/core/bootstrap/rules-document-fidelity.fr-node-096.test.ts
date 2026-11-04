@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 // Every assertion below is scoped to the section that owns the claim, so a matching phrase elsewhere
 // in the document cannot satisfy it.
 
-const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.5.0.md");
+const RULES_DOCUMENT = path.join("docs", "rule", "SRS-MD-Rules-v2.6.0.md");
 
 async function rulesText(): Promise<string> {
   return readFile(RULES_DOCUMENT, "utf8");

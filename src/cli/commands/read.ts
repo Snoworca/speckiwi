@@ -1,5 +1,5 @@
 import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
-import type { Command } from "commander";
+import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { getWorkMode, setWorkMode } from "../../core/mutation/work-mode.js";
@@ -13,7 +13,8 @@ import { getDiagnosticDefinition } from "../../core/diagnostic-registry.js";
 import { markMutationCommands } from "../input-json.js";
 import { mutationFail, mutationOk } from "../../core/mutation/guards.js";
 import { PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
-import { renderReadOnlyToolNames, toolSpecs, type ToolSpec } from "../../mcp/schemas.js";
+import { renderReadOnlyToolNames, SEARCH_BEHAVIOR, toolSpecs, type ToolSpec } from "../../mcp/schemas.js";
+import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../../core/bootstrap/templates.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
 import { checkLinks } from "../../core/query/links.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
@@ -24,6 +25,7 @@ import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../c
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
 import { failRead, registerSdsCommands } from "./sds.js";
+import { registerPrdCommands } from "./prd.js";
 import { runCoverageTests, testsOnlyFlagsGiven } from "./coverage-tests.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
@@ -83,8 +85,30 @@ function readDiagnostics(workspace: ParsedWorkspace): Diagnostic[] {
   return [...workspace.diagnostics, ...validateWorkspace(workspace).diagnostics];
 }
 
-function outputRead<T extends object>(context: CliContext, options: { json?: boolean }, workspace: ParsedWorkspace, value: T, diagnostics = readDiagnostics(workspace)): void {
-  if (options.json) writeJson(context.io, buildReadEnvelope(workspace, value, diagnostics));
+interface ReadOutputOptions {
+  json?: boolean;
+  /** Already validated by {@link parseDiagnosticsLimit}; omitted means every entry. */
+  diagnosticsLimit?: number;
+}
+
+const DIAGNOSTICS_LIMIT_HELP = "most diagnostic entries in JSON output, errors first; diagnosticsSummary still counts every entry";
+
+// @req FR-NODE-231 AC-4 — rejected while the arguments are parsed, so a bad limit is a USAGE error
+// before any read value is printed.
+function parseDiagnosticsLimit(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new InvalidArgumentError("must be a positive integer.");
+  return parsed;
+}
+
+function readOutputOptions(options: { json?: boolean; diagnosticsLimit?: number }, command: Command): ReadOutputOptions {
+  const json = Boolean(options.json) || Boolean(command.opts().json);
+  return options.diagnosticsLimit === undefined ? { json } : { json, diagnosticsLimit: options.diagnosticsLimit };
+}
+
+function outputRead<T extends object>(context: CliContext, options: ReadOutputOptions, workspace: ParsedWorkspace, value: T, diagnostics = readDiagnostics(workspace)): void {
+  const envelopeOptions = options.diagnosticsLimit === undefined ? {} : { diagnosticsLimit: options.diagnosticsLimit };
+  if (options.json) writeJson(context.io, buildReadEnvelope(workspace, value, diagnostics, envelopeOptions));
   else writeHuman(context.io, value);
 }
 
@@ -426,31 +450,40 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--limit <n>")
     .option("--offset <n>")
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (options) => {
       const workspace = await workspaceFrom(command.opts());
-      outputRead(context, { json: options.json || command.opts().json }, workspace, projectRequirementRecords(workspace.records, parseDiscoveryOptions(options, command)));
+      outputRead(context, readOutputOptions(options, command), workspace, projectRequirementRecords(workspace.records, parseDiscoveryOptions(options, command)));
     });
 
   const listCommand = addDiscoveryOptions(addRequirementFilterOptions(command.command("list")))
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (options) => {
       const workspace = await workspaceFrom(command.opts());
       const records = listRequirements(workspace, parseFilter(options));
-      outputRead(context, { json: options.json || command.opts().json }, workspace, projectRequirementRecords(records, parseDiscoveryOptions(options, listCommand)));
+      outputRead(context, readOutputOptions(options, command), workspace, projectRequirementRecords(records, parseDiscoveryOptions(options, listCommand)));
     });
 
   const searchCommand = addDiscoveryOptions(addRequirementFilterOptions(command.command("search").argument("<query>")))
+    .description(SEARCH_BEHAVIOR)
+    // @req FR-CLI-001 AC-2
+    .option("--exact", "keep only records holding the whole query as a phrase, in ID order")
     .option("--json", "JSON output")
+    // @req FR-FLOW-207 AC-3
+    .addHelpText("after", `\n${BILINGUAL_SEARCH_RULE}\nExample:\n  speckiwi search "${BILINGUAL_SEARCH_EXAMPLE}"\n`)
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (query, options) => {
       const workspace = await workspaceFrom(command.opts());
       outputRead(
         context,
-        { json: options.json || command.opts().json },
+        readOutputOptions(options, command),
         workspace,
         searchRequirementRecords(workspace.records, {
           query,
           filter: parseFilter(options),
-          ...parseDiscoveryOptions(options, searchCommand)
+          ...parseDiscoveryOptions(options, searchCommand),
+          ...(options.exact === true ? { match: "exact" as const } : {})
         })
       );
     });
@@ -460,32 +493,33 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .argument("<id>")
     .option("--markdown", "include Markdown")
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (id, options) => {
       const workspace = await workspaceFrom(command.opts());
       const json = options.json || command.opts().json;
       try {
-        outputRead(context, { json }, workspace, getRequirement(workspace, id, { includeMarkdown: options.markdown }));
+        outputRead(context, { json, diagnosticsLimit: options.diagnosticsLimit }, workspace, getRequirement(workspace, id, { includeMarkdown: options.markdown }));
       } catch (error) {
         readFailure(context, command, { json }, "NOT_FOUND", (error as Error).message, "show", 5);
       }
     });
 
-  command.command("targets").option("--json").action(async (options) => {
+  command.command("targets").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
     const diagnostics = readDiagnostics(workspace);
     outputRead(
       context,
-      { json: options.json || command.opts().json },
+      readOutputOptions(options, command),
       workspace,
       { activeTarget: workspace.index.activeTarget, targets: workspace.index.targets.map((target) => ({ ...target, summary: summarizeTarget(workspace, { target: target.target, diagnostics }) })) },
       diagnostics
     );
   });
 
-  command.command("active-target").option("--json").action(async (options) => {
+  command.command("active-target").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
     const diagnostics = readDiagnostics(workspace);
-    outputRead(context, { json: options.json || command.opts().json }, workspace, { activeTarget: workspace.index.activeTarget, summary: summarizeTarget(workspace, { diagnostics }) }, diagnostics);
+    outputRead(context, readOutputOptions(options, command), workspace, { activeTarget: workspace.index.activeTarget, summary: summarizeTarget(workspace, { diagnostics }) }, diagnostics);
   });
 
   const completedWork = command
@@ -497,14 +531,15 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--offset <n>", "number of rows to skip")
     .option("--order <order>", "ordering: latest or file", "latest")
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (options) => {
       const workspace = await workspaceFrom(command.opts());
-      outputRead(context, { json: options.json || command.opts().json }, workspace, completedWorkReadModel(workspace, parseCompletedWorkFilter(options, completedWork)));
+      outputRead(context, readOutputOptions(options, command), workspace, completedWorkReadModel(workspace, parseCompletedWorkFilter(options, completedWork)));
     });
 
-  command.command("completed-work-migration-plan").option("--json", "JSON output").action(async (options) => {
+  command.command("completed-work-migration-plan").option("--json", "JSON output").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
-    outputRead(context, { json: options.json || command.opts().json }, workspace, { completedWorkMigration: planCompletedWorkMigration(workspace, { dryRun: true }) });
+    outputRead(context, readOutputOptions(options, command), workspace, { completedWorkMigration: planCompletedWorkMigration(workspace, { dryRun: true }) });
   });
 
   const workflow = command.command("workflow");
@@ -723,12 +758,12 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       workflowOutput(options, await buildNextWorkOrder(await workflowRoot(), parseWorkOrderOptions(options, workOrder)));
     });
 
-  command.command("scopes").option("--json").action(async (options) => {
+  command.command("scopes").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
-    outputRead(context, { json: options.json || command.opts().json }, workspace, { scopes: workspace.index.scopes });
+    outputRead(context, readOutputOptions(options, command), workspace, { scopes: workspace.index.scopes });
   });
 
-  command.command("summary").option("--target <target>").option("--markdown").option("--json").action(async (options) => {
+  command.command("summary").option("--target <target>").option("--markdown").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
     const diagnostics = readDiagnostics(workspace);
     const json = options.json || command.opts().json;
@@ -736,7 +771,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       readFailure(context, command, { json }, "TARGET_NOT_FOUND", `Target is not registered: ${options.target}`, "summary", 5);
       return;
     }
-    outputRead(context, { json: options.json || command.opts().json }, workspace, summarizeTarget(workspace, { target: options.target, diagnostics }), diagnostics);
+    outputRead(context, readOutputOptions(options, command), workspace, summarizeTarget(workspace, { target: options.target, diagnostics }), diagnostics);
   });
 
   // @req IR-CLI-052 — explain a diagnostic code from the DiagnosticDefinition registry.
@@ -816,6 +851,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--target <target>")
     .option("--scope <scope>")
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (date, options) => {
       if (!isValidIsoDate(date)) {
         changedSince.error("date must use YYYY-MM-DD", { exitCode: 2 });
@@ -829,7 +865,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         .filter(({ latest }) => typeof latest === "string" && isValidIsoDate(latest) && latest >= date)
         .sort((a, b) => a.record.id.localeCompare(b.record.id))
         .map(({ record, latest }) => ({ id: record.id, target: record.target, scope: record.scope, latestChangeDate: latest }));
-      outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements });
+      outputRead(context, readOutputOptions(options, command), workspace, { requirements });
     });
 
   // @req IR-CLI-069 — aging requirements: evolving-stability requirements whose most recent Change
@@ -839,6 +875,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--target <target>")
     .option("--evolving-age <days>", "age threshold in days (default 90)")
     .option("--json", "JSON output")
+    .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (options) => {
       const threshold = parsePositiveInteger(options.evolvingAge, "evolving-age", stale) ?? 90;
       const workspace = await workspaceFrom(command.opts());
@@ -860,7 +897,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
           latestChangeDate: latest ?? null,
           ageDays
         }));
-      outputRead(context, { json: Boolean(options.json) || command.opts().json }, workspace, { requirements, evolvingAge: threshold });
+      outputRead(context, readOutputOptions(options, command), workspace, { requirements, evolvingAge: threshold });
     });
 
   // @req IR-CLI-061 — Change Notes of one requirement, chronologically, with optional --since. Never
@@ -928,9 +965,9 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   const links = command.command("links");
-  links.command("check").option("--json").action(async (options) => {
+  links.command("check").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
     const workspace = await workspaceFrom(command.opts());
-    outputRead(context, { json: options.json || command.opts().json }, workspace, await checkLinks(workspace));
+    outputRead(context, readOutputOptions(options, command), workspace, await checkLinks(workspace));
   });
 
   // @req IR-CLI-046 — step-local validation surface: run validateWorkspaceScoped for the named step
@@ -1150,6 +1187,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   // @req IR-CLI-102 — `sds check` is a read command, registered with the rest so the ToolSpec
   // registry walk (FR-ARCH-006) sees it.
   registerSdsCommands(command, context);
+  // @req FR-NODE-240 FR-NODE-241 FR-NODE-242 — the `prd` group, registered here for the same reason.
+  registerPrdCommands(command, context);
 
   // `mode` is the one mutation command declared among the read commands, so it is marked here
   // rather than by registerMutationCommands. @req IR-CLI-101

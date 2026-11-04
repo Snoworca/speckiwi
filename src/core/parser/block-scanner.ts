@@ -1,5 +1,6 @@
 import { diagnostic } from "../diagnostic.js";
 import type { Diagnostic } from "../types.js";
+import { classifyDocumentLines, SRS_RECORD_LINES, type DocumentLine } from "./document-lines.js";
 
 export interface RequirementHeading {
   id: string;
@@ -37,12 +38,6 @@ export const REQUIREMENT_HEADING_RE =
   /^###\s+(~~)?((?:FR|NFR|IR|DR|SEC|PERF|REL|OBS|OPS|MIG|CON)-[A-Z0-9][A-Z0-9-]{1,24}-[0-9]{3,4})\s+—\s+(.+?)(~~)?\s*(?:\[(DISCARDED|DRAFT)(?:[^\]]*)\])?\s*$/;
 const NON_REQUIREMENT_THIRD_LEVEL_HEADING_RE = /^###\s+(In Scope|Out of Scope)\s*$/;
 const TOP_LEVEL_SECTION_RE = /^##(?!#)\s+(.+)$/;
-const FENCE_RE = /^(?: {0,3})(`{3,}|~{3,})/;
-
-interface FenceState {
-  marker: "`" | "~";
-  length: number;
-}
 
 export function parseRequirementHeading(line: string): RequirementHeading | undefined {
   const match = REQUIREMENT_HEADING_RE.exec(line.trim());
@@ -57,19 +52,12 @@ export function parseRequirementHeading(line: string): RequirementHeading | unde
   return heading;
 }
 
-function parseFence(line: string): FenceState | undefined {
-  const match = FENCE_RE.exec(line);
-  if (!match) return undefined;
-  const fence = match[1]!;
-  return { marker: fence[0] as FenceState["marker"], length: fence.length };
-}
-
-function isClosingFence(line: string, fence: FenceState): boolean {
-  const next = parseFence(line);
-  return Boolean(next && next.marker === fence.marker && next.length >= fence.length);
-}
-
-function parseTopLevelSectionTitle(line: string): string | undefined {
+/**
+ * The title of a top-level (`##`) section heading, or undefined when the line is not one. The one
+ * test of where a section of a requirements document starts and ends: the scanner and every writer
+ * that places a block ask it, so a block is never written past a boundary the scanner reads.
+ */
+export function parseTopLevelSectionTitle(line: string): string | undefined {
   const match = TOP_LEVEL_SECTION_RE.exec(line.trim());
   return match?.[1]?.trim();
 }
@@ -78,25 +66,26 @@ function isRequirementsSection(title: string): boolean {
   return /\brequirements?\b/i.test(title);
 }
 
-export function scanRequirementBlocks(lines: string[], filePath = ""): { blocks: RequirementBlockRange[]; diagnostics: Diagnostic[] } {
+/**
+ * The requirement blocks of a document, and its lines classified once (`lines`): the section and
+ * criteria parsers read their slice of that classification rather than classifying again.
+ */
+export function scanRequirementBlocks(
+  lines: string[],
+  filePath = ""
+): { blocks: RequirementBlockRange[]; diagnostics: Diagnostic[]; lines: DocumentLine[] } {
   const diagnostics: Diagnostic[] = [];
   const starts: Array<{ heading: RequirementHeading; line: number }> = [];
   const boundaries: number[] = [];
-  let fence: FenceState | undefined;
   let inRequirementsSection = false;
+  // Headings are read only on body lines (classifyDocumentLines), the definition every writer uses to
+  // decide where a section ends and where a block may go: a `##` or `###` line inside a fence, an
+  // indented code block or an HTML comment is an example, not a boundary or a requirement.
+  const documentLines = classifyDocumentLines(lines, SRS_RECORD_LINES);
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
-    if (fence) {
-      if (isClosingFence(line, fence)) fence = undefined;
-      return;
-    }
-
-    const openingFence = parseFence(line);
-    if (openingFence) {
-      fence = openingFence;
-      return;
-    }
+    if (documentLines[index]?.body !== true) return;
 
     const topLevelSectionTitle = parseTopLevelSectionTitle(line);
     if (topLevelSectionTitle) {
@@ -140,5 +129,5 @@ export function scanRequirementBlocks(lines: string[], filePath = ""): { blocks:
     startLine: start.line,
     endLine: Math.min(starts[index + 1]?.line ?? lines.length + 1, boundaries.find((line) => line > start.line) ?? lines.length + 1) - 1
   }));
-  return { blocks, diagnostics };
+  return { blocks, diagnostics, lines: documentLines };
 }

@@ -62,8 +62,9 @@ function expectOk<T>(result: unknown): T {
 }
 
 interface DuplicateValidationPayload {
-  errors: Array<{
+  diagnostics: Array<{
     code: string;
+    severity: string;
     details?: {
       duplicateId?: string;
       occurrences?: unknown[];
@@ -92,10 +93,10 @@ describe("MCP read tools and resources", () => {
       },
       mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
     });
+    // FR-MCP-070 AC-1 — the entries live in the value; the top level keeps only the summary.
     expect(await server.callTool("list_requirements", {})).toMatchObject({
       ok: true,
-      value: expect.any(Object),
-      diagnostics: expect.any(Array),
+      value: { diagnostics: expect.any(Array) },
       diagnosticsSummary: expect.any(Object),
       mcpWorkspace: { workspaceRoot: root, rootSource: "server-cwd-discovery", indexPath: "docs/spec/00.index.md", packageVersion: expect.any(String) }
     });
@@ -114,7 +115,13 @@ describe("MCP read tools and resources", () => {
       mcpWorkspace: { workspaceRoot: root }
     });
     expect(await server.callTool("get_requirement", { id: "FR-ARCH-001", includeMarkdown: true })).toMatchObject({ ok: true });
-    expect(await server.callTool("validate_spec", {})).toMatchObject({ ok: true, value: { diagnostics: expect.any(Array), errors: [], warnings: expect.any(Array), summary: expect.any(Object) } });
+    // FR-MCP-070 AC-1 — validate_spec lists its entries once, in `diagnostics`; the error/warning split
+    // is read by severity, and the summary still carries the counts.
+    const validated = (await server.callTool("validate_spec", {})) as { ok: boolean; value: { diagnostics: Array<{ severity: string }>; summary: { errors: number; warnings: number } } & Record<string, unknown> };
+    expect(validated).toMatchObject({ ok: true, value: { diagnostics: expect.any(Array), summary: expect.any(Object) } });
+    expect(validated.value.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+    expect(validated.value.diagnostics.filter((item) => item.severity === "warning")).toHaveLength(validated.value.summary.warnings);
+    expect("errors" in validated.value || "warnings" in validated.value).toBe(false);
     expect(await server.callTool("summarize_target", {})).toMatchObject({
       ok: true,
       value: {
@@ -172,7 +179,8 @@ describe("MCP read tools and resources", () => {
     registerReadTools(server, { root });
 
     const output = expectOk<DuplicateValidationPayload>(await server.callTool("validate_spec", {}));
-    const duplicate = output.errors.find((diagnostic) => diagnostic.code === "SRS-E002");
+    // FR-MCP-070 AC-1 — the error entries are the `diagnostics` of error severity.
+    const duplicate = output.diagnostics.filter((diagnostic) => diagnostic.severity === "error").find((diagnostic) => diagnostic.code === "SRS-E002");
 
     expect(output.summary.byCode["SRS-E002"]).toBe(1);
     expect(output.diagnosticsSummary.byCode["SRS-E002"]).toBe(1);
@@ -190,8 +198,7 @@ describe("MCP read tools and resources", () => {
     registerReadTools(server, { root });
 
     const output = expectOk<{
-      errors: Array<{ code: string; filePath?: string; details?: unknown }>;
-      warnings: Array<{ code: string; filePath?: string; details?: unknown }>;
+      diagnostics: Array<{ code: string; severity: string; filePath?: string; details?: unknown }>;
       summary: { errors: number; warnings: number; byCode: Record<string, number> };
       diagnosticsSummary: { byCode: Record<string, number> };
     }>(await server.callTool("validate_spec", {}));
@@ -205,8 +212,12 @@ describe("MCP read tools and resources", () => {
       "SRS-W041": expect.any(Number)
     });
     expect(output.diagnosticsSummary.byCode).toMatchObject(output.summary.byCode);
-    expect(output.errors).toEqual(expect.arrayContaining([expect.objectContaining({ code: "SRS-E002" }), expect.objectContaining({ code: "SRS-E015" })]));
-    expect(output.warnings).toEqual(expect.arrayContaining([expect.objectContaining({ code: "SRS-W024" }), expect.objectContaining({ code: "SRS-W041" })]));
+    // FR-MCP-070 AC-1 — the split is read by severity from the one list of entries.
+    const errors = output.diagnostics.filter((item) => item.severity === "error");
+    const warnings = output.diagnostics.filter((item) => item.severity === "warning");
+    expect(errors).toEqual(expect.arrayContaining([expect.objectContaining({ code: "SRS-E002" }), expect.objectContaining({ code: "SRS-E015" })]));
+    expect(warnings).toEqual(expect.arrayContaining([expect.objectContaining({ code: "SRS-W024" }), expect.objectContaining({ code: "SRS-W041" })]));
+    expect(errors.length + warnings.length).toBe(output.diagnostics.length);
   });
 
   it("keeps deprecated requirements explicitly searchable while excluding them from default new-work candidates", async () => {
@@ -348,10 +359,10 @@ describe("MCP read tools and resources", () => {
     registerMutationTools(server, { root });
     registerResources(server, { root });
 
+    // FR-MCP-070 AC-1 — validate_spec lists its entries once, in the value.
     await expect(server.callTool("validate_spec", {})).resolves.toMatchObject({
       ok: true,
       value: { diagnostics: expect.any(Array), diagnosticsSummary: expect.any(Object) },
-      diagnostics: expect.any(Array),
       diagnosticsSummary: expect.any(Object)
     });
     await expect(server.callTool("get_requirement", { id: "MISSING" })).resolves.toMatchObject({
@@ -370,8 +381,7 @@ describe("MCP read tools and resources", () => {
     });
     await expect(server.callTool("list_completed_work", { target: "v1.0.0", limit: 1 })).resolves.toMatchObject({
       ok: true,
-      value: { completedWork: expect.any(Array) },
-      diagnostics: expect.any(Array),
+      value: { completedWork: expect.any(Array), diagnostics: expect.any(Array) },
       diagnosticsSummary: expect.any(Object)
     });
     await expect(server.callTool("add_completed_work", { date: "2026-05-10", requirementIds: ["FR-ARCH-001"], summary: "MCP incomplete denied." })).resolves.toMatchObject({
@@ -442,9 +452,10 @@ describe("MCP read tools and resources", () => {
           duplicateSources: true,
           migrationRecommended: true
         },
-        diagnosticsSummary: expect.objectContaining({ byCode: expect.objectContaining({ "SRS-W041": 1 }) })
-      },
-      diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W041" })])
+        diagnosticsSummary: expect.objectContaining({ byCode: expect.objectContaining({ "SRS-W041": 1 }) }),
+        // FR-MCP-070 AC-1 — the entries live in the value, not at top level.
+        diagnostics: expect.arrayContaining([expect.objectContaining({ code: "SRS-W041" })])
+      }
     });
 
     await expect(server.callTool("add_completed_work", { date: "2026-06-30", summary: "External MCP dry-run.", dryRun: true })).resolves.toMatchObject({

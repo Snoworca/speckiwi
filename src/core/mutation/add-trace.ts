@@ -6,7 +6,7 @@ import type { MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, T
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, findSectionTableInsertionLine } from "./internal.js";
+import { findSectionTableInsertionLine, planMetadataWrite } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -112,29 +112,6 @@ interface SupersedeField {
   relation: "supersedes" | "superseded_by";
 }
 
-/**
- * Finds the line just after the last row of the requirement's `| Field | Value |` metadata
- * table so a new metadata row can be appended without disturbing any existing line.
- * @req FR-NODE-063
- */
-function findMetadataTableInsertionLine(file: TextFile, record: RequirementRecord): number | undefined {
-  const end = record.blockEndLine ?? file.lines.length;
-  let headerLine = -1;
-  for (let line = record.headingLine; line <= end; line += 1) {
-    if ((file.lines[line - 1] ?? "").startsWith("| Field | Value |")) {
-      headerLine = line;
-      break;
-    }
-  }
-  if (headerLine < 0) return undefined;
-  let lastRow = headerLine + 1; // the `| --- | --- |` separator row
-  for (let line = headerLine + 2; line <= end; line += 1) {
-    if ((file.lines[line - 1] ?? "").startsWith("|")) lastRow = line;
-    else break;
-  }
-  return lastRow + 1;
-}
-
 export async function setSupersede(root: ProjectRoot, input: SetSupersedeInput): Promise<MutationResult<SetSupersedeOutput>> {
   return withSrsMutationLock(
     root,
@@ -160,21 +137,11 @@ async function setSupersedeUnlocked(root: ProjectRoot, input: SetSupersedeInput)
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`) as MutationResult<SetSupersedeOutput>;
   const { record, file } = loaded;
 
-  const metadataInsertLine = findMetadataTableInsertionLine(file, record);
-  if (metadataInsertLine === undefined) {
-    return mutationFail("MUTATION_DENIED", "Requirement metadata table not found") as MutationResult<SetSupersedeOutput>;
-  }
-
   const operations: PatchOperation[] = [];
   for (const field of fields) {
-    const row = `| ${field.label} | ${field.value} |`;
-    const existing = findMetadataLine(file, record, field.label);
-    if (existing) {
-      const original = file.lines[existing - 1];
-      operations.push(original !== undefined ? { type: "replaceLine", line: existing, original, replacement: row } : { type: "replaceLine", line: existing, replacement: row });
-    } else {
-      operations.push(insertLinesOperation(file, metadataInsertLine, [row]));
-    }
+    const write = planMetadataWrite(file, record, field.label, field.value, { insertWhenMissing: true });
+    if (!write.ok) return mutationFail("MUTATION_DENIED", write.message) as MutationResult<SetSupersedeOutput>;
+    operations.push(write.operation);
   }
 
   if (input.syncTrace) {

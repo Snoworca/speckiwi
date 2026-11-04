@@ -1,14 +1,16 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import { createTextFileSnapshot } from "../fs/read-text.js";
-import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
-import { createPatchPlan, type PatchOperation, type PatchPlan } from "../patch/patch-plan.js";
+import { isStalePatchError } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
+import { createPatchPlan, renderPatchedLines, type PatchOperation, type PatchPlan } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
 import type { Diagnostic, MutationEnvelope, MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { assertSingleLine } from "./block-prose.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withMutationEnvelope } from "./envelope.js";
+import { requirementReferenceRewrites, type RequirementReferenceRewrite } from "./requirement-references.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
 export interface RequirementOccurrenceIdentity {
@@ -193,8 +195,10 @@ function validateReferenceEdits(workspace: ParsedWorkspace, input: RequirementId
   return undefined;
 }
 
-function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, groupOccurrences: RequirementOccurrenceIdentity[]): Array<{ filePath: string; line: number; excerpt: string }> {
+function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, groupOccurrences: RequirementOccurrenceIdentity[], replacementId: string): Array<{ filePath: string; line: number; excerpt: string }> {
   const occurrenceHeadingKeys = new Set(groupOccurrences.map((occurrence) => explicitReferenceKey({ filePath: occurrence.filePath, line: occurrence.headingLine })));
+  // The renamed block's own references are rewritten with it, so they are not ambiguous.
+  const ownLines = new Set(renamedBlockReferences(workspace, input, replacementId).map((rewrite) => explicitReferenceKey({ filePath: rewrite.file.relativePath, line: rewrite.line })));
   const references: Array<{ filePath: string; line: number; excerpt: string }> = [];
   for (const file of workspace.files) {
     file.lines.forEach((line, index) => {
@@ -205,7 +209,7 @@ function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCol
       const isHeading = /^###\s+/.test(line);
       if (inRenamedBlock && isHeading && lineNo === input.rename.headingLine) return;
       if (file.relativePath === input.keep.filePath && lineNo === input.keep.headingLine) return;
-      if (file.relativePath === input.rename.filePath && lineNo >= input.rename.headingLine && lineNo <= input.rename.headingLine + 120 && /^\|\s*Requirement\s*\|/.test(line)) return;
+      if (ownLines.has(explicitReferenceKey({ filePath: file.relativePath, line: lineNo }))) return;
       references.push({ filePath: file.relativePath, line: lineNo, excerpt: line.trim().slice(0, 160) });
     });
   }
@@ -213,35 +217,28 @@ function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCol
   return references.filter((item) => !explicit.has(`${item.filePath}:${item.line}`));
 }
 
-function requirementBlockEndLine(file: TextFile, headingLine: number): number {
-  const nextHeadingIndex = file.lines.findIndex((line, index) => index + 1 > headingLine && /^###\s+/.test(line));
-  return nextHeadingIndex >= 0 ? nextHeadingIndex : file.lines.length;
+/**
+ * @req FR-PARSE-044 AC-4 — the references the renamed block itself makes to the duplicate id, from the
+ * shared collector, so a Trace Link row and an expired-marker successor move together.
+ */
+function renamedBlockReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string): RequirementReferenceRewrite[] {
+  const renamed = findRecord(workspace, input.rename);
+  return renamed ? requirementReferenceRewrites(workspace, [renamed], input.duplicateId, replacementId) : [];
 }
 
-function buildRenameOperations(file: TextFile, input: RequirementIdCollisionRepairPlanInput, replacementId: string): PatchOperation[] {
-  const operations: PatchOperation[] = [];
+function buildRenameOperations(workspace: ParsedWorkspace, file: TextFile, input: RequirementIdCollisionRepairPlanInput, replacementId: string): PatchOperation[] {
   const headingLine = file.lines[input.rename.headingLine - 1] ?? "";
-  operations.push({
-    type: "replaceLine",
-    line: input.rename.headingLine,
-    original: headingLine,
-    replacement: headingLine.replace(input.duplicateId, replacementId)
-  });
-  const endLine = requirementBlockEndLine(file, input.rename.headingLine);
-  for (let lineNo = input.rename.headingLine + 1; lineNo <= endLine; lineNo += 1) {
-    const line = file.lines[lineNo - 1] ?? "";
-    if (/^\|\s*Requirement\s*\|/.test(line) && line.includes(input.duplicateId)) {
-      operations.push({ type: "replaceLine", line: lineNo, original: line, replacement: line.replace(input.duplicateId, replacementId) });
-    }
-  }
-  return operations;
+  return [
+    { type: "replaceLine", line: input.rename.headingLine, original: headingLine, replacement: headingLine.replace(input.duplicateId, replacementId) },
+    ...renamedBlockReferences(workspace, input, replacementId).map((rewrite): PatchOperation => ({ type: "replaceLine", line: rewrite.line, original: rewrite.original, replacement: rewrite.replacement }))
+  ];
 }
 
 function buildOperationsByFile(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string): Map<TextFile, PatchOperation[]> {
   const operationsByPath = new Map<string, PatchOperation[]>();
   const renameFile = findFile(workspace, input.rename.filePath);
   if (renameFile) {
-    operationsByPath.set(renameFile.relativePath, buildRenameOperations(renameFile, input, replacementId));
+    operationsByPath.set(renameFile.relativePath, buildRenameOperations(workspace, renameFile, input, replacementId));
   }
   for (const edit of input.referenceEdits ?? []) {
     const operations = operationsByPath.get(edit.filePath) ?? [];
@@ -336,7 +333,7 @@ export async function planRequirementIdCollisionRepair(root: ProjectRoot, input:
       staleReferenceEdit.error?.staleGuard ? { staleGuard: staleReferenceEdit.error.staleGuard } : {}
     );
   }
-  const ambiguous = ambiguousReferences(workspace, input, group.occurrences);
+  const ambiguous = ambiguousReferences(workspace, input, group.occurrences, replacement.value);
   const operationsByFile = buildOperationsByFile(workspace, input, replacement.value);
   const operations = [...operationsByFile.entries()].flatMap(([operationFile, fileOperations]) =>
     fileOperations.map((operation) => ({
@@ -405,11 +402,8 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
     if (patchPlans.length === 0) return mutationFail("STALE_PATCH", "Requirement ID collision repair has no patchable files");
     try {
       if (!input.dryRun) await assertFreshPlans(patchPlans);
-      const patches = [];
-      for (const patchPlan of patchPlans) {
-        patches.push(await applyPatchPlan(patchPlan, { dryRun: input.dryRun ?? false }));
-      }
-      const written = patches.some((patch) => patch.written);
+      // Every touched document is written as one transaction: a failed write restores the ones before it.
+      const { written } = await applyPatchPlans(patchPlans, { dryRun: input.dryRun ?? false });
       const postWorkspace = input.dryRun ? workspace : await parseWorkspace(root);
       const postGroups = toGroups(postWorkspace, duplicateDiagnostics(postWorkspace));
       const replacementCollision = postGroups.find((group) => group.duplicateId === plan.replacementId);
@@ -431,7 +425,7 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
         filePath: patchPlans.length === 1 ? patchPlans[0]!.file.relativePath : "<multiple>",
         operations: patchPlans.reduce((sum, patchPlan) => sum + patchPlan.operations.length, 0),
         dryRun: input.dryRun ?? false,
-        preview: patches.flatMap((patch) => patch.preview)
+        preview: patchPlans.flatMap((patchPlan) => renderPatchedLines(patchPlan).slice(0, 20))
       });
     } catch (error) {
       if (isStalePatchError(error)) {

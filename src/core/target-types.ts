@@ -1,6 +1,6 @@
 // @req FR-NODE-098 — the single source for the target type vocabulary.
 //
-// The shipped authoring rules document (`docs/rule/SRS-MD-Rules-v2.5.0.md`, "Target type values")
+// The shipped authoring rules document (`docs/rule/SRS-MD-Rules-v2.6.0.md`, "Target type values")
 // defines these six. That document travels inside the npm package, so a consuming project reads it
 // and expects the runtime to honour it. Three enforcement points previously each carried their own
 // three-value array and had drifted from the document and from each other; the accepted set is stated

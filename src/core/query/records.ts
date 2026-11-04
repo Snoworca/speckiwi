@@ -2,6 +2,7 @@ import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
 import { PREFIX_TYPE, type ChangeNoteRow, type Diagnostic, type EvidenceRow, type Priority, type RequirementRecord, type Risk, type Stability, type TextFile, type TraceLink } from "../types.js";
 import type { RequirementBlockRange } from "../parser/block-scanner.js";
+import type { DocumentLine } from "../parser/document-lines.js";
 import { parseRequirementSections } from "../parser/section-parser.js";
 import { parseAcceptanceCriteria } from "../parser/ac-parser.js";
 import { parseMarkdownTableResult, parseMetadataRows } from "../parser/table.js";
@@ -144,14 +145,15 @@ function changeNotesFromTable(table: ParsedTable | undefined): ChangeNoteRow[] {
     .filter((row) => ![row.date, row.change, row.reason].every(isPlaceholderCell));
 }
 
-export function toRequirementRecord(file: TextFile, block: RequirementBlockRange): RequirementRecordResult {
+/** `documentLines` is the file's classification from {@link scanRequirementBlocks}. */
+export function toRequirementRecord(file: TextFile, block: RequirementBlockRange, documentLines: readonly DocumentLine[]): RequirementRecordResult {
   const diagnostics: Diagnostic[] = [];
   const { metadata, diagnostics: metadataDiagnostics } = parseMetadataRows(file.lines, block.startLine, {
     filePath: file.relativePath,
     requirementId: block.heading.id
   });
   diagnostics.push(...metadataDiagnostics);
-  const { sections, diagnostics: sectionDiagnostics } = parseRequirementSections(block, file.lines, file.relativePath);
+  const { sections, diagnostics: sectionDiagnostics } = parseRequirementSections(block, file.lines, documentLines, file.relativePath);
   diagnostics.push(...sectionDiagnostics);
   const acceptanceCriteria = parseAcceptanceCriteria(sections["Acceptance Criteria"], file.relativePath, block.heading.id);
   diagnostics.push(...acceptanceCriteria.diagnostics);
@@ -194,6 +196,7 @@ export function toRequirementRecord(file: TextFile, block: RequirementBlockRange
     ...(block.heading.marker ? { marker: block.heading.marker } : {}),
     metadata,
     acceptanceCriteria: acceptanceCriteria.criteria,
+    ...(acceptanceCriteria.expired.length > 0 ? { expiredAcceptanceCriteria: acceptanceCriteria.expired } : {}),
     verificationEvidence: evidenceRows,
     traceLinks: traceRows,
     changeNotes: changeNotesFromTable(changeNotes.table),

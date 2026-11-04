@@ -2,7 +2,7 @@
 
 Requirements are Markdown SRS documents under `docs/spec/`, entered through `docs/spec/00.index.md`. Use the SpecKiwi MCP tools; fall back to the `speckiwi` CLI only when MCP is unavailable. Never bypass the SRS-MD rules, keep a second requirements source, or edit generated JSON as if it were the requirements.
 
-Rules: [SRS-MD-Rules-v2.5.0.md](docs/rule/SRS-MD-Rules-v2.5.0.md). An SDS, written only when the user asks for one, follows [SDS-MD-Rules-v2.6.0.md](docs/rule/SDS-MD-Rules-v2.6.0.md).
+Rules: [SRS-MD-Rules-v2.6.0.md](docs/rule/SRS-MD-Rules-v2.6.0.md). An SDS, written only when the user asks for one, follows [SDS-MD-Rules-v2.6.0.md](docs/rule/SDS-MD-Rules-v2.6.0.md).
 
 `AGENTS.md` and `CLAUDE.md` are the canonical root instruction files. Lowercase `agents.md` is kept as a compatibility mirror for tools that still discover it.
 
@@ -43,7 +43,7 @@ SpecKiwi tool check (once per session, before the first SpecKiwi call):
 
 Before making any code, test, or documentation change, agents MUST:
 1. Read `docs/spec/00.index.md`.
-2. Find the relevant Requirement ID in the scope SRS files.
+2. Find the relevant Requirement ID in the scope SRS files (MCP `search_requirements`, CLI `speckiwi search`). Search in both languages: put the words you would search for and their equivalents in the other language into the same query string (add English words to a Korean request; add Korean words to an English request or to a requirement you are writing in English).
 3. Mention the Requirement ID in the work summary.
 4. If no matching requirement exists, stop and ask whether to create/update an SRS requirement first.
 
@@ -67,7 +67,7 @@ Work-mode and the TDD First (tdd) workflow:
 7. When the mode is `vibe`, code may come first for the Active Task, so the TDD principle and the stop-and-ask rule above do not hold that task back; the step SRS MUST still be synthesized (MCP `synthesize_step_srs`, or CLI `speckiwi step synthesize <task>` when MCP is unavailable) before the commit that lands the task; `check_vibe_gate` (CLI `speckiwi vibe-gate check`) only confirms that the Active Task's step directory exists, not that the synthesis ran. Switch to vibe only when the user asks for it.
 
 Scope SRS document naming:
-1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.5.0.md` §5.2.
+1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.6.0.md` §5.2.
 2. Allocate `{NN}` as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`, the next `02`. Do not number by tens.
 3. Never reuse a number another scope document holds, and never renumber an existing document.
 4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.

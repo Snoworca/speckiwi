@@ -54,7 +54,7 @@ describe("FR-NODE-085 AC-7 — the rules drift remediation never names the force
     expect(check, "diagnoseHealth must include a rules check").toBeDefined();
     expect(check?.state).not.toBe("ok");
     expect(check?.remediation).not.toMatch(/--force/);
-    expect(check?.remediation).toMatch(/speckiwi init/);
+    expect(check?.remediation).toMatch(/speckiwi upgrade/);
   });
 
   it("FR-NODE-085 AC-7: no rules check remediation mentions the force flag in any state", async () => {
@@ -92,7 +92,7 @@ describe("FR-NODE-085 AC-8 — the rules check verifies the rules document exist
     expect(check, "diagnoseHealth must include a rules check").toBeDefined();
     expect(check?.state).not.toBe("ok");
     expect(check?.message).toMatch(new RegExp(`SRS-MD-Rules-v${BUNDLED_RULES_VERSION.replace(/\./g, "\\.")}\\.md`));
-    expect(check?.remediation).toMatch(/speckiwi init/);
+    expect(check?.remediation).toMatch(/speckiwi upgrade/);
     expect(check?.remediation).not.toMatch(/--force/);
   });
 

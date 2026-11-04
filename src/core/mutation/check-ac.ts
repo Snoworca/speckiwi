@@ -1,11 +1,19 @@
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
-import type { MutationResult, ProjectRoot } from "../types.js";
+import type { MutationResult, ProjectRoot, RequirementRecord } from "../types.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { loadRecord } from "./internal.js";
+import { refuseExpiredMarker } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+
+/** @req FR-NODE-243 AC-4 — the refusal for a named expired criterion, or undefined when none is named. */
+function expiredAmong(record: RequirementRecord, acIds: readonly string[]): MutationResult | undefined {
+  const named = (record.expiredAcceptanceCriteria ?? []).filter((criterion) => acIds.includes(criterion.id));
+  if (named.length === 0) return undefined;
+  return mutationFail("MUTATION_DENIED", `${named.map((criterion) => criterion.id).join(", ")} ${named.length === 1 ? "is" : "are"} expired; an expired criterion cannot be checked or edited`);
+}
 
 export interface SetAcCheckedInput {
   id: string;
@@ -23,6 +31,9 @@ export async function setAcceptanceCriteriaChecked(root: ProjectRoot, input: Set
 async function setAcceptanceCriteriaCheckedUnlocked(root: ProjectRoot, input: SetAcCheckedInput): Promise<MutationResult> {
   const loaded = await loadRecord(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
+  // @req FR-NODE-243 AC-4 — an expired criterion's box is frozen history; `all` reaches live ones only.
+  const expired = expiredAmong(loaded.record, input.acIds);
+  if (expired) return expired;
   const all = input.acIds.includes("all");
   const selected = loaded.record.acceptanceCriteria.filter((criterion) => all || input.acIds.includes(criterion.id));
   if (selected.length === 0) return mutationFail("MUTATION_DENIED", "No matching Acceptance Criteria");
@@ -80,8 +91,13 @@ async function editAcceptanceCriteriaUnlocked(root: ProjectRoot, input: EditAcce
     return mutationFail("USAGE", "text contains forbidden newline or control characters");
   }
 
+  const forged = refuseExpiredMarker("text", [input.text]);
+  if (forged) return forged;
+
   const loaded = await loadRecord(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
+  const expired = expiredAmong(loaded.record, [input.acId]);
+  if (expired) return expired;
   const criterion = loaded.record.acceptanceCriteria.find((entry) => entry.id === input.acId);
   if (!criterion) return mutationFail("MUTATION_DENIED", `Acceptance Criterion not found: ${input.acId}`);
 

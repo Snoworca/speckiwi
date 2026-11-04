@@ -1,4 +1,4 @@
-import { applyPatchPlan } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import type { MutationResult, ProjectRoot, RequirementStatus } from "../types.js";
 import { isRequirementStatus } from "../schema.js";
@@ -8,13 +8,15 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
-import { findMetadataLine, findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
+import { findSectionTableInsertionLine, loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
 import type { RequirementRecord } from "../types.js";
-import { syncIndexRollups } from "./sync-index.js";
+import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
 import { todayStamp } from "../date-stamp.js";
+import { parseWorkspace } from "../parser/workspace-parser.js";
+import { requirementReferenceRewrites } from "./requirement-references.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.3 — `reason` 제공 시 Change Notes row 가 동일 atomic transaction 으로 append.
@@ -100,7 +102,21 @@ export async function updateStatus(root: ProjectRoot, input: UpdateStatusInput):
   return withSrsMutationLock(root, { operation: "update_status", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => updateStatusUnlocked(root, input));
 }
 
-async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput): Promise<MutationResult> {
+/**
+ * @req FR-NODE-243 AC-7 — the discard step of supersede_requirement: discards `input.id` and moves
+ * every expired marker naming it as successor onto `successorId`, in the write that discards it.
+ */
+export async function discardSupersededRequirement(root: ProjectRoot, input: Omit<UpdateStatusInput, "status">, successorId: string): Promise<MutationResult> {
+  const discard: UpdateStatusInput = { ...input, status: "discarded" };
+  return withSrsMutationLock(root, { operation: "update_status", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => updateStatusUnlocked(root, discard, successorId));
+}
+
+/** `REQ AC-n` for every expired marker in `records` that names `id` as its successor. */
+function citingMarkers(records: readonly RequirementRecord[], id: string): string[] {
+  return records.flatMap((record) => (record.expiredAcceptanceCriteria ?? []).filter((criterion) => criterion.successor === id).map((criterion) => `${record.id} ${criterion.id}`));
+}
+
+async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput, successorId?: string): Promise<MutationResult> {
   if (!isRequirementStatus(input.status)) return mutationFail("USAGE", `Invalid status: ${input.status}`);
   if (input.reason !== undefined) {
     if (input.reason.length > MAX_REASON_LENGTH) {
@@ -133,6 +149,19 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
       );
     }
   }
+  // @req FR-NODE-243 AC-7 — a discarded successor leaves its markers dangling (SRS-E012) and no tool
+  // edits a marker, so a plain discard of a cited requirement is refused; supersede moves them.
+  const entersDiscarded = input.status === "discarded" && loaded.record.status !== "discarded";
+  const citing = entersDiscarded ? citingMarkers(loaded.records, input.id) : [];
+  if (citing.length > 0 && successorId === undefined) {
+    return mutationFail(
+      "MUTATION_DENIED",
+      `Cannot discard ${input.id}: expired criteria name it as their successor (${citing.join(", ")}); supersede it instead so the markers move to the new requirement`
+    );
+  }
+  const markerMoves = citing.length > 0 && successorId !== undefined
+    ? requirementReferenceRewrites(await parseWorkspace(root), loaded.records, input.id, successorId, ["expired-successor"])
+    : [];
   const nextRecord = { ...loaded.record, status: input.status };
   if (
     input.status === "verified" &&
@@ -152,10 +181,8 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, nextRecord);
     if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved));
   }
-  const statusLine = findMetadataLine(loaded.file, loaded.record, "Status");
-  if (!statusLine) return mutationFail("MUTATION_DENIED", "Status metadata row not found");
-  const original = loaded.file.lines[statusLine - 1];
-  if (original === undefined) return mutationFail("MUTATION_DENIED", "Status metadata row is outside file");
+  const statusWrite = planMetadataWrite(loaded.file, loaded.record, "Status", input.status);
+  if (!statusWrite.ok) return mutationFail("MUTATION_DENIED", statusWrite.message);
   const operations: PatchOperation[] = [];
   const headingOp = buildHeadingMarkerOp(
     loaded.file,
@@ -166,7 +193,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     loaded.record.stability
   );
   if (headingOp) operations.push(headingOp);
-  operations.push({ type: "replaceLine", line: statusLine, original, replacement: `| Status | ${input.status} |` });
+  operations.push(statusWrite.operation);
   if (input.reason !== undefined && input.reason.length > 0) {
     const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
     if (!insertLine) {
@@ -175,17 +202,33 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput)
     const row = `| ${todayStamp()} | ${statusChangeLabel(input.status)} | ${tableCellText(input.reason)} |`;
     operations.push({ type: "insertLines", line: insertLine, lines: [row] });
   }
+  for (const move of markerMoves.filter((rewrite) => rewrite.file.relativePath === loaded.file.relativePath)) {
+    operations.push({ type: "replaceLine", line: move.line, original: move.original, replacement: move.replacement });
+  }
   const plan = createPatchPlan(loaded.file, operations);
   const dryRun = input.dryRun ?? false;
-  const applied = await applyPatchPlan(plan, { dryRun });
-  const indexSync = applied.written ? await syncIndexRollups(root, { skipLock: true }) : undefined;
-  if (indexSync && !indexSync.ok) return indexSync;
+  // Markers in other documents: one plan each, written with the discard as one all-or-nothing change.
+  const otherFiles = new Map(markerMoves.filter((rewrite) => rewrite.file.relativePath !== loaded.file.relativePath).map((rewrite) => [rewrite.file.relativePath, rewrite.file]));
+  const otherPlans = [...otherFiles.values()].map((file) =>
+    createPatchPlan(
+      file,
+      markerMoves
+        .filter((rewrite) => rewrite.file.relativePath === file.relativePath)
+        .map((move): PatchOperation => ({ type: "replaceLine", line: move.line, original: move.original, replacement: move.replacement }))
+    )
+  );
+  // The rollup sync runs after the write, so its feasibility is settled first: a refusal leaves the
+  // Status unwritten rather than written and then reported as a failure.
+  const rollupRefusal = await checkIndexRollupsWritableAt(root);
+  if (rollupRefusal) return mutationFail("MUTATION_DENIED", rollupRefusal);
+  const applied = await applyPatchPlans([plan, ...otherPlans], { dryRun });
+  const rollup = applied.written ? await syncIndexRollupsAfterWrite(root) : undefined;
   return {
     ...withMutationEnvelope(
-    mutationOk({ id: input.id, status: input.status, written: applied.written }),
+    mutationOk({ id: input.id, status: input.status, written: applied.written }, rollup?.diagnostics),
     mutationEnvelopeFromPlan("update_status", plan, dryRun, applied.written)
     ),
-    ...(indexSync?.value ? { indexSync: indexSync.value } : {})
+    ...rollup?.fields
   };
 }
 

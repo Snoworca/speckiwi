@@ -211,6 +211,13 @@ export interface AcceptanceCriterion {
   line: number;
 }
 
+/** @req FR-PARSE-044 AC-1 — a criterion marked `~~text~~ [EXPIRED <date>[ → <REQ-ID>]]`; it never counts as live. */
+export interface ExpiredAcceptanceCriterion extends AcceptanceCriterion {
+  /** `YYYY-MM-DD`, the writer's local date when the tool marked it. */
+  expiredOn: string;
+  successor?: string;
+}
+
 export interface EvidenceRow {
   id: string;
   type: string;
@@ -246,7 +253,10 @@ export interface RequirementRecord {
   headingLine: number;
   marker?: "DISCARDED" | "DRAFT";
   metadata: Record<string, string>;
+  /** Live criteria only: an expired one is in {@link expiredAcceptanceCriteria}, so every count ignores it. */
   acceptanceCriteria: AcceptanceCriterion[];
+  /** @req FR-PARSE-044 AC-1 — present only when the block holds an expired criterion. */
+  expiredAcceptanceCriteria?: ExpiredAcceptanceCriterion[];
   verificationEvidence: EvidenceRow[];
   traceLinks: TraceLink[];
   changeNotes: ChangeNoteRow[];
@@ -392,6 +402,14 @@ export interface MutationResult<T = unknown> {
   patch?: PatchSummary;
   mutation?: MutationEnvelope;
   indexSync?: IndexSyncMutationSummary;
+  /** Set when the change was written but the index rollup sync that follows it failed. */
+  rollupSync?: RollupSyncFailure;
+}
+
+export interface RollupSyncFailure {
+  ok: false;
+  code: string;
+  message: string;
 }
 
 export interface IndexSyncMutationSummary {
@@ -562,8 +580,10 @@ export interface RetargetInput {
   exclude?: string[];
   reason?: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
-export type RetargetSkipReason = "excluded" | "not-found" | "target-not-registered" | "frozen-needs-change-note";
+export type RetargetSkipReason = "excluded" | "not-found" | "already-in-target" | "target-not-registered" | "frozen-needs-change-note";
 export interface RetargetItemPlan {
   id: string;
   fromTarget?: string;
@@ -572,6 +592,8 @@ export interface RetargetItemPlan {
 }
 export interface RetargetOutput {
   dryRun: boolean;
+  /** True only when a non-dry-run call wrote at least one file. */
+  written: boolean;
   items: RetargetItemPlan[];
 }
 
@@ -587,4 +609,6 @@ export interface ScaffoldScopeOutput {
   filePreview: string;
   srsDocumentsRow: string;
   scopeMapRow: string;
+  /** True once the document and both index rows are on disk; the SRS lock refreshes its status cache on it. */
+  written: boolean;
 }

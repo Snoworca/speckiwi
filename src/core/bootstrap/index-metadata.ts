@@ -1,3 +1,5 @@
+import { linesOutsideFences } from "../parser/index-parser.js";
+
 // @req FR-NODE-091 @req FR-NODE-085
 //
 // The index metadata table is the two-column `| Field | Value |` table under the document heading. Two
@@ -36,7 +38,10 @@ export function isRulesMetadataRow(line: string | undefined): boolean {
  * otherwise have the Rules row inserted into that table, leaving the real one still missing it.
  */
 export function findMetadataTableRange(lines: readonly string[]): TableRange | undefined {
+  // A fenced `| Field | Value |` table is an example, not the document's metadata (FR-PARSE-044 AC-6).
+  const outside = linesOutsideFences(lines);
   for (let index = 0; index < lines.length; index += 1) {
+    if (outside[index] !== true) continue;
     const cells = tableCells(lines[index]);
     if (cells.length !== 2 || cells[0]?.toLowerCase() !== "field" || cells[1]?.toLowerCase() !== "value") continue;
     let last = index;

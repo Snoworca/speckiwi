@@ -44,6 +44,10 @@ function formatReport(report: TestSufficiencyReport): string {
   ];
   for (const gap of report.gaps.requirements) for (const acId of gap.acIds) lines.push(`gap ${gap.requirementId} ${acId}`);
   for (const gap of report.gaps.sdsContracts) lines.push(`gap ${gap.sdsAcId} ${gap.reason}`);
+  // @req FR-PARSE-044 AC-3 — a test still citing an expired criterion is listed apart, never as coverage.
+  for (const expired of report.expiredCitations) {
+    lines.push(`expired ${expired.requirementId} ${expired.acId} cited by ${expired.citations.map((citation) => `${citation.file}:${citation.line}`).join(", ")}`);
+  }
   return lines.join("\n");
 }
 

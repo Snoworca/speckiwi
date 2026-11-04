@@ -1,15 +1,16 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { MutationResult, ProjectRoot } from "../types.js";
-import { mutationOk } from "../mutation/guards.js";
+import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
+import { mutationFail, mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import { initProject, type InitOnboardingReport, type InitProjectOutput } from "./init-project.js";
 import { unregisterSpeckiwiMcp, type AgentCliRunner } from "./mcp-registration.js";
 import { findGlobalDestinationCollision, removeProjectSkillCopies } from "./remove-project.js";
 import { gitTrackedPaths } from "../root-facts.js";
+import { discoverSrsDocuments, discoverSrsFiles, srsDocumentFiles } from "../parser/discover.js";
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
 import { BUNDLED_SDS_RULES_FILENAME, BUNDLED_SRS_RULES_FILENAME, renderIndexRulesRow } from "./templates.js";
-import { bundledVersionFor, rewriteRulesReferences, scanRulesReferences } from "./rules-references.js";
+import { bundledVersionFor, refreshRulesPointers, rewriteRulesReferences, scanRulesReferences, scanSpecRulesPointers } from "./rules-references.js";
 
 // @req FR-NODE-091
 //
@@ -33,7 +34,7 @@ const MANAGED_HOOKS: readonly string[] = [".git/hooks/pre-commit", ".claude/sett
 /** What this command will not do, stated so a reader never assumes more than it performs. */
 const BOUNDARIES: readonly string[] = [
   "Scope SRS documents are never renumbered; an existing numbering scheme is left as it is.",
-  "No requirement body is edited — changing one is a governance mutation, not a migration. Under docs/spec/ this writes the index metadata Rules row, plus the tool-owned scaffolds the refresh creates when they are missing (90.appendix.md, steps/state.md).",
+  "No requirement body is edited — changing one is a governance mutation, not a migration. Under docs/spec/ this writes only the rules pointers — the metadata Rules row of every SRS document at any depth (the index included) and the index's Reference Documents entry for the rules, each linked from that document's own directory — plus the tool-owned scaffolds the refresh creates when they are missing (90.appendix.md, steps/state.md).",
   "A hook that already exists is never overwritten; each one is reported as pre-existing so you can see what was left alone."
 ];
 
@@ -116,9 +117,19 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
   // place, and that block cites the rules documents itself: with the refresh first, an apply would scan
   // an already-repaired file and report different lines — or none — where the plan reported two. Every
   // project an older speckiwi initialised carries such a block, so that is the normal case, not an edge.
+  //
+  // Every read that can fail comes before the first write: a document this command cannot read stops it
+  // with nothing written (FR-NODE-091).
+  const srs = await readSrsDocuments(root);
+  if ("failure" in srs) return mutationFail("UPGRADE_READ_FAILED", srs.failure);
   const hooks = await reportHooks(root.root);
-  const insertion = await insertMissingRulesRow(root.root, apply, warnings);
-  const references = await repairRulesReferences(root.root, apply);
+  // Every line number this command reports is the file as it stood before the run, in a plan and an
+  // apply alike: the Rules row is planned against the original index and inserted after the repairs,
+  // so the repairs never see the line the insertion would add.
+  const indexPath = path.join(root.root, ...INDEX_RELATIVE_PATH.split("/"));
+  const insertion = planRulesRowInsertion(await readFile(indexPath, "utf8").catch(() => undefined), warnings);
+  const references = await repairRulesReferences(root.root, srs.files, apply);
+  if (apply && insertion) await writeFile(indexPath, withRulesRowInserted(await readFile(indexPath, "utf8")), "utf8");
 
   const initResult = await initProject(root, {
     dryRun: !apply,
@@ -240,7 +251,7 @@ async function migrateOffProjectCopies(
 }
 
 /**
- * Adds the bundled Rules pointer to the index metadata table when it has none.
+ * Plans adding the bundled Rules pointer to the index metadata table when it has none, against the index as it stood before the run.
  *
  * Anchored to the `| Field | Value |` table — not to "the first table in the file", and not to a
  * whole-file search for the row. An index that opens with a summary table would otherwise get the row
@@ -248,71 +259,83 @@ async function migrateOffProjectCopies(
  * glossary entry, or a scope literally named `Rules`) would make this repair a silent no-op while
  * doctor kept warning forever.
  */
-async function insertMissingRulesRow(
-  rootPath: string,
-  apply: boolean,
+function planRulesRowInsertion(
+  existing: string | undefined,
   warnings: string[]
-): Promise<{ filePath: string; line: number; row: string } | undefined> {
-  const absolutePath = path.join(rootPath, ...INDEX_RELATIVE_PATH.split("/"));
-  const existing = await readFile(absolutePath, "utf8").catch(() => undefined);
+): { filePath: string; line: number; row: string } | undefined {
   if (existing === undefined) return undefined; // No index; init scaffolds one with the row included.
-
-  // Alternating content/terminator parts, so an insertion leaves every other line ending byte-identical.
-  const parts = existing.split(/(\r\n|\n)/);
-  const lines = parts.filter((_, index) => index % 2 === 0);
+  const lines = existing.split(/\r?\n/);
   const range = findMetadataTableRange(lines);
   if (range === undefined) {
     warnings.push(`${INDEX_RELATIVE_PATH}: no \`| Field | Value |\` metadata table found, so no Rules row was inserted.`);
     return undefined;
   }
   if (lines.slice(range.first, range.last + 1).some((line) => isRulesMetadataRow(line))) return undefined;
+  return { filePath: INDEX_RELATIVE_PATH, line: range.last + 2, row: renderIndexRulesRow() };
+}
 
+/** The index with the bundled Rules row added at the end of its metadata table. */
+function withRulesRowInserted(existing: string): string {
+  // Alternating content/terminator parts, so an insertion leaves every other line ending byte-identical.
+  const parts = existing.split(/(\r\n|\n)/);
+  const lines = parts.filter((_, index) => index % 2 === 0);
+  const range = findMetadataTableRange(lines);
+  if (range === undefined || lines.slice(range.first, range.last + 1).some((line) => isRulesMetadataRow(line))) return existing;
   const row = renderIndexRulesRow();
-  if (apply) {
-    // The new row borrows the terminator of the row it follows, so a CRLF index stays CRLF and a file
-    // with mixed endings is not renormalised.
-    const terminatorSlot = range.last * 2 + 1;
-    const terminator = parts[terminatorSlot];
-    const next =
-      terminator === undefined
-        ? // The metadata table ends at EOF with no final terminator. The new row needs one BEFORE it,
-          // not after: appending `row + eol` welded the row onto the end of the previous one, turning a
-          // two-cell metadata row into a four-cell row and leaving no Rules row at all.
-          [...parts, parts.find((_, index) => index % 2 === 1) ?? "\n", row]
-        : [...parts.slice(0, terminatorSlot + 1), row, terminator, ...parts.slice(terminatorSlot + 1)];
-    await writeFile(absolutePath, next.join(""), "utf8");
-  }
-  return { filePath: INDEX_RELATIVE_PATH, line: range.last + 2, row };
+  // The new row borrows the terminator of the row it follows, so a CRLF index stays CRLF and a file
+  // with mixed endings is not renormalised.
+  const terminatorSlot = range.last * 2 + 1;
+  const terminator = parts[terminatorSlot];
+  const next =
+    terminator === undefined
+      ? // The metadata table ends at EOF with no final terminator. The new row needs one BEFORE it,
+        // not after: appending `row + eol` welded the row onto the end of the previous one, turning a
+        // two-cell metadata row into a four-cell row and leaving no Rules row at all.
+        [...parts, parts.find((_, index) => index % 2 === 1) ?? "\n", row]
+      : [...parts.slice(0, terminatorSlot + 1), row, terminator, ...parts.slice(terminatorSlot + 1)];
+  return next.join("");
 }
 
 /**
- * Repairs dangling references in the managed agent files and reports — without touching — the ones
- * found elsewhere under `docs/`. A note recording which rules version a project used to follow is a
- * record, not a defect, and rewriting it would corrupt the history it exists to keep.
+ * Repairs dangling references in the managed agent files and the rules pointers the tool wrote into the
+ * SRS documents, and reports — without touching — the ones found elsewhere under `docs/`. A note
+ * recording which rules version a project used to follow is a record, not a defect, and rewriting it
+ * would corrupt the history it exists to keep. A requirement that quotes an old rules file is left to
+ * its author; validation already reports it.
  */
-async function repairRulesReferences(rootPath: string, apply: boolean): Promise<RulesReferenceFinding[]> {
+async function repairRulesReferences(
+  rootPath: string,
+  srsFiles: ReadonlyArray<{ relativePath: string; lines: readonly string[] }>,
+  apply: boolean
+): Promise<RulesReferenceFinding[]> {
   const scan = await scanRulesReferences(rootPath);
   const isBroken = (document: string): boolean => !survivesRefresh(document);
   const findings: RulesReferenceFinding[] = [];
 
-  for (const filePath of [...new Set(scan.agentFiles.map((match) => match.filePath))]) {
-    const absolutePath = path.join(rootPath, filePath);
-    const text = await readFile(absolutePath, "utf8").catch(() => undefined);
-    if (text === undefined) continue;
-    const rewritten = rewriteRulesReferences(text, isBroken);
-    if (rewritten.changes.length === 0) continue;
-    if (apply) await writeFile(absolutePath, rewritten.next, "utf8");
-    for (const change of rewritten.changes) {
-      findings.push({
-        filePath,
-        line: change.line,
-        location: `${filePath}:${change.line}`,
-        from: change.from,
-        to: change.to,
-        action: "repair"
-      });
+  const repairFiles = async (
+    filePaths: readonly string[],
+    rewrite: (text: string, filePath: string) => { next: string; changes: ReadonlyArray<{ line: number; from: string; to: string }> }
+  ): Promise<void> => {
+    for (const filePath of new Set(filePaths)) {
+      const absolutePath = path.join(rootPath, filePath);
+      const text = await readFile(absolutePath, "utf8").catch(() => undefined);
+      if (text === undefined) continue;
+      const rewritten = rewrite(text, filePath);
+      if (rewritten.changes.length === 0) continue;
+      if (apply) await writeFile(absolutePath, rewritten.next, "utf8");
+      for (const change of rewritten.changes) {
+        findings.push({ filePath, line: change.line, location: `${filePath}:${change.line}`, from: change.from, to: change.to, action: "repair" });
+      }
     }
-  }
+  };
+  await repairFiles(scan.agentFiles.map((match) => match.filePath), (text) => rewriteRulesReferences(text, isBroken));
+  // @req FR-PARSE-044 AC-6 — every tool-owned rules pointer under docs/spec, found by the same scan doctor
+  // judges, so every pointer doctor warns about is rewritten here. The index is included: a plain init
+  // may refresh only its metadata row (FR-NODE-085 AC-5), which leaves the reference entry to this migration.
+  await repairFiles(
+    scanSpecRulesPointers(srsFiles).filter((pointer) => pointer.needsRefresh).map((pointer) => pointer.filePath),
+    (text, filePath) => refreshRulesPointers(text, filePath)
+  );
 
   for (const match of scan.otherDocs) {
     if (!isBroken(match.document)) continue;
@@ -321,12 +344,30 @@ async function repairRulesReferences(rootPath: string, apply: boolean): Promise<
       line: match.line,
       location: match.location,
       from: match.token,
-      to: match.token.replace(match.version, bundledVersionFor(match.family)),
+      to: match.token.replace(match.version, () => bundledVersionFor(match.family)),
       action: "report"
     });
   }
 
   return findings;
+}
+
+/**
+ * The SRS documents the parser reads, which is the set whose rules pointers this migration owns
+ * (FR-PARSE-044 AC-6) and the set doctor judges. Read by the parser's own discovery, so it is the same
+ * set; a project with no index yet still has its scope documents read, because init will create the
+ * index already current and the scope documents' pointers are this command's to repair in the same
+ * run. A read failure is this command's failure, reported with the file it could not read
+ * (FR-NODE-091): Node's error for a directory names no file, and readUtf8File attaches it as `path`.
+ */
+async function readSrsDocuments(root: ProjectRoot): Promise<{ files: TextFile[] } | { failure: string }> {
+  const indexExists = await stat(path.join(root.root, ...INDEX_RELATIVE_PATH.split("/"))).then(() => true, () => false);
+  return (indexExists ? discoverSrsFiles(root) : discoverSrsDocuments(root)).then(
+    (set) => ({ files: srsDocumentFiles(set) }),
+    (error: NodeJS.ErrnoException) => ({
+      failure: error.path === undefined || error.message.includes(error.path) ? error.message : `${error.message} (${error.path})`
+    })
+  );
 }
 
 /**

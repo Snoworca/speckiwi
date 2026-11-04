@@ -105,7 +105,7 @@ function isInside(relative: string): boolean {
  * Where a workspace path really is: `missing` when nothing is there, `outside` when the file resolves —
  * through a symlink or a junction as well as through `..` — outside the workspace's real location.
  */
-async function locate(rootPath: string, candidate: string): Promise<{ file: string } | "missing" | "outside"> {
+export async function locate(rootPath: string, candidate: string): Promise<{ file: string } | "missing" | "outside"> {
   const lexical = path.resolve(rootPath, candidate);
   if (!isInside(path.relative(rootPath, lexical))) return "outside";
   let real: string;

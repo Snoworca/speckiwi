@@ -1,6 +1,13 @@
 import path from "node:path";
 import { access } from "node:fs/promises";
+import { fileReferences, relatedDocsDestinations, relatedDocsPath, traceLinkPaths, type FileReference } from "../parser/file-references.js";
+import { checkPrdReferenceFiles } from "../prd/files.js";
 import type { ParsedWorkspace } from "../types.js";
+
+/** Every file reference `links check` verifies: each requirement's Related Docs files and Trace Link paths. */
+export function listFileReferences(workspace: ParsedWorkspace): FileReference[] {
+  return workspace.records.flatMap(fileReferences);
+}
 
 export interface LinkCheckResult {
   checked: number;
@@ -23,51 +30,17 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-function markdownLinks(value: string): string[] {
-  return [...value.matchAll(/\[[^\]]+]\(([^)]+)\)/g)].map((match) => match[1] ?? "");
-}
-
-/** A trailing line designation, in either the dash-range or the colon-column spelling. */
-const LINE_SUFFIX = /:\d+(?:[-:]\d+)?$/;
-/** A reference that names a file: one token, an extension, no whitespace. */
-const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
-
-/**
- * FR-NODE-206 — the files a Trace Link of a type other than Requirement names.
- *
- * Those rows went unread by THIS checker whatever they said, which is how a source edit could move a
- * line out from under a designation with nothing reddening. They were not unread altogether: the
- * `traceReference` filter keys on the cell whole, suffix and all, so a suffixed row answered its own
- * exact spelling and nothing else — dropping the suffix put 73 requirements within reach of the path
- * they always named, and cost no row the reference it had. The reference field is not always a path:
- * it also holds a task id, a requirement id and a sentence, so a candidate has to look like a file
- * before it is resolved as one — an extension is what separates `read.ts` from `T-PH001-02`.
- *
- * The line suffix goes before the path does, following what release readiness does with the
- * Verification Evidence reference — a different field, so a precedent rather than a second reader of
- * this one — because what this reports is whether the path resolves and not whether the line still
- * holds what the row describes. Resolution is exact from the workspace root and never by basename:
- * falling back to a basename search silently resolved twenty designations at a path no branch has
- * ever held onto a different file and scored them fresh.
- */
-function referencedPaths(reference: string): string[] {
-  return reference
-    .split(";")
-    .map((part) => part.trim().replace(/#.*$/, "").replace(LINE_SUFFIX, ""))
-    .filter((part) => REPOSITORY_PATH.test(part));
-}
-
 export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckResult> {
   const ids = new Set(workspace.records.map((record) => record.id));
   const broken: LinkCheckResult["broken"] = [];
   let checked = 0;
   for (const record of workspace.records) {
-    for (const link of markdownLinks(record.metadata["Related Docs"] ?? "")) {
+    for (const link of relatedDocsDestinations(record)) {
       checked += 1;
-      if (/^https:\/\/github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/.test(link)) continue;
-      if (/^https?:\/\//.test(link)) continue;
-      const absolute = path.resolve(workspace.root.root, "docs", "spec", path.normalize(link));
-      if (!(await exists(absolute))) {
+      const target = relatedDocsPath(link);
+      if (target === undefined) continue;
+      // An absolute target resolves to itself.
+      if (!(await exists(path.resolve(workspace.root.root, target)))) {
         broken.push({ requirementId: record.id, reference: link, reason: "local file missing", code: "SRS-W003" });
       }
     }
@@ -86,7 +59,7 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
         }
         continue;
       }
-      for (const referenced of referencedPaths(trace.reference)) {
+      for (const referenced of traceLinkPaths(trace)) {
         checked += 1;
         if (!(await exists(path.resolve(workspace.root.root, referenced)))) {
           broken.push({
@@ -98,6 +71,18 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
         }
       }
     }
+  }
+  // @req FR-NODE-242 AC-1 — a `docs/prd/<file>.prd.md#PRD-<n>` reference must name an item its PRD
+  // holds. The file of a Trace path is already one of the file references checked above (SRS-W074),
+  // so a Trace row adds only its item; a Rationale reference is checked for both.
+  for (const problem of await checkPrdReferenceFiles(workspace.root.root, workspace.records)) {
+    if (problem.field === "traceLinks" && problem.problem === "missing-file") continue;
+    broken.push({
+      requirementId: problem.requirementId,
+      reference: problem.reference,
+      reason: problem.problem === "missing-file" ? "PRD file missing" : `PRD item missing: ${problem.reference.slice(problem.reference.lastIndexOf("#") + 1)}`,
+      code: "SRS-W079"
+    });
   }
   return { checked, broken, networkAccess: false };
 }

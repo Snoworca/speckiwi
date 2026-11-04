@@ -45,7 +45,9 @@ describe("FR-MCP-068 — the narrative-section route is named where an agent loo
   });
 
   it("FR-MCP-068 AC-3: the MCP tool count is unchanged", () => {
-    expect(renderToolNames()).toHaveLength(89);
+    // 89 when FR-MCP-068 landed; 91 since 5.2.0 added `rename_scope` and `expire_acceptance_criterion`.
+    // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
+    expect(renderToolNames()).toHaveLength(97);
   });
 
   it("FR-MCP-068 AC-4: deleting either added sentence from the shipped description turns its check red", () => {

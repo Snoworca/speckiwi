@@ -7,8 +7,8 @@ import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { checkSdsFile, liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
 import { checkTestSufficiency } from "../../core/testing/test-sufficiency.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
-import { projectRequirementRecords, searchRequirementRecords } from "../../core/query/discovery.js";
-import { buildReadEnvelope, listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
+import { projectRequirementRecords, searchRequirementIndex, searchRequirementRecords } from "../../core/query/discovery.js";
+import { listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
 import { listSteps } from "../../core/query/list-steps.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
@@ -16,6 +16,8 @@ import type { Diagnostic, ParsedWorkspace } from "../../core/types.js";
 import type { McpCallContext, McpDependencies, McpServerHandle, McpToolMetadata } from "../adapter.js";
 import { isWorkspaceScope, type WorkspaceRootReason } from "../workspace-root.js";
 import { mcpFailure, mcpSuccess } from "../errors.js";
+import { createSearchIndexCache } from "../search-index-cache.js";
+import { mcpCollisionDiagnosis, mcpReadEnvelope, mcpWorkOrder } from "../read-diagnostics.js";
 import {
   workflowArtifacts,
   workflowPipelineCompact,
@@ -302,12 +304,13 @@ export function perCallWorkspaceRootTools(): string[] {
 }
 
 export function registerReadTools(server: McpServerHandle, deps: McpDependencies): void {
+  const searchIndexes = createSearchIndexCache();
   registerOrchestrateTools(server, deps, "read");
-  server.registerTool("mcp_workspace_info", async (_input, context) => {
+  server.registerTool("mcp_workspace_info", async (input, context) => {
     const parsed = await workspace(deps);
     const diagnostics = readDiagnostics(parsed);
     return mcpSuccess(
-      buildReadEnvelope(
+      mcpReadEnvelope(
         parsed,
         {
           workspaceRoot: parsed.root.root,
@@ -320,7 +323,8 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
           indexPath: "docs/spec/00.index.md",
           activeTarget: parsed.index.activeTarget
         },
-        diagnostics
+        diagnostics,
+        input
       ),
       diagnostics
     );
@@ -328,23 +332,35 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("list_requirements", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
-    return mcpSuccess(buildReadEnvelope(parsed, projectRequirementRecords(listRequirements(parsed, input), input), diagnostics), diagnostics);
+    return mcpSuccess(mcpReadEnvelope(parsed, projectRequirementRecords(listRequirements(parsed, input), input), diagnostics, input), diagnostics);
   }, srsReadMetadata("list_requirements"));
   server.registerTool("search_requirements", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const query = typeof input.query === "string" ? input.query : "";
-    return mcpSuccess(buildReadEnvelope(parsed, searchRequirementRecords(parsed.records, { ...input, query, filter: input }), diagnostics), diagnostics);
+    const match = input.match === "exact" ? "exact" : "ranked";
+    const options = { ...input, query, filter: input, match } as const;
+    // @req FR-MCP-071 — exact matching needs no index, so it never builds one.
+    const value = match === "exact"
+      ? searchRequirementRecords(parsed.records, options)
+      : searchRequirementIndex(await searchIndexes.index(parsed), options);
+    return mcpSuccess(mcpReadEnvelope(parsed, value, diagnostics, input), diagnostics);
   }, srsReadMetadata("search_requirements"));
   server.registerTool("get_requirement", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     try {
-      return mcpSuccess(buildReadEnvelope(parsed, getRequirement(parsed, String(input.id), { includeMarkdown: Boolean(input.includeMarkdown) }), diagnostics), diagnostics);
+      return mcpSuccess(mcpReadEnvelope(parsed, getRequirement(parsed, String(input.id), { includeMarkdown: Boolean(input.includeMarkdown) }), diagnostics, input), diagnostics);
     } catch (error) {
+      // @req FR-MCP-070 AC-2 — the refusal carries the same bounded list a success would.
+      const bounded = mcpReadEnvelope(parsed, {}, diagnostics, input);
       return mcpFailure("NOT_FOUND", (error as Error).message, {
-        diagnostics,
-        recovery: { tool: "search_requirements", message: "Search for the requirement ID or title, then retry get_requirement with the exact ID." }
+        diagnostics: bounded.diagnostics,
+        recovery: { tool: "search_requirements", message: "Search for the requirement ID or title, then retry get_requirement with the exact ID." },
+        metadata: {
+          diagnosticsSummary: bounded.diagnosticsSummary,
+          ...(bounded.diagnosticsTruncation ? { diagnosticsTruncation: bounded.diagnosticsTruncation } : {})
+        }
       });
     }
   }, srsReadMetadata("get_requirement"));
@@ -352,29 +368,30 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     const parsed = await workspace(deps, context);
     // @req FR-NODE-209 AC-3 — the same lite SDS diagnostics `speckiwi validate` adds.
     const diagnostics = [...readDiagnostics(parsed), ...(await liteSdsValidationDiagnostics(parsed))];
-    const result = splitDiagnostics(diagnostics);
     const diagnosticsSummary = summarizeDiagnostics(diagnostics);
-    return mcpSuccess({ ...result, summary: diagnosticsSummary, diagnosticsSummary }, diagnostics);
+    // @req FR-MCP-070 AC-1 AC-3 — every entry, once: the CLI's errors/warnings split repeats them, and
+    // each entry carries its own severity.
+    return mcpSuccess({ diagnostics: splitDiagnostics(diagnostics).diagnostics, summary: diagnosticsSummary, diagnosticsSummary }, diagnostics);
   }, srsReadMetadata("validate_spec"));
   server.registerTool("summarize_target", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const target = typeof input.target === "string" ? input.target : undefined;
     const summary = typeof target === "string" ? summarizeTarget(parsed, { target, diagnostics }) : summarizeTarget(parsed, { diagnostics });
-    return mcpSuccess(buildReadEnvelope(parsed, summary, diagnostics), diagnostics);
+    return mcpSuccess(mcpReadEnvelope(parsed, summary, diagnostics, input), diagnostics);
   }, srsReadMetadata("summarize_target"));
-  server.registerTool("get_active_target", async (_input, context) => {
+  server.registerTool("get_active_target", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
     const activeTarget = parsed.index.activeTarget;
     const summary = summarizeTarget(parsed, { diagnostics });
     const goal = activeTarget && parsed.index.targetGoals[activeTarget] ? parsed.index.targetGoals[activeTarget] : null;
-    return mcpSuccess(buildReadEnvelope(parsed, { activeTarget, summary, goal }, diagnostics), diagnostics);
+    return mcpSuccess(mcpReadEnvelope(parsed, { activeTarget, summary, goal }, diagnostics, input), diagnostics);
   }, srsReadMetadata("get_active_target"));
   server.registerTool("list_completed_work", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
-    return mcpSuccess(buildReadEnvelope(parsed, completedWorkReadModel(parsed, completedWorkFilter(input)), diagnostics), diagnostics);
+    return mcpSuccess(mcpReadEnvelope(parsed, completedWorkReadModel(parsed, completedWorkFilter(input)), diagnostics, input), diagnostics);
   }, srsReadMetadata("list_completed_work"));
   server.registerTool("diagnose_requirement_id_collisions", async (input) => {
     if ("ignoreLock" in input) {
@@ -382,7 +399,7 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
         recovery: { tool: "apply_requirement_id_collision_repair", message: "Use ignoreLock only with the apply mutation when deliberately bypassing an SRS lock." }
       });
     }
-    return diagnoseRequirementIdCollisions(await projectRoot(deps));
+    return mcpCollisionDiagnosis(await diagnoseRequirementIdCollisions(await projectRoot(deps)));
   }, { readOnlyHint: true });
   server.registerTool("plan_requirement_id_collision_repair", async (input) => {
     if ("ignoreLock" in input) {
@@ -412,7 +429,7 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
   server.registerTool("workflow_pipeline_compact", async (input, context) => workflowPipelineCompact(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_session_status", async (input, context) => workflowSessionStatus(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
   server.registerTool("workflow_worklog_tail", async (input, context) => workflowWorklogTail(await projectRoot(deps, context), workflowOptions(input)), WORKTREE_LOCAL_READ);
-  server.registerTool("get_next_work_order", async (input) => buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), { readOnlyHint: true });
+  server.registerTool("get_next_work_order", async (input, context) => mcpWorkOrder(await buildNextWorkOrder(await projectRoot(deps), workOrderOptions(input)), context?.workspace), { readOnlyHint: true });
   // FR-MCP-040 — validate_step runs the step-local validation pass (W044/W045/STEP_* advisories,
   // plus the FR-PARSE-033 SDS-W05x advisories in tdd mode), scoped to a named step so a
   // body-scope error never leaks into the step diagnostics.
