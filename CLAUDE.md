@@ -29,7 +29,7 @@ Code, contracts, SRS acceptance criteria and safety boundaries get the full bar:
 - Stop on evidence, not round count: recorded CRITICAL and HIGH catches came from mutation testing and adversarial execution, not from extra uniform review rounds (research 19).
 
 # SpecKiwi SRS workflow v1.11
-Written by speckiwi 5.0.1.
+Written by speckiwi 5.1.0.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
