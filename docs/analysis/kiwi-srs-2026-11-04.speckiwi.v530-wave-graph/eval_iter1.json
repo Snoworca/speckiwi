@@ -1,0 +1,252 @@
+{
+  "evaluator": "verify-pass-1",
+  "iter": 1,
+  "findings": [
+    {
+      "id": "K-1",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "tool-diagnostic",
+        "detail": "`node bin/speckiwi prd coverage docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md --target 5.3.0 --json` reports ungroundedCriteria for 8 new criteria: FR-NODE-245 AC-3, FR-NODE-251 AC-7, FR-NODE-253 AC-2, AC-3, AC-4, FR-FLOW-211 AC-4, FR-FLOW-213 AC-2, FR-FLOW-216 AC-4. Cause, from src/core/prd/coverage.ts:104-106 and :146-150: a Rationale is split into segments only at line breaks and `;`, and the reason after `fills: PRD-<n> / <kind> /` runs to the end of the segment, so an `AC-n ← PRD-m` written after a fills clause in the same sentence-run paragraph is read as prose. Each affected Rationale (50.nodejs-implementation.srs.md:16431, :16805, :16925; 60.workflow-release.srs.md:14727, :14852, :15019) puts a `fills:` clause before later AC citations separated only by `. `."
+      },
+      "req_id": "FR-NODE-245, FR-NODE-251, FR-NODE-253, FR-FLOW-211, FR-FLOW-213, FR-FLOW-216",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16431; src/core/prd/coverage.ts:104",
+      "description": "Eight acceptance criteria that do cite a PRD item (or carry a fills basis) are reported by the shipped PRD coverage tool as having neither, because a preceding fills clause in the same Rationale segment swallows their citation. PRD coverage and the computed wave PRD items (FR-FLOW-219 AC-1, IR-CLI-114 AC-2) would read these criteria as ungrounded.",
+      "suggested_action": "End each `fills: ... / <reason>` clause with `;` or a line break in these six Rationale paragraphs (or move fills clauses after the plain citations), then rerun `speckiwi prd coverage ... --target 5.3.0 --json` until ungroundedCriteria is empty. Consider adding the segment rule to FR-FLOW-209 so kiwi-srs prescribes it."
+    },
+    {
+      "id": "K-2",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "contradicting-quotes",
+        "detail": "60.workflow-release.srs.md:15209 (FR-FLOW-219 AC-2): \"AFTER the initial authoring and after each incremental authoring, THE host SHALL run `speckiwi prd coverage --target <product target>`, and an intent, goal or in-scope item it reports uncovered SHALL stop the run before the next dispatch.\" vs docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md:328-336 (PRD-27, confirmed in-scope proposal): \"로드맵은 다음 target 으로 나눠 이어서 구현한다\". Tool output for this very PRD and target: `prd coverage ... --target 5.3.0` lists PRD-25 (in-scope), PRD-26 (in-scope) and PRD-27 in uncitedItems."
+      },
+      "req_id": "FR-FLOW-219",
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:15209",
+      "description": "A PRD whose in-scope items are deliberately split across targets (this run's own PRD) leaves those items uncovered by the product target, so FR-FLOW-219 AC-2 stops every wave-master run of 5.3.0 before its first dispatch; the AC has no path for an item the PRD assigns to another target, unlike FR-FLOW-212 AC-4 which records consent for a narrowed requirement scope.",
+      "suggested_action": "Let AC-2 exempt items the PRD (or the kiwi-srs verdict `other-wave`) assigns to another target, or require the user's recorded consent for each deferred item as FR-FLOW-212 AC-4 does, and state which output field carries that exemption."
+    },
+    {
+      "id": "K-3",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "contradicting-quotes",
+        "detail": "50.nodejs-implementation.srs.md:16568 (FR-NODE-247 AC-2): \"SHALL refuse a path not tracked at HEAD with `files-not-grounded` under the FR-NODE-216 AC-6 rule\" vs 30.cli-interface.srs.md:5222 (IR-CLI-084 AC-2, the rule FR-NODE-216 AC-6 applies): \"An SDS Files path that does not exist and has no repository path within Levenshtein distance 2 is accepted and the plan is produced, so a unit that creates new files is not refused.\" Also 60.workflow-release.srs.md:13747 (FR-FLOW-195 AC-1): files[] is filled \"from the wave's existing modules and expected new paths\"."
+      },
+      "req_id": "FR-NODE-247",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16568",
+      "description": "AC-2 says every path not tracked at HEAD is refused, while the rule it invokes accepts a new path with no near neighbour; a test with an expected new file (which the impact analysis of FR-FLOW-212 AC-1 must be able to name) cannot satisfy both readings.",
+      "suggested_action": "Rewrite the clause to \"SHALL ground each path by the FR-NODE-216 AC-6 rule (a near-miss of a tracked path is refused with `files-not-grounded`; a new path with no near neighbour is accepted)\"."
+    },
+    {
+      "id": "K-4",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "50.nodejs-implementation.srs.md:16691 (FR-NODE-249 AC-1) makes an AC done \"only WHEN ... at least one test cites\" it and, when the scan did not run, only says the condition is \"reported unchecked\" with `cited_checked: false`; it never says whether such an AC counts as done. :16692 (AC-2) makes a `complete` node `done` only when every AC is done, else `unverified`. 30.cli-interface.srs.md:7055 (IR-CLI-113 AC-4) defers the unscanned case back to FR-NODE-249 AC-1. :16809 and :16811 (FR-NODE-251 AC-1, AC-3) give `wave actions` no scan option and no statement whether it scans, yet make an action due only for a `done` node (AC-4: `unverified` holds every action)."
+      },
+      "req_id": "FR-NODE-249",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16691",
+      "description": "For a completed node whose ACs are checked and covered, the expected state without the citation scan (done or unverified) is undefined, so a test of `wave status` without `--with-tests`, and of whether `wave actions` ever reports a notify as due, has no determinate expected output. Under the strict reading every completed node is `unverified` in default `wave status` and no completion action is ever due.",
+      "suggested_action": "State the unscanned outcome explicitly (for example: an AC whose only unknown is the citation counts as done-unchecked and does not make the node `unverified`), and state in FR-NODE-251 AC-1 whether `wave actions` runs the scan."
+    },
+    {
+      "id": "K-5",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "50.nodejs-implementation.srs.md:16990 (FR-NODE-254 AC-1) fixes a round row as `{id, verdict, kept, evidence?}`; :16991 (AC-2) requires, under `--max`, \"rows from two verifiers, a round with rows from one verifier returning `invalid`\". Neither the row nor the existing `Round` input (src/core/orchestrator/verification-gate.ts:16-40: `RoundRow {id, verdict, severity}`, Round fields loop/scope/roundIndex/mode/cap/streakBefore/frozenDenominator/rows/fixAppliedThisRound/regression/residual) carries a verifier identity."
+      },
+      "req_id": "FR-NODE-254",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16991",
+      "description": "evaluateRound cannot tell rows of one verifier from rows of two with the row shape AC-1 fixes, so the `--max` clause of AC-2 (and the FR-NODE-144 AC-5 mode difference the Implementation Notes rely on) is not testable.",
+      "suggested_action": "Add a verifier field to the row (e.g. `{id, verdict, kept, evidence?, verifier}`) or a per-round verifier count input, and say which one AC-2 reads."
+    },
+    {
+      "id": "K-6",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "60.workflow-release.srs.md:15088 (FR-FLOW-217 AC-1): \"A remaining wave SHALL be a node with no `phase=\\\"worker\\\"` line in the run journal, read through `orchestrate wave status`\". The fields `wave status` returns per node (30.cli-interface.srs.md:7052, IR-CLI-113 AC-1, plus IR-CLI-104 AC-1) are the latest line's `status`/`phase`/`ts` and derived `state`, `started_at` (first `in_progress`, FR-NODE-249 AC-3) — none records whether any `phase=worker` line exists. Counter-case: a re-entered node (`r{m}`) whose journal holds a worker line followed by a later `in_progress` line with `phase=schedule` shows only `phase: schedule`."
+      },
+      "req_id": "FR-FLOW-217",
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:15088",
+      "description": "The remaining-wave predicate is defined on journal content that the named reader does not expose, so a host following FR-FLOW-222 AC-5 (read progress only through `wave status`) cannot evaluate it, and a test of the predicate through `wave status` has no field to assert on.",
+      "suggested_action": "Either add a per-node `dispatched` (or `first_dispatched_at`) field to IR-CLI-113 AC-1, or define the remaining-wave predicate on fields `wave status` already returns."
+    },
+    {
+      "id": "K-7",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "Trace Links at 50.nodejs-implementation.srs.md:16943-16944 and the Research note at :16950 cite `renderToolDescriptions (src/mcp/schemas.ts:673)`, `isReadOnlyTool (src/mcp/server.ts:547)` and `createSdkServer (server.ts:652-667)`. Working tree: schemas.ts:673 is a doc comment, the function is at :703; server.ts:547 is a comment line listing `__defineGetter__`, isReadOnlyTool is at :577, createSdkServer at :687. HEAD: :637, :521, :626."
+      },
+      "req_id": "FR-NODE-253",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16943",
+      "description": "The code locations the requirement names do not hold the symbols they claim, in either the working tree or HEAD.",
+      "suggested_action": "Point the Code trace links and the research note at the current lines (schemas.ts:703, server.ts:577, server.ts:687) or at the symbol names without a line, since both files are under concurrent 5.2.0 edits."
+    },
+    {
+      "id": "K-8",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "50.nodejs-implementation.srs.md:17004 trace link `src/core/orchestrator/verification-gate.ts:100` (\"blockingSeverities removed\") and :17010 research \"verification-gate.ts:100-101\": line 100 is the comment `// verifier has read.`; `blockingSeverities` is at :103 and the gate expression at :104 (file unmodified, same at HEAD)."
+      },
+      "req_id": "FR-NODE-254",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:17004",
+      "description": "The addition-site trace link and research note point three lines above the code they name.",
+      "suggested_action": "Change the reference to verification-gate.ts:103 (and the research range to :103-104)."
+    },
+    {
+      "id": "K-9",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failing-check",
+        "detail": "50.nodejs-implementation.srs.md:16705 trace link `src/core/parser/ac-parser.ts:80` (\"checkbox and expiry marker per AC\"): working-tree line 80 is `})` closing the SRS-E019 diagnostic push; the checkbox and expiry-marker parse is at :84-92 (HEAD line 80 is blank)."
+      },
+      "req_id": "FR-NODE-249",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16705",
+      "description": "The verifies trace link does not point at the checkbox/expiry parsing it names.",
+      "suggested_action": "Point the link at ac-parser.ts:84 (or name the function without a line; the file is under concurrent 5.2.0 edits)."
+    },
+    {
+      "id": "D-1",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "IR-CLI-114 AC-4 makes `wave show` always run the citation scan, while PRD-23 says \"테스트 인용 스캔은 `--with-tests` 일 때만 한다\"."
+      },
+      "req_id": "IR-CLI-114",
+      "evidence_path": "docs/spec/30.cli-interface.srs.md:7027",
+      "description": "Possible contradiction with PRD-23 on the citation scan.",
+      "suggested_action": "None. Dropped: PRD-23 cites decision 20, which asks only whether `wave status` scans (research synthesis line 658), and the design source puts the scan in `show` and `check` (line 387); IR-CLI-113 AC-4 implements the `--with-tests` rule for `wave status`. No two SRS lines contradict."
+    },
+    {
+      "id": "D-2",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "WG-05 (FR-NODE-246 AC-6) accepts two dependent requirements in the same node without checking their order in `acs`, so a hand edit could put a dependent requirement first."
+      },
+      "req_id": "FR-NODE-246",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16497",
+      "description": "Intra-node dependency order not checked.",
+      "suggested_action": "None. Dropped: no failing check or contradicting quote; PRD-18's dependency order is accepted by FR-NODE-247 AC-8 and FR-FLOW-216 AC-1. Opinion only."
+    },
+    {
+      "id": "D-3",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-PARSE-045 Research says `depends on <REQ-ID>` occurs 4 times; `grep -iE \"depends on [A-Z]+-[A-Z]+-[0-9]+\" docs/spec/*.srs.md` returns 3 lines."
+      },
+      "req_id": "FR-PARSE-045",
+      "evidence_path": "docs/spec/20.parser-validation.srs.md:3006",
+      "description": "Count in a research note differs by one.",
+      "suggested_action": "None. Dropped: a research-note count, not a functional defect of any AC."
+    },
+    {
+      "id": "D-4",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-NODE-244 AC-1 lists required and accepted top-level keys but not `schema_version`, then refuses \"any other top-level key\"."
+      },
+      "req_id": "FR-NODE-244",
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md:16370",
+      "description": "Literal reading would refuse the discriminator key.",
+      "suggested_action": "None. Dropped: the WHEN clause names `schema_version` as the discriminator; wording only, no failing test shown."
+    },
+    {
+      "id": "D-5",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-FLOW-223 AC-1 and FR-FLOW-219 AC-3 both require text within the first 5,000 estimated tokens of kiwi-wave-master."
+      },
+      "req_id": "FR-FLOW-223",
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:15471",
+      "description": "Both blocks might not fit in the budget.",
+      "suggested_action": "None. Dropped: not measurable before the restructure; the requirement states the §0.G table (about 2,702 tokens) moves behind the block. Speculation."
+    }
+  ],
+  "prd_items": [
+    {"id": "PRD-1", "kind": "intent", "verdict": "accepted", "refs": ["FR-FLOW-212"], "note": "FR-FLOW-212 AC-1 cites PRD-1; the target adds capabilities (work graph, tools) rather than removing them."},
+    {"id": "PRD-2", "kind": "intent", "verdict": "accepted", "refs": ["FR-NODE-247", "FR-NODE-252", "IR-CLI-113", "FR-FLOW-223"], "note": "Determinism (FR-NODE-247 AC-10), mechanical checks (FR-NODE-252 AC-1), optional scan (IR-CLI-113 AC-4), compaction-safe rules (FR-FLOW-223 AC-1)."},
+    {"id": "PRD-3", "kind": "goal", "verdict": "accepted", "refs": ["IR-CLI-113", "IR-CLI-114", "IR-MCP-008", "FR-NODE-246", "FR-FLOW-210", "FR-FLOW-223", "FR-FLOW-219"], "note": "Bounded responses (FR-NODE-246 AC-12, IR-CLI-114 AC-3, IR-MCP-008 AC-3), summary without description (IR-CLI-113 AC-1), skill token budgets."},
+    {"id": "PRD-4", "kind": "goal", "verdict": "accepted", "refs": ["FR-NODE-245", "FR-NODE-246", "FR-NODE-247", "FR-NODE-249", "FR-FLOW-212", "FR-FLOW-214", "FR-FLOW-215"], "note": "Single shared modules and one decomposition mode."},
+    {"id": "PRD-5", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-FLOW-212", "FR-FLOW-214", "FR-FLOW-215", "FR-FLOW-219"], "note": "FR-FLOW-212 AC-1 fixes the order PRD, one SRS authoring, decomposition."},
+    {"id": "PRD-6", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "FR-NODE-247", "FR-FLOW-216"], "note": "Nodes carry acs (FR-NODE-244 AC-3); worker implements requirements one by one (FR-FLOW-216 AC-1)."},
+    {"id": "PRD-7", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-FLOW-216"], "note": "FR-FLOW-216 AC-1: kiwi-pm per requirement then kiwi-review-fix-loop over the wave window."},
+    {"id": "PRD-8", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "FR-NODE-246", "FR-NODE-247"], "note": "Required edges (FR-NODE-244 AC-6), stage preview (FR-NODE-246 AC-11), computed edges (FR-NODE-247 AC-8)."},
+    {"id": "PRD-9", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "FR-FLOW-222", "FR-FLOW-212"], "note": "waves.json schema 2.0.0 with nodes and edges, committed by the skills."},
+    {"id": "PRD-10", "kind": "in-scope", "verdict": "accepted", "refs": ["IR-CLI-113", "IR-CLI-114", "IR-MCP-008", "FR-NODE-246", "FR-NODE-251", "FR-FLOW-222"], "note": "CLI and MCP readers; FR-FLOW-222 AC-5 forbids reading the files by hand. See K-6 for one predicate the reader does not expose."},
+    {"id": "PRD-11", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "IR-CLI-114"], "note": "description, github_issues, cautions optional on a node (FR-NODE-244 AC-2)."},
+    {"id": "PRD-12", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "FR-NODE-246", "FR-NODE-249", "IR-CLI-114"], "note": "acs required non-empty (FR-NODE-244 AC-3), partition (FR-NODE-246 AC-4), per-AC done (FR-NODE-249 AC-1; see K-4)."},
+    {"id": "PRD-13", "kind": "in-scope", "verdict": "accepted", "refs": ["FR-NODE-244", "FR-NODE-250", "FR-FLOW-222"], "note": "purpose required, done_when, on_complete (FR-NODE-244 AC-2, AC-4, AC-5); executed by FR-FLOW-222 AC-2."},
+    {"id": "PRD-14", "kind": "goal", "verdict": "accepted", "refs": ["IR-CLI-113", "FR-NODE-249", "FR-NODE-246"], "note": "report_version, digest, times and raw counts for a later dashboard."},
+    {"id": "PRD-15", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-247", "FR-NODE-246"], "note": "Caps 5 requirements, 25 ACs, 25 files and floor 2 (FR-NODE-247 AC-6, AC-7), SCC as one unit (AC-4), deterministic (AC-10)."},
+    {"id": "PRD-16", "kind": "proposal", "verdict": "accepted", "refs": ["FR-PARSE-045", "FR-FLOW-208", "FR-NODE-244", "FR-NODE-246"], "note": "depends_on trace links, prose diagnostic, edges required, WG-05."},
+    {"id": "PRD-17", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-247", "FR-FLOW-212"], "note": "Expected files via --files, never an SRS field (FR-NODE-247 AC-2, FR-FLOW-212 AC-5). See K-3 on the path-grounding wording."},
+    {"id": "PRD-18", "kind": "proposal", "verdict": "accepted", "refs": ["FR-FLOW-216", "FR-FLOW-223"], "note": "kiwi-pm per requirement in dependency order, test commit then implementation commit, review once per wave window."},
+    {"id": "PRD-19", "kind": "proposal", "verdict": "accepted", "refs": ["FR-FLOW-211", "FR-FLOW-212", "FR-NODE-244"], "note": "kiwi-pm reads by ID; the one-target limit is kept by FR-FLOW-212 depending on FR-FLOW-211."},
+    {"id": "PRD-20", "kind": "proposal", "verdict": "accepted", "refs": ["FR-FLOW-220", "FR-FLOW-221", "FR-NODE-252", "FR-NODE-254"], "note": "Machine checks first, one verifier and two under --max, red-test-only findings, severity removed. See K-5 on the --max row model."},
+    {"id": "PRD-21", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-246", "FR-FLOW-213", "FR-FLOW-217", "FR-FLOW-218", "FR-FLOW-220"], "note": "Partition in wave check, redecompose only undispatched waves, late draft promotion, integration items from trace links with edge reason, srs_deltas[]. See K-6."},
+    {"id": "PRD-22", "kind": "proposal", "verdict": "accepted", "refs": ["FR-FLOW-215", "FR-FLOW-219", "FR-FLOW-222"], "note": "R-ORCH SRS-first through one shared mode."},
+    {"id": "PRD-23", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-244", "IR-CLI-113", "IR-CLI-114", "FR-NODE-246", "FR-NODE-251", "IR-MCP-008"], "note": "Extends the declaration file, title required, status/show/check/actions, MCP from the binding table, --with-tests on status."},
+    {"id": "PRD-24", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-251", "FR-NODE-250", "FR-NODE-245", "FR-FLOW-222"], "note": "Tool computes key and text, host executes and journals intent/result, blocking default false, alias only, no automatic resend of interrupted."},
+    {"id": "PRD-25", "kind": "in-scope", "verdict": "other-wave", "refs": [], "note": "Roadmap tooling is target 5.4.0 per PRD-27; `prd coverage --target 5.3.0` lists it uncited, as expected."},
+    {"id": "PRD-26", "kind": "in-scope", "verdict": "other-wave", "refs": [], "note": "Roadmap markdown format is 5.4.0."},
+    {"id": "PRD-27", "kind": "proposal", "verdict": "other-wave", "refs": [], "note": "Defines the 5.4.0 split; no 5.3.0 requirement contradicts it except the run-stop effect recorded in K-2."},
+    {"id": "PRD-28", "kind": "proposal", "verdict": "accepted", "refs": ["FR-NODE-248", "FR-FLOW-209", "FR-FLOW-210", "FR-NODE-253"], "note": "Covers range refused (FR-NODE-248), citation form aligned after 5.2.0 (FR-FLOW-209), kiwi-prd sentence split (FR-FLOW-210), appendix generation gap (FR-NODE-253). The planned-target, targets MCP and rename-target gaps are other-wave (5.4.0)."},
+    {"id": "PRD-29", "kind": "proposal", "verdict": "respected", "refs": ["FR-NODE-244", "IR-CLI-113"], "note": "Exclusion: no requirement builds a dashboard screen; the graph refuses coordinates and status (FR-NODE-244 AC-2) and tools emit only raw values."}
+  ],
+  "srs_items": [
+    {"id": "FR-NODE-244", "verdict": "grounded", "basis": "PRD-9, PRD-23, PRD-19, PRD-11, PRD-13, PRD-29, PRD-12, PRD-6, PRD-24, PRD-8, PRD-16", "note": "extends FR-NODE-216 without expiry."},
+    {"id": "FR-NODE-245", "verdict": "fills", "basis": "AC-1, AC-3 ← PRD-24, PRD-4; AC-2 fills: PRD-24 / defect", "note": "AC-3 citation unread by prd coverage (K-1)."},
+    {"id": "FR-NODE-246", "verdict": "grounded", "basis": "PRD-21, PRD-23, PRD-10, PRD-9, PRD-16, PRD-12, PRD-15, PRD-24, PRD-13, PRD-29, PRD-14, PRD-8, PRD-3, PRD-20, PRD-4", "note": "supersedes FR-NODE-133 whole at implementation."},
+    {"id": "FR-NODE-247", "verdict": "fills", "basis": "PRD-15, PRD-17, PRD-16, PRD-10, PRD-8, PRD-6, PRD-18, PRD-9, PRD-2; AC-3, AC-4 (cap refusal), AC-5 fills: PRD-15", "note": "K-3 on AC-2."},
+    {"id": "FR-NODE-248", "verdict": "grounded", "basis": "PRD-28, PRD-12", "note": ""},
+    {"id": "FR-NODE-249", "verdict": "grounded", "basis": "PRD-12, PRD-10, PRD-13, PRD-14, PRD-29, PRD-4", "note": "K-4, K-9."},
+    {"id": "FR-NODE-250", "verdict": "grounded", "basis": "PRD-10, PRD-13, PRD-21, PRD-24", "note": ""},
+    {"id": "FR-NODE-251", "verdict": "fills", "basis": "PRD-10, PRD-23, PRD-24, PRD-12, PRD-13; AC-6 fills: PRD-24 / hole", "note": "AC-7 citation unread by prd coverage (K-1)."},
+    {"id": "FR-NODE-252", "verdict": "fills", "basis": "PRD-20, PRD-2; AC-3 unchecked list fills: PRD-20 / hole", "note": ""},
+    {"id": "FR-NODE-253", "verdict": "fills", "basis": "PRD-28, PRD-4, PRD-3; AC-1 fills: PRD-10 / defect", "note": "AC-2..AC-4 citations unread by prd coverage (K-1); K-7."},
+    {"id": "FR-NODE-254", "verdict": "grounded", "basis": "PRD-20", "note": "K-5, K-8."},
+    {"id": "FR-PARSE-045", "verdict": "grounded", "basis": "PRD-16", "note": ""},
+    {"id": "IR-CLI-113", "verdict": "fills", "basis": "PRD-10, PRD-12, PRD-23, PRD-3, PRD-14, PRD-29, PRD-2; AC-6 fills: PRD-23 / hole", "note": "extends IR-CLI-104 without expiry."},
+    {"id": "IR-CLI-114", "verdict": "grounded", "basis": "PRD-10, PRD-12, PRD-23, PRD-11, PRD-13, PRD-21, PRD-3", "note": "D-1 dropped."},
+    {"id": "IR-MCP-008", "verdict": "grounded", "basis": "PRD-10, PRD-23, PRD-3", "note": ""},
+    {"id": "FR-FLOW-208", "verdict": "grounded", "basis": "PRD-16", "note": ""},
+    {"id": "FR-FLOW-209", "verdict": "grounded", "basis": "PRD-28", "note": "K-1 is direct evidence for its AC-1 fixture."},
+    {"id": "FR-FLOW-210", "verdict": "grounded", "basis": "PRD-28, PRD-3", "note": ""},
+    {"id": "FR-FLOW-211", "verdict": "fills", "basis": "PRD-19; AC-3 fills: PRD-19 / hole", "note": "AC-4 citation unread by prd coverage (K-1)."},
+    {"id": "FR-FLOW-212", "verdict": "fills", "basis": "PRD-5, PRD-15, PRD-11, PRD-13, PRD-1, PRD-4, PRD-21, PRD-12, PRD-17; AC-4 consent fills: PRD-5 / hole", "note": "supersedes/extends FR-FLOW-029, FR-FLOW-195, FR-FLOW-188 with expiry or rewrite plans recorded."},
+    {"id": "FR-FLOW-213", "verdict": "fills", "basis": "AC-1 fills: PRD-21 / hole; AC-2 ← PRD-21", "note": "AC-2 citation unread by prd coverage (K-1)."},
+    {"id": "FR-FLOW-214", "verdict": "grounded", "basis": "PRD-5, PRD-4", "note": "supersedes FR-FLOW-030 whole."},
+    {"id": "FR-FLOW-215", "verdict": "grounded", "basis": "PRD-22, PRD-5, PRD-4", "note": ""},
+    {"id": "FR-FLOW-216", "verdict": "fills", "basis": "PRD-6, PRD-7, PRD-18, PRD-20; AC-3, AC-4 fills: PRD-18 / hole", "note": "AC-4 basis unread by prd coverage (K-1)."},
+    {"id": "FR-FLOW-217", "verdict": "fills", "basis": "PRD-21, PRD-9; AC-2 rules fills: PRD-21 / hole", "note": "K-6."},
+    {"id": "FR-FLOW-218", "verdict": "fills", "basis": "PRD-21, PRD-20; AC-3, AC-4 (verified rule) fills: PRD-21 / hole", "note": ""},
+    {"id": "FR-FLOW-219", "verdict": "fills", "basis": "AC-1 fills: PRD-5 / contradiction; AC-2 ← PRD-20; AC-3 ← PRD-5, PRD-3", "note": "K-2; expires FR-FLOW-204 AC-9."},
+    {"id": "FR-FLOW-220", "verdict": "grounded", "basis": "PRD-20, PRD-21, PRD-5", "note": "expiry/rewrite plans for FR-FLOW-044, FR-FLOW-045, FR-FLOW-049 recorded."},
+    {"id": "FR-FLOW-221", "verdict": "grounded", "basis": "PRD-20", "note": ""},
+    {"id": "FR-FLOW-222", "verdict": "grounded", "basis": "PRD-9, PRD-21, PRD-23, PRD-13, PRD-24, PRD-22, PRD-10", "note": ""},
+    {"id": "FR-FLOW-223", "verdict": "grounded", "basis": "PRD-3, PRD-2, PRD-10, PRD-18, PRD-19", "note": "D-5 dropped."}
+  ],
+  "summary": {
+    "kept": 9,
+    "dropped": 5,
+    "prd_fail": 0,
+    "residual": 0
+  },
+  "checks_run": [
+    "node bin/speckiwi validate --json: 17 diagnostics, all SRS-W073 on pre-existing requirements and documents; none on the 31 new IDs",
+    "node bin/speckiwi links check --json: same 17 SRS-W073; no broken link on the new IDs",
+    "node bin/speckiwi prd coverage docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md --target 5.3.0 --json: uncitedItems PRD-25, PRD-26, PRD-27; uncitedRequirements none; ungroundedCriteria 8 (K-1)",
+    "every Code trace link path:line of the new requirements read in the working tree; mismatches in K-7, K-8, K-9",
+    "srs_delta.json: every add_trace_link targets a new ID; no 5.2.0 requirement block edited by this run",
+    "dependency graph of the new requirements' depends_on links: acyclic"
+  ]
+}

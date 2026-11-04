@@ -1,0 +1,91 @@
+{
+  "target": "5.4.0",
+  "prd": "docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md",
+  "scope_prd_items": ["PRD-25", "PRD-26", "PRD-27", "PRD-28 (tool gaps recorded after 5.3.0)"],
+  "exclusion_kept": ["PRD-29"],
+  "active_target_after": "5.2.0",
+  "mcp_calls": [
+    { "tool": "add_requirement", "result": "FR-PARSE-046", "ok": true },
+    { "tool": "add_requirement", "result": "FR-PARSE-047", "ok": true },
+    { "tool": "add_requirement", "result": "FR-NODE-255", "ok": true },
+    { "tool": "add_requirement", "result": "FR-NODE-256", "ok": true },
+    { "tool": "add_requirement", "result": "FR-NODE-257", "ok": true },
+    { "tool": "add_requirement", "result": "FR-NODE-258", "ok": true },
+    { "tool": "add_requirement", "result": "IR-CLI-115", "ok": true },
+    { "tool": "add_requirement", "result": "IR-CLI-116", "ok": true },
+    { "tool": "add_requirement", "result": "IR-MCP-009", "ok": true },
+    { "tool": "add_requirement", "result": "IR-MCP-010", "ok": true },
+    { "tool": "add_requirement", "result": "FR-FLOW-224", "ok": true },
+    { "tool": "add_requirement", "result": "FR-FLOW-225", "ok": true },
+    { "tool": "replace_acceptance_criteria", "id": "FR-FLOW-225", "ok": true, "why": "kiwi-prd does not call kiwi-srs; it returns next-step guidance (skills/claude/kiwi-prd/SKILL.md:19), so AC-1 now targets that guidance" },
+    { "tool": "add_requirement", "result": "FR-FLOW-226", "ok": true },
+    { "tool": "add_trace_link", "count": 22, "ok": true, "note": "one call (FR-FLOW-224 -> FR-FLOW-225) failed with EPERM on the tmp rename, its tmp file was removed and the call retried successfully" },
+    { "tool": "append_section_note", "section": "rationale", "mode": "replace", "count": 13, "ok": true, "why": "coordinator: put AC-n <- PRD-m citations and fills: lines on separate lines, fills last, so prd coverage does not swallow citations" },
+    { "tool": "edit_requirement_table_rows", "section": "trace_links", "count": 12, "ok": true, "why": "coordinator: add function or symbol names to Code trace notes because line numbers drift" },
+    { "tool": "validate_spec", "ok": true }
+  ],
+  "added_ids": [
+    "FR-PARSE-046", "FR-PARSE-047",
+    "FR-NODE-255", "FR-NODE-256", "FR-NODE-257", "FR-NODE-258",
+    "IR-CLI-115", "IR-CLI-116",
+    "IR-MCP-009", "IR-MCP-010",
+    "FR-FLOW-224", "FR-FLOW-225", "FR-FLOW-226"
+  ],
+  "trace_links": {
+    "depends_on": [
+      { "from": "FR-PARSE-047", "to": "FR-PARSE-046" },
+      { "from": "FR-NODE-255", "to": "FR-PARSE-046" },
+      { "from": "FR-NODE-255", "to": "FR-PARSE-044" },
+      { "from": "FR-NODE-256", "to": "FR-PARSE-046" },
+      { "from": "FR-NODE-257", "to": "FR-NODE-255" },
+      { "from": "FR-NODE-257", "to": "FR-NODE-256" },
+      { "from": "FR-NODE-258", "to": "IR-CLI-112" },
+      { "from": "FR-NODE-258", "to": "FR-NODE-256" },
+      { "from": "IR-CLI-115", "to": "FR-PARSE-046" },
+      { "from": "IR-CLI-115", "to": "FR-NODE-255" },
+      { "from": "IR-CLI-115", "to": "FR-NODE-256" },
+      { "from": "IR-CLI-115", "to": "FR-NODE-257" },
+      { "from": "IR-MCP-009", "to": "IR-CLI-115" },
+      { "from": "FR-FLOW-224", "to": "IR-MCP-009" },
+      { "from": "FR-FLOW-224", "to": "FR-FLOW-225" },
+      { "from": "FR-FLOW-225", "to": "IR-MCP-009" },
+      { "from": "FR-FLOW-226", "to": "IR-MCP-009" },
+      { "from": "FR-FLOW-226", "to": "FR-FLOW-212" },
+      { "from": "FR-FLOW-226", "to": "FR-FLOW-222" }
+    ],
+    "code": [
+      { "id": "FR-PARSE-046", "ref": "src/core/parser/table.ts:73", "intent": "addition_site", "symbol": "parseMarkdownTableResult" },
+      { "id": "FR-PARSE-046", "ref": "src/core/mutation/set-target-status.ts:34", "intent": "negative", "symbol": "renderTargetRow" },
+      { "id": "FR-PARSE-047", "ref": "test/core/bootstrap/bundled-rules-completeness.fr-node-087.test.ts:1", "intent": "addition_site", "symbol": "loadBundledRulesDocument, DIAGNOSTIC_DEFINITIONS" },
+      { "id": "FR-PARSE-047", "ref": "src/core/bootstrap/templates.ts:62", "intent": "addition_site", "symbol": "BUNDLED_SRS_RULES_FILENAME" },
+      { "id": "FR-NODE-255", "ref": "src/core/date-stamp.ts:22", "intent": "addition_site", "symbol": "todayStamp" },
+      { "id": "FR-NODE-256", "ref": "src/core/mutation/srs-lock.ts:519", "intent": "addition_site", "symbol": "withSrsMutationLock" },
+      { "id": "FR-NODE-256", "ref": "src/core/parser/table.ts:51", "intent": "addition_site", "symbol": "renderRowByHeader" },
+      { "id": "FR-NODE-256", "ref": "src/core/mutation/set-target-goal.ts:85", "intent": "addition_site", "symbol": "assertOpensNoBlockBoundary" },
+      { "id": "FR-NODE-258", "ref": "src/core/mutation/rename-target.ts:111", "intent": "addition_site", "symbol": "renameTarget" },
+      { "id": "IR-CLI-115", "ref": "src/cli/commands/mutations.ts:91", "intent": "addition_site", "symbol": "parseDate" },
+      { "id": "IR-CLI-116", "ref": "src/core/mutation/set-active-target.ts:130", "intent": "negative", "symbol": "renderTargetRow(createdRow, \"active\")" },
+      { "id": "IR-CLI-116", "ref": "src/core/target-types.ts:8", "intent": "addition_site", "symbol": "TARGET_TYPES" },
+      { "id": "IR-MCP-009", "ref": "src/mcp/tools/read-tools.ts:278", "intent": "addition_site", "symbol": "WORKSPACE_SCOPED_METADATA" },
+      { "id": "IR-MCP-010", "ref": "src/cli/commands/read.ts:507", "intent": "verifies", "symbol": "command(\"targets\")" },
+      { "id": "IR-MCP-010", "ref": "src/mcp/tools/read-tools.ts:383", "intent": "addition_site", "symbol": "registerTool(\"get_active_target\")" },
+      { "id": "FR-FLOW-224", "ref": "test/skills/skill-token-estimate.ts:12", "intent": "verifies", "symbol": "estimateTokens, tokensThrough" },
+      { "id": "FR-FLOW-225", "ref": "skills/claude/kiwi-srs/SKILL.md:160", "intent": "addition_site", "symbol": "PRD_PATH optional input" },
+      { "id": "FR-FLOW-225", "ref": "skills/claude/kiwi-prd/SKILL.md:19", "intent": "addition_site", "symbol": "core rule 8 next-step guidance" },
+      { "id": "FR-FLOW-226", "ref": "skills/claude/kiwi-wave-master/SKILL.md:111", "intent": "addition_site", "symbol": "section 1.2 optional inputs" }
+    ]
+  },
+  "prd_coverage_check": {
+    "command": "node bin/speckiwi prd coverage docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md --target 5.4.0 --json",
+    "ungroundedCriteria": 0,
+    "uncitedRequirements": 0,
+    "scope_items_uncited": [],
+    "note": "uncitedItems lists PRD-1..PRD-24 only, which belong to 5.3.0"
+  },
+  "validate_spec_result": {
+    "errors": 0,
+    "warnings": 17,
+    "byCode": { "SRS-W073": 17 },
+    "new_diagnostics_from_this_change": 0
+  }
+}

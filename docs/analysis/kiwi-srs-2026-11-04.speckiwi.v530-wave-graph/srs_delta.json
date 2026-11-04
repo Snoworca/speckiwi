@@ -1,0 +1,1505 @@
+{
+  "target": "5.3.0",
+  "prd": "docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md",
+  "mcp_calls": [
+    {
+      "tool": "add_requirement",
+      "id": "FR-NODE-244",
+      "ok": true,
+      "note": "dryRun"
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-244",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-245",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-246",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-247",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-248",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-249",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-250",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-251",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-252",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-253",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-NODE-254",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-PARSE-045",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "IR-CLI-113",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "IR-CLI-114",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "IR-MCP-008",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-208",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-209",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-210",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-211",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-212",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-213",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-214",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-215",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-216",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-217",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-218",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "id": "FR-FLOW-219",
+      "ok": false,
+      "error": "EPERM"
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-219",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-220",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-221",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-222",
+      "ok": true
+    },
+    {
+      "tool": "add_requirement",
+      "result_id": "FR-FLOW-223",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-244",
+      "reference": "FR-NODE-216",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-245",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-245",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-246",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-231",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-133",
+      "relation": "supersedes",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-247",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-247",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-249",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-248",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-NODE-254",
+      "reference": "FR-NODE-144",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-113",
+      "reference": "IR-CLI-104",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-249",
+      "ok": false,
+      "error": "SRS_LOCKED by another session; retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-231",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-242",
+      "ok": false,
+      "error": "EPERM rename; temp file removed, retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "IR-CLI-113",
+      "ok": false,
+      "error": "EPERM rename; temp file removed, retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-CLI-114",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-253",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-247",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-252",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "IR-MCP-008",
+      "reference": "IR-CLI-114",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-208",
+      "reference": "FR-PARSE-045",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-208",
+      "reference": "FR-FLOW-205",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-209",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-210",
+      "reference": "FR-FLOW-204",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-NODE-247",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-208",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-029",
+      "relation": "supersedes",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-195",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-188",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-213",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-214",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-214",
+      "reference": "FR-FLOW-030",
+      "relation": "supersedes",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-213",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-188",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-115",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-188",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-195",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-217",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-217",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-217",
+      "reference": "IR-CLI-113",
+      "ok": false,
+      "error": "SRS_LOCKED by another session; retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-217",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-217",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-218",
+      "reference": "FR-NODE-243",
+      "ok": false,
+      "error": "SRS_LOCKED by another session; retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-218",
+      "reference": "FR-NODE-243",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-218",
+      "reference": "FR-FLOW-217",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-218",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-219",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-219",
+      "reference": "FR-FLOW-209",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-219",
+      "reference": "IR-CLI-114",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-219",
+      "reference": "FR-FLOW-204",
+      "relation": "supersedes",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-246",
+      "ok": false,
+      "error": "EPERM rename; temp file removed, retried"
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-252",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-254",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-218",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-219",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-216",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-044",
+      "relation": "supersedes",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-045",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-049",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-221",
+      "reference": "FR-NODE-254",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-195",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-188",
+      "relation": "extends",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-216",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-220",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-221",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "add_trace_link",
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-219",
+      "relation": "depends_on",
+      "ok": true
+    },
+    {
+      "tool": "validate_spec",
+      "ok": true
+    }
+  ],
+  "added_ids": [
+    "FR-NODE-244",
+    "FR-NODE-245",
+    "FR-NODE-246",
+    "FR-NODE-247",
+    "FR-NODE-248",
+    "FR-NODE-249",
+    "FR-NODE-250",
+    "FR-NODE-251",
+    "FR-NODE-252",
+    "FR-NODE-253",
+    "FR-NODE-254",
+    "FR-PARSE-045",
+    "IR-CLI-113",
+    "IR-CLI-114",
+    "IR-MCP-008",
+    "FR-FLOW-208",
+    "FR-FLOW-209",
+    "FR-FLOW-210",
+    "FR-FLOW-211",
+    "FR-FLOW-212",
+    "FR-FLOW-213",
+    "FR-FLOW-214",
+    "FR-FLOW-215",
+    "FR-FLOW-216",
+    "FR-FLOW-217",
+    "FR-FLOW-218",
+    "FR-FLOW-219",
+    "FR-FLOW-220",
+    "FR-FLOW-221",
+    "FR-FLOW-222",
+    "FR-FLOW-223"
+  ],
+  "trace_links": [
+    {
+      "id": "FR-NODE-244",
+      "reference": "FR-NODE-216",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-NODE-245",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-245",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-246",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-231",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-246",
+      "reference": "FR-NODE-133",
+      "relation": "supersedes"
+    },
+    {
+      "id": "FR-NODE-247",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-247",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-249",
+      "reference": "FR-PARSE-044",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-248",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-249",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-251",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-NODE-254",
+      "reference": "FR-NODE-144",
+      "relation": "extends"
+    },
+    {
+      "id": "IR-CLI-113",
+      "reference": "IR-CLI-104",
+      "relation": "extends"
+    },
+    {
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-113",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-249",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-231",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-114",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-CLI-114",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-253",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-247",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "FR-NODE-252",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on"
+    },
+    {
+      "id": "IR-MCP-008",
+      "reference": "IR-CLI-114",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-208",
+      "reference": "FR-PARSE-045",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-208",
+      "reference": "FR-FLOW-205",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-209",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-210",
+      "reference": "FR-FLOW-204",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-NODE-247",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-208",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-029",
+      "relation": "supersedes"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-195",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-212",
+      "reference": "FR-FLOW-188",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-213",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-214",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-214",
+      "reference": "FR-FLOW-030",
+      "relation": "supersedes"
+    },
+    {
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-213",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-215",
+      "reference": "FR-FLOW-188",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-115",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-188",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-216",
+      "reference": "FR-FLOW-195",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-217",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-217",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-217",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-217",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-218",
+      "reference": "FR-NODE-243",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-218",
+      "reference": "FR-FLOW-217",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-218",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-219",
+      "reference": "FR-NODE-242",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-219",
+      "reference": "FR-FLOW-209",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-219",
+      "reference": "IR-CLI-114",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-219",
+      "reference": "FR-FLOW-204",
+      "relation": "supersedes"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-252",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-NODE-254",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-218",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-219",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-216",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-044",
+      "relation": "supersedes"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-045",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-220",
+      "reference": "FR-FLOW-049",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-221",
+      "reference": "FR-NODE-254",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-244",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-246",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-250",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-NODE-251",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "IR-CLI-113",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-195",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-222",
+      "reference": "FR-FLOW-188",
+      "relation": "extends"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-212",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-216",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-220",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-221",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-211",
+      "relation": "depends_on"
+    },
+    {
+      "id": "FR-FLOW-223",
+      "reference": "FR-FLOW-219",
+      "relation": "depends_on"
+    }
+  ],
+  "superseded_plan": [
+    {
+      "old_id": "FR-NODE-133",
+      "acs": [
+        "AC-1",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6"
+      ],
+      "action": "retire whole with supersede_requirement naming FR-NODE-246 (FR-NODE-243 cannot expire the last live AC; AC-2 already retired)"
+    },
+    {
+      "old_id": "FR-FLOW-029",
+      "acs": [
+        "AC-1",
+        "AC-2"
+      ],
+      "action": "expire with FR-NODE-243, successor FR-FLOW-212"
+    },
+    {
+      "old_id": "FR-FLOW-029",
+      "acs": [
+        "AC-4"
+      ],
+      "action": "downgrade, rewrite per-wave authoring sentence to initial + incremental authoring, re-promote (FR-FLOW-212); AC-3, AC-5 stay"
+    },
+    {
+      "old_id": "FR-FLOW-030",
+      "acs": [
+        "AC-1",
+        "AC-2",
+        "AC-3"
+      ],
+      "action": "retire whole with supersede_requirement naming FR-FLOW-214"
+    },
+    {
+      "old_id": "FR-FLOW-044",
+      "acs": [
+        "AC-2",
+        "AC-3",
+        "AC-5",
+        "AC-6",
+        "AC-7"
+      ],
+      "action": "expire with FR-NODE-243, successor FR-FLOW-220"
+    },
+    {
+      "old_id": "FR-FLOW-044",
+      "acs": [
+        "AC-4"
+      ],
+      "action": "downgrade, rewrite evidence bundle to FR-FLOW-220 AC-2 inputs, re-promote; AC-1, AC-8 stay"
+    },
+    {
+      "old_id": "FR-FLOW-045",
+      "acs": [
+        "AC-2"
+      ],
+      "action": "expire with FR-NODE-243, successor FR-FLOW-220"
+    },
+    {
+      "old_id": "FR-FLOW-045",
+      "acs": [
+        "AC-5",
+        "AC-7",
+        "AC-8"
+      ],
+      "action": "downgrade, rewrite to keep/drop model and delta path, re-promote (FR-FLOW-220); AC-1, AC-3, AC-4, AC-6 stay"
+    },
+    {
+      "old_id": "FR-FLOW-049",
+      "acs": [
+        "AC-2",
+        "AC-3"
+      ],
+      "action": "edit (status implemented) to FR-FLOW-220 AC-7; AC-1, AC-4, AC-5, AC-6 stay"
+    },
+    {
+      "old_id": "FR-FLOW-188",
+      "acs": [
+        "AC-1"
+      ],
+      "action": "downgrade, rewrite per-wave SRS authoring to initial + incremental, re-promote (FR-FLOW-212, FR-FLOW-213, FR-FLOW-215)"
+    },
+    {
+      "old_id": "FR-FLOW-188",
+      "acs": [
+        "AC-2"
+      ],
+      "action": "downgrade, rewrite to one requirement per kiwi-pm call, re-promote (FR-FLOW-216)"
+    },
+    {
+      "old_id": "FR-FLOW-188",
+      "acs": [
+        "AC-3"
+      ],
+      "action": "downgrade, rewrite implicit dependency to required edges, re-promote (FR-FLOW-222)"
+    },
+    {
+      "old_id": "FR-FLOW-195",
+      "acs": [
+        "AC-3"
+      ],
+      "action": "expire with FR-NODE-243, successor FR-NODE-246 (partition replaces unallocated-req-id)"
+    },
+    {
+      "old_id": "FR-FLOW-195",
+      "acs": [
+        "AC-1"
+      ],
+      "action": "downgrade, rewrite to schema 2.0.0 from wave propose, re-promote (FR-FLOW-222)"
+    },
+    {
+      "old_id": "FR-FLOW-195",
+      "acs": [
+        "AC-4"
+      ],
+      "action": "downgrade, rewrite worker --req-filter to one requirement, re-promote (FR-FLOW-216)"
+    },
+    {
+      "old_id": "FR-FLOW-195",
+      "acs": [
+        "AC-7"
+      ],
+      "action": "downgrade, rewrite wave-srs-registration clause, re-promote (FR-FLOW-212)"
+    },
+    {
+      "old_id": "FR-FLOW-204",
+      "acs": [
+        "AC-9"
+      ],
+      "action": "expire with FR-NODE-243, successor FR-FLOW-219 (rule carried as FR-FLOW-219 AC-3)"
+    },
+    {
+      "old_id": "FR-FLOW-115",
+      "acs": [
+        "AC-2"
+      ],
+      "action": "downgrade, rewrite one commit per run to two commits per requirement, re-promote (FR-FLOW-216)"
+    },
+    {
+      "old_id": "FR-NODE-216",
+      "acs": [],
+      "action": "extended by FR-NODE-244; no AC expires or changes"
+    },
+    {
+      "old_id": "IR-CLI-104",
+      "acs": [],
+      "action": "extended by IR-CLI-113; no AC expires or changes"
+    },
+    {
+      "old_id": "FR-NODE-144",
+      "acs": [],
+      "action": "extended by FR-NODE-254; no AC expires or changes"
+    },
+    {
+      "old_id": "FR-FLOW-205",
+      "acs": [],
+      "action": "extended by FR-FLOW-208; no AC changes"
+    }
+  ],
+  "validate_spec_result": {
+    "errors": 0,
+    "warnings": 17,
+    "byCode": {
+      "SRS-W073": 17
+    },
+    "new_diagnostics_from_this_change": 0,
+    "note": "all 17 SRS-W073 pre-exist (rules file renamed by another session); links check reports no broken link on the added IDs"
+  }
+}

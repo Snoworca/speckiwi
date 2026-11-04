@@ -1,0 +1,34 @@
+{
+  "iter": 1,
+  "source": "eval_iter1.json",
+  "fixed": [
+    {"id": "K-1", "req_id": "FR-NODE-245", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split into one paragraph per AC citation group (blank-line separated, no ';' inside a line), so the AC-2 fills clause no longer swallows the AC-3 citation."},
+    {"id": "K-1", "req_id": "FR-NODE-251", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split per AC; AC-7 citation now on its own line after the AC-6 fills clause."},
+    {"id": "K-1", "req_id": "FR-NODE-253", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split per AC; AC-2..AC-4 citations no longer follow the AC-1 fills clause in one segment."},
+    {"id": "K-1", "req_id": "FR-FLOW-211", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split per AC; AC-4 citation separated from the AC-3 fills clause."},
+    {"id": "K-1", "req_id": "FR-FLOW-213", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split per AC; AC-2 citation separated from the AC-1 fills clause."},
+    {"id": "K-1", "req_id": "FR-FLOW-216", "tool": "append_section_note(rationale, replace)", "ok": true, "change": "Rationale split per AC; AC-4 fills basis on its own line (the ';' inside the AC-4 reason replaced by ', and')."},
+    {"id": "K-2", "req_id": "FR-FLOW-219", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace)", "ok": true, "change": "AC-2: an item in the product target's prd coverage uncitedItems counts as missing (and stops the run) only when `prd coverage --target <t>` also lists it uncited for every other target `speckiwi targets` lists; an item another target's requirements cite is reported as assigned to that target and does not stop the run. Rationale: AC-2 <- PRD-20, PRD-27; rationale split per AC. Checked: 5.3.0 uncites PRD-25/26, 5.4.0 cites them, so the 5.3.0 run is not stopped."},
+    {"id": "K-3", "req_id": "FR-NODE-247", "tool": "replace_acceptance_criteria", "ok": true, "change": "AC-2 grounding clause now applies the IR-CLI-084 rule (via FR-NODE-216 AC-6): a non-existent path with a tracked path within Levenshtein distance 2 after POSIX normalisation is refused with files-not-grounded naming the neighbour; a non-existent path with no such neighbour is accepted as a new file. Other ACs unchanged."},
+    {"id": "K-4", "req_id": "FR-NODE-249", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace)", "ok": true, "change": "AC-1: unscanned AC counts as done when checkbox, evidence and expiry conditions hold, citation reported null, cited_checked:false; scanned AC needs the citation too, cited_checked:true. AC-2: node state uses AC-1 values scanned or not; a complete node with checked/covered/unexpired ACs is done without the scan, unverified for an uncited AC only when the scan ran. Rationale AC-1 <- PRD-12, PRD-23, PRD-2."},
+    {"id": "K-4", "req_id": "FR-NODE-251", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace)", "ok": true, "change": "AC-1: wave actions always runs the test-citation scan (no skip option), so state comes from FR-NODE-249 with cited_checked:true and an uncited AC makes the node unverified (actions held). Rationale AC-1 adds fills: PRD-24 / hole."},
+    {"id": "K-5", "req_id": "FR-NODE-254", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace) + append_section_note(research, replace)", "ok": true, "change": "AC-1: a round carries `verifiers` (distinct verifier ids) and a row is {id, verdict, kept, evidence?, verifier} with verifier in verifiers; round record refuses missing verifier/verifiers. AC-2: evaluateRound reads the verifiers count, invalid unless exactly 1 (default) or exactly 2 (--max), even with no rows."},
+    {"id": "K-6", "req_id": "IR-CLI-113", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace)", "ok": true, "change": "AC-1 adds per-node `dispatched`: true exactly when any journal line of the run for that node carries phase worker, whatever later lines say (re-entered node stays true). Rationale AC-1 adds PRD-21."},
+    {"id": "K-6", "req_id": "FR-FLOW-217", "tool": "replace_acceptance_criteria + append_section_note(rationale, replace)", "ok": true, "change": "AC-1: a remaining wave is a node whose `dispatched` field in wave status output (IR-CLI-113 AC-1) is false, read there rather than from the journal; a dispatched:true node never changes. Rationale split per AC, AC-1 adds PRD-10."},
+    {"id": "K-7", "req_id": "FR-NODE-253", "tool": "edit_requirement_table_rows(trace_links) + append_section_note(research, replace)", "ok": true, "change": "Trace links -> src/mcp/schemas.ts:703 (renderToolDescriptions), src/mcp/server.ts:577 (isReadOnlyTool); research note -> schemas.ts:703, server.ts:577, createSdkServer server.ts:687; notes name the symbols and say the files are under concurrent 5.2.0 edits."},
+    {"id": "K-8", "req_id": "FR-NODE-254", "tool": "edit_requirement_table_rows(trace_links) + append_section_note(research, replace)", "ok": true, "change": "Trace link -> src/core/orchestrator/verification-gate.ts:103 (blockingSeverities/gateMet in evaluateRound); research range -> :103-104 with symbol names."},
+    {"id": "K-9", "req_id": "FR-NODE-249", "tool": "edit_requirement_table_rows(trace_links)", "ok": true, "change": "Trace link -> src/core/parser/ac-parser.ts:84, notes name parseAcceptanceCriteria and expiredMarker and the concurrent 5.2.0 edits."}
+  ],
+  "not_fixed": [],
+  "tool_notes": [
+    "Two writes (FR-NODE-249 ACs, FR-FLOW-219 ACs) failed once with EPERM on rename of docs/spec/.speckiwi-*.tmp (concurrent session); the leftover tmp files were deleted and the calls retried successfully.",
+    "Observed in src/core/prd/coverage.ts groundedCriteria: a Rationale segment (split at line breaks and ';') whose criterion names all fall inside a fills reason grounds every criterion of the requirement, so a fills clause can also hide ungrounded criteria; the rewritten Rationales keep one AC group per line and no ';' to avoid both effects."
+  ],
+  "checks": [
+    "node bin/speckiwi prd coverage docs/prd/2026-11-04.v530-wave-master-work-graph-roadmap.prd.md --target 5.3.0 --json: uncitedItems [PRD-25, PRD-26], uncitedRequirements [], ungroundedCriteria []",
+    "node bin/speckiwi prd coverage ... --target 5.4.0 --json: PRD-25, PRD-26 cited (not in uncitedItems)",
+    "MCP validate_spec: 0 errors, 17 warnings, all SRS-W073 (pre-existing)",
+    "node bin/speckiwi links check --json: 17 SRS-W073 only, none on the 5.3.0 IDs",
+    "no docs/spec/.speckiwi-*.tmp left"
+  ]
+}

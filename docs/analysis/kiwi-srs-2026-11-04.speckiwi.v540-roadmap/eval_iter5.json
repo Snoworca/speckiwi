@@ -1,0 +1,681 @@
+{
+  "evaluator": "verify-pass-5",
+  "iter": 5,
+  "findings": [
+    {
+      "id": "F-5",
+      "disposition": "resolved",
+      "req_id": "FR-FLOW-226",
+      "evidence": {
+        "kind": "re-check",
+        "detail": "Iter-4 input re-run: `/kiwi-wave-master ROADMAP_ITEM=RM-4`, no PRD path, RM-4 Actual Start '-', Targets '-', Requirements '-'. AC-1 (docs/spec/60.workflow-release.srs.md:15710) now places the single update_roadmap_item call 'at the moment the run commits its work graph and writes the run's first journal line (FR-FLOW-222 AC-1)', and branches on 'the committed work graph's `scope`'. FR-FLOW-222 AC-1 (:15439) records graph {path, digest} on the run's first journal line, and FR-FLOW-212 AC-1 (:14795) makes committing waves.json the last step after kiwi-prd, /kiwi-srs, impact analysis, wave propose and field filling, with any narrowing (AC-4, :14798) settled before that commit. So scope exists when the call is made: RM-4 gets Actual Start = run start date and Targets = product target (scope target) or Requirements = scope.requirements (narrowed run). AC-3 (:15712) still allows exactly that call; redecomposition (FR-FLOW-222 AC-1 'redecompose' line) is not the first journal line, so no second call. Title (:15677) and statement (:15694) say the same point ('when the run commits its work graph')."
+      },
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:15677; docs/spec/60.workflow-release.srs.md:15694; docs/spec/60.workflow-release.srs.md:15710; docs/spec/60.workflow-release.srs.md:15439; docs/spec/60.workflow-release.srs.md:14795",
+      "description": "The call point of AC-1 is now the work-graph commit (first journal line), where the scope it branches on exists.",
+      "suggested_action": "none"
+    },
+    {
+      "id": "D-1",
+      "disposition": "drop",
+      "req_id": "FR-NODE-257",
+      "evidence": {
+        "kind": "opinion",
+        "detail": "Same as iter1 D-1: FR-FLOW-226 AC-1 calls sync_roadmap_actuals with apply and item and no reason; whether FR-NODE-257 AC-4's 'same ... history-row rules as update' imports FR-NODE-256 AC-4's refusal without a reason depends on reading (IR-CLI-115 AC-4 gives sync a --reason option). No contradiction proven. Unchanged in iter 4."
+      },
+      "evidence_path": "docs/spec/50.nodejs-implementation.srs.md",
+      "description": "Possible missing reason on the run-end sync call.",
+      "suggested_action": "none (dropped: not proven)"
+    },
+    {
+      "id": "D-2",
+      "disposition": "drop",
+      "req_id": "IR-CLI-115",
+      "evidence": {
+        "kind": "line-drift",
+        "detail": "Every Code/Test/Docs trace path of the 13 requirements exists in the working tree (scripted check); trace symbols as found in iter 2; line numbers in src/ drift under the concurrent 5.2.0 session."
+      },
+      "evidence_path": "-",
+      "description": "Trace line numbers may drift; symbols and paths exist.",
+      "suggested_action": "none (dropped: symbol exists)"
+    },
+    {
+      "id": "D-3",
+      "disposition": "drop",
+      "req_id": "-",
+      "evidence": {
+        "kind": "out-of-scope",
+        "detail": "node bin/speckiwi links check --json: 9 broken links, none naming a 5.4.0 requirement (filtered by ID)."
+      },
+      "evidence_path": "node bin/speckiwi links check --json",
+      "description": "Broken links exist only outside the 5.4.0 requirements.",
+      "suggested_action": "none for this run"
+    },
+    {
+      "id": "D-4",
+      "disposition": "drop",
+      "req_id": "FR-FLOW-226",
+      "evidence": {
+        "kind": "opinion",
+        "detail": "Research note (docs/spec/60.workflow-release.srs.md:15732) still says 'the run writes `Actual Start` itself at start', while AC-1 (:15710) now makes the call at the work-graph commit and sets the value to 'the run's start date'. The value and the call point are distinct and both stated in AC-1; the note is non-normative analysis and its 'at start' reads as the value. Whether the run's start date (before kiwi-prd) is persisted for a resumed run is not shown to fail by any input. No contradiction between normative sentences proven."
+      },
+      "evidence_path": "docs/spec/60.workflow-release.srs.md:15732; docs/spec/60.workflow-release.srs.md:15710",
+      "description": "Research note wording 'at start' predates the moved call point.",
+      "suggested_action": "none (dropped: non-normative note, no failing input)"
+    }
+  ],
+  "prd_items": [
+    {
+      "id": "PRD-1",
+      "kind": "intent",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-2",
+      "kind": "intent",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-3",
+      "kind": "goal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 item; cited by FR-FLOW-224 AC-3/AC-4, FR-FLOW-225 AC-3, FR-FLOW-226 AC-3 and IR-MCP-010 AC-2 consistently (size cap, bounded diagnostics, no roadmap calls without input); no contradiction."
+    },
+    {
+      "id": "PRD-4",
+      "kind": "goal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-5",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 item; cited by FR-FLOW-224 AC-5 (item -> kiwi-prd -> SRS) consistently; no contradiction."
+    },
+    {
+      "id": "PRD-6",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-7",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-8",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-9",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-10",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-11",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-12",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-13",
+      "kind": "in-scope",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-14",
+      "kind": "goal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 goal; IR-CLI-115 output carries stable IDs, dates and progress, consistent."
+    },
+    {
+      "id": "PRD-15",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-16",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-17",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-18",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-19",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-20",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-21",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-22",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-23",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-24",
+      "kind": "proposal",
+      "verdict": "other-wave",
+      "refs": [],
+      "note": "5.3.0 scope; no 5.4.0 requirement contradicts it."
+    },
+    {
+      "id": "PRD-25",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "refs": [
+        "FR-PARSE-046",
+        "FR-NODE-255",
+        "FR-NODE-256",
+        "FR-NODE-257",
+        "IR-CLI-115",
+        "IR-MCP-009",
+        "FR-FLOW-224",
+        "FR-FLOW-225"
+      ],
+      "note": "Skill (FR-FLOW-224); structure with planned start/end and computed completion status (FR-PARSE-046 AC-2/3, FR-NODE-255); record through tools (FR-NODE-256, IR-CLI-115 AC-4, IR-MCP-009); read through tools (IR-CLI-115 AC-1/2, IR-MCP-009). 'json 파일 형식' taken as the --json output contract per PRD-27 (IR-CLI-115 AC-6)."
+    },
+    {
+      "id": "PRD-26",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "refs": [
+        "FR-PARSE-046",
+        "FR-PARSE-047",
+        "FR-NODE-256"
+      ],
+      "note": "docs/roadmap.md is structured Markdown with ### RM-<n> headings, Field|Value tables and fixed sections; JSON is output only."
+    },
+    {
+      "id": "PRD-27",
+      "kind": "proposal",
+      "verdict": "accepted",
+      "refs": [
+        "FR-PARSE-046",
+        "FR-PARSE-047",
+        "FR-NODE-255",
+        "FR-NODE-256",
+        "FR-NODE-257",
+        "IR-CLI-115",
+        "IR-MCP-009",
+        "FR-FLOW-224",
+        "FR-FLOW-226"
+      ],
+      "note": "Every adopted point is present and none reversed: target 5.4.0 after 5.3.0; single source docs/roadmap.md (FR-PARSE-046); json = --json contract schema 1 (IR-CLI-115 AC-6); status computed (FR-NODE-255), only paused/cancelled by hand (FR-PARSE-046 AC-2/AC-7, FR-PARSE-047 AC-3); coarse YYYY-MM / YYYY-Qn (FR-PARSE-046 AC-3); rules in an SRS-MD appendix (FR-PARSE-047); actual dates recorded by wave-master (FR-FLOW-226 AC-1/AC-2, FR-NODE-257; F-3/F-4 resolved); tools list|show|check|add|update|sync (IR-CLI-115); skill kiwi-roadmap (FR-FLOW-224). F-5 resolved: AC-1 now calls at the work-graph commit (first journal line), where scope exists."
+    },
+    {
+      "id": "PRD-28",
+      "kind": "proposal",
+      "verdict": "accepted",
+      "refs": [
+        "IR-CLI-116",
+        "IR-MCP-010",
+        "FR-NODE-258"
+      ],
+      "note": "Tool-gap part: planned-target registration (IR-CLI-116), list_targets MCP pair (IR-MCP-010), rename-target roadmap references (FR-NODE-258), all in 5.4.0 (after 5.3.0, not 5.2.0). The other parts (Covers range ban, PRD citation form, kiwi-prd splitting) are 5.3.0 and not contradicted."
+    },
+    {
+      "id": "PRD-29",
+      "kind": "proposal",
+      "verdict": "respected",
+      "refs": [
+        "IR-CLI-115"
+      ],
+      "note": "Exclusion: no requirement builds a dashboard; IR-CLI-115 Rationale keeps the exclusion and only exposes stable IDs, dates and progress."
+    }
+  ],
+  "srs_items": [
+    {
+      "id": "FR-PARSE-046 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-046 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-046 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-046 AC-4",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-046 AC-5",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-PARSE-046 AC-6",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-PARSE-046 AC-7",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-046 AC-8",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-047 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-PARSE-047 AC-2",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-PARSE-047 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-4",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-5",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-255 AC-6",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-255 AC-7",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-255 AC-8",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-255 AC-9",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-256 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-256 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-256 AC-3",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-256 AC-4",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-256 AC-5",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-256 AC-6",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-256 AC-7",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-257 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-257 AC-2",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-257 AC-3",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-257 AC-4",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-257 AC-5",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-258 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-NODE-258 AC-2",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-NODE-258 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-115 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-115 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-115 AC-3",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "IR-CLI-115 AC-4",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-115 AC-5",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "IR-CLI-115 AC-6",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-116 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "IR-CLI-116 AC-2",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "IR-CLI-116 AC-3",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "IR-MCP-009 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "IR-MCP-009 AC-2",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "IR-MCP-009 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "IR-MCP-010 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "IR-MCP-010 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-224 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-224 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-224 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-224 AC-4",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-224 AC-5",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-225 AC-1",
+      "verdict": "fills",
+      "basis": "fills: line in Rationale naming an in-scope PRD item (PRD-25/26/27/28) with hole or defect and a reason",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-FLOW-225 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-225 AC-3",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": ""
+    },
+    {
+      "id": "FR-FLOW-226 AC-1",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation plus fills: line",
+      "note": "dates grounded in PRD-27; link clause has fills: PRD-27 / hole (:15704); F-3/F-4/F-5 resolved (call at work-graph commit = first journal line, FR-FLOW-222 AC-1)"
+    },
+    {
+      "id": "FR-FLOW-226 AC-2",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": "AC-2 <- PRD-27 (:15701)"
+    },
+    {
+      "id": "FR-FLOW-226 AC-3",
+      "verdict": "fills",
+      "basis": "fills: PRD-27 / hole / for AC-3 (:15706)",
+      "note": "basis accepted"
+    },
+    {
+      "id": "FR-FLOW-226 AC-4",
+      "verdict": "grounded",
+      "basis": "AC-n <- PRD-m citation",
+      "note": "AC-4 <- PRD-3 (:15702), 5.3.0 item cited consistently"
+    }
+  ],
+  "tool_runs": {
+    "validate": "MCP validate_spec (CLI `node bin/speckiwi validate --json` failed with SyntaxError: missing export 'referenceStyleRulesLineIsStale' from dist rebuild; not a finding): 0 errors, 0 warnings, packageVersion 5.1.0",
+    "links": "not re-run (CLI unavailable during rebuild); iter-3 result: no broken link on a 5.4.0 requirement",
+    "prd_coverage": "CLI unavailable; FR-FLOW-226 Rationale read by hand (:15698-15706): AC-1, AC-2 <- PRD-27; AC-4 <- PRD-3; fills: PRD-27 / hole for AC-1 and AC-3. Only docs/spec/60.workflow-release.srs.md changed after eval_iter4 (mtime 22:26:35 vs 22:26:06); other 5.4.0 scope files unchanged, so their verdicts carry over",
+    "symbol_check": "FR-FLOW-226 trace skills/claude/kiwi-wave-master/SKILL.md section '### 1.2 선택 입력 + 자연어 매핑' present (line 111); FR-FLOW-222 AC-1 'first journal line' present (:15439)"
+  },
+  "summary": {
+    "kept": 0,
+    "resolved": 1,
+    "dropped": 4,
+    "prd_fail": 0,
+    "residual": 0
+  }
+}
