@@ -298,7 +298,11 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "test-sufficiency-gap",
     // @req FR-FLOW-203 AC-12 — a residual finding is an unproven functional-defect claim; --auto's
     // decision subagent cannot resolve it, so it stays for the user.
-    "residual-finding-user-decision"
+    "residual-finding-user-decision",
+    // @req FR-FLOW-229 AC-4 — the round cap or token budget reached with a blocking finding stops NEEDS_USER; --auto cannot lift it.
+    "round-cap-or-budget-needs-user",
+    // @req FR-FLOW-229 AC-6 — blocking findings mostly introduced by earlier fixes stop NEEDS_USER; --auto cannot lift it.
+    "fix-induced-defects-majority"
   ]
 };
 

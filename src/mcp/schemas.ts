@@ -410,6 +410,12 @@ export const toolSpecs: readonly ToolSpec[] = [
     args: { path: { type: "string" } },
     options: [opt("--target <target>", "target")]
   }),
+  // FR-NODE-274 — the `review-round` container (no own handler) and its `check` leaf, the fourth
+  // `check` node of the tree, which carries check_review_round.
+  readSpec("review-round", undefined, "reviewRoundCommands"),
+  readSpec("check", mcp("check_review_round", "Judges the latest round of a kiwi-review-fix-loop run from the `limits` and `rounds[]` the lead recorded in `.kiwi/sessions/<runId>/state.json`: whether a round of 2 or later listed every code file that changed between the previous round's `tree_sha` and its own, or recorded why it widened to the full scope; whether blocking findings introduced by earlier rounds are more than half of its blocking findings; and whether the run passes, continues, or stops NEEDS_USER on a residual, its round cap or its token budget. It reads each finding's tier, the tokens and the coverage result as recorded and judges none of them; an invalid state is an error with no verdict — the same answer `speckiwi review-round check` prints. Read-only."), "checkReviewRound", {
+    options: [opt("--run-id <id>", "runId")]
+  }),
 
   // ---- mutation commands (registerMutationCommands) ----
   mutationSpec("init", mcp("init_project", "Lays down the SRS scaffold a project needs — index, first scope document, appendix, step state — skipping each one that already exists, while the tool-owned files are rewritten on every run: the bundled rules documents, whose stale versioned copies are deleted, and the managed block inside `AGENTS.md` and `CLAUDE.md`. Passing `force` turns that skip off and overwrites the author-owned files with fresh templates, discarding whatever requirements they held. Over MCP it provisions files only: registering the server and installing the agent skills are CLI-side opt-ins this tool never sets. Writes the scaffold files."), "workspace", "initProject", [

@@ -1,0 +1,14 @@
+{
+  "iteration": 1,
+  "input": "eval_iter1.json (a_fail 0, kept 5, residual 0)",
+  "fixes": [
+    {"finding": "F-1", "id": "FR-FLOW-229", "ac": ["AC-2"], "change": "AC-5 blocking kinds (silent value loss, rejection of ordinary correct input, data loss, secret exposure, auth bypass) are never record, even without a real call path or with constructed input"},
+    {"finding": "F-2", "id": "FR-FLOW-203", "ac": ["AC-10"], "change": "zero-kept-findings gate -> zero-blocking-kept-findings gate (AC-2, FR-FLOW-229 AC-7); AC-10 unchecked"},
+    {"finding": "F-3", "id": "FR-NODE-274", "ac": ["AC-1", "AC-2", "AC-5", "AC-6"], "change": "head_sha -> tree_sha (working-tree state the round's review read, via temporary GIT_INDEX_FILE + git add -A + git write-tree, no commit); scope = diff tree_sha(N-1)..tree_sha(N); check validates with cat-file and never builds a tree, so object store stays unchanged; method in Implementation Notes"},
+    {"finding": "F-4", "id": "FR-NODE-274, FR-FLOW-229", "ac": ["FR-NODE-274 AC-1", "FR-NODE-274 AC-4", "FR-FLOW-229 AC-4"], "change": "limits.round_cap (FR-FLOW-203 AC-6 default unless --loops) and limits.token_budget (null = no budget check); per-round tokens_used recorded by the lead"},
+    {"finding": "F-5", "id": "FR-NODE-274", "ac": ["AC-1", "AC-4", "AC-7"], "change": "rounds[] carry residual_count and coverage_passed; PASS only when block 0, residual 0, coverage passed; residual > 0 with block 0 and coverage passed -> NEEDS_USER"}
+  ],
+  "alsoChanged": ["FR-NODE-274 Requirement statement", "FR-NODE-274 Rationale fills note", "Change Notes on FR-FLOW-229, FR-FLOW-203, FR-NODE-274"],
+  "validate": {"errors": 0, "warnings": {"SRS-W023": 13}},
+  "linksCheck": {"broken": 4, "brokenInChanged": 0}
+}

@@ -317,12 +317,12 @@ describe("FR-FLOW-206 AC-1 — the body's keep/drop exit gate stays clean-code f
   // Extending the exit-gate sentence with "클린 코드 지적도 kept finding 으로 세어 이 게이트를 막는다."
   // — the exact opposite of AC-1 — passed every assertion, because the gate line was only matched
   // by `includes`. The line is pinned whole, and no line anywhere may count clean-code findings as kept.
-  const GATE = "종료 게이트는 **kept(surviving) finding 이 0** 일 때만 통과한다 — 이것이 기존 `CRITICAL=0 + HIGH=0` 게이트를 대체한다.";
+  const GATE = "종료 게이트는 **차단 kept finding 이 0** 일 때만 통과하고 기록(`declared_limit`) finding 은 통과를 막지 않는다 — 이것이 기존 `CRITICAL=0 + HIGH=0` 게이트를 대체한다.";
   const DOCS = [...COPIES, ...REFERENCES];
 
   // @req FR-FLOW-206 AC-1
   it.each(COPIES)("%s: the exit gate line is exactly the pinned sentence", (rel) => {
-    const lines = read(rel).split("\n").filter((line) => line.includes("종료 게이트는 **kept(surviving) finding 이 0**"));
+    const lines = read(rel).split("\n").filter((line) => line.includes("종료 게이트는 **차단 kept finding 이 0**"));
     expect(lines).toEqual([rel === CLAUDE ? GATE : `- ${GATE}`]);
   });
 

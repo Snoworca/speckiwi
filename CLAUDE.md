@@ -20,7 +20,7 @@ When a tool lacks a capability the work needs, record the gap as SRS work under 
 
 Code, contracts, SRS acceptance criteria and safety boundaries get the full bar: a failing test before the change, a mutation that turns each new assertion red, and verification by an independent subagent. That verification ends where the loop below says; work no loop below covers ends at zero CRITICAL and zero HIGH findings.
 
-- **Code review** (`kiwi-review-fix-loop`): passes at zero kept findings; a finding counts only when a run proves it.
+- **Code review** (`kiwi-review-fix-loop`): passes at zero blocking kept findings; a finding counts only when a run proves it, and a recorded finding (a declared limit) does not block the pass. A run that still holds a blocking kept finding when it reaches its round cap or exceeds its token budget, or whose blocking findings are mostly caused by earlier rounds' fixes, stops as NEEDS_USER instead of passing.
 - **Requirement-authoring loops**: from 5.1.0 `kiwi-srs` passes on its PRD verdict plus zero kept findings backed by evidence; `kiwi-srs-feasibility` and `kiwi-srs-sync` keep their zero-CRITICAL, zero-HIGH gate.
 - **Agent instructions** (`SKILL.md`, shared contracts): mechanical drift checks always (`speckiwi skills mirror --check`, the skill tests). LLM review is delta-scoped, at most 2 rounds, and stops at zero HIGH-or-above on one independent pass. A section that gates a safety boundary or a contract gets the full bar.
 - **Human prose** (README and similar): mechanical checks, then one delta-scoped LLM round; LOW findings may remain. A paragraph documenting a destructive command such as `--force` gets safety-boundary review.

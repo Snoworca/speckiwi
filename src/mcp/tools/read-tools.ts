@@ -6,6 +6,8 @@ import { getWorkMode } from "../../core/mutation/work-mode.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { checkSdsFile, liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
 import { checkTestSufficiency } from "../../core/testing/test-sufficiency.js";
+import { workspaceReviewRoundSources } from "../../core/review/git-sources.js";
+import { checkReviewRound } from "../../core/review/review-round.js";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { projectRequirementRecords, searchRequirementIndex, searchRequirementRecords } from "../../core/query/discovery.js";
 import { listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
@@ -488,6 +490,13 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     });
     return result.ok ? mcpSuccess(result.value) : resultToMcp(result);
   }, sdsReadMetadata("check_test_sufficiency"));
+  // FR-NODE-274 — check_review_round answers from the same core as `speckiwi review-round check`. It
+  // declares no workspace scope, so the gate refuses a per-call workspaceRoot (AC-8).
+  server.registerTool("check_review_round", async (input) => {
+    const root = await projectRoot(deps);
+    const result = await checkReviewRound(typeof input.runId === "string" ? input.runId : "", workspaceReviewRoundSources(root.root));
+    return result.ok ? mcpSuccess(result.value) : resultToMcp(result);
+  }, { readOnlyHint: true });
   // FR-MCP-042 — list_steps returns the Kahn topological order of docs/spec/steps/state.md with
   // cycle detection and advisory-only diagnostics.
   server.registerTool("list_steps", async (input, context) =>

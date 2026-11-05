@@ -55,7 +55,8 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
 // 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
 // 103 since 5.3.1 added `list_targets` (IR-MCP-010).
 // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
-const REGISTERED_TOOL_COUNT = 109;
+// 110 since 5.3.3 added `check_review_round` (FR-NODE-274).
+const REGISTERED_TOOL_COUNT = 110;
 
 /**
  * The refusing set is held to names rather than to a size.

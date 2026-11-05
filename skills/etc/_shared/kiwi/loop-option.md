@@ -43,6 +43,7 @@ ESLint extends override). Unanimous 3-subagent decision —
 
 - If the round cap is reached before the severity gate is clean: **stop looping** and **report the
   residual findings** — no silent truncation (state what remains unresolved in the skill's output).
+- **`kiwi-review-fix-loop` exception**: when the cap is reached while a blocking kept finding remains, the run does not end with a residual report; it stops `NEEDS_USER` with the blocking and record lists and is not recorded as a pass (FR-FLOW-229 AC-4, FR-FLOW-203 AC-6).
 - **Do NOT bypass the safety gate**: residual `CRITICAL`/`HIGH` findings still surface (report +
   blocked/warn status). The round cap only stops infinite escalation; it never hides a CRITICAL.
 - Warning / residual reporting channel = the skill's standard artifacts (report.md / console summary /

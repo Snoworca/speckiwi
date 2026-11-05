@@ -50,7 +50,8 @@ describe("FR-MCP-068 — the narrative-section route is named where an agent loo
     // 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
     // 103 since 5.3.1 added `list_targets` (IR-MCP-010).
     // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
-    expect(renderToolNames()).toHaveLength(109);
+    // 110 since 5.3.3 added `check_review_round` (FR-NODE-274).
+    expect(renderToolNames()).toHaveLength(110);
   });
 
   it("FR-MCP-068 AC-4: deleting either added sentence from the shipped description turns its check red", () => {

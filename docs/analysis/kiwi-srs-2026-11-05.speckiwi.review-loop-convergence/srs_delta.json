@@ -1,0 +1,25 @@
+{
+  "target": "5.3.3",
+  "prd": "docs/prd/2026-11-05.review-loop-convergence.prd.md",
+  "design": "rejudge/design.md §3, §5",
+  "changed": [
+    {"id": "FR-FLOW-229", "kind": "update", "status": "planned", "stability": "draft -> stable",
+     "fields": ["title", "requirement", "rationale", "changeNotes"],
+     "acRewritten": ["AC-1", "AC-2", "AC-3", "AC-4"], "acAdded": ["AC-5", "AC-6", "AC-7", "AC-8", "AC-9"]},
+    {"id": "FR-FLOW-203", "kind": "update", "status": "verified -> implemented", "stability": "evolving",
+     "fields": ["requirement", "rationale", "changeNotes"],
+     "acRewritten": ["AC-2", "AC-3", "AC-6", "AC-7", "AC-9", "AC-11", "AC-13"], "acUnchanged": ["AC-1", "AC-4", "AC-5", "AC-8", "AC-10", "AC-12"]},
+    {"id": "FR-FLOW-171", "kind": "update", "status": "verified -> implemented", "stability": "evolving",
+     "fields": ["rationale", "changeNotes"],
+     "acRewritten": ["AC-1", "AC-6", "AC-8", "AC-9"], "acUnchanged": ["AC-2", "AC-3", "AC-4", "AC-5", "AC-7", "AC-10"]}
+  ],
+  "added": [
+    {"id": "FR-NODE-274", "kind": "new-feature", "scope": "NODE", "status": "planned", "stability": "evolving",
+     "acAdded": ["AC-1", "AC-2", "AC-3", "AC-4", "AC-5", "AC-6", "AC-7", "AC-8"],
+     "surfaces": {"mcp": "check_review_round", "cli": "speckiwi review-round check"}}
+  ],
+  "untouched": ["FR-FLOW-206", "FR-FLOW-034", "FR-FLOW-095"],
+  "toolCountPinnedAcs": ["FR-MCP-062 AC-8 (tools 109)", "FR-MCP-063 AC-2 (equality with 97)", "FR-MCP-060 AC-2 (89 tools)"],
+  "validate": {"errors": 0, "warnings": {"SRS-W023": 13}},
+  "linksCheck": {"broken": 4, "brokenInChanged": 0}
+}

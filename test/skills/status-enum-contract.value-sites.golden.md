@@ -1261,7 +1261,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	d optional --close-reqs per-REQ verifie
 verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, forward-only). It may only mo
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (../_shared/kiwi/test-suffici
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
-verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition (gate id kept for co
+verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
@@ -1887,7 +1887,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, f
 verified	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (../_shared/kiwi/test-suffici
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
-verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition (gate id kept for co
+verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
 verified	-	kiwi-review-fix-loop/SKILL.md	nd guarded --close-reqs per-REQ verified transition through speckiwi mcp
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
@@ -2521,7 +2521,7 @@ verified	-	kiwi-review-fix-loop/SKILL.md	d optional --close-reqs per-REQ verifie
 verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, forward-only). It may only mo
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (../_shared/kiwi/test-suffici
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
-verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition (gate id kept for co
+verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |

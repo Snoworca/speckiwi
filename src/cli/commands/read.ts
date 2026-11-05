@@ -28,6 +28,7 @@ import { liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
 import { failRead, registerSdsCommands } from "./sds.js";
 import { registerPrdCommands } from "./prd.js";
 import { registerRoadmapCommands } from "./roadmap.js";
+import { registerReviewRoundCommands } from "./review-round.js";
 import { runCoverageTests, testsOnlyFlagsGiven } from "./coverage-tests.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
@@ -1195,6 +1196,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   registerPrdCommands(command, context);
   // @req IR-CLI-115 — the `roadmap` group, registered here for the same reason.
   registerRoadmapCommands(command, context);
+  // @req FR-NODE-274 — the `review-round` group, registered here for the same reason.
+  registerReviewRoundCommands(command, context);
 
   // `mode` is the one mutation command declared among the read commands, so it is marked here
   // rather than by registerMutationCommands. @req IR-CLI-101

@@ -179,7 +179,7 @@ const WIRING_FULL: ReadonlyArray<readonly [string, string]> = [
   ["a schema row declares the count its anchors must match", '"hunks_total": 3'],
   ["a schema row declares its anchors", '"anchors": ['],
   ["the schema says one anchor per hunk for every file of the denominator", "`review_denominator[]` 의 모든 파일이 한 행씩 갖고, 행마다 hunk 당 앵커 하나를 싣는다"],
-  ["the re-review fixes the denominator again over the new diff", "Phase 4 diff 를 대상으로 루프가 다시 고정하고 `hunks_total` 을 다시 센 분모"],
+  ["the re-review fixes the denominator again over the round-N scope", "2회차부터는 회차 범위(FR-NODE-274 AC-2)를 대상으로 루프가 다시 고정하고 `hunks_total` 을 다시 센 분모"],
   ["the re-review output carries the rows as well", "+ `coverage_rows`)"],
   ["the report states the comparison result round by round", "라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total` 과 앵커 개수"]
 ];
@@ -343,9 +343,10 @@ describe.each(COPIES)("FR-FLOW-171 AC-6 — the termination condition is a conju
     // Anchored on the pass grants themselves rather than on the section heading: a conjunction
     // written only in the coverage section leaves the table that actually decides untouched.
     // The pass grant is the zero-kept-findings gate (FR-FLOW-203), which replaced the severity
-    // counters. Anchors: the gate sentence `kept(surviving) finding 이 0` (1 in each rendering) and,
-    // in skills/claude, the PASS row of the §6.4 table, so no rendering contributes an empty window set.
-    const windows = windowsAround(flat(bodyOf(copy)), /\*\*kept\(surviving\) finding 이 0\*\*|kept 0 \(resolved 제외한/, 400);
+    // counters; record findings do not count (FR-FLOW-229). Anchors: the gate sentence
+    // `차단 kept finding 이 0` (1 in each rendering) and, in skills/claude, the PASS row of the §6.4
+    // table, so no rendering contributes an empty window set.
+    const windows = windowsAround(flat(bodyOf(copy)), /\*\*차단 kept finding 이 0\*\*|차단 kept 0 \(resolved 제외한/, 400);
     expect(windows.length, `${copy} states no termination condition`).toBeGreaterThan(0);
     for (const window of windows) {
       expect(window, `a pass is granted without the coverage comparison in ${copy}`).toMatch(/커버리지 대조/);
@@ -376,6 +377,27 @@ describe.each(COPIES)("FR-FLOW-171 AC-8 — one diff range for all three steps (
     const text = flat(coverage(copy));
     expect(text, "the range comes from the scope decision").toMatch(/self_scope\.source/);
     expect(text, "the cost of disagreement is stated").toMatch(/아무 잘못 없이 무효 라운드를 받는다/);
+  });
+});
+
+describe.each(COPIES)("FR-FLOW-171 AC-1 · AC-8 · AC-9 — from round 2 the denominator is the round-N scope (%s)", (copy) => {
+  // @req FR-FLOW-171 AC-1 — round 1 takes the scope decision's files; round 2 on takes the round-N scope of FR-NODE-274 AC-2.
+  it("AC-1: names the round-N scope as the denominator from round 2, and the widening that restores the full set", () => {
+    expect(flat(coverage(copy))).toContain(
+      flat("**2회차부터 분모는 회차 범위다.** 1회차의 분모는 위 `self_scope.files[]` 이고, 2회차부터는 `check_review_round` 가 정하는 회차 범위(FR-NODE-274 AC-2) — 직전 회차 리뷰가 읽은 스냅숏 `tree_sha` 와 이번 회차 리뷰가 읽는 스냅숏 `tree_sha` 사이에서 달라진 파일을 §11 부류 필터로 거르고 `.kiwi/` 아래 경로를 뺀 것과 그 변경이 닿는 파일 — 를 분모로 옮긴다. 전체 범위로 넓힌 회차(`scope` 가 `full`, 사유는 `scope_widen_reason`)만 다시 `self_scope.files[]` 를 분모로 쓴다.")
+    );
+  });
+  // @req FR-FLOW-171 AC-8 — the denominator, the hunk count and the anchor comparison read the same range within a round.
+  it("AC-8: names the round-N range the three steps share from round 2", () => {
+    expect(flat(coverage(copy))).toContain(
+      flat("2회차부터 `<범위>` 는 `<직전 회차 tree_sha> <이번 회차 tree_sha>` 이고, 전체 범위로 넓힌 회차는 1회차의 범위로 되돌린다 — 그 변경이 닿는 파일 가운데 그 범위에서 바뀌지 않은 파일은 `hunks_total` 0 의 행으로 남는다.")
+    );
+  });
+  // @req FR-FLOW-171 AC-9 — a clean round-N comparison says nothing about files outside the round-N scope.
+  it("AC-9: states that a narrowed round says nothing about a file outside it", () => {
+    expect(flat(coverage(copy))).toContain(
+      flat("2회차부터 분모가 회차 범위로 좁아지므로, 그 회차의 깨끗한 대조는 회차 범위 밖 파일에 대해 아무것도 말하지 않는다.")
+    );
   });
 });
 

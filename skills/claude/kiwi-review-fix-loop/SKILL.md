@@ -1,6 +1,6 @@
 ---
 name: kiwi-review-fix-loop
-description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌리는 스킬. **코드 전용** — 산문 문서(`SKILL.md` · `README` · SRS · 연구 노트)는 리뷰도 수정도 하지 않는다(§11). **셀프 리뷰가 기본** — 까칠 리뷰어 서브에이전트가 working tree 변경분(git status)을 분석. `--pr`/`-pr`/`--PR`/`-PR` 옵션 또는 사용자가 'PR 리뷰 읽고 수정' 명시 시 GitHub PR 모드 전환(`gh pr view --comments`). **코드 리뷰와 코드 개선은 반드시 서브에이전트로 수행**(메인 직접 수정 절대 금지). Finding 3분류(즉시수정/논의필요/거절+사유) + TDD 회귀 테스트 + 시니어 fixer + 까칠 리뷰어 재검증 루프 + keep/drop 종료 게이트(kept finding 0) + 회귀 PASS 의무. 트리거 — kiwi review fix loop, 리뷰 루프, 리뷰 수정 루프, 셀프 리뷰, 코드 리뷰해줘, 셀프 코드 리뷰, review fix, self review, code review loop, 리뷰 자동 적용, PR 리뷰 읽고 수정, PR 코멘트 적용, gh pr review fix, pr 응답, 머지 전 셀프 리뷰, 품질 게이트 돌려줘. --pr/-pr/--PR/-PR 로 PR 모드 활성. 검증(까칠 리뷰어·분류기·정형 검사) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음). --max 로 검증 강도(뮤테이션·적대적 실행) 승격(리뷰어는 전 모드 1개). --auto 로 사용자 게이트 자동 진행(keep/drop 가드레일). --no-respond 로 PR 모드에서 PR 코멘트 응답 skip. --close-reqs 로 회귀 PASS + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (셀프 모드 전용, 기본 off)."
+description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌리는 스킬. **코드 전용** — 산문 문서(`SKILL.md` · `README` · SRS · 연구 노트)는 리뷰도 수정도 하지 않는다(§11). **셀프 리뷰가 기본** — 까칠 리뷰어 서브에이전트가 working tree 변경분(git status)을 분석. `--pr`/`-pr`/`--PR`/`-PR` 옵션 또는 사용자가 'PR 리뷰 읽고 수정' 명시 시 GitHub PR 모드 전환(`gh pr view --comments`). **코드 리뷰와 코드 개선은 반드시 서브에이전트로 수행**(메인 직접 수정 절대 금지). Finding 4분류(즉시수정/선언된 한계/논의필요/거절+사유) + TDD 회귀 테스트 + 시니어 fixer + 까칠 리뷰어 재검증 루프 + keep/drop 종료 게이트(차단 kept finding 0 — 기록 finding 은 통과를 막지 않음) + 회귀 PASS 의무. 트리거 — kiwi review fix loop, 리뷰 루프, 리뷰 수정 루프, 셀프 리뷰, 코드 리뷰해줘, 셀프 코드 리뷰, review fix, self review, code review loop, 리뷰 자동 적용, PR 리뷰 읽고 수정, PR 코멘트 적용, gh pr review fix, pr 응답, 머지 전 셀프 리뷰, 품질 게이트 돌려줘. --pr/-pr/--PR/-PR 로 PR 모드 활성. 검증(까칠 리뷰어·분류기·정형 검사) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음). --max 로 검증 강도(뮤테이션·적대적 실행) 승격(리뷰어는 전 모드 1개). --auto 로 사용자 게이트 자동 진행(keep/drop 가드레일). --no-respond 로 PR 모드에서 PR 코멘트 응답 skip. --close-reqs 로 회귀 PASS + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (셀프 모드 전용, 기본 off)."
 ---
 
 > Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
@@ -32,6 +32,25 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 
 ---
 
+## 차단·기록과 회차 판정 — 컴팩션 뒤에도 남는 규칙 (FR-FLOW-229)
+
+이 블록은 본문 규칙의 요약이며 규칙을 더하지 않는다 — 줄마다 본문에 같은 문장이 있다.
+
+- **보장 범위** — 실행을 시작할 때 리뷰 대상 코드의 보장 범위를 실행 상태 `state.json` 의 `guarantee_scope` 에 기록한다.
+- **판정 주체** — kept finding 을 차단(`block`)과 기록(`record`)으로 가르는 것은 리뷰어가 아니라 리드(분류기)다.
+- **차단** — AC 를 어기거나, 실제 호출 경로에서 재현되거나, 데이터를 잃거나, 비밀을 노출하거나, 인증·권한을 우회하는 kept finding 은 차단이다 — 보안 finding 은 입력이 드물어도 차단이고, 선언된 계약을 깨는 값의 조용한 손실과 평범한 올바른 입력의 거부는 입력을 어떻게 만들었든 차단이다.
+- **기록** — 실패하는 테스트로 입증됐지만 실제 호출 경로가 없거나 보장 범위 밖인 kept finding 은 drop 하지 않고 기록(`declared_limit`)으로 분류해 고치지 않으며, 증거와 함께 선언된 한계 목록 `declared_limits[]` 에 올리고, 사용자는 그것을 차단으로 올릴 수 있다 — 차단 조건에 드는 finding 은 실제 호출 경로가 없거나 입력을 만들어 냈어도 기록으로 분류하지 않는다.
+- **2회차 범위** — 2회차부터 리뷰 범위의 기본값은 `check_review_round` 가 정하는 회차 범위(FR-NODE-274 AC-2)이며, 전체 범위로 넓히는 것은 사유를 `scope_widen_reason` 에 기록하는 명시적 결정이다.
+- **계열 재발** — 같은 계열(`family`)의 kept finding 이 앞선 두 회차 이상에서 나온 뒤 다시 나오면, 리드는 표준 도구 쓰기(`standard-tool`)·한 규칙으로 통합(`single-rule`)·한계 선언(`declare-limit`) 중 정확히 하나를 골라 `family_action` 으로 기록하고, fixer 는 그 구성원 하나만 덧대지 않고 그 선택을 적용한다.
+- **회차 검사** — 회차가 끝날 때마다 읽기 전용 검사 `check_review_round`(CLI `speckiwi review-round check`)를 부르고, 범위·앞 회차 수정의 과반·통과·상한이나 예산 멈춤에 대해 그 검사가 돌려준 판정(`PASS` · `NEEDS_USER` · `CONTINUE`)을 따른다.
+- **통과** — 차단 kept finding 이 0 이고 리뷰 커버리지 대조(FR-FLOW-171)가 통과하고 residual 이 남지 않았을 때(FR-FLOW-203 AC-11) 실행이 통과하며, 기록 finding 은 통과를 막지 않는다.
+- **남은 차단** — 앞 회차에서 해소되지 않은 차단 kept finding 도 그 회차 `findings[]` 에 다시 싣고 `id` · `family` · `introduced_by_round` 는 처음 기록한 값을 그대로 두므로, 최근 회차만 읽는 `check_review_round` 가 남은 차단을 모두 센다.
+- **상한·예산 멈춤** — 차단 kept finding 이 남은 채 최근 회차 번호가 `limits.round_cap` 에 닿거나, `limits.token_budget` 이 null 이 아니고 회차별 `tokens_used` 합이 그것을 넘으면 차단·기록 목록과 함께 `NEEDS_USER` 로 멈추고 통과로 기록하지 않는다 — `limits.token_budget` 이 null 이면 예산 멈춤은 없다.
+- **과반 멈춤** — 한 회차의 차단 kept finding 중 앞 회차 수정이 만든 것(`introduced_by_round` 가 그 회차보다 앞선 것)이 그 회차 차단의 절반을 넘으면 차단·기록 목록과 함께 `NEEDS_USER` 로 멈춘다.
+- **--auto** — 이 두 멈춤은 `--auto` 의 결정 서브에이전트가 풀지 못한다(critical gate `round-cap-or-budget-needs-user` · `fix-induced-defects-majority`).
+
+---
+
 ## Workflow 도구 정책
 
 세션 상태 조회의 정상 경로는 공식 workflow 읽기 도구다 — `--resume` 이 읽는 `.kiwi/sessions/{run-id}/state.json` 은 MCP `workflow_resolve_artifact` 에 그 실행의 `runId` 와 함께 `kind` 를 `coder-state` 로, `includeBody` 를 `true` 로 주어 읽고, 실행 기록 `worklog.jsonl` 은 `workflow_worklog_tail` 로 조회한다. 파일을 직접 읽는 것은 그 도구를 쓸 수 없을 때의 degraded 폴백이며, 그 실행은 도구 진단·산출물 경로·active target·후속 요구 또는 후보 ID 를 사용자 보고에 함께 남긴다.
@@ -53,11 +72,11 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.9 | **검증 서브에이전트 모델 정책 SSOT** (kiwi-coder §0.16 정합). 까칠 리뷰어 / 분류기 / 정형 검사 등 **검증 서브에이전트**는 기본적으로 **현재 세션 모델(current session model)**을 상속하며 `--model <name>` (또는 사용자가 지명한 모델) 로 그 모델을 override 한다. **시니어 fixer 는 현재 세션 모델이나 `--model` 영향 없음** (kiwi-coder 시니어 코더와 동일). count 는 모든 모드 공통 (각 ×1) |
 | §0.10 | **`.kiwi/` 상태 영속**. `cwd/.kiwi/sessions/{run-id}/state.json` 갱신. 재개 가능 (`--resume`) |
 | §0.11 | **모드 결정 SSOT (§0.G1)**. 기본은 셀프 모드. `--pr` / `-pr` / `--PR` / `-PR` 옵션 또는 자연어 명시 ("PR 리뷰 읽고 수정", "PR 코멘트 적용", "gh pr review fix") 시 PR 모드. 두 모드는 상호 배타 |
-| §0.12 | **PR 모드 사용자 의사결정 권한**. PR 리뷰 코멘트는 동료의 의견 — 본 스킬이 자동 거절·자동 수용 모두 위험. 분류기의 판정은 사용자 게이트 후 적용. `--auto` 시 keep/drop 가드레일: `--auto` 에서는 **kept→자동 수정 / dropped→자동 보고 / residual→사용자 결정**으로 가른다. |
+| §0.12 | **PR 모드 사용자 의사결정 권한**. PR 리뷰 코멘트는 동료의 의견 — 본 스킬이 자동 거절·자동 수용 모두 위험. 분류기의 판정은 사용자 게이트 후 적용. `--auto` 시 keep/drop 가드레일: `--auto` 에서는 **차단 kept→자동 수정 / 기록 kept→선언된 한계로 자동 보고(고치지 않음) / dropped→자동 보고 / residual→사용자 결정**으로 가르며, `--auto` 는 기록 finding 을 차단으로 올리지 않는다. |
 | §0.13 | **PR 응답 코멘트 의무 (PR 모드 + 응답 활성)**. `--no-respond` 부재 + PR 모드 + fix 1건 이상 적용 시 PR 에 응답 코멘트 1개 작성 (수정 완료 항목 + 거절 항목 + 사유). `gh pr comment` 사용. 시그니처 §0.6 적용 |
 | §0.14 | **셀프 모드 우선순위 결정**. 셀프 모드의 리뷰 대상 범위는 다음 순서: (1) 인자 `--files` / `--commits` / `--since` / `--base` `--head` 우선 / (2) 부재 시 `git status` 변경분 (working tree + staged) / (3) 변경분 0건 시 `HEAD~5..HEAD` fallback (사용자 확인 게이트 후) |
-| §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 3분류 매핑 (immediate_fix / discussion_needed / rejected) 및 §0.12 keep/drop 가드레일 (kept → 자동수정, dropped → 자동 보고, residual → 사용자 결정) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
-| §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회). 스킬 기본 상한의 숫자는 §6.4 가 정한다 |
+| §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 4분류 매핑 (immediate_fix / declared_limit / discussion_needed / rejected) 및 §0.12 keep/drop 가드레일 (차단 kept → 자동수정, 기록 kept → 선언된 한계로 자동 보고, dropped → 자동 보고, residual → 사용자 결정) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
+| §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 차단 kept finding 이 남았으면 잔여 보고로 끝내지 않고 차단·기록 목록과 함께 `NEEDS_USER` 로 멈춘다(안전 게이트 불우회, §6.4). 스킬 기본 상한의 숫자는 §6.4 가 정한다 |
 | §0.17 | **기존 구조 불가침** (kiwi-coder §0.20 정합). fix 로 green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동**을 모두 **금지**한다 — 본 스킬은 kiwi-coder 를 거치지 않는 코드 변경 경로이므로, 여기서 보존 규약이 빠지면 그 우회로가 그대로 열린다. 판정 기준은 kiwi-coder §0.20.1~§0.20.3 를 그대로 따른다. 탐지·차단 = **보존 스캔** 절 (§6) + §0.G8 `existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved` |
 
 ### §0.G — 핵심 게이트 결정표
@@ -117,13 +136,14 @@ self_scope.source enum 매핑 (§3.1):
 |---|---|
 | fix diff 에 cwd 외부 path 진입 | 즉시 중단 + AskUserQuestion 3옵션 (cwd 한정 / 외부 포함 / 작업장 이동) |
 
-#### §0.G5 — Finding 3분류 SSOT
+#### §0.G5 — Finding 4분류 SSOT
 
 분류기 (×1) 가 각 finding 에 대해 다음 중 정확히 1개로 분류:
 
 | 분류 | 정의 | 액션 |
 |---|---|---|
-| **immediate_fix** | 실행으로 입증된 kept finding(버그·회귀·보안·성능) — 자동 수정 가능 | Phase 3-5 진입 |
+| **immediate_fix** | 실행으로 입증된 차단 kept finding(AC 위반·실제 호출 경로 재현·데이터 손실·비밀 노출·인증·권한 우회, 사용자가 차단으로 올린 기록 포함) — 자동 수정 가능 | Phase 3-5 진입 |
+| **declared_limit** | 기록 kept finding — 실패하는 테스트로 입증됐지만 실제 호출 경로가 없거나 보장 범위(`guarantee_scope`) 밖이고 차단 조건에 들지 않는 것 | 고치지 않고 증거와 함께 `declared_limits[]` 에 올려 보고한다. 사용자가 차단으로 올리면 `immediate_fix` 로 간다 (`--auto` 는 올리지 않는다) |
 | **discussion_needed** | residual finding — 기능 결함이라 주장했으나 실행으로 입증하지 못했거나, 설계 의사결정·사용자 의도 확인이 필요해 판정을 사용자에게 넘기는 것 | AskUserQuestion (Normal) 또는 보고만 + 사용자 결정 위임 (Max 가능) |
 | **rejected** | dropped finding 만 온다 — 실행 입증 없음·스타일·명명·순서·주석, 또는 오해·scope-out·이미 의도된 동작·외부 라이브러리 책임처럼 결함이 아닌 것. `rejection_category` 가 그 drop 사유를 적는다 | 거절 사유 기록 + (PR 모드) 응답 코멘트에 거절 사유 포함 |
 
@@ -146,7 +166,7 @@ self_scope.source enum 매핑 (§3.1):
 | `--close-reqs` 부재 | §6.6 skip (mutation 호출 0건, 기본 동작) |
 | `--close-reqs` + PR 모드 | 차단 + 사용자 보고 ("`--close-reqs` 는 셀프 모드 전용. PR 모드에서 SRS mutation 은 머지 후 별도 처리") |
 | `--close-reqs` + 회귀 fail | 차단 + WARN ("회귀 미통과로 verified 전이 부적합") |
-| `--close-reqs` + kept 또는 residual finding 잔존 (≥1) | 차단 + WARN — residual 은 사용자 결정 전까지 승급하지 않는다 (FR-FLOW-203) |
+| `--close-reqs` + 차단 kept 또는 residual finding 잔존 (≥1) | 차단 + WARN — 기록(`declared_limit`) finding 은 승급을 막지 않는다. residual 은 사용자 결정 전까지 승급하지 않는다 (FR-FLOW-203) |
 | `--close-reqs` + Phase 7.4 테스트 충분성 확인이 `test-sufficiency-gap` 을 올림 | 차단 — gap 이 남은 요구를 `verified` 로 쓰지 않는다 (§6.5.1) |
 | `--close-reqs` + `scoped` 0건 | §6.6 skip + 보고. **"close 대상 REQ 없음" 한 줄로 끝내지 않는다** — `denominator` 의 크기와 교차가 0이 된 사유를 함께 적는다. 분모가 0이면 그 자체가 신호다 (`FR-NODE-198` 참조: enum 밖 status 로 쓰인 REQ 는 분모에 애초에 들어오지 않는다) |
 | `--close-reqs` + `eligible` 1건 이상 + 전이 0건 | **`TASK_DONE` 이 아니다.** `FAILED` 로 종료 + 보고 (§7.3) |
@@ -164,9 +184,11 @@ self_scope.source enum 매핑 (§3.1):
 |---|---|---|
 | `classifier-fix-hypothesis-fail-fallback` | 분류기 fix 가설 생성 실패 fallback — discussion_needed 유지 + 사용자 게이트 강제 복귀 (무한 루프 방지) (§5.1) | §5.1 |
 | `residual-finding-user-decision` | residual finding(실행으로 입증하지 못한 기능 결함 주장)은 `--auto` 의 결정 서브에이전트가 정리하지 못한다 — 사용자 결정 전까지 남는다 (FR-FLOW-203) | §0.G5 / §5.1 |
+| `round-cap-or-budget-needs-user` | 차단 kept finding 이 남은 채 라운드 상한(`limits.round_cap`)에 닿거나 토큰 예산(`limits.token_budget`)을 넘었다 — 차단·기록 목록과 함께 `NEEDS_USER` 로 멈추고 `--auto` 의 결정 서브에이전트가 풀지 못한다 (FR-FLOW-229 AC-4) | §6.4 |
+| `fix-induced-defects-majority` | 한 회차의 차단 kept finding 중 앞 회차 수정이 만든 것이 절반을 넘었다 — 차단·기록 목록과 함께 `NEEDS_USER` 로 멈추고 `--auto` 의 결정 서브에이전트가 풀지 못한다 (FR-FLOW-229 AC-6) | §6.4 |
 | `close-reqs-with-pr-mode` | `--close-reqs` + PR 모드 조합 차단 (§0.G7 Rule 2) | §0.G7 |
 | `close-reqs-with-regression-fail` | `--close-reqs` + 회귀 fail — verified 전이 부적합 (§0.G7 Rule 3) | §0.G7 |
-| `close-reqs-critical-or-high-residual` | `--close-reqs` + kept 또는 residual finding ≥1 잔존 — close 차단 (§0.G7 Rule 4). 게이트 ID 는 호환을 위해 유지한다 | §0.G7 |
+| `close-reqs-critical-or-high-residual` | `--close-reqs` + 차단 kept 또는 residual finding ≥1 잔존 — close 차단, 기록 finding 은 막지 않는다 (§0.G7 Rule 4). 게이트 ID 는 호환을 위해 유지한다 | §0.G7 |
 | `external-module-impact` | fix diff 에 cwd 외부 path 진입 (§0.5 / §0.G4) | §0.G4 |
 | `improvement-loop-divergence-4opt` | §0.G6 4옵션 게이트 발동 (시니어 fixer 3회 / 까칠 2회 동일 finding / 회귀 2회 연속 동일 fail) | §0.G6 |
 | `mock-detection` | Mock regex 자동 탐지 — kept finding (§0.4) | §0.4 / §6.2 |
@@ -185,7 +207,7 @@ self_scope.source enum 매핑 (§3.1):
 
 **클린 코드 수정은 이 표의 게이트를 올리지 않는다**: 클린 코드 수정이 `existing-public-contract-change` · `existing-test-weakened-or-deleted` · `existing-file-deleted-or-moved` · `mock-detection` · `external-module-impact` · `improvement-loop-divergence-4opt` 에 걸리면 클린 코드 라운드 블록의 **테스트.** 규칙대로 되돌리고 `unresolved` 로 표시하며 실행을 멈추지 않는다. 기능 결함 수정과 채우기 서브에이전트의 diff 에는 이 표가 그대로 적용된다.
 
-**finding 분류 매핑 (§0.G5) 와 keep/drop 가드레일 (§0.12) 은 본 critical_gates 와 별개 채널**: discussion_needed/immediate_fix/rejected 의 자동 액션 매핑은 keep/drop 가드레일(kept→자동 수정 / dropped→자동 보고 / residual→사용자 결정)의 적용 대상이며, 본 §0.G8 는 그 매핑이 실패하거나 critical 영역에 진입할 때의 HALT 게이트만 선언한다.
+**finding 분류 매핑 (§0.G5) 와 keep/drop 가드레일 (§0.12) 은 본 critical_gates 와 별개 채널**: discussion_needed/immediate_fix/declared_limit/rejected 의 자동 액션 매핑은 keep/drop 가드레일(차단 kept→자동 수정 / 기록 kept→선언된 한계로 자동 보고 / dropped→자동 보고 / residual→사용자 결정)의 적용 대상이며, 본 §0.G8 는 그 매핑이 실패하거나 critical 영역에 진입할 때의 HALT 게이트만 선언한다.
 
 ---
 
@@ -242,7 +264,7 @@ self_scope.source enum 매핑 (§3.1):
 - **분석 디렉토리**: `docs/analysis/kiwi-review-fix-loop-{run-id}/`
   - `mode_decision.json` — 모드 결정 결과 (셀프/PR) + 범위
   - `review_inventory.json` — 리뷰 finding 인벤토리 (셀프: 까칠 리뷰어 산출 / PR: gh pr comments + reviews)
-  - `classified_findings.json` — 3분류 결과 (immediate_fix / discussion_needed / rejected)
+  - `classified_findings.json` — 4분류 결과 (immediate_fix / declared_limit / discussion_needed / rejected)
   - `fix_iter{N}.json` — 시니어 fixer 적용 결과 (finding_id → patch summary)
   - `prickly_recheck_iter{N}.json` — 까칠 리뷰어 재검증 결과
   - `regression_run.jsonl` — 회귀 테스트 실행 로그
@@ -272,7 +294,7 @@ Phase 0 : Bootstrap (preflight, 모드 결정, 범위 결정, .kiwi init/resume,
 Phase 1 : 리뷰 인벤토리 수집
   1.s (셀프): 까칠 리뷰어 서브에이전트 → working tree diff 리뷰
   1.p (PR)  : gh pr view --comments + reviews → 정규화
-Phase 2 : Finding 3분류 (분류기 ×1)
+Phase 2 : Finding 4분류 (분류기 ×1)
 Phase 3 : 즉시수정 항목에 회귀 테스트 작성 (TDD 조건부, §0.3)
 Phase 4 : 시니어 fixer 적용 (서브에이전트)
 Phase 5 : 까칠 리뷰어 재검증 (서브에이전트, 입력 격리 §0.2)
@@ -336,12 +358,18 @@ state.json 초기 스키마:
   "clean_code_round": 0,
   "clean_code_dismissed": [],
   "clean_code_skip": null,
+  "guarantee_scope": null,
+  "declared_limits": [],
+  "limits": { "round_cap": 5, "token_budget": null },
+  "rounds": [],
   "regression_baseline": null,
   "regression_pass": false,
   "pr_responded": false,
   "failed": false
 }
 ```
+
+**착수 기록.** 실행을 시작할 때 리뷰 대상 코드의 보장 범위를 실행 상태 `state.json` 의 `guarantee_scope` 에 기록한다. `limits.round_cap` 은 실행 모드의 기본 상한(§6.4, `--loops N` 이면 N)이고 `limits.token_budget` 은 양의 정수 또는 null 이다. `rounds[]` 는 회차마다 한 항목이며 `{ round, tree_sha, scope: "since-prev"|"full", scope_widen_reason, files[], tokens_used, residual_count, coverage_passed, findings: [{ id, tier: "block"|"record", family, introduced_by_round }] }` 을 담는다 — `tree_sha` 는 그 회차 리뷰가 읽은 작업 트리 스냅숏(§6.3), `tokens_used` 는 리드가 그 회차에 기록한 토큰 수, `residual_count` 는 그 회차의 residual 수, `coverage_passed` 는 그 회차의 리뷰 커버리지 대조 결과(§12)다. 앞 회차에서 해소되지 않은 차단 kept finding 도 그 회차 `findings[]` 에 다시 싣고 `id` · `family` · `introduced_by_round` 는 처음 기록한 값을 그대로 두므로, 최근 회차만 읽는 `check_review_round` 가 남은 차단을 모두 센다. `declared_limits[]` 의 항목은 `{ id, reason, evidence }` 다. 이 기록이 회차 검사 `check_review_round` 의 입력이다(FR-NODE-274 AC-1).
 
 resume 알고리즘 (`--resume` 활성 시):
 1. state.json.phase 기반 entry-point 결정 — 해당 phase 부터 재개
@@ -350,6 +378,7 @@ resume 알고리즘 (`--resume` 활성 시):
 4. 까칠 리뷰어 / 시니어 fixer 재호출 카운터 누적 (§0.G6 발산 가드 유지)
 5. `state.json.clean_code_skip` 이 기록돼 있으면 클린 코드 검사를 건너뛸지 다시 묻지 않고 기록된 답을 따른다 — `true` 면 클린 코드 라운드를 돌지 않는다 (Phase 0 에서 답을 받은 즉시 기록한다 — 사용자가 확인했거나 `--auto` 가 건너뛰면 `true`, 신호가 없거나 사용자가 거절하면 `false`, 클린 코드 라운드 블록)
 6. `state.json.clean_code_round` 와 `state.json.clean_code_dismissed` 는 리셋하지 않는다 — 클린 코드 라운드는 기록된 번호에서 이어 세어 3회를 넘지 않고, 기록된 `dismissed` 지적(원칙·위치·사유)은 다음 라운드 리뷰어에게 다시 넘겨 그 라운드의 지적으로 세지 않는다 (클린 코드 라운드 블록)
+7. `state.json.guarantee_scope` · `limits` · `rounds[]` · `declared_limits[]` 는 리셋하지 않는다 — 재개된 실행은 기록된 회차 뒤에서 이어 센다
 
 ---
 
@@ -407,8 +436,13 @@ resume 알고리즘 (`--resume` 활성 시):
 - 실행으로 입증하지 못한 것과 스타일·명명·순서·주석류는 **drop** 하며, 심각도 라벨(CRITICAL·HIGH·MEDIUM·LOW)은 종료 판정에 쓰지 않는다.
 - 이 drop 은 기능 결함 finding 의 keep/drop 판정에 대한 것이다 — 중복·과도 추상화·명명 같은 클린 코드 지적은 이 판정에 넣지 않고 `clean-code` 분류로 따로 모아 클린 코드 라운드(클린 코드 라운드 블록)가 다룬다.
 - 기능 결함이라 **주장**했으나 실행으로 입증하지 못한 finding 은 drop 하지 않고 **residual 로 사용자 결정**에 올린다.
+- 기록 finding 은 실행으로 입증된 것이므로 residual 로 올리지 않는다.
+- kept finding 을 차단(`block`)과 기록(`record`)으로 가르는 것은 리뷰어가 아니라 리드(분류기)다.
+- AC 를 어기거나, 실제 호출 경로에서 재현되거나, 데이터를 잃거나, 비밀을 노출하거나, 인증·권한을 우회하는 kept finding 은 차단이다 — 보안 finding 은 입력이 드물어도 차단이고, 선언된 계약을 깨는 값의 조용한 손실과 평범한 올바른 입력의 거부는 입력을 어떻게 만들었든 차단이다.
+- 실패하는 테스트로 입증됐지만 실제 호출 경로가 없거나 보장 범위 밖인 kept finding 은 drop 하지 않고 기록(`declared_limit`)으로 분류해 고치지 않으며, 증거와 함께 선언된 한계 목록 `declared_limits[]` 에 올리고, 사용자는 그것을 차단으로 올릴 수 있다 — 차단 조건에 드는 finding 은 실제 호출 경로가 없거나 입력을 만들어 냈어도 기록으로 분류하지 않는다.
 - residual finding 이 하나라도 남으면 이 실행은 `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝난다 — 상위 오케스트레이터는 그 residual 을 사용자가 결정하기 전까지 step 승급·lane 병합으로 넘어가지 않는다.
-- keep/drop 판정과 3분류는 고정 매핑이다: kept→`immediate_fix`, residual→`discussion_needed`(`rejected` 로 보낼 수 없다), dropped→`rejected`.
+- 라운드 상한에 닿거나 토큰 예산을 넘거나, 차단 kept finding 이 남은 채 수렴 가드로 끝나거나, 앞 회차 수정이 만든 차단이 과반이어서 멈춘 실행도 `TASK_DONE` 이 아니라 `NEEDS_USER` 로 끝난다.
+- keep/drop 판정과 4분류는 고정 매핑이다: 차단 kept→`immediate_fix`, 기록 kept→`declared_limit`, residual→`discussion_needed`(`rejected` 로 보낼 수 없다), dropped→`rejected`.
 - keep 의 증거로 제출한 테스트는 현재 코드에서 **red 임을 실행으로 확인**한 뒤에만 인정하고, 그 테스트가 회귀 테스트가 되어 fix 후 green·뮤테이션으로 확인한다.
 - 리뷰어는 기능 결함으로 의심되는 모든 finding 에 실행 입증을 시도해야 하며, 시도 없이 주장만 한 finding 은 리뷰어 자신의 결함으로 기록한다.
 
@@ -420,7 +454,7 @@ resume 알고리즘 (`--resume` 활성 시):
 
 ---
 
-## 5. Phase 2 — Finding 3분류 (분류기 ×1, §0.G5)
+## 5. Phase 2 — Finding 4분류 (분류기 ×1, §0.G5)
 
 분류기 spawn:
 입력:
@@ -435,6 +469,12 @@ resume 알고리즘 (`--resume` 활성 시):
   "immediate_fix": [
     { "id": "FND-001", "rationale": "...", "estimated_complexity": "trivial|small|medium", "is_behavioral": true | false, "tags": ["bug", "regression", "security", "performance"] }
   ],
+  "declared_limit": [
+    { "id": "FND-005", "rationale": "...", "evidence": "실패하는 테스트와 그 출력", "limit_reason": "no_real_call_path|outside_guarantee_scope" }
+  ],
+  "kept_tiers": [
+    { "id": "FND-001", "tier": "block|record", "family": "계열 이름", "introduced_by_round": null | N, "family_action": null | "standard-tool|single-rule|declare-limit" }
+  ],
   "discussion_needed": [
     { "id": "FND-003", "rationale": "...", "questions_for_user": ["..."] }
   ],
@@ -446,17 +486,23 @@ resume 알고리즘 (`--resume` 활성 시):
 
 분류 검증 (메인 게이트):
 - `unclassified` 0건 확인 (§0.G5)
-- 합계 = `review_inventory.findings.length` 검증
+- 합계 = `review_inventory.findings.length` 검증 — 네 키(`immediate_fix` · `declared_limit` · `discussion_needed` · `rejected`)를 더한다
+- `kept_tiers[]` 는 kept finding 마다 정확히 한 항목이고, `tier` 가 `block` 이면 그 finding 은 `immediate_fix` 에, `record` 이면 `declared_limit` 에 든다. `introduced_by_round` 는 그 finding 을 만든 앞 회차 수정의 회차 번호이며 없으면 null 이다
 - 위반 시 분류기 재호출 (최대 2회)
 
 ### 5.1 discussion_needed 처리
 
 `--auto` 활성 시:
-- keep/drop 가드레일 SSOT 는 §0.12. 본 절은 §0.12 의 가드레일을 인용하여 discussion_needed 항목에 적용한다 (kept → immediate_fix 로 강제 재분류, 분류기에게 fix 가설 요구 / dropped → rejected 로 강제 재분류, 사유: "auto mode dropped finding" / residual → 재분류하지 않고 사용자 결정 유지).
+- keep/drop 가드레일 SSOT 는 §0.12. 본 절은 §0.12 의 가드레일을 인용하여 discussion_needed 항목에 적용한다 (차단 kept → immediate_fix 로 강제 재분류, 분류기에게 fix 가설 요구 / 기록 kept → declared_limit 유지, 고치지 않고 자동 보고 — 차단으로 올리지 않는다 / dropped → rejected 로 강제 재분류, 사유: "auto mode dropped finding" / residual → 재분류하지 않고 사용자 결정 유지).
 - **분류기 fix 가설 생성 실패 fallback**: 강제 재분류 요구에도 분류기가 immediate_fix 의 fix 가설 (rationale + estimated_complexity) 을 생성하지 못하면, 해당 finding 은 discussion_needed 상태로 유지하고 사용자 게이트로 강제 복귀 (무한 루프 방지).
 
 `--auto` 부재 시:
 - 모든 discussion_needed 에 대해 AskUserQuestion (단일 호출에 옵션 분해): 각 finding 별 (fix-now / reject-with-reason / defer-to-user-later)
+
+### 5.1.1 declared_limit 처리
+
+- 고치지 않는다. 증거와 함께 `state.json.declared_limits[]` 와 보고서(§7.1)에 올린다.
+- 사용자가 차단으로 올린 항목은 `kept_tiers[].tier` 를 `block` 으로 바꿔 `immediate_fix` 로 옮긴다. `--auto` 는 이 승격을 하지 않는다.
 
 ### 5.2 rejected 처리
 
@@ -498,6 +544,9 @@ resume 알고리즘 (`--resume` 활성 시):
 - 회귀 테스트 (Phase 3 산출) + red 시그니처
 - 변경 파일의 현재 상태
 - (선택) finding 의 suggested_fix (있을 때만)
+- finding 의 `family` 와, 계열 재발이면 리드가 고른 `family_action` (`standard-tool` | `single-rule` | `declare-limit`)
+
+**계열 재발.** 같은 계열(`family`)의 kept finding 이 앞선 두 회차 이상에서 나온 뒤 다시 나오면, 리드는 표준 도구 쓰기(`standard-tool`)·한 규칙으로 통합(`single-rule`)·한계 선언(`declare-limit`) 중 정확히 하나를 골라 `family_action` 으로 기록하고, fixer 는 그 구성원 하나만 덧대지 않고 그 선택을 적용한다.
 
 출력:
 - 패치 적용 (cwd 내 파일 직접 수정)
@@ -536,32 +585,49 @@ fixer pass 가 적용한 **diff** 를 스캔한다 — **기존 테스트 파일
 
 까칠 리뷰어 spawn (Phase 1.s 와 동일 prompt 골격, 단 입력 변경):
 입력:
-- Phase 4 의 fix 적용 후 diff (Phase 1.s 의 diff 가 아닌 Phase 4 diff)
+- 회차 범위의 diff — 아래 **회차 범위** 가 정한 범위의 diff (전체 범위로 넓힌 회차는 전체 범위의 diff)
 - 직전 라운드의 finding 목록 (단 `rationale_strip` 만, `rationale_full` 금지)
 - 본 라운드의 새 finding 만 식별 요구 + 직전 finding 의 해소 여부 평가
-- `review_denominator[]` — Phase 4 diff 를 대상으로 루프가 다시 고정하고 `hunks_total` 을 다시 센 분모 (§12). 라운드마다 다시 세는 이유는 fix 가 hunk 경계를 옮기기 때문이다
+- `review_denominator[]` — 2회차부터는 회차 범위(FR-NODE-274 AC-2)를 대상으로 루프가 다시 고정하고 `hunks_total` 을 다시 센 분모 (§12). 라운드마다 다시 세는 이유는 fix 가 hunk 경계를 옮기기 때문이다
 
 출력: `prickly_recheck_iter{N}.json` (Phase 1.s 와 동일 schema + `resolved_findings: [FND-id...]` + `coverage_rows`)
 
-### 6.4 Phase 6 — 개선 루프 (kept 카운터)
+**회차 범위.** 2회차부터 리뷰 범위의 기본값은 `check_review_round` 가 정하는 회차 범위(FR-NODE-274 AC-2)이며, 전체 범위로 넓히는 것은 사유를 `scope_widen_reason` 에 기록하는 명시적 결정이다. 회차 범위는 직전 회차 `tree_sha` 와 이번 회차 `tree_sha` 사이에서 달라진 파일을 §11 부류 필터로 거르고 `.kiwi/` 아래 경로를 뺀 것과, 리드가 고른 그 변경이 닿는 파일이다. 각 회차의 리뷰를 시작할 때(1회차인 Phase 1 포함) 리드는 작업 트리를 임시 인덱스로 스냅숏해 tree 로 쓰고 그 값을 `rounds[].tree_sha` 에 기록한다 — 커밋하지 않으며 실제 인덱스·HEAD·ref 는 건드리지 않고, 끝나면 `<tmp>` 를 지운다:
 
-종료 게이트는 **kept(surviving) finding 이 0** 일 때만 통과한다 — 이것이 기존 `CRITICAL=0 + HIGH=0` 게이트를 대체한다.
+```
+GIT_INDEX_FILE=<tmp> git read-tree HEAD
+GIT_INDEX_FILE=<tmp> git add -A
+GIT_INDEX_FILE=<tmp> git write-tree
+```
+
+### 6.4 Phase 6 — 개선 루프 (차단 kept 카운터)
+
+종료 게이트는 **차단 kept finding 이 0** 일 때만 통과하고 기록(`declared_limit`) finding 은 통과를 막지 않는다 — 이것이 기존 `CRITICAL=0 + HIGH=0` 게이트를 대체한다.
+
+차단 kept finding 이 하나라도 남아 있으면 루프는 라운드 상한·토큰 예산·수렴 가드 안에서 계속 돈다.
 
 | 종료 조건 | 판정 |
 |---|---|
-| kept 0 (resolved 제외한 new + 잔존) + 커버리지 대조 통과 | PASS |
-| 새로 해소된 kept 가 0 인 라운드 2회 연속 | 수렴 가드 종료 — 잔여 보고 (PASS 아님) |
-| 라운드 상한 소진 | 잔여 보고 (PASS 아님) |
+| 차단 kept 0 (resolved 제외한 new + 잔존) + 커버리지 대조 통과 + residual 0 | PASS |
+| 새로 해소된 차단 kept 가 0 인 라운드 2회 연속 | 수렴 가드 종료 — 차단 kept 가 남았으면 `NEEDS_USER` (PASS 아님) |
+| 차단 kept 가 남은 채 라운드 상한 소진 또는 토큰 예산 초과 | `NEEDS_USER` + 차단·기록 목록 (PASS 아님, `round-cap-or-budget-needs-user`) |
+| 그 회차 차단 중 앞 회차 수정이 만든 것이 절반 초과 | `NEEDS_USER` + 차단·기록 목록 (`fix-induced-defects-majority`) |
 
-기본 라운드 상한은 **Normal 5 / `--max` 8 / `--mini` 3** 이며, 상한 소진은 통과가 아니라 잔여 보고다. `--loops N` 이 주어지면 상한은 N 이다 (§0.16).
+기본 라운드 상한은 **Normal 5 / `--max` 8 / `--mini` 3** 이며, 차단 kept finding 이 남은 채 상한에 닿거나 토큰 예산을 넘으면 통과가 아니라 차단·기록 목록과 함께 `NEEDS_USER` 로 끝난다. `--loops N` 이 주어지면 상한은 N 이다 (§0.16).
 
-수렴 가드는 finding-hash 일치가 아니라 **새로 해소된 kept 가 0 인 라운드가 2회 연속**이면 종료한다.
+수렴 가드는 finding-hash 일치가 아니라 **새로 해소된 차단 kept 가 0 인 라운드가 2회 연속**이면 종료하며, 차단 kept finding 이 남은 채 수렴 가드로 끝난 실행은 통과가 아니라 `NEEDS_USER` 로 끝난다. 앞 회차 수정이 만든 차단의 과반 멈춤(FR-FLOW-229 AC-6)은 연속 횟수와 별개로 매 회차 검사하며, 먼저 걸린 쪽이 실행을 끝낸다.
+
+**회차 검사.** 회차가 끝날 때마다 읽기 전용 검사 `check_review_round`(CLI `speckiwi review-round check`)를 부르고, 범위·앞 회차 수정의 과반·통과·상한이나 예산 멈춤에 대해 그 검사가 돌려준 판정(`PASS` · `NEEDS_USER` · `CONTINUE`)을 따른다. 검사가 범위 실패를 보고하면 그 회차는 통과로 세지 않고, 빠진 파일을 넣어 그 회차 리뷰를 다시 한다.
+
+**통과.** 차단 kept finding 이 0 이고 리뷰 커버리지 대조(FR-FLOW-171)가 통과하고 residual 이 남지 않았을 때(FR-FLOW-203 AC-11) 실행이 통과하며, 기록 finding 은 통과를 막지 않는다.
+
+**멈춤.** 차단 kept finding 이 남은 채 최근 회차 번호가 `limits.round_cap` 에 닿거나, `limits.token_budget` 이 null 이 아니고 회차별 `tokens_used` 합이 그것을 넘으면 차단·기록 목록과 함께 `NEEDS_USER` 로 멈추고 통과로 기록하지 않는다 — `limits.token_budget` 이 null 이면 예산 멈춤은 없다. 한 회차의 차단 kept finding 중 앞 회차 수정이 만든 것(`introduced_by_round` 가 그 회차보다 앞선 것)이 그 회차 차단의 절반을 넘으면 차단·기록 목록과 함께 `NEEDS_USER` 로 멈춘다. 이 두 멈춤은 `--auto` 의 결정 서브에이전트가 풀지 못한다(critical gate `round-cap-or-budget-needs-user` · `fix-induced-defects-majority`).
 
 **커버리지 대조를 통과한 라운드만 PASS 가 된다** — finding 개수만으로는 PASS 가 나오지 않는다. 대조 결과는 §12 가 정하며, 무효 라운드는 어느 행에도 해당하지 않는다.
 
-종료는 리뷰 커버리지 대조(FR-FLOW-171)가 kept 0 게이트와 **함께** 통과할 때만 허용한다.
+종료는 리뷰 커버리지 대조(FR-FLOW-171)가 차단 kept 0 게이트와 **함께** 통과할 때만 허용한다.
 
-미충족 시 Phase 4 재진입 (잔존 kept + 새 kept 큐로). 카운터 초과 시 §0.G6 발동.
+미충족 시 Phase 4 재진입 (잔존 차단 kept + 새 차단 kept 큐로). 카운터 초과 시 §0.G6 발동.
 
 ### 6.5 Phase 7 — 회귀 테스트 실행
 
@@ -610,7 +676,10 @@ mode: self|pr
 mode_flags: [...]
 pr_url: null | "https://..."
 findings_total: N
-classified: { immediate_fix: A, discussion_needed: B, rejected: C }
+classified: { immediate_fix: A, declared_limit: D, discussion_needed: B, rejected: C }
+blocking_kept: N  # 마지막 회차에 남은 차단 kept 수
+declared_limits: [...]  # 기록 finding — id · 사유 · 증거
+scope_widen_reasons: [...]  # 전체 범위로 넓힌 회차와 그 사유
 fix_iter: N
 recheck_iter: M
 regression_pass: true|false
@@ -624,19 +693,20 @@ pr_responded: true|false
 1. 사용된 플래그 + 비용 배수
 2. 모드 결정 + 범위
 3. Finding 인벤토리 요약 (셀프: axis 별 / PR: source 별 + author 별)
-4. 3분류 결과 (immediate_fix / discussion_needed / rejected) + 각 분류별 finding 목록
+4. 4분류 결과 (immediate_fix / declared_limit / discussion_needed / rejected) + 각 분류별 finding 목록
 5. 적용된 fix 요약 (finding_id → 파일·라인·rationale)
 6. 까칠 리뷰어 재검증 결과 (라운드별 resolved / new finding)
 7. 회귀 테스트 실행 결과
 8. (PR 모드) PR 응답 코멘트 본문 (작성된 경우)
 9. 거절된 finding 사유 (rejected_findings.log 인용)
-10. drop 한 finding 은 **사유와 함께** 보고하고 residual 은 **목록으로** 보고한다 — silent truncation 은 하지 않는다. (사후 검토 권고)
+10. drop 한 finding 은 **사유와 함께** 보고하고 residual 은 **목록으로** 보고한다 — silent truncation 은 하지 않는다. 기록 finding 은 선언된 한계(`declared_limits[]`)로 **증거와 함께** 목록으로 보고한다 — 사용자는 그 가운데 차단으로 올릴 항목을 고른다. (사후 검토 권고)
 11. (`--close-reqs` 활성 시) REQ verified 전이 결과 — `closed_reqs.json` 인용 (transitioned / skipped / failed 통계 + 영향 REQ-ID 목록 + evidence 경로)
 12. 제외한 산문 전량 (`excluded_prose[]`) · 거부한 아티팩트 전량 (`refused_artifacts[]`) · 분류되지 않은 파일 전량 (`unclassified_files[]`) + 항등식 확인
 13. 리뷰 커버리지 대조 결과 (§12) — 라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total` 과 앵커 개수 · 무효 판정이 있었다면 어긋난 앵커 문자열
 14. 테스트 충분성 확인 결과 (§6.5.1) — `test_sufficiency.json` 의 verdict · 넘긴 범위 · 처음과 마지막 gap · 채우기로 더한 테스트
 15. 메타 (실측 토큰, 시간)
 16. 클린 코드 라운드 결과 — 돈 라운드 수 · 고친 지적 · `dismissed`(사유) · `unresolved`(되돌린 수정의 실패 출력 포함 — `dismissed` 지적은 넣지 않는다) · 건너뛰었으면 그 사실과 이유
+17. 보장 범위(`guarantee_scope`) · 회차별 범위(`scope` · `scope_widen_reason`) · 회차별 `check_review_round` 판정
 
 ### 7.2 PR 응답 코멘트 — PR 모드 전용 (`references/conditional-sections.md`)
 
@@ -647,8 +717,8 @@ pr_responded: true|false
 `~/.claude/skills/_shared/kiwi/pipeline-event.md` v1.0.0 의 §2 schema 와 §5 emit 패턴 적용. 멱등성: 동일 `run_id` 의 이벤트가 이미 존재하면 skip.
 
 - `skill`: `"kiwi-review-fix-loop"` (pipeline-event.md §3 의 skill enum 에 등재됨)
-- `status`: 모든 immediate_fix 처리 + 회귀 PASS **+ 승급 결과 조건** = `TASK_DONE`; discussion_needed 가 사용자 대기 = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`. **승급 결과 조건**: `--close-reqs` 활성 실행에서 `eligible` 이 **1 이상인데 전이 0건**이면 `TASK_DONE` 을 반환하지 않는다 — `FAILED` 다. 처분 대조가 어긋난 실행도 마찬가지다. `--close-reqs` 가 없는 실행에는 이 조건이 적용되지 않는다. 값은 `_shared/kiwi/pipeline-event.md` §2 의 enum 안에서만 고른다 — 새 값을 만들지 않는다
-- `next_hint`: 통상 `"kiwi-commit-auto-push"` (PR 모드는 PR 푸시 이미 됨 — `null` 권장), discussion_needed 잔존 시 `null`
+- `status`: 모든 immediate_fix 처리 + 회귀 PASS **+ 승급 결과 조건** = `TASK_DONE`; discussion_needed 가 사용자 대기이거나 `check_review_round` 가 `NEEDS_USER` 를 돌려준 실행(라운드 상한·토큰 예산·앞 회차 수정의 과반, 차단 kept 가 남은 수렴 가드 종료 포함) = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`. **승급 결과 조건**: `--close-reqs` 활성 실행에서 `eligible` 이 **1 이상인데 전이 0건**이면 `TASK_DONE` 을 반환하지 않는다 — `FAILED` 다. 처분 대조가 어긋난 실행도 마찬가지다. `--close-reqs` 가 없는 실행에는 이 조건이 적용되지 않는다. 값은 `_shared/kiwi/pipeline-event.md` §2 의 enum 안에서만 고른다 — 새 값을 만들지 않는다
+- `next_hint`: 통상 `"kiwi-commit-auto-push"` (PR 모드는 PR 푸시 이미 됨 — `null` 권장), `NEEDS_USER` 로 끝난 실행은 `null`
 - `artifacts.analysis_dir`: `docs/analysis/kiwi-review-fix-loop-{run-id}/`
 - `notes`: "mode=self|pr / findings=N / fixed=A / rejected=C / recheck_iter=M" 권장
 
@@ -770,13 +840,15 @@ pr_responded: true|false
 
 **분모는 루프가 고정한다.** 까칠 리뷰어를 spawn 하기 전에, 범위 결정이 산출한 `self_scope.files[]`(§11 의 포함 버킷)를 그대로 `review_denominator[]` 로 옮겨 리뷰어 프롬프트에 싣는다. 리뷰어가 스스로 정하지 않는다. 산문은 애초에 이 집합에 들어오지 않으므로(§11) 분모에도 넣지 않는다.
 
+**2회차부터 분모는 회차 범위다.** 1회차의 분모는 위 `self_scope.files[]` 이고, 2회차부터는 `check_review_round` 가 정하는 회차 범위(FR-NODE-274 AC-2) — 직전 회차 리뷰가 읽은 스냅숏 `tree_sha` 와 이번 회차 리뷰가 읽는 스냅숏 `tree_sha` 사이에서 달라진 파일을 §11 부류 필터로 거르고 `.kiwi/` 아래 경로를 뺀 것과 그 변경이 닿는 파일 — 를 분모로 옮긴다. 전체 범위로 넓힌 회차(`scope` 가 `full`, 사유는 `scope_widen_reason`)만 다시 `self_scope.files[]` 를 분모로 쓴다.
+
 **`hunks_total` 은 루프가 센다 — 리뷰어가 세지 않는다.** 분모의 파일마다 아래 명령으로 세어 `review_denominator[]` 의 각 항목에 `hunks_total` 로 함께 싣는다.
 
 ```
 git diff -U0 <범위> -- <path> | grep -c '^@@'
 ```
 
-`<범위>` 는 `self_scope.source` 가 정한 그 범위다. `-U0` 을 쓰는 이유는 컨텍스트 줄이 인접 hunk 를 병합해 개수를 줄이기 때문이다. **분모를 만든 범위, `hunks_total` 을 센 범위, 앵커를 대조하는 범위는 셋 다 같아야 한다** — 다르면 리뷰어가 아무 잘못 없이 무효 라운드를 받는다.
+`<범위>` 는 `self_scope.source` 가 정한 그 범위다. `-U0` 을 쓰는 이유는 컨텍스트 줄이 인접 hunk 를 병합해 개수를 줄이기 때문이다. **분모를 만든 범위, `hunks_total` 을 센 범위, 앵커를 대조하는 범위는 셋 다 같아야 한다** — 다르면 리뷰어가 아무 잘못 없이 무효 라운드를 받는다. 2회차부터 `<범위>` 는 `<직전 회차 tree_sha> <이번 회차 tree_sha>` 이고, 전체 범위로 넓힌 회차는 1회차의 범위로 되돌린다 — 그 변경이 닿는 파일 가운데 그 범위에서 바뀌지 않은 파일은 `hunks_total` 0 의 행으로 남는다.
 
 **리뷰어 출력에 `coverage_rows[]` 가 추가된다.** `review_denominator[]` 의 **모든** 파일이 한 행씩 갖고, 각 행은 그 파일의 앵커 목록과 finding 이 붙었는지를 밝힌다. finding 0건인 파일도 행으로 남는다. 표본·발췌·상위 N 은 분모가 아니다.
 
@@ -790,6 +862,6 @@ git diff -U0 <범위> -- <path> | grep -c '^@@'
 
 **하나라도 어긋나면 그 라운드는 무효다.** cap 은 소비하되 PASS 로 기록하지 않으며, 무효 판정 로그에 어긋난 앵커 문자열을 그대로 남긴다 — 재사용은 개수만 세면 보이지 않고 문자열을 나란히 놓아야 눈에 띈다. **무효 라운드가 2회 연속이면 `review-coverage-mismatch` 로 중단하고 `--auto` 가 이 중단을 덮지 못한다** (게이트 선언은 `critical_gates[]` 표에 있다). 파일이 많으면 리뷰어가 행 열거를 중간에서 잘라 돌려주고 모든 라운드가 무효가 되어 cap 만 소비하는데, 그것이 이 설계에서 아무 일도 일어나지 않는 것처럼 보이는 유일한 실패 형태이기 때문이다. 그때는 분모를 쪼개 리뷰어를 여럿으로 나누고 각자에게 자기 몫의 분모를 고정해 준다. **분모 단위를 파일보다 굵게 올리거나 앵커를 파일당 하나로 줄이지 않는다.**
 
-**이 대조가 보장하지 않는 것** — 앵커 대조는 리뷰어가 그 hunk 를 **이해했다는 것을 보장하지 않으며, 리뷰 품질을 재지 않는다.** 보장하는 것은 **분모의 모든 파일이 행으로 열거되고, 적힌 앵커 하나하나가 그 hunk 에 실재한다**는 데까지다 — **리뷰어가 diff 를 열었다는 것까지는 보장하지 않는다.** 앵커를 못 채우면 그 hunk 를 건드리지 않았다는 사실이 산출물에 남고, 틀린 앵커를 채우면 대조가 그것을 잡는다. 개수 대조에는 이 두 성질이 모두 없다 — `hunks_total` 은 루프가 넘긴 값이라 리뷰어가 같은 수를 되적는 것으로 끝나므로, 열두 파일 중 셋만 읽은 리뷰어도 열두 행 모두에서 개수를 맞춘다. 그러니 이 대조를 리뷰 판정의 자리로 쓰지 않는다.
+**이 대조가 보장하지 않는 것** — 앵커 대조는 리뷰어가 그 hunk 를 **이해했다는 것을 보장하지 않으며, 리뷰 품질을 재지 않는다.** 보장하는 것은 **분모의 모든 파일이 행으로 열거되고, 적힌 앵커 하나하나가 그 hunk 에 실재한다**는 데까지다 — **리뷰어가 diff 를 열었다는 것까지는 보장하지 않는다.** 앵커를 못 채우면 그 hunk 를 건드리지 않았다는 사실이 산출물에 남고, 틀린 앵커를 채우면 대조가 그것을 잡는다. 개수 대조에는 이 두 성질이 모두 없다 — `hunks_total` 은 루프가 넘긴 값이라 리뷰어가 같은 수를 되적는 것으로 끝나므로, 열두 파일 중 셋만 읽은 리뷰어도 열두 행 모두에서 개수를 맞춘다. 그러니 이 대조를 리뷰 판정의 자리로 쓰지 않는다. 2회차부터 분모가 회차 범위로 좁아지므로, 그 회차의 깨끗한 대조는 회차 범위 밖 파일에 대해 아무것도 말하지 않는다.
 
 **좁힌 정의로도 남는 것** — 조건은 **hunk 가 적다는 것이 아니라 hunk 마다 흔한 토큰이 하나씩 있다**는 것이다. 확장자만 보고 고른 흔한 코드 토큰이 그 파일의 hunk 를 하나씩 차지하면, hunk 가 여럿인 평범한 소스 편집도 diff 를 한 줄도 열지 않고 채워진다 — 이 저장소의 최근 40 커밋 470 파일을 그렇게 재면 **코드 파일의 80% 남짓**이 채워지고(서로 다른 보수적 풀 두 벌로 81% 와 85%), 그 안에는 6·7·11·13 hunk 짜리가 들어 있다. 최대 반례는 손으로 고친 11-hunk 소스 파일이다. 앵커 규칙으로 닫을 구멍이 아니다 — 900 줄짜리 새 파일을 읽었다는 것은 앵커 하나로 애초에 증명되지 않는다. 그러므로 **이 대조의 통과를 그 파일을 읽었다는 근거로 읽지 않는다.** 대조가 실제로 잡는 것은 분모를 표본으로 줄인 출력, 개수만 되적은 출력, 날조하거나 도배한 앵커다. 읽었는지가 걸린 변경에서는 분모를 쪼개 리뷰어를 여럿으로 나눈다.

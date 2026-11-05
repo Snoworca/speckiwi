@@ -28,6 +28,7 @@ kiwi-* 스킬의 **검증-개선 루프(verify → improve → re-verify) 라운
 ## 3. 상한 도달 시 동작 (cap-reached)
 
 - 심각도 게이트가 clean 되기 전에 라운드 상한에 도달하면: **루프를 중단**하고 **잔여(residual) finding 을 보고**한다 — silent truncation 금지(무엇이 미해결로 남았는지 산출물에 명시).
+- **`kiwi-review-fix-loop` 예외**: 차단 kept finding 이 남은 채 상한에 도달하면 잔여 보고로 끝내지 않고 차단·기록 목록과 함께 `NEEDS_USER` 로 멈추며 통과로 기록하지 않는다 (FR-FLOW-229 AC-4, FR-FLOW-203 AC-6).
 - **안전 게이트를 우회하지 않는다**: 잔여 `CRITICAL`/`HIGH` finding 은 여전히 표면화되고(보고 + blocked/warn 상태), 라운드 상한은 무한 에스컬레이션을 멈출 뿐 CRITICAL 을 은폐하지 않는다.
 - 경고·잔여 보고 채널 = 각 스킬의 표준 산출물(report.md / 콘솔 요약 / worklog.jsonl).
 

@@ -57,7 +57,7 @@ export function git(root: string, args: readonly string[], env?: NodeJS.ProcessE
  */
 const REPOSITORY_LOCATING_VARIABLES = ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"] as const;
 
-function environmentWithoutRepositoryLocation(): NodeJS.ProcessEnv {
+export function environmentWithoutRepositoryLocation(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const name of REPOSITORY_LOCATING_VARIABLES) delete env[name];
   return env;

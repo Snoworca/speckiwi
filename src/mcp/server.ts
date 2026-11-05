@@ -462,6 +462,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     sds: z.string().optional(),
     testGlob: z.array(z.string()).optional()
   },
+  // FR-NODE-274 — the verdict of a review run's latest round (mirrors `speckiwi review-round check`).
+  check_review_round: { runId: z.string().describe("the kiwi-review-fix-loop run whose .kiwi/sessions/<runId>/state.json is read") },
   // FR-MCP-043 — supersede and promote mutation tools.
   supersede_requirement: {
     oldId: z.string(),
@@ -579,6 +581,7 @@ export function isReadOnlyTool(name: string): boolean {
     "check_vibe_gate",
     "check_sds",
     "check_test_sufficiency",
+    "check_review_round",
     "check_prd",
     "list_prd_items",
     "get_prd_item",

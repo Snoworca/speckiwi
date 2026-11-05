@@ -6,7 +6,7 @@ skills/claude/kiwi-review-fix-loop/SKILL.md
 skills/claude/kiwi-review-fix-loop/SKILL.md
 ### 7.3 Pipeline event emit (의무)
 ---
-- `status`: 모든 immediate_fix 처리 + 회귀 PASS **+ 승급 결과 조건** = `TASK_DONE`; discussion_needed 가 사용자 대기 = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`. **승급 결과 조건**: `--close-reqs` 활성 실행에서 `eligible` 이 **1 이상인데 전이 0건**이면 `TASK_DONE` 을 반환하지 않는다 — `FAILED` 다. 처분 대조가 어긋난 실행도 마찬가지다. `--close-reqs` 가 없는 실행에는 이 조건이 적용되지 않는다. 값은 `_shared/kiwi/pipeline-event.md` §2 의 enum 안에서만 고른다 — 새 값을 만들지 않는다
+- `status`: 모든 immediate_fix 처리 + 회귀 PASS **+ 승급 결과 조건** = `TASK_DONE`; discussion_needed 가 사용자 대기이거나 `check_review_round` 가 `NEEDS_USER` 를 돌려준 실행(라운드 상한·토큰 예산·앞 회차 수정의 과반, 차단 kept 가 남은 수렴 가드 종료 포함) = `NEEDS_USER`; dry-run = `DRY_RUN`; 실패 = `FAILED`. **승급 결과 조건**: `--close-reqs` 활성 실행에서 `eligible` 이 **1 이상인데 전이 0건**이면 `TASK_DONE` 을 반환하지 않는다 — `FAILED` 다. 처분 대조가 어긋난 실행도 마찬가지다. `--close-reqs` 가 없는 실행에는 이 조건이 적용되지 않는다. 값은 `_shared/kiwi/pipeline-event.md` §2 의 enum 안에서만 고른다 — 새 값을 만들지 않는다
 === terminal status section ===
 skills/claude/kiwi-review-fix-loop/references/conditional-sections.md
 #### 6.6.1 영향 REQ-ID 추출
@@ -21,7 +21,7 @@ Accounting identity: `transitioned + excluded == scoped`. A run whose
 skills/codex/kiwi-review-fix-loop/references/extended-workflow.md
 ## Pipeline Event
 ---
-| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
+| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. `NEEDS_USER` also covers a stop the round check returns: the round cap, the token budget, the convergence guard with a blocking kept finding remaining, or the earlier-round-fix majority. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
 === terminal status section ===
 skills/etc/kiwi-review-fix-loop/references/extended-workflow.md
 ## Close Requirements
@@ -31,7 +31,7 @@ Accounting identity: `transitioned + excluded == scoped`. A run whose
 skills/etc/kiwi-review-fix-loop/references/extended-workflow.md
 ## Pipeline Event
 ---
-| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
+| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. `NEEDS_USER` also covers a stop the round check returns: the round cap, the token budget, the convergence guard with a blocking kept finding remaining, or the earlier-round-fix majority. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
 === terminal status section ===
 .agents/skills/kiwi-review-fix-loop/references/extended-workflow.md
 ## Close Requirements
@@ -41,4 +41,4 @@ Accounting identity: `transitioned + excluded == scoped`. A run whose
 .agents/skills/kiwi-review-fix-loop/references/extended-workflow.md
 ## Pipeline Event
 ---
-| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |
+| `status` | `TASK_DONE`, `NEEDS_USER`, `FAILED`, or `DRY_RUN`. Under `--close-reqs`, `TASK_DONE` additionally requires the promotion result: if `eligible` is at least one and `transitioned` is zero, the run is `FAILED`, and so is one whose accounting identity does not hold. A run without `--close-reqs` is unaffected. `NEEDS_USER` also covers a stop the round check returns: the round cap, the token budget, the convergence guard with a blocking kept finding remaining, or the earlier-round-fix majority. Values come from the enum `_shared/kiwi/pipeline-event.md` declares; no new value is introduced |

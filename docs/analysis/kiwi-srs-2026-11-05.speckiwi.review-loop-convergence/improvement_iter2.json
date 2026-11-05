@@ -1,0 +1,12 @@
+{
+  "iteration": 2,
+  "input": "eval_iter2.json (a_fail 0, kept 2, residual 0) + D-1",
+  "fixes": [
+    {"finding": "K-1", "ids": ["FR-NODE-274", "FR-FLOW-229", "FR-FLOW-171"], "ac": ["FR-NODE-274 AC-2", "FR-FLOW-229 AC-1", "FR-FLOW-171 AC-1", "FR-FLOW-171 AC-8", "FR-FLOW-171 AC-9"], "change": "round-N scope defined only in FR-NODE-274 AC-2 (diff between tree_sha of round N-1's review and tree_sha of round N's review = change after round N-1's review, plus touched files); the others point to it; Implementation Notes rewritten (no empty-diff sentence)"},
+    {"finding": "K-2", "ids": ["FR-NODE-274"], "ac": ["AC-2"], "change": "round-2+ diff passes the same code-file class filter as round 1 (skill §11, FR-FLOW-152); paths under .kiwi/ excluded"},
+    {"finding": "D-1", "ids": ["FR-FLOW-229"], "ac": ["AC-2"], "change": "exception now refers to every kind AC-5 makes blocking instead of listing them"}
+  ],
+  "acCheckState": "all changed ACs unchecked",
+  "validate": {"errors": 0, "warnings": {"SRS-W023": 13}},
+  "linksCheck": {"broken": 4, "brokenInChanged": 0}
+}
