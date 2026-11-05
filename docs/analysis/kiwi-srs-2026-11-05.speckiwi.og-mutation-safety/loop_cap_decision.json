@@ -1,0 +1,8 @@
+{
+  "date": "2026-11-05",
+  "gate": "prd-cap-unpassed-user-decision",
+  "state_at_cap": { "rounds": 5, "a_fail": 0, "kept_open": 1, "residual": 0, "open_finding": "eval_iter5 K-1: FR-PARSE-049 names an MCP surface for links check that does not exist" },
+  "decision": "approved: raise the round cap by one (--loops 6); run round 6 with a fresh verifier; on pass raise the 8 requirements to evolving and go to TDD implementation; if round 6 does not pass, stop and report",
+  "decided_by": "user, relayed by the directive session (sessionKey sess_f09180f5-11c7-4f0c-a5ec-96acfa19bd4a)",
+  "reason": "kept fell from 4 to 1, the remaining finding is a factual error, and the same kind is being cross-checked across all 9 requirements"
+}

@@ -1,0 +1,221 @@
+{
+  "iteration": 1,
+  "eval": "eval_iter1.json",
+  "addressed": [
+    {
+      "finding": "F-1",
+      "req": "FR-NODE-270",
+      "action": "added AC-9 (shipped kiwi-srs-research replace call dry-runs first, passes confirmReplace only when removedItems > 0, records removedLines in its report) + Rationale line `AC-9 fills: PRD-3 / defect / ...` + Change Note `Added AC-9`. Skill text itself left for implementation.",
+      "calls": [
+        {
+          "tool": "replace_acceptance_criteria",
+          "via": "node bin/speckiwi replace-acceptance-criteria --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "items": [
+              {
+                "text": "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, every other non-blank line belongs to the item above it, and the template placeholder line `- -` and blank lines are not items.",
+                "checked": false
+              },
+              {
+                "text": "WHEN the new text holds an item whose lines equal those of an old item, compared line by line after trimming trailing whitespace and each new item matching at most one old item, THAT old item SHALL NOT count as removed, and every other old item SHALL count as removed.",
+                "checked": false
+              },
+              {
+                "text": "WHEN `append-note <id> --section implementation_notes --mode replace --text <one line> --dry-run` runs on a section holding the placeholder and three dated notes, THE result value SHALL carry `removedItems: 3` and `removedLines` holding the three notes' lines in document order, the result SHALL be ok with `written: false`, and the file SHALL stay byte-identical, without the confirmation flag.",
+                "checked": false
+              },
+              {
+                "text": "WHEN the same call runs without `--dry-run` and without the confirmation flag, THE SYSTEM SHALL refuse with USAGE, name the flag and the number of items the replace would remove in the message, and leave the file byte-identical.",
+                "checked": false
+              },
+              {
+                "text": "WHEN it runs with `--confirm-replace` (MCP `confirmReplace: true`, or `\"confirmReplace\": true` through `--input-json -`), THE SYSTEM SHALL write the replacement, and the result SHALL carry the same `removedItems` and `removedLines` the dry run reported.",
+                "checked": false
+              },
+              {
+                "text": "WHEN a replace removes no item, because the section heading is absent, the body holds only the placeholder, or every old item reappears in the new text, THE SYSTEM SHALL write without the confirmation flag and report `removedItems: 0` and an empty `removedLines`.",
+                "checked": false
+              },
+              {
+                "text": "An append SHALL report `removedItems: 0` and an empty `removedLines`, and SHALL refuse the confirmation flag with USAGE, writing nothing.",
+                "checked": false
+              },
+              {
+                "text": "THE MCP input shape of `append_section_note` SHALL declare `confirmReplace` as an optional boolean, the ToolSpec registry SHALL declare `--confirm-replace` so that `speckiwi commands --json` lists it with payload key `confirmReplace`, and the MCP tool description and the CLI help of `--mode` SHALL say that a replace removing an item needs the flag.",
+                "checked": false
+              },
+              {
+                "text": "THE shipped skill that calls `append_section_note` with `mode: \"replace\"`, kiwi-srs-research (skills/claude/kiwi-srs-research/SKILL.md section 7.1.2 and the codex and etc copies in references/extended-workflow.md), SHALL run the replace as a dry run first, pass `confirmReplace: true` only when that dry run reports `removedItems` above 0, and record the dry run's `removedLines` in its run report, asserted by the skill contract tests, so that AC-4 neither refuses the skill's replace of a Research section that holds a note nor lets it confirm blind.",
+                "checked": false
+              }
+            ]
+          },
+          "ok": true
+        },
+        {
+          "tool": "append_section_note",
+          "via": "node bin/speckiwi append-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "rationale",
+            "mode": "append",
+            "text": "AC-9 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / kiwi-srs-research already calls append_section_note with mode replace and passes no confirmReplace (skills/claude/kiwi-srs-research/SKILL.md section 7.1.2, mirrored in the codex and etc extended-workflow.md), so once AC-4 holds that shipped caller is refused. The skill text changes at implementation."
+          },
+          "ok": true
+        },
+        {
+          "tool": "add_change_note",
+          "via": "node bin/speckiwi add-change-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "change": "Added AC-9",
+            "reason": "Verification round 1 (F-1): kiwi-srs-research calls append_section_note with mode replace and no confirmReplace, so AC-4 would refuse a shipped caller"
+          },
+          "ok": true
+        }
+      ],
+      "diff_check": "only the AC-9 line inserted in the AC list"
+    },
+    {
+      "finding": "F-2",
+      "req": "FR-PARSE-049",
+      "disposition": "exclusion removed (not needed for PRD-2: a discarded holder still points the graph at a withdrawn node, SRS-E012 reports regardless of holder, and edit_requirement_table_rows can delete the row since assertEditable refuses only verified)",
+      "action": "statement drops the discarded-holder clause; AC-5 now says checked_compatible rows are not reported and rows held by discarded requirements are reported; Rationale AC-5 line split into `AC-5 ← PRD-7` and `AC-5 fills: PRD-7 / contradiction / §23.5 item 3`; Research Rejected note replaced by a Decision note; Change Note added",
+      "calls": [
+        {
+          "tool": "edit_requirement_fields",
+          "via": "node bin/speckiwi edit-requirement --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-PARSE-049",
+            "statement": "`links check` and `validate`, on the CLI and through MCP, SHALL report under one new warning code every `Requirement` Trace Link row whose target requirement is discarded, carrying a relation other than `supersedes`, `superseded_by` and `checked_compatible`, and each report SHALL name the discarded requirement and the requirements that supersede it, so that an edge left pointing at a withdrawn requirement is reported by the checks instead of found by a person."
+          },
+          "ok": true
+        },
+        {
+          "tool": "edit_acceptance_criterion",
+          "via": "node bin/speckiwi edit-ac --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-PARSE-049",
+            "acId": "AC-5",
+            "text": "A row whose relation is `checked_compatible` SHALL NOT be reported, and a row held by a discarded requirement SHALL be reported like a row held by a live one."
+          },
+          "ok": true
+        },
+        {
+          "tool": "append_section_note(replace)",
+          "via": "node bin/speckiwi append-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-PARSE-049",
+            "section": "rationale",
+            "mode": "replace",
+            "text": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1095). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-2: a link left pointing at a withdrawn requirement is reported.\n\nAC-1, AC-2, AC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (links check and validate report the row and name the successor)\nAC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (the rows that record the supersede are the ones the exclusion `PRD-9` keeps out)\nAC-5 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (a row held by a discarded requirement still points the graph at a withdrawn node, so it is reported)\nAC-5 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 / contradiction / section 23.5 item 3 of the rules document says validation does not enforce the status of either endpoint of a checked_compatible row, so reporting one would contradict a rule the request does not reopen\nAC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (a warning that existing repositories can absorb)\nAC-7 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 / hole / during a merge one ID can be held by a live and a discarded block, and the expired-criterion successor check (successorProblem in src/core/parser/ac-parser.ts) already treats such an ID as discarded only when every block is\nAC-8 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (one rule for the two read surfaces and the writers)\n\nDesign decision taken from the proposal `PRD-14` (state proposed, effect in-scope): the new diagnostic is a warning, its details carry the discarded requirement and its successors, and supersedes and superseded_by rows are not reported."
+          },
+          "ok": true
+        },
+        {
+          "tool": "append_section_note(replace)",
+          "via": "node bin/speckiwi append-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-PARSE-049",
+            "section": "research",
+            "mode": "replace",
+            "text": "- Measured 2026-11-05 on HEAD f36a264 in a scratch project: FR-ARCH-002 was superseded by FR-ARCH-005 through `supersede --apply` (its heading became `~~FR-ARCH-002 — Req B~~ [DISCARDED → see FR-ARCH-005]`), then `add-trace FR-ARCH-003 --relation extends` and `add-trace FR-ARCH-004 --relation depends_on` to FR-ARCH-002 both returned ok with no diagnostic. `links check --json` returned `checked: 3, broken: []`, and `validate --json` reported SRS-W023 only. The reproduction posted on OG #1095 on 2026-11-05 (OG HEAD 795020684b) found the two `extends` rows to FR-CREDMGMT-005 in docs/spec/41.server-credential-management.srs.md unreported among 1013 broken entries.\n- Source: checkLinks (src/core/query/links.ts) tests a Requirement row with `ids.has(trace.reference)` only, and the validator repeats the same existence test for SRS-E012 (src/core/validator/rules.ts). No registered code covers a discarded target; the nearest, ROADMAP-W010, is roadmap-only.\n- Source: the successor of a discarded requirement is the holder of the first incoming `Requirement` / `supersedes` row, ordered by file path then line, with the rest counted (rules section 30.1, FR-NODE-034). findIncomingTraceRows lives in src/core/mutation/trace-search.ts. The query and validator layers do not import a mutation module for it: the lookup moves to a layer both can import, and the heading marker keeps calling the same function.\n- Trap: a `broken` entry is `{requirementId, reference, reason, code}`. The successor goes into `reason` there and into `details` on the validate diagnostic. Adding a field to `broken` changes a shape MCP `check` returns.\n- Trap: a new warning code is listed in the rules document's diagnostic table as well as in the registry (SRS-W079 and SRS-W080 appear in both).\n- Trap: a discarded requirement with no incoming supersedes row carries a bare `[DISCARDED]` marker and has no successor. AC-3 covers the message for that case.\n- Rejected: error severity. OG already shows 1013 broken entries, and an error would fail every validate run there before anyone cleans the links, which the request leaves to OG (`PRD-10`). Reopen when a consumer asks for the gate.\n- Decision: a row held by a discarded requirement is reported like any other. SRS-E012 already reports a missing target whatever the holder's status, and edit_requirement_table_rows refuses only a verified block (assertEditable in src/core/mutation/edit-requirement.ts), so such a row can be deleted with the tool. An earlier draft left these rows out citing FR-PARSE-045 AC-4, but that criterion bounds only FR-PARSE-045's own two warnings.\n- Rejected: having `supersede` list the incoming edges it leaves. Useful, but not asked, and the warning reaches every route that leaves such an edge, not only supersede."
+          },
+          "ok": true
+        },
+        {
+          "tool": "add_change_note",
+          "via": "node bin/speckiwi add-change-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-PARSE-049",
+            "change": "Rows held by discarded requirements are reported; AC-5 basis corrected",
+            "reason": "Verification round 1 (F-2): the exclusion cited FR-PARSE-045 AC-4, which bounds only that requirement's own warnings, so no contradiction backed it; a discarded holder still points the graph at a withdrawn node and its row can be deleted by edit_requirement_table_rows. The checked_compatible exclusion stays on rules section 23.5 item 3"
+          },
+          "ok": true
+        }
+      ],
+      "diff_check": "diff of docs/spec/20.parser-validation.srs.md shows exactly the statement line, the AC-5 Rationale line (1 -> 2 lines), AC-5, one Research line and the new Change Note row"
+    },
+    {
+      "finding": "F-3",
+      "req": "FR-NODE-202",
+      "action": "Rationale note appended: `AC-6 fills: PRD-3 / contradiction / role split (one range op, no diagnostic code here; removed lines, count and confirmation in FR-NODE-270)`",
+      "calls": [
+        {
+          "tool": "append_section_note(append)",
+          "via": "node bin/speckiwi append-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-202",
+            "section": "rationale",
+            "mode": "append",
+            "text": "AC-6 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / contradiction / the no-diagnostic decision rested on the range being readable, while the request asks that a replace show and confirm what it removes, so the roles are split: this requirement keeps the rewrite as one range operation with no diagnostic code, and FR-NODE-270 (5.3.2) owns the removed lines, the removed item count and the confirmation"
+          },
+          "ok": true
+        }
+      ],
+      "check": "prd coverage --target 3.1.0: FR-NODE-202 AC-6 no longer ungrounded"
+    },
+    {
+      "finding": "F-4",
+      "req": "FR-NODE-271",
+      "action": "Research recount: three other preview-unless-applied callers (remove-project.ts:108, upgrade-project.ts:107, repair-rules-references.ts:62), recounted with grep before editing",
+      "calls": [
+        {
+          "tool": "append_section_note(replace)",
+          "via": "node bin/speckiwi append-note --input-json -",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-271",
+            "section": "research",
+            "mode": "replace",
+            "text": "- Measured 2026-11-05 on HEAD f36a264: in a scratch project made by `speckiwi init --no-skills --no-mcp` and committed, the sha256 of every file outside `.git` was taken before and after `node bin/speckiwi scaffold-scope Extra:EXT --json`. The only difference was a new `kiwi/.status.json` whose `lock` read `active: true` with operation `scaffold_scope` and an expiry one minute ahead. `--apply --dry-run` created the same file. The reproduction posted on OG #1151 on 2026-11-05 hashed every file around each of the 68 commands that take `--dry-run` and found this the only one that wrote a file.\n- Source: scaffoldScope (src/core/mutation/scaffold-scope.ts) calls withSrsMutationLock with `operation` and `ignoreLock` only, and decides the preview inside scaffoldScopeUnlocked from `apply !== true`. withSrsMutationLock (srs-lock.ts) therefore takes a real lock and writes the status cache through refreshCacheDiagnostics before the mutation, and refreshes it after release only when the result wrote, so a preview leaves the cache saying the lock is held. The three other callers that preview unless applied pass `dryRun: !apply`: src/core/bootstrap/remove-project.ts, src/core/bootstrap/upgrade-project.ts and src/core/mutation/repair-rules-references.ts (recounted 2026-11-05 with `grep -rn \"withSrsMutationLock(\" src -A2` and a filter on `apply`).\n- Trap: the CLI already folds `--dry-run` into `apply` (`apply: Boolean(options.apply) && options.dryRun !== true` in src/cli/commands/mutations.ts), so deriving the lock's dry run from `apply !== true` covers both CLI forms and MCP. A fix that read a separate dryRun input would miss the default preview.\n- Trap: with the dry run set, acquireSrsMutationLock still refuses when another writer holds the lock, as it does for every dry run. That refusal writes nothing and stays.\n- Rejected: a suite that sweeps every command taking `--dry-run`. The external sweep found one case, and a suite of that size is a requirement of its own. Reopen when a second dry-run write is found."
+          },
+          "ok": true
+        }
+      ],
+      "diff_check": "single Research line changed"
+    }
+  ],
+  "not_addressed": {
+    "dropped": [
+      "F-5",
+      "F-6",
+      "F-7",
+      "F-8",
+      "F-9",
+      "F-10"
+    ]
+  },
+  "checks": {
+    "validate_fail_on_warning": {
+      "exit": 1,
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      },
+      "note": "no new code other than SRS-W023"
+    },
+    "links_check": {
+      "checked": 1764,
+      "broken": 4,
+      "note": "same 4 pre-existing SRS-W074"
+    },
+    "prd_coverage_532": {
+      "uncitedItems": [],
+      "ungrounded_new_criteria": []
+    },
+    "active_target": "5.3.2"
+  },
+  "residual_after": []
+}

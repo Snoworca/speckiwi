@@ -4,6 +4,7 @@ import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
 import type { MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
+import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findSectionTableInsertionLine, planMetadataWrite } from "./internal.js";
@@ -45,7 +46,43 @@ function stalePatchMutationFailure(error: unknown, filePath: string): MutationRe
   return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } });
 }
 
+interface WrittenTraceRow {
+  type: string;
+  reference: string;
+  relation: string;
+}
+
+/**
+ * @req FR-NODE-272 AC-5 — the refusal of a `Requirement` row to a discarded requirement that does not
+ * record the supersede, decided by the rule links check reports with (SRS-W081).
+ */
+export function refuseDiscardedTraceTargets<T = unknown>(records: readonly RequirementRecord[], rows: readonly WrittenTraceRow[]): MutationResult<T> | undefined {
+  const judge = judgeDiscardedTraceTargets(records);
+  for (const row of rows) {
+    const discarded = judge.refuses(row);
+    if (discarded) {
+      return mutationFail(
+        "USAGE",
+        `Trace target ${discarded.summary}. Point the row at a live requirement, or record the supersede with relation supersedes or superseded_by.`
+      ) as MutationResult<T>;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * @req FR-NODE-272 AC-1, AC-4 — the same refusal, from a workspace read before the SRS lock is taken: a
+ * refusal decided inside the lock leaves kiwi/.status.json saying the lock is held, so only this one
+ * writes no file. The writer checks again inside the lock, for a target discarded between the two reads.
+ */
+export async function refuseDiscardedTraceTargetsBeforeLock<T = unknown>(root: ProjectRoot, rows: readonly WrittenTraceRow[]): Promise<MutationResult<T> | undefined> {
+  if (!rows.some((row) => row.type === "Requirement")) return undefined;
+  return refuseDiscardedTraceTargets<T>((await parseWorkspace(root)).records, rows);
+}
+
 export async function addTraceLink(root: ProjectRoot, input: AddTraceInput): Promise<MutationResult> {
+  const refusal = await refuseDiscardedTraceTargetsBeforeLock(root, [input]);
+  if (refusal) return refusal;
   return withSrsMutationLock(root, { operation: "add_trace_link", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addTraceLinkUnlocked(root, input));
 }
 
@@ -62,6 +99,8 @@ async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Pr
   if (input.type === "Requirement" && !workspace.records.some((record) => record.id === input.reference)) {
     return mutationFail("MUTATION_DENIED", `Trace target not found: ${input.reference}`);
   }
+  const discardedRefusal = refuseDiscardedTraceTargets(workspace.records, [input]);
+  if (discardedRefusal) return discardedRefusal;
   const loaded = findLoadedRecord(workspace, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Trace Links");

@@ -5,6 +5,7 @@ import type { RequirementBlockRange } from "../parser/block-scanner.js";
 import type { DocumentLine } from "../parser/document-lines.js";
 import { parseRequirementSections } from "../parser/section-parser.js";
 import { parseAcceptanceCriteria } from "../parser/ac-parser.js";
+import { headingContainsForbiddenMarkdown } from "../parser/heading-content.js";
 import { parseMarkdownTableResult, parseMetadataRows } from "../parser/table.js";
 import type { ParsedTable } from "../parser/table.js";
 import type { SectionRange } from "../parser/section-parser.js";
@@ -18,15 +19,6 @@ function sectionText(lines: string[] | undefined): string | undefined {
 export interface RequirementRecordResult {
   record: RequirementRecord;
   diagnostics: Diagnostic[];
-}
-
-function headingContainsForbiddenMarkdown(title: string): boolean {
-  return (
-    /\[[^\]]+\]\([^)]+\)/.test(title) ||
-    /`[^`]+`/.test(title) ||
-    /(^|[\s([{])(?:\*\*[^*\n]+\*\*|\*[^*\n]+\*|__[^_\n]+__|_[^_\n]+_)(?=$|[\s)\]},.:;!?])/.test(title) ||
-    /\p{Extended_Pictographic}/u.test(title)
-  );
 }
 
 function parseSectionTable(section: SectionRange | undefined, file: TextFile, requirementId: string, diagnosticCode?: "SRS-W016" | "SRS-W017" | "SRS-W075", tableLabel = "Markdown"): { table?: ParsedTable; diagnostics: Diagnostic[] } {

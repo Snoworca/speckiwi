@@ -327,23 +327,36 @@ export function findSectionInsertionLine(
   return { mode: "create", insertAtLine: end };
 }
 
+/**
+ * The body of a present section: the lines from its first to its last non-blank line, or, when it
+ * holds no non-blank line, the heading line the new body goes under.
+ */
+export type SectionBodyRange =
+  | { readonly empty: false; readonly startLine: number; readonly endLine: number }
+  | { readonly empty: true; readonly headingLine: number };
+
 export function findSectionBodyRange(
   file: TextFile,
   record: RequirementRecord,
   headingText: "Rationale" | "Research / Analysis" | "Implementation Notes"
-): { startLine: number; endLine: number } | undefined {
+): SectionBodyRange | undefined {
   const start = record.sectionLines?.[headingText];
   if (!start) return undefined;
   const end = record.blockEndLine ?? file.lines.length;
   let bodyStart = start + 1;
   while (bodyStart <= end && (file.lines[bodyStart - 1] ?? "").trim() === "") bodyStart += 1;
+  // Skipping blank lines can walk past an empty body onto the next heading. Returning that heading
+  // as the body made a replace overwrite it, and validate saw nothing wrong. @req FR-NODE-270 AC-11
+  if (bodyStart > end || (file.lines[bodyStart - 1] ?? "").startsWith("#### ")) {
+    return { empty: true, headingLine: start };
+  }
   let bodyEnd = bodyStart;
   for (let line = bodyStart; line <= end; line += 1) {
     const text = file.lines[line - 1] ?? "";
     if (text.startsWith("#### ")) break;
     if (text.trim() !== "") bodyEnd = line;
   }
-  return { startLine: bodyStart, endLine: bodyEnd };
+  return { empty: false, startLine: bodyStart, endLine: bodyEnd };
 }
 
 // FR-NODE-058 / FR-NODE-072 — vibe/tdd merge contradiction hard-gate. A vibe or

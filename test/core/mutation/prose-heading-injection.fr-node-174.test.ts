@@ -162,6 +162,7 @@ describe("FR-NODE-174 AC-9 — no mutation writes prose that opens a requirement
       id: CARRIER,
       section: "rationale",
       mode: "replace",
+      confirmReplace: true,
       text: "One paragraph.\n\nA second paragraph, with a `#` inside a code span and a - bullet."
     });
 
@@ -628,7 +629,8 @@ describe("FR-NODE-174 AC-7 — a requirement's title cannot open anything either
     const result = await addRequirement(projectRoot, {
       scope: "ARCH",
       type: "functional",
-      title: "An ordinary title with `code` and — punctuation",
+      // No code span: FR-NODE-266 refuses one, because validate reports it as SRS-E020.
+      title: "An ordinary title with code and — punctuation",
       statement: "The system SHALL do something ordinary.",
       target: "v1.0.0",
       acceptanceCriteria: ["Something."]

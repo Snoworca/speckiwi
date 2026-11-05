@@ -868,6 +868,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
       "Point the row at the requirement that must land first, with Type Requirement, or change its Relation; a dependency on code, a document or a work item is not one the tools can order by."
   },
   {
+    code: "SRS-W081",
+    severity: "warning",
+    title: "Trace Link row points at a discarded requirement",
+    messageTemplate: "Trace target {reference} is discarded; superseded by {successorIds}, or no successor is recorded",
+    sourceRule: "FR-PARSE-049",
+    since: "v5.3.2",
+    remediation:
+      "Point the row at the requirement that supersedes the target, which the message names, or remove the row with edit_requirement_table_rows. A row whose relation is supersedes or superseded_by records the supersede and is not reported, nor is a checked_compatible row."
+  },
+  {
     code: "SRS-E077",
     severity: "error",
     title: "MCP server unbound",

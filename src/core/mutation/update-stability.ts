@@ -9,7 +9,7 @@ import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { classifyStabilityTransition, type StabilityTransitionWarning } from "./stability-transition.js";
-import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
+import { deriveSuccessorSlot, findIncomingTraceRows } from "../trace-search.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, Stability } from "../types.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { todayStamp } from "../date-stamp.js";

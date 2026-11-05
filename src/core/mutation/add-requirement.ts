@@ -14,8 +14,9 @@ import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot
 import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
-import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, refuseExpiredMarker, renderRequirementBlock, type RenderRequirementInput } from "./render-requirement.js";
-import { assertOpensNoBlockBoundary, assertPromotableBlock, assertSingleLine } from "./block-prose.js";
+import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, refuseExpiredMarker, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
+import { refuseDiscardedTraceTargets, refuseDiscardedTraceTargetsBeforeLock } from "./add-trace.js";
+import { assertOpensNoBlockBoundary, assertPromotableBlock, assertRequirementTitle } from "./block-prose.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
@@ -85,7 +86,8 @@ function assertProseOpensNoSection(input: ResolvedAddRequirementInput): Mutation
   // that landed a body `| Status | verified |` row whose evidence pointed outside the checkout, and
   // `assertEditable` then refused every granular repair. `supersede_requirement` reaches this same
   // call with its own title, so guarding here closes both.
-  return assertSingleLine<AddRequirementOutput>("title", input.title);
+  // @req FR-NODE-266 AC-1 — and nothing the parser would report as SRS-E020.
+  return assertRequirementTitle<AddRequirementOutput>("title", input.title);
 }
 
 function canBeVerified(input: AddRequirementInput): boolean {
@@ -269,6 +271,8 @@ function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, fileP
 }
 
 export async function addRequirement(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
+  const discardedRefusal = await refuseDiscardedTraceTargetsBeforeLock<AddRequirementOutput>(root, (input.trace ?? []).map(traceRowCells));
+  if (discardedRefusal) return discardedRefusal;
   return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, input));
 }
 
@@ -335,6 +339,8 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
       return mutationFail("MUTATION_DENIED", `Trace target not found: ${trace.reference}`);
     }
   }
+  const discardedRefusal = refuseDiscardedTraceTargets<AddRequirementOutput>(workspace.records, (resolvedInput.trace ?? []).map(traceRowCells));
+  if (discardedRefusal) return discardedRefusal;
   let filePath: string;
   try {
     filePath = await resolveScopeDocumentPath(root, scope.document);

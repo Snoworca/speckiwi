@@ -14,7 +14,9 @@ async function fixtureWithLoggedStatus(status: string): Promise<string> {
   const specPath = path.join(root, "docs", "spec", "10.product-architecture.srs.md");
   const original = await readFile(specPath, "utf8");
   if (!original.includes("| Status | planned |")) throw new Error("fixture status row not found");
-  await writeFile(specPath, original.replace("| Status | planned |", `| Status | ${status} |`), "utf8");
+  // The fixture's self link would point at a discarded requirement, which FR-PARSE-049 reports.
+  const withoutSelfLink = original.replace(/^\| Requirement \| FR-ARCH-001 \| self \|.*\r?\n/m, "");
+  await writeFile(specPath, withoutSelfLink.replace("| Status | planned |", `| Status | ${status} |`), "utf8");
   // Keep the index Status Summary in step so the only possible warning is the one under test.
   const indexPath = path.join(root, "docs", "spec", "00.index.md");
   const index = await readFile(indexPath, "utf8");

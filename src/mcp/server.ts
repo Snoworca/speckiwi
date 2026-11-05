@@ -255,6 +255,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     // MCP caller blocked. @req FR-NODE-202 AC-2
     text: z.string(),
     mode: z.enum(["append", "replace"]).optional(),
+    // @req FR-NODE-270 AC-8
+    confirmReplace: z.boolean().optional(),
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },

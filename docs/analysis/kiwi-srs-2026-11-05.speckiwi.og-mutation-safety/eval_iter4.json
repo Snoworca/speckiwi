@@ -1,0 +1,93 @@
+{
+  "prd": "docs/prd/2026-11-05.og-srs-mutation-safety.prd.md",
+  "iteration": 4,
+  "prd_items": [
+    {"id": "PRD-1", "kind": "intent", "verdict": "accepted", "by": ["FR-NODE-270", "FR-NODE-271", "IR-CLI-117"], "note": "Each cites PRD-1 in its Rationale; FR-NODE-270 shows, confirms and reports the loss of a replace."},
+    {"id": "PRD-2", "kind": "intent", "verdict": "accepted", "by": ["FR-PARSE-049", "FR-NODE-272"], "note": "Both cite PRD-2; the checks report and the writers refuse an edge to a discarded requirement."},
+    {"id": "PRD-3", "kind": "in-scope", "verdict": "accepted", "by": ["FR-NODE-270 AC-3", "FR-NODE-270 AC-4", "FR-NODE-270 AC-5", "FR-NODE-270 AC-6", "FR-NODE-270 AC-8", "FR-NODE-202 AC-6"], "note": "Dry run shows removed lines and count; a replace that removes an item is refused without --confirm-replace."},
+    {"id": "PRD-4", "kind": "in-scope", "verdict": "accepted", "by": ["FR-NODE-270 AC-1", "FR-NODE-270 AC-2", "FR-NODE-270 AC-5", "FR-NODE-270 AC-7"], "note": "removedItems and removedLines on the result value in both modes."},
+    {"id": "PRD-5", "kind": "in-scope", "verdict": "accepted", "by": ["IR-CLI-117 AC-1", "IR-CLI-117 AC-2", "IR-CLI-117 AC-3"], "note": "Guidance route per the PRD elaboration; the cut happens before the process gets argv (README.md:717, reproduction on OG #1151)."},
+    {"id": "PRD-6", "kind": "in-scope", "verdict": "accepted", "by": ["FR-NODE-271 AC-1", "FR-NODE-271 AC-2", "FR-NODE-271 AC-3", "FR-NODE-271 AC-4"], "note": "scaffold-scope.ts:48 is the only withSrsMutationLock call without dryRun (34 call sites outside srs-lock.ts, re-counted)."},
+    {"id": "PRD-7", "kind": "in-scope", "verdict": "accepted", "by": ["FR-PARSE-049 AC-1", "FR-PARSE-049 AC-2", "FR-PARSE-049 AC-3", "FR-PARSE-049 AC-6", "FR-PARSE-049 AC-8"], "note": "New warning in links check and validate naming the successor; reproduced that both report nothing today."},
+    {"id": "PRD-8", "kind": "in-scope", "verdict": "accepted", "by": ["FR-NODE-272 AC-1", "FR-NODE-272 AC-3", "FR-NODE-272 AC-4", "FR-NODE-272 AC-5"], "note": "add-trace and add-requirement refuse with USAGE; reproduced that add-trace extends/depends_on to a discarded target returns ok today."},
+    {"id": "PRD-9", "kind": "exclusion", "verdict": "excluded-ok", "by": ["FR-PARSE-049 AC-4", "FR-NODE-272 AC-2"], "note": "supersedes and superseded_by rows are neither reported nor refused; supersede T1 (supersede-requirement.ts:226) keeps working."},
+    {"id": "PRD-10", "kind": "exclusion", "verdict": "excluded-ok", "by": [], "note": "No requirement edits OG code or OG links; FR-PARSE-049 rejects error severity citing PRD-10."},
+    {"id": "PRD-11", "kind": "in-scope", "verdict": "accepted", "by": ["FR-NODE-266", "FR-NODE-267", "FR-NODE-269"], "note": "Three 5.3.2 drafts carry a Rationale note citing PRD-11; the other 5.3.2 drafts are untouched."},
+    {"id": "PRD-12", "kind": "proposal", "verdict": "n/a", "by": ["FR-NODE-270"], "note": "State proposed, so not counted as in-scope; FR-NODE-270 follows and cites it."},
+    {"id": "PRD-13", "kind": "proposal", "verdict": "n/a", "by": ["IR-CLI-117"], "note": "State proposed; IR-CLI-117 follows and cites it."},
+    {"id": "PRD-14", "kind": "proposal", "verdict": "n/a", "by": ["FR-PARSE-049", "FR-NODE-272"], "note": "State proposed; both follow and cite it."},
+    {"id": "PRD-15", "kind": "proposal", "verdict": "n/a", "by": ["FR-NODE-270"], "note": "Effect exclusion, state proposed; FR-NODE-270 Research rejects a single-note mode, consistent."}
+  ],
+  "srs_items": [
+    {"req_id": "FR-PARSE-049", "item": "Requirement, AC-1, AC-2, AC-3, AC-4, AC-6, AC-8", "verdict": "grounded", "basis": "PRD-2, PRD-7, PRD-9, PRD-14"},
+    {"req_id": "FR-PARSE-049", "item": "AC-5", "verdict": "grounded", "basis": "PRD-7 plus fills contradiction; docs/rule/SRS-MD-Rules-v2.6.0.md:1168 (status of a checked_compatible endpoint not enforced) confirmed"},
+    {"req_id": "FR-PARSE-049", "item": "AC-7", "verdict": "grounded", "basis": "PRD-7 plus fills hole; successorProblem src/core/parser/ac-parser.ts:45 uses every(discarded), confirmed"},
+    {"req_id": "IR-CLI-117", "item": "Requirement, AC-1, AC-2, AC-3", "verdict": "grounded", "basis": "PRD-1, PRD-5, PRD-13; --help of append-note, edit-requirement, add-requirement holds 0 input-json mentions (measured)"},
+    {"req_id": "FR-NODE-202", "item": "AC-6 bounded against FR-NODE-270, and its Rationale fills note", "verdict": "grounded", "basis": "PRD-3 fills contradiction; the old AC-6 rested on the range being readable, confirmed by the diff"},
+    {"req_id": "FR-NODE-266", "item": "Rationale note (chosen for 5.3.2)", "verdict": "grounded", "basis": "PRD-11"},
+    {"req_id": "FR-NODE-267", "item": "Rationale note (chosen for 5.3.2)", "verdict": "grounded", "basis": "PRD-11"},
+    {"req_id": "FR-NODE-269", "item": "Rationale note (chosen for 5.3.2)", "verdict": "grounded", "basis": "PRD-11"},
+    {"req_id": "FR-NODE-270", "item": "Requirement, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-8", "verdict": "grounded", "basis": "PRD-1, PRD-3, PRD-4, PRD-12, PRD-15"},
+    {"req_id": "FR-NODE-270", "item": "AC-7", "verdict": "grounded", "basis": "PRD-4 plus fills hole (the flag on an append is refused)"},
+    {"req_id": "FR-NODE-270", "item": "AC-9", "verdict": "grounded", "basis": "PRD-3 fills defect; skills/claude/kiwi-srs-research/SKILL.md:547 and the codex/etc extended-workflow.md (:140, :139) call mode append|replace without confirmReplace, confirmed"},
+    {"req_id": "FR-NODE-270", "item": "AC-10", "verdict": "grounded", "basis": "PRD-3 fills defect; README.md:694 and :1686 show a replace right after an append, confirmed"},
+    {"req_id": "FR-NODE-270", "item": "AC-11", "verdict": "grounded", "basis": "PRD-3 fills defect; reproduced: a replace of a blank-bodied Implementation Notes overwrote `#### Change Notes` and validate reported only SRS-W023 (findSectionBodyRange internal.ts:339-346)"},
+    {"req_id": "FR-NODE-271", "item": "Requirement, AC-1, AC-2, AC-3, AC-4", "verdict": "grounded", "basis": "PRD-1, PRD-6"},
+    {"req_id": "FR-NODE-272", "item": "Requirement, AC-1, AC-2, AC-3, AC-5, AC-6", "verdict": "grounded", "basis": "PRD-2, PRD-8, PRD-9, PRD-14"},
+    {"req_id": "FR-NODE-272", "item": "AC-4", "verdict": "grounded", "basis": "PRD-8 plus fills hole; add-requirement.ts:333-336 repeats the target check, confirmed"}
+  ],
+  "findings": [
+    {
+      "id": "K-1",
+      "disposition": "keep",
+      "req_id": "FR-NODE-270",
+      "description": "The Requirement statement defines what is reported as 'the original lines a replace removes', but AC-6 requires an empty removedLines when the body holds only the placeholder, and AC-3 expects the three notes' lines. On a real body the replace range starts at the placeholder line `- -` and removes it, so under the statement removedLines holds `- -` (and, with AC-2, the lines of items that reappear), while AC-6 says []. The statement and AC-6 cannot both hold on the 447 Implementation Notes and 605 Research / Analysis bodies in this repository that are `- -`: an implementer following the statement fails AC-6, and one following AC-6 makes the statement false.",
+      "evidence": {
+        "kind": "quote+reproduction",
+        "detail": "docs/spec/50.nodejs-implementation.srs.md:18150 'SHALL report in its result ... the original lines a `replace` removes and the number of items it removes' versus :18177 AC-6 'the body holds only the placeholder lines and blank lines of AC-1 ... report `removedItems: 0` and an empty `removedLines`'. Scratch copy of test/fixtures/workspaces/mutation-target: Implementation Notes body lines 178-181 = `- -` plus three dated notes; `append-note FR-ARCH-003 --section implementation_notes --mode replace --text \"Only one\" --dry-run --json` returned replaceRange startLine 178 endLine 181 lines [\"Only one\"], so line 178 `- -` is one of the original lines the replace removes."
+      },
+      "drop_reason": null
+    },
+    {
+      "id": "D-1",
+      "disposition": "drop",
+      "req_id": "FR-PARSE-049",
+      "description": "links check --json output also carries a diagnostics array of validator warnings (SRS-W023 observed), so the new warning may appear both in broken and in diagnostics.",
+      "evidence": {"kind": "command-output", "detail": "node bin/speckiwi --root <scratch> links check --json -> {checked:3, broken:[], diagnostics:[SRS-W023 ...]}"},
+      "drop_reason": "AC-1 constrains only the broken list; appearing in both makes no AC false."
+    },
+    {
+      "id": "D-2",
+      "disposition": "drop",
+      "req_id": "FR-NODE-269",
+      "description": "PRD-11's elaboration asks for drafts in the same files as this fix; FR-NODE-269 lives in roadmap code that no other requirement of this run touches.",
+      "evidence": {"kind": "none", "detail": "-"},
+      "drop_reason": "The elaboration is not the quoted request (small and low-risk only); the note does not claim the same file, and the choice is a judgement, not a functional defect."
+    },
+    {
+      "id": "D-3",
+      "disposition": "drop",
+      "req_id": "FR-NODE-270",
+      "description": "AC-7 does not say whether `confirmReplace: false` on an append is refused.",
+      "evidence": {"kind": "none", "detail": "-"},
+      "drop_reason": "Wording; either reading implements the AC and no other AC depends on it."
+    },
+    {
+      "id": "D-4",
+      "disposition": "drop",
+      "req_id": "FR-NODE-272",
+      "description": "promote_step_requirement (add-requirement.ts:416) and edit_requirement_table_rows can still write a Requirement row to a discarded target.",
+      "evidence": {"kind": "code", "detail": "src/core/mutation/add-requirement.ts:416"},
+      "drop_reason": "The requirement names its two writers and its Research says the edit route is not covered; FR-PARSE-049 reports what they leave. No AC is false."
+    },
+    {
+      "id": "D-5",
+      "disposition": "drop",
+      "req_id": "FR-PARSE-049",
+      "description": "Implementing FR-PARSE-049 adds 52 warnings to this repository's own validate (e.g. docs/spec/30.cli-interface.srs.md:2119 IR-CLI-032 -> REL-NODE-003 depends_on).",
+      "evidence": {"kind": "command-output", "detail": "node scan of docs/spec Trace Links: 52 Requirement rows to an all-discarded target outside supersedes/superseded_by/checked_compatible"},
+      "drop_reason": "CI runs `node bin/speckiwi validate --json` without --fail-on-warning (.github/workflows/ci.yml:57) and the repository already carries 38 SRS-W023 warnings; no gate breaks."
+    }
+  ],
+  "summary": {"a_fail": 0, "kept": 1, "dropped": 5, "residual": 0, "pass": false}
+}

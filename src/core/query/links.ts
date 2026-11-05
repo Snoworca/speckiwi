@@ -2,6 +2,7 @@ import path from "node:path";
 import { access } from "node:fs/promises";
 import { fileReferences, relatedDocsDestinations, relatedDocsPath, traceLinkPaths, type FileReference } from "../parser/file-references.js";
 import { checkPrdReferenceFiles } from "../prd/files.js";
+import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import type { ParsedWorkspace } from "../types.js";
 
 /** Every file reference `links check` verifies: each requirement's Related Docs files and Trace Link paths. */
@@ -32,6 +33,7 @@ async function exists(filePath: string): Promise<boolean> {
 
 export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckResult> {
   const ids = new Set(workspace.records.map((record) => record.id));
+  const discardedTargets = judgeDiscardedTraceTargets(workspace.records);
   const broken: LinkCheckResult["broken"] = [];
   let checked = 0;
   for (const record of workspace.records) {
@@ -57,6 +59,9 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
         if (!ids.has(trace.reference)) {
           broken.push({ requirementId: record.id, reference: trace.reference, reason: "requirement missing", code: "SRS-E012" });
         }
+        // @req FR-PARSE-049 AC-1 — the successor goes into `reason`, so the entry keeps its shape.
+        const discarded = discardedTargets.reports(trace);
+        if (discarded) broken.push({ requirementId: record.id, reference: trace.reference, reason: discarded.summary, code: "SRS-W081" });
         continue;
       }
       for (const referenced of traceLinkPaths(trace)) {

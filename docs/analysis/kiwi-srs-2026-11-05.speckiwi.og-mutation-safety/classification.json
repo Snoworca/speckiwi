@@ -1,0 +1,131 @@
+{
+  "target": "5.3.2",
+  "prd": "docs/prd/2026-11-05.og-srs-mutation-safety.prd.md",
+  "prd_status": "unapproved (--auto)",
+  "head": "f36a264",
+  "classification": "update",
+  "rationale": "Five new requirements extend existing surfaces (append_section_note replace, the --input-json channel help, scaffold-scope preview, links check / validate trace checks, add-trace / add-requirement trace writers). One existing AC (FR-NODE-202 AC-6) is narrowed so it no longer reads as excluding the loss report. No conflict needs supersede.",
+  "evidence_paths": [
+    "src/core/mutation/append-section-note.ts:118-142 (replace = one replaceRange, value has no removed info)",
+    "src/core/mutation/envelope.ts:38-47 (preview = written lines only)",
+    "src/core/mutation/scaffold-scope.ts:48 (withSrsMutationLock without dryRun)",
+    "src/core/mutation/srs-lock.ts:519-543 (non-dry-run path writes status cache)",
+    "src/core/query/links.ts:54-60 (Requirement trace: existence only)",
+    "src/core/validator/rules.ts:817-823 (SRS-E012 existence only)",
+    "src/core/mutation/add-trace.ts:62-64, src/core/mutation/add-requirement.ts:333-336 (target existence only)",
+    "src/cli/input-json.ts (gate marks mutation commands; --help never mentions --input-json)",
+    "README.md:715-744, 1707-1736 (cmd.exe warning already present)"
+  ],
+  "measurements": "scratchpad project m1 (speckiwi init --no-skills --no-mcp): scaffold-scope preview created kiwi/.status.json with lock.active=true; append-note replace dry-run envelope had replaceRange 72-75 lineCount 1 and no removed text; supersede + add-trace extends/depends_on to discarded FR-ARCH-002 accepted, links check broken [] and validate only SRS-W023; add-requirement --trace to discarded accepted; append-note --help has no input-json mention.",
+  "affected_existing_reqs": [
+    {
+      "id": "FR-NODE-202",
+      "relation": "related_to",
+      "diff_summary": "AC-6 narrowed: no-diagnostic-code decision kept, loss report and confirmation assigned to FR-NODE-270; Change Note added"
+    },
+    {
+      "id": "FR-NODE-065",
+      "relation": "refines",
+      "diff_summary": "FR-NODE-271 extends its preview promise to every file"
+    },
+    {
+      "id": "IR-CLI-101",
+      "relation": "related_to",
+      "diff_summary": "IR-CLI-117 prints help over the same admitted set"
+    },
+    {
+      "id": "FR-NODE-034",
+      "relation": "related_to",
+      "diff_summary": "FR-PARSE-049 reuses the successor lookup"
+    },
+    {
+      "id": "FR-PARSE-036",
+      "relation": "related_to",
+      "diff_summary": "new links check entry carries a registered code"
+    },
+    {
+      "id": "FR-NODE-038",
+      "relation": "related_to",
+      "diff_summary": "FR-NODE-272 matches its discarded-endpoint refusal"
+    },
+    {
+      "id": "FR-NODE-266",
+      "relation": "none",
+      "diff_summary": "PRD-11 Rationale note appended; no overlap, no depends_on"
+    },
+    {
+      "id": "FR-NODE-267",
+      "relation": "none",
+      "diff_summary": "PRD-11 Rationale note appended; no overlap, no depends_on"
+    },
+    {
+      "id": "FR-NODE-269",
+      "relation": "none",
+      "diff_summary": "PRD-11 Rationale note appended; no overlap, no depends_on"
+    }
+  ],
+  "split": [
+    {
+      "req": "FR-NODE-270",
+      "scope": "NODE",
+      "type": "functional",
+      "surface": "append-note replace loss preview/confirm/removedItems",
+      "prd": [
+        "PRD-1",
+        "PRD-3",
+        "PRD-4"
+      ]
+    },
+    {
+      "req": "IR-CLI-117",
+      "scope": "CLI",
+      "type": "interface",
+      "surface": "multi-line input guidance in --help and README",
+      "prd": [
+        "PRD-1",
+        "PRD-5"
+      ]
+    },
+    {
+      "req": "FR-NODE-271",
+      "scope": "NODE",
+      "type": "functional",
+      "surface": "scaffold-scope preview writes nothing",
+      "prd": [
+        "PRD-1",
+        "PRD-6"
+      ]
+    },
+    {
+      "req": "FR-PARSE-049",
+      "scope": "PARSE",
+      "type": "functional",
+      "surface": "links check / validate discarded-target warning",
+      "prd": [
+        "PRD-2",
+        "PRD-7"
+      ]
+    },
+    {
+      "req": "FR-NODE-272",
+      "scope": "NODE",
+      "type": "functional",
+      "surface": "add-trace / add-requirement refusal",
+      "prd": [
+        "PRD-2",
+        "PRD-8"
+      ],
+      "depends_on": [
+        "FR-PARSE-049"
+      ]
+    }
+  ],
+  "excluded_by_prd": [
+    "PRD-9 (supersedes/superseded_by rows not diagnosed or refused)",
+    "PRD-10 (OG code and OG links untouched)",
+    "PRD-15 (single-note replace mode not added)"
+  ],
+  "confidence": "high",
+  "scope_boundary_impact": null,
+  "external_module_impact": null
+}

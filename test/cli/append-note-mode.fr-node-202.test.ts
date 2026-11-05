@@ -40,7 +40,7 @@ describe("FR-NODE-202 CLI — append-note refuses a mode it does not recognise",
     const streams = io();
 
     const exit = await main(
-      ["--root", root, "append-note", "FR-ARCH-001", "--section", "implementation_notes", "--text", long, "--mode", "replace", "--json"],
+      ["--root", root, "append-note", "FR-ARCH-001", "--section", "implementation_notes", "--text", long, "--mode", "replace", "--confirm-replace", "--json"],
       streams
     );
 

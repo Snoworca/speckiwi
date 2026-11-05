@@ -41,7 +41,7 @@ REQ 본문 또는 연구 질문에 대해 **single-worker 고정 토폴로지** 
 | §0.11 | **이견 보존 의무**. 종합 단계는 합의로 위장 금지. 관점 간 이견은 `dissent_findings` 에 명시 |
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + User clarification gate |
 | §0.13 | **Status/Stability 변경 권한 없음**. 본 스킬은 research 필드만 다룸. status/stability 는 다른 스킬 책임 (kiwi-pipeline-v1 §3) |
-| §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크 |
+| §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크. replace 는 `dryRun: true` 로 먼저 돌리고 `removedItems` 가 0 보다 클 때만 `confirmReplace: true` 로 쓴다 (§7.1.2) |
 | §0.15 | **delegated worker 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) skill invocation or delegated delegated worker message `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "delegated worker mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |

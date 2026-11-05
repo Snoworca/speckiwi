@@ -1,5 +1,6 @@
 import type { MutationResult } from "../types.js";
 import { classifyDocumentLines, openStructureAfter, SRS_RECORD_LINES, type ClassifyOptions, type DocumentLineKind } from "../parser/document-lines.js";
+import { headingContainsForbiddenMarkdown } from "../parser/heading-content.js";
 import { mutationFail } from "./guards.js";
 
 /**
@@ -80,6 +81,20 @@ export function assertSingleLine<T = void>(label: string, value: string | undefi
   if (typeof value !== "string") return undefined;
   if (!/[\r\n]/.test(value)) return undefined;
   return mutationFail("USAGE", `${label} cannot contain newline characters`) as MutationResult<T>;
+}
+
+/**
+ * @req FR-NODE-266 AC-1 AC-2 AC-3 — a requirement heading title: one line, and nothing the parser
+ * reports as SRS-E020. The rule is the parser's own predicate, so the two cannot drift apart.
+ */
+export function assertRequirementTitle<T = void>(label: string, value: string | undefined): MutationResult<T> | undefined {
+  const oneLine = assertSingleLine<T>(label, value);
+  if (oneLine || typeof value !== "string") return oneLine;
+  if (!headingContainsForbiddenMarkdown(value.trim())) return undefined;
+  return mutationFail(
+    "USAGE",
+    `${label} cannot contain an inline link, a code span, bold or italic emphasis, or an emoji (SRS-E020)`
+  ) as MutationResult<T>;
 }
 
 /**

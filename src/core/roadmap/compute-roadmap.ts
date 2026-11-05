@@ -56,6 +56,12 @@ export interface RoadmapItemView {
   readonly targets: string[];
   /** The item's own `Requirements` entries. */
   readonly requirements: string[];
+  /** @req FR-NODE-269 AC-1 — the `PRD` entries, so an update that replaces the list can extend it. */
+  readonly prd: string[];
+  /** The `Owner` cell, null when it is `-`. */
+  readonly owner: string | null;
+  /** The `GitHub Issue` entries. */
+  readonly githubIssue: string[];
   readonly status: RoadmapStatus;
   readonly statusRule: RoadmapStatusRule;
   readonly statusBasis: RoadmapItemStatus["basis"];
@@ -185,13 +191,14 @@ function purposeOf(item: RoadmapItem, sources: RoadmapSources): { purpose: strin
   return purpose === ROADMAP_EMPTY && goal ? { purpose: goal, purposeSource: "target" } : { purpose, purposeSource: "item" };
 }
 
-// @req FR-NODE-255 AC-1 AC-2 AC-3 AC-4 AC-5 AC-6 AC-7 AC-8
+// @req FR-NODE-255 AC-1 AC-2 AC-3 AC-4 AC-5 AC-6 AC-7 AC-8 FR-NODE-269 AC-1
 export function computeRoadmapItems(document: RoadmapDocument, sources: RoadmapSources, asOf: string): RoadmapItemView[] {
   return document.items.map((item) => {
     const decided = roadmapItemStatus(document, sources, item);
     const planned = { start: roadmapDateRange(roadmapFieldValue(item, "Planned Start"), true), end: roadmapDateRange(roadmapFieldValue(item, "Planned End"), true) };
     const actual = { start: roadmapDateRange(roadmapFieldValue(item, "Actual Start"), false), end: roadmapDateRange(roadmapFieldValue(item, "Actual End"), false) };
     const milestone = roadmapFieldValue(item, "Milestone");
+    const owner = roadmapFieldValue(item, "Owner");
     return {
       id: item.id,
       title: item.title,
@@ -202,6 +209,9 @@ export function computeRoadmapItems(document: RoadmapDocument, sources: RoadmapS
       dependsOn: roadmapList(roadmapFieldValue(item, "Depends On")),
       targets: roadmapList(roadmapFieldValue(item, "Targets")),
       requirements: roadmapList(roadmapFieldValue(item, "Requirements")),
+      prd: roadmapList(roadmapFieldValue(item, "PRD")),
+      owner: owner === ROADMAP_EMPTY ? null : owner,
+      githubIssue: roadmapList(roadmapFieldValue(item, "GitHub Issue")),
       status: decided.status,
       statusRule: decided.rule,
       statusBasis: decided.basis,

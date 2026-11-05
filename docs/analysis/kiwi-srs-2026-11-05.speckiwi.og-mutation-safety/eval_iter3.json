@@ -1,0 +1,93 @@
+{
+  "prd": "docs/prd/2026-11-05.og-srs-mutation-safety.prd.md",
+  "iteration": 3,
+  "prd_items": [
+    { "id": "PRD-1", "kind": "intent", "verdict": "accepted", "by": "FR-NODE-270, FR-NODE-271, IR-CLI-117", "note": "Rationale of each cites PRD-1; FR-NODE-270 states the show / confirm / report goal." },
+    { "id": "PRD-2", "kind": "intent", "verdict": "accepted", "by": "FR-PARSE-049, FR-NODE-272", "note": "Both Rationales cite PRD-2." },
+    { "id": "PRD-3", "kind": "in-scope", "verdict": "accepted", "by": "FR-NODE-270 AC-3, AC-4, AC-5, AC-6, AC-8; FR-NODE-202 AC-6", "note": "Dry run reports removedLines and removedItems; a replace removing an item is refused without --confirm-replace. Finding N-1 is an internal AC-1 / AC-6 contradiction, not a contradiction of PRD-3." },
+    { "id": "PRD-4", "kind": "in-scope", "verdict": "accepted", "by": "FR-NODE-270 AC-1, AC-2, AC-5, AC-7", "note": "removedItems on the result value in both modes." },
+    { "id": "PRD-5", "kind": "in-scope", "verdict": "accepted", "by": "IR-CLI-117 AC-1, AC-2, AC-3", "note": "Guidance route as the PRD body states; no detection." },
+    { "id": "PRD-6", "kind": "in-scope", "verdict": "accepted", "by": "FR-NODE-271 AC-1..AC-4", "note": "scaffold-scope.ts:48 is the only withSrsMutationLock call of 34 without dryRun (grep confirmed)." },
+    { "id": "PRD-7", "kind": "in-scope", "verdict": "accepted", "by": "FR-PARSE-049 AC-1..AC-8", "note": "links check and validate warn and name the successor." },
+    { "id": "PRD-8", "kind": "in-scope", "verdict": "accepted", "by": "FR-NODE-272 AC-1..AC-6", "note": "add-trace and add-requirement refuse; supersede rows allowed." },
+    { "id": "PRD-9", "kind": "exclusion", "verdict": "excluded-ok", "by": "FR-PARSE-049 AC-4, FR-NODE-272 AC-2", "note": "supersedes and superseded_by rows are neither reported nor refused." },
+    { "id": "PRD-10", "kind": "exclusion", "verdict": "excluded-ok", "by": "-", "note": "No requirement changes OG code or OG links; FR-PARSE-049 rejects error severity citing PRD-10." },
+    { "id": "PRD-11", "kind": "in-scope", "verdict": "accepted", "by": "FR-NODE-266, FR-NODE-267, FR-NODE-269 Rationale notes", "note": "Three small drafts chosen; the other 5.3.2 drafts are untouched and stay draft." },
+    { "id": "PRD-12", "kind": "proposal", "verdict": "n/a", "by": "FR-NODE-270", "note": "State proposed (Effect in-scope): not counted under (a); FR-NODE-270 cites it, so grounded under (b)." },
+    { "id": "PRD-13", "kind": "proposal", "verdict": "n/a", "by": "IR-CLI-117", "note": "State proposed: not counted under (a); cited by IR-CLI-117." },
+    { "id": "PRD-14", "kind": "proposal", "verdict": "n/a", "by": "FR-PARSE-049, FR-NODE-272", "note": "State proposed: not counted under (a); cited by both." },
+    { "id": "PRD-15", "kind": "proposal", "verdict": "excluded-ok", "by": "FR-NODE-270 Research (Rejected: replacing one note in place)", "note": "Proposal with Effect exclusion; no requirement adds a single-note mode." }
+  ],
+  "srs_items": [
+    { "req_id": "FR-PARSE-049", "item": "Requirement, AC-1, AC-2, AC-3, AC-4, AC-6, AC-8", "verdict": "grounded", "basis": "PRD-2, PRD-7 (AC-4 respects exclusion PRD-9; AC-6 takes PRD-14)" },
+    { "req_id": "FR-PARSE-049", "item": "AC-5", "verdict": "grounded", "basis": "PRD-7; fills contradiction for checked_compatible checked: rules SRS-MD-Rules-v2.6.0.md section 23.5 item 3 says the status of either endpoint is not enforced" },
+    { "req_id": "FR-PARSE-049", "item": "AC-7", "verdict": "grounded", "basis": "fills PRD-7 / hole checked: src/core/parser/ac-parser.ts:45 successorProblem treats an ID as discarded only when every record holding it is" },
+    { "req_id": "IR-CLI-117", "item": "Requirement, AC-1, AC-2, AC-3", "verdict": "grounded", "basis": "PRD-1, PRD-5, PRD-13" },
+    { "req_id": "FR-NODE-270", "item": "Requirement, AC-1..AC-6, AC-8", "verdict": "grounded", "basis": "PRD-1, PRD-3, PRD-4, PRD-12" },
+    { "req_id": "FR-NODE-270", "item": "AC-7", "verdict": "grounded", "basis": "PRD-4; fills PRD-3 / hole: the request names the flag only for replace" },
+    { "req_id": "FR-NODE-270", "item": "AC-9", "verdict": "grounded", "basis": "fills PRD-3 / defect checked: skills/claude/kiwi-srs-research/SKILL.md:547 (section 7.1.2), skills/codex and skills/etc references/extended-workflow.md:140 call append_section_note with mode append|replace and no confirmReplace" },
+    { "req_id": "FR-NODE-270", "item": "AC-10", "verdict": "grounded", "basis": "fills PRD-3 / defect checked: README.md:694 and :1686 replace without a flag right after an append to the same section; :708 and :1700 describe replace" },
+    { "req_id": "FR-NODE-270", "item": "AC-11", "verdict": "grounded", "basis": "fills PRD-3 / defect checked: src/core/mutation/internal.ts:338-346 skips blank lines into the next #### heading and returns it as the range" },
+    { "req_id": "FR-NODE-271", "item": "Requirement, AC-1..AC-4", "verdict": "grounded", "basis": "PRD-1, PRD-6" },
+    { "req_id": "FR-NODE-272", "item": "Requirement, AC-1, AC-2, AC-3, AC-5, AC-6", "verdict": "grounded", "basis": "PRD-2, PRD-8, PRD-9, PRD-14" },
+    { "req_id": "FR-NODE-272", "item": "AC-4", "verdict": "grounded", "basis": "fills PRD-8 / hole checked: src/core/mutation/add-requirement.ts:333-335 holds its own Trace target check" },
+    { "req_id": "FR-NODE-202", "item": "AC-6 (changed) and Rationale fills line", "verdict": "grounded", "basis": "fills PRD-3 / contradiction: the old AC-6 text rested the no-diagnostic decision on the range being readable" },
+    { "req_id": "FR-NODE-266", "item": "Rationale note (5.3.2 selection)", "verdict": "grounded", "basis": "PRD-11" },
+    { "req_id": "FR-NODE-267", "item": "Rationale note (5.3.2 selection)", "verdict": "grounded", "basis": "PRD-11" },
+    { "req_id": "FR-NODE-269", "item": "Rationale note (5.3.2 selection)", "verdict": "grounded", "basis": "PRD-11" }
+  ],
+  "findings": [
+    {
+      "id": "N-1",
+      "disposition": "keep",
+      "req_id": "FR-NODE-270",
+      "description": "AC-1 excludes only the placeholder `- -` from items, but the Rationale placeholder the tool writes is `-`. Under AC-1 a Rationale body of `-` is one item, so filling an empty Rationale by replace counts removedItems 1 and AC-4 refuses it without --confirm-replace, while AC-6 says a body holding only the placeholder writes without the flag and reports removedItems 0, and the Research note says counting the placeholder would wrongly demand confirmation to fill an empty section. The two ACs cannot both hold on a real input.",
+      "evidence": {
+        "kind": "code+reproduction",
+        "detail": "src/core/mutation/render-requirement.ts:93 `...(input.rationale ? [input.rationale] : [\"-\"])` versus :48 `if (!value) return [\"- -\"];` (Research and Implementation Notes only). Scratch copy of test/fixtures/workspaces/mutation-target: `add-requirement` without a rationale left Rationale body line 102 = `-`; `append-note FR-ARCH-002 --section rationale --mode replace --text \"Filled rationale\" --dry-run --json` returned replaceRange startLine 102 endLine 102, so that line is the replaced body. FR-NODE-270 AC-1: 'a non-blank line at the start of the body ... starts an item ... the template placeholder line `- -` and blank lines are not items'; AC-6: 'the body holds only the placeholder ... SHALL write without the confirmation flag and report removedItems: 0'. docs/spec holds 135 Rationale bodies that are exactly `-` (e.g. 10.product-architecture.srs.md:603)."
+      },
+      "drop_reason": null
+    },
+    {
+      "id": "D-1",
+      "disposition": "drop",
+      "req_id": "IR-CLI-117",
+      "description": "Research says the README sections en-long-values and ko-long-values were added in 9e6d02a; the anchors and the heading first appear in 4e11f6c.",
+      "evidence": { "kind": "command-output", "detail": "`git log -S 'en-long-values' -- README.md` -> 4e11f6c only; `git log -S 'cuts a command line at its first newline' -- README.md` -> 9e6d02a." },
+      "drop_reason": "The warning sentence AC-3 pins did arrive in 9e6d02a, so the note is true read as 'the warning'; it is provenance in a Research note and no AC depends on it."
+    },
+    {
+      "id": "D-2",
+      "disposition": "drop",
+      "req_id": "FR-PARSE-049",
+      "description": "Research says the query and validator layers do not import a mutation module for the lookup, while src/core/query/summary.ts:6, diff-steps.ts:2 and vibe-gate.ts:3 already import ../mutation modules.",
+      "evidence": { "kind": "code", "detail": "grep 'from \"../mutation/' src/core/query src/core/validator" },
+      "drop_reason": "The sentence is a placement decision for this lookup ('for it'), not a claim that no such import exists; AC-8 stays implementable either way."
+    },
+    {
+      "id": "D-3",
+      "disposition": "drop",
+      "req_id": "FR-NODE-270",
+      "description": "AC-8 says `speckiwi commands --json` lists the option 'with payload key confirmReplace'; the listing names that field `dest`.",
+      "evidence": { "kind": "command-output", "detail": "node bin/speckiwi commands --json: append-note options carry {flag, dest, ...}, e.g. {\"flag\":\"--dry-run\",\"dest\":\"dryRun\"}." },
+      "drop_reason": "dest is the payload key; the criterion is implementable and testable as written. Wording only."
+    },
+    {
+      "id": "D-4",
+      "disposition": "drop",
+      "req_id": "FR-PARSE-049, FR-NODE-272",
+      "description": "FR-NODE-272 refuses a checked_compatible row to a discarded target while FR-PARSE-049 does not report one, and FR-NODE-272 AC-5 decides through FR-PARSE-049's shared function.",
+      "evidence": { "kind": "none", "detail": "-" },
+      "drop_reason": "FR-PARSE-049 AC-8 shares the predicate 'targets a discarded requirement' and the successor lookup, not the relation exemption; a writer stricter than the check satisfies FR-NODE-272 AC-5 and matches add-compatibility-check.ts:86-88. Same as round 1 F-8."
+    },
+    {
+      "id": "D-5",
+      "disposition": "drop",
+      "req_id": "FR-PARSE-049",
+      "description": "The Research note's figure of 1013 broken entries in OG cannot be checked from this repository.",
+      "evidence": { "kind": "none", "detail": "-" },
+      "drop_reason": "No evidence either way; it supports a rejected alternative and no AC depends on it."
+    }
+  ],
+  "summary": { "a_fail": 0, "kept": 1, "dropped": 5, "residual": 0, "pass": false }
+}

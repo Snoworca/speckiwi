@@ -26,8 +26,8 @@ export interface RequirementBlockRange {
  *   1. openStrike  (~~) — strikethrough open, optional
  *   2. id          — speckiwi enum 기반 REQ-ID
  *   3. title       — lazy match, marker/closeStrike/line-end 직전까지 흡수.
- *                    title 내 합법 markdown (예: `[link](url)`) 보존 — records.ts 의
- *                    headingContainsForbiddenMarkdown 가 추가 검증 (SRS-E020).
+ *                    title 내 합법 markdown (예: `[link](url)`) 보존 — records.ts 가
+ *                    heading-content.ts 의 headingContainsForbiddenMarkdown 로 추가 검증 (SRS-E020).
  *                    title 내 비표준 brackets (예: `[TBD]`) 의 검출은 별도 sub-parser 책임 (v5.1 §3 (B)).
  *   4. closeStrike (~~) — strikethrough close, optional. open 과 짝일 때만 strikethrough=true
  *   5. marker      — DISCARDED | DRAFT, optional. inner content 는 marker inner sub-parser 책임.

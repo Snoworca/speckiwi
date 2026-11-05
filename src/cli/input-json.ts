@@ -42,6 +42,37 @@ export function markMutationCommands(commands: readonly Command[]): void {
   for (const command of commands) MUTATION_COMMANDS.add(command);
 }
 
+/** True when the --input-json channel expands `command`: a top-level mutation command with a ToolSpec. */
+function admitsInputJson(command: Command): boolean {
+  return MUTATION_COMMANDS.has(command) && findSpecByCliName(command.name()) !== undefined;
+}
+
+/**
+ * Printed after the help of every command the channel admits. Commander never sees `--input-json`,
+ * because the argv is rewritten before it parses, so without this the generated help never names
+ * the one route a multi-line value survives on Windows. @req IR-CLI-117 AC-1
+ */
+const INPUT_JSON_HELP_NOTE = [
+  "",
+  "Multi-line values:",
+  "  Pass a value that holds line breaks through --input-json -: a JSON object on stdin whose keys are",
+  "  the camelCase payload keys, not the flag spellings (dryRun, not dry-run); a key the command does",
+  "  not know is dropped. speckiwi commands --json lists each option's flag with its payload key. A",
+  "  command line run through cmd.exe (the npm .cmd shim, cmd /c, a shell: true spawn) loses",
+  "  everything after the value's first newline, including flags written after it such as --dry-run."
+].join("\n");
+
+/**
+ * Adds the multi-line note to the help of exactly the commands the gate admits, read from the
+ * program after every registrar ran, so a grouped subcommand that lacks the channel never
+ * advertises it. @req IR-CLI-117 AC-2
+ */
+export function attachInputJsonHelp(program: Command): void {
+  for (const command of program.commands) {
+    if (admitsInputJson(command)) command.addHelpText("after", INPUT_JSON_HELP_NOTE);
+  }
+}
+
 const INPUT_JSON_FLAG = "--input-json";
 
 /** Global options declared on the root program that consume the following argv token as their value. */
@@ -60,7 +91,7 @@ function findMutationCommand(argv: readonly string[], program: Command): string 
     }
     if (token.startsWith("-")) continue;
     const subcommand = program.commands.find((sub) => sub.name() === token);
-    if (subcommand && MUTATION_COMMANDS.has(subcommand)) return token;
+    if (subcommand && admitsInputJson(subcommand)) return token;
     // The first bare token that is not a known mutation command is not one we expand.
     return undefined;
   }

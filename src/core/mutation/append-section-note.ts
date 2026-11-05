@@ -40,6 +40,8 @@ export interface AppendSectionNoteInput {
   section: string;
   text: string;
   mode?: AppendSectionMode;
+  /** Lets a `replace` remove at least one item; refused on `append`. @req FR-NODE-270 AC-4 / AC-7 */
+  confirmReplace?: boolean;
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
@@ -50,6 +52,61 @@ export interface AppendSectionNoteOutput {
   section: AllowedSection;
   mode: AppendSectionMode;
   written: boolean;
+  /** The number of items a `replace` removes; 0 for an append. @req FR-NODE-270 */
+  removedItems: number;
+  /** The original lines of those items in document order, never a placeholder or a blank line. */
+  removedLines: string[];
+}
+
+/**
+ * The lines the tool writes into an empty narrative section: `-` into a Rationale, `- -` into a
+ * Research / Analysis or Implementation Notes (and the bundled rules template). They hold no note,
+ * so counting one would demand confirmation to fill an empty section. @req FR-NODE-270 AC-1
+ */
+const PLACEHOLDER_LINES: ReadonlySet<string> = new Set(["-", "- -"]);
+
+/**
+ * Reads section lines as items, each kept as its original lines. A bullet at column zero starts an
+ * item, and so does a non-blank line with no item open above it — at the start of the body or after
+ * a blank line. Any other non-blank line continues the open item, because a later line of a
+ * multi-line appended note lands at column zero (FR-NODE-174 AC-9). A placeholder closes the open
+ * item exactly as a blank line does. @req FR-NODE-270 AC-1
+ */
+function readItems(lines: readonly string[]): string[][] {
+  const items: string[][] = [];
+  let open: string[] | undefined;
+  for (const line of lines) {
+    const trimmed = line.trimEnd();
+    if (trimmed === "" || PLACEHOLDER_LINES.has(trimmed)) {
+      open = undefined;
+      continue;
+    }
+    if (open === undefined || line.startsWith("- ")) {
+      open = [line];
+      items.push(open);
+    } else {
+      open.push(line);
+    }
+  }
+  return items;
+}
+
+function itemKey(item: readonly string[]): string {
+  return item.map((line) => line.trimEnd()).join("\n");
+}
+
+/**
+ * The old items the new text does not carry again. Each new item keeps at most one old item, so a
+ * duplicated note written back once still counts its second copy as removed. @req FR-NODE-270 AC-2
+ */
+function removedItemsOf(oldLines: readonly string[], newLines: readonly string[]): string[][] {
+  const unclaimed = readItems(newLines).map(itemKey);
+  return readItems(oldLines).filter((item) => {
+    const index = unclaimed.indexOf(itemKey(item));
+    if (index === -1) return true;
+    unclaimed.splice(index, 1);
+    return false;
+  });
 }
 
 export async function appendSectionNote(
@@ -73,6 +130,11 @@ async function appendSectionNoteUnlocked(
     return mutationFail("USAGE", `unknown mode: ${String(input.mode)} (expected ${APPEND_SECTION_MODES.join(" or ")})`);
   }
   const mode: AppendSectionMode = input.mode ?? "append";
+  // A flag that confirms nothing is refused rather than ignored, so a caller passing it by habit
+  // learns it did nothing. @req FR-NODE-270 AC-7
+  if (mode === "append" && input.confirmReplace === true) {
+    return mutationFail("USAGE", "--confirm-replace (confirmReplace) applies to --mode replace only");
+  }
   if (mode === "append" && input.text.length > MAX_TEXT_LENGTH) {
     return mutationFail("USAGE", `text exceeds ${MAX_TEXT_LENGTH} UTF-16 code units`);
   }
@@ -101,6 +163,7 @@ async function appendSectionNoteUnlocked(
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
 
   const operations: PatchOperation[] = [];
+  let removed: string[][] = [];
 
   if (mode === "append") {
     const insertion = findSectionInsertionLine(loaded.file, loaded.record, heading);
@@ -117,6 +180,7 @@ async function appendSectionNoteUnlocked(
     }
   } else {
     const range = findSectionBodyRange(loaded.file, loaded.record, heading);
+    const textLines = input.text.split(/\r?\n/);
     if (!range) {
       const insertion = findSectionInsertionLine(loaded.file, loaded.record, heading);
       if (!insertion || insertion.mode === "append") {
@@ -126,6 +190,16 @@ async function appendSectionNoteUnlocked(
         type: "insertLines",
         line: insertion.insertAtLine,
         lines: [`#### ${heading}`, "", input.text, ""]
+      });
+    } else if (range.empty) {
+      // Inserted under the heading, so every line already there — the next heading above all —
+      // stays as it was. A blank line separates the text from both neighbours. @req FR-NODE-270 AC-11
+      const lineAfterHeading = loaded.file.lines[range.headingLine];
+      const blankFollows = lineAfterHeading !== undefined && lineAfterHeading.trim() === "";
+      operations.push({
+        type: "insertLines",
+        line: range.headingLine + 1,
+        lines: ["", ...textLines, ...(blankFollows ? [] : [""])]
       });
     } else {
       // One range operation, not one `replaceLine` per line. `renderPatchedLines` splices a range,
@@ -137,23 +211,35 @@ async function appendSectionNoteUnlocked(
         type: "replaceRange",
         startLine: range.startLine,
         endLine: range.endLine,
-        lines: input.text.split(/\r?\n/)
+        lines: textLines
       });
+      removed = removedItemsOf(loaded.file.lines.slice(range.startLine - 1, range.endLine), textLines);
     }
   }
 
+  const dryRun = input.dryRun ?? false;
+  // A dry run shows the loss without the flag; a write that would lose a note needs it.
+  // @req FR-NODE-270 AC-3 / AC-4
+  if (removed.length > 0 && !dryRun && input.confirmReplace !== true) {
+    const count = `${removed.length} ${removed.length === 1 ? "item" : "items"}`;
+    return mutationFail(
+      "USAGE",
+      `replace would remove ${count} from ${heading} of ${input.id}; run it with --dry-run to see removedLines, then pass --confirm-replace (MCP confirmReplace: true) to write it`
+    );
+  }
+  const loss = { removedItems: removed.length, removedLines: removed.flat() };
+
   if (operations.length === 0) {
     return withMutationEnvelope(
-      mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: false }),
-      mutationNoopEnvelope("append_section_note", loaded.file.relativePath, input.dryRun ?? false)
+      mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: false, ...loss }),
+      mutationNoopEnvelope("append_section_note", loaded.file.relativePath, dryRun)
     );
   }
 
   const plan = createPatchPlan(loaded.file, operations);
-  const dryRun = input.dryRun ?? false;
   const applied = await applyPatchPlan(plan, { dryRun });
   return withMutationEnvelope(
-    mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: applied.written }),
+    mutationOk({ id: input.id, section: normalizeAllowedSection(heading), mode, written: applied.written, ...loss }),
     mutationEnvelopeFromPlan("append_section_note", plan, dryRun, applied.written)
   );
 }

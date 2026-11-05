@@ -9,7 +9,7 @@ import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
 import { registerSyncAppendixCommand } from "./commands/sync-appendix.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "./errors.js";
-import { expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
+import { attachInputJsonHelp, expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
 /**
  * The two sinks the CLI writes to. Declared as `WritableStream` rather than `WriteStream` because
@@ -53,7 +53,8 @@ function classifyUnhandledError(error: { code?: string; message?: string }): { c
   return { code: "CLI_READ_ERROR", exitCode: 2, recoveryCommand: "validate" };
 }
 
-export async function main(argv: string[], io: CliIo): Promise<number> {
+/** The whole command tree `main` parses with, every registrar and help decoration applied. */
+export function buildProgram(io: CliIo): ReturnType<typeof buildCommand> {
   const command = buildCommand({ io });
   registerReadCommands(command, { io });
   registerMutationCommands(command, { io });
@@ -67,6 +68,13 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   // @req IR-CLI-082 — the orchestrate namespace, registered exactly as `workflow` is.
   registerOrchestrateCommands(command, { io });
   attachInheritedOptionsHelp(command);
+  // @req IR-CLI-117
+  attachInputJsonHelp(command);
+  return command;
+}
+
+export async function main(argv: string[], io: CliIo): Promise<number> {
+  const command = buildProgram(io);
   if (tryRenderHelpJson(argv, io, command)) return 0;
   try {
     argv = normalizeDashQueryArgv(await expandInputJsonArgv([...argv], command), command);

@@ -1,0 +1,546 @@
+{
+  "iteration": 4,
+  "eval": "eval_iter4.json",
+  "finding": "K-1 (FR-NODE-270 statement vs AC-6: removedLines vs placeholder line the range overwrites)",
+  "rule_applied": "removedLines = the original lines of the items counted as removed (AC-1, AC-2), in document order, never a placeholder line or a blank line, even though the replace range overwrites them",
+  "enumeration_method": "node bin/speckiwi show for every requirement this run added or changed (FR-NODE-270, IR-CLI-117, FR-NODE-271, FR-PARSE-049, FR-NODE-272, FR-NODE-202, FR-NODE-266, FR-NODE-267, FR-NODE-269); statement, rationale, research, implementation notes, every AC and every Change Note split into sentences and matched with /remov|loss|lose|lost|erase|drop/i",
+  "sentences": [
+    {
+      "id": "FR-NODE-270",
+      "field": "statement",
+      "text": "append_section_note (CLI `append-note`, MCP `append_section_note`) SHALL report in its result, in a dry run and in a write alike, the original lines a `replace` removes and the number of items it removes, and SHALL refuse with a usage error, writing nothing, a `replace` that removes at least one item unless the caller passes the confirmation flag (CLI `--confirm-replace`, MCP and `--input-json` key `confirmReplace`), so that a section rewrite never erases recorded notes the caller has not seen and accepted.",
+      "disposition": "changed",
+      "after": "the original lines of the items a `replace` removes and the number of those items, as AC-1 and AC-2 define an item and a removal, never a placeholder or a blank line,"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-1: a tool that rewrites the source of truth shows a loss before it happens, asks before it happens, and reports it after.",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "AC-1, AC-2 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the removed-item count needs a definition of an item and of removed)",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "AC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (the dry run shows what a replace removes)",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "AC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes an item is refused without confirmation)",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "AC-5 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the confirmed write reports the loss it made)",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "AC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes nothing needs no confirmation)",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "Design decisions taken from the proposal `PRD-12` (state proposed, effect in-scope): the flag is CLI `--confirm-replace` and MCP `confirmReplace`, a missing flag is a USAGE refusal that writes nothing, a dry run shows the removed lines and count without the flag, and a replace that removes no item writes without it.",
+      "disposition": "changed",
+      "after": "a dry run shows the lines of the removed items and their count without the flag,"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "The field name `removedItems` is the one the issue itself proposes, and `removedLines` is this requirement's choice.",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "text": "- [2026-11-05] AC-11 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / a replace of a section with an empty body overwrites the next section heading, so the document silently loses its Change Notes heading while validate reports nothing",
+      "disposition": "consistent",
+      "reason": "generic intent or per-AC basis wording (shows, asks, reports; removes an item; removes nothing) that reads in the item sense of AC-1"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "Nothing in either names the four lines the range removes.",
+      "disposition": "changed",
+      "after": "Nothing in either names the four lines the range overwrites, the placeholder and the three notes, or says which of them carried content."
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "Counting lines instead of items reports one removal too many, and counting the placeholder as an item would demand confirmation to fill an empty section, which the design decision lets through without it.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "A multi-line note that itself holds a blank line counts as two items, each compared on its own, so the split can raise the count but never hides a removed line.",
+      "disposition": "changed",
+      "after": "so the split can raise the count but never hides a line of a removed item."
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "- Trap: a CLI `--input-json` key the command does not declare is dropped without a word (README, Passing a value a command line cannot carry).",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "- Rejected: counting every old item as removed whenever the range is replaced.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "Reopen if a loss is shown that the item comparison hides.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "- Rejected: a diagnostic code for the removal.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "FR-NODE-202 AC-6 judged a diagnostic code surplus, and this requirement keeps that decision: the loss is reported as result fields and stopped by a refusal.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "- Rejected: reporting removals on every mutation.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "text": "The request asks it of the replace route that lost the notes.",
+      "disposition": "consistent",
+      "reason": "explains counting (lines vs items, placeholder), rejected alternatives, or other senses (dropped json key, lost notes): consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-1",
+      "text": "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, and every other non-blank line belongs to the item above it.",
+      "disposition": "consistent",
+      "reason": "the definition itself; now also defines removedLines"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-2",
+      "text": "WHEN the new text holds an item whose lines equal those of an old item, compared line by line after trimming trailing whitespace and each new item matching at most one old item, THAT old item SHALL NOT count as removed, and every other old item SHALL count as removed.",
+      "disposition": "consistent",
+      "reason": "defines removal over items"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-3",
+      "text": "WHEN `append-note <id> --section implementation_notes --mode replace --text <one line> --dry-run` runs on a section holding the placeholder and three dated notes, THE result value SHALL carry `removedItems: 3` and `removedLines` holding the three notes' lines in document order, the result SHALL be ok with `written: false`, and the file SHALL stay byte-identical, without the confirmation flag.",
+      "disposition": "consistent",
+      "reason": "removedItems 3 and removedLines = the three notes lines, placeholder excluded: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-4",
+      "text": "WHEN the same call runs without `--dry-run` and without the confirmation flag, THE SYSTEM SHALL refuse with USAGE, name the flag and the number of items the replace would remove in the message, and leave the file byte-identical.",
+      "disposition": "consistent",
+      "reason": "number of items: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-5",
+      "text": "WHEN it runs with `--confirm-replace` (MCP `confirmReplace: true`, or `\"confirmReplace\": true` through `--input-json -`), THE SYSTEM SHALL write the replacement, and the result SHALL carry the same `removedItems` and `removedLines` the dry run reported.",
+      "disposition": "consistent",
+      "reason": "same removedItems and removedLines as the dry run: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-6",
+      "text": "WHEN a replace removes no item, because the section heading is absent, the body holds only the placeholder lines and blank lines of AC-1, or every old item reappears in the new text, THE SYSTEM SHALL write without the confirmation flag and report `removedItems: 0` and an empty `removedLines`.",
+      "disposition": "consistent",
+      "reason": "placeholder and blank lines of AC-1 -> removedItems 0, empty removedLines: consistent since round 3"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-7",
+      "text": "An append SHALL report `removedItems: 0` and an empty `removedLines`, and SHALL refuse the confirmation flag with USAGE, writing nothing.",
+      "disposition": "consistent",
+      "reason": "append: 0 and empty: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-8",
+      "text": "THE MCP input shape of `append_section_note` SHALL declare `confirmReplace` as an optional boolean, the ToolSpec registry SHALL declare `--confirm-replace` so that `speckiwi commands --json` lists it with payload key `confirmReplace`, and the MCP tool description and the CLI help of `--mode` SHALL say that a replace removing an item needs the flag.",
+      "disposition": "consistent",
+      "reason": "flag declaration: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-9",
+      "text": "THE shipped skill that calls `append_section_note` with `mode: \"replace\"`, kiwi-srs-research (skills/claude/kiwi-srs-research/SKILL.md section 7.1.2 and the codex and etc copies in references/extended-workflow.md), SHALL run the replace as a dry run first, pass `confirmReplace: true` only when that dry run reports `removedItems` above 0, and record the dry run's `removedLines` in its run report, asserted by the skill contract tests, so that AC-4 neither refuses the skill's replace of a Research section that holds a note nor lets it confirm blind.",
+      "disposition": "consistent",
+      "reason": "skill reads removedItems/removedLines as defined: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-10",
+      "text": "Every `append-note … --mode replace` command shown in README.md, in its English and its Korean half, SHALL carry `--dry-run` or `--confirm-replace`, asserted by a test over the README's shell fences, and the README's description of `append-note --mode replace` in both halves SHALL say that a replace removing an item needs `--confirm-replace`, so that a published example is not refused by AC-4.",
+      "disposition": "consistent",
+      "reason": "README needs the flag when an item is removed: consistent"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-11",
+      "text": "WHEN a replace targets a section whose heading is present and whose body holds no non-blank line, THE SYSTEM SHALL put the new text under that section's heading and leave every other line of the document byte-identical, the next `#### ` heading included, so that the block afterwards holds the section heading, the new text and the next section heading in that order, and SHALL report `removedItems: 0`.",
+      "disposition": "changed",
+      "after": "and SHALL report `removedItems: 0` and an empty `removedLines`."
+    },
+    {
+      "id": "IR-CLI-117",
+      "field": "statement",
+      "text": "The `--help` output of every top-level command that accepts `--input-json` SHALL name `--input-json -` as the route for a value holding line breaks and SHALL state that a command line run through `cmd.exe` (the npm `.cmd` shim, `cmd /c`, a `shell: true` spawn) loses everything after the value's first newline, flags such as `--dry-run` included, and the README SHALL keep the same warning, so that a caller learns the safe route where it looks for the command's options rather than after a lost write.",
+      "disposition": "other-sense",
+      "reason": "argument loss through cmd.exe / channel removed by IR-CLI-101, not removedLines"
+    },
+    {
+      "id": "IR-CLI-117",
+      "field": "research",
+      "text": "- Measured by the reproduction posted on OG #1151 on 2026-11-05: through a copy of the npm `speckiwi.cmd` shim, `edit-requirement --statement \"<three lines>\" --dry-run --json` wrote the first line and lost `--dry-run` and `--json`.",
+      "disposition": "other-sense",
+      "reason": "argument loss through cmd.exe / channel removed by IR-CLI-101, not removedLines"
+    },
+    {
+      "id": "IR-CLI-117",
+      "field": "research",
+      "text": "`--input-json -` already carries every option of these commands from stdin, and a second route per option is the duplicated channel IR-CLI-101 removed.",
+      "disposition": "other-sense",
+      "reason": "argument loss through cmd.exe / channel removed by IR-CLI-101, not removedLines"
+    },
+    {
+      "id": "IR-CLI-117",
+      "field": "AC-1",
+      "text": "`speckiwi append-note --help`, `speckiwi edit-requirement --help` and `speckiwi add-requirement --help` SHALL each print a note that names `--input-json -` as the way to pass a value holding line breaks and states that a command line run through `cmd.exe` loses everything after the value's first newline, including flags written after it such as `--dry-run`.",
+      "disposition": "other-sense",
+      "reason": "argument loss through cmd.exe / channel removed by IR-CLI-101, not removedLines"
+    },
+    {
+      "id": "FR-NODE-271",
+      "field": "research",
+      "text": "Five others preview unless applied and derive the lock's dry run from `apply`: src/core/bootstrap/remove-project.ts:108, src/core/bootstrap/upgrade-project.ts:105, src/core/mutation/repair-rules-references.ts:60, src/core/mutation/rename-scope.ts:107 and src/core/mutation/roadmap-sync.ts:45. rename-target.ts and retarget.ts default it to true through `dryRun ?? true`.",
+      "disposition": "other-sense",
+      "reason": "no loss sense (lock dry run)"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "statement",
+      "text": "A single entry on any append-only surface of a requirement — a narrative note inside Rationale, Research or Implementation Notes, and a row of the Change Notes table — SHALL be editable and removable through the CLI and MCP surface, addressed the way an acceptance criterion or an evidence row already is, because today the only writer of each is append and an entry written wrongly cannot be taken back.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "statement",
+      "text": "And rewriting a section to fewer lines than it held SHALL remove the lines it no longer needs rather than replacing them with empty ones.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "rationale",
+      "text": "The duplicates mattered beyond tidiness: several of these notes point at each other as the note above, and a duplicate inserted between them silently repoints that reference, which is the drift class this target has already closed twice elsewhere.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "rationale",
+      "text": "- [2026-11-05] AC-6 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / contradiction / the no-diagnostic decision rested on the range being readable, while the request asks that a replace show and confirm what it removes, so the roles are split: this requirement keeps the rewrite as one range operation with no diagnostic code, and FR-NODE-270 (5.3.2) owns the removed lines, the removed item count and the confirmation",
+      "disposition": "changed",
+      "after": "FR-NODE-270 (5.3.2) owns the lines and the count of the removed items and the confirmation"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-1",
+      "text": "One note in a narrative section can be replaced by new text and removed outright, addressed by an identifier stable enough to survive a sibling being added or removed before it.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-3",
+      "text": "Rewriting a section to fewer lines than it held removes the surplus lines.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-4",
+      "text": "Measured 2026-08-29: speckiwi add-change-note takes only --change, --reason and --date and appends; no CLI or MCP path edits or removes a row once written, so a typo in FR-FLOW-158's row survived the round that made it and was left standing rather than hand-edited.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-4",
+      "text": "Whether one route serves both surfaces or two routes share one guard is this requirement's to decide, but the two are not to be closed separately, since a fix that reaches only the narrative sections leaves the same defect one table over.",
+      "disposition": "other-sense",
+      "reason": "FR-NODE-202 own scope (removing a note or row, removing surplus lines, range lines dropped by a rewrite): not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-6",
+      "text": "It does not add a diagnostic naming how many lines a rewrite dropped: the envelope now reports the rewrite as one range operation, so the range it covers and the line count it writes are both readable, and a diagnostic code was judged surplus to that.",
+      "disposition": "consistent",
+      "reason": "first sentence: no diagnostic code for lines a rewrite drops (range sense, FR-NODE-202 own decision), not removedLines"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-6",
+      "text": "It does not hold what a replace shows of its loss or whether it asks first: showing the removed lines and the removed item count in the result, and refusing a replace that removes an item without confirmation, are held by FR-NODE-270 (5.3.2), which adds result fields and a refusal rather than a diagnostic code.",
+      "disposition": "changed",
+      "after": "showing in the result the lines of the removed items and their count, as FR-NODE-270 AC-1 defines an item,"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "changeNote#0",
+      "text": "Created | Baseline measured on feat/2.3.0.1 at working tree. append_section_note is the only writer of these sections; MAX_TEXT_LENGTH = 500 at src/core/mutation/append-section-note.ts:21 bounds both append and replace; :118-123 blanks surplus lines instead of removing them; FR-FLOW-155 holds twelve Implementation Notes of which four exceed 500 characters alone",
+      "disposition": "kept",
+      "reason": "Change Notes record history and are not rewritten (rules section 26); round-4 Change Notes on FR-NODE-270 and FR-NODE-202 state the definition now in force"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "changeNote#1",
+      "text": "Widened to the Change Notes table | add-change-note takes only --change, --reason and --date and appends; no CLI or MCP path edits or removes a row once written, measured 2026-08-29 when a typo in FR-FLOW-158's row could not be corrected.",
+      "disposition": "kept",
+      "reason": "Change Notes record history and are not rewritten (rules section 26); round-4 Change Notes on FR-NODE-270 and FR-NODE-202 state the definition now in force"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "changeNote#1",
+      "text": "That is the same append-only gap this requirement already carried for narrative notes, so it is closed here rather than filed apart: a fix reaching only the narrative sections would leave the defect one table over.",
+      "disposition": "kept",
+      "reason": "Change Notes record history and are not rewritten (rules section 26); round-4 Change Notes on FR-NODE-270 and FR-NODE-202 state the definition now in force"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "changeNote#3",
+      "text": "AC-6 bounded against FR-NODE-270 | OG #1151 lost three notes through a replace whose dry run showed only the new text; the range the envelope reports does not show what is lost, so FR-NODE-270 (5.3.2) adds the removed lines, removedItems and a confirmation flag; AC-6 keeps its no-diagnostic-code decision and now says the loss report and the confirmation are FR-NODE-270's",
+      "disposition": "kept",
+      "reason": "Change Notes record history and are not rewritten (rules section 26); round-4 Change Notes on FR-NODE-270 and FR-NODE-202 state the definition now in force"
+    },
+    {
+      "id": "FR-NODE-267",
+      "field": "rationale",
+      "text": "fills: PRD-28 / defect / for AC-1–AC-2, edit-requirement.ts rewrites the heading as `### <id> — <title>` only, which drops the draft marker that the rules document (SRS-MD-Rules-v2.6.0.md §30.2) leaves to the status and stability mutations; update-status.ts already keeps that marker when it rewrites a heading.",
+      "disposition": "other-sense",
+      "reason": "marker dropped by a title change, not removedLines"
+    },
+    {
+      "id": "FR-NODE-267",
+      "field": "rationale",
+      "text": "- [2026-11-05] Chosen to ship in 5.3.2 with the OG #1151 and #1095 fixes under docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-11: a title change that returns ok while dropping the draft or discarded marker is the same mutation-safety family, a change confined to the files that refuse or carry the value, and low risk.",
+      "disposition": "other-sense",
+      "reason": "marker dropped by a title change, not removedLines"
+    },
+    {
+      "id": "FR-NODE-269",
+      "field": "rationale",
+      "text": "fills: PRD-28 / defect / for AC-1–AC-2, update replaces the whole PRD list, but the item view in src/core/roadmap/compute-roadmap.ts has no `prd`, `owner` or `githubIssue`, so recording a new PRD path on an item that already holds one erases the earlier path.",
+      "disposition": "other-sense",
+      "reason": "PRD paths erased by roadmap update, not removedLines"
+    }
+  ],
+  "changes": [
+    {
+      "id": "FR-NODE-270",
+      "field": "statement",
+      "before": "the original lines a `replace` removes and the number of items it removes,",
+      "after": "the original lines of the items a `replace` removes and the number of those items, as AC-1 and AC-2 define an item and a removal, never a placeholder or a blank line,"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-1",
+      "before": "(appended)",
+      "after": "`removedLines` SHALL hold exactly the original lines of the items counted as removed, in document order, and no placeholder line and no blank line, although the replace range also overwrites those lines."
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "AC-11",
+      "before": "and SHALL report `removedItems: 0`.",
+      "after": "and SHALL report `removedItems: 0` and an empty `removedLines`."
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "rationale",
+      "before": "a dry run shows the removed lines and count without the flag,",
+      "after": "a dry run shows the lines of the removed items and their count without the flag,"
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "before": "Nothing in either names the four lines the range removes.",
+      "after": "Nothing in either names the four lines the range overwrites, the placeholder and the three notes, or says which of them carried content."
+    },
+    {
+      "id": "FR-NODE-270",
+      "field": "research",
+      "before": "so the split can raise the count but never hides a removed line.",
+      "after": "so the split can raise the count but never hides a line of a removed item."
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "AC-6",
+      "before": "showing the removed lines and the removed item count in the result,",
+      "after": "showing in the result the lines of the removed items and their count, as FR-NODE-270 AC-1 defines an item,"
+    },
+    {
+      "id": "FR-NODE-202",
+      "field": "rationale",
+      "before": "FR-NODE-270 (5.3.2) owns the removed lines, the removed item count and the confirmation",
+      "after": "FR-NODE-270 (5.3.2) owns the lines and the count of the removed items and the confirmation"
+    }
+  ],
+  "calls": [
+    {
+      "cli": "node bin/speckiwi edit-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "statement": "append_section_note (CLI `append-note`, MCP `append_section_note`) SHALL report in its result, in a dry run and in a write alike, the original lines of the items a `replace` removes and the number of those items, as AC-1 and AC-2 define an item and a removal, never a placeholder or a blank line, and SHALL refuse with a usage error, writing nothing, a `replace` that removes at least one item unless the caller passes the confirmation flag (CLI `--confirm-replace`, MCP and `--input-json` key `confirmReplace`), so that a section rewrite never erases recorded notes the caller has not seen and accepted."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi edit-ac --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "acId": "AC-1",
+        "text": "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, and every other non-blank line belongs to the item above it. Blank lines and every placeholder line the tool writes into an empty narrative section SHALL NOT be items, compared after trimming trailing whitespace: `-`, which the tool writes into an empty Rationale, and `- -`, which it writes into an empty Research / Analysis or Implementation Notes and which the block template of the bundled rules document carries. `removedLines` SHALL hold exactly the original lines of the items counted as removed, in document order, and no placeholder line and no blank line, although the replace range also overwrites those lines."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi edit-ac --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "acId": "AC-11",
+        "text": "WHEN a replace targets a section whose heading is present and whose body holds no non-blank line, THE SYSTEM SHALL put the new text under that section's heading and leave every other line of the document byte-identical, the next `#### ` heading included, so that the block afterwards holds the section heading, the new text and the next section heading in that order, and SHALL report `removedItems: 0` and an empty `removedLines`."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "section": "rationale",
+        "mode": "replace",
+        "text": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1151, defect 1). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-1: a tool that rewrites the source of truth shows a loss before it happens, asks before it happens, and reports it after.\n\nAC-1, AC-2 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the removed-item count needs a definition of an item and of removed)\nAC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (the dry run shows what a replace removes)\nAC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes an item is refused without confirmation)\nAC-5 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the confirmed write reports the loss it made)\nAC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes nothing needs no confirmation)\nAC-7 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the result carries the count in both modes)\nAC-7 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / hole / the request names the flag only for replace, and a flag that confirms nothing is refused rather than ignored, so a caller that passes it by habit learns that it did nothing\nAC-8 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (the flag reaches every surface that reaches the replace)\n\nDesign decisions taken from the proposal `PRD-12` (state proposed, effect in-scope): the flag is CLI `--confirm-replace` and MCP `confirmReplace`, a missing flag is a USAGE refusal that writes nothing, a dry run shows the lines of the removed items and their count without the flag, and a replace that removes no item writes without it. The field name `removedItems` is the one the issue itself proposes, and `removedLines` is this requirement's choice. The proposal `PRD-15` keeps a mode that replaces a single note out of this requirement.\n- [2026-11-05] AC-9 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / kiwi-srs-research already calls append_section_note with mode replace and passes no confirmReplace (skills/claude/kiwi-srs-research/SKILL.md section 7.1.2, mirrored in the codex and etc extended-workflow.md), so once AC-4 holds that shipped caller is refused. The skill text changes at implementation.\n- [2026-11-05] AC-10 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / README.md shows, in both halves, an append-note --mode replace with no confirmation flag right after an example that appends a note to the same section, so once AC-4 holds the published example is refused\n- [2026-11-05] AC-11 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / a replace of a section with an empty body overwrites the next section heading, so the document silently loses its Change Notes heading while validate reports nothing"
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "section": "research",
+        "mode": "replace",
+        "text": "- Measured 2026-11-05 on HEAD f36a264 with `node bin/speckiwi` in a scratch project made by `speckiwi init --no-skills --no-mcp`: three notes appended to Implementation Notes left the body as the template placeholder `- -` followed by the three dated bullets, lines 72 to 75. `append-note --mode replace --text \"Only one\" --dry-run --json` returned the value `{id, section, mode, written: false}` and an envelope with one `replaceRange` operation (startLine 72, endLine 75, lineCount 1) whose `preview` holds only the new line. Nothing in either names the four lines the range overwrites, the placeholder and the three notes, or says which of them carried content. The reproduction posted on OG #1151 on 2026-11-05 measured the same shape, and also that the write returns ok with zero diagnostics and that validate reports nothing afterwards.\n- Source: appendSectionNoteUnlocked (src/core/mutation/append-section-note.ts) replaces the whole body that findSectionBodyRange (internal.ts) finds with one replaceRange, and mutationEnvelopeFromPlan (envelope.ts) puts only the written lines in `preview`. describePatchOperation carries `original` for a replaceLine only, so a range operation reports no original text.\n- Trap: appending to a section that holds only the placeholder keeps the placeholder line above the first note, so a body of n notes is n+1 lines. Counting lines instead of items reports one removal too many, and counting the placeholder as an item would demand confirmation to fill an empty section, which the design decision lets through without it.\n- Trap: a later line of a multi-line appended note starts at column zero (FR-NODE-174 AC-9), so it is not a bullet. The item rule therefore attaches a non-bullet line to the item above it unless a blank line separates them. A multi-line note that itself holds a blank line counts as two items, each compared on its own, so the split can raise the count but never hides a line of a removed item.\n- Trap: the 500-unit cap binds append only (FR-NODE-202 AC-2) and stays so. The confirmation guards replace; it is not a length bound.\n- Trap: a CLI `--input-json` key the command does not declare is dropped without a word (README, Passing a value a command line cannot carry). If `confirmReplace` is missing from the ToolSpec registry, a payload that carries it is refused as unconfirmed, which is safe but wrong, so AC-8 asserts the registry entry.\n- Trap: the MCP description of append_section_note is mirrored in the Tool Summary of docs/spec/90.appendix.md, so changing it needs `speckiwi sync-appendix --write`.\n- Rejected: counting every old item as removed whenever the range is replaced. A caller that rewrites a section to keep its notes and add one would need the flag on every call, and a flag passed on every call stops meaning anything. Reopen if a loss is shown that the item comparison hides.\n- Rejected: a diagnostic code for the removal. FR-NODE-202 AC-6 judged a diagnostic code surplus, and this requirement keeps that decision: the loss is reported as result fields and stopped by a refusal.\n- Rejected: replacing one note in place. The proposal `PRD-15` leaves it out of this round, and FR-NODE-202 AC-1 still owns it.\n- Rejected: reporting removals on every mutation. The request asks it of the replace route that lost the notes. Other writers that replace a value, such as edit-requirement --statement and replace-acceptance-criteria, were not measured here.\n- [2026-11-05] Measured 2026-11-05 (verification round 2 reproduction, copy of test/fixtures/workspaces/mutation-target): with the Implementation Notes body emptied to one blank line, `append-note --mode replace --text \"new body\"` returned ok with one replaceRange over the `#### Change Notes` heading line, the heading was gone afterwards, and validate reported errors 0. Cause: findSectionBodyRange (internal.ts) skips blank lines past the body into the next heading and returns that heading as the range.\n- [2026-11-05] Measured 2026-11-05: README.md shows `speckiwi append-note FR-APP-001 --section rationale --mode replace --text \"rewritten rationale\"` at line 694 (English) and 1686 (Korean), each right after an append to the same section, and describes replace at lines 708 and 1700. append-section-note.ts is the only caller of findSectionBodyRange, so AC-11's fix there reaches no other writer.\n- [2026-11-05] Placeholder census 2026-11-05 (grep over src/): render-requirement.ts:93 writes `-` into an empty Rationale, and linesOrDash (render-requirement.ts:47-48, called at :113 and :117) writes `- -` into an empty Research / Analysis or Implementation Notes. append-section-note.ts:115 and :128 write a heading with the text only. templates.ts:484 writes `- -` into index and scope sections, not these three. The rules template docs/rule/SRS-MD-Rules-v2.6.0.md:2051 and :2055 carries `- -`.\n- [2026-11-05] Measured 2026-11-05 over docs/spec/*.srs.md, each heading body read to the next #### or ### line: Rationale holds only `-` 135 times, Research / Analysis only `- -` 605 times, Implementation Notes only `- -` 447 times, and no other one-line body of 12 characters or fewer occurs. A Rationale left as the template prose of the rules document is content to the count, not a placeholder."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi add-change-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-270",
+        "change": "removedLines defined as the lines of removed items only",
+        "reason": "Verification round 4 (K-1): the statement said the result carries the original lines a replace removes, while AC-6 wants an empty removedLines for a body of placeholders, and the range also overwrites the placeholder line; the statement, AC-1, AC-11, the Rationale and the Research now speak of the lines of removed items, never a placeholder or blank line"
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi edit-ac --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-202",
+        "acId": "AC-6",
+        "text": "This requirement states what it does not hold. It does not add a note identifier to the rendered document — the notes stay plain dated bullets and the Change Notes stay table rows, and how a caller addresses one is this requirement's to decide. It does not change the 500 limit for append, which bounds one new note and is not the defect; the defect is that the same limit bounds a whole-section replacement. It does not reach the acceptance-criteria or evidence tables, which already have edit routes. It does not claim these four are the only gaps in the append-only surfaces; no census of them was taken. It does not add a diagnostic naming how many lines a rewrite dropped: the envelope now reports the rewrite as one range operation, so the range it covers and the line count it writes are both readable, and a diagnostic code was judged surplus to that. It does not hold what a replace shows of its loss or whether it asks first: showing in the result the lines of the removed items and their count, as FR-NODE-270 AC-1 defines an item, and refusing a replace that removes an item without confirmation, are held by FR-NODE-270 (5.3.2), which adds result fields and a refusal rather than a diagnostic code."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-202",
+        "section": "rationale",
+        "mode": "replace",
+        "text": "Measured 2026-08-29 while implementing FR-FLOW-157. A note-adding script was run twice and duplicated five Implementation Note lines across FR-FLOW-155 and FR-FLOW-157. No tool could take them back. The only writer of these sections is append_section_note, whose MAX_TEXT_LENGTH is declared at src/core/mutation/append-section-note.ts:21 and enforced at :60, and whose replace mode is the only non-appending route. That route was unusable here: FR-FLOW-155 carries twelve notes and four of them exceed 500 characters on their own, so the replacement text can never reach the length of what it replaces. Where replace does fit, :118-123 shows it writes the new text onto the range's first line and then replaces every remaining line with an empty string, so shrinking a five-line section to one leaves one line and four blanks. The duplicates mattered beyond tidiness: several of these notes point at each other as the note above, and a duplicate inserted between them silently repoints that reference, which is the drift class this target has already closed twice elsewhere. The repair was made as a deletion-only patch under explicit authorization because no tool path existed; that authorization is the evidence this requirement is needed rather than a precedent to reuse. A pre-existing duplicate pair of the same shape sits at lines 5232 and 5547 of the same document, dated 2026-08-03, and was left untouched.\n- [2026-08-29] Third instance, 2026-08-29. Two Implementation Notes on FR-FLOW-158 read `- [2026-08-29] [2026-08-30] ...` because append_section_note stamps a UTC date and the writer put a local one in the body too. Same instant, content right, so it is cosmetic; it stands because no route edits one note and replace cannot reach that section under the 500-unit cap. Each instance has been cheaper to leave than to work around, which argues for closing the gap rather than the instances.\n- [2026-09-01] 정정(2026-09-01, FR-NODE-205): 위 Rationale 이 현재형으로 적은 append_section_note stamps a UTC date 는 더 이상 현재를 서술하지 않는다. FR-NODE-205 가 열두 자리의 날짜 스탬프를 공유 헬퍼(src/core/date-stamp.ts)로 옮겨 작성자의 로컬 달력 날짜를 찍게 바꿨다. 그 문장은 이 요구가 작성되던 시점의 관찰로 읽어야 한다.\n- [2026-11-05] AC-6 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / contradiction / the no-diagnostic decision rested on the range being readable, while the request asks that a replace show and confirm what it removes, so the roles are split: this requirement keeps the rewrite as one range operation with no diagnostic code, and FR-NODE-270 (5.3.2) owns the lines and the count of the removed items and the confirmation"
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi add-change-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-202",
+        "change": "AC-6 wording aligned with FR-NODE-270 AC-1",
+        "reason": "Verification round 4 (K-1): the removed lines FR-NODE-270 reports are the lines of removed items, not every line the range overwrites"
+      },
+      "ok": true
+    }
+  ],
+  "diff_check": "docs/spec/50.nodejs-implementation.srs.md: 8 lines replaced (270 statement, Rationale design line, AC-1, AC-11, two Research lines; 202 AC-6, 202 Rationale note) and 2 Change Note rows added",
+  "checks": {
+    "validate_fail_on_warning": {
+      "exit": 1,
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      }
+    },
+    "links_check": {
+      "checked": 1766,
+      "broken": 4,
+      "note": "same 4 pre-existing SRS-W074"
+    },
+    "prd_coverage_532": {
+      "uncitedItems": [],
+      "ungrounded_new_criteria": []
+    },
+    "active_target": "5.3.2"
+  },
+  "residual_after": []
+}

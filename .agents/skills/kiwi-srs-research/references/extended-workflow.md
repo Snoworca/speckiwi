@@ -137,7 +137,11 @@ Codex clarification gate 분해:
 
 #### 7.1.2 speckiwi 영속화
 
-`append_section_note { id: REQ_ID, section: "research", text, mode: "append|replace" }` 호출.
+- **append**: `append_section_note { id: REQ_ID, section: "research", text, mode: "append" }` 호출.
+- **replace** (Q3 에서 replace 를 고른 경우): 기존 research note 를 보지 않고 지우지 않도록 세 단계로 호출한다.
+  1. dry run: `append_section_note { id: REQ_ID, section: "research", text, mode: "replace", dryRun: true }`. 결과의 `removedItems`·`removedLines` 를 읽는다.
+  2. 쓰기: `removedItems` 가 0 이면 `append_section_note { id: REQ_ID, section: "research", text, mode: "replace" }`. `confirmReplace: true` 는 그 dry run 의 `removedItems` 가 0 보다 클 때만 넘긴다: `append_section_note { id: REQ_ID, section: "research", text, mode: "replace", confirmReplace: true }`. dry run 없이 확인 플래그를 넘기지 않는다.
+  3. 그 dry run 의 `removedLines` 를 run 보고(§7.1.3 완료 보고와 `mutation-log.json`)에 그대로 기록한다.
 
 text 본문 (500자 한도 — §0.14):
 ```
@@ -170,6 +174,7 @@ text 본문 (500자 한도 — §0.14):
 
 ### 영속화
 - speckiwi: append_section_note(REQ {REQ_ID}, section: research, mode: append)
+- replace 인 경우: dry run 이 보고한 removedItems {n} 건, removedLines {dry run 의 removedLines 그대로}
 - 전체 보고: docs/analysis/kiwi-srs-research-{run-id}/report.md
 
 ### 다음 단계

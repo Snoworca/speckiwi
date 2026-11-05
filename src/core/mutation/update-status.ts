@@ -9,7 +9,7 @@ import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { findSectionTableInsertionLine, loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
-import { deriveSuccessorSlot, findIncomingTraceRows } from "./trace-search.js";
+import { deriveSuccessorSlot, findIncomingTraceRows, findSupersedingRows } from "../trace-search.js";
 import type { RequirementRecord } from "../types.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { withSrsMutationLock } from "./srs-lock.js";
@@ -72,9 +72,7 @@ function buildHeadingMarkerOp(
   const { id, title } = parsed;
   let replacement: string;
   if (nextStatus === "discarded") {
-    const successorSlot = deriveSuccessorSlot(
-      findIncomingTraceRows(records, { type: "Requirement", relation: "supersedes", reference: targetId })
-    );
+    const successorSlot = deriveSuccessorSlot(findSupersedingRows(records, targetId));
     replacement = renderHeadingLine({
       id,
       title,

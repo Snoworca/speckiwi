@@ -1,0 +1,300 @@
+{
+  "classification": "update",
+  "mode": "live",
+  "mcp_calls": [
+    {
+      "tool": "add_requirement",
+      "via": "node bin/speckiwi add-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "type": "functional",
+        "target": "5.3.2",
+        "status": "planned",
+        "stability": "draft",
+        "verificationMethod": "test",
+        "scope": "NODE",
+        "title": "A section replace shows the lines and items it removes, refuses to remove an item without confirmation, and reports the removal in its result",
+        "statement": "append_section_note (CLI `append-note`, MCP `append_section_note`) SHALL report in its result, in a dry run and in a write alike, the original lines a `replace` removes and the number of items it removes, and SHALL refuse with a usage error, writing nothing, a `replace` that removes at least one item unless the caller passes the confirmation flag (CLI `--confirm-replace`, MCP and `--input-json` key `confirmReplace`), so that a section rewrite never erases recorded notes the caller has not seen and accepted.",
+        "priority": "high",
+        "risk": "medium",
+        "tags": "mutation-guard, og-1151",
+        "githubIssue": "https://github.com/hancomins/orchestrationgrid-server-java/issues/1151",
+        "acceptanceCriteria": [
+          "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, every other non-blank line belongs to the item above it, and the template placeholder line `- -` and blank lines are not items.",
+          "WHEN the new text holds an item whose lines equal those of an old item, compared line by line after trimming trailing whitespace and each new item matching at most one old item, THAT old item SHALL NOT count as removed, and every other old item SHALL count as removed.",
+          "WHEN `append-note <id> --section implementation_notes --mode replace --text <one line> --dry-run` runs on a section holding the placeholder and three dated notes, THE result value SHALL carry `removedItems: 3` and `removedLines` holding the three notes' lines in document order, the result SHALL be ok with `written: false`, and the file SHALL stay byte-identical, without the confirmation flag.",
+          "WHEN the same call runs without `--dry-run` and without the confirmation flag, THE SYSTEM SHALL refuse with USAGE, name the flag and the number of items the replace would remove in the message, and leave the file byte-identical.",
+          "WHEN it runs with `--confirm-replace` (MCP `confirmReplace: true`, or `\"confirmReplace\": true` through `--input-json -`), THE SYSTEM SHALL write the replacement, and the result SHALL carry the same `removedItems` and `removedLines` the dry run reported.",
+          "WHEN a replace removes no item, because the section heading is absent, the body holds only the placeholder, or every old item reappears in the new text, THE SYSTEM SHALL write without the confirmation flag and report `removedItems: 0` and an empty `removedLines`.",
+          "An append SHALL report `removedItems: 0` and an empty `removedLines`, and SHALL refuse the confirmation flag with USAGE, writing nothing.",
+          "THE MCP input shape of `append_section_note` SHALL declare `confirmReplace` as an optional boolean, the ToolSpec registry SHALL declare `--confirm-replace` so that `speckiwi commands --json` lists it with payload key `confirmReplace`, and the MCP tool description and the CLI help of `--mode` SHALL say that a replace removing an item needs the flag."
+        ],
+        "rationale": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1151, defect 1). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-1: a tool that rewrites the source of truth shows a loss before it happens, asks before it happens, and reports it after.\n\nAC-1, AC-2 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the removed-item count needs a definition of an item and of removed)\nAC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (the dry run shows what a replace removes)\nAC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes an item is refused without confirmation)\nAC-5 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the confirmed write reports the loss it made)\nAC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (a replace that removes nothing needs no confirmation)\nAC-7 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-4 (the result carries the count in both modes)\nAC-7 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / hole / the request names the flag only for replace, and a flag that confirms nothing is refused rather than ignored, so a caller that passes it by habit learns that it did nothing\nAC-8 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 (the flag reaches every surface that reaches the replace)\n\nDesign decisions taken from the proposal `PRD-12` (state proposed, effect in-scope): the flag is CLI `--confirm-replace` and MCP `confirmReplace`, a missing flag is a USAGE refusal that writes nothing, a dry run shows the removed lines and count without the flag, and a replace that removes no item writes without it. The field name `removedItems` is the one the issue itself proposes, and `removedLines` is this requirement's choice. The proposal `PRD-15` keeps a mode that replaces a single note out of this requirement.",
+        "research": "- Measured 2026-11-05 on HEAD f36a264 with `node bin/speckiwi` in a scratch project made by `speckiwi init --no-skills --no-mcp`: three notes appended to Implementation Notes left the body as the template placeholder `- -` followed by the three dated bullets, lines 72 to 75. `append-note --mode replace --text \"Only one\" --dry-run --json` returned the value `{id, section, mode, written: false}` and an envelope with one `replaceRange` operation (startLine 72, endLine 75, lineCount 1) whose `preview` holds only the new line. Nothing in either names the four lines the range removes. The reproduction posted on OG #1151 on 2026-11-05 measured the same shape, and also that the write returns ok with zero diagnostics and that validate reports nothing afterwards.\n- Source: appendSectionNoteUnlocked (src/core/mutation/append-section-note.ts) replaces the whole body that findSectionBodyRange (internal.ts) finds with one replaceRange, and mutationEnvelopeFromPlan (envelope.ts) puts only the written lines in `preview`. describePatchOperation carries `original` for a replaceLine only, so a range operation reports no original text.\n- Trap: appending to a section that holds only the placeholder keeps the placeholder line above the first note, so a body of n notes is n+1 lines. Counting lines instead of items reports one removal too many, and counting the placeholder as an item would demand confirmation to fill an empty section, which the design decision lets through without it.\n- Trap: a later line of a multi-line appended note starts at column zero (FR-NODE-174 AC-9), so it is not a bullet. The item rule therefore attaches a non-bullet line to the item above it unless a blank line separates them. A multi-line note that itself holds a blank line counts as two items, each compared on its own, so the split can raise the count but never hides a removed line.\n- Trap: the 500-unit cap binds append only (FR-NODE-202 AC-2) and stays so. The confirmation guards replace; it is not a length bound.\n- Trap: a CLI `--input-json` key the command does not declare is dropped without a word (README, Passing a value a command line cannot carry). If `confirmReplace` is missing from the ToolSpec registry, a payload that carries it is refused as unconfirmed, which is safe but wrong, so AC-8 asserts the registry entry.\n- Trap: the MCP description of append_section_note is mirrored in the Tool Summary of docs/spec/90.appendix.md, so changing it needs `speckiwi sync-appendix --write`.\n- Rejected: counting every old item as removed whenever the range is replaced. A caller that rewrites a section to keep its notes and add one would need the flag on every call, and a flag passed on every call stops meaning anything. Reopen if a loss is shown that the item comparison hides.\n- Rejected: a diagnostic code for the removal. FR-NODE-202 AC-6 judged a diagnostic code surplus, and this requirement keeps that decision: the loss is reported as result fields and stopped by a refusal.\n- Rejected: replacing one note in place. The proposal `PRD-15` leaves it out of this round, and FR-NODE-202 AC-1 still owns it.\n- Rejected: reporting removals on every mutation. The request asks it of the replace route that lost the notes. Other writers that replace a value, such as edit-requirement --statement and replace-acceptance-criteria, were not measured here.",
+        "implementationNotes": "- Addition sites: append-section-note.ts (item reading, comparison, refusal, output fields), the append_section_note input shape in src/mcp/server.ts, the append-note ToolSpec in src/mcp/schemas.ts (option and description), and the append-note command in src/cli/commands/mutations.ts.\n- The two fields belong on the result value (AppendSectionNoteOutput) beside `written`, so CLI human output, the JSON envelope and MCP carry them alike.",
+        "trace": [
+          "Code|src/core/mutation/append-section-note.ts|related_to|trace_intent=addition_site",
+          "Code|src/mcp/server.ts|related_to|trace_intent=addition_site",
+          "Code|src/mcp/schemas.ts|related_to|trace_intent=addition_site",
+          "Code|src/cli/commands/mutations.ts|related_to|trace_intent=addition_site",
+          "Requirement|FR-NODE-202|related_to|the same replace route; FR-NODE-202 owns its range rewrite and mode guard, this requirement adds the loss report and the confirmation"
+        ]
+      },
+      "result_id": "FR-NODE-270",
+      "ok": true,
+      "written": true
+    },
+    {
+      "tool": "add_requirement",
+      "via": "node bin/speckiwi add-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "type": "interface",
+        "target": "5.3.2",
+        "status": "planned",
+        "stability": "draft",
+        "verificationMethod": "test",
+        "scope": "CLI",
+        "title": "The help of every command that takes --input-json names that stdin route and the cmd.exe cut, and the README keeps the same warning",
+        "statement": "The `--help` output of every top-level command that accepts `--input-json` SHALL name `--input-json -` as the route for a value holding line breaks and SHALL state that a command line run through `cmd.exe` (the npm `.cmd` shim, `cmd /c`, a `shell: true` spawn) loses everything after the value's first newline, flags such as `--dry-run` included, and the README SHALL keep the same warning, so that a caller learns the safe route where it looks for the command's options rather than after a lost write. The tool SHALL NOT try to detect the cut.",
+        "priority": "medium",
+        "risk": "low",
+        "tags": "cli-help, og-1151",
+        "githubIssue": "https://github.com/hancomins/orchestrationgrid-server-java/issues/1151",
+        "acceptanceCriteria": [
+          "`speckiwi append-note --help`, `speckiwi edit-requirement --help` and `speckiwi add-requirement --help` SHALL each print a note that names `--input-json -` as the way to pass a value holding line breaks and states that a command line run through `cmd.exe` loses everything after the value's first newline, including flags written after it such as `--dry-run`.",
+          "THE note SHALL be printed by the `--help` of every command the `--input-json` gate admits and by no command it refuses, asserted over the commands of the built program rather than over a literal list, so that a grouped subcommand without the channel, such as `workflow worklog-emit`, never advertises it.",
+          "THE README's English section \"Passing a value a command line cannot carry\" and its Korean counterpart SHALL each keep the statement that `cmd.exe` cuts a command line at its first newline together with the flags after it, and the `--input-json -` example, pinned by a test."
+        ],
+        "rationale": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1151, defect 2). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-1.\n\nAC-1, AC-2 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-5 (the commands that take a value say how a value with line breaks arrives whole)\nAC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-5 (the README keeps the same warning)\n\nDesign decision taken from the proposal `PRD-13` (state proposed, effect in-scope): no new option is added, because `--input-json -` already carries a multi-line value through the npm `.cmd` shim, and the tool does not try to detect the cut, which happens before the process receives its arguments.",
+        "research": "- Measured 2026-11-05 on HEAD f36a264: `node bin/speckiwi append-note --help` prints `--text <text>` as \"append: one note, max 500 UTF-16 code units; replace: the whole section body, uncapped\" and holds no `input-json` (grep count 0). The help of edit-requirement and add-requirement holds none either. `printf '{...,\"text\":\"line a\\nline b\",\"dryRun\":true}' | node bin/speckiwi append-note --input-json - --json` returned a preview of both lines.\n- Measured by the reproduction posted on OG #1151 on 2026-11-05: through a copy of the npm `speckiwi.cmd` shim, `edit-requirement --statement \"<three lines>\" --dry-run --json` wrote the first line and lost `--dry-run` and `--json`. Through `node bin/speckiwi`, the `.ps1` shim, the sh shim, or `--input-json -` on the `.cmd` shim, every line arrived and the dry run held.\n- The README already carries the warning (sections en-long-values and ko-long-values, added in 9e6d02a). What is missing is the per-command help, which is where an agent looks first.\n- Source: src/cli/input-json.ts expands `--input-json` into argv before commander parses it, so commander never declares the option and the generated help never mentions it. The set of admitted commands is the one markMutationCommands fills (IR-CLI-101).\n- Trap: grouped subcommands do not have the channel (the README names workflow worklog-emit, step promote, orchestrate journal append, repair rules-references apply and skills install). A note added by walking every subcommand would advertise a route that fails there with `unknown option`.\n- Rejected: detecting the cut. The process receives an argv that is already short, with nothing that marks it as cut. Reopen only if Node exposes the raw Windows command line in a form that shows the newline.\n- Rejected: `--statement-file` or `--text-file` options. `--input-json -` already carries every option of these commands from stdin, and a second route per option is the duplicated channel IR-CLI-101 removed.",
+        "implementationNotes": "- Addition sites: src/cli/input-json.ts, which owns the set of admitted commands, and README.md for the pinned warning. Commander's `addHelpText(\"after\", ...)` on each admitted command is one way to print the note.",
+        "trace": [
+          "Code|src/cli/input-json.ts|related_to|trace_intent=addition_site",
+          "Doc|README.md|related_to|trace_intent=addition_site",
+          "Requirement|IR-CLI-101|related_to|the gate whose admitted commands get the note"
+        ]
+      },
+      "result_id": "IR-CLI-117",
+      "ok": true,
+      "written": true
+    },
+    {
+      "tool": "add_requirement",
+      "via": "node bin/speckiwi add-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "type": "functional",
+        "target": "5.3.2",
+        "status": "planned",
+        "stability": "draft",
+        "verificationMethod": "test",
+        "scope": "NODE",
+        "title": "A scaffold-scope preview writes no file, the status cache and the lock file included",
+        "statement": "scaffoldScope (CLI `scaffold-scope` without `--apply` or with `--apply --dry-run`, MCP `scaffold_scope` without `apply`) SHALL pass its preview to the SRS mutation lock as a dry run, so that a preview takes no lock and leaves every file of the project byte-identical, `kiwi/.status.json` and `kiwi/.srs.lock` included, as every other dry-run mutation does.",
+        "priority": "medium",
+        "risk": "low",
+        "tags": "dry-run, og-1151",
+        "githubIssue": "https://github.com/hancomins/orchestrationgrid-server-java/issues/1151",
+        "acceptanceCriteria": [
+          "WHEN `speckiwi scaffold-scope Extra:EXT` runs without `--apply` in a project, THE set of files under the project root outside `.git`, and the sha256 of each, SHALL be the same before and after, so that `kiwi/.status.json` is neither created nor changed.",
+          "THE same SHALL hold for `speckiwi scaffold-scope Extra:EXT --apply --dry-run` and for MCP `scaffold_scope` called without `apply`.",
+          "WHEN `kiwi/.status.json` exists with `lock.active: false` before a preview, IT SHALL be byte-identical after the preview, so that no reader of the cache sees a held lock that the preview left behind.",
+          "WHEN `--apply` is given without `--dry-run`, THE mutation SHALL still take the SRS mutation lock and write the new document and both index rows, so that the allocation stays serialized against a concurrent scaffold."
+        ],
+        "rationale": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1151, task 1). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-1.\n\nAC-1, AC-2, AC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-6 (a scaffold-scope preview writes no file)\nAC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-6 (the fix leaves the applied write under the lock it needs)",
+        "research": "- Measured 2026-11-05 on HEAD f36a264: in a scratch project made by `speckiwi init --no-skills --no-mcp` and committed, the sha256 of every file outside `.git` was taken before and after `node bin/speckiwi scaffold-scope Extra:EXT --json`. The only difference was a new `kiwi/.status.json` whose `lock` read `active: true` with operation `scaffold_scope` and an expiry one minute ahead. `--apply --dry-run` created the same file. The reproduction posted on OG #1151 on 2026-11-05 hashed every file around each of the 68 commands that take `--dry-run` and found this the only one that wrote a file.\n- Source: scaffoldScope (src/core/mutation/scaffold-scope.ts) calls withSrsMutationLock with `operation` and `ignoreLock` only, and decides the preview inside scaffoldScopeUnlocked from `apply !== true`. withSrsMutationLock (srs-lock.ts) therefore takes a real lock and writes the status cache through refreshCacheDiagnostics before the mutation, and refreshes it after release only when the result wrote, so a preview leaves the cache saying the lock is held. upgrade-project.ts and repair-rules-references.ts, the other two callers that preview unless applied, pass `dryRun: !apply`.\n- Trap: the CLI already folds `--dry-run` into `apply` (`apply: Boolean(options.apply) && options.dryRun !== true` in src/cli/commands/mutations.ts), so deriving the lock's dry run from `apply !== true` covers both CLI forms and MCP. A fix that read a separate dryRun input would miss the default preview.\n- Trap: with the dry run set, acquireSrsMutationLock still refuses when another writer holds the lock, as it does for every dry run. That refusal writes nothing and stays.\n- Rejected: a suite that sweeps every command taking `--dry-run`. The external sweep found one case, and a suite of that size is a requirement of its own. Reopen when a second dry-run write is found.",
+        "implementationNotes": "- Addition site: the withSrsMutationLock call in scaffoldScope. The lock comment there explains why the applied write needs the lock, and AC-4 keeps that.",
+        "trace": [
+          "Code|src/core/mutation/scaffold-scope.ts|related_to|trace_intent=addition_site",
+          "Requirement|FR-NODE-065|refines|FR-NODE-065 promises a preview that creates no document and leaves the index byte-identical; this requirement extends that to every file"
+        ]
+      },
+      "result_id": "FR-NODE-271",
+      "ok": true,
+      "written": true
+    },
+    {
+      "tool": "add_requirement",
+      "via": "node bin/speckiwi add-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "type": "functional",
+        "target": "5.3.2",
+        "status": "planned",
+        "stability": "draft",
+        "verificationMethod": "test",
+        "scope": "PARSE",
+        "title": "links check and validate warn on a Requirement trace row whose target is discarded, naming its successor, and leave the supersede rows alone",
+        "statement": "`links check` and `validate`, on the CLI and through MCP, SHALL report under one new warning code every `Requirement` Trace Link row whose target requirement is discarded, held by a requirement that is not itself discarded and carrying a relation other than `supersedes`, `superseded_by` and `checked_compatible`, and each report SHALL name the discarded requirement and the requirements that supersede it, so that an edge left pointing at a withdrawn requirement is reported by the checks instead of found by a person.",
+        "priority": "high",
+        "risk": "low",
+        "tags": "traceability, og-1095",
+        "githubIssue": "https://github.com/hancomins/orchestrationgrid-server-java/issues/1095",
+        "acceptanceCriteria": [
+          "GIVEN requirement A discarded by `supersede` with successor S holding `Requirement | A | supersedes`, B holding `Requirement | A | extends` and C holding `Requirement | A | depends_on`, WHEN `speckiwi links check --json` runs, THE `broken` list SHALL hold exactly one entry for B and one for C under the new code, each with `requirementId` the holder and `reference` A, and no entry for S.",
+          "WHEN `speckiwi validate --json` runs on the same workspace, THE SYSTEM SHALL report the same two rows as warnings under the same code, each with the file path and the line of the trace row and with details naming the discarded ID and the successor IDs in the order the discarded marker's `see` slot uses (rules section 30.1).",
+          "THE message of each report SHALL name the successor, and WHEN no requirement supersedes the target THE message SHALL say that no successor is recorded.",
+          "A row whose relation is `supersedes` or `superseded_by` SHALL NOT be reported, whatever its target.",
+          "A row whose relation is `checked_compatible`, and any row held by a requirement whose own Status is discarded, SHALL NOT be reported.",
+          "THE new code SHALL be registered in the diagnostic registry with severity warning, its number chosen at implementation from the registry's sequence, and `validate` SHALL exit 0 on a workspace whose only finding is this warning and fail under `--fail-on-warning`, while the exit code of `links check` stays as it is.",
+          "WHEN more than one record holds the target ID, THE target SHALL count as discarded only when every record holding that ID is discarded.",
+          "links check, validate and the writers that refuse such a row SHALL decide that a row targets a discarded requirement, and find its successors, through one shared function, and the successor lookup SHALL be the one the discarded heading marker uses (FR-NODE-034) rather than a second scan."
+        ],
+        "rationale": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1095). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-2: a link left pointing at a withdrawn requirement is reported.\n\nAC-1, AC-2, AC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (links check and validate report the row and name the successor)\nAC-4 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (the rows that record the supersede are the ones the exclusion `PRD-9` keeps out)\nAC-5 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 / contradiction / section 23.5 item 3 of the rules document says validation does not enforce the status of either endpoint of a checked_compatible row, and a discarded holder records a closed decision that FR-PARSE-045 AC-4 already leaves unreported, so reporting either would contradict a rule the request does not reopen\nAC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (a warning that existing repositories can absorb)\nAC-7 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 / hole / during a merge one ID can be held by a live and a discarded block, and the expired-criterion successor check (successorProblem in src/core/parser/ac-parser.ts) already treats such an ID as discarded only when every block is\nAC-8 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-7 (one rule for the two read surfaces and the writers)\n\nDesign decision taken from the proposal `PRD-14` (state proposed, effect in-scope): the new diagnostic is a warning, its details carry the discarded requirement and its successors, and supersedes and superseded_by rows are not reported.",
+        "research": "- Measured 2026-11-05 on HEAD f36a264 in a scratch project: FR-ARCH-002 was superseded by FR-ARCH-005 through `supersede --apply` (its heading became `~~FR-ARCH-002 — Req B~~ [DISCARDED → see FR-ARCH-005]`), then `add-trace FR-ARCH-003 --relation extends` and `add-trace FR-ARCH-004 --relation depends_on` to FR-ARCH-002 both returned ok with no diagnostic. `links check --json` returned `checked: 3, broken: []`, and `validate --json` reported SRS-W023 only. The reproduction posted on OG #1095 on 2026-11-05 (OG HEAD 795020684b) found the two `extends` rows to FR-CREDMGMT-005 in docs/spec/41.server-credential-management.srs.md unreported among 1013 broken entries.\n- Source: checkLinks (src/core/query/links.ts) tests a Requirement row with `ids.has(trace.reference)` only, and the validator repeats the same existence test for SRS-E012 (src/core/validator/rules.ts). No registered code covers a discarded target; the nearest, ROADMAP-W010, is roadmap-only.\n- Source: the successor of a discarded requirement is the holder of the first incoming `Requirement` / `supersedes` row, ordered by file path then line, with the rest counted (rules section 30.1, FR-NODE-034). findIncomingTraceRows lives in src/core/mutation/trace-search.ts. The query and validator layers do not import a mutation module for it: the lookup moves to a layer both can import, and the heading marker keeps calling the same function.\n- Trap: a `broken` entry is `{requirementId, reference, reason, code}`. The successor goes into `reason` there and into `details` on the validate diagnostic. Adding a field to `broken` changes a shape MCP `check` returns.\n- Trap: a new warning code is listed in the rules document's diagnostic table as well as in the registry (SRS-W079 and SRS-W080 appear in both).\n- Trap: a discarded requirement with no incoming supersedes row carries a bare `[DISCARDED]` marker and has no successor. AC-3 covers the message for that case.\n- Rejected: error severity. OG already shows 1013 broken entries, and an error would fail every validate run there before anyone cleans the links, which the request leaves to OG (`PRD-10`). Reopen when a consumer asks for the gate.\n- Rejected: reporting rows held by discarded requirements. Nobody edits a withdrawn block to fix its edges, and FR-PARSE-045 AC-4 drew the same line.\n- Rejected: having `supersede` list the incoming edges it leaves. Useful, but not asked, and the warning reaches every route that leaves such an edge, not only supersede.",
+        "implementationNotes": "- Addition sites: checkLinks in src/core/query/links.ts, the Trace Links loop in src/core/validator/rules.ts beside SRS-E012, the registry in src/core/diagnostic-registry.ts, and the successor lookup now in src/core/mutation/trace-search.ts.",
+        "trace": [
+          "Code|src/core/query/links.ts|related_to|trace_intent=addition_site",
+          "Code|src/core/validator/rules.ts|related_to|trace_intent=addition_site",
+          "Code|src/core/diagnostic-registry.ts|related_to|trace_intent=addition_site",
+          "Code|src/core/mutation/trace-search.ts|related_to|trace_intent=addition_site",
+          "Requirement|FR-NODE-034|related_to|the successor lookup this diagnostic reuses",
+          "Requirement|FR-PARSE-036|related_to|every links check entry carries a registered code"
+        ]
+      },
+      "result_id": "FR-PARSE-049",
+      "ok": true,
+      "written": true
+    },
+    {
+      "tool": "add_requirement",
+      "via": "node bin/speckiwi add-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "type": "functional",
+        "target": "5.3.2",
+        "status": "planned",
+        "stability": "draft",
+        "verificationMethod": "test",
+        "scope": "NODE",
+        "title": "add-trace and add-requirement refuse a new Requirement trace row to a discarded requirement unless the row records the supersede",
+        "statement": "add_trace_link (CLI `add-trace`, MCP `add_trace_link`) and the Trace rows of add_requirement (CLI `add-requirement --trace`, MCP `add_requirement`) SHALL refuse with a usage error, writing nothing, a `Requirement` row whose reference is a discarded requirement unless its relation is `supersedes` or `superseded_by`, and the refusal SHALL name the discarded requirement and its successors, so that a new edge to a withdrawn requirement is stopped at the write that would create it.",
+        "priority": "medium",
+        "risk": "medium",
+        "tags": "mutation-guard, og-1095",
+        "githubIssue": "https://github.com/hancomins/orchestrationgrid-server-java/issues/1095",
+        "acceptanceCriteria": [
+          "WHEN `add-trace B --type Requirement --reference A --relation extends` runs while A is discarded and superseded by S, THE SYSTEM SHALL refuse with USAGE, name A and S in the message, and leave every file byte-identical, under `--dry-run` as without it.",
+          "WHEN the same call carries relation `supersedes` or `superseded_by`, THE SYSTEM SHALL write the row as it does today.",
+          "MCP `add_trace_link` SHALL refuse and allow the same calls, and its tool description SHALL state that a row to a discarded requirement is refused unless it records the supersede.",
+          "WHEN add-requirement, through CLI `--trace` or MCP `add_requirement`, gets a Requirement trace row to a discarded requirement with any other relation, THE SYSTEM SHALL refuse the same way and create no requirement, under `--dry-run` as without it.",
+          "THE refusal SHALL decide through the shared function of FR-PARSE-049 AC-8, so that no row these writers accept is one that links check reports under the discarded-target code.",
+          "A Requirement reference that names no requirement SHALL keep its current refusal on both writers, MUTATION_DENIED with the message `Trace target not found`, so that a stale ID and a withdrawn one stay distinguishable."
+        ],
+        "rationale": "PRD: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md (OG #1095). The requirement serves the intent docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-2.\n\nAC-1, AC-2, AC-3 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-8 (add-trace refuses a new edge to a discarded requirement and leaves the supersede rows to it, as the exclusion `PRD-9` requires)\nAC-4 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-8 / hole / add-requirement writes Trace rows through its own copy of the target check in src/core/mutation/add-requirement.ts, so a refusal in add-trace alone leaves the same new edge one command over\nAC-5, AC-6 ← docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-8 (one rule with the diagnostic, and the missing-target refusal unchanged)\n\nDesign decision taken from the proposal `PRD-14` (state proposed, effect in-scope): the refusal is a USAGE error, and supersedes and superseded_by rows are allowed.",
+        "research": "- Measured 2026-11-05 on HEAD f36a264 in the scratch project of the links check requirement: add-trace with relation extends and with depends_on to the discarded FR-ARCH-002 returned ok with zero diagnostics, `add-trace --relation checked_compatible` to it returned ok under `--dry-run`, and `add-requirement --trace \"Requirement|FR-ARCH-002|refines|-\" --dry-run` returned ok.\n- Source: addTraceLinkUnlocked (src/core/mutation/add-trace.ts) refuses a Requirement reference only when no record holds the ID, and add-requirement.ts repeats that test for its Trace rows. edit_requirement_table_rows rewrites a Trace row's reference with no target check at all.\n- Trap: add_compatibility_check reaches addTraceLink with relation checked_compatible only after its own liveness guard (FR-NODE-038 AC-4), so the new refusal never fires there. A direct add-trace with checked_compatible to a discarded target is refused, which matches that guard.\n- Trap: orchestrate replay apply (IR-CLI-092) replays queued add_trace_link calls at the host root. A queued row whose target was discarded after it was queued is now refused, and the replay reports that call as failed rather than writing it.\n- Trap: supersede_requirement creates the successor with a `supersedes` row to the old requirement through add_requirement. That relation is allowed, so supersede keeps working.\n- Rejected: MUTATION_DENIED, the code of the missing-target refusal. The design decision chose USAGE: the caller can correct the call by pointing at the successor, and two codes let a caller tell a stale ID from a withdrawn one.\n- Not covered: edit_requirement_table_rows rewriting a Trace row's reference. It has no target check today, so a guard there is a change of its own, and the links check warning reports what it leaves.",
+        "implementationNotes": "- Addition sites: addTraceLinkUnlocked in src/core/mutation/add-trace.ts, the Trace row check in src/core/mutation/add-requirement.ts, and the add-trace ToolSpec description in src/mcp/schemas.ts, which docs/spec/90.appendix.md mirrors (`speckiwi sync-appendix --write`).",
+        "trace": [
+          "Code|src/core/mutation/add-trace.ts|related_to|trace_intent=addition_site",
+          "Code|src/core/mutation/add-requirement.ts|related_to|trace_intent=addition_site",
+          "Code|src/mcp/schemas.ts|related_to|trace_intent=addition_site",
+          "Requirement|FR-PARSE-049|depends_on|the shared discarded-target predicate and successor lookup",
+          "Requirement|FR-NODE-038|related_to|add_compatibility_check already refuses a discarded endpoint"
+        ]
+      },
+      "result_id": "FR-NODE-272",
+      "ok": true,
+      "written": true
+    },
+    {
+      "tool": "edit_acceptance_criterion",
+      "via": "node bin/speckiwi edit-ac --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-202",
+        "acId": "AC-6",
+        "text": "This requirement states what it does not hold. It does not add a note identifier to the rendered document — the notes stay plain dated bullets and the Change Notes stay table rows, and how a caller addresses one is this requirement's to decide. It does not change the 500 limit for append, which bounds one new note and is not the defect; the defect is that the same limit bounds a whole-section replacement. It does not reach the acceptance-criteria or evidence tables, which already have edit routes. It does not claim these four are the only gaps in the append-only surfaces; no census of them was taken. It does not add a diagnostic naming how many lines a rewrite dropped: the envelope now reports the rewrite as one range operation, so the range it covers and the line count it writes are both readable, and a diagnostic code was judged surplus to that. It does not hold what a replace shows of its loss or whether it asks first: showing the removed lines and the removed item count in the result, and refusing a replace that removes an item without confirmation, are held by FR-NODE-270 (5.3.2), which adds result fields and a refusal rather than a diagnostic code."
+      },
+      "ok": true
+    },
+    {
+      "tool": "add_change_note",
+      "via": "node bin/speckiwi add-change-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-202",
+        "change": "AC-6 bounded against FR-NODE-270",
+        "reason": "OG #1151 lost three notes through a replace whose dry run showed only the new text; the range the envelope reports does not show what is lost, so FR-NODE-270 (5.3.2) adds the removed lines, removedItems and a confirmation flag; AC-6 keeps its no-diagnostic-code decision and now says the loss report and the confirmation are FR-NODE-270's"
+      },
+      "ok": true
+    },
+    {
+      "tool": "append_section_note",
+      "via": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-266",
+        "section": "rationale",
+        "mode": "append",
+        "text": "Chosen to ship in 5.3.2 with the OG #1151 and #1095 fixes under docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-11: a title writer that returns ok while leaving a heading validate rejects is the same mutation-safety family, a change confined to the files that refuse or carry the value, and low risk."
+      },
+      "ok": true
+    },
+    {
+      "tool": "append_section_note",
+      "via": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-267",
+        "section": "rationale",
+        "mode": "append",
+        "text": "Chosen to ship in 5.3.2 with the OG #1151 and #1095 fixes under docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-11: a title change that returns ok while dropping the draft or discarded marker is the same mutation-safety family, a change confined to the files that refuse or carry the value, and low risk."
+      },
+      "ok": true
+    },
+    {
+      "tool": "append_section_note",
+      "via": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-269",
+        "section": "rationale",
+        "mode": "append",
+        "text": "Chosen to ship in 5.3.2 with the OG #1151 and #1095 fixes under docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-11: a roadmap update that returns ok while erasing PRD paths already recorded is the same mutation-safety family, a change confined to the files that refuse or carry the value, and low risk."
+      },
+      "ok": true
+    }
+  ],
+  "scope_doc_edits": [],
+  "validate_spec_result": {
+    "command": "node bin/speckiwi validate --fail-on-warning --json",
+    "exit": 1,
+    "summary": {
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      }
+    },
+    "note": "19 warnings, all SRS-W023 (draft in active target): 14 pre-existing + 5 new drafts; 0 errors"
+  },
+  "links_check": {
+    "broken": 4,
+    "note": "all 4 pre-existing SRS-W074 (REL-NODE-003, FR-NODE-022, FR-NODE-246), none from this run"
+  },
+  "prd_coverage": {
+    "uncitedItems": [],
+    "note": "every intent and in-scope item cited; 11 other 5.3.2 drafts cite other PRDs"
+  },
+  "change_notes_diff": "- 2026-11-05 FR-NODE-202: AC-6 bounded against FR-NODE-270",
+  "oos_changes": {
+    "removed": [],
+    "added": []
+  },
+  "added_ids": [
+    "FR-NODE-270",
+    "IR-CLI-117",
+    "FR-NODE-271",
+    "FR-PARSE-049",
+    "FR-NODE-272"
+  ],
+  "changed_ids": [
+    "FR-NODE-202 (AC-6 text, Change Note)",
+    "FR-NODE-266 (Rationale note)",
+    "FR-NODE-267 (Rationale note)",
+    "FR-NODE-269 (Rationale note)"
+  ],
+  "demoted_ids": [],
+  "discarded_ids": []
+}

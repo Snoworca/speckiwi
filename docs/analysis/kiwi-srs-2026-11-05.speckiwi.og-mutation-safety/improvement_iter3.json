@@ -1,0 +1,107 @@
+{
+  "iteration": 3,
+  "eval": "eval_iter3.json",
+  "addressed": [
+    {
+      "finding": "N-1",
+      "req": "FR-NODE-270",
+      "census": {
+        "src_writers": [
+          "src/core/mutation/render-requirement.ts:93 (Rationale: `-`)",
+          "src/core/mutation/render-requirement.ts:47-48 linesOrDash, called at :113 and :117 (Research / Analysis, Implementation Notes: `- -`)",
+          "src/core/mutation/append-section-note.ts:115, :128 (new heading + text, no placeholder)"
+        ],
+        "not_these_sections": [
+          "src/core/bootstrap/templates.ts:484 (`- -` in index/scope ## sections)"
+        ],
+        "bundled_docs": [
+          "docs/rule/SRS-MD-Rules-v2.6.0.md:2051, :2055 (`- -`)"
+        ],
+        "repo_bodies": {
+          "Rationale `-`": 135,
+          "Research / Analysis `- -`": 605,
+          "Implementation Notes `- -`": 447,
+          "other one-line bodies <=12 chars": 0
+        },
+        "method": "grep -rn for section headings and placeholder literals in src/; node scan of docs/spec/*.srs.md section bodies"
+      },
+      "action": "AC-1 now excludes blank lines and both tool placeholders `-` and `- -` (trailing whitespace trimmed); AC-6 refers to the placeholder lines and blank lines of AC-1; AC-11 checked, consistent (empty body = no items, removedItems 0); Research census and measurement appended; Change Note added",
+      "calls": [
+        {
+          "cli": "node bin/speckiwi edit-ac --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "acId": "AC-1",
+            "text": "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, and every other non-blank line belongs to the item above it. Blank lines and every placeholder line the tool writes into an empty narrative section SHALL NOT be items, compared after trimming trailing whitespace: `-`, which the tool writes into an empty Rationale, and `- -`, which it writes into an empty Research / Analysis or Implementation Notes and which the block template of the bundled rules document carries."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi edit-ac --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "acId": "AC-6",
+            "text": "WHEN a replace removes no item, because the section heading is absent, the body holds only the placeholder lines and blank lines of AC-1, or every old item reappears in the new text, THE SYSTEM SHALL write without the confirmation flag and report `removedItems: 0` and an empty `removedLines`."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "research",
+            "mode": "append",
+            "text": "Placeholder census 2026-11-05 (grep over src/): render-requirement.ts:93 writes `-` into an empty Rationale, and linesOrDash (render-requirement.ts:47-48, called at :113 and :117) writes `- -` into an empty Research / Analysis or Implementation Notes. append-section-note.ts:115 and :128 write a heading with the text only. templates.ts:484 writes `- -` into index and scope sections, not these three. The rules template docs/rule/SRS-MD-Rules-v2.6.0.md:2051 and :2055 carries `- -`."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "research",
+            "mode": "append",
+            "text": "Measured 2026-11-05 over docs/spec/*.srs.md, each heading body read to the next #### or ### line: Rationale holds only `-` 135 times, Research / Analysis only `- -` 605 times, Implementation Notes only `- -` 447 times, and no other one-line body of 12 characters or fewer occurs. A Rationale left as the template prose of the rules document is content to the count, not a placeholder."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi add-change-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "change": "AC-1 placeholder set widened to `-` and `- -`; AC-6 aligned",
+            "reason": "Verification round 3 (N-1): the tool writes `-` into an empty Rationale (render-requirement.ts:93), which AC-1 counted as an item, so replacing an empty Rationale would have been refused under AC-4 against AC-6; 135 Rationales in this repository hold only `-`"
+          },
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "diff_check": "only AC-1, AC-6, two Research bullets and one Change Note row changed in docs/spec/50.nodejs-implementation.srs.md",
+  "checks": {
+    "validate_fail_on_warning": {
+      "exit": 1,
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      }
+    },
+    "links_check": {
+      "checked": 1766,
+      "broken": 4,
+      "note": "same 4 pre-existing SRS-W074"
+    },
+    "prd_coverage_532": {
+      "uncitedItems": [],
+      "ungrounded_new_criteria": []
+    },
+    "active_target": "5.3.2"
+  },
+  "residual_after": []
+}

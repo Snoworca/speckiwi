@@ -294,6 +294,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         section: String(input.section),
         text: String(input.text),
         ...(typeof input.mode === "string" ? { mode: input.mode as "append" | "replace" } : {}),
+        ...(input.confirmReplace === true ? { confirmReplace: true } : {}),
         ...mutationOptions(input)
       })
     ),

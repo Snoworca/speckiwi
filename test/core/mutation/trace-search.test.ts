@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveSuccessorSlot, findIncomingTraceRows } from "../../../src/core/mutation/trace-search.js";
+import { deriveSuccessorSlot, findIncomingTraceRows } from "../../../src/core/trace-search.js";
 import type { RequirementRecord } from "../../../src/core/types.js";
 
 function makeRecord(id: string, filePath: string, traceLinks: RequirementRecord["traceLinks"]): RequirementRecord {

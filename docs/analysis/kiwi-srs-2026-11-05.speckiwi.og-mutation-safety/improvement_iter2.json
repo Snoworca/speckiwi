@@ -1,0 +1,243 @@
+{
+  "iteration": 2,
+  "eval": "eval_iter2.json",
+  "addressed": [
+    {
+      "finding": "K-1",
+      "req": "FR-NODE-272",
+      "feasibility": "pre-lock check is possible: addTraceLink and addRequirement are thin wrappers that call withSrsMutationLock, and parseWorkspace needs no lock, so the refusal can be decided before the lock is taken. AC wording (every file byte-identical) kept, AC-4 made explicit.",
+      "measured": "refused add-trace (missing target) flipped kiwi/.status.json lock.active false -> true in a scratch project",
+      "calls": [
+        {
+          "cli": "node bin/speckiwi edit-ac --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-272",
+            "acId": "AC-4",
+            "text": "WHEN add-requirement, through CLI `--trace` or MCP `add_requirement`, gets a Requirement trace row to a discarded requirement with any other relation, THE SYSTEM SHALL refuse with USAGE, create no requirement and leave every file byte-identical, under `--dry-run` as without it."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-272",
+            "section": "research",
+            "mode": "append",
+            "text": "Measured 2026-11-05 in a scratch project: a refused `add-trace` (reference FR-ARCH-999, no such requirement, MUTATION_DENIED) changed kiwi/.status.json from `lock.active: false` to `active: true` with operation add_trace_link. withSrsMutationLock writes the cache when it takes the lock (srs-lock.ts, before mutate) and refreshes it after release only when the result wrote, so any refusal decided inside the lock leaves the cache saying the lock is held."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-272",
+            "section": "implementation_notes",
+            "mode": "append",
+            "text": "Placement: decide the discarded-target refusal in addTraceLink and addRequirement before they call withSrsMutationLock, from a workspace parsed outside the lock, so that a refused call writes no file and AC-1 and AC-4 hold for kiwi/.status.json too. Keep the same check inside the lock as well, for a target discarded by another writer between the two reads. Reading the workspace needs no lock."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi add-change-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-272",
+            "change": "AC-4 made explicit about files; refusal placed before the lock",
+            "reason": "Verification round 2 (K-1): a refusal decided inside withSrsMutationLock leaves kiwi/.status.json saying the lock is held (measured with a refused add-trace), so the byte-identical claim of AC-1 holds only if the check runs before the lock is taken; Implementation Notes now name that placement and AC-4 says every file"
+          },
+          "ok": true
+        }
+      ]
+    },
+    {
+      "finding": "K-2",
+      "req": "FR-NODE-270",
+      "action": "AC-10: README replace examples (EN :694, KO :1686) carry --dry-run or --confirm-replace, and the replace description (:708, :1700) names the flag; Rationale `AC-10 fills: PRD-3 / defect`; Doc README.md addition_site trace",
+      "calls": [
+        {
+          "cli": "node bin/speckiwi replace-acceptance-criteria --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "items": [
+              {
+                "text": "THE removal count SHALL read the replaced section body as items: a line that begins with `- ` at column zero starts an item, a non-blank line at the start of the body or after a blank line starts an item, every other non-blank line belongs to the item above it, and the template placeholder line `- -` and blank lines are not items.",
+                "checked": false
+              },
+              {
+                "text": "WHEN the new text holds an item whose lines equal those of an old item, compared line by line after trimming trailing whitespace and each new item matching at most one old item, THAT old item SHALL NOT count as removed, and every other old item SHALL count as removed.",
+                "checked": false
+              },
+              {
+                "text": "WHEN `append-note <id> --section implementation_notes --mode replace --text <one line> --dry-run` runs on a section holding the placeholder and three dated notes, THE result value SHALL carry `removedItems: 3` and `removedLines` holding the three notes' lines in document order, the result SHALL be ok with `written: false`, and the file SHALL stay byte-identical, without the confirmation flag.",
+                "checked": false
+              },
+              {
+                "text": "WHEN the same call runs without `--dry-run` and without the confirmation flag, THE SYSTEM SHALL refuse with USAGE, name the flag and the number of items the replace would remove in the message, and leave the file byte-identical.",
+                "checked": false
+              },
+              {
+                "text": "WHEN it runs with `--confirm-replace` (MCP `confirmReplace: true`, or `\"confirmReplace\": true` through `--input-json -`), THE SYSTEM SHALL write the replacement, and the result SHALL carry the same `removedItems` and `removedLines` the dry run reported.",
+                "checked": false
+              },
+              {
+                "text": "WHEN a replace removes no item, because the section heading is absent, the body holds only the placeholder, or every old item reappears in the new text, THE SYSTEM SHALL write without the confirmation flag and report `removedItems: 0` and an empty `removedLines`.",
+                "checked": false
+              },
+              {
+                "text": "An append SHALL report `removedItems: 0` and an empty `removedLines`, and SHALL refuse the confirmation flag with USAGE, writing nothing.",
+                "checked": false
+              },
+              {
+                "text": "THE MCP input shape of `append_section_note` SHALL declare `confirmReplace` as an optional boolean, the ToolSpec registry SHALL declare `--confirm-replace` so that `speckiwi commands --json` lists it with payload key `confirmReplace`, and the MCP tool description and the CLI help of `--mode` SHALL say that a replace removing an item needs the flag.",
+                "checked": false
+              },
+              {
+                "text": "THE shipped skill that calls `append_section_note` with `mode: \"replace\"`, kiwi-srs-research (skills/claude/kiwi-srs-research/SKILL.md section 7.1.2 and the codex and etc copies in references/extended-workflow.md), SHALL run the replace as a dry run first, pass `confirmReplace: true` only when that dry run reports `removedItems` above 0, and record the dry run's `removedLines` in its run report, asserted by the skill contract tests, so that AC-4 neither refuses the skill's replace of a Research section that holds a note nor lets it confirm blind.",
+                "checked": false
+              },
+              {
+                "text": "Every `append-note … --mode replace` command shown in README.md, in its English and its Korean half, SHALL carry `--dry-run` or `--confirm-replace`, asserted by a test over the README's shell fences, and the README's description of `append-note --mode replace` in both halves SHALL say that a replace removing an item needs `--confirm-replace`, so that a published example is not refused by AC-4.",
+                "checked": false
+              },
+              {
+                "text": "WHEN a replace targets a section whose heading is present and whose body holds no non-blank line, THE SYSTEM SHALL put the new text under that section's heading and leave every other line of the document byte-identical, the next `#### ` heading included, so that the block afterwards holds the section heading, the new text and the next section heading in that order, and SHALL report `removedItems: 0`.",
+                "checked": false
+              }
+            ]
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "rationale",
+            "mode": "append",
+            "text": "AC-10 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / README.md shows, in both halves, an append-note --mode replace with no confirmation flag right after an example that appends a note to the same section, so once AC-4 holds the published example is refused"
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "research",
+            "mode": "append",
+            "text": "Measured 2026-11-05: README.md shows `speckiwi append-note FR-APP-001 --section rationale --mode replace --text \"rewritten rationale\"` at line 694 (English) and 1686 (Korean), each right after an append to the same section, and describes replace at lines 708 and 1700. append-section-note.ts is the only caller of findSectionBodyRange, so AC-11's fix there reaches no other writer."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi add-trace --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "type": "Doc",
+            "reference": "README.md",
+            "relation": "related_to",
+            "notes": "trace_intent=addition_site"
+          },
+          "ok": true
+        }
+      ]
+    },
+    {
+      "finding": "K-3",
+      "req": "FR-NODE-271",
+      "action": "Research recount from the full call list: 34 withSrsMutationLock call sites outside srs-lock.ts; scaffold-scope.ts:48 alone passes no dryRun; five derive it from apply (remove-project:108, upgrade-project:105, repair-rules-references:60, rename-scope:107, roadmap-sync:45); rename-target and retarget default to true",
+      "calls": [
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-271",
+            "section": "research",
+            "mode": "replace",
+            "text": "- Measured 2026-11-05 on HEAD f36a264: in a scratch project made by `speckiwi init --no-skills --no-mcp` and committed, the sha256 of every file outside `.git` was taken before and after `node bin/speckiwi scaffold-scope Extra:EXT --json`. The only difference was a new `kiwi/.status.json` whose `lock` read `active: true` with operation `scaffold_scope` and an expiry one minute ahead. `--apply --dry-run` created the same file. The reproduction posted on OG #1151 on 2026-11-05 hashed every file around each of the 68 commands that take `--dry-run` and found this the only one that wrote a file.\n- Source: scaffoldScope (src/core/mutation/scaffold-scope.ts) calls withSrsMutationLock with `operation` and `ignoreLock` only, and decides the preview inside scaffoldScopeUnlocked from `apply !== true`. withSrsMutationLock (srs-lock.ts) therefore takes a real lock and writes the status cache through refreshCacheDiagnostics before the mutation, and refreshes it after release only when the result wrote, so a preview leaves the cache saying the lock is held. Counted 2026-11-05 by listing every `withSrsMutationLock(` call with `grep -rn \"withSrsMutationLock(\" src --include=*.ts` and reading the options at each: 34 call sites outside srs-lock.ts, and scaffold-scope.ts:48 is the only one that passes no dryRun. Five others preview unless applied and derive the lock's dry run from `apply`: src/core/bootstrap/remove-project.ts:108, src/core/bootstrap/upgrade-project.ts:105, src/core/mutation/repair-rules-references.ts:60, src/core/mutation/rename-scope.ts:107 and src/core/mutation/roadmap-sync.ts:45. rename-target.ts and retarget.ts default it to true through `dryRun ?? true`.\n- Trap: the CLI already folds `--dry-run` into `apply` (`apply: Boolean(options.apply) && options.dryRun !== true` in src/cli/commands/mutations.ts), so deriving the lock's dry run from `apply !== true` covers both CLI forms and MCP. A fix that read a separate dryRun input would miss the default preview.\n- Trap: with the dry run set, acquireSrsMutationLock still refuses when another writer holds the lock, as it does for every dry run. That refusal writes nothing and stays.\n- Rejected: a suite that sweeps every command taking `--dry-run`. The external sweep found one case, and a suite of that size is a requirement of its own. Reopen when a second dry-run write is found."
+          },
+          "ok": true
+        }
+      ]
+    },
+    {
+      "finding": "R-1 (kept by lead repro)",
+      "req": "FR-NODE-270",
+      "action": "AC-11: replace of an empty-body section puts the text under its heading and leaves every other line, the next heading included, byte-identical, removedItems 0; Rationale `AC-11 fills: PRD-3 / defect`; Research measurement; Code src/core/mutation/internal.ts addition_site; Change Note `Added AC-10 and AC-11`",
+      "calls": [
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "rationale",
+            "mode": "append",
+            "text": "AC-11 fills: docs/prd/2026-11-05.og-srs-mutation-safety.prd.md#PRD-3 / defect / a replace of a section with an empty body overwrites the next section heading, so the document silently loses its Change Notes heading while validate reports nothing"
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi append-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "section": "research",
+            "mode": "append",
+            "text": "Measured 2026-11-05 (verification round 2 reproduction, copy of test/fixtures/workspaces/mutation-target): with the Implementation Notes body emptied to one blank line, `append-note --mode replace --text \"new body\"` returned ok with one replaceRange over the `#### Change Notes` heading line, the heading was gone afterwards, and validate reported errors 0. Cause: findSectionBodyRange (internal.ts) skips blank lines past the body into the next heading and returns that heading as the range."
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi add-trace --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "type": "Code",
+            "reference": "src/core/mutation/internal.ts",
+            "relation": "related_to",
+            "notes": "trace_intent=addition_site"
+          },
+          "ok": true
+        },
+        {
+          "cli": "node bin/speckiwi add-change-note --input-json - --json",
+          "dry_run_first": true,
+          "args": {
+            "id": "FR-NODE-270",
+            "change": "Added AC-10 and AC-11",
+            "reason": "Verification round 2: K-2, the README replace examples carry no confirmation flag and would be refused by AC-4; R-1, reproduced, a replace of an empty section overwrites the next section heading"
+          },
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "diff_check": "diff of docs/spec/50.nodejs-implementation.srs.md before/after shows only the added AC/notes/trace/change-note lines, the replaced FR-NODE-272 AC-4 line and the one FR-NODE-271 Research line",
+  "observed_out_of_scope": "Any refusal decided inside withSrsMutationLock (not only the new one) leaves kiwi/.status.json with lock.active true until expiry, since the cache is written at acquisition and refreshed after release only when the result wrote. No PRD item covers it, so no requirement was added; reported for the lead/user.",
+  "checks": {
+    "validate_fail_on_warning": {
+      "exit": 1,
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      }
+    },
+    "links_check": {
+      "checked": 1766,
+      "broken": 4,
+      "note": "same 4 pre-existing SRS-W074"
+    },
+    "prd_coverage_532": {
+      "uncitedItems": [],
+      "ungrounded_new_criteria": []
+    },
+    "active_target": "5.3.2"
+  },
+  "residual_after": []
+}

@@ -1,0 +1,512 @@
+{
+  "prd": "docs/prd/2026-11-05.og-srs-mutation-safety.prd.md",
+  "iteration": 1,
+  "prd_items": [
+    {
+      "id": "PRD-1",
+      "kind": "intent",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-270",
+        "IR-CLI-117",
+        "FR-NODE-271"
+      ],
+      "note": "Each cites PRD-1 as the intent it serves; FR-NODE-270 shows (AC-3), asks (AC-4) and reports (AC-5) the loss."
+    },
+    {
+      "id": "PRD-2",
+      "kind": "intent",
+      "verdict": "accepted",
+      "by": [
+        "FR-PARSE-049",
+        "FR-NODE-272"
+      ],
+      "note": "Both cite PRD-2; links check and validate report the row and the writers stop new ones."
+    },
+    {
+      "id": "PRD-3",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-270 AC-3",
+        "FR-NODE-270 AC-4",
+        "FR-NODE-270 AC-5",
+        "FR-NODE-270 AC-6",
+        "FR-NODE-270 AC-8"
+      ],
+      "note": "The dry run shows the removed lines; a replace removing an item is refused without --confirm-replace."
+    },
+    {
+      "id": "PRD-4",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-270 AC-1",
+        "FR-NODE-270 AC-2",
+        "FR-NODE-270 AC-5",
+        "FR-NODE-270 AC-7"
+      ],
+      "note": "removedItems and removedLines on the result value in both modes."
+    },
+    {
+      "id": "PRD-5",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "IR-CLI-117 AC-1",
+        "IR-CLI-117 AC-2",
+        "IR-CLI-117 AC-3"
+      ],
+      "note": "Guidance route as the PRD body directs; the tool does not try to detect the cut. append-note, edit-requirement and add-requirement are admitted by the --input-json gate (`--help --json` answers for all three)."
+    },
+    {
+      "id": "PRD-6",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-271 AC-1",
+        "FR-NODE-271 AC-2",
+        "FR-NODE-271 AC-3",
+        "FR-NODE-271 AC-4"
+      ],
+      "note": "Code confirms src/core/mutation/scaffold-scope.ts:48 passes no dryRun to withSrsMutationLock, while src/core/mutation/srs-lock.ts:533 refreshes the status cache only when dryRun is false."
+    },
+    {
+      "id": "PRD-7",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-PARSE-049 AC-1",
+        "FR-PARSE-049 AC-2",
+        "FR-PARSE-049 AC-3",
+        "FR-PARSE-049 AC-6",
+        "FR-PARSE-049 AC-8"
+      ],
+      "note": "Accepted for rows held by live requirements. The exclusion of rows held by discarded requirements in AC-5 narrows it on a basis that does not hold (finding F-2, residual)."
+    },
+    {
+      "id": "PRD-8",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-272 AC-1",
+        "FR-NODE-272 AC-3",
+        "FR-NODE-272 AC-4",
+        "FR-NODE-272 AC-5"
+      ],
+      "note": "add-trace and add-requirement refuse. edit_requirement_table_rows is disclosed as not covered and its rows are still reported by FR-PARSE-049 (finding F-6, dropped)."
+    },
+    {
+      "id": "PRD-9",
+      "kind": "exclusion",
+      "verdict": "respected",
+      "by": [
+        "FR-PARSE-049 AC-4",
+        "FR-NODE-272 AC-2"
+      ],
+      "note": "supersedes and superseded_by rows are neither reported nor refused."
+    },
+    {
+      "id": "PRD-10",
+      "kind": "exclusion",
+      "verdict": "respected",
+      "by": [],
+      "note": "No requirement edits OG code or OG links; FR-PARSE-049 Research rejects error severity citing PRD-10."
+    },
+    {
+      "id": "PRD-11",
+      "kind": "in-scope",
+      "verdict": "accepted",
+      "by": [
+        "FR-NODE-266",
+        "FR-NODE-267",
+        "FR-NODE-269"
+      ],
+      "note": "Three drafts carry a PRD-11 selection note; FR-NODE-260..265 and FR-NODE-268 stay draft without one. The reading of the selection criterion is recorded in finding F-5 (dropped)."
+    },
+    {
+      "id": "PRD-12",
+      "kind": "proposal",
+      "verdict": "not-applicable",
+      "by": [
+        "FR-NODE-270"
+      ],
+      "note": "State proposed, not confirmed. FR-NODE-270 adopts it as a design decision but grounds every AC on PRD-3 or PRD-4."
+    },
+    {
+      "id": "PRD-13",
+      "kind": "proposal",
+      "verdict": "not-applicable",
+      "by": [
+        "IR-CLI-117"
+      ],
+      "note": "State proposed. IR-CLI-117 grounds its ACs on PRD-5."
+    },
+    {
+      "id": "PRD-14",
+      "kind": "proposal",
+      "verdict": "not-applicable",
+      "by": [
+        "FR-PARSE-049",
+        "FR-NODE-272"
+      ],
+      "note": "State proposed. Both requirements ground their ACs on PRD-7 or PRD-8."
+    },
+    {
+      "id": "PRD-15",
+      "kind": "proposal (effect exclusion)",
+      "verdict": "respected",
+      "by": [],
+      "note": "No requirement adds a single-note replace mode; FR-NODE-270 Research rejects it and FR-NODE-202 AC-1 keeps it."
+    }
+  ],
+  "srs_items": [
+    {
+      "req_id": "FR-NODE-270",
+      "item": "statement",
+      "verdict": "grounded",
+      "basis": "PRD-1 intent; PRD-3, PRD-4"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-1",
+      "verdict": "grounded",
+      "basis": "PRD-4"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-2",
+      "verdict": "grounded",
+      "basis": "PRD-4"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-3",
+      "verdict": "grounded",
+      "basis": "PRD-3"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-4",
+      "verdict": "grounded",
+      "basis": "PRD-3 (kept finding F-1: a shipped caller is left uncovered)"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-5",
+      "verdict": "grounded",
+      "basis": "PRD-3, PRD-4"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-6",
+      "verdict": "grounded",
+      "basis": "PRD-3"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-7",
+      "verdict": "fills",
+      "basis": "PRD-4 for the count; fills: PRD-3 / hole for refusing the flag on append"
+    },
+    {
+      "req_id": "FR-NODE-270",
+      "item": "AC-8",
+      "verdict": "grounded",
+      "basis": "PRD-3"
+    },
+    {
+      "req_id": "IR-CLI-117",
+      "item": "statement",
+      "verdict": "grounded",
+      "basis": "PRD-1 intent; PRD-5"
+    },
+    {
+      "req_id": "IR-CLI-117",
+      "item": "AC-1",
+      "verdict": "grounded",
+      "basis": "PRD-5"
+    },
+    {
+      "req_id": "IR-CLI-117",
+      "item": "AC-2",
+      "verdict": "grounded",
+      "basis": "PRD-5"
+    },
+    {
+      "req_id": "IR-CLI-117",
+      "item": "AC-3",
+      "verdict": "grounded",
+      "basis": "PRD-5"
+    },
+    {
+      "req_id": "FR-NODE-271",
+      "item": "statement",
+      "verdict": "grounded",
+      "basis": "PRD-1 intent; PRD-6"
+    },
+    {
+      "req_id": "FR-NODE-271",
+      "item": "AC-1",
+      "verdict": "grounded",
+      "basis": "PRD-6"
+    },
+    {
+      "req_id": "FR-NODE-271",
+      "item": "AC-2",
+      "verdict": "grounded",
+      "basis": "PRD-6"
+    },
+    {
+      "req_id": "FR-NODE-271",
+      "item": "AC-3",
+      "verdict": "grounded",
+      "basis": "PRD-6"
+    },
+    {
+      "req_id": "FR-NODE-271",
+      "item": "AC-4",
+      "verdict": "grounded",
+      "basis": "PRD-6"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "statement",
+      "verdict": "grounded",
+      "basis": "PRD-2 intent; PRD-7 (the discarded-holder exclusion is judged under AC-5)"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-1",
+      "verdict": "grounded",
+      "basis": "PRD-7"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-2",
+      "verdict": "grounded",
+      "basis": "PRD-7"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-3",
+      "verdict": "grounded",
+      "basis": "PRD-7"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-4",
+      "verdict": "grounded",
+      "basis": "PRD-7, exclusion PRD-9"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-5",
+      "verdict": "residual",
+      "basis": "checked_compatible half: valid fills (rules section 23.5 item 3 confirmed). Discarded-holder half: the contradiction with FR-PARSE-045 AC-4 it cites does not exist (finding F-2)"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-6",
+      "verdict": "grounded",
+      "basis": "PRD-7"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-7",
+      "verdict": "fills",
+      "basis": "fills: PRD-7 / hole; successorProblem in src/core/parser/ac-parser.ts:45 confirmed to use the every-record rule"
+    },
+    {
+      "req_id": "FR-PARSE-049",
+      "item": "AC-8",
+      "verdict": "grounded",
+      "basis": "PRD-7"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "statement",
+      "verdict": "grounded",
+      "basis": "PRD-2 intent; PRD-8"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-1",
+      "verdict": "grounded",
+      "basis": "PRD-8"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-2",
+      "verdict": "grounded",
+      "basis": "PRD-8, exclusion PRD-9"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-3",
+      "verdict": "grounded",
+      "basis": "PRD-8"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-4",
+      "verdict": "fills",
+      "basis": "fills: PRD-8 / hole; src/core/mutation/add-requirement.ts:333-336 confirmed to carry its own target check"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-5",
+      "verdict": "grounded",
+      "basis": "PRD-8"
+    },
+    {
+      "req_id": "FR-NODE-272",
+      "item": "AC-6",
+      "verdict": "grounded",
+      "basis": "PRD-8; src/core/mutation/add-trace.ts:62-63 and add-requirement.ts:334-335 confirmed to refuse with MUTATION_DENIED 'Trace target not found'"
+    },
+    {
+      "req_id": "FR-NODE-202",
+      "item": "AC-6 (changed)",
+      "verdict": "drop",
+      "basis": "FR-NODE-202 Rationale holds no PRD citation and no fills: line for the change; the reason sits only in a Change Note (finding F-3)"
+    },
+    {
+      "req_id": "FR-NODE-266",
+      "item": "Rationale note",
+      "verdict": "grounded",
+      "basis": "PRD-11"
+    },
+    {
+      "req_id": "FR-NODE-267",
+      "item": "Rationale note",
+      "verdict": "grounded",
+      "basis": "PRD-11"
+    },
+    {
+      "req_id": "FR-NODE-269",
+      "item": "Rationale note",
+      "verdict": "grounded",
+      "basis": "PRD-11"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-1",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "contradicting-quotes",
+        "detail": "skills/claude/kiwi-srs-research/SKILL.md:547 (and section 0.14 at :36, mirrored in skills/codex/kiwi-srs-research/SKILL.md:39 and skills/etc/kiwi-srs-research/SKILL.md:44): `append_section_note { id: REQ_ID, section: \"research\", text, mode: \"append|replace\" }`, with no confirmReplace. FR-NODE-270 AC-4: a replace that removes an item without the confirmation flag is refused with USAGE. No AC of FR-NODE-270 covers that shipped caller, so once implemented the skill's replace on a Research section that holds a note is refused."
+      },
+      "axis": "consistency with existing contracts / scope (hole)",
+      "req_id": "FR-NODE-270",
+      "description": "FR-NODE-270 would make the kiwi-srs-research replace call, which passes no confirmReplace, fail, and no AC covers updating that caller or deliberately leaving it refused."
+    },
+    {
+      "id": "F-2",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "contradicting-quotes",
+        "detail": "FR-PARSE-049 Rationale: 'AC-5 fills: ... / contradiction / ... a discarded holder records a closed decision that FR-PARSE-045 AC-4 already leaves unreported, so reporting either would contradict a rule the request does not reopen'. FR-PARSE-045 AC-4 (docs/spec/20.parser-validation.srs.md, block at :2972): 'THE two warnings of AC-1 and AC-2 SHALL be reported only for a requirement whose Status is neither `verified` nor `discarded`'. That rule bounds only FR-PARSE-045's own two warnings, and it also excludes verified holders, which FR-PARSE-049 does not, so reporting a discarded holder's row contradicts no rule. The checked_compatible half holds: rules section 23.5 item 3 says the status of either endpoint is not enforced."
+      },
+      "axis": "classification of an addition (fills basis)",
+      "req_id": "FR-PARSE-049",
+      "description": "AC-5 narrows PRD-7 by not reporting rows held by discarded requirements, and the contradiction its fills: line cites does not exist. Name a real hole or contradiction, or leave the narrowing to the user (residual)."
+    },
+    {
+      "id": "F-3",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "failed-check",
+        "detail": "`git diff -- docs/spec/50.nodejs-implementation.srs.md` changes only FR-NODE-202 AC-6 and adds a Change Note row. The FR-NODE-202 Rationale (docs/spec/50.nodejs-implementation.srs.md:13412-13416) holds no reference to docs/prd/2026-11-05.og-srs-mutation-safety.prd.md and no `fills:` line."
+      },
+      "axis": "classification / trace",
+      "req_id": "FR-NODE-202",
+      "description": "The changed AC-6 is neither grounded on a PRD item nor backed by a fills: line in its Rationale, so under rule (c) it is not accepted as written. Add a fills: line (for example PRD-3 / contradiction, with the reasoning now in the Change Note) or revert the change."
+    },
+    {
+      "id": "F-4",
+      "disposition": "keep",
+      "evidence": {
+        "kind": "command-output",
+        "detail": "FR-NODE-271 Research: 'upgrade-project.ts and repair-rules-references.ts, the other two callers that preview unless applied, pass `dryRun: !apply`'. grep finds three: src/core/bootstrap/remove-project.ts:108 `withSrsMutationLock(root, { operation: \"remove_project\", ignoreLock: input.ignoreLock, dryRun: !apply }`, src/core/bootstrap/upgrade-project.ts:107, src/core/mutation/repair-rules-references.ts:62."
+      },
+      "axis": "factual accuracy",
+      "req_id": "FR-NODE-271",
+      "description": "The Research note says there are two other such callers; there are three (remove-project.ts as well). No AC changes."
+    },
+    {
+      "id": "F-5",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "PRD-11 body reads '같은 파일·같은 원인이고 동작 변경이 작은 것'. FR-NODE-267 (edit-requirement.ts) and FR-NODE-269 (compute-roadmap.ts, roadmap-items.ts) share no file with this run's new requirements."
+      },
+      "axis": "PRD-11 selection",
+      "req_id": "FR-NODE-267, FR-NODE-269",
+      "description": "Dropped: '·' also reads as 'same file or same cause', the user's own words (U-1) ask only for small, low-risk drafts, and both drafts share the defect class of PRD-3 (a write that returns ok while silently losing recorded content). No contradiction proven."
+    },
+    {
+      "id": "F-6",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "src/core/mutation/edit-requirement.ts:366-367 rewrites a trace_links row reference with no target check, so edit_requirement_table_rows can still create an edge to a discarded requirement."
+      },
+      "axis": "coverage of PRD-8",
+      "req_id": "FR-NODE-272",
+      "description": "Dropped: FR-NODE-272 Research discloses it as not covered, the PRD-8 source quote names add-trace only, and FR-PARSE-049 still reports such a row, so neither PRD-2 nor PRD-8 is contradicted."
+    },
+    {
+      "id": "F-7",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-NODE-270 statement: 'the original lines a `replace` removes'; AC-3: `removedLines` holds the three notes' lines, not the placeholder line the range also replaces."
+      },
+      "axis": "internal consistency",
+      "req_id": "FR-NODE-270",
+      "description": "Dropped: AC-1 and AC-2 define 'removed' over items (the placeholder is not an item, and an item that reappears is not removed), so the statement reads in that sense; no two sentences contradict."
+    },
+    {
+      "id": "F-8",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-PARSE-049 does not report checked_compatible rows, while FR-NODE-272 refuses a direct add-trace checked_compatible row to a discarded target."
+      },
+      "axis": "consistency between requirements",
+      "req_id": "FR-PARSE-049, FR-NODE-272",
+      "description": "Dropped: the writer is stricter than the check, which FR-NODE-272 AC-5 allows ('no row these writers accept is one that links check reports'), and this matches FR-NODE-038's existing refusal of a discarded endpoint."
+    },
+    {
+      "id": "F-9",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "none",
+        "detail": "FR-MCP-018 AC-5 (verified): 'no two-call dryRun protocol'. FR-NODE-270 uses a single-call confirmation flag."
+      },
+      "axis": "consistency with existing contracts",
+      "req_id": "FR-NODE-270",
+      "description": "Dropped: a confirmation flag is not a two-call dry-run protocol, so FR-MCP-018 is not contradicted."
+    },
+    {
+      "id": "F-10",
+      "disposition": "drop",
+      "evidence": {
+        "kind": "tool-output",
+        "detail": "validate --json compared with a HEAD copy of docs: the only new diagnostics are five SRS-W023 (draft not ready) on the five new requirements; links check --json reports no broken entry the HEAD copy lacked."
+      },
+      "axis": "tool diagnostics",
+      "req_id": "FR-NODE-270, IR-CLI-117, FR-NODE-271, FR-PARSE-049, FR-NODE-272",
+      "description": "Dropped: SRS-W023 is the expected state of a draft awaiting the PRD decision, not a defect."
+    }
+  ],
+  "summary": {
+    "kept": 4,
+    "dropped": 6,
+    "prd_fail": 0,
+    "srs_drop": 1,
+    "srs_residual": 1
+  }
+}

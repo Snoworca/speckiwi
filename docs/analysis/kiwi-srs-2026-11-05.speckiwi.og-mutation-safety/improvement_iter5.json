@@ -1,0 +1,269 @@
+{
+  "iteration": 5,
+  "eval": "eval_iter5.json",
+  "finding": "K-1 (FR-PARSE-049 names an MCP surface for links check that does not exist)",
+  "method": "show for the 9 requirements of this run; every snake_case and kebab-case token and every `MCP x` phrase extracted from statement, rationale, research, implementation notes, title, ACs and trace rows (raw list: 112 tokens), prose words dropped, the rest checked against `speckiwi commands --json`, `<command> --help` exit codes, the MCP tool names in src/mcp/schemas.ts mcp(...), registerTool calls under src/mcp and the roadmap bindings in src/cli/commands/roadmap.ts; option names checked with --help",
+  "cli_surfaces": [
+    {
+      "name": "append-note (--section, --mode, --text, --dry-run; --input-json)",
+      "where": "FR-NODE-270, IR-CLI-117",
+      "verdict": "registered"
+    },
+    {
+      "name": "append-note --confirm-replace",
+      "where": "FR-NODE-270",
+      "verdict": "not yet registered: the option this requirement adds (design value)"
+    },
+    {
+      "name": "edit-requirement --statement",
+      "where": "FR-NODE-270, IR-CLI-117, FR-NODE-266, FR-NODE-267",
+      "verdict": "registered"
+    },
+    {
+      "name": "add-requirement (--trace, --help)",
+      "where": "IR-CLI-117, FR-NODE-272, FR-NODE-266",
+      "verdict": "registered"
+    },
+    {
+      "name": "replace-acceptance-criteria",
+      "where": "FR-NODE-270",
+      "verdict": "registered"
+    },
+    {
+      "name": "commands --json",
+      "where": "FR-NODE-270",
+      "verdict": "registered"
+    },
+    {
+      "name": "sync-appendix --write",
+      "where": "FR-NODE-270, FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "init --no-skills --no-mcp",
+      "where": "FR-NODE-270, FR-NODE-271",
+      "verdict": "registered"
+    },
+    {
+      "name": "validate (--json, --fail-on-warning)",
+      "where": "FR-NODE-270, FR-PARSE-049",
+      "verdict": "registered"
+    },
+    {
+      "name": "workflow worklog-emit, step promote, orchestrate journal append, repair rules-references apply, skills install",
+      "where": "IR-CLI-117",
+      "verdict": "registered (each --help exits 0)"
+    },
+    {
+      "name": "scaffold-scope (--apply, --dry-run)",
+      "where": "FR-NODE-271",
+      "verdict": "registered"
+    },
+    {
+      "name": "rename-scope, rename-target, retarget",
+      "where": "FR-NODE-271",
+      "verdict": "registered"
+    },
+    {
+      "name": "links check (--json)",
+      "where": "FR-PARSE-049, FR-NODE-272",
+      "verdict": "registered (CLI only)"
+    },
+    {
+      "name": "supersede --apply",
+      "where": "FR-PARSE-049",
+      "verdict": "registered"
+    },
+    {
+      "name": "add-trace (--type, --reference, --relation, --dry-run)",
+      "where": "FR-PARSE-049, FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "orchestrate replay apply",
+      "where": "FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "add-change-note",
+      "where": "FR-NODE-202",
+      "verdict": "registered"
+    },
+    {
+      "name": "update-status",
+      "where": "FR-NODE-267",
+      "verdict": "registered"
+    },
+    {
+      "name": "roadmap list, roadmap show, roadmap update --prd",
+      "where": "FR-NODE-269",
+      "verdict": "registered"
+    },
+    {
+      "name": "supersede-requirement",
+      "where": "FR-NODE-266 (statement, AC-1)",
+      "verdict": "WRONG: no such command or tool; CLI is supersede, MCP supersede_requirement -> fixed"
+    }
+  ],
+  "mcp_surfaces": [
+    {
+      "name": "append_section_note (confirmReplace)",
+      "where": "FR-NODE-270, FR-NODE-202",
+      "verdict": "registered; confirmReplace is the input this requirement adds"
+    },
+    {
+      "name": "scaffold_scope (apply)",
+      "where": "FR-NODE-271",
+      "verdict": "registered (src/mcp/server.ts scaffold_scope shape has apply)"
+    },
+    {
+      "name": "add_trace_link",
+      "where": "FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "add_requirement",
+      "where": "FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "edit_requirement_table_rows",
+      "where": "FR-PARSE-049, FR-NODE-272, FR-NODE-202",
+      "verdict": "registered"
+    },
+    {
+      "name": "add_compatibility_check",
+      "where": "FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "supersede_requirement",
+      "where": "FR-NODE-272",
+      "verdict": "registered"
+    },
+    {
+      "name": "validate_spec",
+      "where": "FR-PARSE-049 (new statement)",
+      "verdict": "registered"
+    },
+    {
+      "name": "check (links check)",
+      "where": "FR-PARSE-049 statement and Research",
+      "verdict": "WRONG: readSpec(\"check\", undefined, \"checkLinks\") has no MCP name and src/mcp never calls checkLinks -> statement narrowed to CLI links check and MCP validate_spec, Research trap now cites CLI links check --json"
+    },
+    {
+      "name": "list_roadmap_items, get_roadmap_item, update_roadmap_item",
+      "where": "FR-NODE-269",
+      "verdict": "registered (src/cli/commands/roadmap.ts bindings, registered by src/mcp/tools/roadmap-tools.ts)"
+    }
+  ],
+  "changes": [
+    {
+      "id": "FR-PARSE-049",
+      "field": "statement",
+      "before": "`links check` and `validate`, on the CLI and through MCP, SHALL report",
+      "after": "`links check` (CLI only) and `validate` (CLI, and MCP `validate_spec`) SHALL report"
+    },
+    {
+      "id": "FR-PARSE-049",
+      "field": "research",
+      "before": "Adding a field to `broken` changes a shape MCP `check` returns.",
+      "after": "Adding a field to `broken` changes the JSON shape that CLI `links check --json` prints. No MCP tool exposes links check: its ToolSpec, `readSpec(\"check\", undefined, \"checkLinks\")` in src/mcp/schemas.ts, carries no MCP name, and nothing under src/mcp calls checkLinks."
+    },
+    {
+      "id": "FR-NODE-266",
+      "field": "statement",
+      "before": "add-requirement, and supersede-requirement through it, and edit-requirement",
+      "after": "add-requirement, and `supersede` (MCP `supersede_requirement`) through it, and edit-requirement"
+    },
+    {
+      "id": "FR-NODE-266",
+      "field": "AC-1",
+      "before": "WHEN add-requirement or supersede-requirement gets a title",
+      "after": "WHEN add-requirement or `supersede` (MCP `supersede_requirement`) gets a title"
+    }
+  ],
+  "calls": [
+    {
+      "cli": "node bin/speckiwi edit-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-PARSE-049",
+        "statement": "`links check` (CLI only) and `validate` (CLI, and MCP `validate_spec`) SHALL report under one new warning code every `Requirement` Trace Link row whose target requirement is discarded, carrying a relation other than `supersedes`, `superseded_by` and `checked_compatible`, and each report SHALL name the discarded requirement and the requirements that supersede it, so that an edge left pointing at a withdrawn requirement is reported by the checks instead of found by a person."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi append-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-PARSE-049",
+        "section": "research",
+        "mode": "replace",
+        "text": "- Measured 2026-11-05 on HEAD f36a264 in a scratch project: FR-ARCH-002 was superseded by FR-ARCH-005 through `supersede --apply` (its heading became `~~FR-ARCH-002 — Req B~~ [DISCARDED → see FR-ARCH-005]`), then `add-trace FR-ARCH-003 --relation extends` and `add-trace FR-ARCH-004 --relation depends_on` to FR-ARCH-002 both returned ok with no diagnostic. `links check --json` returned `checked: 3, broken: []`, and `validate --json` reported SRS-W023 only. The reproduction posted on OG #1095 on 2026-11-05 (OG HEAD 795020684b) found the two `extends` rows to FR-CREDMGMT-005 in docs/spec/41.server-credential-management.srs.md unreported among 1013 broken entries.\n- Source: checkLinks (src/core/query/links.ts) tests a Requirement row with `ids.has(trace.reference)` only, and the validator repeats the same existence test for SRS-E012 (src/core/validator/rules.ts). No registered code covers a discarded target; the nearest, ROADMAP-W010, is roadmap-only.\n- Source: the successor of a discarded requirement is the holder of the first incoming `Requirement` / `supersedes` row, ordered by file path then line, with the rest counted (rules section 30.1, FR-NODE-034). findIncomingTraceRows lives in src/core/mutation/trace-search.ts. The query and validator layers do not import a mutation module for it: the lookup moves to a layer both can import, and the heading marker keeps calling the same function.\n- Trap: a `broken` entry is `{requirementId, reference, reason, code}`. The successor goes into `reason` there and into `details` on the validate diagnostic. Adding a field to `broken` changes the JSON shape that CLI `links check --json` prints. No MCP tool exposes links check: its ToolSpec, `readSpec(\"check\", undefined, \"checkLinks\")` in src/mcp/schemas.ts, carries no MCP name, and nothing under src/mcp calls checkLinks.\n- Trap: a new warning code is listed in the rules document's diagnostic table as well as in the registry (SRS-W079 and SRS-W080 appear in both).\n- Trap: a discarded requirement with no incoming supersedes row carries a bare `[DISCARDED]` marker and has no successor. AC-3 covers the message for that case.\n- Rejected: error severity. OG already shows 1013 broken entries, and an error would fail every validate run there before anyone cleans the links, which the request leaves to OG (`PRD-10`). Reopen when a consumer asks for the gate.\n- Decision: a row held by a discarded requirement is reported like any other. SRS-E012 already reports a missing target whatever the holder's status, and edit_requirement_table_rows refuses only a verified block (assertEditable in src/core/mutation/edit-requirement.ts), so such a row can be deleted with the tool. An earlier draft left these rows out citing FR-PARSE-045 AC-4, but that criterion bounds only FR-PARSE-045's own two warnings.\n- Rejected: having `supersede` list the incoming edges it leaves. Useful, but not asked, and the warning reaches every route that leaves such an edge, not only supersede."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi add-change-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-PARSE-049",
+        "change": "Surfaces corrected: links check is CLI only, validate is CLI and MCP validate_spec",
+        "reason": "Verification round 5 (K-1): no MCP tool exposes links check (the check ToolSpec in src/mcp/schemas.ts has no MCP name and src/mcp never calls checkLinks), so the statement and the Research trap named a surface that does not exist"
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi edit-requirement --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-266",
+        "statement": "add-requirement, and `supersede` (MCP `supersede_requirement`) through it, and edit-requirement with a new title SHALL refuse before writing any title that the parser would report as SRS-E020, using the same predicate the parser uses, so that a mutation that returns ok never leaves a heading validate rejects."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi edit-ac --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-266",
+        "acId": "AC-1",
+        "text": "WHEN add-requirement or `supersede` (MCP `supersede_requirement`) gets a title holding an inline link, a code span, bold or italic emphasis, or an emoji, THE SYSTEM SHALL refuse with a usage error that names the title field and write nothing."
+      },
+      "ok": true
+    },
+    {
+      "cli": "node bin/speckiwi add-change-note --input-json - --json",
+      "dry_run_first": true,
+      "args": {
+        "id": "FR-NODE-266",
+        "change": "Surface name corrected: supersede-requirement is CLI supersede, MCP supersede_requirement",
+        "reason": "Verification round 5 surface census: no command or tool is named supersede-requirement; the CLI command is supersede and the MCP tool supersede_requirement"
+      },
+      "ok": true
+    }
+  ],
+  "diff_check": "20.parser-validation.srs.md: statement and one Research line replaced, one Change Note row added. 50.nodejs-implementation.srs.md: FR-NODE-266 statement and AC-1 replaced, one Change Note row added",
+  "checks": {
+    "validate_fail_on_warning": {
+      "exit": 1,
+      "errors": 0,
+      "warnings": 19,
+      "byCode": {
+        "SRS-W023": 19
+      }
+    },
+    "links_check": {
+      "checked": 1766,
+      "broken": 4,
+      "note": "same 4 pre-existing SRS-W074"
+    },
+    "prd_coverage_532": {
+      "uncitedItems": [],
+      "ungrounded_new_criteria": []
+    },
+    "active_target": "5.3.2"
+  },
+  "residual_after": []
+}

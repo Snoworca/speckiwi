@@ -36,7 +36,8 @@ describe("FR-NODE-202 — a section rewrite is bounded by nothing smaller than t
       id: "FR-ARCH-001",
       section: "implementation_notes",
       text: long,
-      mode: "replace"
+      mode: "replace",
+      confirmReplace: true
     });
 
     expect(result.ok).toBe(true);
@@ -89,7 +90,8 @@ describe("FR-NODE-202 — rewriting a section to fewer lines removes the surplus
       id: "FR-ARCH-001",
       section: "implementation_notes",
       text: "- the only surviving note",
-      mode: "replace"
+      mode: "replace",
+      confirmReplace: true
     });
     expect(result.ok).toBe(true);
 
@@ -126,7 +128,8 @@ describe("FR-NODE-202 — rewriting a section to fewer lines removes the surplus
       id: "FR-ARCH-001",
       section: "implementation_notes",
       text: "- alpha\n- beta\n- gamma",
-      mode: "replace"
+      mode: "replace",
+      confirmReplace: true
     });
 
     expect(result.ok).toBe(true);

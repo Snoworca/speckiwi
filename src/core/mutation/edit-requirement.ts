@@ -1,8 +1,9 @@
 import { diagnostic } from "../diagnostic.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { replaceHeadingTitle } from "../parser/heading-render.js";
 import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, type RequirementRecord, type TextFile } from "../types.js";
-import { assertOpensNoBlockBoundary, assertSingleLine } from "./block-prose.js";
+import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
@@ -100,13 +101,14 @@ function assertText(label: string, value: string): MutationResult | undefined {
   return undefined;
 }
 
-function assertLineText(label: string, value: string): MutationResult | undefined {
+function assertTitleText(label: string, value: string): MutationResult | undefined {
   const invalid = assertText(label, value);
   if (invalid) return invalid;
   // The newline rule used to live here as its own copy. `add_requirement` writes the same heading
   // line from the same kind of value and did not have it, which is how a title carrying a forged
   // `verified` block reached the file — the rule was right, and only one of the two writers held it.
-  return assertSingleLine(label, value);
+  // @req FR-NODE-266 AC-2 — the SRS-E020 rule likewise, through the parser's own predicate.
+  return assertRequirementTitle(label, value);
 }
 
 function sectionContentRange(file: TextFile, record: RequirementRecord, heading: string): { startLine: number; endLine: number } | undefined {
@@ -183,7 +185,7 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
   const unsafe = assertSafeMarkdownTableCells(Object.fromEntries(Object.entries(tableCells).map(([field, value]) => [`Requirement ${field}`, value])));
   if (unsafe) return forwardFailure(unsafe);
   if (input.title !== undefined) {
-    const invalid = assertLineText("title", input.title);
+    const invalid = assertTitleText("title", input.title);
     if (invalid) return invalid as MutationResult<GranularRequirementEditOutput>;
   }
   if (input.statement !== undefined) {
@@ -197,7 +199,12 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
   const updatedFields: string[] = [];
   if (input.title !== undefined) {
     const original = loaded.file.lines[loaded.record.headingLine - 1] ?? "";
-    operations.push({ type: "replaceLine", line: loaded.record.headingLine, original, replacement: `### ${input.id} — ${input.title}` });
+    // @req FR-NODE-267 AC-1 AC-2 — only the title changes; the strikethrough and the draft or
+    // discarded marker belong to the status and stability mutations, and update_stability writes the
+    // draft marker only on a transition INTO draft, so a dropped one never comes back.
+    const replacement = replaceHeadingTitle(original, input.title);
+    if (replacement === undefined) return mutationFail("MUTATION_DENIED", `Requirement heading not recognised: ${input.id}`);
+    operations.push({ type: "replaceLine", line: loaded.record.headingLine, original, replacement });
     updatedFields.push("title");
   }
   if (input.statement !== undefined) {

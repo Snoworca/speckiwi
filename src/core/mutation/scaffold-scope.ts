@@ -45,7 +45,10 @@ export async function scaffoldScope(
   // @req FR-NODE-088 AC-6 — allocation reads the existing documents and then writes a new one, so
   // without the SRS mutation lock two concurrent calls both read the same highest number and both
   // claim it. The number the requirement says can never collide is exactly what collides.
-  return withSrsMutationLock(root, { operation: "scaffold_scope", ignoreLock: input.ignoreLock }, () =>
+  // @req FR-NODE-271 AC-1 AC-2 AC-3 — a preview takes no lock: a real one writes the status cache
+  // saying it is held and, since the preview writes nothing, never refreshes it after release.
+  // The CLI folds --dry-run into apply, so `apply` alone covers every preview form.
+  return withSrsMutationLock(root, { operation: "scaffold_scope", dryRun: input.apply !== true, ignoreLock: input.ignoreLock }, () =>
     scaffoldScopeUnlocked(root, input)
   );
 }

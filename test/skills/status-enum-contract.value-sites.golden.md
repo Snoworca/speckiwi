@@ -2580,6 +2580,7 @@ discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	admap requirement is missing or dis
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ement arrived at it. Unlike the discarded marker, no strikethrough is app
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ked [OBSOLETE] by hand is not discarded, and every query and gate will
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	moves a requirement to Status=discarded, the following marker is appli
+discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ng | Trace Link row points at a discarded requirement |
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	nt deletion as a change to the discarded status rather than as physical
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	our. Unlike the verified and discarded transitions in §14.2, this one
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	planned -> discarded

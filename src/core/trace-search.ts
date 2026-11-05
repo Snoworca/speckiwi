@@ -1,4 +1,4 @@
-import type { RequirementRecord } from "../types.js";
+import type { RequirementRecord } from "./types.js";
 
 /**
  * SRS-MD-Rules v1.1.0 §30.1 / §30.2 — FIRST 결정 + N 표기를 지원하기 위한
@@ -55,6 +55,15 @@ export function findIncomingTraceRows(
     return a.line - b.line;
   });
   return matches;
+}
+
+/**
+ * The rows that supersede `id` — every `Requirement | id | supersedes` row, by file path then line —
+ * whose holders fill the `see` slot of its discarded marker (rules section 30.1).
+ * @req FR-PARSE-049 AC-8 — the marker and the discarded-target checks read successors here, once.
+ */
+export function findSupersedingRows(records: readonly RequirementRecord[], id: string): IncomingTraceMatch[] {
+  return findIncomingTraceRows(records, { type: "Requirement", relation: "supersedes", reference: id });
 }
 
 /**

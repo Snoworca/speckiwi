@@ -7,6 +7,11 @@ import { mutationFail } from "./guards.js";
 
 export const DEFAULT_REQUIREMENT_STABILITY = "draft";
 
+/** A seeded Trace row's cells as the block writes them, with an omitted cell's default filled in. */
+export function traceRowCells(row: Partial<TraceLink>): { type: string; reference: string; relation: string; notes: string } {
+  return { type: row.type ?? "Requirement", reference: row.reference ?? "", relation: row.relation ?? "related_to", notes: row.notes ?? "-" };
+}
+
 export interface RenderRequirementInput {
   id: string;
   type: RequirementType;
@@ -74,9 +79,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
   const evidenceRows = (input.evidence ?? []).map(
     (row, index) => `| ${row.id ?? `VE-${index + 1}`} | ${row.type ?? "test"} | ${row.reference ?? ""} | ${row.covers ?? "all"} | ${row.notes ?? "-"} |`
   );
-  const traceRows = (input.trace ?? []).map(
-    (row) => `| ${row.type ?? "Requirement"} | ${row.reference ?? ""} | ${row.relation ?? "related_to"} | ${row.notes ?? "-"} |`
-  );
+  const traceRows = (input.trace ?? []).map(traceRowCells).map((row) => `| ${row.type} | ${row.reference} | ${row.relation} | ${row.notes} |`);
   return [
     renderHeadingLine({ id: input.id, title: input.title, ...(stability === "draft" ? { marker: "DRAFT" as const } : {}) }),
     "",

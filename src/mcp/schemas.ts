@@ -460,10 +460,12 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement (Rationale, Research / Analysis or Implementation Notes), or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. It works at any Status, no Status refuses it, and it writes no Change Note. Writes the requirement block."), "req-scoped", "appendSectionNote", [
+  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement (Rationale, Research / Analysis or Implementation Notes), or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. A `replace` reports the items it removes as `removedItems` and `removedLines`, and one that removes an item is refused unless `confirmReplace` is true, so run it with `dryRun` first. It works at any Status, no Status refuses it, and it writes no Change Note. Writes the requirement block."), "req-scoped", "appendSectionNote", [
     opt("--section <section>", "section"),
     opt("--text <text>", "text"),
     opt("--mode <mode>", "mode"),
+    // @req FR-NODE-270 AC-8 — declared here so an `--input-json` payload's confirmReplace reaches the flag.
+    opt("--confirm-replace", "confirmReplace"),
     DRY_RUN,
     IGNORE_LOCK
   ]),
@@ -543,7 +545,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("add-trace", mcp("add_trace_link", "Adds one Trace Link row to a requirement — type, reference, relation, notes — recording what the requirement connects to rather than what proves it; a row of type Requirement whose reference names no known block is refused. Writes the requirement block."), "req-scoped", "addTraceLink", [
+  mutationSpec("add-trace", mcp("add_trace_link", "Adds one Trace Link row to a requirement — type, reference, relation, notes — recording what the requirement connects to rather than what proves it; a row of type Requirement whose reference names no known block is refused, and a row to a discarded requirement is refused unless it records the supersede, with relation supersedes or superseded_by. Writes the requirement block."), "req-scoped", "addTraceLink", [
     opt("--type <type>", "type"),
     opt("--reference <reference>", "reference"),
     opt("--relation <relation>", "relation"),

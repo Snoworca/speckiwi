@@ -75,7 +75,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
   it("(h) replace mode dryRun=false single-call (optimistic concurrency) writes content", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "Replaced rationale text", mode: "replace" });
+    const result = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "Replaced rationale text", mode: "replace", confirmReplace: true });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value?.written).toBe(true);
     const file = await readArch(rootPath);
@@ -91,7 +91,7 @@ describe("FR-MCP-018 — appendSectionNote", () => {
     expect(preview.ok).toBe(true);
     const original = await readFile(filePath, "utf8");
     await writeFile(filePath, original + "\n<!-- external mutation -->\n", "utf8");
-    const second = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "first commit", mode: "replace" });
+    const second = await appendSectionNote(root, { id: "FR-ARCH-001", section: "rationale", text: "first commit", mode: "replace", confirmReplace: true });
     // After an external mutation we accept either explicit STALE_PATCH or a written:true if loadRecord re-snapshots —
     // the contract is that the SHA snapshot guard does not silently overwrite the intervening mutation marker.
     const after = await readFile(filePath, "utf8");

@@ -308,7 +308,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<id>")
     .requiredOption("--section <section>", "rationale | research | implementation_notes")
     .requiredOption("--text <text>", "append: one note, max 500 UTF-16 code units; replace: the whole section body, uncapped")
-    .option("--mode <mode>", "append (default) or replace; any other value is refused")
+    .option("--mode <mode>", "append (default) or replace; any other value is refused. A replace that removes an item needs --confirm-replace; --dry-run shows removedItems and removedLines first")
+    .option("--confirm-replace", "let a replace remove the items its dry run reports; refused with append")
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
@@ -321,6 +322,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
         // the MCP enum. appendSectionNote rejects an unrecognised value rather than falling through
         // to `replace`, which is what makes passing it on safe. @req FR-NODE-202 AC-7
         ...(typeof options.mode === "string" ? { mode: options.mode as "append" | "replace" } : {}),
+        ...(options.confirmReplace ? { confirmReplace: true } : {}),
         ...(options.dryRun ? { dryRun: true } : {}),
         ...(options.ignoreLock ? { ignoreLock: true } : {})
       });

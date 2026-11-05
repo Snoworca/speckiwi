@@ -17,6 +17,7 @@ import {
   type RequirementRecord
 } from "../types.js";
 import { successorProblem } from "../parser/ac-parser.js";
+import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import { REQUIREMENT_ID_SOURCE } from "../testing/test-citations.js";
 import { isDependsOnRelation, isRequirementDependency, requirementDependencyIds } from "../requirement-dependency.js";
 import { registerValidationRule } from "./rule-registry.js";
@@ -583,6 +584,7 @@ export function registerDefaultRules(): void {
     const targets = new Set(workspace.index.targets.map((target) => target.target));
     const scopes = new Set(workspace.index.scopes.flatMap((scope) => [scope.prefix, scope.scope]).filter(Boolean));
     const ids = new Set(workspace.records.map((record) => record.id));
+    const discardedTargets = judgeDiscardedTraceTargets(workspace.records);
     const recordsById = new Map(workspace.records.map((record) => [record.id, record]));
     const explicitActiveTarget = (workspace.index.metadata["Active Target"] ?? "").trim();
     const indexLocation = { filePath: "docs/spec/00.index.md" };
@@ -820,6 +822,19 @@ export function registerDefaultRules(): void {
             filePath: record.filePath,
             ...(typeof trace.line === "number" ? { line: trace.line } : {})
           }));
+        }
+        // @req FR-PARSE-049 AC-2 — the same rows links check reports, at the row's own line.
+        const discarded = discardedTargets.reports(trace);
+        if (discarded) {
+          diagnostics.push(
+            diagnostic(
+              "SRS-W081",
+              "warning",
+              `Trace target ${discarded.summary}`,
+              { filePath: record.filePath, ...(typeof trace.line === "number" ? { line: trace.line } : {}), requirementId: record.id },
+              { discardedId: discarded.discardedId, successorIds: discarded.successorIds }
+            )
+          );
         }
       }
       diagnostics.push(...acceptanceCriterionNumberDiagnostics(record, workspace.records));

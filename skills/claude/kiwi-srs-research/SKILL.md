@@ -33,7 +33,7 @@ REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴�
 | §0.11 | **이견 보존 의무**. Synthesizer 는 합의로 위장 금지. 1 vs 2+ 이견은 `dissent_findings` 에 명시 |
 | §0.12 | **외부 모듈 수정 시 사용자 확인 의무**. cwd 외부 경로 수정 신호 감지 시 즉시 중단 + AskUserQuestion |
 | §0.13 | **Status/Stability 변경 권한 없음**. 본 스킬은 research 필드만 다룸. status/stability 는 다른 스킬 책임 |
-| §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크 |
+| §0.14 | **research 필드 갱신 도구 선정**. speckiwi `append_section_note { id, section: "research", text, mode: "append\|replace" }` 사용. 500자 제한 → 본문이 길면 다중 호출 또는 분석 로그 링크. replace 는 `dryRun: true` 로 먼저 돌리고 `removedItems` 가 0 보다 클 때만 `confirmReplace: true` 로 쓴다 (§7.1.2) |
 | §0.15 | **subagent 모드 호출자 입력 isolation 의무**. 호출자(예: kiwi-srs-feasibility)는 본 스킬에 prompt 주입 시 자기 결론/판정/justification 을 strip 해야 함. 위반 검출 시 §0.G5 적용 |
 | §0.16 | **mode flag 검출 채널 우선순위 확정**. (a) Skill/Agent 인자 `--mode=<value>` > (b) prompt 본문 정확 문자열 `--mode=<value>` > (c) 자연어 "subagent mode"/"standalone mode" > (d) 기본값 standalone. 상세는 §0.G6 및 §3.1 |
 | §0.17 | **검증 서브에이전트 모델 정책 SSOT**. Researchers·Synthesizer 등 연구·검증 서브에이전트는 기본적으로 **현재 세션 모델(current session model)**을 상속한다. `--model <name>` (또는 사용자가 지명한 모델) 로 서브에이전트의 모델을 override 한다. **5-서브에이전트 토폴로지 고정(§0.5)·격리(§0.10)·이견 보존(§0.11)·Synthesizer 무결성 게이트(§0.G4)·심각도 게이트는 불변**. 호출자(kiwi-srs-feasibility 등) 가 `--model` 활성 상태로 본 스킬을 subagent 모드 호출 시 `--model` 전파 의무 |
@@ -544,7 +544,11 @@ AskUserQuestion 분해:
 
 #### 7.1.2 speckiwi 영속화
 
-`append_section_note { id: REQ_ID, section: "research", text, mode: "append|replace" }` 호출.
+- **append**: `append_section_note { id: REQ_ID, section: "research", text, mode: "append" }` 호출.
+- **replace** (Q3 에서 replace 를 고른 경우): 기존 research note 를 보지 않고 지우지 않도록 세 단계로 호출한다.
+  1. dry run: `append_section_note { id: REQ_ID, section: "research", text, mode: "replace", dryRun: true }`. 결과의 `removedItems`·`removedLines` 를 읽는다.
+  2. 쓰기: `removedItems` 가 0 이면 `append_section_note { id: REQ_ID, section: "research", text, mode: "replace" }`. `confirmReplace: true` 는 그 dry run 의 `removedItems` 가 0 보다 클 때만 넘긴다: `append_section_note { id: REQ_ID, section: "research", text, mode: "replace", confirmReplace: true }`. dry run 없이 확인 플래그를 넘기지 않는다.
+  3. 그 dry run 의 `removedLines` 를 run 보고(§7.1.3 완료 보고와 `mutation-log.json`)에 그대로 기록한다.
 
 text 본문 (500자 한도 — §0.14):
 ```
@@ -577,6 +581,7 @@ text 본문 (500자 한도 — §0.14):
 
 ### 영속화
 - speckiwi: append_section_note(REQ {REQ_ID}, section: research, mode: append)
+- replace 인 경우: dry run 이 보고한 removedItems {n} 건, removedLines {dry run 의 removedLines 그대로}
 - 전체 보고: docs/analysis/kiwi-srs-research-{run-id}/report.md
 
 ### 다음 단계
