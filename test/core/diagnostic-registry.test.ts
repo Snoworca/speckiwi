@@ -32,7 +32,8 @@ describe("diagnostic registry", () => {
     const codes = DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code);
     expect(new Set(codes).size).toBe(codes.length);
     for (const definition of DIAGNOSTIC_DEFINITIONS) {
-      expect(definition.code).toMatch(/^SRS-[EW]\d{3}$/);
+      // FR-PARSE-046 — the roadmap check's codes are registered under their own ROADMAP- namespace.
+      expect(definition.code).toMatch(/^(SRS|ROADMAP)-[EW]\d{3}$/);
       expect(definition.severity).toMatch(/^(error|warning|info)$/);
       expect(definition.title.trim()).not.toBe("");
       expect(definition.messageTemplate.trim()).not.toBe("");
@@ -50,7 +51,10 @@ describe("diagnostic registry", () => {
   it("keeps the rules document diagnostic table aligned to the registry", async () => {
     const rules = await readFile(`docs/rule/${BUNDLED_SRS_RULES_FILENAME}`, "utf8");
     const rows = parseRulesDocDiagnosticRows(rules).sort((a, b) => a.code.localeCompare(b.code));
-    const registry = DIAGNOSTIC_DEFINITIONS.map(({ code, severity, title }) => ({ code, severity, title })).sort((a, b) => a.code.localeCompare(b.code));
+    // The validate-spec table holds the SRS- namespace; the ROADMAP- codes are aligned with the roadmap appendix (FR-PARSE-047).
+    const registry = DIAGNOSTIC_DEFINITIONS.filter(({ code }) => code.startsWith("SRS-"))
+      .map(({ code, severity, title }) => ({ code, severity, title }))
+      .sort((a, b) => a.code.localeCompare(b.code));
     expect(rows).toEqual(registry);
   });
 

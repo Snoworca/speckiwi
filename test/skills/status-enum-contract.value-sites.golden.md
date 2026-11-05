@@ -2576,6 +2576,7 @@ discarded	-	docs/rule/SDS-MD-Rules-v2.6.0.md	y structural note outside it is dis
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	- update_status to discarded fails with MUTATION_DENIED f
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	2. Do not reuse a discarded ID.
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	2026-05-07 | Changed Status to discarded | Merged into FR-AUTH-001 |
+discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	admap requirement is missing or discarded |
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ement arrived at it. Unlike the discarded marker, no strikethrough is app
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ked [OBSOLETE] by hand is not discarded, and every query and gate will
 discarded	-	docs/rule/SRS-MD-Rules-v2.6.0.md	moves a requirement to Status=discarded, the following marker is appli
@@ -2651,11 +2652,13 @@ in_progress	-	docs/rule/SRS-MD-Rules-v2.6.0.md	| in_progress | Implementation is
 planned	-	docs/rule/SDS-MD-Rules-v2.6.0.md	ed test: | SDS-AC | Test file (planned) | Case summary |.
 planned	-	docs/rule/SDS-MD-Rules-v2.6.0.md	ng every SDS-AC to at least one planned test: | SDS-AC | Test file (pl
 planned	-	docs/rule/SDS-MD-Rules-v2.6.0.md	| SDS-AC | Test file (planned) | Case summary |
+planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	13 | warning | Roadmap feature planned outside its milestone |
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	2. Do any planned or in_progress requirements
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	ication Evidence reference. So planned -> verified succeeds only for
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	planned
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	planned -> discarded
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	planned -> in_progress
+planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	s and records when that work is planned and when it actually started an
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	| MVP | milestone | planned | Minimum features required for
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	| Status | planned |
 planned	-	docs/rule/SRS-MD-Rules-v2.6.0.md	| Status | planned |

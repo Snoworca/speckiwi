@@ -20,6 +20,7 @@ import { updateStability } from "../../src/core/mutation/update-stability.js";
 import { updateStatus } from "../../src/core/mutation/update-status.js";
 import { updateStepState } from "../../src/core/mutation/update-step-state.js";
 import { resolveProjectRoot } from "../../src/core/project-root.js";
+import { readRoadmap } from "../../src/core/roadmap/load-roadmap.js";
 import { toolSchemas } from "../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
@@ -580,6 +581,16 @@ const CALLER_SITE_DECLARATIONS: readonly StampSite[] = [
         operations: [{ kind: "update", rowId: "VE-1", values: { notes: "probed" } }]
       }
     ]
+  },
+  {
+    // FR-NODE-255 AC-7 — the roadmap's default as-of date. Every roadmap writer and the target rename
+    // take their default date from the same function, so this one probe covers them.
+    file: "src/core/roadmap/load-roadmap.ts",
+    destination: "returned-envelope",
+    pattern: String.raw`"exists":false,"source":null,"asOf":"(\d{4}-\d{2}-\d{2})"`,
+    fn: readRoadmap as (...args: never[]) => unknown,
+    seed: "none",
+    args: [ROOT_SLOT, {}]
   }
 ];
 
@@ -602,7 +613,8 @@ const PRODUCTION_EXPORTS: Readonly<Record<string, unknown>> = {
   "src/core/mutation/render-requirement.ts": renderRequirementBlock,
   "src/core/bootstrap/templates.ts": renderSdsDesignTemplate,
   "src/core/mutation/add-requirement.ts": addRequirement,
-  "src/core/mutation/edit-requirement.ts": editRequirementTableRows
+  "src/core/mutation/edit-requirement.ts": editRequirementTableRows,
+  "src/core/roadmap/load-roadmap.ts": readRoadmap
 };
 
 /**
@@ -652,7 +664,7 @@ function classifyReturn(value: unknown): { kind: CallerDestination; text: string
   throw new Error(`unclassifiable return value: ${Object.prototype.toString.call(value)}`);
 }
 
-/** Files whose probe actually ran a checked production call. `AC-5` asserts this covers all thirteen. */
+/** Files whose probe actually ran a checked production call. `AC-5` asserts this covers all fourteen. */
 const observedSites = new Set<string>();
 
 /**
@@ -829,7 +841,7 @@ function expectCallSucceeded(file: string, returned: unknown): void {
 /**
  * Runs ONE site at ONE instant and returns the stamp it produced.
  *
- * The same path serves all thirteen. The row contributes a production reference, static data, a seed
+ * The same path serves all fourteen. The row contributes a production reference, static data, a seed
  * name, a destination and a pattern; the workspace, the arguments' final values, the call, the success
  * check and the reading all belong to the framework.
  */
@@ -949,7 +961,7 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
     }
     expect([...byDestination.keys()].sort()).toEqual(["rendered-text", "returned-envelope"]);
     expect(byDestination.get("rendered-text")).toBe(2);
-    expect(byDestination.get("returned-envelope")).toBe(2);
+    expect(byDestination.get("returned-envelope")).toBe(3);
   });
 
   it("AC-5: the shape classifier is alive — each destination name matches the shape it claims", () => {
@@ -977,7 +989,7 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
       // catches by walking `Reflect.ownKeys`.
       expect(() => structuredClone(inert)).not.toThrow();
     }
-    expect(ALL_SITES).toHaveLength(13);
+    expect(ALL_SITES).toHaveLength(14);
     // Judged when the snapshots were taken, against the DECLARATIONS — the only place reading them.
     expect(rowDefects, "a declared row is not inert data").toEqual([]);
   });
@@ -1005,14 +1017,14 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
       const dated = stringsIn(ARGS_SNAPSHOT.get(site.file)).filter((text) => /\d{4}-\d{2}-\d{2}/.test(text));
       expect(dated, `${site.file} declares a date-shaped argument`).toEqual([]);
     }
-    expect(ARGS_SNAPSHOT.size).toBe(13);
+    expect(ARGS_SNAPSHOT.size).toBe(14);
   });
 
-  it("AC-5: the thirteen sites are all of them, and no file appears twice", () => {
-    expect(ALL_SITE_FILES).toHaveLength(13);
-    expect(new Set(ALL_SITE_FILES).size).toBe(13);
+  it("AC-5: the fourteen sites are all of them, and no file appears twice", () => {
+    expect(ALL_SITE_FILES).toHaveLength(14);
+    expect(new Set(ALL_SITE_FILES).size).toBe(14);
     expect(FILE_SITES).toHaveLength(9);
-    expect(CALLER_SITES).toHaveLength(4);
+    expect(CALLER_SITES).toHaveLength(5);
   });
 
   it("AC-5: edit_requirement_table_rows really writes no dated row into the document", async () => {
@@ -1046,11 +1058,11 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
 });
 
 describe("FR-NODE-205 — the probes actually ran", () => {
-  it("AC-5: all thirteen probes executed — declaring the table is not measuring it", () => {
-    // Emptying the `it.each` argument leaves the table at thirteen rows and the census untouched, so
+  it("AC-5: all fourteen probes executed — declaring the table is not measuring it", () => {
+    // Emptying the `it.each` argument leaves the table at fourteen rows and the census untouched, so
     // nothing else in this file notices that no probe ever ran. This counts the runs.
     expect([...observedSites].sort()).toEqual([...ALL_SITE_FILES].sort());
-    expect(observedSites.size).toBe(13);
+    expect(observedSites.size).toBe(14);
   });
 });
 

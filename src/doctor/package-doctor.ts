@@ -74,6 +74,8 @@ export const EXPECTED_KIWI_SKILLS = [
   // @req FR-FLOW-204 AC-8 — the PRD skill kiwi-srs and kiwi-orchestrator call when no PRD is given.
   "kiwi-prd",
   "kiwi-review-fix-loop",
+  // @req FR-FLOW-224 AC-1 — the roadmap skill that records features, milestones and schedules through the roadmap tools.
+  "kiwi-roadmap",
   // @req FR-NODE-211 AC-7 — kiwi-sds replaces the retired kiwi-planner in every bundled variant.
   "kiwi-sds",
   "kiwi-srs",

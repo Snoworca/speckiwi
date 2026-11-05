@@ -180,7 +180,8 @@ describe("FR-NODE-086 AC-2 — the translation preserves the normative content t
     const rules = await readInstalledSrsRules(rootPath);
 
     const documented = [...new Set(rules.match(/SRS-[EW]\d+/g) ?? [])].sort();
-    const registered = [...new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code))].sort();
+    // SRS- codes only: the ROADMAP- namespace is pinned against the roadmap appendix by FR-PARSE-047's test.
+    const registered = [...new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code).filter((code) => code.startsWith("SRS-")))].sort();
 
     expect(documented.filter((code) => !registered.includes(code)), "rules document names codes the runtime does not define").toEqual([]);
     expect(registered.filter((code) => !documented.includes(code)), "runtime defines codes the rules document lost").toEqual([]);

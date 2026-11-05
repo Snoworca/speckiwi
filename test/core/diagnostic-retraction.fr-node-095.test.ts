@@ -223,7 +223,8 @@ describe("FR-NODE-095 AC-7 — the surviving codes are untouched", () => {
   it("keeps the registry and the validation table in agreement in both directions", async () => {
     const rows = validationTableRows(await rulesText());
     const documented = new Set(rows.map((row) => /`(SRS-[EW]\d+)`/.exec(row)?.[1] ?? ""));
-    const registered = new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code));
+    // The validation table holds the SRS- namespace; the ROADMAP- codes are listed in the roadmap appendix (FR-PARSE-047).
+    const registered = new Set(DIAGNOSTIC_DEFINITIONS.map((definition) => definition.code).filter((code) => code.startsWith("SRS-")));
 
     for (const code of registered) {
       expect(documented.has(code), `${code} is registered but not documented`).toBe(true);

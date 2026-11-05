@@ -170,6 +170,8 @@ User clarification gate 3옵션: `(1) 진행 승인` / `(2) 외부 변경 제외
 
 선택 입력 `PRD_PATH` — 판정 기준이 되는 승인된 PRD(`docs/prd/*.prd.md`). `REQ_PATH` 가 PRD 가 아닐 때(예: 오케스트레이터의 wave excerpt) 함께 받는다.
 
+선택 입력 `ROADMAP_ITEM=RM-<n>` — 이 run 이 다루는 로드맵 항목. 있으면 §12.1.4 로 이 run 이 새로 등록한 target 을 그 항목에 연결하고, 없으면 로드맵 도구를 하나도 부르지 않는다(FR-FLOW-225).
+
 - 이슈 진입에서는 `kiwi-srs-research` 가 쓴 요구 진술 발췌본을 `REQ_PATH=docs/analysis/kiwi-srs-research-{run-id}/issue-excerpt.md` 로 받는다. 이 발췌본은 참고 자료이고 `U-1` 의 원천이 아니다 — `kiwi-prd` 가 `gh issue view {N} --json title,body,comments` 로 이슈 원문을 읽어 `U-1` 에 쓴다(핵심 규칙 블록). 이슈 번호는 발췌본 첫 줄 `Issue: https://github.com/{owner}/{repo}/issues/{N}` 에서 읽는다. 연구 보고서 자체를 `REQ_PATH` 로 받지 않는다 — 그 문서의 자리는 §9.6 이 A/B 검증 루프의 입력으로 규정한 `--research-doc` 다.
 
 ### 1.2 선택 입력 + 자연어 매핑

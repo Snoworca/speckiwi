@@ -21,11 +21,13 @@ import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { matchesRequirementFilter } from "../../core/query/filter.js";
 import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementRecords, type RequirementDiscoveryOptions } from "../../core/query/discovery.js";
 import { buildReadEnvelope, resolveTargetSelection, summarizeTarget } from "../../core/query/summary.js";
+import { listTargets } from "../../core/query/list-targets.js";
 import { loadStepDesign, loadStepIntent, validateWorkspaceScoped } from "../../core/validator/validate-scoped.js";
 import { evaluateVibeGate } from "../../core/query/vibe-gate.js";
 import { liteSdsValidationDiagnostics } from "../../core/sds/check-sds.js";
 import { failRead, registerSdsCommands } from "./sds.js";
 import { registerPrdCommands } from "./prd.js";
+import { registerRoadmapCommands } from "./roadmap.js";
 import { runCoverageTests, testsOnlyFlagsGiven } from "./coverage-tests.js";
 import { summarizeReleaseReadiness } from "../../core/workflow/release-readiness.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
@@ -513,7 +515,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       context,
       readOutputOptions(options, command),
       workspace,
-      { activeTarget: workspace.index.activeTarget, targets: workspace.index.targets.map((target) => ({ ...target, summary: summarizeTarget(workspace, { target: target.target, diagnostics }) })) },
+      listTargets(workspace, diagnostics),
       diagnostics
     );
   });
@@ -1191,6 +1193,8 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   registerSdsCommands(command, context);
   // @req FR-NODE-240 FR-NODE-241 FR-NODE-242 — the `prd` group, registered here for the same reason.
   registerPrdCommands(command, context);
+  // @req IR-CLI-115 — the `roadmap` group, registered here for the same reason.
+  registerRoadmapCommands(command, context);
 
   // `mode` is the one mutation command declared among the read commands, so it is marked here
   // rather than by registerMutationCommands. @req IR-CLI-101

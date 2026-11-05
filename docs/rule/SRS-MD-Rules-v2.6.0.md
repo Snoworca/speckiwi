@@ -1748,12 +1748,13 @@ Validation items:
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 
-Two surfaces report findings that this table does not cover, and neither is a gap in it:
+Three surfaces report findings that this table does not cover, and none is a gap in it:
 
 - Release readiness returns its findings as typed result fields rather than as codes. An empty release target arrives as a blocking reason, and coverage gaps, missing evidence references, command evidence policy violations and broken trace links arrive as `acCoverageGaps`, `missingEvidenceReferences`, `commandEvidencePolicyViolations` and `brokenTraceLinks`, which is also what its `ready` flag is computed from.
 - Step validation reports step-scoped diagnostics, which `validate-spec` never produces. Most of them are advisories and one is not: `STEP_ACCEPTANCE_MISSING` is raised at `error` severity when a `tdd` step has no authored `design.md` and its `intent.md` carries no `## Acceptance` section with an `AC-<n>: WHEN … SHALL …` line, and it fails the `speckiwi step validate` exit code. Two of the advisories are `SRS-` codes and so are registered and listed in the table above — `SRS-W044` for a step requirement that shadows a body requirement id, and `SRS-W045` for a step carrying too many requirements — even though the row belongs to step validation rather than to `validate-spec`. The rest live in namespaces this table does not cover: `STEP_DIRECT_CONFLICT` for two active steps on one requirement, `SDS-W051` through `SDS-W053` for step design advisories, `STEP_ACCEPTANCE_MISSING` for a step without a written acceptance contract, and `STEP_PROMOTE_NO_EVIDENCE` when a step is promoted without evidence outside `tdd` mode.
+- The roadmap check reads `docs/roadmap.md`, which `validate-spec` never reads, and reports `ROADMAP-` codes. They are registered, so `explain` resolves them, and they are listed in Appendix A rather than here.
 
-In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every code in the `SRS-` namespace that any surface emits must be registered, which is why step validation's two `SRS-` advisories appear above. The `SDS-` and `STEP_` namespaces are outside this contract and are not required to be registered.
+In the v1.2.0 hardening target, the diagnostic code table above is aligned with the code-level diagnostic registry through a contract-tested or generated relationship. A registry entry must include the code, severity, title, message template, source rule, and since values, and every code in the `SRS-` namespace that any surface emits must be registered, which is why step validation's two `SRS-` advisories appear above. The `SDS-` and `STEP_` namespaces are outside this contract and are not required to be registered. The `ROADMAP-` namespace is registered as well, and its codes are aligned with Appendix A instead of this table.
 
 In the v1.2.0 hardening target, index consistency diagnostics are extended as well. A duplicate Target Map target, a duplicate Scope Map prefix, multiple active target rows, a missing scope document file, an unregistered `.srs.md` file, Status Summary drift, and Requirement Type Summary drift must be reported as diagnostics.
 
@@ -2106,3 +2107,87 @@ This document carries no copy of the block, because a copy drifts from the tool.
 ## 41. Document End
 
 This document is the reference document for SRS-MD Authoring Rules v2.6.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.
+
+---
+
+## Appendix A. Roadmap Document
+
+A project may keep one roadmap document, `docs/roadmap.md`, outside `docs/spec`. It is a plan record, not a requirement source: it groups targets and requirements into milestones and features and records when that work is planned and when it actually started and ended. No requirement query or mutation reads it, `speckiwi init` does not create it, and the roadmap tools create it with its banner on their first `add`.
+
+The roadmap holds no requirement status, no target status, no target goal, no acceptance criterion and no requirement statement. What to build is decided by the SRS, and each item's status, acceptance-criterion progress and schedule health are computed from the SRS and the Target Map, never written. Only `paused` and `cancelled` are written by hand, through `Lifecycle`. An item that names exactly one target and whose Purpose is `-` is shown with that target's goal.
+
+### A.1 Item Heading
+
+Each item starts with a heading outside a code fence:
+
+```markdown
+### RM-<n> — <title>
+```
+
+It must match `^### (RM-([1-9]\d*)) — (\S.*)$`, with an em dash between the ID and the title. Item numbers are 1..N in document order, without a gap or a duplicate. The roadmap tools allocate the next number and never delete, reuse or renumber an item; an item is closed by setting `Lifecycle` to `cancelled` and stays in the document.
+
+### A.2 Metadata Table
+
+The heading is followed by a `| Field | Value |` table holding every row below. `-` is the empty value, and a list holds entries separated by `, `.
+
+| Field | Value forms |
+|---|---|
+| `Kind` | `milestone` or `feature`; a feature may belong to a milestone, and a milestone belongs to nothing |
+| `Milestone` | `-`, or the ID of a `milestone` item; a milestone item has `-` |
+| `Targets` | `-`, or a list of Target Map target names |
+| `Requirements` | `-`, or a list of Requirement IDs |
+| `PRD` | `-`, or a list of PRD file paths `docs/prd/<file>.prd.md` |
+| `Depends On` | `-`, or a list of item IDs |
+| `Owner` | `-`, or free text |
+| `GitHub Issue` | `-`, or a list such as `#12, #15` |
+| `Planned Start` | `-`, `YYYY-MM-DD`, `YYYY-MM` or `YYYY-Qn` |
+| `Planned End` | `-`, `YYYY-MM-DD`, `YYYY-MM` or `YYYY-Qn` |
+| `Actual Start` | `-` or `YYYY-MM-DD` |
+| `Actual End` | `-` or `YYYY-MM-DD` |
+| `Lifecycle` | `open`, `paused` or `cancelled` |
+
+A month or a quarter stands for the day range it covers. Two dates are compared on those ranges, and one is earlier than another only when its whole range ends before the other's begins.
+
+### A.3 Sections
+
+After the table an item may carry these sections, each once and in any order:
+
+- `#### Purpose` — why the item exists, or `-`.
+- `#### Description` — free prose.
+- `#### Features` — a list of what the item delivers, without acceptance criteria.
+- `#### Change History` — the record of every change the roadmap tools made.
+
+### A.4 Change History
+
+```markdown
+| Date | Field | From | To | Reason |
+|---|---|---|---|---|
+| 2026-11-04 | Created | - | - | Planned for the 5.3 release |
+| 2026-11-10 | Planned End | 2026-11-20 | 2026-11-27 | Review took a week longer |
+```
+
+Each row has the five cells `Date` (`YYYY-MM-DD`), `Field` (a metadata field, `Title` or `Created`), `From`, `To` and `Reason`. The tools add one row per changed field, and a change of `Planned Start`, `Planned End`, `Actual Start`, `Actual End`, `Lifecycle`, `Milestone` or `Targets` needs a reason. The baseline of a date field is the `From` of its first row, and the number of `Planned End` rows is how often the plan's end moved. When a date or `Lifecycle` field has rows, its value must equal the `To` of its last row; a value that does not was changed by hand.
+
+### A.5 Roadmap Diagnostics
+
+The roadmap check reads no clock: lateness is a computed schedule health, never a diagnostic, so a check does not turn red because a date passed. These codes are registered, so `speckiwi explain` resolves them; `validate-spec` does not read the roadmap and does not emit them.
+
+| Code | Severity | Title |
+|---|---|---|
+| `ROADMAP-E001` | error | Malformed roadmap item heading |
+| `ROADMAP-E002` | error | Roadmap item numbers are not 1..N |
+| `ROADMAP-E003` | error | Roadmap metadata row or section missing or unknown |
+| `ROADMAP-E004` | error | Invalid roadmap Kind or Lifecycle |
+| `ROADMAP-E005` | error | Malformed roadmap date |
+| `ROADMAP-E006` | error | Roadmap end date earlier than its start |
+| `ROADMAP-E007` | error | Roadmap item reference is invalid |
+| `ROADMAP-E008` | error | Roadmap dependency cycle |
+| `ROADMAP-W009` | warning | Roadmap target is not in the Target Map |
+| `ROADMAP-W010` | warning | Roadmap requirement is missing or discarded |
+| `ROADMAP-W011` | warning | Roadmap PRD path names no PRD file |
+| `ROADMAP-W012` | warning | Roadmap item starts before an item it depends on ends |
+| `ROADMAP-W013` | warning | Roadmap feature planned outside its milestone |
+| `ROADMAP-W015` | warning | Roadmap Actual End set on an unfinished item |
+| `ROADMAP-E016` | error | Malformed roadmap Change History row |
+| `ROADMAP-W016` | warning | Roadmap value differs from its last history row |
+| `ROADMAP-E017` | error | Status or acceptance criterion in the roadmap |

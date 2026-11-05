@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { getCurrentSuite } from "vitest/suite";
 
 import { toolSchemas } from "../../src/mcp/server.js";
@@ -73,6 +74,8 @@ const SKILL_DIRECTORIES = [
   // @req FR-FLOW-204 AC-8 — the PRD skill ships in every rendering and in the mirror.
   "kiwi-prd",
   "kiwi-review-fix-loop",
+  // @req FR-FLOW-224 AC-1 — the roadmap skill ships in every rendering and in the mirror.
+  "kiwi-roadmap",
   "kiwi-sds",
   "kiwi-srs",
   "kiwi-srs-feasibility",
@@ -633,10 +636,37 @@ const AXIS_ARGUMENTS: readonly string[] = ["status", "stability"];
  * that is what makes the coupling observable. Inlining the two names back into the predicate leaves
  * every value in this file identical and breaks only the link between the constant and its reader —
  * a change no assertion over values can see. Perturbing the argument, which the tests below do, can.
+ *
+ * A third clause reads the argument itself: an axis-named argument counts only while it admits the
+ * lifecycle vocabulary — an open string, or a closed enum equal to the code enum of that axis
+ * (`REQUIREMENT_STATUSES` for `status`, `STABILITY_LEVELS` for `stability`). A closed enum over any
+ * other values is another state machine that shares the argument's name: `list_roadmap_items`
+ * filters on a roadmap item status (`idea`, `in-progress`, `done`, …), and its schema refuses every
+ * requirement value it does not itself define, so leaving it out silences nothing the call accepts.
  */
+const AXIS_ENUMS: Readonly<Record<string, readonly string[]>> = { status: REQUIREMENT_STATUSES, stability: STABILITY_LEVELS };
+
+/** The closed values a schema entry declares, or null for an open one. */
+function closedValuesOf(entry: z.ZodTypeAny): readonly string[] | null {
+  const declared = entry instanceof z.ZodOptional ? (entry.unwrap() as z.ZodTypeAny) : entry;
+  return declared instanceof z.ZodEnum ? (declared.options as string[]) : null;
+}
+
+/** Whether an axis-named argument with these closed values (null: open) admits that axis's lifecycle values. */
+function admitsLifecycle(name: string, closed: readonly string[] | null | undefined): boolean {
+  if (closed === null || closed === undefined) return true;
+  const lifecycle = AXIS_ENUMS[name] ?? [];
+  return closed.length === lifecycle.length && lifecycle.every((value) => closed.includes(value));
+}
+
+/** Whether `shape` declares one of `names` as an argument that admits that axis's lifecycle values. */
+function carriesLifecycleArgument(shape: Record<string, z.ZodTypeAny>, names: readonly string[]): boolean {
+  return names.some((name) => name in shape && admitsLifecycle(name, closedValuesOf(shape[name] as z.ZodTypeAny)));
+}
+
 function axisToolsFor(names: readonly string[]): string[] {
   return Object.entries(toolSchemas)
-    .filter(([, shape]) => names.some((name) => name in shape) && !("step" in shape) && !("task" in shape) && !("taskId" in shape))
+    .filter(([, shape]) => carriesLifecycleArgument(shape, names) && !("step" in shape) && !("task" in shape) && !("taskId" in shape))
     .map(([name]) => name)
     .sort();
 }
@@ -660,6 +690,8 @@ interface CliSurface {
   readonly name: string;
   readonly argumentNames: readonly string[];
   readonly optionNames: readonly string[];
+  /** The closed values commander declares for an argument or a long option, by its bare name. */
+  readonly choices: Readonly<Record<string, readonly string[]>>;
 }
 
 /** Every subcommand the CLI registers, with the arguments and long options it declares. */
@@ -679,12 +711,15 @@ function cliSurfaces(): CliSurface[] {
       const sub = raw as {
         commands: unknown[];
         name(): string;
-        registeredArguments?: Array<{ name(): string }>;
-        options: Array<{ long?: string }>;
+        registeredArguments?: Array<{ name(): string; argChoices?: string[] }>;
+        options: Array<{ long?: string; argChoices?: string[] }>;
       };
       const argumentNames = (sub.registeredArguments ?? []).map((argument) => argument.name());
       const optionNames = sub.options.map((option) => option.long ?? "").filter((long) => long !== "");
-      out.push({ path: [...prefix, sub.name()].join(" "), name: sub.name(), argumentNames, optionNames });
+      const choices: Record<string, readonly string[]> = {};
+      for (const argument of sub.registeredArguments ?? []) if (argument.argChoices) choices[argument.name()] = argument.argChoices;
+      for (const option of sub.options) if (option.long && option.argChoices) choices[option.long.replace(/^--/, "")] = option.argChoices;
+      out.push({ path: [...prefix, sub.name()].join(" "), name: sub.name(), argumentNames, optionNames, choices });
       walk(sub, [...prefix, sub.name()]);
     }
   };
@@ -707,7 +742,9 @@ const CLI_OPTION_NAMES: ReadonlySet<string> = new Set(CLI_SURFACES.flatMap((surf
  */
 const AXIS_CLI_COMMANDS: readonly string[] = CLI_SURFACES.filter((surface) => {
   const declared = [...surface.argumentNames, ...surface.optionNames.map((long) => long.replace(/^--/, ""))];
-  const carries = declared.some((name) => name === "status" || name === "stability");
+  // The MCP list's third clause, read on commander's declared choices: `roadmap list --status` closes
+  // over roadmap item statuses and is another state machine with the same option name.
+  const carries = declared.some((name) => (name === "status" || name === "stability") && admitsLifecycle(name, surface.choices[name]));
   // The POSITIONAL is what a subcommand keys its status on. `--target` is a filter — `speckiwi list
   // --target v3.0.0 --status planned` still asks about requirements — where `set-target-status
   // <target> <status>` takes the target as the subject and moves the target's own status.
@@ -3400,6 +3437,12 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       expect(AXIS_TOOLS, `${tool} keys its status on a step or a Task, not on a requirement`).not.toContain(tool);
     }
 
+    // A tool whose axis-named argument CLOSES over another vocabulary is not on the axis. The roadmap
+    // list's `status` is a roadmap item status (`idea`, `in-progress`, `done`, …), not a requirement
+    // lifecycle value; reading it here would report correct roadmap text as a wrong requirement value.
+    expect(Object.keys(toolSchemas), "list_roadmap_items must still be a tool").toContain("list_roadmap_items");
+    expect(AXIS_TOOLS, "list_roadmap_items keys its status on a roadmap item, not on a requirement").not.toContain("list_roadmap_items");
+
     // The residue is frozen for the reason the homonym dictionary is: every entry is a word this
     // axis will not report, so one added quietly is a value silenced quietly.
     expect([...TOOL_AXIS_NON_VALUES], "the tool-axis residue").toEqual([
@@ -3810,6 +3853,40 @@ describe("FR-FLOW-154 AC-2 — every exclusion says what it silences, not merely
 });
 
 describe("FR-FLOW-154 AC-8 · AC-9 — the three anchors are derived from code, and their edge is stated", () => {
+  it("FR-FLOW-154 AC-8 · AC-10: an axis-named argument puts its tool on the axis only when it admits the lifecycle vocabulary", () => {
+    // Derived from the schema, so the clause is checked on constructed shapes rather than on a list:
+    // an open string and the code enum itself admit lifecycle values; any other closed enum does not.
+    expect(carriesLifecycleArgument({ status: z.string() }, ["status"]), "an open status string").toBe(true);
+    expect(carriesLifecycleArgument({ status: z.string().optional() }, ["status"]), "an optional open status string").toBe(true);
+    expect(carriesLifecycleArgument({ status: z.enum(REQUIREMENT_STATUSES) }, ["status"]), "the requirement status enum").toBe(true);
+    expect(carriesLifecycleArgument({ stability: z.enum(STABILITY_LEVELS).optional() }, ["stability"]), "the stability enum").toBe(true);
+    expect(carriesLifecycleArgument({ status: z.enum(["idea", "planned", "done"]).optional() }, ["status"]), "another vocabulary").toBe(false);
+    expect(carriesLifecycleArgument({ status: z.enum(STABILITY_LEVELS) }, ["status"]), "the wrong axis's enum").toBe(false);
+    expect(carriesLifecycleArgument({ status: z.enum(REQUIREMENT_STATUSES.slice(1)) }, ["status"]), "the enum less one member").toBe(false);
+    expect(carriesLifecycleArgument({ status: z.enum([...REQUIREMENT_STATUSES, "landed"]) }, ["status"]), "the enum plus a value it refuses").toBe(false);
+    expect(carriesLifecycleArgument({ query: z.string() }, ["status"]), "no axis-named argument").toBe(false);
+
+    // Soundness (AC-10): every tool this clause leaves out closes its argument over values the schema
+    // itself enforces, and that enum refuses every lifecycle value it does not also define — so a
+    // wrong requirement value written beside the call is refused by the call, and the exclusion
+    // silences no place where the runtime would accept one. Liveness: the clause excludes something.
+    const closedOut = Object.entries(toolSchemas).filter(
+      ([, shape]) => AXIS_ARGUMENTS.some((name) => name in shape) && !carriesLifecycleArgument(shape, AXIS_ARGUMENTS) && !("step" in shape) && !("task" in shape) && !("taskId" in shape)
+    );
+    expect(closedOut.map(([name]) => name), "the tools the closed-enum clause excludes").toEqual(["list_roadmap_items"]);
+    for (const [name, shape] of closedOut) {
+      for (const axis of AXIS_ARGUMENTS.filter((argument) => argument in shape)) {
+        const argument = shape[axis] as z.ZodTypeAny;
+        const declared = (argument instanceof z.ZodOptional ? argument.unwrap() : argument) as z.ZodTypeAny;
+        expect(declared instanceof z.ZodEnum, `${name}.${axis} is a closed enum`).toBe(true);
+        const own = new Set((declared as z.ZodEnum).options as string[]);
+        for (const value of LIFECYCLE_VALUES.filter((candidate) => !own.has(candidate))) {
+          expect(argument.safeParse(value).success, `${name}.${axis} refuses ${value}`).toBe(false);
+        }
+      }
+    }
+  });
+
   it("FR-FLOW-154 AC-8: every anchor is read out of code rather than restated beside it", () => {
     // A list written beside the check drifts from what it speaks for and nothing notices, which is
     // the defect this whole requirement exists to close — one copy of a contract checking the other.

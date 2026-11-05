@@ -8,6 +8,7 @@ import {
   ORCHESTRATE_LEAF_PATHS,
   orchestrateVerbKind
 } from "../cli/commands/orchestrate.js";
+import { ROADMAP_BINDINGS, type RoadmapInputBinding } from "../cli/commands/roadmap.js";
 
 // @req FR-ARCH-006 / REL-ARCH-002
 // FR-ARCH-006 — ToolSpec command metadata registry as the single source of truth (SSOT) for every
@@ -247,6 +248,29 @@ function orchestrateSpecs(): ToolSpec[] {
   return specs;
 }
 
+/** The registry option of one roadmap input; a list is a comma-separated value on the command line. */
+function roadmapOption(input: RoadmapInputBinding): ToolOptionSpec {
+  if (input.encoding === "boolean") return opt(input.flag, input.dest);
+  if (input.encoding === "integer") return opt(input.flag, input.dest, { encoding: "number", zod: z.number() });
+  return opt(input.flag, input.dest, input.encoding === "list" ? { zod: z.array(z.string()) } : {});
+}
+
+/**
+ * The `roadmap` container (no own handler) and its six leaves, projected from the CLI's binding table
+ * rather than retyped, each carrying the tool it pairs with. @req IR-CLI-115 IR-MCP-009
+ */
+function roadmapSpecs(): ToolSpec[] {
+  const specs: ToolSpec[] = [readSpec("roadmap", undefined, "roadmapCommands")];
+  for (const binding of ROADMAP_BINDINGS) {
+    const exposure = mcp(binding.tool, binding.description);
+    const options = binding.inputs.map(roadmapOption);
+    const coreFn = `roadmap:${binding.command}`;
+    if (binding.kind === "mutation") specs.push(mutationSpec(binding.command, exposure, "workspace", coreFn, options));
+    else specs.push(readSpec(binding.command, exposure, coreFn, { options, ...(binding.itemArgument ? { args: { item: { type: "string" } } } : {}) }));
+  }
+  return specs;
+}
+
 /**
  * How the requirement search answers, said once for the MCP description and the CLI help so the two
  * surfaces cannot describe different searches. @req FR-CLI-001 AC-5
@@ -264,7 +288,8 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("list", mcp("list_requirements", `Enumerates requirement records filtered structurally — by target, status, type, scope, tag, stability, priority, missing evidence, related document, evidence or trace reference, or new-work candidacy — in identifier order, with paging and field projection. Reach for it when the filter is metadata; free text belongs to the query reader beside it. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "listRequirements"),
   readSpec("search", mcp("search_requirements", `Finds requirement records whose text matches a free-text query, over the subset those same structural filters admit, and answers in a fixed shape: identifier, title, matching snippets and location, never the block body and never a projection you choose. Reach for it when you remember a phrase but no identifier. ${SEARCH_BEHAVIOR} ${BILINGUAL_SEARCH_RULE} Example query: "${BILINGUAL_SEARCH_EXAMPLE}". Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "searchRequirements", { args: { query: { type: "string" } } }),
   readSpec("show", mcp("get_requirement", `Returns one requirement block by identifier — metadata, statement, acceptance criteria, evidence and trace rows — optionally with its raw Markdown. Ask it once you hold an id; the enumerating readers answer which ones exist, this answers what one of them says. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "getRequirement", { args: { id: { type: "string" } } }),
-  readSpec("targets", undefined, "listTargets"),
+  // @req IR-MCP-010
+  readSpec("targets", mcp("list_targets", `Lists every target the Target Map registers — its type, status and description, each with the status and stability rollups, blockers and goal a target summary carries — beside the Active Target, the same answer \`speckiwi targets --json\` prints. Ask it when you need the targets other than the active one. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "listTargets"),
   readSpec("active-target", mcp("get_active_target", `Names the Active Target the SRS index records, together with its goal, its status and stability rollups, its blockers and the workspace diagnostics as they stand — those are counted over every document, not narrowed to this target. Ask it when you do not yet know which target is current. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "getActiveTarget"),
   readSpec("completed-work", mcp("list_completed_work", `Pages the Completed Work Log — date, target, scope, requirement ids, summary and report paths — newest first by default and filterable by target, scope or a since date. This log is a derived summary; requirement blocks remain the authority on completion. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "listCompletedWork"),
   readSpec("completed-work-migration-plan", undefined, "planCompletedWorkMigration"),
@@ -472,6 +497,14 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
+  // IR-CLI-116 — CLI-only: registering an unregistered target is the one target-scoped mutation the
+  // root instructions allow through the CLI.
+  mutationSpec("register-target", undefined, "workspace", "registerTarget", [
+    opt("--type <type>", "type"),
+    opt("--description <text>", "description"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
   // IR-CLI-081 — CLI-only on the precedent `upgrade` set. `set_active_target` is exposed over MCP
   // because moving the active target is ordinary agent work; recording a target as released is a
   // release decision, and no agent makes that unattended.
@@ -665,7 +698,9 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("work-order", mcp("apply_requirement_id_collision_repair", "Carries out an explicit keep/rename mapping for one duplicate Requirement ID, refusing anything the mapping does not name, and never renumbering, beautifying or bulk-editing. Writes the affected SRS documents and the reference sites the mapping lists."), "workspace", "applyRequirementIdCollisionRepair"),
 
   // ---- orchestrate namespace (registerOrchestrateCommands) ----
-  ...orchestrateSpecs()
+  ...orchestrateSpecs(),
+  // IR-CLI-115 / IR-MCP-009 — the roadmap group, projected from its binding table.
+  ...roadmapSpecs()
 ];
 
 // --- derived views (projected from the registry) ---------------------------------------------------

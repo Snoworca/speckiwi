@@ -8,6 +8,11 @@ import { COMPLETED_WORK_LOG_HEADING, findHeadingMatching, TARGET_MAP_HEADING } f
 import { parseMarkdownTable } from "../parser/table.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { readResidueRows, splitResidueCells } from "../workflow/release-readiness.js";
+import { readRoadmapFile, resolveRoadmapDate } from "../roadmap/load-roadmap.js";
+import { parseRoadmap, roadmapFieldValue, roadmapList } from "../roadmap/parse-roadmap.js";
+import { NO_ROADMAP_SOURCES } from "../roadmap/roadmap-model.js";
+import { formatRoadmapList } from "../roadmap/render-roadmap.js";
+import { planRoadmapItemChanges } from "./roadmap-items.js";
 import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
@@ -21,6 +26,8 @@ export interface RenameTargetInput {
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
+  /** The date of the roadmap Change History rows the rename appends; defaults to today's local date. */
+  date?: string;
 }
 
 export type RenamedLocationKind =
@@ -29,7 +36,8 @@ export type RenamedLocationKind =
   | "target-goal-heading"
   | "requirement-target"
   | "release-residue-row"
-  | "completed-work-row";
+  | "completed-work-row"
+  | "roadmap-targets";
 
 export interface RenamedLocation {
   kind: RenamedLocationKind;
@@ -108,6 +116,13 @@ class FilePlans {
     entry.operations.push({ type: "replaceLine", line, original: before, replacement: after });
     this.byFile.set(file.relativePath, entry);
     this.locations.push({ ...location, file: file.relativePath, line, before, after });
+  }
+
+  /** An operation that rewrites no reported location, such as a Change History row that records one. */
+  insert(file: TextFile, operation: PatchOperation): void {
+    const entry = this.byFile.get(file.relativePath) ?? { file, operations: [] };
+    entry.operations.push(operation);
+    this.byFile.set(file.relativePath, entry);
   }
 
   plans(): PatchPlan[] {
@@ -219,6 +234,27 @@ async function renameTargetUnlocked(root: ProjectRoot, input: RenameTargetInput,
     if (!write.ok) return mutationFail("MUTATION_DENIED", `${write.message} for ${record.id}`);
     if (write.operation.type === "replaceLine") {
       plans.add(file, write.operation.line, write.operation.replacement, { kind: "requirement-target", requirementId: record.id });
+    }
+  }
+
+  // @req FR-NODE-258 AC-1 AC-2 — the roadmap names targets in its Targets lists. Each whole entry naming
+  // `from` is replaced in the same transaction as the SRS, with a history row that names the rename,
+  // so the rename leaves no roadmap reference to the old name and the change history explains the edit.
+  const roadmap = await readRoadmapFile(root);
+  if (roadmap) {
+    const date = resolveRoadmapDate(input.date, "date");
+    if (!date.ok) return mutationFail(date.error.code, date.error.message);
+    const reason = `Renamed target ${from} to ${to}`;
+    for (const item of parseRoadmap(roadmap.text, NO_ROADMAP_SOURCES).document.items) {
+      const entries = roadmapList(roadmapFieldValue(item, "Targets"));
+      if (!entries.includes(from)) continue;
+      const renamed = formatRoadmapList([...new Set(entries.map((entry) => (entry === from ? to : entry)))]);
+      const planned = planRoadmapItemChanges(roadmap, item, [{ field: "Targets", from: roadmapFieldValue(item, "Targets"), to: renamed }], date.value, reason);
+      if (!planned.ok) return mutationFail("MUTATION_DENIED", `${planned.message}; nothing was renamed`);
+      for (const operation of planned.operations) {
+        if (operation.type === "replaceLine") plans.add(roadmap, operation.line, operation.replacement, { kind: "roadmap-targets" });
+        else plans.insert(roadmap, operation);
+      }
     }
   }
 

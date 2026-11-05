@@ -33,6 +33,7 @@ import { z } from "zod";
 import { mcpFailure, resultToMcp } from "../errors.js";
 import { missingRequiredArguments } from "../required-args.js";
 import { registerOrchestrateTools } from "./read-tools.js";
+import { registerRoadmapTools } from "./roadmap-tools.js";
 
 /**
  * The root one mutation writes to. `input` is deliberately still ignored: this helper has 38 call
@@ -201,6 +202,8 @@ export const EXPIRE_ACCEPTANCE_CRITERION_SCHEMA = {
 
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
   registerOrchestrateTools(server, deps, "mutation");
+  // @req IR-MCP-009 AC-2 — the roadmap writers are workspace mutations and refuse a per-call root.
+  registerRoadmapTools(server, deps, "mutation", () => ({ kind: "workspace" }));
   server.registerTool("sync_index", async (input) =>
     resultToMcp(
       await syncIndexRollups(await root(deps, input), {

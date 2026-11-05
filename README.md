@@ -435,7 +435,7 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 
 | Category | Tools |
 | --- | --- |
-| Target & goal | `get_active_target`, `set_active_target`, `set_target_goal`, `summarize_target` |
+| Target & goal | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `summarize_target` |
 | Read | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status & stability | `update_status`, `update_stability` |
 | Evidence & trace | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
@@ -446,11 +446,12 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 | Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
 | SDS & test sufficiency | `check_sds`, `check_test_sufficiency` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
+| Roadmap | `list_roadmap_items`, `get_roadmap_item`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
 | Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | Orchestrator run surface | 31 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**102 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
+**109 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
 #### Per-call `workspaceRoot`
 
@@ -460,7 +461,7 @@ The server writes SRS only at the root it found at startup. A session whose serv
 | --- | --- |
 | `workflow_*` (all 15) | accepted |
 | `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS change replays only at the host root) and `orchestrate_preflight` (it takes `mcpRoot` and `gitRoot` instead) |
-| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | accepted; each reads the named checkout and writes nothing |
+| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | accepted; each reads the named checkout and writes nothing |
 | Every tool that writes under `docs/spec` or allocates a Requirement ID — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` and the rest | refused |
 | `mcp_workspace_info` and `get_next_work_order` | refused: the first reports which root answered, and the second assembles a work order rather than reading a checkout's SRS |
 
@@ -490,6 +491,7 @@ Each skill's `SKILL.md` lists all of its options.
 | `kiwi-srs-research` | Researches ambiguous requirements, blockers, external constraints and risks. |
 | `kiwi-srs-sync` | After code-first work, reads `git diff` and brings the SRS up to date. |
 | `kiwi-step` | Drafts a step under `docs/spec/steps/<name>/`: claims it, writes only inside it and validates it. It never edits a scope document and implements nothing. |
+| `kiwi-roadmap` | Records features, milestones and schedules in `docs/roadmap.md` through the roadmap tools, and hands an item you start to `kiwi-prd`. It never writes a status: the tools compute it from the SRS. |
 
 **Designing and implementing**
 
@@ -1425,7 +1427,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 
 | 범주 | 도구 |
 | --- | --- |
-| 대상과 목표 | `get_active_target`, `set_active_target`, `set_target_goal`, `summarize_target` |
+| 대상과 목표 | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `summarize_target` |
 | 조회 | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status와 Stability | `update_status`, `update_stability` |
 | 증거와 추적 | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
@@ -1436,11 +1438,12 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | 작업 공간 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
 | SDS와 테스트 충분성 | `check_sds`, `check_test_sufficiency` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
+| 로드맵 | `list_roadmap_items`, `get_roadmap_item`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
 | 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | 오케스트레이터 실행 | `orchestrate_*` 31개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 102개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
+**총 109개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
 #### 호출마다 넘기는 `workspaceRoot`
 
@@ -1450,7 +1453,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | --- | --- |
 | `workflow_*` (15개 전부) | 받습니다 |
 | `orchestrate_*` | 받습니다. 단, `orchestrate_replay_apply`(미뤄 둔 SRS 변경은 호스트 루트에서만 재생합니다)와 `orchestrate_preflight`(대신 `mcpRoot`와 `gitRoot`를 받습니다)는 예외입니다 |
-| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | 받습니다. 각 도구는 지정한 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다 |
+| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | 받습니다. 각 도구는 지정한 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다 |
 | `docs/spec` 아래에 쓰거나 요구사항 ID를 할당하는 모든 도구: `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` 등 | 거부합니다 |
 | `mcp_workspace_info`와 `get_next_work_order` | 거부합니다. 앞의 도구는 어느 루트가 응답했는지 보고하고, 뒤의 도구는 체크아웃의 SRS를 읽는 대신 작업 지시를 조립하기 때문입니다 |
 
@@ -1480,6 +1483,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | `kiwi-srs-research` | 모호한 요구사항, 차단 요인, 외부 제약, 위험을 조사합니다. |
 | `kiwi-srs-sync` | 코드를 먼저 고친 작업 뒤에 `git diff`를 읽고 SRS를 최신 상태로 맞춥니다. |
 | `kiwi-step` | `docs/spec/steps/<name>/` 아래에 step 초안을 씁니다. step을 선점하고, 그 디렉터리 안에만 쓰고, 검증합니다. scope 문서는 고치지 않으며 아무것도 구현하지 않습니다. |
+| `kiwi-roadmap` | 기능·마일스톤·일정을 로드맵 도구로 `docs/roadmap.md`에 기록하고, 사용자가 시작하는 항목을 `kiwi-prd`에 넘깁니다. 상태는 쓰지 않습니다. 상태는 도구가 SRS에서 계산합니다. |
 
 **설계와 구현**
 

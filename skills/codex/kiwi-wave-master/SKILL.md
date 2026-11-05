@@ -145,6 +145,7 @@ description: "PRD 로 제품 target 의 SRS 를 한 번 저작하고 그 요구 
 | "제약", "이건 지켜줘", "금지 사항" | `--constraint <text>` (반복 가능; 선언 제약을 `constraints_path` 아티팩트에 수집, §3) | (없음) |
 | "락 강제 해제", "force" | `--force` (워커의 kiwi-pm stale `pm.lock` 해제까지 pass-through §7.4, **명시** 입력만) | off |
 | "stage 당 워커 N 개" | `--lanes N` (stage 당 워커 상한, `orchestrate schedule waves --lanes N`) | 4 |
+| "로드맵 항목 RM-n", "RM-n 을 실행" | `ROADMAP_ITEM=RM-<n>` (이 run 이 실행하는 로드맵 항목, §3.1) | (없음 — 로드맵 도구를 부르지 않는다) |
 
 ### 1.3 출력
 
@@ -222,6 +223,17 @@ wave 분해에 들어가기 전에 본 스킬은 이 run 의 **run root** 를 �
 `../_shared/kiwi/wave-decomposition.md` v1.0.0(§0.9) 의 §2 순서를 그대로 돈다 — PRD → 처음 저작(`wave-srs-registration.md §1`) → feasibility 한 번 → PRD 커버리지 → 영향 분석 → `speckiwi orchestrate wave propose` → 메타데이터 → `orchestrate wave check` 를 통과한 2.0.0 그래프 커밋. 본 스킬은 **사본을 만들지 않는다**. 그 모듈에 넘기는 `artifact_root` 는 `docs/analysis/kiwi-wave-master-{run_id}/` 이고, 그 모듈의 `orchestrate` 호출(`wave check` · `wave show` · `wave status`)에는 언제나 `--engine kiwi-wave-master` 를 더한다. 제품 target 은 이 run 의 요구를 모두 담는 target 이다.
 
 그래프의 `edges` 가 §5 의 stage 를 정한다 — 간선이 없는 노드끼리는 쓰기 집합이 겹치지 않는 한 같은 stage 에 든다.
+
+### 3.1 로드맵 항목 (FR-FLOW-226)
+
+`ROADMAP_ITEM` 이 없으면 run 은 로드맵 도구를 하나도 부르지 않는다.
+
+`ROADMAP_ITEM=RM-<n>` 이 있으면 Phase 0 에서 `get_roadmap_item` 으로 그 항목을 읽고, 그 `Planned End` 는 계획 보고(§1.3 의 wave 분해 결과)에만 쓴다. `add_roadmap_item` 은 부르지 않고, `update_roadmap_item` 은 아래 그래프 커밋 때의 한 번만 부르며, 다른 항목에는 `update_roadmap_item` 도 `sync_roadmap_actuals` 도 부르지 않는다. 자식 스킬 호출에는 `ROADMAP_ITEM` 을 넘기지 않는다.
+
+**그래프 커밋 때 한 번.** §3 에서 그래프를 커밋하고 run 의 첫 graph 줄을 쓰는 그때 `get_roadmap_item` 으로 그 항목을 다시 읽어, 아래에서 해당하는 것을 모두 담은 `update_roadmap_item` 을 한 번 부른다. 사유(`reason`)는 `kiwi-wave-master run {run_id}` 다. 해당하는 것이 없으면 부르지 않고, 재분해로 그래프를 다시 커밋할 때도 부르지 않는다.
+
+- 실제 시작이 비어 있으면(`schedule.actual.start` 가 null, 문서 값 `-`) `actualStart` 를 run 을 시작한 날짜로 쓴다.
+- 항목 자신의 `targets` 와 `requirements` 가 둘 다 비어 있을 때만(문서 값 `-`) run 의 범위를 연결한다 — 커밋한 그래프의 `scope` 가 target 이면 제품 target 을 `targets` 로, 요구 목록이면 run 의 요구 ID 를 `requirements` 로 넣는다. 둘 중 하나라도 적힌 항목의 `Targets` · `Requirements` 는 바꾸지 않는다.
 
 ## 4. stage 안의 SRS 증분 저작 (FR-FLOW-218)
 
@@ -503,6 +515,8 @@ wave 안의 **재개 단위**는 **2단계**다 — 워커 실행(`--sds` 면 SD
 ## 9. Pipeline emit (의무)
 
 `../_shared/kiwi/pipeline-event.md` v1.0.0 를 따라 본 스킬 1회 실행 종료 직전 `./kiwi/pipeline.jsonl` 에 1줄 append(멱등: run_id 기준). wave 별 진행은 별도로 `./kiwi/waves.jsonl`(§6, waves-event.md) 에 기록한다. 워커는 pipeline 이벤트를 쓰지 않는다. emit 실패는 best-effort — 본 작업 실패로 이어지지 않는다.
+
+**로드맵 항목 (FR-FLOW-226)**: `ROADMAP_ITEM=RM-<n>` 을 받은 run 은 emit 직전에 `sync_roadmap_actuals` 를 `apply` true, `item` 을 그 항목으로 한 번 부른다 — 남은 실제 날짜는 도구가 계산한 상태로만 채운다. 다른 항목에는 부르지 않는다.
 
 **Preflight halt 시 저널 처리 (FR-FLOW-043)**: §2.1 게이트가 중단한 run 은 wave 를 시작하지 않았으므로 저널 root 를 pin 하지 않고 `waves.jsonl` 에 아무것도 기록하지 않는다. 다만 종료 시 1회 emit 의무는 그대로 유지된다 — `pipeline.jsonl` 에 `status=FAILED`, `next_hint=null` 인 이벤트를 정확히 1줄 append 한다.
 

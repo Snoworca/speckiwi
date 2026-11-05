@@ -13,7 +13,7 @@ import { setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
-import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { registerTarget, setActiveTarget } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { setTargetStatus } from "../../core/mutation/set-target-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
@@ -35,6 +35,7 @@ import { validateReportPathToken } from "../../core/completed-work/report-paths.
 import type { CliContext } from "../command.js";
 import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
+import { parseDate } from "../option-parsers.js";
 import { runAgentCli } from "../agent-cli-runner.js";
 import { todayStamp } from "../../core/date-stamp.js";
 import { markMutationCommands } from "../input-json.js";
@@ -88,11 +89,6 @@ function parseJsonArrayOption(value: string, label: string): unknown[] {
   const parsed = JSON.parse(value) as unknown;
   if (!Array.isArray(parsed)) throw new InvalidArgumentError(`${label} must be a JSON array`);
   return parsed;
-}
-
-function parseDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new InvalidArgumentError("date must use YYYY-MM-DD");
-  return value;
 }
 
 function parseRequirementIds(value?: string): string[] {
@@ -415,6 +411,28 @@ export function registerMutationCommands(command: Command, context: CliContext):
       const result = await setActiveTarget(await rootFrom(command.opts()), {
         target,
         create: Boolean(options.create),
+        ...(typeof options.type === "string" ? { targetType: options.type } : {}),
+        ...(typeof options.description === "string" ? { description: options.description } : {}),
+        dryRun: Boolean(options.dryRun),
+        ignoreLock: Boolean(options.ignoreLock)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req IR-CLI-116 — CLI-only: registering an unregistered target is the one target-scoped mutation
+  // the root instructions allow through the CLI.
+  command
+    .command("register-target")
+    .argument("<target>")
+    .option("--type <type>", `target type: ${TARGET_TYPES_SENTENCE}`)
+    .option("--description <text>", "target description")
+    .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (target, options) => {
+      const result = await registerTarget(await rootFrom(command.opts()), {
+        target,
         ...(typeof options.type === "string" ? { targetType: options.type } : {}),
         ...(typeof options.description === "string" ? { description: options.description } : {}),
         dryRun: Boolean(options.dryRun),

@@ -41,7 +41,11 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
     ORCHESTRATE_TOOL_BINDINGS
       .filter((binding) => binding.kind === "mutation")
       .map((binding) => [binding.tool, "workspace" as MutationToolKind])
-  )
+  ),
+  // @req IR-MCP-009 AC-2 — the roadmap writers change docs/roadmap.md, never one requirement id.
+  add_roadmap_item: "workspace",
+  update_roadmap_item: "workspace",
+  sync_roadmap_actuals: "workspace"
 };
 
 describe("FR-ARCH-005 — mutation tool kind classification", () => {

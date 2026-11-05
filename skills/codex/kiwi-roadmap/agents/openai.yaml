@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kiwi Roadmap"
+  short_description: "Record features, milestones and schedules in the roadmap through the roadmap tools"
+  default_prompt: "Use $kiwi-roadmap to record this feature, milestone or schedule in the roadmap through the roadmap tools, and hand an item I start to $kiwi-prd."

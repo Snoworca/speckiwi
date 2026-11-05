@@ -53,7 +53,9 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
 // 91 since 5.2.0 added `rename_scope` (IR-MCP-006) and `expire_acceptance_criterion` (FR-NODE-243 AC-6).
 // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
 // 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
-const REGISTERED_TOOL_COUNT = 102;
+// 103 since 5.3.1 added `list_targets` (IR-MCP-010).
+// 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
+const REGISTERED_TOOL_COUNT = 109;
 
 /**
  * The refusing set is held to names rather than to a size.

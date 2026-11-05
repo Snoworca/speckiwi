@@ -140,7 +140,10 @@ describe("FR-FLOW-204 — kiwi-prd pinned rules", () => {
     "5. 경계를 바꾸는 미해결 질문이 0개이거나 사용자가 진행하라고 하면 묻기를 멈추고, PRD 를 보여 주어 승인을 받는다. 승인 문장은 `## 3. Approval` 에 그대로 옮기고 `Status` 행을 `approved` 로 바꾼다. 사용자가 PRD 를 승인하면 사용자에게 보여 주었고 그 답에서 거절되지 않은 proposal 은 모두 `State` 를 `confirmed` 로 바꾼다 — `Reason` 이 `contradiction resolved:` 로 시작하는 proposal 만 `proposed` 로 남긴다.",
     "6. PRD 가 승인되기 전에는 어떤 SRS mutation 도구도 부르지 않는다.",
     "7. `U` 블록을 쓰거나 덧붙일 때마다(`--auto` 포함) kiwi-prd 가 줄 끝을 LF 로 맞춘 `## 1. User Request` 절 바이트의 sha256 을 `Request SHA256` 행에 쓴다 — 이 행은 kiwi-prd 만 쓰고 다른 스킬은 읽기만 한다.",
-    `8. 끝나면 PRD 경로를 돌려준다. 단독 실행이면 다음 단계로 \`${prefix}kiwi-srs REQ_PATH=<PRD 경로>\` 를 안내한다.`,
+    // FR-FLOW-225 AC-1 · AC-3: a given ROADMAP_ITEM is named in the next step, and kiwi-prd itself calls no roadmap tool.
+    `8. 끝나면 PRD 경로를 돌려준다. 단독 실행이면 다음 단계로 \`${prefix}kiwi-srs REQ_PATH=<PRD 경로>\` 를 안내한다. ` +
+      `선택 입력 \`ROADMAP_ITEM=RM-<n>\` 을 받았으면 호출자가 있어도 다음 단계를 \`${prefix}kiwi-srs REQ_PATH=<PRD 경로> ROADMAP_ITEM=RM-<n>\` 으로 안내한다. ` +
+      "kiwi-prd 는 로드맵 도구를 부르지 않는다.",
     "",
     "## 2. 질문 방식",
     "",

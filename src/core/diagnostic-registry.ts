@@ -904,8 +904,35 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     since: "v4.1.0",
     remediation:
       "Rewrite the row so it has exactly the header's cells; a `|` inside a reason splits the cell, so write it as `/` or `-`."
-  }
+  },
+  // @req FR-PARSE-046 FR-NODE-255 AC-9 — the roadmap check's codes, for `docs/roadmap.md`. They are
+  // registered so `explain` resolves them; the rules document lists them in its roadmap appendix, not in
+  // the validate-spec table, because validate-spec never reads the roadmap.
+  ...roadmapDefinitions([
+    ["ROADMAP-E001", "error", "Malformed roadmap item heading", "FR-PARSE-046", "Write the item heading as `### RM-<n> — <title>`, with a number from 1 and an em dash."],
+    ["ROADMAP-E002", "error", "Roadmap item numbers are not 1..N", "FR-PARSE-046", "Number the items 1..N in document order; the roadmap tools allocate numbers and never reuse one."],
+    ["ROADMAP-E003", "error", "Roadmap metadata row or section missing or unknown", "FR-PARSE-046", "Give the item every metadata row, with `-` for an empty value, and only the sections Purpose, Description, Features and Change History."],
+    ["ROADMAP-E004", "error", "Invalid roadmap Kind or Lifecycle", "FR-PARSE-046", "Set Kind to milestone or feature and Lifecycle to open, paused or cancelled."],
+    ["ROADMAP-E005", "error", "Malformed roadmap date", "FR-PARSE-046", "Write a planned date as -, YYYY-MM-DD, YYYY-MM or YYYY-Qn, and an actual date as - or YYYY-MM-DD."],
+    ["ROADMAP-E006", "error", "Roadmap end date earlier than its start", "FR-PARSE-046", "Move the end on or after the start; coarse dates are compared on the day ranges they cover."],
+    ["ROADMAP-E007", "error", "Roadmap item reference is invalid", "FR-PARSE-046", "Point Milestone at an existing milestone item and Depends On at existing items; a milestone has Milestone `-`."],
+    ["ROADMAP-E008", "error", "Roadmap dependency cycle", "FR-PARSE-046", "Remove a Depends On entry so no item depends on itself through others, and no feature depends on its own milestone."],
+    ["ROADMAP-W009", "warning", "Roadmap target is not in the Target Map", "FR-PARSE-046", "Name a target the Target Map registers, or register the target first."],
+    ["ROADMAP-W010", "warning", "Roadmap requirement is missing or discarded", "FR-PARSE-046", "Name a requirement that exists and is not discarded, or remove it from Requirements."],
+    ["ROADMAP-W011", "warning", "Roadmap PRD path names no PRD file", "FR-PARSE-046", "Name a PRD file as docs/prd/<file>.prd.md, or remove the entry."],
+    ["ROADMAP-W012", "warning", "Roadmap item starts before an item it depends on ends", "FR-PARSE-046", "Move the planned start after the planned end of the item it depends on, or drop the dependency."],
+    ["ROADMAP-W013", "warning", "Roadmap feature planned outside its milestone", "FR-PARSE-046", "Move the feature's planned dates inside its milestone's planned range, or move the milestone's."],
+    ["ROADMAP-W015", "warning", "Roadmap Actual End set on an unfinished item", "FR-NODE-255", "Clear Actual End through the roadmap update, or finish the work the item's requirements and targets record."],
+    ["ROADMAP-E016", "error", "Malformed roadmap Change History row", "FR-PARSE-046", "Write each history row as Date | Field | From | To | Reason with a YYYY-MM-DD date."],
+    ["ROADMAP-W016", "warning", "Roadmap value differs from its last history row", "FR-PARSE-046", "Change the value through the roadmap update, which records a history row, rather than by hand."],
+    ["ROADMAP-E017", "error", "Status or acceptance criterion in the roadmap", "FR-PARSE-046", "Remove it: status is computed from the SRS, and acceptance criteria belong to requirements."]
+  ])
 ];
+
+/** One registry entry per roadmap code; the message is the emitter's own, so the template is the title. */
+function roadmapDefinitions(rows: ReadonlyArray<readonly [string, "error" | "warning", string, string, string]>): DiagnosticDefinition[] {
+  return rows.map(([code, severity, title, sourceRule, remediation]) => ({ code, severity, title, messageTemplate: title, sourceRule, since: "v5.3.1", remediation }));
+}
 
 const definitionsByCode = new Map(DIAGNOSTIC_DEFINITIONS.map((definition) => [definition.code, definition]));
 

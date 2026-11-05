@@ -2,7 +2,7 @@ import path from "node:path";
 import { readUtf8File } from "../fs/read-text.js";
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
-import { parseMarkdownTable } from "../parser/table.js";
+import { parseMarkdownTable, type ParsedTable } from "../parser/table.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isTargetType, TARGET_STATUS_ACTIVE, TARGET_STATUS_COMPLETED, TARGET_STATUS_PLANNED, TARGET_TYPES_SENTENCE, type TargetStatus } from "../target-types.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, TargetEntry, TextFile } from "../types.js";
@@ -10,7 +10,7 @@ import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } 
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
-import { findHeadingMatching } from "../parser/index-parser.js";
+import { findHeadingMatching, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { planIndexMetadataWrite, planTableRowInsert, planTableRowUpdate, readIndexMetadataValue, type TableRowPlan } from "./internal.js";
 
 export interface SetActiveTargetInput {
@@ -37,44 +37,114 @@ function assertTargetCreationInput(input: { target: string; targetType: string; 
   });
 }
 
+export interface RegisterTargetInput {
+  target: string;
+  targetType?: string;
+  description?: string;
+  dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
+}
+
+interface TargetMapRead {
+  file: TextFile;
+  table: ParsedTable;
+  rows: TargetEntry[];
+}
+
+async function readIndexFile(root: ProjectRoot): Promise<TextFile> {
+  return readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
+}
+
+/** The index file's Target Map, read the way the index parser reads it. */
+function readTargetMap(file: TextFile): TargetMapRead | MutationResult {
+  const targetHeading = findHeadingMatching(file.lines, TARGET_MAP_HEADING);
+  const table = targetHeading >= 0 ? parseMarkdownTable(file.lines, targetHeading + 1) : undefined;
+  if (!table) return mutationFail("MUTATION_DENIED", "Target Map table is missing");
+  const rows: TargetEntry[] = table.rows.map((row) => ({
+    target: row.Target ?? "",
+    type: row.Type ?? "",
+    status: row.Status ?? "",
+    description: row.Description ?? ""
+  }));
+  return { file, table, rows };
+}
+
+/** A not-yet-registered target's row, with the defaults both registration paths share, or the refusal. */
+function newTargetRow(target: string, input: { targetType?: string | undefined; description?: string | undefined }): TargetEntry | MutationResult {
+  const row: TargetEntry = {
+    target,
+    type: normalizeTargetType(input.targetType),
+    status: TARGET_STATUS_PLANNED,
+    description: input.description?.trim() || `Registered target ${target}`
+  };
+  return assertTargetCreationInput({ target: row.target, targetType: row.type, description: row.description }) ?? row;
+}
+
+/**
+ * Inserts a new row through the shared row writer. Target and Status are what the index reads a
+ * target by; Type is the caller's classification and has to land, but Description is a note a Target
+ * Map may leave out, so it is dropped there.
+ */
+function planTargetRowInsert(map: TargetMapRead, row: TargetEntry, status: TargetStatus): TableRowPlan {
+  return planTableRowInsert(map.file, map.table, { Target: row.target, Type: row.type, Status: status, Description: row.description }, { optional: ["Description"] });
+}
+
+function isMutationResult(value: object): value is MutationResult {
+  return "ok" in value;
+}
+
 export async function setActiveTarget(root: ProjectRoot, input: SetActiveTargetInput): Promise<MutationResult> {
   return withSrsMutationLock(root, { operation: "set_active_target", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => setActiveTargetUnlocked(root, input));
+}
+
+/**
+ * @req IR-CLI-116 — adds a Target Map row as `planned` and leaves the Active Target where it is.
+ * `setActiveTarget` with `create` is the other registration path; it shares the row construction and
+ * the refusals here, and differs only in activating the row it adds.
+ */
+export async function registerTarget(root: ProjectRoot, input: RegisterTargetInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "register_target", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => registerTargetUnlocked(root, input));
+}
+
+async function registerTargetUnlocked(root: ProjectRoot, input: RegisterTargetInput): Promise<MutationResult> {
+  const target = input.target.trim();
+  if (!target) return mutationFail("USAGE", "target is required");
+  const map = readTargetMap(await readIndexFile(root));
+  if (isMutationResult(map)) return map;
+  if (map.rows.some((row) => row.target === target)) return mutationFail("MUTATION_DENIED", `Target is already registered: ${target}`);
+  const row = newTargetRow(target, input);
+  if (isMutationResult(row)) return row;
+  const planned = planTargetRowInsert(map, row, TARGET_STATUS_PLANNED);
+  if (!planned.ok) return mutationFail("MUTATION_DENIED", planned.message);
+  const plan = createPatchPlan(map.file, [planned.operation]);
+  const dryRun = input.dryRun ?? false;
+  const applied = await applyPatchPlan(plan, { dryRun });
+  return withMutationEnvelope(
+    mutationOk({ target, type: row.type, status: row.status, description: row.description, written: applied.written }),
+    mutationEnvelopeFromPlan("register_target", plan, dryRun, applied.written)
+  );
 }
 
 async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTargetInput): Promise<MutationResult> {
   const target = input.target.trim();
   if (!target) return mutationFail("USAGE", "target is required");
 
-  const file = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
+  const file = await readIndexFile(root);
   const metadataTable = parseMarkdownTable(file.lines, 1);
   if (!metadataTable) return mutationFail("MUTATION_DENIED", "Index metadata table is missing");
 
-  const targetHeading = findHeadingMatching(file.lines, /^##\s+\d+\.\s+Target Map$/);
-  const targetTable = targetHeading >= 0 ? parseMarkdownTable(file.lines, targetHeading + 1) : undefined;
-  if (!targetTable) return mutationFail("MUTATION_DENIED", "Target Map table is missing");
+  const map = readTargetMap(file);
+  if (isMutationResult(map)) return map;
+  const { table: targetTable, rows } = map;
 
-  const rows: TargetEntry[] = targetTable.rows.map((row) => ({
-    target: row.Target ?? "",
-    type: row.Type ?? "",
-    status: row.Status ?? "",
-    description: row.Description ?? ""
-  }));
   const targetExists = rows.some((row) => row.target === target);
   if (!targetExists && !input.create) {
     return mutationFail("NOT_FOUND", `Target is not registered: ${target}`);
   }
-  const createdRow: TargetEntry | undefined = targetExists
-    ? undefined
-    : {
-        target,
-        type: normalizeTargetType(input.targetType),
-        status: "planned",
-        description: input.description?.trim() || `Registered target ${target}`
-      };
-  if (createdRow) {
-    const creationFailure = assertTargetCreationInput({ target: createdRow.target, targetType: createdRow.type, description: createdRow.description });
-    if (creationFailure) return creationFailure;
-  }
+  const created = targetExists ? undefined : newTargetRow(target, input);
+  if (created && isMutationResult(created)) return created;
+  const createdRow: TargetEntry | undefined = created;
 
   const previousActiveTarget = findExistingActiveTarget(file, rows);
   const operations: PatchOperation[] = [];
@@ -109,16 +179,7 @@ async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTarget
     if (refused) return refused;
   }
   if (createdRow) {
-    const refused = push(
-      // Target and Status are what the index reads a target by; Type is the caller's classification and
-      // has to land, but Description is a note a Target Map may leave out, so it is dropped there.
-      planTableRowInsert(
-        file,
-        targetTable,
-        { Target: createdRow.target, Type: createdRow.type, Status: TARGET_STATUS_ACTIVE, Description: createdRow.description },
-        { optional: ["Description"] }
-      )
-    );
+    const refused = push(planTargetRowInsert(map, createdRow, TARGET_STATUS_ACTIVE));
     if (refused) return refused;
   }
 

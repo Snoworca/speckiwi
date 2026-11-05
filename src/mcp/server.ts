@@ -17,9 +17,11 @@ import { renderToolDescriptions } from "./schemas.js";
 import { perCallWorkspaceRootTools, registerReadTools } from "./tools/read-tools.js";
 import { EXPIRE_ACCEPTANCE_CRITERION_SCHEMA, RENAME_SCOPE_SCHEMA, registerMutationTools } from "./tools/mutation-tools.js";
 import { PRD_TOOL_SCHEMAS, registerPrdTools } from "./tools/prd-tools.js";
+import { ROADMAP_TOOL_SCHEMAS } from "./tools/roadmap-tools.js";
 import { registerResources } from "./resources.js";
 import { MCP_READ_DIAGNOSTICS_LIMIT } from "./read-diagnostics.js";
 import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
+import { ROADMAP_BINDINGS } from "../cli/commands/roadmap.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
 export interface McpServerOptions {
@@ -153,6 +155,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   validate_spec: { strict: z.boolean().optional(), failOnWarning: z.boolean().optional() },
   summarize_target: { target: z.string().optional(), includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
   get_active_target: { includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
+  // @req IR-MCP-010
+  list_targets: { includeAllDiagnostics: INCLUDE_ALL_DIAGNOSTICS_SCHEMA },
   list_completed_work: {
     target: z.string().optional(),
     scope: z.string().optional(),
@@ -473,6 +477,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   },
   // FR-NODE-240 / FR-NODE-241 / FR-NODE-242 — the PRD tools own their input schemas (prd-tools.ts).
   ...PRD_TOOL_SCHEMAS,
+  // IR-MCP-009 — the roadmap tools, their schemas derived from the CLI binding table (roadmap-tools.ts).
+  ...ROADMAP_TOOL_SCHEMAS,
   promote_step_requirement: { id: z.string(), fromStep: z.string(), toScope: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   ...orchestrateToolSchemas()
 });
@@ -535,8 +541,11 @@ const ORCHESTRATE_READ_TOOLS: readonly string[] = ORCHESTRATE_TOOL_BINDINGS
   .filter((binding) => binding.kind === "read")
   .map((binding) => binding.tool);
 
+/** @req IR-MCP-009 AC-2 — the roadmap readers, read off the binding table like the orchestrate ones. */
+const ROADMAP_READ_TOOLS: readonly string[] = ROADMAP_BINDINGS.filter((binding) => binding.kind === "read").map((binding) => binding.tool);
+
 export function isReadOnlyTool(name: string): boolean {
-  if (ORCHESTRATE_READ_TOOLS.includes(name)) return true;
+  if (ORCHESTRATE_READ_TOOLS.includes(name) || ROADMAP_READ_TOOLS.includes(name)) return true;
   return [
     "list_requirements",
     "mcp_workspace_info",
@@ -545,6 +554,7 @@ export function isReadOnlyTool(name: string): boolean {
     "validate_spec",
     "summarize_target",
     "get_active_target",
+    "list_targets",
     "list_completed_work",
     "diagnose_requirement_id_collisions",
     "plan_requirement_id_collision_repair",

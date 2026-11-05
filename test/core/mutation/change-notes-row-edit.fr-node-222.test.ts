@@ -165,6 +165,8 @@ describe("FR-NODE-222 AC-5 — CLI and MCP reach the same core", () => {
     // 89 when FR-NODE-222 landed; 91 since 5.2.0 added `rename_scope` and `expire_acceptance_criterion`.
     // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
     // 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
-    expect(renderToolNames()).toHaveLength(102);
+    // 103 since 5.3.1 added `list_targets` (IR-MCP-010).
+    // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
+    expect(renderToolNames()).toHaveLength(109);
   });
 });

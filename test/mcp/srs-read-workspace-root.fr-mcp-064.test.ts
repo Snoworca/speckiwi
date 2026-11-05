@@ -11,6 +11,7 @@ import type * as ReadTools from "../../src/mcp/tools/read-tools.js";
 import { registerMutationTools } from "../../src/mcp/tools/mutation-tools.js";
 import { cleanupFixtures, gitWorkspaceRepo, linkedWorktree, rawGit } from "./support/workspace-root-fixture.js";
 import { at } from "../support/at.js";
+import { roadmapText } from "../core/roadmap/roadmap-fixture.js";
 
 // @req FR-MCP-064
 //
@@ -58,7 +59,14 @@ const THIRTEEN = [
  * whose path arguments come from the caller and which therefore declare no path exemption (AC-7).
  */
 const CALLER_PATH_TOOLS = ["check_sds", "check_test_sufficiency"] as const;
-const FIFTEEN = [...THIRTEEN, ...CALLER_PATH_TOOLS] as const;
+/**
+ * The no-path SRS readers opened after 4.0.0, each by its own requirement: `list_targets` by IR-MCP-010
+ * and the three roadmap readers by IR-MCP-009. They join the thirteen in declaring no caller-supplied
+ * path (AC-7).
+ */
+const LATER_NO_PATH_TOOLS = ["list_targets", "list_roadmap_items", "get_roadmap_item", "check_roadmap"] as const;
+const NO_PATH_TOOLS = [...THIRTEEN, ...LATER_NO_PATH_TOOLS] as const;
+const SRS_QUERY_TOOLS = [...NO_PATH_TOOLS, ...CALLER_PATH_TOOLS] as const;
 
 /** The tools AC-5 names as staying closed, each for a reason the requirement records. */
 const STAY_CLOSED = [
@@ -150,6 +158,36 @@ const DIVERGENCES: readonly Divergence[] = [
     read: (payload) => val(payload).activeTarget,
     host: "v1.0.0",
     worktree: WORKTREE_TARGET
+  },
+  {
+    // @req IR-MCP-010 AC-2
+    tool: "list_targets",
+    args: {},
+    read: (payload) => (val(payload).targets as Array<{ target: string }>).map((entry) => entry.target),
+    host: ["v1.0.0"],
+    worktree: [WORKTREE_TARGET]
+  },
+  {
+    // @req IR-MCP-009 AC-2 — only the worktree holds docs/roadmap.md.
+    tool: "list_roadmap_items",
+    args: {},
+    read: (payload) => (val(payload).items as Array<{ title: string }>).map((item) => item.title),
+    host: [],
+    worktree: [`${MARKER} roadmap item`]
+  },
+  {
+    tool: "get_roadmap_item",
+    args: { item: "RM-1" },
+    read: (payload) => (payload.ok === true ? (val(payload).item as { title: string }).title : payload.error?.code),
+    host: "NOT_FOUND",
+    worktree: `${MARKER} roadmap item`
+  },
+  {
+    tool: "check_roadmap",
+    args: {},
+    read: (payload) => (val(payload).source as string | null)?.split("@")[0] ?? null,
+    host: null,
+    worktree: "docs/roadmap.md"
   },
   {
     tool: "list_completed_work",
@@ -361,6 +399,7 @@ async function divergeWorktree(worktree: string): Promise<void> {
   await writeFile(path.join(worktree, "docs", "spec", "steps", STEP, "design.md"), WORKTREE_STEP_DESIGN, "utf8");
   await mkdir(path.join(worktree, "docs", "sds"), { recursive: true });
   await writeFile(path.join(worktree, ...WORKTREE_SDS.split("/")), WORKTREE_SDS_TEXT, "utf8");
+  await writeFile(path.join(worktree, "docs", "roadmap.md"), roadmapText({ n: 1, title: `${MARKER} roadmap item`, fields: { Targets: WORKTREE_TARGET } }), "utf8");
 }
 
 /** What each tool was registered with, read off the registration surface rather than the wrapper. */
@@ -446,14 +485,14 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       .sort();
     // Both directions: a sixteenth tool quietly gaining the argument reddens here, and so does a
     // name in the requirement being dropped from the implementation.
-    expect(opened).toEqual([...FIFTEEN].sort());
-    expect(refusing.filter((name) => (FIFTEEN as readonly string[]).includes(name))).toEqual([]);
+    expect(opened).toEqual([...SRS_QUERY_TOOLS].sort());
+    expect(refusing.filter((name) => (SRS_QUERY_TOOLS as readonly string[]).includes(name))).toEqual([]);
   });
 
   // @req FR-MCP-064 AC-1 — the schema and the gate come from one declaration, so neither can move alone.
   it("advertises the argument on each of the fifteen and hands each handler the call context", () => {
     const registered = registrations(host);
-    for (const tool of FIFTEEN) {
+    for (const tool of SRS_QUERY_TOOLS) {
       expect(Object.prototype.hasOwnProperty.call(toolSchemas[tool] ?? {}, WORKSPACE_ROOT_KEY), `${tool} must advertise ${WORKSPACE_ROOT_KEY}`).toBe(true);
       expect(listed.find((candidate) => candidate.name === tool)?.inputSchema.properties, `${tool} must advertise it over tools/list`).toHaveProperty(WORKSPACE_ROOT_KEY);
     }
@@ -488,7 +527,7 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
     Object.fromEntries = ((entries: Iterable<readonly [PropertyKey, unknown]>) => {
       const built = fromEntries(entries as never) as Record<string, unknown>;
       const pairs = Array.isArray(entries) ? (entries as Array<readonly [PropertyKey, unknown]>) : [];
-      if (pairs.length === THIRTEEN.length && pairs.every(([key]) => (THIRTEEN as readonly string[]).includes(String(key)))) {
+      if (pairs.length === NO_PATH_TOOLS.length && pairs.every(([key]) => (NO_PATH_TOOLS as readonly string[]).includes(String(key)))) {
         dropped = String(at(pairs, pairs.length - 1)[0]);
         delete built[dropped];
       }
@@ -551,7 +590,7 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       });
     }
     // AC-2 asks for each of the fifteen, not a representative: the rows are held to the named set.
-    expect(DIVERGENCES.map((row) => row.tool).sort()).toEqual([...FIFTEEN].sort());
+    expect(DIVERGENCES.map((row) => row.tool).sort()).toEqual([...SRS_QUERY_TOOLS].sort());
   });
 
   // @req FR-MCP-064 AC-3 / AC-4
@@ -628,10 +667,10 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       .filter(([, record]) => Array.isArray(record.metadata?.callerPathKeys))
       .map(([name]) => name)
       .sort();
-    expect(declaring).toEqual([...THIRTEEN].sort());
+    expect(declaring).toEqual([...NO_PATH_TOOLS].sort());
     // AC-7: the two SDS readers take caller paths, so they declare nothing and every argument is scanned.
     for (const tool of CALLER_PATH_TOOLS) expect(declaring, `${tool} must not declare a path exemption`).not.toContain(tool);
-    for (const tool of THIRTEEN) {
+    for (const tool of NO_PATH_TOOLS) {
       expect(registered.get(tool)?.metadata?.callerPathKeys, `${tool} takes no caller-supplied path`).toEqual([]);
     }
   });

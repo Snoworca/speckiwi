@@ -1,4 +1,4 @@
-import { InvalidArgumentError, type Command } from "commander";
+import type { Command } from "commander";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import type { PrdCoverageReport } from "../../core/prd/coverage.js";
@@ -15,19 +15,12 @@ import {
 import type { Result } from "../../core/result.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
+import { integerOption } from "../option-parsers.js";
 import { failRead } from "./sds.js";
 
 // @req FR-NODE-240 FR-NODE-241 FR-NODE-242 — `speckiwi prd <check|items|show|search|cursor|coverage>`:
 // the PRD readers and the verdict cursor over `docs/prd/*.prd.md`. Every subcommand answers from the
 // same core as its MCP tool, so `--json` prints exactly the tool's value.
-
-function integerOption(minimum: number): (value: string) => number {
-  return (value) => {
-    const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < minimum) throw new InvalidArgumentError(`must be an integer of at least ${minimum}.`);
-    return parsed;
-  };
-}
 
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value];

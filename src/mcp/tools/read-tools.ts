@@ -10,6 +10,7 @@ import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { projectRequirementRecords, searchRequirementIndex, searchRequirementRecords } from "../../core/query/discovery.js";
 import { listDirtyEdges, summarizeTarget } from "../../core/query/summary.js";
 import { listSteps } from "../../core/query/list-steps.js";
+import { listTargets } from "../../core/query/list-targets.js";
 import { completedWorkReadModel, type CompletedWorkFilter } from "../../core/query/completed-work.js";
 import { splitDiagnostics, summarizeDiagnostics } from "../../core/diagnostic.js";
 import type { Diagnostic, ParsedWorkspace } from "../../core/types.js";
@@ -40,6 +41,7 @@ import {
 import { resultToMcp } from "../errors.js";
 import { ORCHESTRATE_TOOL_BINDINGS, orchestrateArgv, type OrchestrateToolBinding } from "../../cli/commands/orchestrate.js";
 import { declareSessionProcess } from "../../core/orchestrator/run-lock.js";
+import { registerRoadmapTools } from "./roadmap-tools.js";
 
 /**
  * The parsed SRS one read answers from. Like {@link projectRoot}, it takes the per-call root from
@@ -224,6 +226,12 @@ export const SRS_READ_WORKSPACE_SCOPED: readonly string[] = [
   "validate_spec",
   "summarize_target",
   "get_active_target",
+  // @req IR-MCP-010 AC-2
+  "list_targets",
+  // @req IR-MCP-009 AC-2 — the roadmap readers; none takes a caller-supplied path.
+  "list_roadmap_items",
+  "get_roadmap_item",
+  "check_roadmap",
   "list_completed_work",
   "validate_step",
   "get_work_mode",
@@ -306,6 +314,8 @@ export function perCallWorkspaceRootTools(): string[] {
 export function registerReadTools(server: McpServerHandle, deps: McpDependencies): void {
   const searchIndexes = createSearchIndexCache();
   registerOrchestrateTools(server, deps, "read");
+  // @req IR-MCP-009 AC-2 — the roadmap readers answer from a per-call checkout like the SRS queries.
+  registerRoadmapTools(server, deps, "read", srsReadMetadata);
   server.registerTool("mcp_workspace_info", async (input, context) => {
     const parsed = await workspace(deps);
     const diagnostics = readDiagnostics(parsed);
@@ -388,6 +398,12 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     const goal = activeTarget && parsed.index.targetGoals[activeTarget] ? parsed.index.targetGoals[activeTarget] : null;
     return mcpSuccess(mcpReadEnvelope(parsed, { activeTarget, summary, goal }, diagnostics, input), diagnostics);
   }, srsReadMetadata("get_active_target"));
+  // @req IR-MCP-010 AC-1 — the same listing `speckiwi targets` prints.
+  server.registerTool("list_targets", async (input, context) => {
+    const parsed = await workspace(deps, context);
+    const diagnostics = readDiagnostics(parsed);
+    return mcpSuccess(mcpReadEnvelope(parsed, listTargets(parsed, diagnostics), diagnostics, input), diagnostics);
+  }, srsReadMetadata("list_targets"));
   server.registerTool("list_completed_work", async (input, context) => {
     const parsed = await workspace(deps, context);
     const diagnostics = readDiagnostics(parsed);
