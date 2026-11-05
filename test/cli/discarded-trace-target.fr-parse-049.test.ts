@@ -161,7 +161,7 @@ describe("FR-PARSE-049 AC-4 — supersedes and superseded_by rows are not report
   });
 });
 
-describe("FR-PARSE-049 AC-5 — checked_compatible rows are left alone; discarded holders are not", () => {
+describe("FR-PARSE-049 AC-5 — checked_compatible rows and rows held by a discarded requirement are left alone", () => {
   // @req FR-PARSE-049 AC-5
   it("does not report a checked_compatible row to the discarded target", async () => {
     const { rootPath } = await discardedTargetWorkspace();
@@ -172,12 +172,29 @@ describe("FR-PARSE-049 AC-5 — checked_compatible rows are left alone; discarde
   });
 
   // @req FR-PARSE-049 AC-5
-  it("reports a row held by a discarded requirement like one held by a live requirement", async () => {
+  it("does not report the extends and depends_on rows of discarded holders, and reports the same rows held by a live requirement", async () => {
     const { rootPath, root } = await discardedTargetWorkspace();
-    const discarded = await updateStatus(root, { id: C, status: "discarded" });
-    expect(discarded.ok, JSON.stringify(discarded.error)).toBe(true);
-    expect(ofCode(await linksCheck(rootPath)).map((entry) => entry.requirementId).sort()).toEqual([B, C]);
-    expect(ofCode(await validateWarnings(rootPath))).toHaveLength(2);
+    for (const holder of [B, C]) {
+      const discarded = await updateStatus(root, { id: holder, status: "discarded" });
+      expect(discarded.ok, JSON.stringify(discarded.error)).toBe(true);
+    }
+    // The writers refuse these rows, so they are written by hand; the notes tell them from B's and C's rows.
+    await appendTraceRow(rootPath, LIVE, `| Requirement | ${A} | extends | live holder |`);
+    await appendTraceRow(rootPath, LIVE, `| Requirement | ${A} | depends_on | live holder |`);
+    const spec = await readFile(path.join(rootPath, SPEC_FILE), "utf8");
+    // The discarded holders keep their rows: the test is not passing because the rows are gone.
+    const lines = spec.split(/\r?\n/);
+    expect(lines.filter((line) => line.startsWith(`| Requirement | ${A} | extends |`))).toHaveLength(2);
+    expect(lines.filter((line) => line.startsWith(`| Requirement | ${A} | depends_on |`))).toHaveLength(2);
+
+    expect(ofCode(await linksCheck(rootPath)).map(({ requirementId, reference }) => ({ requirementId, reference }))).toEqual([
+      { requirementId: LIVE, reference: A },
+      { requirementId: LIVE, reference: A }
+    ]);
+    const liveLines = [await lineOf(rootPath, `| ${A} | extends | live holder |`), await lineOf(rootPath, `| ${A} | depends_on | live holder |`)];
+    const warnings = ofCode(await validateWarnings(rootPath));
+    expect(warnings.map((warning) => warning.line).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(liveLines.sort((a, b) => a - b));
+    expect(warnings.map((warning) => warning.requirementId)).toEqual([LIVE, LIVE]);
   });
 });
 

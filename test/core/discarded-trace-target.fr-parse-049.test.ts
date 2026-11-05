@@ -40,10 +40,13 @@ const RECORDS = [
   record("FR-ARCH-003", "docs/spec/20.second.srs.md", "planned", [{ reference: "FR-ARCH-001", relation: "extends", line: 70 }])
 ];
 
+/** The live record holding the `extends` row, as links check and validate pass it. */
+const LIVE_HOLDER = RECORDS[3]!;
+
 describe("FR-PARSE-049 AC-8 — the shared discarded-target decision", () => {
   // @req FR-PARSE-049 AC-8
   it("finds the successors through the marker's lookup, in its order, with the marker's successor first", () => {
-    const judged = judgeDiscardedTraceTargets(RECORDS).reports({ type: "Requirement", reference: "FR-ARCH-001", relation: "extends" });
+    const judged = judgeDiscardedTraceTargets(RECORDS).reports({ type: "Requirement", reference: "FR-ARCH-001", relation: "extends" }, LIVE_HOLDER);
     expect(judged).toMatchObject({ discardedId: "FR-ARCH-001", successorIds: ["FR-ARCH-009", "FR-ARCH-002"] });
     expect(judged?.successorIds).toEqual(findSupersedingRows(RECORDS, "FR-ARCH-001").map((row) => row.sourceId));
     expect(judged?.successorIds[0]).toBe(deriveSuccessorSlot(findSupersedingRows(RECORDS, "FR-ARCH-001"))?.successorId);
@@ -54,21 +57,33 @@ describe("FR-PARSE-049 AC-8 — the shared discarded-target decision", () => {
     const judge = judgeDiscardedTraceTargets(RECORDS);
     for (const relation of ["extends", "depends_on", "related_to", "refines"]) {
       const row = { type: "Requirement", reference: "FR-ARCH-001", relation };
-      expect(judge.refuses(row), relation).toEqual(judge.reports(row));
+      expect(judge.refuses(row), relation).toEqual(judge.reports(row, LIVE_HOLDER));
       expect(judge.refuses(row), relation).toBeDefined();
     }
     for (const relation of ["supersedes", "superseded_by"]) {
       const row = { type: "Requirement", reference: "FR-ARCH-001", relation };
       expect(judge.refuses(row), relation).toBeUndefined();
-      expect(judge.reports(row), relation).toBeUndefined();
+      expect(judge.reports(row, LIVE_HOLDER), relation).toBeUndefined();
     }
     const compatibility = { type: "Requirement", reference: "FR-ARCH-001", relation: "checked_compatible" };
     expect(judge.refuses(compatibility)).toBeDefined();
-    expect(judge.reports(compatibility)).toBeUndefined();
+    expect(judge.reports(compatibility, LIVE_HOLDER)).toBeUndefined();
     // A live target, a missing target and a non-Requirement row are none of this decision's business.
     expect(judge.refuses({ type: "Requirement", reference: "FR-ARCH-002", relation: "extends" })).toBeUndefined();
     expect(judge.refuses({ type: "Requirement", reference: "FR-ARCH-404", relation: "extends" })).toBeUndefined();
     expect(judge.refuses({ type: "Code", reference: "FR-ARCH-001", relation: "extends" })).toBeUndefined();
+  });
+
+  // @req FR-PARSE-049 AC-5
+  it("leaves a row held by a discarded requirement to the writers alone: the checks do not report it, the writers still refuse it", () => {
+    const judge = judgeDiscardedTraceTargets(RECORDS);
+    const discardedHolder = { ...LIVE_HOLDER, status: "discarded" };
+    for (const relation of ["extends", "depends_on"]) {
+      const row = { type: "Requirement", reference: "FR-ARCH-001", relation };
+      expect(judge.reports(row, LIVE_HOLDER), relation).toBeDefined();
+      expect(judge.reports(row, discardedHolder), relation).toBeUndefined();
+      expect(judge.refuses(row), relation).toBeDefined();
+    }
   });
 
   // @req FR-PARSE-049 AC-8

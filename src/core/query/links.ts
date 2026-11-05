@@ -60,7 +60,7 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
           broken.push({ requirementId: record.id, reference: trace.reference, reason: "requirement missing", code: "SRS-E012" });
         }
         // @req FR-PARSE-049 AC-1 — the successor goes into `reason`, so the entry keeps its shape.
-        const discarded = discardedTargets.reports(trace);
+        const discarded = discardedTargets.reports(trace, record);
         if (discarded) broken.push({ requirementId: record.id, reference: trace.reference, reason: discarded.summary, code: "SRS-W081" });
         continue;
       }

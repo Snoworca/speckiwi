@@ -17,6 +17,11 @@ interface TraceRow {
   readonly relation: string;
 }
 
+/** The requirement whose Trace Links table holds the row. */
+interface TraceRowHolder {
+  readonly status: string;
+}
+
 export interface DiscardedTraceTarget {
   readonly discardedId: string;
   /** The holders of the rows that supersede the target, in the order of its discarded marker's `see` slot. */
@@ -28,8 +33,11 @@ export interface DiscardedTraceTarget {
 export interface DiscardedTraceTargetJudge {
   /** The writers' decision: a row to a discarded requirement is refused unless it records the supersede. */
   refuses(row: TraceRow): DiscardedTraceTarget | undefined;
-  /** The checks' decision: the writers', except that a `checked_compatible` row is left alone. */
-  reports(row: TraceRow): DiscardedTraceTarget | undefined;
+  /**
+   * The checks' decision: the writers', except that a `checked_compatible` row and a row held by a
+   * discarded requirement are left alone (FR-PARSE-049 AC-5): a discarded holder is a historical record.
+   */
+  reports(row: TraceRow, holder: TraceRowHolder): DiscardedTraceTarget | undefined;
 }
 
 /**
@@ -50,6 +58,6 @@ export function judgeDiscardedTraceTargets(records: readonly RequirementRecord[]
   };
   return {
     refuses,
-    reports: (row) => (row.relation === COMPATIBILITY_RELATION ? undefined : refuses(row))
+    reports: (row, holder) => (row.relation === COMPATIBILITY_RELATION || holder.status === "discarded" ? undefined : refuses(row))
   };
 }

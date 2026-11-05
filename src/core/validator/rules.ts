@@ -824,7 +824,7 @@ export function registerDefaultRules(): void {
           }));
         }
         // @req FR-PARSE-049 AC-2 — the same rows links check reports, at the row's own line.
-        const discarded = discardedTargets.reports(trace);
+        const discarded = discardedTargets.reports(trace, record);
         if (discarded) {
           diagnostics.push(
             diagnostic(
